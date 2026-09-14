@@ -26,7 +26,7 @@ export interface TributeSlot {
   demands: TributeDemand[];
 }
 
-const tributes = defineWorldSingleton<{ slots: Map<number, TributeSlot> }>('Tributes', () => ({
+const tributes = defineWorldSingleton<{ slots: Map<number, TributeSlot> }>('Tributes', 'economy', () => ({
   slots: new Map(),
 }));
 

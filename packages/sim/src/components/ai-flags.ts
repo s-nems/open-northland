@@ -9,7 +9,7 @@ export const AI_CONDITION_SLOTS = 100;
 const aiExternalFlags = defineWorldSingleton<{
   /** player → the condition slots a script has raised, ascending. */
   raised: Map<number, number[]>;
-}>('AiExternalFlags', () => ({ raised: new Map() }));
+}>('AiExternalFlags', 'players', () => ({ raised: new Map() }));
 
 /**
  * The condition flags a map script sets on a player's AI (`SetExternalFlag`), the "external activate"

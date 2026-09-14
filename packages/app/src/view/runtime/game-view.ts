@@ -20,15 +20,15 @@ import {
 } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
+import { loadGuiArt } from '../../content/gui-art.js';
+import { hasDebugFlag } from '../../diag/debug-flags.js';
 import {
   currentDiagGameSession,
   FrameStats,
   installSessionInstruments,
   setDiagGameSession,
 } from '../../diag/index.js';
-import { hasDebugFlag } from '../../diag/debug-flags.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
-import { loadGuiArt } from '../../content/gui-art.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyReason } from '../../game/technology.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
@@ -50,7 +50,12 @@ import {
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { createFogGates, type DiplomacySimView, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
+import {
+  createFogGates,
+  type DiplomacySimView,
+  diplomacyPanelRows,
+  messageTargetAnchor,
+} from '../projections/index.js';
 import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { readStoredSettings } from '../settings-store.js';
@@ -267,7 +272,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
   // the sim on every mousemove.
-  const pointerAt = trackCanvasPointer(canvas);
+  const pointerAt = trackCanvasPointer(canvas, lifetime.signal);
 
   // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
   // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
@@ -405,15 +410,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let presentation: ReturnType<typeof createScriptPresentation> | null = null;
   const subMissions = createSubMissions({
     sim,
+    captureSave: (options) => driver.captureSave(options),
     params,
     worldToken: deps.worldToken ?? null,
     ...(deps.parentSave !== undefined ? { parent: deps.parentSave } : {}),
     ...(deps.prepareSubMission !== undefined ? { prepare: deps.prepareSubMission } : {}),
     pause: () => {
-      control.paused = true;
+      if (!sharedClock) driver.setPaused(true);
     },
     resume: () => {
-      control.paused = false;
+      if (!sharedClock) driver.setPaused(false);
     },
     teardown: teardownWorld,
   });
@@ -423,8 +429,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     signal: lifetime.signal,
     forward: (events) => deps.onEvents?.(events),
     terrainColors,
-    subMissions: (events) => subMissions.onEvents(events),
-    verdict: (events) => { if (deps.observer !== true) verdict?.onEvents(events); },
+    subMissions: (events) => !sharedClock && subMissions.onEvents(events),
+    verdict: (events) => {
+      if (deps.observer !== true) verdict?.onEvents(events);
+    },
     presentation: (events) => presentation?.onEvents(events),
   });
 
@@ -619,7 +627,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     scriptOverlay.destroy({ children: true });
     perf.dispose();
     worldTooltip.destroy();
-    soundDriver?.close();
   };
 
   installDebugHandle({

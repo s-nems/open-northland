@@ -16,8 +16,8 @@ import {
 } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
-import { setupPlacementTribes } from '../../game/placement-tribes.js';
 import { buildScriptLandscapeTerrain } from '../../content/script-landscape.js';
+import { setupPlacementTribes } from '../../game/placement-tribes.js';
 import {
   mapResourceObjectNames,
   resolveWorldContent,
@@ -47,6 +47,9 @@ import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 export type MapWorldKind = 'authored' | 'bare' | 'demo';
 
 export interface MapWorldOptions extends SessionRules {
+  readonly missions?: boolean | null;
+  readonly diplomacy?: readonly MapDiplomacy[];
+  readonly matchVictory?: 'script' | 'elimination';
   readonly seed: number;
   /** The decoded `content/maps/<id>.json` grid, or null when no map id resolved. */
   readonly map: TerrainMapFile | null;
@@ -116,7 +119,10 @@ function runWorld(
     const demo = { ...content, ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}) };
     return { sim: runDemoWorld(seed, PLACEMENT_DRAIN_TICKS, undefined, demo), kind: 'demo' };
   }
-  const script = options.script ?? {};
+  const script = {
+    ...options.script,
+    ...(options.diplomacy !== undefined ? { diplomacy: options.diplomacy } : {}),
+  };
   if (map?.entities !== undefined && ir !== null) {
     const authored = runAuthoredMap(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content, script);
     if (authored !== null) return { sim: authored, kind: 'authored' };
@@ -141,7 +147,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     sim.enqueueSetup({
       kind: 'setMatchParticipants',
       players: participants,
-      victory: scripted ? 'script' : 'elimination',
+      victory: options.matchVictory ?? (scripted ? (options.script?.victory ?? 'script') : 'elimination'),
     });
   }
 }

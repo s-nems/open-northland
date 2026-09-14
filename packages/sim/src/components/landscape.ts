@@ -2,7 +2,7 @@ import { defineComponent, type World } from '../ecs/world.js';
 import { defineWorldSingleton } from '../ecs/world-singleton.js';
 import type { ScriptLandscapePlacement } from '../nav/terrain/landscapes.js';
 
-export const LandscapeResource = defineComponent<{ id: number }>('LandscapeResource');
+export const LandscapeResource = defineComponent<{ id: number }>('LandscapeResource', 'economy');
 
 export interface LandscapeEditState {
   removed: number[];
@@ -14,7 +14,7 @@ export interface LandscapeEditState {
   tints: Map<number, number>;
 }
 
-const edits = defineWorldSingleton<LandscapeEditState>('LandscapeEdits', () => ({
+const edits = defineWorldSingleton<LandscapeEditState>('LandscapeEdits', 'movement', () => ({
   removed: [],
   added: [],
   nextId: 0,

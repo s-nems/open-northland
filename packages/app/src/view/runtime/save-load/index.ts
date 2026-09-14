@@ -5,7 +5,7 @@ import { browserSaveDownload, desktopFileBridge, platformSavePicker } from './fi
 import { storePendingLoad } from './pending-store.js';
 import { createSaveStore } from './store.js';
 
-export { takeStagedSave } from './boot.js';
+export { takeStagedSave, takeStagedSession } from './boot.js';
 export type { LoadOutcome, SaveLoadSession, SaveOutcome } from './controller.js';
 export { saveLoadSession } from './controller.js';
 export { evaluateSaveFile, type LiveWorldIdentity, type SaveRejection } from './evaluate.js';

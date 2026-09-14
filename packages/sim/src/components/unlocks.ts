@@ -19,6 +19,7 @@ export interface TribeUnlocks {
 /** Keyed by player, then by the tribe the line named. */
 const scriptUnlocks = defineWorldSingleton<{ byPlayer: Map<number, Map<number, TribeUnlocks>> }>(
   'ScriptUnlocks',
+  'players',
   () => ({ byPlayer: new Map() }),
 );
 
@@ -87,7 +88,7 @@ export function grantScriptUnlock(
 
 const mapPermissions = defineWorldSingleton<{
   rows: { player: number; tribe: number; kind: UnlockKind; typeId: number; allowed: boolean }[];
-}>('MapPermissions', () => ({ rows: [] }));
+}>('MapPermissions', 'players', () => ({ rows: [] }));
 export const MapPermissions = mapPermissions.component;
 
 export function setMapPermission(

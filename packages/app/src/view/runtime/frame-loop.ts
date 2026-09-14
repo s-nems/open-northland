@@ -141,12 +141,12 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     recordDiagHash(sim);
     for (const ev of sim.events.current()) {
       frameEvents.push(ev);
-      if (ev.kind === 'missionSubMission') control.paused = true;
+      if (ev.kind === 'missionSubMission' && !deps.sharedClock) driver.setPaused(true);
     }
   };
 
   function frame(nowMs: number): void {
-    if (loop.suspended?.() === true) control.paused = true;
+    if (loop.suspended?.() === true && !deps.sharedClock) driver.setPaused(true);
     syncViewport(nowMs);
     const pointer = pointerAt();
     const elapsed = nowMs - lastMs;

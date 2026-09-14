@@ -1,8 +1,9 @@
+import { isReadOnlySpectator, localPlayerOf } from '@open-northland/lockstep';
 import { exportSaveGame, type SaveGame, type SimEvent } from '@open-northland/sim';
 import { loadMapMeta, loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
 import { loadMapList } from '../../content/maps-index.js';
-import { localPlayerParam, readOnlyObserverParam } from '../../game/player-session.js';
 import { sessionRuleOverrides } from '../../game/session-rules.js';
+import { mapSession } from '../../game/session-url.js';
 import { mapScriptWorld } from '../../game/world/mission-script.js';
 import { aiSeatsParam } from '../../view/params.js';
 import { relaunchSearch } from '../../view/runtime/save-load/relaunch.js';
@@ -55,7 +56,7 @@ export function mapSubMissionLoader(
     const [map, source] = await Promise.all([loadTerrainMap(target), loadMapScript(target)]);
     if (map === null || source === null)
       throw new Error(`Sub-mission ${target}: map or script is unavailable`);
-    const options = { map, script: mapScriptWorld(source, ir), ir, content };
+    const options = { map, playerRoster: source.players, script: mapScriptWorld(source, ir), ir, content };
     if (parent !== undefined) {
       if (relaunchSearch(parent.header) === null) throw new Error('Parent mission cannot be relaunched');
       restoreMapWorld(options, parent);
@@ -64,14 +65,15 @@ export function mapSubMissionLoader(
     const params = new URLSearchParams(inputs.params);
     for (const key of ['scene', 'center', 'intro']) params.delete(key);
     params.set('map', target);
-    const localPlayer = localPlayerParam(params);
+    const session = mapSession(params, source.players);
+    const localPlayer = localPlayerOf(session);
     const aiSeats = aiSeatsParam(params);
     const world = buildMapWorld({
       ...options,
       ...sessionRuleOverrides(params),
       seed: current.header.seed,
       aiSeats,
-      assistantSeats: [...(readOnlyObserverParam(params) ? [] : [localPlayer]), ...aiSeats],
+      assistantSeats: [...(isReadOnlySpectator(session) ? [] : [localPlayer]), ...aiSeats],
       demoOwner: localPlayer,
     });
     return exportSaveGame(world.sim, { mapId: target, entry: `?${params}`, parent: current });

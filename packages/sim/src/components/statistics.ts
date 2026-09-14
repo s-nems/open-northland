@@ -19,6 +19,7 @@ export interface PlayerTally {
  *  has died yet. */
 const playerStatistics = defineWorldSingleton<{ byPlayer: Map<number, PlayerTally> }>(
   'PlayerStatistics',
+  'players',
   () => ({ byPlayer: new Map() }),
 );
 

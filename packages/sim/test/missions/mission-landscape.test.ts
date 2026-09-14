@@ -198,7 +198,7 @@ describe('script landscape state and blockers', () => {
         good: 4,
         remaining: 10,
         harvestAtomic: 25,
-        deposit: { initial: 10, levels: 10 },
+        deposit: { initial: 10, levels: 10, strikesPerUnit: 1 },
       },
     };
     const sim = new Simulation({

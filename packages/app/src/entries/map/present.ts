@@ -7,10 +7,13 @@ import {
 } from '@open-northland/lockstep';
 import type { Camera } from '@open-northland/render';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
+import { loadOwnMapObjects } from '../../content/own-assets/objects.js';
+import { loadScriptLandscapeSprites } from '../../content/script-landscape-sprites.js';
 import { playerNameMap, playerTribe } from '../../game/map-roster.js';
 import { mapStartFocus } from '../../game/map-start.js';
-import { matchIsContested } from '../../game/match-participants.js';
-import { mapMissionBrief } from '../../game/mission-brief.js';
+import { mapStringLookup } from '../../game/map-strings.js';
+import { hasEliminationGoal } from '../../game/match-participants.js';
+import { briefingPage, introCutsceneId } from '../../game/mission-brief.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { sessionSearch } from '../../game/session-url.js';
 import { currentLocale, messages } from '../../i18n/index.js';
@@ -19,10 +22,12 @@ import { mapZoomParam } from '../../view/camera/map-zoom.js';
 import { formatSearch } from '../../view/params.js';
 import { type GameViewDeps, type GameViewHandle, startGameView } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
+import { bindScriptLandscapes } from '../../view/runtime/script-landscapes.js';
 import { terrainColourOption } from '../../view/runtime/world-bootstrap.js';
 import { readStoredSettings } from '../../view/settings-store.js';
 import { bindStaticLayer } from '../../view/static-layer.js';
 import type { AssembledMapWorld } from './boot.js';
+import { mapSubMissionLoader, validateSavedMap } from './sub-missions.js';
 
 /** How the assembled world runs: the driver the frame loop feeds and the HUD sets the clock on. */
 export interface MapRuntime {
@@ -76,6 +81,24 @@ export async function presentMapWorld(
         )
       : null;
 
+  const landscapeEvents =
+    sim.missions !== undefined && ir !== null
+      ? bindScriptLandscapes(
+          sim,
+          renderer,
+          staticObjects?.byPlacement ?? new Map(),
+          await loadScriptLandscapeSprites(
+            sim.missions,
+            ir,
+            world.elevation,
+            renderer.brightnessField(),
+            world.ownAssets
+              ? (objects) => loadOwnMapObjects(app.renderer, objects, ir, world.elevation)
+              : undefined,
+          ),
+        )
+      : null;
+  const related = { ir, content: { content: sim.content }, params };
   const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
   const initialViewport = { width: app.screen.width, height: app.screen.height };
   const zoom = mapZoomParam(params);
@@ -123,20 +146,34 @@ export async function presentMapWorld(
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
-    ...(staticLayer !== null ? { onEvents: staticLayer } : {}),
+    onEvents: (events) => {
+      staticLayer?.(events);
+      landscapeEvents?.(events);
+    },
+    mapText: mapStringLookup(world.strings, currentLocale()),
+    ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
+    ...(runtime.sharedClock
+      ? {}
+      : {
+          prepareSubMission: mapSubMissionLoader(related),
+          validateSavedMap: (save: import('@open-northland/sim').SaveGame) => validateSavedMap(related, save),
+        }),
     worldToken: mapId,
     saveEntrySearch: formatSearch(sessionSearch(session, script?.players ?? [])),
-    introAtStart: runtime.introAtStart,
+    introAtStart: runtime.introAtStart && sim.missions === undefined,
+    introPage: script === null ? null : introCutsceneId(script),
     musicType: meta?.musicType ?? null,
-    missionBrief: mapMissionBrief({
-      script,
-      briefing: world.briefing,
-      lang: currentLocale(),
-      name: meta?.name,
-      description: meta?.description,
-      skirmishGoal: messages().hud.skirmishGoal,
-      matchDeclared: matchIsContested(world.participants) && world.participants.includes(localPlayer),
-    }),
+    missionBriefSource: {
+      page: (id) => briefingPage(world.briefing, currentLocale(), id),
+      fallback: {
+        title: meta?.name ?? '',
+        ...(meta?.description !== undefined ? { description: meta.description } : {}),
+      },
+      skirmishGoal:
+        !isSpectator(session) && hasEliminationGoal(sim.matchRules(), localPlayer)
+          ? messages().hud.skirmishGoal
+          : null,
+    },
   });
   await boot.finish();
   return view;

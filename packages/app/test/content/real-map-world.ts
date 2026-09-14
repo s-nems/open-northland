@@ -34,7 +34,7 @@ export interface RealMapWorldOptions {
   readonly rules?: SessionRules;
   /** Also spawn the map's berry bushes (the `?map=` entry does; a scenario that ignores food need not). */
   readonly berryBushes?: boolean;
-  /** Run the map's mission script (the `?missions=on` flag). Omitted leaves the sim's default, off. */
+  /** Optional headless override; map scripts run by default. */
   readonly missions?: boolean;
 }
 
@@ -72,6 +72,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   const script = realMapScript(options.mapId);
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
   const humanSeats = options.humanSeats ?? [];
+  const missionWorld = mapScriptWorld(script, ir);
   const world = buildMapWorld({
     seed: options.seed ?? MAP_SEED,
     map,
@@ -81,7 +82,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     content: { content: merge.content },
     aiSeats: options.aiSeats,
     playerRoster: script?.players ?? [],
-    script: mapScriptWorld(script, ir),
+    script: missionWorld,
     missions: options.missions ?? null,
     // Each played seat's assistant and each AI seat's, so a headless run measures an economy that
     // dresses itself like the browser's.
@@ -90,11 +91,13 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     specialItems: script?.specialItems ?? [],
     // The entry declares the match from the same three inputs. Left out, the headless world would run
     // without the match rules the browser plays under.
-    matchParticipants: matchParticipants({
-      controlled: humanSeats,
-      aiSeats: options.aiSeats,
-      neverDies: script === null ? [] : neverDiesSeats(script),
-    }),
+    matchParticipants:
+      (missionWorld.victory === 'script' ? missionWorld.participants : undefined) ??
+      matchParticipants({
+        controlled: humanSeats,
+        aiSeats: options.aiSeats,
+        neverDies: script === null ? [] : neverDiesSeats(script),
+      }),
     fog: options.rules?.fog ?? null,
     progression: options.rules?.progression ?? null,
     needs: options.rules?.needs ?? null,
@@ -113,7 +116,13 @@ export async function restoreRealMapWorld(mapId: string, save: SaveGame): Promis
   const map = JSON.parse(readFileSync(mapPath, 'utf8'));
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
   return restoreMapWorld(
-    { map, ir, content: { content: merge.content }, playerRoster: realMapScript(mapId)?.players ?? [] },
+    {
+      map,
+      ir,
+      content: { content: merge.content },
+      script: mapScriptWorld(realMapScript(mapId), ir),
+      playerRoster: realMapScript(mapId)?.players ?? [],
+    },
     save,
   ).sim;
 }

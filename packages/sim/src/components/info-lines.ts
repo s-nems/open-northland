@@ -23,7 +23,7 @@ export interface InfoLine {
   extra: number;
 }
 
-const infoLines = defineWorldSingleton<{ lines: Map<number, InfoLine> }>('InfoLines', () => ({
+const infoLines = defineWorldSingleton<{ lines: Map<number, InfoLine> }>('InfoLines', 'players', () => ({
   lines: new Map(),
 }));
 

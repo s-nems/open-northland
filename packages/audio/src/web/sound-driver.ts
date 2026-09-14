@@ -88,11 +88,6 @@ export class SoundDriver {
     this.engine.setEnabled(enabled);
   }
 
-  /** Release the audio context for good; a view that hands the document to another one calls this. */
-  close(): void {
-    this.engine.close();
-  }
-
   /** Hand over the map's music, after which each frame picks its mood variant. Null stops choosing
    *  and leaves the running track alone. */
   setMusicMap(map: MusicMap | null): void {

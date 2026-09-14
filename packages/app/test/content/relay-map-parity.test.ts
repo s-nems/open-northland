@@ -161,6 +161,9 @@ async function playThrough(
     const seat = client.session?.localSeat;
     expect(typeof seat === 'number' && seatsHeard.has(seat), client.nick).toBe(true);
   }
+  for (const client of clients) {
+    expect(client.sim?.missionStatus().some((mission) => (mission.fireCount ?? 0) > 0)).toBe(true);
+  }
   return clients;
 }
 

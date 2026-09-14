@@ -107,7 +107,7 @@ export function setProfessionProgression(world: World, enabled: boolean): void {
   });
 }
 
-const missionRules = defineWorldSingleton<{ enabled: boolean }>('MissionRules', () => ({
+const missionRules = defineWorldSingleton<{ enabled: boolean }>('MissionRules', 'players', () => ({
   enabled: false,
 }));
 

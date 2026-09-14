@@ -628,7 +628,7 @@ to decoded `map.cif`. Owned `CnModMaps/Boso_Przez_Swiat/mission.inc` starts pair
 `Boso_Przez_Swiat_sub2/misc.inc` declares that pair. This is also a custom-map mechanism, even though
 the parameter is named campaign. Only maps present in generated content can be selected.
 
-Save format 3 embeds optional `parent` envelopes recursively. Each includes its own map identity,
+Save format 7 embeds optional `parent` envelopes recursively. Each includes its own map identity,
 commands, RNG, fog and mission state. The app session retains that envelope on subsequent saves;
 restoring a single simulation does not itself manage the world stack. Returning discards the child,
 so neither inhabitants nor goods are merged into the parent. Parent simulation time stays frozen.
@@ -674,3 +674,22 @@ an inhabitant or soldier count, type 4 wins when `MissionWon` fires for the play
   first pass would run at once and an opening `PlayCutscene` show its page before the map moves,
   where this build's first pass runs three seconds in.
 - The loader's `description` default of 0 against the corpus convention of -1.
+
+## Multiplayer integration
+
+Map scripts execute in the simulation on every lockstep peer. Mission state, landscape edits,
+tributes, discoveries and school qualifications participate in the sync digest and saved state.
+The verified map identity includes the script document; restore resolves that same document again.
+Player tribute payments and school orders pass through the serializable seat-command boundary.
+
+Network play requires the map's authored multiplayer table. Maps without it remain single-player,
+even if they contain several factions. Network world transitions are refused before boot: the
+session descriptor and reconnect snapshot name one map. No StartSubMission or EndSubMission appears
+in the locally extracted multiplayer corpus. Single-player transitions retain the suspended world
+and accepted future commands through the session driver's save capture.
+
+A multiplayer script with no MissionWon or MissionFailed keeps elimination victory. A script that
+contains either verdict uses scripted victory; this opcode-based policy is an approximation.
+The shared match completes once every participant has an elimination or scripted outcome.
+Briefings open locally without holding the shared clock. Scripted camera and selection effects
+remain local presentation of the same events on every peer.

@@ -15,6 +15,7 @@ export async function loadScriptLandscapeSprites(
   ir: ContentIr,
   elevation: ElevationField,
   brightness: BrightnessField,
+  loadObjects: typeof loadMapObjects = loadMapObjects,
 ): Promise<ScriptLandscapeSprite> {
   const records = new Map((ir.landscapeGfx ?? []).map((row) => [row.index, row]));
   const keys: string[] = [];
@@ -36,7 +37,7 @@ export async function loadScriptLandscapeSprites(
       keys.push(key);
     }
   }
-  const loaded = await loadMapObjects({ types, placements, levels }, ir, elevation, brightness);
+  const loaded = await loadObjects({ types, placements, levels }, ir, elevation, brightness);
   const templates = new Map<string, MapObjectSprite>();
   for (const [index, sprite] of loaded.byPlacement) {
     const key = keys[index];

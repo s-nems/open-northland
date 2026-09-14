@@ -6,7 +6,7 @@ import { defineWorldSingleton } from '../ecs/world-singleton.js';
  * `setvehicle` id column). An id names a group, never one entity: a script addresses every entity
  * stamped with the same value, and a placement authoring no id carries no component.
  */
-export const MissionObjectId = defineComponent<{ id: number }>('MissionObjectId');
+export const MissionObjectId = defineComponent<{ id: number }>('MissionObjectId', 'players');
 
 /** Stamps nothing for 0, the value the placement columns and the script both write for "no id". */
 export function stampMissionId(world: World, e: Entity, id: number | undefined): void {
@@ -18,7 +18,7 @@ export function stampMissionId(world: World, e: Entity, id: number | undefined):
  * row at build or a `SetHumanName` result later. The app resolves it in the player's language; a
  * human without one shows its generated name.
  */
-export const ScriptedName = defineComponent<{ stringId: number }>('ScriptedName');
+export const ScriptedName = defineComponent<{ stringId: number }>('ScriptedName', 'settlers');
 
 export function nameHuman(world: World, e: Entity, stringId: number): void {
   if (world.has(e, ScriptedName)) world.mut(e, ScriptedName).stringId = stringId;
@@ -51,7 +51,7 @@ export interface MissionRecord {
   fireCount?: number;
 }
 
-const missionState = defineWorldSingleton<{ missions: MissionRecord[] }>('MissionState', () => ({
+const missionState = defineWorldSingleton<{ missions: MissionRecord[] }>('MissionState', 'players', () => ({
   missions: [],
 }));
 
@@ -78,7 +78,7 @@ export function writeMissionState(world: World, apply: (missions: MissionRecord[
 
 /** The briefing page the mission window opens on when nothing newer was shown: the last
  *  `PlayCutscene` that carried the replay flag. Null until one fires. */
-const missionBriefing = defineWorldSingleton<{ page: number | null }>('MissionBriefing', () => ({
+const missionBriefing = defineWorldSingleton<{ page: number | null }>('MissionBriefing', 'players', () => ({
   page: null,
 }));
 
@@ -97,9 +97,13 @@ export function setMissionBriefingPage(world: World, page: number): void {
 /** The briefing window retains up to fifty distinct pages in first-shown order (reading). */
 export const BRIEFING_HISTORY_LIMIT = 50;
 
-const briefingHistory = defineWorldSingleton<{ pages: number[] }>('MissionBriefingHistory', () => ({
-  pages: [],
-}));
+const briefingHistory = defineWorldSingleton<{ pages: number[] }>(
+  'MissionBriefingHistory',
+  'players',
+  () => ({
+    pages: [],
+  }),
+);
 
 export function missionBriefingHistory(world: World): number[] {
   const pages = briefingHistory.read(world).pages;

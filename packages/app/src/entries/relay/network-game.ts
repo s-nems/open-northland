@@ -128,6 +128,7 @@ export function renderNetworkGame(
       clearWorld();
       canvasUsed = true;
       const world = await assembleMapWorld(activeCanvas, params, {
+        multiplayer: true,
         mapId: map.mapId,
         stagedSave: save,
         verifiedMap: map,

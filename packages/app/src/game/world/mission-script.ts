@@ -175,5 +175,17 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
       `mapScriptWorld: ${script.missions.length} missions loaded with ${join.unknownOpcodes} unknown opcodes, ${join.tokenMismatches} token-count mismatches and ${join.unresolvedNames.length} unresolvable names (${named})`,
     );
   }
-  return { ...permissionRows, diplomacy, humanNames, ...roster, missions: join.script };
+  const scriptedVictory =
+    script.multiplayer === undefined ||
+    join.script.missions.some((mission) =>
+      mission.results.some((op) => op.opcode === 'MissionWon' || op.opcode === 'MissionFailed'),
+    );
+  return {
+    ...permissionRows,
+    diplomacy,
+    humanNames,
+    ...roster,
+    missions: join.script,
+    victory: scriptedVictory ? 'script' : 'elimination',
+  };
 }

@@ -11,8 +11,8 @@ import {
   type SaveGameSection,
 } from './format.js';
 import { parseSavedAt } from './header-fields.js';
-import { copySessionMetadata } from './session-metadata.js';
 import { parseSaveGame } from './parse.js';
+import { copySessionMetadata } from './session-metadata.js';
 
 export interface ExportSaveOptions {
   readonly continuation?: readonly SavedCommand[];

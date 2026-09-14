@@ -6,7 +6,7 @@ import { isValidPlayer } from './ownership.js';
 const diplomacyLocks = defineWorldSingleton<{
   /** player → the slots its stance toward is locked, a bitmask held in both rows of a pair. */
   locked: Map<number, number>;
-}>('DiplomacyLocks', () => ({ locked: new Map() }));
+}>('DiplomacyLocks', 'players', () => ({ locked: new Map() }));
 
 /**
  * The pairs a map script marked not changeable (`SetDiplomacyNotChangeableFlag`). A script's own
@@ -38,7 +38,7 @@ function setLockBit(rows: Map<number, number>, row: number, column: number, lock
 const playerAttacks = defineWorldSingleton<{
   /** victim player → bitmask of the players whose blows have damaged one of its humans. */
   attackedBy: Map<number, number>;
-}>('PlayerAttacks', () => ({ attackedBy: new Map() }));
+}>('PlayerAttacks', 'players', () => ({ attackedBy: new Map() }));
 
 /**
  * Who has struck whom: a damaging blow on a player's human marks the attacker in the victim's row, one

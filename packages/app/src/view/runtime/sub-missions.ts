@@ -1,4 +1,5 @@
 import {
+  type ExportSaveOptions,
   exportSaveGame,
   parseSaveGame,
   type SaveGame,
@@ -18,6 +19,7 @@ export type PrepareSubMission = (transition: SubMissionTransition, current: Save
 
 export interface SubMissionDeps {
   readonly sim: Simulation;
+  readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
   readonly worldToken: string | null;
   readonly params: URLSearchParams;
   readonly parent?: SaveGame;
@@ -42,7 +44,8 @@ export function createSubMissions(deps: SubMissionDeps): {
     const run = async (): Promise<void> => {
       if (deps.prepare === undefined || deps.worldToken === null)
         throw new Error('This world cannot load sub-missions');
-      const current = exportSaveGame(deps.sim, {
+      const capture = deps.captureSave ?? ((options: ExportSaveOptions) => exportSaveGame(deps.sim, options));
+      const current = await capture({
         mapId: deps.worldToken,
         entry: `?${deps.params}`,
         ...(deps.parent !== undefined ? { parent: deps.parent } : {}),

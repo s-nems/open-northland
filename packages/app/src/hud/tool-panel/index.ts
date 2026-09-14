@@ -202,7 +202,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const hoverContainer = new Container();
   const windowContainer = new Container();
   const bannerContainer = new Container();
-  root.addChild(stripContainer, infoContainer, notesContainer, windowContainer, hoverContainer, bannerContainer);
+  root.addChild(
+    stripContainer,
+    infoContainer,
+    notesContainer,
+    windowContainer,
+    hoverContainer,
+    bannerContainer,
+  );
 
   let stripSurface: StripSurface | null = null;
   let input: ToolPanelInput | null = null;

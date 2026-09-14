@@ -1,8 +1,8 @@
 import { type Entity, entityById, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
-import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
+import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';

@@ -25,8 +25,8 @@ import {
 } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
-import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 import { openSchoolDialog } from './school-dialog.js';
+import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'] | undefined;

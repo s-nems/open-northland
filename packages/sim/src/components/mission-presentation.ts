@@ -23,7 +23,7 @@ const presentation = defineWorldSingleton<{
   gui: Map<number, HalfCellNode>;
   ground: Map<string, GroundMissionMarker>;
   weather: MissionWeatherRegion[];
-}>('MissionPresentation', () => ({ gui: new Map(), ground: new Map(), weather: [] }));
+}>('MissionPresentation', 'players', () => ({ gui: new Map(), ground: new Map(), weather: [] }));
 
 export const MissionPresentation = presentation.component;
 

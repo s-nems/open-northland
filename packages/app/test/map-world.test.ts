@@ -31,7 +31,7 @@ describe('buildMapWorld', () => {
     FOG_MODE.OFF,
     FOG_MODE.RECON,
   ])('starts enabled scripts under reveal fog unless overridden (%s)', (fog) => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
@@ -44,7 +44,7 @@ describe('buildMapWorld', () => {
   });
 
   it('keeps disabled scripts from changing fog and legacy match defaults', () => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
@@ -57,7 +57,7 @@ describe('buildMapWorld', () => {
   });
 
   it('lets an explicit empty participant fixture override the scripted roster', () => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,

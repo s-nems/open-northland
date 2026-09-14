@@ -61,6 +61,11 @@ const AI_MODULES: FieldCheck = {
  * decides that, and an authored-setup-only option is a field a seat envelope simply may not carry.
  */
 const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
+  learn: {
+    required: { entity: 'integer', house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' },
+  },
+  payTribute: { required: { player: 'integer', slot: 'integer' } },
+  setMissionsEnabled: { required: { enabled: 'boolean' } },
   cancelTraining: { required: { entity: 'integer' } },
   exploreArea: { required: { entity: 'integer', ...NODE } },
   grantPaper: { required: { player: 'integer', paper: PAPER } },
@@ -109,6 +114,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   placeBuilding: {
     required: { buildingType: 'integer', ...NODE, tribe: 'integer' },
     optional: {
+      missionId: 'integer',
       underConstruction: 'boolean',
       owner: 'integer',
       force: 'boolean',
@@ -120,6 +126,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   placeResource: {
     required: { good: 'integer', ...NODE, remaining: 'integer', harvestAtomic: 'integer' },
     optional: {
+      landscapeId: 'integer',
       felling: { fields: { required: { chopsLeft: 'integer' } } },
       deposit: { fields: { required: { levels: 'integer', strikesPerUnit: 'integer' } } },
     },
@@ -140,7 +147,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setFogMode: { required: { mode: 'integer' } },
   setGatherGood: { required: { entity: 'integer', goodType: { nullOr: 'integer' } } },
   setJob: { required: { entity: 'integer', jobType: 'integer' } },
-  setMatchParticipants: { required: { players: { arrayOf: 'integer' } } },
+  setMatchParticipants: {
+    required: { players: { arrayOf: 'integer' } },
+    optional: { victory: { oneOf: ['script', 'elimination'] } },
+  },
   setNeedsEnabled: { required: { enabled: 'boolean' } },
   setPlayerPlacementTribes: { required: { player: 'integer', tribes: { arrayOf: 'integer' } } },
   setPlayerAi: {
@@ -151,10 +161,16 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setSignpostNavigation: { required: { enabled: 'boolean' } },
   setStance: { required: { entity: 'integer', mode: 'integer' } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },
-  spawnAnimalHerd: { required: { tribe: 'integer', ...NODE }, optional: { count: 'integer' } },
+  spawnAnimalHerd: {
+    required: { tribe: 'integer', ...NODE },
+    optional: { count: 'integer', missionId: 'integer', owner: 'integer' },
+  },
   spawnSettler: {
     required: { jobType: 'integer', ...NODE, tribe: 'integer' },
     optional: {
+      missionId: 'integer',
+      behaviourFlags: 'integer',
+      nameStringId: 'integer',
       hitpoints: 'integer',
       armorClass: 'integer',
       weaponTypeId: 'integer',

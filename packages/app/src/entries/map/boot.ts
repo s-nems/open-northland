@@ -13,7 +13,13 @@ import type { Application } from 'pixi.js';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
-import { loadMapBriefing, loadMapMeta, loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
+import {
+  loadMapBriefing,
+  loadMapMeta,
+  loadMapScript,
+  loadMapStrings,
+  loadTerrainMap,
+} from '../../content/map-loader.js';
 import { loadMapObjects } from '../../content/objects.js';
 import { loadOwnMapObjects } from '../../content/own-assets/objects.js';
 import { loadOwnSpriteSheet } from '../../content/own-assets/sprite-sheet.js';
@@ -23,11 +29,13 @@ import { loadRealTerrain, MissingTerrainError } from '../../content/terrain.js';
 import { readVerifiedMapDocuments, type VerifiedMapDocuments } from '../../content/transfer/index.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../../diag/index.js';
 import { neverDiesSeats } from '../../game/match-participants.js';
+import { assertMultiplayerMap } from '../../game/multiplayer-map.js';
 import { sandboxGoods } from '../../game/sandbox/index.js';
 import { sessionDiplomacy } from '../../game/session-diplomacy.js';
 import { sessionRoles } from '../../game/session-roles.js';
+import { onOffParam } from '../../game/session-rules.js';
 import type { SessionRosterSlot } from '../../game/session-url.js';
-import { terrainSceneFor } from '../../game/world/index.js';
+import { mapScriptWorld, terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
 import { assetSetFor } from '../../view/asset-settings.js';
 import { type BootPhase, type BootProgress, mountBootProgress } from '../../view/boot-progress.js';
@@ -55,6 +63,7 @@ export const MAP_BOOT_PHASES = [
 ] as const satisfies readonly BootPhase[];
 
 export interface MapBootPlan {
+  readonly multiplayer?: boolean;
   readonly mapId: string | null;
   readonly stagedSave: SaveGame | null;
   readonly verifiedMap?: VerifiedMapDocuments;
@@ -86,6 +95,7 @@ export interface AssembledMapWorld {
   readonly script: Awaited<ReturnType<typeof loadMapScript>>;
   readonly meta: Awaited<ReturnType<typeof loadMapMeta>>;
   readonly briefing: Awaited<ReturnType<typeof loadMapBriefing>>;
+  readonly strings: Awaited<ReturnType<typeof loadMapStrings>>;
   readonly tribes: WorldTribes;
   readonly staticObjects: LoadedObjects | undefined;
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
@@ -115,11 +125,13 @@ export async function assembleMapWorld(
     await boot.begin('map');
     const loaded = verified?.map ?? (mapId !== null ? await loadTerrainMap(mapId) : null);
     // A roster-less map keeps the defaults: seat 0, and colour = slot id.
-    const [script, meta, briefing] = await Promise.all([
+    const [script, meta, briefing, strings] = await Promise.all([
       verified !== undefined ? verified.script : mapId !== null ? loadMapScript(mapId) : null,
       mapId !== null ? loadMapMeta(mapId) : null,
       mapId !== null ? loadMapBriefing(mapId) : null,
+      mapId !== null ? loadMapStrings(mapId) : null,
     ]);
+    if (plan.multiplayer) assertMultiplayerMap(script);
     const session = plan.sessionFor(script?.players ?? []);
     const localPlayer = localPlayerOf(session);
     const playerColourOf = seatColourOf(session);
@@ -175,7 +187,13 @@ export async function assembleMapWorld(
     const footprints = buildingFootprints(ir);
     const roles = sessionRoles(session, script === null ? [] : neverDiesSeats(script));
     // The render layers read the raw map; the sim runs on the collision resolution of the same map.
+    const missionWorld = mapScriptWorld(script, ir);
+    // A story script decides the match for the seats it names; a multiplayer setup script without a
+    // verdict leaves the roster to the session's seats.
+    const participants =
+      (missionWorld.victory === 'script' ? missionWorld.participants : undefined) ?? roles.matchParticipants;
     const worldOptions = {
+      script: missionWorld,
       map: loaded,
       ir,
       playerRoster: script?.players ?? [],
@@ -208,10 +226,13 @@ export async function assembleMapWorld(
         seed: session.seed,
         aiSeats: roles.aiSeats,
         assistantSeats: roles.assistantSeats,
-        matchParticipants: roles.matchParticipants,
+        matchParticipants: participants,
         diplomacy: sessionDiplomacy(session, script?.diplomacy ?? []),
         specialItems: script?.specialItems ?? [],
         ...session.rules,
+        // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
+        // world never reads it.
+        missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
       });
       sim = world.sim;
       harvestablePlacements = world.harvestablePlacements;
@@ -245,11 +266,12 @@ export async function assembleMapWorld(
       script,
       meta,
       briefing,
+      strings,
       tribes,
       staticObjects,
       harvestablePlacements,
       chestPlacements,
-      participants: roles.matchParticipants,
+      participants,
     };
   } finally {
     if (!assembled) app.destroy(false, { children: true });

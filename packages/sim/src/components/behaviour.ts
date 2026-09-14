@@ -5,10 +5,10 @@ import { type Component, defineComponent, type Entity, type World } from '../ecs
  * flags"). Stored verbatim, bits without a reader included, because a script may set and clear any of
  * them and a later line reads the whole word back.
  */
-export const MissionBehaviour = defineComponent<{ flags: number }>('MissionBehaviour');
+export const MissionBehaviour = defineComponent<{ flags: number }>('MissionBehaviour', 'settlers');
 
 /** A house's own mask, written by `SetHouseBehaviourFlag` one bit index at a time. */
-export const HouseBehaviour = defineComponent<{ flags: number }>('HouseBehaviour');
+export const HouseBehaviour = defineComponent<{ flags: number }>('HouseBehaviour', 'economy');
 
 /**
  * The human bits this build acts on. Each is a reading of the original that names a mechanic the sim

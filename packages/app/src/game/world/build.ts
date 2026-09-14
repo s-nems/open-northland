@@ -6,6 +6,7 @@ import type { AuthoredPlacement } from './authored-placements.js';
 
 /** Decoded map setup and resolved mission definitions. */
 export interface MapScriptWorld {
+  readonly victory?: 'script' | 'elimination';
   readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
   readonly humanNames?: readonly MapHumanName[];

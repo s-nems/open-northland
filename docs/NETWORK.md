@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 5` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 6` in
 `packages/net-protocol`. A change a client of the current version could not parse bumps the version;
 the relay refuses a `hello` that names another.
 
@@ -8,6 +8,10 @@ The model is server-paced deterministic lockstep. Every client runs the full sim
 is the authority for time, order, membership, and session settings, and for nothing else: it holds
 no game content, runs no simulation, and never interprets a command payload or a blob. That is what
 keeps the server image free of decoded game data.
+
+Map-script integration and multiplayer eligibility are documented in
+[`MISSIONS.md`](formats/MISSIONS.md#multiplayer-integration). Seat commands include tribute payments
+and civilian lessons; all peers must understand their payloads.
 
 ## Transport
 

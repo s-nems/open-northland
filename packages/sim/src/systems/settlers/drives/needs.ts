@@ -1,9 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
 import {
-  hasMissionBehaviour,
-  MISSION_BEHAVIOUR,
   Carrying,
+  hasMissionBehaviour,
   isAiPlayer,
+  MISSION_BEHAVIOUR,
   type NeedKind,
   NeedOrder,
   NoRegeneration,

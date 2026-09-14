@@ -18,7 +18,7 @@ const matchRules = defineWorldSingleton<{
  */
 export const MatchRules = matchRules.component;
 
-const scriptMatchRules = defineWorldSingleton<{ enabled: boolean }>('ScriptMatchRules', () => ({
+const scriptMatchRules = defineWorldSingleton<{ enabled: boolean }>('ScriptMatchRules', 'players', () => ({
   enabled: false,
 }));
 export const ScriptMatchRules = scriptMatchRules.component;
@@ -28,7 +28,7 @@ const scriptVerdicts = defineWorldSingleton<{
   won: number;
   /** Players a script's `MissionFailed` named; their commands stay accepted (approximation). */
   lost: number;
-}>('ScriptVerdicts', () => ({ won: 0, lost: 0 }));
+}>('ScriptVerdicts', 'players', () => ({ won: 0, lost: 0 }));
 
 /** The outcome a map script declares, apart from the skirmish rule: any valid slot, participant or
  *  not, since a campaign map decides for whoever it names. */
@@ -80,7 +80,11 @@ export function isPlayerDead(world: World, player: number): boolean {
 
 export function matchEnded(world: World): boolean {
   const rules = matchRules.read(world);
-  return rules.participants !== 0 && ((rules.dead | rules.won) & rules.participants) === rules.participants;
+  return (
+    rules.participants !== 0 &&
+    ((rules.dead | rules.won | wonByScriptBits(world) | lostByScriptBits(world)) & rules.participants) ===
+      rules.participants
+  );
 }
 
 /** A defeat outranks a victory: a seat that died, or that a script failed, has lost whatever else is

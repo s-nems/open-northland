@@ -10,6 +10,7 @@ import {
 } from '../../src/content/transfer/index.js';
 import { validateNetworkSave } from '../../src/entries/main-menu/network/save.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
+import { mapScriptWorld } from '../../src/game/world/mission-script.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest, serveIrFetch } from './helpers.js';
 import { realMapPath } from './real-map-world.js';
 
@@ -35,6 +36,7 @@ describe.runIf(hasRealIr())('verified map transfer with owned content', () => {
         ir: rawIrUnderTest() as ContentIr,
         content: { content: merge.content },
         playerRoster: script?.players ?? [],
+        script: mapScriptWorld(script, rawIrUnderTest() as ContentIr),
         diplomacy: script?.diplomacy ?? [],
         seed: 7,
         aiSeats: [],

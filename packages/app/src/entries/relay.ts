@@ -113,6 +113,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       if (verifiedMap === null) throw new Error('Missing or incompatible verified map');
       card.dismiss();
       const assembled = await assembleMapWorld(canvas, params, {
+        multiplayer: true,
         mapId,
         stagedSave: staged,
         verifiedMap,

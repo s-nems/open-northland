@@ -8,6 +8,8 @@ import {
   readVerifiedMapDocuments,
   type VerifiedMapDocuments,
 } from '../../../content/transfer/index.js';
+import { assertMultiplayerMap } from '../../../game/multiplayer-map.js';
+import { mapScriptWorld } from '../../../game/world/mission-script.js';
 import { decodeSaveText, type SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { evaluateSaveDocument } from '../../../view/runtime/save-load/evaluate.js';
 import { restoreMapWorld } from '../../map/world.js';
@@ -25,6 +27,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
   const [ir, runtime] = await Promise.all([loadIr(), loadRuntimeRealContent()]);
   if (ir === null || runtime === null) throw new Error('Missing game content');
   const { map, script } = readVerifiedMapDocuments(handle);
+  assertMultiplayerMap(script);
   restoreSavedSeats(
     save,
     (script?.players ?? []).map((seat) => ({
@@ -38,6 +41,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
       map,
       ir,
       playerRoster: script?.players ?? [],
+      script: mapScriptWorld(script, ir),
       content: { content: runtime.content, footprints: buildingFootprints(ir) },
     },
     save,

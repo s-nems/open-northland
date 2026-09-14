@@ -8,6 +8,7 @@ import {
   readVerifiedMapDocuments,
 } from '../../../content/transfer/index.js';
 import { FOG_MODE_BY_NAME } from '../../../game/fog.js';
+import { assertMultiplayerMap } from '../../../game/multiplayer-map.js';
 import { DEFAULT_SESSION_SEED, DEFAULT_SESSION_SPEED, mapSession } from '../../../game/session-url.js';
 import { initialLobbyOptions } from '../lobby/model.js';
 import { authoredVacantMode } from '../lobby/roster-state.js';
@@ -24,6 +25,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   const handle = local ?? cached?.handle ?? null;
   if (handle === null) throw new Error('Missing map');
   const { script } = readVerifiedMapDocuments(handle);
+  assertMultiplayerMap(script);
   const metadata: MapsIndexEntry | undefined = (await loadMapList()).find((item) => item.id === mapId);
   const players =
     metadata?.players ??

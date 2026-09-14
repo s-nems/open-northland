@@ -1,5 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import { playerPlacementTribes, UnderConstruction } from '../../../components/index.js';
+import { Building, playerPlacementTribes, UnderConstruction } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';

@@ -4,7 +4,7 @@ import type { UnlockKind } from './unlocks.js';
 
 const discoveries = defineWorldSingleton<{
   rows: { player: number | null; tribe: number; kind: UnlockKind; typeId: number }[];
-}>('TechnologyDiscoveries', () => ({ rows: [] }));
+}>('TechnologyDiscoveries', 'players', () => ({ rows: [] }));
 
 export const TechnologyDiscoveries = discoveries.component;
 const indexes = new WeakMap<World, { generation: string; keys: Set<string> }>();

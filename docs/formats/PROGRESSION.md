@@ -38,10 +38,7 @@ The no-job-experience mission behavior suppresses accrual through the common gra
 Saved experience retains the existing factor-scaled encoding: one counted action contributes its
 track's `experienceFactor`. Requirement readers divide by that factor. This encoding is an internal
 representation, not a claim about the original's in-memory values. Work counters cap at 10,000 counted
-actions. Restoring content revisions before 11 into revision 11 or later adds previously accumulated
-specialization counts to their general track; re-export uses the current content revision, so this
-conversion runs once. Historical discovery events cannot be reconstructed from an old save; current
-workers seed discoveries when the simulation resumes.
+actions. Save format 7 requires the current qualification and experience layout; older saves are rejected.
 
 Right-click a school with selected workers to choose a civilian profession or product. The player must
 already know it; a product must belong to the worker's profession. School places are reserved by
