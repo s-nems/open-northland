@@ -48,6 +48,11 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
+      /** An idle settler of a working trade stands where no door of its seat's buildings is within reach. */
+      readonly kind: 'settlerCutOff';
+      readonly entity: Entity;
+    }
+  | {
       /** A marry order found nobody eligible to wed inside the issuer's allowed area. */
       readonly kind: 'marriageUnmatched';
       readonly entity: Entity;

@@ -186,20 +186,23 @@ describe('user messages from sim events', () => {
     ]);
   });
 
-  it("notes this seat's settler that gave its goal up, and no one else's", () => {
+  it("notes this seat's settler that gave its goal up or stands cut off, and no one else's", () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'person' },
       { id: 2, player: ENEMY, kind: 'person' },
+      { id: 3, player: LOCAL, kind: 'person' },
     ]);
     const out = run(
       [
         { kind: 'settlerGoalUnreachable', entity: e(1) },
         { kind: 'settlerGoalUnreachable', entity: e(2) },
+        { kind: 'settlerCutOff', entity: e(3) },
       ],
       snap,
     );
     expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([
       [USER_MESSAGE_TYPE.lostWithoutSignposts, 1],
+      [USER_MESSAGE_TYPE.lostWithoutSignposts, 3],
     ]);
   });
 

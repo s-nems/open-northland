@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
+  Building,
   LOCAL_NAV_RADIUS_NODES,
   MoveGoal,
   Owner,
@@ -9,10 +10,11 @@ import {
   Resource,
   Settler,
 } from '../../src/components/index.js';
-import { fx } from '../../src/core/fixed.js';
+import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { navigationLimitFor } from '../../src/systems/index.js';
+import { CUT_OFF_ANNOUNCE_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { makeWoodcutter, placeFellableTree, VIKING } from '../settlers/gatherer-flag/support.js';
@@ -28,6 +30,8 @@ import { stampPost } from './support.js';
 const SCOUT = 27;
 const SOLDIER = 31; // a fighter trade - exempt from confinement
 const HUNTER = 15; // exempt like the scout - bounded by its work flag, never the signpost network
+const CARPENTER = 2;
+const CIVILIST = 6;
 const P0 = 0;
 
 function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Entity {
@@ -123,6 +127,70 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     const limit = navigationLimitFor(sim.world, sim.content, terrain, u);
     expect(limit).not.toBeNull();
     expect(limit?.allowsNode(terrain.nodeAt(120, 4))).toBe(false);
+  });
+});
+
+describe('the cut-off note', () => {
+  function building(sim: Simulation, x: number, y: number, player: number | null = P0): void {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+    sim.world.add(e, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
+    if (player !== null) sim.world.add(e, Owner, { player });
+  }
+
+  /** Runs through one announce cadence and lists who it announced as cut off. */
+  function cutOffWithinOneCadence(sim: Simulation): Entity[] {
+    const seen: Entity[] = [];
+    for (let i = 0; i < CUT_OFF_ANNOUNCE_TICKS; i++) {
+      sim.step();
+      for (const ev of sim.events.current()) if (ev.kind === 'settlerCutOff') seen.push(ev.entity);
+    }
+    return seen;
+  }
+
+  it('an idle civilian with no signpost and no own building in reach is announced, on the cadence', () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    const stranded = ownedUnit(sim, 60, 4, 1);
+    ownedUnit(sim, 6, 4, 1); // within the local circle of the building: silent
+    expect(cutOffWithinOneCadence(sim)).toEqual([stranded]);
+    expect(cutOffWithinOneCadence(sim)).toEqual([stranded]); // repeats while it stays stranded
+  });
+
+  it("another seat's or an unowned building nearby does not count as home", () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    const stranded = ownedUnit(sim, 60, 4, 1);
+    building(sim, 62, 2, 1);
+    building(sim, 58, 2, null);
+    expect(cutOffWithinOneCadence(sim)).toEqual([stranded]);
+  });
+
+  it('a signpost chain back to a door of its seat keeps the note away; a lone post does not', () => {
+    const sim = confinedSim();
+    building(sim, 6, 2); // its door sits inside the first post's circle
+    const chained = ownedUnit(sim, 34, 4, 1);
+    stampPost(sim, 12, 2, 16);
+    stampPost(sim, 26, 2, 16); // overlaps the first, and the settler's local circle at tile 34
+    const lone = ownedUnit(sim, 60, 4, 1);
+    stampPost(sim, 56, 4, 16); // its own circle, linked to nothing
+    expect(cutOffWithinOneCadence(sim)).toEqual([lone]);
+    expect(sim.world.has(chained, Settler)).toBe(true);
+  });
+
+  it('an exempt trade and a trade with no work to walk for are never announced', () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    ownedUnit(sim, 100, 4, SCOUT);
+    ownedUnit(sim, 60, 4, CIVILIST);
+    ownedUnit(sim, 62, 4, CARPENTER); // a workshop trade with no workshop walks nowhere
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
+  });
+
+  it('a seat without a building has no settlement to be cut off from', () => {
+    const sim = confinedSim();
+    ownedUnit(sim, 60, 4, 1);
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
   });
 });
 

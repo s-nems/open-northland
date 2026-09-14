@@ -7,6 +7,7 @@ import { ExternalFoodIndex } from '../../family/food-search.js';
 import { GossipCandidates } from '../../social/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
+import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
 import { SiteLeads, type WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
@@ -39,6 +40,7 @@ export interface PlannerPass {
   readonly harvestClaims: HarvestClaims;
   readonly gossipCandidates: GossipCandidates;
   readonly siteLeads: SiteLeads;
+  readonly seatDoors: SeatDoors;
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
   readonly shelters: ShelterSites;
@@ -62,6 +64,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     siteLeads: new SiteLeads(world),
+    seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),
   };
 }
