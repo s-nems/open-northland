@@ -15,6 +15,7 @@ import {
   mapResourceObjectNames,
   resolveWorldContent,
   spawnMapBerryBushes,
+  spawnMapChests,
   spawnMapResources,
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
@@ -180,7 +181,8 @@ function spawnHarvestables(
   const { map, ir } = options;
   if (map?.objects === undefined || ir === null) return [];
   const resources = spawnMapResources(sim, map.objects, ir);
-  if (options.berryBushes === false) return [...resources.placementByEntity];
+  const chests = spawnMapChests(sim, map.objects, ir);
+  if (options.berryBushes === false) return [...resources.placementByEntity, ...chests.placementByEntity];
   const bushes = spawnMapBerryBushes(sim, map.objects, ir);
-  return [...resources.placementByEntity, ...bushes.placementByEntity];
+  return [...resources.placementByEntity, ...chests.placementByEntity, ...bushes.placementByEntity];
 }

@@ -6,6 +6,7 @@ export type DrawKind =
   | 'settler'
   | 'resource'
   | 'berrybush'
+  | 'chest'
   | 'stockpile'
   | 'stump'
   | 'grounddrop'

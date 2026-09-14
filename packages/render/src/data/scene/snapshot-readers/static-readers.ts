@@ -133,6 +133,11 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
   return readNumField(components, 'BerryBush', 'gfxIndex');
 }
 
+/** A chest's render variant (`Chest.gfxIndex`), or `undefined` for a scene chest with no variant tag. */
+export function readChestGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
+  return readNumField(components, 'Chest', 'gfxIndex');
+}
+
 const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex', 'tribe'] as const;
 // A key missing from STATIC_DRAW_KEYS makes _UncopiedKey non-never and fails to compile here, so a new
 // StaticDrawFields entry cannot be silently dropped by the hand copy below.

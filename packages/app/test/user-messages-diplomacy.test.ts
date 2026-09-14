@@ -11,6 +11,7 @@ const naming: MessageNaming = {
   building: () => 'Dom',
   player: (player) => `Gracz ${player}`,
   stance: (state) => state,
+  paper: (paper) => `${paper.kind}:${paper.param}`,
   text: (type, parts) => `${parts.subjectName ?? '?'}:${type}:${parts.stanceName ?? ''}`,
 };
 

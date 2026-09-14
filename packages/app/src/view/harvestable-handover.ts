@@ -26,6 +26,8 @@ function retirement(event: SimEvent): Retirement | null {
       return { entity: event.bush, keepsFogGhost: true };
     case 'berryBushRazed':
       return { entity: event.bush, keepsFogGhost: false };
+    case 'chestOpened':
+      return { entity: event.chest, keepsFogGhost: false };
     default:
       return null;
   }

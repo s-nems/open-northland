@@ -1,5 +1,5 @@
 import { type HudLayout, terrainWorldBounds } from '@open-northland/render';
-import type { Command } from '@open-northland/sim';
+import type { Command, Paper } from '@open-northland/sim';
 import { Container, Graphics, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
@@ -14,6 +14,7 @@ import {
   type AssistantGrantId,
   defaultAssistantState,
   layoutExtrasMenu,
+  paperFace,
 } from '../src/hud/tool-panel/extras-menu.js';
 import {
   createExtrasWindow,
@@ -80,6 +81,21 @@ const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
 const STATS_OFFSET_Y = 15;
 
 /** The centre of a rect (for synthetic clicks). */
+/** The extras window's origin and scale, as its controller derives them from the panel layout. */
+function extrasGeometry(ctx: PanelContext) {
+  const extrasY = ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y;
+  return {
+    originX: ctx.layout.width + WIN_PAD * ctx.scale,
+    originY: extrasY,
+    scale: ctx.scale,
+    state: defaultAssistantState(),
+  };
+}
+
+function centreXY(r: { x: number; y: number; w: number; h: number }): [number, number] {
+  return [r.x + r.w / 2, r.y + r.h / 2];
+}
+
 function centreOf(r: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
@@ -156,6 +172,9 @@ const TALL_HUD: HudLayout = {
     text,
   })),
 };
+
+/** An empty papers list, for the windows that never open the plans tab. */
+const NO_PAPERS = { read: (): readonly Paper[] => [] };
 
 describe('tabbed-list window controller (build menu)', () => {
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
@@ -489,6 +508,8 @@ describe('tool windows registry', () => {
       goods: [{ goodType: 10, id: 'wood', label: 'Drewno' }],
       grants: GRANTS,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
       diplomacyRows: () => [],
       art: null,
       missionBrief: () => null,
@@ -515,6 +536,70 @@ describe('tool windows registry', () => {
     if (!(layer instanceof Graphics)) throw new Error('the build menu no longer owns its hover layer');
     return layer.context.instructions.length > 0;
   }
+
+  it('a house paper goes straight to placement; a place-any paper opens the menu and rides its next pick', () => {
+    const { ctx: base } = stubContext();
+    const picks: [number, Paper | undefined][] = [];
+    const papers: Paper[] = [
+      { kind: 'placeHouse', param: 23 },
+      { kind: 'placeAny', param: 0 },
+    ];
+    const windows = createToolWindows({
+      ctx: base,
+      container: new Container(),
+      buildings: BUILDINGS,
+      goods: [],
+      grants: GRANTS,
+      counters: stubCountersSeam().seam,
+      papers: { read: () => papers },
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      diplomacyRows: () => [],
+      art: null,
+      missionBrief: () => null,
+      history: null,
+      onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
+      onPickGood: () => undefined,
+    });
+    const extras = windows.byId.extras;
+    extras.toggle();
+    const plansTab = layoutExtrasMenu({ ...extrasGeometry(base), tab: 'assistant' }).tabs[1]?.rect;
+    if (plansTab === undefined) throw new Error('no plans tab');
+    extras.handleClick(...centreXY(plansTab));
+    const plans = layoutExtrasMenu({
+      ...extrasGeometry(base),
+      tab: 'plans',
+      papers: papers.map((p) => paperFace(p, `${p.kind}:${p.param}`)),
+    });
+    const houseRow = plans.papers[0]?.rect;
+    const anyRow = plans.papers[1]?.rect;
+    if (houseRow === undefined || anyRow === undefined) throw new Error('no paper rows');
+
+    // The house paper: placement at once, window closed, menu untouched.
+    expect(extras.handleClick(...centreXY(houseRow))).toBe(true);
+    expect(picks).toEqual([[23, papers[0]]]);
+    expect(extras.isOpen()).toBe(false);
+    expect(windows.byId.menu.isOpen()).toBe(false);
+
+    // The place-any paper: the build menu opens, and its pick carries the paper once.
+    extras.toggle();
+    extras.handleClick(...centreXY(plansTab));
+    expect(extras.handleClick(...centreXY(anyRow))).toBe(true);
+    expect(windows.byId.menu.isOpen()).toBe(true);
+    const row = centreOf(expectedMenuLayout(base).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    expect(windows.handleClick(row.x, row.y)).toBe(true);
+    expect(picks[1]).toEqual([BUILDINGS[0]?.typeId, papers[1]]);
+    expect(windows.byId.menu.isOpen()).toBe(false); // a pick closes the menu
+
+    // Closing the menu without a pick drops the held paper: the next pick is an ordinary site.
+    extras.toggle();
+    extras.handleClick(...centreXY(plansTab));
+    extras.handleClick(...centreXY(anyRow));
+    windows.byId.menu.toggle();
+    windows.refresh(() => hud(1, 0));
+    windows.byId.menu.toggle();
+    windows.handleClick(row.x, row.y);
+    expect(picks[2]).toEqual([BUILDINGS[0]?.typeId, undefined]);
+  });
 
   it('claims a point only while a pop-up is open under it', () => {
     const { ctx, windows } = mountWindows();
@@ -690,6 +775,28 @@ describe('placement controller', () => {
     expect(placement.isActive()).toBe(false); // landed → build mode over (the original's flow)
   });
 
+  it('a paper held into placement rides the command, and leaves with the mode', () => {
+    const { placement, commands } = mount(() => ({ col: 4, row: 2 }));
+    const paper = { kind: 'placeHouse', param: 23 } as const;
+    placement.enter(23, paper);
+    expect(placement.handleClick(10, 10)).toBe(true);
+    expect(commands).toEqual([
+      {
+        kind: 'placeBuilding',
+        buildingType: 23,
+        x: 4,
+        y: 2,
+        tribe: 1,
+        owner: 0,
+        underConstruction: true,
+        paper,
+      },
+    ]);
+    placement.enter(23);
+    placement.handleClick(10, 10);
+    expect(commands[1]).not.toHaveProperty('paper');
+  });
+
   it('a click on ground the placement rule rejects is consumed but inert (mode survives)', () => {
     const { placement, commands } = mount(
       () => ({ col: 4, row: 2 }),
@@ -761,6 +868,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     const geo = expectedLayout(ctx);
 
@@ -786,6 +896,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: seam,
       counters: counters.seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     const geo = expectedLayout(ctx);
     extras.toggle();
@@ -820,6 +933,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: counters.seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     const geo = expectedLayout(ctx);
     extras.toggle();
@@ -849,6 +965,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: rejecting,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     const geo = expectedLayout(ctx);
     extras.toggle();
@@ -867,6 +986,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: seam,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
 
     extras.toggle();
@@ -886,6 +1008,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     const geo = expectedLayout(ctx);
     extras.toggle();
@@ -901,6 +1026,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     replacement.restore(extras.state());
     made.length = 0;
@@ -921,6 +1049,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     extras.toggle();
     expect(extras.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
@@ -944,6 +1075,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     const geo = expectedLayout(ctx);
     extras.toggle();
@@ -974,6 +1108,9 @@ describe('extras window controller', () => {
       container,
       grants: stubGrantsSeam().seam,
       counters: stubCountersSeam().seam,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
     extras.toggle();
     const shell = container.children[0];
@@ -1014,6 +1151,9 @@ describe('extras window controller', () => {
       container: new Container(),
       grants: stubGrantsSeam().seam,
       counters: counting,
+      papers: NO_PAPERS,
+      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      onUsePaper: () => undefined,
     });
 
     extras.refresh();

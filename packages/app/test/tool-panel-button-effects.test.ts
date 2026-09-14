@@ -78,6 +78,8 @@ function mountSurfaces() {
       read: () => defaultAssistantState().counters,
       set: () => true,
     },
+    papers: { read: () => [] },
+    paperLabel: (paper) => `${paper.kind}:${paper.param}`,
     diplomacyRows: () => [],
     art: null,
     missionBrief: () => null,

@@ -10,12 +10,15 @@ import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
 import {
   berryBushAtlasStems,
   buildBerryBushBinding,
+  buildChestBinding,
   buildResourceBinding,
   buildStockpileBinding,
   buildStumpBinding,
   buildTrunkBinding,
+  chestAtlasStems,
   gatheringAtlasStems,
   resolveBerryBushRefs,
+  resolveChestRefs,
   resolveGatheringRefs,
   resolveStumpRef,
 } from '../resource-gfx/index.js';
@@ -115,9 +118,11 @@ export async function loadHumanSpriteSheet(
   const gatheringRefs = resolveGatheringRefs(goods, ir, goodIcons);
   const stumpRef = resolveStumpRef(ir);
   const berryBushRefs = resolveBerryBushRefs(ir);
+  const chestRefs = resolveChestRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
+  for (const s of chestAtlasStems(chestRefs)) stems.add(s);
   // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
   stems.add(GUIDEPOST_ATLAS_BAKED);
   for (let p = 0; p < PLAYER_COLOR_COUNT; p++) stems.add(guidepostPlayerAtlas(p));
@@ -137,6 +142,7 @@ export async function loadHumanSpriteSheet(
   const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
   const stumpBinding = buildStumpBinding(stumpRef, gatheringLoaded);
   const berryBushBinding = buildBerryBushBinding(berryBushRefs, gatheringLoaded);
+  const chestBinding = buildChestBinding(chestRefs, gatheringLoaded);
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   // The building and gathering families merge into one map: their served stems are disjoint (`ls_houses_*`
   // vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
@@ -173,6 +179,7 @@ export async function loadHumanSpriteSheet(
         ...(stumpBinding !== undefined ? { stump: stumpBinding } : {}),
         ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
         ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
+        ...(chestBinding !== undefined ? { chest: chestBinding } : {}),
       }),
       ...signpostBinding,
     },

@@ -3,6 +3,10 @@ import { isBuilding, ownerPlayerOf, type SnapshotEntity } from '../../../game/sn
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
 
+/** Folds a chest's node into the note's numeric `about`, which is part of the feed's identity. Wider than
+ *  any map's node columns, so two chests never share an id. */
+const PAPER_NOTE_ROW_STRIDE = 1 << 16;
+
 function isPerson(e: SnapshotEntity): boolean {
   return e.components.Person !== undefined;
 }
@@ -112,6 +116,31 @@ export function messagesFromEvents(
         break;
       case 'settlerDied':
         if (ev.player === localPlayer && ev.animal !== true) died(ev.entity, ev.at ?? null);
+        break;
+      case 'paperFound':
+        // Keyed by the chest's cell: one chest hands out one paper, and the feed's identity would
+        // otherwise fold two same-kind papers from two chests into one note.
+        if (ev.player === localPlayer) {
+          raiser.raise(
+            `${USER_MESSAGE_TYPE.specialItemFound}|paper:${ev.at.hx},${ev.at.hy}`,
+            {
+              type: USER_MESSAGE_TYPE.specialItemFound,
+              subject: null,
+              at: ev.at,
+              about: ev.at.hy * PAPER_NOTE_ROW_STRIDE + ev.at.hx,
+              goodType: null,
+              jobType: null,
+            },
+            () =>
+              naming.text(USER_MESSAGE_TYPE.specialItemFound, {
+                subjectName: null,
+                jobLabel: null,
+                goodName: null,
+                stanceName: null,
+                detail: naming.paper(ev.paper),
+              }),
+          );
+        }
         break;
       case 'combatHit':
       case 'projectileHit':

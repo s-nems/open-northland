@@ -1,7 +1,8 @@
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, SpriteSheet } from '@open-northland/render';
-import type { Command, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type { Command, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
+import { professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import {
   type GuiBitmapName,
@@ -14,6 +15,7 @@ import {
 } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
+import { professionLabel } from '../../i18n/index.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
 import type { TooltipSurface } from '../tooltip-surface.js';
@@ -22,7 +24,7 @@ import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import type { DiplomacyPanelRow } from './diplomacy/index.js';
-import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
+import type { ExtrasCountersSeam, ExtrasGrantsSeam, ExtrasPapersSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
@@ -34,6 +36,7 @@ import {
   type MessageFeedState,
   type MessageTarget,
 } from './messages/index.js';
+import { paperLabel } from './paper-label.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
 import { createStripSurface, type StripSurface } from './strip-surface.js';
@@ -65,6 +68,8 @@ export interface ToolPanelOptions {
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
   readonly counters: ExtrasCountersSeam;
+  /** The chest window's papers seam (reads the sim's papers list, named for display). */
+  readonly papers: ExtrasPapersSeam;
   /** The roster of discovered players, one row each: read by the diplomacy window while it is open,
    *  and once a tick by the message centre. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
@@ -175,6 +180,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const { art, strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
+  const goodLabelByType = new Map(opts.goods.map((g) => [g.goodType, g.label]));
 
   const root = new Container();
   root.zIndex = 1000;
@@ -207,6 +213,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     });
     const ctx = contextAt(scale);
 
+    const nameOfPaper = (paper: Paper): string =>
+      paperLabel(paper, {
+        uiString: ctx.uiString,
+        buildingLabel: (typeId) => labelByType.get(typeId),
+        jobLabel: (typeId) => {
+          const def = professionDefForJob(typeId);
+          return def === undefined ? undefined : professionLabel(def.key);
+        },
+        goodLabel: (typeId) => goodLabelByType.get(typeId),
+      });
     const placement = createPlacementController({
       ctx,
       container: bannerContainer,
@@ -233,12 +249,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       goods: opts.goods,
       grants: opts.grants,
       counters: opts.counters,
+      papers: opts.papers,
+      paperLabel: nameOfPaper,
       diplomacyRows: opts.diplomacyRows,
       art,
       missionBrief: opts.missionBrief ?? ((): null => null),
       history,
       ...(opts.onLargeWindow !== undefined ? { onLargeWindow: opts.onLargeWindow } : {}),
-      onPickBuilding: (typeId) => placement.enter(typeId),
+      onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
       onPickGood: (goodType) => goodsDrop.enter(goodType),
     });
 
@@ -263,6 +281,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
       buildingLabel: (typeId) => labelByType.get(typeId),
+      paperLabel: nameOfPaper,
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.diplomacyRows,

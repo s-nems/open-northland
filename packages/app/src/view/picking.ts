@@ -23,7 +23,7 @@ export interface Pickable {
   readonly x: number;
   readonly y: number;
   /** The drawable kind, so a click hit-box can be sized per kind when exact bounds aren't available. */
-  readonly kind?: 'settler' | 'building' | 'signpost';
+  readonly kind?: 'settler' | 'building' | 'signpost' | 'chest';
   /** Exact rendered sprite bounds in world px; absent off-screen or without a renderer, which falls back
    *  to the kind box. */
   readonly box?: EntityBounds | undefined;
@@ -128,6 +128,8 @@ const PICK_BOX = {
   building: { halfW: 44, up: 104, down: 22 },
   // The guidepost bob is 22x72 native px; a slim box keeps it clickable without swallowing the ground beside it.
   signpost: { halfW: 14, up: 76, down: 8 },
+  // A chest bob is a low box on the ground, wide rather than tall.
+  chest: { halfW: 22, up: 30, down: 10 },
 } as const;
 
 function hits(t: Pickable, wx: number, wy: number): boolean {

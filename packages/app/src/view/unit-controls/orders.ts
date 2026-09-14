@@ -14,7 +14,15 @@ import {
   canonicalJobType,
   trainsRatherThanEmploys,
 } from '../../game/sandbox/index.js';
-import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
+import {
+  buildingTypeOf,
+  chestKindOf,
+  isAdult,
+  isBuilding,
+  isSettler,
+  positionOf,
+  settlerJobType,
+} from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
@@ -99,6 +107,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       strike(commanded, enemy);
       return;
     }
+    const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
+    if (chest !== null) {
+      openChest(commanded, chest);
+      return;
+    }
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
       const snapshot = deps.snapshot();
@@ -148,6 +161,21 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       return;
     }
     issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
+  };
+
+  /** Send every commanded settler that may open the chest; the sim re-checks each on arrival, so two
+   *  senders race and the loser walks back into autonomy. */
+  const openChest = (commanded: readonly FormationUnit[], chest: number): void => {
+    const snapshot = deps.snapshot();
+    const target = entityById(snapshot, chest);
+    const kind = target === undefined ? undefined : chestKindOf(target);
+    if (kind === undefined) return;
+    for (const unit of commanded) {
+      const self = entityById(snapshot, unit.ref);
+      if (self === undefined || !isAdult(self)) continue;
+      if (!systems.jobCanOpenChest(deps.content, settlerJobType(self) ?? null, kind)) continue;
+      deps.enqueue({ kind: 'openChest', entity: unit.ref as Entity, chest: chest as Entity });
+    }
   };
 
   const strike = (commanded: readonly FormationUnit[], enemy: number): void => {

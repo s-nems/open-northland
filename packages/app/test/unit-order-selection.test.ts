@@ -62,6 +62,7 @@ const targets: UnitTargets = {
   enemies: () => [],
   flags: () => [],
   signposts: () => [],
+  chests: () => [],
   wildlife: () => [],
   ownedSettlersIn: (refs) =>
     UNITS.filter((u) => refs.has(u.id)).map((u) => {

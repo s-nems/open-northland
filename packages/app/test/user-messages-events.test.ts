@@ -41,6 +41,7 @@ const naming: MessageNaming = {
   building: () => 'Dom',
   player: () => 'Gracz',
   stance: (state) => state,
+  paper: (paper) => `${paper.kind}:${paper.param}`,
   text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
 };
 
@@ -206,6 +207,24 @@ describe('user messages from sim events', () => {
     const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const out = run([{ kind: 'marriageUnmatched', entity: e(1) }], snap);
     expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.noOneToMarry, 1]]);
+  });
+
+  it('notes a paper this seat found, named, keyed by the chest so two chests give two notes', () => {
+    const snap = snapshot(50, []);
+    const paper = { kind: 'placeHouse', param: 41 } as const;
+    const out = run(
+      [
+        { kind: 'paperFound', player: LOCAL, paper, at: { hx: 10, hy: 4 } },
+        { kind: 'paperFound', player: LOCAL, paper, at: { hx: 30, hy: 4 } },
+        { kind: 'paperFound', player: ENEMY, paper, at: { hx: 12, hy: 4 } },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.at, m.text])).toEqual([
+      [USER_MESSAGE_TYPE.specialItemFound, { hx: 10, hy: 4 }, `?:${USER_MESSAGE_TYPE.specialItemFound}`],
+      [USER_MESSAGE_TYPE.specialItemFound, { hx: 30, hy: 4 }, `?:${USER_MESSAGE_TYPE.specialItemFound}`],
+    ]);
+    expect(out[0]?.about).not.toBe(out[1]?.about);
   });
 
   it('ignores events with no message in the original, a birth among them', () => {

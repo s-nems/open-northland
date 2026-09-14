@@ -1,5 +1,6 @@
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout } from '@open-northland/render';
+import type { Paper } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
@@ -7,7 +8,12 @@ import { type BuildingCategory, buildingTabbedList, type MenuBuildingEntry } fro
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasTab } from './extras-menu.js';
-import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
+import {
+  createExtrasWindow,
+  type ExtrasCountersSeam,
+  type ExtrasGrantsSeam,
+  type ExtrasPapersSeam,
+} from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import { createMissionWindow } from './mission/index.js';
 import { createStatsWindow } from './stats-window.js';
@@ -36,6 +42,8 @@ export interface ToolWindowsDeps {
   readonly goods: readonly MenuGoodEntry[];
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
+  readonly papers: ExtrasPapersSeam;
+  readonly paperLabel: (paper: Paper) => string;
   /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** The decoded GUI sheet the mission window draws its papyrus from; null degrades to flat chrome. */
@@ -44,7 +52,8 @@ export interface ToolWindowsDeps {
   /** The mission window's history book; null shows the tab empty. */
   readonly history: HypertextBook | null;
   readonly onLargeWindow?: (open: boolean) => void;
-  readonly onPickBuilding: (typeId: number) => void;
+  /** A building was picked for placement; `paper` is the paper the placement spends, when one is held. */
+  readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
   readonly onPickGood: (goodType: number) => void;
 }
 
@@ -73,11 +82,19 @@ export interface ToolWindowsState {
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container } = deps;
+  /** The place-any paper the build menu was opened for; the next pick spends it, closing the menu
+   *  drops it back into the list unspent. */
+  let heldPaper: Paper | null = null;
   const menu = createTabbedListWindow({
     ctx,
     container,
     source: buildingTabbedList(deps.buildings),
-    onPick: (b) => deps.onPickBuilding(b.typeId),
+    onPick: (b) => {
+      const paper = heldPaper;
+      heldPaper = null;
+      if (paper === null) deps.onPickBuilding(b.typeId);
+      else deps.onPickBuilding(b.typeId, paper);
+    },
   });
   const goods = createTabbedListWindow({
     ctx,
@@ -85,7 +102,24 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     source: goodsTabbedList(deps.goods),
     onPick: (g) => deps.onPickGood(g.goodType),
   });
-  const extras = createExtrasWindow({ ctx, container, grants: deps.grants, counters: deps.counters });
+  const extras = createExtrasWindow({
+    ctx,
+    container,
+    grants: deps.grants,
+    counters: deps.counters,
+    papers: deps.papers,
+    paperLabel: deps.paperLabel,
+    // A house paper names its house, so it goes straight to placement; a place-any paper opens the build
+    // menu to choose one, as the original's paper window does.
+    onUsePaper: (paper) => {
+      if (paper.kind === 'placeAny') {
+        heldPaper = paper;
+        if (!menu.isOpen()) menu.toggle();
+        return;
+      }
+      deps.onPickBuilding(paper.param, paper);
+    },
+  });
   const stats = createStatsWindow({ ctx, container });
   const diplomacy = createDiplomacyWindow({ ctx, container, rows: deps.diplomacyRows });
   const mission = createMissionWindow({
@@ -138,6 +172,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       else mission.clearHover();
     },
     refresh: (hudFor): void => {
+      if (heldPaper !== null && !menu.isOpen()) heldPaper = null;
       for (const e of mounted) e.perFrame(hudFor);
     },
     state: () => ({

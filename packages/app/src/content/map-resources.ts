@@ -1,4 +1,5 @@
 import type { TerrainObjects } from '@open-northland/data';
+import { CHEST_KINDS, type ChestKind } from '@open-northland/sim';
 import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 
@@ -148,15 +149,61 @@ export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapB
   return out;
 }
 
+/** The `[GfxLandscape].logicType` of each chest kind (`landscapetypes.ini` 85 `chest_wooden`, 86
+ *  `chest_magical`). */
+const CHEST_LOGIC_TYPE: Readonly<Record<ChestKind, number>> = { wooden: 85, magical: 86 };
+
+/** One chest a decoded map defines: its record index and kind at half-cell `(hx, hy)`, the chest type its
+ *  `objects.levels` (`lmlv`) entry authors, plus the placement ordinal. */
+export interface MapChestSpawn {
+  readonly kind: ChestKind;
+  readonly gfxIndex: number;
+  readonly hx: number;
+  readonly hy: number;
+  readonly contents: number;
+  readonly placement: number;
+}
+
+/** Every chest `landscapeGfx` record keyed by `EditName`. Degrades to empty on an `ir.json` with none. */
+function chestRecordByName(ir: ContentIr): ReadonlyMap<string, { kind: ChestKind; gfxIndex: number }> {
+  const out = new Map<string, { kind: ChestKind; gfxIndex: number }>();
+  for (const g of ir.landscapeGfx ?? []) {
+    if (g.editName === undefined) continue;
+    for (const kind of CHEST_KINDS) {
+      if (g.logicType === CHEST_LOGIC_TYPE[kind]) out.set(g.editName, { kind, gfxIndex: g.index });
+    }
+  }
+  return out;
+}
+
 /**
- * The object `EditName`s whose placements become sim `Resource` entities. The static collision join must
- * skip these: their blocking lives in the sim's dynamic resource-footprint overlay, stamped at spawn and
- * unstamped when the node is felled or depleted.
+ * The closed chests a decoded map's placed objects define. A placement with no `levels` entry authors an
+ * empty chest (type 0, which the contents table does not know). Deterministic: one pass over
+ * `map.objects.placements` in native row-major order, so the caller mints entity ids in a fixed order.
+ */
+export function mapChestSpawns(objects: TerrainObjects, ir: ContentIr): MapChestSpawn[] {
+  const byName = chestRecordByName(ir);
+  const { types, placements } = objects;
+  const out: MapChestSpawn[] = [];
+  forEachPlacement(placements, (hx, hy, typeIndex, placement) => {
+    const name = types[typeIndex];
+    const record = name !== undefined ? byName.get(name) : undefined;
+    if (record === undefined) return;
+    out.push({ ...record, hx, hy, contents: objects.levels?.[placement] ?? 0, placement });
+  });
+  return out;
+}
+
+/**
+ * The object `EditName`s whose placements become sim entities carrying their own footprint - resource
+ * nodes and chests. The static collision join must skip these: their blocking lives in the sim's dynamic
+ * resource-footprint overlay, stamped at spawn and unstamped when the node is felled, depleted or opened.
  */
 export function simResourceObjectNames(ir: ContentIr, spawnableGoodIds: ReadonlySet<string>): Set<string> {
   const out = new Set<string>();
   for (const [name, ref] of harvestGoodByObjectName(ir)) {
     if (spawnableGoodIds.has(ref.goodId)) out.add(name);
   }
+  for (const name of chestRecordByName(ir).keys()) out.add(name);
   return out;
 }

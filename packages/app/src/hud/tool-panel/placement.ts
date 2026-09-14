@@ -1,4 +1,4 @@
-import type { PlayerCommand } from '@open-northland/sim';
+import type { Paper, PlayerCommand } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { PanelContext } from './context.js';
@@ -28,7 +28,8 @@ export interface PlacementController {
   isActive(): boolean;
   /** The building typeId currently being placed, or null when not in placement. */
   activeType(): number | null;
-  enter(typeId: number): void;
+  /** Hold `typeId` for placement; a `paper` rides the placement command and buys a finished building. */
+  enter(typeId: number, paper?: Paper): void;
   cancel(): void;
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
@@ -41,18 +42,21 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   const { ctx } = deps;
 
   let placementType: number | null = null;
+  let placementPaper: Paper | null = null;
   const banner = createHeldItemBanner(ctx, deps.container);
 
   const exitPlacement = (): void => {
     placementType = null;
+    placementPaper = null;
     banner.clear();
   };
 
   return {
     isActive: () => placementType !== null,
     activeType: () => placementType,
-    enter: (typeId): void => {
+    enter: (typeId, paper): void => {
       placementType = typeId;
+      placementPaper = paper ?? null;
       const label = deps.labelByType.get(typeId) ?? `#${typeId}`;
       banner.show(formatMessage(messages().hud.placementHint, { label }));
     },
@@ -68,8 +72,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
           y: tile.row,
           tribe: deps.tribe,
           owner: deps.owner,
-          // The foundation stands at 0% and builders raise it.
+          // The foundation stands at 0% and builders raise it, unless a paper pays for it finished.
           underConstruction: true,
+          ...(placementPaper !== null ? { paper: placementPaper } : {}),
         });
         exitPlacement();
       }

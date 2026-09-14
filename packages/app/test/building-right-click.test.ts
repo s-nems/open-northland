@@ -72,6 +72,7 @@ function rightClick(
     enemies: () => [],
     flags: () => [],
     signposts: () => [],
+    chests: () => [],
     wildlife: () => [],
     ownedSettlersIn: () => [{ ref: settler, x: 0, y: 0 }],
   };

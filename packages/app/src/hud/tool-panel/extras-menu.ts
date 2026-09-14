@@ -1,4 +1,4 @@
-import { components } from '@open-northland/sim';
+import { components, type Paper, PLACING_PAPER_KINDS } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
@@ -12,8 +12,9 @@ import {
 } from './window-family/index.js';
 
 /**
- * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, their
- * layout and hit-test. Grants drive the sim's auto-equip, counters its birth and training queues.
+ * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, the papers
+ * list, their layout and hit-test. Grants drive the sim's auto-equip, counters its birth and training
+ * queues, and a placing paper opens the build menu or placement it pays for.
  *
  * The decoded `miscwindow` table carries the original window's labels (500 the title, 501 "Papiery", 502
  * the block header, 503-509 the grant commands); the tab pair, row wording, counter set and geometry are
@@ -21,6 +22,18 @@ import {
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
+
+/** One paper as the plans tab lists it: its slot order, name, and whether a click spends it. */
+export interface PaperFace {
+  readonly paper: Paper;
+  readonly label: string;
+  /** The placing kinds are clickable; the rest are listed inert, as the original greys them. */
+  readonly usable: boolean;
+}
+
+export function paperFace(paper: Paper, label: string): PaperFace {
+  return { paper, label, usable: PLACING_PAPER_KINDS.has(paper.kind) };
+}
 
 /** The assistant's six production counters: two birth queues and four training queues. */
 export type AssistantCounterId =
@@ -158,6 +171,14 @@ export interface ExtrasGrantRow {
   readonly switchRect: Rect;
 }
 
+export interface ExtrasPaperRow {
+  readonly index: number;
+  readonly label: string;
+  readonly usable: boolean;
+  /** The row's card slot. */
+  readonly rect: Rect;
+}
+
 export interface ExtrasMenuLayout {
   readonly scale: number;
   readonly window: Rect;
@@ -170,7 +191,9 @@ export interface ExtrasMenuLayout {
   readonly counters: readonly ExtrasCounterRow[];
   /** Empty on the plans tab. */
   readonly grants: readonly ExtrasGrantRow[];
-  /** The plans tab's placeholder line; null on the assistant tab. */
+  /** The plans tab's papers in slot order; empty on the assistant tab. */
+  readonly papers: readonly ExtrasPaperRow[];
+  /** The plans tab's empty-list line; null on the assistant tab and while papers are listed. */
   readonly plansPlaceholder: { readonly label: string; readonly x: number; readonly y: number } | null;
 }
 
@@ -180,6 +203,8 @@ export interface ExtrasMenuLayoutOptions {
   readonly scale: number;
   readonly tab: ExtrasTab;
   readonly state: AssistantState;
+  /** The player's papers in slot order; omitted lists none. */
+  readonly papers?: readonly PaperFace[];
 }
 
 /** The counter rows in display order. */
@@ -284,7 +309,16 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
           };
         });
 
-  const bodyH = tab === 'assistant' ? (COUNTER_IDS.length + GRANT_IDS.length) * rowH + BLOCK_GAP * s : rowH;
+  const faces = tab === 'plans' ? (opts.papers ?? []) : [];
+  const papers: ExtrasPaperRow[] = faces.map((face, i) => ({
+    index: i,
+    label: face.label,
+    usable: face.usable,
+    rect: { x: originX + pad, y: bodyTop + i * rowH, w: width - 2 * pad, h: rowH },
+  }));
+
+  const bodyRows = tab === 'assistant' ? COUNTER_IDS.length + GRANT_IDS.length : Math.max(1, papers.length);
+  const bodyH = bodyRows * rowH + (tab === 'assistant' ? BLOCK_GAP * s : 0);
   const height = headlineH + tabH + TAB_CONTENT_GAP * s + bodyH + pad;
 
   const closeSize = CLOSE_BOX * s;
@@ -302,8 +336,9 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
     tabs,
     counters,
     grants,
+    papers,
     plansPlaceholder:
-      tab === 'plans'
+      tab === 'plans' && papers.length === 0
         ? { label: labels.plansEmpty, x: originX + pad + CONTROL_INSET_X * s, y: bodyTop }
         : null,
   };
@@ -315,12 +350,14 @@ export type ExtrasMenuHit =
   | { readonly kind: 'counter'; readonly id: AssistantCounterId; readonly delta: 1 | -1 }
   | { readonly kind: 'counterInfinity'; readonly id: AssistantCounterId }
   | { readonly kind: 'grant'; readonly id: AssistantGrantId }
+  /** A usable paper row; an inert row reads as the window body. */
+  | { readonly kind: 'paper'; readonly index: number }
   | { readonly kind: 'close' }
   | { readonly kind: 'window' } // over the chrome but not an interactive element
   | null;
 
 /** Resolve a screen point against the open window
- *  (close > tab > infinity > stepper > switch > background > miss). */
+ *  (close > tab > infinity > stepper > switch > paper > background > miss). */
 export function hitTestExtrasMenu(layout: ExtrasMenuLayout, x: number, y: number): ExtrasMenuHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   for (const t of layout.tabs) {
@@ -335,6 +372,9 @@ export function hitTestExtrasMenu(layout: ExtrasMenuLayout, x: number, y: number
   }
   for (const g of layout.grants) {
     if (contains(g.switchRect, x, y)) return { kind: 'grant', id: g.id };
+  }
+  for (const p of layout.papers) {
+    if (p.usable && contains(p.rect, x, y)) return { kind: 'paper', index: p.index };
   }
   if (contains(layout.window, x, y)) return { kind: 'window' };
   return null;

@@ -1,4 +1,4 @@
-import { type DiplomacyState, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import { type DiplomacyState, nodeOfPosition, type Paper, type WorldSnapshot } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import type { MessageTextParts } from './text.js';
 import type { MessageSubject, PendingMessage, UserMessageType } from './types.js';
@@ -15,6 +15,8 @@ export interface MessageNaming {
   player(player: number): string;
   /** A diplomatic stance in the player's language, for the rows that report one. */
   stance(state: DiplomacyState): string;
+  /** A paper's name, for the note about finding one. */
+  paper(paper: Paper): string;
   text(type: UserMessageType, parts: MessageTextParts): string;
 }
 

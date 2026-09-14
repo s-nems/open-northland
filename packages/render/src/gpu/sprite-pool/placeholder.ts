@@ -28,6 +28,7 @@ const KIND_COLOURS: Record<BoxKind, number> = {
   berrybush: 0xb03050, // red berries on a fruited bush
   stockpile: 0xb08040, // a sandy heap or delivery flag
   stump: 0x6b4a2a, // brown felled-tree debris
+  chest: 0x9a6a2e, // a banded wooden chest
   grounddrop: 0x8a5a2a, // a log-brown trunk on the ground
   signpost: 0xdeb060, // a pale-wood guidepost
 };

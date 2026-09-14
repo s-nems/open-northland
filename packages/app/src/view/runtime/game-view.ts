@@ -263,6 +263,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     },
     grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
     counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
+    papers: { read: () => sim.papers(localPlayer) },
     diplomacyRows,
     canPlaceAt,
     mapSize: deps.mapSize,

@@ -38,6 +38,9 @@ export interface UnitTargets {
   flags(): Pickable[];
   /** The human's standing signposts - direct-click targets only (a marquee never grabs a post). */
   signposts(): Pickable[];
+  /** The closed chests on screen - the "open chest" click's targets. A chest is nobody's, so every seat
+   *  may send a settler to it. */
+  chests(): Pickable[];
   /**
    * The wild creatures on screen - the "attack animal" order's targets. Claimed livestock carries an
    * owner and is property rather than game, so it stays out, exactly as the sim's ordered-target rule
@@ -159,6 +162,15 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         // Only the post itself - its direction boards ride synthetic negative refs (see sprite-scene.ts).
         if (it.kind !== 'signpost' || it.ref <= 0 || !isHitTarget(it)) continue;
         if (!pickableOwner(ownerOf.get(it.ref))) continue;
+        out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
+      }
+      return out;
+    },
+
+    chests(): Pickable[] {
+      const out: Pickable[] = [];
+      for (const it of deps.drawnItems()) {
+        if (it.kind !== 'chest' || !isHitTarget(it)) continue;
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
       }
       return out;

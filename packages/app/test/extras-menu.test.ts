@@ -174,6 +174,32 @@ describe('extras menu layout', () => {
   });
 });
 
+describe('the plans tab', () => {
+  const papers = [
+    { paper: { kind: 'placeHouse', param: 41 }, label: 'Place a tower', usable: true },
+    { paper: { kind: 'buildPermit', param: 41 }, label: 'Permit for a tower', usable: false },
+  ] as const;
+
+  it('lists the papers in slot order, one row each, and drops the placeholder', () => {
+    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans', papers });
+    expect(plans.papers.map((p) => [p.index, p.label, p.usable])).toEqual([
+      [0, 'Place a tower', true],
+      [1, 'Permit for a tower', false],
+    ]);
+    expect(plans.plansPlaceholder).toBeNull();
+    expect(plans.papers[1]?.rect.y).toBeGreaterThan(plans.papers[0]?.rect.y ?? Number.POSITIVE_INFINITY);
+    expect(layoutExtrasMenu({ ...OPTS, papers }).papers).toEqual([]); // the assistant tab lists none
+  });
+
+  it('a usable row is a paper hit; an inert row reads as the window body', () => {
+    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans', papers });
+    const usable = centreOf(plans.papers[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    expect(hitTestExtrasMenu(plans, usable.x, usable.y)).toEqual({ kind: 'paper', index: 0 });
+    const inert = centreOf(plans.papers[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    expect(hitTestExtrasMenu(plans, inert.x, inert.y)).toEqual({ kind: 'window' });
+  });
+});
+
 describe('extras menu hit-test', () => {
   const layout = layoutExtrasMenu(OPTS);
 

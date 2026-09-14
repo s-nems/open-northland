@@ -14,6 +14,7 @@ export {
   readBerryBushGfxIndex,
   readBerryBushLevel,
   readBuiltPct,
+  readChestGfxIndex,
   readHpFraction,
   readProducing,
   readUpgradePct,

@@ -192,6 +192,15 @@ export const plGame = {
       on: 'Wł.',
       off: 'Wył.',
       plansEmpty: 'Brak planów',
+      papers: {
+        indulgence: 'Prolongata',
+        placeAny: 'Umieść wybrany przez ciebie budynek',
+        placeHouse: "Umieść '{name}'",
+        placeStockedHouse: "Umieść '{name}' i zapełnij jego skład",
+        buildPermit: "Zezwolenie na budowę '{name}'",
+        learnPermit: "Zezwolenie na naukę '{name}'",
+        producePermit: "Zezwolenie na produkcję '{name}'",
+      },
     },
     stats: {
       seatTick: '{seat} · krok {tick}',
@@ -337,6 +346,7 @@ export const plGame = {
       '131': '- pierwszy kontakt. Nastawienie:',
       '132': '- zmiana nastawienia. Teraz:',
       '133': 'poza grą',
+      '134': 'Znaleziono nowy przedmiot',
     },
   },
   net: {

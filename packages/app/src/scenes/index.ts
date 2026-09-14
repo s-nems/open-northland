@@ -5,6 +5,7 @@ import { barracksScene } from './barracks.js';
 import { battleScene } from './battle.js';
 import { berriesScene } from './berries.js';
 import { chainScene } from './chain.js';
+import { chestsScene } from './chests.js';
 import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { constructionScene } from './construction.js';
@@ -44,6 +45,7 @@ export const SCENES: readonly SceneDefinition[] = [
   diplomacyScene,
   goodsCatalogScene,
   berriesScene,
+  chestsScene,
   chainScene,
   warehouseScene,
   constructionScene,

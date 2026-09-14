@@ -28,6 +28,7 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
     case 'resource':
     case 'stump':
     case 'berrybush':
+    case 'chest':
     case 'grounddrop': {
       // A ground drop's kind and binding key differ, so it names its key instead of reusing `item.kind`.
       const binding = item.kind === 'grounddrop' ? bindings.trunk : bindings[item.kind];

@@ -4,6 +4,7 @@ import type { ContentIr } from '../../content/ir/rows.js';
 import {
   type MapResourceSpawn,
   mapBerryBushSpawns,
+  mapChestSpawns,
   mapResourceSpawns,
   simResourceObjectNames,
 } from '../../content/map-resources.js';
@@ -122,6 +123,7 @@ export function harvestablePlacementOrdinals(
     out.push(spawn.placement);
   }
   for (const bush of mapBerryBushSpawns(objects, ir)) out.push(bush.placement);
+  for (const chest of mapChestSpawns(objects, ir)) out.push(chest.placement);
   return out;
 }
 
@@ -139,6 +141,26 @@ export function spawnMapBerryBushes(
   const placementByEntity = new Map<Entity, number>();
   for (const { gfxIndex, hx, hy, placement } of mapBerryBushSpawns(objects, ir)) {
     const e = systems.createBerryBush(sim.world, { x: hx, y: hy, gfxIndex });
+    placementByEntity.set(e, placement);
+    spawned++;
+  }
+  return { spawned, placementByEntity };
+}
+
+/**
+ * Direct scene assembly, valid pre-tick-0 only, in native placement order so ids mint deterministically.
+ * A chest blocks like a resource node, so its placement is out of the static collision bake and the join
+ * serves both the render handover and the dynamic footprint.
+ */
+export function spawnMapChests(
+  sim: Simulation,
+  objects: TerrainObjects,
+  ir: ContentIr,
+): MapResourceSpawnResult {
+  let spawned = 0;
+  const placementByEntity = new Map<Entity, number>();
+  for (const { kind, gfxIndex, hx, hy, contents, placement } of mapChestSpawns(objects, ir)) {
+    const e = systems.createChest(sim.world, sim.content, { kind, contents, x: hx, y: hy, gfxIndex });
     placementByEntity.set(e, placement);
     spawned++;
   }

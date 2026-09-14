@@ -201,6 +201,17 @@ export const enGame = {
       on: 'ON',
       off: 'OFF',
       plansEmpty: 'No plans yet',
+      /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes
+       *  the named house, trade or good. */
+      papers: {
+        indulgence: 'Letter of indulgence',
+        placeAny: 'Place a building of your choice',
+        placeHouse: "Place a '{name}'",
+        placeStockedHouse: "Place a '{name}' and fill its store",
+        buildPermit: "Permit for building a '{name}'",
+        learnPermit: "Permission to learn '{name}'",
+        producePermit: "Permission to produce '{name}'",
+      },
     },
     stats: {
       seatTick: '{seat} · tick {tick}',
@@ -347,6 +358,7 @@ export const enGame = {
       '131': '- first contact. Standing:',
       '132': '- a change of heart. Now:',
       '133': 'out of the game',
+      '134': 'A new object has been found',
     },
   },
   net: {

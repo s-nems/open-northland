@@ -87,6 +87,7 @@ export function resolveLayers(
     case 'grounddrop':
     case 'stump':
     case 'berrybush':
+    case 'chest':
       return resolveDecorLayers(sheet, item, item.kind);
     default: {
       const _exhaustive: never = item.kind;
@@ -135,23 +136,26 @@ function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLay
   return layeredLayersWithShadow(sheet, 'stockpile', draw);
 }
 
+/** The decor kinds with no shared `kindLayers` layer, each bound under its own key. */
+const DECOR_BINDING_KEY = {
+  grounddrop: 'trunk',
+  stump: 'stump',
+  berrybush: 'berrybush',
+  chest: 'chest',
+} as const;
+
 /**
- * A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG) or a
- * wild berry bush (the `ls_trees` bush frames). Like {@link resolveStockpileLayers} these have no shared
- * `kindLayers` layer, but each resolves through the per-good resource resolver, whose null draw is a
- * data-pinned invisible level: draw nothing, not the placeholder.
+ * A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG), a
+ * wild berry bush (the `ls_trees` bush frames) or a chest (`ls_chest`). Like {@link resolveStockpileLayers}
+ * these have no shared `kindLayers` layer, but each resolves through the per-good resource resolver, whose
+ * null draw is a data-pinned invisible level: draw nothing, not the placeholder.
  */
 function resolveDecorLayers(
   sheet: SpriteSheet,
   item: DrawItem,
-  kind: 'grounddrop' | 'stump' | 'berrybush',
+  kind: keyof typeof DECOR_BINDING_KEY,
 ): ResolvedLayer[] | null {
-  const binding =
-    kind === 'stump'
-      ? sheet.bindings.stump
-      : kind === 'berrybush'
-        ? sheet.bindings.berrybush
-        : sheet.bindings.trunk;
+  const binding = sheet.bindings[DECOR_BINDING_KEY[kind]];
   if (binding === undefined) return null;
   const draw = resolveResourceDraw(binding, item);
   if (draw === null) return [];

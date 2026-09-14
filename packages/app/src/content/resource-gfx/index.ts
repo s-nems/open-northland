@@ -5,5 +5,6 @@
 
 export * from './berry-bush.js';
 export * from './bindings.js';
+export * from './chest.js';
 export * from './refs.js';
 export * from './stump.js';

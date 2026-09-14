@@ -9,6 +9,7 @@ const ALL_KINDS = [
   'settler',
   'resource',
   'berrybush',
+  'chest',
   'stockpile',
   'stump',
   'grounddrop',

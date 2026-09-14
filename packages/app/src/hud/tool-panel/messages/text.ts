@@ -126,6 +126,8 @@ export interface MessageTextParts {
   readonly goodName: string | null;
   /** The stance the row about another seat reports; null for every row that names none. */
   readonly stanceName: string | null;
+  /** The found paper's name, appended after a dash as the original formats its found-object note. */
+  readonly detail?: string;
 }
 
 export interface MessageTextDeps {
@@ -152,6 +154,7 @@ export function composeMessageText(
   const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
 
   if (name === 'humanDied') return who === null ? row(UNKNOWN_HERO_DIED_STRING_ID) : `${who} ${base}`;
+  if (name === 'specialItemFound') return parts.detail === undefined ? base : `${base} - ${parts.detail}`;
   if (HOUSE_ROWS.has(name)) return parts.subjectName === null ? base : `${parts.subjectName} ${base}`;
   if (name === 'stockFull') {
     return lead(

@@ -25,6 +25,8 @@ export type SpriteBindings = Readonly<{
   trunk?: number | ResourceTypeBinding;
   /** A wild berry bush, per fruited-record variant. */
   berrybush?: number | ResourceTypeBinding;
+  /** A closed treasure chest, per `[GfxLandscape]` record (wooden or magical). */
+  chest?: number | ResourceTypeBinding;
   /** The post and direction-board frames of a scout's signpost. */
   signpost?: SignpostBinding;
 }>;

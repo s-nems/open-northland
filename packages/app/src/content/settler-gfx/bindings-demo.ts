@@ -35,6 +35,7 @@ export function buildHumanBindings(
     readonly stump?: ResourceTypeBinding;
     readonly trunk?: ResourceTypeBinding;
     readonly berrybush?: ResourceTypeBinding;
+    readonly chest?: ResourceTypeBinding;
   } = {},
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
@@ -71,5 +72,7 @@ export function buildHumanBindings(
     ...(layered.trunk !== undefined ? { trunk: layered.trunk } : {}),
     // A wild berry bush draws its frame by `DrawItem.level` (3 = ripe, 1 = bare).
     ...(layered.berrybush !== undefined ? { berrybush: layered.berrybush } : {}),
+    // A closed chest draws its own `ls_chest` record frame, wooden or magical.
+    ...(layered.chest !== undefined ? { chest: layered.chest } : {}),
   };
 }

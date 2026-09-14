@@ -1,5 +1,11 @@
 import type { SpriteSheet } from '@open-northland/render';
-import { entityById, type HalfCellNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import {
+  entityById,
+  type HalfCellNode,
+  type Paper,
+  type SimEvent,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import type { Application, Container } from 'pixi.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import type { GuiArt } from '../../../content/gui-art.js';
@@ -50,6 +56,8 @@ export interface MessageCenterDeps {
   readonly localPlayer: number;
   /** A building type's menu label, which names a building in its note. */
   readonly buildingLabel: (typeId: number) => string | undefined;
+  /** A paper's display name, for the note about finding one. */
+  readonly paperLabel: (paper: Paper) => string;
   readonly playerLabel: (player: number) => string | null;
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
@@ -126,6 +134,7 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       deps.playerLabel(player) ??
       `${deps.ctx.uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`,
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
+    paper: deps.paperLabel,
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
   };
 }

@@ -12,6 +12,7 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   resource: 0,
   berrybush: 0, // a bush sits behind the settler foraging it, like a resource node
   stump: 0,
+  chest: 0, // a chest sits behind the settler opening it, like a resource node
   building: 1,
   grounddrop: 1,
   signpost: 1, // the post occludes like a small building

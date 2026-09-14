@@ -1,3 +1,4 @@
+import type { Paper } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
 import { CLOSE_X_COLOR, drawBevel, WIN_PAD } from '../chrome.js';
@@ -13,6 +14,8 @@ import {
   type ExtrasTab,
   hitTestExtrasMenu,
   layoutExtrasMenu,
+  type PaperFace,
+  paperFace,
   toggleGrant,
   toggleInfinity,
 } from './extras-menu.js';
@@ -42,6 +45,18 @@ const CTRL_STEP = 10;
 const faceDiffers = (a: AssistantCounterFace, b: AssistantCounterFace): boolean =>
   a.value !== b.value || a.infinite !== b.infinite;
 
+const facesEqual = (a: readonly PaperFace[], b: readonly PaperFace[]): boolean =>
+  a.length === b.length &&
+  a.every((face, i) => {
+    const other = b[i];
+    return (
+      other !== undefined &&
+      face.paper.kind === other.paper.kind &&
+      face.paper.param === other.paper.param &&
+      face.label === other.label
+    );
+  });
+
 const countersEqual = (
   a: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
   b: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
@@ -66,12 +81,22 @@ export interface ExtrasCountersSeam {
   set(id: AssistantCounterId, value: number, infinite: boolean): boolean;
 }
 
+/** The papers list's sim seam: the player's papers in slot order, re-read every frame the window is open. */
+export interface ExtrasPapersSeam {
+  read(): readonly Paper[];
+}
+
 export interface ExtrasWindowDeps {
   readonly ctx: PanelContext;
   /** The panel's window container the window mounts its own container under. */
   readonly container: Container;
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
+  readonly papers: ExtrasPapersSeam;
+  /** A paper's display name, the `misclogic` 180-186 row with its house, trade or good filled in. */
+  readonly paperLabel: (paper: Paper) => string;
+  /** A usable paper was clicked: the caller opens the build flow that spends it. Always closes the window. */
+  readonly onUsePaper: (paper: Paper) => void;
 }
 
 /** The pop-up extras ("chest") window: the assistant/plans tabs and the assistant's controls. */
@@ -103,6 +128,9 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
 
   let tab: ExtrasTab = 'assistant';
   let state: AssistantState = defaultAssistantState();
+  let papers: readonly PaperFace[] = [];
+  const readPapers = (): readonly PaperFace[] =>
+    deps.papers.read().map((p) => paperFace(p, deps.paperLabel(p)));
   let menuLayout: ExtrasMenuLayout | null = null;
   /** The live counter block as read at the last local write. While the sim still shows exactly this
    *  block the write has not applied, so the click's echo must hold; any live change clears it. Several
@@ -131,7 +159,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const rebuild = (): void => {
     shell.clear();
     clearFills(back);
-    menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state });
+    menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state, papers });
     const layout = menuLayout;
 
     paintTitledTabWindow(
@@ -174,6 +202,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
         g.switchRect,
       );
     }
+    for (const p of layout.papers) {
+      const card = rowCardRect(p.rect, scale);
+      paintPlate(layers, card, false);
+      placeOnCard(layers, addRun(layers, p.label, p.usable ? 'white' : 'dimmed', ROW_PX), card);
+    }
     if (layout.plansPlaceholder !== null) {
       const p = layout.plansPlaceholder;
       const run = addRun(layers, p.label, 'dimmed', ROW_PX);
@@ -206,6 +239,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       else {
         shell.setOpen(true);
         state = { counters: deps.counters.read(), grants: deps.grants.read() };
+        papers = readPapers();
         echoBase = null; // a fresh read has nothing pending to hold
         rebuild();
       }
@@ -239,6 +273,12 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
             rebuild();
           }
           break;
+        case 'paper': {
+          const face = papers[hit.index];
+          close();
+          if (face !== undefined) deps.onUsePaper(face.paper);
+          break;
+        }
         case 'window':
           break; // a click on the window body is consumed
         default: {
@@ -250,6 +290,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     },
     refresh: (): void => {
       if (!shell.isOpen()) return;
+      const livePapers = readPapers();
+      if (!facesEqual(livePapers, papers)) {
+        papers = livePapers;
+        rebuild();
+      }
       const live = deps.counters.read();
       if (echoBase !== null && countersEqual(live, echoBase)) return; // the write has not applied yet
       echoBase = null; // the sim moved: whatever we wrote is applied or overtaken, so show live
