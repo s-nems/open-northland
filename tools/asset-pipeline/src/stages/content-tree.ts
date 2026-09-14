@@ -22,8 +22,8 @@ export const GUI_BITMAPS_DIR = vjoin(DATA_DIR, 'gui', 'bitmaps');
 const SERVED_DIRS: readonly string[] = [BOBS_DIR, TEXTURES_DIR, SOUNDS_DIR, GUI_BITMAPS_DIR];
 
 /**
- * The output-relative path a derived file must be written at, given the path its source won in some
- * layer. The content routes match case-sensitively, so inside a served subtree the spelling is
+ * The output-relative path a derived file must be written at, given its source's spelling. The
+ * content routes match case-sensitively, so inside a served subtree the spelling is
  * canonical: the route's own casing plus a lower-cased tail. Paths outside those subtrees pass through.
  */
 export function servedRelPath(rel: string): string {

@@ -2,7 +2,7 @@ import type { MapScript } from '@open-northland/data';
 import { type Vfs, vdirname } from '@open-northland/vfs';
 import { extractMapScript, iniBytesToSections, type RuleSection } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
-import { findPathCaseInsensitiveInDirs } from '../../roots.js';
+import { findPathCaseInsensitive } from '../../roots.js';
 
 /**
  * The plaintext script files an unpacked map folder ships: `player.inc` usually carries
@@ -21,19 +21,20 @@ const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'misc.inc', 'map.ini'] as
  */
 export async function resolveMapScript(
   fs: Vfs,
-  mapDirs: readonly string[],
+  mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
   strings: Record<number, string> | undefined,
 ): Promise<MapScript | undefined> {
-  const mapDir = vdirname(rel);
   let script =
-    cifSections !== undefined ? extractMapScript(cifSections, { file: `${mapDir}/map.cif` }) : undefined;
+    cifSections !== undefined
+      ? extractMapScript(cifSections, { file: `${vdirname(rel)}/map.cif` })
+      : undefined;
   if (script === undefined) {
     const sections: RuleSection[] = [];
     const read: string[] = [];
     for (const inc of SCRIPT_INC_FILES) {
-      const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [inc]);
+      const path = await findPathCaseInsensitive(fs, mapDir, [inc]);
       if (path === undefined) continue;
       try {
         sections.push(...iniBytesToSections(await fs.readFile(path)));
@@ -43,7 +44,7 @@ export async function resolveMapScript(
       }
     }
     if (read.length > 0) {
-      script = extractMapScript(sections, { file: `${mapDir}/${read.join('+')}` });
+      script = extractMapScript(sections, { file: `${vdirname(rel)}/${read.join('+')}` });
     }
   }
   if (script === undefined) return undefined;

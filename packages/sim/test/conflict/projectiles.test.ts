@@ -41,7 +41,7 @@ const BOW_STEP_TILES = fx.toInt(fx.mul(fx.fromInt(BOW_SPEED), PROJECTILE_TILES_P
 
 function content(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-projectile-test' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'synthetic-projectile-test' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: COIN, id: 'coin' },

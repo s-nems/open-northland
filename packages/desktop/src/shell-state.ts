@@ -22,10 +22,8 @@ export interface ShellPaths {
 }
 
 export interface ShellState {
-  /**
-   * The mod root the conversion uses when the game folder has none; derived here rather than taken
-   * from the renderer, so a tampered renderer cannot choose it.
-   */
+  /** The mod root the conversion reads, derived here rather than taken from the renderer, so a
+   *  tampered renderer cannot choose it. */
   availableModRoot(): Promise<string | undefined>;
   contentStatus(): Promise<ContentStatus>;
   desktopState(): Promise<ShellSetupState>;
@@ -49,9 +47,6 @@ export function createShellState(paths: ShellPaths): ShellState {
   }
 
   async function desktopState(): Promise<ShellSetupState> {
-    // Read the remembered game path before availableModRoot() can rewrite the config to drop a
-    // stale modPath.
-    const remembered = readConfig(paths.configFile).gamePath;
     const modRoot = await availableModRoot();
     return {
       dataRootLabel: paths.dataRoot.path,
@@ -59,7 +54,6 @@ export function createShellState(paths: ShellPaths): ShellState {
       locale: currentLocale(),
       contentStatus: await contentStatus(),
       modDelivery: 'upstream-folder',
-      ...(remembered !== undefined ? { gamePath: remembered } : {}),
       ...(modRoot !== undefined ? { modRoot } : {}),
     };
   }

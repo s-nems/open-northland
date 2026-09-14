@@ -14,18 +14,18 @@ export function initSetup(api: ShellApi): void {
   const progress = createPipelineProgress(showPhase);
   const langSwitch = createLangSwitch((locale) => void applyLocale(locale));
   const pick = createPickPanel(api, {
-    onInstall: (gamePath) => void runPipeline(gamePath),
+    onInstall: () => void runPipeline(),
     onPlay: () => void api.startGame(),
   });
 
   /** Remembered so a language switch can re-render the page without re-fetching the shell state. */
   let dataRootLabel: string | undefined;
 
-  async function runPipeline(gamePath: string): Promise<void> {
+  async function runPipeline(): Promise<void> {
     progress.reset();
     showPhase('run');
     try {
-      await api.runPipeline(gamePath);
+      await api.runPipeline();
     } catch (err) {
       progress.handleEvent({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
     }
@@ -91,7 +91,7 @@ export function initSetup(api: ShellApi): void {
       showPhase('pick');
     });
 
-    await pick.start(state.gamePath);
+    pick.start();
   }
 
   void boot().catch((err: unknown) => {

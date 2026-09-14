@@ -1,6 +1,6 @@
 /**
  * Standalone `CPalette` decoder: the 256-color palette stored as its own storable (id 0x3F6) in
- * `.cif`/`.lib` object graphs, not the `.pcx` trailing palette handled in `pcx.ts`.
+ * `.cif` object graphs, not the `.pcx` trailing palette handled in `pcx.ts`.
  *
  * Byte-level inspection of an owned copy establishes the layout: an 8-byte storable header then a
  * 0x400-byte body of 256 `[B, G, R, unused]` entries, read raw with no CMemory wrapper or encryption.

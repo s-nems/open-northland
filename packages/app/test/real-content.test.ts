@@ -12,7 +12,7 @@ import { loadRealContent } from '../src/content/real-content.js';
 /** An empty IR document carrying every lane, as the pipeline writes it. */
 function generatedIr(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'test' } },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'test' } },
     goods: [],
     jobs: [],
     buildings: [],

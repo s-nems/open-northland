@@ -6,10 +6,7 @@ import { IPC_CHANNELS } from './ipc.js';
 /** The context-isolated bridge: the renderer gets exactly this API as `window.desktop`, no `ipcRenderer`. */
 const api: DesktopApi = {
   getState: () => ipcRenderer.invoke(IPC_CHANNELS.getState),
-  pickGameFolder: () => ipcRenderer.invoke(IPC_CHANNELS.pickGameFolder),
-  probeGamePath: (path) => ipcRenderer.invoke(IPC_CHANNELS.probeGamePath, path),
-  detectGameFolders: () => ipcRenderer.invoke(IPC_CHANNELS.detectGameFolders),
-  runPipeline: (gamePath) => ipcRenderer.invoke(IPC_CHANNELS.runPipeline, gamePath),
+  runPipeline: () => ipcRenderer.invoke(IPC_CHANNELS.runPipeline),
   stopPipeline: () => ipcRenderer.invoke(IPC_CHANNELS.stopPipeline),
   onPipelineEvent: (listener) => {
     ipcRenderer.on(IPC_CHANNELS.pipelineEvent, (_ev, event: PipelineEvent) => listener(event));

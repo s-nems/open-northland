@@ -37,13 +37,13 @@ describe('resolveDataRoot', () => {
 });
 
 describe('desktop config', () => {
-  it('round-trips the game path and degrades malformed/absent files to empty', async () => {
+  it('round-trips the mod path and degrades malformed/absent files to empty', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'opennorthland-desktop-config-'));
     try {
       const file = join(dir, 'nested', 'desktop-config.json');
       expect(readConfig(file)).toEqual({});
-      writeConfig(file, { gamePath: 'C:\\Games\\Cultures' });
-      expect(readConfig(file)).toEqual({ gamePath: 'C:\\Games\\Cultures' });
+      writeConfig(file, { modPath: 'C:\\Games\\CnMod' });
+      expect(readConfig(file)).toEqual({ modPath: 'C:\\Games\\CnMod' });
       writeConfig(file, {});
       expect(readConfig(file)).toEqual({});
     } finally {

@@ -1,11 +1,11 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname } from 'node:path';
-import { CULTURESNATION_HOME_URL, probeGameFolder } from '@open-northland/asset-pipeline';
+import { CULTURESNATION_HOME_URL } from '@open-northland/asset-pipeline';
 import {
   createEventThrottle,
-  type GameFolderCandidate,
   type ModEvent,
   type PipelineEvent,
+  requireModRoot,
 } from '@open-northland/installer';
 import {
   currentLocale,
@@ -18,7 +18,6 @@ import { findModRootUnder, installCnMod, isFinalModEvent } from '@open-northland
 import { nodeVfs } from '@open-northland/vfs/node';
 import { type BrowserWindow, dialog, ipcMain } from 'electron';
 import { patchConfig } from './config.js';
-import { detectGameFolders } from './detect.js';
 import type { IpcInvokeChannel } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 import { downloadCnModZip } from './mod-install/download.js';
@@ -61,10 +60,6 @@ function assertLocale(value: unknown): asserts value is Locale {
   if (!isLocale(value)) throw new Error('expected a supported locale');
 }
 
-async function candidateOf(path: string): Promise<GameFolderCandidate> {
-  return { path, probe: await probeGameFolder(nodeVfs(), path) };
-}
-
 /** Native open-directory dialog; `undefined` when the user cancels. */
 async function pickDirectory(win: BrowserWindow, title: string): Promise<string | undefined> {
   const picked = await dialog.showOpenDialog(win, { title, properties: ['openDirectory'] });
@@ -79,32 +74,14 @@ function saveFileFilters(): { name: string; extensions: string[] }[] {
 
 export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   handleFromAppFrame(IPC_CHANNELS.getState, () => state.desktopState());
-  handleFromAppFrame(IPC_CHANNELS.probeGamePath, (path: unknown) => {
-    assertString(path);
-    return candidateOf(path);
-  });
-  handleFromAppFrame(IPC_CHANNELS.detectGameFolders, () => detectGameFolders());
-  handleFromAppFrame(IPC_CHANNELS.pickGameFolder, async () => {
-    const path = await pickDirectory(win, messages().dialogs.pickGameTitle);
-    return path === undefined ? null : candidateOf(path);
-  });
 
   let modDownload: AbortController | undefined;
-  handleFromAppFrame(IPC_CHANNELS.runPipeline, async (gamePath: unknown) => {
-    assertString(gamePath);
+  handleFromAppFrame(IPC_CHANNELS.runPipeline, async () => {
     if (modDownload !== undefined) throw new Error(messages().errors.modStillDownloading);
-    const probe = await probeGameFolder(nodeVfs(), gamePath);
-    if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
-    // The pipeline auto-detects a mod inside the game folder; only an external one must be passed.
-    const modRoot = probe.hasMod ? undefined : await state.availableModRoot();
-    if (!probe.hasMod && modRoot === undefined) {
-      throw new Error(messages().errors.modRequired);
-    }
-    pipeline.start(gamePath, paths.contentDir, modRoot, (event: PipelineEvent) => {
+    const modRoot = requireModRoot(await state.availableModRoot());
+    pipeline.start(modRoot, paths.contentDir, (event: PipelineEvent) => {
       if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
     });
-    // Remembered only after start() accepted the run, so a double-start throw cannot clobber it.
-    patchConfig(paths.configFile, { gamePath });
   });
   handleFromAppFrame(IPC_CHANNELS.stopPipeline, () => pipeline.stop());
 

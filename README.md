@@ -9,10 +9,10 @@ Open Northland is an independent, cross-platform engine for *Cultures - 8th Wond
 Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
 an offline asset pipeline.
 
-The repository does not include game files or decoded assets. To play with the original maps,
-graphics, and audio, provide your own copy of *Cultures - 8th Wonder of the World* (available on
-[Steam](https://store.steampowered.com/app/351870/Cultures__8th_Wonder_of_the_World/) and
-[GOG](https://www.gog.com/en/game/cultures_34)) and generate a local `content/` directory.
+The repository does not include game files or decoded assets. The maps, graphics, and audio come
+from the free [CulturesNation](https://culturesnation.pl) community mod, which carries the game data
+and is converted locally into a `content/` directory. The original game's own campaigns and tutorials
+live in its packed archives and are not converted.
 
 To test it out, try:
 - [Browser-based build](https://game.opennorthland.org) (as a quick-access demo)
@@ -32,10 +32,8 @@ but stable signed releases do not. Current actionable work lives in [`docs/ticke
 ## Requirements
 
 - Node.js `^20.19.0` or `>=22.12.0`
-- A legally obtained copy of *Cultures - 8th Wonder of the World* for playable content. It is sold on
-  [Steam](https://store.steampowered.com/app/351870/Cultures__8th_Wonder_of_the_World/) and
-  [GOG](https://www.gog.com/en/game/cultures_34).
-- The free CulturesNation mod; CnMod 1.3.1 is the current verified input
+- The free CulturesNation mod for playable content: `CnMod 1.3.2.zip` (about 570 MB) is the current
+  verified input. The desktop and browser installers download it; for the CLI, unpack it yourself.
 
 ## Build and test
 
@@ -54,13 +52,13 @@ to generate it.
 ## Generate local content
 
 ```bash
-npm run pipeline -- --game "../Cultures 8th Wonder" --out content
+npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content
 npm run dev
 ```
 
-The pipeline detects the CulturesNation `DataCnmd/` folder inside the game directory. If the mod is
-elsewhere, add `--mod-root <dir>`; `--mod-version <label>` stamps the release so multiplayer lobbies
-can compare it. A newer mod release must be verified before replacing the 1.3.1 baseline.
+`--mod-root` is the unpacked mod archive, the directory that holds `DataCnmd/`; a game folder with
+the mod installed inside it works too. `--mod-version <label>` stamps the release so multiplayer
+lobbies can compare it. A newer mod release must be verified before replacing the 1.3.2 baseline.
 
 Generated content is ignored by Git. Do not commit or redistribute it.
 
@@ -86,7 +84,7 @@ packages/
   render/            PixiJS isometric renderer
   sim/               Deterministic simulation
 tools/
-  asset-pipeline/    Converts an owned game installation into local content
+  asset-pipeline/    Converts the CulturesNation mod into local content
 content/             Generated locally and ignored by Git
 docs/                Design notes, format research, and open tickets
 ```

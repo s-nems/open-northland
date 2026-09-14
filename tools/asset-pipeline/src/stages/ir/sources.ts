@@ -1,5 +1,5 @@
 import { type ReadableVfs, vjoin } from '@open-northland/vfs';
-import { CULTURESNATION_MOD } from '../../probe.js';
+import { CULTURESNATION_MOD } from '../../mod-root.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 export interface IniSource {
@@ -7,16 +7,16 @@ export interface IniSource {
   readonly path: string;
   /** Path stamped onto each record's `source.file` - relative so the IR is location-agnostic. */
   readonly file: string;
-  /** The path's namespace (`Data/logic` vs `DataCnmd`), not which root supplied the bytes: a mod
-   * overlay patching a base file still stamps `base`. */
+  /** The path's namespace (`Data/logic` vs `DataCnmd`): the mod's patched copy of a base table still
+   *  stamps `base`. */
   readonly layer: 'base' | 'mod';
 }
 
 /**
- * Resolves the readable `.ini` rule sources, mod-first: tribes, atomic animations, weapons, and
- * buildings are readable text only under `DataCnmd/` (their base twins are encrypted `.cif`), while the
- * `Data/logic/*.ini` tables resolve overlay-first because the mod ships patched copies of them too. A
- * source missing from every root is skipped with a warning, so a partial install still yields an IR.
+ * Resolves the readable `.ini` rule sources: tribes, atomic animations, weapons, and buildings are
+ * readable text only under `DataCnmd/` (their base twins are encrypted `.cif`), while the
+ * `Data/logic/*.ini` tables are the mod's patched copies of the base ones. A missing source is skipped
+ * with a warning, so a partial mod tree still yields an IR.
  */
 export async function resolveIniSources(fs: ReadableVfs, roots: SourceRoots): Promise<IniSource[]> {
   const wanted: { rel: string; layer: 'base' | 'mod' }[] = [

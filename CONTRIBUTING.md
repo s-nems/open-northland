@@ -26,8 +26,8 @@ npm run build
 npm test
 ```
 
-The normal development setup does not need game files. You only need an owned game copy to generate
-playable content or test the asset pipeline. Those steps are in
+The normal development setup does not need game files. You only need the CulturesNation mod archive
+to generate playable content or test the asset pipeline. Those steps are in
 [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ## Before opening a pull request

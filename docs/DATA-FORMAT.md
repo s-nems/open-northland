@@ -1,6 +1,6 @@
 # Generated content and the IR
 
-The asset pipeline converts an owned game installation into a local `content/` directory. The
+The asset pipeline converts the unpacked CulturesNation mod into a local `content/` directory. The
 directory is ignored by Git because it contains derived game data.
 
 Runtime rules are stored in one JSON document:
@@ -40,10 +40,7 @@ The document also contains a manifest:
   "manifest": {
     "version": 3,
     "contentRevision": 5,
-    "generatedFrom": {
-      "game": "<local game path>",
-      "mod": "<optional local mod path>"
-    },
+    "generatedFrom": { "mod": "<local mod path>" },
     "locale": "eng"
   },
   "goods": [],
@@ -53,8 +50,8 @@ The document also contains a manifest:
 ```
 
 The optional manifest `modVersion` is an explicit pipeline caller label (`--mod-version` in the CLI).
-Absence means unknown. It is never inferred from `generatedFrom.mod`, which records an installation
-path. The lobby compares the label alongside fingerprints of the actual content.
+Absence means unknown. It is never inferred from `generatedFrom.mod`, which records a local path.
+The lobby compares the label alongside fingerprints of the actual content.
 
 `contentRevision` is the pipeline's conversion revision, embedded so a running game can name its
 content identity (a save file records it). Synthetic content without pipeline provenance parses as
@@ -77,8 +74,8 @@ the same document is a deliberate unchecked cast that falls back per lane.
 There are three distinct layers:
 
 1. `content/` is generated output. Never edit it by hand or commit it.
-2. `packages/app/src/catalog/` contains committed fallback balance and bindings used without an owned
-   game copy.
+2. `packages/app/src/catalog/` contains committed fallback balance and bindings used without
+   generated content.
 3. `packages/app/src/game/sandbox/` assembles fallback content for scenes and development play.
 
 When extracted data is wrong, change the pipeline or schema and regenerate. When fallback balance is
@@ -153,7 +150,7 @@ For a schema or pipeline change:
 1. update the schema and decoder together;
 2. add a synthetic decoder or loader test;
 3. update consumers without adding a second interpretation of the same field;
-4. run `npm run test:pipeline` against the owned game copy;
+4. run `npm run test:pipeline` against the local mod;
 5. run `npm run test:content` when existing local content consumers changed;
 6. bump `IR_VERSION` for a breaking shape change, or for an addition generated content must carry
    for real rather than by default.

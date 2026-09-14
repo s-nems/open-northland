@@ -220,7 +220,7 @@ export const enSurfaces = {
     backToMenu: 'Back to menu',
     missingContentTitle: 'Decoded content is unavailable',
     missingTerrainDetail:
-      'This world draws the real decoded terrain, and content/ has none to serve. Run the asset pipeline on a game copy you own (npm run pipeline), then reload.',
+      'This world draws the real decoded terrain, and content/ has none to serve. Run the asset pipeline on the CulturesNation mod (npm run pipeline), then reload.',
     loadFailedTitle: 'Loading the save failed',
     loadFailedDetail:
       'This world could not take the saved game. It usually means the save was made on different game content or an older map; loading it again will fail the same way.',
@@ -330,9 +330,9 @@ export const enSurfaces = {
     summaryHeads: 'The same walk cycle with every available head look.',
     summaryColors: 'The same walk cycle in all sixteen player colours.',
     missingAtlas:
-      'Run the asset pipeline on a game copy you own to load the decoded “{character}” atlas ({stem}).',
+      'Run the asset pipeline on the CulturesNation mod to load the decoded “{character}” atlas ({stem}).',
     missingFrames: 'content/ir.json has no playable frames for “{character}” ({imagelib}).',
-    missingRoster: 'Run the asset pipeline on a game copy you own to load the decoded character atlases.',
+    missingRoster: 'Run the asset pipeline on the CulturesNation mod to load the decoded character atlases.',
     noLooks: 'No character looks',
     noHeads: 'No head looks',
     noColors: 'No player colours',
@@ -345,7 +345,7 @@ export const enSurfaces = {
   icons: {
     title: 'Sprite atlas',
     intro: 'Choose an atlas, filter frame names and click a tile to copy its frame id.',
-    missingDetail: 'Run the asset pipeline on a game copy you own to browse the local decoded atlases.',
+    missingDetail: 'Run the asset pipeline on the CulturesNation mod to browse the local decoded atlases.',
     atlas: 'Atlas',
     filter: 'Filter frames…',
     zoom: 'Zoom',
@@ -368,7 +368,7 @@ export const enSurfaces = {
     intro:
       'Play any recording to verify its role. Action rows show when a clip fires; action sounds are the groups a settler animation names by id; voice rows group chatter by age and sex.',
     missingTitle: 'No decoded sounds found',
-    missingDetail: 'Run the asset pipeline on a game copy you own to create the local sound bank.',
+    missingDetail: 'Run the asset pipeline on the CulturesNation mod to create the local sound bank.',
     actions: 'Actions and sound bindings',
     cues: 'Action sounds (named by the animation data)',
     voices: 'Settler voices',

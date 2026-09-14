@@ -1,16 +1,9 @@
 import type { ContentStatus } from '../content-state.js';
 import { formatMessage, messages } from '../i18n/index.js';
 
-/** Kept as findings rather than a rendered note, so a language switch can re-word it. */
-export type Probe =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'no-archives' }
-  | { readonly kind: 'valid'; readonly path: string; readonly hasMod: boolean };
-
 export interface PickState {
-  readonly probe: Probe;
-  /** A mod root outside the game folder (downloaded into the data root, or hand-picked). */
-  readonly externalModRoot: string | undefined;
+  /** The mod root the conversion will read: downloaded into the data root, or hand-picked. */
+  readonly modRoot: string | undefined;
   readonly contentStatus: ContentStatus;
 }
 
@@ -21,32 +14,14 @@ export interface StatusNote {
 }
 
 export interface PickView {
-  readonly probeNote: string;
+  /** Which mod copy the conversion will read; empty while none is known and the mod panel shows. */
+  readonly modNote: string;
   readonly modPanelVisible: boolean;
   readonly installDisabled: boolean;
   readonly installLabel: string;
   readonly statusNote: StatusNote | undefined;
   /** Undefined hides the button: nothing installed yet, or content that must not boot. */
   readonly playNowLabel: string | undefined;
-}
-
-function probeNoteOf(probe: Probe, externalModRoot: string | undefined): string {
-  const t = messages().setup;
-  switch (probe.kind) {
-    case 'idle':
-      return '';
-    case 'no-archives':
-      return t.probe.noArchives;
-    case 'valid':
-      if (probe.hasMod) return t.probe.withMod;
-      return externalModRoot === undefined
-        ? t.probe.noMod
-        : formatMessage(t.probe.externalMod, { path: externalModRoot });
-    default: {
-      const exhaustive: never = probe;
-      throw new Error(`unhandled probe state ${JSON.stringify(exhaustive)}`);
-    }
-  }
 }
 
 type ContentControls = Pick<PickView, 'installLabel' | 'statusNote' | 'playNowLabel'>;
@@ -81,12 +56,11 @@ function contentControlsOf(status: ContentStatus): ContentControls {
   }
 }
 
-export function pickView({ probe, externalModRoot, contentStatus }: PickState): PickView {
-  const modReady = probe.kind === 'valid' && (probe.hasMod || externalModRoot !== undefined);
+export function pickView({ modRoot, contentStatus }: PickState): PickView {
   return {
-    probeNote: probeNoteOf(probe, externalModRoot),
-    modPanelVisible: probe.kind === 'valid' && !modReady,
-    installDisabled: !modReady,
+    modNote: modRoot === undefined ? '' : formatMessage(messages().setup.mod.using, { path: modRoot }),
+    modPanelVisible: modRoot === undefined,
+    installDisabled: modRoot === undefined,
     ...contentControlsOf(contentStatus),
   };
 }

@@ -1,7 +1,7 @@
 # Testing
 
-Use the lowest test layer that proves the behavior. Normal development should stay independent of an
-owned game installation; real-content and pipeline tests are separate local gates.
+Use the lowest test layer that proves the behavior. Normal development should stay independent of the
+mod archive; real-content and pipeline tests are separate local gates.
 
 ## Standard gates
 
@@ -124,7 +124,7 @@ change to the relay or the lockstep seams.
 
 `test:pipeline` performs a fresh conversion into a temporary directory and runs the real-content
 checks against that result. Use it for source parsing, schemas, decoders, map conversion, and output
-layout changes. It reads `CULTURES_GAME_DIR` and optional `CULTURES_MOD_ROOT`.
+layout changes. It reads the unpacked mod at `CULTURES_MOD_ROOT`, `../CNMod-1.3.2` by default.
 
 Tests must skip cleanly when local content is deliberately unavailable. Synthetic fixtures remain the
 committed regression tests.

@@ -57,7 +57,7 @@ export type SoundJingle = z.infer<typeof SoundJingle>;
 
 /**
  * The decoded `soundfx.cif` sound bank: render-binding data the pure sim ignores. Empty when the
- * pipeline has not run against a game copy, so the app degrades to silence rather than crashing.
+ * pipeline has not run, so the app degrades to silence rather than crashing.
  */
 export const SoundBank = z.strictObject({
   staticGroups: z.array(SoundStaticGroup).default([]),

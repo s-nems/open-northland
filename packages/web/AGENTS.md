@@ -10,9 +10,9 @@ applies.
 - The web app stays shell-agnostic and never imports web-shell code. The service worker answers the
   generated-content routes through `@open-northland/content-resolver`, the same route table as Vite
   and the desktop protocol; everything else, `packages/app`'s own build included, is the host's.
-- The site ships no game content. Every visitor converts their own copy; picked or dropped game
-  folders are read-only inputs and their bytes never leave the browser. `scripts/bundle.mjs` fails
-  the build if the assembled site carries a single original-game file extension.
+- The site ships no game content. Every visitor converts the mod archive in their own browser, and
+  its bytes never leave the browser. `scripts/bundle.mjs` fails the build if the assembled site
+  carries a single original-game file extension.
 - Run the pipeline only in the worker, never on the page; the page owns UI, storage layout, and the
   `ShellApi` implementation. Import shell constants from a package's leaf subpath, never from a
   barrel that also exports the conversion: the installer page is the first thing a visitor
@@ -54,4 +54,4 @@ the built image.
 ## Verification
 
 Unit-test pure logic without a browser. The installer flow, worker conversion, and service-worker
-routes need a real browser against an owned game copy; final look and feel need human review.
+routes need a real browser against the mod archive; final look and feel need human review.

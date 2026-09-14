@@ -14,8 +14,8 @@ export interface PaletteAlias {
    *  legs (`palettes.ini` declares `Lion01`, `jobgraphics.ini` references `LION01`), so both sides
    *  lower-case the join key. */
   readonly name: string;
-  /** The palette source `.pcx`, normalized to a lower-case forward-slash relative path (archive names
-   *  use Windows backslashes and mixed case). */
+  /** The palette source `.pcx`, normalized to a lower-case forward-slash relative path (the `.ini`
+   *  references use Windows backslashes and mixed case). */
   readonly gfxFile: string;
 }
 

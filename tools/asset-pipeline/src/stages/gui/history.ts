@@ -3,17 +3,12 @@ import { type Vfs, vjoin } from '@open-northland/vfs';
 import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
 import { errorMessage } from '../../errors.js';
-import {
-  findPathCaseInsensitive,
-  findPathCaseInsensitiveInDirs,
-  rootsInOrder,
-  type SourceRoots,
-} from '../../roots.js';
+import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { HYPERTEXT_GRAPHICS_DIR, resolvePagePictures } from '../hypertext-pictures.js';
 import { GUI_CONTENT_DIR, GUI_LANGS } from './paths.js';
 
-/** The owned copy ships the mission window's history book here, opened on `index.hlt`. */
+/** The mod ships the mission window's history book here, opened on `index.hlt`. */
 const HISTORY_DIR = ['Data', 'text', '<lang>', 'hypertext', 'history'] as const;
 const START_PAGE = 'index';
 const PAGE_EXT = /\.hlt$/i;
@@ -40,7 +35,7 @@ export async function convertGuiHistory(
   const done: GuiHistoryResult[] = [];
   for (const lang of langs) {
     const segments = HISTORY_DIR.map((s) => (s === '<lang>' ? lang : s));
-    const dir = await findPathCaseInsensitiveInDirs(fs, rootsInOrder(roots), segments);
+    const dir = await findPathCaseInsensitive(fs, roots.mod, segments);
     if (dir === undefined) continue;
     let book: HypertextBook | undefined;
     try {

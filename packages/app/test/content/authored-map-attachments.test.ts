@@ -170,8 +170,8 @@ describe.runIf(hasRealIr())('authored decoded-map settlers - the attachtohouse t
   });
 });
 
-/** The corpus map with the most `attachtohouse` rows, and the one whose towers this feature mans. */
-const CORPUS_MAP = 'tale_of_six_sons_multiplayer';
+/** A corpus map rich in `attachtohouse` rows, all of them on the human player's seat. */
+const CORPUS_MAP = 'tutorial_006';
 
 /**
  * The whole chain over one real decoded map, from the generated `content/maps/*.json` to the settlers
@@ -183,8 +183,8 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(CORPUS_MAP)))('a real decod
     const { sim } = await realMapWorld({ mapId: CORPUS_MAP, aiSeats: [] });
     const housed = [...sim.world.query(Residence)].length;
     const posted = [...sim.world.query(JobAssignment)].length;
-    // Measured against the owned copy; both move only on an intentional content or gate change.
-    expect(housed).toBe(3);
-    expect(posted).toBe(27);
+    // Measured against CnMod 1.3.2; both move only on an intentional content or gate change.
+    expect(housed).toBe(8);
+    expect(posted).toBe(18);
   });
 });

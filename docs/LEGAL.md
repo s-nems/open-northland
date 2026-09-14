@@ -5,10 +5,12 @@ License, version 3 or later. The complete license is in [`../LICENSE`](../LICENS
 
 ## Game data
 
-The repository does not include files from a *Cultures* installation or a generated playable content
-set. Users provide their own legally obtained game copy and run the asset pipeline locally. Generated
-maps, graphics, rules, fonts, and audio are written under the ignored `content/` directory and must
-not be committed or redistributed with the project.
+The repository does not include files from a *Cultures* installation, from the CulturesNation mod,
+or a generated playable content set. The asset pipeline reads the free CulturesNation mod archive,
+a community release that carries the game's data files; users obtain it themselves and run the
+pipeline locally. The artwork, sounds, and rules in that data remain the property of their rights
+holders whichever archive carries them. Generated maps, graphics, rules, fonts, and audio are written
+under the ignored `content/` directory and must not be committed or redistributed with the project.
 
 Documentation screenshots may show Open Northland rendering game data decoded locally by the project
 maintainer. They demonstrate engine compatibility; they are not a redistributable asset pack, and the
@@ -18,14 +20,14 @@ Tests use synthetic fixtures created for this project. A test or pull request mu
 original file, decoded asset, extracted text corpus, or other distributable game content.
 
 The browser deployment holds to the same line: `game.opennorthland.org` serves engine code only, and
-every visitor converts their own game copy inside their own browser, where the converted data stays.
+every visitor converts the mod archive inside their own browser, where the converted data stays.
 
 ## CulturesNation mod
 
-The free community mod *CulturesNation* is required to play. The desktop installer downloads it from
-the mod's own site; the browser installer fetches it from `game.opennorthland.org/cnmod.zip`, because
-a browser page can only stream an archive of that size from its own origin. Placing that archive is
-an operator step, not part of this repository, and `CNMOD_KNOWN_SHA256` in
+The free community mod *CulturesNation* is the conversion's input. The desktop installer downloads
+it from the mod's own site; the browser installer fetches it from `game.opennorthland.org/cnmod.zip`,
+because a browser page can only stream an archive of that size from its own origin. Placing that
+archive is an operator step, not part of this repository, and `CNMOD_KNOWN_SHA256` in
 `packages/installer/src/mod-install/install.ts` records the bytes the project verified against.
 
 ## Independent implementation

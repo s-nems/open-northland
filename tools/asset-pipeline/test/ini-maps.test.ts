@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
 import { cifLinesToSections, extractMapInfo } from '../src/decoders/ini.js';
 
-const PROVENANCE = { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' } as const;
+const PROVENANCE = { kind: 'mod', folder: 'CnModMaps/tutorial_002' } as const;
 
 describe('extractMapInfo', () => {
   // Mirrors a real map.cif logic header (decoded by cifLinesToSections): a `logiccontrol` section with

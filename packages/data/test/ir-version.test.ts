@@ -3,7 +3,7 @@ import { IR_VERSION, NO_PIPELINE_REVISION, parseContentSet, parseGeneratedConten
 
 function contentSet(version: unknown): Record<string, unknown> {
   return {
-    manifest: { version, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: { version, generatedFrom: { mod: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [],
     jobs: [],
     buildings: [],
@@ -42,7 +42,7 @@ describe('the IR version gate', () => {
       manifest: {
         version: IR_VERSION,
         contentRevision: 7,
-        generatedFrom: { game: 'synthetic-test-fixture' },
+        generatedFrom: { mod: 'synthetic-test-fixture' },
         locale: 'eng',
       },
       goods: [],

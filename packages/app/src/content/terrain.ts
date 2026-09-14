@@ -82,7 +82,7 @@ export async function loadRealTerrain(
   const tables = ir !== undefined ? ir : await loadIr();
   if (tables === null) {
     throw new MissingTerrainError(
-      'terrain: content/ir.json not found. Run `npm run pipeline` against an owned game copy to populate content/.',
+      'terrain: content/ir.json not found. Run `npm run pipeline` on the CulturesNation mod to populate content/.',
     );
   }
   const rows = tables.terrainPatterns ?? [];
@@ -127,7 +127,7 @@ export async function loadRealTerrain(
   // triangle must not pass as real terrain.
   if (pages.size === 0) {
     throw new MissingTerrainError(
-      'terrain: content/ has no loadable ground texture pages. Run `npm run pipeline` against an owned game copy to populate content/.',
+      'terrain: content/ has no loadable ground texture pages. Run `npm run pipeline` on the CulturesNation mod to populate content/.',
     );
   }
   return {

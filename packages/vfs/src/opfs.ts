@@ -1,7 +1,7 @@
-import type { ReadableVfs, Vfs, VfsEntry, VfsStat } from './types.js';
+import type { Vfs, VfsEntry, VfsStat } from './types.js';
 import { normalizeRelPath, toPosix } from './vpath.js';
 
-/** Browser adapters: the origin-private file system and read-only picked-folder snapshots. */
+/** Browser adapter over the origin-private file system. */
 
 function segmentsOf(path: string): string[] {
   const stripped = toPosix(path).replace(/^\/+/, '');
@@ -123,89 +123,4 @@ export function opfsVfs(root: FileSystemDirectoryHandle): Vfs {
     },
   };
   return fs;
-}
-
-/**
- * A picked folder's file, kept unresolved where the browser offers a handle: materializing every
- * `File` up front costs one main-thread round trip per file, and a game folder holds ~44k of them.
- */
-export type SnapshotFile = File | FileSystemFileHandle;
-
-/**
- * Read-only snapshot of a picked or dropped folder: keys are `/`-relative file paths inside it.
- * Structured-cloneable, so a page can hand it to a worker.
- */
-export type FolderSnapshot = ReadonlyMap<string, SnapshotFile>;
-
-type Children = Map<string, VfsEntry['kind']>;
-
-/** One pass over the keys, so `readdir` and directory `stat` cost a lookup instead of a full scan. */
-function directoryIndex(files: FolderSnapshot): Map<string, Children> {
-  const dirs = new Map<string, Children>();
-  const childrenOf = (dir: string): Children => {
-    const existing = dirs.get(dir);
-    if (existing !== undefined) return existing;
-    const created: Children = new Map();
-    dirs.set(dir, created);
-    return created;
-  };
-  childrenOf('');
-  for (const key of files.keys()) {
-    let parent = '';
-    let at = 0;
-    for (;;) {
-      const cut = key.indexOf('/', at);
-      if (cut < 0) {
-        childrenOf(parent).set(key.slice(at), 'file');
-        break;
-      }
-      const name = key.slice(at, cut);
-      childrenOf(parent).set(name, 'dir');
-      parent = parent === '' ? name : `${parent}/${name}`;
-      childrenOf(parent);
-      at = cut + 1;
-    }
-  }
-  return dirs;
-}
-
-export function fileMapVfs(files: FolderSnapshot): ReadableVfs {
-  const dirs = directoryIndex(files);
-
-  function keyOf(path: string): string {
-    return segmentsOf(path).join('/');
-  }
-
-  async function fileAt(path: string): Promise<File> {
-    const entry = files.get(keyOf(path));
-    if (entry === undefined) throw new Error(`picked folder: no file ${path}`);
-    return entry instanceof File ? entry : entry.getFile();
-  }
-
-  return {
-    async readFile(path: string): Promise<Uint8Array> {
-      return new Uint8Array(await (await fileAt(path)).arrayBuffer());
-    },
-
-    async readFileSlice(path: string, offset: number, length: number): Promise<Uint8Array> {
-      const file = await fileAt(path);
-      return new Uint8Array(await file.slice(offset, offset + length).arrayBuffer());
-    },
-
-    readdir(path: string): Promise<VfsEntry[]> {
-      const children = dirs.get(keyOf(path));
-      if (children === undefined) return Promise.reject(new Error(`picked folder: no directory ${path}`));
-      return Promise.resolve([...children].map(([name, kind]) => ({ name, kind })));
-    },
-
-    async stat(path: string): Promise<VfsStat | undefined> {
-      const key = keyOf(path);
-      const entry = files.get(key);
-      if (entry !== undefined) {
-        const file = entry instanceof File ? entry : await entry.getFile();
-        return { kind: 'file', size: file.size };
-      }
-      return dirs.has(key) ? { kind: 'dir', size: 0 } : undefined;
-    },
-  };
 }

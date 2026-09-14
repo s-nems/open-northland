@@ -1,4 +1,3 @@
-export { mountVfs } from './mount.js';
 export {
   type ReadableVfs,
   readText,

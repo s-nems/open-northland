@@ -3,8 +3,7 @@ import { dirname } from 'node:path';
 import { isLocale, type Locale } from '@open-northland/installer/i18n';
 
 export interface DesktopConfig {
-  readonly gamePath?: string;
-  /** A hand-picked mod root, outside both the game folder and the data root's `mods/`. */
+  /** A hand-picked mod root outside the data root's `mods/`. */
   readonly modPath?: string;
   /** The last language chosen; absent falls back to the OS locale. */
   readonly locale?: Locale;
@@ -15,9 +14,8 @@ export function readConfig(file: string): DesktopConfig {
   try {
     const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
     if (typeof parsed !== 'object' || parsed === null) return {};
-    const { gamePath, modPath, locale } = parsed as Record<string, unknown>;
+    const { modPath, locale } = parsed as Record<string, unknown>;
     return {
-      ...(typeof gamePath === 'string' ? { gamePath } : {}),
       ...(typeof modPath === 'string' ? { modPath } : {}),
       ...(isLocale(locale) ? { locale } : {}),
     };

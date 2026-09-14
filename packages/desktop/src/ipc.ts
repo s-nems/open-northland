@@ -2,9 +2,6 @@ import type { ShellApi } from '@open-northland/installer';
 
 export const IPC_CHANNELS = {
   getState: 'desktop:get-state',
-  pickGameFolder: 'desktop:pick-game-folder',
-  probeGamePath: 'desktop:probe-game-path',
-  detectGameFolders: 'desktop:detect-game-folders',
   runPipeline: 'desktop:run-pipeline',
   stopPipeline: 'desktop:stop-pipeline',
   pipelineEvent: 'desktop:pipeline-event',
@@ -64,6 +61,5 @@ export interface DesktopSaveApi {
 }
 
 /** The shared setup contract plus the desktop-only save bridges, implemented by the preload bridge
- *  as `window.desktop`. The desktop shell serves typed paths and install detection; adopting a
- *  browser-picked folder stays a web-shell affordance. */
-export type DesktopApi = Required<Omit<ShellApi, 'adoptFolder'>> & DesktopSaveApi;
+ *  as `window.desktop`. */
+export type DesktopApi = ShellApi & DesktopSaveApi;

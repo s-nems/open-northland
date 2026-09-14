@@ -8,13 +8,7 @@ import {
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
-import {
-  collectSourceFilesNamed,
-  findPathCaseInsensitive,
-  findPathCaseInsensitiveInDirs,
-  rootsInOrder,
-  type SourceRoots,
-} from '../../roots.js';
+import { collectSourceFilesNamed, findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
 import { loadMapStringTables, preferredStringTable, resolveMapMeta } from './meta.js';
@@ -44,12 +38,12 @@ export interface MapDatConversion {
 }
 
 /**
- * Decodes every `map.dat` under the source roots into `<outDir>/maps/<id>.json` plus its optional
+ * Decodes every `map.dat` under the mod root into `<outDir>/maps/<id>.json` plus its optional
  * meta, minimap and script sidecars, in path-sorted order so a re-run is reproducible. The id is the
  * containing folder's slug, the same collapse `decodeMapTree` applies to `map.cif`, so the artifact
- * and its `MapInfo` stay joinable and same-named folders under different roots write one file,
- * last write wins. A `map.dat` that fails to read or decode is logged and skipped; a write failure
- * and a missing `gameDir` propagate.
+ * and its `MapInfo` stay joinable and two folders with one slug write one file, last write wins. A
+ * `map.dat` that fails to read or decode is logged and skipped; a write failure and a missing mod
+ * root propagate.
  */
 export async function convertMapDatTree(
   fs: Vfs,
@@ -74,30 +68,25 @@ export async function convertMapDatTree(
     }
     // Authored entity placements live in the sibling `map.cif`'s `StaticObjects` section, and the same
     // decoded sections feed the meta sidecar's `[misc_mapname]` fallback, so the cif is decoded at most
-    // once per map. An over-installed mod merges folder contents, so siblings resolve overlay-first
-    // across the map folder's candidate dirs.
-    const mapDirs = rootsInOrder(roots).map((root) => vjoin(root, vdirname(rel)));
+    // once per map. The map folders mix casing freely, which a case-sensitive filesystem would
+    // otherwise turn into a silently missing entity layer.
+    const mapDir = vjoin(roots.mod, vdirname(rel));
     let cifSections: readonly RuleSection[] | undefined;
-    for (const mapDir of mapDirs) {
-      // The map folders mix casing freely, which a case-sensitive filesystem would otherwise turn
-      // into a silently missing entity layer.
-      const cifPath = await findPathCaseInsensitive(fs, mapDir, ['map.cif']);
-      if (cifPath === undefined) continue;
+    const cifPath = await findPathCaseInsensitive(fs, mapDir, ['map.cif']);
+    if (cifPath !== undefined) {
       try {
         cifSections = cifBytesToSections(await fs.readFile(cifPath));
         const entities = extractStaticObjects(cifSections);
         if (entities !== undefined) terrain = { ...terrain, entities };
-        break;
       } catch {
-        // Missing or undecodable here: try the next candidate dir; absent everywhere the entity
-        // layer is skipped.
+        // Undecodable: the entity layer is skipped.
       }
     }
     // Unpacked maps ship no map.cif: their placements live in a sibling plaintext
     // `staticobjects.inc` with the identical `[StaticObjects]` grammar (sethouse/sethuman/setanimal),
     // and readable mod source is preferred over the encrypted cif.
     if (terrain.entities === undefined) {
-      const incPath = await findPathCaseInsensitiveInDirs(fs, mapDirs, ['staticobjects.inc']);
+      const incPath = await findPathCaseInsensitive(fs, mapDir, ['staticobjects.inc']);
       if (incPath !== undefined) {
         try {
           const entities = extractStaticObjects(iniBytesToSections(await fs.readFile(incPath)));
@@ -123,17 +112,17 @@ export async function convertMapDatTree(
     await fs.rm(scriptPath);
     await fs.rm(briefingPath);
     await fs.rm(stringsPath);
-    const stringTables = await loadMapStringTables(fs, mapDirs, rel);
+    const stringTables = await loadMapStringTables(fs, mapDir, rel);
     if (Object.keys(stringTables).length > 0) {
       await writeText(fs, stringsPath, `${JSON.stringify(MapStrings.parse(stringTables))}\n`);
     }
     const strings = preferredStringTable(stringTables);
-    const metadata = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
-    const metaFile = { ...metadata, provenance: mapProvenance(roots, { rel, path }) };
+    const metadata = await resolveMapMeta(fs, mapDir, rel, cifSections, strings);
+    const metaFile = { ...metadata, provenance: mapProvenance(rel) };
     await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
-      scriptFile = await resolveMapScript(fs, mapDirs, rel, cifSections, strings);
+      scriptFile = await resolveMapScript(fs, mapDir, rel, cifSections, strings);
     } catch (err) {
       // A schema-invalid script degrades that map to no roster rather than aborting the batch.
       console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);
@@ -143,7 +132,7 @@ export async function convertMapDatTree(
     }
     let briefing = false;
     if (scriptFile !== undefined) {
-      const briefingFile = await resolveMapBriefing(fs, mapDirs, outDir, rel, cutsceneIdsOf(scriptFile));
+      const briefingFile = await resolveMapBriefing(fs, mapDir, outDir, rel, cutsceneIdsOf(scriptFile));
       if (briefingFile !== undefined) {
         await writeText(fs, briefingPath, `${JSON.stringify(briefingFile)}\n`);
         briefing = true;
@@ -151,7 +140,7 @@ export async function convertMapDatTree(
     }
     let minimap = false;
     let minimapSynthesized = false;
-    const minimapPath = await findPathCaseInsensitiveInDirs(fs, mapDirs, ['minimap', 'minimap.pcx']);
+    const minimapPath = await findPathCaseInsensitive(fs, mapDir, ['minimap', 'minimap.pcx']);
     if (minimapPath !== undefined) {
       try {
         await fs.writeFile(pngPath, await minimapToPng(await fs.readFile(minimapPath)));

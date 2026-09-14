@@ -3,10 +3,11 @@
 **Area:** pipeline · **Focus:** `tools/asset-pipeline/src/decoders/ini` · **Priority:** P3
 
 `decodeIni` (`tools/asset-pipeline/src/decoders/ini/grammar.ts`) decodes every readable text file as
-CP1250, the codepage the original authored in. One mod map ships its briefing as UTF-8 instead, so its
-bytes come out as mojibake and reach the mission sheet that way: `tale_of_six_sons_multiplayer`'s Polish
-intro renders "LEGENDA SZEĹšCIU SYNĂ“W" for "LEGENDA SZEŚCIU SYNÓW". One of the 123 emitted briefing
-sidecars is affected; the history books and every other map are clean.
+CP1250, the codepage the original authored in. A third-party map authored in UTF-8 comes out as
+mojibake in its name sidecar and its briefing, and reaches the map list and mission sheet that way:
+`Tale_of_Six_Sons_MULTIPLAYER` (a user-installed map, not part of the CnMod corpus) renders
+"LEGENDA SZEĹšCIU SYNĂ“W" for "LEGENDA SZEŚCIU SYNÓW". Every mod map and history book is clean, so
+the mod-only pipeline shows no hit; a `UserMaps/` map authored in UTF-8 does.
 
 ## Scope
 
@@ -17,4 +18,5 @@ sidecars is affected; the history books and every other map are clean.
 ## Verify
 
 - Unit test over both byte sequences of one Polish line: CP1250 and UTF-8 decode to the same string.
-- `npm run test:pipeline`, then grep the emitted briefing sidecars for the mojibake range: zero hits.
+- `npm run test:pipeline`, then grep the emitted `.meta.json` and `.briefing.json` sidecars for the
+  mojibake range: zero hits, including with a UTF-8 map dropped into the mod root's `UserMaps/`.

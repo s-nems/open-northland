@@ -35,12 +35,10 @@ describe('verified map documents and bounded transfer', () => {
     expect(readVerifiedMapDocuments(source).script).toBeNull();
     expect(() => readVerifiedMapDocuments({ ...source })).toThrow('Unverified');
   });
-  it('rejects base/unknown origins, a wrong room, corruption, malformed scripts, and extra envelope keys', () => {
+  it('rejects an unknown origin, a wrong room, corruption, malformed scripts, and extra envelope keys', () => {
     const blob = encodeMapTransfer(handle(), origin);
-    for (const kind of ['base', 'unknown'] as const) {
-      expect(() => encodeMapTransfer(handle(), { kind })).toThrow();
-      expect(() => decodeMapTransfer(blob, { ...expected(), provenance: { kind } })).toThrow();
-    }
+    expect(() => encodeMapTransfer(handle(), { kind: 'unknown' })).toThrow();
+    expect(() => decodeMapTransfer(blob, { ...expected(), provenance: { kind: 'unknown' } })).toThrow();
     expect(() => decodeMapTransfer(blob, { ...expected(), mapId: 'other' })).toThrow();
     expect(() => decodeMapTransfer(blob, { ...expected(), fingerprint: 'wrong' })).toThrow();
     for (const value of [

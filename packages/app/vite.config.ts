@@ -14,7 +14,7 @@ import { artPreviewPlugin } from './vite/art-preview.js';
 // surface and the app crashes on a member the current source has but the last build did not.
 
 const here = dirname(fileURLToPath(import.meta.url));
-// The decoded `content/` tree lives at the repo root (gitignored; generated from an owned game copy),
+// The decoded `content/` tree lives at the repo root (gitignored; generated from the CulturesNation mod),
 // OUTSIDE the app's vite root. The shared route table (`@open-northland/content-resolver`) bridges it in
 // - `/maps`, `/bobs`, `/textures`, `/sounds`, `/ir.json`, `/gui`, `/gui-bitmaps`, `/goods`,
 // `/backdrops`, plus the computed index payloads - with path traversal rejected and only

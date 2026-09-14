@@ -9,9 +9,9 @@ import { readSourceFile } from './source-files.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
 export interface MaskedTexturePair {
-  /** Normalized `data/.../tran_*.pcx` path of the RGB texture (relative to the game root). */
+  /** Normalized `data/.../tran_*.pcx` path of the RGB texture (relative to the mod root). */
   readonly texture: string;
-  /** Normalized `data/.../tran_*_a.pcx` path of the alpha mask (relative to the game root). */
+  /** Normalized `data/.../tran_*_a.pcx` path of the alpha mask (relative to the mod root). */
   readonly textureAlpha: string;
 }
 
@@ -23,7 +23,7 @@ export async function pcxToPng(bytes: Uint8Array): Promise<Uint8Array> {
   return encodePng(expandToRgba(decodePcx(bytes)));
 }
 
-/** One converted picture: paths are relative to `gameDir`/`outDir` so the report is location-agnostic. */
+/** One converted picture: paths are relative to the mod root and `outDir` so the report is location-agnostic. */
 export interface PcxConversion {
   readonly input: string;
   readonly output: string;
@@ -74,10 +74,10 @@ export async function composeMaskedTransitionPages(
 }
 
 /**
- * Converts every `.pcx` under the source `roots` to a `.png` under `outDir`, one per relative path
- * (decoded from the layer that wins it) and canonicalized for the served subtrees
- * ({@link servedRelPath}). A picture that fails to read or decode is logged and skipped; an output-write
- * failure or an unreadable game root propagates as an environmental error.
+ * Converts every `.pcx` under the mod root to a `.png` under `outDir`, one per relative path,
+ * canonicalized for the served subtrees ({@link servedRelPath}). A picture that fails to read or
+ * decode is logged and skipped; an output-write failure or an unreadable root propagates as an
+ * environmental error.
  */
 export async function convertPcxTree(
   fs: Vfs,

@@ -4,7 +4,7 @@ import { loadLobbyCompatibility } from '../../src/content/lobby-identity.js';
 import { verifyMapDocuments } from '../../src/content/transfer/index.js';
 
 const IR = parseContentSet({
-  manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic' } },
+  manifest: { version: IR_VERSION, generatedFrom: { mod: 'synthetic' } },
   goods: [],
   jobs: [],
   buildings: [],
@@ -41,7 +41,7 @@ describe('lobby world identity', () => {
   it('detects pipeline revisions but ignores owner-specific paths', async () => {
     const original = await identity();
     const moved = structuredClone(IR);
-    moved.manifest.generatedFrom.game = '/another/owner';
+    moved.manifest.generatedFrom.mod = '/another/owner';
     expect((await identity({ '/ir.json': moved })).content).toBe(original.content);
     moved.manifest.contentRevision++;
     expect((await identity({ '/ir.json': moved })).content).not.toBe(original.content);

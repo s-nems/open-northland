@@ -17,8 +17,9 @@ plus everything Electron-specific. The root [`AGENTS.md`](../../AGENTS.md) appli
 Data-root precedence is defined in `src/paths.ts`: explicit `OPEN_NORTHLAND_DATA_DIR`, portable mode,
 development root, then Electron `userData`. Do not duplicate this choice elsewhere.
 
-The CulturesNation mod is required pipeline input. It may come from the game folder, a downloaded
-copy in the data root, or a user-selected folder. Never modify the owned game installation.
+The CulturesNation mod is the pipeline's only input. It may come from a downloaded copy in the data
+root or a user-selected folder, a game folder that carries it in place included. Never modify the
+user's folders.
 
 Content freshness comes from `pipeline-manifest.json` and the bundled current manifest. A schema
 mismatch blocks play; an older content revision asks for regeneration.

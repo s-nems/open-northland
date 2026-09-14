@@ -7,7 +7,7 @@ must remain outside the repository.
 ## Package flow
 
 ```text
-owned game files
+CulturesNation mod
        |
        v
 asset-pipeline -> generated content -> content-resolver -> app / desktop
@@ -46,7 +46,7 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
 - `packages/desktop` serves the browser build through Electron and runs first-use content setup.
 - `packages/web` hosts the same app in a plain browser: the installer page, the pipeline in a worker,
   and a service worker answering the content routes from origin-private storage.
-- `tools/asset-pipeline` converts an owned game installation into local, validated content.
+- `tools/asset-pipeline` converts the CulturesNation mod into local, validated content.
 
 The app owns runtime orchestration: it advances the sim and hands snapshots and events to the sinks.
 Audio shares pure camera and projection helpers from `@open-northland/render/data`; it does not own a

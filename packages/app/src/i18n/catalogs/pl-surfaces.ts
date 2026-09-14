@@ -216,7 +216,7 @@ export const plSurfaces = {
     backToMenu: 'Wróć do menu',
     missingContentTitle: 'Zdekodowana zawartość jest niedostępna',
     missingTerrainDetail:
-      'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Uruchom pipeline assetów na posiadanej kopii gry (npm run pipeline) i odśwież stronę.',
+      'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Uruchom pipeline assetów na modzie CulturesNation (npm run pipeline) i odśwież stronę.',
     loadFailedTitle: 'Wczytywanie zapisu nie powiodło się',
     loadFailedDetail:
       'Ten świat nie przyjął zapisanej gry. Zwykle znaczy to, że zapis powstał przy innej zawartości gry albo starszej wersji mapy; kolejna próba skończy się tak samo.',
@@ -326,11 +326,11 @@ export const plSurfaces = {
     summaryHeads: 'Ten sam chód z każdym dostępnym wyglądem głowy.',
     summaryColors: 'Ten sam chód we wszystkich szesnastu kolorach graczy.',
     missingAtlas:
-      'Uruchom pipeline assetów na posiadanej kopii gry, aby wczytać atlas „{character}” ({stem}).',
+      'Uruchom pipeline assetów na modzie CulturesNation, aby wczytać atlas „{character}” ({stem}).',
     missingFrames:
       'content/ir.json nie zawiera klatek możliwych do odtworzenia dla „{character}” ({imagelib}).',
     missingRoster:
-      'Uruchom pipeline assetów na posiadanej kopii gry, aby wczytać zdekodowane atlasy postaci.',
+      'Uruchom pipeline assetów na modzie CulturesNation, aby wczytać zdekodowane atlasy postaci.',
     noLooks: 'Brak wyglądów postaci',
     noHeads: 'Brak wyglądów głów',
     noColors: 'Brak kolorów graczy',
@@ -344,7 +344,7 @@ export const plSurfaces = {
     title: 'Atlas sprite’ów',
     intro: 'Wybierz atlas, filtruj nazwy klatek i kliknij kafel, aby skopiować identyfikator.',
     missingDetail:
-      'Uruchom pipeline assetów na posiadanej kopii gry, aby przeglądać lokalne zdekodowane atlasy.',
+      'Uruchom pipeline assetów na modzie CulturesNation, aby przeglądać lokalne zdekodowane atlasy.',
     atlas: 'Atlas',
     filter: 'Filtruj klatki…',
     zoom: 'Powiększenie',
@@ -367,7 +367,7 @@ export const plSurfaces = {
     intro:
       'Odtwórz dowolne nagranie. Akcje opisują moment użycia, dźwięki pracy to grupy wskazywane po id przez animację osadnika, a głosy grupują gwar według wieku i płci.',
     missingTitle: 'Nie znaleziono zdekodowanych dźwięków',
-    missingDetail: 'Uruchom pipeline assetów na posiadanej kopii gry, aby utworzyć lokalny bank dźwięków.',
+    missingDetail: 'Uruchom pipeline assetów na modzie CulturesNation, aby utworzyć lokalny bank dźwięków.',
     actions: 'Akcje i przypisane dźwięki',
     cues: 'Dźwięki pracy (wskazane przez dane animacji)',
     voices: 'Głosy osadników',

@@ -41,7 +41,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   const jobs = buildSandboxJobs(extras);
   const tribes = buildSandboxTribes([...jobs.keys()], extras);
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'opennorthland-global-sandbox' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'opennorthland-global-sandbox' }, locale: 'eng' },
     goods: buildSandboxGoods(extras),
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),

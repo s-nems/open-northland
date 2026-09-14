@@ -1,26 +1,22 @@
 import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline/manifest';
-import { probeGameFolder } from '@open-northland/asset-pipeline/probe';
 import {
   classifyContent,
   createEventThrottle,
-  type GameFolderCandidate,
   type ModEvent,
-  type PickedFolder,
   type PipelineEvent,
+  requireModRoot,
   type ShellApi,
   type ShellSetupState,
 } from '@open-northland/installer';
-import { snapshotDirectoryHandle, snapshotFileList } from '@open-northland/installer/folder';
 import type { Locale } from '@open-northland/installer/i18n';
 import { messages } from '@open-northland/installer/i18n';
 import { discoverInstalledMod, installCnMod, isFinalModEvent } from '@open-northland/installer/mod-install';
 import { vjoin } from '@open-northland/vfs';
-import { fileMapVfs, opfsVfs } from '@open-northland/vfs/opfs';
 import { effectiveLocale, storeLocale } from './locale.js';
 import { acquireOriginLock } from './locks.js';
 import { pickedArchiveDownload, siteArchiveDownload } from './mod-transport.js';
 import { CONTENT_DIR, CONTENT_RUNNING_MARKER, MODS_DIR, opfsRoot } from './opfs-layout.js';
-import { pickDirectoryFiles, pickZipFile } from './pickers.js';
+import { pickZipFile } from './pickers.js';
 import {
   assertRoomForConversion,
   hasRoomForConversion,
@@ -46,17 +42,7 @@ async function withStorageMessage<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-/** `showDirectoryPicker` is Chromium-only (WICG File System Access); absent elsewhere. */
-interface DirectoryPickerWindow {
-  showDirectoryPicker?(options?: { readonly id?: string }): Promise<FileSystemDirectoryHandle>;
-}
-
-/** Every capability this shell implements. A new optional member on `ShellApi` fails this build
- *  until the web shell either implements it or is listed here as not offering it. */
-type WebShellApi = Required<Omit<ShellApi, 'probeGamePath' | 'detectGameFolders'>>;
-
 export function createWebShellApi(): ShellApi {
-  let picked: PickedFolder | undefined;
   let worker: Worker | undefined;
   let releasePipelineLock: (() => void) | undefined;
   const pipelineListeners: ((event: PipelineEvent) => void)[] = [];
@@ -69,23 +55,7 @@ export function createWebShellApi(): ShellApi {
     for (const listener of modListeners) listener(event);
   };
 
-  async function candidateOf(folder: PickedFolder): Promise<GameFolderCandidate> {
-    picked = folder;
-    return { path: folder.name, probe: await probeGameFolder(fileMapVfs(folder.files), '') };
-  }
-
-  /**
-   * Probes the handle itself, which is a bounded scan, and walks the tree only once the folder has
-   * proven to hold the game. Snapshotting first would charge a mistaken pick - a home directory, a
-   * drive root - a full recursive walk before anything could tell the visitor it was the wrong one.
-   */
-  async function candidateOfHandle(handle: FileSystemDirectoryHandle): Promise<GameFolderCandidate> {
-    const probe = await probeGameFolder(opfsVfs(handle), '');
-    if (!probe.hasArchives) return { path: handle.name, probe };
-    return candidateOf(await snapshotDirectoryHandle(handle));
-  }
-
-  /** OPFS-root-relative, exactly as the worker's data mount and the setup page both consume it. */
+  /** OPFS-root-relative, exactly as the worker and the setup page both consume it. */
   async function availableModRoot(): Promise<string | undefined> {
     const fs = await opfsRoot();
     return discoverInstalledMod(fs, MODS_DIR);
@@ -145,7 +115,7 @@ export function createWebShellApi(): ShellApi {
     }
   }
 
-  const api: WebShellApi = {
+  const api: ShellApi = {
     async getState(): Promise<ShellSetupState> {
       const modRoot = await availableModRoot();
       return {
@@ -157,40 +127,10 @@ export function createWebShellApi(): ShellApi {
       };
     },
 
-    async pickGameFolder(): Promise<GameFolderCandidate | null> {
-      const picker = (window as DirectoryPickerWindow).showDirectoryPicker;
-      if (picker !== undefined) {
-        let handle: FileSystemDirectoryHandle;
-        try {
-          handle = await picker.call(window, { id: 'open-northland-game' });
-        } catch (err) {
-          if (err instanceof DOMException && err.name === 'AbortError') return null;
-          throw err; // a permission or read failure is not a cancel and must surface
-        }
-        return candidateOfHandle(handle);
-      }
-      const files = await pickDirectoryFiles();
-      if (files === null) return null;
-      const folder = snapshotFileList(files);
-      if (folder === undefined) throw new Error(messages().errors.notAFolder);
-      return candidateOf(folder);
-    },
-
-    async adoptFolder(folder: PickedFolder): Promise<GameFolderCandidate | null> {
-      return candidateOf(folder);
-    },
-
-    async runPipeline(gamePath: string): Promise<void> {
+    async runPipeline(): Promise<void> {
       if (worker !== undefined) throw new Error(messages().errors.pipelineRunning);
       if (modInstall !== undefined) throw new Error(messages().errors.modStillDownloading);
-      const folder = picked;
-      if (folder === undefined || folder.name !== gamePath) {
-        throw new Error(messages().errors.noArchives);
-      }
-      const probe = await probeGameFolder(fileMapVfs(folder.files), '');
-      if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
-      const modRoot = probe.hasMod ? undefined : await availableModRoot();
-      if (!probe.hasMod && modRoot === undefined) throw new Error(messages().errors.modRequired);
+      const modRoot = requireModRoot(await availableModRoot());
       await ensureRoomFor(CONTENT_DIR);
       const release = await acquireOriginLock(PIPELINE_LOCK);
       if (release === undefined) throw new Error(messages().errors.conversionElsewhere);
@@ -210,12 +150,7 @@ export function createWebShellApi(): ShellApi {
             listener({ kind: 'error', message: messages().errors.pipelineWorkerCrashed });
           }
         };
-        const request: RunPipelineRequest = {
-          kind: 'run',
-          game: folder.files,
-          modRoot,
-          locale: effectiveLocale(),
-        };
+        const request: RunPipelineRequest = { kind: 'run', modRoot, locale: effectiveLocale() };
         spawned.postMessage(request);
         window.addEventListener('beforeunload', confirmUnload);
       } catch (error) {

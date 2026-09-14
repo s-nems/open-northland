@@ -6,8 +6,8 @@ import { formatMessage, localeTag, messages } from '@open-northland/installer/i1
 
 const GB = 1e9;
 
-/** Approximation from a full conversion of the owned copy: ~1.2 GB of content, the ~600 MB mod
- *  archive, and the tree it unpacks to. Used only to refuse a visibly hopeless start. */
+/** Approximation from a full conversion of the mod: ~1 GB of content, the ~600 MB mod archive, and
+ *  the ~1 GB tree it unpacks to. Used only to refuse a visibly hopeless start. */
 const CONVERSION_BYTES = 3 * GB;
 
 /** Storage can be present as an API and still refused: blocking site data leaves the methods in

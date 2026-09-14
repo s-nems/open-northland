@@ -5,12 +5,11 @@ import { PIPELINE_STAGES } from '@open-northland/asset-pipeline/progress';
 
 /**
  * Approximation: the weights and item estimates below come from one observed full run against the
- * game copy plus the culturesnation mod. They only shape the bar and never gate completion.
+ * unpacked culturesnation mod. They only shape the bar and never gate completion.
  */
 
 // Approximate seconds per stage in that run.
 const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
-  unpack: 10,
   pictures: 55,
   atlases: 85,
   'player-colors': 15,
@@ -20,14 +19,13 @@ const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   ir: 2,
   transitions: 1,
   maps: 3,
-  // In-process render of the 64-track soundtrack; runs everywhere the game copy has DataX/DM2.
+  // In-process render of the 64-track soundtrack the mod ships under DataX/DM2.
   music: 60,
 };
 
 /** Item counts for the stages that walk as they go without an up-front total. */
 const ESTIMATED_ITEMS: Partial<Record<PipelineStageId, number>> = {
-  unpack: 4100,
-  pictures: 5800,
+  pictures: 5600,
 };
 
 /** Caps an estimated stage so the bar never claims a finish it cannot know. */

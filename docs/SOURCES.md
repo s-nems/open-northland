@@ -1,8 +1,9 @@
 # Source policy
 
-Open Northland reads a legally obtained *Cultures – 8th Wonder of the World* installation and writes
-decoded content to the local, ignored `content/` directory. Original files, decoded assets, and
-generated content are not part of the repository.
+Open Northland reads the unpacked CulturesNation mod archive and writes decoded content to the local,
+ignored `content/` directory. A legally obtained *Cultures – 8th Wonder of the World* installation
+serves as byte-level evidence for format and behavior research, not as a pipeline input. Original
+files, mod files, decoded assets, and generated content are not part of the repository.
 
 The project is an independent implementation. Format and behavior work is based on:
 
@@ -24,10 +25,9 @@ The project-wide legal and trademark notice is in [`LEGAL.md`](LEGAL.md).
 
 ## Evidence baseline
 
-Corpus counts in the current documentation use an English-locale extraction from an owned
-*8th Wonder of the World* installation with CnMod 1.3.1. State a different input beside any claim that
-uses one. When the baseline changes, re-run the affected counts instead of carrying the old numbers
-forward.
+Corpus counts in the current documentation use an English-locale conversion of CnMod 1.3.2. State a
+different input beside any claim that uses one. When the baseline changes, re-run the affected counts
+instead of carrying the old numbers forward.
 
 ## Source precedence
 
@@ -42,17 +42,14 @@ Source keys are case-sensitive, repeated keys and list-valued keys have differen
 ids are often scoped by record family or tribe. Verify the real key space before adding an index or
 cross-reference.
 
-When one path exists in more than one place, the layers resolve mod overlay, then base install, then
-`.lib` member: a loose file wins its archive twin. 75 paths collide that way in the owned copy (66
-`.pcx`, 4 `.bmd`, 3 `.fnt`, 2 `.bmp`). The basis is data consistency rather than a direct observation
-of the original: the mod's `mapmoveableanimations/animations.ini` indexes 312 bobs of
-`CR_Hum_Body_74.bmd`, which only the loose copy carries, while the archive copy has the base game's 96
-- matching the base `animations.cif`, whose one sequence indexes 96. A mod-installed tree is
-self-consistent only under loose-first.
-
-Only the stages that read both places carry the archive layer (the `.pcx` conversion, the atlas source
-index, the transition-overlay compose). The rest read loose files exclusively, which resolves the same
-way for every collision above; an archive-**only** file of those kinds would stay invisible to them.
+The mod archive ships every file the stages read: the rule tables (readable `.ini` where the base
+has only `.cif`), every `.bmd`, the sounds, the `DataX/DM2` soundtrack, the pictures, fonts, string
+tables, and the mod's maps. The original game's packed `data0001.lib` adds nothing the stages
+consume: a conversion of the mod alone and one of the mod plus an owned installation produce
+byte-identical rules, atlases, interface art, fonts, transitions, and music, and the archive's
+`Data/maps` campaigns are not decoded by any stage. Basis: the `CnMod 1.3.2.zip` central directory
+(43,310 entries) compared against the served content tree, and a directory diff of the two
+conversions over the owned copy.
 
 ## Supported input formats
 
@@ -64,7 +61,6 @@ way for every collision above; an archive-**only** file of those kinds would sta
 | `.bmd` | palette-indexed sprite frames and animations | [`formats/GRAPHICS.md`](formats/GRAPHICS.md) |
 | `.pcx` | palette-indexed pictures and palette carriers | [`formats/GRAPHICS.md`](formats/GRAPHICS.md) |
 | `.fnt` | bitmap-font wrapper around a bob container | [`formats/GRAPHICS.md`](formats/GRAPHICS.md) |
-| `.lib` | packed file library | decoder tests and `decoders/lib.ts` |
 | `.cur` | Windows cursor resource | decoder tests and `decoders/cur.ts` |
 | `.wav` | sound effects and voices | browser-native playback |
 | `.sgt` / `.dls` | DirectMusic soundtrack data | decoded by `decoders/sgt.ts`, `decoders/sgt-tracks.ts`, `decoders/dls.ts`; performed by `stages/music/interpret.ts`, a behavioral port of the MIT [libdmusic](https://github.com/frabert/libdmusic) player with music-value resolution as documented from binary analysis by the MIT [GothicKit dmusic](https://github.com/GothicKit/dmusic) project, proven by event parity against the previously vendored renderer over the owned corpus. Tracks publish at the 44.1 kHz synth rate rather than the audiopath's requested 22050 Hz port rate: most bank samples are 44.1 kHz, and a recording of the original carries content past 11 kHz with no break there |

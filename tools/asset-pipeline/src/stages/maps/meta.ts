@@ -11,7 +11,7 @@ import {
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
-import { findPathCaseInsensitiveInDirs } from '../../roots.js';
+import { findPathCaseInsensitive } from '../../roots.js';
 import { STRING_TABLE_DIR } from './info.js';
 
 /** The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing strings and music binding. */
@@ -54,7 +54,7 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
  */
 async function resolveMapHeader(
   fs: Vfs,
-  mapDirs: readonly string[],
+  mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
 ): Promise<MapHeader> {
@@ -76,7 +76,7 @@ async function resolveMapHeader(
       mapTypes !== undefined
     )
       break;
-    const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [file]);
+    const path = await findPathCaseInsensitive(fs, mapDir, [file]);
     if (path === undefined) continue;
     try {
       consider(iniBytesToSections(await fs.readFile(path)));
@@ -100,13 +100,13 @@ async function resolveMapHeader(
  */
 export async function loadMapStringTables(
   fs: Vfs,
-  mapDirs: readonly string[],
+  mapDir: string,
   rel: string,
 ): Promise<MapStringTables> {
   const tables: MapStringTables = {};
   for (const lang of MAP_TEXT_LANGUAGES) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
-      const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [STRING_TABLE_DIR, lang, form]);
+      const path = await findPathCaseInsensitive(fs, mapDir, [STRING_TABLE_DIR, lang, form]);
       if (path === undefined) continue;
       let table: Record<number, string>;
       try {
@@ -148,15 +148,15 @@ export function preferredStringTable(tables: MapStringTables): Record<number, st
  */
 export async function resolveMapMeta(
   fs: Vfs,
-  mapDirs: readonly string[],
+  mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
   strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
-  strings ??= preferredStringTable(await loadMapStringTables(fs, mapDirs, rel));
+  strings ??= preferredStringTable(await loadMapStringTables(fs, mapDir, rel));
   const { nameStringId, descriptionStringId, musicType, mapTypes } = await resolveMapHeader(
     fs,
-    mapDirs,
+    mapDir,
     rel,
     cifSections,
   );

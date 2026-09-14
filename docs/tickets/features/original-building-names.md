@@ -17,5 +17,5 @@ source labels can also overflow the fixed name column.
 
 ## Verify
 
-- `npm test`; pipeline run against the owned game copy.
+- `npm test`; pipeline run against the local mod.
 - Details panel shows original names without overflow - **user's eyes**.

@@ -43,9 +43,7 @@ function transport(local: boolean, kind = 'user'): typeof fetch {
     const path = String(input);
     if (path === '/maps-index')
       return new Response(
-        JSON.stringify(
-          local ? [{ id: 'island', provenance: { kind, folder: 'UserMaps/island', layer: 'game' } }] : [],
-        ),
+        JSON.stringify(local ? [{ id: 'island', provenance: { kind, folder: 'UserMaps/island' } }] : []),
       );
     return local && path === '/maps/island.json'
       ? new Response(JSON.stringify(MAP))
@@ -159,13 +157,11 @@ it('uses creation-time verified documents instead of reloading a changed local m
   s.transfer.dispose();
 });
 
-it('vetoes delivery of a locally known base map even when its id casing differs', async () => {
+it('vetoes delivery of a locally known unknown-origin map even when its id casing differs', async () => {
   const fetchImpl: typeof fetch = async (input) =>
     String(input) === '/maps-index'
       ? new Response(
-          JSON.stringify([
-            { id: 'ISLAND', provenance: { kind: 'base', folder: 'Data/maps/island', layer: 'archive' } },
-          ]),
+          JSON.stringify([{ id: 'ISLAND', provenance: { kind: 'unknown', folder: 'Data/maps/island' } }]),
         )
       : new Response('', { status: 404 });
   const s = setup(false, 'Guest', fetchImpl);

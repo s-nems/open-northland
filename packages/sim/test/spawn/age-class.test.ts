@@ -20,7 +20,7 @@ const VIKING = 1;
 /** The real age-class id space (`logicdefines.inc`): ids 1–4 carry the baby/child slugs. */
 function ageClassContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -36,7 +36,7 @@ function ageClassContent(): ContentSet {
 /** A fixture-style job table whose adult trade reuses a low age-class numeric id. */
 function collidingContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 1, id: 'woodcutter' }],
     buildings: [],

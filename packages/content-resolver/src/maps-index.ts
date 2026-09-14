@@ -105,10 +105,9 @@ async function readSidecar(dir: MapsDir, id: string, suffix: string): Promise<un
 /** Mirrors the strict data MapProvenance schema at this untrusted wire boundary. */
 function provenanceOf(raw: unknown): MapsIndexProvenance | undefined {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
-  const { kind, folder, layer } = raw as Record<string, unknown>;
-  if (Object.keys(raw).some((key) => key !== 'kind' && key !== 'folder' && key !== 'layer')) return undefined;
-  if (kind !== 'base' && kind !== 'mod' && kind !== 'user' && kind !== 'unknown') return undefined;
-  if (layer !== 'game' && layer !== 'mod' && layer !== 'archive') return undefined;
+  const { kind, folder } = raw as Record<string, unknown>;
+  if (Object.keys(raw).some((key) => key !== 'kind' && key !== 'folder')) return undefined;
+  if (kind !== 'mod' && kind !== 'user' && kind !== 'unknown') return undefined;
   if (
     typeof folder !== 'string' ||
     folder.length === 0 ||
@@ -118,7 +117,7 @@ function provenanceOf(raw: unknown): MapsIndexProvenance | undefined {
     folder.split('/').some((part) => part === '' || part === '.' || part === '..')
   )
     return undefined;
-  return { kind, folder, layer };
+  return { kind, folder };
 }
 
 /** Optional metadata from `<id>.meta.json`; malformed fields are dropped. */

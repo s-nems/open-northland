@@ -90,15 +90,10 @@ describe('wireIpc sender guard', () => {
     expect(effects.desktopState).toHaveBeenCalledOnce();
   });
 
-  it("delivers the first invoke argument as the handler's first parameter", async () => {
-    // The guard consumes the event; one left in front would fail the string check instead of
-    // reaching the path probe.
-    const probed = registered.get(IPC_CHANNELS.probeGamePath)?.(APP_FRAME, '/no/such/game/folder');
-    await expect(probed).resolves.toMatchObject({ path: '/no/such/game/folder' });
-  });
-
   it('still validates arguments behind the guard', async () => {
-    expect(() => registered.get(IPC_CHANNELS.probeGamePath)?.(APP_FRAME, 42)).toThrow(
+    // The guard consumes the event; one left in front would fail the string check instead of
+    // reaching the name check.
+    await expect(registered.get(IPC_CHANNELS.writeSave)?.(APP_FRAME, 42, new Uint8Array())).rejects.toThrow(
       'expected a string argument',
     );
     expect(() => registered.get(IPC_CHANNELS.setLocale)?.(APP_FRAME, 'klingon')).toThrow(
@@ -136,5 +131,11 @@ describe('wireIpc sender guard', () => {
 
   it('lists no saves when the folder does not exist', async () => {
     await expect(registered.get(IPC_CHANNELS.listSaves)?.(APP_FRAME)).resolves.toEqual([]);
+  });
+
+  it('refuses a conversion while the shell holds no mod root', async () => {
+    await expect(registered.get(IPC_CHANNELS.runPipeline)?.(APP_FRAME)).rejects.toThrow(
+      'the CulturesNation mod is required',
+    );
   });
 });

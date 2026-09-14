@@ -3,9 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { memoryVfs } from '../src/memory.js';
-import { mountVfs } from '../src/mount.js';
 import { nodeVfs } from '../src/node.js';
-import { fileMapVfs, opfsVfs } from '../src/opfs.js';
+import { opfsVfs } from '../src/opfs.js';
 import { type ReadableVfs, readText, type Vfs, writeText } from '../src/types.js';
 import { vjoin } from '../src/vpath.js';
 import { fakeOpfsRoot } from './support/fake-opfs.js';
@@ -171,71 +170,7 @@ describe('opfsVfs over faked handles', () => {
   });
 });
 
-describe('fileMapVfs', () => {
-  readableContract(() =>
-    Promise.resolve({
-      fs: fileMapVfs(
-        new Map(
-          Object.entries(SEED).map(([rel, bytes]) => [
-            rel,
-            new File([Uint8Array.from(bytes) as unknown as BlobPart], rel),
-          ]),
-        ),
-      ),
-      root: '',
-    }),
-  );
-
-  it('resolves handle-backed entries only when their bytes or size are asked for', async () => {
-    let materialized = 0;
-    const file = new File([Uint8Array.of(9, 9, 9)], 'late.bin');
-    const handle = {
-      getFile: (): Promise<File> => {
-        materialized++;
-        return Promise.resolve(file);
-      },
-    } as unknown as FileSystemFileHandle;
-
-    const fs = fileMapVfs(new Map([['deep/late.bin', handle]]));
-    expect(materialized).toBe(0);
-    expect(await fs.readdir('deep')).toEqual([{ name: 'late.bin', kind: 'file' }]);
-    expect(await fs.stat('deep')).toEqual({ kind: 'dir', size: 0 });
-    expect(materialized).toBe(0);
-    expect([...(await fs.readFile('deep/late.bin'))]).toEqual([9, 9, 9]);
-    expect(materialized).toBe(1);
-  });
-});
-
-describe('mountVfs', () => {
-  adapterContract(() =>
-    Promise.resolve({ fs: mountVfs({ '/data': memoryVfs(), '/game': memoryVfs() }), root: '/data' }),
-  );
-
-  it('routes by first segment and refuses writes into a read-only mount', async () => {
-    const data = memoryVfs();
-    const fs = mountVfs({
-      '/game': fileMapVfs(new Map([['the original', new File([Uint8Array.of(1)], 'the original')]])),
-      '/data': data,
-    });
-    await fs.writeFile('/data/out.txt', Uint8Array.of(7));
-    expect(await data.stat('out.txt')).toEqual({ kind: 'file', size: 1 });
-    expect(await fs.stat('/game/the original')).toEqual({ kind: 'file', size: 1 });
-    expect(await fs.stat('/data/the original')).toBeUndefined();
-    await expect(fs.readFile('/elsewhere/x')).rejects.toThrow(/outside every mount/);
-    await expect(fs.writeFile('/game/the original', Uint8Array.of(2))).rejects.toThrow(/read-only mount/);
-    await expect(fs.rm('/game/the original')).rejects.toThrow(/read-only mount/);
-  });
-
-  it('collapses a climbing path before choosing a mount', async () => {
-    const game = fileMapVfs(new Map([['the original', new File([Uint8Array.of(1)], 'the original')]]));
-    const fs = mountVfs({ '/game': game, '/data': memoryVfs() });
-    expect([...(await fs.readFile('/data/../game/the original'))]).toEqual([1]);
-    await expect(fs.readFile('/game/../escape')).rejects.toThrow(/outside every mount/);
-  });
-});
-
 it('answers stat with undefined for a path no adapter can address', async () => {
   expect(await memoryVfs().stat('../escape')).toBeUndefined();
   expect(await opfsVfs(fakeOpfsRoot()).stat('../escape')).toBeUndefined();
-  expect(await mountVfs({ '/data': memoryVfs() }).stat('/elsewhere/x')).toBeUndefined();
 });

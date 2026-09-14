@@ -7,7 +7,7 @@ import {
   makeSource,
   type SourceRef,
 } from '../../decoders/ini.js';
-import { CULTURESNATION_MOD } from '../../probe.js';
+import { CULTURESNATION_MOD } from '../../mod-root.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 import { loadCifTable } from './cif-tables.js';
 
@@ -50,8 +50,8 @@ export function mergeJobGraphics(layers: readonly (readonly JobGraphics[])[]): J
 }
 
 /**
- * The human `[jobbasegraphics]` table, mod `.ini` over base `.cif`. A source absent from every root
- * contributes nothing, so a partial install still yields the rows it has.
+ * The human `[jobbasegraphics]` table, mod `.ini` over base `.cif`. An absent source contributes
+ * nothing, so a partial mod tree still yields the rows it has.
  */
 export async function loadJobGraphics(fs: Vfs, roots: SourceRoots): Promise<JobGraphics[]> {
   const modPath = await resolveSourceFile(fs, roots, MOD_FILE);

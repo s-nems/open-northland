@@ -37,7 +37,7 @@ describe('resolveMapScript', () => {
         '[MissionData]\ndebuginfo "Win"\ndescription 30\ngoal "PlayerDied" 1\nresult "MissionWon" 0\n' +
         '[MissionData]\ndebuginfo "Untexted"\ndescription 31\ngoal "True"\n',
     );
-    const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, {
+    const script = await resolveMapScript(fs, dir, 'x/map.dat', undefined, {
       30: 'Defeat the Franks',
       50: 'Ragnar',
       51: 'Rurik',
@@ -57,11 +57,9 @@ describe('resolveMapScript', () => {
       join(dir, 'player.inc'),
       '[playerdata]\nplayer 0 #PLAYER_TYPE_HUMAN #TRIBE_TYPE_HUMAN_VIKING #PLAYER_COLOR_ID_BLUE\n',
     );
-    const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, undefined);
+    const script = await resolveMapScript(fs, dir, 'x/map.dat', undefined, undefined);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
-    expect(
-      await resolveMapScript(fs, [dir.concat('-missing')], 'x/map.dat', undefined, undefined),
-    ).toBeUndefined();
+    expect(await resolveMapScript(fs, `${dir}-missing`, 'x/map.dat', undefined, undefined)).toBeUndefined();
   });
 
   it('reads player sections authored in misc.inc or inline in map.ini (9 + 1 corpus maps)', async () => {
@@ -71,7 +69,7 @@ describe('resolveMapScript', () => {
         '[multiplayer]\nplayeroption 0 #PLAYER_TYPE_HUMAN #PLAYER_TYPE_NONE\n',
     );
     await writeFile(join(dir, 'map.ini'), '[MissionData]\ndebuginfo "Inline"\ngoal "True"\n');
-    const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, undefined);
+    const script = await resolveMapScript(fs, dir, 'x/map.dat', undefined, undefined);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
     expect(script?.multiplayer?.slotOptions).toEqual([{ player: 0, allowed: ['human', 'none'] }]);
     expect(script?.missions).toHaveLength(1);
@@ -89,7 +87,7 @@ describe('resolveMapScript', () => {
         props: [{ key: 'player', values: ['0', '1', '4', '7'] }],
       },
     ];
-    const script = await resolveMapScript(fs, [dir], 'x/map.dat', cifSections, undefined);
+    const script = await resolveMapScript(fs, dir, 'x/map.dat', cifSections, undefined);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 4, colorId: 7 }]);
     expect(script?.source?.file).toBe('x/map.cif');
   });

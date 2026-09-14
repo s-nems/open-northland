@@ -11,7 +11,7 @@ packages/desktop/release/
 /desktop-config.json
 
 # Generated intermediate content - DERIVED FROM COPYRIGHTED GAME DATA.
-# Never commit. Each user generates this from their own owned copy via the asset pipeline.
+# Never commit. Each user generates this from the CulturesNation mod via the asset pipeline.
 # Anchored to the repo root (leading slash) so it ONLY ignores the top-level game-asset output,
 # NOT source directories that happen to be named `content` (e.g. packages/app/src/content/).
 /content/

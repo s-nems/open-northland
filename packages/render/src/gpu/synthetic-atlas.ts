@@ -3,7 +3,7 @@ import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } fro
 
 /**
  * A synthetic sprite atlas that exercises the textured sub-rect draw branch without copyrighted game
- * data: real bob atlases are decoded from an owned game copy and gitignored, so a committed harness
+ * data: real bob atlases are decoded from the mod and gitignored, so a committed harness
  * cannot bind them. It stands in one flat coloured marker frame per drawable sprite kind, and binds
  * through the same `SpriteSheet` shape a real atlas does.
  */

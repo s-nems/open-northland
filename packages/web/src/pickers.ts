@@ -42,13 +42,3 @@ export function pickZipFile(): Promise<File | null> {
     (input) => input.files?.[0] ?? null,
   );
 }
-
-/** Folder picking without `showDirectoryPicker`. */
-export function pickDirectoryFiles(): Promise<FileList | null> {
-  return oneShotInput(
-    (input) => {
-      input.webkitdirectory = true;
-    },
-    (input) => (input.files === null || input.files.length === 0 ? null : input.files),
-  );
-}

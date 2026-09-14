@@ -1,17 +1,11 @@
 import { runPipeline } from '@open-northland/asset-pipeline';
 import { bridgePipelineProgress } from '@open-northland/installer';
 import { setActiveLocale } from '@open-northland/installer/i18n';
-import { mountVfs, vjoin } from '@open-northland/vfs';
-import { fileMapVfs, opfsVfs } from '@open-northland/vfs/opfs';
-import { CONTENT_RUNNING_MARKER } from '../opfs-layout.js';
+import { vjoin } from '@open-northland/vfs';
+import { opfsVfs } from '@open-northland/vfs/opfs';
+import { CONTENT_DIR, CONTENT_RUNNING_MARKER } from '../opfs-layout.js';
 import { storageFullMessage } from '../storage.js';
-import {
-  DATA_MOUNT,
-  GAME_MOUNT,
-  type PipelineWorkerMessage,
-  pipelineArgsOf,
-  type RunPipelineRequest,
-} from './protocol.js';
+import type { PipelineWorkerMessage, RunPipelineRequest } from './protocol.js';
 
 /** The dedicated-worker global, typed locally: the page project compiles against the DOM lib. */
 interface WorkerGlobal {
@@ -57,11 +51,8 @@ worker.onmessage = (event: MessageEvent<RunPipelineRequest>): void => {
   if (request.kind !== 'run') return;
   setActiveLocale(request.locale);
   void (async () => {
-    const fs = mountVfs({
-      [GAME_MOUNT]: fileMapVfs(request.game),
-      [DATA_MOUNT]: opfsVfs(await navigator.storage.getDirectory()),
-    });
-    const args = pipelineArgsOf(request);
+    const fs = opfsVfs(await navigator.storage.getDirectory());
+    const args = { modRoot: request.modRoot, out: CONTENT_DIR };
     // A previous run's tree is dead weight on a storage-bounded origin, and a retry that starts on
     // a failed run's leftovers runs out of room the same way.
     await fs.rm(args.out);

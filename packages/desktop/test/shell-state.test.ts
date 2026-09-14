@@ -52,13 +52,13 @@ describe('createShellState', () => {
 
     it('drops a stale hand-picked root from the config and falls back to mods/', async () => {
       const installed = await installMod();
-      writeConfig(paths.configFile, { gamePath: '/somewhere/game', modPath: join(temp.path, 'deleted') });
+      writeConfig(paths.configFile, { locale: 'pol', modPath: join(temp.path, 'deleted') });
 
       expect(await createShellState(paths).availableModRoot()).toBe(installed);
       const config = readConfig(paths.configFile);
       expect(config.modPath).toBeUndefined();
-      // The stale-mod drop must not cost the user their remembered game folder.
-      expect(config.gamePath).toBe('/somewhere/game');
+      // The stale-mod drop must not cost the user their other remembered settings.
+      expect(config.locale).toBe('pol');
     });
 
     it('is undefined with no config and no installed mod', async () => {
@@ -77,17 +77,14 @@ describe('createShellState', () => {
         contentStatus: 'missing',
         modDelivery: 'upstream-folder',
       });
-      expect('gamePath' in state).toBe(false);
       expect('modRoot' in state).toBe(false);
     });
 
-    it('carries the remembered game path and a discovered mod root', async () => {
+    it('carries a discovered mod root', async () => {
       const installed = await installMod();
-      writeConfig(paths.configFile, { gamePath: '/somewhere/game' });
 
       const state = await createShellState(paths).desktopState();
 
-      expect(state.gamePath).toBe('/somewhere/game');
       expect(state.modRoot).toBe(installed);
       expect(state.portable).toBe(false);
     });

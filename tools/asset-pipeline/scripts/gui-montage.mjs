@@ -1,6 +1,6 @@
 // GUI-atlas montage generator - the human-oracle tool behind `packages/app/src/content/gui-atlas-map.ts`.
 //
-// Decodes a GUI bob sheet (`ls_gui_window.bmd` / `ls_gui_bubbles.bmd`) straight from an OWNED game copy and
+// Decodes a GUI bob sheet (`ls_gui_window.bmd` / `ls_gui_bubbles.bmd`) straight from the unpacked mod and
 // lays EVERY frame out in a numbered grid - a big index label + native size + hex id per cell, over a
 // checkerboard so transparency and extent are visible - so a person can identify each sprite by eye and
 // promote its `unknown_NNN` map entry to a real name. An agent can't self-judge pixels; this makes the
@@ -12,7 +12,7 @@
 //
 // Usage (from the repo root):
 //   node tools/asset-pipeline/scripts/gui-montage.mjs \
-//     [--game "../Cultures 8th Wonder"] [--sheet ls_gui_window] [--palette iconsleft] \
+//     [--mod-root "../CNMod-1.3.2"] [--sheet ls_gui_window] [--palette iconsleft] \
 //     [--out gui-montage.png] [--cols 12] [--from 0] [--to <last>]
 //
 // The correct per-frame palette isn't known until frames are identified, so re-run with `--palette` to
@@ -35,15 +35,15 @@ function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : fallback;
 }
-const gameDir = arg('game', '../Cultures 8th Wonder');
+const modRoot = arg('mod-root', '../CNMod-1.3.2');
 const sheet = arg('sheet', 'ls_gui_window');
 const paletteName = arg('palette', 'iconsleft');
 const cols = Number.parseInt(arg('cols', '12'), 10);
 const outPath = arg('out', `gui-montage-${sheet}-${paletteName}.png`);
 
-const bmd = decodeBmd(new Uint8Array(readFileSync(join(gameDir, 'Data/engine2d/bin/bobs', `${sheet}.bmd`))));
+const bmd = decodeBmd(new Uint8Array(readFileSync(join(modRoot, 'Data/engine2d/bin/bobs', `${sheet}.bmd`))));
 const palette = decodePcx(
-  new Uint8Array(readFileSync(join(gameDir, 'Data/gui/palettes', `${paletteName}.pcx`))),
+  new Uint8Array(readFileSync(join(modRoot, 'Data/gui/palettes', `${paletteName}.pcx`))),
 ).palette;
 const from = Number.parseInt(arg('from', '0'), 10);
 const to = Number.parseInt(arg('to', String(bmd.bobCount - 1)), 10);

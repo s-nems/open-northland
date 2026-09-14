@@ -4,7 +4,7 @@
 
 Two pipeline orchestrators have no direct test coverage. Their pure inner joins are tested, but the
 emit/assembly wrappers around them are only exercised by a full `npm run pipeline` run against the
-owned game copy (not by CI, which has no game assets):
+local mod (not by CI, which has no game assets):
 
 - `convertGoodsStage` (`tools/asset-pipeline/src/stages/goods/index.ts`) - only the pure joins
   `resolveGoodIcons` / `resolveGoodNames` are unit-tested. The stage's atlas + palette-LUT + manifest

@@ -13,7 +13,7 @@ import {
   type PaletteAlias,
   type RuleSection,
 } from '../../decoders/ini.js';
-import { CULTURESNATION_MOD } from '../../probe.js';
+import { CULTURESNATION_MOD } from '../../mod-root.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
@@ -82,7 +82,7 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
 /** One binding skin: where it lives, how its records reach the flat {@link BmdPaletteBinding} shape,
  *  and the per-source handling applied to them. */
 interface GraphicsBindingSource {
-  /** Path under the game root, or under `DataCnmd/` for the mod's readable twins. */
+  /** Path under the mod root: `Data/` for the base tables, `DataCnmd/` for the mod's readable twins. */
   readonly path: string;
   readonly encrypted?: true;
   readonly read: (sections: readonly RuleSection[]) => readonly BmdPaletteBinding[];

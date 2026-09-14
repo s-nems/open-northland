@@ -8,7 +8,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./manifest": "./dist/manifest.js",
-    "./probe": "./dist/probe.js",
+    "./mod-root": "./dist/mod-root.js",
     "./progress": "./dist/progress.js"
   },
   "bin": {

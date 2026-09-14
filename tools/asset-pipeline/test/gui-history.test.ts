@@ -89,7 +89,7 @@ describe('convertGuiHistory', () => {
       encodePcx({ width: 4, height: 3, pixels: new Uint8Array(12).fill(7), palette: rampPalette() }),
     );
 
-    const done = await convertGuiHistory(fs, { game: temp.game, mod: undefined }, temp.out, ['eng', 'pol']);
+    const done = await convertGuiHistory(fs, { mod: temp.game }, temp.out, ['eng', 'pol']);
     expect(done).toEqual([{ lang: 'eng', path: 'gui/history/eng.json', pages: 2 }]);
 
     const pictures = await readdir(join(temp.out, HYPERTEXT_PICTURES_DIR));
@@ -128,6 +128,6 @@ describe('convertGuiHistory', () => {
 
   it('emits nothing for a folder without the index page', async () => {
     await temp.write(join(HISTORY_DIR, 'mythology_00.hlt'), cp1250('Orphan page'));
-    expect(await convertGuiHistory(fs, { game: temp.game, mod: undefined }, temp.out, ['eng'])).toEqual([]);
+    expect(await convertGuiHistory(fs, { mod: temp.game }, temp.out, ['eng'])).toEqual([]);
   });
 });

@@ -1,11 +1,10 @@
 import { realpathSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
-import { CULTURESNATION_MOD } from './probe.js';
+import { CULTURESNATION_MOD } from './mod-root.js';
 
 export interface Args {
-  game: string;
-  /** The culturesnation mod overlay root (a game-root-shaped directory), or undefined to auto-detect. */
-  modRoot: string | undefined;
+  /** The unpacked culturesnation mod, the conversion's only input. */
+  modRoot: string;
   /** Explicit release label from the installed mod package; absent means unknown. */
   modVersion?: string;
   out: string;
@@ -16,12 +15,12 @@ export function parseArgs(argv: readonly string[]): Args {
     const i = argv.indexOf(flag);
     return i >= 0 ? argv[i + 1] : undefined;
   };
-  const game = get('--game');
-  if (game === undefined) {
+  const modRoot = get('--mod-root');
+  if (modRoot === undefined) {
     throw new Error(
-      'usage: pipeline --game <dir> [--mod-root <dir>] [--mod-version <version>] [--out <dir>] - a mod installed inside the ' +
-        `game folder is auto-detected (${CULTURESNATION_MOD}/); --mod-root points at a mod unpacked ` +
-        'elsewhere',
+      'usage: pipeline --mod-root <dir> [--mod-version <version>] [--out <dir>] - the unpacked ' +
+        `culturesnation mod (the directory holding ${CULTURESNATION_MOD}/) is the only input; a game ` +
+        'folder with the mod installed inside it works as --mod-root too.',
     );
   }
   const modVersion = get('--mod-version');
@@ -35,8 +34,7 @@ export function parseArgs(argv: readonly string[]): Args {
     throw new Error('--mod-version requires a nonempty release label of at most 128 characters');
   }
   return {
-    game,
-    modRoot: get('--mod-root'),
+    modRoot,
     out: get('--out') ?? 'content',
     ...(modVersion === undefined ? {} : { modVersion }),
   };
@@ -45,13 +43,12 @@ export function parseArgs(argv: readonly string[]): Args {
 /**
  * Resolves the filesystem args against `baseDir`, leaving absolute paths untouched. The entry point
  * passes `process.env.INIT_CWD`: npm runs a workspace script with cwd set to `tools/asset-pipeline/`,
- * so a relative `--game ../Cultures 8th Wonder` would otherwise resolve there instead of the repo root.
+ * so a relative `--mod-root ../CNMod-1.3.2` would otherwise resolve there instead of the repo root.
  */
 export function resolveArgs(args: Args, baseDir: string): Args {
   return {
     ...args,
-    game: resolve(baseDir, args.game),
-    modRoot: args.modRoot === undefined ? undefined : resolve(baseDir, args.modRoot),
+    modRoot: resolve(baseDir, args.modRoot),
     out: resolve(baseDir, args.out),
   };
 }

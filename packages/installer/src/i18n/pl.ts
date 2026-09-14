@@ -5,15 +5,10 @@ export const pl = {
     title: 'Open Northland - pierwsze uruchomienie',
     introHtml:
       'Open Northland to darmowa reimplementacja gry <em>Cultures - 8th Wonder of the World</em>. Nie ' +
-      'zawiera żadnej grafiki ani dźwięków gry: przy tym pierwszym uruchomieniu konwertuje zasoby Twojej ' +
-      'własnej kopii oryginalnej gry do swojego folderu danych. Wskaż folder, w którym zainstalowana jest ' +
-      'gra (ten z plikiem <code>the original</code> i katalogiem <code>DataX</code>), aby zacząć.',
-    pathPlaceholder: 'Ścieżka do folderu z grą Cultures 8th Wonder…',
-    dropPrompt: 'Przeciągnij tutaj folder z grą Cultures 8th Wonder',
+      'zawiera żadnej grafiki ani dźwięków gry: przy tym pierwszym uruchomieniu konwertuje darmowy mod ' +
+      'społecznościowy <strong>CulturesNation</strong>, który zawiera dane gry, do swojego folderu ' +
+      'danych. Pobierz mod poniżej albo wskaż kopię, którą już masz, aby zacząć.',
     browserStorage: 'prywatnym magazynie tej przeglądarki',
-    browse: 'Przeglądaj…',
-    readingFolder: 'Odczytywanie folderu…',
-    detected: 'Znalezione na tym komputerze:',
     install: 'Zainstaluj zawartość gry',
     regenerate: 'Wygeneruj zawartość gry ponownie',
     play: 'Graj',
@@ -22,14 +17,8 @@ export const pl = {
     back: 'Wstecz',
     installed: 'Zawartość gry zainstalowana.',
     legalHtml:
-      'Twoje oryginalne pliki gry są tylko odczytywane, nigdy modyfikowane. Skonwertowane dane pozostają ' +
-      'na tym komputerze w <code id="data-root"></code>.',
-    probe: {
-      withMod: 'Znaleziono grę (z modem CulturesNation).',
-      externalMod: 'Znaleziono grę. Używany mod CulturesNation z {path}.',
-      noMod: 'Znaleziono grę - ale brakuje moda CulturesNation.',
-      noArchives: 'Nie znaleziono tam archiwów gry (.lib) - wskaż folder zawierający the original oraz DataX.',
-    },
+      'Pliki moda są tylko odczytywane, nigdy modyfikowane. Skonwertowane dane pozostają na tym ' +
+      'komputerze w <code id="data-root"></code>.',
     status: {
       ready: 'Zawartość gry jest zainstalowana. Wygeneruj ją tutaj ponownie, jeśli chcesz świeżej konwersji.',
       staleRevision:
@@ -46,7 +35,6 @@ export const pl = {
       failed: 'Instalacja zawartości gry nie powiodła się.',
     },
     stages: {
-      unpack: 'Rozpakowywanie archiwów gry',
       pictures: 'Konwertowanie obrazów',
       atlases: "Budowanie atlasów sprite'ów",
       'player-colors': 'Budowanie kolorów graczy',
@@ -60,13 +48,14 @@ export const pl = {
     },
     mod: {
       requiredUpstreamHtml:
-        'Darmowy mod społecznościowy <strong>CulturesNation</strong> jest wymagany do gry, a Twój folder ' +
-        'gry go nie zawiera. Open Northland może pobrać go za Ciebie (~600 MB, z linku Google Drive serwisu ' +
-        '<code>culturesnation.pl</code>) do swojego folderu danych - Twój folder gry pozostaje nienaruszony.',
+        'Darmowy mod społecznościowy <strong>CulturesNation</strong> zawiera dane gry, na których działa ' +
+        'Open Northland. Open Northland może pobrać go za Ciebie (~600 MB, z linku Google Drive serwisu ' +
+        '<code>culturesnation.pl</code>) do swojego folderu danych.',
       requiredOriginHtml:
-        'Darmowy mod społecznościowy <strong>CulturesNation</strong> jest wymagany do gry, a Twój folder ' +
-        'gry go nie zawiera. Open Northland może pobrać go za Ciebie (~600 MB, z tej strony) do magazynu ' +
-        'tej przeglądarki - Twój folder gry pozostaje nienaruszony.',
+        'Darmowy mod społecznościowy <strong>CulturesNation</strong> zawiera dane gry, na których działa ' +
+        'Open Northland. Open Northland może pobrać go za Ciebie (~600 MB, z tej strony) do magazynu tej ' +
+        'przeglądarki.',
+      using: 'Używany mod CulturesNation z {path}.',
       download: 'Pobierz mod',
       haveIt: 'Już go mam…',
       downloading: 'Pobieranie moda…',
@@ -87,7 +76,6 @@ export const pl = {
     },
   },
   dialogs: {
-    pickGameTitle: 'Wybierz folder z grą Cultures - 8th Wonder of the World',
     pickModTitle: 'Wybierz rozpakowany folder moda CulturesNation',
     saveGameTitle: 'Zapisz do pliku',
     loadGameTitle: 'Wczytaj zapisaną grę',
@@ -104,9 +92,8 @@ export const pl = {
   },
   errors: {
     modStillDownloading: 'mod wciąż się pobiera - poczekaj na zakończenie',
-    noArchives: 'nie znaleziono archiwów gry (.lib) w wybranym folderze',
     modRequired:
-      'mod CulturesNation jest wymagany - pobierz go poniżej lub wskaż kreatorowi rozpakowaną kopię',
+      'mod CulturesNation jest wymagany - pobierz go powyżej lub wskaż kreatorowi kopię, którą masz',
     modDownloadRunning: 'pobieranie moda już trwa',
     noDataCnmd: 'nie znaleziono tam DataCnmd/ - wskaż rozpakowany folder moda (pobierz go z {url})',
     incompatibleSchema:
@@ -129,7 +116,6 @@ export const pl = {
     modArchiveUnavailable: 'ta strona nie udostępniła archiwum moda ({status})',
     pipelineRunning: 'konwersja już trwa',
     pipelineWorkerCrashed: 'konwerter nieoczekiwanie się zatrzymał - odśwież stronę i spróbuj ponownie',
-    notAFolder: 'to jest plik, a nie folder - przeciągnij folder, w którym zainstalowana jest gra',
     setupFailed: 'nie udało się uruchomić instalatora: {message}',
   },
 } as const satisfies Messages;

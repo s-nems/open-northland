@@ -9,11 +9,6 @@ import { GUI_CONTENT_DIR } from './paths.js';
 import { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
 import { convertWindowBitmaps } from './window-bitmaps.js';
 
-/**
- * GUI extraction stage. Every source is a loose file read straight from `roots` (the HUD ships unpacked
- * and the culturesnation mod does not override it), so this stage does not depend on the `.lib` unpack.
- */
-
 export { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 export { convertCursors, type GuiCursorResult } from './cursors.js';
 export { convertGuiHistory, type GuiHistoryResult } from './history.js';

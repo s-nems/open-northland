@@ -1,4 +1,4 @@
-import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline/probe';
+import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline/mod-root';
 import { type ReadableVfs, type Vfs, vjoin } from '@open-northland/vfs';
 
 /** Present inside a mod directory only while it is being unpacked, so a half-written tree never

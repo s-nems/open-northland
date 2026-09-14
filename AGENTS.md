@@ -8,9 +8,10 @@ nearest package contract.
 
 ## Repository and legal boundary
 
-The repository may sit beside an owned game installation and the CulturesNation `DataCnmd/` folder.
-They are pipeline inputs only. Never commit original files, decoded content, binary probes, or
-reference captures from the original.
+The repository may sit beside an unpacked CulturesNation mod archive, the pipeline's only input: it
+carries the game's data files. An owned game installation beside it serves reverse-engineering
+evidence, never the pipeline. Never commit original files, mod files, decoded content, binary probes,
+or reference captures from the original.
 
 This is an independent AGPL-3.0-or-later implementation. Do not copy or translate another engine's
 code. Base format and behavior work must use the sources allowed by `docs/SOURCES.md`. The canonical
@@ -97,7 +98,7 @@ machines. Persisted formats are replaced, never migrated:
 
 Before changing extraction or a content join, inspect all three:
 
-1. the real source file in the owned copy;
+1. the real source file in the mod archive;
 2. the decoder or extractor;
 3. generated `content/ir.json`.
 
@@ -135,7 +136,7 @@ documented under `.claude/commands/`.
 
 - Prove behavior at the lowest useful layer: unit, integration, headless scenario, then browser scene.
 - Normal code expects `npm run check`, `npm run build`, and `npm test`.
-- Original-game pipeline and content schema changes also need `npm run test:pipeline` against the owned copy.
+- Pipeline and content schema changes also need `npm run test:pipeline` against the local mod.
 - Own-art build and delivery changes follow `docs/art/PIPELINE.md` verification; changed content joins
   still require the real-content checks below.
 - Real-content loaders and joins need `npm run test:content` when local content exists.

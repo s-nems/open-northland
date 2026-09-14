@@ -54,7 +54,7 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, 'pics', 'gui', 'button.PCX'), bytes); // case-insensitive match
     await writeFile(join(game, 'pics', 'notes.txt'), 'ignore me');
 
-    const done = await convertPcxTree(fs, { game, mod: undefined }, out);
+    const done = await convertPcxTree(fs, { mod: game }, out);
 
     expect(done.map((c) => c.output).sort()).toEqual(['logo.png', 'pics/gui/button.png']);
     const png = await readFile(join(out, 'logo.png'));
@@ -73,31 +73,10 @@ describe('convertPcxTree', () => {
     await mkdir(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures'), { recursive: true });
     await writeFile(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures', 'Text_000.pcx'), bytes);
 
-    const done = await convertPcxTree(fs, { game, mod: undefined }, out);
+    const done = await convertPcxTree(fs, { mod: game }, out);
 
     expect(done.map((c) => c.output)).toEqual([vjoin(TEXTURES_DIR, 'text_000.png')]);
     await expect(readFile(join(out, TEXTURES_DIR, 'text_000.png'))).resolves.toBeInstanceOf(Buffer);
-  });
-
-  it('converts in place when a source layer is the out tree (the archive layer)', async () => {
-    // The pipeline's archive layer resolves inside <out>, so an embedded .pcx (extracted from a .lib)
-    // gains its .png sibling in the same tree it was read from. Source==target must write alongside,
-    // not error, and must not re-walk its own output (a .png is never re-matched as a .pcx).
-    const { bytes, width, height } = samplePcx();
-    await mkdir(join(out, 'data', 'bobs'), { recursive: true });
-    await writeFile(join(out, 'data', 'bobs', 'embedded.pcx'), bytes);
-
-    const done = await convertPcxTree(fs, { game: out, mod: undefined }, out);
-
-    expect(done.map((c) => c.output)).toEqual(['data/bobs/embedded.png']);
-    const decoded = await decodePng(await readFile(join(out, 'data', 'bobs', 'embedded.png')));
-    expect(decoded.width).toBe(width);
-    expect(decoded.height).toBe(height);
-    // The .png sibling is never re-matched as a .pcx, so the pass doesn't walk its own output; the
-    // source .pcx survives the conversion, so a re-run simply re-converts it to identical bytes.
-    expect((await convertPcxTree(fs, { game: out, mod: undefined }, out)).map((c) => c.output)).toEqual([
-      'data/bobs/embedded.png',
-    ]);
   });
 
   it('skips a malformed .pcx with a warning instead of aborting the batch', async () => {
@@ -106,15 +85,15 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, 'broken.pcx'), Uint8Array.from([0x0a, 0x05, 0x01])); // too short
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertPcxTree(fs, { game, mod: undefined }, out);
+    const done = await convertPcxTree(fs, { mod: game }, out);
 
     expect(done.map((c) => c.input)).toEqual(['good.pcx']);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped broken\.pcx: pcx:/));
     warn.mockRestore();
   });
 
-  it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
-    await expect(convertPcxTree(fs, { game: join(game, 'nope'), mod: undefined }, out)).rejects.toThrow();
+  it('throws when the mod root does not exist (a real argument error, not per-file)', async () => {
+    await expect(convertPcxTree(fs, { mod: join(game, 'nope') }, out)).rejects.toThrow();
   });
 
   it('composes a transition texture + alpha-mask pair into one RGBA .masked.png (raw index = alpha)', async () => {
@@ -140,7 +119,7 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, TEXTURES_DIR, 'tran_meadow.pcx'), colour);
     await writeFile(join(game, TEXTURES_DIR, 'tran_meadow_a.pcx'), mask);
 
-    const done = await composeMaskedTransitionPages(fs, { game, mod: undefined }, out, [
+    const done = await composeMaskedTransitionPages(fs, { mod: game }, out, [
       {
         texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
         textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
@@ -178,7 +157,7 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, TEXTURES_DIR, 'tran_bad_a.pcx'), mask);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await composeMaskedTransitionPages(fs, { game, mod: undefined }, out, [
+    const done = await composeMaskedTransitionPages(fs, { mod: game }, out, [
       {
         texture: 'data/engine2d/bin/textures/tran_bad.pcx',
         textureAlpha: 'data/engine2d/bin/textures/tran_bad_a.pcx',

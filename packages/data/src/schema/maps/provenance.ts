@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-/** Where a map's files came from: a source-location classification, not a redistribution licence. */
+/** Where a map's files sit under the mod root: a source-location classification, not a
+ *  redistribution licence. */
 export const MapProvenance = z.strictObject({
-  kind: z.enum(['base', 'mod', 'user', 'unknown']),
+  kind: z.enum(['mod', 'user', 'unknown']),
   /** Source-root-relative folder, never a machine-specific installation path. */
   folder: z
     .string()
@@ -15,6 +16,5 @@ export const MapProvenance = z.strictObject({
         value.split('/').every((part) => part !== '' && part !== '.' && part !== '..'),
       { message: 'expected a relative map folder' },
     ),
-  layer: z.enum(['game', 'mod', 'archive']),
 });
 export type MapProvenance = z.infer<typeof MapProvenance>;

@@ -4,7 +4,7 @@ import { decodePng } from './decoders/png.js';
 import { errorMessage } from './errors.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
-import { resolveModRoot, type SourceRoots, withArchiveLayer } from './roots.js';
+import { resolveModRoot, type SourceRoots } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { TEXTURES_DIR } from './stages/content-tree.js';
 import { convertFontStage } from './stages/fonts.js';
@@ -12,7 +12,6 @@ import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
 import { HYPERTEXT_PICTURES_DIR } from './stages/gui/paths.js';
 import { writeIr } from './stages/ir/index.js';
-import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
 import { renderMusicStage } from './stages/music/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
@@ -24,38 +23,28 @@ import {
 import { indexSourceAssets } from './stages/source-files.js';
 
 /**
- * Runs the full conversion of an owned game copy into the IR under `args.out`, shared by the CLI and
- * the desktop shell's first-run installer. `progress` is optional live-UI telemetry.
+ * Runs the full conversion of the mod root into the IR under `args.out`, shared by the CLI and the
+ * shells' first-run installers. `progress` is optional live-UI telemetry.
  */
 export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgress): Promise<void> {
   const roots: SourceRoots = {
-    game: args.game,
-    mod: await resolveModRoot(fs, args.game, args.modRoot),
+    mod: await resolveModRoot(fs, args.modRoot),
     modVersion: args.modVersion,
   };
-  console.log(`[pipeline] game=${args.game} mod=${roots.mod} out=${args.out}`);
+  console.log(`[pipeline] mod=${roots.mod} out=${args.out}`);
 
   await clearPipelineManifest(fs, args.out);
-  // The archive layer resolves against this directory, so it must exist even when the unpack writes
-  // nothing (a copy that ships no `.lib`).
   await fs.mkdir(args.out);
 
   // Stages run in dependency order. Sources resolve mod .ini over base .cif; docs/SOURCES.md carries
-  // the full source-to-decoder map. The unpack writes loose .pcx/.bmd/.cif copies into gitignored <out>.
-  progress?.stage?.('unpack');
-  const extracted = await unpackLibTree(fs, roots, args.out, progress?.item);
-  console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
-
-  // The unpack above is this layer's precondition; <game> == <out> is not a supported invocation.
-  const sources = withArchiveLayer(roots, args.out);
-
+  // the full source-to-decoder map.
   progress?.stage?.('pictures');
-  const pictures = await convertPcxTree(fs, sources, args.out, progress?.item);
+  const pictures = await convertPcxTree(fs, roots, args.out, progress?.item);
   console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
 
   progress?.stage?.('atlases');
   const graphics = await resolveGraphicsBindings(fs, roots);
-  const assets = await indexSourceAssets(fs, sources);
+  const assets = await indexSourceAssets(fs, roots);
   const atlases = await convertBmdTree(fs, graphics, args.out, assets, progress?.item);
   const { bindings, palettes } = graphics;
   const distinct = new Set(atlases.map((a) => a.png)).size;
@@ -131,7 +120,7 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
       ? [{ texture: t.texture, textureAlpha: t.textureAlpha }]
       : [],
   );
-  const masked = await composeMaskedTransitionPages(fs, sources, args.out, maskedPairs);
+  const masked = await composeMaskedTransitionPages(fs, roots, args.out, maskedPairs);
   console.log(
     `[pipeline] transitions: ${ir.gfxPatternTransitions.length} record(s) -> ` +
       `${masked.length} masked overlay page(s) into ${args.out}`,

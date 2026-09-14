@@ -28,6 +28,6 @@ real content.
 
 ## Verify
 
-- `npm test`; a real pipeline run against the owned game copy (extraction changed).
+- `npm test`; a real pipeline run against the local mod (extraction changed).
 - The generated `ir.json` carries `equip` on the equippable goods and icon bindings for the
   previously iconless ones.

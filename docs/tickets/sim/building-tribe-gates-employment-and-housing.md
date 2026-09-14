@@ -16,11 +16,12 @@ Evidence for keeping the gate: the key is `LogicTribeType`, sitting beside `Logi
 are all `Gfx*`. The prefix is the source's own claim that the tribe is logic, not art.
 
 Evidence against: shipping maps build one settlement out of mixed-tribe buildings and staff it across
-that line. `Data/maps/Tale_of_Six_Sons_MULTIPLAYER/staticobjects.inc` gives player 6 a `frank barn`, a
+that line. `CnModMaps/Burza Piaskowa` attaches saracen archers to an `Egypt Tower`, and the
+third-party `Tale_of_Six_Sons_MULTIPLAYER` (outside the CnMod corpus) gives player 6 a `frank barn`, a
 `viking home`, a `frank patricianhouse 02` and a `viking smithy` in one town, then attaches frank
-humans to the viking buildings. `CnModMaps/Burza Piaskowa` attaches saracen archers to an
-`Egypt Tower`. Whether the original honours those attachments or drops them as we do is unverified -
-that the maps load proves nothing either way, and it is the fact this ticket most needs.
+humans to the viking buildings. Whether the original honours those attachments or drops them as we
+do is unverified - that the maps load proves nothing either way, and it is the fact this ticket most
+needs.
 
 Measured cost today: 11 of the 188 authored `attachtohouse` rows are refused on this check alone, 8
 tower garrison posts and 3 civilians, concentrated in the mixed-tribe maps.
@@ -36,8 +37,8 @@ tower garrison posts and 3 civilians, concentrated in the mixed-tribe maps.
 
 ## Verify
 
-`npm test`, then `npm run test:content` re-counting the authored attachments that land (154 of 188
-today). One browser pass on `tale_of_six_sons_multiplayer` player 6, whose town is the mixed-art case.
+`npm test`, then `npm run test:content` re-counting the authored attachments that land. One browser
+pass on `burza_piaskowa` player 2, whose saracen archers stand in an Egyptian tower.
 
 Related: `docs/tickets/app/tribe-partition-is-invisible.md` covers showing the partition to the player
 and presumes this rule is real. The graphics join now reads the field: every civilization draws its own

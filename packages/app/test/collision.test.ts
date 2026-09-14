@@ -148,7 +148,7 @@ const BRIDGE_IR = {
  *  typeIds through `landscape` alone, so the economy tables stay empty. */
 function collisionContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'collision.test' } },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'collision.test' } },
     goods: [],
     jobs: [],
     buildings: [],

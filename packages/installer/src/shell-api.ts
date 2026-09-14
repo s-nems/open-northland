@@ -1,6 +1,4 @@
-import type { GameFolderProbe } from '@open-northland/asset-pipeline/probe';
 import type { PipelineStageId } from '@open-northland/asset-pipeline/progress';
-import type { FolderSnapshot } from '@open-northland/vfs/opfs';
 import type { ContentStatus } from './content-state.js';
 import type { Locale } from './i18n/index.js';
 
@@ -22,23 +20,8 @@ export interface ShellSetupState {
   /** How the installed content compares to this shell's pipeline. */
   readonly contentStatus: ContentStatus;
   readonly modDelivery: ModDelivery;
-  /** The game folder remembered from a previous run, to prefill the picker. */
-  readonly gamePath?: string;
-  /** A usable culturesnation mod root outside the game folder, if any. */
+  /** A usable culturesnation mod root in the data root or hand-picked, if any. */
   readonly modRoot?: string;
-}
-
-export interface GameFolderCandidate {
-  /** Shell-meaningful identifier the UI displays and hands back to `runPipeline`. */
-  readonly path: string;
-  readonly probe: GameFolderProbe;
-}
-
-/** A folder the page acquired from the browser: its own name and its files keyed by folder-relative
- *  path. The page never hands a shell a DOM event, so a shell behind IPC can implement the seam. */
-export interface PickedFolder {
-  readonly name: string;
-  readonly files: FolderSnapshot;
 }
 
 export type PipelineEvent =
@@ -53,20 +36,10 @@ export type ModEvent =
   | { readonly kind: 'mod-extract'; readonly done: number; readonly total: number }
   | { readonly kind: 'mod-warning'; readonly message: string };
 
-export interface GamePickerApi {
-  /** Shell folder picker; `null` when the user cancels. */
-  pickGameFolder(): Promise<GameFolderCandidate | null>;
-  /** Probe a hand-typed path; presence enables the typed-path input. */
-  probeGamePath?(path: string): Promise<GameFolderCandidate>;
-  /** Scan for known installs; presence enables the detected-installs list. */
-  detectGameFolders?(): Promise<GameFolderCandidate[]>;
-  /** Take a folder the page acquired; presence enables the drop zone. `null` when nothing usable. */
-  adoptFolder?(folder: PickedFolder): Promise<GameFolderCandidate | null>;
-}
-
 export interface PipelineApi {
-  /** Start converting `gamePath` into the data root; progress arrives on `onPipelineEvent`. */
-  runPipeline(gamePath: string): Promise<void>;
+  /** Start converting the available mod root into the data root; progress arrives on
+   *  `onPipelineEvent`. */
+  runPipeline(): Promise<void>;
   /** Abort a running conversion; resolves once it stopped, without throwing. */
   stopPipeline(): Promise<void>;
   onPipelineEvent(listener: (event: PipelineEvent) => void): void;
@@ -90,4 +63,4 @@ export interface ShellChromeApi {
   setLocale(locale: Locale): Promise<void>;
 }
 
-export type ShellApi = GamePickerApi & PipelineApi & ModInstallApi & ShellChromeApi;
+export type ShellApi = PipelineApi & ModInstallApi & ShellChromeApi;

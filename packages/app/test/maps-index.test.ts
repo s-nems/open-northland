@@ -20,7 +20,7 @@ describe('parseMapsIndex', () => {
   });
 
   it('retains validated provenance and drops malformed source claims', () => {
-    const provenance = { kind: 'user', folder: 'UserMaps/island', layer: 'game' };
+    const provenance = { kind: 'user', folder: 'UserMaps/island' };
     const entries = parseMapsIndex([
       { id: 'island', provenance },
       { id: 'bad', provenance: { ...provenance, folder: '../escape' } },

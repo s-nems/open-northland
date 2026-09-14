@@ -3,9 +3,9 @@ import { cifBytesToSections, type RuleSection, type SourceRef } from '../../deco
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
- * Loads a `.cif`-only table at `relFile`, resolved overlay-first because the mod ships patched copies
- * of several base `.cif` tables, and runs `extract` over its sections. An absent file degrades to
- * `fallback`; a present but undecodable one throws, so corrupt input is not mistaken for absent input.
+ * Loads a `.cif`-only table at `relFile` (the mod ships patched copies of several base `.cif` tables)
+ * and runs `extract` over its sections. An absent file degrades to `fallback`; a present but
+ * undecodable one throws, so corrupt input is not mistaken for absent input.
  */
 export async function loadCifTable<T>(
   fs: Vfs,

@@ -1,4 +1,4 @@
-import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline/probe';
+import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline/mod-root';
 import { type Vfs, vjoin } from '@open-northland/vfs';
 import type { ModEvent } from '../shell-api.js';
 import { markComplete, markIncomplete } from './discover.js';

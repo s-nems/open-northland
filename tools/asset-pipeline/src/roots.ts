@@ -1,41 +1,18 @@
 import { type ReadableVfs, relIn, vjoin } from '@open-northland/vfs';
-import { CULTURESNATION_MOD } from './probe.js';
+import { CULTURESNATION_HOME_URL, CULTURESNATION_MOD } from './mod-root.js';
 import { walkFiles } from './walk.js';
 
-/**
- * The source trees one conversion reads, highest precedence first: the culturesnation mod overlay, the
- * owned base install, then the unpacked-archive layer. A file in an earlier layer wins the same
- * relative path, matching an install with the mod extracted over it. `mod === game` is that
- * installed-in-place layout.
- */
+/** The source tree one conversion reads: the unpacked culturesnation mod. */
 export interface SourceRoots {
-  readonly game: string;
+  readonly mod: string;
   /** Caller-supplied release label, not inferred from installation folder or executable. */
   readonly modVersion?: string | undefined;
-  readonly mod: string | undefined;
-  /** The `.lib` members unpacked under `--out`; absent until the unpack stage has run. */
-  readonly archive?: string | undefined;
 }
 
-/** One source file found under the roots: its root-relative path and the winning absolute path. */
+/** One source file found under the root: its root-relative path and its absolute path. */
 export interface SourceFile {
   readonly rel: string;
   readonly path: string;
-}
-
-/** The roots in resolution order, deduplicated - an absent or identity layer collapses away. */
-export function rootsInOrder(roots: SourceRoots): readonly string[] {
-  const layers = [roots.mod, roots.game, roots.archive].filter((r) => r !== undefined);
-  return [...new Set(layers)];
-}
-
-/**
- * Adds the unpacked-archive tree under `outDir` as the lowest-precedence layer, so a loose file wins a
- * path collision with its `.lib` twin. Source basis: data consistency, docs/SOURCES.md "Source
- * precedence".
- */
-export function withArchiveLayer(roots: SourceRoots, outDir: string): SourceRoots {
-  return { ...roots, archive: outDir };
 }
 
 /**
@@ -85,86 +62,48 @@ export async function findPathCaseInsensitive(
   return current;
 }
 
-/** Case-insensitive resolution across candidate directories in priority order; the first hit wins. */
-export async function findPathCaseInsensitiveInDirs(
-  fs: ReadableVfs,
-  dirs: readonly string[],
-  segments: readonly string[],
-): Promise<string | undefined> {
-  for (const dir of dirs) {
-    const path = await findPathCaseInsensitive(fs, dir, segments);
-    if (path !== undefined) return path;
-  }
-  return undefined;
-}
-
 /**
- * Resolves `rel` overlay-first: the first root where the path resolves case-insensitively, or
- * undefined when none does. Splits on either separator, since callers pass either a joined constant
- * or an ini-borne reference already forward-slashed by `normalizeAssetPath`.
+ * Resolves `rel` under the mod root case-insensitively, or undefined when it does not exist. Splits
+ * on either separator, since callers pass either a joined constant or an ini-borne reference already
+ * forward-slashed by `normalizeAssetPath`.
  */
 export async function resolveSourceFile(
   fs: ReadableVfs,
   roots: SourceRoots,
   rel: string,
 ): Promise<string | undefined> {
-  return findPathCaseInsensitiveInDirs(fs, rootsInOrder(roots), rel.split(/[\\/]+/));
-}
-
-/** One root's walked files, before the cross-root union. */
-interface RootFiles {
-  readonly root: string;
-  readonly files: readonly { readonly rel: string; readonly path: string }[];
+  return findPathCaseInsensitive(fs, roots.mod, rel.split(/[\\/]+/));
 }
 
 /**
- * Merges per-root listings into one union keyed by the case-folded relative path, an earlier root
- * winning a collision even when the trees spell the path with different case. Two same-root paths
- * that fold equal throw instead. Sorted by `rel` so a re-run is reproducible regardless of
- * directory-entry order.
- */
-export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[] {
-  const byKey = new Map<string, SourceFile>();
-  for (const { root, files } of perRoot) {
-    const own = new Map<string, string>();
-    for (const { rel, path } of files) {
-      const key = rel.toLowerCase();
-      const twin = own.get(key);
-      if (twin !== undefined) {
-        throw new Error(
-          `case-colliding sources "${twin}" and "${rel}" under ${root} - two on-disk spellings ` +
-            'of one source path; remove or rename one and re-run',
-        );
-      }
-      own.set(key, rel);
-      if (!byKey.has(key)) byKey.set(key, { rel, path });
-    }
-  }
-  return [...byKey.values()].sort((a, b) => (a.rel < b.rel ? -1 : 1));
-}
-
-/**
- * Recursively collects every file under the roots whose lower-cased relative path satisfies `match`,
- * as a layer-ordered case-folded union. A missing root propagates as an environmental error.
+ * Recursively collects every file under the mod root whose lower-cased relative path satisfies
+ * `match`. Two paths that fold equal throw, since a case-insensitive filesystem could serve either.
+ * Sorted by `rel` so a re-run is reproducible regardless of directory-entry order. A missing root
+ * propagates as an environmental error.
  */
 export async function collectSourceFiles(
   fs: ReadableVfs,
   roots: SourceRoots,
   match: (relLower: string) => boolean,
 ): Promise<SourceFile[]> {
-  const perRoot: RootFiles[] = [];
-  for (const root of rootsInOrder(roots)) {
-    const files: { rel: string; path: string }[] = [];
-    for await (const file of walkFiles(fs, root)) {
-      const rel = relIn(root, file);
-      if (match(rel.toLowerCase())) files.push({ rel, path: file });
+  const byKey = new Map<string, SourceFile>();
+  for await (const path of walkFiles(fs, roots.mod)) {
+    const rel = relIn(roots.mod, path);
+    const key = rel.toLowerCase();
+    if (!match(key)) continue;
+    const twin = byKey.get(key);
+    if (twin !== undefined) {
+      throw new Error(
+        `case-colliding sources "${twin.rel}" and "${rel}" under ${roots.mod} - two on-disk ` +
+          'spellings of one source path; remove or rename one and re-run',
+      );
     }
-    perRoot.push({ root, files });
+    byKey.set(key, { rel, path });
   }
-  return unionCaseFoldedRoots(perRoot);
+  return [...byKey.values()].sort((a, b) => (a.rel < b.rel ? -1 : 1));
 }
 
-/** Collects every file whose last path segment is `name`, case-insensitively, across the roots. */
+/** Collects every file whose last path segment is `name`, case-insensitively. */
 export async function collectSourceFilesNamed(
   fs: ReadableVfs,
   roots: SourceRoots,
@@ -174,32 +113,15 @@ export async function collectSourceFilesNamed(
   return collectSourceFiles(fs, roots, (rel) => `/${rel}`.endsWith(suffix));
 }
 
-/** Where players download the culturesnation mod. */
-export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
-
 /**
- * Resolves the mod overlay root: an explicit `modRoot` must contain a `DataCnmd/` directory, and with
- * none given a game folder that contains one is its own overlay. No mod anywhere fails fast here,
- * because the tribe/weapon/house tables are readable only under `DataCnmd/`.
+ * Validates the mod root, the conversion's only input: it must contain a `DataCnmd/` directory,
+ * because the tribe/weapon/house tables are readable only there.
  */
-export async function resolveModRoot(
-  fs: ReadableVfs,
-  game: string,
-  modRoot: string | undefined,
-): Promise<string> {
-  const hasMod = async (root: string): Promise<boolean> =>
-    (await fs.stat(vjoin(root, CULTURESNATION_MOD)))?.kind === 'dir';
-  if (modRoot !== undefined) {
-    if (await hasMod(modRoot)) return modRoot;
-    throw new Error(
-      `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ - point it at the unpacked culturesnation ` +
-        'mod folder (the directory that contains DataCnmd/ and CnModMaps/).',
-    );
-  }
-  if (await hasMod(game)) return game;
+export async function resolveModRoot(fs: ReadableVfs, modRoot: string): Promise<string> {
+  if ((await fs.stat(vjoin(modRoot, CULTURESNATION_MOD)))?.kind === 'dir') return modRoot;
   throw new Error(
-    `the culturesnation mod is required and was not found: ${game} has no ${CULTURESNATION_MOD}/ and ` +
-      `no --mod-root was given. Download the mod from ${CULTURESNATION_HOME_URL}, unpack it, and pass ` +
-      '--mod-root <unpacked dir> (or install it into the game folder).',
+    `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ - point it at the unpacked culturesnation ` +
+      `mod (the directory that contains DataCnmd/ and CnModMaps/), downloaded from ` +
+      `${CULTURESNATION_HOME_URL}. A game folder with the mod installed inside it works too.`,
   );
 }

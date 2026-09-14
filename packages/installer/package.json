@@ -7,7 +7,6 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
-    "./folder": "./dist/folder-snapshot.js",
     "./setup": "./dist/setup/init.js",
     "./i18n": "./dist/i18n/index.js",
     "./mod-install": "./dist/mod-install/index.js"

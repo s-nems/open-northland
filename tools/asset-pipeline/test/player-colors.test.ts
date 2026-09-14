@@ -23,7 +23,7 @@ const CREATURES_DIR = join('Data', 'engine2d', 'bin', 'palettes', 'creatures');
 
 /** Source roots pointed at the synthetic out tree - armor rows exist only when a test writes the
  *  recipe inis into it; otherwise they degrade away, leaving the 16-row LUT. */
-const rootsAt = (outDir: string): { game: string; mod: undefined } => ({ game: outDir, mod: undefined });
+const rootsAt = (outDir: string): { mod: string } => ({ mod: outDir });
 
 /** Temp-dir teardowns registered by the helpers below, drained after each test. */
 const tempCleanups: Array<() => Promise<void>> = [];

@@ -11,7 +11,7 @@ import { bandTrack, segment, sequenceTrack, tempoTrack } from './segment-fixture
 
 const OUT = '/out';
 const DM2 = '/game/DataX/DM2';
-const ROOTS = { game: '/game', mod: undefined } as const;
+const ROOTS = { mod: '/game' } as const;
 
 function shortSegment(padding = 0): Uint8Array {
   // The band matters: the interpreter's frame clock (and so the loop points) only advances while a

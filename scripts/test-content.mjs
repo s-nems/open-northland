@@ -16,7 +16,7 @@ const REQUIRED = ['ir.json', 'maps', 'Data/engine2d/bin/bobs'];
 const missing = REQUIRED.filter((rel) => !existsSync(resolve(dir, rel)));
 if (missing.length > 0) {
   console.error(`test:content needs generated content - missing under ${dir}: ${missing.join(', ')}`);
-  console.error('Generate it with: npm run pipeline -- --game "../Cultures 8th Wonder" --out content');
+  console.error('Generate it with: npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content');
   process.exit(1);
 }
 

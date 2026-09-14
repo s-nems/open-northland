@@ -34,7 +34,7 @@ async function fetchLayerBody(stem: string): Promise<SpriteLayer> {
   const res = await fetch(withBaseUrl(`/bobs/${stem}.atlas.json`));
   if (!res.ok) {
     throw new MissingAtlasError(
-      `atlas: decoded atlas '${stem}' not found (HTTP ${res.status}). Run \`npm run pipeline\` against an owned game copy to populate content/.`,
+      `atlas: decoded atlas '${stem}' not found (HTTP ${res.status}). Run \`npm run pipeline\` on the CulturesNation mod to populate content/.`,
     );
   }
   const manifest = (await res.json()) as AtlasManifest;

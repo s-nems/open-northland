@@ -76,7 +76,7 @@ export async function buildIr(fs: Vfs, roots: SourceRoots): Promise<ContentSet> 
       version: IR_VERSION,
       contentRevision: CONTENT_REVISION,
       ...(roots.modVersion === undefined ? {} : { modVersion: roots.modVersion }),
-      generatedFrom: { game: roots.game, mod: roots.mod },
+      generatedFrom: { mod: roots.mod },
     },
     goods,
     jobs,
@@ -112,7 +112,7 @@ export async function buildIr(fs: Vfs, roots: SourceRoots): Promise<ContentSet> 
 
 /**
  * Builds the validated IR and writes it to `<out>/ir.json`. The output tree is gitignored, so no
- * content decoded from the owned game copy enters the repository.
+ * content decoded from the mod enters the repository.
  */
 export async function writeIr(fs: Vfs, roots: SourceRoots, out: string): Promise<ContentSet> {
   const set = await buildIr(fs, roots);

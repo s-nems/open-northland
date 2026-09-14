@@ -57,7 +57,7 @@ describe('resolveMapBriefing', () => {
       'briefings.txt': '[blockstart:500]\nTITLE\n[blockend:500]\n',
     });
     const { path: out } = await makeTempDir('map-briefing-out');
-    const briefing = await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [0, 500, 777]);
+    const briefing = await resolveMapBriefing(fs, dir, out, 'x/map.dat', [0, 500, 777]);
     expect(briefing).toEqual({
       texts: {
         pol: {
@@ -84,7 +84,7 @@ describe('resolveMapBriefing', () => {
         encodePcx({ width: 3, height: 2, pixels: new Uint8Array(6).fill(4), palette: rampPalette() }),
       );
     }
-    const briefing = await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [500]);
+    const briefing = await resolveMapBriefing(fs, dir, out, 'x/map.dat', [500]);
     const pictures = await readdir(join(out, HYPERTEXT_PICTURES_DIR));
     const [pol, eng] = [briefing?.texts.pol?.['500']?.[1], briefing?.texts.eng?.['500']?.[1]];
     expect(pictures).toHaveLength(1);
@@ -95,9 +95,9 @@ describe('resolveMapBriefing', () => {
   it('yields undefined with no ids, no briefings folder, or no resolvable page', async () => {
     const { path: dir } = await makeTempDir('map-briefing-empty');
     const { path: out } = await makeTempDir('map-briefing-empty-out');
-    expect(await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [])).toBeUndefined();
-    expect(await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [500])).toBeUndefined();
+    expect(await resolveMapBriefing(fs, dir, out, 'x/map.dat', [])).toBeUndefined();
+    expect(await resolveMapBriefing(fs, dir, out, 'x/map.dat', [500])).toBeUndefined();
     await writeBriefings(dir, 'pol', { 'briefings.txt': '[blockstart:1]\nx\n[blockend:1]\n' });
-    expect(await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [500])).toBeUndefined();
+    expect(await resolveMapBriefing(fs, dir, out, 'x/map.dat', [500])).toBeUndefined();
   });
 });

@@ -25,7 +25,7 @@ import { type DlsBank, dlsFileNames, loadDlsBanks, synthesizeEvents } from './sy
  * segment-end frames, so they cannot drift from the events.
  * Deviation: the audiopath's 22050 Hz port rate is a synth-port request, not an output format, and
  * is not applied - the owned install's `music_mode 3` initialises the synth at 44100 Hz, and most
- * DLS samples are 44.1 kHz. Without `DataX/DM2` in the game copy the stage is skipped and the app
+ * DLS samples are 44.1 kHz. Without `DataX/DM2` under the mod root the stage is skipped and the app
  * plays no music.
  */
 
@@ -81,7 +81,7 @@ export interface MusicStageResult {
 
 /**
  * What the stored oggs were rendered from: this stage's render version and the byte sizes of every
- * segment and bank under `DataX/DM2`. The Vfs seam exposes no mtime, so a swapped game copy is
+ * segment and bank under `DataX/DM2`. The Vfs seam exposes no mtime, so a swapped mod release is
  * recognised by input size rather than by time. A same-size edit therefore reads as unchanged, and
  * the synthesizer and encoder are pinned to exact versions in `package.json` because a caret bump
  * would change rendered bytes without changing anything this identity can see.
@@ -133,9 +133,9 @@ async function storedManifest(fs: ReadableVfs, musicDir: string): Promise<Stored
 }
 
 /**
- * Render every `*.sgt` under the owned copy's `DataX/DM2` into `<outDir>/music/<stem>.ogg` plus the
- * track manifest. Incremental: oggs rendered from the same inputs by the same version are kept. A
- * segment that fails leaves the others alone.
+ * Render every `*.sgt` under the mod's `DataX/DM2` into `<outDir>/music/<stem>.ogg` plus the track
+ * manifest. Incremental: oggs rendered from the same inputs by the same version are kept. A segment
+ * that fails leaves the others alone.
  */
 export async function renderMusicStage(
   fs: Vfs,
@@ -143,8 +143,9 @@ export async function renderMusicStage(
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<MusicStageResult> {
-  const dm2 = await findPathCaseInsensitive(fs, roots.game, ['DataX', 'DM2']);
-  if (dm2 === undefined) return { rendered: 0, kept: 0, failed: 0, skipped: 'no DataX/DM2 in the game copy' };
+  const dm2 = await findPathCaseInsensitive(fs, roots.mod, ['DataX', 'DM2']);
+  if (dm2 === undefined)
+    return { rendered: 0, kept: 0, failed: 0, skipped: 'no DataX/DM2 under the mod root' };
   const entries = await fs.readdir(dm2);
   const segments = entries
     .filter((entry) => entry.kind === 'file' && entry.name.toLowerCase().endsWith('.sgt'))

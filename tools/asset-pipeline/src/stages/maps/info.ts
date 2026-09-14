@@ -51,7 +51,7 @@ export function excludeStringTableCopies(found: readonly SourceFile[]): SourceFi
 }
 
 /**
- * Decodes the logic header of every `map.cif` under the source roots into a validated `MapInfo`, in
+ * Decodes the logic header of every `map.cif` under the mod root into a validated `MapInfo`, in
  * path-sorted order so the IR is reproducible regardless of directory-entry order. A `.cif` that
  * fails to read or decode is logged and skipped so one bad file cannot abort the batch. Only the
  * declarative header lands here; the tile grid, `StaticObjects` placements and
@@ -63,7 +63,7 @@ export async function decodeMapTree(fs: Vfs, roots: SourceRoots): Promise<MapInf
   for (const { rel, path } of found) {
     try {
       const bytes = await fs.readFile(path);
-      const provenance = mapProvenance(roots, { rel, path });
+      const provenance = mapProvenance(rel);
       const layer = provenance.kind === 'mod' ? 'mod' : 'base';
       maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer }, provenance));
     } catch (err) {

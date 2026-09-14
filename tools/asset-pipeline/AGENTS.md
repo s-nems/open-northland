@@ -1,7 +1,7 @@
 # Asset pipeline contract
 
-The pipeline converts an owned game copy into local runtime content. It runs under the CLI, the
-desktop shell, and a browser worker, so all file access goes through the injected
+The pipeline converts the unpacked CulturesNation mod into local runtime content. It runs under the
+CLI, the desktop shell, and a browser worker, so all file access goes through the injected
 `@open-northland/vfs` seam and `node:` imports are allowed only in the CLI entry (`cli.ts`,
 `args.ts`). Compression and floating-point image work are fine. The sim determinism restrictions do
 not apply, but root legal, source, readability, and verification rules do.

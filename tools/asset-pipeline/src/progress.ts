@@ -5,7 +5,6 @@
 
 /** Stage ids in `runPipeline`'s fixed execution order. */
 export const PIPELINE_STAGES = [
-  'unpack',
   'pictures',
   'atlases',
   'player-colors',

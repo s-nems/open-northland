@@ -113,7 +113,7 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     expect(done).toHaveLength(1);
@@ -154,7 +154,7 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     expect(done).toHaveLength(2);
@@ -193,10 +193,40 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     expect(done.map((c) => c.png)).toEqual([vjoin(BOBS_DIR, 'body.bear01.png')]);
+  });
+
+  it('serves a subdirectory .bmd flat under bobs/ (the mod ships building bobs under nowe/)', async () => {
+    await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
+    await mkdir(join(out, 'Data', 'Bobs', 'nowe'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Pal', 'house.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Bobs', 'nowe', 'f_bakery.bmd'), sampleBmdBytes());
+
+    const done = await convertBmdTree(
+      fs,
+      {
+        bindings: [
+          {
+            bmd: 'data/bobs/nowe/f_bakery.bmd',
+            shadowBmd: undefined,
+            paletteName: 'house',
+            tribeId: 1,
+            jobId: 2,
+          },
+        ],
+        palettes: [{ name: 'house', gfxFile: 'data/pal/house.pcx' }],
+        buildTimeBmds: new Set(),
+      },
+      out,
+      await indexSourceAssets(fs, { mod: out }),
+    );
+
+    // The app asks for `/bobs/f_bakery.house.png` - the source's `nowe/` subdirectory must not reach
+    // the served name, or the mod's building bobs 404 and fall back.
+    expect(done.map((d) => d.png)).toEqual([vjoin(BOBS_DIR, 'f_bakery.house.png')]);
   });
 
   it('aborts when two convertible .bmd would claim one served atlas name', async () => {
@@ -214,7 +244,7 @@ describe('convertBmdTree', () => {
         fs,
         { bindings, palettes, buildTimeBmds: new Set() },
         out,
-        await indexSourceAssets(fs, { game: out, mod: undefined }),
+        await indexSourceAssets(fs, { mod: out }),
       ),
     ).rejects.toThrow(/basename collision.*nowe\/body\.bmd/s);
   });
@@ -240,7 +270,7 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     expect(done.map((c) => c.png)).toEqual([vjoin(BOBS_DIR, 'body.bear01.png')]);
@@ -257,7 +287,7 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     ); // empty palette index
 
     expect(done).toEqual([]);
@@ -276,7 +306,7 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     expect(done).toEqual([]);
@@ -296,7 +326,7 @@ describe('convertBmdTree', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     expect(done).toEqual([]);
@@ -343,7 +373,7 @@ describe('convertShadowBmdTree', () => {
       fs,
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
   it('writes `<shadow-basename>.shadow.{png,atlas.json}` under bobs/ - the name the app joins on', async () => {
@@ -453,7 +483,7 @@ describe('convertBmdTree build-time bake', () => {
       fs,
       { bindings, palettes, buildTimeBmds: new Set(['data/bobs/house.bmd']) },
       out,
-      await indexSourceAssets(fs, { game: out, mod: undefined }),
+      await indexSourceAssets(fs, { mod: out }),
     );
 
     const alphaOf = async (png: string): Promise<number> => {

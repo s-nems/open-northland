@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import type { PipelineEvent } from '@open-northland/installer';
 import { utilityProcess } from 'electron';
+import { encodePipelineArgv } from './pipeline-argv.js';
 
 /**
  * Main-process side of the conversion: one `utilityProcess` child at a time, with its structured
@@ -14,17 +15,11 @@ export class PipelineHost {
 
   constructor(private readonly childScript: string) {}
 
-  /** An undefined `modRoot` lets the child auto-detect the mod inside the game folder; the sink's
-   * stream ends in `done` or `error` unless `stop()` silences the run. */
-  start(
-    gameDir: string,
-    outDir: string,
-    modRoot: string | undefined,
-    sink: (event: PipelineEvent) => void,
-  ): void {
+  /** The sink's stream ends in `done` or `error` unless `stop()` silences the run. */
+  start(modRoot: string, outDir: string, sink: (event: PipelineEvent) => void): void {
     if (this.child !== undefined) throw new Error('pipeline already running');
     mkdirSync(outDir, { recursive: true });
-    const child = utilityProcess.fork(this.childScript, [gameDir, outDir, modRoot ?? ''], {
+    const child = utilityProcess.fork(this.childScript, encodePipelineArgv(outDir, modRoot), {
       stdio: ['ignore', 'pipe', 'pipe'],
       serviceName: 'open-northland-pipeline',
     });

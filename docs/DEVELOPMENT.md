@@ -28,22 +28,24 @@ started with: restart it after changing sim, render, data, or audio source.
 
 ## Local game content
 
-Generate content from your own game installation:
+Generate content from the unpacked CulturesNation mod, the directory that holds `DataCnmd/`:
 
 ```bash
-npm run pipeline -- --game "../Cultures 8th Wonder" --out content
+npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content
 ```
 
-The pipeline detects `DataCnmd/` inside the game directory. Pass `--mod-root <dir>` when the
-CulturesNation mod is unpacked elsewhere, and `--mod-version <label>` to stamp the manifest with the
-mod release the lobby compares between players. CnMod 1.3.1 is the current verified input; treat a
-newer release as unverified until the real pipeline and content gates pass. The generated `content/`
-tree is ignored by Git.
+The mod archive carries every file the stages read: the rule tables, bobs, sounds, music, pictures,
+fonts, strings, and the mod's maps. A game folder with the mod installed inside it works as
+`--mod-root` too; the game's own packed `.lib` archives are not read, so its original campaigns and
+tutorials are not converted. `--mod-version <label>` stamps the manifest with the mod release the
+lobby compares between players. CnMod 1.3.2 is the current verified input; treat a newer release as
+unverified until the real pipeline and content gates pass. The generated `content/` tree is ignored
+by Git.
 
-The music stage renders the DirectMusic soundtrack (`DataX/DM2`) to one ogg track per segment
-entirely in Node: segment interpretation, DLS synthesis, reverb, and ogg encoding all run from npm
-dependencies, with no native toolchain. Without `DataX/DM2` the stage is skipped with a note and
-the game simply has no music.
+The music stage renders the DirectMusic soundtrack (`DataX/DM2`, which the mod ships) to one ogg
+track per segment entirely in Node: segment interpretation, DLS synthesis, reverb, and ogg encoding
+all run from npm dependencies, with no native toolchain. Without `DataX/DM2` the stage is skipped
+with a note and the game simply has no music.
 
 Local content gates:
 
@@ -54,9 +56,10 @@ npm run test:engines
 ```
 
 `test:content` checks consumers against an existing `content/` directory. `test:pipeline` performs a
-fresh conversion into a temporary directory and validates the result. It uses
-`CULTURES_GAME_DIR` and, when needed, `CULTURES_MOD_ROOT`. `test:engines` boots the app in Electron
-and the Playwright browsers and compares their state hashes with Node (see `TESTING.md`).
+fresh conversion into a temporary directory and validates the result. It reads the mod at
+`CULTURES_MOD_ROOT`, `../CNMod-1.3.2` by default.
+`test:engines` boots the app in Electron and the Playwright browsers and compares their state hashes
+with Node (see `TESTING.md`).
 
 `npm run missions:coverage` builds the workspace and reports static opcode coverage of the content's
 `[MissionData]` scripts, per opcode and (with `--per-map`) per map. Unknown names count as missing
@@ -248,8 +251,8 @@ npm run web:serve
 `packages/web/dist/site`: the installer page, the pipeline worker, the service worker, and the app
 built for the `/play` base. `web:serve` serves that layout locally on port 8788 (`PORT` overrides);
 set `OPEN_NORTHLAND_CNMOD_ZIP=<path>` to also serve a local mod archive at `/cnmod.zip`. Visitors
-convert their own game copy in the browser; the site ships no game content and the converted data
-stays in each browser's origin-private storage.
+convert the mod archive in the browser; the site ships no game content and the converted data stays
+in each browser's origin-private storage.
 
 ## Web image
 
@@ -295,7 +298,7 @@ Own environment development on a playable map: `?map=magiczny_las&assets=own&int
 See [own asset runtime](art/OWN-ASSET-RUNTIME.md) for exports, markers and current coverage.
 
 Use `npm run art -- list` and follow [the art pipeline](art/PIPELINE.md) for candidate builds, review,
-approval and publication. This workshop is independent of `npm run pipeline`, which decodes the owned game.
+approval and publication. This workshop is independent of `npm run pipeline`, which decodes the mod.
 
 ## Relay image
 

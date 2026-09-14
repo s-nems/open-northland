@@ -87,20 +87,6 @@ code {
   display: none;
 }
 
-.pick-row {
-  display: flex;
-  gap: 8px;
-}
-
-input[type="text"] {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #4a4131;
-  background: var(--bg);
-  color: var(--text);
-}
-
 button {
   padding: 8px 16px;
   border-radius: 6px;
@@ -152,16 +138,6 @@ button.primary {
   margin-top: 10px;
 }
 
-.detected button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .bar {
   height: 14px;
   border-radius: 7px;
@@ -205,21 +181,4 @@ button.primary {
 .ok {
   color: var(--ok);
   font-weight: 600;
-}
-
-.drop-zone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 72px;
-  border: 2px dashed #4a4131;
-  border-radius: 8px;
-  color: var(--muted);
-  text-align: center;
-  padding: 12px;
-}
-
-.drop-zone.drag-over {
-  border-color: var(--accent);
-  color: var(--text);
 }

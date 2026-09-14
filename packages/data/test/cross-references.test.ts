@@ -13,7 +13,7 @@ import { IR_VERSION, parseContentSet } from '../src/index.js';
  */
 function base(): Record<string, unknown> {
   return {
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: 1, id: 'wood' },

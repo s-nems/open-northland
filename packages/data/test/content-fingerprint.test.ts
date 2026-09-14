@@ -4,7 +4,7 @@ import { contentFingerprint, IR_VERSION, jsonFingerprint, parseContentSet } from
 
 function content() {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: '/owner/game' } },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: '/owner/game' } },
     goods: [
       { typeId: 1, id: 'water' },
       { typeId: 2, id: 'wood' },
@@ -18,7 +18,7 @@ describe('content fingerprints', () => {
   it('ignores local paths, display names and revision while retaining row order', () => {
     const original = content();
     const moved = structuredClone(original);
-    moved.manifest.generatedFrom.game = '/another/installation';
+    moved.manifest.generatedFrom.mod = '/another/installation';
     moved.manifest.contentRevision++;
     moved.manifest.locale = 'pol';
     moved.goods = moved.goods.map((good) => ({ ...good, name: 'translated' }));

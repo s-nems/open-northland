@@ -19,7 +19,7 @@ import { WEAPON_MAIN_TYPE } from '../../src/systems/readviews/index.js';
  */
 export function aiContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
       {

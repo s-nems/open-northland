@@ -21,7 +21,7 @@ const IR_LOADER_TIMEOUT_MS = 30_000;
 
 /** An empty document carrying every lane, as the pipeline writes it. */
 const MINIMAL_IR = parseContentSet({
-  manifest: { version: IR_VERSION, generatedFrom: { game: 'test' } },
+  manifest: { version: IR_VERSION, generatedFrom: { mod: 'test' } },
   goods: [],
   jobs: [],
   buildings: [],

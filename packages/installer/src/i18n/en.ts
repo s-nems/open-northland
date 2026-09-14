@@ -4,15 +4,10 @@ export const en = {
     title: 'Open Northland - first-run setup',
     introHtml:
       'Open Northland is a free re-implementation of <em>Cultures - 8th Wonder of the World</em>. It ' +
-      'ships no game art or sounds: on this first run it converts the assets of your own copy of the ' +
-      'original game into its data folder. Select the folder your game is installed in (the one with ' +
-      '<code>the original</code> and <code>DataX</code>) to begin.',
-    pathPlaceholder: 'Path to your Cultures 8th Wonder folder…',
-    dropPrompt: 'Drop your Cultures 8th Wonder folder here',
+      'ships no game art or sounds: on this first run it converts the free community mod ' +
+      '<strong>CulturesNation</strong>, which carries the game data, into its data folder. Download ' +
+      'the mod below, or point at a copy you already have, to begin.',
     browserStorage: "this browser's private storage",
-    browse: 'Browse…',
-    readingFolder: 'Reading the folder…',
-    detected: 'Found on this computer:',
     install: 'Install game content',
     regenerate: 'Regenerate game content',
     play: 'Play',
@@ -21,14 +16,8 @@ export const en = {
     back: 'Back',
     installed: 'Game content installed.',
     legalHtml:
-      'Your original game files are only read, never modified. The converted data stays on this ' +
-      'computer in <code id="data-root"></code>.',
-    probe: {
-      withMod: 'Game found (with the CulturesNation mod).',
-      externalMod: 'Game found. Using the CulturesNation mod from {path}.',
-      noMod: 'Game found - but the CulturesNation mod is missing.',
-      noArchives: 'No game archives (.lib) found there - pick the folder that contains the original and DataX.',
-    },
+      'The mod files are only read, never modified. The converted data stays on this computer in ' +
+      '<code id="data-root"></code>.',
     status: {
       ready: 'Game content is installed. Regenerate it here if you want a fresh conversion.',
       staleRevision:
@@ -44,7 +33,6 @@ export const en = {
       failed: 'Installing the game content failed.',
     },
     stages: {
-      unpack: 'Unpacking game archives',
       pictures: 'Converting pictures',
       atlases: 'Building sprite atlases',
       'player-colors': 'Building player colours',
@@ -58,14 +46,14 @@ export const en = {
     },
     mod: {
       requiredUpstreamHtml:
-        'The free community mod <strong>CulturesNation</strong> is required to play, and your game ' +
-        'folder does not have it. Open Northland can download it for you (~600 MB, from ' +
-        "<code>culturesnation.pl</code>'s Google Drive link) into its data folder - your game folder " +
-        'stays untouched.',
+        'The free community mod <strong>CulturesNation</strong> carries the game data Open Northland ' +
+        'plays with. Open Northland can download it for you (~600 MB, from ' +
+        "<code>culturesnation.pl</code>'s Google Drive link) into its data folder.",
       requiredOriginHtml:
-        'The free community mod <strong>CulturesNation</strong> is required to play, and your game ' +
-        'folder does not have it. Open Northland can download it for you (~600 MB, from this site) ' +
-        "into this browser's storage - your game folder stays untouched.",
+        'The free community mod <strong>CulturesNation</strong> carries the game data Open Northland ' +
+        "plays with. Open Northland can download it for you (~600 MB, from this site) into this browser's " +
+        'storage.',
+      using: 'Using the CulturesNation mod from {path}.',
       download: 'Download the mod',
       haveIt: 'I already have it…',
       downloading: 'Downloading the mod…',
@@ -86,7 +74,6 @@ export const en = {
     },
   },
   dialogs: {
-    pickGameTitle: 'Select your Cultures - 8th Wonder of the World folder',
     pickModTitle: 'Select the unpacked CulturesNation mod folder',
     saveGameTitle: 'Save to file',
     loadGameTitle: 'Load a saved game',
@@ -103,9 +90,8 @@ export const en = {
   },
   errors: {
     modStillDownloading: 'the mod is still downloading - wait for it to finish',
-    noArchives: 'no game archives (.lib) found under the selected folder',
     modRequired:
-      'the CulturesNation mod is required - download it below, or point the wizard at an unpacked copy',
+      'the CulturesNation mod is required - download it above, or point the wizard at a copy you have',
     modDownloadRunning: 'mod download already running',
     noDataCnmd: 'no DataCnmd/ found there - pick the unpacked mod folder (download it from {url})',
     incompatibleSchema: 'content was generated for an incompatible schema - regenerate it first',
@@ -127,7 +113,6 @@ export const en = {
     modArchiveUnavailable: 'this site did not serve the mod archive ({status})',
     pipelineRunning: 'a conversion is already running',
     pipelineWorkerCrashed: 'the converter stopped unexpectedly - reload the page and try again',
-    notAFolder: 'that is a file, not a folder - drop the folder your game is installed in',
     setupFailed: 'the installer could not start: {message}',
   },
 } as const;
