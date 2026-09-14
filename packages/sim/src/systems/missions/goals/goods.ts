@@ -9,7 +9,6 @@ import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
 import { countsAsOwnStock, stockOf } from '../stock.js';
 import { missionHouses, withinRange } from '../targets.js';
-import { countReaches } from './count.js';
 
 /** The houses carrying the id hold at least `amount` of the good between them, in any slot; with
  *  nothing carrying the id the goal fails whatever the amount (reading). */

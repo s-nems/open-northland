@@ -1,4 +1,4 @@
-import type { HypertextBlock, MapBriefing, MapScript, MapScriptLine } from '@open-northland/data';
+import type { HypertextBlock, MapBriefing } from '@open-northland/data';
 import type { MatchOutcome, MissionStatus } from '@open-northland/sim';
 
 /**
