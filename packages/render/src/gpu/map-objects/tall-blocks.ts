@@ -52,6 +52,28 @@ interface TallBlock {
   attachedCount: number;
 }
 
+const EMPTY_BOX = {
+  minX: Number.POSITIVE_INFINITY,
+  minY: Number.POSITIVE_INFINITY,
+  maxX: Number.NEGATIVE_INFINITY,
+  maxY: Number.NEGATIVE_INFINITY,
+} as const;
+
+/** Refit the cull box to the members left: it covers only the feet anchors, never the sprite extents. */
+function fitBox(block: TallBlock): void {
+  let { minX, minY, maxX, maxY } = EMPTY_BOX;
+  for (const { obj } of block.objects) {
+    minX = Math.min(minX, obj.x);
+    minY = Math.min(minY, obj.y);
+    maxX = Math.max(maxX, obj.x);
+    maxY = Math.max(maxY, obj.y);
+  }
+  block.minX = minX;
+  block.minY = minY;
+  block.maxX = maxX;
+  block.maxY = maxY;
+}
+
 export class TallObjectLayer {
   private readonly blocks = new Map<string, TallBlock>();
   /** Which block holds each object, so {@link remove} does not scan every block. */
@@ -68,26 +90,10 @@ export class TallObjectLayer {
   /** Build the AABB-culled blocks from the tall placements grouped by chunk key. */
   build(tallByBlock: Map<string, MapObjectSprite[]>): void {
     for (const [key, block] of tallByBlock) {
-      let minX = Number.POSITIVE_INFINITY;
-      let minY = Number.POSITIVE_INFINITY;
-      let maxX = Number.NEGATIVE_INFINITY;
-      let maxY = Number.NEGATIVE_INFINITY;
-      for (const obj of block) {
-        // Box covers only the feet anchors, never the sprite extents.
-        minX = Math.min(minX, obj.x);
-        minY = Math.min(minY, obj.y);
-        maxX = Math.max(maxX, obj.x);
-        maxY = Math.max(maxY, obj.y);
-      }
       let tall = this.blocks.get(key);
       if (tall === undefined) {
-        tall = { key, minX, minY, maxX, maxY, objects: [], attachedCount: 0 };
+        tall = { key, ...EMPTY_BOX, objects: [], attachedCount: 0 };
         this.blocks.set(key, tall);
-      } else {
-        tall.minX = Math.min(tall.minX, minX);
-        tall.minY = Math.min(tall.minY, minY);
-        tall.maxX = Math.max(tall.maxX, maxX);
-        tall.maxY = Math.max(tall.maxY, maxY);
       }
       tall.objects.push(
         ...block.map((obj) => ({
@@ -101,6 +107,7 @@ export class TallObjectLayer {
         })),
       );
       for (const obj of block) this.blockByObject.set(obj, tall);
+      fitBox(tall);
     }
   }
 
@@ -122,6 +129,7 @@ export class TallObjectLayer {
       po.shadowSprite?.destroy();
       block.objects.splice(i, 1);
       if (block.objects.length === 0) this.blocks.delete(block.key);
+      else fitBox(block);
     }
     return true;
   }

@@ -56,10 +56,18 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
   return geometry;
 }
 
+/** Shading levels per unit for flat-colour triangles. They batch by exact tint, so an unquantized
+ *  gradient would give every cell its own mesh; coarse banding is acceptable on a placeholder path. */
+export const FLAT_SHADE_STEPS = 8;
+
+export function quantizeShade(brightness: number): number {
+  return Math.round(brightness * FLAT_SHADE_STEPS) / FLAT_SHADE_STEPS;
+}
+
 /**
  * The per-(layer × texture-page) batch accumulator for one chunk: one {@link Mesh} per touched page
- * per {@link TerrainLayerKind}, with unbound triangles traced into a shared fallback
- * {@link Graphics}. Single-use per chunk build - accumulate first, then call {@link children} once.
+ * per {@link TerrainLayerKind}, with unbound triangles batched by their flat tint. Single-use per
+ * chunk build - accumulate first, then call {@link children} once.
  */
 export class ChunkBatcher {
   private readonly byLayerPage = new Map<
@@ -82,16 +90,16 @@ export class ChunkBatcher {
     return batch;
   }
 
-  /** Trace one flat-colour ground triangle for an unbound cell. `positions` is the already-lifted
+  /** Batch one flat-colour ground triangle for an unbound cell. `positions` is the already-lifted
    *  `[x0,y0, x1,y1, x2,y2]` vertex buffer; `brightness` is the owning cell's centre multiplier,
-   *  applied CPU-side to the whole triangle because a solid fill cannot gradient. */
+   *  quantized to {@link FLAT_SHADE_STEPS} and applied to the whole triangle as the batch's tint. */
   drawFallbackTriangle(
     positions: readonly number[],
     nodes: readonly (readonly [number, number])[],
     colour: number,
     brightness = 1,
   ): void {
-    const tint = scaleColour(colour, brightness);
+    const tint = scaleColour(colour, quantizeShade(brightness));
     const key = `fallback:${tint}`;
     let batch = this.byLayerPage.get(key);
     if (batch === undefined) {
@@ -107,8 +115,8 @@ export class ChunkBatcher {
     batch.indices.push(base, base + 1, base + 2);
   }
 
-  /** The chunk's display children in paint order: the fallback when used, then one mesh per
-   *  accumulated batch, base pages before the overlay layers. */
+  /** The chunk's display children in paint order: one mesh per accumulated batch, the flat tints
+   *  first, then base pages before the overlay layers. */
   children(): TerrainChild[] {
     const out: TerrainChild[] = [];
     const batches = [...this.byLayerPage.values()].sort((a, b) => a.order - b.order);

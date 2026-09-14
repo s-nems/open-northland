@@ -8,12 +8,14 @@ import {
   triangleBNodes,
 } from '../../data/terrain/index.js';
 import { makeTintedTerrainShader } from '../shading.js';
-import { emptyBatch, meshGeometry, type TerrainBatch, type TerrainChild } from './chunk-batcher.js';
+import {
+  emptyBatch,
+  meshGeometry,
+  quantizeShade,
+  type TerrainBatch,
+  type TerrainChild,
+} from './chunk-batcher.js';
 import { buildChunks, flatTileColour, liftFn, positions, type TerrainChunk } from './geometry.js';
-
-/** Shading levels per unit. The meshes batch by exact colour, so an unquantized gradient would
- *  explode the per-block mesh count; coarse banding is acceptable on a placeholder path. */
-const FLAT_SHADE_STEPS = 8;
 
 /**
  * The flat-tint placeholder ground: a single-type block is one draw call regardless of tile count. A
@@ -34,10 +36,7 @@ export function buildFlat(
         const typeId = terrain.typeIds[row * terrain.width + col] ?? 0;
         const baseColour = flatTileColour(typeId);
         const colour = shaded
-          ? scaleColour(
-              baseColour,
-              Math.round(brightness.brightnessAt(col, row) * FLAT_SHADE_STEPS) / FLAT_SHADE_STEPS,
-            )
+          ? scaleColour(baseColour, quantizeShade(brightness.brightnessAt(col, row)))
           : baseColour;
         let batch = byColour.get(colour);
         if (batch === undefined) {

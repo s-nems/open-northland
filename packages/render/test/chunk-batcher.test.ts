@@ -52,6 +52,21 @@ describe('ChunkBatcher paint order', () => {
     expect(children.slice(1).map(tagOf)).toEqual([100, 101, 200, 300]);
   });
 
+  it('batches flat triangles of nearly equal brightness into one shade band', () => {
+    const batcher = new ChunkBatcher();
+    const nodes = [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+    ] as const;
+    batcher.drawFallbackTriangle([0, 0, 1, 0, 0, 1], nodes, 0x808080, 0.51);
+    batcher.drawFallbackTriangle([2, 0, 3, 0, 2, 1], nodes, 0x808080, 0.52);
+    batcher.drawFallbackTriangle([4, 0, 5, 0, 4, 1], nodes, 0x808080, 0.9);
+    const children = batcher.children();
+    expect(children).toHaveLength(2);
+    expect((children[0] as Mesh).geometry.positions).toHaveLength(12);
+  });
+
   it('keeps one batch per (layer × page) - the same page on two layers stays two draws', () => {
     const batcher = new ChunkBatcher();
     pushTagged(batcher, 'tran_meadow.masked', 'overlay1', 1);
