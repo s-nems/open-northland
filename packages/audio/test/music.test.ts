@@ -290,6 +290,17 @@ describe('WebAudioEngine music rotation', () => {
     ]);
   });
 
+  it('plays only the first pass of an entry whose file carries the ring-loop’s second pass', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation([TRACK]);
+    await flush();
+    const first = ctx.sources[0] as FakeSource;
+    expect(first.loop).toBe(false);
+    expect(first.playsForS).toBe(TRACK.loopStartS);
+    expect((first.connectedTo[0] as FakeGain).gain.ramps).toEqual([{ value: 0, time: TRACK.loopStartS }]);
+  });
+
   it('wraps to the first entry after the last one, playing every entry in order', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();

@@ -7,8 +7,8 @@
 export interface MusicTrack {
   /** The audio file, relative to the music root (e.g. `theme_viking_neutral.ogg`). */
   readonly file: string;
-  /** Seconds into the file the loop region opens. Absent in an older manifest; the player then
-   *  loops the whole file. */
+  /** Seconds into the file the loop region opens, which is also the first pass's end. Absent in an
+   *  older manifest; the player then loops the whole file. */
   readonly loopStartS?: number;
   /** Seconds into the file the loop region closes. */
   readonly loopEndS?: number;

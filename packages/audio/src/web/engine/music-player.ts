@@ -4,13 +4,13 @@ import type { FetchBytes } from '../platform.js';
 /**
  * The music half of playback. In game the map's track ring-loops the region the pipeline published
  * (the music stage owns the evidence for why segments repeat seamlessly). The menu instead rotates
- * a queue of tracks, played one at a time with a parting fade and gap - a design choice of this
- * reimplementation.
+ * a queue of tracks, each playing its first pass once with a parting fade and gap - a design choice
+ * of this reimplementation.
  */
 
 /** How a rotation track hands over to the next one. */
 export interface MusicTiming {
-  /** Seconds the outgoing track takes to reach silence, ending on its last sample. */
+  /** Seconds the outgoing track takes to reach silence, ending on the last sample it plays. */
   readonly fadeS: number;
   /** Seconds of silence between the outgoing track and the next. */
   readonly gapS: number;
@@ -228,10 +228,12 @@ export class MusicPlayer {
       source.connect(gain).connect(this.out);
       if (this.mode === 'loop') {
         this.configureLoop(source, track, buffer);
+        source.start(startsAt);
       } else {
-        this.scheduleFadeOut(gain, startsAt, buffer.duration);
+        const passS = firstPassSeconds(track, buffer);
+        this.scheduleFadeOut(gain, startsAt, passS);
+        source.start(startsAt, 0, passS);
       }
-      source.start(startsAt);
       this.current = { file: track.file, source, gain, startsAt };
     });
   }
@@ -257,4 +259,13 @@ export class MusicPlayer {
     gain.gain.setValueAtTime(1, Math.max(startsAt, endsAt - MENU_MUSIC_TIMING.fadeS));
     gain.gain.linearRampToValueAtTime(0, endsAt);
   }
+}
+
+/** A rotation entry plays the first pass only; the parting fade stands in for the tails the file
+ *  carries only under the second pass. */
+function firstPassSeconds(track: MusicTrack, buffer: AudioBuffer): number {
+  const { loopStartS } = track;
+  return loopStartS !== undefined && loopStartS > 0 && loopStartS < buffer.duration
+    ? loopStartS
+    : buffer.duration;
 }

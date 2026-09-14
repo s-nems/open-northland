@@ -68,11 +68,14 @@ export class FakeSource extends FakeNode {
   /** Context time the source was scheduled to open at, so a test can assert a silent gap. */
   startedAt = 0;
   stoppedAt: number | null = null;
+  /** Seconds `start` limited playback to; null plays the buffer out. */
+  playsForS: number | null = null;
   /** A test fires this to play the buffer out; a stop fires it too, as the real node does. */
   onended: (() => void) | null = null;
-  start(at = 0): void {
+  start(at = 0, _offset = 0, duration?: number): void {
     this.started = true;
     this.startedAt = at;
+    this.playsForS = duration ?? null;
   }
   stop(at: number): void {
     this.stoppedAt = at;
