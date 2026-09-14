@@ -14,7 +14,10 @@ const clipSchema = z.object({
   frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
   atomicId: z.number().int().nonnegative().optional(),
   carryGood: goodSlug.optional(),
+  /** The name of the stored atomic clip whose sprites this clip plays; it renders and stores none of its own. */
+  poses: z.string().optional(),
 });
+type Clip = z.infer<typeof clipSchema>;
 const characterRecipe = z
   .object({
     frames: z.number().int().positive().max(16),
@@ -46,6 +49,20 @@ const characterRecipe = z
     const walk = recipe.clips.find((c) => c.name === 'walk');
     for (const [index, clip] of recipe.clips.entries()) {
       const bound = clip.atomicId !== undefined || clip.carryGood !== undefined;
+      if (clip.poses !== undefined) {
+        const source = recipe.clips.find((c) => c.name === clip.poses);
+        if (
+          clip.atomicId === undefined ||
+          source?.atomicId === undefined ||
+          source.poses !== undefined ||
+          (clip.frames ?? recipe.frames) !== (source.frames ?? recipe.frames)
+        )
+          ctx.addIssue({
+            code: 'custom',
+            path: ['clips', index, 'poses'],
+            message: 'Shared poses name a stored atomic clip with the same frame count',
+          });
+      }
       if (
         (clip.atomicId !== undefined && clip.carryGood !== undefined) ||
         (bound && /^(walk|idle)$/.test(clip.name))
@@ -89,10 +106,11 @@ const characterRecipe = z
         });
     }
   });
+const storesPoses = (clip: Clip) => clip.poses === undefined;
 export async function characterInputs(directory: string, source: string, shadowSource?: string) {
   const raw = characterRecipe.parse(JSON.parse(await readFile(resolve(directory, source), 'utf8')));
   const inputs = [resolve(directory, source)];
-  for (const clip of raw.clips)
+  for (const clip of raw.clips.filter(storesPoses))
     for (const facing of ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N'])
       inputs.push(resolve(directory, 'sprites', `${clip.name}-${facing}-88px.png`));
   if (raw.walkCalibration) {
@@ -119,7 +137,7 @@ export async function packCharacter(
   shadowSource?: string,
 ) {
   const recipe = characterRecipe.parse(JSON.parse(await readFile(resolve(directory, source), 'utf8')));
-  function storedClip(c: z.infer<typeof clipSchema>) {
+  function storedClip(c: Clip) {
     return {
       frames: c.frames ?? recipe.frames,
       duration: c.duration,
@@ -134,7 +152,7 @@ export async function packCharacter(
   const carries = recipe.clips.filter((c) => c.carryGood !== undefined);
   if (new Set(recipe.clips.map((c) => c.name)).size !== recipe.clips.length)
     throw new Error('Duplicate clip name');
-  const clips = [walk, idle, ...atomics, ...carries],
+  const clips = [walk, idle, ...atomics.filter(storesPoses), ...carries],
     dirs = ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N'];
   const crop = recipe.runtimeCrop ?? {
     left: 48,
@@ -237,7 +255,16 @@ export async function packCharacter(
     ...(idle.frameDurations ? { idleFrameDurations: idle.frameDurations } : {}),
     ...(idle.frameOrder ? { idleFrameOrder: idle.frameOrder } : {}),
     ...(atomics.length
-      ? { atomicClips: atomics.map((c) => ({ atomicId: c.atomicId, ...storedClip(c) })) }
+      ? {
+          atomicClips: atomics.map((c) => {
+            const source = atomics.find((s) => s.name === c.poses);
+            return {
+              atomicId: c.atomicId,
+              ...storedClip(c),
+              ...(source === undefined ? {} : { poses: source.atomicId }),
+            };
+          }),
+        }
       : {}),
     ...(carries.length
       ? {

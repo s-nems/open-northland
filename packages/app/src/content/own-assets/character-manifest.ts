@@ -72,8 +72,7 @@ function walkClip(m: OwnCharacterManifest): StoredClip {
 }
 
 function carryStart(m: OwnCharacterManifest): number {
-  const atomicFrames = (m.atomicClips ?? []).reduce((sum, clip) => sum + clip.frames, 0);
-  return FACINGS * (m.walkFrames + m.idleFrames + atomicFrames);
+  return ownCharacterFrameCount({ ...m, carryClips: [] });
 }
 
 /** The loaded looks by good slug: the walk's clip fields over the carry cells, and the first pose while
@@ -107,8 +106,16 @@ export function ownCharacterBinding(m: OwnCharacterManifest, goods: readonly Goo
   const idleRef = clipRef(m, idle, start);
   start += idle.frames * FACINGS;
   const byAtomic: Record<number, SpriteFrameRef> = {};
+  const storedStart = new Map<number, number>();
   for (const clip of m.atomicClips ?? []) {
+    if (clip.poses !== undefined) {
+      const shared = storedStart.get(clip.poses);
+      if (shared === undefined) throw new Error('Shared poses name no stored clip');
+      byAtomic[clip.atomicId] = clipRef(m, clip, shared);
+      continue;
+    }
     byAtomic[clip.atomicId] = clipRef(m, clip, start);
+    storedStart.set(clip.atomicId, start);
     start += clip.frames * FACINGS;
   }
   const byGood: Record<number, LoadedLook> = {};

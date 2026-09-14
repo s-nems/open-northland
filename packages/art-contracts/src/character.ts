@@ -20,17 +20,25 @@ const storedClip = z.object({
   frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
 });
 export type OwnStoredClip = z.infer<typeof storedClip>;
+/** An action clip. With `poses` it plays the cells of the earlier atomic clip with that id in its own
+ *  order and holds, and stores no cells of its own. */
+const atomicClip = storedClip
+  .extend({ atomicId: z.number().int().nonnegative(), poses: z.number().int().nonnegative().optional() })
+  .strict();
 /** A good's content slug (`wood`, `food_simple`), the key a carry clip binds through. */
 export const goodSlug = z.string().regex(/^[a-z0-9_]+$/);
 
-/** Atlas cells in layout order: walk, idle, atomic clips, carry clips, each eight facings wide. */
+/** Atlas cells in layout order: walk, idle, pose-storing atomic clips, carry clips, each eight facings wide. */
 export function ownCharacterFrameCount(m: {
   readonly walkFrames: number;
   readonly idleFrames: number;
-  readonly atomicClips?: readonly { readonly frames: number }[] | undefined;
+  readonly atomicClips?:
+    | readonly { readonly frames: number; readonly poses?: number | undefined }[]
+    | undefined;
   readonly carryClips?: readonly { readonly frames: number }[] | undefined;
 }): number {
-  const clips = [...(m.atomicClips ?? []), ...(m.carryClips ?? [])];
+  const stored = (m.atomicClips ?? []).filter((clip) => clip.poses === undefined);
+  const clips = [...stored, ...(m.carryClips ?? [])];
   return 8 * (m.walkFrames + m.idleFrames + clips.reduce((sum, clip) => sum + clip.frames, 0));
 }
 
@@ -58,7 +66,7 @@ export const ownCharacterManifest = z
     walkFrameDurations: z.array(z.number().positive()).optional(),
     walkFrameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
     walkTravelPerCycle: z.array(z.number().positive()).length(8).optional(),
-    atomicClips: z.array(storedClip.extend({ atomicId: z.number().int().nonnegative() }).strict()).optional(),
+    atomicClips: z.array(atomicClip).optional(),
     /** Loaded walks, stored at the walk's frame count and duration so they share its gait clock. */
     carryClips: z
       .array(
@@ -131,6 +139,7 @@ export const ownCharacterManifest = z
       ['idleFrameDurations'],
     );
     const seen = new Set<number>();
+    const storedFrames = new Map<number, number>();
     for (const [index, clip] of (m.atomicClips ?? []).entries()) {
       if (seen.has(clip.atomicId))
         ctx.addIssue({
@@ -138,7 +147,14 @@ export const ownCharacterManifest = z
           path: ['atomicClips', index, 'atomicId'],
           message: 'Duplicate atomic clip',
         });
+      if (clip.poses !== undefined && storedFrames.get(clip.poses) !== clip.frames)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['atomicClips', index, 'poses'],
+          message: 'Shared poses must name an earlier pose-storing atomic clip with the same frame count',
+        });
       seen.add(clip.atomicId);
+      if (clip.poses === undefined) storedFrames.set(clip.atomicId, clip.frames);
       playback(
         clip.frames,
         clip.duration,

@@ -50,6 +50,20 @@ describe('character atlas contract', () => {
       'explicit step durations',
     );
   });
+  it("lets an atomic clip play another stored clip's poses without adding cells", () => {
+    const shared = { atomicId: 2, poses: 1, frames: 1, duration: 1, frameOrder: [0], frameDurations: [1] };
+    const clips = [manifest.atomicClips[0], shared];
+    expect(() => ownCharacterManifest.parse({ ...manifest, atomicClips: clips })).not.toThrow();
+    expect(() => ownCharacterManifest.parse({ ...manifest, height: 80, atomicClips: clips })).toThrow(
+      'clip coverage',
+    );
+    for (const bad of [
+      [shared, manifest.atomicClips[0]],
+      [manifest.atomicClips[0], { ...shared, frames: 2 }],
+      [manifest.atomicClips[0], shared, { ...shared, atomicId: 3, poses: 2 }],
+    ])
+      expect(() => ownCharacterManifest.parse({ ...manifest, atomicClips: bad })).toThrow('Shared poses');
+  });
   it('accounts for all directions and atomic clips, including a partially filled last row', () => {
     expect(() => ownCharacterManifest.parse(manifest)).not.toThrow();
     expect(() => ownCharacterManifest.parse({ ...manifest, columns: 10, width: 100 })).not.toThrow();

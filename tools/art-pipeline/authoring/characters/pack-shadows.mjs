@@ -18,7 +18,7 @@ const layout = JSON.parse(await fs.readFile(path.join(run, 'layout.json'), 'utf8
 const clips = [
   recipe.clips.find((c) => c.name === 'walk'),
   recipe.clips.find((c) => c.name === 'idle'),
-  ...recipe.clips.filter((c) => c.atomicId !== undefined),
+  ...recipe.clips.filter((c) => c.atomicId !== undefined && c.poses === undefined),
   ...recipe.clips.filter((c) => c.carryGood !== undefined),
 ];
 const count = 8 * clips.reduce((sum, c) => sum + (c.frames ?? recipe.frames), 0);

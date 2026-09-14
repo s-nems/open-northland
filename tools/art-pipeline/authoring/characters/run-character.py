@@ -33,8 +33,11 @@ def main():
     if not recipe_file.exists():
         recipe_file.write_text(json.dumps(DEFAULT, indent=2)+'\n')
     recipe = json.loads(recipe_file.read_text())
+    stored = {clip['name']: clip for clip in recipe['clips'] if not clip.get('poses')}
     for clip in recipe['clips']:
         frames = clip.get('frames', recipe['frames'])
+        if clip.get('poses') and clip['poses'] not in stored:
+            raise ValueError(f"{clip['name']}: shared poses name no stored clip")
         if not isinstance(frames, int) or not 1 <= frames <= 16:
             raise ValueError(f"{clip['name']}: expected at most 16 stored frames per facing, got {frames}")
         order = clip.get('frameOrder', list(range(frames)))
@@ -100,7 +103,7 @@ def main():
             if recipe.get('sampleSource'):
                 raise ValueError('Sampled recipes use sample-character.mjs; rendering uniformly would discard authored poses')
             for clip in recipe['clips']:
-                if args.clips and clip['name'] not in args.clips.split(','):
+                if clip.get('poses') or (args.clips and clip['name'] not in args.clips.split(',')):
                     continue
                 clip_count = str(clip.get('frames', recipe['frames']))
                 for facing in clip['facings']:
@@ -172,7 +175,7 @@ def main():
         elif stage == 'preview':
             directory = run/'orig-compare'
             directory.mkdir(exist_ok=True)
-            facings = list(dict.fromkeys(f for c in recipe['clips'] for f in c['facings']))
+            facings = list(dict.fromkeys(f for c in stored.values() for f in c['facings']))
             backgrounds = []
             for name, file in [('Trawa','grass-base.png'),('Ziemia','soil.png')]:
                 source = SCRIPTS.parents[3]/'docs/art/terrain/grass'/file
@@ -182,11 +185,12 @@ def main():
             for clip in recipe['clips']:
                 if not clip.get('duration') or clip['duration'] <= 0:
                     raise ValueError('Preview requires each clip duration in seconds')
+                source = stored[clip['poses']] if clip.get('poses') else clip
                 cells = [
-                    {'file':str(run/'sprites'/f"{clip['name']}-{f}-88px.png"),'duration':clip['duration'],
+                    {'file':str(run/'sprites'/f"{source['name']}-{f}-88px.png"),'duration':clip['duration'],
                      **({'frameOrder':clip['frameOrder']} if clip.get('frameOrder') else {}),
                      **({'frameDurations':clip['frameDurations']} if clip.get('frameDurations') else {})}
-                    if f in clip['facings'] else None for f in facings
+                    if f in source['facings'] else None for f in facings
                 ]
                 rows.append({'name':clip['name'],'cells':cells})
             manifest = {

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import sharp from 'sharp';
 import { afterEach, expect, it } from 'vitest';
-import { packCharacter } from '../src/character.js';
+import { characterInputs, packCharacter } from '../src/character.js';
 import { writeJson } from '../src/files.js';
 
 const execute = promisify(execFile);
@@ -111,6 +111,31 @@ it('packs a carry clip after work clips and records its good in the manifest', a
   ]) {
     await writeJson(join(root, 'recipe.json'), { ...recipe, clips: [...recipe.clips.slice(0, 2), clip] });
     await expect(packCharacter(root, 'recipe.json', 'test', 'Test')).rejects.toThrow();
+  }
+  const reversed = {
+    name: 'pile-up',
+    poses: 'hammer',
+    duration: 1,
+    atomicId: 23,
+    frameOrder: [0],
+    frameDurations: [1],
+  };
+  await writeJson(join(root, 'recipe.json'), { ...recipe, clips: [...recipe.clips, reversed] });
+  const shared = await packCharacter(root, 'recipe.json', 'test', 'Test');
+  expect(shared.manifest.atomicClips).toEqual([
+    { atomicId: 39, frames: 1, duration: 1 },
+    { atomicId: 23, poses: 39, frames: 1, duration: 1, frameOrder: [0], frameDurations: [1] },
+  ]);
+  expect(shared.manifest.height).toBe(packed.manifest.height);
+  expect((await characterInputs(root, 'recipe.json')).some((input) => input.includes('pile-up'))).toBe(false);
+  for (const clip of [
+    { ...reversed, poses: 'carry-wood' },
+    { ...reversed, poses: 'walk' },
+    { ...reversed, atomicId: undefined },
+    { ...reversed, frames: 2 },
+  ]) {
+    await writeJson(join(root, 'recipe.json'), { ...recipe, clips: [...recipe.clips, clip] });
+    await expect(packCharacter(root, 'recipe.json', 'test', 'Test')).rejects.toThrow('Shared poses');
   }
 });
 

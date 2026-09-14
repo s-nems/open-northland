@@ -24,6 +24,10 @@
     "provenance": "docs/art/characters/equipment/mining-pickaxe/README.md"
   },
   {
+    "directory": "docs/art/characters/shared/motions/pick-up",
+    "provenance": "docs/art/characters/shared/motions/pick-up/README.md"
+  },
+  {
     "directory": "docs/art/characters/shared/motions/carry-wood",
     "provenance": "docs/art/characters/shared/motions/carry-wood/README.md"
   },

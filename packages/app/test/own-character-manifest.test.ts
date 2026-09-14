@@ -90,6 +90,29 @@ describe('own character atlas', () => {
     expect(binding.idle).toEqual(ownCharacterBinding(manifest, []).idle);
     expect(binding.moving).toEqual(ownCharacterBinding(manifest, []).moving);
   });
+  it('binds a shared-pose clip to the stored clip cells and lays carry clips after them', () => {
+    const shared = ownCharacterManifest.parse({
+      ...manifest,
+      height: 7168,
+      walkDuration: 1,
+      atomicClips: [
+        { atomicId: 22, frames: 12, duration: 1 },
+        { atomicId: 23, poses: 22, frames: 12, duration: 1, frameOrder: [11, 0], frameDurations: [0.5, 0.5] },
+      ],
+      carryClips: [{ good: 'wood', frames: 12, duration: 1 }],
+    });
+    const binding = ownCharacterBinding(shared, [{ id: 'wood', typeId: 7 }]);
+    const pickStart = 8 * (shared.walkFrames + shared.idleFrames);
+    expect(binding.byAtomic?.[22]).toMatchObject({ start: pickStart, stride: 12 });
+    expect(binding.byAtomic?.[23]).toMatchObject({
+      start: pickStart,
+      stride: 12,
+      frameOrder: [11, 0],
+      frameDurations: [6, 6],
+    });
+    expect(binding.carrying?.byGood?.[7]?.moving).toMatchObject({ start: pickStart + 96 });
+    expect(ownCharacterAtlas(shared).frames.size).toBe(pickStart + 192);
+  });
   it('binds a carry clip to the hauled good on the walk gait and holds its first pose when standing', () => {
     const loaded = ownCharacterManifest.parse({
       ...manifest,

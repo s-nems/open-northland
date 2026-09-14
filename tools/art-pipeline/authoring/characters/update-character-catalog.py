@@ -20,11 +20,13 @@ def main():
         if not recipe_file.exists():
             continue
         recipe = json.loads(recipe_file.read_text())
+        stored = {clip['name']: clip for clip in recipe['clips'] if not clip.get('poses')}
         for clip in recipe['clips']:
             name = clip['name']
             action = actions.setdefault(name, {'id': name, 'name': name, 'description': '', 'variants': {}})
-            for facing in clip['facings']:
-                sprite = run / 'sprites' / f'{name}-{facing}-88px.png'
+            source = stored[clip['poses']] if clip.get('poses') else clip
+            for facing in source['facings']:
+                sprite = run / 'sprites' / f"{source['name']}-{facing}-88px.png"
                 if not sprite.exists():
                     continue
                 with sprite.open('rb') as file:
