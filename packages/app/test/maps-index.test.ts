@@ -47,14 +47,14 @@ describe('parseMapsIndex', () => {
     expect(parseMapsIndex('nope')).toEqual([]);
   });
 
-  it('passes the multiplayer capability through and drops a wrong-typed flag', () => {
+  it('passes the maptype listing header through and drops wrong-typed codes and flags', () => {
     expect(
       parseMapsIndex([
-        { id: 'arena', minimap: false, multiplayer: true },
-        { id: 'story', minimap: false, multiplayer: 'yes' },
+        { id: 'arena', minimap: false, mapTypes: [4, 'x', 6], multiplayerOnly: true },
+        { id: 'story', minimap: false, mapTypes: 'yes', multiplayerOnly: 'yes' },
       ]),
     ).toEqual([
-      { id: 'arena', minimap: false, multiplayer: true },
+      { id: 'arena', minimap: false, mapTypes: [4, 6], multiplayerOnly: true },
       { id: 'story', minimap: false },
     ]);
   });

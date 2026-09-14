@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { MapMeta, MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -80,6 +80,21 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
     // ~45 corpus maps author a [multiplayer] lobby table (player.inc/misc.inc/map.ini/map.cif);
     // zero means the section reader silently broke.
     expect(withMultiplayerTable).toBeGreaterThan(30);
+  });
+
+  it('every meta sidecar passes the MapMeta schema and most maps carry a maptype', () => {
+    const files = readdirSync(mapsDir())
+      .filter((f) => f.endsWith('.meta.json'))
+      .sort();
+    expect(files.length).toBeGreaterThan(100);
+    let typed = 0;
+    for (const f of files) {
+      const meta = MapMeta.parse(JSON.parse(readFileSync(resolve(mapsDir(), f), 'utf8')));
+      if (meta.mapTypes !== undefined) typed++;
+    }
+    // Every corpus map declares a maptype; a run emitting none means the header reader silently
+    // broke, which would list every map in every menu.
+    expect(typed).toBeGreaterThan(100);
   });
 
   it(

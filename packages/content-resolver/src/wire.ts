@@ -44,9 +44,11 @@ export interface MapsIndexEntry {
   readonly players?: readonly MapsIndexPlayerSlot[];
   /** `[multiplayer]` `playerfixcolors` - the map locks its authored team colours. */
   readonly fixedColors?: boolean;
-  /** The script sidecar ships a `[multiplayer]` lobby table and a readable roster. Emitted only when
-   *  true. */
-  readonly multiplayer?: boolean;
+  /** The distinct `[misc_maptype]` `maptype` codes (`CLEAN_MAP_TYPE_*`); absent when it declares
+   *  no valid one. */
+  readonly mapTypes?: readonly number[];
+  /** `[misc_maptype]` `mapmultiplayeronly`. Emitted only when true. */
+  readonly multiplayerOnly?: boolean;
 }
 
 /** One `/bobs-index` entry: a viewable atlas stem. */

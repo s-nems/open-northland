@@ -73,3 +73,15 @@ export function getInt(sec: RuleSection, key: string): number | undefined {
   const n = Number.parseInt(v, 10);
   return Number.isNaN(n) ? undefined : n;
 }
+
+/** One token as its numeric code: a plain int, or a `#MACRO` looked up case-insensitively in `macros`;
+ *  undefined for anything else, the caller owning the range check. */
+export function codeOf(
+  token: string | undefined,
+  macros: Readonly<Record<string, number>>,
+): number | undefined {
+  if (token === undefined) return undefined;
+  if (/^-?\d+$/.test(token)) return Number.parseInt(token, 10);
+  if (token.startsWith('#')) return macros[token.slice(1).toUpperCase()];
+  return undefined;
+}

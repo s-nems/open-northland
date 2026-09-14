@@ -3,6 +3,7 @@
  * macro. Codes from the owned copy's `Data/GameSourceIncludes/logicdefines.inc`.
  */
 import type { RuleSection } from './grammar.js';
+import { codeOf } from './props.js';
 
 /** `DM_MUSIC_TYPE_*` codes; keys are upper-cased because the corpus spells macros in mixed case. */
 const MUSIC_TYPE_CODES: Readonly<Record<string, number>> = {
@@ -57,11 +58,6 @@ const MUSIC_TYPE_LIMIT = 39;
  */
 export function extractMusicType(sections: readonly RuleSection[]): number | undefined {
   const section = sections.find((s) => s.name === 'misc_music');
-  const token = section?.props.find((p) => p.key === 'musictype')?.values[0];
-  if (token === undefined) return undefined;
-  let code: number | undefined;
-  if (/^\d+$/.test(token)) code = Number.parseInt(token, 10);
-  else if (token.startsWith('#')) code = MUSIC_TYPE_CODES[token.slice(1).toUpperCase()];
-  if (code === undefined || code >= MUSIC_TYPE_LIMIT) return undefined;
-  return code;
+  const code = codeOf(section?.props.find((p) => p.key === 'musictype')?.values[0], MUSIC_TYPE_CODES);
+  return code === undefined || code < 0 || code >= MUSIC_TYPE_LIMIT ? undefined : code;
 }

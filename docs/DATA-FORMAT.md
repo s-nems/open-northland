@@ -113,7 +113,10 @@ folder or a map read from a separate mod root, `base` for a map proven to come f
 archive, and `unknown` for anything else, a loose `Data/maps` folder included; `folder` is the map's
 folder relative to its source root, never an installation path; `layer` names the root it was read
 from. Only `mod` and `user` maps may be sent to another player, so a sidecar without provenance
-counts as `unknown`.
+counts as `unknown`. The sidecar also carries the `[misc_maptype]` listing header: `mapTypes`, the
+distinct `CLEAN_MAP_TYPE_*` codes of its `maptype` lines (absent when the header declares no valid
+one), and `multiplayerOnly` for `mapmultiplayeronly`. Which menu lists a map from these is the
+menu's rule (`map-select-model.ts`).
 
 ## Layering
 

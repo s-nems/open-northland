@@ -2,7 +2,7 @@
 
 **Area:** app · **Focus:** entries · **Priority:** P3
 
-`entries/main-menu/map-select.ts` imports `SCENES` to read `scene.id` and nothing else, but every
+`entries/main-menu/map-picker.ts` imports `SCENES` to read `scene.id` and nothing else, but every
 `SceneDefinition` carries a `build(sim)` closure and a `terrain` grid. Listing the scenes in the menu
 therefore loads all 26 world builders plus the sandbox content they assemble: 34 kB gzip on a menu boot
 that may never open a scene.

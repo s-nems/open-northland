@@ -1,28 +1,34 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+import { MAP_TYPE } from '@open-northland/data';
 
 /**
- * Pure state for the map-select screen: the row items the list renders, the
- * segmented filter, and the search predicate. DOM and fetches live in map-select.ts.
+ * Pure state for the map list: the row items it renders, which menu lists a map, the segmented
+ * filter, and the search predicate. DOM and fetches live in map-picker.ts.
  */
 
-export type MapFilter = 'all' | 'story' | 'multiplayer' | 'scenes';
+/** The two menus of the original, each with its own reading of a map's `maptype` codes. */
+export type MapListing = 'single' | 'multiplayer';
+
+export type MapFilter = 'all' | 'campaign' | 'free' | 'multiplayer' | 'scenes';
 
 /** A mode the corpus cannot serve yet; its tab renders greyed out with a coming-soon tooltip. */
-export type ComingSoonTab = 'campaign' | 'tutorial';
+export type ComingSoonTab = 'tutorial';
 
 export type MapFilterTab =
   | { readonly kind: 'filter'; readonly filter: MapFilter }
   | { readonly kind: 'comingSoon'; readonly id: ComingSoonTab };
 
-/** Segmented-bar order: the coming-soon modes sit next to "all", before the live filters. */
-export const MAP_FILTER_TABS: readonly MapFilterTab[] = [
+/** Segmented-bar order of the New Game screen: the coming-soon mode sits by "all", before the live
+ *  filters. A room lists multiplayer maps only, so it shows no bar. */
+export const SINGLE_PLAYER_TABS: readonly MapFilterTab[] = [
   { kind: 'filter', filter: 'all' },
-  { kind: 'comingSoon', id: 'campaign' },
+  { kind: 'filter', filter: 'campaign' },
   { kind: 'comingSoon', id: 'tutorial' },
-  { kind: 'filter', filter: 'story' },
+  { kind: 'filter', filter: 'free' },
   { kind: 'filter', filter: 'multiplayer' },
   { kind: 'filter', filter: 'scenes' },
 ];
+export const ROOM_TABS: readonly MapFilterTab[] = [];
 
 export interface MapSeat {
   readonly tribeId: number;
@@ -34,7 +40,10 @@ export interface MapSelectItem {
   readonly kind: 'map' | 'scene';
   readonly id: string;
   readonly title: string;
-  readonly category: Exclude<MapFilter, 'all'>;
+  /** `[misc_maptype]` codes; empty for a scene and for a map whose header declares none. */
+  readonly types: readonly number[];
+  /** `[misc_maptype]` `mapmultiplayeronly`. */
+  readonly multiplayerOnly: boolean;
   /** Listed (non-hidden) roster slots in authored order; empty when the map ships no roster. */
   readonly seats: readonly MapSeat[];
   /** The full authored roster the lobby negotiates (hidden slots included); scenes carry none. */
@@ -46,14 +55,14 @@ export interface MapSelectItem {
   readonly minimap: boolean;
 }
 
-/** Category comes from the script sidecar's `[multiplayer]` table; everything else is story. */
 export function mapItem(entry: MapsIndexEntry): MapSelectItem {
   const listed = entry.players?.filter((slot) => !slot.hidden) ?? [];
   return {
     kind: 'map',
     id: entry.id,
     title: entry.name ?? entry.id,
-    category: entry.multiplayer === true ? 'multiplayer' : 'story',
+    types: entry.mapTypes ?? [],
+    multiplayerOnly: entry.multiplayerOnly === true,
     seats: listed.map((slot) => ({ tribeId: slot.tribeId, colorId: slot.colorId })),
     players: entry.players ?? [],
     fixedColors: entry.fixedColors === true,
@@ -67,7 +76,8 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     kind: 'scene',
     id,
     title,
-    category: 'scenes',
+    types: [],
+    multiplayerOnly: false,
     seats: [],
     players: [],
     fixedColors: false,
@@ -87,18 +97,76 @@ export function initialMapSelectMemory(): MapSelectMemory {
   return { filter: 'all', query: '', selectedId: null };
 }
 
+const has = (item: MapSelectItem, code: number): boolean => item.types.includes(code);
+const untyped = (item: MapSelectItem): boolean => item.kind === 'map' && item.types.length === 0;
+
+/** The label a map row and card carry; the highest-ranking of its codes names it. */
+export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
+  if (item.kind === 'scene') return 'scenes';
+  if (has(item, MAP_TYPE.SINGLE_PLAYER_CAMPAIGN)) return 'campaign';
+  if (has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE))
+    return 'multiplayer';
+  return 'free';
+}
+
 /**
- * `all` lists every decoded map; test scenes appear only under their own filter. Search matches the
- * title or the id stem, case-folded locale-independently so the host locale cannot change the match.
+ * Whether a menu lists the map at all. Source basis: the original's multiplayer map-list build
+ * (the original) takes a map whose type flags are empty or carry `MULTI_PLAYER_FREE`, then, from
+ * the user-map root, empty or `USER_MULTI_PLAYER_FREE`; the two sections are one list here, since
+ * an item does not carry its root. Its single-player free-game list takes the free types plus a
+ * multiplayer map without `mapmultiplayeronly` (observed in the another original build; the untyped case is
+ * carried over from the multiplayer rule). Approximations: campaign maps are listed under their own
+ * tab until a campaign mode exists to launch them, and `SINGLE_PLAYER_DEMO` is listed nowhere, its
+ * menu being unobserved.
+ */
+export function listedIn(item: MapSelectItem, listing: MapListing): boolean {
+  if (item.kind === 'scene') return listing === 'single';
+  if (untyped(item)) return true;
+  if (listing === 'multiplayer')
+    return has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE);
+  return (
+    has(item, MAP_TYPE.SINGLE_PLAYER_CAMPAIGN) ||
+    has(item, MAP_TYPE.SINGLE_PLAYER_FREE) ||
+    has(item, MAP_TYPE.USER_SINGLE_PLAYER_FREE) ||
+    (has(item, MAP_TYPE.MULTI_PLAYER_FREE) && !item.multiplayerOnly)
+  );
+}
+
+function matchesFilter(item: MapSelectItem, filter: MapFilter): boolean {
+  switch (filter) {
+    case 'all':
+      return item.kind === 'map';
+    case 'scenes':
+      return item.kind === 'scene';
+    case 'campaign':
+      return has(item, MAP_TYPE.SINGLE_PLAYER_CAMPAIGN);
+    case 'free':
+      return (
+        untyped(item) || has(item, MAP_TYPE.SINGLE_PLAYER_FREE) || has(item, MAP_TYPE.USER_SINGLE_PLAYER_FREE)
+      );
+    case 'multiplayer':
+      return (
+        untyped(item) ||
+        (has(item, MAP_TYPE.MULTI_PLAYER_FREE) && !item.multiplayerOnly) ||
+        has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE)
+      );
+  }
+}
+
+/**
+ * The rows a menu shows: those the listing takes, under the chosen tab (`all` is every map, never a
+ * scene). Search matches the title or the id stem, case-folded locale-independently so the host
+ * locale cannot change the match.
  */
 export function filterItems(
   items: readonly MapSelectItem[],
+  listing: MapListing,
   filter: MapFilter,
   query: string,
 ): readonly MapSelectItem[] {
   const needle = query.trim().toLowerCase();
   return items.filter((item) => {
-    if (filter === 'all' ? item.kind !== 'map' : item.category !== filter) return false;
+    if (!listedIn(item, listing) || !matchesFilter(item, filter)) return false;
     if (needle === '') return true;
     return item.title.toLowerCase().includes(needle) || item.id.toLowerCase().includes(needle);
   });

@@ -164,8 +164,18 @@ describe('buildMapsIndexEntries', () => {
           },
         ],
         fixedColors: true,
-        multiplayer: true,
       },
+    ]);
+  });
+
+  it('carries the meta sidecar listing header and drops a malformed one', async () => {
+    await writeFile(join(mapsRoot, 'free.json'), '{}');
+    await writeFile(join(mapsRoot, 'free.meta.json'), '{"mapTypes":[4],"multiplayerOnly":true}');
+    await writeFile(join(mapsRoot, 'odd.json'), '{}');
+    await writeFile(join(mapsRoot, 'odd.meta.json'), '{"mapTypes":[2,"x"],"multiplayerOnly":"yes"}');
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
+      { id: 'free', minimap: false, mapTypes: [4], multiplayerOnly: true },
+      { id: 'odd', minimap: false, mapTypes: [2] },
     ]);
   });
 

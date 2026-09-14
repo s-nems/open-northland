@@ -6,6 +6,7 @@
 import { MAP_PLAYER_COLOR_COUNT, MapScript, type MapScriptLine } from '@open-northland/data';
 import type { RuleProp, RuleSection } from './grammar.js';
 import { makeSource, type SourceRef } from './ir-fields.js';
+import { codeOf } from './props.js';
 
 /**
  * The `#define` codes the plaintext macros resolve through, from the owned copy's
@@ -52,13 +53,7 @@ const DIPLOMACY_NAMES: Readonly<Record<number, 'friend' | 'neutral' | 'enemy'>> 
   3: 'enemy',
 };
 
-/** Resolves one token to its numeric code: a plain int, or a `#MACRO` (case-insensitive). */
-function code(token: string | undefined): number | undefined {
-  if (token === undefined) return undefined;
-  if (/^-?\d+$/.test(token)) return Number.parseInt(token, 10);
-  if (token.startsWith('#')) return MACRO_CODES[token.slice(1).toUpperCase()];
-  return undefined;
-}
+const code = (token: string | undefined): number | undefined => codeOf(token, MACRO_CODES);
 
 function int(token: string | undefined): number | undefined {
   if (token === undefined) return undefined;

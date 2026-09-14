@@ -2,9 +2,11 @@ import type { MapMeta } from '@open-northland/data';
 import type { Vfs } from '@open-northland/vfs';
 import {
   decodeCifStringTable,
+  extractMapTypes,
   extractMusicType,
   extractStringTable,
   iniBytesToSections,
+  type MapTypeHeader,
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
@@ -25,11 +27,13 @@ const MAP_TEXT_LANGS = ['pol', 'eng'] as const;
 const DEFAULT_NAME_STRING_ID = 0;
 const DEFAULT_DESCRIPTION_STRING_ID = 1;
 
-/** The resolved map header: name/description string-table ids and the `[misc_music]` code. */
+/** The resolved map header: name/description string-table ids, the `[misc_music]` code and the
+ *  `[misc_maptype]` listing. */
 interface MapHeader {
   readonly nameStringId: number;
   readonly descriptionStringId: number;
   readonly musicType?: number;
+  readonly mapTypes?: MapTypeHeader;
 }
 
 /** Reads one int off a `[misc_mapname]` section prop, or undefined when absent/malformed. */
@@ -42,9 +46,10 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
 }
 
 /**
- * Resolves the map's `[misc_mapname]` string ids and `[misc_music]` code. The headers ship in three
- * forms and the readable ones win: the split `misc.inc`, the monolithic `map.ini`, then the encrypted
- * `map.cif`'s sections, passed in already decoded so this module never re-decodes the cif.
+ * Resolves the map's `[misc_mapname]` string ids, `[misc_music]` code and `[misc_maptype]` listing.
+ * The headers ship in three forms and the readable ones win: the split `misc.inc`, the monolithic
+ * `map.ini`, then the encrypted `map.cif`'s sections, passed in already decoded so this module never
+ * re-decodes the cif.
  */
 async function resolveMapHeader(
   fs: Vfs,
@@ -55,13 +60,21 @@ async function resolveMapHeader(
   let nameStringId: number | undefined;
   let descriptionStringId: number | undefined;
   let musicType: number | undefined;
+  let mapTypes: MapTypeHeader | undefined;
   const consider = (sections: readonly RuleSection[]): void => {
     nameStringId ??= sectionInt(sections, 'mapnamestringid');
     descriptionStringId ??= sectionInt(sections, 'mapdescriptionstringid');
     musicType ??= extractMusicType(sections);
+    mapTypes ??= extractMapTypes(sections);
   };
   for (const file of ['misc.inc', 'map.ini']) {
-    if (nameStringId !== undefined && descriptionStringId !== undefined && musicType !== undefined) break;
+    if (
+      nameStringId !== undefined &&
+      descriptionStringId !== undefined &&
+      musicType !== undefined &&
+      mapTypes !== undefined
+    )
+      break;
     const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [file]);
     if (path === undefined) continue;
     try {
@@ -75,6 +88,7 @@ async function resolveMapHeader(
     nameStringId: nameStringId ?? DEFAULT_NAME_STRING_ID,
     descriptionStringId: descriptionStringId ?? DEFAULT_DESCRIPTION_STRING_ID,
     ...(musicType !== undefined ? { musicType } : {}),
+    ...(mapTypes !== undefined ? { mapTypes } : {}),
   };
 }
 
@@ -111,8 +125,9 @@ export async function loadMapStringTable(
 
 /**
  * Resolves one map folder's meta sidecar: the `[misc_mapname]` header's ids looked up in the folder's
- * string table, plus the `[misc_music]` code. Returns undefined when nothing resolves. `cifSections`
- * and `strings` come from the caller so each map decodes its cif and loads its table once.
+ * string table, the `[misc_music]` code and the `[misc_maptype]` listing. Returns undefined when
+ * nothing resolves. `cifSections` and `strings` come from the caller so each map decodes its cif and
+ * loads its table once.
  */
 export async function resolveMapMeta(
   fs: Vfs,
@@ -122,7 +137,7 @@ export async function resolveMapMeta(
   strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
   strings ??= await loadMapStringTable(fs, mapDirs, rel);
-  const { nameStringId, descriptionStringId, musicType } = await resolveMapHeader(
+  const { nameStringId, descriptionStringId, musicType, mapTypes } = await resolveMapHeader(
     fs,
     mapDirs,
     rel,
@@ -130,10 +145,14 @@ export async function resolveMapMeta(
   );
   const name = strings?.[nameStringId];
   const description = strings?.[descriptionStringId];
-  if (name === undefined && description === undefined && musicType === undefined) return undefined;
+  const listing = mapTypes !== undefined && (mapTypes.types.length > 0 || mapTypes.multiplayerOnly);
+  if (name === undefined && description === undefined && musicType === undefined && !listing)
+    return undefined;
   return {
     ...(name !== undefined ? { name } : {}),
     ...(description !== undefined ? { description } : {}),
     ...(musicType !== undefined ? { musicType } : {}),
+    ...(mapTypes === undefined || mapTypes.types.length === 0 ? {} : { mapTypes: [...mapTypes.types] }),
+    ...(mapTypes?.multiplayerOnly ? { multiplayerOnly: true } : {}),
   };
 }

@@ -100,7 +100,7 @@ function provenanceOf(raw: unknown): MapsIndexProvenance | undefined {
 async function metaOf(
   dir: MapsDir,
   id: string,
-): Promise<Pick<MapsIndexEntry, 'name' | 'description' | 'provenance'>> {
+): Promise<Pick<MapsIndexEntry, 'name' | 'description' | 'provenance' | 'mapTypes' | 'multiplayerOnly'>> {
   const parsed = await readSidecar(dir, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
@@ -109,10 +109,15 @@ async function metaOf(
   }
   const meta = parsed as Record<string, unknown>;
   const provenance = provenanceOf(meta.provenance);
+  const mapTypes = Array.isArray(meta.mapTypes)
+    ? meta.mapTypes.filter((code): code is number => Number.isInteger(code))
+    : undefined;
   return {
     ...(provenance === undefined ? {} : { provenance }),
     ...(typeof meta.name === 'string' ? { name: meta.name } : {}),
     ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
+    ...(mapTypes === undefined ? {} : { mapTypes }),
+    ...(meta.multiplayerOnly === true ? { multiplayerOnly: true } : {}),
   };
 }
 
@@ -120,27 +125,14 @@ async function metaOf(
 async function playersOf(
   dir: MapsDir,
   id: string,
-): Promise<
-  | {
-      readonly slots: readonly MapsIndexPlayerSlot[];
-      readonly fixedColors: boolean;
-      readonly multiplayer: boolean;
-    }
-  | undefined
-> {
+): Promise<{ readonly slots: readonly MapsIndexPlayerSlot[]; readonly fixedColors: boolean } | undefined> {
   const parsed = await readSidecar(dir, id, '.script.json');
   if (typeof parsed !== 'object' || parsed === null) return undefined;
   const { players, multiplayer } = parsed as Record<string, unknown>;
   if (!Array.isArray(players)) return undefined;
   const mp = multiplayerOf(multiplayer);
   const slots = players.map((p) => playerSlotOf(p, mp)).filter((s) => s !== undefined);
-  return slots.length > 0
-    ? {
-        slots,
-        fixedColors: mp.fixedColors,
-        multiplayer: typeof multiplayer === 'object' && multiplayer !== null,
-      }
-    : undefined;
+  return slots.length > 0 ? { slots, fixedColors: mp.fixedColors } : undefined;
 }
 
 /**
@@ -164,7 +156,6 @@ export async function buildMapsIndexEntries(fs: ReadableVfs, mapsRoot: string): 
       minimap: dir.names.has(`${id}.png`),
       ...(players !== undefined ? { players: players.slots } : {}),
       ...(players?.fixedColors ? { fixedColors: true } : {}),
-      ...(players?.multiplayer ? { multiplayer: true } : {}),
     });
   }
   return entries;

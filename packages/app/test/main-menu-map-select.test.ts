@@ -1,10 +1,14 @@
 import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+import { MAP_TYPE } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   filterItems,
-  MAP_FILTER_TABS,
+  listedIn,
+  mapCategory,
   mapItem,
   pluralForm,
+  ROOM_TABS,
+  SINGLE_PLAYER_TABS,
   sceneItem,
 } from '../src/entries/main-menu/map-select-model.js';
 
@@ -12,28 +16,43 @@ function slot(player: number, hidden = false): MapsIndexPlayerSlot {
   return { player, type: 'ai', tribeId: 1, colorId: player, claimable: false, hidden, aiAllowed: true };
 }
 
-describe('MAP_FILTER_TABS', () => {
-  it('keeps every live filter clickable and parks the coming-soon modes next to "all"', () => {
-    const filters = MAP_FILTER_TABS.flatMap((tab) => (tab.kind === 'filter' ? [tab.filter] : []));
-    expect(filters).toEqual(['all', 'story', 'multiplayer', 'scenes']);
-    const comingSoon = MAP_FILTER_TABS.flatMap((tab) => (tab.kind === 'comingSoon' ? [tab.id] : []));
-    expect(comingSoon).toEqual(['campaign', 'tutorial']);
-    expect(MAP_FILTER_TABS[0]).toEqual({ kind: 'filter', filter: 'all' });
+describe('map filter tabs', () => {
+  it('keeps every live filter clickable and parks the coming-soon mode next to "all"', () => {
+    const filters = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'filter' ? [tab.filter] : []));
+    expect(filters).toEqual(['all', 'campaign', 'free', 'multiplayer', 'scenes']);
+    const comingSoon = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'comingSoon' ? [tab.id] : []));
+    expect(comingSoon).toEqual(['tutorial']);
+    expect(SINGLE_PLAYER_TABS[0]).toEqual({ kind: 'filter', filter: 'all' });
+    expect(ROOM_TABS).toEqual([]);
   });
 });
 
 describe('mapItem', () => {
-  it('categorizes by the script sidecar multiplayer table and lists visible seats', () => {
-    const story = mapItem({ id: 'cn_1', name: 'Prolog', minimap: false, players: [slot(0), slot(1, true)] });
-    expect(story.category).toBe('story');
-    expect(story.seats).toEqual([{ tribeId: 1, colorId: 0 }]); // the hidden slot is never listed
-    expect(story.players).toHaveLength(2); // …but the lobby still negotiates the full roster
-    const arena = mapItem({ id: 'arena', minimap: true, multiplayer: true, fixedColors: true });
-    expect(arena.category).toBe('multiplayer');
+  it('carries the maptype header and lists visible seats', () => {
+    const campaign = mapItem({
+      id: 'cn_1',
+      name: 'Prolog',
+      minimap: false,
+      mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+      players: [slot(0), slot(1, true)],
+    });
+    expect(mapCategory(campaign)).toBe('campaign');
+    expect(campaign.seats).toEqual([{ tribeId: 1, colorId: 0 }]); // the hidden slot is never listed
+    expect(campaign.players).toHaveLength(2); // …but the lobby still negotiates the full roster
+    const arena = mapItem({
+      id: 'arena',
+      minimap: true,
+      mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
+      fixedColors: true,
+    });
+    expect(mapCategory(arena)).toBe('multiplayer');
     expect(arena.seats).toEqual([]);
     expect(arena.minimap).toBe(true);
     expect(arena.fixedColors).toBe(true);
-    expect(mapItem({ id: 'arena', minimap: false }).fixedColors).toBe(false);
+    const bare = mapItem({ id: 'arena', minimap: false });
+    expect(bare.fixedColors).toBe(false);
+    expect(bare.types).toEqual([]);
+    expect(mapCategory(bare)).toBe('free');
   });
 
   it('falls back to the id stem when the map ships no display name', () => {
@@ -41,26 +60,84 @@ describe('mapItem', () => {
   });
 });
 
-describe('filterItems', () => {
-  const story = mapItem({ id: 'cn_1', name: 'Prolog', minimap: false });
-  const arena = mapItem({ id: 'zatoka_arena', name: 'Zatoka Mgieł', minimap: true, multiplayer: true });
+describe('listedIn', () => {
+  const typed = (...types: number[]) => mapItem({ id: types.join('_'), minimap: false, mapTypes: types });
+  const campaign = typed(MAP_TYPE.SINGLE_PLAYER_CAMPAIGN);
+  const free = typed(MAP_TYPE.SINGLE_PLAYER_FREE);
+  const userFree = typed(MAP_TYPE.USER_SINGLE_PLAYER_FREE);
+  const multi = typed(MAP_TYPE.MULTI_PLAYER_FREE);
+  const userMulti = typed(MAP_TYPE.USER_MULTI_PLAYER_FREE);
+  const demo = typed(MAP_TYPE.SINGLE_PLAYER_DEMO);
+  const untyped = mapItem({ id: 'untyped', minimap: false });
+  const multiOnly = mapItem({
+    id: 'only',
+    minimap: false,
+    mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
+    multiplayerOnly: true,
+  });
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
-  const items = [story, arena, scene];
 
-  it('lists every decoded map under "all" and keeps test scenes to their own filter', () => {
-    expect(filterItems(items, 'all', '')).toEqual([story, arena]);
-    expect(filterItems(items, 'scenes', '')).toEqual([scene]);
+  it('takes the multiplayer types and an untyped map into a room, like the original list', () => {
+    const room = [campaign, free, userFree, multi, userMulti, demo, untyped, multiOnly, scene].filter(
+      (item) => listedIn(item, 'multiplayer'),
+    );
+    expect(room).toEqual([multi, userMulti, untyped, multiOnly]);
   });
 
-  it('splits story from multiplayer by category', () => {
-    expect(filterItems(items, 'story', '')).toEqual([story]);
-    expect(filterItems(items, 'multiplayer', '')).toEqual([arena]);
+  it('takes the free types, campaign maps and unrestricted multiplayer maps into New Game', () => {
+    const single = [campaign, free, userFree, multi, userMulti, demo, untyped, multiOnly, scene].filter(
+      (item) => listedIn(item, 'single'),
+    );
+    expect(single).toEqual([campaign, free, userFree, multi, untyped, scene]);
+  });
+});
+
+describe('filterItems', () => {
+  const campaign = mapItem({
+    id: 'cn_1',
+    name: 'Prolog',
+    minimap: false,
+    mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+  });
+  const free = mapItem({
+    id: 'dolina',
+    name: 'Dolina',
+    minimap: false,
+    mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
+  });
+  const arena = mapItem({
+    id: 'zatoka_arena',
+    name: 'Zatoka Mgieł',
+    minimap: true,
+    mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
+  });
+  const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
+  const items = [campaign, free, arena, scene];
+
+  it('lists every map under "all" and keeps test scenes to their own filter', () => {
+    expect(filterItems(items, 'single', 'all', '')).toEqual([campaign, free, arena]);
+    expect(filterItems(items, 'single', 'scenes', '')).toEqual([scene]);
+    expect(filterItems(items, 'multiplayer', 'all', '')).toEqual([arena]);
+  });
+
+  it('splits the tabs by maptype and keeps a multiplayer-only map off the New Game multiplayer tab', () => {
+    expect(filterItems(items, 'single', 'campaign', '')).toEqual([campaign]);
+    expect(filterItems(items, 'single', 'free', '')).toEqual([free]);
+    expect(filterItems(items, 'single', 'multiplayer', '')).toEqual([arena]);
+    const both = mapItem({
+      id: 'both',
+      minimap: false,
+      mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE, MAP_TYPE.MULTI_PLAYER_FREE],
+      multiplayerOnly: true,
+    });
+    expect(filterItems([both], 'single', 'all', '')).toEqual([both]);
+    expect(filterItems([both], 'single', 'multiplayer', '')).toEqual([]);
   });
 
   it('searches the title case-insensitively and the id stem', () => {
-    expect(filterItems(items, 'all', 'MGIEŁ')).toEqual([arena]);
-    expect(filterItems(items, 'all', 'cn_')).toEqual([story]);
-    expect(filterItems(items, 'all', 'nic takiego')).toEqual([]);
+    expect(filterItems(items, 'single', 'all', 'MGIEŁ')).toEqual([arena]);
+    expect(filterItems(items, 'single', 'all', 'cn_')).toEqual([campaign]);
+    expect(filterItems(items, 'single', 'all', 'nic takiego')).toEqual([]);
   });
 });
 

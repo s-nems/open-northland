@@ -51,6 +51,29 @@ describe('resolveMapMeta', () => {
     });
   });
 
+  it('carries the [misc_maptype] listing header, with or without strings', async () => {
+    const dir = await mapFolder();
+    await writeFile(
+      join(dir, 'misc.inc'),
+      '[misc_maptype]\nmaptype #CLEAN_MAP_TYPE_MULTI_PLAYER_FREE\nmapmultiplayeronly\n',
+    );
+    expect(await resolveMapMeta(fs, [dir], 'x/map.dat', undefined)).toEqual({
+      mapTypes: [4],
+      multiplayerOnly: true,
+    });
+    const bare = await mapFolder();
+    await writeFile(join(bare, 'misc.inc'), '[misc_maptype]\nmapcampaignid 0 5\n');
+    expect(await resolveMapMeta(fs, [bare], 'x/map.dat', undefined)).toBeUndefined();
+    const cif = parseIniSections('[misc_maptype]\nmaptype 2\n');
+    const typed = await mapFolder();
+    await writeStrings(typed, 'pol', 'string "Nazwa"\nstring "Opis"');
+    expect(await resolveMapMeta(fs, [typed], 'x/map.dat', cif)).toEqual({
+      name: 'Nazwa',
+      description: 'Opis',
+      mapTypes: [2],
+    });
+  });
+
   it('prefers the Polish string table over English', async () => {
     const dir = await mapFolder();
     await writeStrings(dir, 'pol', 'string "Nazwa"\nstring "Opis"');
