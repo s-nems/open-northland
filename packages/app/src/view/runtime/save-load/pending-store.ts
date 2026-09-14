@@ -15,12 +15,20 @@ function openPendingDb(): Promise<IDBDatabase> {
   return openDb(DB_NAME, (db) => db.createObjectStore(STORE_NAME));
 }
 
+/** What the store holds between the hand-off and the boot: the save and whether the world resumes
+ *  running at once, which a sub-mission transition asks for and a load from the menu does not. */
+interface PendingSession {
+  readonly bytes: SaveBytes;
+  readonly resume: boolean;
+}
+
 /** Stage a validated save file's bytes for the page reload that follows. */
 export async function storePendingLoad(bytes: SaveBytes, resume = false): Promise<void> {
   const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
-    txn.objectStore(STORE_NAME).put(resume ? { bytes, resume } : bytes, ENTRY_KEY);
+    const session: PendingSession = { bytes, resume };
+    txn.objectStore(STORE_NAME).put(session, ENTRY_KEY);
     await completed(txn);
   } finally {
     db.close();
@@ -40,14 +48,10 @@ export async function clearPendingLoad(): Promise<void> {
 }
 
 /**
- * Read and delete the staged bytes in one transaction, so a boot that fails to restore them cannot
- * loop the failure; null on a normal fresh boot.
+ * Read and delete the staged session in one transaction, so a boot that fails to restore it cannot
+ * loop the failure; null on a normal fresh boot or over a record of another shape.
  */
-export async function takePendingLoad(): Promise<SaveBytes | null> {
-  return (await takePendingSession())?.bytes ?? null;
-}
-
-export async function takePendingSession(): Promise<{ bytes: SaveBytes; resume: boolean } | null> {
+export async function takePendingSession(): Promise<PendingSession | null> {
   const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
@@ -56,11 +60,10 @@ export async function takePendingSession(): Promise<{ bytes: SaveBytes; resume: 
     store.delete(ENTRY_KEY);
     await completed(txn);
     const value: unknown = read.result;
-    if (isSaveBytes(value)) return { bytes: value, resume: false };
-    if (typeof value === 'object' && value !== null && 'bytes' in value && isSaveBytes(value.bytes)) {
-      return { bytes: value.bytes, resume: 'resume' in value && value.resume === true };
-    }
-    return null;
+    if (typeof value !== 'object' || value === null || !('bytes' in value) || !('resume' in value))
+      return null;
+    if (!isSaveBytes(value.bytes) || typeof value.resume !== 'boolean') return null;
+    return { bytes: value.bytes, resume: value.resume };
   } finally {
     db.close();
   }

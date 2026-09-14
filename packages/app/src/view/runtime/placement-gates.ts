@@ -19,8 +19,8 @@ export function createPlacementGates(
   tribe?: number,
 ): PlacementGates {
   return {
+    // The seat probe applies the tech gate itself, so the cursor pays it once per node.
     canPlaceAt: (typeId, col, row) =>
-      (tribe === undefined || sim.unlockStatus('house', typeId, tribe, localPlayer).enabled) &&
       fogGates.seesNode(col, row) &&
       (sim.placementProbe(typeId, localPlayer, tribe)?.canPlace(col, row) ?? true),
     canPlaceSignpostAt: (col, row) =>

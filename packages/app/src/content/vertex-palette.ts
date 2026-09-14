@@ -8,6 +8,8 @@ const PALETTE_BYTES = PALETTE_COLORS * RGB_CHANNELS;
 const PCX_PALETTE_MARKER = 12;
 const PCX_MANUFACTURER = 10;
 const PCX_INDEXED_BITS = 8;
+const PCX_PLANES_OFFSET = 65;
+const PCX_INDEXED_PLANES = 1;
 const VERTEX_PALETTE_PATH = '/terrain-palettes/vertexcolors.pcx';
 
 /** The 256 RGB entries in an indexed PCX trailer, independent of its image raster. */
@@ -17,7 +19,7 @@ export function vertexPaletteFromPcx(bytes: Uint8Array): readonly number[] | nul
     start <= PCX_HEADER_BYTES ||
     bytes[0] !== PCX_MANUFACTURER ||
     bytes[3] !== PCX_INDEXED_BITS ||
-    bytes[65] !== 1 ||
+    bytes[PCX_PLANES_OFFSET] !== PCX_INDEXED_PLANES ||
     bytes[start - 1] !== PCX_PALETTE_MARKER
   )
     return null;

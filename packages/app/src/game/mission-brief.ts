@@ -32,42 +32,11 @@ export interface MissionBriefSource {
   readonly skirmishGoal: string | null;
 }
 
-const GOAL_TRUE = 'True';
-const GOAL_TIME_GONE = 'TimeGone';
-/** A `TimeGone <n>` goal up to this fires as good as at once. Observation over the decoded maps: most
- *  briefings open on `True` or `TimeGone 0`, a few on `TimeGone 1`. */
-const IMMEDIATE_TIME_GONE_LIMIT = 1;
-const RESULT_PLAY_CUTSCENE = 'PlayCutscene';
 /** A goal description starting with this is printed without it, in the window's emphasis colour
  *  (approximation: the emphasis is not applied). */
 const GOAL_EMPHASIS_MARK = '@';
 /** The mission window's language order: the app locale, then the mod's authoring language. */
 const BRIEFING_LANG_FALLBACKS = ['pol', 'eng'] as const;
-
-/** Whether a goal line holds from the first ticks: `True`, or a `TimeGone` that has as good as passed. */
-function firesAtOnce(goal: MapScriptLine): boolean {
-  if (goal.values[0] === GOAL_TRUE) return true;
-  if (goal.values[0] !== GOAL_TIME_GONE) return false;
-  const after = Number.parseInt(goal.values[1] ?? '', 10);
-  return Number.isInteger(after) && after <= IMMEDIATE_TIME_GONE_LIMIT;
-}
-
-/**
- * The cutscene the map would open on, read off the raw script: the first active trigger whose goals
- * all fire at once and whose results play one. Only a world that runs no script needs this guess;
- * one that runs it opens the page the `missionCutscene` event names. Null when the map opens on none.
- */
-export function introCutsceneId(script: Pick<MapScript, 'missions'>): number | null {
-  for (const mission of script.missions) {
-    if (mission.active === false || mission.goals.length === 0 || !mission.goals.every(firesAtOnce)) continue;
-    for (const line of mission.results) {
-      if (line.values[0] !== RESULT_PLAY_CUTSCENE) continue;
-      const id = Number.parseInt(line.values[1] ?? '', 10);
-      if (Number.isInteger(id) && id >= 0) return id;
-    }
-  }
-  return null;
-}
 
 /** The briefing page for `id` in `lang`, falling back through the authoring languages. */
 export function briefingPage(

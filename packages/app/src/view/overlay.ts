@@ -28,6 +28,14 @@ export const BUTTON_STYLE = [
   'font:12px ui-monospace,monospace',
 ].join(';');
 
+/** The modal dialog look (a parchment sheet) the school and sub-mission dialogs share. */
+export const DIALOG_STYLE = [
+  'padding:24px',
+  'background:#302719',
+  'color:#f4e6cb',
+  'border:1px solid #a18a5d',
+].join(';');
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   style: string,

@@ -28,13 +28,11 @@ import { resolveSpriteSheet } from '../../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../../content/terrain.js';
 import { readVerifiedMapDocuments, type VerifiedMapDocuments } from '../../content/transfer/index.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../../diag/index.js';
-import { neverDiesSeats } from '../../game/match-participants.js';
 import { assertMultiplayerMap } from '../../game/multiplayer-map.js';
 import { sandboxGoods } from '../../game/sandbox/index.js';
-import { sessionDiplomacy } from '../../game/session-diplomacy.js';
-import { sessionRoles } from '../../game/session-roles.js';
 import { onOffParam } from '../../game/session-rules.js';
 import type { SessionRosterSlot } from '../../game/session-url.js';
+import { sessionWorldOptions } from '../../game/session-world.js';
 import { mapScriptWorld, terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
 import { assetSetFor } from '../../view/asset-settings.js';
@@ -101,7 +99,6 @@ export interface AssembledMapWorld {
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
   /** Empty on a restore, whose chests come out of the save. */
   readonly chestPlacements: readonly number[];
-  readonly participants: readonly number[];
 }
 
 /** Assemble the map's world up to a sim standing at a tick boundary; null when the boot halted. */
@@ -185,18 +182,14 @@ export async function assembleMapWorld(
     }
     await boot.begin('world');
     const footprints = buildingFootprints(ir);
-    const roles = sessionRoles(session, script === null ? [] : neverDiesSeats(script));
     // The render layers read the raw map; the sim runs on the collision resolution of the same map.
     const missionWorld = mapScriptWorld(script, ir);
-    // A story script decides the match for the seats it names; a multiplayer setup script without a
-    // verdict leaves the roster to the session's seats.
-    const participants =
-      (missionWorld.victory === 'script' ? missionWorld.participants : undefined) ?? roles.matchParticipants;
     const worldOptions = {
       script: missionWorld,
       map: loaded,
       ir,
       playerRoster: script?.players ?? [],
+      specialItems: script?.specialItems ?? [],
       content: {
         footprints,
         goodNames,
@@ -223,13 +216,8 @@ export async function assembleMapWorld(
     } else {
       const world = buildMapWorld({
         ...worldOptions,
+        ...sessionWorldOptions(session, script, missionWorld),
         seed: session.seed,
-        aiSeats: roles.aiSeats,
-        assistantSeats: roles.assistantSeats,
-        matchParticipants: participants,
-        diplomacy: sessionDiplomacy(session, script?.diplomacy ?? []),
-        specialItems: script?.specialItems ?? [],
-        ...session.rules,
         // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
         // world never reads it.
         missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
@@ -271,7 +259,6 @@ export async function assembleMapWorld(
       staticObjects,
       harvestablePlacements,
       chestPlacements,
-      participants,
     };
   } finally {
     if (!assembled) app.destroy(false, { children: true });

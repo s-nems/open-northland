@@ -18,7 +18,7 @@ import {
 } from '../../game/snapshot.js';
 import { technologyLabel, technologyReason } from '../../game/technology.js';
 import { messages } from '../../i18n/index.js';
-import { BUTTON_STYLE, el } from '../overlay.js';
+import { BUTTON_STYLE, DIALOG_STYLE, el } from '../overlay.js';
 
 export function openSchoolDialog(
   content: ContentSet,
@@ -35,10 +35,7 @@ export function openSchoolDialog(
   const tribe = content.tribes.find((t) => t.typeId === tribeId);
   if (tribe === undefined) return;
   const copy = messages().hud;
-  const dialog = el(
-    'dialog',
-    'max-width:32rem;max-height:75vh;overflow:auto;padding:24px;background:#302719;color:#f4e6cb;border:1px solid #a18a5d',
-  );
+  const dialog = el('dialog', `${DIALOG_STYLE};max-width:32rem;max-height:75vh;overflow:auto`);
   dialog.append(el('h2', '', copy.schoolTitle), el('p', '', copy.schoolHint));
   const full = schoolFull(content, snapshot, house, students);
   const seen = new Set<string>();

@@ -27,13 +27,15 @@ describe.runIf(hasRealIr())('script landscape content joins', () => {
     expect(placements).toBeGreaterThan(0);
   });
 
-  it('reads the owned vertex PCX as 256 RGB entries rather than a grayscale ramp', () => {
-    const path = resolve(contentDir(), 'Data/engine2d/bin/palettes/misc/vertexcolors.pcx');
-    if (!existsSync(path)) return;
-    const bytes = readFileSync(path);
-    expect(bytes[bytes.length - 769]).toBe(12);
-    const palette = vertexPaletteFromPcx(bytes);
-    expect(palette).toHaveLength(256);
-    expect(palette?.some((rgb) => ((rgb >> 16) & 255) !== (rgb & 255))).toBe(true);
-  });
+  const palettePath = resolve(contentDir(), 'Data/engine2d/bin/palettes/misc/vertexcolors.pcx');
+  it.skipIf(!existsSync(palettePath))(
+    'reads the owned vertex PCX as 256 RGB entries rather than a grayscale ramp',
+    () => {
+      const bytes = readFileSync(palettePath);
+      expect(bytes[bytes.length - 769]).toBe(12);
+      const palette = vertexPaletteFromPcx(bytes);
+      expect(palette).toHaveLength(256);
+      expect(palette?.some((rgb) => ((rgb >> 16) & 255) !== (rgb & 255))).toBe(true);
+    },
+  );
 });

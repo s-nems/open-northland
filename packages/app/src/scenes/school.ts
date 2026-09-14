@@ -4,18 +4,27 @@ import { JOB_COLLECTOR, JOB_JOINER } from '../catalog/jobs.js';
 import { placeBuiltSandboxBuilding, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
+const WIDTH = 24;
+const HEIGHT = 16;
+const SCHOOL_AT = { x: 12, y: 8 } as const;
+const PUPIL_AT = { x: 10, y: 12 } as const;
+const JOINER_AT = { x: 16, y: 12 } as const;
+const BYSTANDER_AT = { x: 8, y: 12 } as const;
+/** Long enough for the walk to the school and the whole course. */
+const RUN_TICKS = 1000;
+
 export const schoolScene: SceneDefinition = {
   id: 'school',
   seed: 63,
-  terrain: grassTerrain(24, 16),
+  terrain: grassTerrain(WIDTH, HEIGHT),
   build: (sim) => {
-    const school = placeBuiltSandboxBuilding(sim, 'school', 12, 8);
-    const pupil = spawnSettlerDirect(sim, JOB_COLLECTOR, 10, 12);
-    spawnSettlerDirect(sim, JOB_JOINER, 16, 12);
-    spawnSettlerDirect(sim, JOB_COLLECTOR, 8, 12);
+    const school = placeBuiltSandboxBuilding(sim, 'school', SCHOOL_AT.x, SCHOOL_AT.y);
+    const pupil = spawnSettlerDirect(sim, JOB_COLLECTOR, PUPIL_AT.x, PUPIL_AT.y);
+    spawnSettlerDirect(sim, JOB_JOINER, JOINER_AT.x, JOINER_AT.y);
+    spawnSettlerDirect(sim, JOB_COLLECTOR, BYSTANDER_AT.x, BYSTANDER_AT.y);
     sim.enqueueSetup({ kind: 'learn', entity: pupil, house: school, target: 'job', typeId: JOB_JOINER });
   },
-  runTicks: 1000,
+  runTicks: RUN_TICKS,
   checks: [
     {
       label: 'the first collector learns carpentry at school',

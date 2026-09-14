@@ -290,6 +290,19 @@ describe('createMissionWindow', () => {
     expect(window.state()).toEqual({ page: 501, pages: [500, 501, 502] });
   });
 
+  it('reopens on the restored page and walks the restored pages after a remount', () => {
+    const { window, asked, layout } = mount();
+    window.restore({ page: 501, pages: [500, 501, 502] });
+    window.toggle();
+    expect(asked.at(-1)).toBe(501);
+    window.handleClick(...middle(layout.historyNext));
+    expect(asked.at(-1)).toBe(502);
+    window.handleClick(...middle(layout.historyPrev));
+    window.handleClick(...middle(layout.historyPrev));
+    expect(asked.at(-1)).toBe(500);
+    expect(window.state()).toEqual({ page: 500, pages: [500, 501, 502] });
+  });
+
   it('rebuilds the goal list when a mark changes and leaves the task tab alone', () => {
     let brief: MissionBrief = BRIEF;
     const { ctx, made } = stubContext();

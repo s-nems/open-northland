@@ -10,6 +10,15 @@ const HEIGHT = 16;
 const RIVAL = 1;
 const PERMISSION_SECONDS = 6;
 const PROFESSION_SECONDS = 15;
+const HOME_AT = { x: 8, y: 6 } as const;
+const GUARD_AT = { x: 10, y: 8 } as const;
+const RIVAL_AT = { x: 18, y: 8 } as const;
+/** Where the script drops the player's first collector, in map points. */
+const COLLECTOR_POINT = { hx: 20, hy: 18 } as const;
+const COLLECTOR_ID = 1;
+const NO_BEHAVIOUR = 0;
+/** Past the profession trigger's pass, with one more pass for the discovery to land. */
+const RUN_TICKS = 7 * systems.MISSION_EVALUATION_TICKS;
 
 export const technologyScene: SceneDefinition = {
   id: 'technology',
@@ -24,9 +33,9 @@ export const technologyScene: SceneDefinition = {
       typeId: BUILDING_HOME_00,
       allowed: false,
     });
-    placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, 8, 6);
-    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, 10, 8, HUMAN_PLAYER);
-    spawnSandboxSettler(sim, JOB_COLLECTOR, 18, 8, RIVAL);
+    placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, HOME_AT.x, HOME_AT.y);
+    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, GUARD_AT.x, GUARD_AT.y, HUMAN_PLAYER);
+    spawnSandboxSettler(sim, JOB_COLLECTOR, RIVAL_AT.x, RIVAL_AT.y, RIVAL);
   },
   missions: {
     missions: [
@@ -50,15 +59,15 @@ export const technologyScene: SceneDefinition = {
             player: HUMAN_PLAYER,
             tribe: PRIMARY_TRIBE,
             job: JOB_COLLECTOR,
-            point: { hx: 20, hy: 18 },
-            humanId: 1,
-            behaviour: 0,
+            point: COLLECTOR_POINT,
+            humanId: COLLECTOR_ID,
+            behaviour: NO_BEHAVIOUR,
           },
         ],
       },
     ],
   },
-  runTicks: 7 * systems.MISSION_EVALUATION_TICKS,
+  runTicks: RUN_TICKS,
   checks: [
     {
       label: 'a script grants permission, then the player’s own collector unlocks housing',

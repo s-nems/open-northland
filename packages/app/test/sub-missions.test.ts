@@ -2,7 +2,7 @@ import { MapScript } from '@open-northland/data';
 import { exportSaveGame, parseSaveGame, serializeSaveGame } from '@open-northland/sim';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
-import { loadMapMeta, loadMapScript, loadTerrainMap } from '../src/content/map-loader.js';
+import { loadMapScript, loadTerrainMap } from '../src/content/map-loader.js';
 import { loadMapList } from '../src/content/maps-index.js';
 import { mapSubMissionLoader, validateSavedMap } from '../src/entries/map/sub-missions.js';
 import { buildMapWorld } from '../src/entries/map/world.js';
@@ -12,7 +12,6 @@ import { authoredMapFile } from './support/world-maps.js';
 
 vi.mock('../src/content/map-loader.js', () => ({
   loadTerrainMap: vi.fn(),
-  loadMapMeta: vi.fn(),
   loadMapScript: vi.fn(),
 }));
 vi.mock('../src/content/maps-index.js', () => ({ loadMapList: vi.fn() }));
@@ -41,8 +40,9 @@ function parentSave() {
 }
 
 beforeEach(() => {
-  vi.mocked(loadMapList).mockResolvedValue([{ id: 'child', minimap: false }]);
-  vi.mocked(loadMapMeta).mockResolvedValue({ campaign: { campaignId: 0, missionId: 91 } });
+  vi.mocked(loadMapList).mockResolvedValue([
+    { id: 'child', minimap: false, campaign: { campaignId: 0, missionId: 91 } },
+  ]);
   vi.mocked(loadTerrainMap).mockResolvedValue(map);
   vi.mocked(loadMapScript).mockResolvedValue(source);
 });
@@ -83,9 +83,10 @@ describe('map sub-mission worlds', () => {
     await expect(load({ kind: 'start', campaignId: 2, mapId: 91, mission: 0 }, parent)).rejects.toThrow(
       'found 0',
     );
+    const pair = { campaignId: 0, missionId: 91 };
     vi.mocked(loadMapList).mockResolvedValue([
-      { id: 'child', minimap: false },
-      { id: 'twin', minimap: false },
+      { id: 'child', minimap: false, campaign: pair },
+      { id: 'twin', minimap: false, campaign: pair },
     ]);
     await expect(load({ kind: 'start', campaignId: 0, mapId: 91, mission: 0 }, parent)).rejects.toThrow(
       'found 2',

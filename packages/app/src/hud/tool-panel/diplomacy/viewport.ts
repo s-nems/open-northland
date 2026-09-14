@@ -8,13 +8,19 @@ export interface FittedDiplomacyWindow extends DiplomacyWindowLayout {
   readonly maxScroll: number;
 }
 
+/** Screen px the window keeps clear of every screen edge (approximation). */
+const SCREEN_INSET_PX = 4;
+/** Design px of body a shrunken window must keep below the tabs before the tabs scroll away with it
+ *  (approximation: about two rows). */
+const MIN_BODY_UNDER_TABS = 72;
+
 export function fitDiplomacyWindow(
   layout: DiplomacyWindowLayout,
   screen: { readonly width: number; readonly height: number },
   reserve: Rect | null,
   requestedScroll: number,
 ): FittedDiplomacyWindow {
-  const inset = 4;
+  const inset = SCREEN_INSET_PX;
   let x = Math.max(inset, Math.min(layout.window.x, screen.width - layout.window.w - inset));
   let bottom = screen.height - inset;
   let height = Math.min(layout.window.h, bottom - inset);
@@ -37,7 +43,7 @@ export function fitDiplomacyWindow(
   const dy = y - layout.window.y;
   const first = layout.bodyLines[0];
   const bodyTop = first?.y ?? layout.window.y;
-  const scrollTabs = y + height - (bodyTop + dy) < 72 * layout.scale;
+  const scrollTabs = y + height - (bodyTop + dy) < MIN_BODY_UNDER_TABS * layout.scale;
   const sourceTop = scrollTabs ? layout.titleRect.y + layout.titleRect.h : bodyTop;
   const contentTop = sourceTop + dy;
   const padding = first === undefined ? 0 : first.x - layout.window.x;

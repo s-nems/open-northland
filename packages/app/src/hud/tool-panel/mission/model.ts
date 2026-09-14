@@ -1,4 +1,3 @@
-import { BRIEFING_HISTORY_LIMIT } from '@open-northland/sim';
 import { contains, type Rect } from '../../geometry.js';
 import { uiScaleFor } from '../../ui-scale.js';
 
@@ -44,9 +43,6 @@ const SCROLL_DOWN_X = 246;
  *  holds two pages (reading). */
 const HISTORY_PREV_X = 8;
 const HISTORY_NEXT_X = 450;
-
-/** How many shown briefing pages the window remembers; the oldest drops off (reading). */
-export { BRIEFING_HISTORY_LIMIT } from '@open-northland/sim';
 
 /** The goal list's columns, in design px from the viewport origin; each wraps to the viewport's
  *  right edge. */
@@ -187,28 +183,6 @@ export function hitTestMissionWindow(layout: MissionWindowLayout, x: number, y: 
     return { kind: 'text', x: x - layout.viewport.x, y: y - layout.viewport.y };
   if (contains(layout.sheet, x, y)) return { kind: 'window' };
   return null;
-}
-
-/**
- * The shown-page history with `page` added: a page already in it stays where it was, a new one goes
- * on the end, and past {@link BRIEFING_HISTORY_LIMIT} the oldest drops off (reading).
- */
-export function withShownPage(history: readonly number[], page: number): number[] {
-  if (history.includes(page)) return [...history];
-  const next = [...history, page];
-  return next.length > BRIEFING_HISTORY_LIMIT ? next.slice(next.length - BRIEFING_HISTORY_LIMIT) : next;
-}
-
-/** The page `direction` steps from `page` in the history, or null at either end or off the list. */
-export function neighbouringPage(
-  history: readonly number[],
-  page: number | null,
-  direction: -1 | 1,
-): number | null {
-  if (page === null) return null;
-  const at = history.indexOf(page);
-  if (at < 0) return null;
-  return history[at + direction] ?? null;
 }
 
 /** The scroll offset clamped to what the content can scroll by; zero when it fits. */

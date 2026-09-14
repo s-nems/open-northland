@@ -10,7 +10,6 @@ import {
   adminCommand,
   type Command,
   type Entity,
-  type OpenTribute,
   type PlayerCommand,
   playerCommand,
   type SaveGame,
@@ -30,7 +29,6 @@ import {
 } from '../../diag/index.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
-import { technologyReason } from '../../game/technology.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -50,12 +48,7 @@ import {
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import {
-  createFogGates,
-  type DiplomacySimView,
-  diplomacyPanelRows,
-  messageTargetAnchor,
-} from '../projections/index.js';
+import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
 import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { readStoredSettings } from '../settings-store.js';
@@ -79,6 +72,7 @@ import { relatedWorldLoader } from './save-load/related-world.js';
 import { createScriptPresentation } from './script-presentation.js';
 import { mountScriptTerrainColors } from './script-terrain-colors.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
+import { createTickMemoViews } from './tick-memo-views.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
 
@@ -146,17 +140,11 @@ export interface GameViewDeps {
   readonly worldToken?: string | null;
   readonly saveEntrySearch?: string;
   readonly networkSave?: Pick<SaveLoadSessionOptions, 'sessionMetadata' | 'onSaved'>;
-  /** True when the world came from a save: the session opens paused, so the player reads the board
-   *  they loaded before it moves. */
-  readonly restored?: boolean;
   /** Where the mission window's briefs come from; omitted, the window shows nothing. */
   readonly missionBriefSource?: MissionBriefSource;
   /** Open the mission window as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */
   readonly introAtStart?: boolean;
-  /** The briefing page that start opens on, the entry's guess for a world whose script the sim does
-   *  not run; a world that runs it opens the page the script names instead. */
-  readonly introPage?: number | null;
   /** The map's `[misc_music]` code; omitted or null, the world plays no music. */
   readonly musicType?: number | null;
 }
@@ -164,6 +152,9 @@ export interface GameViewDeps {
 export interface GameViewHandle {
   /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
+  /** Aborted by {@link destroy}, including the teardown a sub-mission swap runs, so a document-level
+   *  binding made for this world can end with it. */
+  readonly lifetime: AbortSignal;
   /** Show a clock change another client made, so the speed button follows the session. */
   syncSpeed(control: GameSpeedControl): void;
   /** Left inset in px that clears the tool-panel strip, for overlays mounted beside this view. */
@@ -290,23 +281,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   const menuGoods = menuGoodsFromContent(sim.content);
   const goodLabelByType = new Map(menuGoods.map((g) => [g.goodType, g.label]));
-  // The open diplomacy window pulls its rows every frame; the tribute probe walks the payer's houses,
-  // and nothing it reads moves between ticks.
-  let owedMemo: {
-    readonly tick: number;
-    readonly payer: number;
-    readonly owed: readonly OpenTribute[];
-  } | null = null;
-  const diplomacyView: DiplomacySimView = {
-    hasMetPlayer: (viewer, other) => sim.hasMetPlayer(viewer, other),
-    diplomacyStance: (from, to) => sim.diplomacyStance(from, to),
-    openTributes: (payer) => {
-      if (owedMemo === null || owedMemo.tick !== sim.tick || owedMemo.payer !== payer) {
-        owedMemo = { tick: sim.tick, payer, owed: sim.openTributes(payer) };
-      }
-      return owedMemo.owed;
-    },
-  };
+  const { diplomacyView, buildReason } = createTickMemoViews(sim, seatTribeOf);
   const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
     diplomacyPanelRows(diplomacyView, {
       localPlayer,
@@ -358,11 +333,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
       ...entry,
-      disabledReason: () =>
-        technologyReason(
-          sim.content,
-          sim.unlockStatus('house', entry.typeId, seatTribeOf(localPlayer), localPlayer),
-        ),
+      disabledReason: () => buildReason(localPlayer, entry.typeId),
     })),
     goods: sharedClock ? [] : menuGoods,
     lang,
@@ -676,12 +647,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     syncViewport: liveSettings.syncViewport,
   });
 
-  if (deps.introAtStart === true) toolPanel.controller.openMission(deps.introPage ?? undefined);
+  if (deps.introAtStart === true) toolPanel.controller.openMission();
   // A restored save of a decided match says so at once, since no event will repeat the verdict.
   if (deps.observer !== true) verdict?.announce(sim.matchOutcome(localPlayer));
 
   return {
     destroy,
+    lifetime: lifetime.signal,
     syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
     hudInsetLeftPx: perfCornerForUiScale(uiscale).left,
     get hudInsetBottomLeftPx() {

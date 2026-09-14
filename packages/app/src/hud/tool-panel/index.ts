@@ -228,6 +228,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       uiString,
       screen: () => app.screen,
       ...(opts.overlayReserve !== undefined ? { overlayReserve: opts.overlayReserve } : {}),
+      toClient: (x, y) => {
+        const { sx, sy, rect } = opts.screenScale(canvas);
+        return { x: rect.left + x / sx, y: rect.top + y / sy };
+      },
       atScale: contextAt,
     });
     const ctx = contextAt(scale);

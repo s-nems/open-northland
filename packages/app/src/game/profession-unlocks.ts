@@ -1,11 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { num, progressionGatesSettler, settlerExperienceOf, settlerLearnedOf } from './snapshot.js';
+import { systems } from '@open-northland/sim';
 
 /**
- * The profession picker's qualification filter: the app-side mirror of the sim's `settlerMeetsNeed`
- * `need-job` reading, computed off the snapshot because the picker cannot reach live sim state. The
- * `setJob` command enforces the identical gate, so this filter is only the player-facing half.
+ * The qualification reading a scene checks off a snapshot, mirroring the sim's `settlerMeetsNeed`
+ * `need-job` rule; the profession picker asks the sim itself through `canChooseJob`.
  */
 
 /** The requirement-table slice every qualifier reads, readonly so a full {@link ContentSet} and the
@@ -75,32 +73,6 @@ function meetsNeedRows(
     if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
     const repeats = systems.requirementRepeats(content.jobExperience, experience, req.experienceTypes);
     if (repeats < req.amount) return false;
-  }
-  return true;
-}
-
-/**
- * Whether every settler in `settlerIds` may take `jobType`, so a multi-selection row is offered only
- * when the order would apply to the whole selection. Gating is per settler, since an AI-owned one is
- * exempt.
- */
-export function jobUnlockedForSelection(
-  content: UnlockContent,
-  snapshot: WorldSnapshot,
-  settlerIds: readonly number[],
-  jobType: number,
-): boolean {
-  for (const id of settlerIds) {
-    const ent = entityById(snapshot, id);
-    if (ent === undefined) continue; // gone mid-frame - the sim will skip it too
-    const settler = ent.components.Settler as { tribe?: unknown } | undefined;
-    const experience = settlerExperienceOf(ent.components);
-    const gated = progressionGatesSettler(snapshot, ent);
-    if (
-      !settlerLearnedOf(ent.components, 'job').includes(jobType) &&
-      !jobUnlockedFor(content, gated, num(settler?.tribe), experience, jobType)
-    )
-      return false;
   }
   return true;
 }

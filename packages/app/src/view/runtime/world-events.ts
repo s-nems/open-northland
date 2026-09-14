@@ -31,9 +31,11 @@ export function createWorldEventHandler(options: {
   return (events) => {
     options.forward(events);
     options.terrainColors(events);
+    // Presentation runs before a transition claims the batch: a failed transition keeps the player in
+    // this world, with the markers and pages the same pass raised.
+    options.presentation(events);
     if (options.subMissions(events)) return;
     options.verdict(events);
-    options.presentation(events);
     const labels: string[] = [];
     for (const event of events) {
       if (event.kind !== 'technologyDiscovered' || event.player !== options.player) continue;

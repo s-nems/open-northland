@@ -31,6 +31,7 @@ export function parseMapsIndex(data: unknown): readonly MapsIndexEntry[] {
     if (typeof item !== 'object' || item === null) continue;
     const { id, name, description, minimap, players, fixedColors, mapTypes, multiplayerOnly, provenance } =
       item as Record<string, unknown>;
+    const campaign = parseCampaign((item as Record<string, unknown>).campaign);
     if (typeof id !== 'string' || id === '') continue;
     const slots = Array.isArray(players) ? players.map(parsePlayerSlot).filter((s) => s !== undefined) : [];
     const origin = MapProvenance.safeParse(provenance);
@@ -46,9 +47,18 @@ export function parseMapsIndex(data: unknown): readonly MapsIndexEntry[] {
         ? { mapTypes: mapTypes.filter((code): code is number => Number.isInteger(code)) }
         : {}),
       ...(multiplayerOnly === true ? { multiplayerOnly: true } : {}),
+      ...(campaign === undefined ? {} : { campaign }),
     });
   }
   return entries;
+}
+
+function parseCampaign(raw: unknown): MapsIndexEntry['campaign'] {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const { campaignId, missionId } = raw as Record<string, unknown>;
+  if (typeof campaignId !== 'number' || typeof missionId !== 'number') return undefined;
+  if (!Number.isSafeInteger(campaignId) || !Number.isSafeInteger(missionId)) return undefined;
+  return { campaignId, missionId };
 }
 
 export async function loadMapList(): Promise<readonly MapsIndexEntry[]> {

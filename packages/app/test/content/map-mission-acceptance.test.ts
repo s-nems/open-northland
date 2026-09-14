@@ -22,6 +22,8 @@ const TRIBUTE_MISSION = 82;
 const CONTACT_PAGE = 511;
 const FRANK_SEAT = 5;
 const ENCOUNTER_MISSION = 22;
+/** The mission that hands the player the win, activated only by a later chain of triggers. */
+const VICTORY_MISSION = 77;
 const ENCOUNTER_PAGE = 501;
 const MOVEMENT_BUDGET_TICKS = 2400;
 
@@ -121,19 +123,11 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
     }
     expect(sim.missionStatus()[ENCOUNTER_MISSION]).toMatchObject({ done: true, fireCount: 1 });
     expect(briefingPages).toContain(ENCOUNTER_PAGE);
-    if (process.env.ON_ACCEPTANCE_TRACE === '1') {
-      console.info('mission-map acceptance', {
-        openingTick: components.missionRecords(sim.world)[0]?.firstFiredTick,
-        reinforcementTick: components.missionRecords(sim.world)[REINFORCEMENT_MISSION]?.firstFiredTick,
-        movementTicks: ticks,
-        newAlliedHumans: reinforcements.length,
-      });
-    }
     expect(restored.hashState()).toBe(sim.hashState());
     expect(serializeSaveGame(exportSaveGame(restored, { mapId: MAP_ID }))).toBe(
       serializeSaveGame(exportSaveGame(sim, { mapId: MAP_ID })),
     );
-    expect(components.missionRecords(sim.world)[77]?.fireCount ?? 0).toBe(0);
+    expect(components.missionRecords(sim.world)[VICTORY_MISSION]?.fireCount ?? 0).toBe(0);
     expect(scriptFailures).toEqual([]);
   }, 90_000);
 });

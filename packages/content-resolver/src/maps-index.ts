@@ -125,7 +125,9 @@ function provenanceOf(raw: unknown): MapsIndexProvenance | undefined {
 async function metaOf(
   dir: MapsDir,
   id: string,
-): Promise<Pick<MapsIndexEntry, 'name' | 'description' | 'provenance' | 'mapTypes' | 'multiplayerOnly'>> {
+): Promise<
+  Pick<MapsIndexEntry, 'name' | 'description' | 'provenance' | 'mapTypes' | 'multiplayerOnly' | 'campaign'>
+> {
   const parsed = await readSidecar(dir, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
@@ -137,13 +139,22 @@ async function metaOf(
   const mapTypes = Array.isArray(meta.mapTypes)
     ? meta.mapTypes.filter((code): code is number => Number.isInteger(code))
     : undefined;
+  const campaign = campaignOf(meta.campaign);
   return {
     ...(provenance === undefined ? {} : { provenance }),
     ...(typeof meta.name === 'string' ? { name: meta.name } : {}),
     ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
     ...(mapTypes === undefined ? {} : { mapTypes }),
     ...(meta.multiplayerOnly === true ? { multiplayerOnly: true } : {}),
+    ...(campaign === undefined ? {} : { campaign }),
   };
+}
+
+function campaignOf(raw: unknown): MapsIndexEntry['campaign'] {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const { campaignId, missionId } = raw as Record<string, unknown>;
+  if (!isNonnegativeInteger(campaignId) || !isNonnegativeInteger(missionId)) return undefined;
+  return { campaignId, missionId };
 }
 
 /** Undefined when `<id>.script.json` is absent or carries no slot. A sidecar that is present but

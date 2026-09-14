@@ -1,5 +1,4 @@
 import { type Entity, entityById, systems } from '@open-northland/sim';
-import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
@@ -112,10 +111,7 @@ export async function createUnitChrome(
       ),
       professions: opts.professions,
       content: opts.content,
-      jobUnlocked: (ids, jobType) =>
-        opts.canChooseJob !== undefined
-          ? ids.every((id) => opts.canChooseJob?.(id, jobType))
-          : jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
+      jobUnlocked: (ids, jobType) => ids.every((id) => opts.canChooseJob(id, jobType)),
       jobBlockedReason: (ids, jobType) => {
         for (const id of ids) {
           const ent = entityById(opts.snapshot(), id);

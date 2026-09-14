@@ -49,6 +49,8 @@ export interface MapsIndexEntry {
   readonly mapTypes?: readonly number[];
   /** `[misc_maptype]` `mapmultiplayeronly`. Emitted only when true. */
   readonly multiplayerOnly?: boolean;
+  /** The `mapcampaignid` pair a script's `StartSubMission` names the map by. */
+  readonly campaign?: { readonly campaignId: number; readonly missionId: number };
 }
 
 /** One `/bobs-index` entry: a viewable atlas stem. */

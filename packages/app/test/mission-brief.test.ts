@@ -1,40 +1,15 @@
-import type { HypertextBlock, MapBriefing, MapScript } from '@open-northland/data';
+import type { HypertextBlock, MapBriefing } from '@open-northland/data';
 import type { MissionStatus } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   briefingPage,
-  introCutsceneId,
   type MissionBriefSource,
   missionBrief,
   missionGoals,
 } from '../src/game/mission-brief.js';
 
-/** The pure joins behind the mission window: which page a scriptless map opens on, which goals show
- *  with which mark, and how the brief falls back when a map ships no briefing. */
-
-const line = (...values: string[]): { key: string; values: string[] } => ({ key: 'x', values });
-
-function script(over: Partial<MapScript> = {}): MapScript {
-  return { players: [], diplomacy: [], specialItems: [], misc: [], humanNames: [], missions: [], ...over };
-}
-
-const OPENING = {
-  debugName: 'Odprawa',
-  active: true,
-  visible: true,
-  goals: [line('True')],
-  results: [line('ExploreArea', '2', '0', '0', '0'), line('PlayCutscene', '500', '1')],
-  other: [],
-};
-const WIN = {
-  debugName: 'MissionWon',
-  description: 'Pokonaj saracenów',
-  active: true,
-  visible: true,
-  goals: [line('PlayerDied', '2')],
-  results: [line('PlayCutscene', '501', '1'), line('MissionWon', '0')],
-  other: [],
-};
+/** The pure joins behind the mission window: which goals show with which mark, and how the brief
+ *  falls back when a map ships no briefing. */
 
 const TEXTS: Readonly<Record<number, string>> = {
   300: 'Pokonaj saracenów',
@@ -56,30 +31,6 @@ function status(over: Partial<MissionStatus>, index = 0): MissionStatus {
     ...over,
   };
 }
-
-describe('introCutsceneId', () => {
-  it('takes the first active trigger that fires at once and plays a cutscene', () => {
-    expect(introCutsceneId(script({ missions: [WIN, OPENING] }))).toBe(500);
-  });
-
-  it('accepts a TimeGone that has as good as passed, but not a later one', () => {
-    expect(introCutsceneId(script({ missions: [{ ...OPENING, goals: [line('TimeGone', '0')] }] }))).toBe(500);
-    expect(introCutsceneId(script({ missions: [{ ...OPENING, goals: [line('TimeGone', '1')] }] }))).toBe(500);
-    expect(
-      introCutsceneId(script({ missions: [{ ...OPENING, goals: [line('TimeGone', '5')] }] })),
-    ).toBeNull();
-  });
-
-  it('skips inactive triggers, triggers with other goals, and triggers without a cutscene', () => {
-    expect(introCutsceneId(script({ missions: [{ ...OPENING, active: false }, WIN] }))).toBeNull();
-    expect(
-      introCutsceneId(script({ missions: [{ ...OPENING, goals: [line('True'), line('TimeGone', '5')] }] })),
-    ).toBeNull();
-    expect(
-      introCutsceneId(script({ missions: [{ ...OPENING, results: [line('MissionWon', '0')] }] })),
-    ).toBeNull();
-  });
-});
 
 describe('missionGoals', () => {
   it('lists the visible missions that name a text, in script order, marked by their flags', () => {

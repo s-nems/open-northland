@@ -1,11 +1,11 @@
-import { isReadOnlySpectator, localPlayerOf } from '@open-northland/lockstep';
+import { localPlayerOf } from '@open-northland/lockstep';
 import { exportSaveGame, type SaveGame, type SimEvent } from '@open-northland/sim';
-import { loadMapMeta, loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
+import { loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
 import { loadMapList } from '../../content/maps-index.js';
-import { sessionRuleOverrides } from '../../game/session-rules.js';
+import { onOffParam } from '../../game/session-rules.js';
 import { mapSession } from '../../game/session-url.js';
+import { sessionWorldOptions } from '../../game/session-world.js';
 import { mapScriptWorld } from '../../game/world/mission-script.js';
-import { aiSeatsParam } from '../../view/params.js';
 import { relaunchSearch } from '../../view/runtime/save-load/relaunch.js';
 import { buildMapWorld, type MapWorldOptions, restoreMapWorld } from './world.js';
 
@@ -38,12 +38,9 @@ export function mapSubMissionLoader(
         throw new Error('No parent mission to return to');
       target = parent.header.mapId;
     } else {
-      const maps = await loadMapList();
-      const metadata = await Promise.all(maps.map(async ({ id }) => ({ id, meta: await loadMapMeta(id) })));
-      const matches = metadata.filter(
-        ({ meta }) =>
-          meta?.campaign?.campaignId === transition.campaignId &&
-          meta.campaign.missionId === transition.mapId,
+      const matches = (await loadMapList()).filter(
+        ({ campaign }) =>
+          campaign?.campaignId === transition.campaignId && campaign.missionId === transition.mapId,
       );
       if (matches.length !== 1)
         throw new Error(
@@ -56,7 +53,15 @@ export function mapSubMissionLoader(
     const [map, source] = await Promise.all([loadTerrainMap(target), loadMapScript(target)]);
     if (map === null || source === null)
       throw new Error(`Sub-mission ${target}: map or script is unavailable`);
-    const options = { map, playerRoster: source.players, script: mapScriptWorld(source, ir), ir, content };
+    const missionWorld = mapScriptWorld(source, ir);
+    const options = {
+      map,
+      playerRoster: source.players,
+      specialItems: source.specialItems,
+      script: missionWorld,
+      ir,
+      content,
+    };
     if (parent !== undefined) {
       if (relaunchSearch(parent.header) === null) throw new Error('Parent mission cannot be relaunched');
       restoreMapWorld(options, parent);
@@ -66,15 +71,12 @@ export function mapSubMissionLoader(
     for (const key of ['scene', 'center', 'intro']) params.delete(key);
     params.set('map', target);
     const session = mapSession(params, source.players);
-    const localPlayer = localPlayerOf(session);
-    const aiSeats = aiSeatsParam(params);
     const world = buildMapWorld({
       ...options,
-      ...sessionRuleOverrides(params),
+      ...sessionWorldOptions(session, source, missionWorld),
       seed: current.header.seed,
-      aiSeats,
-      assistantSeats: [...(isReadOnlySpectator(session) ? [] : [localPlayer]), ...aiSeats],
-      demoOwner: localPlayer,
+      missions: onOffParam(params, 'missions'),
+      demoOwner: localPlayerOf(session),
     });
     return exportSaveGame(world.sim, { mapId: target, entry: `?${params}`, parent: current });
   };

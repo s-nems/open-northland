@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { goodUnlockedFor, jobUnlockedFor, jobUnlockedForSelection } from '../src/game/profession-unlocks.js';
-import { snapshotOf } from './support/sandbox.js';
+import { goodUnlockedFor, jobUnlockedFor } from '../src/game/profession-unlocks.js';
 
 /** The picker's qualification filter - the app-side mirror of the sim's `settlerMeetsNeed` need-job
  *  reading (same rows, same repeats arithmetic; the `setJob` command enforces the identical gate). */
@@ -97,39 +96,5 @@ describe('jobUnlockedFor', () => {
     expect(goodUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 99]]), SWORD_GOOD)).toBe(false);
     expect(goodUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 100]]), SWORD_GOOD)).toBe(true);
     expect(goodUnlockedFor(content, false, 1, new Map(), SWORD_GOOD)).toBe(true); // goods are civilian
-  });
-
-  it('requires the WHOLE selection to qualify, and reads the toggle off the snapshot', () => {
-    const settler = (id: number, rawXp: number) => ({
-      id,
-      components: { Settler: { tribe: 1, jobType: COLLECTOR, experience: [[WOOD_TRACK, rawXp]] } },
-    });
-    const mixed = snapshotOf([settler(1, 100), settler(2, 50)]);
-    expect(jobUnlockedForSelection(content, mixed, [1], CARPENTER)).toBe(true);
-    expect(jobUnlockedForSelection(content, mixed, [1, 2], CARPENTER)).toBe(false); // #2 short
-
-    const freeStart = snapshotOf([
-      settler(1, 0),
-      { id: 99, components: { ProgressionRules: { professionProgressionEnabled: false } } },
-    ]);
-    expect(jobUnlockedForSelection(content, freeStart, [1], CARPENTER)).toBe(true);
-  });
-
-  it('never gates an AI seat’s settler, whatever the toggle says', () => {
-    const AI_SEAT = 2;
-    const owned = (id: number, player: number) => ({
-      id,
-      components: {
-        Settler: { tribe: 1, jobType: COLLECTOR, experience: [] },
-        Owner: { player },
-      },
-    });
-    const snapshot = snapshotOf([
-      owned(1, 0), // the human's fresh collector
-      owned(2, AI_SEAT), // a bot's fresh collector
-      { id: 98, components: { AiPlayer: { player: AI_SEAT, modules: {} } } },
-    ]);
-    expect(jobUnlockedForSelection(content, snapshot, [1], CARPENTER)).toBe(false); // human earns it
-    expect(jobUnlockedForSelection(content, snapshot, [2], CARPENTER)).toBe(true); // the bot does not
   });
 });

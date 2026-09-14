@@ -1,3 +1,4 @@
+export type { MissionWindowState } from './history.js';
 export {
   clampScroll,
   hitTestMissionWindow,
@@ -6,4 +7,4 @@ export {
   missionWindowScale,
   type SheetFrame,
 } from './model.js';
-export { createMissionWindow, type MissionWindow, type MissionWindowState } from './window.js';
+export { createMissionWindow, type MissionWindow } from './window.js';

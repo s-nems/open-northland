@@ -39,4 +39,7 @@ export interface PanelContext {
   /** The screen-px box of the bottom-corner overlay drawn over this panel. A pop-up list that spans it
    *  shortens toward clearing it: presses under the overlay are deferred to it, so a covered row is dead. */
   readonly overlayReserve?: () => Rect | null;
+  /** A canvas (screen px) point as a client (CSS px) point, for DOM overlays placed beside a window;
+   *  absent, the canvas is taken to fill the viewport. */
+  readonly toClient?: (x: number, y: number) => { readonly x: number; readonly y: number };
 }

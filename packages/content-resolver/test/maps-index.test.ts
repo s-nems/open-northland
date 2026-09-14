@@ -170,11 +170,23 @@ describe('buildMapsIndexEntries', () => {
 
   it('carries the meta sidecar listing header and drops a malformed one', async () => {
     await writeFile(join(mapsRoot, 'free.json'), '{}');
-    await writeFile(join(mapsRoot, 'free.meta.json'), '{"mapTypes":[4],"multiplayerOnly":true}');
+    await writeFile(
+      join(mapsRoot, 'free.meta.json'),
+      '{"mapTypes":[4],"multiplayerOnly":true,"campaign":{"campaignId":0,"missionId":5}}',
+    );
     await writeFile(join(mapsRoot, 'odd.json'), '{}');
-    await writeFile(join(mapsRoot, 'odd.meta.json'), '{"mapTypes":[2,"x"],"multiplayerOnly":"yes"}');
+    await writeFile(
+      join(mapsRoot, 'odd.meta.json'),
+      '{"mapTypes":[2,"x"],"multiplayerOnly":"yes","campaign":{"campaignId":0}}',
+    );
     expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
-      { id: 'free', minimap: false, mapTypes: [4], multiplayerOnly: true },
+      {
+        id: 'free',
+        minimap: false,
+        mapTypes: [4],
+        multiplayerOnly: true,
+        campaign: { campaignId: 0, missionId: 5 },
+      },
       { id: 'odd', minimap: false, mapTypes: [2] },
     ]);
   });

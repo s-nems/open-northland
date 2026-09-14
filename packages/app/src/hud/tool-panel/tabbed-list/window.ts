@@ -145,7 +145,11 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     if (reason) {
       tooltip ??= createTooltip();
       const screen = ctx.screen();
-      tooltip.show((x * window.innerWidth) / screen.width, (y * window.innerHeight) / screen.height, reason);
+      const at = ctx.toClient?.(x, y) ?? {
+        x: (x * window.innerWidth) / screen.width,
+        y: (y * window.innerHeight) / screen.height,
+      };
+      tooltip.show(at.x, at.y, reason);
     } else tooltip?.hide();
   };
 
