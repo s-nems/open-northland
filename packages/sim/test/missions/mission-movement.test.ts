@@ -3,7 +3,6 @@ import {
   Building,
   Health,
   HOUSE_BEHAVIOUR,
-  LOCAL_NAV_RADIUS_NODES,
   MissionObjectId,
   Owner,
   ownerOf,
@@ -12,12 +11,22 @@ import {
   Position,
   Resting,
   setHouseBehaviour,
+  WALK_RANGE_NODES,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, type Simulation } from '../../src/index.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { MissionResultOp } from '../../src/systems/missions/index.js';
-import { FIRST_PASS, firingSim, HUT_LARGE, houseContent, POINT, spawn, VIKING } from './support.js';
+import {
+  FIRST_PASS,
+  firingSim,
+  HUT_LARGE,
+  houseContent,
+  MAP_NODES,
+  POINT,
+  spawn,
+  VIKING,
+} from './support.js';
 
 /**
  * The results that walk, teleport, halt, heal and damage what a script addresses. Every one reads the
@@ -58,11 +67,14 @@ describe('SendHuman', () => {
   });
 
   it('sends a civilian past the signpost confinement a player order obeys', () => {
-    const beyond = { hx: POINT.hx + LOCAL_NAV_RADIUS_NODES + 4, hy: POINT.hy };
+    // Corner to corner is the one walk this map holds that is longer than the walk range.
+    const corner = { hx: 0, hy: 0 };
+    const beyond = { hx: MAP_NODES - 1, hy: MAP_NODES - 1 };
+    expect(hexDistance(corner, beyond)).toBeGreaterThan(WALK_RANGE_NODES);
     const sim = firingSim([{ opcode: 'SendHuman', humanId: GROUP, point: beyond }]);
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
-    spawn(sim, { player: OWNER, missionId: GROUP });
-    spawn(sim, { player: OWNER });
+    spawn(sim, { player: OWNER, missionId: GROUP, at: corner });
+    spawn(sim, { player: OWNER, at: corner });
     sim.run(2);
     const [scripted, ordered] = humansOf(sim, OWNER);
     if (scripted === undefined || ordered === undefined) throw new Error('two settlers expected');

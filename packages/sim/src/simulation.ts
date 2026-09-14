@@ -280,7 +280,7 @@ export class Simulation {
 
   /**
    * An erectability test for one player's signposts, reading the same rule the erect command gates on:
-   * open work-flag ground outside the player's spacing circles. Null for a mapless sim.
+   * open work-flag ground past the player's signpost spacing. Null for a mapless sim.
    */
   signpostProbe(player: number): SignpostProbe | null {
     return signpostProbeFor(this.world, this.content, this.terrain, player);

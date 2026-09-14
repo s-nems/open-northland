@@ -9,6 +9,7 @@ export {
   canPlaceSignpost,
   createSignpost,
   erectSignpost,
+  razeSignpost,
   type SignpostProbe,
   signpostProbe,
 } from './placement.js';

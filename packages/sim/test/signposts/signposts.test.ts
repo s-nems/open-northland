@@ -9,8 +9,7 @@ import {
   PlayerOrder,
   Position,
   Settler,
-  SIGNPOST_NAV_RADIUS_NODES,
-  SIGNPOST_SPACING_RADIUS_NODES,
+  SIGNPOST_SPACING_NODES,
   Signpost,
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
@@ -25,14 +24,14 @@ import {
 import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
 import { stampPost } from './support.js';
 
 /**
  * The scout's signpost (the original's guidepost): erected by the one-shot build-guide hammer swing
  * (jobtypes.ini scout `allowatomic 43`), instant and free; blocks building placement on its cell but
- * never movement; keeps a minimum-spacing circle from same-player posts; watches its navigation circle
- * as a standing fog eye. Radii are named approximations (the original's values live only in the exe).
+ * never movement; keeps the original's minimum spacing from same-player posts and links to those the
+ * ground joins it to inside the link range; watches an authored fog circle as a standing eye.
  */
 
 const VIKING = 1;
@@ -88,7 +87,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(posts.length).toBe(1);
     const post = posts[0] as Entity;
     expect(sim.world.get(post, Owner).player).toBe(P0);
-    expect(sim.world.get(post, Signpost).navRadius).toBe(SIGNPOST_NAV_RADIUS_NODES);
+    expect(sim.world.get(post, Signpost).links).toEqual([]); // the first post of a network
     expect(sim.world.has(scout, ErectSignpostOrder)).toBe(false); // the order retired with the swing
     // The erected post trained the scout's signpost craft (1 XP per standing post).
     expect(sim.world.get(scout, Settler).experience.get(SCOUT_EXPERIENCE_TYPE)).toBe(1);
@@ -127,27 +126,30 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(signposts(sim).length).toBe(0);
   });
 
-  it('rejects a second same-player post inside the spacing circle, accepts one beyond it', () => {
+  it('rejects a second same-player post inside the spacing, accepts one at it and links the pair', () => {
     const sim = freshSim(96, 8);
     const scout = makeUnit(sim, 4, 2, SCOUT);
     sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     stepUntilSignpost(sim, 60);
     expect(signposts(sim).length).toBe(1);
 
-    // Inside the spacing radius (a few nodes away) - the command is skipped outright.
+    // Inside the spacing (a few nodes away) - the command is skipped outright.
     const near = makeUnit(sim, 6, 2, SCOUT);
     sim.enqueueSetup({ kind: 'placeSignpost', entity: near, x: 12, y: 4 });
     for (let t = 0; t < 60; t++) sim.step();
     expect(signposts(sim).length).toBe(1);
 
-    // Beyond the spacing radius - a second post rises.
-    const far = makeUnit(sim, 4 + SIGNPOST_SPACING_RADIUS_NODES, 2, SCOUT);
-    sim.enqueueSetup({ kind: 'placeSignpost', entity: far, x: 8 + 2 * SIGNPOST_SPACING_RADIUS_NODES, y: 4 });
+    // Exactly the spacing away - a second post rises, inside the link range of the first.
+    const far = makeUnit(sim, 4 + SIGNPOST_SPACING_NODES / 2, 2, SCOUT);
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: far, x: 8 + SIGNPOST_SPACING_NODES, y: 4 });
     for (let t = 0; t < 400 && signposts(sim).length < 2; t++) sim.step();
-    expect(signposts(sim).length).toBe(2);
+    const [first, second] = signposts(sim);
+    if (first === undefined || second === undefined) throw new Error('two posts stand');
+    expect(sim.world.get(first, Signpost).links).toEqual([second]);
+    expect(sim.world.get(second, Signpost).links).toEqual([first]);
   });
 
-  it('canPlaceSignpost rejects the spacing circle only for the SAME player', () => {
+  it('canPlaceSignpost rejects the spacing only for the SAME player', () => {
     const sim = freshSim();
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
@@ -168,8 +170,8 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     stepUntilSignpost(sim, 60);
     const probe = sim.signpostProbe(P0);
     if (probe === null) throw new Error('mapped sim has a probe');
-    // A band around the standing post: inside the spacing circle, on its cell, and beyond - the probe
-    // must answer exactly what the command gate would.
+    // A band around the standing post: inside the spacing, on its cell, and beyond - the probe must
+    // answer exactly what the command gate would.
     for (let y = 0; y < 8; y += 2) {
       for (let x = 0; x < 48; x += 2) {
         const expected = canPlaceSignpost(sim.world, ctxOf(sim), terrain, terrain.nodeAt(x, y), P0);
@@ -179,8 +181,8 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(probe.canPlace(-1, 0)).toBe(false); // off-map never places
   });
 
-  it('demolishSignpost tears a post down (freeing its spacing circle); a non-signpost target is skipped', () => {
-    const sim = freshSim();
+  it("demolishSignpost tears a post down, freeing its spacing and its neighbours' links; a non-signpost target is skipped", () => {
+    const sim = freshSim(64, 8);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const scout = makeUnit(sim, 4, 2, SCOUT);
@@ -188,6 +190,8 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     stepUntilSignpost(sim, 60);
     const post = signposts(sim)[0];
     if (post === undefined) throw new Error('post erected');
+    const neighbour = stampPost(sim, 14, 2);
+    expect(sim.world.get(neighbour, Signpost).links).toEqual([post]);
     const nearby = terrain.nodeAt(10, 4);
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
 
@@ -195,12 +199,13 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     sim.enqueueSetup({ kind: 'demolishSignpost', signpost: scout });
     sim.step();
     expect(sim.world.has(scout, Settler)).toBe(true);
-    expect(signposts(sim).length).toBe(1);
+    expect(signposts(sim).length).toBe(2);
 
     sim.enqueueSetup({ kind: 'demolishSignpost', signpost: post });
     sim.step();
-    expect(signposts(sim).length).toBe(0);
-    // The spacing circle fell with the post - the spot is placeable again.
+    expect(signposts(sim)).toEqual([neighbour]);
+    expect(sim.world.get(neighbour, Signpost).links).toEqual([]);
+    // The spacing fell with the post - the spot is placeable again.
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(true);
   });
 
@@ -220,30 +225,58 @@ describe('placeSignpost - the scout erects a guidepost', () => {
 });
 
 describe('signpostNetwork - connected groups', () => {
-  /** Stamp a signpost directly (the fixture idiom) at tile (x,y) with the given nav radius. */
-  it('overlapping circles join one group; a distant post forms its own', () => {
+  it('posts inside the link range join one group; a post past it forms its own', () => {
     const sim = freshSim(96, 8);
-    // Tiles are 2 nodes wide: posts at tiles 2 and 10 are 16 nodes apart - overlapping at radius 10.
-    const a = stampPost(sim, 2, 2, 10);
-    const b = stampPost(sim, 10, 2, 10);
-    const far = stampPost(sim, 40, 2, 10); // 60+ nodes away - disconnected
+    // Tiles are 2 nodes wide: posts at tiles 2 and 20 are 36 nodes apart - inside the 40-node range.
+    const a = stampPost(sim, 2, 2);
+    const b = stampPost(sim, 20, 2);
+    const far = stampPost(sim, 40, 2); // 40 nodes past b - the range is exclusive
+    expect(sim.world.get(a, Signpost).links).toEqual([b]);
+    expect(sim.world.get(b, Signpost).links).toEqual([a]);
+    expect(sim.world.get(far, Signpost).links).toEqual([]);
     const posts = signpostNetwork(sim.world).get(P0) ?? [];
     const groupOf = new Map(posts.map((s) => [s.entity, s.group]));
     expect(groupOf.get(a)).toBe(groupOf.get(b));
     expect(groupOf.get(far)).not.toBe(groupOf.get(a));
   });
 
+  it('a post links only to posts walkable ground joins it to inside the range', () => {
+    // A water column at tile 10 splits the strip; the strip is 8 tiles tall, so no way round exists.
+    const sim = new Simulation({
+      seed: 3,
+      content: testContent(),
+      map: waterColumnMap(32, 8, 10),
+    });
+    const west = stampPost(sim, 6, 2);
+    const east = stampPost(sim, 14, 2); // 16 nodes away, well inside the range
+    expect(sim.world.get(west, Signpost).links).toEqual([]);
+    expect(sim.world.get(east, Signpost).links).toEqual([]);
+  });
+
+  it('a chained group is one group whatever the pair distances, with links kept in id order', () => {
+    const sim = freshSim(128, 8);
+    const a = stampPost(sim, 2, 2);
+    const b = stampPost(sim, 20, 2);
+    const c = stampPost(sim, 38, 2); // links b, not a (72 nodes)
+    expect(sim.world.get(b, Signpost).links).toEqual([a, c]);
+    expect(sim.world.get(c, Signpost).links).toEqual([b]);
+    const posts = signpostNetwork(sim.world).get(P0) ?? [];
+    expect(new Set(posts.map((s) => s.group)).size).toBe(1);
+  });
+
   it('players never share a network', () => {
     const sim = freshSim();
-    stampPost(sim, 2, 2, 10, 0);
-    stampPost(sim, 3, 2, 10, 1);
+    const own = stampPost(sim, 2, 2, 0);
+    const rival = stampPost(sim, 3, 2, 1);
+    expect(sim.world.get(own, Signpost).links).toEqual([]);
+    expect(sim.world.get(rival, Signpost).links).toEqual([]);
     expect(signpostNetwork(sim.world).get(0)?.length).toBe(1);
     expect(signpostNetwork(sim.world).get(1)?.length).toBe(1);
   });
 
   it('follows a post handed to another player without an erect or tear-down', () => {
     const sim = freshSim();
-    const post = stampPost(sim, 2, 2, 10, 0);
+    const post = stampPost(sim, 2, 2, 0);
     expect(signpostNetwork(sim.world).get(0)?.length).toBe(1);
     sim.world.add(post, Owner, { player: 1 });
     expect(signpostNetwork(sim.world).get(0)).toBeUndefined();
@@ -258,10 +291,7 @@ describe('signpost fog vision - the permanent recon reveal', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(8), y: fx.fromInt(8) });
     sim.world.add(e, Owner, { player: P0 });
-    sim.world.add(e, Signpost, {
-      navRadius: SIGNPOST_NAV_RADIUS_NODES,
-      spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
-    });
+    sim.world.add(e, Signpost, { links: [] });
     for (let t = 0; t < 12; t++) sim.step(); // past a couple of vision cadences
     const view = sim.fogView(P0);
     expect(view?.stateAt(8, 8)).toBe(FOG_STATE.VISIBLE); // the post's own cell

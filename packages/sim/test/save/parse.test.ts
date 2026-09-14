@@ -12,7 +12,6 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
 const P0 = 0;
-const SIGNPOST_RADIUS = 8;
 
 type Doc = { header: Record<string, unknown>; sections: Array<Record<string, unknown>> };
 
@@ -23,7 +22,7 @@ function populatedDoc(): Doc {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
   sim.world.add(e, Owner, { player: P0 });
-  sim.world.add(e, Signpost, { navRadius: SIGNPOST_RADIUS, spacingRadius: SIGNPOST_RADIUS });
+  sim.world.add(e, Signpost, { links: [] });
   sim.run(6);
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return JSON.parse(serializeSaveGame(exportSaveGame(sim, { mapId: 'm' }))) as Doc;

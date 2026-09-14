@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   JobAssignment,
-  LOCAL_NAV_RADIUS_NODES,
   Residence,
   Settler,
+  WALK_RANGE_NODES,
   WorkFlag,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -31,9 +31,9 @@ const CHAPEL = 4;
 const YARD = 5;
 const WOOD_HARVEST_ATOMIC = 24;
 
-/** Far enough apart that a confined civilian's local circle cannot reach across. */
+/** Far enough apart that a confined civilian's walk range cannot reach across. */
 const NEAR_X = 4;
-const FAR_X = NEAR_X + 2 * LOCAL_NAV_RADIUS_NODES;
+const FAR_X = NEAR_X + 2 * WALK_RANGE_NODES;
 
 function attachContent(): ContentSet {
   return parseContentSet({
@@ -130,7 +130,7 @@ describe('authored attachtohouse on spawn', () => {
   });
 
   // The regression guard for the confinement trap: 32 of the corpus's 180 resolvable attachments sit
-  // outside their settler's local nav circle, so routing this through the player's order would drop them
+  // outside their settler's walk range, so routing this through the player's order would drop them
   // silently. The two `assignWorker` calls bracket the cause - the far one is refused while the slot is
   // provably still open, the near one takes it.
   it('attaches a target the player’s own assignWorker order would refuse as out of area', () => {

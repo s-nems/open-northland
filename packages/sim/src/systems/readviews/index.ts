@@ -57,6 +57,7 @@ export {
   baseSoldierJobType,
   hunterJobType,
   isCarrierJobRow,
+  isDruidJob,
   isFighterJob,
   isFighterJobRow,
   isHeroJob,

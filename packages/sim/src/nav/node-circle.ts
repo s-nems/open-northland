@@ -53,6 +53,27 @@ export function nodeBoxOfCircles(
   return { minX, maxX, minY, maxY };
 }
 
+/** The node box holding every node within hex `range` of `(x, y)`: the hexagon spans `range` columns
+ *  and `range` rows each way. */
+export function hexNodeBox(x: number, y: number, range: number): NodeBox {
+  return { minX: x - range, maxX: x + range, minY: y - range, maxY: y + range };
+}
+
+/** The smallest {@link NodeBox} containing every box given. */
+export function unionNodeBoxes(boxes: readonly NodeBox[]): NodeBox {
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const b of boxes) {
+    if (b.minX < minX) minX = b.minX;
+    if (b.maxX > maxX) maxX = b.maxX;
+    if (b.minY < minY) minY = b.minY;
+    if (b.maxY > maxY) maxY = b.maxY;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
 /** Whether node `(bx, by)` lies within `radiusNodes` of node `(ax, ay)` on the world metric. */
 export function withinNodeRadius(
   ax: number,

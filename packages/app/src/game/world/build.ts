@@ -14,8 +14,8 @@ export interface MapScriptWorld {
   readonly participants?: readonly number[];
 }
 
-/** Every playable world runs with signpost confinement on, so a civilian acts only within its local
- *  circle and its player's reachable network. Each builder enqueues it rather than the sim defaulting
+/** Every playable world runs with signpost confinement on, so a civilian acts only within its walk
+ *  range and its player's caught network. Each builder enqueues it rather than the sim defaulting
  *  to it, which keeps pre-signpost goldens byte-identical. Authored diplomacy rows are enqueued here
  *  too - before the first tick, so no targeting pass ever runs on the everyone-hostile default - and a
  *  map without rows enqueues none, keeping its command stream byte-identical. */
@@ -58,12 +58,14 @@ export function newWorldSim(
  * workplace resolve to a standing building as it spawns.
  */
 export function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
-  if (placements.some((p) => p.kind === 'signpost') && sim.tick !== 0) {
-    throw new Error('Authored signposts require pre-tick world assembly');
+  const terrain = sim.terrain;
+  if (placements.some((p) => p.kind === 'signpost') && (sim.tick !== 0 || terrain === undefined)) {
+    throw new Error('Authored signposts require pre-tick world assembly on a mapped sim');
   }
   for (const p of placements) {
     if (p.kind === 'signpost') {
-      systems.createSignpost(sim.world, { hx: p.x, hy: p.y }, p.owner);
+      if (terrain === undefined) continue; // the guard above already threw for an authored post
+      systems.createSignpost(sim.world, terrain, terrain.nodeAt(p.x, p.y), p.owner);
       continue;
     }
     if (p.kind === 'animal') {

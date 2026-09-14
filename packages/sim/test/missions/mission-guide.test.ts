@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  Owner,
-  Position,
-  SIGNPOST_NAV_RADIUS_NODES,
-  SIGNPOST_SPACING_RADIUS_NODES,
-  Signpost,
-} from '../../src/components/index.js';
+import { Owner, Position, Signpost } from '../../src/components/index.js';
 import type { Simulation } from '../../src/index.js';
 import { type HalfCellNode, positionOfNode } from '../../src/nav/halfcell.js';
 import { guideNearPoint } from '../../src/systems/missions/goals/proximity.js';
@@ -21,10 +15,7 @@ function post(sim: Simulation, point: HalfCellNode, player = PLAYER) {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(point.hx, point.hy));
   sim.world.add(e, Owner, { player });
-  sim.world.add(e, Signpost, {
-    navRadius: SIGNPOST_NAV_RADIUS_NODES,
-    spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
-  });
+  sim.world.add(e, Signpost, { links: [] });
   return e;
 }
 

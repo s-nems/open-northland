@@ -516,11 +516,11 @@ describe('defence mode', () => {
   it('leaves a civilian outside its work area at work - the alarm does not suspend the signpost rule', () => {
     // Wide enough that the far tower sits past the settler's own reach and past any signpost group it
     // could get to (there are none), so the run for cover is illegal exactly as an errand there would be.
-    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(60, 4) });
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(100, 4) });
     const near = buildingAt(sim, 3, 1, TOWER, P1);
-    const far = buildingAt(sim, 55, 1, TOWER, P1);
+    const far = buildingAt(sim, 95, 1, TOWER, P1);
     const homebody = settlerAt(sim, 1, 1, P1, FARMER);
-    const outlier = settlerAt(sim, 30, 1, P1, FARMER);
+    const outlier = settlerAt(sim, 40, 1, P1, FARMER);
 
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.enqueueSetup({ kind: 'setDefenceMode', building: near, enabled: true });

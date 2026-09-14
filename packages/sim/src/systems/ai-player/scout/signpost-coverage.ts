@@ -1,6 +1,5 @@
 import type { World } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { withinNodeRadius } from '../../../nav/node-circle.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
@@ -13,24 +12,24 @@ import { ownedBuildings } from '../seat-roster.js';
  * settlement instead of being laid out up front.
  */
 
-/** Distance between neighbouring lattice targets, in nodes on the world metric: above the 18-node
- *  placement block (SIGNPOST_SPACING_RADIUS_NODES) and below the 24-node nav range
- *  (SIGNPOST_NAV_RADIUS_NODES), so neighbouring posts clear each other's spacing yet always chain into
- *  one network. */
+/** Hex distance between neighbouring lattice targets. With two posts each up to the tolerance off
+ *  their targets the pair stays under the 40-node link range (22 + 2·8), and past the 16-node placement
+ *  block when they drift together (22 - 2·8 is inside it, which the legal-spot search then steps
+ *  around), so neighbouring posts chain into one network. */
 export const SIGNPOST_LATTICE_SPACING_NODES = 22;
 
 /** How far a post may stand from its lattice target and still satisfy it - also the legal-spot search
  *  reach, so an erected post always satisfies the target it was placed for. Under half the spacing,
- *  so one post can never satisfy two neighbouring targets. */
+ *  so one post can never satisfy two neighbouring targets. The search walks Manhattan rings, and a
+ *  Manhattan step never counts less than a hex step, so the drift is bounded in hex distance too. */
 export const SIGNPOST_TARGET_TOLERANCE_NODES = 8;
 
-// Hex-lattice basis in node offsets: axial (q, r) ↦ (22q + 11r, 34r). The node lattice is anisotropic
-// (34 px E/W, 19 px N/S - `nav/node-circle.ts`), so the r step's world-metric height 22·√3/2 ≈ 19.05
-// spans 19.05·34/19 ≈ 34 rows; every neighbour pair then sits ~22 world units apart. Integer
-// literals, precomputed - the sim allows no trig.
+// Hex-lattice basis in node offsets: axial (q, r) ↦ (22q + 11r, 22r). A row step carries half a
+// column, so the r step is a straight hex-grid direction and every neighbour pair sits exactly
+// SIGNPOST_LATTICE_SPACING_NODES apart in hex distance.
 const LATTICE_Q_DX = SIGNPOST_LATTICE_SPACING_NODES;
 const LATTICE_R_DX = SIGNPOST_LATTICE_SPACING_NODES / 2;
-const LATTICE_R_DY = 34;
+const LATTICE_R_DY = SIGNPOST_LATTICE_SPACING_NODES;
 
 /** Axial hex coordinate (q, r) → node offset from the lattice centre. */
 export function signpostLatticeOffset(q: number, r: number): { dx: number; dy: number } {
@@ -46,9 +45,9 @@ const BASE_RING = 1;
  *  on the half-cell lattice. */
 const CENTRE_DOOR_CLEARANCE_NODES = 2;
 
-/** Every ring-k target is at least k·19 world units from the centre (the mid-edge minimum
- *  k·22·√3/2 ≈ k·19.05, floored) - the divisor bounding how many rings a settlement extent needs. */
-const RING_MIN_STEP_NODES = 19;
+/** Every ring-k target is exactly k spacings from the centre in hex distance, the lattice being aligned
+ *  with the hex grid - the divisor bounding how many rings a settlement extent needs. */
+const RING_STEP_NODES = SIGNPOST_LATTICE_SPACING_NODES;
 
 /** Hard ring budget per decision (~217 targets scanned at worst). A settlement past it is the
  *  expansion module's concern, not lattice growth around the seat's base. */
@@ -80,15 +79,14 @@ function latticeRing(k: number): { q: number; r: number }[] {
   return out;
 }
 
-/** The outermost ring worth scanning for this settlement: node Manhattan distance over-bounds the
- *  world-metric distance (a row is under one x-unit), so every target a building can want lies within. */
+/** The outermost ring worth scanning for this settlement, from the farthest building's hex distance. */
 function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode[]): number {
   let extent = 0;
   for (const b of buildings) {
-    const d = Math.abs(b.hx - anchor.hx) + Math.abs(b.hy - anchor.hy);
+    const d = hexDistanceBetween(anchor.hx, anchor.hy, b.hx, b.hy);
     if (d > extent) extent = d;
   }
-  const rings = Math.ceil((extent + SIGNPOST_LATTICE_SPACING_NODES) / RING_MIN_STEP_NODES);
+  const rings = Math.ceil((extent + SIGNPOST_LATTICE_SPACING_NODES) / RING_STEP_NODES);
   return Math.min(MAX_LATTICE_RING, Math.max(BASE_RING, rings));
 }
 
@@ -132,10 +130,10 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
       const ty = centre.hy + offset.dy;
       const wanted =
         ring <= BASE_RING ||
-        buildings.some((b) => withinNodeRadius(b.hx, b.hy, tx, ty, SIGNPOST_LATTICE_SPACING_NODES));
+        buildings.some((b) => hexDistanceBetween(b.hx, b.hy, tx, ty) <= SIGNPOST_LATTICE_SPACING_NODES);
       if (!wanted) continue;
-      const satisfied = posts.some((s) =>
-        withinNodeRadius(s.hx, s.hy, tx, ty, SIGNPOST_TARGET_TOLERANCE_NODES),
+      const satisfied = posts.some(
+        (s) => hexDistanceBetween(s.hx, s.hy, tx, ty) <= SIGNPOST_TARGET_TOLERANCE_NODES,
       );
       if (satisfied) continue;
       if (probe === null) {

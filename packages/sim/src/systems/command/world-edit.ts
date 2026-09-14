@@ -7,6 +7,7 @@ import type { SystemContext } from '../context.js';
 import { createResourceNode } from '../footprint/index.js';
 import { razeBuilding } from '../lifecycle/cleanup.js';
 import { dropOrStackGood } from '../settlers/atomics/effects/goods/index.js';
+import { razeSignpost } from '../signposts/index.js';
 
 /** Build a standing resource node through the shared {@link createResourceNode} assembly. A `good` with no
  *  footprint record is bad input, and the world is left untouched. */
@@ -53,11 +54,11 @@ export function demolish(
   razeBuilding(world, ctx, command.building);
 }
 
-/** Destroy a signpost, under the same kind-at-execution rule as {@link demolish}. The destroy moves the
- *  Signpost generation, so the network memo, placement blockers, and vision all pick it up. */
+/** Take a signpost down, under the same kind-at-execution rule as {@link demolish}. The destroy moves
+ *  the Signpost generation, so the network memo, placement blockers, and vision all pick it up. */
 export function demolishSignpost(
   world: World,
   command: Extract<Command, { kind: 'demolishSignpost' }>,
 ): void {
-  if (world.has(command.signpost, Signpost)) world.destroy(command.signpost);
+  if (world.has(command.signpost, Signpost)) razeSignpost(world, command.signpost);
 }

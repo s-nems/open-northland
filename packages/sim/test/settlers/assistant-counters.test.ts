@@ -67,12 +67,11 @@ const SWORD_SHORT_WEAPON = 7;
 const SWORD_LONG_WEAPON = 8;
 /** A dispatch beat plus slack - the counter must have acted (or provably not) within one beat. */
 const BEAT_TICKS = ASSISTANT_DECISION_PERIOD_TICKS + 2;
-/** Far beyond a recruit's own local circle (24 nodes = 12 tiles) - only a signpost chain reaches it. */
+/** Far beyond a recruit's own walk range (50 nodes = 25 tiles) - only a signpost chain reaches it. */
 const FAR_TILE = 40;
-/** A post radius wide enough that two of them bridge the barracks to {@link FAR_TILE}. */
-const POST_NAV_RADIUS_NODES = 24;
-/** Past the end of that post chain - out of reach even from {@link FAR_TILE}. */
-const BEYOND_TILE = 56;
+/** Past the end of that post chain - out of reach even from {@link FAR_TILE}, where the walk range is
+ *  measured anew from wherever the recruit stands. */
+const BEYOND_TILE = 70;
 
 function trainContent(): ContentSet {
   const base = testContent();
@@ -462,7 +461,7 @@ describe('the training queue', () => {
   });
 
   it('shops for the weapon inside the signpost network instead of crossing the map', () => {
-    const sim = trainSim(grassMap(64, 6));
+    const sim = trainSim(grassMap(96, 6));
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     barracksAt(sim, 6, 3);
@@ -480,8 +479,8 @@ describe('the training queue', () => {
     expect(sim.world.has(recruit, AssistantRecruit)).toBe(true);
 
     // A chain of posts takes the network out to the pile, and the same booking sends him.
-    stampPost(sim, 12, 3, POST_NAV_RADIUS_NODES, PLAYER);
-    stampPost(sim, 32, 3, POST_NAV_RADIUS_NODES, PLAYER);
+    stampPost(sim, 12, 3, PLAYER);
+    stampPost(sim, 30, 3, PLAYER);
     runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SWORDSMAN_LONG, 6000, 'armed');
 
     // The armor chained from the sword pile obeys the same reach: the only mail on the map lies past
@@ -491,13 +490,13 @@ describe('the training queue', () => {
   });
 
   it('keeps him inside the network for the whole walk, not just the moment he is sent', () => {
-    const sim = trainSim(grassMap(64, 6));
+    const sim = trainSim(grassMap(96, 6));
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     barracksAt(sim, 6, 3);
     const recruit = settlerAt(sim, CIVILIST, 3, 3);
-    stampPost(sim, 12, 3, POST_NAV_RADIUS_NODES, PLAYER);
-    stampPost(sim, 32, 3, POST_NAV_RADIUS_NODES, PLAYER);
+    stampPost(sim, 12, 3, PLAYER);
+    stampPost(sim, 30, 3, PLAYER);
     const inNetwork = pileAt(sim, FAR_TILE, 3, new Map([[SWORD_LONG_GOOD, 1]]));
     const outside = pileAt(sim, BEYOND_TILE, 3, new Map([[SWORD_LONG_GOOD, 1]]));
 

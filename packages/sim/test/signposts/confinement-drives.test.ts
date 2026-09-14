@@ -25,8 +25,8 @@ import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
  * (settlers do not act outside the network); each drive's confinement is the same shared
  * `navigationLimitFor` rule the move-order/gatherer tests pin (see navigation.test.ts).
  *
- * Geometry: LOCAL radius 24 nodes = 12 tiles E/W. IN-AREA fixtures sit at tile 6; OUT-OF-AREA ones at
- * tile 40 on a 192-tile strip, far beyond the local circle with no signposts to extend it.
+ * Geometry: the walk range is 50 hex nodes = 25 tiles E/W. IN-AREA fixtures sit at tile 6; OUT-OF-AREA
+ * ones at tile 40 on a 192-tile strip, beyond the range with no signposts to extend it.
  */
 
 const VIKING = 1;

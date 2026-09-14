@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Settler } from '../../../src/components/index.js';
 import { fx, positionOfNode, Simulation } from '../../../src/index.js';
-import { withinNodeRadius } from '../../../src/nav/node-circle.js';
+import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import {
   SIGNPOST_TARGET_TOLERANCE_NODES,
   scoutModule,
   signpostLatticeOffset,
 } from '../../../src/systems/ai-player/index.js';
 import { interactionNode } from '../../../src/systems/footprint/interaction.js';
+import { signpostNetwork } from '../../../src/systems/index.js';
 import { EAT_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -45,16 +46,16 @@ describe('signpost-coverage module (guideBuild)', () => {
     const order = commands[0];
     if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
     // The first post lands beside the HQ (the lattice's centre target).
-    expect(withinNodeRadius(order.x, order.y, HQ_X, HQ_Y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(true);
+    expect(hexDistanceBetween(order.x, order.y, HQ_X, HQ_Y) <= SIGNPOST_TARGET_TOLERANCE_NODES).toBe(true);
 
     // With the centre post standing, the next order walks the first ring (its east corner fits
-    // this map; the ±34-row targets fall off it and are skipped).
+    // this map; the -22-row targets fall off it and are skipped).
     plantPostAtHq(sim);
     const next = [...scoutModule.run(sim.world, ctxOf(sim), SEAT)][0];
     if (next?.kind !== 'placeSignpost') throw new Error('expected a first-ring placement');
     const east = signpostLatticeOffset(1, 0);
     expect(
-      withinNodeRadius(next.x, next.y, HQ_X + east.dx, HQ_Y + east.dy, SIGNPOST_TARGET_TOLERANCE_NODES),
+      hexDistanceBetween(next.x, next.y, HQ_X + east.dx, HQ_Y + east.dy) <= SIGNPOST_TARGET_TOLERANCE_NODES,
     ).toBe(true);
   });
 
@@ -106,7 +107,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
     expect({ x: order.x, y: order.y }).not.toEqual(sealed);
     // Still the centre target: the pick settles on reachable ground within the same tolerance.
-    expect(withinNodeRadius(order.x, order.y, sealed.x, sealed.y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(
+    expect(hexDistanceBetween(order.x, order.y, sealed.x, sealed.y) <= SIGNPOST_TARGET_TOLERANCE_NODES).toBe(
       true,
     );
   });
@@ -139,7 +140,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     const ctx = { ...ctxOf(sim), content: doorHqContent() };
     const order = [...scoutModule.run(sim.world, ctx, SEAT)][0];
     if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
-    expect(withinNodeRadius(order.x, order.y, door.x - 2, door.y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(
+    expect(hexDistanceBetween(order.x, order.y, door.x - 2, door.y) <= SIGNPOST_TARGET_TOLERANCE_NODES).toBe(
       true,
     );
   });
@@ -179,14 +180,37 @@ describe('signpost-coverage module (guideBuild)', () => {
     const order = [...scoutModule.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'placeSignpost') throw new Error('expected an expansion placement');
     expect(
-      withinNodeRadius(
-        order.x,
-        order.y,
-        CENTER.x + reach.dx,
-        CENTER.y + reach.dy,
+      hexDistanceBetween(order.x, order.y, CENTER.x + reach.dx, CENTER.y + reach.dy) <=
         SIGNPOST_TARGET_TOLERANCE_NODES,
-      ),
     ).toBe(true);
+  });
+
+  it('chains the whole ring into one group, even with every post drifted a full tolerance off its target', () => {
+    const CENTER = { x: 128, y: 128 };
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
+    // Each ring post pushed outward along its own axis by the tolerance, the worst spread two
+    // neighbours can reach; the legal-spot search walks Manhattan rings, which the hex metric never
+    // under-counts.
+    const ring = [
+      { q: 1, r: 0, dx: SIGNPOST_TARGET_TOLERANCE_NODES, dy: 0 },
+      { q: 0, r: 1, dx: 0, dy: SIGNPOST_TARGET_TOLERANCE_NODES },
+      { q: -1, r: 1, dx: -SIGNPOST_TARGET_TOLERANCE_NODES, dy: 0 },
+      { q: -1, r: 0, dx: -SIGNPOST_TARGET_TOLERANCE_NODES, dy: 0 },
+      { q: 0, r: -1, dx: 0, dy: -SIGNPOST_TARGET_TOLERANCE_NODES },
+      { q: 1, r: -1, dx: SIGNPOST_TARGET_TOLERANCE_NODES, dy: 0 },
+    ];
+    for (const { q, r, dx, dy } of ring) {
+      const o = signpostLatticeOffset(q, r);
+      plantPost(sim, positionOfNode(CENTER.x + o.dx + dx, CENTER.y + o.dy + dy));
+    }
+    const posts = signpostNetwork(sim.world).get(SEAT) ?? [];
+    expect(posts).toHaveLength(7);
+    expect(new Set(posts.map((p) => p.group)).size).toBe(1);
+    // Every target reads satisfied, so the module asks for nothing more.
+    expect([...scoutModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 
   it('does nothing without a scout', () => {

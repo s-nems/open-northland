@@ -103,8 +103,8 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
   it('emits signpost boards identically, their synthetic refs live only while the post draws', () => {
     const index = new SpriteSpatialIndex();
     const snapshot = snapshotOf([
-      entity(1, 0, 0, { Signpost: { navRadius: 6 }, Owner: { player: 1 } }),
-      entity(2, 4, 0, { Signpost: { navRadius: 5 }, Owner: { player: 1 } }),
+      entity(1, 0, 0, { Signpost: { links: [2] }, Owner: { player: 1 } }),
+      entity(2, 4, 0, { Signpost: { links: [1] }, Owner: { player: 1 } }),
     ]);
     const viewport = { ...viewportAt(0, 0), maxX: viewportAt(4, 0).maxX }; // frame both posts
     const indexed = collectSpriteScene(snapshot, { viewport, index });

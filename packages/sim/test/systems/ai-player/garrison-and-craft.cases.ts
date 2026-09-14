@@ -66,14 +66,13 @@ interface SeatOptions {
   readonly confined?: boolean;
 }
 
-/** The barracks a few nodes off the HQ: one settlement, everything inside one local circle. */
+/** The barracks a few nodes off the HQ: one settlement, everything inside one walk range. */
 const BARRACKS_AT = { x: 40, y: 16 };
-/** A barracks past the far end of a recruit's own local circle (24 nodes) from the HQ store. */
-const FAR_BARRACKS = { x: 58, y: 16 };
-/** A post midway between the two, in TILE coords (`Position` is tile-space), whose circle reaches
- *  both - the network that makes the far store shoppable again. */
-const BRIDGE_POST = { x: 22, y: 8 };
-const POST_NAV_RADIUS_NODES = 24;
+/** A barracks 70 nodes from the HQ store, past a recruit's own walk range (50 nodes). */
+const FAR_BARRACKS = { x: 100, y: 16 };
+/** A post midway between the two, in TILE coords (`Position` is tile-space), inside the walk range
+ *  of both doors - the network that makes the far store shoppable again. */
+const BRIDGE_POST = { x: 32, y: 8 };
 
 /** A seat with an HQ holding `arms`, a barracks, and `men` idle civilians, on content whose sword,
  *  spear and bow classes are equippable ({@link armedContent}). */
@@ -81,7 +80,7 @@ function armedSeat(arms: readonly { good: number; amount: number }[], options: S
   const content = armedContent();
   const men = options.men ?? SPARE_MEN;
   const barracks = options.barracks ?? BARRACKS_AT;
-  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
   if (options.confined === true) sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   sim.enqueueSetup({
     kind: 'placeBuilding',
@@ -388,7 +387,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: sparePool(seat) });
 
     // One post between the two puts the store back inside the drill floor's own network.
-    stampPost(seat.sim, BRIDGE_POST.x, BRIDGE_POST.y, POST_NAV_RADIUS_NODES, SEAT);
+    stampPost(seat.sim, BRIDGE_POST.x, BRIDGE_POST.y, SEAT);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
   });
 
@@ -489,7 +488,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('splits the animal farm between its breeders - the ox line, then the sheep line', () => {
     const content = husbandryContent();
-    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -528,7 +527,7 @@ describe('workforce module - the barracks and craft selections', () => {
     // The split must not outlive the crew it was written for: with the pool too short to seat two
     // breeders, restricting the one man to seat 0 would leave wool unmade for as long as he is alone.
     const content = husbandryContent();
-    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
     sim.enqueueSetup({
       kind: 'placeBuilding',

@@ -1,14 +1,14 @@
-import { defineComponent } from '../ecs/world.js';
+import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * A standing signpost (the original's guidepost, `ls_guidepost.bmd`) - the scout-erected navigation marker.
  * It stands on one half-cell node, never moves, and blocks building placement on its cell but never
- * movement. `navRadius` is the work-area circle it adds to the navigation limit of a settler that reaches
- * its group; `spacingRadius` is the circle no second same-player signpost may be erected inside. Both are
- * integer node-distances on the world metric, carried per signpost rather than read from a constant.
+ * movement. `links` are the same-player posts it is connected to, symmetric and in ascending entity
+ * order; they are settled when a post rises or falls, as the original keeps each guide's connection
+ * list (macOS symbols `an original routine`).
  */
-export const Signpost = defineComponent<{ navRadius: number; spacingRadius: number }>('Signpost', 'economy');
+export const Signpost = defineComponent<{ links: readonly Entity[] }>('Signpost', 'economy');
 
 /**
  * The scout's pending "erect a signpost here" order - the `placeSignpost` command's en-route marker. The
@@ -39,16 +39,25 @@ export const ExploreOrder = defineComponent<{
 export const EXPLORE_RADIUS_NODES = 40;
 
 /**
- * The signpost circle radii, in half-cell nodes on the world metric (one node = 34 px E/W).
- * Approximations: no plaintext or `.cif` data carries the original's guidepost ranges (`landscapes.cif`
- * and `logicdefines.inc` checked), so these are tunable, calibrated against the running original by eye.
+ * How far a civilian plans a walk without signposts, in hex node distance (`nav/hex-distance.ts`) from
+ * where it stands: the original's pathfinder range, re-measured from the current position on every leg,
+ * so there is no fixed anchor. A goal may lie exactly the range away, but a signpost is caught, and
+ * covers a goal, only strictly inside it: the walk compares with `<=`, the guide search with `<`. Byte
+ * evidence: `an original routine`/`Carrier`, the original data 0x4f1308, and the searches
+ * an original routine / an original routine.
  */
-export const SIGNPOST_NAV_RADIUS_NODES = 24;
-export const SIGNPOST_SPACING_RADIUS_NODES = 18;
+export const WALK_RANGE_NODES = 50;
+export const CARRIER_WALK_RANGE_NODES = 63;
 
 /**
- * The civilian settler's own work reach in nodes on the world metric when signpost navigation is on: it may
- * always act within this circle around where it stands, plus any signpost group reachable from inside it.
- * Same approximation basis as the signpost radii above, sized to the gatherer's `DEFAULT_WORK_FLAG_RADIUS`.
+ * Two same-player signposts link when their hex distance is under this and walkable ground joins them
+ * within it. Byte evidence: the guide connection flood's radius (the original an original routine).
  */
-export const LOCAL_NAV_RADIUS_NODES = 24;
+export const SIGNPOST_LINK_RANGE_NODES = 40;
+
+/** No second same-player signpost may rise inside this hex distance of a standing one. Byte evidence:
+ *  the original an original routine. */
+export const SIGNPOST_SPACING_NODES = 16;
+
+/** The post's standing fog eye, in nodes on the world metric. Authored, no original counterpart. */
+export const SIGNPOST_VISION_NODES = 24;

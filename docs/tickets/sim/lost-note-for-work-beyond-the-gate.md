@@ -3,7 +3,7 @@
 **Area:** sim · **Focus:** signposts, user messages · **Priority:** P3
 
 `planBuilder` (`packages/sim/src/systems/settlers/drives/economy/builder.ts`) picks its site through the
-settler's signpost gate, so a construction site placed outside every circle the builder can reach is
+settler's signpost gate, so a construction site placed beyond every range the builder can reach is
 never chosen: the builder idles at home and the player hears nothing. The original plans the walk
 regardless and, once its guided pathfinder has failed five times, raises message 3 "is lost. Your scout
 may have to erect more signposts" (`an original routine`, reason 1). The cut-off note
@@ -22,7 +22,7 @@ site 200 nodes away, four announce cadences, no `settlerCutOff`, no `settlerGoal
 
 ## Verify
 
-- `packages/sim/test/signposts/navigation.test.ts`, "the cut-off note": a builder inside the local
-  circle of its headquarters with the only site 60 tiles east is announced; the same builder with a
+- `packages/sim/test/signposts/navigation.test.ts`, "the cut-off note": a builder inside the walk
+  range of its headquarters with the only site 60 tiles east is announced; the same builder with a
   signpost chain to the site is not.
 - `npm test`, goldens unmoved (events sit outside the state hash).

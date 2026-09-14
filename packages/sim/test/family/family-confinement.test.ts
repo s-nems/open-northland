@@ -21,10 +21,10 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 /**
  * Signpost confinement over the FAMILY searches - the family twins of confinement-drives.test.ts:
  * with `setSignpostNavigation` on, the housewife's hoard source, the marry partner pick, and the
- * `assignHouse` target are all gated to the settler's allowed area (local circle + reachable
+ * `assignHouse` target are all gated to the settler's allowed area (its walk range + a caught
  * guidepost network), while an in-area twin is still taken. Same geometry as the drives suite:
- * LOCAL radius 24 nodes = 12 tiles; IN-AREA fixtures at tile 6, OUT-OF-AREA at tile 40 on a
- * 192-tile strip with no signposts to extend the circle.
+ * the walk range is 50 hex nodes = 25 tiles; IN-AREA fixtures at tile 6, OUT-OF-AREA at tile 40 on a
+ * 192-tile strip with no signposts to extend the range.
  */
 
 const VIKING = 1;
@@ -119,7 +119,7 @@ describe('confinement gates the housewife hoard source', () => {
 
     foodPileAt(sim, IN_AREA, 2, 3);
     sim.step();
-    expect(acted(sim, woman)).toBe(true); // the near pile is inside her local circle
+    expect(acted(sim, woman)).toBe(true); // the near pile is inside her walk range
   });
 });
 

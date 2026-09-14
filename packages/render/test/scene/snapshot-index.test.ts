@@ -80,9 +80,9 @@ describe('targetPositionsOf', () => {
 });
 
 describe('the shared scene walk', () => {
-  // navRadius is a node count, like the sim's SIGNPOST_NAV_RADIUS_NODES: 6 + 6 reaches the neighbour
-  // two tiles away, so both posts draw a board.
-  const SIGNPOST = { Signpost: { navRadius: 6 }, Owner: { player: 0 } };
+  // The posts carry each other as a stored link, so both draw a board.
+  const SIGNPOST_4 = { Signpost: { links: [5] }, Owner: { player: 0 } };
+  const SIGNPOST_5 = { Signpost: { links: [4] }, Owner: { player: 0 } };
   const world = () =>
     snapshotOf([
       entity(1, 1, 1, {
@@ -91,8 +91,8 @@ describe('the shared scene walk', () => {
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
       entity(3, 3, 1, { Building: { buildingType: 7, tribe: 0 } }),
-      entity(4, 4, 1, SIGNPOST),
-      entity(5, 5, 1, SIGNPOST),
+      entity(4, 4, 1, SIGNPOST_4),
+      entity(5, 5, 1, SIGNPOST_5),
     ]);
 
   it('walks the entity list once for every pre-scan a frame reads', () => {

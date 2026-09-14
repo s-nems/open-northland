@@ -9,6 +9,7 @@ import {
   Position,
   recordContact,
   Settler,
+  SIGNPOST_VISION_NODES,
   Signpost,
   Vehicle,
 } from '../../components/index.js';
@@ -136,8 +137,8 @@ export const visionSystem: System = (world, ctx) => {
 };
 
 /** The vision radius in nodes of one owned entity, or null when it is not an eye. A rising site counts as
- *  manned ground and sees the building radius, a boat hull sees like a civilian, and a signpost watches its
- *  whole navigation circle, an authored standing eye that keeps its area visible in RECON. */
+ *  manned ground and sees the building radius, a boat hull sees like a civilian, and a signpost is an
+ *  authored standing eye that keeps {@link SIGNPOST_VISION_NODES} around it visible in RECON. */
 function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | null {
   const settler = world.tryGet(e, Settler);
   if (settler !== undefined) {
@@ -148,8 +149,7 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
   }
   if (world.has(e, Building)) return BUILDING_VISION_NODES;
   if (world.has(e, Vehicle)) return CIVILIAN_VISION_NODES;
-  const signpost = world.tryGet(e, Signpost);
-  if (signpost !== undefined) return signpost.navRadius;
+  if (world.has(e, Signpost)) return SIGNPOST_VISION_NODES;
   return null;
 }
 

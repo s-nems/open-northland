@@ -1,13 +1,6 @@
 import { contentFingerprint } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import {
-  FOG_MODE,
-  Owner,
-  Position,
-  SIGNPOST_NAV_RADIUS_NODES,
-  SIGNPOST_SPACING_RADIUS_NODES,
-  Signpost,
-} from '../../src/components/index.js';
+import { FOG_MODE, Owner, Position, Signpost } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import { defineComponent } from '../../src/ecs/world.js';
 import {
@@ -55,10 +48,7 @@ function populatedSim(): Simulation {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
   sim.world.add(e, Owner, { player: P0 });
-  sim.world.add(e, Signpost, {
-    navRadius: SIGNPOST_NAV_RADIUS_NODES,
-    spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
-  });
+  sim.world.add(e, Signpost, { links: [] });
   sim.run(12);
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;

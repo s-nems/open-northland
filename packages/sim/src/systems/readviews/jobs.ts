@@ -77,6 +77,11 @@ export function isHunterJob(content: ContentSet, jobType: number | null): boolea
   return jobType !== null && contentIndex(content).hunterJobs.has(jobType);
 }
 
+/** The wandering priest, which the original routes like a scout rather than through its signposts. */
+export function isDruidJob(content: ContentSet, jobType: number | null): boolean {
+  return jobType !== null && contentIndex(content).druidJobs.has(jobType);
+}
+
 /** The lowest scout trade the content declares, or null when it declares none. */
 export function scoutJobType(content: ContentSet): number | null {
   return lowestJobOf(contentIndex(content).scoutJobs);

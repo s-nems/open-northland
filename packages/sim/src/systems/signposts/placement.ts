@@ -1,23 +1,17 @@
 import type { ContentSet } from '@open-northland/data';
-import {
-  Owner,
-  Position,
-  SIGNPOST_NAV_RADIUS_NODES,
-  SIGNPOST_SPACING_RADIUS_NODES,
-  Signpost,
-} from '../../components/index.js';
+import { Owner, Position, SIGNPOST_SPACING_NODES, Signpost } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
-import { withinNodeRadius } from '../../nav/node-circle.js';
+import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { canPlaceWorkFlag, workFlagBlockerVersion, workFlagPlacementBlocks } from '../footprint/index.js';
-import { signpostNetwork } from './network.js';
+import { settleSignpostLinks, unlinkSignpost } from './links.js';
+import { type SignpostSite, signpostNetwork } from './network.js';
 
 /**
  * Whether `player` may erect a signpost at `node`: open walkable ground under the work-flag rule, off any
- * existing signpost's cell, and outside every same-player signpost's minimum-spacing circle. Signposts do
- * not block walking, so walkability is a ground-quality gate only.
+ * existing signpost's cell, and not inside {@link SIGNPOST_SPACING_NODES} of a same-player signpost.
+ * Signposts do not block walking, so walkability is a ground-quality gate only.
  */
 export function canPlaceSignpost(
   world: World,
@@ -27,19 +21,21 @@ export function canPlaceSignpost(
   player: number,
 ): boolean {
   // canPlaceWorkFlag already covers ground quality, standing bodies, markers, and existing signpost
-  // cells; the spacing circle is the signpost-specific extra gate. Approximation: spacing is same-player
-  // only, since the original's cross-player spacing rule is not observed.
+  // cells; the spacing is the signpost-specific extra gate, same-player only as in the original.
   if (!canPlaceWorkFlag(world, ctx, terrain, node)) return false;
   const c = terrain.coordsOf(node);
-  const posts = signpostNetwork(world).get(player) ?? [];
+  return !insideSpacing(signpostNetwork(world).get(player) ?? [], c.x, c.y);
+}
+
+function insideSpacing(posts: readonly SignpostSite[], x: number, y: number): boolean {
   for (const s of posts) {
-    if (withinNodeRadius(s.hx, s.hy, c.x, c.y, s.spacingRadius)) return false;
+    if (hexDistanceBetween(s.hx, s.hy, x, y) < SIGNPOST_SPACING_NODES) return true;
   }
-  return true;
+  return false;
 }
 
 /** A ready-to-query erectability test for one player: {@link canPlaceSignpost}'s rule with the blocked set
- *  and the player's spacing circles resolved once, asked per visible node by the placement overlay. */
+ *  and the player's spacing resolved once, asked per visible node by the placement overlay. */
 export interface SignpostProbe {
   /** Whether `player` may erect a signpost at half-cell node `(x, y)`. */
   canPlace(x: number, y: number): boolean;
@@ -85,10 +81,7 @@ export function signpostProbe(
       if (!terrain.inBounds(x, y)) return false;
       const node = terrain.nodeAt(x, y);
       if (!terrain.isWalkable(node) || blocked.has(node)) return false;
-      for (const s of posts) {
-        if (withinNodeRadius(s.hx, s.hy, x, y, s.spacingRadius)) return false;
-      }
-      return true;
+      return !insideSpacing(posts, x, y);
     },
   };
   probeMemo.set(world, { version, content, terrain, probe });
@@ -108,19 +101,24 @@ export function erectSignpost(
   player: number,
 ): Entity | null {
   if (!canPlaceSignpost(world, ctx, terrain, node, player)) return null;
-  const c = terrain.coordsOf(node);
-  return createSignpost(world, { hx: c.x, hy: c.y }, player);
+  return createSignpost(world, terrain, node, player);
 }
 
-/** Pre-tick world assembly may load authored posts without interactive spacing restrictions. */
-export function createSignpost(world: World, point: HalfCellNode, player: number): Entity {
-  const pos = positionOfNode(point.hx, point.hy);
+/** Stand `player`'s signpost on `node` with no legality check and link it into the network: the erect's
+ *  second half, and how pre-tick assembly, a scene or a fixture stands a post directly. */
+export function createSignpost(world: World, terrain: TerrainGraph, node: NodeId, player: number): Entity {
+  const c = terrain.coordsOf(node);
+  const pos = positionOfNode(c.x, c.y);
   const e = world.create();
   world.add(e, Position, { x: pos.x, y: pos.y });
   world.add(e, Owner, { player });
-  world.add(e, Signpost, {
-    navRadius: SIGNPOST_NAV_RADIUS_NODES,
-    spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
-  });
+  world.add(e, Signpost, { links: [] });
+  settleSignpostLinks(world, terrain, e);
   return e;
+}
+
+/** Take a signpost down: its neighbours drop the link, then the entity goes. */
+export function razeSignpost(world: World, post: Entity): void {
+  unlinkSignpost(world, post);
+  world.destroy(post);
 }

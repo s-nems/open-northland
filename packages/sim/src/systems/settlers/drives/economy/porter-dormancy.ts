@@ -39,7 +39,7 @@ import { porterPickupTarget } from './haul-targets.js';
 interface DormantEntry {
   /** `porterScanVersion` at the failed scan. */
   readonly version: number;
-  /** The porter's node; the scan's confinement circle recentres on it, so a displaced porter re-scans. */
+  /** The porter's node; the scan's confinement range recentres on it, so a displaced porter re-scans. */
   readonly node: NodeId;
   readonly jobType: number;
   readonly tribe: number;

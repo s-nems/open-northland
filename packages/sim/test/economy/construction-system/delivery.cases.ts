@@ -419,13 +419,13 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     // assignBuilder deliberately has no confinement gate (a pinned foundation is how the network's
     // frontier grows) and routing treats the builder's own SiteAssignment as a bound sink
     // (`toOwnCrewSite`) -
-    // so a builder pinned far outside its local circle still fetches from an in-area store and ROUTES
+    // so a builder pinned far outside its walk range still fetches from an in-area store and ROUTES
     // the load to the pinned site instead of shedding it on "no in-area sink" (the old livelock).
     // The fixture HOUSE has no door and blocks its anchor. Construction routing must therefore use a
     // legal perimeter cell rather than inheriting the finished-building interaction point.
     const sim = new Simulation({ seed: 13, content: constructionContent(), map: grassMap(60, 8) });
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
-    const SITE_TILE_X = 20; // node x 40 - far beyond the 24-node local circle around the builder
+    const SITE_TILE_X = 32; // node x 65 - 60 hex nodes past the builder, beyond its 50-node walk range
     const site = siteAt(sim, HOUSE, SITE_TILE_X, 1);
     const warehouse = sim.world.create();
     sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -445,10 +445,10 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(carrying).toBe(true);
 
     // Phase 2: loaded, the delivery rung must reach the pinned site's perimeter and unload there.
-    const MAP_NODES_WIDE = 60;
+    const MAP_NODES_WIDE = 120;
     const SITE_NODE_X = SITE_TILE_X * 2;
     let delivered = false;
-    for (let t = 0; t < 1_000 && !delivered; t++) {
+    for (let t = 0; t < 2_000 && !delivered; t++) {
       sim.step();
       const goal = sim.world.tryGet(builder, MoveGoal);
       if (goal !== undefined) {

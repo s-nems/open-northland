@@ -1,7 +1,6 @@
 // Cross-package simulation surface used by app/render. Per-tick systems and implementation helpers
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
-export { withinNodeRadius } from '../nav/node-circle.js';
 // The AI opening plan's content bindings, exported so the real-content suite can pin every id against
 // the served IR: an unknown id silently skips its entry in the sim.
 export {
@@ -113,6 +112,7 @@ export {
 // jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
 // drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.
 export { jobCanBuild, PRAY_ATOMIC_ID } from './settlers/atomics/start.js';
+// createSignpost lets pre-tick assembly and a scene stand a post the way the erect does, links included.
 export {
   canPlaceSignpost,
   createSignpost,

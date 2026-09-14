@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hexDistance } from '../../src/nav/halfcell.js';
+import { hexDistance, hexDistanceBetween, hexNeighboursOf } from '../../src/nav/halfcell.js';
+import { hexNodeBox } from '../../src/nav/node-circle.js';
 
 /**
  * The map-point distance every script `range` is measured in. The lattice staggers: rows lean half a
@@ -38,5 +39,34 @@ describe('the half-cell map-point distance', () => {
     expect(hexDistance(a, b)).toBe(10);
     // One column past what the rows carry costs one more step.
     expect(hexDistance(a, { hx: 10, hy: 14 })).toBe(11);
+  });
+
+  it('reads one to each lattice neighbour of hexNeighboursOf, from either row parity', () => {
+    for (const [hx, hy] of [
+      [10, 10],
+      [10, 11],
+    ] as const) {
+      expect(hexDistanceBetween(hx, hy, hx, hy)).toBe(0);
+      for (const n of hexNeighboursOf(hx, hy)) {
+        expect(hexDistanceBetween(hx, hy, n.hx, n.hy), `(${hx},${hy})->(${n.hx},${n.hy})`).toBe(1);
+        expect(hexDistanceBetween(n.hx, n.hy, hx, hy)).toBe(1);
+      }
+    }
+  });
+
+  it('counts columns straight across and rows straight down, at guidepost ranges', () => {
+    expect(hexDistanceBetween(0, 0, 50, 0)).toBe(50);
+    expect(hexDistanceBetween(0, 0, 0, 50)).toBe(50);
+    expect(hexDistanceBetween(0, 0, 0, 51)).toBe(51);
+    // Twenty rows down carry ten columns for free; the eleventh costs one.
+    expect(hexDistanceBetween(0, 0, 10, 20)).toBe(20);
+    expect(hexDistanceBetween(0, 0, 11, 20)).toBe(21);
+    expect(hexDistanceBetween(0, 0, -10, 20)).toBe(20);
+  });
+});
+
+describe('hexNodeBox', () => {
+  it('spans the range in columns and rows each way', () => {
+    expect(hexNodeBox(10, 20, 5)).toEqual({ minX: 5, maxX: 15, minY: 15, maxY: 25 });
   });
 });

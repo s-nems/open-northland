@@ -8,17 +8,21 @@ import {
   Owner,
   Position,
   Resource,
-  SIGNPOST_NAV_RADIUS_NODES,
-  SIGNPOST_SPACING_RADIUS_NODES,
-  Signpost,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import { CommandQueue } from '../../../src/core/command-queue.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { EventBuffer, positionOfNode, Rng, Simulation } from '../../../src/index.js';
+import {
+  EventBuffer,
+  type Fixed,
+  nodeOfPosition,
+  positionOfNode,
+  Rng,
+  Simulation,
+} from '../../../src/index.js';
 import { DEFAULT_BUILD_ORDER, workforceModule } from '../../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
-import { stampResourceFootprintData } from '../../../src/systems/index.js';
+import { createSignpost, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { settlerAt } from '../../fixtures/settler.js';
@@ -167,14 +171,12 @@ export function makeAiSeat(sim: Simulation, player: number, modules?: Partial<Ai
   sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables(modules) });
 }
 
-export function plantPost(sim: Simulation, position: { x: number; y: number }): void {
-  const post = sim.world.create();
-  sim.world.add(post, Position, position);
-  sim.world.add(post, Owner, { player: SEAT });
-  sim.world.add(post, Signpost, {
-    navRadius: SIGNPOST_NAV_RADIUS_NODES,
-    spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
-  });
+/** Stand the seat's post at a node-centred `position` (see `positionOfNode`), linked as the erect would. */
+export function plantPost(sim: Simulation, position: { x: Fixed; y: Fixed }): void {
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('plantPost needs a mapped sim');
+  const n = nodeOfPosition(position.x, position.y);
+  createSignpost(sim.world, terrain, terrain.nodeAt(n.hx, n.hy), SEAT);
 }
 
 /** The fixture HQ is footprint-less; the door tests need one shaped like the extracted `[GfxHouse]`

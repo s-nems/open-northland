@@ -20,3 +20,14 @@ export function grassCellMap(width: number, height: number): TerrainMap {
 export function grassNodeMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
+
+/** Ground type id 1 in the synthetic fixtures - water, walkable by nothing. */
+const WATER = 1;
+
+/** {@link grassCellMap} with one full-height water column at cell column `column`, cutting the map in
+ *  two banks no walk can cross. */
+export function waterColumnMap(width: number, height: number, column: number): TerrainMap {
+  const typeIds = new Array<number>(width * height).fill(GRASS);
+  for (let row = 0; row < height; row++) typeIds[row * width + column] = WATER;
+  return halfCellMapFromCells({ width, height, typeIds });
+}

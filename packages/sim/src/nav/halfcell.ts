@@ -94,16 +94,16 @@ export function hexNeighboursOf(hx: number, hy: number): HalfCellNode[] {
 }
 
 /**
- * The map-point distance a script's `range` parameter is measured in: one step per row, with a
- * diagonal walk covering one column per two rows for free. Over an odd row span one further column
- * step is free, in the direction the destination row's parity picks, so the region a range selects
- * leans to one side instead of being symmetric about its centre.
+ * The map-point distance a script's `range` parameter and every guidepost range are measured in: one
+ * step per row, with a diagonal walk covering one column per two rows for free. Over an odd row span
+ * one further column step is free, in the direction the destination row's parity picks, so the region
+ * a range selects leans to one side instead of being symmetric about its centre.
  *
  * The six nodes this makes adjacent are not the eight a unit walks (`nav/terrain/edges.ts`), and the
  * lean is not this lattice's geometry, which carries no stagger: both belong to the original's own
- * map-point grid. Source basis: a reading of the engine's hexagon-direction distance, which every
- * range test calls (`docs/formats/MISSIONS.md`, "Tokens and parameter kinds"). The lean is faithful
- * to that reading and unconfirmed against the running game.
+ * map-point grid. Byte evidence: the engine's hexagon-direction distance (macOS symbols
+ * `VE_HexagonDirection_GetDistance`, the original an original routine), which every range test calls
+ * (`docs/formats/MISSIONS.md`, "Tokens and parameter kinds").
  */
 export function hexDistance(a: HalfCellNode, b: HalfCellNode): number {
   return hexDistanceBetween(a.hx, a.hy, b.hx, b.hy);
