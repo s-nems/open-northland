@@ -20,8 +20,7 @@ indexes are files the pipeline writes, and `packages/content-resolver` no longer
 - Pipeline output roots become `bobs/`, `textures/`, `sounds/`, `gui-bitmaps/`; `DATA_DIR` goes.
   Follow every writer and reader of those constants (`run.ts` reads textures back for the masked
   transition pages). Intermediates the app never fetches are written to a temporary work directory
-  or not at all. After a run, `content/` holds only `ir.json`, `pipeline-manifest.json`, the three
-  index files, and `maps/`, `bobs/`, `textures/`, `sounds/`, `music/`, `gui/`, `gui-bitmaps/`,
+  or not at all. After a run, `content/` holds only `ir.json`, the three index files, and `maps/`, `bobs/`, `textures/`, `sounds/`, `music/`, `gui/`, `gui-bitmaps/`,
   `goods/`, `backdrops/`. Apply the generated-content gate in `packages/data/AGENTS.md` for the
   layout change. Art-pipeline review folders a developer may have under `content/` are not this
   pipeline's output and are out of scope.
@@ -40,9 +39,12 @@ indexes are files the pipeline writes, and `packages/content-resolver` no longer
 - Desktop `protocol.ts`: serve the path under the app root, else under the content root, else 404;
   keep the host folding in `routePathOf`; inline the containment check the resolver did and read
   through `node:fs` directly, so the desktop no longer depends on `@open-northland/vfs`.
-- `CONTENT_REVISION` (`tools/asset-pipeline/src/manifest.ts`) lost its only reader with the
-  installer; delete it and the manifest field rather than bumping it. `IR_VERSION` stays as the gate
-  between a developer's `content/` and the build.
+- `pipeline-manifest.json` was the installer's completion stamp and nothing outside the pipeline reads
+  it: delete `manifest.ts` and the stamp. `CONTENT_REVISION` rides along in `IrManifest` and the save
+  header (`packages/sim/src/save/format.ts`, `docs/DATA-FORMAT.md`) but nothing compares it
+  (`evaluate.ts` checks `irVersion` only): delete the constant and both fields, bump the save format
+  version and regenerate its fixture in the same commit. `IR_VERSION` stays as the gate between a
+  developer's `content/` and the build.
 - The app is always served from `/` now: delete `OPEN_NORTHLAND_BASE_PATH` in `vite.config.ts` and
   `withBaseUrl` (`packages/app/src/base-url.ts`), calling `fetch` with the root-relative path.
 - Delete `packages/content-resolver` (workspace, root `tsconfig.json` reference, `AGENTS.md`

@@ -40,7 +40,8 @@ framing are the three tickets that follow.
 - Remove `installer` and `web` from `scripts/check-docs.mjs` `ticketAreas` and from the area list in
   `docs/tickets/README.md`. Update `AGENTS.md`'s package-contract list, `docs/ARCHITECTURE.md`,
   `docs/DEVELOPMENT.md`, `docs/LEGAL.md` and `README.md` only where they name the deleted packages
-  or the setup flow; rewrite `packages/desktop/AGENTS.md` to the thin host.
+  or the setup flow (`docs/README.md` too); rewrite `packages/desktop/AGENTS.md` to the thin host and
+  drop the `window.desktop` rule from `packages/app/AGENTS.md`.
 - Delete `docs/tickets/tooling/installer-mod-install-i18n.md`,
   `docs/tickets/tooling/web-shell-recovery-paths.md` and
   `docs/tickets/tooling/zip-source-file-handle.md`; reword the installer references in
