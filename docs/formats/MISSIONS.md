@@ -101,10 +101,11 @@ and match the format the engine itself writes when it exports a `[StaticObjects]
 | `sethouse` | `<player> "<house name>" <level> <built> <x> <y> <id>` |
 | `sethuman` | `<player> "<tribe>" "<job>" <x> <y> <id> <behaviourFlags>` |
 | `setvehicle` | `<player> "<tribe>" "<vehicle type>" <x> <y> <id>` |
-| `setanimal` | `<player> "<tribe>" "<species>" <x> <y> <id> <behaviour>` |
+| `setanimal` | `<player> "<species>" "<animal type>" <x> <y> <id> <behaviour>` |
 | `setguide` | `<player> <x> <y>` |
 
-A `setanimal`'s player is 20 for a wild herd, and its third column is the animal type, not an age. A
+A `setanimal`'s player is 20 for a wild herd; its second column is the species (the animal tribe the
+extractor keeps) and its third the animal type, `adult_animal` throughout the corpus. A
 run of `addgoods "<good>" <count>` after a `sethouse` or a `setvehicle` stocks what it just placed;
 197 corpus lines stock a vehicle.
 
@@ -179,32 +180,37 @@ kinds in order. A goal that counts what a player has (`BuildVehicles`, `BuildHum
 (for the goods goals, one house that carries the id or can hold the good). The area goods and house
 goals, the near-point goals and the death tallies compare once after counting, so 0 holds there.
 
+A `\*` after the Uses count marks a goal this build does not evaluate: its answer is unknown, so the
+mission fires only when its known goals decide the rule either way ("Execution model"). The tickets
+under `docs/tickets/features/` carry the ones the corpus uses (vehicles, chests, wall gates, the
+trade ledger); the rest no map writes.
+
 | # | Goal | Parameters | Holds when | Uses |
 | --- | --- | --- | --- | --- |
 | 0 | `True` | | always | 265 |
-| 1 | `BuildVehicles` | 1, 5, 7, 12 | the player owns at least `amount` vehicles of the type; every match gets object id `arg4` | 2 |
+| 1 | `BuildVehicles` | 1, 5, 7, 12 | the player owns at least `amount` vehicles of the type; every match gets object id `arg4` | 2 \* |
 | 2 | `BuildHumans` | 1, 4, 7, 10 | the player has at least `amount` humans with the job; every match gets object id `arg4` (0 clears the id it carried) unless `arg4` is 12345 | 21 |
 | 3 | `BuildHouses` | 1, 15, 7, 14 | the player owns at least `amount` finished houses of the type; every match gets object id `arg4`, 0 and 12345 included | 165 |
-| 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total | 3 |
+| 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total | 3 \* |
 | 5 | `GoodsInHouses` | 14, 6, 7 | houses with the id hold at least `amount` of the good in total | 10 |
 | 6 | `GoodsGlobal` | 1, 6, 7 | the player's houses hold at least `amount` of the good as their own stock: everything a storage or a home shelves, of a workplace only what it makes, never its inputs | 11 |
 | 7 | `FindPos` | 1, 16, 17 | the map point has been explored by the player (player 16 or more: always) | 23 |
 | 8 | `FindHumans` | 1, 10 | any human with the id stands on a point explored by the player | 0 |
-| 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 |
+| 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 \* |
 | 10 | `FindHouses` | 1, 14 | as above for houses | 0 |
 | 11 | `FindPosByHumans` | 10, 16, 17, 9 | any human with the id is within `range` of the point | 589 |
-| 12 | `FindPosByVehicles` | 12, 16, 17, 9 | as above for vehicles | 46 |
+| 12 | `FindPosByVehicles` | 12, 16, 17, 9 | as above for vehicles | 46 \* |
 | 13 | `FindHumansByHumans` | 10, 11, 9 | any human with id A is within `range` of any human with id B | 20 |
-| 14 | `FindHumansByVehicles` | 12, 10, 9 | any vehicle with id A is within `range` of any human with id B | 0 |
-| 15 | `FindVehiclesByVehicles` | 12, 13, 9 | vehicle-to-vehicle range test | 0 |
+| 14 | `FindHumansByVehicles` | 12, 10, 9 | any vehicle with id A is within `range` of any human with id B | 0 \* |
+| 15 | `FindVehiclesByVehicles` | 12, 13, 9 | vehicle-to-vehicle range test | 0 \* |
 | 16 | `FindHousesByHumans` | 10, 14, 9 | any human with id A is within `range` of any house with id B | 0 |
-| 17 | `FindHousesByVehicles` | 12, 14, 9 | vehicle-to-house range test | 0 |
+| 17 | `FindHousesByVehicles` | 12, 14, 9 | vehicle-to-house range test | 0 \* |
 | 18 | `HumansDied` | 10 | no living human carries the id | 326 |
-| 19 | `VehiclesDied` | 12 | no vehicle carries the id | 1 |
+| 19 | `VehiclesDied` | 12 | no vehicle carries the id | 1 \* |
 | 20 | `HousesDied` | 14 | no house carries the id | 41 |
 | 21 | `PlayerDied` | 1 | the player's dead flag is set (see statistics) | 223 |
 | 22 | `FindPosByPlayersMapMoveable` | 1, 16, 17, 9 | any human or vehicle of the player is within `range` of the point | 1135 |
-| 23 | `BuildHouseOnContinent` | 1, 16, 17, 15 | the player has a finished house of the type on the continent of the point | 0 |
+| 23 | `BuildHouseOnContinent` | 1, 16, 17, 15 | the player has a finished house of the type on the continent of the point | 0 \* |
 | 24 | `DiplomacyState` | 1, 2, 25 | the first player's stance toward the second equals the state | 83 |
 | 25 | `HumansWithHome` | 1, 7 | at least `amount` adult humans of the player live in a finished home | 5 |
 | 26 | `NumberOfSoldiers` | 1, 7 | the player has at least `amount` soldiers | 17 |
@@ -214,7 +220,7 @@ goals, the near-point goals and the death tallies compare once after counting, s
 | 30 | `PayTribute` | 28 | the tribute slot is open and paid: fresh from `CreateTribute` with nothing demanded, or paid by its owner (reading) | 702 |
 | 31 | `Population` | 1, 7 | the player has at least `amount` humans of any age | 71 |
 | 32 | `PlayerSeen` | 1, 2 | the first player has seen the second | 140 |
-| 33 | `IsHumanInVehicle` | 10, 12 | every human with the id sits in a vehicle with the vehicle id | 0 |
+| 33 | `IsHumanInVehicle` | 10, 12 | every human with the id sits in a vehicle with the vehicle id | 0 \* |
 | 34 | `FindHumansByPlayersMM` | 10, 1, 9 | any human with the id has a human or vehicle of the player within `range` | 14 |
 | 35 | `SoldiersDied` | 1, 7 | at least `amount` soldiers of the player have died | 15 |
 | 36 | `AnimalsDied` | 14 | no animal carries the id | 10 |
@@ -223,27 +229,27 @@ goals, the near-point goals and the death tallies compare once after counting, s
 | 39 | `GoodProduceable` | 1, 3, 6 | the good is produceable for the player's tribe | 150 |
 | 40 | `NumberOfHumansDied` | 1, 7 | at least `amount` humans of the player have died | 118 |
 | 41 | `FindAnimals` | 1, 14 | any animal with the id stands on a point explored by the player | 8 |
-| 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player traded at least `amount` goods with the second | 3 |
+| 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player traded at least `amount` goods with the second | 3 \* |
 | 43 | `HumanAttachedToWorkHouse` | 1, 4, 7 | at least `amount` humans of the player with the job are attached to a workplace | 17 |
-| 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` wild animals of the species | 0 |
+| 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` wild animals of the species | 0 \* |
 | 45 | `RandomTimeGone` | 35 | a random `[n/2, n)` seconds have passed since activation | 28 |
 | 46 | `IfMissionIsActive` | 21 | mission `n` is active | 210 |
 | 47 | `NumberOfAnimals` | 1, 3, 7 | the player owns at least `amount` animals of the species; implemented against living animal groups | 8 |
 | 48 | `NumberOfHumansKilled` | 1, 7 | the player has killed at least `amount` humans (soldiers plus civilians) | 20 |
-| 49 | `HumanIsOnContinent` | 10, 16, 17 | any human with the id stands on the continent of the point | 0 |
+| 49 | `HumanIsOnContinent` | 10, 16, 17 | any human with the id stands on the continent of the point | 0 \* |
 | 50 | `IsMissionDone` | 21 | mission `n`'s stored goal flags satisfy its rule | 325 |
 | 51 | `NumberOfSoldiersNearPos` | 1, 16, 17, 9, 7 | at least `amount` non-hero soldiers of the player within `range`, vehicle crews included | 24 |
 | 52 | `NumberOfCivilainsNearPos` | 1, 16, 17, 9, 7 | as above for civilians; a hero counts in neither | 14 |
-| 53 | `ChestNearPos` | 16, 17, 9 | a chest landscape lies within `range` of the point | 6 |
+| 53 | `ChestNearPos` | 16, 17, 9 | a chest landscape lies within `range` of the point | 6 \* |
 | 54 | `NumberOfGoodsInArea` | 1, 6, 7, 16, 17, 9 | goods on the ground plus the own stock (as `GoodsGlobal`) of the player's finished houses within `range` reach `amount` | 113 |
 | 55 | `NumberOfHousesInArea` | 1, 15, 7, 16, 17, 9 | the player has at least `amount` finished houses of the type within `range` | 33 |
 | 56 | `NumberOfGoodsInHousesInArea` | 1, 6, 7, 16, 17, 9 | the own stock of the player's finished houses within `range` reaches `amount` | 8 |
-| 57 | `NumberOfVehiclesInArea` | 1, 5, 7, 16, 17, 9 | the player has at least `amount` vehicles of the type within `range` | 4 |
+| 57 | `NumberOfVehiclesInArea` | 1, 5, 7, 16, 17, 9 | the player has at least `amount` vehicles of the type within `range` | 4 \* |
 | 58 | `NumberOfAnimalsInArea` | 1, 3, 7, 16, 17, 9 | the player has at least `amount` animals of the species within `range` | 11 |
 | 59 | `CheckHumanJob` | 10, 4 | any human with the id has the job | 10 |
-| 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount` | 0 |
+| 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount` | 0 \* |
 | 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point's kind byte says landscape and its type byte is set, which a good lying there or a large landscape covering the point also satisfies. Here: a live landscape placement anchored on the point, when the map provides the mutable landscape catalog (approximation) | 0 |
-| 62 | `IsLandscapePlayer10ConstructionSignOnPoint` | 16, 17 | the point carries the `player10 construction sign` landscape | 0 |
+| 62 | `IsLandscapePlayer10ConstructionSignOnPoint` | 16, 17 | the point carries the `player10 construction sign` landscape | 0 \* |
 
 Range tests use the original's hexagonal map-point distance. "Explored" is the per-player seen bit
 of a map point, set once and never cleared (reading), which matches a reveal-style fog.
@@ -253,17 +259,18 @@ of a map point, set once and never cleared (reading), which matches a reveal-sty
 Same conventions. The result reference corroborates 102 of the 103 names and every arity;
 `SetMapAreaMarker` (101) is absent there and unused by the corpus. "Sim" marks results that change
 simulation state; "app" marks results that only drive presentation and become events; "both" do some
-of each.
+of each. A `\*` after the Uses count marks a result this build does not execute: it does nothing and
+reports `missionUnsupported` once; the same tickets carry them.
 
 | # | Result | Parameters | Effect | Layer | Uses |
 | --- | --- | --- | --- | --- | --- |
 | 0 | `None` | | nothing | | 306 |
 | 1 | `SetHuman` | 1, 3, 4, 16, 17, 10, 29 | spawn one human at the point with the id and behaviour flags | sim | 2067 |
-| 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle; with the captain flag also spawn its commander at the door and board it | sim | 154 |
+| 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle; with the captain flag also spawn its commander at the door and board it | sim | 154 \* |
 | 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished when the built flag is set and as a construction site when it is 0, with the id; warns when no spot exists | sim | 30 |
 | 4 | `SetLandscape` | 16, 17, 18, 8, 32 | replace the landscape at the point using the named graphic; size and final-flag limitations below | both | 760 |
 | 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver) | sim | 96 |
-| 6 | `RemoveVehicles` | 12 | remove every vehicle with the id | sim | 16 |
+| 6 | `RemoveVehicles` | 12 | remove every vehicle with the id | sim | 16 \* |
 | 7 | `RemoveHouses` | 14 | remove every house with the id | sim | 3 |
 | 8 | `RemoveLandscape` | 16, 17 | remove the live landscape at the point and its sprite | both | 446 |
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
@@ -271,8 +278,8 @@ of each.
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
 | 12 | `MissionWon` | 1 | set the mission manager's won flag, send the "won" message and the notification with the player; in multiplayer also trigger the multiplayer goal manager. Here: the player's script verdict, announced like the skirmish rule's | both | 120 |
 | 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
-| 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 |
-| 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 |
+| 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 \* |
+| 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 \* |
 | 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, nothing with fog off, and a house or landscape reveals only what its own eye sees (approximation) | sim | 1412 |
 | 17 | `Exit` | | leave the map (restart callback) | app | 70 |
 | 18 | `SetExternalFlag` | 1, 24, 32 | set or clear condition slot `n` (below 100) of the player's AI handler, accepted only when that slot is an external-activate condition of its `ai.inc`; a seat without a handler drops it. Here: kept per player with no reader (see below) | sim | 67 |
@@ -281,8 +288,8 @@ of each.
 | 21 | `ChangeHumanPlayerId` | 10, 1 | hand every human with the id to the player (detached from houses) | sim | 266 |
 | 22 | `ChangePlayerPlayerId` | 1, 2 | hand every vehicle, house, human, animal, and guide of the first player to the second | sim | 68 |
 | 23 | `SendHuman` | 10, 16, 17 | order every human with the id to walk to the nearest unblocked point; the walk is queued outright, so the signpost confinement a player's order obeys does not apply | sim | 521 |
-| 24 | `SendVehicle` | 12, 16, 17 | order vehicles with the id to move there | sim | 49 |
-| 25 | `DockVehicle` | 12, 16, 17 | order vehicles with the id to dock there | sim | 30 |
+| 24 | `SendVehicle` | 12, 16, 17 | order vehicles with the id to move there | sim | 49 \* |
+| 25 | `DockVehicle` | 12, 16, 17 | order vehicles with the id to dock there | sim | 30 \* |
 | 26 | `PlaySound` | 26, 16, 17 | play the sound effect at the point; the id is an `ATOMIC_ANIMATION_EVENT_SOUND_FX_TYPE_*` value (`logicdefines.inc`), the sound bank's `logicSoundType` (reading of the corpus's 56, 58, 60 against the bank). Here: the `missionSound` event, played by the audio director like an animation's cue | app | 498 |
 | 27 | `CreateTribute` | 28, 1, 2, 27 | open tribute slot `n` from the first player to the second with the description string, over whatever the slot held; starts paid and empty (reading) | sim | 995 |
 | 28 | `AddTributeGoods` | 28, 6, 7 | add to the slot's demand for the good or append a new one, up to 5 kinds, and mark the slot unpaid; skipped on a closed slot (reading) | sim | 1135 |
@@ -291,24 +298,24 @@ of each.
 | 31 | `AddGoodsToHouses` | 14, 6, 7 | add the amount to every house with the id that has a slot for the good; the write is not capped at the slot | sim | 459 |
 | 32 | `StartSubMission` | 31, 22 | after the pass: resolve campaign/map pair, freeze and embed parent save, load a separate world | both | 46 |
 | 33 | `EndSubMission` | | after the pass: validate and restore the embedded parent world | both | 42 |
-| 34 | `ChangeVehiclesPlayerId` | 12, 1 | hand vehicles with the id to the player | sim | 28 |
+| 34 | `ChangeVehiclesPlayerId` | 12, 1 | hand vehicles with the id to the player | sim | 28 \* |
 | 35 | `ChangeHousesPlayerId` | 14, 1 | hand houses with the id to the player | sim | 28 |
 | 36 | `SetImportHumanFlag` | 10, 32 | set or clear behaviour bit 7 on humans with the id | sim | 8 |
 | 37 | `EnableJob` | 1, 3, 4 | enable the job for the player's tribe | sim | 21 |
 | 38 | `EnableHouse` | 1, 3, 15 | enable the house type and its well, beehive or animal-farm goods; catalog-name bindings | sim | 75 |
 | 39 | `DisableAll` | | deactivate every mission | sim | 83 |
-| 40 | `AddGoodsToVehicle` | 12, 6, 7 | add goods to vehicles with the id that can carry the good | sim | 14 |
+| 40 | `AddGoodsToVehicle` | 12, 6, 7 | add goods to vehicles with the id that can carry the good | sim | 14 \* |
 | 41 | `AddGoodsToAnyStock` | 1, 6, 7 | fill the player's warehouses that store the good, spilling to the next until the amount is placed | sim | 29 |
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
 | 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it, `Tool_TechTree_EnableGoodProduction`) | sim | 101 |
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
 | 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions; the stance setter only silences its message for a flagged pair, so the lock binds in the diplomacy window (not examined) | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
-| 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 |
+| 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 \* |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
 | 50 | `SetHumanBehaviourFlag` | 10, 7, 32 | OR or clear the mask on humans with the id | sim | 436 |
-| 51 | `SetRandomChestOnRandomPos` | 7 | drop a random chest of the category somewhere | sim | 0 |
+| 51 | `SetRandomChestOnRandomPos` | 7 | drop a random chest of the category somewhere | sim | 0 \* |
 | 52 | `RemoveHumansNearPos` | 16, 17, 9 | mark every human within `range` for removal | sim | 20 |
 | 53 | `StopHumanByPlayerId` | 1 | stop every walking human of the player and reset its work target | sim | 45 |
 | 54 | `SetAnimal` | 1, 3, 4, 16, 17, 14, 29 | spawn an animal with the id and behaviour | sim | 591 |
@@ -345,19 +352,19 @@ of each.
 | 85 | `SetCameraPosition` | 16, 17 | end any follow mode and set the display's wanted position to the point (reading). Here: the `missionCamera` event and a jump | app | 197 |
 | 86 | `SetHumanX` | 1, 3, 4, 16, 17, 10, 29, 7 | `SetHuman` repeated `count` times | sim | 1371 |
 | 87 | `RemoveHPsOfHousesInAreaX` | 1, 16, 17, 9, 7, 14 | as 81, skipping houses with the id | sim | 0 |
-| 88 | `SetHouseOverlayState` | 14, 37, 32 | toggle a landscape overlay on houses with the id | app | 0 |
-| 89 | `AttachHumanToVehicle` | 10, 12 | order humans with the id to board the first vehicle with the vehicle id when allowed | sim | 77 |
-| 90 | `DetachHumanFromVehicle` | 10 | order humans with the id to leave their vehicle | sim | 74 |
+| 88 | `SetHouseOverlayState` | 14, 37, 32 | toggle a landscape overlay on houses with the id | app | 0 \* |
+| 89 | `AttachHumanToVehicle` | 10, 12 | order humans with the id to board the first vehicle with the vehicle id when allowed | sim | 77 \* |
+| 90 | `DetachHumanFromVehicle` | 10 | order humans with the id to leave their vehicle | sim | 74 \* |
 | 91 | `SetHouseBuildForbiddenArea` | 16, 17, 9, 32 | forbid or allow building within `range` | sim | 150 |
 | 92 | `MoveHuman` | 10, 16, 17 | teleport up to 20 humans with the id to the point, then let them settle with a walk order; explores around the destination | sim | 166 |
 | 93 | `SetHouseBehaviourFlag` | 14, 36, 32 | set or clear bit `index` on houses with the id | sim | 113 |
-| 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 |
-| 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 |
+| 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 \* |
+| 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 \* |
 | 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | both | 0 |
 | 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on confirmed land nodes within `range` and update the display | both | 17 |
-| 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 |
-| 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 |
-| 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 |
+| 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 \* |
+| 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 \* |
+| 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 \* |
 | 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, starting `range` steps north-west of it and turning east, south-east, south-west, west, north-west, north-east with `range` steps a side, and on every `index`th step of each side (the count restarts per side; a range or index of 0 reads as 1) place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points and the marker overlay, which borrows the GUI marker's first bob (approximation) | both | 0 |
 | 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | both | 7 |
 

@@ -117,8 +117,9 @@ from. Only `mod` and `user` maps may be sent to another player, so a sidecar wit
 counts as `unknown`. The sidecar also carries the `[misc_maptype]` header: `mapTypes`, the
 distinct `CLEAN_MAP_TYPE_*` codes of its `maptype` lines (absent when the header declares no valid
 one), `multiplayerOnly` for `mapmultiplayeronly`, and `campaign` for the `mapcampaignid` pair a
-sub-mission is found by (`docs/formats/MISSIONS.md`). Which menu lists a map from these is the
-menu's rule (`map-select-model.ts`).
+sub-mission is found by (`docs/formats/MISSIONS.md`); the served `/maps-index` carries all three,
+so a `StartSubMission` finds its map without reading every sidecar. Which menu lists a map from
+these is the menu's rule (`map-select-model.ts`).
 
 ## Layering
 
