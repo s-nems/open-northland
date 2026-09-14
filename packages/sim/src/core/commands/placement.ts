@@ -1,3 +1,4 @@
+import type { Paper } from '../../components/papers.js';
 import type { Entity } from '../../ecs/world.js';
 
 /** Commands that place or remove world fixtures, stores, resources, and loose goods. Coordinates are
@@ -38,6 +39,14 @@ interface PlaceBuildingFields {
    *  out-of-range value rejects the command; omit it for a neutral building, or in a seat envelope to
    *  own it yourself. Orthogonal to `tribe` (the civilization). */
   readonly owner?: number;
+  /**
+   * Spend one of the owner's placing papers on this placement: the building stands finished at once,
+   * and a `placeStockedHouse` paper also fills every stock slot to capacity. The paper must be a placing
+   * kind the owner holds, and a house paper must name `buildingType`; otherwise nothing is placed and
+   * nothing is spent. A house paper bypasses the tech gate, as the original's paper window lists the
+   * named house whether or not the tribe has unlocked it.
+   */
+  readonly paper?: Paper;
 }
 
 /** The `placeBuilding` options only trusted authored setup may set. */

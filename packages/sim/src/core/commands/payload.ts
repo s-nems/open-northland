@@ -2,6 +2,7 @@ import { EQUIP_CATEGORIES } from '@open-northland/data';
 import { AI_MODULE_IDS } from '../../components/ai-player.js';
 import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import type { NeedKind } from '../../components/needs.js';
+import { PAPER_KINDS } from '../../components/papers.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
 import { assertNever } from '../brand.js';
 import { asRecord, typeName } from '../untrusted.js';
@@ -47,6 +48,8 @@ const EQUIPMENT: FieldCheck = {
   },
 };
 
+const PAPER: FieldCheck = { fields: { required: { kind: { oneOf: PAPER_KINDS }, param: 'integer' } } };
+
 /** Every AI module is optional and boolean, an omitted one defaulting to enabled. */
 const AI_MODULES: FieldCheck = {
   fields: { optional: Object.fromEntries(AI_MODULE_IDS.map((id) => [id, 'boolean' as const])) },
@@ -60,6 +63,7 @@ const AI_MODULES: FieldCheck = {
 const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   cancelTraining: { required: { entity: 'integer' } },
   exploreArea: { required: { entity: 'integer', ...NODE } },
+  grantPaper: { required: { player: 'integer', paper: PAPER } },
   orderNeed: {
     required: {
       entity: 'integer',
@@ -97,6 +101,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
   marry: { required: { entity: 'integer' } },
   moveUnit: { required: { entity: 'integer', ...NODE } },
+  openChest: { required: { entity: 'integer', chest: 'integer' } },
   placeBoat: {
     required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
     optional: { owner: 'integer' },
@@ -109,6 +114,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
       force: 'boolean',
       fillStock: 'boolean',
       initialGoods: { arrayOf: { fields: { required: { good: 'integer', amount: 'integer' } } } },
+      paper: PAPER,
     },
   },
   placeResource: {

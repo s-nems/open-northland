@@ -12,6 +12,7 @@ import {
   HuntFocus,
   MoveGoal,
   NeedOrder,
+  OpenChestOrder,
   Owner,
   PathRequest,
   PlayerOrder,
@@ -116,6 +117,7 @@ function startPlayerWalk(
   world.remove(e, HuntFocus);
   world.remove(e, Fleeing);
   world.remove(e, ErectSignpostOrder);
+  world.remove(e, OpenChestOrder);
   // Cancelling the equip errand is the player's only way to call it off; left standing it would resume after
   // the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);

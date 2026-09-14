@@ -1,5 +1,6 @@
 import { aiPlayerSystem } from './ai-player/index.js';
 import { assistantSystem } from './assistant/index.js';
+import { chestOrderSystem } from './chests/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
 import { animalFrightSystem } from './conflict/fright.js';
@@ -61,6 +62,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'signpostOrder', system: signpostOrderSystem },
   // Beside the erect order and for the same reason: an arrived explore leg starts its next one at once.
   { name: 'exploreOrder', system: exploreOrderSystem },
+  // Same slot as the erect order: an arrived chest order bends over the lid before the planner re-tasks.
+  { name: 'chestOrder', system: chestOrderSystem },
   // The assistant dispatches before family and the planner, so a fresh child order is driven and a
   // fresh drill routed the same tick it was booked.
   { name: 'assistant', system: assistantSystem },

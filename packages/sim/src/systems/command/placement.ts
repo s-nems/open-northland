@@ -3,11 +3,14 @@ import {
   DefenceMode,
   Health,
   JobAssignment,
+  type Paper,
+  PLACING_PAPER_KINDS,
   Position,
   Settler,
   Stockpile,
   stampOwner,
   stockpileEntries,
+  takePaper,
   UnderConstruction,
   Upgrading,
   Vehicle,
@@ -45,6 +48,13 @@ export function unbindWorkersOf(world: World, ctx: SystemContext, building: Enti
   for (const e of bound) releaseEmployment(world, ctx, e);
 }
 
+/** Whether `paper` may be spent on a `buildingType` placement: a placing kind whose named house, if any,
+ *  is the one being placed. */
+function paperCoversPlacement(paper: Paper, buildingType: number): boolean {
+  if (!PLACING_PAPER_KINDS.has(paper.kind)) return false;
+  return paper.kind === 'placeAny' || paper.param === buildingType;
+}
+
 export function placeBuilding(
   world: World,
   ctx: SystemContext,
@@ -52,9 +62,18 @@ export function placeBuilding(
 ): void {
   const type = contentIndex(ctx.content).commandBuildings.get(command.buildingType);
   if (type === undefined) return;
+  const paper = command.paper;
+  if (
+    paper !== undefined &&
+    (command.owner === undefined || !paperCoversPlacement(paper, command.buildingType))
+  ) {
+    return;
+  }
 
   if (command.force !== true) {
-    if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
+    // A house paper names its house whether or not the tribe has unlocked it.
+    const techGated = paper === undefined || paper.kind === 'placeAny';
+    if (techGated && !buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
     // The seat's placement rule; a mapless sim validates trivially.
     if (
@@ -72,25 +91,30 @@ export function placeBuilding(
     }
   }
 
+  // Spent only once every gate has passed, so a refused placement keeps the paper.
+  if (paper !== undefined && command.owner !== undefined && !takePaper(world, command.owner, paper)) return;
+
+  const underConstruction = paper === undefined && command.underConstruction === true;
+  const fillStock = paper === undefined ? command.fillStock === true : paper.kind === 'placeStockedHouse';
   const e = world.create();
   // The anchor is a half-cell node; its Position is the node's fractional tile coords.
   world.add(e, Position, positionOfNode(command.x, command.y));
-  const built = command.underConstruction ? fx.fromInt(0) : ONE;
+  const built = underConstruction ? fx.fromInt(0) : ONE;
   world.add(e, Building, { buildingType: command.buildingType, tribe: command.tribe, built, level: 0 });
   const amounts = new Map<number, number>();
-  if (command.underConstruction) {
+  if (underConstruction) {
     // The ConstructionSystem ramps Health up as the site rises; it starts at 1 so a foundation is never a
     // 0-HP corpse the CleanupSystem reaps.
     world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
     if (type.hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: type.hitpoints });
-  } else if (command.fillStock) {
+  } else if (fillStock) {
     for (const slot of type.stock) amounts.set(slot.goodType, slot.capacity);
   } else {
     for (const slot of type.stock) {
       if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
     }
   }
-  if (!command.underConstruction) {
+  if (!underConstruction) {
     // Authored starting stock is unclamped and not limited to the type's declared slots (Walhalla authors
     // 1000 iron into a 45-capacity barn). Approximation: additive-vs-replace is unobserved in the
     // original, and the verb is "add goods".

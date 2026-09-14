@@ -1,6 +1,7 @@
 import { type CurrentAtomic, clearNeedOrder, ownerOf } from '../../../../components/index.js';
 import { assertNever } from '../../../../core/brand.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import { openChest } from '../../../chests/index.js';
 import type { SystemContext } from '../../../context.js';
 import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
@@ -85,6 +86,9 @@ export function applyEffect(
       if (post !== null) grantScoutExperience(world, ctx.content, settler);
       return;
     }
+    case 'openChest':
+      openChest(world, ctx, settler, effect.chest);
+      return;
     case 'construct':
       advanceConstructionLabor(world, ctx, effect.site);
       return;

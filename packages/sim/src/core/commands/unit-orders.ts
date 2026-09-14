@@ -30,6 +30,17 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Send one owned settler to open `chest`: it walks to the chest's work cell and plays the open-chest
+       * atomic, whose effect hands the contents out - goods on the ground beside the chest, papers into
+       * the owner's list, units at the chest. A wooden chest takes any adult, a magical one a druid or
+       * hero (`Item_IsAbleToOpenChest`); a chest gone or an ineligible settler orders nothing.
+       */
+      readonly kind: 'openChest';
+      readonly entity: Entity;
+      readonly chest: Entity;
+    }
+  | {
+      /**
        * Change one owned settler's trade, resetting it to an unposted idle worker of that trade. The
        * civilist job (`jobtypes.ini` 6) is an ordinary assignable record no workplace employs.
        */

@@ -14,6 +14,8 @@ import {
   matchEnded,
   matchOutcome,
   needsEnabled,
+  type Paper,
+  playerPaperSlots,
   professionProgressionEnabled,
 } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
@@ -281,6 +283,13 @@ export class Simulation {
     const copy = defaultAssistantCounters();
     for (const kind of ASSISTANT_COUNTER_KINDS) copy[kind] = { ...live[kind] };
     return copy;
+  }
+
+  /** `player`'s papers list as a detached copy, in slot order with spent slots dropped. */
+  papers(player: number): Paper[] {
+    const out: Paper[] = [];
+    for (const slot of playerPaperSlots(this.world, player)) if (slot !== null) out.push({ ...slot });
+    return out;
   }
 
   /** The `FogRules` rule the `setFogMode` command sets; absent = `FOG_MODE.OFF`. */

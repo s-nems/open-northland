@@ -65,6 +65,9 @@ export type AtomicEffect =
    *  half-cell node `(x, y)`. Observation: one hammer strike, instant, no materials. The spot is
    *  re-validated at application, and an illegal spot means the swing whiffs. */
   | { readonly kind: 'erectSignpost'; readonly x: number; readonly y: number }
+  /** The settler's open-chest clip completed: `chest` hands out its contents and vanishes. A chest gone
+   *  meanwhile whiffs. */
+  | { readonly kind: 'openChest'; readonly chest: Entity }
   /** A farmer's sowing swing plants a `goodType` crop field for `farm` at free field node `(x, y)`
    *  (half-cell coords); a node taken since the planner chose it plants nothing. Growth parameters
    *  resolve from the good's content `farming` block at apply time. */

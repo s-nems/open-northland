@@ -170,7 +170,7 @@ export interface AttackMoveMarch {
 /** The order kinds a running non-interruptible atomic parks instead of cancelling. */
 export type DeferrableOrderCommand = Extract<
   Command,
-  { kind: 'moveUnit' | 'attackMoveUnit' | 'setJob' | 'placeSignpost' }
+  { kind: 'moveUnit' | 'attackMoveUnit' | 'setJob' | 'placeSignpost' | 'openChest' }
 >;
 
 /**

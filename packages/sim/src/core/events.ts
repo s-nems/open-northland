@@ -1,3 +1,4 @@
+import type { Paper } from '../components/papers.js';
 import type { Entity } from '../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../nav/halfcell.js';
 import type { Fixed } from './fixed.js';
@@ -218,6 +219,22 @@ export type SimEvent =
        */
       readonly kind: 'berryBushRazed';
       readonly bush: Entity;
+      readonly at: HalfCellNode;
+    }
+  | {
+      /** A settler opened `chest` this tick and its contents were handed out; the chest entity is gone by
+       *  the snapshot. `player` is the opener's owner. */
+      readonly kind: 'chestOpened';
+      readonly chest: Entity;
+      readonly at: HalfCellNode;
+      readonly player: number;
+    }
+  | {
+      /** `paper` entered `player`'s papers list this tick, from the chest at `at` (the original's
+       *  "a new object has been found" message). */
+      readonly kind: 'paperFound';
+      readonly player: number;
+      readonly paper: Paper;
       readonly at: HalfCellNode;
     }
   | {

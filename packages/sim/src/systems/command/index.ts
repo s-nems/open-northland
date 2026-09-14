@@ -1,4 +1,5 @@
 import {
+  addPaper,
   setDiplomacyStance,
   setFogMode,
   setMatchParticipants,
@@ -10,6 +11,7 @@ import {
 import { assertNever } from '../../core/brand.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
+import { orderOpenChest } from '../chests/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
@@ -145,6 +147,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'placeSignpost':
       placeSignpost(world, ctx, command);
+      return;
+    case 'openChest':
+      orderOpenChest(world, ctx, command);
+      return;
+    case 'grantPaper':
+      addPaper(world, command.player, command.paper);
       return;
     case 'setSignpostNavigation':
       setSignpostNavigation(world, command.enabled);

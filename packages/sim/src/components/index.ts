@@ -5,6 +5,7 @@
 
 export * from './ai-player.js';
 export * from './assistant.js';
+export * from './chest.js';
 export * from './combat.js';
 export * from './defence.js';
 export * from './economy/index.js';
@@ -15,6 +16,7 @@ export * from './match.js';
 export * from './movement.js';
 export * from './needs.js';
 export * from './ownership.js';
+export * from './papers.js';
 export * from './player-placement.js';
 export * from './rules.js';
 export * from './settler.js';

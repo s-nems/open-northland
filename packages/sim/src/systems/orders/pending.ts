@@ -1,6 +1,7 @@
 import { type DeferrableOrderCommand, DeferredOrder, Settler } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { World } from '../../ecs/world.js';
+import { orderOpenChest } from '../chests/index.js';
 import type { System, SystemContext } from '../context.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { attackMoveUnit, moveUnit } from './movement.js';
@@ -38,6 +39,9 @@ function applyDeferredOrder(world: World, ctx: SystemContext, command: Deferrabl
       return;
     case 'placeSignpost':
       placeSignpost(world, ctx, command);
+      return;
+    case 'openChest':
+      orderOpenChest(world, ctx, command);
       return;
     default:
       assertNever(command);
