@@ -44,6 +44,8 @@ export interface PlannerPass {
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
   readonly shelters: ShelterSites;
+  /** The settlers whose ladder reached its idle tail this pass: nothing to do, so they stand. */
+  readonly standing: Set<Entity>;
 }
 
 /** Snapshot the shared pass state at the top of a planner tick. */
@@ -66,5 +68,6 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     siteLeads: new SiteLeads(world),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),
+    standing: new Set(),
   };
 }

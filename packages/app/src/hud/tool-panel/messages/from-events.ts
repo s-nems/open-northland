@@ -73,8 +73,7 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.building(USER_MESSAGE_TYPE.houseUpgraded, e);
         break;
       }
-      case 'settlerGoalUnreachable':
-      case 'settlerCutOff': {
+      case 'settlerLost': {
         const e = ownedPerson(ev.entity);
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
         break;

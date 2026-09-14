@@ -78,11 +78,11 @@ describe('message feed', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);
     feed.remove(1, true);
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS - 1, () => true);
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS - 1, () => false);
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + MESSAGE_LIFETIME_TICKS - 1, TEXT)).toBe(
       'duplicate',
     );
-    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => true);
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => false);
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe(
       'accepted',
     );
@@ -143,10 +143,27 @@ describe('message feed', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 1 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 2 }), TICK + 10, TEXT);
-    feed.expire(TICK + 20, (s) => s.entity !== 1);
+    feed.expire(TICK + 20, (m) => m.subject?.entity === 1);
     expect(feed.displayed().map((m) => m.subject?.entity)).toEqual([2]);
-    feed.expire(TICK + 10 + MESSAGE_LIFETIME_TICKS, () => true);
+    feed.expire(TICK + 10 + MESSAGE_LIFETIME_TICKS, () => false);
     expect(feed.displayed()).toHaveLength(0);
+  });
+
+  it('a standing note outlives the lifetime and ends only when its state is over', () => {
+    const feed = createMessageFeed();
+    const lost = pending(USER_MESSAGE_TYPE.lostWithoutSignposts);
+    feed.add(lost, TICK, TEXT);
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => false);
+    expect(feed.displayed()).toHaveLength(1);
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, (m) => m.type === USER_MESSAGE_TYPE.lostWithoutSignposts);
+    expect(feed.displayed()).toHaveLength(0);
+    // Dismissed by hand, it keeps its repeat away while the state lasts, and no longer once it is over.
+    feed.add(lost, TICK, TEXT);
+    feed.remove(2, true);
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => false);
+    expect(feed.add(lost, TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe('duplicate');
+    feed.expire(TICK + MESSAGE_LIFETIME_TICKS, () => true);
+    expect(feed.add(lost, TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe('accepted');
   });
 
   it('Shift-dismiss clears the strip into history', () => {
@@ -158,16 +175,18 @@ describe('message feed', () => {
     expect(feed.state().history).toHaveLength(2);
   });
 
-  it('dismisses every note about one settler, none of the others, and lets it come straight back', () => {
+  it("dismisses one settler's event notes, not its standing one nor anyone else's, and lets them come straight back", () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.grewUp, { kind: 'settler', entity: 1 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.lostWithoutSignposts, { kind: 'settler', entity: 1 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 2 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.houseFinished, { kind: 'building', entity: 1 }), TICK, TEXT);
     expect(feed.removeSettler(1)).toBe(true);
-    expect(feed.displayed().map((m) => [m.subject?.kind, m.subject?.entity])).toEqual([
-      ['settler', 2],
-      ['building', 1],
+    expect(feed.displayed().map((m) => [m.type, m.subject?.kind, m.subject?.entity])).toEqual([
+      [USER_MESSAGE_TYPE.lostWithoutSignposts, 'settler', 1],
+      [USER_MESSAGE_TYPE.hungry, 'settler', 2],
+      [USER_MESSAGE_TYPE.houseFinished, 'building', 1],
     ]);
     expect(feed.removeSettler(1)).toBe(false);
     expect(feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 1 }), TICK + 1, TEXT)).toBe(
@@ -241,8 +260,8 @@ describe('deselection dismisser', () => {
     const selection = selectionOf();
     selection.set([1, 2]);
     dismiss(selection.view); // the selection is standing when the notes arrive
-    feed.add(pending(USER_MESSAGE_TYPE.lostWithoutSignposts, { kind: 'settler', entity: 1 }), TICK, TEXT);
-    feed.add(pending(USER_MESSAGE_TYPE.lostWithoutSignposts, { kind: 'settler', entity: 2 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.grewUp, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.grewUp, { kind: 'settler', entity: 2 }), TICK, TEXT);
     dismiss(selection.view); // an unchanged selection keeps them
     expect(feed.displayed()).toHaveLength(2);
     selection.set([2, 3]); // 1 left, 3 joined

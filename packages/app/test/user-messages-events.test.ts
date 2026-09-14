@@ -186,7 +186,7 @@ describe('user messages from sim events', () => {
     ]);
   });
 
-  it("notes this seat's settler that gave its goal up or stands cut off, and no one else's", () => {
+  it("notes this seat's settler the sim marked lost, and no one else's", () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'person' },
       { id: 2, player: ENEMY, kind: 'person' },
@@ -194,9 +194,9 @@ describe('user messages from sim events', () => {
     ]);
     const out = run(
       [
-        { kind: 'settlerGoalUnreachable', entity: e(1) },
-        { kind: 'settlerGoalUnreachable', entity: e(2) },
-        { kind: 'settlerCutOff', entity: e(3) },
+        { kind: 'settlerLost', entity: e(1) },
+        { kind: 'settlerLost', entity: e(2) },
+        { kind: 'settlerLost', entity: e(3) },
       ],
       snap,
     );

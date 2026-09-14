@@ -154,6 +154,12 @@ function isDying(e: SnapshotEntity): boolean {
   );
 }
 
+/** The sim's own lost marker, so a lost settler's note is back after a reload; the sim event that raised
+ *  it first covers the seconds between sweeps. */
+function isLost(e: SnapshotEntity): boolean {
+  return e.components.LostWay !== undefined;
+}
+
 /** A jobless adult is never planned, so nothing feeds it and its bars pin without consequence. */
 function isJobless(e: SnapshotEntity): boolean {
   return settlerJobType(e) === undefined;
@@ -233,6 +239,7 @@ export function createSnapshotMessageSource(localPlayer: number): SnapshotMessag
         if (!isLocalPerson(e, localPlayer)) continue;
         if (needsOn) raiseNeeds(raiser, e);
         raiseDying(raiser, e);
+        if (isLost(e)) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
         // The original gates only this note on age, alongside its player-type and vehicle checks.
         if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts);
       }

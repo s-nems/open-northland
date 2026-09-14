@@ -13,6 +13,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { markLostWay } from '../settlers/lost-way.js';
 import { closer, manhattan, nearestCell } from '../spatial/metric.js';
 import type { CombatantStance, EngageSpec } from './engagement.js';
 import type { MeleeSlots, WeaponBand } from './melee-slots.js';
@@ -132,7 +133,7 @@ export function chase(
         if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
       } else {
         // Only the dropped attack order is worth a note; the march above keeps walking.
-        ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
+        markLostWay(world, ctx, e);
       }
       return true;
     }
@@ -144,7 +145,7 @@ export function chase(
       sealedByStructures(world, ctx, terrain, request.start, request.goal)
     ) {
       noteUnreachableTarget(world, ctx, e, target.entity);
-      ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
+      markLostWay(world, ctx, e);
       breakOff(world, e, here, defend);
       return true;
     }

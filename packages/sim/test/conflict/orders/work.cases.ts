@@ -235,6 +235,6 @@ describe('PlayerOrder abandonment', () => {
     expect(s.world.has(e, PlayerOrder)).toBe(false); // order abandoned
     expect(s.world.has(e, MoveGoal)).toBe(false); // dead nav state cleared
     expect(s.world.has(e, PathRequest)).toBe(false);
-    expect(s.events.current()).toContainEqual({ kind: 'settlerGoalUnreachable', entity: e });
+    expect(s.events.current()).toContainEqual({ kind: 'settlerLost', entity: e });
   });
 });

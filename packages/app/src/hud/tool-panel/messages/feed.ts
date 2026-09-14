@@ -6,7 +6,6 @@ import {
 } from './priority.js';
 import {
   type MessagePriorityLevel,
-  type MessageSubject,
   type PendingMessage,
   USER_MESSAGE_TYPE,
   type UserMessage,
@@ -32,6 +31,12 @@ const SIMILAR_TYPES: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
   USER_MESSAGE_TYPE.equipmentNotFound,
 ]);
 const NODES_PER_CELL = 2;
+/** A note that reports a state the sim keeps a marker for: it ends with the marker, not with the
+ *  lifetime or the selection. Departs from the original, whose lost worker is back at work within seconds
+ *  (the original symbols); here a lost settler stands, so the note stands with it. */
+export function isStandingNote(type: UserMessageType): boolean {
+  return type === USER_MESSAGE_TYPE.lostWithoutSignposts;
+}
 
 export interface MessageFeedState {
   readonly level: MessagePriorityLevel;
@@ -53,10 +58,10 @@ export interface MessageFeed {
   /** Dismiss one note; `toHistory` keeps its repeat away for the lifetime. */
   remove(id: number, toHistory: boolean): boolean;
   removeAll(toHistory: boolean): void;
-  /** Dismiss every note about one settler, with no history entry, so a later raise shows again. */
+  /** Dismiss one settler's notes, with no history entry, so a later raise shows again. */
   removeSettler(entity: number): boolean;
-  /** Drop notes past their lifetime and notes whose subject `alive` no longer knows. */
-  expire(tick: number, alive: (subject: MessageSubject) => boolean): void;
+  /** Drop notes past their lifetime and notes `over` reports as ended. */
+  expire(tick: number, over: (m: UserMessage) => boolean): void;
   displayed(): readonly UserMessage[];
   find(id: number): UserMessage | undefined;
   /** Bumps on every change to the displayed list or the level, so a renderer keys its rebuild on it. */
@@ -86,7 +91,11 @@ function similarMessage(a: PendingMessage, b: PendingMessage): boolean {
 }
 
 function expired(m: UserMessage, tick: number): boolean {
-  return tick - m.tick >= MESSAGE_LIFETIME_TICKS;
+  return !isStandingNote(m.type) && tick - m.tick >= MESSAGE_LIFETIME_TICKS;
+}
+
+function aboutSettler(m: UserMessage, entity: number): boolean {
+  return m.subject !== null && m.subject.kind === 'settler' && m.subject.entity === entity;
 }
 
 /** One of the two buffers: insertion order plus an identity index for the exact-match test. */
@@ -198,12 +207,9 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       dropDisplayed(() => false, toHistory);
     },
     removeSettler: (entity) =>
-      dropDisplayed(
-        (m) => m.subject === null || m.subject.kind !== 'settler' || m.subject.entity !== entity,
-        false,
-      ),
-    expire: (tick, alive) => {
-      const live = (m: UserMessage): boolean => !expired(m, tick) && (m.subject === null || alive(m.subject));
+      dropDisplayed((m) => !aboutSettler(m, entity) || isStandingNote(m.type), false),
+    expire: (tick, over) => {
+      const live = (m: UserMessage): boolean => !expired(m, tick) && !over(m);
       dropDisplayed(live, false);
       history.prune(live);
     },

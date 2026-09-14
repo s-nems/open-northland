@@ -24,7 +24,7 @@ import type { PlannerPass } from '../planner/pass.js';
 import { anotherSystemOwns, combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
-import { announceIfCutOff } from './cut-off.js';
+import { reconcileCutOff } from './cut-off.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -206,7 +206,8 @@ function planEconomy(
   // a script pinned stays where it is; the rest step off a shared tile first so an idle crowd spreads
   // out, then chat with a nearby idle neighbour.
   if (planCarrierHaul(plan, pass.anyHaulable)) return;
-  announceIfCutOff(plan, pass.seatDoors);
+  pass.standing.add(e);
+  reconcileCutOff(plan, pass.seatDoors);
   if (world.has(e, Chat) || staysPut(world, e)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);

@@ -76,6 +76,13 @@ export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed
  */
 export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'movement');
 
+/**
+ * A settler standing lost: an ordered walk, a chase or its work found no way within its signpost reach.
+ * Lifted once a drive or an obeyed order gives the settler something to do. `cutOff` says the idle tail
+ * found no door of its seat in reach; that tail lifts the marker once a door is back in reach.
+ */
+export const LostWay = defineComponent<{ cutOff: boolean }>('LostWay', 'movement');
+
 /** One remembered route failure: the goal node, and the tick it stops being excluded. */
 export interface UnreachableGoal {
   readonly cell: NodeId;

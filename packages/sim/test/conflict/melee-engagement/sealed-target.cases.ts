@@ -238,7 +238,7 @@ describe('a chase whose target is walled in by buildings', () => {
     for (let i = 0; i < RELEASED_BY + REPATH_CADENCE; i++) {
       scene.sim.step();
       for (const ev of scene.sim.events.current()) {
-        if (ev.kind === 'settlerGoalUnreachable') raised.push(ev.entity);
+        if (ev.kind === 'settlerLost') raised.push(ev.entity);
       }
     }
     expect(raised).toEqual([scene.besieger]);

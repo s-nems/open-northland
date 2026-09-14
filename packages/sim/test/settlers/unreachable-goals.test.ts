@@ -130,7 +130,7 @@ describe('the gatherer re-plan after a failed route', () => {
     const raised: Entity[] = [];
     const collect = (): void => {
       for (const ev of s.events.current()) {
-        if (ev.kind === 'settlerGoalUnreachable') raised.push(ev.entity);
+        if (ev.kind === 'settlerLost') raised.push(ev.entity);
       }
     };
     for (let i = 0; i < 100 && raised.length === 0; i++) {

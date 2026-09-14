@@ -4,6 +4,8 @@ import {
   addPerson,
   Building,
   CARRIER_WALK_RANGE_NODES,
+  Chat,
+  LostWay,
   MoveGoal,
   Owner,
   PlayerOrder,
@@ -16,7 +18,7 @@ import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { navigationLimitFor } from '../../src/systems/index.js';
-import { CUT_OFF_ANNOUNCE_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
+import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
 import { makeWoodcutter, placeFellableTree, VIKING } from '../settlers/gatherer-flag/support.js';
@@ -30,6 +32,7 @@ import { stampPost } from './support.js';
  * Distances below are hex node distances: two nodes per tile E/W.
  */
 
+const WOODCUTTER = 1;
 const SCOUT = 27;
 const SOLDIER = 31; // a fighter trade - exempt from confinement
 const HUNTER = 15; // exempt like the scout - bounded by its work flag, never the signpost network
@@ -69,24 +72,88 @@ function ordered(sim: Simulation, e: Entity): boolean {
 describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
   it('defaults OFF: a civilian walks anywhere', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(128, 8) });
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 200, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(true);
   });
 
-  it('ON: a goal beyond the walk range is refused - the settler stays put and is reported lost', () => {
+  it('ON: a goal beyond the walk range is refused - the settler stays put, marked lost until it obeys', () => {
     const sim = confinedSim();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(false);
-    expect(sim.events.current()).toContainEqual({ kind: 'settlerGoalUnreachable', entity: u });
-    // A goal exactly the range away is obeyed, and silently.
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: u });
+    expect(sim.world.has(u, LostWay)).toBe(true);
+    // A second refusal is not news; a woodcutter with no tree in reach stands, so the mark stands with it.
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + 2 * WALK_RANGE_NODES, y: 6 });
+    for (let t = 0; t < 30; t++) sim.step();
+    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerLost', entity: u });
+    expect(sim.world.has(u, LostWay)).toBe(true);
+    // A goal exactly the range away is obeyed, silently, and the way is found.
     sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + WALK_RANGE_NODES, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(true);
-    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerGoalUnreachable', entity: u });
+    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerLost', entity: u });
+    expect(sim.world.has(u, LostWay)).toBe(false);
+  });
+
+  it('ON: two lost settlers that fall into idle chatter stay marked lost', () => {
+    const sim = confinedSim();
+    const a = ownedUnit(sim, 6, 4, CIVILIST);
+    const b = ownedUnit(sim, 6, 4, CIVILIST);
+    sim.world.mut(b, Position).x = fx.add(fx.fromInt(6), fx.div(ONE, fx.fromInt(2))); // the node beside
+    sim.enqueueSetup({ kind: 'moveUnit', entity: a, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: b, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
+    let chatTicks = 0;
+    for (let t = 0; t < 60; t++) {
+      sim.step();
+      if (sim.world.has(a, Chat) && sim.world.has(b, Chat)) chatTicks++;
+      expect(sim.world.has(a, LostWay)).toBe(true);
+      expect(sim.world.has(b, LostWay)).toBe(true);
+    }
+    expect(chatTicks).toBeGreaterThan(0);
+  });
+
+  it('ON: a refused order on a settler mid-chat marks it: idle chatter is not business', () => {
+    const sim = confinedSim();
+    const a = ownedUnit(sim, 6, 4, CIVILIST);
+    const b = ownedUnit(sim, 6, 4, CIVILIST);
+    sim.world.mut(b, Position).x = fx.add(fx.fromInt(6), fx.div(ONE, fx.fromInt(2)));
+    for (let t = 0; t < 10 && !sim.world.has(a, Chat); t++) sim.step();
+    expect(sim.world.has(a, Chat)).toBe(true);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: a, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
+    sim.step();
+    expect(sim.world.has(a, LostWay)).toBe(true);
+  });
+
+  it('ON: a refused order on a worker with work in reach is forgotten at its next re-plan', () => {
+    const sim = confinedSim(192);
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const g = makeWoodcutter(sim, 2, 2);
+    sim.world.add(g, Owner, { player: P0 });
+    placeFellableTree(sim, 6, 2);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: g, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
+    sim.step();
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: g });
+    for (let t = 0; t < 30 && sim.world.has(g, LostWay); t++) sim.step();
+    expect(sim.world.has(g, LostWay)).toBe(false);
+    expect(sim.world.has(g, MoveGoal)).toBe(true); // off to the tree
+  });
+
+  it('ON: a refused order on a settler already on its way is reported but leaves no mark', () => {
+    const sim = confinedSim();
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + WALK_RANGE_NODES, y: 4 });
+    sim.step();
+    sim.step();
+    expect(sim.world.has(u, MoveGoal)).toBe(true);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
+    sim.step();
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerLost', entity: u });
+    expect(sim.world.has(u, LostWay)).toBe(false);
+    expect(sim.world.has(u, MoveGoal)).toBe(true); // still walking the order it obeyed
   });
 
   it('ON: scouts, fighters and hunters are exempt', () => {
@@ -107,7 +174,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
 
   it('ON: a caught signpost group extends the walkable area to the range around each post', () => {
     const sim = confinedSim();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     // Post A at tile 12 (20 nodes east, inside the walk range) catches the settler; post B at tile 30
     // (36 nodes past A, inside the link range) carries it further east.
     stampPost(sim, 12, 2);
@@ -120,7 +187,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
 
   it('ON: a post beyond the walk range is not caught, however close the goal is to it', () => {
     const sim = confinedSim(192);
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     // A lone post 116 nodes from the settler, 20 from the goal.
     stampPost(sim, 60, 2);
     sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 140, y: 4 });
@@ -135,12 +202,13 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
 
   it('ON: the druid roams like the scout, read off its content role', () => {
     const DRUID = 30;
+    const FARMER = 1;
     const content = parseContentSet({
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [
         { typeId: 0, id: 'idle' },
-        { typeId: 1, id: 'farmer' },
+        { typeId: FARMER, id: 'farmer' },
         { typeId: DRUID, id: 'druid' },
       ],
       buildings: [],
@@ -149,7 +217,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     const sim = new Simulation({ seed: 5, content, map: grassMap(128, 8) });
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
-    const farmer = ownedUnit(sim, 2, 2, 1);
+    const farmer = ownedUnit(sim, 2, 2, FARMER);
     const druid = ownedUnit(sim, 2, 4, DRUID);
     sim.enqueueSetup({ kind: 'moveUnit', entity: farmer, x: 220, y: 4 });
     sim.enqueueSetup({ kind: 'moveUnit', entity: druid, x: 220, y: 8 });
@@ -160,21 +228,21 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
 
   it('ON: a carrier plans a longer leg than any other trade', () => {
     const sim = confinedSim();
-    const farmer = ownedUnit(sim, 2, 2, 1);
+    const woodcutter = ownedUnit(sim, 2, 2, WOODCUTTER);
     const carrier = ownedUnit(sim, 2, 4, CARRIER);
     // 56 nodes east: past the 50-node range, inside the carrier's 63.
     const goal = 4 + WALK_RANGE_NODES + 6;
     expect(goal).toBeLessThan(4 + CARRIER_WALK_RANGE_NODES);
-    sim.enqueueSetup({ kind: 'moveUnit', entity: farmer, x: goal, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: woodcutter, x: goal, y: 4 });
     sim.enqueueSetup({ kind: 'moveUnit', entity: carrier, x: goal, y: 8 });
     sim.step();
-    expect(ordered(sim, farmer)).toBe(false);
+    expect(ordered(sim, woodcutter)).toBe(false);
     expect(ordered(sim, carrier)).toBe(true);
   });
 
   it('ON: a post is caught only strictly inside the range, though a goal may sit exactly on it', () => {
     const sim = confinedSim();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     // The settler stands on node (4, 4); a post 50 nodes east opens nothing, one at 49 opens its range.
@@ -189,7 +257,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: waterColumnMap(64, 8, 10) });
     sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     stampPost(sim, 14, 2); // 24 nodes east, on the far bank
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
@@ -199,7 +267,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
   });
 });
 
-describe('the cut-off note', () => {
+describe('the cut-off mark', () => {
   function building(sim: Simulation, x: number, y: number, player: number | null = P0): void {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -207,29 +275,57 @@ describe('the cut-off note', () => {
     if (player !== null) sim.world.add(e, Owner, { player });
   }
 
-  /** Runs through one announce cadence and lists who it announced as cut off. */
+  /** Runs through one check cadence and lists who it newly marked lost. */
   function cutOffWithinOneCadence(sim: Simulation): Entity[] {
     const seen: Entity[] = [];
-    for (let i = 0; i < CUT_OFF_ANNOUNCE_TICKS; i++) {
+    for (let i = 0; i < CUT_OFF_CHECK_TICKS; i++) {
       sim.step();
-      for (const ev of sim.events.current()) if (ev.kind === 'settlerCutOff') seen.push(ev.entity);
+      for (const ev of sim.events.current()) if (ev.kind === 'settlerLost') seen.push(ev.entity);
     }
     return seen;
   }
 
-  it('an idle civilian with no signpost and no own building in reach is announced, on the cadence', () => {
+  function cutOff(sim: Simulation, e: Entity): boolean {
+    return sim.world.tryGet(e, LostWay)?.cutOff === true;
+  }
+
+  it('an idle civilian with no signpost and no own building in reach is marked once, and stays marked', () => {
     const sim = confinedSim();
     building(sim, 2, 2);
-    const stranded = ownedUnit(sim, 60, 4, 1);
-    ownedUnit(sim, 6, 4, 1); // within its walk range of the building: silent
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    const near = ownedUnit(sim, 6, 4, WOODCUTTER); // within its walk range of the building: silent
     expect(cutOffWithinOneCadence(sim)).toEqual([stranded]);
-    expect(cutOffWithinOneCadence(sim)).toEqual([stranded]); // repeats while it stays stranded
+    expect(cutOffWithinOneCadence(sim)).toEqual([]); // not news while it stays stranded
+    expect(cutOff(sim, stranded)).toBe(true);
+    expect(sim.world.has(near, LostWay)).toBe(false);
+  });
+
+  it('a door back in reach lifts the mark at the next check, though the worker still stands', () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    expect(cutOffWithinOneCadence(sim)).toEqual([stranded]);
+    building(sim, 62, 2);
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
+    expect(sim.world.has(stranded, LostWay)).toBe(false);
+    expect(sim.world.has(stranded, MoveGoal)).toBe(false);
+  });
+
+  it('a refused order stands through the check: only the seat-reach kind is lifted by a door', () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    const u = ownedUnit(sim, 6, 4, WOODCUTTER);
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + 2 * WALK_RANGE_NODES, y: 4 });
+    sim.step();
+    expect(cutOffWithinOneCadence(sim)).toEqual([]);
+    expect(sim.world.has(u, LostWay)).toBe(true);
+    expect(cutOff(sim, u)).toBe(false);
   });
 
   it("another seat's or an unowned building nearby does not count as home", () => {
     const sim = confinedSim();
     building(sim, 2, 2);
-    const stranded = ownedUnit(sim, 60, 4, 1);
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
     building(sim, 62, 2, 1);
     building(sim, 58, 2, null);
     expect(cutOffWithinOneCadence(sim)).toEqual([stranded]);
@@ -238,10 +334,10 @@ describe('the cut-off note', () => {
   it('a signpost chain back to a door of its seat keeps the note away; a lone post does not', () => {
     const sim = confinedSim();
     building(sim, 6, 2); // its door sits inside the first post's range
-    const chained = ownedUnit(sim, 50, 4, 1);
+    const chained = ownedUnit(sim, 50, 4, WOODCUTTER);
     stampPost(sim, 12, 2);
     stampPost(sim, 30, 2); // links the first, and the settler at tile 50 catches it
-    const lone = ownedUnit(sim, 100, 4, 1);
+    const lone = ownedUnit(sim, 100, 4, WOODCUTTER);
     stampPost(sim, 96, 4); // caught, but linked to nothing
     expect(cutOffWithinOneCadence(sim)).toEqual([lone]);
     expect(sim.world.has(chained, Settler)).toBe(true);
@@ -258,7 +354,7 @@ describe('the cut-off note', () => {
 
   it('a seat without a building has no settlement to be cut off from', () => {
     const sim = confinedSim();
-    ownedUnit(sim, 60, 4, 1);
+    ownedUnit(sim, 60, 4, WOODCUTTER);
     expect(cutOffWithinOneCadence(sim)).toEqual([]);
   });
 });
@@ -266,7 +362,7 @@ describe('the cut-off note', () => {
 describe('navigationLimitFor, the per-settler memo', () => {
   it('re-serves one limit object while inputs hold; a node crossing or job change recomputes', () => {
     const sim = confinedSim();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const first = navigationLimitFor(sim.world, sim.content, terrain, u);
@@ -296,7 +392,7 @@ describe('navigationLimitFor, the per-settler memo', () => {
 
   it('an erected signpost invalidates held limits through the Signpost store generation', () => {
     const sim = confinedSim();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const before = navigationLimitFor(sim.world, sim.content, terrain, u);
@@ -311,7 +407,7 @@ describe('navigationLimitFor, the per-settler memo', () => {
 
   it('toggling the rule off is honoured immediately: the flag is read live, never memoized', () => {
     const sim = confinedSim();
-    const u = ownedUnit(sim, 2, 2, 1);
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const first = navigationLimitFor(sim.world, sim.content, terrain, u);

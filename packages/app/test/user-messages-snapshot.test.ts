@@ -33,6 +33,8 @@ interface Actor {
   readonly doing?: Doing;
   /** A `jobType` of null: the adult nobody plans or feeds. */
   readonly jobless?: boolean;
+  /** The sim's `LostWay` marker. */
+  readonly lost?: boolean;
 }
 
 function doingComponents(doing: Doing): Record<string, unknown> {
@@ -80,6 +82,7 @@ function components(a: Actor): Record<string, unknown> {
     ...(kind === 'child' ? { Age: { ticks: 40 } } : {}),
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
     ...(a.workFlag === undefined ? {} : { WorkFlag: { flag: a.workFlag } }),
+    ...(a.lost === true ? { LostWay: { cutOff: false } } : {}),
     ...doingComponents(a.doing ?? 'nothing'),
   };
 }
@@ -152,6 +155,20 @@ describe('user messages read off the snapshot', () => {
       [USER_MESSAGE_TYPE.starving, 3],
       [USER_MESSAGE_TYPE.willDie, 4],
     ]);
+  });
+
+  it("raises the lost note off the sim's marker, for this seat's people only", () => {
+    const source = createSnapshotMessageSource(LOCAL);
+    const out = sweep(
+      source,
+      snapshot(100, [
+        { id: 1, lost: true },
+        { id: 2, lost: true, player: ENEMY },
+        { id: 3, lost: true, kind: 'animal' },
+        { id: 4 },
+      ]),
+    );
+    expect(out).toEqual([[USER_MESSAGE_TYPE.lostWithoutSignposts, 1]]);
   });
 
   it('warns about a wounded settler even where the needs rule is off', () => {

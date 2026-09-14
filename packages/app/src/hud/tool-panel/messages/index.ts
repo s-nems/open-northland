@@ -1,11 +1,5 @@
 import type { SpriteSheet } from '@open-northland/render';
-import {
-  entityById,
-  type HalfCellNode,
-  type Paper,
-  type SimEvent,
-  type WorldSnapshot,
-} from '@open-northland/sim';
+import type { HalfCellNode, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Application, Container } from 'pixi.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import type { GuiArt } from '../../../content/gui-art.js';
@@ -25,6 +19,7 @@ import { createSnapshotMessageSource } from './from-snapshot.js';
 import { hitTestNotes } from './layout.js';
 import { MESSAGE_LEVEL_FACE } from './priority.js';
 import type { MessageNaming } from './raise.js';
+import { isNoteOver } from './retire.js';
 import { createMessageStrip } from './strip.js';
 import { composeMessageText } from './text.js';
 import type { MessagePriorityLevel, UserMessage } from './types.js';
@@ -199,7 +194,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
         for (const raised of diplomacySource.poll(naming)) {
           feed.add(raised.pending, snapshot.tick, raised.compose);
         }
-        feed.expire(snapshot.tick, (subject) => entityById(snapshot, subject.entity) !== undefined);
+        feed.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
         previous = snapshot;
       }
       strip.render(feed.displayed(), snapshot, feed.version());

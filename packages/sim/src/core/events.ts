@@ -43,13 +43,8 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
-      /** A settler gave a destination up as unreachable. */
-      readonly kind: 'settlerGoalUnreachable';
-      readonly entity: Entity;
-    }
-  | {
-      /** An idle settler of a working trade stands where no door of its seat's buildings is within reach. */
-      readonly kind: 'settlerCutOff';
+      /** A settler found no way: an ordered walk, a chase or its work lies past its signpost reach. */
+      readonly kind: 'settlerLost';
       readonly entity: Entity;
     }
   | {

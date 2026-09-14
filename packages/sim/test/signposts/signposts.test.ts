@@ -115,7 +115,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     sim.step();
     expect(sim.world.has(scout, PlayerOrder)).toBe(false);
     expect(sim.world.has(scout, ErectSignpostOrder)).toBe(false);
-    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerGoalUnreachable', entity: scout });
+    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerLost', entity: scout });
   });
 
   it('a non-scout issuer is skipped', () => {

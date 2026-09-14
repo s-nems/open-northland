@@ -2,6 +2,7 @@ import {
   type AttackMoveMarch,
   AttackOrder,
   Carrying,
+  Chat,
   CurrentAtomic,
   DeferredOrder,
   Engagement,
@@ -15,7 +16,6 @@ import {
   OpenChestOrder,
   Owner,
   PathRequest,
-  Person,
   PlayerOrder,
   Position,
   Settler,
@@ -31,8 +31,10 @@ import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling } from '../movement/nav-state.js';
 import { MILITARY_MODE } from '../readviews/index.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
+import { announceLostWay, clearLostWay, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { deferOrderDuringAtomic } from './guards.js';
 
@@ -61,11 +63,6 @@ function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGra
 function clearPlayerOrder(world: World, e: Entity): void {
   world.remove(e, PlayerOrder);
   clearNavState(world, e);
-}
-
-/** Captured livestock carry an Owner and take walk orders too, but only a person is reported lost. */
-function announceLostWay(world: World, ctx: SystemContext, e: Entity): void {
-  if (world.has(e, Person)) ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
 }
 
 /**
@@ -119,7 +116,11 @@ function startPlayerWalk(
   if (confined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null && !limit.allowsNode(goal)) {
-      announceLostWay(world, ctx, e);
+      // A settler busy with something else is not left standing lost: the refusal is news for a moment.
+      // A walk to a chat partner is not business.
+      const busy = (isTravelling(world, e) && !world.has(e, Chat)) || atomicHoldsSettler(world, e);
+      if (busy) announceLostWay(world, ctx, e);
+      else markLostWay(world, ctx, e);
       return false;
     }
   }
@@ -146,6 +147,7 @@ function startPlayerWalk(
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
   world.remove(e, ExploreOrder); // an ordered walk ends a scout's sweep
+  clearLostWay(world, e); // an obeyed order is the way found
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);
   // A move order relocates a DEFEND unit's post, or the arrived-hold combat pass would march the guard back
@@ -200,7 +202,7 @@ export const playerOrderSystem: System = (world, ctx) => {
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
       // A signpost errand is the original's build-guide task, whose failure is a plain task failure
       // (`an original routine`), never a lost note.
-      if (!world.has(e, ErectSignpostOrder)) announceLostWay(world, ctx, e);
+      if (!world.has(e, ErectSignpostOrder)) markLostWay(world, ctx, e);
       clearPlayerOrder(world, e);
       continue;
     }

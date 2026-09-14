@@ -1,5 +1,6 @@
 import {
   Age,
+  Chat,
   CurrentAtomic,
   chatAtomicRunning,
   inPastimeChat,
@@ -11,6 +12,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
 import { endChat } from '../../social/index.js';
 import { planAdult, planChild } from '../drives/ladder.js';
+import { clearLostWay } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
@@ -41,10 +43,16 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // adult job id colliding with an age-class id cannot misroute an adult here.
     if (world.has(e, Age)) {
       planChild(pass, e, settler);
-      continue;
+    } else {
+      planAdult(pass, e, settler, settler.jobType);
+      if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
     }
-    planAdult(pass, e, settler, settler.jobType);
-    if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
+    // A ladder that never reached its idle tail found the settler something, or another system holds it:
+    // either way it no longer stands lost. A chat of either kind is still standing about to the player,
+    // and a jobless adult never gets here, so only an obeyed order lifts its mark. Approximation: a bound
+    // worker re-issuing the one walk its memo just refused clears too, since its sink is exempt from
+    // the veto.
+    if (!pass.standing.has(e) && !world.has(e, Chat)) clearLostWay(world, e);
   }
 }
 

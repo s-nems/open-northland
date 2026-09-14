@@ -10,7 +10,6 @@ import {
   HuntFocus,
   inPastimeChat,
   PathRequest,
-  Person,
   PlayerOrder,
   Position,
   Settler,
@@ -31,6 +30,7 @@ import { reconcileYardRoute } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
 import { answerNeedInPlace } from '../drives/needs.js';
 import { heldIndoors, stepOut } from '../indoors.js';
+import { markLostWay } from '../lost-way.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 
 /** How long a stranded walker parks before shedding its failed route and re-planning: long enough that
@@ -138,10 +138,9 @@ export function releaseStaleIntent(
     if (ctx.tick < stranded.retryAt) return false;
     // Remember what failed before shedding the route: the re-plan runs the same deterministic
     // nearest-first pick, so without the memo it re-chooses this very goal and loops forever.
-    // Wildlife rides this same recovery, and a retry of a goal already given up is not news, so only a
-    // person's first refusal of a goal is announced.
-    const fresh = noteUnreachableGoal(world, ctx, e, request.goal);
-    if (fresh && world.has(e, Person)) ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
+    // Wildlife rides this same recovery, and a retry of a goal already given up is not news, so only
+    // the first refusal of a goal marks the settler lost.
+    if (noteUnreachableGoal(world, ctx, e, request.goal)) markLostWay(world, ctx, e);
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e)) {
     feedOnTheMarch(world, ctx, e, request?.failed === true);
