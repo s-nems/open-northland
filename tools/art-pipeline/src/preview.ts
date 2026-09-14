@@ -11,6 +11,7 @@ import { exists } from './transaction.js';
 export async function preparePreview(root: string, ids: readonly string[]) {
   const [first] = ids;
   if (first === undefined) throw new Error('preview needs at least one package id');
+  if (new Set(ids).size !== ids.length) throw new Error('Duplicate preview id');
   const base = join(root, '.art-build');
   await mkdir(base, { recursive: true });
   const release = await lock(join(base, 'publish.lock'));
@@ -29,7 +30,13 @@ export async function preparePreview(root: string, ids: readonly string[]) {
     }
     const last = stages.pop();
     if (last === undefined) throw new Error('preview needs at least one package id');
-    await writeJson(join(last, 'report.json'), { version: 1, id: first, ids, files, digest: fingerprint(files) });
+    await writeJson(join(last, 'report.json'), {
+      version: 1,
+      id: first,
+      ids,
+      files,
+      digest: fingerprint(files),
+    });
     const destination = join(inside(base, first), 'preview');
     await rm(destination, { recursive: true, force: true });
     await rename(last, destination);

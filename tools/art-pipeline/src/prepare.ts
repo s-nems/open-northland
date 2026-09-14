@@ -11,6 +11,7 @@ export async function prepareDelivery(
   root: string,
   current: Awaited<ReturnType<typeof candidate>>,
   prepared: string,
+  // Copy source only; ownership, overwrite and freshness checks still read the real runtime.
   pack = join(root, 'packages/app/src/assets/own'),
 ) {
   const id = current.report.id;

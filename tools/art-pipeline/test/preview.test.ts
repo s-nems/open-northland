@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildAsset } from '../src/build.js';
@@ -65,13 +65,19 @@ describe('candidate preview', () => {
     await buildAsset(f.root, 'buildings/barn');
     const preview = await preparePreview(f.root, [f.id, 'buildings/barn']);
     expect(preview.path).toBe(join(f.root, '.art-build/buildings/home/preview/own'));
-    expect(JSON.parse(await readFile(join(preview.path, 'buildings/barn/runtime.json'), 'utf8')).typeId).toBe(2);
-    expect(JSON.parse(await readFile(join(preview.path, 'buildings/home/runtime.json'), 'utf8')).typeId).toBe(1);
+    expect(JSON.parse(await readFile(join(preview.path, 'buildings/barn/runtime.json'), 'utf8')).typeId).toBe(
+      2,
+    );
+    expect(JSON.parse(await readFile(join(preview.path, 'buildings/home/runtime.json'), 'utf8')).typeId).toBe(
+      1,
+    );
     const report = JSON.parse(await readFile(join(preview.path, '../report.json'), 'utf8'));
     expect(report.id).toBe(f.id);
     expect(report.ids).toEqual([f.id, 'buildings/barn']);
     expect(report.files).toEqual(await hashes(preview.path));
     expect(await hashes(f.runtime)).toEqual({});
+    expect((await readdir(join(f.root, '.art-build'))).filter((n) => n.startsWith('preview-'))).toEqual([]);
+    await expect(preparePreview(f.root, [f.id, f.id])).rejects.toThrow('Duplicate');
   });
   it('preview rejects an unowned collision without changing runtime', async () => {
     const f = await fixture();
