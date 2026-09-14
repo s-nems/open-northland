@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { JOB_BUILDER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
+  createDeselectionDismisser,
+  type UnitSelectionView,
+} from '../src/hud/tool-panel/messages/deselection.js';
+import {
   createMessageFeed,
   MESSAGE_LIFETIME_TICKS,
   MESSAGE_SLOTS,
@@ -154,6 +158,23 @@ describe('message feed', () => {
     expect(feed.state().history).toHaveLength(2);
   });
 
+  it('dismisses every note about one settler, none of the others, and lets it come straight back', () => {
+    const feed = createMessageFeed();
+    feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.lostWithoutSignposts, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 2 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.houseFinished, { kind: 'building', entity: 1 }), TICK, TEXT);
+    expect(feed.removeSettler(1)).toBe(true);
+    expect(feed.displayed().map((m) => [m.subject?.kind, m.subject?.entity])).toEqual([
+      ['settler', 2],
+      ['building', 1],
+    ]);
+    expect(feed.removeSettler(1)).toBe(false);
+    expect(feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 1 }), TICK + 1, TEXT)).toBe(
+      'accepted',
+    );
+  });
+
   it('merges neighbouring settlers missing the same good, but not distant ones', () => {
     const feed = createMessageFeed();
     const near = SIMILAR_MESSAGE_RANGE_CELLS - 1;
@@ -197,5 +218,60 @@ describe('message feed', () => {
     expect(restored.displayed()).toEqual(feed.displayed());
     restored.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK + 1, TEXT);
     expect(restored.displayed().map((m) => m.id)).toEqual([1, 2]);
+  });
+});
+
+describe('deselection dismisser', () => {
+  function selectionOf(): { view: UnitSelectionView; set: (ids: number[]) => void } {
+    const ids = new Set<number>();
+    let version = 0;
+    return {
+      view: { selectedIds: () => ids, selectionVersion: () => version },
+      set: (next) => {
+        ids.clear();
+        for (const id of next) ids.add(id);
+        version++;
+      },
+    };
+  }
+
+  it("drops a settler's notes the frame it leaves the selection, and only then", () => {
+    const feed = createMessageFeed();
+    const dismiss = createDeselectionDismisser(() => feed);
+    const selection = selectionOf();
+    selection.set([1, 2]);
+    dismiss(selection.view); // the selection is standing when the notes arrive
+    feed.add(pending(USER_MESSAGE_TYPE.lostWithoutSignposts, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.lostWithoutSignposts, { kind: 'settler', entity: 2 }), TICK, TEXT);
+    dismiss(selection.view); // an unchanged selection keeps them
+    expect(feed.displayed()).toHaveLength(2);
+    selection.set([2, 3]); // 1 left, 3 joined
+    dismiss(selection.view);
+    expect(feed.displayed().map((m) => m.subject?.entity)).toEqual([2]);
+    selection.set([]);
+    dismiss(selection.view);
+    expect(feed.displayed()).toHaveLength(0);
+  });
+
+  it('prunes whichever feed the accessor returns, so a HUD rescale keeps the rule', () => {
+    let feed = createMessageFeed();
+    const dismiss = createDeselectionDismisser(() => feed);
+    const selection = selectionOf();
+    selection.set([1]);
+    dismiss(selection.view);
+    feed = createMessageFeed();
+    feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    selection.set([]);
+    dismiss(selection.view);
+    expect(feed.displayed()).toHaveLength(0);
+  });
+
+  it('a first look at a standing selection dismisses nothing', () => {
+    const feed = createMessageFeed();
+    const selection = selectionOf();
+    selection.set([1]);
+    feed.add(pending(USER_MESSAGE_TYPE.hungry, { kind: 'settler', entity: 1 }), TICK, TEXT);
+    createDeselectionDismisser(() => feed)(selection.view);
+    expect(feed.displayed()).toHaveLength(1);
   });
 });

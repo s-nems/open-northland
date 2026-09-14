@@ -53,6 +53,8 @@ export interface MessageFeed {
   /** Dismiss one note; `toHistory` keeps its repeat away for the lifetime. */
   remove(id: number, toHistory: boolean): boolean;
   removeAll(toHistory: boolean): void;
+  /** Dismiss every note about one settler, with no history entry, so a later raise shows again. */
+  removeSettler(entity: number): boolean;
   /** Drop notes past their lifetime and notes whose subject `alive` no longer knows. */
   expire(tick: number, alive: (subject: MessageSubject) => boolean): void;
   displayed(): readonly UserMessage[];
@@ -195,6 +197,11 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     removeAll: (toHistory) => {
       dropDisplayed(() => false, toHistory);
     },
+    removeSettler: (entity) =>
+      dropDisplayed(
+        (m) => m.subject === null || m.subject.kind !== 'settler' || m.subject.entity !== entity,
+        false,
+      ),
     expire: (tick, alive) => {
       const live = (m: UserMessage): boolean => !expired(m, tick) && (m.subject === null || alive(m.subject));
       dropDisplayed(live, false);

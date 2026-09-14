@@ -187,7 +187,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // their shader.
     toolPanel.controller.update(() => hudFor(snap));
     // Unfiltered: the notes are the seat's own affairs, and its own settler in the fog still starves.
-    toolPanel.controller.presentMessages(snap, frameEvents);
+    toolPanel.controller.presentMessages(snap, frameEvents, controls);
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
     mountedMinimap.update(snap, fogView);

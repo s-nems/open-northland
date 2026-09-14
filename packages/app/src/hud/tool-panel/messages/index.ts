@@ -17,6 +17,7 @@ import { contains } from '../../geometry.js';
 import type { TooltipSurface } from '../../tooltip-surface.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
+import { createDeselectionDismisser, type UnitSelectionView } from './deselection.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
@@ -29,6 +30,7 @@ import { composeMessageText } from './text.js';
 import type { MessagePriorityLevel, UserMessage } from './types.js';
 import { createMessageWindow } from './window.js';
 
+export type { UnitSelectionView } from './deselection.js';
 export type { MessageFeedState } from './feed.js';
 export { MESSAGE_LEVEL_FACE } from './priority.js';
 
@@ -71,7 +73,7 @@ export interface MessageCenterDeps {
 export interface MessageCenter {
   /** Per frame: raise this frame's events and a due snapshot sweep as notes, retire the stale ones,
    *  redraw. */
-  present(snapshot: WorldSnapshot, events: readonly SimEvent[]): void;
+  present(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
   level(): MessagePriorityLevel;
   cycleLevel(): MessagePriorityLevel;
   /** True over the open window or a note. */
@@ -142,6 +144,7 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
 export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const { ctx } = deps;
   let feed = createMessageFeed(deps.initial);
+  const dismissDeselected = createDeselectionDismisser(() => feed);
   const naming = makeNaming(deps);
   const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
   const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
@@ -181,7 +184,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     );
 
   return {
-    present: (snapshot, events): void => {
+    present: (snapshot, events, selection): void => {
+      dismissDeselected(selection);
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
         if (events.length > 0) {

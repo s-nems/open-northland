@@ -37,6 +37,7 @@ import {
   MESSAGE_LEVEL_FACE,
   type MessageFeedState,
   type MessageTarget,
+  type UnitSelectionView,
 } from './messages/index.js';
 import { paperLabel } from './paper-label.js';
 import { createPlacementController } from './placement.js';
@@ -127,7 +128,7 @@ export interface ToolPanelController {
    *  `buildHud` scan. */
   update(hudFor: () => HudLayout): void;
   /** Per-frame hook for the note strip: this frame's unfiltered sim events and the snapshot after them. */
-  presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[]): void;
+  presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
   /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
@@ -396,7 +397,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         infoLines.refresh();
         for (const mode of held) mode.placeBanner();
       },
-      presentMessages: (snapshot, events) => messageCenter.present(snapshot, events),
+      presentMessages: (snapshot, events, selection) => messageCenter.present(snapshot, events, selection),
       state: () => ({
         speed: speedButton.state(),
         windows: windows.state(),
