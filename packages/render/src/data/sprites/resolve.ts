@@ -38,7 +38,9 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
     case 'signpost':
       return resolveSignpostDraw(bindings.signpost, item)?.bob ?? null;
     case 'stockpile':
-      return bindings.stockpile === undefined ? null : resolveStockpileDraw(bindings.stockpile, item).bob;
+      return bindings.stockpile === undefined
+        ? null
+        : resolveStockpileDraw(bindings.stockpile, item, tick).bob;
     default: {
       const _exhaustive: never = item.kind;
       void _exhaustive;

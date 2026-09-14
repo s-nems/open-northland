@@ -187,20 +187,20 @@ describe('gathering scene - per-good + stump binding resolution (each draws its 
   });
 
   it('resolves each pile to its own goods atlas, growing with fill; an empty pile → the flag', () => {
-    expect(resolveStockpileDraw(stockpile, pile(GOODS.wood, 1))).toEqual({
+    expect(resolveStockpileDraw(stockpile, pile(GOODS.wood, 1), 0)).toEqual({
       layer: 'ls_goods.goods_wood',
       bob: 0,
     });
-    expect(resolveStockpileDraw(stockpile, pile(GOODS.wood, 5))).toEqual({
+    expect(resolveStockpileDraw(stockpile, pile(GOODS.wood, 5), 0)).toEqual({
       layer: 'ls_goods.goods_wood',
       bob: 4,
     });
-    expect(resolveStockpileDraw(stockpile, pile(GOODS.stone, 1))).toEqual({
+    expect(resolveStockpileDraw(stockpile, pile(GOODS.stone, 1), 0)).toEqual({
       layer: 'ls_goods.goods_stone',
       bob: 15,
     });
     // An empty pile (a flag) resolves to the ls_temp "work extern" flag, independent of any good.
-    const flag = resolveStockpileDraw(stockpile, { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0 });
+    const flag = resolveStockpileDraw(stockpile, { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0 }, 0);
     expect(flag).toEqual({ layer: 'ls_temp.human_player01', bob: 76 });
   });
 

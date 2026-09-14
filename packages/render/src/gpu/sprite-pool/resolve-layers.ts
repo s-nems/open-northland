@@ -75,7 +75,7 @@ export function resolveLayers(
       break;
     }
     case 'stockpile':
-      return resolveStockpileLayers(sheet, item);
+      return resolveStockpileLayers(sheet, item, tick);
     case 'signpost': {
       // Every signpost ref is layer-qualified, so a missing guidepost family draws the placeholder
       // rather than falling through to the shared body atlas (a human frame drawn as a post).
@@ -128,10 +128,10 @@ export function resolveLayers(
  * loaded named family (the `ls_goods` pile / `ls_temp` flag atlases); anything else draws the
  * placeholder heap. Its cast shadow comes from the family's `_s` twin like every other kind.
  */
-function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLayer[] | null {
+function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem, tick: number): ResolvedLayer[] | null {
   const binding = sheet.bindings.stockpile;
   if (binding === undefined) return null;
-  const draw = resolveStockpileDraw(binding, item);
+  const draw = resolveStockpileDraw(binding, item, tick);
   if (draw.layer === undefined) return null;
   return layeredLayersWithShadow(sheet, 'stockpile', draw);
 }

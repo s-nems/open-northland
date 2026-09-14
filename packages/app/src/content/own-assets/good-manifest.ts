@@ -29,8 +29,8 @@ export function ownGoodBindings(
   goods: readonly GoodRef[],
   manifests: readonly OwnGoodManifest[],
 ): StockpileBinding {
-  const base =
-    typeof fallback === 'object' ? fallback : { byGood: {}, flag: fallback ?? 0, default: fallback ?? 0 };
+  const base: StockpileBinding =
+    typeof fallback === 'object' ? fallback : { byGood: {}, flag: [fallback ?? 0], default: fallback ?? 0 };
   const byGood = { ...base.byGood };
   const ids = new Set<string>();
   for (const m of manifests) {

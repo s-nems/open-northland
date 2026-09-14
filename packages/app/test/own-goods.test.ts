@@ -29,14 +29,14 @@ describe('own goods', () => {
     ).toBe(false);
   });
   it('joins by slug in either content number space and leaves unknown goods and the flag alone', () => {
-    const fallback = { default: 7, flag: 9, byGood: { 2: [8] } };
+    const fallback = { default: 7, flag: [9] as const, byGood: { 2: [8] } };
     for (const typeId of [5, 37]) {
       const binding = ownGoodBindings(fallback, [{ id: 'wood', typeId }], [manifest]);
       expect(binding.byGood[typeId]).toEqual(
         Array.from({ length: 5 }, (_, bob) => ({ layer: 'own-good-wood', bob })),
       );
       expect(binding.byGood[2]).toEqual([8]);
-      expect(binding.flag).toBe(9);
+      expect(binding.flag).toEqual([9]);
       expect(binding.default).toBe(7);
     }
     expect(ownGoodBindings(fallback, [], [manifest])).toEqual(fallback);

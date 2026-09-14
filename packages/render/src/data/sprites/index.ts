@@ -44,3 +44,4 @@ export type {
   SettlerStateBinding,
   SpriteFrameRef,
 } from './settler-bindings.js';
+export { FLAG_WAVE_TICKS_PER_FRAME, type WaveLoop, waveFrameAt } from './wave-loop.js';

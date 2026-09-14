@@ -1,6 +1,12 @@
-import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@open-northland/render';
+import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding, WaveLoop } from '@open-northland/render';
 import { TREE_BOB } from '../building-gfx/index.js';
-import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDER_BOB } from './refs.js';
+import {
+  bobRef,
+  DEFAULT_RESOURCE_STEM,
+  type GatheringLoopRef,
+  type GatheringRefs,
+  STOCKPILE_PLACEHOLDER_BOB,
+} from './refs.js';
 
 /**
  * Reduce the resolved node refs to the renderer's per-good binding: a good whose node stem is the default
@@ -53,8 +59,8 @@ export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<strin
 
 /**
  * Reduce the resolved pile and flag refs: each good whose pile atlas loaded binds its per-fill heap frames,
- * and the flag binds the loaded `ls_temp` sign. Anything unloaded falls back to the placeholder heap, a
- * bare ref the renderer draws as the sandy marker.
+ * and the flag binds the loaded `ls_temp` sign's wave loop. Anything unloaded falls back to the placeholder
+ * heap, a bare ref the renderer draws as the sandy marker.
  */
 export function buildStockpileBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): StockpileBinding {
   const byGood: Record<number, readonly LayeredBobRef[]> = {};
@@ -62,9 +68,11 @@ export function buildStockpileBinding(refs: GatheringRefs, loaded: ReadonlySet<s
     if (!loaded.has(pile.stem)) continue;
     byGood[Number(good)] = pile.fillBobs.map((bob) => ({ layer: pile.stem, bob }));
   }
-  const flag: LayeredBobRef =
-    refs.flag !== undefined && loaded.has(refs.flag.stem)
-      ? { layer: refs.flag.stem, bob: refs.flag.bob }
-      : STOCKPILE_PLACEHOLDER_BOB;
+  const flag: WaveLoop<LayeredBobRef> =
+    refs.flag !== undefined && loaded.has(refs.flag.stem) ? loopRef(refs.flag) : [STOCKPILE_PLACEHOLDER_BOB];
   return { byGood, flag, default: STOCKPILE_PLACEHOLDER_BOB };
+}
+
+function loopRef({ stem, frames: [first, ...rest] }: GatheringLoopRef): WaveLoop<LayeredBobRef> {
+  return [{ layer: stem, bob: first }, ...rest.map((bob) => ({ layer: stem, bob }))];
 }

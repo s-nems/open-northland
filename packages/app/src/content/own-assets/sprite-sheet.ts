@@ -15,7 +15,12 @@ import { ownBushBinding } from './bush-binding.js';
 import { loadOwnCharacters } from './characters.js';
 import { ownGoodBindings } from './good-manifest.js';
 import { loadOwnGoods } from './goods.js';
-import { ownPropResourceBinding, ownPropStumpBinding } from './prop-manifest.js';
+import {
+  ownPropFlagBinding,
+  ownPropLayer,
+  ownPropResourceBinding,
+  ownPropStumpBinding,
+} from './prop-manifest.js';
 import { loadOwnProps } from './props.js';
 
 const manifests = import.meta.glob('../../assets/own/buildings/*/runtime.json', {
@@ -71,7 +76,7 @@ export async function loadOwnSpriteSheet(
     familyScales[name] = good.manifest.scale;
   }
   for (const prop of props) {
-    const name = `own-prop-${prop.manifest.id}`;
+    const name = ownPropLayer(prop.manifest.id);
     families[name] = prop.layer;
     familyScales[name] = prop.manifest.scale;
   }
@@ -89,10 +94,13 @@ export async function loadOwnSpriteSheet(
     ...(characters === undefined ? {} : { characters }),
     bindings: {
       ...base.bindings,
-      stockpile: ownGoodBindings(
-        base.bindings.stockpile,
-        goods,
-        ownGoods.map((g) => g.manifest),
+      stockpile: ownPropFlagBinding(
+        ownGoodBindings(
+          base.bindings.stockpile,
+          goods,
+          ownGoods.map((g) => g.manifest),
+        ),
+        props.map((p) => p.manifest),
       ),
       building: ownBuildingBindings(base.bindings.building, loaded),
       resource: ownPropResourceBinding(

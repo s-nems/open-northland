@@ -53,6 +53,7 @@ export {
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,
+  FLAG_WAVE_TICKS_PER_FRAME,
   type FrameListAnim,
   GFX_DIR_TO_FACING,
   indexAtlasFrames,
@@ -70,6 +71,8 @@ export {
   type SpriteFrameRef,
   type StockpileBinding,
   subClipKey,
+  type WaveLoop,
+  waveFrameAt,
 } from './data/sprites/index.js';
 export {
   averagePatternColour,

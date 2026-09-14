@@ -1,16 +1,11 @@
 import { Container, type Graphics, Point, type Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { SIGN_DEPTH_EPS, screenDepth } from '../src/data/scene/index.js';
-import type { AtlasFrame } from '../src/data/sprites/index.js';
+import { type AtlasFrame, FLAG_WAVE_TICKS_PER_FRAME } from '../src/data/sprites/index.js';
 import { BadgeLayer } from '../src/gpu/overlays/badge-layer.js';
 import { type ConstructionSign, ConstructionSignLayer } from '../src/gpu/overlays/construction-sign-layer.js';
 import { badgeAnchor, type DoorBadge } from '../src/gpu/overlays/door-badge.js';
-import {
-  GARRISON_STAR_MAX,
-  GARRISON_TICKS_PER_FRAME,
-  garrisonFlagLoop,
-  hitsGarrisonFlag,
-} from '../src/gpu/overlays/garrison-flag.js';
+import { GARRISON_STAR_MAX, garrisonFlagLoop, hitsGarrisonFlag } from '../src/gpu/overlays/garrison-flag.js';
 import {
   type BuildingSignSheet,
   CONSTRUCTION_SIGN_DX,
@@ -396,7 +391,7 @@ describe('BadgeLayer (garrison flag)', () => {
       return flownFrame(root, 3, 5).width;
     };
     const loop = frames[1] ?? [];
-    const step = GARRISON_TICKS_PER_FRAME;
+    const step = FLAG_WAVE_TICKS_PER_FRAME;
     expect(drawnAt(0)).toBe(loop[0]?.width);
     expect(drawnAt(step - 1)).toBe(loop[0]?.width);
     expect(drawnAt(step)).toBe(loop[1]?.width);

@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
-import type { AtlasFrame } from '../../data/sprites/index.js';
+import { type AtlasFrame, type WaveLoop, waveFrameAt } from '../../data/sprites/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import type { BuildingSignSheet } from './sign-gfx.js';
 
@@ -21,13 +21,6 @@ import type { BuildingSignSheet } from './sign-gfx.js';
 export const GARRISON_STAR_MAX = 5;
 
 /**
- * Sim ticks per wave frame. `GfxLoopAnimation` says the frames loop, never how fast, so this borrows the
- * mill rotor's cadence (approximation): a full 8-frame wave takes 16 ticks, ~1.3 s at x1 with
- * `TICKS_PER_SECOND` 12.
- */
-export const GARRISON_TICKS_PER_FRAME = 2;
-
-/**
  * The flag's clickable band, world px from its mast anchor (+y down): the drawn `soldier` frame's own
  * extent (46x43 at offset -4,-38; the wave frames vary by up to 2 px, so the box is the authored one).
  * Owned here with the drawing, so a click lands on the cloth rather than falling through to the ground
@@ -40,9 +33,6 @@ export function hitsGarrisonFlag(dx: number, dy: number): boolean {
   return dx >= minX && dx <= maxX && dy >= minY && dy <= maxY;
 }
 
-/** A wave loop whose type carries its first frame, so callers never re-prove it is non-empty. */
-export type WaveLoop = readonly [AtlasFrame, ...AtlasFrame[]];
-
 /** A built flag: the node to mount at the mast point, plus the per-frame wave step when it draws real
  *  art (the placeholder mast does not animate). */
 export interface GarrisonFlagMark {
@@ -52,7 +42,10 @@ export interface GarrisonFlagMark {
 
 /** The wave loop a `stars`-strong post flies; undefined with no flag art or no post at all. Stars beyond
  *  {@link GARRISON_STAR_MAX} fly the top record. */
-export function garrisonFlagLoop(sheet: BuildingSignSheet | undefined, stars: number): WaveLoop | undefined {
+export function garrisonFlagLoop(
+  sheet: BuildingSignSheet | undefined,
+  stars: number,
+): WaveLoop<AtlasFrame> | undefined {
   if (stars < 1) return undefined;
   const [first, ...rest] = sheet?.garrison?.[Math.min(stars, GARRISON_STAR_MAX) - 1] ?? [];
   return first === undefined ? undefined : [first, ...rest];
@@ -75,7 +68,7 @@ export function makeGarrisonFlag(
   const node = new Container();
   node.addChild(sprite);
   const advance = (clock: number): void => {
-    const frame = loop[Math.floor(clock / GARRISON_TICKS_PER_FRAME) % loop.length] ?? loop[0];
+    const frame = waveFrameAt(loop, clock);
     sprite.texture = textures.get(source, frame);
     sprite.position.set(frame.offsetX, frame.offsetY);
   };

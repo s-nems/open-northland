@@ -1,6 +1,7 @@
 import {
   type AtlasFrame,
   type ElevationField,
+  FLAG_WAVE_TICKS_PER_FRAME,
   halfCellToScreen,
   type MapObjectSprite,
 } from '@open-northland/render';
@@ -47,6 +48,14 @@ export async function loadOwnMapObjects(
   return placeOwnMapObjects(objects, ir, elevation, byName, placeholder);
 }
 
+/** A prop's level-indexed single-frame states. A flag's frames are one wave loop instead, each frame
+ *  repeated for the shared cadence because a map object steps one frame per tick. */
+function propStates(prop: LoadedOwnProp): readonly (readonly AtlasFrame[])[] {
+  const frames = [...prop.layer.atlas.frames.values()];
+  if (prop.manifest.kind !== 'flag') return frames.map((frame) => [frame]);
+  return [frames.flatMap((frame) => Array.from({ length: FLAG_WAVE_TICKS_PER_FRAME }, () => frame))];
+}
+
 /** Approximation: ground cover a settler stands over paints at most this far above its feet (world px,
  *  about half a settler); a taller prop hides a settler behind it, so it sorts by row. */
 const GROUND_COVER_MAX_HEIGHT_PX = 26;
@@ -64,13 +73,13 @@ export function placeOwnMapObjects(
   placeholder: PlaceholderGfx,
 ): LoadedMapObjects {
   const records = landscapeRecordsByName(ir);
-  // Per type: the prop and its level-indexed single-frame states, shared by every placement of the type.
+  // Per type: the prop and its states, shared by every placement of the type.
   const byType = objects.types.map((name) => {
     const prop = propsByName.get(name);
     const record = records.get(name);
     return {
       prop,
-      states: prop === undefined ? [] : [...prop.layer.atlas.frames.values()].map((frame) => [frame]),
+      states: prop === undefined ? [] : propStates(prop),
       decor: record !== undefined && drawsAsFlatDecor(record) && prop !== undefined && isGroundCover(prop),
     };
   });

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSpriteBobId, resolveStockpileDraw } from '../../src/data/sprites/index.js';
+import {
+  FLAG_WAVE_TICKS_PER_FRAME,
+  resolveSpriteBobId,
+  resolveStockpileDraw,
+} from '../../src/data/sprites/index.js';
 import { type DrawItem, resolveResourceDraw } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
@@ -115,42 +119,55 @@ describe('resolveStockpileDraw - per-good ground piles + delivery flag', () => {
         { layer: 'ls_goods.goods_wood', bob: 4 },
       ],
     },
-    flag: { layer: 'ls_temp.human_player01', bob: 33 },
+    flag: [
+      { layer: 'ls_temp.human_player01', bob: 33 },
+      { layer: 'ls_temp.human_player01', bob: 34 },
+      { layer: 'ls_temp.human_player01', bob: 35 },
+    ] as const,
     default: 0,
   };
 
   it('draws the flag for an EMPTY pile (no dominant good)', () => {
-    expect(resolveStockpileDraw(binding, pile())).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
+    expect(resolveStockpileDraw(binding, pile(), 0)).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
   });
 
   it('indexes a held pile by its fill amount (1-based), clamped into the heap frames', () => {
-    expect(resolveStockpileDraw(binding, pile(5, 1))).toEqual({ bob: 0, layer: 'ls_goods.goods_wood' });
-    expect(resolveStockpileDraw(binding, pile(5, 3))).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
-    expect(resolveStockpileDraw(binding, pile(5, 5))).toEqual({ bob: 4, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 1), 0)).toEqual({ bob: 0, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 3), 0)).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 5), 0)).toEqual({ bob: 4, layer: 'ls_goods.goods_wood' });
     // Over-full clamps to the fullest frame; a missing fill defaults to the smallest heap.
-    expect(resolveStockpileDraw(binding, pile(5, 99))).toEqual({ bob: 4, layer: 'ls_goods.goods_wood' });
-    expect(resolveStockpileDraw(binding, pile(5))).toEqual({ bob: 0, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 99), 0)).toEqual({ bob: 4, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5), 0)).toEqual({ bob: 0, layer: 'ls_goods.goods_wood' });
   });
 
   it('falls back to the (bare placeholder) default for a held pile whose good has no frames', () => {
-    expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
+    expect(resolveStockpileDraw(binding, pile(999, 3), 0)).toEqual({ bob: 0 });
   });
 
   it('draws a filled loose pile as its heap ALONE - no flag planted through the goods', () => {
-    expect(resolveStockpileDraw(binding, pile(5, 3))).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 3), 0)).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
   });
 
   it('draws an EMPTY pile as the flag marker alone (a designated collection point with nothing in it)', () => {
-    expect(resolveStockpileDraw(binding, pile())).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
+    expect(resolveStockpileDraw(binding, pile(), 0)).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
   });
 
   it('draws a delivery flag as the flag marker alone (it holds no goods - its heaps are separate entities)', () => {
     // The goods a flag collects are separate loose piles the scene depth-sorts a hair behind it, never
     // layers of one draw.
-    expect(resolveStockpileDraw(binding, { ...pile(), isFlag: true })).toEqual({
+    expect(resolveStockpileDraw(binding, { ...pile(), isFlag: true }, 0)).toEqual({
       bob: 33,
       layer: 'ls_temp.human_player01',
     });
+  });
+
+  it('steps the flag through its wave loop at the shared cadence and wraps', () => {
+    const at = (tick: number) => resolveStockpileDraw(binding, { ...pile(), isFlag: true }, tick).bob;
+    expect(at(0)).toBe(33);
+    expect(at(FLAG_WAVE_TICKS_PER_FRAME - 1)).toBe(33);
+    expect(at(FLAG_WAVE_TICKS_PER_FRAME)).toBe(34);
+    expect(at(2 * FLAG_WAVE_TICKS_PER_FRAME)).toBe(35);
+    expect(at(3 * FLAG_WAVE_TICKS_PER_FRAME)).toBe(33);
   });
 });
 

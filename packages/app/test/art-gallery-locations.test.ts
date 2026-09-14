@@ -37,6 +37,15 @@ describe('gallery map destinations', () => {
     expect(new URLSearchParams(building.href).has('ownHead')).toBe(false);
   });
 
+  it('sends the delivery flag to the sandbox scene, whose gatherer camps plant it', () => {
+    const destination = galleryMapDestination({ id: 'props/work-flag', kind: 'prop' });
+    expect(Object.fromEntries(new URLSearchParams(destination.href))).toEqual({
+      scene: 'sandbox',
+      assets: 'own',
+    });
+    expect(destination.exact).toBe(true);
+  });
+
   it('states when a workshop must be built before it can be reviewed', () => {
     const destination = galleryMapDestination({ id: 'buildings/stonemason', kind: 'building' });
     expect(destination.exact).toBe(false);

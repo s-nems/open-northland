@@ -83,7 +83,7 @@ const FLAG: LandscapeGfxRow = {
   logicType: 1,
   bmd: `${B}/ls_temp.bmd`,
   paletteName: 'human_player01',
-  frames: [{ state: 1, bobIds: [33] }],
+  frames: [{ state: 1, bobIds: [33, 34, 35] }],
 };
 
 const IR: ContentIr = {
@@ -152,7 +152,8 @@ describe('resolveGatheringRefs - the good→landscape→gfx join, matched by id-
     expect(refs.pilesByGood[2]).toEqual({ stem: 'ls_goods.goods_stone', fillBobs: [15, 16] });
     expect(refs.trunksByGood[1]).toEqual({ stem: 'ls_goods.goods_trunk', bobs: [70] }); // wood → pickup log
     expect(refs.trunksByGood[2]).toBeUndefined(); // stone has no pickup stage in this fixture
-    expect(refs.flag).toEqual({ stem: 'ls_temp.human_player01', bob: 33 });
+    // The flag is a `loopAnimation` record: its one state's whole frame list is the wave loop.
+    expect(refs.flag).toEqual({ stem: 'ls_temp.human_player01', frames: [33, 34, 35] });
   });
 
   it('skips a scene good with no matching pipeline slug', () => {
@@ -264,13 +265,17 @@ describe('buildStockpileBinding - per-good heap frames + the flag, drop-unloaded
       { layer: 'ls_goods.goods_wood', bob: 4 },
     ]);
     expect(binding.byGood[2]).toHaveLength(2);
-    expect(binding.flag).toEqual({ layer: 'ls_temp.human_player01', bob: 33 });
+    expect(binding.flag).toEqual([
+      { layer: 'ls_temp.human_player01', bob: 33 },
+      { layer: 'ls_temp.human_player01', bob: 34 },
+      { layer: 'ls_temp.human_player01', bob: 35 },
+    ]);
   });
 
   it('drops an unloaded pile family and falls the flag back to a bare placeholder', () => {
     const binding = buildStockpileBinding(refs, new Set()); // nothing loaded
     expect(binding.byGood[1]).toBeUndefined();
-    expect(typeof binding.flag).toBe('number'); // bare placeholder ref (drawn as the sandy heap)
+    expect(binding.flag).toEqual([expect.any(Number)]); // bare placeholder ref (drawn as the sandy heap)
     expect(typeof binding.default).toBe('number');
   });
 });

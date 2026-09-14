@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  type OwnPropManifest,
   ownPropAtlas,
+  ownPropFlagBinding,
   ownPropFrameIndex,
   ownPropManifest,
   ownPropNames,
@@ -138,5 +140,37 @@ describe('own woodland props', () => {
     expect(ownPropManifest.safeParse({ ...m, anchor: { x: m.width + 1, y: 0 } }).success).toBe(false);
     expect(ownPropManifest.safeParse({ ...m, image: '../other.png' }).success).toBe(false);
     expect(ownPropManifest.safeParse({ ...m, scale: 0 }).success).toBe(false);
+  });
+});
+
+describe('own delivery flag', () => {
+  const frame = (i: number) => ({ x: i * 80, y: 0, width: 80, height: 64, anchor: { x: 14, y: 58 } });
+  const flag: OwnPropManifest = {
+    id: 'work-flag',
+    kind: 'flag',
+    image: 'work-flag.png',
+    width: 240,
+    height: 64,
+    anchor: { x: 14, y: 58 },
+    scale: 0.5,
+    frames: [frame(0), frame(1), frame(2)],
+    editNames: ['player01 work extern 01'],
+    sourceBasis: 'test',
+  };
+  const fallback = { byGood: {}, flag: [7] as const, default: 0 };
+
+  it('binds the flag prop frames as the stockpile wave loop in atlas order', () => {
+    expect(ownPropFlagBinding(fallback, [flag])).toEqual({
+      ...fallback,
+      flag: [0, 1, 2].map((bob) => ({ layer: 'own-prop-work-flag', bob })),
+    });
+    expect(ownPropFlagBinding(fallback, [])).toBe(fallback);
+    expect(() => ownPropFlagBinding(fallback, [flag, { ...flag, id: 'other' }])).toThrow('Multiple');
+  });
+
+  it('requires wave frames on a flag prop', () => {
+    expect(ownPropManifest.safeParse(flag).success).toBe(true);
+    const { frames: _frames, ...still } = flag;
+    expect(ownPropManifest.safeParse(still).success).toBe(false);
   });
 });

@@ -1,3 +1,5 @@
+import type { WaveLoop } from './wave-loop.js';
+
 /**
  * A plain bob id draws from the kind's default atlas layer; a `{ layer, bob }` draws from that named
  * family atlas, which has its own frame-id space.
@@ -91,8 +93,8 @@ export interface SignpostBinding {
 export interface StockpileBinding {
   /** Heap frames per `goodType`, ordered fewest to most units. */
   readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;
-  /** The delivery-flag sprite drawn for a pile holding no goods. */
-  readonly flag: LayeredBobRef;
+  /** The delivery-flag wave loop drawn for a pile holding no goods, stepped at the shared flag cadence. */
+  readonly flag: WaveLoop<LayeredBobRef>;
   /** Fallback frame for a held pile whose good has no bound heap frames, drawn at any fill. */
   readonly default: LayeredBobRef;
 }

@@ -1,4 +1,4 @@
-import type { LayeredBobRef } from '@open-northland/render';
+import type { LayeredBobRef, WaveLoop } from '@open-northland/render';
 import { TREE_ATLAS } from '../building-gfx/index.js';
 import { GENERIC_GOOD_ICON, type GoodIconMap } from '../goods-gfx.js';
 import { servedAtlasStem } from '../ir/joins.js';
@@ -12,7 +12,7 @@ export const DEFAULT_RESOURCE_STEM = TREE_ATLAS;
 
 /**
  * The delivery-flag `[GfxLandscape]` record's `EditName` - the player-coloured "work extern" flag in
- * `ls_temp.bmd` (bob 76). Deliberately not the `"… sign"` record (a building-occupancy emblem) nor the
+ * `ls_temp.bmd` (bobs 76-83, a wave loop). Deliberately not the `"… sign"` record (a building-occupancy emblem) nor the
  * `residence`/`construction`/`soldier` markers. Player-01 colour only (source basis "Gathering-economy
  * graphics").
  */
@@ -40,6 +40,12 @@ export interface GatheringPileRef {
   readonly fillBobs: readonly number[];
 }
 
+/** A resolved wave-loop draw: one state's whole frame list in source order. */
+export interface GatheringLoopRef {
+  readonly stem: string;
+  readonly frames: WaveLoop<number>;
+}
+
 /** The per-good gathering draws resolved from the pipeline join (independent of which atlases loaded). */
 export interface GatheringRefs {
   /** Standing-node ref per scene `goodType`, from its `landscapeToHarvest` record. */
@@ -60,8 +66,8 @@ export interface GatheringRefs {
   readonly trunksByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /** Ground-pile ref per scene `goodType` (its `landscapeToStore` record's per-fill heap frames). */
   readonly pilesByGood: Readonly<Record<number, GatheringPileRef>>;
-  /** The delivery-flag ref (`ls_temp` player-01 sign), when the record is present in the IR. */
-  readonly flag?: GatheringNodeRef;
+  /** The delivery-flag wave loop (`ls_temp` player-01 "work extern"), when the record is present in the IR. */
+  readonly flag?: GatheringLoopRef;
 }
 
 /**
@@ -102,6 +108,14 @@ export function firstBobsByStateAscending(record: LandscapeGfxRow): readonly num
     .sort((a, b) => a.state - b.state)
     .flatMap((f) => (f.bobIds[0] !== undefined ? [f.bobIds[0]] : []));
   return byState.length === 0 ? undefined : byState;
+}
+
+/** The loop twin of {@link nodeRefFrom}: the served atlas stem plus the lowest state's whole frame list. */
+function loopRefFrom(record: LandscapeGfxRow): GatheringLoopRef | undefined {
+  const stem = servedAtlasStem(record);
+  const lowest = [...(record.frames ?? [])].sort((a, b) => a.state - b.state)[0];
+  const [first, ...rest] = lowest?.bobIds ?? [];
+  return stem !== undefined && first !== undefined ? { stem, frames: [first, ...rest] } : undefined;
 }
 
 /** The levels twin of {@link nodeRefFrom}: the served atlas stem plus the per-state bob ladder. */
@@ -188,7 +202,7 @@ export function resolveGatheringRefs(
   }
 
   const flagRecord = gfx.find((g) => g.editName === FLAG_EDIT_NAME);
-  const flag = flagRecord !== undefined ? nodeRefFrom(flagRecord) : undefined;
+  const flag = flagRecord !== undefined ? loopRefFrom(flagRecord) : undefined;
 
   return { nodesByGood, nodesByGfxIndex, trunksByGood, pilesByGood, ...(flag !== undefined ? { flag } : {}) };
 }

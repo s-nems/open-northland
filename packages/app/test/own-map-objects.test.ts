@@ -1,4 +1,4 @@
-import type { ElevationField, SpriteLayer } from '@open-northland/render';
+import { type ElevationField, FLAG_WAVE_TICKS_PER_FRAME, type SpriteLayer } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { type PlaceholderGfx, placeOwnMapObjects } from '../src/content/own-assets/objects.js';
@@ -93,5 +93,27 @@ describe('placeOwnMapObjects', () => {
     expect(sprites[1]).toMatchObject({ source: 'grass-a', decor: true, scale: 0.5 });
     expect(sprites[2]).toMatchObject(placeholder);
     expect([...byPlacement.keys()]).toEqual([0, 1, 2]);
+  });
+
+  it('plays a placed delivery flag as one wave loop at the shared cadence instead of level stills', () => {
+    const flag = prop('work-flag', ['player01 work extern 01'], 'flag');
+    const frames = [0, 1, 2].map((i) => ({
+      x: i * 40,
+      y: 0,
+      width: 40,
+      height: 50,
+      anchor: { x: 20, y: 40 },
+    }));
+    const manifest: OwnPropManifest = { ...flag.manifest, width: 120, frames };
+    const loaded = { manifest, layer: { ...flag.layer, atlas: ownPropAtlas(manifest) } };
+    const { sprites } = placeOwnMapObjects(
+      { types: ['player01 work extern 01'], placements: [0, 0, 0], levels: [2] },
+      { landscapeGfx: [{ index: 5, logicType: 1, editName: 'player01 work extern 01' }] },
+      FLAT,
+      new Map([['player01 work extern 01', loaded]]),
+      PLACEHOLDER,
+    );
+    const atlas = [...loaded.layer.atlas.frames.values()];
+    expect(sprites[0]?.frames).toEqual(atlas.flatMap((f) => Array(FLAG_WAVE_TICKS_PER_FRAME).fill(f)));
   });
 });

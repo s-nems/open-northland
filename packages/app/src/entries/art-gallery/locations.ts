@@ -12,6 +12,12 @@ interface ReviewLocation {
   readonly fog?: 'off';
 }
 
+/** A registered acceptance scene instead of a decoded map, for an asset only a scene reliably plants. */
+interface SceneLocation {
+  readonly scene: string;
+  readonly label: string;
+}
+
 const clearing: ReviewLocation = { map: 'magiczny_las', center: '48,39', label: 'Meadow clearing' };
 const settlement: ReviewLocation = {
   map: 'magiczny_las',
@@ -30,7 +36,7 @@ const growth: ReviewLocation = {
   label: 'Pine growth and resource rocks',
 };
 
-const reviewLocations: Readonly<Record<string, ReviewLocation>> = {
+const reviewLocations: Readonly<Record<string, ReviewLocation | SceneLocation>> = {
   'buildings/headquarters': { ...settlement, label: 'Headquarters' },
   'buildings/house-1': { map: 'wilczy_lad', center: '94,131', label: 'Basic home' },
   'buildings/house-2': { map: 'tutorial_004', center: '61,58', label: 'Upgraded home' },
@@ -40,6 +46,7 @@ const reviewLocations: Readonly<Record<string, ReviewLocation>> = {
   'buildings/farm': { map: 'straznicypolnocy', center: '26,162', label: 'Farm', fog: 'off' },
   'terrain/meadow': clearing,
   'terrain/sand': { map: 'gringo', center: '97,101', label: 'Sand boundary' },
+  'props/work-flag': { scene: 'sandbox', label: 'Sandbox gatherer camps' },
 };
 
 const propLocations: readonly (ReviewLocation & { readonly prefixes: readonly string[] })[] = [
@@ -65,14 +72,17 @@ export function galleryMapDestination(
       ? propLocations.find((entry) => entry.prefixes.some((prefix) => asset.id.startsWith(`props/${prefix}`)))
       : undefined;
   const location = matched ?? family ?? settlement;
-  const params = new URLSearchParams({
-    map: location.map,
-    assets: 'own',
-    intro: 'off',
-    zoom: '2',
-    center: location.center,
-  });
-  if (location.fog !== undefined) params.set('fog', location.fog);
+  const params =
+    'scene' in location
+      ? new URLSearchParams({ scene: location.scene, assets: 'own' })
+      : new URLSearchParams({
+          map: location.map,
+          assets: 'own',
+          intro: 'off',
+          zoom: '2',
+          center: location.center,
+        });
+  if ('fog' in location && location.fog !== undefined) params.set('fog', location.fog);
   if (asset.kind === 'character' && appearanceId !== undefined) params.set('ownHead', appearanceId);
   const note =
     asset.kind === 'character'

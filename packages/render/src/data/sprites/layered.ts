@@ -9,6 +9,7 @@ import type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
+import { waveFrameAt } from './wave-loop.js';
 
 function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
   return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
@@ -192,10 +193,14 @@ export function resolveResourceDraw(
   return unwrapBobRef(ref ?? binding.default);
 }
 
-/** A pile with no good is a bare collection point and draws the delivery flag. */
-export function resolveStockpileDraw(binding: number | StockpileBinding, item: DrawItem): BuildingDraw {
+/** A pile with no good is a bare collection point and draws the delivery flag's wave frame at `tick`. */
+export function resolveStockpileDraw(
+  binding: number | StockpileBinding,
+  item: DrawItem,
+  tick: number,
+): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
-  if (item.goodType === undefined) return unwrapBobRef(binding.flag);
+  if (item.goodType === undefined) return unwrapBobRef(waveFrameAt(binding.flag, tick));
   const frames = binding.byGood[item.goodType];
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
   const idx = fillFrameIndex(item.fill ?? 1, frames.length);

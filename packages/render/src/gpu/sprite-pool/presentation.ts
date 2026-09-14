@@ -15,21 +15,22 @@ const CONSTRUCTION_REVEAL_EASE = 0.06;
 const MAX_IN_PROGRESS_PCT = 99;
 
 /**
- * Per-settler idle desync step in ticks. The free tick clock is global, so without an offset every
- * settler runs its wait program in lockstep. Prime, so consecutive entity ids land far apart in any
- * cycle length. Approximation: the original's per-entity idle scheduling is unobserved.
+ * Per-entity phase step in ticks. Prime, so consecutive entity ids land far apart in any cycle length.
+ * Approximation: the original's per-entity idle scheduling is unobserved.
  */
-const IDLE_PHASE_STEP = 37;
+const ENTITY_PHASE_STEP = 37;
 
 /**
  * The animation clock a drawn item runs on. A frozen `0` holds a still frame: an animating fog ghost would
- * leak that a building is still manned, and an indoor portrait subject must stand motionless. A live
- * settler's clock is offset by its entity id so standing crowds don't breathe in unison; actions and
- * gaits are unaffected, as they run on the atomic's own clock and the motion track.
+ * leak that a building is still manned, and an indoor portrait subject must stand motionless. The free tick
+ * clock is global, so a live settler's clock, and that of a goodless pile (the delivery flag's wave), is
+ * offset by its entity id: standing crowds don't breathe, and a row of flags doesn't wave, in unison.
+ * Actions and gaits are unaffected, as they run on the atomic's own clock and the motion track.
  */
 export function animationClock(item: DrawItem, tick: number): number {
   if (item.ghost === true || item.frozen === true) return 0;
-  return item.kind === 'settler' ? tick + item.ref * IDLE_PHASE_STEP : tick;
+  const waves = item.kind === 'stockpile' && item.goodType === undefined;
+  return item.kind === 'settler' || waves ? tick + item.ref * ENTITY_PHASE_STEP : tick;
 }
 
 export function motionClocks(

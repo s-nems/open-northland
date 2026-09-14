@@ -1,7 +1,7 @@
 import type { ResourceTypeBinding, SpriteBindings } from '@open-northland/render';
 import type { ContentIr } from '../ir/rows.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
-import { type OwnPropManifest, ownPropNames } from './prop-manifest.js';
+import { type OwnPropManifest, ownPropLayer, ownPropNames } from './prop-manifest.js';
 
 export function ownBushBinding(
   fallback: SpriteBindings['berrybush'],
@@ -21,7 +21,7 @@ export function ownBushBinding(
     );
     if (stages.some((stage) => stage === undefined)) continue;
     byGfxIndex[row.index] = stages.flatMap((stage) =>
-      stage === undefined ? [] : [{ layer: `own-prop-${stage.id}`, bob: 0 }],
+      stage === undefined ? [] : [{ layer: ownPropLayer(stage.id), bob: 0 }],
     );
     matched = true;
   }

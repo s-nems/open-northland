@@ -83,7 +83,7 @@ export async function validateDelivery(directory: string, complete = false) {
       claim(identities, `prop:${m.id}`);
       if (folder !== `props/${m.id}`) throw new Error('Prop folder and id disagree');
       for (const name of m.editNames) claim(names, name);
-      if (m.kind === 'stump') claim(identities, 'stump');
+      if (m.kind === 'stump' || m.kind === 'flag') claim(identities, m.kind);
       await inspect(`${folder}/${m.image}`, m.width, m.height, true);
     } else if (file.startsWith('goods/')) {
       const m = ownGoodManifest.parse(raw);

@@ -97,6 +97,17 @@ describe('animationClock', () => {
     expect(animationClock({ ...IDLE_SETTLER, ref: 1 }, TICK + 1)).toBe(a + 1);
   });
 
+  it('offsets a delivery flag by its entity id, so a row of flags does not wave in unison', () => {
+    const pile = { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0 } as const;
+    const flag = { ...pile, isFlag: true } as const;
+    const a = animationClock(flag, TICK);
+    expect(a).not.toBe(animationClock({ ...flag, ref: 2 }, TICK));
+    expect(animationClock(flag, TICK + 1)).toBe(a + 1);
+    // A held pile draws its heap, not the wave, so it keeps the shared clock.
+    expect(animationClock({ ...pile, goodType: 5 }, TICK)).toBe(TICK);
+    expect(animationClock({ ...flag, ghost: true }, TICK)).toBe(0);
+  });
+
   it('freezes a fog ghost, so an animating mill cannot leak that the building is still manned', () => {
     expect(animationClock({ ...SITE, ghost: true }, TICK)).toBe(0);
   });

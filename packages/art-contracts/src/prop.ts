@@ -13,7 +13,7 @@ const propFrame = z
 export const ownPropManifest = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
-    kind: z.enum(['resource', 'stump', 'decor']),
+    kind: z.enum(['resource', 'stump', 'decor', 'flag']),
     image: z.string().regex(/^[a-zA-Z0-9_-]+\.png$/),
     width: z.number().int().positive(),
     height: z.number().int().positive(),
@@ -27,6 +27,7 @@ export const ownPropManifest = z
   })
   .strict()
   .refine((m) => m.anchor.x <= m.width && m.anchor.y <= m.height, 'Anchor outside sprite')
+  .refine((m) => m.kind !== 'flag' || m.frames !== undefined, 'A flag needs its wave frames')
   .refine(
     (m) =>
       m.frames?.every(

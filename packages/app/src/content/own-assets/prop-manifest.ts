@@ -3,7 +3,17 @@ import type { ContentIr } from '../ir/rows.js';
 
 export { type OwnPropManifest, ownPropManifest } from '@open-northland/art-contracts';
 
-import type { ResourceTypeBinding, SpriteAtlas, SpriteBindings } from '@open-northland/render';
+import type {
+  ResourceTypeBinding,
+  SpriteAtlas,
+  SpriteBindings,
+  StockpileBinding,
+} from '@open-northland/render';
+
+/** The sprite-sheet family a delivered prop draws from. */
+export function ownPropLayer(id: string): string {
+  return `own-prop-${id}`;
+}
 
 export function ownPropAtlas(m: OwnPropManifest): SpriteAtlas {
   if (m.frames)
@@ -82,19 +92,39 @@ export function ownPropResourceBinding(
     const m = row.editName === undefined ? undefined : names.get(row.editName);
     if (m?.kind === 'resource')
       byGfxIndex[row.index] = Array.from({ length: m.frames?.length ?? 1 }, (_, bob) => ({
-        layer: `own-prop-${m.id}`,
+        layer: ownPropLayer(m.id),
         bob,
       }));
   }
   return { ...base, byGfxIndex };
 }
 
+/** The stump and the delivery flag each bind one prop; a second delivered one is a packaging error. */
+function singlePropOfKind(
+  manifests: readonly OwnPropManifest[],
+  kind: OwnPropManifest['kind'],
+): OwnPropManifest | undefined {
+  const [first, ...rest] = manifests.filter((m) => m.kind === kind);
+  if (rest.length > 0) throw new Error(`Multiple own ${kind} bindings`);
+  return first;
+}
+
+/** The delivery flag's wave loop from the one `flag` prop; `fallback` keeps its own loop without one. */
+export function ownPropFlagBinding(
+  fallback: StockpileBinding,
+  manifests: readonly OwnPropManifest[],
+): StockpileBinding {
+  const flag = singlePropOfKind(manifests, 'flag');
+  if (flag === undefined) return fallback;
+  const layer = ownPropLayer(flag.id);
+  const rest = Array.from({ length: (flag.frames?.length ?? 1) - 1 }, (_, i) => ({ layer, bob: i + 1 }));
+  return { ...fallback, flag: [{ layer, bob: 0 }, ...rest] };
+}
+
 export function ownPropStumpBinding(
   fallback: SpriteBindings['stump'],
   manifests: readonly OwnPropManifest[],
 ): SpriteBindings['stump'] {
-  const stumps = manifests.filter((m) => m.kind === 'stump');
-  if (stumps.length > 1) throw new Error('Multiple own stump bindings');
-  const stump = stumps[0];
-  return stump === undefined ? fallback : { byGood: {}, default: { layer: `own-prop-${stump.id}`, bob: 0 } };
+  const stump = singlePropOfKind(manifests, 'stump');
+  return stump === undefined ? fallback : { byGood: {}, default: { layer: ownPropLayer(stump.id), bob: 0 } };
 }

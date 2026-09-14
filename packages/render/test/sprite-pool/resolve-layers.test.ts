@@ -264,7 +264,7 @@ describe('resolveLayers - cast shadows draw under the body from the atlas shadow
         // The wood heap's bob 70 has a silhouette in the shadow twin; the flag bob (85) casts none.
         stockpile: {
           byGood: { 5: [{ layer: 'goods', bob: 70 }] },
-          flag: { layer: 'goods', bob: 85 },
+          flag: [{ layer: 'goods', bob: 85 }],
           default: 0,
         },
       },
