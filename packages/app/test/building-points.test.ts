@@ -1,6 +1,6 @@
 import type { BuildingFootprint } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_WORKER_ICON_OFFSET, DOOR_SHIFTS, workerIconOffset } from '../src/catalog/building-tweaks.js';
+import { DEFAULT_WORKER_ICON_OFFSET, workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { buildingFootprints } from '../src/content/ir/joins.js';
 import { doorNode, workerIconNode } from '../src/view/projections/index.js';
 
@@ -55,23 +55,8 @@ describe('workerIconNode', () => {
   });
 });
 
-describe('buildingFootprints door corrections', () => {
-  it('applies the committed DOOR_SHIFTS by building id at the ir → content seam', () => {
-    const shift = DOOR_SHIFTS.get('home_level_00');
-    expect(shift).toBeDefined(); // the review pinned a shift for the level-0 home
-    const ir = {
-      buildings: [
-        { typeId: 2, id: 'home_level_00', footprint: footprintWithDoor(0, 2) },
-        { typeId: 10, id: 'work_well_00', footprint: footprintWithDoor(0, -1) },
-      ],
-    };
-    const out = buildingFootprints(ir);
-    expect(out.get(2)?.door).toEqual({ dx: 0 + (shift?.dx ?? 0), dy: 2 + (shift?.dy ?? 0) });
-    // An un-tweaked building keeps its extracted door verbatim.
-    expect(out.get(10)?.door).toEqual({ dx: 0, dy: -1 });
-  });
-
-  it('leaves blocked/reserved untouched by a door shift', () => {
+describe('buildingFootprints', () => {
+  it('keys the extracted footprint verbatim by typeId', () => {
     const fp: BuildingFootprint = {
       blocked: [{ dx: 0, dy: 0 }],
       familyBody: [{ dx: 0, dy: 0 }],
@@ -79,7 +64,6 @@ describe('buildingFootprints door corrections', () => {
       door: { dx: 0, dy: 2 },
     };
     const out = buildingFootprints({ buildings: [{ typeId: 39, id: 'barracks', footprint: fp }] });
-    expect(out.get(39)?.blocked).toEqual(fp.blocked);
-    expect(out.get(39)?.reserved).toEqual(fp.reserved);
+    expect(out.get(39)).toEqual(fp);
   });
 });

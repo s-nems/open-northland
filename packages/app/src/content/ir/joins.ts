@@ -6,8 +6,6 @@ import {
 } from '@open-northland/data';
 import type { InHouseProgramLookup, SpriteAtlas } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import { DOOR_SHIFTS } from '../../catalog/building-tweaks.js';
-import { diag } from '../../diag/index.js';
 import { canonicalJobType } from '../../game/sandbox/ids/index.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import type { BobSeqRow, ContentIr, LandscapeGfxRow } from './rows.js';
@@ -71,27 +69,12 @@ export function servedShadowStem(shadowBmd: string | undefined): string | undefi
   return `${shadowBmd.slice(shadowBmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.shadow`;
 }
 
-/**
- * The extracted building ground footprints from the served IR, by typeId. Empty when the IR is absent or
- * carries no footprints. Door cells get the committed per-building `DOOR_SHIFTS` applied here, the one
- * seam that applies them.
- */
+/** The extracted building ground footprints from the served IR, by typeId; empty when the IR is absent or
+ *  carries no footprints. */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
   const out = new Map<number, BuildingFootprint>();
   for (const b of ir?.buildings ?? []) {
-    if (b.typeId === undefined || b.footprint === undefined) continue;
-    const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
-    const door = b.footprint.door;
-    if (shift !== undefined && door === undefined) {
-      // The type still gets its verbatim footprint; the shift is dropped rather than applied blind.
-      diag.warn('content', `buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
-    }
-    out.set(
-      b.typeId,
-      shift !== undefined && door !== undefined
-        ? { ...b.footprint, door: { dx: door.dx + shift.dx, dy: door.dy + shift.dy } }
-        : b.footprint,
-    );
+    if (b.typeId !== undefined && b.footprint !== undefined) out.set(b.typeId, b.footprint);
   }
   return out;
 }
