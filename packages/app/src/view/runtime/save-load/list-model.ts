@@ -25,7 +25,7 @@ export function formatSavedAt(savedAt: number | null, localeTag: string): string
   );
 }
 
-/** Mirrors the desktop shell's filename guard, so a sanitized title is accepted verbatim there. */
+/** A sanitized title doubles as the exported download's file name, so it has to be valid on every OS. */
 const INVALID_SAVE_NAME_CHARS = /[\\/:*?"<>|]/g;
 const CONTROL_CHAR_CEILING = 0x20;
 export const MAX_SAVE_NAME_LENGTH = 120;
@@ -48,13 +48,8 @@ export function autoSaveName(template: string, taken: readonly string[]): string
   }
 }
 
-/** Suffixes a save file may carry; `.json.gz` is what the game writes. The desktop main process
- *  keeps its own boundary-forced mirror of this list. */
-export const SAVE_FILE_SUFFIXES = ['.json.gz', '.json', '.gz'] as const;
-
-export function hasSaveSuffix(name: string): boolean {
-  return SAVE_FILE_SUFFIXES.some((suffix) => name.length > suffix.length && name.endsWith(suffix));
-}
+/** Suffixes a save file may carry; `.json.gz` is what the game writes. */
+const SAVE_FILE_SUFFIXES = ['.json.gz', '.json', '.gz'] as const;
 
 /** The list's display name: a file basename without its save suffix. */
 export function displayNameOf(file: string): string {

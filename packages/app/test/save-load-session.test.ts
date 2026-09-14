@@ -122,7 +122,6 @@ function harness(
     captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
     pickFile?: () => Promise<PickedSaveFile | null>;
     stagePending?: (bytes: SaveBytes) => Promise<void>;
-    deliverSave?: 'cancel' | 'throw';
     startPaused?: boolean;
     failWrite?: boolean;
     sessionMetadata?: () => unknown;
@@ -155,10 +154,8 @@ function harness(
         return Promise.resolve();
       }),
     pickFile: overrides.pickFile ?? (() => Promise.resolve(null)),
-    deliverSave: (fileName, bytes) => {
-      if (overrides.deliverSave === 'throw') return Promise.reject(new Error('disk full'));
+    downloadSave: (fileName, bytes) => {
       delivered.push({ fileName, bytes });
-      return Promise.resolve({ kind: overrides.deliverSave === 'cancel' ? 'cancelled' : 'saved' });
     },
     store: {
       list: () =>
@@ -182,7 +179,6 @@ function harness(
         store.delete(id);
         return Promise.resolve();
       },
-      showFolder: null,
     },
   });
   return { session, store, staged, reloads: () => reloads, paused: () => paused, delivered };
@@ -311,16 +307,6 @@ describe('saveLoadSession slot load and export', () => {
     await expect(h.session.exportSave('backup.json')).resolves.toEqual({ kind: 'saved' });
     expect(h.delivered[1]?.fileName).toBe('backup.json.gz');
     await expect(h.session.exportSave('nope')).resolves.toEqual({ kind: 'failed' });
-  });
-
-  it('reports a cancelled export dialog and swallows a failed delivery', async () => {
-    const cancelled = harness(demoSim(), { deliverSave: 'cancel' });
-    await cancelled.session.saveGame('Slot 1');
-    await expect(cancelled.session.exportSave('Slot 1')).resolves.toEqual({ kind: 'cancelled' });
-
-    const failed = harness(demoSim(), { deliverSave: 'throw' });
-    await failed.session.saveGame('Slot 1');
-    await expect(failed.session.exportSave('Slot 1')).resolves.toEqual({ kind: 'failed' });
   });
 
   it('deletes a slot from the store', async () => {

@@ -2,8 +2,8 @@
 
 **Area:** app · **Priority:** P3
 
-`parseContentSet` now rejects any `manifest.version` but `IR_VERSION`, so a data root left
-unregenerated across a version bump makes `loadLocalizedRealContent` throw. Both playable entries call
+`parseContentSet` now rejects any `manifest.version` but `IR_VERSION`, so a checkout's `content/`
+left unregenerated across a version bump makes `loadLocalizedRealContent` throw. Both playable entries call
 it before their `MissingTerrainError` guard (`entries/map.ts:121` ahead of the `try` at 129,
 `entries/scene.ts:79`), so the throw escapes and the run ends as a crash-capture report instead of the
 existing "regenerate content" card that the same situation already gets for missing terrain.

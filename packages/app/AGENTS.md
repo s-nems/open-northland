@@ -27,8 +27,6 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
 - The menu hands over to a game through `swapToEntry`, never by assigning `window.location`. A
   document navigation ends the browser's fullscreen grant, and the next document can only take it
   back on the player's next click. Entries that still navigate owe the player that flash.
-- `window.desktop` is read structurally, never imported, and every method it declares is present: the
-  desktop shell and the page ship as one build, so do not feature-check the bridge per method.
 
 The supported development entries and debug flags are documented in
 [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Add a new entry only when it is a distinct mode,

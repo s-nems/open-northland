@@ -1,53 +1,35 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { readConfig, writeConfig } from '../src/config.js';
-import { PORTABLE_DIR_NAME, resolveDataRoot } from '../src/paths.js';
+import { resolveShellRoots } from '../src/paths.js';
 
-describe('resolveDataRoot', () => {
-  const base = {
-    envOverride: undefined,
-    execDir: '/opt/on/bin',
-    userDataDir: '/home/u/.config/OpenNorthland',
-    devRepoRoot: undefined,
-    directoryExists: () => false,
-  };
-
-  it('prefers the env override over everything', () => {
-    const root = resolveDataRoot({
-      ...base,
-      envOverride: '/tmp/e2e-data',
-      devRepoRoot: '/repo',
-      directoryExists: () => true,
+describe('resolveShellRoots', () => {
+  it('serves a packaged app from its resources, whatever the environment says', () => {
+    const roots = resolveShellRoots({
+      packaged: true,
+      resourcesPath: '/Applications/OpenNorthland.app/Contents/Resources',
+      repoRoot: '/checkout',
+      contentDirOverride: '/elsewhere',
     });
-    expect(root).toEqual({ path: '/tmp/e2e-data', portable: false });
+    expect(roots).toEqual({
+      appRoot: '/Applications/OpenNorthland.app/Contents/Resources/app',
+      contentRoot: '/Applications/OpenNorthland.app/Contents/Resources/content',
+    });
   });
 
-  it('uses the portable marker dir next to the executable when it exists', () => {
-    const marker = join('/opt/on/bin', PORTABLE_DIR_NAME);
-    const root = resolveDataRoot({ ...base, directoryExists: (p) => p === marker });
-    expect(root).toEqual({ path: marker, portable: true });
+  it("serves a dev run from the checkout's builds", () => {
+    const roots = resolveShellRoots({
+      packaged: false,
+      resourcesPath: '/electron/resources',
+      repoRoot: '/checkout',
+      contentDirOverride: undefined,
+    });
+    expect(roots).toEqual({ appRoot: '/checkout/packages/app/dist', contentRoot: '/checkout/content' });
   });
 
-  it('falls back to the dev repo root in an unpackaged run, else the per-user dir', () => {
-    expect(resolveDataRoot({ ...base, devRepoRoot: '/repo' }).path).toBe('/repo');
-    expect(resolveDataRoot(base)).toEqual({ path: base.userDataDir, portable: false });
-  });
-});
-
-describe('desktop config', () => {
-  it('round-trips the mod path and degrades malformed/absent files to empty', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'opennorthland-desktop-config-'));
-    try {
-      const file = join(dir, 'nested', 'desktop-config.json');
-      expect(readConfig(file)).toEqual({});
-      writeConfig(file, { modPath: 'C:\\Games\\CnMod' });
-      expect(readConfig(file)).toEqual({ modPath: 'C:\\Games\\CnMod' });
-      writeConfig(file, {});
-      expect(readConfig(file)).toEqual({});
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
+  it('takes the content override as absolute or repo-relative, like Vite', () => {
+    const base = { packaged: false, resourcesPath: '/electron/resources', repoRoot: '/checkout' };
+    expect(resolveShellRoots({ ...base, contentDirOverride: '/tmp/out' }).contentRoot).toBe('/tmp/out');
+    expect(resolveShellRoots({ ...base, contentDirOverride: 'out/fresh' }).contentRoot).toBe(
+      '/checkout/out/fresh',
+    );
   });
 });

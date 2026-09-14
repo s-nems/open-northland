@@ -1,6 +1,6 @@
 // The Electron host for the cross-engine determinism check: one hidden window on the app's dev server,
 // so the desktop shell's runtime runs the same page the browsers do. The shipped shell
-// (packages/desktop) adds an installer and its own protocol, neither of which the sim's hashes touch.
+// (packages/desktop) adds its own protocol, which the sim's hashes never touch.
 const { app, BrowserWindow } = require('electron');
 
 const flag = '--profile=';

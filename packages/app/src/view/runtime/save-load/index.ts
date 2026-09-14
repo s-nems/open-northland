@@ -1,9 +1,9 @@
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import { entrySearch } from '../../params.js';
-import { type SaveLoadDeps, type SaveLoadSession, type SaveOutcome, saveLoadSession } from './controller.js';
-import { browserSaveDownload, desktopFileBridge, platformSavePicker } from './file-access.js';
+import { type SaveLoadDeps, type SaveLoadSession, saveLoadSession } from './controller.js';
+import { browserSaveDownload, pickSaveFile } from './file-access.js';
 import { storePendingLoad } from './pending-store.js';
-import { createSaveStore } from './store.js';
+import { browserSaveStore } from './store-browser.js';
 
 export { takeStagedSave, takeStagedSession } from './boot.js';
 export type { LoadOutcome, SaveLoadSession, SaveOutcome } from './controller.js';
@@ -21,23 +21,14 @@ export interface SaveLoadSessionOptions
   readonly isPaused: () => boolean;
 }
 
-/** The browser-wired session: desktop shells route the file dialogs over the native bridge. */
 export function createSaveLoadSession(opts: SaveLoadSessionOptions): SaveLoadSession {
-  const bridge = desktopFileBridge();
   return saveLoadSession({
     ...opts,
     entrySearch: opts.entrySearch ?? entrySearch(),
     reload: () => window.location.reload(),
     stagePending: storePendingLoad,
-    store: createSaveStore(),
-    pickFile: platformSavePicker(),
-    deliverSave:
-      bridge !== null
-        ? async (fileName, bytes): Promise<SaveOutcome> =>
-            (await bridge.saveGameFile(fileName, bytes)) !== null ? { kind: 'saved' } : { kind: 'cancelled' }
-        : (fileName, bytes): Promise<SaveOutcome> => {
-            browserSaveDownload(fileName, bytes);
-            return Promise.resolve({ kind: 'saved' });
-          },
+    store: browserSaveStore(),
+    pickFile: pickSaveFile,
+    downloadSave: browserSaveDownload,
   });
 }

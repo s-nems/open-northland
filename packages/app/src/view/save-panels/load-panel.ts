@@ -125,47 +125,24 @@ export function buildLoadPanel(deps: SavePanelDeps): SavePanelView {
     }),
   );
 
-  // Exactly one of the two backup paths exists: the desktop reveals its saves folder, the browser
-  // exports the selected slot as a download.
-  const folderOrExport =
-    deps.saveLoad.showFolder !== null
-      ? (() => {
-          const show = deps.saveLoad.showFolder;
-          const button = el('button', deps.buttonStyle, copy.showFolder);
-          button.type = 'button';
-          button.addEventListener('click', () =>
-            run(async () => {
-              try {
-                await show();
-                return null;
-              } catch {
-                return copy.showFolderFailed;
-              }
-            }),
-          );
-          return button;
-        })()
-      : (() => {
-          const button = el('button', deps.buttonStyle, copy.export);
-          button.type = 'button';
-          button.disabled = true;
-          selectionActions.push(button);
-          button.addEventListener('click', () =>
-            run(async () => {
-              if (selected === null) return null;
-              const outcome = await deps.saveLoad.exportSave(selected.id);
-              return outcome.kind === 'failed' ? copy.exportFailed : null;
-            }),
-          );
-          return button;
-        })();
+  const exportButton = el('button', deps.buttonStyle, copy.export);
+  exportButton.type = 'button';
+  exportButton.disabled = true;
+  selectionActions.push(exportButton);
+  exportButton.addEventListener('click', () =>
+    run(async () => {
+      if (selected === null) return null;
+      const outcome = await deps.saveLoad.exportSave(selected.id);
+      return outcome.kind === 'failed' ? copy.exportFailed : null;
+    }),
+  );
 
   const back = el('button', deps.buttonStyle, copy.back);
   back.type = 'button';
   back.addEventListener('click', deps.showMenu);
 
   const actions = el('div', 'display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end');
-  actions.append(load, del, fromFile, folderOrExport, back);
+  actions.append(load, del, fromFile, exportButton, back);
   panel.append(title, list.box, actions, status.el);
 
   return {

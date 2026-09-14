@@ -1,57 +1,37 @@
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
-/**
- * Convention (OpenRA, OpenTTD): the install directory stays read-only and the shell's writable
- * state lives per-user.
- */
+/** The `to:` names of the two `extraResources` entries in `electron-builder.yml`. */
+const APP_RESOURCE_DIR = 'app';
+const CONTENT_RESOURCE_DIR = 'content';
 
-/** The marker directory beside the executable that switches the shell to portable mode. */
-export const PORTABLE_DIR_NAME = 'portable-data';
+/** The env override Vite honours too: an absolute path or one relative to the repo root. */
+export const CONTENT_DIR_ENV = 'ON_CONTENT_DIR';
 
-/** Env override for the data root; the seam tests use to avoid a dev checkout's own content. */
-export const DATA_DIR_ENV = 'OPEN_NORTHLAND_DATA_DIR';
-
-export interface DataRootInputs {
-  readonly envOverride: string | undefined;
-  /** The directory holding the executable (`dirname(process.execPath)`). */
-  readonly execDir: string;
-  /** Electron's per-user data dir (`app.getPath('userData')`). */
-  readonly userDataDir: string;
-  /** The repo root in an unpackaged run. */
-  readonly devRepoRoot: string | undefined;
-  readonly directoryExists: (path: string) => boolean;
+export interface ShellRootInputs {
+  readonly packaged: boolean;
+  /** Electron's `process.resourcesPath`. */
+  readonly resourcesPath: string;
+  readonly repoRoot: string;
+  readonly contentDirOverride: string | undefined;
 }
 
-export interface DataRoot {
-  readonly path: string;
-  readonly portable: boolean;
+export interface ShellRoots {
+  /** The built web app (`packages/app/dist`). */
+  readonly appRoot: string;
+  /** The converted content tree the content routes serve from. */
+  readonly contentRoot: string;
 }
 
-/** The dev-repo-root step lets `npm run start` reuse the checkout's already generated `content/`. */
-export function resolveDataRoot(inputs: DataRootInputs): DataRoot {
-  if (inputs.envOverride !== undefined && inputs.envOverride !== '') {
-    return { path: inputs.envOverride, portable: false };
+/** A packaged app carries both trees as resources; a dev run serves the checkout's own builds. */
+export function resolveShellRoots(inputs: ShellRootInputs): ShellRoots {
+  if (inputs.packaged) {
+    return {
+      appRoot: join(inputs.resourcesPath, APP_RESOURCE_DIR),
+      contentRoot: join(inputs.resourcesPath, CONTENT_RESOURCE_DIR),
+    };
   }
-  const portable = join(inputs.execDir, PORTABLE_DIR_NAME);
-  if (inputs.directoryExists(portable)) return { path: portable, portable: true };
-  if (inputs.devRepoRoot !== undefined) return { path: inputs.devRepoRoot, portable: false };
-  return { path: inputs.userDataDir, portable: false };
-}
-
-export function contentDirOf(dataRoot: string): string {
-  return join(dataRoot, 'content');
-}
-
-export function configFileOf(dataRoot: string): string {
-  return join(dataRoot, 'desktop-config.json');
-}
-
-/** Downloaded mod roots, laid out as `mods/<name>/DataCnmd/`, never the game folder. */
-export function modsDirOf(dataRoot: string): string {
-  return join(dataRoot, 'mods');
-}
-
-/** The game's save files, one `<name>.json.gz` per save; created on first write. */
-export function savesDirOf(dataRoot: string): string {
-  return join(dataRoot, 'saves');
+  return {
+    appRoot: resolve(inputs.repoRoot, 'packages/app/dist'),
+    contentRoot: resolve(inputs.repoRoot, inputs.contentDirOverride ?? 'content'),
+  };
 }

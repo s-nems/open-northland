@@ -1,8 +1,8 @@
 name: Release
 
-# Manually-dispatched build of everything one commit ships - the desktop installers, the web
-# container image and the relay image - so every part comes from the same source. Run it from the
-# Actions tab against main (optionally an older commit via the `commit` input).
+# Manually-dispatched build of everything one commit ships - the desktop installers and the relay
+# image - so every part comes from the same source. Run it from the Actions tab against main
+# (optionally an older commit via the `commit` input).
 #
 # Each OS builds its own installers natively, then `publish` collects them into a `build-<short-sha>`
 # prerelease: release assets are plain public download links, unlike workflow artifacts which require
@@ -23,7 +23,7 @@ jobs:
   # Both halves publish under names that look official, so neither may build an object that is not on
   # main: the `commit` input can otherwise name anything in the repo network, fork-PR heads included.
   # The resolved sha is what every later job checks out, so a push during a 25-minute build cannot
-  # leave the installers, the image, and the release notes describing different commits.
+  # leave the installers, the relay image, and the release notes describing different commits.
   guard:
     runs-on: ubuntu-latest
     outputs:
@@ -69,44 +69,10 @@ jobs:
             packages/desktop/release/*.AppImage
           if-no-files-found: error
 
-  # Only the commit-stamped tag is pushed here. `latest` follows a whole successful release, which is
-  # `publish`'s job, so a failed installer build cannot leave the registry ahead of the download page.
-  # A tag this job leaves behind on failure is never deployed: nothing points at it.
-  image:
-    needs: guard
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ needs.guard.outputs.sha }}
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: packages/web/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/${{ github.repository }}-web:sha-${{ needs.guard.outputs.short }}
-          build-args: SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      # Pulled back rather than smoke-tested from a second local build: the check is only worth
-      # something if it runs against the bytes the registry now holds.
-      - name: Check the published image against the deployment contract
-        run: |
-          image="ghcr.io/${{ github.repository }}-web:sha-${{ needs.guard.outputs.short }}"
-          docker pull --platform linux/amd64 "$image"
-          node packages/web/scripts/smoke-image.mjs "$image"
-
-  # Build the relay from the same commit as its clients.
+  # Build the relay from the same commit as its clients. Only the commit-stamped tag is pushed here.
+  # `latest` follows a whole successful release, which is `publish`'s job, so a failed installer build
+  # cannot leave the registry ahead of the download page. A tag this job leaves behind on failure is
+  # never deployed: nothing points at it.
   relay-image:
     needs: guard
     runs-on: ubuntu-latest
@@ -146,7 +112,7 @@ jobs:
           node packages/net-server/scripts/smoke-image.mjs "$image"
 
   publish:
-    needs: [guard, installers, image, relay-image]
+    needs: [guard, installers, relay-image]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -183,10 +149,9 @@ jobs:
             xattr -cr /Applications/OpenNorthland.app
             ```
 
-          The browser deployment and the relay of the same commit:
+          The relay of the same commit:
 
           ```sh
-          docker pull @IMAGE_PREFIX@-web:sha-@SHORT@
           docker pull @IMAGE_PREFIX@-relay:sha-@SHORT@
           ```
           EOF
@@ -209,7 +174,5 @@ jobs:
       - name: Point latest at this build
         if: inputs.commit == ''
         run: |
-          for image in web relay; do
-            repository="ghcr.io/${{ github.repository }}-$image"
-            docker buildx imagetools create -t "$repository:latest" "$repository:sha-${{ needs.guard.outputs.short }}"
-          done
+          repository="ghcr.io/${{ github.repository }}-relay"
+          docker buildx imagetools create -t "$repository:latest" "$repository:sha-${{ needs.guard.outputs.short }}"

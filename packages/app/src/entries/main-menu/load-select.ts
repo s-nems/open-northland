@@ -4,24 +4,24 @@ import { confirmDialog } from '../../view/confirm-dialog.js';
 import { decodeSaveText, type SaveBytes } from '../../view/runtime/save-load/codec.js';
 import { downloadStoredSave } from '../../view/runtime/save-load/controller.js';
 import { evaluateSaveDocument } from '../../view/runtime/save-load/evaluate.js';
-import { type PickedSaveFile, platformSavePicker } from '../../view/runtime/save-load/file-access.js';
+import { type PickedSaveFile, pickSaveFile } from '../../view/runtime/save-load/file-access.js';
 import { flowRunner } from '../../view/runtime/save-load/flow-runner.js';
 import { formatPlaytime, formatSavedAt } from '../../view/runtime/save-load/list-model.js';
 import { storePendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { relaunchSearch } from '../../view/runtime/save-load/relaunch.js';
-import { createSaveStore, type SaveSlotInfo } from '../../view/runtime/save-load/store.js';
+import type { SaveSlotInfo } from '../../view/runtime/save-load/store.js';
+import { browserSaveStore } from '../../view/runtime/save-load/store-browser.js';
 import { worldNameIndex } from '../../view/runtime/save-load/world-names.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { targetSearch } from './target-search.js';
 
-/** The main menu's load screen: the platform save store's slots, launched into their own worlds. */
+/** The main menu's load screen: the save store's slots, launched into their own worlds. */
 export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: LaunchEntry): HTMLElement {
   const copy = messages();
   const listCopy = copy.saveList;
   const errors = copy.hud.loadErrors;
-  const store = createSaveStore();
-  const pickFile = platformSavePicker();
+  const store = browserSaveStore();
 
   const section = document.createElement('section');
   section.className = 'main-menu__screen';
@@ -203,7 +203,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     run(async () => {
       let picked: PickedSaveFile | null;
       try {
-        picked = await pickFile();
+        picked = await pickSaveFile();
       } catch {
         return errors.corrupt;
       }
@@ -217,37 +217,20 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
 
   const actions = document.createElement('div');
   actions.className = 'main-menu__load-actions';
-  actions.append(loadButton, deleteButton, fromFile);
-  const showFolder = store.showFolder;
-  if (showFolder !== null) {
-    actions.append(
-      ghost(listCopy.showFolder, () =>
-        run(async () => {
-          try {
-            await showFolder();
-            return null;
-          } catch {
-            return listCopy.showFolderFailed;
-          }
-        }),
-      ),
-    );
-  } else {
-    const download = ghost(listCopy.export, () =>
-      run(async () => {
-        if (selected === null) return null;
-        const slot = selected;
-        try {
-          return (await downloadStoredSave(store, slot.id)) === 'missing' ? errors.missing : null;
-        } catch {
-          return listCopy.exportFailed;
-        }
-      }),
-    );
-    download.disabled = true;
-    selectionActions.push(download);
-    actions.append(download);
-  }
+  const download = ghost(listCopy.export, () =>
+    run(async () => {
+      if (selected === null) return null;
+      const slot = selected;
+      try {
+        return (await downloadStoredSave(store, slot.id)) === 'missing' ? errors.missing : null;
+      } catch {
+        return listCopy.exportFailed;
+      }
+    }),
+  );
+  download.disabled = true;
+  selectionActions.push(download);
+  actions.append(loadButton, deleteButton, fromFile, download);
 
   listCol.append(listScroll, actions, status);
   body.append(listCol);

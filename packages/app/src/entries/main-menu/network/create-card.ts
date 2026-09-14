@@ -3,8 +3,8 @@ import { withBaseUrl } from '../../../base-url.js';
 import { errorText } from '../../../diag/error-text.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SaveBytes } from '../../../view/runtime/save-load/codec.js';
-import { platformSavePicker } from '../../../view/runtime/save-load/file-access.js';
-import { createSaveStore } from '../../../view/runtime/save-load/store.js';
+import { pickSaveFile } from '../../../view/runtime/save-load/file-access.js';
+import { browserSaveStore } from '../../../view/runtime/save-load/store-browser.js';
 import { SCENE_TOKEN_PREFIX } from '../../../view/runtime/save-load/world-names.js';
 import { segControl } from '../../../view/settings-controls.js';
 import { metaLine } from '../map-card.js';
@@ -64,7 +64,7 @@ export function createRoomCard(options: CreateCardOptions) {
   mapField.append(node('span', '', copy.map), mapRow);
   const status = node('p', 'network-menu__notice');
   status.setAttribute('role', 'status');
-  const store = createSaveStore();
+  const store = browserSaveStore();
   let chosen: MapSelectItem | null = null;
   let mapsEmpty = false;
   let disposed = false;
@@ -96,7 +96,7 @@ export function createRoomCard(options: CreateCardOptions) {
   };
   const file = button(copy.file, () => {
     void run(async () => {
-      const picked = await platformSavePicker()();
+      const picked = await pickSaveFile();
       return picked === null ? null : { kind: 'save', bytes: picked.raw, name: name.value.trim() };
     });
   });

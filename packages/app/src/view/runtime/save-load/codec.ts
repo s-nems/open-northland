@@ -13,8 +13,8 @@ export function isSaveBytes(value: unknown): value is SaveBytes {
   return value instanceof Uint8Array && value.buffer instanceof ArrayBuffer;
 }
 
-/** Ceiling on decoded save text, aligned with the desktop shell's raw-file cap: refuses a gzip bomb
- *  chunk by chunk, before the inflated text reaches memory whole. */
+/** Ceiling on decoded save text: refuses a gzip bomb chunk by chunk, before the inflated text reaches
+ *  memory whole. */
 const MAX_DECODED_SAVE_BYTES = 256 * 1024 * 1024;
 
 export function isGzipSave(bytes: Uint8Array): boolean {

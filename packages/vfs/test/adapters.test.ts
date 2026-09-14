@@ -4,10 +4,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { memoryVfs } from '../src/memory.js';
 import { nodeVfs } from '../src/node.js';
-import { opfsVfs } from '../src/opfs.js';
 import { type ReadableVfs, readText, type Vfs, writeText } from '../src/types.js';
 import { vjoin } from '../src/vpath.js';
-import { fakeOpfsRoot } from './support/fake-opfs.js';
 
 interface Harness<T extends ReadableVfs> {
   readonly fs: T;
@@ -148,29 +146,6 @@ describe('nodeVfs', () => {
   });
 });
 
-describe('opfsVfs over faked handles', () => {
-  adapterContract(() => Promise.resolve({ fs: opfsVfs(fakeOpfsRoot()), root: '' }));
-
-  it('reports the write failure, not the failure to close after it, and drops the empty file', async () => {
-    const fs = opfsVfs(fakeOpfsRoot({ quotaAfterWrites: 0 }));
-    await expect(fs.writeFile('a/b.bin', Uint8Array.of(1))).rejects.toMatchObject({
-      name: 'QuotaExceededError',
-    });
-    expect(await fs.stat('a/b.bin')).toBeUndefined();
-  });
-
-  it('propagates a refused delete and stays quiet about an absent one', async () => {
-    const root = fakeOpfsRoot();
-    await opfsVfs(root).rm('never-existed');
-    const refusing = {
-      ...root,
-      removeEntry: () => Promise.reject(new DOMException('locked', 'NoModificationAllowedError')),
-    } as unknown as FileSystemDirectoryHandle;
-    await expect(opfsVfs(refusing).rm('doomed.bin')).rejects.toThrow(/locked/);
-  });
-});
-
 it('answers stat with undefined for a path no adapter can address', async () => {
   expect(await memoryVfs().stat('../escape')).toBeUndefined();
-  expect(await opfsVfs(fakeOpfsRoot()).stat('../escape')).toBeUndefined();
 });

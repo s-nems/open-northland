@@ -8,10 +8,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../content-resolver" },
-    { "path": "../installer" },
-    { "path": "../vfs" },
-    { "path": "../../tools/asset-pipeline" }
-  ]
+  "references": [{ "path": "../content-resolver" }, { "path": "../vfs" }]
 }

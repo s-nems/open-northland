@@ -33,7 +33,7 @@ but stable signed releases do not. Current actionable work lives in [`docs/ticke
 
 - Node.js `^20.19.0` or `>=22.12.0`
 - The free CulturesNation mod for playable content: `CnMod 1.3.2.zip` (about 570 MB) is the current
-  verified input. The desktop and browser installers download it; for the CLI, unpack it yourself.
+  verified input. Unpack it yourself and point `npm run pipeline` at it.
 
 ## Build and test
 
@@ -80,7 +80,7 @@ packages/
   audio/             Sound selection and Web Audio playback
   content-resolver/  Shared routing for generated content
   data/              Validated schemas and content loaders
-  desktop/           Electron shell and first-run content setup
+  desktop/           Electron shell serving the app and the converted content
   render/            PixiJS isometric renderer
   sim/               Deterministic simulation
 tools/

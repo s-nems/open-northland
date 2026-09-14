@@ -13,7 +13,7 @@ import { displayNameOf } from './list-model.js';
 import { rootWorldId } from './related-world.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 
-export type SaveOutcome = { kind: 'saved' } | { kind: 'cancelled' } | { kind: 'failed' };
+export type SaveOutcome = { kind: 'saved' } | { kind: 'failed' };
 
 export type LoadOutcome =
   | { kind: 'loading' }
@@ -36,8 +36,8 @@ export interface SaveLoadDeps {
   /** Stage a validated file's bytes for the reloaded boot. */
   readonly stagePending: (bytes: SaveBytes) => Promise<void>;
   readonly pickFile: () => Promise<PickedSaveFile | null>;
-  /** Hand save bytes to the user as a file: a browser download or the desktop save dialog. */
-  readonly deliverSave: (fileName: string, bytes: SaveBytes) => Promise<SaveOutcome>;
+  /** Hand save bytes to the user as a file download. */
+  readonly downloadSave: (fileName: string, bytes: SaveBytes) => void;
   readonly store: SaveStore;
   readonly sessionMetadata?: () => unknown;
   readonly onSaved?: (save: SaveGame) => Promise<void>;
@@ -50,11 +50,9 @@ export interface SaveLoadSession {
   saveGame(name: string): Promise<SaveOutcome>;
   loadSave(id: string): Promise<LoadOutcome>;
   loadFromFile(): Promise<LoadOutcome>;
-  /** Hand a stored save back out as a file download or dialog. */
+  /** Hand a stored save back out as a file download. */
   exportSave(id: string): Promise<SaveOutcome>;
   deleteSave(id: string): Promise<void>;
-  /** Reveal the desktop saves folder; null where no such folder exists. */
-  readonly showFolder: (() => Promise<void>) | null;
   /** Pause for the open system menu, remembering the player's own pause state. */
   forcePause(): void;
   /** Lift a forced pause, for menu-close paths where a browser never reports dialog dismissal. */
@@ -174,7 +172,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
       try {
         const bytes = await deps.store.read(id);
         if (bytes === null) return { kind: 'failed' };
-        return await deps.deliverSave(exportFileName(id, bytes), bytes);
+        deps.downloadSave(exportFileName(id, bytes), bytes);
+        return { kind: 'saved' };
       } catch (err) {
         diag.warn('save', `exporting slot ${JSON.stringify(id)} failed: ${String(err)}`);
         return { kind: 'failed' };
@@ -183,21 +182,17 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 
     deleteSave: (id) => deps.store.remove(id),
 
-    showFolder: deps.store.showFolder,
-
     forcePause,
     releaseForcedPause,
   };
 }
 
-/** Suffix the exported file for the payload it actually carries: a desktop slot id arrives as a
- *  suffixed basename, a browser slot name is whatever the player typed. */
+/** Suffix the exported file for the payload it actually carries; a slot name is whatever the player typed. */
 function exportFileName(id: string, bytes: SaveBytes): string {
   return `${displayNameOf(id)}${isGzipSave(bytes) ? '.json.gz' : '.json'}`;
 }
 
-/** The browser backup path over a stored slot, shared by the menu screen and `deliverSave`'s
- *  wiring: download the slot's bytes under its display name. */
+/** The menu screen's backup path over a stored slot: download the slot's bytes under its display name. */
 export async function downloadStoredSave(store: SaveStore, id: string): Promise<'downloaded' | 'missing'> {
   const bytes = await store.read(id);
   if (bytes === null) return 'missing';

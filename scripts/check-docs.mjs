@@ -3,15 +3,7 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ignoredDirectories = new Set([
-  '.git',
-  '.art-build',
-  'content',
-  'coverage',
-  'dist',
-  'dist-web',
-  'node_modules',
-]);
+const ignoredDirectories = new Set(['.git', '.art-build', 'content', 'coverage', 'dist', 'node_modules']);
 const ticketReferenceFile = /\.(?:[cm]?[jt]sx?|json|ya?ml)$/;
 const ticketAreas = new Set([
   'app',
@@ -19,7 +11,6 @@ const ticketAreas = new Set([
   'content-resolver',
   'data',
   'desktop',
-  'installer',
   'lockstep',
   'net-client',
   'net-protocol',
@@ -29,7 +20,6 @@ const ticketAreas = new Set([
   'sim',
   'tooling',
   'vfs',
-  'web',
 ]);
 const failures = [];
 

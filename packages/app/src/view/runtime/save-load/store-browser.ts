@@ -67,8 +67,6 @@ export function browserSaveStore(): SaveStore {
         txn.objectStore(BYTES_STORE).delete(id);
       });
     },
-
-    showFolder: null,
   };
 }
 

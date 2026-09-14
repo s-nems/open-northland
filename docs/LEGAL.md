@@ -19,16 +19,10 @@ underlying game artwork remains the property of its respective rights holders.
 Tests use synthetic fixtures created for this project. A test or pull request must not contain an
 original file, decoded asset, extracted text corpus, or other distributable game content.
 
-The browser deployment holds to the same line: `game.opennorthland.org` serves engine code only, and
-every visitor converts the mod archive inside their own browser, where the converted data stays.
-
 ## CulturesNation mod
 
-The free community mod *CulturesNation* is the conversion's input. The desktop installer downloads
-it from the mod's own site; the browser installer fetches it from `game.opennorthland.org/cnmod.zip`,
-because a browser page can only stream an archive of that size from its own origin. Placing that
-archive is an operator step, not part of this repository, and `CNMOD_KNOWN_SHA256` in
-`packages/installer/src/mod-install/install.ts` records the bytes the project verified against.
+The free community mod *CulturesNation* is the conversion's input. `npm run pipeline` reads an
+unpacked copy the user obtained themselves; the archive is not part of this repository.
 
 ## Independent implementation
 

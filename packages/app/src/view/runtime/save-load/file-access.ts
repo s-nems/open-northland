@@ -1,6 +1,5 @@
 import { downloadFile } from '../../../diag/index.js';
 import { decodeSaveText, isGzipSave, type SaveBytes } from './codec.js';
-import type { SaveListBridge } from './store-desktop.js';
 
 /** A picked save file: display name, decoded JSON text, and the file's bytes exactly as picked -
  *  what a validated load stages, so the reloaded boot decodes the same artifact the user chose. */
@@ -8,34 +7,6 @@ export interface PickedSaveFile {
   readonly name: string;
   readonly contents: string;
   readonly raw: SaveBytes;
-}
-
-/** A picked file's name and raw bytes as the desktop main process hands them over. */
-export interface SaveFileBytes {
-  readonly name: string;
-  readonly bytes: SaveBytes;
-}
-
-/**
- * The two file operations the desktop preload adds to `window.desktop`. The app reads the bridge
- * structurally and stays shell-agnostic; `packages/desktop/src/ipc.ts` implements the same shape.
- */
-export interface GameFileBridge {
-  /** Native save dialog; resolves to the written file's basename, or null when the user cancels. */
-  saveGameFile(suggestedName: string, contents: Uint8Array): Promise<string | null>;
-  /** Native open dialog; null when the user cancels. */
-  openGameFile(): Promise<SaveFileBytes | null>;
-}
-
-declare global {
-  interface Window {
-    readonly desktop?: GameFileBridge & SaveListBridge;
-  }
-}
-
-/** The desktop shell's file bridge, or null in a plain browser. */
-export function desktopFileBridge(): GameFileBridge | null {
-  return window.desktop ?? null;
 }
 
 /** The browser's save delivery: a download whose MIME matches the payload it carries. */
@@ -46,16 +17,6 @@ export function browserSaveDownload(fileName: string, bytes: SaveBytes): void {
 /** Decode picked bytes into the file both flows consume; throws on a corrupt gzip envelope. */
 export async function pickedSaveOf(name: string, bytes: SaveBytes): Promise<PickedSaveFile> {
   return { name, contents: await decodeSaveText(bytes), raw: bytes };
-}
-
-/** The platform's save picker: the desktop native dialog when bridged, else the browser input. */
-export function platformSavePicker(): () => Promise<PickedSaveFile | null> {
-  const bridge = desktopFileBridge();
-  if (bridge === null) return pickSaveFile;
-  return async () => {
-    const picked = await bridge.openGameFile();
-    return picked === null ? null : pickedSaveOf(picked.name, picked.bytes);
-  };
 }
 
 /** Browser file picker for a save; resolves null when the dialog closes without a choice. */

@@ -3,19 +3,11 @@ import { pathToFileURL } from 'node:url';
 import { resolveContentRequest, resolveFileUnderRoot } from '@open-northland/content-resolver';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { net, protocol } from 'electron';
-import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf, SETUP_HOST } from './protocol-routing.js';
+import type { ShellRoots } from './paths.js';
+import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf } from './protocol-routing.js';
 
 /** The `app://` scheme the shell serves the game from: the packaged stand-in for the Vite dev server. */
-
-import type { Locale } from '@open-northland/installer/i18n';
-
 export const GAME_URL = `${APP_ORIGIN_PREFIX}${GAME_HOST}/index.html`;
-export const SETUP_URL = `${APP_ORIGIN_PREFIX}${SETUP_HOST}/setup.html`;
-
-/** The game URL carrying the shell language in the `?lang=` seam the web app reads. */
-export function gameUrlForLocale(locale: Locale): string {
-  return `${GAME_URL}?lang=${locale}`;
-}
 
 const STATIC_TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',
@@ -61,45 +53,35 @@ async function serveFile(file: string, contentType: string, method: string): Pro
 
 const DIRECTORY_INDEX = 'index.html';
 
-export interface AppProtocolRoots {
-  /** The built web app (`packages/app/dist`). */
-  readonly appRoot: string;
-  /** The shell's own renderer files (the setup page). */
-  readonly setupRoot: string;
-  /** The data root's `content/` the shared routes serve from. */
-  readonly contentRoot: string;
-}
-
 /** Install the `app://` handler; call once in `app.whenReady`. */
-export function handleAppProtocol(roots: AppProtocolRoots): void {
+export function handleAppProtocol(roots: ShellRoots): void {
   const fs = nodeVfs();
   protocol.handle(APP_SCHEME, async (request) => {
     const url = new URL(request.url);
+    const routePath = routePathOf(url.host, url.pathname);
 
     // The shared resolver takes the raw pathname (it owns percent-decoding).
-    const routePath = routePathOf(url.host, url.pathname);
-    if (routePath !== undefined) {
-      const hit = await resolveContentRequest(fs, routePath, roots.contentRoot);
-      if (hit !== undefined) {
-        if (hit.kind === 'json') {
-          return new Response(JSON.stringify(await hit.body()), {
-            headers: { 'content-type': 'application/json', ...CORS_HEADER },
-          });
-        }
-        return serveFile(hit.path, hit.contentType, request.method);
+    const hit = await resolveContentRequest(fs, routePath, roots.contentRoot);
+    if (hit !== undefined) {
+      if (hit.kind === 'json') {
+        return new Response(JSON.stringify(await hit.body()), {
+          headers: { 'content-type': 'application/json', ...CORS_HEADER },
+        });
       }
+      return serveFile(hit.path, hit.contentType, request.method);
     }
 
-    // Static files exist only on the two real page hosts; a folded host that missed the routes is a 404.
-    if (url.host !== GAME_HOST && url.host !== SETUP_HOST) return notFound();
     let pathname: string;
     try {
-      pathname = decodeURIComponent(url.pathname);
+      pathname = decodeURIComponent(routePath);
     } catch {
       return notFound();
     }
-    const root = url.host === SETUP_HOST ? roots.setupRoot : roots.appRoot;
-    const file = await resolveFileUnderRoot(fs, root, pathname.replace(/^\/+/, '') || DIRECTORY_INDEX);
+    const file = await resolveFileUnderRoot(
+      fs,
+      roots.appRoot,
+      pathname.replace(/^\/+/, '') || DIRECTORY_INDEX,
+    );
     if (file === undefined) return notFound();
     const contentType = STATIC_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
     return serveFile(file, contentType, request.method);

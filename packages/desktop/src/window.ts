@@ -1,16 +1,13 @@
-import type { ContentStatus } from '@open-northland/installer';
-import { type Locale, messages } from '@open-northland/installer/i18n';
-import { BrowserWindow, dialog, Menu, shell } from 'electron';
-import { gameUrlForLocale, SETUP_URL } from './protocol.js';
-import { isAppUrl, isInGameSession } from './protocol-routing.js';
+import { BrowserWindow } from 'electron';
+import { GAME_URL } from './protocol.js';
+import { isAppUrl } from './protocol-routing.js';
 
-export function createWindow(initial: ContentStatus, preloadScript: string, locale: Locale): BrowserWindow {
+export function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     backgroundColor: '#1d1a15',
     webPreferences: {
-      preload: preloadScript,
       // The session advances on animation frames even while the game is minimized.
       backgroundThrottling: false,
       // Electron 43 defaults, pinned so a future option edit can't silently regress them.
@@ -23,44 +20,6 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
   win.webContents.on('will-navigate', (event, target) => {
     if (!isAppUrl(target)) event.preventDefault();
   });
-  void win.loadURL(initial === 'ready' ? gameUrlForLocale(locale) : SETUP_URL);
+  void win.loadURL(GAME_URL);
   return win;
-}
-
-async function openSetupPage(win: BrowserWindow): Promise<void> {
-  if (isInGameSession(win.webContents.getURL())) {
-    const dialogs = messages().dialogs;
-    const choice = await dialog.showMessageBox(win, {
-      type: 'question',
-      buttons: [dialogs.leaveGame, dialogs.stay],
-      defaultId: 1,
-      cancelId: 1,
-      message: dialogs.leaveGameMessage,
-      detail: dialogs.leaveGameDetail,
-    });
-    if (choice.response !== 0) return;
-  }
-  await win.loadURL(SETUP_URL);
-}
-
-/**
- * Never auto-hidden on Windows/Linux: this bar is the only home of the reinstall-content and
- * open-data-folder actions, and one hidden behind Alt is undiscoverable.
- */
-export function buildAppMenu(win: BrowserWindow, dataRootPath: string): void {
-  const menu = messages().menu;
-  const gameSubmenu: Electron.MenuItemConstructorOptions[] = [
-    { label: menu.reinstall, click: () => void openSetupPage(win) },
-    { label: menu.openDataFolder, click: () => void shell.openPath(dataRootPath) },
-    { type: 'separator' },
-    process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' },
-  ];
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      ...(process.platform === 'darwin' ? [{ role: 'appMenu' } as const] : []),
-      { label: menu.game, submenu: gameSubmenu },
-      { role: 'editMenu' },
-      { role: 'viewMenu' },
-    ]),
-  );
 }

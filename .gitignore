@@ -4,11 +4,9 @@ node_modules/
 # Build output
 dist/
 dist-types/
-dist-web/
 *.tsbuildinfo
-# electron-builder output + the shell's dev-run config (a dev data root is the repo root)
+# electron-builder output
 packages/desktop/release/
-/desktop-config.json
 
 # Generated intermediate content - DERIVED FROM COPYRIGHTED GAME DATA.
 # Never commit. Each user generates this from the CulturesNation mod via the asset pipeline.

@@ -165,8 +165,6 @@ Load the relevant file when working in that area:
 - `packages/data/AGENTS.md`
 - `packages/content-resolver/AGENTS.md`
 - `packages/vfs/AGENTS.md`
-- `packages/installer/AGENTS.md`
 - `packages/desktop/AGENTS.md`
-- `packages/web/AGENTS.md`
 - `tools/asset-pipeline/AGENTS.md`
 - `tools/art-pipeline/AGENTS.md`

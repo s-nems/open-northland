@@ -1,4 +1,3 @@
-// The embedding surface for hosts that run the conversion in-process; the CLI stays the human entry.
 export type { Args } from './args.js';
 export {
   CONTENT_REVISION,
@@ -9,6 +8,4 @@ export {
   writePipelineManifest,
 } from './manifest.js';
 export { CULTURESNATION_HOME_URL, CULTURESNATION_MOD } from './mod-root.js';
-// Progress symbols stay on the import-free `./progress` subpath so a UI bundle can size its bar
-// without pulling the decoder graph in.
 export { runPipeline } from './run.js';

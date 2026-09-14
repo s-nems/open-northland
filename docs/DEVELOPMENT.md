@@ -237,57 +237,11 @@ npm run desktop
 npm run desktop:dist
 ```
 
-The packaged app stores generated content in the user's application-data directory. It never writes
-playable content into the repository or application bundle.
-
-## Web site build
-
-```bash
-npm run web:site
-npm run web:serve
-```
-
-`web:site` assembles the static deployment for `game.opennorthland.org` under
-`packages/web/dist/site`: the installer page, the pipeline worker, the service worker, and the app
-built for the `/play` base. `web:serve` serves that layout locally on port 8788 (`PORT` overrides);
-set `OPEN_NORTHLAND_CNMOD_ZIP=<path>` to also serve a local mod archive at `/cnmod.zip`. Visitors
-convert the mod archive in the browser; the site ships no game content and the converted data stays
-in each browser's origin-private storage.
-
-## Web image
-
-The `Release` workflow builds that site into a container and publishes it to
-`ghcr.io/s-nems/open-northland-web`, for `linux/amd64` and `linux/arm64`. One dispatch builds the
-desktop installers and this image from the same resolved commit. Every build gets a `sha-<short>`
-tag; `latest` moves only once both halves and the download page are published, and only for a
-dispatch of the branch head, so rebuilding an older commit cannot roll a deployment backwards.
-Deploying is manual:
-
-```bash
-docker run --detach --restart unless-stopped --publish 127.0.0.1:8080:80 \
-  ghcr.io/s-nems/open-northland-web:latest
-```
-
-The first publish creates the package as private, so make it public once in the repository's package
-settings if the deployment should pull it without a token.
-
-The container is a plain HTTP static host, so the proxy in front of it owns three things: the TLS
-certificate for the subdomain, the mod archive at `/cnmod.zip` (~600 MB, requested same-origin),
-and forwarding everything else to the container unchanged. The origin belongs to the game alone -
-`sw.js` is served from its root and its scope is the whole origin. `/healthz` answers `ok` for a
-health check, and requesting `/cnmod.zip` from the container itself returns a 404 that says the
-origin is misconfigured.
-
-To build and check the same image locally:
-
-```bash
-npm run web:image
-node packages/web/scripts/smoke-image.mjs open-northland-web
-```
-
-The smoke check runs the image and asserts what the deployment contract requires: hashed assets
-under `/play/assets/` are immutable, every fixed name revalidates, and the content routes and the
-mod archive are misses rather than static files.
+`desktop` opens the checkout's `packages/app/dist` and `content/` in an Electron window;
+`ON_CONTENT_DIR` moves the content tree the same way it does for Vite. `desktop:dist` packages
+`packages/app/dist` and the checkout's `content/` (the override does not apply) as resources of the
+installers under `packages/desktop/release/`, so the packaged game plays without any content on the
+player's machine.
 
 ## Own-art production
 
@@ -302,10 +256,13 @@ approval and publication. This workshop is independent of `npm run pipeline`, wh
 
 ## Relay image
 
-The same workflow publishes the relay as `ghcr.io/s-nems/open-northland-relay`, tagged and promoted
-the same way. The image is built from `packages/net-server/Dockerfile`: the relay and protocol
-packages compiled once, then only those two and `ws` in a Node image, so it carries neither the
-simulation nor a content directory. It starts on environment variables alone:
+The `Release` workflow builds the desktop installers and the relay image from one resolved commit and
+publishes the relay to `ghcr.io/s-nems/open-northland-relay`, for `linux/amd64` and `linux/arm64`.
+Every build gets a `sha-<short>` tag; `latest` moves only once the installers and the download page
+are published, and only for a dispatch of the branch head, so rebuilding an older commit cannot roll a
+deployment backwards. The image is built from `packages/net-server/Dockerfile`: the relay and
+protocol packages compiled once, then only those two and `ws` in a Node image, so it carries neither
+the simulation nor a content directory. It starts on environment variables alone:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |

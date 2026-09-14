@@ -2,7 +2,7 @@
   "name": "@open-northland/desktop",
   "version": "0.0.0",
   "private": true,
-  "description": "OpenNorthland desktop shell - packages the web app with a first-run content installer",
+  "description": "OpenNorthland desktop shell - a game window serving the built web app and the converted content over app://",
   "license": "AGPL-3.0-or-later",
   "author": "OpenNorthland contributors",
   "main": "./dist/main.cjs",
@@ -13,9 +13,7 @@
     "dist:win": "npm run build && electron-builder --config electron-builder.yml --win"
   },
   "dependencies": {
-    "@open-northland/asset-pipeline": "*",
     "@open-northland/content-resolver": "*",
-    "@open-northland/installer": "*",
     "@open-northland/vfs": "*"
   },
   "devDependencies": {

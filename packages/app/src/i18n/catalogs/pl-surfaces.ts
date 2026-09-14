@@ -258,8 +258,6 @@ export const plSurfaces = {
     export: 'Pobierz zapis',
     exportFailed: 'Pobranie zapisu nie powiodło się.',
     fromFile: 'Wczytaj z pliku…',
-    showFolder: 'Pokaż folder zapisów',
-    showFolderFailed: 'Nie udało się otworzyć folderu zapisów.',
     back: 'Wróć',
   },
   performance: {

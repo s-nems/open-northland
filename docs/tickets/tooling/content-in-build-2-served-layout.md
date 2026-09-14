@@ -1,7 +1,6 @@
 # Write the served content layout and static indexes from the pipeline
 
 **Area:** pipeline, content-resolver, data, app, desktop · **Focus:** content delivery · **Priority:** P2
-**Blocked by:** [Remove the runtime content install](content-in-build-1-remove-runtime-install.md)
 
 The app fetches root-relative content URLs (`/bobs/<stem>.png`, `/textures/<key>.png`, `/maps/…`,
 `/ir.json`) from 29 files, while the pipeline writes `Data/engine2d/bin/bobs`,
@@ -15,11 +14,19 @@ that code, and the pipeline also leaves unserved intermediates (`Data/text`, `Cn
 Required end state: the tree the pipeline writes is exactly the tree the app fetches, the three
 indexes are files the pipeline writes, and `packages/content-resolver` no longer exists.
 
+Verified gap the layout change has to close: no stage writes the sounds. The `.lib` unpack stage
+used to extract the game archive's `Data/engine2d/bin/sounds/*.wav` into the output; with the mod as
+the only source that stage is gone and a conversion of `../CNMod-1.3.2` ends with no `.wav` under
+`content/` (the mod ships 752 of them loose under `Data/engine2d/bin/sounds`), so every sound
+request in the game answers 404.
+
 ## Scope
 
 - Pipeline output roots become `bobs/`, `textures/`, `sounds/`, `gui-bitmaps/`; `DATA_DIR` goes.
   Follow every writer and reader of those constants (`run.ts` reads textures back for the masked
-  transition pages). Intermediates the app never fetches are written to a temporary work directory
+  transition pages). Add the stage that copies the mod's `Data/engine2d/bin/sounds` tree into
+  `sounds/` with the lower-cased tail the `/sounds/` route expects, and a real-content test that a
+  sound the IR references exists in the output. Intermediates the app never fetches are written to a temporary work directory
   or not at all. After a run, `content/` holds only `ir.json`, the three index files, and `maps/`, `bobs/`, `textures/`, `sounds/`, `music/`, `gui/`, `gui-bitmaps/`,
   `goods/`, `backdrops/`. Apply the generated-content gate in `packages/data/AGENTS.md` for the
   layout change. Art-pipeline review folders a developer may have under `content/` are not this

@@ -33,9 +33,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build # typecheck + production Vite bundle
-      # The browser deployment is the only gate that proves the shared pipeline, installer, and
-      # content routes still bundle without a Node builtin, and that the site ships no game assets.
-      - run: npm run web:site
 
   test:
     # Three OSes on purpose: the sim promises byte-identical state across platforms (replays, future

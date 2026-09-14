@@ -1,35 +1,25 @@
 # Desktop package contract
 
-`packages/desktop` serves the browser build through Electron and guides the user through local
-content generation. The setup page, i18n catalog, and mod install live in
-[`packages/installer`](../installer/AGENTS.md); this package supplies their `ShellApi` over IPC
-plus everything Electron-specific. The root [`AGENTS.md`](../../AGENTS.md) applies.
+`packages/desktop` is the Electron host: one game window that serves `packages/app/dist` and the
+converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENTS.md) applies.
 
 ## Boundaries
 
-- The web app stays shell-agnostic and never imports desktop code.
-- Serve `packages/app/dist` and generated content through `app://` using
-  `@open-northland/content-resolver`, the same route table as Vite.
-- Run the CPU-heavy asset pipeline in a `utilityProcess`, not on the Electron main event loop.
-- Keep the renderer IPC surface narrow, typed, and validated. Do not expose raw file-system access.
-- Store generated content and configuration in the selected data root, never the install directory.
-
-Data-root precedence is defined in `src/paths.ts`: explicit `OPEN_NORTHLAND_DATA_DIR`, portable mode,
-development root, then Electron `userData`. Do not duplicate this choice elsewhere.
-
-The CulturesNation mod is the pipeline's only input. It may come from a downloaded copy in the data
-root or a user-selected folder, a game folder that carries it in place included. Never modify the
-user's folders.
-
-Content freshness comes from `pipeline-manifest.json` and the bundled current manifest. A schema
-mismatch blocks play; an older content revision asks for regeneration.
+- The web app stays shell-agnostic and never imports desktop code; the shell exposes no preload
+  script, no IPC, and no renderer bridge. Saves live in the page's IndexedDB like in a browser.
+- Serve the app and the content through `app://` using `@open-northland/content-resolver`, the same
+  route table as Vite. Content and app are read-only resources; the shell's own code writes nothing,
+  and the saves are the page's IndexedDB inside Electron's profile.
+- `src/paths.ts` owns where the two trees are: the packaged app's `resources/app` and
+  `resources/content` (the `extraResources` of `electron-builder.yml`), else the checkout's
+  `packages/app/dist` and `content/` with `ON_CONTENT_DIR` honoured like Vite does. Do not duplicate
+  that choice elsewhere.
+- Keep `main.ts` and `window.ts` free of logic worth a unit test; routing and path rules live in
+  `protocol-routing.ts` and `paths.ts`, which import nothing from `electron`.
 
 ## Build and verification
 
-Root commands are documented in [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Unit-test path,
-configuration, protocol, and download logic without Electron where possible; setup, archive, and
-content-state logic is tested in `packages/installer`.
-
-Packaging and the full first-run flow need platform checks. Verify the setup window, cancellation,
-pipeline progress, generated-content boot, and native menu on the affected operating system. Final
-window and installer appearance need human review.
+Root commands are documented in [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Unit-test the
+routing and path rules without Electron. Packaging needs platform checks: verify that the window opens
+on the main menu, a map starts, a save survives a relaunch, and the packaged app carries
+`resources/content/ir.json` on the affected operating system.

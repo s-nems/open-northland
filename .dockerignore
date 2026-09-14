@@ -8,7 +8,6 @@ content
 **/node_modules
 packages/desktop/release
 **/dist
-**/dist-web
 **/dist-types
 **/*.tsbuildinfo
 **/.DS_Store

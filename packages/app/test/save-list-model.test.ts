@@ -4,7 +4,6 @@ import {
   displayNameOf,
   formatPlaytime,
   formatSavedAt,
-  hasSaveSuffix,
   MAX_SAVE_NAME_LENGTH,
   sanitizedSaveName,
 } from '../src/view/runtime/save-load/list-model.js';
@@ -65,12 +64,7 @@ function hasControl(value: string): boolean {
 }
 
 describe('save file suffixes', () => {
-  it('classifies and strips the three accepted suffixes only', () => {
-    expect(hasSaveSuffix('a.json.gz')).toBe(true);
-    expect(hasSaveSuffix('a.json')).toBe(true);
-    expect(hasSaveSuffix('a.gz')).toBe(true);
-    expect(hasSaveSuffix('a.txt')).toBe(false);
-    expect(hasSaveSuffix('.gz')).toBe(false);
+  it('strips the three accepted suffixes only', () => {
     expect(displayNameOf('przed atakiem.json.gz')).toBe('przed atakiem');
     expect(displayNameOf('foreign.json')).toBe('foreign');
     expect(displayNameOf('plain')).toBe('plain');

@@ -22,10 +22,7 @@ import {
 } from './stages/player-colors.js';
 import { indexSourceAssets } from './stages/source-files.js';
 
-/**
- * Runs the full conversion of the mod root into the IR under `args.out`, shared by the CLI and the
- * shells' first-run installers. `progress` is optional live-UI telemetry.
- */
+/** Runs the full conversion of the mod root into the IR under `args.out`; `progress` is optional telemetry. */
 export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgress): Promise<void> {
   const roots: SourceRoots = {
     mod: await resolveModRoot(fs, args.modRoot),

@@ -8,8 +8,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./memory": "./dist/memory.js",
-    "./node": "./dist/node.js",
-    "./opfs": "./dist/opfs.js"
+    "./node": "./dist/node.js"
   },
   "scripts": {
     "build": "tsc --build"

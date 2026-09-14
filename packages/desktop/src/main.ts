@@ -1,42 +1,19 @@
-import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { currentLocale, resolveLocale, setActiveLocale } from '@open-northland/installer/i18n';
+import { resolve } from 'node:path';
 import { app, type BrowserWindow } from 'electron';
-import { readConfig } from './config.js';
-import { wireIpc } from './ipc-handlers.js';
-import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot, savesDirOf } from './paths.js';
-import { PipelineHost } from './pipeline-host.js';
+import { CONTENT_DIR_ENV, resolveShellRoots } from './paths.js';
 import { handleAppProtocol, registerAppScheme } from './protocol.js';
-import { watchGameLocale } from './shell-locale.js';
-import { createShellState, type ShellPaths } from './shell-state.js';
-import { buildAppMenu, createWindow } from './window.js';
+import { createWindow } from './window.js';
 
-// scripts/bundle.mjs emits main.cjs, preload.cjs, and pipeline-child.cjs side by side into dist/,
-// with the setup page under dist/renderer/.
-const here = __dirname;
-const packageRoot = resolve(here, '..');
-const repoRoot = resolve(packageRoot, '../..');
-const appRoot = app.isPackaged ? join(process.resourcesPath, 'app') : resolve(repoRoot, 'packages/app/dist');
-const setupRoot = join(here, 'renderer');
-
-const dataRoot = resolveDataRoot({
-  envOverride: process.env[DATA_DIR_ENV],
-  execDir: dirname(process.execPath),
-  userDataDir: app.getPath('userData'),
-  devRepoRoot: app.isPackaged ? undefined : repoRoot,
-  directoryExists: existsSync,
+// scripts/bundle.mjs emits main.cjs into dist/.
+const packageRoot = resolve(__dirname, '..');
+const roots = resolveShellRoots({
+  packaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  repoRoot: resolve(packageRoot, '../..'),
+  contentDirOverride: process.env[CONTENT_DIR_ENV],
 });
-const paths: ShellPaths = {
-  dataRoot,
-  contentDir: contentDirOf(dataRoot.path),
-  configFile: configFileOf(dataRoot.path),
-  modsDir: modsDirOf(dataRoot.path),
-  savesDir: savesDirOf(dataRoot.path),
-};
-const state = createShellState(paths);
-const pipeline = new PipelineHost(join(here, 'pipeline-child.cjs'));
 
-// One shell per data root: a second instance would race a second conversion into the same content/.
+// One window per profile: a second instance would share the IndexedDB the saves live in.
 if (app.requestSingleInstanceLock()) {
   registerAppScheme();
 
@@ -47,22 +24,13 @@ if (app.requestSingleInstanceLock()) {
     mainWindow.focus();
   });
 
-  // Set before any window or menu so both the setup page and the native menu open localized.
-  // Not `app.getLocale()`: that one reads empty until `ready`.
-  setActiveLocale(readConfig(paths.configFile).locale ?? resolveLocale(app.getPreferredSystemLanguages()));
-
-  void app.whenReady().then(async () => {
-    handleAppProtocol({ appRoot, setupRoot, contentRoot: paths.contentDir });
-    mainWindow = createWindow(await state.contentStatus(), join(here, 'preload.cjs'), currentLocale());
-    buildAppMenu(mainWindow, dataRoot.path);
-    wireIpc({ win: mainWindow, paths, state, pipeline });
-    watchGameLocale(mainWindow, paths);
+  void app.whenReady().then(() => {
+    handleAppProtocol(roots);
+    mainWindow = createWindow();
   });
 } else {
   app.quit();
 }
 
 // Quits on macOS too: a single-window game shell has nothing to reopen from the Dock.
-app.on('window-all-closed', () => {
-  void pipeline.stop().then(() => app.quit());
-});
+app.on('window-all-closed', () => app.quit());

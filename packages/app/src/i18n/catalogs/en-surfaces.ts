@@ -262,8 +262,6 @@ export const enSurfaces = {
     export: 'Download save',
     exportFailed: 'Downloading the save failed.',
     fromFile: 'Load from file…',
-    showFolder: 'Show saves folder',
-    showFolderFailed: 'Could not open the saves folder.',
     back: 'Back',
   },
   performance: {

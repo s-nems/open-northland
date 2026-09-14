@@ -12,10 +12,12 @@ files:
   - dist/**
   - package.json
 extraResources:
-  # The built web app rides as a plain resource (resources/app) - it is served by the app://
-  # protocol, not loaded as Electron code.
+  # The built web app and the converted content ride as plain resources (resources/app,
+  # resources/content) - both are served by the app:// protocol, not loaded as Electron code.
   - from: ../app/dist
     to: app
+  - from: ../../content
+    to: content
 win:
   # x64 pinned: the default is the build host's arch, and an arm64 mac would silently ship
   # win-arm64 binaries almost no player can run.

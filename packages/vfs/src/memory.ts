@@ -18,8 +18,8 @@ export function memoryVfs(): Vfs {
     return key === '' || dirs.has(key);
   }
 
-  /** The nearest ancestor of `key` that is stored as a file, if any. Node and OPFS both refuse to
-   *  put anything beneath a file; the test adapter has to refuse it too or it hides the failure. */
+  /** The nearest ancestor of `key` that is stored as a file, if any. Node refuses to put anything
+   *  beneath a file; the test adapter has to refuse it too or it hides the failure. */
   function fileAncestorOf(key: string): string | undefined {
     for (let cut = key.indexOf('/'); cut >= 0; cut = key.indexOf('/', cut + 1)) {
       const ancestor = key.slice(0, cut);

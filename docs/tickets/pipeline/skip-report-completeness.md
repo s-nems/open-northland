@@ -7,8 +7,8 @@ over a possibly-partial install. The run's own output does not record that it ha
 
 `runPipeline` returns `void` and `manifest.ts` stamps `{ irVersion, contentRevision }`
 unconditionally, so a conversion that skipped fonts, cursors, and maps writes a manifest
-byte-identical to a clean run. Neither the desktop first-run installer nor a later content load can
-tell the two apart. The manifest doc calls it the completion marker; it marks termination.
+byte-identical to a clean run. Nothing that later loads the content can tell the two apart. The
+manifest doc calls it the completion marker; it marks termination.
 
 The same missing seam makes the stage tests brittle: seventeen sites across ten test files spy on
 `console.warn` and assert on English prose, so rewording a warning breaks tests that are not about
@@ -26,7 +26,7 @@ the returned report.
 
 `packages/app/src/diag/log.ts` is the app-side precedent, but a tool must not depend on
 `packages/app`: take the pattern, not the module. Changing the manifest shape is an output-contract
-change, so check the desktop installer and the content routes in the same pass.
+change, so check the content routes in the same pass.
 
 ## Verify
 
