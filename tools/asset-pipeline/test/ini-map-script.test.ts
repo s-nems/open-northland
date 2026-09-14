@@ -23,6 +23,15 @@ nametribeshort 0 60
 playerneverdies 2
 relationnotchangeable 0 2
 
+[specialItems]
+
+add 0 #SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE
+add 0 #SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE
+add 1 #SPECIAL_ITEM_TYPE_LETTER_TO_SET_GIVEN_HOUSE #HOUSE_TYPE_FIGHT_TOWER_01
+add 2 #SPECIAL_ITEM_TYPE_NONE
+add X #SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE
+remove 0 #SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE
+
 [MissionData]
 debuginfo "StartText"
 description 300
@@ -56,13 +65,22 @@ esult "AddTributeGoods" 15 "coin" 40
       { from: 0, to: 2, state: 'enemy' },
       { from: 1, to: 2, state: 'neutral' },
     ]);
-    // playermisc + unrecognized playerdata lines land lossless in misc, file order preserved.
+    // Starting papers: the kind and house codes as logicdefines.inc resolves them, no house as 0.
+    expect(script?.specialItems).toEqual([
+      { player: 0, kind: 2, param: 0 },
+      { player: 0, kind: 2, param: 0 },
+      { player: 1, kind: 3, param: 41 },
+    ]);
+    // playermisc + unrecognized playerdata/specialItems lines land lossless in misc, file order preserved.
     expect(script?.misc).toEqual([
       { key: 'noseenfirstmessage', values: ['0', '5'] },
       { key: 'nametribe', values: ['0', '50'] },
       { key: 'nametribeshort', values: ['0', '60'] },
       { key: 'playerneverdies', values: ['2'] },
       { key: 'relationnotchangeable', values: ['0', '2'] },
+      { key: 'add', values: ['2', '#SPECIAL_ITEM_TYPE_NONE'] },
+      { key: 'add', values: ['X', '#SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE'] },
+      { key: 'remove', values: ['0', '#SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE'] },
     ]);
     expect(script?.missions).toHaveLength(2);
     expect(script?.missions[0]).toMatchObject({
@@ -92,6 +110,8 @@ esult "AddTributeGoods" 15 "coin" 40
       { level: 2, text: 'player 0 1 1 0' },
       { level: 2, text: 'player 1 2 1 7' },
       { level: 2, text: 'diplomacy 0 1 3' },
+      { level: 1, text: 'specialitems' },
+      { level: 2, text: 'add 1 3 1' },
     ];
     const script = extractMapScript(cifLinesToSections(lines), { file: 'x/map.cif' });
     expect(script?.players).toEqual([
@@ -99,6 +119,7 @@ esult "AddTributeGoods" 15 "coin" 40
       { player: 1, type: 'ai', tribeId: 1, colorId: 7 },
     ]);
     expect(script?.diplomacy).toEqual([{ from: 0, to: 1, state: 'enemy' }]);
+    expect(script?.specialItems).toEqual([{ player: 1, kind: 3, param: 1 }]);
   });
 
   it('drops a malformed roster row to misc and keeps the first duplicate slot', () => {

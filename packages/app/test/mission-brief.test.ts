@@ -14,7 +14,7 @@ import {
 const line = (...values: string[]): { key: string; values: string[] } => ({ key: 'x', values });
 
 function script(over: Partial<MapScript> = {}): MapScript {
-  return { players: [], diplomacy: [], misc: [], missions: [], ...over };
+  return { players: [], diplomacy: [], specialItems: [], misc: [], missions: [], ...over };
 }
 
 const OPENING = {

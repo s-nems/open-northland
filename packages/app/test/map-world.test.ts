@@ -144,4 +144,23 @@ describe('buildMapWorld', () => {
     });
     expect(sim.diplomacyStance(0, 1)).toBe('enemy');
   });
+
+  it("hands each player the script's starting papers, in authored order, before the placement tick", () => {
+    const { sim } = buildMapWorld({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      specialItems: [
+        { player: 0, kind: 2, param: 0 },
+        { player: 1, kind: 3, param: 41 },
+        { player: 0, kind: 3, param: 1 },
+      ],
+    });
+    expect(sim.papers(0)).toEqual([
+      { kind: 'placeAny', param: 0 },
+      { kind: 'placeHouse', param: 1 },
+    ]);
+    expect(sim.papers(1)).toEqual([{ kind: 'placeHouse', param: 41 }]);
+    expect(sim.papers(2)).toEqual([]);
+  });
 });

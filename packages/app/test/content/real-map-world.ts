@@ -83,6 +83,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // dresses itself like the browser's.
     assistantSeats: [...humanSeats, ...options.aiSeats],
     diplomacy: sessionDiplomacy({ seats: options.seats ?? [] }, script?.diplomacy ?? []),
+    specialItems: script?.specialItems ?? [],
     // The entry declares the match from the same three inputs. Left out, the headless world would run
     // without the match rules the browser plays under.
     matchParticipants: matchParticipants({

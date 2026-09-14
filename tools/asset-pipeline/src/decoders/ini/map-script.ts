@@ -1,10 +1,17 @@
 /**
- * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`MissionData` sections into a validated
- * {@link MapScript}. Token resolution accepts both source skins: the plaintext `player.inc`/`mission.inc`
- * macros (`#PLAYER_TYPE_HUMAN`) and the packed `map.cif` carrying those macros already resolved to numbers.
+ * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`specialItems`/`MissionData` sections
+ * into a validated {@link MapScript}. Token resolution accepts both source skins: the plaintext
+ * `player.inc`/`mission.inc` macros (`#PLAYER_TYPE_HUMAN`) and the packed `map.cif` carrying those macros
+ * already resolved to numbers.
  */
-import { MAP_PLAYER_COLOR_COUNT, MapScript, type MapScriptLine } from '@open-northland/data';
+import {
+  MAP_PLAYER_COLOR_COUNT,
+  MAP_SPECIAL_ITEM_KIND_COUNT,
+  MapScript,
+  type MapScriptLine,
+} from '@open-northland/data';
 import type { RuleProp, RuleSection } from './grammar.js';
+import { HOUSE_TYPE_CODES } from './house-type-codes.js';
 import { makeSource, type SourceRef } from './ir-fields.js';
 import { codeOf } from './props.js';
 
@@ -37,6 +44,17 @@ const MACRO_CODES: Readonly<Record<string, number>> = {
   DIPLOMACY_STATE_FRIEND: 1,
   DIPLOMACY_STATE_NEUTRAL: 2,
   DIPLOMACY_STATE_ENEMY: 3,
+  // The shipped file names six kinds where the engine's string table has seven (its 4 is "place the
+  // house and fill its store"); the engine resolves a plaintext macro through this same file, so the
+  // codes stay as written.
+  SPECIAL_ITEM_TYPE_NONE: 0,
+  SPECIAL_ITEM_TYPE_LETTER_OF_INDULGENCE: 1,
+  SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE: 2,
+  SPECIAL_ITEM_TYPE_LETTER_TO_SET_GIVEN_HOUSE: 3,
+  SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_A_HOUSE: 4,
+  SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_A_JOB: 5,
+  SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_GOOD: 6,
+  ...HOUSE_TYPE_CODES,
 };
 
 const PLAYER_TYPE_NONE = 0;
@@ -78,6 +96,17 @@ function playerRow(p: RuleProp): MapScript['players'][number] | undefined {
   if (colorId === undefined || colorId < 0 || colorId >= MAP_PLAYER_COLOR_COUNT) return undefined;
   if (type !== PLAYER_TYPE_HUMAN && type !== PLAYER_TYPE_AI) return undefined;
   return { player, type: type === PLAYER_TYPE_HUMAN ? 'human' : 'ai', tribeId, colorId };
+}
+
+/** `add <player> <kind> [<houseType>]` to a starting paper, or undefined when malformed. */
+function specialItemRow(p: RuleProp): MapScript['specialItems'][number] | undefined {
+  const [playerRaw, kindRaw, paramRaw] = p.values;
+  const player = int(playerRaw);
+  const kind = code(kindRaw);
+  const param = paramRaw === undefined ? 0 : code(paramRaw);
+  if (player === undefined || player < 0 || param === undefined || param < 0) return undefined;
+  if (kind === undefined || kind < 1 || kind > MAP_SPECIAL_ITEM_KIND_COUNT) return undefined;
+  return { player, kind, param };
 }
 
 /** `diplomacy <from> <to> <state>` to a matrix row, or undefined when malformed. */
@@ -166,9 +195,9 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
 
 /**
  * Reduces a map's decoded sections into its validated {@link MapScript}, keeping every `playermisc`
- * line and unrecognized `playerdata` line lossless in `misc` and one mission per repeated `MissionData`
- * section in authored order. Section names match case-insensitively (the corpus carries both `[AIData]`
- * and `[aidata]`), and a duplicate `player` slot keeps its first row. Returns undefined when no section
+ * line and unrecognized `playerdata` or `specialItems` line lossless in `misc` and one mission per
+ * repeated `MissionData` section in authored order. Section names match case-insensitively (the corpus
+ * carries both `[AIData]` and `[aidata]`), and a duplicate `player` slot keeps its first row. Returns undefined when no section
  * yields anything, and the caller then emits no script sidecar. `aidata`, the AI task and condition
  * program, is out of scope here.
  */
@@ -176,6 +205,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const players: NonNullable<MapScript['players']> = [];
   const seenSlots = new Set<number>();
   const diplomacy: NonNullable<MapScript['diplomacy']> = [];
+  const specialItems: NonNullable<MapScript['specialItems']> = [];
   const misc: NonNullable<MapScript['misc']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
   let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
@@ -201,6 +231,12 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       }
     } else if (name === 'playermisc') {
       for (const p of sec.props) misc.push(asLine(p));
+    } else if (name === 'specialitems') {
+      for (const p of sec.props) {
+        const row = p.key === 'add' ? specialItemRow(p) : undefined;
+        if (row === undefined) misc.push(asLine(p));
+        else specialItems.push(row);
+      }
     } else if (name === 'multiplayer') {
       multiplayer ??= { slotOptions: [], hiddenSlots: [], other: [] };
       multiplayerSection(sec, multiplayer);
@@ -208,23 +244,21 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       missions.push(mission(sec));
     }
   }
-  if (players.length + diplomacy.length + misc.length + missions.length === 0 && multiplayer === undefined) {
+  const playerLines = players.length + diplomacy.length + specialItems.length + misc.length;
+  if (playerLines + missions.length === 0 && multiplayer === undefined) {
     return undefined;
   }
   return MapScript.parse({
     players,
     diplomacy,
     multiplayer,
+    specialItems,
     misc,
     missions,
     // Provenance names the section the payload actually came from, not a fixed `playerdata`.
     source: makeSource(
       src,
-      players.length + diplomacy.length + misc.length > 0
-        ? 'playerdata'
-        : missions.length > 0
-          ? 'MissionData'
-          : 'multiplayer',
+      playerLines > 0 ? 'playerdata' : missions.length > 0 ? 'MissionData' : 'multiplayer',
     ),
   });
 }

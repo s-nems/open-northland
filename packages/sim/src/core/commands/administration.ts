@@ -74,7 +74,8 @@ export type DebugCommand =
    *  next tick with the normal `settlerDied` event. A building under construction carries a `Health` pool
    *  but is not killable here; `demolish` owns its worker-unbind seam. */
   | { readonly kind: 'debugKill'; readonly target: Entity }
-  /** Hand `player` one `paper` outright, as a chest would; dropped when the player's slots are full. */
+  /** Hand `player` one `paper` outright, as a chest would; dropped for a slot outside `[0, MAX_PLAYERS)`
+   *  or when the player's slots are full. */
   | { readonly kind: 'grantPaper'; readonly player: number; readonly paper: Paper }
   /** Set `target`'s needs to whole-percent levels (`0` fully sated, `100` maxed, where the NeedsSystem's
    *  starvation and rest drives kick in); an omitted need is left untouched. */

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addPaper,
   Building,
+  MAX_PLAYERS,
   PAPER_SLOTS,
   type Paper,
   Papers,
@@ -78,11 +79,14 @@ describe('the papers list', () => {
     expect(sim.papers(1)).toEqual([anyHouse]);
   });
 
-  it('the grantPaper setup command hands a paper out', () => {
+  it('the grantPaper setup command hands a paper out; a slot past MAX_PLAYERS holds nothing', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    sim.enqueueSetup({ kind: 'grantPaper', player: MAX_PLAYERS, paper: sawmillPaper });
     sim.step();
     expect(sim.papers(P0)).toEqual([sawmillPaper]);
+    expect(sim.papers(MAX_PLAYERS)).toEqual([]);
+    expect([...sim.world.query(Papers)]).toHaveLength(1);
   });
 });
 

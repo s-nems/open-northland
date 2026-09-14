@@ -1,4 +1,10 @@
-import type { ContentSet, MapDiplomacy, MapScript, TerrainMapFile } from '@open-northland/data';
+import type {
+  ContentSet,
+  MapDiplomacy,
+  MapScript,
+  MapSpecialItem,
+  TerrainMapFile,
+} from '@open-northland/data';
 import type { SessionRules } from '@open-northland/lockstep';
 import {
   type Entity,
@@ -20,6 +26,7 @@ import {
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
 import { applySessionRuleOverrides } from '../../game/session-rules.js';
+import { grantStartingPapers } from '../../game/starting-papers.js';
 import {
   authoredCatalogExtras,
   demoWorldBase,
@@ -53,6 +60,8 @@ export interface MapWorldOptions extends SessionRules {
   readonly matchParticipants?: readonly number[];
   /** The map script's authored `diplomacy` rows; omitted or empty keeps every player pair hostile. */
   readonly diplomacy?: readonly MapDiplomacy[];
+  /** The map script's authored `specialItems` rows, the papers each player starts with. */
+  readonly specialItems?: readonly MapSpecialItem[];
   /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
   readonly demoOwner?: number;
   /** True as the entry runs it. The headless harness turns bushes off for scenarios that ignore food. */
@@ -122,6 +131,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
+  grantStartingPapers(sim, options.specialItems ?? []);
   if (options.matchParticipants !== undefined && options.matchParticipants.length > 0) {
     sim.enqueueSetup({ kind: 'setMatchParticipants', players: options.matchParticipants });
   }

@@ -1,4 +1,5 @@
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
+import { isValidPlayer } from './ownership.js';
 
 /**
  * The seven special-item kinds a player's papers list can hold (the original's `TSpecialItemTypes`,
@@ -66,8 +67,10 @@ function samePaper(a: Paper, b: Paper): boolean {
   return a.kind === b.kind && a.param === b.param;
 }
 
-/** Add `paper` to `player`'s first free slot. False when all {@link PAPER_SLOTS} are taken. */
+/** Add `paper` to `player`'s first free slot. False for a slot outside `[0, MAX_PLAYERS)` or when all
+ *  {@link PAPER_SLOTS} are taken. */
 export function addPaper(world: World, player: number, paper: Paper): boolean {
+  if (!isValidPlayer(player)) return false;
   const carrier = papersEntity(world, player);
   if (carrier === null) {
     const e = world.create();

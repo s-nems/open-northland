@@ -91,6 +91,21 @@ export const MapMission = z.strictObject({
 });
 export type MapMission = z.infer<typeof MapMission>;
 
+/** How many special-item kinds the engine names (`SPECIAL_ITEM_TYPE_MAXIMUM`): kinds are `1..7`. */
+export const MAP_SPECIAL_ITEM_KIND_COUNT = 7;
+
+/**
+ * One `[specialItems]` `add <player> <kind> [<houseType>]` row: a paper the player starts the map with.
+ * `kind` is the `SPECIAL_ITEM_TYPE_*` code as the shipped `logicdefines.inc` resolves it (1 indulgence,
+ * 2 place any house, 3 place the named house); `param` is the `HOUSE_TYPE_*` code a kind names, 0 otherwise.
+ */
+export const MapSpecialItem = z.strictObject({
+  player: z.number().int().nonnegative(),
+  kind: z.number().int().min(1).max(MAP_SPECIAL_ITEM_KIND_COUNT),
+  param: z.number().int().nonnegative().default(0),
+});
+export type MapSpecialItem = z.infer<typeof MapSpecialItem>;
+
 /** The whole decoded script: `misc` keeps `playermisc` and unrecognised `playerdata` lines lossless,
  *  and `missions` stays in authored order. */
 export const MapScript = z.strictObject({
@@ -98,6 +113,8 @@ export const MapScript = z.strictObject({
   diplomacy: z.array(MapDiplomacy).default([]),
   /** The `[multiplayer]` lobby table, when the map ships one. */
   multiplayer: MapMultiplayer.optional(),
+  /** The `[specialItems]` starting papers, in authored order. */
+  specialItems: z.array(MapSpecialItem).default([]),
   misc: z.array(MapScriptLine).default([]),
   missions: z.array(MapMission).default([]),
   source: Provenance.optional(),

@@ -5,7 +5,7 @@ import { matchParticipants, neverDiesSeats } from '../src/game/match-participant
 const line = (...values: string[]): { key: string; values: string[] } => ({ key: 'x', values });
 
 function script(over: Partial<MapScript> = {}): MapScript {
-  return { players: [], diplomacy: [], misc: [], missions: [], ...over };
+  return { players: [], diplomacy: [], specialItems: [], misc: [], missions: [], ...over };
 }
 
 describe('neverDiesSeats and matchParticipants', () => {

@@ -210,6 +210,7 @@ export async function assembleMapWorld(
         assistantSeats: roles.assistantSeats,
         matchParticipants: roles.matchParticipants,
         diplomacy: sessionDiplomacy(session, script?.diplomacy ?? []),
+        specialItems: script?.specialItems ?? [],
         ...session.rules,
       });
       sim = world.sim;
