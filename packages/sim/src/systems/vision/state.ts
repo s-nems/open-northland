@@ -202,6 +202,7 @@ export class FogState {
       return;
     }
     const mask = this.maskFor(player);
+    const fold = this.foldFor(player);
     let changed = false;
     const rLo = Math.max(0, (point.hy - range) >> 1);
     const rHi = Math.min(this.cellsHigh - 1, (point.hy + range) >> 1);
@@ -212,6 +213,7 @@ export class FogState {
         const i = r * this.cellsWide + c;
         if (mask[i] !== FOG_STATE.UNEXPLORED || !cellWithinRange(point, range, c, r)) continue;
         mask[i] = FOG_STATE.EXPLORED;
+        if (fold !== null) foldCellChange(fold, i, FOG_STATE.UNEXPLORED, FOG_STATE.EXPLORED);
         changed = true;
       }
     }
@@ -221,10 +223,12 @@ export class FogState {
   /** Mark the whole grid at least EXPLORED for `player` (a script's whole-map `ExploreArea`). */
   exploreAll(player: number): void {
     const mask = this.maskFor(player);
+    const fold = this.foldFor(player);
     let changed = false;
     for (let i = 0; i < mask.length; i++) {
       if (mask[i] !== FOG_STATE.UNEXPLORED) continue;
       mask[i] = FOG_STATE.EXPLORED;
+      if (fold !== null) foldCellChange(fold, i, FOG_STATE.UNEXPLORED, FOG_STATE.EXPLORED);
       changed = true;
     }
     if (changed) this.generation++;

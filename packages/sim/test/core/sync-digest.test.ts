@@ -69,6 +69,16 @@ function watchedWorld(): Simulation {
   return sim;
 }
 
+/** The lattice node of a cell the settler has not seen, so an exploration there writes a mask byte. */
+function unseenNode(sim: Simulation): { hx: number; hy: number } {
+  const fog = sim.fog;
+  const mask = fog?.tryMaskFor(P0);
+  if (fog === undefined || mask === undefined) throw new Error('the settler stamped no mask');
+  const unseen = mask.indexOf(FOG_STATE.UNEXPLORED);
+  expect(unseen).toBeGreaterThanOrEqual(0);
+  return { hx: (unseen % fog.cellsWide) * 2, hy: Math.floor(unseen / fog.cellsWide) * 2 };
+}
+
 describe('sync digest', () => {
   it('is null while the digest is off, and off changes nothing the hash can see', () => {
     const off = mapless();
@@ -180,5 +190,24 @@ describe('sync digest', () => {
     b.step();
 
     expect(differingDomains(digestOf(a), digestOf(b))).toEqual(['fog']);
+  });
+
+  it.each([
+    ['an area', (sim: Simulation) => sim.fog?.exploreArea(P0, unseenNode(sim), 1)],
+    ['the whole grid', (sim: Simulation) => sim.fog?.exploreAll(P0)],
+  ])('folds a scripted exploration of %s as the mask bytes it wrote', (_, explore) => {
+    const incremental = watchedWorld();
+    const rebuilt = watchedWorld();
+    explore(incremental);
+    explore(rebuilt);
+    expect(incremental.hashState()).toBe(rebuilt.hashState());
+    // A fold rebuilt from the mask bytes is what a client restored from a snapshot carries; the
+    // incrementally maintained one has to agree with it or the two ack different digests.
+    rebuilt.fog?.stopFolding();
+    rebuilt.fog?.startFolding();
+    incremental.step();
+    rebuilt.step();
+
+    expect(digestOf(incremental).domains.fog).toBe(digestOf(rebuilt).domains.fog);
   });
 });
