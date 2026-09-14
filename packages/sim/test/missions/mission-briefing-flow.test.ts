@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BRIEFING_HISTORY_LIMIT,
-  FOG_MODE,
-  retainMissionBriefing,
-  setMissionBriefingPage,
-} from '../../src/components/index.js';
+import { BRIEFING_HISTORY_LIMIT, deliverMissionBriefing, FOG_MODE } from '../../src/components/index.js';
 import { playerCommand } from '../../src/index.js';
 import { type MissionDefinition, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { FIRST_PASS, missionSim, POINT, roundTrip, spawn, stamped } from './support.js';
@@ -26,21 +21,22 @@ function mission(definition: Partial<MissionDefinition>): MissionDefinition {
 }
 
 describe('briefing delivery and persistence', () => {
-  it('recovers the replayable page from saves without a delivered-page history', () => {
+  it('keeps the replayable page and the delivered history across save and load', () => {
     const sim = missionSim([]);
-    setMissionBriefingPage(sim.world, PAGE);
+    deliverMissionBriefing(sim.world, PAGE, true);
     const saved = roundTrip(sim);
-    const hash = saved.hashState();
+    expect(saved.missionBriefingPage()).toBe(PAGE);
     expect(saved.missionBriefingHistory()).toEqual([PAGE]);
-    expect(saved.hashState()).toBe(hash);
-    retainMissionBriefing(saved.world, PAGE + 1);
-    expect(roundTrip(saved).missionBriefingHistory()).toEqual([PAGE, PAGE + 1]);
+    deliverMissionBriefing(saved.world, PAGE + 1, false);
+    const again = roundTrip(saved);
+    expect(again.missionBriefingPage()).toBe(PAGE);
+    expect(again.missionBriefingHistory()).toEqual([PAGE, PAGE + 1]);
   });
 
   it('retains a bounded distinct history without changing first-delivery order', () => {
     const sim = missionSim([]);
-    for (let page = 0; page <= BRIEFING_HISTORY_LIMIT; page++) retainMissionBriefing(sim.world, page);
-    retainMissionBriefing(sim.world, BRIEFING_HISTORY_LIMIT);
+    for (let page = 0; page <= BRIEFING_HISTORY_LIMIT; page++) deliverMissionBriefing(sim.world, page, false);
+    deliverMissionBriefing(sim.world, BRIEFING_HISTORY_LIMIT, false);
     expect(sim.missionBriefingHistory()).toEqual(
       Array.from({ length: BRIEFING_HISTORY_LIMIT }, (_, i) => i + 1),
     );

@@ -67,7 +67,7 @@ export const TribeType = z.strictObject({
   jobEnables: z.array(JobEnables).default([]),
   /** `{need,train}for{job,good}` XP/schooling requirements in file order. */
   jobRequirements: z.array(JobRequirement).default([]),
-  /** Initial allow tables; absent in older content and synthetic catalogs means unrestricted. */
+  /** Initial allow tables; a synthetic catalog without them is unrestricted. */
   permissions: z
     .strictObject({
       job: z.array(TypeId),
@@ -75,7 +75,7 @@ export const TribeType = z.strictObject({
       good: z.array(TypeId),
     })
     .optional(),
-  /** Explicit discovery requirements; absent in older catalogs. */
+  /** Explicit discovery requirements; a catalog without them discovers along its profession edges. */
   technology: z
     .strictObject({
       houses: z.array(

@@ -1,4 +1,4 @@
-import { nameHuman, retainMissionBriefing, setMissionBriefingPage } from '../../../components/index.js';
+import { deliverMissionBriefing, nameHuman } from '../../../components/index.js';
 import { retainMissionPresentation } from '../../../components/mission-presentation.js';
 import type { SimEvent } from '../../../core/events.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -19,8 +19,7 @@ export function playScriptedCutscene(
   mission: number,
   op: Extract<MissionResultOp, { opcode: 'PlayCutscene' }>,
 ): void {
-  retainMissionBriefing(pass.world, op.cutscene);
-  if (op.replay) setMissionBriefingPage(pass.world, op.cutscene);
+  deliverMissionBriefing(pass.world, op.cutscene, op.replay);
   pass.ctx.events.emit({ kind: 'missionCutscene', mission, page: op.cutscene, replay: op.replay });
   pass.halted = true;
 }

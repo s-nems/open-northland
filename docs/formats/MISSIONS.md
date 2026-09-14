@@ -155,8 +155,8 @@ All of this section is a reading unless marked otherwise.
   `CheckMission` cycle has an unknown answer, distinct from false. A mission fires only when its
   `successfullif` is true for every possible answer to unknown goals. Thus one known true goal can
   satisfy `any`, but `none` cannot turn an unimplemented goal into success. Unknown goal indices are
-  saved beside the last goal flags and retained by `IsMissionDone`; older records without this
-  optional field retain their stored boolean answers.
+  saved beside the last goal flags and retained by `IsMissionDone`; the field is omitted while every
+  answer is known.
 - `RemoveHumans` and `RemoveAnimals` raise a "silent removal" flag around the removal so the deaths do
   not count in the player statistics; `RemoveHumans` also skips the cadaver.
 - Results that only affect presentation reach the display through callbacks: open briefing, play a
@@ -445,7 +445,7 @@ Readings unless marked otherwise.
   (`forbid*` / `allow*`) are saved in `MapPermissions`. Owned `tutorial_008/player.inc` forbids good 14
   for player 0, tribe 1; `StraznicyPolnocy/player.inc` forbids good 63. `Allow*` removes the restriction
   without granting progress. `Enable*` grants availability, including permission (approximation for
-  conflicting ban/grant combinations). Missing permission tables in older or synthetic content remain
+  conflicting ban/grant combinations). A synthetic catalog without permission tables remains
   unrestricted. Unknown permission macros remain in the sidecar's `misc` instead of inventing an id.
   Building placement, upgrades, the profession picker and production use shared sim gates; disabled
   UI choices explain the restriction or prerequisite. The progression toggle lifts profession
@@ -453,7 +453,8 @@ Readings unless marked otherwise.
   Authored building attachments preserve their existing trade even if the building is not yet unlocked.
   Extracted catalogs now retain player discoveries and require all listed profession and product
   discoveries for new buildings. Individual XP or a completed school course gates a worker's new
-  profession and products. Older catalogs retain their live-profession approximation. See
+  profession and products. A catalog without the technology table keeps the live-profession
+  approximation. See
   [PROGRESSION.md](PROGRESSION.md) for rules, save conversion and remaining fidelity limits.
 - **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15. This build answers
   from its per-cell fog masks: explored everywhere with fog off, known terrain counting in RECON, and a
@@ -541,8 +542,7 @@ point overlay and weather squares remain approximations of the original's entiti
 Mission records also retain the first and last execution ticks and an execution count. Goal-only
 `CheckMission` probes do not increment them, and later failed checks do not erase them. The optional
 `?debug=missions` inspector lists the latest 100 executed missions; this records execution attempts,
-not proof that every result succeeded. Old saves without these fields start collecting history from
-their next execution.
+not proof that every result succeeded. A record without these fields has not executed yet.
 
 Fresh maps with scripts run them automatically and default to reveal fog and declare every authored player seat
 except `playerneverdies` exemptions. An explicit fog override wins. A separate lazy `ScriptMatchRules`
@@ -553,7 +553,7 @@ Campaign completion remains unaccepted; enabling scripts does not imply full opc
 
 Scripted briefing history retains up to fifty distinct emitted pages in first-shown order, including
 pages without the replay flag. It survives save/load and populates the window navigation; this records
-delivery, not whether the player read the text. Old saves recover their replayable page when present.
+delivery, not whether the player read the text.
 
 ## Human names
 

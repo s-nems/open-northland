@@ -88,7 +88,7 @@ export function missionBriefingPage(world: World): number | null {
   return missionBriefing.read(world).page;
 }
 
-export function setMissionBriefingPage(world: World, page: number): void {
+function setMissionBriefingPage(world: World, page: number): void {
   missionBriefing.write(world, (state) => {
     state.page = page;
   });
@@ -106,15 +106,16 @@ const briefingHistory = defineWorldSingleton<{ pages: number[] }>(
 );
 
 export function missionBriefingHistory(world: World): number[] {
-  const pages = briefingHistory.read(world).pages;
-  const replay = missionBriefingPage(world);
-  return pages.length === 0 && replay !== null ? [replay] : [...pages];
+  return [...briefingHistory.read(world).pages];
 }
 
-export function retainMissionBriefing(world: World, page: number): void {
-  const pages = missionBriefingHistory(world);
-  if (pages.includes(page)) return;
-  briefingHistory.write(world, (state) => {
-    state.pages = [...pages, page].slice(-BRIEFING_HISTORY_LIMIT);
-  });
+/** Shows a briefing page: it joins the history, and with `replay` set it becomes the window's page. */
+export function deliverMissionBriefing(world: World, page: number, replay: boolean): void {
+  const pages = briefingHistory.read(world).pages;
+  if (!pages.includes(page)) {
+    briefingHistory.write(world, (state) => {
+      state.pages = [...pages, page].slice(-BRIEFING_HISTORY_LIMIT);
+    });
+  }
+  if (replay) setMissionBriefingPage(world, page);
 }

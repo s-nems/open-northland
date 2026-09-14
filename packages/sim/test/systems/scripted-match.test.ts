@@ -44,12 +44,12 @@ function restore(sim: Simulation): Simulation {
 }
 
 describe('scripted match participants', () => {
-  it('keeps script victory policy out of the legacy match payload and absent unless selected', () => {
-    const legacy = fresh([0, 1]);
-    const carrier = legacy.world.lowestEntityWith(MatchRules);
+  it('keeps script victory policy out of the elimination match payload and absent unless selected', () => {
+    const elimination = fresh([0, 1]);
+    const carrier = elimination.world.lowestEntityWith(MatchRules);
     if (carrier === null) throw new Error('declared match');
-    expect(legacy.world.get(carrier, MatchRules)).toEqual({ participants: 3, dead: 0, won: 0 });
-    expect(legacy.world.lowestEntityWith(ScriptMatchRules)).toBeNull();
+    expect(elimination.world.get(carrier, MatchRules)).toEqual({ participants: 3, dead: 0, won: 0 });
+    expect(elimination.world.lowestEntityWith(ScriptMatchRules)).toBeNull();
     const scripted = fresh([0, 1], 'script');
     const scriptCarrier = scripted.world.lowestEntityWith(MatchRules);
     if (scriptCarrier === null) throw new Error('declared match');
@@ -60,7 +60,7 @@ describe('scripted match participants', () => {
     expect(restore(scripted).matchRules().victory).toBe('elimination');
   });
 
-  it('checks one scripted seat for death without changing the legacy single-seat rule', () => {
+  it('checks one scripted seat for death without changing the elimination single-seat rule', () => {
     const script = fresh([0], 'script');
     check(script, CHECK_TICK - 1);
     expect(isPlayerDead(script.world, 0)).toBe(false);
@@ -69,9 +69,9 @@ describe('scripted match participants', () => {
     expect(script.events.current().filter((event) => event.kind === 'playerDefeated')).toEqual([
       { kind: 'playerDefeated', player: 0 },
     ]);
-    const legacy = fresh([0]);
-    check(legacy);
-    expect(isPlayerDead(legacy.world, 0)).toBe(false);
+    const single = fresh([0]);
+    check(single);
+    expect(isPlayerDead(single.world, 0)).toBe(false);
   });
 
   it('leaves the surviving seat undecided until the script awards victory', () => {
@@ -90,7 +90,7 @@ describe('scripted match participants', () => {
     expect(sim.matchOutcome(0)).toBe('defeat');
   });
 
-  it('persists script mode and exposes detached setup while older saves retain elimination mode', () => {
+  it('persists script mode and exposes detached setup while an unscripted world keeps elimination', () => {
     const sim = fresh([2, 0, 2], 'script');
     const view = sim.matchRules();
     expect(view).toEqual({ participants: [0, 2], victory: 'script' });

@@ -43,7 +43,7 @@ describe('buildMapWorld', () => {
     expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
   });
 
-  it('keeps disabled scripts from changing fog and legacy match defaults', () => {
+  it('keeps disabled scripts from changing fog and the elimination match defaults', () => {
     const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
