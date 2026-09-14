@@ -26,7 +26,14 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
     it('idle builders leave their chatter for a new site within a planner pass', {
       timeout: 120_000,
     }, async () => {
-      const { sim, ir } = await realMapWorld({ mapId: MAP_ID, aiSeats: [], humanSeats: [HUMAN_SEAT] });
+      // Progression off: the seat's first house waits on a discovered good otherwise, and the crew's
+      // latency is what this measures.
+      const { sim, ir } = await realMapWorld({
+        mapId: MAP_ID,
+        aiSeats: [],
+        humanSeats: [HUMAN_SEAT],
+        rules: { fog: null, progression: false, needs: null },
+      });
       const house = typeIdOf(ir.buildings, 'home_level_00');
       const hqType = typeIdOf(ir.buildings, 'headquarters');
       const builderJob = typeIdOf(ir.jobs, 'builder');
