@@ -53,9 +53,10 @@ export const TerrainObjects = z.strictObject({
    * Per-placement object level from the `lmlv` lane, one entry per placement triple: 1-based and
    * counting up from the lowest state, while a type's `LandscapeGfx` `frames` lists are authored
    * highest-first, so consumers map `index = N − level` for a list count of N. Walls carry the
-   * sentinel `100`; that and any other out-of-range value render the first (full) list. Absent when
-   * the map was decoded without the lane, which renders the full state. Direction pinned by
-   * observation against the screenshot corpus.
+   * sentinel `100`; that and any other out-of-range value render the first (full) list. A chest
+   * placement's entry is its chest-contents type instead (`Tool_MapChest_UseChest` rows 1..96, byte
+   * evidence), not a frame. Absent when the map was decoded without the lane, which renders the full
+   * state. Direction pinned by observation against the screenshot corpus.
    */
   levels: z.array(z.number().int().nonnegative()).optional(),
 });

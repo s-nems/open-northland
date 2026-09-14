@@ -197,9 +197,9 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
  * Reduces a map's decoded sections into its validated {@link MapScript}, keeping every `playermisc`
  * line and unrecognized `playerdata` or `specialItems` line lossless in `misc` and one mission per
  * repeated `MissionData` section in authored order. Section names match case-insensitively (the corpus
- * carries both `[AIData]` and `[aidata]`), and a duplicate `player` slot keeps its first row. Returns undefined when no section
- * yields anything, and the caller then emits no script sidecar. `aidata`, the AI task and condition
- * program, is out of scope here.
+ * carries both `[AIData]` and `[aidata]`), and a duplicate `player` slot keeps its first row. Returns
+ * undefined when no section yields anything, and the caller then emits no script sidecar. `aidata`, the
+ * AI task and condition program, is out of scope here.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {
   const players: NonNullable<MapScript['players']> = [];

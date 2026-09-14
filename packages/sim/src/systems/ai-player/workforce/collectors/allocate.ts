@@ -4,6 +4,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
+import { goodTypeByContentId } from '../../content-lookup.js';
 import { nearestLiveResource } from '../../live-resources.js';
 import { anchorNodeOf } from '../../node-geometry.js';
 import {
@@ -19,7 +20,6 @@ import {
   COLLECTED_GOOD_IDS,
   GENERIC_COLLECTOR_TARGET,
   genericCollectorJob,
-  goodByContentId,
   meetsNeed,
   needsVeteran,
   type WantedGood,
@@ -210,7 +210,7 @@ function nearestCollectedResource(
 ): HalfCellNode | null {
   let best: { node: HalfCellNode; dist: number; goodType: number } | null = null;
   for (const goodId of COLLECTED_GOOD_IDS) {
-    const good = goodByContentId(ctx.content, goodId);
+    const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
     const resource = nearestLiveResource(world, good.typeId, baseNode);
     if (resource === null) continue;

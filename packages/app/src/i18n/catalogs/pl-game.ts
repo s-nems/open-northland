@@ -137,6 +137,7 @@ export const plGame = {
     dropHint: '{label} - kliknij, aby położyć; Esc kończy',
     placementHint: '{label} - kliknij, aby postawić; Esc anuluje',
     placementPaperHint: '{label} z planu - kliknij, aby postawić gotowy budynek; Esc anuluje',
+    heldPaperHint: 'Plan budowy - wybierz budynek z menu; Esc anuluje',
     chest: {
       wooden: 'Skrzynia',
       magical: 'Magiczna skrzynia',
@@ -185,7 +186,7 @@ export const plGame = {
     extras: {
       title: 'Okno dodatków',
       assistantTab: 'Asystent',
-      plansTab: 'Plany',
+      plansTab: 'Papiery',
       extraWomen: 'Dodatkowe kobiety',
       extraMen: 'Dodatkowi mężczyźni',
       trainSoldiers: 'Trenuj Żołnierzy',
@@ -198,7 +199,7 @@ export const plGame = {
       giveMead: 'Przyznaj wszystkim miód pitny',
       on: 'Wł.',
       off: 'Wył.',
-      plansEmpty: 'Brak planów',
+      plansEmpty: 'Brak papierów',
       papers: {
         indulgence: 'Prolongata',
         placeAny: 'Umieść wybrany przez ciebie budynek',

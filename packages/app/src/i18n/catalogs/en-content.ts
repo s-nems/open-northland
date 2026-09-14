@@ -191,7 +191,7 @@ export const enContent = {
     chests: {
       title: 'Chests and papers',
       summary:
-        'Two wooden chests are opened for food and three civilists, a magical one refuses a plain trade, and a held paper stands a well up finished.',
+        'Three wooden chests are opened for food, three civilists and a well paper, a magical one refuses a plain trade, and a held paper stands a well up finished.',
     },
     chain: {
       title: 'Production chain',

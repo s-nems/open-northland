@@ -28,6 +28,7 @@ import type { ExtrasCountersSeam, ExtrasGrantsSeam, ExtrasPapersSeam } from './e
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
+import { createHeldPaperController } from './held-paper.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout, pointOverToolPanel, type ToolButtonId } from './layout.js';
 import {
@@ -240,7 +241,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       enqueue: opts.enqueueAdmin,
       screenToTile: opts.screenToTile,
     });
-    const held: readonly HeldMode[] = [placement, goodsDrop];
+    const heldPaper = createHeldPaperController(ctx, bannerContainer);
+    const held: readonly HeldMode[] = [placement, goodsDrop, heldPaper];
 
     const windows = createToolWindows({
       ctx,
@@ -251,6 +253,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       counters: opts.counters,
       papers: opts.papers,
       paperLabel: nameOfPaper,
+      heldPaper,
       diplomacyRows: opts.diplomacyRows,
       art,
       missionBrief: opts.missionBrief ?? ((): null => null),

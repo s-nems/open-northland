@@ -161,7 +161,7 @@ export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFie
  */
 export function assignStaticFields(
   target: StaticDrawFields,
-  kind: 'building' | 'resource' | 'stump',
+  kind: 'building' | 'resource' | 'stump' | 'chest',
   components: Readonly<Record<string, unknown>>,
 ): void {
   switch (kind) {
@@ -189,6 +189,11 @@ export function assignStaticFields(
     case 'stump': {
       const goodType = readStumpGood(components);
       if (goodType !== undefined) target.goodType = goodType;
+      return;
+    }
+    case 'chest': {
+      const gfxIndex = readChestGfxIndex(components);
+      if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
       return;
     }
     default: {

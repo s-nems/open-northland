@@ -1,13 +1,8 @@
+import type { ContentSet } from '@open-northland/data';
 import type { Camera, WorldRenderer } from '@open-northland/render';
-import {
-  type ChestKind,
-  entityById,
-  type Simulation,
-  systems,
-  type WorldSnapshot,
-} from '@open-northland/sim';
+import { type ChestKind, entityById, type WorldSnapshot } from '@open-northland/sim';
 import type { UiString } from '../content/gui-gfx.js';
-import { chestKindOf, isAdult, isSettler, ownerPlayerOf, settlerJobType } from '../game/snapshot.js';
+import { canOpenChest, chestKindOf, isSettler, ownerPlayerOf } from '../game/snapshot.js';
 import { messages } from '../i18n/index.js';
 import { isHitTarget, type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { createTooltip } from './tooltip.js';
@@ -29,7 +24,7 @@ export interface WorldTooltipOptions {
   readonly chestLabel: (kind: ChestKind) => string;
   /** The order line under a chest's name: the open order when the selection can open it, the reason
    *  when it cannot, null with nothing selected. */
-  readonly chestOrderLine: (chest: number, kind: ChestKind) => string | null;
+  readonly chestOrderLine: (snapshot: WorldSnapshot, kind: ChestKind) => string | null;
   /** Cursor position in client coords, or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;
   /** Whether the world tooltip must yield the pointer this frame, because placement or HUD chrome owns it. */
@@ -105,7 +100,7 @@ export function createWorldTooltip(opts: WorldTooltipOptions): WorldTooltip {
         return;
       }
       if (info.kind === 'chest') {
-        const order = opts.chestOrderLine(ref, info.chestKind);
+        const order = opts.chestOrderLine(snap, info.chestKind);
         const name = opts.chestLabel(info.chestKind);
         tooltip.show(p.clientX, p.clientY, order === null ? name : `${name} · ${order}`);
         return;
@@ -126,7 +121,7 @@ const OPEN_CHEST_STRING_ID = 35;
  * settlers who may not, nothing with no settler selected.
  */
 export function chestTooltipLines(
-  sim: Pick<Simulation, 'snapshot' | 'content'>,
+  content: ContentSet,
   uiString: UiString,
   player: number,
   selectedIds: () => ReadonlySet<number>,
@@ -134,16 +129,13 @@ export function chestTooltipLines(
   const labels = messages().hud.chest;
   return {
     chestLabel: (kind) => uiString('misc', CHEST_NAME_STRING_ID[kind], labels[kind]),
-    chestOrderLine: (_chest, kind) => {
-      const snapshot = sim.snapshot();
+    chestOrderLine: (snapshot, kind) => {
       let selected = false;
       for (const id of selectedIds()) {
         const e = entityById(snapshot, id);
         if (e === undefined || !isSettler(e) || ownerPlayerOf(e) !== player) continue;
         selected = true;
-        if (isAdult(e) && systems.jobCanOpenChest(sim.content, settlerJobType(e) ?? null, kind)) {
-          return uiString('misclogic', OPEN_CHEST_STRING_ID, labels.open);
-        }
+        if (canOpenChest(e, kind, content)) return uiString('misclogic', OPEN_CHEST_STRING_ID, labels.open);
       }
       return selected && kind === 'magical' ? labels.magicalOnly : null;
     },

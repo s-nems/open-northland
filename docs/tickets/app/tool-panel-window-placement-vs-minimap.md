@@ -34,7 +34,8 @@ That closes every case a shorter list can close. Two cases it cannot:
   lift `origin.y` so the window's foot lands on the reserve (it stops dropping from its own button), or
   open the column at `origin.x = reserve.x + reserve.w` when the shifted window still fits the screen
   width (it stops sitting beside the strip).
-- Cover `extras-window.ts` too - it shares the column and the same overlay.
+- Cover `extras-window.ts` too - it shares the column and the same overlay, and its papers tab lists up
+  to `PAPER_ROWS_SHOWN` rows (about 290 design px, taller than the assistant tab).
 - Non-goal: changing the minimap, the overlay draw order, or the list sizing that already works.
 
 ## Verify

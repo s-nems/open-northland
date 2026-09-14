@@ -192,7 +192,7 @@ export const plContent = {
     chests: {
       title: 'Skrzynie i plany',
       summary:
-        'Dwie drewniane skrzynie oddają żywność i trzech cywilów, magiczna odmawia zwykłemu rzemieślnikowi, a trzymany plan stawia gotową studnię.',
+        'Trzy drewniane skrzynie oddają żywność, trzech cywilów i papier na studnię, magiczna odmawia zwykłemu rzemieślnikowi, a trzymany papier stawia gotową studnię.',
     },
     chain: {
       title: 'Łańcuch produkcji',

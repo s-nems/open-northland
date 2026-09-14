@@ -1,4 +1,4 @@
-import type { Simulation } from '@open-northland/sim';
+import type { ChestKind, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, ONE, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_COLLECTOR } from '../catalog/jobs.js';
@@ -41,7 +41,7 @@ function stationX(i: number): number {
   return FIRST_STATION_X + i * STATION_GAP;
 }
 
-function chestAt(sim: Simulation, kind: 'wooden' | 'magical', contents: number, x: number, y: number) {
+function chestAt(sim: Simulation, kind: ChestKind, contents: number, x: number, y: number) {
   const node = cellAnchorNode(x, y);
   return systems.createChest(sim.world, sim.content, { kind, contents, x: node.hx, y: node.hy });
 }

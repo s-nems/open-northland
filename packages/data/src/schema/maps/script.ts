@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { Provenance } from '../record.js';
 
 /**
- * A map's decoded scripting payload: the `playerdata`/`playermisc`/`MissionData` sections of its
- * `map.cif` `CStringArray`, or the plaintext `player.inc`/`mission.inc` twins the unpacked mod maps
- * ship. Numeric codes follow the original's `Data/GameSourceIncludes/logicdefines.inc` `#define`
+ * A map's decoded scripting payload: the `playerdata`/`playermisc`/`specialItems`/`MissionData`
+ * sections of its `map.cif` `CStringArray`, or the plaintext `player.inc`/`mission.inc` twins the
+ * unpacked mod maps ship. Numeric codes follow the original's `Data/GameSourceIncludes/logicdefines.inc` `#define`
  * tables, which the plaintext `#PLAYER_TYPE_*`/`#TRIBE_TYPE_*`/`#PLAYER_COLOR_ID_*` macros resolve
  * through; packed `map.cif`s store the resolved numbers.
  */
@@ -102,7 +102,7 @@ export const MAP_SPECIAL_ITEM_KIND_COUNT = 7;
 export const MapSpecialItem = z.strictObject({
   player: z.number().int().nonnegative(),
   kind: z.number().int().min(1).max(MAP_SPECIAL_ITEM_KIND_COUNT),
-  param: z.number().int().nonnegative().default(0),
+  param: z.number().int().nonnegative(),
 });
 export type MapSpecialItem = z.infer<typeof MapSpecialItem>;
 

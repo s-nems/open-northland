@@ -38,6 +38,8 @@ const GLYPH_INSET = 4;
 const VALUE_CELL_FILL = 0x161009;
 /** The decoded `miscwindow` id of the original extras-window title ("Okno Dodatków"). */
 const EXTRAS_TITLE_STRING_ID = 500;
+/** The `miscwindow` row naming the original's papers tab. */
+const PAPERS_TAB_STRING_ID = 501;
 /** Ctrl/Cmd-click stepper multiplier. */
 const CTRL_STEP = 10;
 
@@ -161,7 +163,9 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     paintTitledTabWindow(
       layers,
       layout,
-      layout.tabs,
+      layout.tabs.map((t) =>
+        t.tab === 'plans' ? { ...t, label: ctx.uiString('miscwindow', PAPERS_TAB_STRING_ID, t.label) } : t,
+      ),
       ctx.uiString('miscwindow', EXTRAS_TITLE_STRING_ID, layout.title),
     );
 

@@ -22,6 +22,7 @@ import {
   type ExtrasGrantsSeam,
 } from '../src/hud/tool-panel/extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
+import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
@@ -510,6 +511,7 @@ describe('tool windows registry', () => {
       counters: stubCountersSeam().seam,
       papers: NO_PAPERS,
       paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      heldPaper: createHeldPaperController(ctx, new Container()), // the banner layer, not a pop-up
       diplomacyRows: () => [],
       art: null,
       missionBrief: () => null,
@@ -544,6 +546,7 @@ describe('tool windows registry', () => {
       { kind: 'placeHouse', param: 23 },
       { kind: 'placeAny', param: 0 },
     ];
+    const heldPaper = createHeldPaperController(base, new Container());
     const windows = createToolWindows({
       ctx: base,
       container: new Container(),
@@ -553,6 +556,7 @@ describe('tool windows registry', () => {
       counters: stubCountersSeam().seam,
       papers: { read: () => papers },
       paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+      heldPaper,
       diplomacyRows: () => [],
       art: null,
       missionBrief: () => null,
@@ -580,15 +584,18 @@ describe('tool windows registry', () => {
     expect(extras.isOpen()).toBe(false);
     expect(windows.byId.menu.isOpen()).toBe(false);
 
-    // The place-any paper: the build menu opens, and its pick carries the paper once.
+    // The place-any paper: the build menu opens with the paper held (a banner up, a held mode), and its
+    // pick carries the paper once.
     extras.toggle();
     extras.handleClick(...centreXY(plansTab));
     expect(extras.handleClick(...centreXY(anyRow))).toBe(true);
     expect(windows.byId.menu.isOpen()).toBe(true);
+    expect(heldPaper.isActive()).toBe(true);
     const row = centreOf(expectedMenuLayout(base).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
     expect(windows.handleClick(row.x, row.y)).toBe(true);
     expect(picks[1]).toEqual([BUILDINGS[0]?.typeId, papers[1]]);
     expect(windows.byId.menu.isOpen()).toBe(false); // a pick closes the menu
+    expect(heldPaper.isActive()).toBe(false);
 
     // Closing the menu without a pick drops the held paper: the next pick is an ordinary site.
     extras.toggle();
@@ -596,9 +603,24 @@ describe('tool windows registry', () => {
     extras.handleClick(...centreXY(anyRow));
     windows.byId.menu.toggle();
     windows.refresh(() => hud(1, 0));
+    expect(heldPaper.isActive()).toBe(false);
     windows.byId.menu.toggle();
     windows.handleClick(row.x, row.y);
     expect(picks[2]).toEqual([BUILDINGS[0]?.typeId, undefined]);
+
+    // A cancel (Esc, a right click) or a world click drops it too, and the menu stays open.
+    extras.toggle();
+    extras.handleClick(...centreXY(plansTab));
+    extras.handleClick(...centreXY(anyRow));
+    expect(heldPaper.handleClick(0, 0)).toBe(true); // a world press: consumed, the paper dropped
+    expect(heldPaper.isActive()).toBe(false);
+    expect(windows.byId.menu.isOpen()).toBe(true);
+    expect(heldPaper.handleClick(0, 0)).toBe(false); // nothing held: the press is the world's
+    heldPaper.hold(papers[1] as Paper);
+    heldPaper.cancel();
+    expect(windows.state().heldPaper).toBeNull();
+    windows.restore({ ...windows.state(), heldPaper: papers[1] as Paper });
+    expect(heldPaper.held()).toEqual(papers[1]);
   });
 
   it('claims a point only while a pop-up is open under it', () => {

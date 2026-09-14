@@ -62,20 +62,25 @@ describe('FogGhostStore', () => {
     expect(later).toEqual([]);
   });
 
-  it('RECON seeds natural resources (never buildings) sight-unseen, once per recon stretch', () => {
+  it('RECON seeds natural resources and chests (never buildings) sight-unseen, once per recon stretch', () => {
     const stump = entity(3, 11, 4, { Stump: { goodType: 3 } });
+    const chest = entity(5, 15, 4, { Chest: { kind: 'wooden', contents: 20, gfxIndex: 845 } });
     const store = new FogGhostStore();
     // Nothing is visible, but recon's known-terrain view still knows where nature is.
-    const seeded = store.update(snapshotOf([HOUSE, TREE, stump]), viewOf(new Map(), 1, FOG_MODE.RECON));
-    expect(seeded.map((g) => g.ref).sort()).toEqual([2, 3]);
+    const seeded = store.update(
+      snapshotOf([HOUSE, TREE, stump, chest]),
+      viewOf(new Map(), 1, FOG_MODE.RECON),
+    );
+    expect(seeded.map((g) => g.ref).sort()).toEqual([2, 3, 5]);
     expect(seeded.every((g) => g.kind !== 'building')).toBe(true);
+    expect(seeded.find((g) => g.ref === 5)).toMatchObject({ kind: 'chest', gfxIndex: 845 });
     // The seed is start-of-recon knowledge, so a later spawn is not seeded retroactively.
     const lateTree = entity(4, 13, 4, { Resource: { goodType: 3 } });
     const next = store.update(
-      snapshotOf([HOUSE, TREE, stump, lateTree]),
+      snapshotOf([HOUSE, TREE, stump, lateTree, chest]),
       viewOf(new Map(), 2, FOG_MODE.RECON),
     );
-    expect(next.map((g) => g.ref).sort()).toEqual([2, 3]);
+    expect(next.map((g) => g.ref).sort()).toEqual([2, 3, 5]);
   });
 
   it('adopt() captures a ref sight-unseen on the next rebuild (the map handover seam)', () => {
@@ -112,6 +117,10 @@ describe('collectSpriteScene - ghost emission', () => {
     expect(scene.items[0]).toMatchObject({ ref: 9, kind: 'building', ghost: true, typeId: 7 });
     // The pooled sprite of a dead but remembered entity must not be destroyed.
     expect(scene.liveRefs.has(9)).toBe(true);
+    // An opened chest's memory draws by the record it was seen with.
+    const chest = { ref: 10, kind: 'chest', tileX: 7, tileY: 4, gfxIndex: 845 } as const;
+    const chestScene = collectSpriteScene(snapshotOf([]), { ghosts: [chest] });
+    expect(chestScene.items[0]).toMatchObject({ ref: 10, kind: 'chest', ghost: true, gfxIndex: 845 });
   });
 
   it('viewport-culls a ghost like a live sprite, but its ref stays in liveRefs', () => {

@@ -14,6 +14,7 @@ import {
   HuntRest,
   NeedOrder,
   NoRegeneration,
+  OpenChestOrder,
   Owner,
   Position,
   SiteAssignment,
@@ -48,6 +49,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer
   world.remove(e, NoRegeneration); // regeneration goes back to allowed, as the original re-sets its flag
   world.remove(e, ExploreOrder); // a settler that is no longer a scout stops sweeping
+  world.remove(e, OpenChestOrder); // and the new trade may not open the chest it was walking to
   if (isFighterJob(ctx.content, jobType)) shedToolOnEnlist(world, e);
   world.remove(e, SiteAssignment);
   // The site must stop counting the abandoned fetch as inbound; the planner's tally re-seeds from live

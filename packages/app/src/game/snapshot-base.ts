@@ -1,4 +1,4 @@
-import { CHEST_KINDS, type ChestKind, type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
+import { type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -189,13 +189,6 @@ export function regeneratesInWorld(e: SnapshotEntity): boolean {
 /** A creature rather than a person: the {@link Settler} model covers both, only people carry `Person`. */
 export function isWildlife(e: SnapshotEntity): boolean {
   return isSettler(e) && e.components.Person === undefined;
-}
-
-/** A closed chest's kind, or undefined for an entity that is no chest. */
-export function chestKindOf(e: SnapshotEntity): ChestKind | undefined {
-  const chest = e.components.Chest as { kind?: unknown } | undefined;
-  const kind = chest?.kind;
-  return CHEST_KINDS.find((k) => k === kind);
 }
 
 /** The training house a settler walks to or drills at. */

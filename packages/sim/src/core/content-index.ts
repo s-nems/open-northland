@@ -148,11 +148,12 @@ export interface ContentIndex {
   readonly scoutJobs: ReadonlySet<number>;
   readonly hunterJobs: ReadonlySet<number>;
   readonly druidJobs: ReadonlySet<number>;
-  /** Catalog slug → typeId over the goods, buildings and jobs, first declaration wins: the join for a
-   *  rule authored by name, such as the chest-contents table. */
+  /** Catalog slug → typeId over the goods, buildings, jobs and tribes, first declaration wins: the join
+   *  for a rule authored by name, such as the chest-contents table. */
   readonly goodTypeBySlug: ReadonlyMap<string, number>;
   readonly buildingTypeBySlug: ReadonlyMap<string, number>;
   readonly jobTypeBySlug: ReadonlyMap<string, number>;
+  readonly tribeTypeBySlug: ReadonlyMap<string, number>;
   /** Landscape `typeId` by slug, first declaration wins. */
   readonly landscapeTypeBySlug: ReadonlyMap<string, number>;
   /**
@@ -240,6 +241,11 @@ function buildIndex(content: ContentSet): ContentIndex {
       content.jobs,
       (j) => j.id,
       (j) => j.typeId,
+    ),
+    tribeTypeBySlug: valueByKey(
+      content.tribes,
+      (t) => t.id,
+      (t) => t.typeId,
     ),
     landscapeTypeBySlug: valueByKey(
       content.landscape,

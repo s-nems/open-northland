@@ -435,7 +435,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     camera: () => cameraCtl.camera(),
     clientToScreen,
     goodLabel,
-    ...chestTooltipLines(sim, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
+    ...chestTooltipLines(sim.content, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
     pointer: pointerAt,
     suppressed: (clientX, clientY) =>
       toolPanel.controller.placementType() !== null ||

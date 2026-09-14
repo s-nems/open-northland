@@ -15,8 +15,9 @@ followed by a silently rejected command.
   (`progression/unlocks.ts`): with profession progression off, building unlocks must lift too.
 - Expose the same enablement in the building menu, upgrade control, and placement probe, including a
   localized explanation of the enabling trade.
-- Re-enable the sim gate, unskip its tests, and update acceptance scenes so their setup is valid under
-  real content. Keep the sim command guard authoritative.
+- Re-enable the sim gate, unskip its tests (including the paper bypass in `test/chests/papers.test.ts`:
+  a house paper places past the gate, a place-any paper does not), and update acceptance scenes so
+  their setup is valid under real content. Keep the sim command guard authoritative.
 - Do not add a second UI-only unlock calculation that can drift from the sim rule.
 
 ## Verify

@@ -10,6 +10,7 @@ import {
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import { defaultAssistantState } from '../src/hud/tool-panel/extras-menu.js';
 import { createGoodsDropController } from '../src/hud/tool-panel/goods-drop.js';
+import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createToolWindows, type ToolWindowId } from '../src/hud/tool-panel/windows.js';
@@ -80,6 +81,7 @@ function mountSurfaces() {
     },
     papers: { read: () => [] },
     paperLabel: (paper) => `${paper.kind}:${paper.param}`,
+    heldPaper: createHeldPaperController(ctx, container),
     diplomacyRows: () => [],
     art: null,
     missionBrief: () => null,

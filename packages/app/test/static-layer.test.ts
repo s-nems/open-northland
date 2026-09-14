@@ -56,7 +56,7 @@ describe('bindStaticLayer', () => {
     const { removed, refs, onEvents } = bind({
       kind: 'fresh',
       placementByEntity: [[BUSH, 1]],
-      pooledPlacements: [],
+      chestPlacements: [],
     });
     expect(removed).toEqual(['grass']);
     expect([...refs()]).toEqual([BUSH]);
@@ -66,7 +66,7 @@ describe('bindStaticLayer', () => {
   });
 
   it("retires a fresh world's pooled placements up front, so a chest is a sim item from the first frame", () => {
-    const { removed, refs } = bind({ kind: 'fresh', placementByEntity: [], pooledPlacements: [1] });
+    const { removed, refs } = bind({ kind: 'fresh', placementByEntity: [], chestPlacements: [1] });
     expect(removed.sort()).toEqual(['bush', 'grass']);
     expect([...refs()]).toEqual([]);
   });

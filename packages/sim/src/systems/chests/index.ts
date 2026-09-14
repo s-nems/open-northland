@@ -8,6 +8,7 @@ import {
   Position,
   Settler,
 } from '../../components/index.js';
+import { assertNever } from '../../core/brand.js';
 import { contentIndex } from '../../core/content-index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -114,6 +115,8 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
       return;
     case 'nothing':
       return;
+    default:
+      assertNever(reward);
   }
 }
 

@@ -138,6 +138,8 @@ export const enGame = {
     placementHint: '{label} - click to build, Esc to cancel',
     /** Placement paid by a paper: the house stands finished where it lands. */
     placementPaperHint: '{label} from a paper - click to place it finished, Esc to cancel',
+    /** A place-any paper waiting for the build menu's pick. */
+    heldPaperHint: 'Building paper - pick a building from the menu, Esc to cancel',
     /** The chest tooltip: `misc` 112/113 name the two kinds, `misclogic` 35 the order. */
     chest: {
       wooden: 'Chest',
@@ -196,7 +198,7 @@ export const enGame = {
     extras: {
       title: 'Extras window',
       assistantTab: 'Assistant',
-      plansTab: 'Plans',
+      plansTab: 'Papers',
       extraWomen: 'Extra women',
       extraMen: 'Extra men',
       trainSoldiers: 'Train Soldiers',
@@ -209,7 +211,7 @@ export const enGame = {
       giveMead: 'Give everyone mead',
       on: 'ON',
       off: 'OFF',
-      plansEmpty: 'No plans yet',
+      plansEmpty: 'No papers yet',
       /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes
        *  the named house, trade or good. */
       papers: {

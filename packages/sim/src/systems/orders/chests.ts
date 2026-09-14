@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   OpenChestOrder,
   Owner,
+  Person,
   PlayerOrder,
   Position,
   Settler,
@@ -16,13 +17,15 @@ import { jobCanOpenChest, OPEN_CHEST_ATOMIC_ID } from '../chests/index.js';
 import type { System, SystemContext } from '../context.js';
 import { resourceWorkCell } from '../footprint/index.js';
 import { atomicClipName, atomicDurationForName } from '../readviews/animations.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 
+/** `Item_IsAbleToOpenChest` is a human predicate: owned livestock and children open nothing. */
 function canOpenChest(world: World, ctx: SystemContext, settler: Entity, chest: Entity): boolean {
   if (!world.isAlive(chest) || !world.has(chest, Chest)) return false;
-  if (world.has(settler, Age)) return false; // a child opens nothing
+  if (!world.has(settler, Person) || world.has(settler, Age)) return false;
   return jobCanOpenChest(ctx.content, world.get(settler, Settler).jobType, world.get(chest, Chest).kind);
 }
 
@@ -41,11 +44,16 @@ export function orderOpenChest(
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !world.has(e, Position)) return;
   if (!canOpenChest(world, ctx, e, command.chest)) return;
+  const stance = resourceWorkCell(world, terrain, command.chest, entityNode(world, terrain, e));
+  // Refused ahead of the park, like the walk's own confinement check, so a refused order neither parks
+  // nor displaces an earlier parked one.
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
+  if (limit !== null && !limit.allowsNode(stance)) return;
   // A non-interruptible atomic parks the whole command, as an inner moveUnit alone would strand the marker.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
-  const stance = resourceWorkCell(world, terrain, command.chest, entityNode(world, terrain, e));
   const c = terrain.coordsOf(stance);
-  if (!moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y })) return; // refused: no order stands
+  // A refused walk leaves no marker behind.
+  if (!moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y })) return;
   world.add(e, OpenChestOrder, { chest: command.chest });
 }
 
@@ -58,7 +66,9 @@ export function orderOpenChest(
 export const chestOrderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
-  // Copied, because the loop removes the marker it iterates.
+  // Canonical order: two openers arriving the same tick take their clips in id order, so the lower id's
+  // completes first and takes the reward while the other whiffs; the copy also frees the loop to remove
+  // the marker it iterates.
   for (const e of canonicalById(world.query(Settler, OpenChestOrder))) {
     const chest = world.get(e, OpenChestOrder).chest;
     if (!canOpenChest(world, ctx, e, chest) || !world.has(e, Owner)) {

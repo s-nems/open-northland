@@ -15,6 +15,7 @@ import {
   type ExtrasPapersSeam,
 } from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
+import type { HeldPaperController } from './held-paper.js';
 import { createMissionWindow } from './mission/index.js';
 import { createStatsWindow } from './stats-window.js';
 import {
@@ -52,6 +53,8 @@ export interface ToolWindowsDeps {
   /** The mission window's history book; null shows the tab empty. */
   readonly history: HypertextBook | null;
   readonly onLargeWindow?: (open: boolean) => void;
+  /** The place-any paper a plans-tab click hands to the build menu. */
+  readonly heldPaper: HeldPaperController;
   /** A building was picked for placement; `paper` is the paper the placement spends, when one is held. */
   readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
   readonly onPickGood: (goodType: number) => void;
@@ -78,22 +81,18 @@ export interface ToolWindowsState {
   readonly goods: TabbedListWindowState<number>;
   readonly extras: ExtrasTab;
   readonly diplomacy: number | null;
-  /** The place-any paper the open build menu was opened for, if any. */
+  /** The paper the build menu holds for its next pick, restored with its banner. */
   readonly heldPaper: Paper | null;
 }
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
-  const { ctx, container } = deps;
-  /** The place-any paper the build menu was opened for; the next pick spends it, closing the menu
-   *  drops it back into the list unspent. */
-  let heldPaper: Paper | null = null;
+  const { ctx, container, heldPaper } = deps;
   const menu = createTabbedListWindow({
     ctx,
     container,
     source: buildingTabbedList(deps.buildings),
     onPick: (b) => {
-      const paper = heldPaper;
-      heldPaper = null;
+      const paper = heldPaper.take();
       if (paper === null) deps.onPickBuilding(b.typeId);
       else deps.onPickBuilding(b.typeId, paper);
     },
@@ -115,7 +114,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     // menu to choose one, as the original's paper window does.
     onUsePaper: (paper) => {
       if (paper.kind === 'placeAny') {
-        heldPaper = paper;
+        heldPaper.hold(paper);
         if (!menu.isOpen()) menu.toggle();
         return;
       }
@@ -174,7 +173,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       else mission.clearHover();
     },
     refresh: (hudFor): void => {
-      if (heldPaper !== null && !menu.isOpen()) heldPaper = null;
+      if (heldPaper.held() !== null && !menu.isOpen()) heldPaper.cancel();
       for (const e of mounted) e.perFrame(hudFor);
     },
     state: () => ({
@@ -183,14 +182,15 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       goods: goods.state(),
       extras: extras.state(),
       diplomacy: diplomacy.state(),
-      heldPaper,
+      heldPaper: heldPaper.held(),
     }),
     restore: (state): void => {
       menu.restore(state.buildings);
       goods.restore(state.goods);
       extras.restore(state.extras);
       diplomacy.restore(state.diplomacy);
-      heldPaper = state.heldPaper;
+      if (state.heldPaper === null) heldPaper.cancel();
+      else heldPaper.hold(state.heldPaper);
       const open = new Set(state.openIds);
       for (const id of MOUNT_ORDER) {
         const window = entries[id].window;

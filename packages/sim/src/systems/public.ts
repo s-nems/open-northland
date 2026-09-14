@@ -25,7 +25,6 @@ export {
   type ChestSpec,
   createChest,
   jobCanOpenChest,
-  OPEN_CHEST_ATOMIC_ID,
   resolveChestReward,
 } from './chests/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';

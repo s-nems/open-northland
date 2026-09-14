@@ -27,6 +27,8 @@ const P0 = 0;
 const VIKING = 1;
 const HQ = 1;
 const SAWMILL = 2;
+/** The fixture's smithy: placeable only once the tribe has a carpenter (`jobEnables`). */
+const GATED_SMITHY = 4;
 const WOOD = 1;
 const PLANK = 2;
 const SAWMILL_CAPACITY = 20;
@@ -115,6 +117,23 @@ describe('placing with a paper', () => {
     expect(sim.world.get(e, Stockpile).amounts.get(WOOD)).toBeUndefined(); // no stock beyond the type's own
     expect(sim.papers(P0)).toEqual([]);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  // SKIPPED: the building tech-unlock gate is disabled feature-wide - see
+  // docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
+  it.skip('a house paper names its house past the tech gate; a place-any paper still answers to it', () => {
+    const sim = fresh();
+    const smithyPaper: Paper = { kind: 'placeHouse', param: GATED_SMITHY };
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: anyHouse });
+    sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: smithyPaper });
+    const command = { kind: 'placeBuilding', buildingType: GATED_SMITHY, tribe: VIKING } as const;
+    sim.enqueue(playerCommand(P0, { ...command, x: 8, y: 8, paper: anyHouse }));
+    sim.enqueue(playerCommand(P0, { ...command, x: 20, y: 20, paper: smithyPaper }));
+    sim.step();
+    const placed = buildings(sim);
+    expect(placed).toHaveLength(1);
+    expect(sim.world.get(placed[0] as Entity, Building).buildingType).toBe(GATED_SMITHY);
+    expect(sim.papers(P0)).toEqual([anyHouse]);
   });
 
   it('a paper the seat does not hold, or that names another house, places nothing and spends nothing', () => {

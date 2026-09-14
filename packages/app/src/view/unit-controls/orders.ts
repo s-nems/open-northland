@@ -16,8 +16,8 @@ import {
 } from '../../game/sandbox/index.js';
 import {
   buildingTypeOf,
+  canOpenChest,
   chestKindOf,
-  isAdult,
   isBuilding,
   isSettler,
   positionOf,
@@ -107,11 +107,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       strike(commanded, enemy);
       return;
     }
+    // A chest nobody selected may open is walked to like any ground.
     const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
-    if (chest !== null) {
-      openChest(commanded, chest);
-      return;
-    }
+    if (chest !== null && openChest(commanded, chest)) return;
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
       const snapshot = deps.snapshot();
@@ -163,20 +161,23 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
   };
 
-  /** Send every commanded settler that may open the chest. Filtered here as the original's default click
-   *  gates on `Item_IsAbleToOpenChest`, and so a settler the sim would refuse never lands in the replay
-   *  log; the sim re-checks each on arrival, so two senders race and the loser walks back into autonomy. */
-  const openChest = (commanded: readonly FormationUnit[], chest: number): void => {
+  /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as
+   *  the original's default click gates on `Item_IsAbleToOpenChest`, and so a settler the sim would refuse
+   *  never lands in the replay log; the sim re-checks each on arrival, so two senders race and the loser
+   *  walks back into autonomy. */
+  const openChest = (commanded: readonly FormationUnit[], chest: number): boolean => {
     const snapshot = deps.snapshot();
     const target = entityById(snapshot, chest);
     const kind = target === undefined ? undefined : chestKindOf(target);
-    if (kind === undefined) return;
+    if (kind === undefined) return false;
+    let sent = false;
     for (const unit of commanded) {
       const self = entityById(snapshot, unit.ref);
-      if (self === undefined || !isAdult(self)) continue;
-      if (!systems.jobCanOpenChest(deps.content, settlerJobType(self) ?? null, kind)) continue;
+      if (self === undefined || !canOpenChest(self, kind, deps.content)) continue;
       deps.enqueue({ kind: 'openChest', entity: unit.ref as Entity, chest: chest as Entity });
+      sent = true;
     }
+    return sent;
   };
 
   const strike = (commanded: readonly FormationUnit[], enemy: number): void => {

@@ -68,7 +68,7 @@ export async function presentMapWorld(
             ? {
                 kind: 'fresh',
                 placementByEntity: world.harvestablePlacements,
-                pooledPlacements: world.pooledPlacements,
+                chestPlacements: world.chestPlacements,
               }
             : { kind: 'restored', placements: harvestablePlacementOrdinals(sim.content, loaded.objects, ir) },
           sim.content,

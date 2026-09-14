@@ -5,13 +5,13 @@ import { assignStaticFields, classify, readPosition } from '../scene/snapshot-re
 import { fogCellOfTile } from './mask.js';
 
 /**
- * The viewer's remembered statics: a building, resource node or stump that was once seen keeps
+ * The viewer's remembered statics: a building, resource node, stump or chest that was once seen keeps
  * drawing on explored ground, frozen at its last-seen state until the player re-sees the cell.
  * Render-side and per local viewer only - the sim reads its own masks, so determinism is untouched.
  * Authored approximation: the original's reveal mode never un-sees ground, so it has no ghosts.
  */
 
-type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump'>;
+type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump' | 'chest'>;
 
 /** One remembered static, frozen at its last sighting. Tile coords are floats in tile units. */
 export type FogGhost = Readonly<StaticDrawFields> & {
@@ -22,7 +22,7 @@ export type FogGhost = Readonly<StaticDrawFields> & {
 };
 
 function isGhostKind(kind: SpriteKind | null): kind is FogGhostKind {
-  return kind === 'building' || kind === 'resource' || kind === 'stump';
+  return kind === 'building' || kind === 'resource' || kind === 'stump' || kind === 'chest';
 }
 
 function capture(
@@ -87,8 +87,8 @@ export class FogGhostStore {
       if (view.stateAt(cx, cy) === FOG_STATE.VISIBLE) this.records.delete(ref);
     }
 
-    // Taking effect, RECON seeds every natural resource wherever it stands; buildings stay intel
-    // the player has to see for himself.
+    // Taking effect, RECON seeds every natural resource and map chest wherever it stands; buildings
+    // stay intel the player has to see for himself.
     for (const entity of snapshot.entities) {
       if (staticRefs?.has(entity.id)) continue;
       const kind = classify(entity.components);

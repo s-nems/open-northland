@@ -13,7 +13,7 @@ export type ChestReward =
   /** A `placeStockedHouse` paper for `house`, plus one `worker` of its trade standing at the chest. */
   | { readonly kind: 'workshop'; readonly house: string; readonly worker: string }
   | { readonly kind: 'settlers'; readonly job: string; readonly count: number }
-  | { readonly kind: 'animals'; readonly tribe: number; readonly count: number }
+  | { readonly kind: 'animals'; readonly tribe: string; readonly count: number }
   /** The original spawns a catapult; the sim has no land vehicles, so this opens empty. */
   | { readonly kind: 'vehicle' };
 
@@ -21,9 +21,6 @@ const SINGLE = { wooden: 1, magical: 3 } as const;
 const POTIONS = { wooden: 12, magical: 18 } as const;
 const WEAR = { wooden: 6, magical: 9 } as const;
 const SPAWNED_SETTLERS = 3;
-/** `logicdefines.inc` `TRIBE_TYPE_ANIMAL_WOLVES` and `TRIBE_TYPE_ANIMAL_LIONSMALE`. */
-const WOLF_TRIBE = 20;
-const LION_TRIBE = 25;
 
 function goods(good: string, count: Readonly<Record<ChestKind, number>>): ChestReward {
   return { kind: 'goods', good, count };
@@ -39,9 +36,10 @@ function settlers(job: string): ChestReward {
 }
 
 /**
- * The chest-type table, keyed by the type a map authors on a chest placement (`chesttypes` strings name
- * each row). Source basis: byte-level evidence, the open-chest dispatch of the owned copy's engine; the
- * good, house, job and animal ids it names are the base game's, written here as their catalog slugs.
+ * The chest-type table, keyed by the type a map authors on a chest placement. Source basis: the
+ * `Tool_MapChest_UseChest` dispatch of the macOS `the original` executable (byte evidence), whose row keys and
+ * reward kinds the readable `chesttypes` string table corroborates; the exact ids and counts are the
+ * dispatch's own and unconfirmed by observation. Ids are written as their catalog slugs.
  */
 export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, ChestReward>([
   [1, goods('potion_food_small', SINGLE)],
@@ -83,13 +81,13 @@ export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, 
   [72, workshop('work_coin_mint', 'coin_maker')],
   [73, workshop('work_druid_01', 'druid')],
   [74, workshop('work_armory_00', 'armorer')],
-  [90, { kind: 'animals', tribe: WOLF_TRIBE, count: 5 }],
+  [90, { kind: 'animals', tribe: 'wolves', count: 5 }],
   [91, { kind: 'vehicle' }],
   [92, settlers('civilist')],
   [93, settlers('woman')],
   [94, settlers('soldier_sword_long')],
   [95, settlers('soldier_bow_long')],
-  [96, { kind: 'animals', tribe: LION_TRIBE, count: 3 }],
+  [96, { kind: 'animals', tribe: 'lions', count: 3 }],
 ]);
 
 /** A chest reward with its slugs resolved to the running content's type ids. */
@@ -132,10 +130,11 @@ export function resolveChestReward(
       const jobType = index.jobTypeBySlug.get(reward.job);
       return jobType === undefined ? NOTHING : { kind: 'settlers', jobType, count: reward.count };
     }
-    case 'animals':
-      return index.animalsByTribe.has(reward.tribe)
-        ? { kind: 'animals', tribe: reward.tribe, count: reward.count }
-        : NOTHING;
+    case 'animals': {
+      const tribe = index.tribeTypeBySlug.get(reward.tribe);
+      if (tribe === undefined || !index.animalsByTribe.has(tribe)) return NOTHING;
+      return { kind: 'animals', tribe, count: reward.count };
+    }
     case 'vehicle':
       return NOTHING;
   }

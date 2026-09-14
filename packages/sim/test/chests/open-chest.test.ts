@@ -7,6 +7,7 @@ import {
   DeferredOrder,
   OpenChestOrder,
   Owner,
+  Person,
   Position,
   Settler,
   Stockpile,
@@ -24,6 +25,7 @@ import {
   resolveChestReward,
 } from '../../src/systems/chests/index.js';
 import { resourceBlockedCells } from '../../src/systems/footprint/index.js';
+import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -52,6 +54,8 @@ const SHOES_CHEST = 26;
 const ANY_HOUSE_CHEST = 50;
 const CIVILISTS_CHEST = 92;
 const UNKNOWN_CHEST = 40;
+/** The fixture's catchable cow: an owned one is an orderable `Settler` that is no person. */
+const COW_TRIBE = 13;
 
 function fresh(): Simulation {
   return new Simulation({ seed: 7, content: testContent(), map: grassCellMap(16, 16) });
@@ -199,6 +203,23 @@ describe('the openChest order', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
+  it('a hero opens a magical chest, and it holds more of the same', () => {
+    const sim = fresh();
+    const magical = createChest(sim.world, sim.content, {
+      kind: 'magical',
+      contents: SHOES_CHEST,
+      x: 10,
+      y: 10,
+    });
+    const hero = spawn(sim, HERO, 6, 6);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: hero, chest: magical }));
+    sim.step();
+    expect(sim.world.has(hero, OpenChestOrder)).toBe(true);
+    stepUntilOpened(sim, magical);
+    expect(sim.world.isAlive(magical)).toBe(false);
+    expect(looseGoods(sim, SHOES)).toBe(9);
+  });
+
   it('a magical chest refuses a plain trade, and a child refuses any chest', () => {
     const sim = fresh();
     const magical = createChest(sim.world, sim.content, {
@@ -225,6 +246,43 @@ describe('the openChest order', () => {
     expect(sim.world.isAlive(magical)).toBe(true);
     expect(sim.world.isAlive(wooden)).toBe(true);
     expect(looseGoods(sim, SHOES)).toBe(0);
+  });
+
+  it('owned livestock is no opener, and a fight order or a trade change drops the walk', () => {
+    const sim = fresh();
+    const chest = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: SHOES_CHEST,
+      x: 10,
+      y: 10,
+    });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: COW_TRIBE, x: 20, y: 20, count: 1 });
+    sim.step();
+    const cow = [...sim.world.query(Settler)].find((e) => !sim.world.has(e, Person)) as Entity;
+    sim.world.add(cow, Owner, { player: P0 });
+    const woodcutter = spawn(sim, WOODCUTTER, 26, 26);
+    const enemy = spawn(sim, WOODCUTTER, 26, 6, 1);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: cow, chest }));
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: woodcutter, chest }));
+    sim.step();
+    expect(sim.world.has(cow, OpenChestOrder)).toBe(false);
+    expect(sim.world.has(woodcutter, OpenChestOrder)).toBe(true);
+    sim.enqueue(playerCommand(P0, { kind: 'attackUnit', entity: woodcutter, target: enemy }));
+    sim.step();
+    expect(sim.world.has(woodcutter, OpenChestOrder)).toBe(false);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: woodcutter, chest }));
+    sim.step();
+    expect(sim.world.has(woodcutter, OpenChestOrder)).toBe(true);
+    sim.enqueue(playerCommand(P0, { kind: 'setJob', entity: woodcutter, jobType: CIVILIST }));
+    sim.step();
+    expect(sim.world.has(woodcutter, OpenChestOrder)).toBe(false);
+    expect(sim.world.isAlive(chest)).toBe(true);
+  });
+
+  it('runs after the player order retires the walk and before the planner could re-task the opener', () => {
+    const names = SYSTEM_ORDER.map((s) => s.name);
+    expect(names.indexOf('playerOrder')).toBeLessThan(names.indexOf('chestOrder'));
+    expect(names.indexOf('chestOrder')).toBeLessThan(names.indexOf('planner'));
   });
 
   it('two settlers sent to one chest: the second finds it gone and returns to autonomy', () => {

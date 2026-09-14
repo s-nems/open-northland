@@ -89,8 +89,8 @@ export interface AssembledMapWorld {
   readonly tribes: WorldTribes;
   readonly staticObjects: LoadedObjects | undefined;
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
-  /** The chest placements a fresh boot pool-draws from the start; empty on a restore. */
-  readonly pooledPlacements: readonly number[];
+  /** Empty on a restore, whose chests come out of the save. */
+  readonly chestPlacements: readonly number[];
   readonly participants: readonly number[];
 }
 
@@ -190,7 +190,7 @@ export async function assembleMapWorld(
     };
     let sim: Simulation;
     let harvestablePlacements: readonly (readonly [Entity, number])[] = [];
-    let pooledPlacements: readonly number[] = [];
+    let chestPlacements: readonly number[] = [];
     if (stagedSave !== null) {
       try {
         const restoredWorld = restoreMapWorld(worldOptions, stagedSave);
@@ -215,7 +215,7 @@ export async function assembleMapWorld(
       });
       sim = world.sim;
       harvestablePlacements = world.harvestablePlacements;
-      pooledPlacements = world.pooledPlacements;
+      chestPlacements = world.chestPlacements;
     }
     setDiagGameSession({
       entry: 'map',
@@ -248,7 +248,7 @@ export async function assembleMapWorld(
       tribes,
       staticObjects,
       harvestablePlacements,
-      pooledPlacements,
+      chestPlacements,
       participants: roles.matchParticipants,
     };
   } finally {

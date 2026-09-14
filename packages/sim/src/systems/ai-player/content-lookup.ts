@@ -1,16 +1,20 @@
 import type { BuildingType, ContentSet, GoodType } from '@open-northland/data';
-import type { ContentIndex } from '../../core/content-index.js';
+import { type ContentIndex, contentIndex } from '../../core/content-index.js';
 
 /** The building definition carrying the stable content id, or undefined when this content set lacks
  *  it - a module skips such an entry instead of failing. */
 export function buildingTypeByContentId(content: ContentSet, id: string): BuildingType | undefined {
-  return content.buildings.find((b) => b.id === id);
+  const index = contentIndex(content);
+  const typeId = index.buildingTypeBySlug.get(id);
+  return typeId === undefined ? undefined : index.buildings.get(typeId);
 }
 
 /** The good definition carrying the stable content id, or undefined (same skip contract as
  *  {@link buildingTypeByContentId}). */
 export function goodTypeByContentId(content: ContentSet, id: string): GoodType | undefined {
-  return content.goods.find((g) => g.id === id);
+  const index = contentIndex(content);
+  const typeId = index.goodTypeBySlug.get(id);
+  return typeId === undefined ? undefined : index.goods.get(typeId);
 }
 
 /** The typeIds at or above `target` on its `upgradeTarget` chain: `target` itself plus everything it

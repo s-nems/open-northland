@@ -5,6 +5,7 @@ import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
+import { goodTypeByContentId } from '../../content-lookup.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
  *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
@@ -30,10 +31,6 @@ export interface WantedGood {
   readonly harvestAtomic: number;
   readonly job: number;
   readonly target: number;
-}
-
-export function goodByContentId(content: ContentSet, id: string) {
-  return content.goods.find((g) => g.id === id);
 }
 
 /** The lowest gatherer trade whose grants include this harvest atomic, or null. */
@@ -80,7 +77,7 @@ export function wantedCollectorGoods(
   }
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
-    const good = goodByContentId(ctx.content, goodId);
+    const good = goodTypeByContentId(ctx.content, goodId);
     const harvestAtomic = good?.atomics?.harvest;
     if (good === undefined || harvestAtomic === undefined) continue; // not in this content set
     const job = harvestJobFor(ctx, harvestAtomic);

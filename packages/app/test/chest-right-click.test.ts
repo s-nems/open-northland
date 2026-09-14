@@ -62,7 +62,7 @@ function rightClick(sim: Simulation, settlers: readonly Entity[], chest: Entity)
 }
 
 describe('right-clicking a chest', () => {
-  it('orders every selected adult that may open it, and nobody else', () => {
+  it('orders every selected adult that may open it; with nobody eligible the click is a walk', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const wooden = systems.createChest(sim.world, sim.content, {
       kind: 'wooden',
@@ -83,6 +83,10 @@ describe('right-clicking a chest', () => {
       { kind: 'openChest', entity: cutter, chest: wooden },
       { kind: 'openChest', entity: idle, chest: wooden },
     ]);
-    expect(rightClick(sim, [cutter, idle, child], magical)).toEqual([]);
+    expect(rightClick(sim, [cutter, idle, child], magical).map((c) => c.kind)).toEqual([
+      'moveUnit',
+      'moveUnit',
+      'moveUnit',
+    ]);
   });
 });
