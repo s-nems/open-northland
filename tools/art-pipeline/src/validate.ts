@@ -55,6 +55,24 @@ export async function validateDelivery(directory: string, complete = false) {
       if (m.shadow) {
         await inspect(`${folder}/${m.shadow.sprite}`, m.shadow.width, m.shadow.height, true);
       }
+      if (m.overlay) {
+        claim(layers, `${m.layer}-overlay`);
+        const { frameWidth, frameHeight, frames, columns } = m.overlay;
+        const sheet = `${folder}/${m.overlay.sprite}`;
+        await inspect(sheet, frameWidth * columns, frameHeight * Math.ceil(frames / columns), true);
+        for (const index of new Set([m.overlay.idle, ...m.overlay.working])) {
+          const stats = await sharp(join(directory, sheet))
+            .extract({
+              left: (index % columns) * frameWidth,
+              top: Math.floor(index / columns) * frameHeight,
+              width: frameWidth,
+              height: frameHeight,
+            })
+            .ensureAlpha()
+            .stats();
+          if (stats.channels[3]?.max === 0) throw new Error(`Empty overlay frame: ${m.layer}:${index}`);
+        }
+      }
       for (const [i, s] of (m.construction ?? []).entries()) {
         claim(layers, `${m.layer}-construction-${i}`);
         await inspect(`${folder}/${s.sprite}`, m.width, m.height, true);

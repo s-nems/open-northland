@@ -51,6 +51,7 @@ export interface GalleryBuilding extends GallerySprite {
   readonly manifest: OwnBuildingManifest;
   readonly construction: readonly GalleryConstruction[];
   readonly shadowImage?: string;
+  readonly overlayImage?: string;
 }
 
 export interface GalleryProp extends GallerySprite {
@@ -175,6 +176,9 @@ export function buildGalleryCatalog(sources: GalleryCatalogSources): GalleryCata
         ...(manifest.shadow === undefined
           ? {}
           : { shadowImage: siblingImage(sources.images, path, manifest.shadow.sprite) }),
+        ...(manifest.overlay === undefined
+          ? {}
+          : { overlayImage: siblingImage(sources.images, path, manifest.overlay.sprite) }),
       };
     }),
   );

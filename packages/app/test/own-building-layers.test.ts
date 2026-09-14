@@ -77,3 +77,41 @@ describe('own construction layer loading', () => {
     await expect(loadOwnBuildingLayers(manifest, (name) => name)).rejects.toThrow('dimensions');
   });
 });
+
+describe('own overlay sheet loading', () => {
+  const overlay = {
+    sprite: 'rotor.png',
+    frameWidth: 4,
+    frameHeight: 2,
+    frames: 3,
+    columns: 2,
+    scale: 0.5,
+    bodyPixel: { x: 1, y: 0 },
+    idle: 0,
+    working: [0, 1, 2],
+    ticksPerFrame: 1,
+  };
+  it('loads the sheet as a separate frame-indexed layer beside the body', async () => {
+    mocks.texture.mockImplementation(async (url: string) => ({
+      width: url.endsWith('rotor.png') ? 8 : 2,
+      height: url.endsWith('rotor.png') ? 4 : 1,
+      source: { url },
+    }));
+    const layers = await loadOwnBuildingLayers({ ...manifest, overlay }, (name) => name);
+    const sheet = layers['fixture-overlay'];
+    expect(sheet?.atlas.frames.size).toBe(3);
+    expect(sheet?.atlas.frames.get(2)).toMatchObject({ x: 0, y: 2, width: 4, height: 2 });
+    expect(sheet?.source).toMatchObject({ url: 'rotor.png' });
+    expect(layers.fixture?.atlas.frames.size).toBe(1);
+  });
+  it('rejects a sheet whose image does not hold every frame', async () => {
+    mocks.texture.mockImplementation(async (url: string) => ({
+      width: url.endsWith('rotor.png') ? 8 : 2,
+      height: url.endsWith('rotor.png') ? 2 : 1,
+      source: {},
+    }));
+    await expect(loadOwnBuildingLayers({ ...manifest, overlay }, (name) => name)).rejects.toThrow(
+      'dimensions',
+    );
+  });
+});

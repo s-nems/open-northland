@@ -78,3 +78,4 @@ npm-debug.log*
 # Own-art build candidates and publication transactions
 /.art-build/
 **/__pycache__/
+*.blend1

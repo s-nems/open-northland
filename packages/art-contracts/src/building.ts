@@ -18,6 +18,35 @@ const shadow = z
       layer.entrancePixel.y <= layer.height,
     'Entrance outside shadow image',
   );
+/** Largest overlay sheet edge in pixels: the WebGL texture limit of common integrated and mobile GPUs. */
+export const OVERLAY_SHEET_MAX_EDGE = 4096;
+
+/** A finished building's state overlay: a row-major grid of equally sized frames drawn above the body,
+ *  registered by the body-canvas pixel its top-left corner sits on, at its own source scale. */
+const overlay = z
+  .object({
+    sprite: pngName,
+    frameWidth: z.number().int().positive(),
+    frameHeight: z.number().int().positive(),
+    frames: z.number().int().min(1).max(64),
+    columns: z.number().int().positive(),
+    scale: z.number().finite().positive(),
+    bodyPixel: point,
+    idle: z.number().int().min(0),
+    working: z.array(z.number().int().min(0)).min(1),
+    ticksPerFrame: z.number().int().positive(),
+  })
+  .strict()
+  .refine(
+    (layer) => layer.idle < layer.frames && layer.working.every((frame) => frame < layer.frames),
+    'Overlay state frame outside the sheet',
+  )
+  .refine(
+    (layer) =>
+      layer.frameWidth * layer.columns <= OVERLAY_SHEET_MAX_EDGE &&
+      layer.frameHeight * Math.ceil(layer.frames / layer.columns) <= OVERLAY_SHEET_MAX_EDGE,
+    `Overlay sheet edge over ${OVERLAY_SHEET_MAX_EDGE} px`,
+  );
 const constructionStage = z
   .object({
     sprite: pngName,
@@ -40,6 +69,7 @@ export const ownBuildingManifest = z
     doorNode: point,
     sourceBasis: z.string().min(1),
     shadow: shadow.optional(),
+    overlay: overlay.optional(),
     construction: z.array(constructionStage).min(1).max(8).optional(),
     selectionEllipse: z
       .object({
@@ -61,3 +91,4 @@ export const ownBuildingManifest = z
     );
   }, 'Construction must start at zero and finish with the delivered sprite at 100');
 export type OwnBuildingManifest = z.infer<typeof ownBuildingManifest>;
+export type OwnBuildingOverlay = z.infer<typeof overlay>;

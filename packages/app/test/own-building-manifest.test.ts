@@ -5,6 +5,8 @@ import {
   ownBuildingBindings,
   ownBuildingFiles,
   ownBuildingManifest,
+  ownLayerScale,
+  ownOverlayAtlas,
 } from '../src/content/own-assets/building-manifest.js';
 
 const building = ownBuildingManifest.parse({
@@ -121,5 +123,66 @@ describe('map review zoom', () => {
     ['zoom=2oops', 1],
   ])('uses bounded initial zoom for %s', (query, zoom) => {
     expect(mapZoomParam(new URLSearchParams(query))).toBe(zoom);
+  });
+});
+
+describe('own building state overlay', () => {
+  const overlay = {
+    sprite: 'rotor.png',
+    frameWidth: 40,
+    frameHeight: 30,
+    frames: 3,
+    columns: 2,
+    scale: 0.25,
+    bodyPixel: { x: 20, y: -10 },
+    idle: 0,
+    working: [0, 1, 2],
+    ticksPerFrame: 2,
+  };
+  it('binds the sheet as the type working overlay in its own layer and scale', () => {
+    const manifest = ownBuildingManifest.parse({ ...building, overlay });
+    const binding = ownBuildingBindings(SYNTHETIC_BINDINGS.building, [manifest]);
+    expect(binding.byTribe?.[1]?.overlayByType?.[1]).toEqual({
+      layer: 'test-building-overlay',
+      idle: 0,
+      working: [0, 1, 2],
+      ticksPerFrame: 2,
+    });
+    expect(ownBuildingFiles(manifest)).toEqual(['test.png', 'rotor.png']);
+    expect(ownLayerScale(manifest, 'test-building-overlay')).toBe(0.25);
+    expect(ownLayerScale(manifest, 'test-building')).toBe(0.5);
+    const other = { ...building, typeId: 2, layer: 'test-building-overlay' };
+    expect(() => ownBuildingBindings(0, [manifest, other])).toThrow('Duplicate');
+  });
+  it('registers every sheet frame so its corner lands on the body pixel in world space', () => {
+    const manifest = ownBuildingManifest.parse({ ...building, overlay });
+    const atlas = ownOverlayAtlas(manifest, overlay);
+    const body = ownBuildingAtlas(manifest).frames.get(0);
+    expect(atlas).toMatchObject({ width: 80, height: 60 });
+    expect([...atlas.frames.keys()]).toEqual([0, 1, 2]);
+    for (const [i, frame] of atlas.frames) {
+      expect(frame).toMatchObject({ x: (i % 2) * 40, y: Math.floor(i / 2) * 30, width: 40, height: 30 });
+      expect(frame.offsetX * overlay.scale).toBeCloseTo(
+        ((body?.offsetX ?? 0) + overlay.bodyPixel.x) * building.scale,
+      );
+      expect(frame.offsetY * overlay.scale).toBeCloseTo(
+        ((body?.offsetY ?? 0) + overlay.bodyPixel.y) * building.scale,
+      );
+    }
+  });
+  it('rejects state frames outside the sheet and unsafe sheet names', () => {
+    for (const patch of [
+      { idle: 3 },
+      { working: [0, 3] },
+      { working: [] },
+      { frames: 0 },
+      { sprite: '../rotor.png' },
+      { ticksPerFrame: 0 },
+      { columns: 0 },
+      { frameHeight: 2000, frames: 3, columns: 1 },
+    ])
+      expect(ownBuildingManifest.safeParse({ ...building, overlay: { ...overlay, ...patch } }).success).toBe(
+        false,
+      );
   });
 });

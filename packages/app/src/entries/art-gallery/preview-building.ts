@@ -14,10 +14,15 @@ import {
   TILE_HALF_W,
 } from '@open-northland/render';
 import type { Box } from '@open-northland/render/data';
+import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { BUILDING_SCALE } from '../../content/building-gfx/index.js';
 import { loadOwnBuildingLayers } from '../../content/own-assets/building-layers.js';
-import { ownBuildingBindings } from '../../content/own-assets/building-manifest.js';
+import {
+  ownBuildingBindings,
+  ownLayerScale,
+  ownOverlayLayer,
+} from '../../content/own-assets/building-manifest.js';
 import { type BuildingGeometry, geometryBounds, unionBox } from './building-geometry.js';
 import type { GalleryBuilding, GalleryCharacter } from './catalog.js';
 import type { DecodedFrame, OriginalBuildingOf } from './original-buildings.js';
@@ -97,6 +102,9 @@ export async function buildingPreview(
   if (manifest.shadow && entry.shadowImage) {
     files.set(manifest.shadow.sprite, entry.shadowImage);
   }
+  if (manifest.overlay && entry.overlayImage) {
+    files.set(manifest.overlay.sprite, entry.overlayImage);
+  }
   manifest.construction?.forEach((stage, i) => {
     const paths = entry.construction[i];
     if (paths) {
@@ -114,9 +122,9 @@ export async function buildingPreview(
 
   // Everything hangs off the anchor node, so the panel box is the union of what may be drawn there.
   let box = geometryBounds(geometry);
-  for (const layer of Object.values(layers)) {
+  for (const [key, layer] of Object.entries(layers)) {
     for (const frame of [layer.atlas.frames.get(0), layer.shadow?.atlas.frames.get(0)]) {
-      if (frame !== undefined) box = unionBox(box, frameBox(frame, entry.scale));
+      if (frame !== undefined) box = unionBox(box, frameBox(frame, ownLayerScale(manifest, key)));
     }
   }
   if (original !== undefined) {
@@ -147,11 +155,17 @@ export async function buildingPreview(
   if (originalSprite !== undefined) anchor.addChild(originalSprite);
   const sprites: Record<string, Sprite> = {};
   for (const [key, layer] of Object.entries(layers)) {
-    const sprite = placedOwn(layer, entry.scale);
+    const sprite = placedOwn(layer, ownLayerScale(manifest, key));
     if (sprite === undefined) continue;
     sprites[key] = sprite;
     anchor.addChild(sprite);
   }
+  const spinLayer = manifest.overlay === undefined ? undefined : layers[ownOverlayLayer(manifest)];
+  const spinSprite = manifest.overlay === undefined ? undefined : sprites[ownOverlayLayer(manifest)];
+  const spin =
+    manifest.overlay !== undefined && spinLayer !== undefined && spinSprite !== undefined
+      ? { overlay: manifest.overlay, layer: spinLayer, sprite: spinSprite }
+      : undefined;
   if (person) {
     person.container.position.set(door.x - person.width / 2, door.y - person.height + REFERENCE_FOOT_DROP);
     anchor.addChild(person.container);
@@ -201,6 +215,14 @@ export async function buildingPreview(
     update(state, seconds) {
       person?.update({ ...state, clip: 'idle', frame: 0 }, seconds);
       const showOriginal = state.assets === 'original' && original !== undefined;
+      if (spin !== undefined) {
+        // The finished building advances one working frame every `ticksPerFrame` sim ticks of the shared clock.
+        const { working, ticksPerFrame } = spin.overlay;
+        const bob = working[Math.floor((seconds * TICKS_PER_SECOND) / ticksPerFrame) % working.length];
+        const frame = bob === undefined ? undefined : spin.layer.atlas.frames.get(bob);
+        if (frame !== undefined) spin.sprite.texture = cache.get(spin.layer.source, frame);
+        spin.sprite.visible = !showOriginal && state.progress >= 100;
+      }
       lattice.visible = state.geometry;
       cells.container.visible = state.geometry;
       stack.visible = state.geometry && state.progress >= 100;
@@ -210,7 +232,7 @@ export async function buildingPreview(
       const wanted = showOriginal ? 'original' : state.progress;
       if (wanted === drawn) return;
       drawn = wanted;
-      for (const sprite of Object.values(sprites)) sprite.visible = false;
+      for (const sprite of Object.values(sprites)) if (sprite !== spin?.sprite) sprite.visible = false;
       if (shadowSprite) shadowSprite.visible = false;
       if (showOriginal) return;
       if (shadowSprite) shadowSprite.visible = state.progress >= 100 || manifest.construction === undefined;

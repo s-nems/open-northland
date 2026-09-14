@@ -5,7 +5,12 @@ import type { ContentIr } from '../ir/rows.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import { syntheticSpriteSheet } from '../sprite-sheet/index.js';
 import { loadOwnBuildingLayers } from './building-layers.js';
-import { type OwnBuildingManifest, ownBuildingBindings, ownBuildingManifest } from './building-manifest.js';
+import {
+  type OwnBuildingManifest,
+  ownBuildingBindings,
+  ownBuildingManifest,
+  ownLayerScale,
+} from './building-manifest.js';
 import { ownBushBinding } from './bush-binding.js';
 import { loadOwnCharacters } from './characters.js';
 import { ownGoodBindings } from './good-manifest.js';
@@ -49,7 +54,7 @@ export async function loadOwnSpriteSheet(
         );
         for (const [name, layer] of Object.entries(layers)) {
           families[name] = layer;
-          familyScales[name] = manifest.scale;
+          familyScales[name] = ownLayerScale(manifest, name);
         }
         loaded.push(manifest);
       } catch (error) {
