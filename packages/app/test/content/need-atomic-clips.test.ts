@@ -21,6 +21,8 @@ const COLLECTOR = 8;
 const CARRIER = 24;
 const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
+const PICKUP_ATOMIC = 22;
+const PILEUP_ATOMIC = 23;
 
 /** The unresolved-chain default in `readviews/animations.ts` - no real clip may collapse to it. */
 const DEFAULT_ATOMIC_DURATION = 4;
@@ -29,22 +31,26 @@ describe.runIf(hasRealIr())('need-atomic clips resolve against the served conten
   it('gives every working trade the civilist meal and nap, not the unresolved stub', async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
-    const civilistEat = systems.needAtomicDuration(content, { tribe: VIKING, jobType: CIVILIST }, EAT_ATOMIC);
-    const civilistSleep = systems.needAtomicDuration(
-      content,
-      { tribe: VIKING, jobType: CIVILIST },
-      SLEEP_ATOMIC,
-    );
+    const civilistEat = systems.atomicDuration(content, { tribe: VIKING, jobType: CIVILIST }, EAT_ATOMIC);
+    const civilistSleep = systems.atomicDuration(content, { tribe: VIKING, jobType: CIVILIST }, SLEEP_ATOMIC);
     // The civilist's own bindings - the lengths the fallback hands everyone else.
     expect(civilistEat).toBe(50); // viking_civilist_eat_slot_food
     expect(civilistSleep).toBe(237); // viking_civilist_sleep
 
     for (const jobType of [BUILDER, COLLECTOR, CARRIER]) {
       const settler = { tribe: VIKING, jobType };
-      expect(systems.needAtomicDuration(content, settler, EAT_ATOMIC)).toBe(civilistEat);
-      expect(systems.needAtomicDuration(content, settler, SLEEP_ATOMIC)).toBe(civilistSleep);
-      expect(systems.needAtomicDuration(content, settler, EAT_ATOMIC)).not.toBe(DEFAULT_ATOMIC_DURATION);
+      expect(systems.atomicDuration(content, settler, EAT_ATOMIC)).toBe(civilistEat);
+      expect(systems.atomicDuration(content, settler, SLEEP_ATOMIC)).toBe(civilistSleep);
+      expect(systems.atomicDuration(content, settler, EAT_ATOMIC)).not.toBe(DEFAULT_ATOMIC_DURATION);
     }
+  });
+
+  it('gives every working trade the civilist store exchange, which only jobs 1-6 bind themselves', async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    for (const jobType of [BUILDER, COLLECTOR, CARRIER])
+      for (const atomic of [PICKUP_ATOMIC, PILEUP_ATOMIC])
+        expect(systems.atomicDuration(content, { tribe: VIKING, jobType }, atomic)).toBe(20); // viking_civilist_pickup/pileup
   });
 
   it('carries the at-home sleep twin the rung derives by name, and it is the shorter clip', async () => {

@@ -11,7 +11,6 @@ import {
   PlayerOrder,
   Position,
   Settler,
-  type SettlerIdentity,
   Sheltering,
   TALK_ATOMIC_ID,
   Wedding,
@@ -22,18 +21,12 @@ import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
 import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
-import { atomicClipName, atomicDurationForName } from '../../readviews/animations.js';
+import { atomicDuration } from '../../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
 
 /** Ticks after a chat ends before either half chats again, the {@link ChatCooldown} breather that lets the
  *  freed settlers' work rungs reclaim them. Authored value, ~3 s at the 12 Hz tick. */
 export const CHAT_COOLDOWN_TICKS = 40;
-
-/** A chat atomic's duration (ticks). The readable `setatomic` talk/listen rows exist only for the woman and
- *  civilist jobs, so every other trade's chat resolves through {@link atomicClipName}'s civilist fallback. */
-function chatDuration(ctx: SystemContext, s: SettlerIdentity, atomicId: number): number {
-  return atomicDurationForName(ctx.content, atomicClipName(ctx.content, s, atomicId));
-}
 
 /** Remove a chat from both halves, interrupting any talk/listen atomic in flight (the clips are
  *  `interruptable 1` in the data), and stamp the {@link ChatCooldown} breather on both. */
@@ -140,7 +133,10 @@ function drivePair(
     const listener = ca.speaks ? b : a;
     const st = talker === a ? sa : sb;
     const sl = talker === a ? sb : sa;
-    const duration = Math.max(chatDuration(ctx, st, TALK_ATOMIC_ID), chatDuration(ctx, sl, LISTEN_ATOMIC_ID));
+    const duration = Math.max(
+      atomicDuration(ctx.content, st, TALK_ATOMIC_ID),
+      atomicDuration(ctx.content, sl, LISTEN_ATOMIC_ID),
+    );
     startPairedAtomics(world, talker, TALK_ATOMIC_ID, listener, LISTEN_ATOMIC_ID, duration);
     ca.talking = true;
     cb.talking = true;

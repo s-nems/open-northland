@@ -9,7 +9,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { standsAtPost, towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
-import { needAtomicDuration } from '../../readviews/animations.js';
+import { atomicDuration } from '../../readviews/animations.js';
 import { EAT_ATOMIC_ID, eatDuration, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { enterBuilding, stepOut, takePost } from '../indoors.js';
 import { interactionCell, storedFoodGood } from '../targets/index.js';
@@ -89,7 +89,7 @@ export function sleepAtPost(world: World, ctx: SystemContext, e: Entity, settler
     e,
     SLEEP_ATOMIC_ID,
     { kind: 'sleep' },
-    needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
+    atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
     e,
   );
   return true;

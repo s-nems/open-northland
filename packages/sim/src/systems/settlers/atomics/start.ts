@@ -14,12 +14,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { clearNavState } from '../../movement/nav-state.js';
-import {
-  atomicClipNameAtHome,
-  atomicDuration,
-  atomicDurationForName,
-  needAtomicDuration,
-} from '../../readviews/animations.js';
+import { atomicClipNameAtHome, atomicDuration, atomicDurationForName } from '../../readviews/animations.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 import { atomicHoldsSettler } from './busy.js';
@@ -35,17 +30,15 @@ export const EAT_ATOMIC_ID = 10;
 /**
  * Duration in ticks of one eat, forage, or drink atomic, from the settler's own eat clip
  * (`viking_civilist_eat_slot_food` = 50 ticks). The `[gfxanimatomic]` action-10 frame list raises, chews
- * and lowers, so the clip is a whole meal. Most working trades bind no eat clip, hence
- * {@link needAtomicDuration}.
+ * and lowers, so the clip is a whole meal. Most working trades bind no eat clip and play the civilist's.
  */
 export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
-  return needAtomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
+  return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
 }
 
 /**
  * The sleep slot across every tribe's `setatomic <job> 8 "..._sleep"` bindings, which cover the age
- * classes and the civilist/soldier only (jobs 1-6 and 31); a working trade falls back through
- * {@link needAtomicDuration}.
+ * classes and the civilist/soldier only (jobs 1-6 and 31); a working trade plays the civilist's.
  */
 export const SLEEP_ATOMIC_ID = 8;
 
@@ -63,7 +56,7 @@ export const PRAY_ATOMIC_ID = 12;
 
 /**
  * The original's EXERCISE action, bound `setatomic 6 89 "..._exercise"` for the civilist across tribes.
- * Every trade drills on this clip through {@link needAtomicDuration}'s civilist fallback.
+ * Every trade drills on this clip through the civilist fallback.
  */
 export const EXERCISE_ATOMIC_ID = 89;
 

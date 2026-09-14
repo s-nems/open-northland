@@ -47,20 +47,8 @@ export function atomicAnimationByName(content: ContentSet, name: string): Atomic
  *  so an unresolved atomic still takes visible time rather than completing instantly. */
 const DEFAULT_ATOMIC_DURATION = 4;
 
-/** An atomic's duration in ticks: the `length` of the animation the settler's tribe binds it to. */
+/** An atomic's duration in ticks: the `length` of the clip `atomicClipName` resolves for the settler. */
 export function atomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
-  return atomicDurationForName(content, boundAtomicAnimation(content, settler, atomicId));
-}
-
-/**
- * The duration in ticks of a settler's need atomic (eat, sleep), falling back to the tribe's civilist clip
- * when the settler's own trade binds none. `tribetypes.ini` `setatomic` covers eat only for jobs
- * 3,4,5,6,31,34 and sleep only for 1-6,31, so a builder, collector, farmer, carrier or scout binds neither.
- *
- * Approximation: routing the gap to the generic civilist body, the same join the render makes (every
- * civilian look draws through `logicJob: 6`).
- */
-export function needAtomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
   return atomicDurationForName(content, atomicClipName(content, settler, atomicId));
 }
 

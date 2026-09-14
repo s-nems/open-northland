@@ -2,12 +2,17 @@
 
 **Area:** sim, app · **Focus:** clip join · **Priority:** P2
 
-`atomicClipName` (`packages/sim/src/systems/readviews/animations.ts`) resolves an atomic's animation as
-"the settler's own `setatomic` row, else the tribe's civilist row". The data's rule is a per-job parent:
-`jobtypes.ini` `baseatomics` is 6 only for the civilian trades, 31 for armed soldiers, 33-41 for the hero
-bodies, and **48 (`adult_animal`) for wildlife**. The IR already carries it as `JobType.baseJob`, and
-`@open-northland/data` already walks it (`resolveJobAtomics`, covered by
-`packages/app/test/content/job-atomics.test.ts`).
+`atomicClipName` and `atomicDuration` (`packages/sim/src/systems/readviews/animations.ts`) resolve an
+atomic's animation as "the settler's own `setatomic` row, else the tribe's civilist row". The engine's
+rule is a per-job parent chain: `jobtypes.ini` `baseatomics` is 6 only for the civilian trades, 31 for
+armed soldiers, 33-41 for the hero bodies, and **48 (`adult_animal`) for wildlife**. The IR already
+carries it as `JobType.baseJob`, and `@open-northland/data` already walks it (`resolveJobAtomics`,
+covered by `packages/app/test/content/job-atomics.test.ts`).
+
+Byte evidence (owned macOS `the original`, `an original routine`): the tribe table is
+read for `(tribe, job, atomic)`; on a miss the job record's base job is loaded, its allow flag for the
+atomic is required, and the lookup retries up the chain. A chain that never resolves starts no
+animation at all, where the sim runs `DEFAULT_ATOMIC_DURATION` instead.
 
 Two consequences, verified against the owned copy:
 
@@ -20,6 +25,13 @@ Two consequences, verified against the owned copy:
   `byEvent.combatSwing` swoosh covers it instead.
 - **The sandbox binds no animal atomics at all** (`packages/app/src/game/sandbox/content/catalog/tribes.ts`
   registers animal tribes with `typeId`/`id` only), so the scene cannot exercise the fix.
+- **A struck working trade never flinches.** The stagger gate
+  (`packages/sim/src/systems/settlers/atomics/effects/combat/hit/stagger.ts`) requires the trade's own
+  `attacked` (82) row, which only jobs 5-6 carry; under the chain a builder or carrier would resolve the
+  civilist's. Whether the original issues 82 to a hit civilian trade still needs observation.
+- The sandbox binds the store pick-up and pile-up (22/23) for every job, unlike the real data (22 on
+  jobs 1-6, 23 on 5-6), so no scene walks the fallback the real content depends on; binding them on the
+  civilist only, as the talk and eat rows already do, would make scenarios follow the real path.
 
 ## Scope
 

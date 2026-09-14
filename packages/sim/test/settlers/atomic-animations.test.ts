@@ -8,6 +8,7 @@ import {
   atomicStartDirection,
   isInterruptibleAtomic,
 } from '../../src/systems/index.js';
+import { atomicDuration } from '../../src/systems/readviews/animations.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
@@ -79,6 +80,47 @@ function animationContent(): ContentSet {
     ],
   });
 }
+
+describe('atomicDuration', () => {
+  const VIKING = 1;
+  const CIVILIST = 6;
+  const CARRIER = 24;
+  const PICKUP = 22;
+  const UNBOUND_ATOMIC = 99;
+  function boundContent(): ContentSet {
+    return parseContentSet({
+      manifest: TEST_MANIFEST,
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [
+        { typeId: CIVILIST, id: 'civilist' },
+        { typeId: CARRIER, id: 'carrier', baseJob: CIVILIST },
+      ],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
+      tribes: [
+        {
+          typeId: VIKING,
+          id: 'viking',
+          atomicBindings: [{ jobType: CIVILIST, atomicId: PICKUP, animation: 'viking_civilist_pickup' }],
+        },
+      ],
+      atomicAnimations: [{ id: 'viking_civilist_pickup', name: 'viking_civilist_pickup', length: 20 }],
+    });
+  }
+
+  it('plays the civilist clip length for a trade that binds none itself', () => {
+    const content = boundContent();
+    expect(atomicDuration(content, { tribe: VIKING, jobType: CIVILIST }, PICKUP)).toBe(20);
+    expect(atomicDuration(content, { tribe: VIKING, jobType: CARRIER }, PICKUP)).toBe(20);
+  });
+
+  it('keeps the unresolved default when neither the trade nor the civilist binds the atomic', () => {
+    const civilist = atomicDuration(boundContent(), { tribe: VIKING, jobType: CIVILIST }, UNBOUND_ATOMIC);
+    expect(atomicDuration(boundContent(), { tribe: VIKING, jobType: CARRIER }, UNBOUND_ATOMIC)).toBe(
+      civilist,
+    );
+    expect(civilist).toBeLessThan(20);
+  });
+});
 
 describe('atomicAnimationByName', () => {
   it('resolves an animation by its exact name (the setatomic join key, not the slug id)', () => {

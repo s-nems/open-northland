@@ -16,7 +16,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { NEED_DRIVE_THRESHOLD, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
-import { needAtomicDuration } from '../../readviews/animations.js';
+import { atomicDuration } from '../../readviews/animations.js';
 import { isFood, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import {
@@ -204,7 +204,7 @@ export function planNeeds(
           e,
           SLEEP_ATOMIC_ID,
           { kind: 'sleep' },
-          needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
+          atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
           e,
         ),
       );
@@ -233,7 +233,7 @@ export function planNeeds(
           e,
           PRAY_ATOMIC_ID,
           { kind: 'pray' },
-          needAtomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
+          atomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
           temple,
         ),
       );

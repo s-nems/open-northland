@@ -15,7 +15,7 @@ import type { SystemContext } from '../../context.js';
 import { isSchool } from '../../orders/education.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
-import { needAtomicDuration } from '../../readviews/animations.js';
+import { atomicDuration } from '../../readviews/animations.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import { EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
@@ -83,7 +83,7 @@ export function planTraining(
       e,
       EXERCISE_ATOMIC_ID,
       { kind: 'exercise' },
-      needAtomicDuration(ctx.content, settler, EXERCISE_ATOMIC_ID),
+      atomicDuration(ctx.content, settler, EXERCISE_ATOMIC_ID),
       order.house,
     ),
   );
