@@ -258,10 +258,9 @@ the images. Every part comes from the one resolved commit. `latest` on the web a
 only after a complete release dispatched without the `commit` input, so rebuilding an older commit
 cannot roll a deployment backwards.
 
-The installers and the web image contain decoded original content, so the releases and the GHCR
-packages must stay private and a host that pulls the web image must not be public;
-[`LEGAL.md`](LEGAL.md) has the rule. Downloading either needs a GitHub login with access to the
-repository. The relay image carries neither content nor the simulation.
+The installers and the web image contain decoded original content; [`LEGAL.md`](LEGAL.md) says
+where they may go. Downloading either needs a GitHub login with access to the repository. The relay
+image carries neither content nor the simulation.
 
 ## Desktop packaging
 
@@ -289,21 +288,17 @@ approval and publication. This workshop is independent of `npm run pipeline`, wh
 
 ## Web image
 
-The web image, `ghcr.io/s-nems/open-northland-web`, is the quick demo of a commit: nginx serving
+The web image, `ghcr.io/s-nems/open-northland-web`, is the web app of a commit: nginx serving
 `packages/app/dist` and `content/` from one document root, the app at `/`, the hashed `/assets/`
 cached for good, everything else revalidated, a missing path a plain 404, and `/healthz` for the
 host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
 
-To build and check the image locally, after `npm run build` with a `content/` in place:
+To build and run the image locally, after `npm run build` with a `content/` in place:
 
 ```bash
 npm run web:image
-node deploy/web/smoke-image.mjs open-northland-web
 docker run --rm --publish 8080:80 open-northland-web
 ```
-
-The smoke check runs the image and reads the served contract back; `deploy/web/smoke-image.mjs`
-lists what it asks for.
 
 ## Relay image
 

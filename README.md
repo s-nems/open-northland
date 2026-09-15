@@ -9,13 +9,12 @@ Open Northland is an independent, cross-platform engine for *Cultures - 8th Wond
 Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
 an offline asset pipeline.
 
-The repository is private and never contains original game files or decoded content; `npm run
-check:assets` rejects both in CI. The maps, graphics, and audio a build plays come from the free
+The repository never contains original game files or decoded content; `npm run check:assets`
+rejects both in CI. The maps, graphics, and audio a build plays come from the free
 [CulturesNation](https://culturesnation.pl) community mod, whose archive is a build input: a release
 downloads the pinned `cnmod.zip` from `game.opennorthland.org`, converts it into `content/`, and packs
 that tree into the desktop installers and the web image. Those two artifacts contain decoded
-original data and go no further than this repository's releases and GHCR packages, which must stay
-private; [`docs/LEGAL.md`](docs/LEGAL.md) is the canonical wording.
+original data; [`docs/LEGAL.md`](docs/LEGAL.md) says where they may go.
 
 The original assets are a stand-in while the project's own are made ([`docs/art/`](docs/art/AGENTS.md));
 replacing them is the goal.
@@ -24,11 +23,11 @@ replacing them is the goal.
 
 ## Builds
 
-The `Release` workflow, dispatched from the Actions tab against `main`, publishes a `build-<short-sha>`
-prerelease with unsigned installers for Windows, macOS, and Linux and pushes the web demo image
-`ghcr.io/s-nems/open-northland-web`. Both need a GitHub login with access to the repository. The
-desktop build is the way to play; the web image is a quick demo. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
-describes the workflow and the local equivalents.
+The game ships as a desktop app and as a web app, both built from the same `packages/app`. The
+`Release` workflow, dispatched from the Actions tab against `main`, publishes a `build-<short-sha>`
+prerelease with unsigned desktop installers for Windows, macOS, and Linux and pushes the web app
+image `ghcr.io/s-nems/open-northland-web`. Both need a GitHub login with access to the repository.
+[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) describes the workflow and the local equivalents.
 
 ## Status
 

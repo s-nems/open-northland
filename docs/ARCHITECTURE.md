@@ -40,6 +40,7 @@ asset-pipeline -> generated content -> app / desktop
   `docs/NETWORK.md`.
 - `packages/app` owns browser input, menus, HUD, the frame loop, and package wiring.
 - `packages/desktop` serves the browser build and the converted content through Electron.
+- `deploy/web` serves the same two trees through nginx; that image is the web app.
 - `tools/asset-pipeline` converts the CulturesNation mod into the validated content tree.
 
 The app owns runtime orchestration: it advances the sim and hands snapshots and events to the sinks.

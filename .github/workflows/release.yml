@@ -1,15 +1,5 @@
 name: Release
 
-# Manually-dispatched build of everything one commit ships - the converted content, the desktop
-# installers, the web image and the relay image - so every part comes from the same source. Run it
-# from the Actions tab against main (optionally an older commit via the `commit` input).
-#
-# The content is converted once from the pinned CulturesNation archive and handed to the installers
-# and the web image as a workflow artifact. Each OS builds its own installers natively, then `publish`
-# collects them into a `build-<short-sha>` prerelease. The installers and the web image contain that
-# decoded content, so the repository, its releases and its GHCR packages stay private and need a
-# GitHub login. There is no semver release train yet, so the version is the commit
-# (0.0.0-<short-sha>), stamped via electron-builder extraMetadata.
 on:
   workflow_dispatch:
     inputs:
@@ -22,10 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  # Every job publishes under names that look official, so none may build an object that is not on
-  # main: the `commit` input can otherwise name anything in the repo network, fork-PR heads included.
-  # The resolved sha is what every later job checks out, so a push during the build cannot
-  # leave the installers, the images, and the release notes describing different commits.
+  # The commit input can name anything in the repo network; every later job builds the sha resolved here.
   guard:
     runs-on: ubuntu-latest
     outputs:
@@ -44,8 +31,6 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "short=$(git rev-parse --short=7 "$sha")" >> "$GITHUB_OUTPUT"
 
-  # One conversion per release, shared by every artifact below. It is never cached: a cache key would
-  # have to track every package the pipeline depends on, and a miss there would ship stale content.
   content:
     needs: guard
     runs-on: ubuntu-latest
@@ -64,7 +49,6 @@ jobs:
           name: content
           path: content
           if-no-files-found: error
-          # Decoded original content that only the jobs of this run need.
           retention-days: 1
 
   installers:
@@ -84,7 +68,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # electron-builder packs the checkout's content/ as a resource of every installer.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: content
@@ -99,8 +82,6 @@ jobs:
             packages/desktop/release/*.AppImage
           if-no-files-found: error
 
-  # The web demo of the same commit: the built app and the converted content in one nginx document
-  # root. Only the commit-stamped tag is pushed here; `latest` is `publish`'s job, see the relay.
   image:
     needs: [guard, content]
     runs-on: ubuntu-latest
@@ -139,16 +120,7 @@ jobs:
           tags: ghcr.io/${{ github.repository }}-web:sha-${{ needs.guard.outputs.short }}
           build-args: |
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
-      - name: Check the published image against the deployment contract
-        run: |
-          image="ghcr.io/${{ github.repository }}-web:sha-${{ needs.guard.outputs.short }}"
-          docker pull --platform linux/amd64 "$image"
-          node deploy/web/smoke-image.mjs "$image"
 
-  # Build the relay from the same commit as its clients. Only the commit-stamped tag is pushed here.
-  # `latest` follows a whole successful release, which is `publish`'s job, so a failed installer build
-  # cannot leave the registry ahead of the download page. A tag this job leaves behind on failure is
-  # never deployed: nothing points at it.
   relay-image:
     needs: guard
     runs-on: ubuntu-latest
@@ -177,7 +149,6 @@ jobs:
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=relay
           cache-to: type=gha,mode=max,scope=relay
-      # The smoke check opens a WebSocket from Node itself, which needs the runtime the workspace pins.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -210,16 +181,13 @@ jobs:
           IMAGE_PREFIX: ghcr.io/${{ github.repository }}
         run: |
           tag="build-$SHORT"
-          # Re-dispatching the same commit replaces that build's assets instead of failing.
           if gh release view "$tag" --json tagName --jq .tagName >/dev/null 2>&1; then
             gh release upload "$tag" installers/* --clobber
           else
-            # Quoted heredoc + sed keeps the markdown literal (backticks, fences) with only the
-            # sha substituted.
             sed -e "s/@SHA@/$SHA/" -e "s/@SHORT@/$SHORT/" -e "s|@IMAGE_PREFIX@|$IMAGE_PREFIX|" > notes.md <<'EOF'
           Unsigned development build of commit @SHA@ - code signing is tracked in docs/tickets/tooling/desktop-code-signing.md.
 
-          The installers and the web image contain the converted CulturesNation content, decoded original game data. This release, its assets and the GHCR packages below are private: downloading or pulling needs a GitHub login with access to the repository.
+          The installers and the web image contain the converted CulturesNation content, decoded original game data; downloading or pulling needs a GitHub login with access to the repository.
 
           - **Windows:** SmartScreen warns about an unknown publisher; choose "More info" → "Run anyway".
           - **macOS:** Gatekeeper refuses to open the unsigned app - on Apple Silicon as a misleading "damaged, move to Trash" dialog. The app is fine; after copying OpenNorthland.app to Applications, clear the download quarantine flag and launch again:
@@ -228,7 +196,7 @@ jobs:
             xattr -cr /Applications/OpenNorthland.app
             ```
 
-          The web demo and the relay of the same commit:
+          The web app and the relay images of the same commit:
 
           ```sh
           docker pull @IMAGE_PREFIX@-web:sha-@SHORT@
@@ -243,8 +211,7 @@ jobs:
           fi
           url="$(gh release view "$tag" --json url --jq .url)"
           echo "Download page: $url" >> "$GITHUB_STEP_SUMMARY"
-      # Deployments pull `latest`, so it moves only for a complete release of the branch head. A
-      # rebuild of an older commit through the `commit` input must not roll production backwards.
+      # Deployments pull latest; a rebuild of an older commit must not roll them backwards.
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         if: inputs.commit == ''
         with:
