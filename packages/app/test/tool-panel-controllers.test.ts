@@ -563,9 +563,12 @@ describe('tool windows registry', () => {
       diplomacyRows: () => [],
       art: null,
       missionBrief: () => null,
+      missionBriefingHistory: () => [],
+      missionReplayPage: () => null,
       history: null,
       onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
       onPickGood: () => undefined,
+      onPayTribute: () => undefined,
     });
     const extras = windows.byId.extras;
     extras.toggle();
