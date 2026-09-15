@@ -71,6 +71,13 @@ def main():
     def knobs(section):
         return [arg for key,value in recipe[section].items() for arg in ('--'+key.replace('_','-'),str(value))]
 
+    def receipt_key(path):
+        # Windows has no relative path between drives; consumers resolve absolute keys as-is.
+        try:
+            return os.path.relpath(path, run)
+        except ValueError:
+            return str(path)
+
     stages = []
     paired = (run/'asset.json').is_file()
     for index, stage in enumerate(args.stages):
@@ -147,7 +154,7 @@ def main():
                         if clip.get('equipment'):
                             config = run/clip['equipment']
                             dependencies.append(config.parent/json.loads(config.read_text())['model'])
-                        before = {os.path.relpath(p, run): hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+                        before = {receipt_key(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
                         receipt = out/'inputs.json'
                         if args.reuse_shadow_renders and receipt.exists():
                             saved = {p: h for p, h in json.loads(receipt.read_text()).items() if Path(p).name != 'run-character.py'}
@@ -159,7 +166,7 @@ def main():
                         old.unlink()
                     render_script('render_walk.py',*options)
                     if stage == 'shadows':
-                        after = {os.path.relpath(p, run): hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+                        after = {receipt_key(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
                         if before != after:
                             raise RuntimeError('Shadow inputs changed during render')
                         (out/'inputs.json').write_text(json.dumps(before, indent=2)+'\n')
