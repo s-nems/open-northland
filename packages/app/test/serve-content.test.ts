@@ -45,13 +45,7 @@ describe('contentFile', () => {
 
 describe('isContentPath', () => {
   it('claims the listings and every served directory, so a miss there never falls back to index.html', () => {
-    for (const path of [
-      '/ir.json',
-      '/maps-index.json',
-      '/backdrops-index.json',
-      '/maps/missing.json',
-      '/bobs/x.png',
-    ])
+    for (const path of ['/ir.json', '/maps-index.json', '/maps/missing.json', '/bobs/x.png'])
       expect(isContentPath(path)).toBe(true);
   });
 

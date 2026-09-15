@@ -56,7 +56,6 @@ by Git and `npm run check:assets` fails on anything tracked under it.
 The output is laid out exactly as the app fetches it, so every host serves it as static files from
 `/`: `ir.json`, the `maps-index.json` and `bobs-index.json` listings, and the `maps/`, `bobs/`,
 `textures/`, `sounds/`, `music/`, `gui/`, `gui-bitmaps/`, `goods/` and `terrain-palettes/` directories.
-`npm run menu-backdrops` adds `backdrops/` and `backdrops-index.json` beside them.
 
 The music stage renders the DirectMusic soundtrack (`DataX/DM2`, which the mod ships) to one ogg
 track per segment entirely in Node: segment interpretation, DLS synthesis, reverb, and ogg encoding
@@ -86,9 +85,7 @@ loading a save preserves its stored mission rules.
 
 ## Browser entries
 
-`npm run dev` opens the main menu. With `content/backdrops/` present (see `npm run menu-backdrops`
-below) the menu rotates captured settlement stills behind the grade; without them the static brand
-art stands in. Direct entries are useful during focused work:
+`npm run dev` opens the main menu. Direct entries are useful during focused work:
 
 | URL query | Purpose |
 | --- | --- |
@@ -101,7 +98,6 @@ art stands in. Direct entries are useful during focused work:
 | `?icons` | decoded sprite-frame gallery |
 | `?sounds` | sound-binding gallery |
 | `?shot` | single-frame screenshot entry used by the harness |
-| `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 
 Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`,
 `intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. `seed=<n>` picks
@@ -155,16 +151,9 @@ npm run shot -- --seed 7 --ticks 20 --out shot.png
 Useful options are `--map <id>`, `--atlas [real]`, `--terrain`, `--zoom <n>`, and `--no-hud`.
 Screenshots still need human review.
 
-Regenerate the menu-backdrop stills (the curated framings live in
-`packages/app/scripts/menu-backdrops.mjs`):
-
-```bash
-npm run menu-backdrops
-```
-
-It boots each curated map through `?backdrop=<id>` and writes JPEGs into `content/backdrops/`,
-which the menu rotates through. The stills render decoded original art, so they are gitignored
-content, never repository files; re-run the command after `npm run pipeline`.
+The menu's backdrop stills are committed under `packages/app/src/assets/menu-backdrops/`, one
+1920x1080 JPEG per curated map: an ambient settlement of a decoded map with no HUD and no map edge in
+frame. Replace a file there to change the rotation.
 
 ## Measuring performance
 

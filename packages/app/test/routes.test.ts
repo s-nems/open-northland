@@ -18,7 +18,6 @@ describe('routeFor', () => {
 
   it.each<[string, RouteId]>([
     ['?shot', 'shot'],
-    ['?backdrop', 'backdrop'],
     ['?scene=battle', 'scene'],
     ['?anim', 'anim'],
     ['?art', 'art'],

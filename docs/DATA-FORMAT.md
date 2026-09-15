@@ -24,7 +24,6 @@ content/
   gui-bitmaps/            window and button fills
   goods/                  decoded goods art
   terrain-palettes/       the vertex colour palette map scripts index
-  backdrops/              menu stills, with backdrops-index.json beside them (npm run menu-backdrops)
 ```
 
 `packages/data` validates the listings and sidecars the app reads; file names referenced from

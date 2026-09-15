@@ -33,7 +33,7 @@ describe('boot progress', () => {
   });
 
   it('names the remembered still as a background image, and nothing before any menu visit', () => {
-    expect(bootStillImage('07-fjord.jpg')).toContain('/backdrops/07-fjord.jpg');
+    expect(bootStillImage('/assets/fjord-1a2b3c.jpg')).toBe('url("/assets/fjord-1a2b3c.jpg")');
     expect(bootStillImage(null)).toBe('none');
   });
 

@@ -7,8 +7,7 @@
     "dev": "tsc --build && vite",
     "build": "tsc --build && vite build && node scripts/bundle-report.mjs",
     "preview": "vite preview",
-    "shot": "tsc --build && node scripts/shot.mjs",
-    "menu-backdrops": "tsc --build && node scripts/menu-backdrops.mjs"
+    "shot": "tsc --build && node scripts/shot.mjs"
   },
   "dependencies": {
     "@open-northland/audio": "*",

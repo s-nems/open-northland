@@ -1,19 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { randomStill } from '../src/entries/main-menu/backdrops.js';
 import { rotationOrder } from '../src/entries/main-menu/rotation.js';
-import { parseStillList } from '../src/view/backdrop-stills.js';
 
 const POOL = ['01-a.jpg', '02-b.jpg', '03-c.jpg', '04-d.jpg'];
-
-describe('parseStillList', () => {
-  it('accepts a string list and rejects anything else', () => {
-    expect(parseStillList(['01-a.jpg', '02-b.jpg'])).toEqual(['01-a.jpg', '02-b.jpg']);
-    expect(parseStillList([])).toEqual([]);
-    expect(parseStillList(['01-a.jpg', 7])).toBeNull();
-    expect(parseStillList({ files: [] })).toBeNull();
-    expect(parseStillList(null)).toBeNull();
-  });
-});
 
 describe('randomStill', () => {
   it('draws from the pool, pinned by the injected rng', () => {

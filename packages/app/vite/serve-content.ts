@@ -10,7 +10,6 @@ const CONTENT_ROOTS = new Set([
   'ir.json',
   'maps-index.json',
   'bobs-index.json',
-  'backdrops-index.json',
   'maps',
   'bobs',
   'textures',
@@ -20,7 +19,6 @@ const CONTENT_ROOTS = new Set([
   'gui-bitmaps',
   'goods',
   'terrain-palettes',
-  'backdrops',
 ]);
 
 const CONTENT_TYPES: Readonly<Record<string, string>> = {

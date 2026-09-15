@@ -16,9 +16,9 @@ committed.
 Tests use synthetic fixtures created for this project. A test or pull request must not contain an
 original file, decoded asset, extracted text corpus, or other distributable game content.
 
-Documentation screenshots may show Open Northland rendering decoded game data. They demonstrate
-engine compatibility; they are not an asset pack, and the underlying artwork remains the property of
-its rights holders.
+Documentation screenshots and the menu's backdrop stills may show Open Northland rendering decoded
+game data. They demonstrate engine compatibility; they are not an asset pack, and the underlying
+artwork remains the property of its rights holders.
 
 ## Game data and builds
 

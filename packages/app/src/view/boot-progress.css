@@ -17,8 +17,9 @@
   font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
   /* Two scrims: a centre pool so the bar and label keep their contrast against whatever the backdrop
      happens to show, and a vignette dropping the edges. Both heavier than the menu's, which only had to
-     stay behind opaque panels. The still sits above the static art, so one the pool no longer has fails
-     to paint and uncovers the art rather than leaving bare scrims; the price is decoding both. */
+     stay behind opaque panels. The still sits above the static art, so a remembered URL an older build
+     hashed fails to paint and uncovers the art rather than leaving bare scrims; the price is decoding
+     both. */
   background:
     radial-gradient(
       ellipse 55% 40% at center,

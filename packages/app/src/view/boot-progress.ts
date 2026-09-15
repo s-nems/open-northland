@@ -1,6 +1,6 @@
 import { diag } from '../diag/log.js';
 import { messages } from '../i18n/index.js';
-import { lastShownStill, stillUrl } from './backdrop-stills.js';
+import { lastShownStill } from './backdrop-stills.js';
 import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
@@ -69,7 +69,7 @@ function nextPaint(): Promise<void> {
 
 /** The still the menu was showing as a CSS `<bg-image>`, or `none` before any menu visit. */
 export function bootStillImage(remembered: string | null): string {
-  return remembered === null ? 'none' : `url("${stillUrl(remembered)}")`;
+  return remembered === null ? 'none' : `url("${remembered}")`;
 }
 
 function node(className: string, ...children: readonly HTMLElement[]): HTMLDivElement {

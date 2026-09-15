@@ -7,6 +7,16 @@ import { ownArtPolicy } from './own-art-policy.mjs';
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',
   'docs/images/settlement.webp',
+  // The menu's backdrop stills: Open Northland rendering decoded maps, on the same footing as
+  // settlement.webp.
+  'packages/app/src/assets/menu-backdrops/burza_piaskowa.jpg',
+  'packages/app/src/assets/menu-backdrops/demo_mainmenu_10.jpg',
+  'packages/app/src/assets/menu-backdrops/kraina_starych_bohaterow.jpg',
+  'packages/app/src/assets/menu-backdrops/mroczny_swiat.jpg',
+  'packages/app/src/assets/menu-backdrops/nowa_nadzieja.jpg',
+  'packages/app/src/assets/menu-backdrops/saracen_4.jpg',
+  'packages/app/src/assets/menu-backdrops/straznicypolnocy.jpg',
+  'packages/app/src/assets/menu-backdrops/wielka_inwazja.jpg',
   'packages/app/public/favicon.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
