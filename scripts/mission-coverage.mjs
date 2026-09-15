@@ -28,7 +28,7 @@ const top = topIndex >= 0 ? Number.parseInt(args[topIndex + 1] ?? '20', 10) : 20
 const mapsDir = resolve(contentDir(), 'maps');
 if (!existsSync(mapsDir)) {
   console.error(`mission-coverage needs generated content - no maps under ${mapsDir}`);
-  console.error('Generate it with: npm run pipeline -- --game "../Cultures 8th Wonder" --out content');
+  console.error('Generate it with: npm run build:content');
   process.exit(1);
 }
 

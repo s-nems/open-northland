@@ -42,10 +42,7 @@ export function menuMusicTracks(
  */
 export function startMenuMusic(signal: AbortSignal): void {
   const settings = menuSettings();
-  const engine = new WebAudioEngine({
-    musicBaseUrl: '/music/',
-    musicVolume: settings.musicVolume,
-  });
+  const engine = new WebAudioEngine({ musicVolume: settings.musicVolume });
   engine.setEnabled(settings.soundEnabled);
   void loadMusicManifest().then((manifest) => {
     if (signal.aborted) return;

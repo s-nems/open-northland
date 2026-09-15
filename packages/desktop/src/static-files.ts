@@ -4,7 +4,8 @@ import { resolve, sep } from 'node:path';
 /**
  * The file a request pathname names under `root`, or undefined: a missing file, a directory, a
  * malformed percent sequence, and any path that would leave the root all read the same way. `root` is
- * an absolute host constant, never request input.
+ * an absolute host constant, never request input. The Vite dev server keeps the same rule in
+ * `packages/app/vite/serve-content.ts`; a change here applies there too.
  */
 export async function fileUnderRoot(root: string, rawPathname: string): Promise<string | undefined> {
   let pathname: string;

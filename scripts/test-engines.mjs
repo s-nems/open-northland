@@ -26,7 +26,7 @@ const REQUIRED = ['ir.json', 'maps', 'bobs'];
 const missing = REQUIRED.filter((rel) => !existsSync(resolve(dir, rel)));
 if (missing.length > 0) {
   console.error(`test:engines needs generated content - missing under ${dir}: ${missing.join(', ')}`);
-  console.error('Generate it with: npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content');
+  console.error('Generate it with: npm run build:content');
   process.exit(1);
 }
 

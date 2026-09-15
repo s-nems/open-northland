@@ -47,7 +47,7 @@ The document also contains a manifest:
 {
   "manifest": {
     "version": 3,
-    "generatedFrom": { "mod": "<local mod path>" },
+    "generatedFrom": { "mod": "<mod folder name>" },
     "locale": "eng"
   },
   "goods": [],
@@ -57,12 +57,11 @@ The document also contains a manifest:
 ```
 
 The optional manifest `modVersion` is an explicit pipeline caller label (`--mod-version` in the CLI).
-Absence means unknown. It is never inferred from `generatedFrom.mod`, which records a local path.
+Absence means unknown. It is never inferred from `generatedFrom.mod`, the name of the mod folder the
+conversion read.
 The lobby compares the label alongside fingerprints of the actual content.
 
 The remaining arrays are omitted from this example. Read the schema for the current complete list.
-The `generatedFrom` paths are local provenance. Do not paste the manifest into an issue or diagnostic
-report without removing them.
 
 `parseContentSet(raw)` performs Zod validation and cross-reference checks. `IR_VERSION` records the
 current schema version, and the manifest gate rejects any other stamp - older or newer - before the
@@ -221,8 +220,8 @@ and map fingerprint must match exactly. A non-null `contentFingerprint` must mat
 The shared `packages/data/src/content-fingerprint.ts` function hashes canonical JSON with SHA-256,
 preserving table and array order while excluding installation paths, provenance, goods/job display
 names, locale, map inventory and sound data. It includes balance and content bindings as well as ids;
-the sim memoizes it per content set. A lobby folds it with the pipeline revision, the mod version
-label and the authored goods and job names, so a lobby match is stricter than a save's.
+the sim memoizes it per content set. A lobby folds it with the mod version label and the authored
+goods and job names, so a lobby match is stricter than a save's.
 
 `contentFingerprint` and `savedAt` are nullable. `savedAt` is the caller's Unix timestamp in
 milliseconds, supplied at export rather than read inside the simulation. Browser and desktop lists

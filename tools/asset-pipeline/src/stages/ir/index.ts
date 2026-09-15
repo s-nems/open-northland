@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import {
   extractLandscapeGfx,
@@ -73,7 +74,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     manifest: {
       version: IR_VERSION,
       ...(roots.modVersion === undefined ? {} : { modVersion: roots.modVersion }),
-      generatedFrom: { mod: roots.mod },
+      generatedFrom: { mod: basename(roots.mod) },
     },
     goods,
     jobs,

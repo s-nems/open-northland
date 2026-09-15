@@ -132,7 +132,8 @@ export const enSurfaces = {
       assets: 'Asset set',
       assetsOwn: 'Own',
       assetsOriginal: 'Original',
-      assetsTip: 'Original assets require imported game data.',
+      assetsTip:
+        'Own draws the sprites and terrain made for this project, Original the decoded game graphics.',
       renderScaleTip:
         'Resolution the whole game image is drawn at: lower runs smoother on weak hardware, higher sharpens it. Applies in game.',
       fpsLimit: 'Frame rate limit',
@@ -220,7 +221,7 @@ export const enSurfaces = {
     backToMenu: 'Back to menu',
     missingContentTitle: 'Decoded content is unavailable',
     missingTerrainDetail:
-      'This world draws the real decoded terrain, and content/ has none to serve. Run the asset pipeline on the CulturesNation mod (npm run pipeline), then reload.',
+      'This world draws the real decoded terrain, and content/ has none to serve. Build it with npm run build:content, then reload.',
     loadFailedTitle: 'Loading the save failed',
     loadFailedDetail:
       'This world could not take the saved game. It usually means the save was made on different game content or an older map; loading it again will fail the same way.',

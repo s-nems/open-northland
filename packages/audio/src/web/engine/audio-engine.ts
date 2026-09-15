@@ -44,9 +44,9 @@ export interface AudioEngineOptions {
   readonly random?: RandomFn;
 }
 
-/** Default URL prefix the decoded wavs are served under (the dev server's sounds route). */
+/** URL prefix of the content tree's decoded wavs; every host serves the tree at the root. */
 export const DEFAULT_SOUNDS_BASE_URL = '/sounds/';
-/** Default URL prefix the rendered music tracks are served under (the dev server's music route). */
+/** URL prefix of the content tree's rendered music tracks. */
 export const DEFAULT_MUSIC_BASE_URL = '/music/';
 /** Default overall output gain. */
 export const DEFAULT_MASTER_GAIN = 0.8;

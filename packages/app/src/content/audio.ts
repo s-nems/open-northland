@@ -25,8 +25,5 @@ export function createSoundDriver(ir: ContentIr | null): SoundDriver | null {
   const sounds = ir?.sounds;
   if (!hasSoundContent(sounds)) return null;
   const index = buildSoundIndex(sounds, ir?.gfxPatterns ?? [], ir?.terrainPatterns ?? []);
-  return new SoundDriver(index, defaultBindings(), {
-    baseUrl: '/sounds/',
-    musicBaseUrl: '/music/',
-  });
+  return new SoundDriver(index, defaultBindings());
 }

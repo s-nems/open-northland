@@ -1,5 +1,5 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildIr, resolveIniSources } from '../src/stages/ir/index.js';
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
@@ -67,7 +67,7 @@ describe('buildIr / resolveIniSources', () => {
   it('reads the readable .ini sources and assembles a validated ContentSet', async () => {
     const set = await buildIr({ mod: game });
 
-    expect(set.manifest.generatedFrom).toEqual({ mod: game });
+    expect(set.manifest.generatedFrom).toEqual({ mod: basename(game) });
     expect(set.goods.map((g) => g.id)).toEqual(['wood']);
     expect(set.goods[0]?.atomics.harvest).toBe(26);
     expect(set.jobs.map((j) => j.id)).toEqual(['civilist', 'carrier']);

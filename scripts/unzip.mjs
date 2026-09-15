@@ -138,10 +138,11 @@ async function readEntry(file, entry) {
   return data;
 }
 
-/** The entry's path under the target, refusing anything that could leave it. */
+/** The entry's path under the target, refusing anything that could leave it; a backslash is a
+ *  separator to Windows, so it is refused rather than split. */
 function entryPath(target, name) {
   const segments = name.split('/');
-  if (segments[0] === '' || segments.some((segment) => segment === '..')) {
+  if (segments[0] === '' || segments.some((segment) => segment === '..' || segment.includes('\\'))) {
     throw new Error(`zip: refusing entry path ${name}`);
   }
   return join(target, ...segments);

@@ -251,12 +251,12 @@ forced divergence for a resync check is a console mutation of `__opennorthland.s
 
 The `Release` workflow is dispatched by hand from the Actions tab against `main`, or against an
 older commit of it through the `commit` input. It converts the content once with
-`npm run build:content`, hands the tree to the other jobs as a one-day workflow artifact, builds the
-desktop installers natively on Windows, macOS and Linux together with the web image and the relay
-image, then publishes a `build-<short-sha>` prerelease holding the installers, with notes that name
-the images. Every part comes from the one resolved commit. `latest` on the web and relay images moves
-only after a complete release dispatched without the `commit` input, so rebuilding an older commit
-cannot roll a deployment backwards.
+`npm run build:content`, runs `npm run test:content` over the fresh tree, hands it to the other jobs
+as a one-day workflow artifact, builds the desktop installers natively on Windows, macOS and Linux
+together with the web image and the relay image, then publishes a `build-<short-sha>` prerelease
+holding the installers, with notes that name the images. Every part comes from the one resolved
+commit. `latest` on the web and relay images moves only after a complete release dispatched without
+the `commit` input, so rebuilding an older commit cannot roll a deployment backwards.
 
 The installers and the web image contain decoded original content; [`LEGAL.md`](LEGAL.md) says
 where they may go. Downloading either needs a GitHub login with access to the repository. The relay

@@ -131,7 +131,7 @@ export const plSurfaces = {
       assets: 'Zestaw assetów',
       assetsOwn: 'Własne',
       assetsOriginal: 'Oryginalne',
-      assetsTip: 'Oryginalne assety wymagają zaimportowanych danych gry.',
+      assetsTip: 'Własne rysują grafiki projektu, Oryginalne zdekodowaną grafikę gry.',
       renderScaleTip:
         'Rozdzielczość, w której rysowany jest cały obraz gry: niższa daje płynność na słabszym sprzęcie, wyższa daje ostrzejszy obraz. Działa w grze.',
       fpsLimit: 'Limit klatek na sekundę',
@@ -216,7 +216,7 @@ export const plSurfaces = {
     backToMenu: 'Wróć do menu',
     missingContentTitle: 'Zdekodowana zawartość jest niedostępna',
     missingTerrainDetail:
-      'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Uruchom pipeline assetów na modzie CulturesNation (npm run pipeline) i odśwież stronę.',
+      'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Zbuduj go poleceniem npm run build:content i odśwież stronę.',
     loadFailedTitle: 'Wczytywanie zapisu nie powiodło się',
     loadFailedDetail:
       'Ten świat nie przyjął zapisanej gry. Zwykle znaczy to, że zapis powstał przy innej zawartości gry albo starszej wersji mapy; kolejna próba skończy się tak samo.',

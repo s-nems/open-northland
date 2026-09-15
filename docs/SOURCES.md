@@ -46,10 +46,10 @@ The mod archive ships every file the stages read: the rule tables (readable `.in
 has only `.cif`), every `.bmd`, the sounds, the `DataX/DM2` soundtrack, the pictures, fonts, string
 tables, and the mod's maps. The original game's packed `data0001.lib` adds nothing the stages
 consume: a conversion of the mod alone and one of the mod plus an owned installation produce
-byte-identical rules, atlases, interface art, fonts, transitions, and music, and the archive's
-`Data/maps` campaigns are not decoded by any stage. Basis: the `CnMod 1.3.2.zip` central directory
-(43,310 entries) compared against the served content tree, and a directory diff of the two
-conversions over the owned copy.
+byte-identical rules, atlases, interface art, fonts, and transitions, the same music up to the Ogg
+encoder's random page serials, and the archive's `Data/maps` campaigns are not decoded by any stage.
+Basis: the `CnMod 1.3.2.zip` central directory (43,310 entries) compared against the served content
+tree, and a directory diff of the two conversions over the owned copy.
 
 ## Supported input formats
 

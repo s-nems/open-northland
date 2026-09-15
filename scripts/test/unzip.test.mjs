@@ -8,7 +8,12 @@ import { extractZip } from '../unzip.mjs';
 
 const STORED = 0;
 const DEFLATED = 8;
+const BZIP2 = 12;
 const UNICODE_PATH_FIELD = 0x7075;
+// Field header (id, size), then the version byte, then the checksum of the header name.
+const UNICODE_PATH_CHECKSUM_OFFSET = 5;
+const END_RECORD_SIZE = 22;
+const END_ENTRY_COUNT_OFFSET = 10;
 
 function u16(value) {
   const b = Buffer.alloc(2);
@@ -155,6 +160,36 @@ test('refuses an entry that would leave the target directory', async () => {
     extracted(zip([{ rawName: '/etc/escape.txt', data: Buffer.from('x') }])),
     /refusing entry path/,
   );
+  await assert.rejects(
+    extracted(zip([{ rawName: 'a\\..\\..\\escape.txt', data: Buffer.from('x') }])),
+    /refusing entry path/,
+  );
+});
+
+test('keeps the header name when the Unicode Path checksum does not match it', async () => {
+  const archive = zip([{ rawName: 'plain.txt', unicodeName: 'zły.txt', data: Buffer.from('x') }]);
+  const fieldHeader = u16(UNICODE_PATH_FIELD);
+  for (let at = archive.indexOf(fieldHeader); at !== -1; at = archive.indexOf(fieldHeader, at + 1)) {
+    archive[at + UNICODE_PATH_CHECKSUM_OFFSET] ^= 0xff;
+  }
+  const { dir, out } = await extracted(archive);
+  try {
+    assert.deepEqual(await readdir(out), ['plain.txt']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('refuses a zip64 archive, an unknown compression method and a truncated file', async () => {
+  const zip64 = zip([{ rawName: 'a.txt', data: Buffer.from('x') }]);
+  zip64.writeUInt16LE(0xffff, zip64.length - END_RECORD_SIZE + END_ENTRY_COUNT_OFFSET);
+  await assert.rejects(extracted(zip64), /zip64/);
+  await assert.rejects(
+    extracted(zip([{ rawName: 'a.txt', data: Buffer.from('x'), method: BZIP2 }])),
+    /unsupported compression method 12/,
+  );
+  const whole = zip([{ rawName: 'a.txt', data: Buffer.from('x') }]);
+  await assert.rejects(extracted(whole.subarray(0, whole.length - 1)), /end-of-central-directory/);
 });
 
 test('rejects data that does not match the recorded checksum', async () => {

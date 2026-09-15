@@ -2,7 +2,7 @@ import { jsonFingerprint, MapScript, parseTerrainMap } from '@open-northland/dat
 import { MAX_BLOB_BYTES } from '@open-northland/net-protocol';
 
 export const MAX_MAP_TRANSFER_BYTES = MAX_BLOB_BYTES;
-// The owned six-sons map exceeds the relay limit but can still be verified and played locally.
+// A map too large for the relay can still be verified and played locally.
 export const MAX_MAP_DOCUMENT_BYTES = 64 * 1024 * 1024;
 export interface VerifiedMapDocuments {
   readonly mapId: string;
