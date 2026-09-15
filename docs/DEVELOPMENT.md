@@ -274,6 +274,29 @@ See [own asset runtime](art/OWN-ASSET-RUNTIME.md) for exports, markers and curre
 Use `npm run art -- list` and follow [the art pipeline](art/PIPELINE.md) for candidate builds, review,
 approval and publication. This workshop is independent of `npm run pipeline`, which decodes the mod.
 
+## Git LFS
+
+The human-only art sources under `docs/art` are tracked with Git LFS; everything the art build, the
+tests and the scripts read is a plain blob. Skipping the smudge filter writes pointers instead of
+gigabytes, which is what a new checkout or a task worktree wants:
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git clone git@github.com:s-nems/open-northland.git
+GIT_LFS_SKIP_SMUDGE=1 git worktree add -b feat/<slug> ../on-<slug> main
+```
+
+Every gate, the app and desktop builds and `npm run art -- build all` pass without a single LFS
+object, so fetch a package only when a task opens its sources:
+
+```bash
+git lfs pull -I "docs/art/buildings/house-2/**"
+```
+
+An unfiltered `git lfs pull` materialises every source at once. Committing a new LFS-matched file
+needs nothing extra; the push uploads the object. `npm run check:assets` fails on a tracked blob
+over 24 MiB that is not a pointer, so a source larger than the biggest build input must match a
+pattern in `.gitattributes`. [Source retention](art/PIPELINE.md#source-retention) states the boundary.
+
 ## Web image
 
 The web image, `ghcr.io/s-nems/open-northland-web`, is the web app of a commit: nginx serving

@@ -22,8 +22,22 @@ primary_root=$(dirname "$git_common_dir")
 ```
 
 Choose a short slug and an honest branch prefix such as `feat/`, `fix/`, `refactor/`, or `docs/`.
-Create a sibling worktree from current `main` and run `npm ci` inside it. If the branch or worktree
-already exists, inspect it before deciding whether this is a resume or a collision.
+Create a sibling worktree from current `main` and run `npm ci` inside it:
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git worktree add -b <prefix>/<slug> "$(dirname "$primary_root")/on-<slug>" main
+```
+
+The human-only art sources under `docs/art` are in Git LFS, and the environment variable checks them
+out as pointers instead of copying gigabytes into the worktree. Every gate, the app build and
+`npm run art -- build all` pass without a single LFS object. If the branch or worktree already
+exists, inspect it before deciding whether this is a resume or a collision.
+
+A task that opens or re-exports an art source fetches that one package first, never the whole repo:
+
+```bash
+git lfs pull -I "docs/art/buildings/house-2/**"
+```
 
 ## 2. Verify the task
 
