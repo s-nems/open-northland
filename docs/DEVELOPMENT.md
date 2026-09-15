@@ -39,8 +39,10 @@ npm run build:content -- --zip "../CnMod 1.3.2.zip" # or takes a local copy of t
 ```
 
 It verifies the archive's SHA-256, unpacks it into a temporary directory with `scripts/unzip.mjs`,
-replaces any existing `content/` and runs the pipeline. While working on the pipeline itself, run it
-directly against an unpacked mod, the directory that holds `DataCnmd/`:
+empties `content/` except for the rendered music and runs the pipeline. The music stage re-renders
+only the tracks its own manifest no longer covers, so a rebuild from an unchanged archive keeps them
+and saves most of the run; `--zip` saves the 570 MB download on top. While working on the pipeline
+itself, run it directly against an unpacked mod, the directory that holds `DataCnmd/`:
 
 ```bash
 npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content

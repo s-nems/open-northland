@@ -2,14 +2,15 @@
 /**
  * Builds `content/` from the CulturesNation archive a release ships: downloads it (or takes a local
  * copy with `--zip <file>`), verifies the SHA-256 that pins the release, unpacks it into a temporary
- * directory and runs the pipeline into a fresh `content/`. An existing `content/` is removed first.
+ * directory and runs the pipeline into `content/`, which is emptied first except for the rendered
+ * music.
  *
  * Usage: node scripts/build-content.mjs [--zip <file>]
  */
 
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync } from 'node:fs';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
@@ -23,6 +24,11 @@ const ARCHIVE_URL = 'https://game.opennorthland.org/cnmod.zip';
 /** The archive's SHA-256 pins the mod release. */
 const ARCHIVE_SHA256 = '68537a89a972621f5dc400912e0c660bd875f649b693f3dad70d26f49465f043';
 const OUT_DIR = resolve(repoRoot, 'content');
+/**
+ * Rendering the soundtrack is most of a pipeline run, so its output stays; the music stage re-renders
+ * every track whose source sizes or render version no longer match its own manifest.
+ */
+const KEPT_DIR = 'music';
 
 function run(command, args, cwd) {
   return new Promise((done, fail) => {
@@ -56,6 +62,13 @@ async function unpackedRoot(dir) {
   return entries.length === 1 && only.isDirectory() ? join(dir, only.name) : dir;
 }
 
+async function emptyOutDir() {
+  if (!existsSync(OUT_DIR)) return;
+  for (const entry of await readdir(OUT_DIR)) {
+    if (entry !== KEPT_DIR) await rm(join(OUT_DIR, entry), { recursive: true, force: true });
+  }
+}
+
 async function buildContent(zip) {
   const scratch = await mkdtemp(join(tmpdir(), 'cnmod-'));
   try {
@@ -75,8 +88,8 @@ async function buildContent(zip) {
     await extractZip(archive, unpacked);
     const modRoot = await unpackedRoot(unpacked);
 
-    console.log(`[build-content] replacing ${OUT_DIR}`);
-    await rm(OUT_DIR, { recursive: true, force: true });
+    console.log(`[build-content] replacing ${OUT_DIR}, keeping any rendered ${KEPT_DIR}`);
+    await emptyOutDir();
     await run('npm', ['run', 'pipeline', '--', '--mod-root', modRoot, '--out', OUT_DIR], repoRoot);
     console.log(`[build-content] ${OUT_DIR} built from ${basename(modRoot)}`);
   } finally {
