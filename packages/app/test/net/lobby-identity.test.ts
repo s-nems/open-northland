@@ -45,11 +45,7 @@ describe('lobby world identity', () => {
     expect((await identity({ '/ir.json': moved })).content).toBe(original.content);
   });
 
-  it('checks explicit mod versions and names used by authored placement joins', async () => {
-    const original = await identity();
-    expect(
-      (await identity({ '/ir.json': { ...IR, manifest: { ...IR.manifest, modVersion: '1.3.1' } } })).content,
-    ).not.toBe(original.content);
+  it('checks the names used by authored placement joins', async () => {
     const goods = [{ typeId: 1, id: 'water', name: 'water' }];
     const a = await identity({ '/ir.json': { ...IR, goods } });
     const b = await identity({ '/ir.json': { ...IR, goods: [{ ...goods[0], name: 'spring' }] } });

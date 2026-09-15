@@ -5,8 +5,6 @@ import { CULTURESNATION_MOD } from './mod-root.js';
 export interface Args {
   /** The unpacked culturesnation mod, the conversion's only input. */
   modRoot: string;
-  /** Explicit release label from the installed mod package; absent means unknown. */
-  modVersion?: string;
   out: string;
 }
 
@@ -18,26 +16,12 @@ export function parseArgs(argv: readonly string[]): Args {
   const modRoot = get('--mod-root');
   if (modRoot === undefined) {
     throw new Error(
-      'usage: pipeline --mod-root <dir> [--mod-version <version>] [--out <dir>] - the unpacked ' +
+      'usage: pipeline --mod-root <dir> [--out <dir>] - the unpacked ' +
         `culturesnation mod (the directory holding ${CULTURESNATION_MOD}/) is the only input; a game ` +
         'folder with the mod installed inside it works as --mod-root too.',
     );
   }
-  const modVersion = get('--mod-version');
-  if (
-    argv.includes('--mod-version') &&
-    (modVersion === undefined ||
-      modVersion.startsWith('--') ||
-      modVersion.trim().length === 0 ||
-      modVersion.length > 128)
-  ) {
-    throw new Error('--mod-version requires a nonempty release label of at most 128 characters');
-  }
-  return {
-    modRoot,
-    out: get('--out') ?? 'content',
-    ...(modVersion === undefined ? {} : { modVersion }),
-  };
+  return { modRoot, out: get('--out') ?? 'content' };
 }
 
 /**

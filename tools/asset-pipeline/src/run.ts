@@ -26,10 +26,7 @@ import { convertVertexPalette, VERTEX_PALETTE_FILE } from './stages/vertex-palet
 
 /** Runs the full conversion of the mod root into the IR under `args.out`. */
 export async function runPipeline(args: Args): Promise<void> {
-  const roots: SourceRoots = {
-    mod: await resolveModRoot(args.modRoot),
-    modVersion: args.modVersion,
-  };
+  const roots: SourceRoots = { mod: await resolveModRoot(args.modRoot) };
   console.log(`[pipeline] mod=${roots.mod} out=${args.out}`);
 
   await mkdir(args.out, { recursive: true });

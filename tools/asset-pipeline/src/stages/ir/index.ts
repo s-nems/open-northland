@@ -71,11 +71,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
   const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, goods);
   return parseContentSet({
-    manifest: {
-      version: IR_VERSION,
-      ...(roots.modVersion === undefined ? {} : { modVersion: roots.modVersion }),
-      generatedFrom: { mod: basename(roots.mod) },
-    },
+    manifest: { version: IR_VERSION, generatedFrom: { mod: basename(roots.mod) } },
     goods,
     jobs,
     jobExperience,

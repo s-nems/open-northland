@@ -12,17 +12,6 @@ describe('parseArgs', () => {
     expect(parseArgs(['--mod-root', 'm'])).toEqual({ modRoot: 'm', out: 'content' });
   });
 
-  it('preserves an explicit mod release label independently of paths', () => {
-    const args = parseArgs(['--mod-root', 'm', '--mod-version', '1.3.2']);
-    expect(args.modVersion).toBe('1.3.2');
-    expect(resolveArgs(args, '/tmp').modVersion).toBe('1.3.2');
-    expect(parseArgs(['--mod-root', 'm']).modVersion).toBeUndefined();
-    for (const value of ['', ' ', '--out', 'x'.repeat(129)]) {
-      expect(() => parseArgs(['--mod-root', 'm', '--mod-version', value])).toThrow(/mod-version/);
-    }
-    expect(() => parseArgs(['--mod-root', 'm', '--mod-version'])).toThrow(/mod-version/);
-  });
-
   it('throws the usage when --mod-root is missing', () => {
     expect(() => parseArgs(['--out', 'o'])).toThrow(/--mod-root <dir>/);
   });

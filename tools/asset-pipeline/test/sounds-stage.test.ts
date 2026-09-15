@@ -23,7 +23,7 @@ describe('copySoundTree', () => {
       'Data/Engine2D/bin/Sounds/Static/Axe01.WAV',
       'data/engine2d/bin/sounds/gui/click_confirm.wav',
     ]);
-    const copied = await copySoundTree({ mod: temp.game, modVersion: undefined }, temp.out);
+    const copied = await copySoundTree({ mod: temp.game }, temp.out);
     expect(copied.sort()).toEqual(['sounds/gui/click_confirm.wav', 'sounds/static/axe01.wav']);
     expect([...(await readFile(join(temp.out, 'sounds', 'static', 'axe01.wav')))]).toEqual([1]);
   });
@@ -34,7 +34,7 @@ describe('copySoundTree', () => {
       'Data/engine2d/bin/sounds/soundfx.cif',
       'Data/engine2d/bin/sounds/misc/thunder.wav',
     ]);
-    const copied = await copySoundTree({ mod: temp.game, modVersion: undefined }, temp.out);
+    const copied = await copySoundTree({ mod: temp.game }, temp.out);
     expect(copied).toEqual(['sounds/misc/thunder.wav']);
     expect(await statIfExists(join(temp.out, 'CnModMaps', 'some_map', 'briefing.wav'))).toBeUndefined();
   });

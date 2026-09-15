@@ -35,7 +35,6 @@ export const IrManifest = z.strictObject({
     error: (issue) =>
       `IR version mismatch: content reports ${String(issue.input)}, this build reads ${IR_VERSION}.`,
   }),
-  modVersion: z.string().trim().min(1).max(128).optional(),
   /** Local provenance of the conversion: the mod root it read. */
   generatedFrom: z.strictObject({ mod: z.string() }),
   locale: z.enum(['pol', 'eng', 'ger', 'rus']).default('eng'),

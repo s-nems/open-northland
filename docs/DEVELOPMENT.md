@@ -49,8 +49,7 @@ npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content
 The mod archive carries every file the stages read: the rule tables, bobs, sounds, music, pictures,
 fonts, strings, and the mod's maps. A game folder with the mod installed inside it works as
 `--mod-root` too; the game's own packed `.lib` archives are not read, so its original campaigns and
-tutorials are not converted. `--mod-version <label>` stamps the manifest with the mod release the
-lobby compares between players. CnMod 1.3.2 is the current verified input; treat a newer release as
+tutorials are not converted. CnMod 1.3.2 is the current verified input; treat a newer release as
 unverified until the real pipeline and content gates pass. The generated `content/` tree is ignored
 by Git and `npm run check:assets` fails on anything tracked under it.
 

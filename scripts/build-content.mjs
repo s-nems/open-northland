@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { parseArgs } from 'node:util';
@@ -20,9 +20,8 @@ import { repoRoot } from './content-dir.mjs';
 import { extractZip } from './unzip.mjs';
 
 const ARCHIVE_URL = 'https://game.opennorthland.org/cnmod.zip';
-/** The archive's SHA-256 pins the mod release; the label is what that release calls itself. */
+/** The archive's SHA-256 pins the mod release. */
 const ARCHIVE_SHA256 = '68537a89a972621f5dc400912e0c660bd875f649b693f3dad70d26f49465f043';
-const MOD_VERSION = '1.3.2';
 const OUT_DIR = resolve(repoRoot, 'content');
 
 function run(command, args, cwd) {
@@ -78,12 +77,8 @@ async function buildContent(zip) {
 
     console.log(`[build-content] replacing ${OUT_DIR}`);
     await rm(OUT_DIR, { recursive: true, force: true });
-    await run(
-      'npm',
-      ['run', 'pipeline', '--', '--mod-root', modRoot, '--mod-version', MOD_VERSION, '--out', OUT_DIR],
-      repoRoot,
-    );
-    console.log(`[build-content] ${OUT_DIR} built from CulturesNation ${MOD_VERSION}`);
+    await run('npm', ['run', 'pipeline', '--', '--mod-root', modRoot, '--out', OUT_DIR], repoRoot);
+    console.log(`[build-content] ${OUT_DIR} built from ${basename(modRoot)}`);
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }

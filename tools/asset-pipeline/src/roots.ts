@@ -13,8 +13,6 @@ export const MOD_GUI_BITMAPS_DIR = 'Data/gui/bitmaps';
 /** The source tree one conversion reads: the unpacked culturesnation mod. */
 export interface SourceRoots {
   readonly mod: string;
-  /** Caller-supplied release label, not inferred from installation folder or executable. */
-  readonly modVersion?: string | undefined;
 }
 
 /** One source file found under the root. */
