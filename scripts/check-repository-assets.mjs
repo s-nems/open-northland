@@ -42,6 +42,7 @@ const reviewRequiredExtensions = new Set([
   '.fbx',
   '.gif',
   '.glb',
+  '.gz',
   '.icns',
   '.ico',
   '.jpeg',
@@ -54,7 +55,30 @@ const reviewRequiredExtensions = new Set([
   '.woff2',
 ]);
 
-const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+// The largest art build input is a 14 MiB character clip; a bigger blob is a human-only source
+// and belongs in Git LFS, where its index entry is a pointer of a few hundred bytes.
+const MAX_PLAIN_BLOB_BYTES = 24 * 1024 * 1024;
+const GIT_OUTPUT_MAX_BYTES = 64 * 1024 * 1024;
+
+const indexEntries = execFileSync('git', ['ls-files', '-z', '--stage'], {
+  encoding: 'utf8',
+  maxBuffer: GIT_OUTPUT_MAX_BYTES,
+})
+  .split('\0')
+  .filter(Boolean)
+  .map((entry) => {
+    const [metadata, file] = entry.split('\t');
+    return { file, oid: metadata.split(' ')[1] };
+  });
+const tracked = indexEntries.map((entry) => entry.file);
+const blobSizes = execFileSync('git', ['cat-file', '--batch-check=%(objectsize)'], {
+  encoding: 'utf8',
+  input: indexEntries.map((entry) => entry.oid).join('\n'),
+  maxBuffer: GIT_OUTPUT_MAX_BYTES,
+})
+  .split('\n')
+  .map(Number);
+const blobSize = new Map(indexEntries.map((entry, index) => [entry.file, blobSizes[index]]));
 const errors = [];
 const trackedSet = new Set(tracked);
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
@@ -79,6 +103,9 @@ for (const file of tracked) {
   if (reviewRequiredExtensions.has(extension) && !reviewedBinaryAssets.has(file) && !isOwnArt(file)) {
     errors.push(`${file}: binary asset is not in the reviewed allowlist`);
   }
+  if (blobSize.get(file) > MAX_PLAIN_BLOB_BYTES) {
+    errors.push(`${file}: blob over ${MAX_PLAIN_BLOB_BYTES / 1024 / 1024} MiB must be tracked with Git LFS`);
+  }
 }
 
 if (errors.length > 0) {
@@ -87,6 +114,9 @@ if (errors.length > 0) {
   console.error('\nIf this is an original or decoded game asset, remove it.');
   console.error('For a new project-owned binary, document its source and update the allowlist.');
   console.error('Own art uses registered source packages and delivery ownership; see docs/art/PIPELINE.md.');
+  console.error(
+    'Human-only art sources match an LFS pattern in .gitattributes; build inputs stay plain blobs.',
+  );
   process.exit(1);
 }
 
