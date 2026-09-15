@@ -12,8 +12,9 @@ npm test
 ```
 
 `npm test` runs the normal Vitest projects, including simulation hygiene, deterministic state hashes,
-integration tests, and headless acceptance scenes. CI runs this suite on Linux, macOS, and Windows.
-Formatting and production build checks run once on Linux.
+integration tests, and headless acceptance scenes. CI runs this suite on Ubuntu; a Windows run is
+available through the CI workflow's manual dispatch checkbox. Formatting and production build checks
+run once on Ubuntu.
 
 During development, narrow the test command by name:
 

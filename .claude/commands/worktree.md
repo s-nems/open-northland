@@ -141,8 +141,9 @@ stack is shared by every worktree, so a concurrent session pops your entry.
 A branch green in isolation still breaks `main`: a type another worktree landed, a doc link to a
 ticket this branch deleted, formatting left by conflict resolution. In the primary checkout, run the
 `ci.yml` gates on merged `main` - `npm run check:assets`, `npm run check:docs`, `npm run check`,
-`npm run build`, `npm test` - then fix on `main` and commit, or revert the merge. Local runs cover
-one OS and CI runs three, so flag golden-hash work as unproven.
+`npm run build`, `npm test` - then fix on `main` and commit, or revert the merge. CI tests on Ubuntu
+only, so flag golden-hash work as unproven on other operating systems; a Windows run is available
+through the CI workflow's manual dispatch checkbox.
 
 ## 10. Clean up
 
