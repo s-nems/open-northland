@@ -1,5 +1,5 @@
+import { readFile } from 'node:fs/promises';
 import { MAP_TEXT_LANGUAGES, type MapMeta, type MapTextLanguage } from '@open-northland/data';
-import type { Vfs } from '@open-northland/vfs';
 import {
   decodeCifStringTable,
   extractMapTypes,
@@ -53,7 +53,6 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
  * re-decodes the cif.
  */
 async function resolveMapHeader(
-  fs: Vfs,
   mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
@@ -76,10 +75,10 @@ async function resolveMapHeader(
       mapTypes !== undefined
     )
       break;
-    const path = await findPathCaseInsensitive(fs, mapDir, [file]);
+    const path = await findPathCaseInsensitive(mapDir, [file]);
     if (path === undefined) continue;
     try {
-      consider(iniBytesToSections(await fs.readFile(path)));
+      consider(iniBytesToSections(await readFile(path)));
     } catch (err) {
       console.warn(`[pipeline] map ${rel}: ${file} unreadable: ${errorMessage(err)}`);
     }
@@ -98,15 +97,15 @@ async function resolveMapHeader(
  * `{ <stringId>: <text> }`, preferring the readable `strings.ini` over its encrypted `strings.cif`
  * twin. An unreadable or empty table falls through to the next form, then the next language.
  */
-export async function loadMapStringTables(fs: Vfs, mapDir: string, rel: string): Promise<MapStringTables> {
+export async function loadMapStringTables(mapDir: string, rel: string): Promise<MapStringTables> {
   const tables: MapStringTables = {};
   for (const lang of MAP_TEXT_LANGUAGES) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
-      const path = await findPathCaseInsensitive(fs, mapDir, [STRING_TABLE_DIR, lang, form]);
+      const path = await findPathCaseInsensitive(mapDir, [STRING_TABLE_DIR, lang, form]);
       if (path === undefined) continue;
       let table: Record<number, string>;
       try {
-        const bytes = await fs.readFile(path);
+        const bytes = await readFile(path);
         // Owned text/rus/strings.ini uses CP1251 (e.g. CD CE C2 C0 DF spells НОВАЯ).
         const encoding = lang === 'rus' ? 'windows-1251' : 'windows-1250';
         table =
@@ -143,15 +142,13 @@ export function preferredStringTable(tables: MapStringTables): Record<number, st
  * loads its table once.
  */
 export async function resolveMapMeta(
-  fs: Vfs,
   mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
   strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
-  strings ??= preferredStringTable(await loadMapStringTables(fs, mapDir, rel));
+  strings ??= preferredStringTable(await loadMapStringTables(mapDir, rel));
   const { nameStringId, descriptionStringId, musicType, mapTypes } = await resolveMapHeader(
-    fs,
     mapDir,
     rel,
     cifSections,

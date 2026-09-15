@@ -1,4 +1,5 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   ARMOR_PALETTE_TIERS,
   applyArmorRecipe,
@@ -20,12 +21,13 @@ import { decodePcx } from '../decoders/pcx.js';
 import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
+import { writeFileWithParents } from '../files.js';
 import type { SourceRoots } from '../roots.js';
 import { BOBS_DIR, writeSourceBobAtlas } from './content-tree.js';
 import { readSourceFile, type SourceAssetIndex } from './source-files.js';
 
 /** Directory holding the creature `.pcx` palettes the LUT is built from. */
-const CREATURES_DIR = vjoin('Data', 'engine2d', 'bin', 'palettes', 'creatures');
+const CREATURES_DIR = 'Data/engine2d/bin/palettes/creatures';
 /** The shared human body base palette (the mod's `gfxpalettebasebody`); its band is swapped per player. */
 const BASE_PALETTE_PCX = 'test_human_00.pcx';
 /** The reference ramp the six synthetic (no-original) player colours are hue-rotated from. */
@@ -41,10 +43,10 @@ const GUIDEPOST_BMD = 'data/engine2d/bin/bobs/ls_guidepost.bmd';
  * Reads a `creatures/<file>.pcx` 768-byte trailer palette from the layer that wins it. Throws when the
  * file is in no layer or carries no palette trailer.
  */
-async function readCreaturePalette(fs: Vfs, tree: SourceAssetIndex, file: string): Promise<Uint8Array> {
-  const source = tree.get(normalizeAssetPath(vjoin(CREATURES_DIR, file)));
+async function readCreaturePalette(tree: SourceAssetIndex, file: string): Promise<Uint8Array> {
+  const source = tree.get(normalizeAssetPath(`${CREATURES_DIR}/${file}`));
   if (source === undefined) throw new Error(`player-colors: ${file} not found in any source layer`);
-  const pal = decodePcx(await fs.readFile(source.path)).palette;
+  const pal = decodePcx(await readFile(source.path)).palette;
   if (pal === undefined) throw new Error(`player-colors: ${file} has no 256-colour palette trailer`);
   return pal;
 }
@@ -58,9 +60,9 @@ export interface PlayerColorLutResult {
 }
 
 /** The `[RandomPalette]` recipe file naming the `human_armor_%3.3d` armor recolors. */
-const RANDOMPALETTE_INI = vjoin('Data', 'engine2d', 'inis', 'humans', 'randompalette.ini');
+const RANDOMPALETTE_INI = 'Data/engine2d/inis/humans/randompalette.ini';
 /** The named-palette graph (`[GfxPalette256]` files + `[GfxPalette16]` ramps) the recipes patch from. */
-const PALETTES_INI = vjoin('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini');
+const PALETTES_INI = 'Data/engine2d/inis/palettes/palettes.ini';
 
 /**
  * The armor-tier recolor rows for one composed player palette: `[tier 1 .. tier 4]`, each the player
@@ -68,11 +70,11 @@ const PALETTES_INI = vjoin('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini
  * the original's `human_armor_000` mirror of the team band onto patches 9/11/12 is not applied, a named
  * approximation.
  */
-async function armorRowsFor(fs: Vfs, roots: SourceRoots): Promise<(palette: Uint8Array) => Uint8Array[]> {
-  const paletteSections = iniBytesToSections(await readSourceFile(fs, roots, PALETTES_INI));
+async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) => Uint8Array[]> {
+  const paletteSections = iniBytesToSections(await readSourceFile(roots, PALETTES_INI));
   const aliases = paletteAliasMap(extractPaletteIndex(paletteSections));
   const ramps = rampAliasMap(paletteSections);
-  const recipes = extractArmorRecipes(iniBytesToSections(await readSourceFile(fs, roots, RANDOMPALETTE_INI)));
+  const recipes = extractArmorRecipes(iniBytesToSections(await readSourceFile(roots, RANDOMPALETTE_INI)));
   const sources = new Map<string, Uint8Array>(); // decoded [GfxPalette256] palettes by .pcx path
   const resolveRamp = (name: string): Uint8Array | undefined => {
     const ramp = ramps.get(name);
@@ -87,7 +89,7 @@ async function armorRowsFor(fs: Vfs, roots: SourceRoots): Promise<(palette: Uint
       const file = ramps.get(patch.source.name)?.source;
       const path = file === undefined ? undefined : aliases.get(file);
       if (path === undefined || sources.has(path)) continue;
-      const palette = decodePcx(await readSourceFile(fs, roots, path)).palette;
+      const palette = decodePcx(await readSourceFile(roots, path)).palette;
       if (palette !== undefined) sources.set(path, palette);
     }
   }
@@ -105,24 +107,23 @@ async function armorRowsFor(fs: Vfs, roots: SourceRoots): Promise<(palette: Uint
  * armor recipes degrade to the 16-row player-only LUT.
  */
 export async function convertPlayerColorLut(
-  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   tree: SourceAssetIndex,
 ): Promise<PlayerColorLutResult> {
-  const base = await readCreaturePalette(fs, tree, BASE_PALETTE_PCX);
-  const reference = await readCreaturePalette(fs, tree, SYNTHETIC_REFERENCE_PCX);
+  const base = await readCreaturePalette(tree, BASE_PALETTE_PCX);
+  const reference = await readCreaturePalette(tree, SYNTHETIC_REFERENCE_PCX);
   const palettes: Uint8Array[] = [];
   for (const color of PLAYER_COLORS) {
     const source =
       color.source.kind === 'pcx'
-        ? await readCreaturePalette(fs, tree, color.source.file)
+        ? await readCreaturePalette(tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
     palettes.push(composePlayerPalette(base, source));
   }
   let armorTiers = 1;
   try {
-    const armorRows = await armorRowsFor(fs, roots);
+    const armorRows = await armorRowsFor(roots);
     const armored = palettes.map((palette) => armorRows(palette)); // [player] -> [tier 1..4]
     for (let tier = 1; tier < ARMOR_PALETTE_TIERS; tier++) {
       for (const rows of armored) {
@@ -135,8 +136,8 @@ export async function convertPlayerColorLut(
   } catch (err) {
     console.warn(`[pipeline] armor recolor rows skipped: ${errorMessage(err)}`);
   }
-  const pngRel = vjoin(BOBS_DIR, 'player-lut.png');
-  await fs.writeFile(vjoin(outDir, pngRel), await encodePng(buildPaletteLutImage(palettes)));
+  const pngRel = `${BOBS_DIR}/player-lut.png`;
+  await writeFileWithParents(join(outDir, pngRel), await encodePng(buildPaletteLutImage(palettes)));
   return { png: pngRel, colors: PLAYER_COLORS.length, armorTiers };
 }
 
@@ -145,27 +146,23 @@ export async function convertPlayerColorLut(
  * that player's full source palette. Baked rather than indexed plus LUT because the LUT rows carry
  * composed human palettes, which differ from it at every index the guidepost draws.
  */
-export async function convertGuidepostPlayerAtlases(
-  fs: Vfs,
-  outDir: string,
-  tree: SourceAssetIndex,
-): Promise<number> {
+export async function convertGuidepostPlayerAtlases(outDir: string, tree: SourceAssetIndex): Promise<number> {
   const source = tree.get(normalizeAssetPath(GUIDEPOST_BMD));
   if (source === undefined) {
     throw new Error('guidepost atlases: ls_guidepost.bmd not found in any source layer');
   }
-  const bmd = decodeBmd(await fs.readFile(source.path));
-  const reference = await readCreaturePalette(fs, tree, SYNTHETIC_REFERENCE_PCX);
+  const bmd = decodeBmd(await readFile(source.path));
+  const reference = await readCreaturePalette(tree, SYNTHETIC_REFERENCE_PCX);
   let emitted = 0;
   for (const color of PLAYER_COLORS) {
     const palette =
       color.source.kind === 'pcx'
-        ? await readCreaturePalette(fs, tree, color.source.file)
+        ? await readCreaturePalette(tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
     // The `player_NN` suffix is a string contract with the app's `guidepostPlayerAtlas`; a drift there
     // falls back silently to bridge01.
     const suffix = `player_${String(color.id).padStart(2, '0')}`;
-    await writeSourceBobAtlas(fs, outDir, source.rel, suffix, packBobAtlas(bmd, palette));
+    await writeSourceBobAtlas(outDir, source.rel, suffix, packBobAtlas(bmd, palette));
     emitted++;
   }
   return emitted;
@@ -177,7 +174,6 @@ export async function convertGuidepostPlayerAtlases(
  * with a warning.
  */
 export async function convertIndexedCharacterAtlases(
-  fs: Vfs,
   bindings: readonly BmdPaletteBinding[],
   outDir: string,
   tree: SourceAssetIndex,
@@ -194,8 +190,8 @@ export async function convertIndexedCharacterAtlases(
       continue;
     }
     try {
-      const atlas = packIndexedBobAtlas(decodeBmd(await fs.readFile(source.path)));
-      const { png } = await writeSourceBobAtlas(fs, outDir, source.rel, 'indexed', atlas);
+      const atlas = packIndexedBobAtlas(decodeBmd(await readFile(source.path)));
+      const { png } = await writeSourceBobAtlas(outDir, source.rel, 'indexed', atlas);
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped indexed ${bmdRef}: ${errorMessage(err)}`);

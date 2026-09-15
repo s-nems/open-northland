@@ -1,4 +1,3 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
@@ -39,13 +38,13 @@ export interface GuiStageSummary {
  * Runs the GUI extraction and writes `content/gui/manifest.json`. Each sub-step warns and skips on its own,
  * so a partial game install still produces whatever it can.
  */
-export async function convertGuiStage(fs: Vfs, roots: SourceRoots, outDir: string): Promise<GuiStageSummary> {
-  const palettes = await convertGuiPaletteLut(fs, roots, outDir);
-  const atlases = await convertGuiAtlases(fs, roots, outDir, palettes.byName);
-  await convertWindowBitmaps(fs, roots, outDir, palettes.byName);
-  const strings = await convertGuiStrings(fs, roots, outDir);
-  const history = await convertGuiHistory(fs, roots, outDir);
-  const cursors = await convertCursors(fs, roots, outDir);
+export async function convertGuiStage(roots: SourceRoots, outDir: string): Promise<GuiStageSummary> {
+  const palettes = await convertGuiPaletteLut(roots, outDir);
+  const atlases = await convertGuiAtlases(roots, outDir, palettes.byName);
+  await convertWindowBitmaps(roots, outDir, palettes.byName);
+  const strings = await convertGuiStrings(roots, outDir);
+  const history = await convertGuiHistory(roots, outDir);
+  const cursors = await convertCursors(roots, outDir);
 
   const manifest: GuiManifest = {
     atlases,
@@ -54,7 +53,7 @@ export async function convertGuiStage(fs: Vfs, roots: SourceRoots, outDir: strin
     history: { languages: history.map((h) => h.lang) },
     cursors,
   };
-  await writeJsonFile(fs, outDir, vjoin(GUI_CONTENT_DIR, 'manifest.json'), manifest);
+  await writeJsonFile(outDir, `${GUI_CONTENT_DIR}/manifest.json`, manifest);
 
   return {
     atlases: atlases.length,

@@ -1,13 +1,10 @@
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import { CULTURESNATION_MOD } from '../src/mod-root.js';
 import { resolveModRoot } from '../src/roots.js';
 import { makeTempDir } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 describe('parseArgs', () => {
   it('reads --mod-root/--out and defaults out to content', () => {
@@ -65,20 +62,20 @@ describe('resolveModRoot', () => {
   it('accepts a mod root that contains DataCnmd/', async () => {
     const modRoot = join(base, 'CnMod 1.3.2');
     await mkdir(join(modRoot, CULTURESNATION_MOD), { recursive: true });
-    await expect(resolveModRoot(fs, modRoot)).resolves.toBe(modRoot);
+    await expect(resolveModRoot(modRoot)).resolves.toBe(modRoot);
   });
 
   it('rejects a mod root without DataCnmd/, pointing at the download', async () => {
     const modRoot = join(base, 'not-a-mod');
     await mkdir(modRoot, { recursive: true });
-    await expect(resolveModRoot(fs, modRoot)).rejects.toThrow(/DataCnmd.*culturesnation\.pl/s);
+    await expect(resolveModRoot(modRoot)).rejects.toThrow(/DataCnmd.*culturesnation\.pl/s);
   });
 
   it('rejects a DataCnmd that is a file, not a directory', async () => {
     const modRoot = join(base, 'file-mod');
     await mkdir(modRoot, { recursive: true });
     await writeFile(join(modRoot, CULTURESNATION_MOD), 'not a directory');
-    await expect(resolveModRoot(fs, modRoot)).rejects.toThrow(/DataCnmd/);
+    await expect(resolveModRoot(modRoot)).rejects.toThrow(/DataCnmd/);
   });
 });
 

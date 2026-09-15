@@ -1,5 +1,7 @@
+import { readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { type BobsIndexEntry, type MapsIndexEntry, mapLobbySlots } from '@open-northland/data';
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { statIfExists } from '../files.js';
 import { BOBS_DIR, writeJsonFile } from './content-tree.js';
 import type { MapDatConversion } from './maps/index.js';
 
@@ -36,10 +38,10 @@ function mapsIndexEntry(map: MapDatConversion): MapsIndexEntry {
 }
 
 /** Every viewable atlas under `bobs/`: a `<stem>.png` + `<stem>.atlas.json` pair, sorted by (base, variant). */
-export async function bobsIndexEntries(fs: Vfs, outDir: string): Promise<BobsIndexEntry[]> {
-  const bobs = vjoin(outDir, BOBS_DIR);
-  if ((await fs.stat(bobs))?.kind !== 'dir') return [];
-  const names = new Set((await fs.readdir(bobs)).map((entry) => entry.name));
+export async function bobsIndexEntries(outDir: string): Promise<BobsIndexEntry[]> {
+  const bobs = join(outDir, BOBS_DIR);
+  if (!(await statIfExists(bobs))?.isDirectory()) return [];
+  const names = new Set(await readdir(bobs));
   return (
     [...names]
       .filter((name) => name.endsWith('.atlas.json'))
@@ -58,11 +60,7 @@ export async function bobsIndexEntries(fs: Vfs, outDir: string): Promise<BobsInd
 }
 
 /** Writes the two listings the app reads instead of scanning the tree. */
-export async function writeListings(
-  fs: Vfs,
-  outDir: string,
-  maps: readonly MapDatConversion[],
-): Promise<void> {
-  await writeJsonFile(fs, outDir, MAPS_INDEX_FILE, mapsIndexEntries(maps));
-  await writeJsonFile(fs, outDir, BOBS_INDEX_FILE, await bobsIndexEntries(fs, outDir));
+export async function writeListings(outDir: string, maps: readonly MapDatConversion[]): Promise<void> {
+  await writeJsonFile(outDir, MAPS_INDEX_FILE, mapsIndexEntries(maps));
+  await writeJsonFile(outDir, BOBS_INDEX_FILE, await bobsIndexEntries(outDir));
 }

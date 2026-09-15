@@ -1,4 +1,3 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { errorMessage } from '../../errors.js';
 import { MOD_BOBS_DIR, type SourceRoots } from '../../roots.js';
@@ -17,8 +16,8 @@ interface GuiAtlasSource {
  * use `context`), so that is its best single preview palette; the bubble sheet uses `gui_bubbles`.
  */
 const GUI_ATLASES: readonly GuiAtlasSource[] = [
-  { stem: 'ls_gui_window', bmd: vjoin(MOD_BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
-  { stem: 'ls_gui_bubbles', bmd: vjoin(MOD_BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
+  { stem: 'ls_gui_window', bmd: `${MOD_BOBS_DIR}/ls_gui_window.bmd`, previewPalette: 'iconsleft' },
+  { stem: 'ls_gui_bubbles', bmd: `${MOD_BOBS_DIR}/ls_gui_bubbles.bmd`, previewPalette: 'gui_bubbles' },
 ];
 
 export interface GuiAtlasResult {
@@ -36,7 +35,6 @@ export interface GuiAtlasResult {
  * preview colours from `paletteByName`. A missing sheet or preview palette skips that sheet only.
  */
 export async function convertGuiAtlases(
-  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   paletteByName: ReadonlyMap<string, Uint8Array>,
@@ -45,7 +43,7 @@ export async function convertGuiAtlases(
   for (const src of GUI_ATLASES) {
     let bytes: Uint8Array;
     try {
-      bytes = await readSourceFile(fs, roots, src.bmd);
+      bytes = await readSourceFile(roots, src.bmd);
     } catch (err) {
       console.warn(`[pipeline] gui: skipped ${src.stem}: ${errorMessage(err)}`);
       continue;
@@ -62,7 +60,6 @@ export async function convertGuiAtlases(
     let frames: number;
     try {
       ({ indexedStem, previewStem, frames } = await emitIndexedAndPreviewAtlas(
-        fs,
         outDir,
         src.stem,
         decodeBmd(bytes),

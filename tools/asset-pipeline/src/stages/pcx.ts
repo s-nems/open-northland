@@ -1,8 +1,9 @@
-import { type Vfs, vbasename, vjoin } from '@open-northland/vfs';
+import { readFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
-import type { StageItemReporter } from '../progress.js';
+import { writeFileWithParents } from '../files.js';
 import { collectSourceFiles, MOD_GUI_BITMAPS_DIR, MOD_TEXTURES_DIR, type SourceRoots } from '../roots.js';
 import { GUI_BITMAPS_DIR, TEXTURES_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
@@ -39,7 +40,6 @@ export interface PcxConversion {
  * texture path, and a missing or undecodable picture is logged and skipped.
  */
 export async function composeMaskedTransitionPages(
-  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   pairs: readonly MaskedTexturePair[],
@@ -47,12 +47,12 @@ export async function composeMaskedTransitionPages(
   const done: PcxConversion[] = [];
   const seen = new Set<string>();
   const readTexturePcx = (normalizedPath: string): Promise<Uint8Array> =>
-    readSourceFile(fs, roots, vjoin(MOD_TEXTURES_DIR, vbasename(normalizedPath)));
+    readSourceFile(roots, `${MOD_TEXTURES_DIR}/${basename(normalizedPath)}`);
   for (const pair of pairs) {
     if (seen.has(pair.texture)) continue;
     seen.add(pair.texture);
-    const outputName = vbasename(pair.texture).replace(/\.pcx$/i, '.masked.png');
-    const output = vjoin(TEXTURES_DIR, outputName);
+    const outputName = basename(pair.texture).replace(/\.pcx$/i, '.masked.png');
+    const output = `${TEXTURES_DIR}/${outputName}`;
     try {
       const colour = expandToRgba(decodePcx(await readTexturePcx(pair.texture)));
       const mask = decodePcx(await readTexturePcx(pair.textureAlpha));
@@ -64,7 +64,7 @@ export async function composeMaskedTransitionPages(
       for (let i = 0; i < mask.pixels.length; i++) {
         colour.rgba[4 * i + 3] = mask.pixels[i] ?? 0;
       }
-      await fs.writeFile(vjoin(outDir, output), await encodePng(colour));
+      await writeFileWithParents(join(outDir, output), await encodePng(colour));
       done.push({ input: pair.texture, output });
     } catch (err) {
       console.warn(`[pipeline] skipped masked page ${pair.texture}: ${errorMessage(err)}`);
@@ -84,37 +84,27 @@ const PICTURE_DIRS: readonly { readonly source: string; readonly output: string 
  * that fails to read or decode is logged and skipped; an output-write failure or an unreadable root
  * propagates as an environmental error.
  */
-export async function convertPcxTree(
-  fs: Vfs,
-  roots: SourceRoots,
-  outDir: string,
-  onItem?: StageItemReporter,
-): Promise<PcxConversion[]> {
+export async function convertPcxTree(roots: SourceRoots, outDir: string): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
   for (const dir of PICTURE_DIRS) {
     const prefix = `${dir.source.toLowerCase()}/`;
     const pictures = await collectSourceFiles(
-      fs,
       roots,
       (rel) => rel.startsWith(prefix) && rel.endsWith('.pcx') && !rel.slice(prefix.length).includes('/'),
     );
     for (const { rel: input, path } of pictures) {
-      const output = vjoin(
-        dir.output,
-        vbasename(input)
-          .toLowerCase()
-          .replace(/\.pcx$/, '.png'),
-      );
+      const output = `${dir.output}/${basename(input)
+        .toLowerCase()
+        .replace(/\.pcx$/, '.png')}`;
       let png: Uint8Array;
       try {
-        png = await pcxToPng(await fs.readFile(path));
+        png = await pcxToPng(await readFile(path));
       } catch (err) {
         console.warn(`[pipeline] skipped ${input}: ${errorMessage(err)}`);
         continue;
       }
-      await fs.writeFile(vjoin(outDir, output), png);
+      await writeFileWithParents(join(outDir, output), png);
       done.push({ input, output });
-      onItem?.(done.length);
     }
   }
   return done;

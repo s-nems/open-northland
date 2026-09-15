@@ -1,7 +1,6 @@
 # Rewrite the repository framing for a private project whose builds carry the content
 
 **Area:** tooling · **Focus:** docs · **Priority:** P3
-**Blocked by:** [Delete the vfs seam](content-in-build-5-delete-vfs.md)
 
 `README.md`, `docs/LEGAL.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and the "Repository
 and legal boundary" section of `AGENTS.md` describe a public project whose players convert their

@@ -1,4 +1,4 @@
-import type { Vfs } from '@open-northland/vfs';
+import { readFile } from 'node:fs/promises';
 import {
   type AtlasAlphaMode,
   type BobAtlas,
@@ -9,7 +9,6 @@ import { decodeBmd } from '../../decoders/bmd/index.js';
 import { paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
 import { errorMessage } from '../../errors.js';
-import type { StageItemReporter } from '../../progress.js';
 import { assertDistinctBobBasenames, writeSourceBobAtlas } from '../content-tree.js';
 import type { SourceAssetIndex } from '../source-files.js';
 import { bindingKey, type GraphicsBindingSet } from './bindings.js';
@@ -65,19 +64,16 @@ function paletteSlug(name: string): string {
  * building.
  */
 export async function convertBmdTree(
-  fs: Vfs,
   graphics: GraphicsBindingSet,
   outDir: string,
   tree: SourceAssetIndex,
-  onItem?: StageItemReporter,
 ): Promise<BmdConversion[]> {
   const { bindings, palettes, buildTimeBmds } = graphics;
   assertDistinctBobBasenames(bindings.map((b) => b.bmd).filter((ref) => tree.has(ref)));
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
   const seen = new Set<string>();
-  for (const [processed, binding] of bindings.entries()) {
-    onItem?.(processed, bindings.length);
+  for (const binding of bindings) {
     const key = bindingKey(binding);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -95,13 +91,13 @@ export async function convertBmdTree(
     }
     let atlas: BobAtlas;
     try {
-      const palette = decodePcx(await fs.readFile(pcxSource.path)).palette;
+      const palette = decodePcx(await readFile(pcxSource.path)).palette;
       if (palette === undefined) {
         console.warn(`[pipeline] skipped ${binding.bmd}: palette ${pcxRel} has no trailer`);
         continue;
       }
       const alpha: AtlasAlphaMode = buildTimeBmds.has(binding.bmd) ? 'build-time' : 'per-pixel';
-      atlas = bmdToAtlas(await fs.readFile(bmdSource.path), palette, alpha);
+      atlas = bmdToAtlas(await readFile(bmdSource.path), palette, alpha);
     } catch (err) {
       console.warn(`[pipeline] skipped ${binding.bmd}: ${errorMessage(err)}`);
       continue;
@@ -113,7 +109,6 @@ export async function convertBmdTree(
       continue;
     }
     const { png, manifest } = await writeSourceBobAtlas(
-      fs,
       outDir,
       bmdSource.rel,
       paletteSlug(binding.paletteName),
@@ -136,7 +131,6 @@ const SHADOW_ATLAS_SUFFIX = 'shadow';
  * no palette for recolours to differ by.
  */
 export async function convertShadowBmdTree(
-  fs: Vfs,
   graphics: GraphicsBindingSet,
   outDir: string,
   tree: SourceAssetIndex,
@@ -159,8 +153,8 @@ export async function convertShadowBmdTree(
       continue;
     }
     try {
-      const atlas = packShadowBobAtlas(decodeBmd(await fs.readFile(source.path)));
-      const { png } = await writeSourceBobAtlas(fs, outDir, source.rel, SHADOW_ATLAS_SUFFIX, atlas);
+      const atlas = packShadowBobAtlas(decodeBmd(await readFile(source.path)));
+      const { png } = await writeSourceBobAtlas(outDir, source.rel, SHADOW_ATLAS_SUFFIX, atlas);
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped shadow ${shadowBmd}: ${errorMessage(err)}`);

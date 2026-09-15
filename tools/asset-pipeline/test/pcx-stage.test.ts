@@ -1,7 +1,5 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { vjoin } from '@open-northland/vfs';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
@@ -11,8 +9,6 @@ import { composeMaskedTransitionPages, convertPcxTree, pcxToPng } from '../src/s
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
 import { makeTempDir } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 describe('pcxToPng', () => {
   it('decodes, palette-expands, and re-encodes to a PNG that round-trips to the same RGBA', async () => {
@@ -56,11 +52,11 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, MOD_GUI_BITMAPS_DIR, 'bg_button.PCX'), bytes); // case-insensitive match
     await writeFile(join(game, MOD_TEXTURES_DIR, 'notes.txt'), 'ignore me');
 
-    const done = await convertPcxTree(fs, { mod: game }, out);
+    const done = await convertPcxTree({ mod: game }, out);
 
     expect(done.map((c) => c.output).sort()).toEqual([
-      vjoin(GUI_BITMAPS_DIR, 'bg_button.png'),
-      vjoin(TEXTURES_DIR, 'text_000.png'),
+      `${GUI_BITMAPS_DIR}/bg_button.png`,
+      `${TEXTURES_DIR}/text_000.png`,
     ]);
     const decoded = await decodePng(await readFile(join(out, TEXTURES_DIR, 'text_000.png')));
     expect(decoded.width).toBe(width);
@@ -80,9 +76,9 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures', 'Old', 'text_001.pcx'), bytes);
     await writeFile(join(game, 'CnModMaps', 'arena', 'minimap.pcx'), bytes);
 
-    const done = await convertPcxTree(fs, { mod: game }, out);
+    const done = await convertPcxTree({ mod: game }, out);
 
-    expect(done.map((c) => c.output)).toEqual([vjoin(TEXTURES_DIR, 'text_000.png')]);
+    expect(done.map((c) => c.output)).toEqual([`${TEXTURES_DIR}/text_000.png`]);
     await expect(readFile(join(out, TEXTURES_DIR, 'text_000.png'))).resolves.toBeInstanceOf(Buffer);
   });
 
@@ -93,15 +89,15 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, MOD_TEXTURES_DIR, 'broken.pcx'), Uint8Array.from([0x0a, 0x05, 0x01])); // too short
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertPcxTree(fs, { mod: game }, out);
+    const done = await convertPcxTree({ mod: game }, out);
 
-    expect(done.map((c) => c.input)).toEqual([join(MOD_TEXTURES_DIR, 'good.pcx')]);
+    expect(done.map((c) => c.input)).toEqual([`${MOD_TEXTURES_DIR}/good.pcx`]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped .*broken\.pcx: pcx:/));
     warn.mockRestore();
   });
 
   it('throws when the mod root does not exist (a real argument error, not per-file)', async () => {
-    await expect(convertPcxTree(fs, { mod: join(game, 'nope') }, out)).rejects.toThrow();
+    await expect(convertPcxTree({ mod: join(game, 'nope') }, out)).rejects.toThrow();
   });
 
   it('composes a transition texture + alpha-mask pair into one RGBA .masked.png (raw index = alpha)', async () => {
@@ -127,7 +123,7 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_meadow.pcx'), colour);
     await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_meadow_a.pcx'), mask);
 
-    const done = await composeMaskedTransitionPages(fs, { mod: game }, out, [
+    const done = await composeMaskedTransitionPages({ mod: game }, out, [
       {
         texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
         textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
@@ -139,7 +135,7 @@ describe('convertPcxTree', () => {
       },
     ]);
 
-    expect(done.map((c) => c.output)).toEqual([vjoin(TEXTURES_DIR, 'tran_meadow.masked.png')]);
+    expect(done.map((c) => c.output)).toEqual([`${TEXTURES_DIR}/tran_meadow.masked.png`]);
     const decoded = await decodePng(await readFile(join(out, TEXTURES_DIR, 'tran_meadow.masked.png')));
     const expectedRgb = expandToRgba(decodePcx(colour)).rgba;
     for (let i = 0; i < width * height; i++) {
@@ -165,7 +161,7 @@ describe('convertPcxTree', () => {
     await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_bad_a.pcx'), mask);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await composeMaskedTransitionPages(fs, { mod: game }, out, [
+    const done = await composeMaskedTransitionPages({ mod: game }, out, [
       {
         texture: 'data/engine2d/bin/textures/tran_bad.pcx',
         textureAlpha: 'data/engine2d/bin/textures/tran_bad_a.pcx',

@@ -1,4 +1,3 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import {
   cifBytesToSections,
   extractGoods,
@@ -9,9 +8,9 @@ import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../source-files.js';
 
 /** The plaintext good table (good `name`/`type`/`landscapetype`). */
-const GOODTYPES_INI = vjoin('Data', 'logic', 'goodtypes.ini');
+const GOODTYPES_INI = 'Data/logic/goodtypes.ini';
 /** The `[GfxLandscape]` object table that binds `ls_goods.bmd` frames to goods by `logicType`. */
-const LANDSCAPES_CIF = vjoin('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
+const LANDSCAPES_CIF = 'Data/engine2d/inis/landscapes/landscapes.cif';
 
 /** `loadLayer` stem of the recolourable indexed goods atlas (`<stem>.png` + `<stem>.atlas.json`). */
 export const GOODS_ATLAS_STEM = 'ls_goods';
@@ -97,11 +96,10 @@ export function resolveGoodIcons(
 
 /** Read `landscapes.cif` and resolve `goods`' icon bindings against it ({@link resolveGoodIcons}). */
 export async function buildGoodIcons(
-  fs: Vfs,
   roots: SourceRoots,
   goods: readonly GoodLike[],
 ): Promise<Record<string, GoodIcon>> {
-  const sections = cifBytesToSections(await readSourceFile(fs, roots, LANDSCAPES_CIF));
+  const sections = cifBytesToSections(await readSourceFile(roots, LANDSCAPES_CIF));
   const landscapeGfx = extractLandscapeGfx(sections, {
     file: LANDSCAPES_CIF,
     layer: 'base',
@@ -111,9 +109,8 @@ export async function buildGoodIcons(
 
 /** Parse `goodtypes.ini` into the goods list (the id/typeId/landscapeType the icon + name joins key off). */
 export async function loadGoods(
-  fs: Vfs,
   roots: SourceRoots,
 ): Promise<readonly (GoodLike & { readonly typeId: number })[]> {
-  const sections = iniBytesToSections(await readSourceFile(fs, roots, GOODTYPES_INI));
+  const sections = iniBytesToSections(await readSourceFile(roots, GOODTYPES_INI));
   return extractGoods(sections, { file: GOODTYPES_INI, layer: 'base' });
 }

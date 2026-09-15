@@ -1,5 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { basename, dirname } from 'node:path';
 import type { MapInfo, MapProvenance } from '@open-northland/data';
-import { type Vfs, vdirname } from '@open-northland/vfs';
 import { cifBytesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { collectSourceFilesNamed, type SourceFile, type SourceRoots } from '../../roots.js';
@@ -25,7 +26,7 @@ export function mapCifToInfo(
  * so the id does not depend on the Unicode normalization the host file system stored the folder in.
  */
 export function mapIdFromPath(mapCifRelPath: string): string {
-  const folder = vdirname(mapCifRelPath).split(/[\\/]/).pop() ?? mapCifRelPath;
+  const folder = basename(dirname(mapCifRelPath));
   return folder
     .normalize('NFD')
     .replace(/\p{M}+/gu, '')
@@ -45,11 +46,11 @@ export const STRING_TABLE_DIR = 'text';
  * folder named `text` still converts.
  */
 export function excludeStringTableCopies(found: readonly SourceFile[]): SourceFile[] {
-  const candidateDirs = new Set(found.map(({ rel }) => vdirname(rel).toLowerCase()));
+  const candidateDirs = new Set(found.map(({ rel }) => dirname(rel).toLowerCase()));
   return found.filter(({ rel }) => {
-    const dir = vdirname(rel);
-    const folder = dir.split(/[\\/]/).pop() ?? '';
-    return !(folder.toLowerCase() === STRING_TABLE_DIR && candidateDirs.has(vdirname(dir).toLowerCase()));
+    const dir = dirname(rel);
+    const folder = basename(dir);
+    return !(folder.toLowerCase() === STRING_TABLE_DIR && candidateDirs.has(dirname(dir).toLowerCase()));
   });
 }
 
@@ -60,12 +61,12 @@ export function excludeStringTableCopies(found: readonly SourceFile[]): SourceFi
  * declarative header lands here; the tile grid, `StaticObjects` placements and
  * `playerdata`/`MissionData` script land in per-map artifacts via `convertMapDatTree`.
  */
-export async function decodeMapTree(fs: Vfs, roots: SourceRoots): Promise<MapInfo[]> {
-  const found = excludeStringTableCopies(await collectSourceFilesNamed(fs, roots, 'map.cif'));
+export async function decodeMapTree(roots: SourceRoots): Promise<MapInfo[]> {
+  const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.cif'));
   const maps: MapInfo[] = [];
   for (const { rel, path } of found) {
     try {
-      const bytes = await fs.readFile(path);
+      const bytes = await readFile(path);
       const provenance = mapProvenance(rel);
       const layer = provenance.kind === 'mod' ? 'mod' : 'base';
       maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer }, provenance));

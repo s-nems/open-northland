@@ -1,5 +1,6 @@
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { HypertextBlock, HypertextBook } from '@open-northland/data';
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
 import { errorMessage } from '../../errors.js';
@@ -27,7 +28,6 @@ export interface GuiHistoryResult {
  * folder, or whose folder lacks the start page, emits nothing.
  */
 export async function convertGuiHistory(
-  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   langs: readonly string[] = GUI_LANGS,
@@ -35,11 +35,11 @@ export async function convertGuiHistory(
   const done: GuiHistoryResult[] = [];
   for (const lang of langs) {
     const segments = HISTORY_DIR.map((s) => (s === '<lang>' ? lang : s));
-    const dir = await findPathCaseInsensitive(fs, roots.mod, segments);
+    const dir = await findPathCaseInsensitive(roots.mod, segments);
     if (dir === undefined) continue;
     let book: HypertextBook | undefined;
     try {
-      book = await renderBook(fs, dir, outDir, lang);
+      book = await renderBook(dir, outDir, lang);
     } catch (err) {
       console.warn(`[pipeline] gui: skipped history ${lang}: ${errorMessage(err)}`);
       continue;
@@ -48,24 +48,19 @@ export async function convertGuiHistory(
       console.warn(`[pipeline] gui: skipped history ${lang}: no ${START_PAGE}.hlt page`);
       continue;
     }
-    const path = vjoin(GUI_CONTENT_DIR, 'history', `${lang}.json`);
-    await writeJsonFile(fs, outDir, path, book);
+    const path = `${GUI_CONTENT_DIR}/history/${lang}.json`;
+    await writeJsonFile(outDir, path, book);
     done.push({ lang, path, pages: Object.keys(book.pages).length });
   }
   return done;
 }
 
-async function renderBook(
-  fs: Vfs,
-  dir: string,
-  outDir: string,
-  lang: string,
-): Promise<HypertextBook | undefined> {
-  const entries = (await fs.readdir(dir)).filter((e) => e.kind === 'file');
+async function renderBook(dir: string, outDir: string, lang: string): Promise<HypertextBook | undefined> {
+  const entries = (await readdir(dir, { withFileTypes: true })).filter((entry) => entry.isFile());
   const blocksByFile = new Map<string, Map<string, string>>();
   for (const entry of entries) {
     if (!BLOCKS_EXT.test(entry.name)) continue;
-    const text = decodeIni(await fs.readFile(vjoin(dir, entry.name)));
+    const text = decodeIni(await readFile(join(dir, entry.name)));
     blocksByFile.set(entry.name.toLowerCase(), parseBriefingBlocks(text));
   }
   const include: IncludeResolver = (file, label) => {
@@ -78,13 +73,12 @@ async function renderBook(
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
     texts.set(
       entry.name.replace(PAGE_EXT, '').toLowerCase(),
-      decodeIni(await fs.readFile(vjoin(dir, entry.name))),
+      decodeIni(await readFile(join(dir, entry.name))),
     );
   }
   const picture = await resolvePagePictures(
-    fs,
     outDir,
-    (name) => findPathCaseInsensitive(fs, dir, [HYPERTEXT_GRAPHICS_DIR, name]),
+    (name) => findPathCaseInsensitive(dir, [HYPERTEXT_GRAPHICS_DIR, name]),
     texts.values(),
     include,
     `gui: history ${lang}`,

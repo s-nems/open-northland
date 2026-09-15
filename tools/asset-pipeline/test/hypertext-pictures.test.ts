@@ -1,17 +1,15 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { describe, expect, it } from 'vitest';
 import type { IncludeResolver } from '../src/decoders/hypertext.js';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
+import { writeFileWithParents } from '../src/files.js';
 import { HYPERTEXT_PICTURES_DIR } from '../src/stages/gui/paths.js';
 import { resolvePagePictures } from '../src/stages/hypertext-pictures.js';
 import { rampPalette } from './fixtures/palette.js';
 import { makeTempDir } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 /**
  * The page-picture store (`stages/hypertext-pictures.ts`): the names a page reaches through its
@@ -34,10 +32,9 @@ describe('resolvePagePictures', () => {
   it('emits a picture under its source digest, keying index 0 to nothing', async () => {
     const { path: out } = await makeTempDir('hypertext-pictures');
     const { path: src } = await makeTempDir('hypertext-pictures-src');
-    await fs.writeFile(join(src, 'keyed.pcx'), KEYED_PCX);
+    await writeFileWithParents(join(src, 'keyed.pcx'), KEYED_PCX);
 
     const picture = await resolvePagePictures(
-      fs,
       out,
       async (name) => (name === 'keyed.pcx' ? join(src, 'keyed.pcx') : undefined),
       [page('keyed.pcx')],
@@ -55,11 +52,10 @@ describe('resolvePagePictures', () => {
   it('writes one file for a picture two pages name and skips one that resolves nowhere', async () => {
     const { path: out } = await makeTempDir('hypertext-pictures-shared');
     const { path: src } = await makeTempDir('hypertext-pictures-shared-src');
-    await fs.writeFile(join(src, 'a.pcx'), KEYED_PCX);
-    await fs.writeFile(join(src, 'b.pcx'), KEYED_PCX);
+    await writeFileWithParents(join(src, 'a.pcx'), KEYED_PCX);
+    await writeFileWithParents(join(src, 'b.pcx'), KEYED_PCX);
 
     const picture = await resolvePagePictures(
-      fs,
       out,
       async (name) => (name === 'gone.pcx' ? undefined : join(src, name)),
       [page('a.pcx', 'gone.pcx'), page('b.pcx')],

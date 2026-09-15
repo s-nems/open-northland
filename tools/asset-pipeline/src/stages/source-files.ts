@@ -1,4 +1,4 @@
-import type { ReadableVfs } from '@open-northland/vfs';
+import { readFile } from 'node:fs/promises';
 import { normalizeAssetPath } from '../decoders/ini.js';
 import { collectSourceFiles, resolveSourceFile, type SourceFile, type SourceRoots } from '../roots.js';
 
@@ -6,16 +6,12 @@ import { collectSourceFiles, resolveSourceFile, type SourceFile, type SourceRoot
  * Reads a source file, every path segment resolving case-insensitively through the pipeline's one
  * source-path rule ({@link resolveSourceFile}). Throws when absent.
  */
-export async function readSourceFile(
-  fs: ReadableVfs,
-  roots: SourceRoots,
-  relPath: string,
-): Promise<Uint8Array> {
-  const path = await resolveSourceFile(fs, roots, relPath);
+export async function readSourceFile(roots: SourceRoots, relPath: string): Promise<Uint8Array> {
+  const path = await resolveSourceFile(roots, relPath);
   if (path === undefined) {
     throw new Error(`${relPath} not found under ${roots.mod}`);
   }
-  return fs.readFile(path);
+  return readFile(path);
 }
 
 /** A normalized asset reference ({@link normalizeAssetPath}) → the source file that carries it. */
@@ -31,9 +27,9 @@ const ATLAS_SOURCE_RE = /\.(bmd|pcx)$/;
  * `SourceFile.path`; a derived file's own path under `--out` comes from the served layout, not the
  * source spelling of `rel`. Walks the tree in full, so build it once and thread it through.
  */
-export async function indexSourceAssets(fs: ReadableVfs, roots: SourceRoots): Promise<SourceAssetIndex> {
+export async function indexSourceAssets(roots: SourceRoots): Promise<SourceAssetIndex> {
   const index = new Map<string, SourceFile>();
-  for (const file of await collectSourceFiles(fs, roots, (rel) => ATLAS_SOURCE_RE.test(rel))) {
+  for (const file of await collectSourceFiles(roots, (rel) => ATLAS_SOURCE_RE.test(rel))) {
     index.set(normalizeAssetPath(file.rel), file);
   }
   return index;

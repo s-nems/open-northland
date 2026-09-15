@@ -1,6 +1,5 @@
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeFnt, type Font } from '../src/decoders/fnt/codec.js';
 import { decodePng } from '../src/decoders/png.js';
@@ -9,8 +8,6 @@ import { convertFontColorLut, convertFontStage, convertFonts } from '../src/stag
 import { sampleGlyphBmd } from './fixtures/bmd.js';
 import { paletteCarrier } from './fixtures/pcx.js';
 import { type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 /**
  * Font stage tests. No copyrighted fixtures: we synthesize the `.fnt` files (a CFont wrapping a tiny `.bmd`)
@@ -58,7 +55,7 @@ describe('fonts stage', () => {
   });
 
   it('builds a 256×4 colour LUT with a stable row order and resolves the preview palettes', async () => {
-    const res = await convertFontColorLut(fs, { mod: game }, out);
+    const res = await convertFontColorLut({ mod: game }, out);
     expect(res.names).toEqual(['white', 'dark', 'dimmed', 'red']);
     expect(res.byName.get('white')).toHaveLength(768);
     const lut = await decodePng(await readFile(join(out, BOBS_DIR, 'font-palettes-lut.png')));
@@ -69,15 +66,15 @@ describe('fonts stage', () => {
   it('keeps LUT rows stable (neutral fill) when a colour carrier is missing, with a warning', async () => {
     await rm(join(game, PALETTES_DIR, 'font_dark.pcx'));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const res = await convertFontColorLut(fs, { mod: game }, out);
+    const res = await convertFontColorLut({ mod: game }, out);
     expect(res.names).toHaveLength(4); // row count unchanged despite the missing carrier
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/colour dark unreadable.*neutral row/));
     warn.mockRestore();
   });
 
   it('emits an indexed + preview atlas and a metrics JSON per font, keyed by variant', async () => {
-    const { byName } = await convertFontColorLut(fs, { mod: game }, out);
-    const fonts = await convertFonts(fs, { mod: game }, out, byName.get('white'));
+    const { byName } = await convertFontColorLut({ mod: game }, out);
+    const fonts = await convertFonts({ mod: game }, out, byName.get('white'));
 
     // 4 sizes × 3 sets = 12 fonts; the default set keeps the bare stem, variants get a prefix.
     expect(fonts).toHaveLength(12);
@@ -112,9 +109,9 @@ describe('fonts stage', () => {
   it('skips a missing/malformed .fnt with a warning instead of aborting', async () => {
     await rm(join(game, FONTS_DIR, 'font12.fnt')); // one root font gone
     await writeGame(join(FONTS_DIR, 'latin', 'font08.fnt'), Uint8Array.from([1, 2, 3, 4])); // one garbage font
-    const { byName } = await convertFontColorLut(fs, { mod: game }, out);
+    const { byName } = await convertFontColorLut({ mod: game }, out);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const fonts = await convertFonts(fs, { mod: game }, out, byName.get('white'));
+    const fonts = await convertFonts({ mod: game }, out, byName.get('white'));
     expect(fonts).toHaveLength(10); // 12 − the missing − the malformed
     expect(fonts.map((f) => f.key)).not.toContain('font12');
     expect(fonts.map((f) => f.key)).not.toContain('latin_font08');
@@ -124,7 +121,7 @@ describe('fonts stage', () => {
   });
 
   it('ties everything together into content/gui/fonts/manifest.json', async () => {
-    const summary = await convertFontStage(fs, { mod: game }, out);
+    const summary = await convertFontStage({ mod: game }, out);
     expect(summary).toMatchObject({ fonts: 12, colors: 4, glyphs: 24 });
 
     const manifest = JSON.parse(await readFile(join(out, FONTS_JSON_DIR, 'manifest.json'), 'utf8'));

@@ -1,5 +1,5 @@
+import { readFile } from 'node:fs/promises';
 import type { JobGraphics } from '@open-northland/data';
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import {
   extractJobBaseGraphics,
   iniBytesToSections,
@@ -11,8 +11,8 @@ import { CULTURESNATION_MOD } from '../../mod-root.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 import { loadCifTable } from './cif-tables.js';
 
-const MOD_FILE = vjoin(CULTURESNATION_MOD, 'types', 'humanstype', 'jobgraphics.ini');
-const BASE_FILE = vjoin('Data', 'engine2d', 'inis', 'humans', 'jobgraphics.cif');
+const MOD_FILE = `${CULTURESNATION_MOD}/types/humanstype/jobgraphics.ini`;
+const BASE_FILE = 'Data/engine2d/inis/humans/jobgraphics.cif';
 
 /** The IR rows of one source's `[jobbasegraphics]` records; a record missing its tribe or job is dropped. */
 export function jobGraphicsRows(records: readonly JobBaseGraphicsBinding[], src: SourceRef): JobGraphics[] {
@@ -53,17 +53,16 @@ export function mergeJobGraphics(layers: readonly (readonly JobGraphics[])[]): J
  * The human `[jobbasegraphics]` table, mod `.ini` over base `.cif`. An absent source contributes
  * nothing, so a partial mod tree still yields the rows it has.
  */
-export async function loadJobGraphics(fs: Vfs, roots: SourceRoots): Promise<JobGraphics[]> {
-  const modPath = await resolveSourceFile(fs, roots, MOD_FILE);
+export async function loadJobGraphics(roots: SourceRoots): Promise<JobGraphics[]> {
+  const modPath = await resolveSourceFile(roots, MOD_FILE);
   const mod =
     modPath === undefined
       ? []
-      : jobGraphicsRows(extractJobBaseGraphics(iniBytesToSections(await fs.readFile(modPath))), {
+      : jobGraphicsRows(extractJobBaseGraphics(iniBytesToSections(await readFile(modPath))), {
           file: MOD_FILE,
           layer: 'mod',
         });
   const base = await loadCifTable(
-    fs,
     roots,
     BASE_FILE,
     (sections, src) => jobGraphicsRows(extractJobBaseGraphics(sections), src),

@@ -3,7 +3,8 @@
  * DLS banks. Each band instrument becomes one MIDI channel (a bank's 17th instance opens another
  * processor); notes falling in regions the download validation rejects stay silent.
  */
-import { type ReadableVfs, vjoin } from '@open-northland/vfs';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   type BasicPreset,
   type BasicSoundBank,
@@ -21,10 +22,10 @@ export interface DlsBank {
 }
 
 /** Every collection under `dir`, keyed by its lowercased file name (how bands reference it). */
-export async function loadDlsBanks(fs: ReadableVfs, dir: string): Promise<Map<string, DlsBank>> {
+export async function loadDlsBanks(dir: string): Promise<Map<string, DlsBank>> {
   const banks = new Map<string, DlsBank>();
-  for (const file of await dlsFileNames(fs, dir)) {
-    const bytes = await fs.readFile(vjoin(dir, file));
+  for (const file of await dlsFileNames(dir)) {
+    const bytes = await readFile(join(dir, file));
     // The loader takes ownership of an ArrayBuffer, so it gets its own copy of the read.
     const buffer = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(buffer).set(bytes);
@@ -37,9 +38,9 @@ export async function loadDlsBanks(fs: ReadableVfs, dir: string): Promise<Map<st
   return banks;
 }
 
-export async function dlsFileNames(fs: ReadableVfs, dir: string): Promise<string[]> {
-  return (await fs.readdir(dir))
-    .filter((entry) => entry.kind === 'file' && entry.name.toLowerCase().endsWith('.dls'))
+export async function dlsFileNames(dir: string): Promise<string[]> {
+  return (await readdir(dir, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.dls'))
     .map((entry) => entry.name)
     .sort();
 }

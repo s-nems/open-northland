@@ -1,7 +1,5 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { vjoin } from '@open-northland/vfs';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Bmd, BOB_TYPE_1BIT, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
@@ -13,8 +11,6 @@ import { packLineControl, sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette, solidPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
 import { makeTempDir } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 describe('bmdToAtlas', () => {
   it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', async () => {
@@ -111,18 +107,17 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
     expect(done).toHaveLength(1);
     // The atlas is served flat under bobs/ at the source's lower-cased basename, so the mixed-case
     // `Data/Bobs/Body.bmd` the refs resolved to never reaches the name; the palette editname rides in
     // it as the per-creature differentiator.
-    expect(done[0]?.png).toBe(vjoin(BOBS_DIR, 'body.bear01.png'));
-    expect(done[0]?.manifest).toBe(vjoin(BOBS_DIR, 'body.bear01.atlas.json'));
+    expect(done[0]?.png).toBe(`${BOBS_DIR}/body.bear01.png`);
+    expect(done[0]?.manifest).toBe(`${BOBS_DIR}/body.bear01.atlas.json`);
     expect(done[0]?.paletteName).toBe('bear01');
     // The emitted PNG decodes (a valid RGBA sheet) and the manifest JSON round-trips its frame table.
     const decoded = await decodePng(await readFile(join(out, BOBS_DIR, 'body.bear01.png')));
@@ -152,18 +147,17 @@ describe('convertBmdTree', () => {
     ];
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
     expect(done).toHaveLength(2);
     // Two distinct atlas files from one shared .bmd - the palette name is the differentiator.
     expect(new Set(done.map((c) => c.png)).size).toBe(2);
     expect(done.map((c) => c.png).sort()).toEqual([
-      vjoin(BOBS_DIR, 'body.bear01.png'),
-      vjoin(BOBS_DIR, 'body.wolf01.png'),
+      `${BOBS_DIR}/body.bear01.png`,
+      `${BOBS_DIR}/body.wolf01.png`,
     ]);
     // Each atlas was coloured through its own binding's palette, not one shared pick: same geometry,
     // so any pixel difference is the palette, and the wolf's every colour is its solid-red carrier.
@@ -175,8 +169,8 @@ describe('convertBmdTree', () => {
       const o = (y * img.width + x) * 4;
       return [...img.rgba.subarray(o, o + 4)];
     };
-    const bear = await sheetPixel(vjoin(BOBS_DIR, 'body.bear01.png'));
-    const wolf = await sheetPixel(vjoin(BOBS_DIR, 'body.wolf01.png'));
+    const bear = await sheetPixel(`${BOBS_DIR}/body.bear01.png`);
+    const wolf = await sheetPixel(`${BOBS_DIR}/body.wolf01.png`);
     expect(wolf.slice(0, 3)).toEqual([255, 0, 0]);
     expect(bear).not.toEqual(wolf);
   });
@@ -191,13 +185,12 @@ describe('convertBmdTree', () => {
     ];
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
-    expect(done.map((c) => c.png)).toEqual([vjoin(BOBS_DIR, 'body.bear01.png')]);
+    expect(done.map((c) => c.png)).toEqual([`${BOBS_DIR}/body.bear01.png`]);
   });
 
   it('serves a subdirectory .bmd flat under bobs/ (the mod ships building bobs under nowe/)', async () => {
@@ -207,7 +200,6 @@ describe('convertBmdTree', () => {
     await writeFile(join(out, 'Data', 'Bobs', 'nowe', 'f_bakery.bmd'), sampleBmdBytes());
 
     const done = await convertBmdTree(
-      fs,
       {
         bindings: [
           {
@@ -222,12 +214,12 @@ describe('convertBmdTree', () => {
         buildTimeBmds: new Set(),
       },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
     // The app asks for `/bobs/f_bakery.house.png` - the source's `nowe/` subdirectory must not reach
     // the served name, or the mod's building bobs 404 and fall back.
-    expect(done.map((d) => d.png)).toEqual([vjoin(BOBS_DIR, 'f_bakery.house.png')]);
+    expect(done.map((d) => d.png)).toEqual([`${BOBS_DIR}/f_bakery.house.png`]);
   });
 
   it('aborts when two convertible .bmd would claim one served atlas name', async () => {
@@ -242,10 +234,9 @@ describe('convertBmdTree', () => {
 
     await expect(
       convertBmdTree(
-        fs,
         { bindings, palettes, buildTimeBmds: new Set() },
         out,
-        await indexSourceAssets(fs, { mod: out }),
+        await indexSourceAssets({ mod: out }),
       ),
     ).rejects.toThrow(/basename collision.*nowe\/body\.bmd/s);
   });
@@ -268,13 +259,12 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
-    expect(done.map((c) => c.png)).toEqual([vjoin(BOBS_DIR, 'body.bear01.png')]);
+    expect(done.map((c) => c.png)).toEqual([`${BOBS_DIR}/body.bear01.png`]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bmd data\/bobs\/gone\/body\.bmd not found/));
     warn.mockRestore();
   });
@@ -285,10 +275,9 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     ); // empty palette index
 
     expect(done).toEqual([]);
@@ -304,10 +293,9 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
     expect(done).toEqual([]);
@@ -324,10 +312,9 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
     expect(done).toEqual([]);
@@ -371,10 +358,9 @@ describe('convertShadowBmdTree', () => {
 
   const convert = async (bindings: BmdPaletteBinding[]): Promise<string[]> =>
     convertShadowBmdTree(
-      fs,
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
   it('writes `<shadow-basename>.shadow.{png,atlas.json}` under bobs/ - the name the app joins on', async () => {
@@ -385,7 +371,7 @@ describe('convertShadowBmdTree', () => {
 
     // The literal `.shadow.` filenames are the contract `servedShadowStem` (packages/app) resolves
     // against - a drift here silently degrades to shadow-less rendering.
-    expect(done).toEqual([vjoin(BOBS_DIR, 'body_s.shadow.png')]);
+    expect(done).toEqual([`${BOBS_DIR}/body_s.shadow.png`]);
     const decoded = await decodePng(await readFile(join(out, BOBS_DIR, 'body_s.shadow.png')));
     expect(decoded.width).toBeGreaterThan(0);
     const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'body_s.shadow.atlas.json'), 'utf8')) as {
@@ -401,7 +387,7 @@ describe('convertShadowBmdTree', () => {
 
     const done = await convert([shadowBinding('bear01'), shadowBinding('wolf01')]);
 
-    expect(done).toEqual([vjoin(BOBS_DIR, 'body_s.shadow.png')]); // deduped, not clobbered twice
+    expect(done).toEqual([`${BOBS_DIR}/body_s.shadow.png`]); // deduped, not clobbered twice
   });
 
   it('skips a missing shadow .bmd with a warning; bindings without one are not shadow work at all', async () => {
@@ -481,10 +467,9 @@ describe('convertBmdTree build-time bake', () => {
     ];
 
     await convertBmdTree(
-      fs,
       { bindings, palettes, buildTimeBmds: new Set(['data/bobs/house.bmd']) },
       out,
-      await indexSourceAssets(fs, { mod: out }),
+      await indexSourceAssets({ mod: out }),
     );
 
     const alphaOf = async (png: string): Promise<number> => {

@@ -3,13 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": "./dist/index.js",
-    "./mod-root": "./dist/mod-root.js",
-    "./progress": "./dist/progress.js"
-  },
   "bin": {
     "open-northland-pipeline": "./dist/cli.js"
   },
@@ -20,7 +13,6 @@
   "dependencies": {
     "@open-northland/data": "*",
     "@open-northland/render": "*",
-    "@open-northland/vfs": "*",
     "spessasynth_core": "4.3.17",
     "wasm-media-encoders": "0.7.0"
   },

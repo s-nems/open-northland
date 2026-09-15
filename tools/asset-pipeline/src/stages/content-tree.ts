@@ -1,7 +1,8 @@
-import { type Vfs, vbasename, vjoin, writeText } from '@open-northland/vfs';
+import { basename, join } from 'node:path';
 import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas/index.js';
 import type { Bmd } from '../decoders/bmd/index.js';
 import { encodePng } from '../decoders/png.js';
+import { writeFileWithParents } from '../files.js';
 
 // The output tree is served as static files, so each directory's name is the URL root the app fetches
 // it at, and every file inside is lower-cased because the IR's references are.
@@ -21,8 +22,8 @@ export const MAPS_DIR = 'maps';
  * Writes `value` as pretty-printed JSON (2-space indent, trailing newline) to `<outDir>/<relPath>`,
  * creating the parent directory.
  */
-export async function writeJsonFile(fs: Vfs, outDir: string, relPath: string, value: unknown): Promise<void> {
-  await writeText(fs, vjoin(outDir, relPath), `${JSON.stringify(value, null, 2)}\n`);
+export async function writeJsonFile(outDir: string, relPath: string, value: unknown): Promise<void> {
+  await writeFileWithParents(join(outDir, relPath), `${JSON.stringify(value, null, 2)}\n`);
 }
 
 /** The relative paths a bob atlas write produced (under `outDir`). */
@@ -35,13 +36,13 @@ export interface BobAtlasFiles {
  * Writes a packed bob atlas's `<stem>.png` and `<stem>.atlas.json` under {@link BOBS_DIR}, plus
  * `<stem>.build.png` for a `'build-time'` bake's time sheet.
  */
-async function writeBobAtlas(fs: Vfs, outDir: string, stem: string, atlas: BobAtlas): Promise<BobAtlasFiles> {
-  const png = vjoin(BOBS_DIR, `${stem}.png`);
-  const manifest = vjoin(BOBS_DIR, `${stem}.atlas.json`);
-  await fs.writeFile(vjoin(outDir, png), await encodePng(atlas.image));
-  await writeText(fs, vjoin(outDir, manifest), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
+async function writeBobAtlas(outDir: string, stem: string, atlas: BobAtlas): Promise<BobAtlasFiles> {
+  const png = `${BOBS_DIR}/${stem}.png`;
+  const manifest = `${BOBS_DIR}/${stem}.atlas.json`;
+  await writeFileWithParents(join(outDir, png), await encodePng(atlas.image));
+  await writeFileWithParents(join(outDir, manifest), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
   if (atlas.timeImage !== undefined) {
-    await fs.writeFile(vjoin(outDir, BOBS_DIR, `${stem}.build.png`), await encodePng(atlas.timeImage));
+    await writeFileWithParents(join(outDir, BOBS_DIR, `${stem}.build.png`), await encodePng(atlas.timeImage));
   }
   return { png, manifest };
 }
@@ -61,7 +62,6 @@ export interface IndexedAtlasStems {
  * `<keyStem>.<previewSuffix>` (the naming the app-side loaders mirror).
  */
 export async function emitIndexedAndPreviewAtlas(
-  fs: Vfs,
   outDir: string,
   keyStem: string,
   bmd: Bmd,
@@ -72,8 +72,8 @@ export async function emitIndexedAndPreviewAtlas(
   const preview = packBobAtlas(bmd, previewPalette);
   const indexedStem = `${keyStem}.indexed`;
   const previewStem = `${keyStem}.${previewSuffix}`;
-  await writeBobAtlas(fs, outDir, indexedStem, indexed);
-  await writeBobAtlas(fs, outDir, previewStem, preview);
+  await writeBobAtlas(outDir, indexedStem, indexed);
+  await writeBobAtlas(outDir, previewStem, preview);
   return { indexedStem, previewStem, frames: indexed.manifest.frames.length };
 }
 
@@ -84,19 +84,18 @@ export async function emitIndexedAndPreviewAtlas(
  * or `indexed`/`shadow`) keeps recolours of one shared body bob apart.
  */
 export function bobAtlasStem(bmdRel: string, suffix: string): string {
-  const name = vbasename(bmdRel).replace(/\.bmd$/i, '');
+  const name = basename(bmdRel).replace(/\.bmd$/i, '');
   return `${name.toLowerCase()}.${suffix}`;
 }
 
 /** Writes a packed atlas for the source `.bmd` at `bmdRel` under its {@link bobAtlasStem}. */
 export async function writeSourceBobAtlas(
-  fs: Vfs,
   outDir: string,
   bmdRel: string,
   suffix: string,
   atlas: BobAtlas,
 ): Promise<BobAtlasFiles> {
-  return writeBobAtlas(fs, outDir, bobAtlasStem(bmdRel, suffix), atlas);
+  return writeBobAtlas(outDir, bobAtlasStem(bmdRel, suffix), atlas);
 }
 
 /**
@@ -109,7 +108,7 @@ export function assertDistinctBobBasenames(bmdRefs: Iterable<string>): void {
   const byBasename = new Map<string, string>();
   const collisions: string[] = [];
   for (const ref of bmdRefs) {
-    const base = vbasename(ref).toLowerCase();
+    const base = basename(ref).toLowerCase();
     const first = byBasename.get(base);
     if (first === undefined) byBasename.set(base, ref);
     else if (first !== ref) collisions.push(`"${first}" and "${ref}" -> ${bobAtlasStem(ref, '<suffix>')}`);

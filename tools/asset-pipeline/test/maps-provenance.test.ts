@@ -12,13 +12,6 @@ it.each([
   expect(mapProvenance(rel)).toEqual({ kind, folder });
 });
 
-it('folds a backslash-separated relative path to forward slashes', () => {
-  expect(mapProvenance('CnModMaps\\example\\map.dat')).toEqual({
-    kind: 'mod',
-    folder: 'CnModMaps/example',
-  });
-});
-
 it('reads a hand-edited sidecar without provenance and rejects unsafe provenance folders', () => {
   expect(MapMeta.parse({ name: 'Edited' }).provenance).toBeUndefined();
   for (const folder of ['/absolute', '../escape', 'C:/install', 'Data\\maps', 'a//b', './map']) {

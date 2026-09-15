@@ -1,4 +1,3 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { errorMessage } from '../../errors.js';
 import { MOD_BOBS_DIR, type SourceRoots } from '../../roots.js';
@@ -21,7 +20,7 @@ export { resolveGoodNames } from './names.js';
  */
 
 /** The shared good-pile bob sheet (155 bobs, up to 5 growth states per good). */
-const GOODS_BMD = vjoin(MOD_BOBS_DIR, 'ls_goods.bmd');
+const GOODS_BMD = `${MOD_BOBS_DIR}/ls_goods.bmd`;
 
 /** `loadLayer` stem of the emitted recolourable indexed goods atlas. */
 const GOODS_INDEXED_STEM = `${GOODS_ATLAS_STEM}.indexed`;
@@ -61,24 +60,20 @@ export interface GoodsStageSummary {
  * Decode `ls_goods.bmd` into an indexed + preview atlas, stack the referenced recolor palettes into a LUT,
  * build the good→icon bindings, and write them under `outDir`.
  */
-export async function convertGoodsStage(
-  fs: Vfs,
-  roots: SourceRoots,
-  outDir: string,
-): Promise<GoodsStageSummary> {
+export async function convertGoodsStage(roots: SourceRoots, outDir: string): Promise<GoodsStageSummary> {
   let icons: Record<string, GoodIcon>;
   let names: Record<string, Record<string, string>>;
   try {
-    const goods = await loadGoods(fs, roots);
-    icons = await buildGoodIcons(fs, roots, goods);
-    names = await loadGoodNames(fs, roots, goods);
+    const goods = await loadGoods(roots);
+    icons = await buildGoodIcons(roots, goods);
+    names = await loadGoodNames(roots, goods);
   } catch (err) {
     console.warn(`[pipeline] goods: skipped (good tables unreadable): ${errorMessage(err)}`);
     icons = {};
     names = {};
   }
 
-  const paletteAliases = await loadPaletteAliases(fs, roots);
+  const paletteAliases = await loadPaletteAliases(roots);
 
   // Sorted so the LUT row order is stable across runs.
   const paletteNames = [
@@ -87,7 +82,7 @@ export async function convertGoodsStage(
   const paletteByName = new Map<string, Uint8Array>();
   const ordered: Uint8Array[] = [];
   for (const name of paletteNames) {
-    let palette = await loadGoodsPalette(fs, roots, name, paletteAliases);
+    let palette = await loadGoodsPalette(roots, name, paletteAliases);
     if (palette === undefined) {
       console.warn(`[pipeline] goods: palette "${name}" unavailable; using neutral row`);
       palette = identityPalette();
@@ -98,9 +93,8 @@ export async function convertGoodsStage(
 
   let frames = 0;
   try {
-    const bmd = decodeBmd(await readSourceFile(fs, roots, GOODS_BMD));
+    const bmd = decodeBmd(await readSourceFile(roots, GOODS_BMD));
     const emitted = await emitIndexedAndPreviewAtlas(
-      fs,
       outDir,
       GOODS_ATLAS_STEM,
       bmd,
@@ -112,7 +106,7 @@ export async function convertGoodsStage(
     console.warn(`[pipeline] goods: atlas skipped (${GOODS_BMD} unreadable): ${errorMessage(err)}`);
   }
 
-  await writeLutPng(fs, outDir, GOODS_PALETTE_LUT_STEM, ordered);
+  await writeLutPng(outDir, GOODS_PALETTE_LUT_STEM, ordered);
 
   const manifest: GoodsManifest = {
     indexedStem: GOODS_INDEXED_STEM,
@@ -122,7 +116,7 @@ export async function convertGoodsStage(
     icons,
     names,
   };
-  await writeJsonFile(fs, outDir, vjoin(GOODS_CONTENT_DIR, 'manifest.json'), manifest);
+  await writeJsonFile(outDir, `${GOODS_CONTENT_DIR}/manifest.json`, manifest);
 
   return { frames, palettes: paletteNames.length, icons: Object.keys(icons).length };
 }

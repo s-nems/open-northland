@@ -1,5 +1,5 @@
+import { readFile } from 'node:fs/promises';
 import type { BuildingFootprint, GoodQuantity } from '@open-northland/data';
-import type { Vfs } from '@open-northland/vfs';
 import {
   extractAnimals,
   extractArmor,
@@ -41,7 +41,7 @@ function foldOverlay<V>(into: Map<number, V>, rows: ReadonlyMap<number, V>): voi
  * pulls only its own `[section]`s, so a file with no matching section contributes nothing. These are
  * the per-source tables only; the cross-table joins run afterwards.
  */
-export async function extractIniTables(fs: Vfs, sources: readonly IniSource[]) {
+export async function extractIniTables(sources: readonly IniSource[]) {
   const goods = [];
   const jobs = [];
   const jobExperience = [];
@@ -70,7 +70,7 @@ export async function extractIniTables(fs: Vfs, sources: readonly IniSource[]) {
   } satisfies BuildingGraphicsOverlays;
 
   for (const { path, file, layer } of sources) {
-    const sections = iniBytesToSections(await fs.readFile(path));
+    const sections = iniBytesToSections(await readFile(path));
     const src: SourceRef = { file, layer };
     goods.push(...extractGoods(sections, src));
     jobs.push(...extractJobs(sections, src));

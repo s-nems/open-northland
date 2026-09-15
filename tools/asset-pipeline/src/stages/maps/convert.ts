@@ -1,5 +1,6 @@
+import { readFile, rm } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { type MapMeta, type MapScript, MapStrings } from '@open-northland/data';
-import { type Vfs, vdirname, vjoin, writeText } from '@open-northland/vfs';
 import {
   cifBytesToSections,
   extractStaticObjects,
@@ -7,7 +8,7 @@ import {
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
-import type { StageItemReporter } from '../../progress.js';
+import { writeFileWithParents } from '../../files.js';
 import { collectSourceFilesNamed, findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { MAPS_DIR } from '../content-tree.js';
 import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
@@ -49,22 +50,19 @@ export interface MapDatConversion {
  * root propagate.
  */
 export async function convertMapDatTree(
-  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
-  onItem?: StageItemReporter,
   synthesizeMinimap?: (terrain: MapDatTerrainFile) => Promise<Uint8Array | undefined>,
 ): Promise<MapDatConversion[]> {
-  const found = excludeStringTableCopies(await collectSourceFilesNamed(fs, roots, 'map.dat'));
+  const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.dat'));
   // This stage is the only writer under <outDir>/maps, so a wholesale reset is safe.
-  await fs.rm(vjoin(outDir, MAPS_DIR));
+  await rm(join(outDir, MAPS_DIR), { recursive: true, force: true });
   const done: MapDatConversion[] = [];
-  for (const [processed, { rel, path }] of found.entries()) {
-    onItem?.(processed, found.length);
+  for (const { rel, path } of found) {
     const id = mapIdFromPath(rel);
     let terrain: MapDatTerrainFile;
     try {
-      terrain = mapDatToTerrain(await fs.readFile(path));
+      terrain = mapDatToTerrain(await readFile(path));
     } catch (err) {
       console.warn(`[pipeline] skipped map.dat ${rel}: ${errorMessage(err)}`);
       continue;
@@ -73,12 +71,12 @@ export async function convertMapDatTree(
     // decoded sections feed the meta sidecar's `[misc_mapname]` fallback, so the cif is decoded at most
     // once per map. The map folders mix casing freely, which a case-sensitive filesystem would
     // otherwise turn into a silently missing entity layer.
-    const mapDir = vjoin(roots.mod, vdirname(rel));
+    const mapDir = join(roots.mod, dirname(rel));
     let cifSections: readonly RuleSection[] | undefined;
-    const cifPath = await findPathCaseInsensitive(fs, mapDir, ['map.cif']);
+    const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
     if (cifPath !== undefined) {
       try {
-        cifSections = cifBytesToSections(await fs.readFile(cifPath));
+        cifSections = cifBytesToSections(await readFile(cifPath));
         const entities = extractStaticObjects(cifSections);
         if (entities !== undefined) terrain = { ...terrain, entities };
       } catch {
@@ -89,64 +87,62 @@ export async function convertMapDatTree(
     // `staticobjects.inc` with the identical `[StaticObjects]` grammar (sethouse/sethuman/setanimal),
     // and readable mod source is preferred over the encrypted cif.
     if (terrain.entities === undefined) {
-      const incPath = await findPathCaseInsensitive(fs, mapDir, ['staticobjects.inc']);
+      const incPath = await findPathCaseInsensitive(mapDir, ['staticobjects.inc']);
       if (incPath !== undefined) {
         try {
-          const entities = extractStaticObjects(iniBytesToSections(await fs.readFile(incPath)));
+          const entities = extractStaticObjects(iniBytesToSections(await readFile(incPath)));
           if (entities !== undefined) terrain = { ...terrain, entities };
         } catch (err) {
           console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${errorMessage(err)}`);
         }
       }
     }
-    const output = vjoin(MAPS_DIR, `${id}.json`);
+    const output = `${MAPS_DIR}/${id}.json`;
     // Compact JSON: the lanes are hundreds of thousands of numbers, and one per line costs ~8x size.
-    await writeText(fs, vjoin(outDir, output), `${JSON.stringify(terrain)}\n`);
+    await writeFileWithParents(join(outDir, output), `${JSON.stringify(terrain)}\n`);
 
     // A same-id twin converted earlier this run may have emitted sidecars; clear them so
     // last-write-wins covers the sidecars, not just the grid.
-    const metaPath = vjoin(outDir, MAPS_DIR, `${id}.meta.json`);
-    const pngPath = vjoin(outDir, MAPS_DIR, `${id}.png`);
-    const scriptPath = vjoin(outDir, MAPS_DIR, `${id}.script.json`);
-    const briefingPath = vjoin(outDir, MAPS_DIR, `${id}.briefing.json`);
-    const stringsPath = vjoin(outDir, MAPS_DIR, `${id}.strings.json`);
-    await fs.rm(metaPath);
-    await fs.rm(pngPath);
-    await fs.rm(scriptPath);
-    await fs.rm(briefingPath);
-    await fs.rm(stringsPath);
-    const stringTables = await loadMapStringTables(fs, mapDir, rel);
+    const metaPath = join(outDir, MAPS_DIR, `${id}.meta.json`);
+    const pngPath = join(outDir, MAPS_DIR, `${id}.png`);
+    const scriptPath = join(outDir, MAPS_DIR, `${id}.script.json`);
+    const briefingPath = join(outDir, MAPS_DIR, `${id}.briefing.json`);
+    const stringsPath = join(outDir, MAPS_DIR, `${id}.strings.json`);
+    for (const sidecar of [metaPath, pngPath, scriptPath, briefingPath, stringsPath]) {
+      await rm(sidecar, { force: true });
+    }
+    const stringTables = await loadMapStringTables(mapDir, rel);
     if (Object.keys(stringTables).length > 0) {
-      await writeText(fs, stringsPath, `${JSON.stringify(MapStrings.parse(stringTables))}\n`);
+      await writeFileWithParents(stringsPath, `${JSON.stringify(MapStrings.parse(stringTables))}\n`);
     }
     const strings = preferredStringTable(stringTables);
-    const metadata = await resolveMapMeta(fs, mapDir, rel, cifSections, strings);
+    const metadata = await resolveMapMeta(mapDir, rel, cifSections, strings);
     const metaFile: MapMeta = { ...metadata, provenance: mapProvenance(rel) };
-    await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
+    await writeFileWithParents(metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
-      scriptFile = await resolveMapScript(fs, mapDir, rel, cifSections, strings);
+      scriptFile = await resolveMapScript(mapDir, rel, cifSections, strings);
     } catch (err) {
       // A schema-invalid script degrades that map to no roster rather than aborting the batch.
       console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);
     }
     if (scriptFile !== undefined) {
-      await writeText(fs, scriptPath, `${JSON.stringify(scriptFile)}\n`);
+      await writeFileWithParents(scriptPath, `${JSON.stringify(scriptFile)}\n`);
     }
     let briefing = false;
     if (scriptFile !== undefined) {
-      const briefingFile = await resolveMapBriefing(fs, mapDir, outDir, rel, cutsceneIdsOf(scriptFile));
+      const briefingFile = await resolveMapBriefing(mapDir, outDir, rel, cutsceneIdsOf(scriptFile));
       if (briefingFile !== undefined) {
-        await writeText(fs, briefingPath, `${JSON.stringify(briefingFile)}\n`);
+        await writeFileWithParents(briefingPath, `${JSON.stringify(briefingFile)}\n`);
         briefing = true;
       }
     }
     let minimap = false;
     let minimapSynthesized = false;
-    const minimapPath = await findPathCaseInsensitive(fs, mapDir, ['minimap', 'minimap.pcx']);
+    const minimapPath = await findPathCaseInsensitive(mapDir, ['minimap', 'minimap.pcx']);
     if (minimapPath !== undefined) {
       try {
-        await fs.writeFile(pngPath, await minimapToPng(await fs.readFile(minimapPath)));
+        await writeFileWithParents(pngPath, await minimapToPng(await readFile(minimapPath)));
         minimap = true;
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: minimap undecodable: ${errorMessage(err)}`);
@@ -158,7 +154,7 @@ export async function convertMapDatTree(
       try {
         const png = await synthesizeMinimap(terrain);
         if (png !== undefined) {
-          await fs.writeFile(pngPath, png);
+          await writeFileWithParents(pngPath, png);
           minimap = true;
           minimapSynthesized = true;
         }

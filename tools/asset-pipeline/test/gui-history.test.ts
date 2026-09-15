@@ -1,14 +1,11 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { convertGuiHistory } from '../src/stages/gui/history.js';
 import { HYPERTEXT_PICTURES_DIR } from '../src/stages/gui/paths.js';
 import { rampPalette } from './fixtures/palette.js';
 import { type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 /**
  * The history book stage (`stages/gui/history.ts`): every `.hlt` page of `Data/text/<lang>/hypertext/
@@ -89,7 +86,7 @@ describe('convertGuiHistory', () => {
       encodePcx({ width: 4, height: 3, pixels: new Uint8Array(12).fill(7), palette: rampPalette() }),
     );
 
-    const done = await convertGuiHistory(fs, { mod: temp.game }, temp.out, ['eng', 'pol']);
+    const done = await convertGuiHistory({ mod: temp.game }, temp.out, ['eng', 'pol']);
     expect(done).toEqual([{ lang: 'eng', path: 'gui/history/eng.json', pages: 2 }]);
 
     const pictures = await readdir(join(temp.out, HYPERTEXT_PICTURES_DIR));
@@ -128,6 +125,6 @@ describe('convertGuiHistory', () => {
 
   it('emits nothing for a folder without the index page', async () => {
     await temp.write(join(HISTORY_DIR, 'mythology_00.hlt'), cp1250('Orphan page'));
-    expect(await convertGuiHistory(fs, { mod: temp.game }, temp.out, ['eng'])).toEqual([]);
+    expect(await convertGuiHistory({ mod: temp.game }, temp.out, ['eng'])).toEqual([]);
   });
 });

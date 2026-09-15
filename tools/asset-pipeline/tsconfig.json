@@ -7,9 +7,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../../packages/data" },
-    { "path": "../../packages/render" },
-    { "path": "../../packages/vfs" }
-  ]
+  "references": [{ "path": "../../packages/data" }, { "path": "../../packages/render" }]
 }

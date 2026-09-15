@@ -1,6 +1,7 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { writeFileWithParents } from '../../src/files.js';
 
 /**
  * Shared temp-workspace scaffolding for the stage tests. Every stage spec lays synthesized (never
@@ -44,11 +45,7 @@ export async function makeGameOutTemp(label: string): Promise<GameOutTemp> {
     root,
     game,
     out,
-    async write(rel, bytes) {
-      const path = join(game, rel);
-      await mkdir(join(path, '..'), { recursive: true });
-      await writeFile(path, bytes);
-    },
+    write: (rel, bytes) => writeFileWithParents(join(game, rel), bytes),
     cleanup,
   };
 }

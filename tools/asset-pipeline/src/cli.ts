@@ -7,7 +7,6 @@
 
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from './args.js';
 import { runPipeline } from './run.js';
 
@@ -17,7 +16,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
   const baseDir = process.env.INIT_CWD ?? process.cwd();
   const args = resolveArgs(parseArgs(process.argv.slice(2)), baseDir);
   assertOutStaysInCheckout(args.out, baseDir);
-  runPipeline(nodeVfs(), args).catch((err: unknown) => {
+  runPipeline(args).catch((err: unknown) => {
     console.error('[pipeline] failed:', err);
     process.exitCode = 1;
   });

@@ -1,7 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { vjoin } from '@open-northland/vfs';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
@@ -10,8 +8,6 @@ import { BOBS_DIR } from '../src/stages/content-tree.js';
 import { convertPlayerColorLut } from '../src/stages/player-colors.js';
 import { indexSourceAssets } from '../src/stages/source-files.js';
 import { makeTempDir } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 /**
  * Covers the player-colour LUT stage's contract shape: one row per {@link PLAYER_COLORS} slot (10
@@ -69,15 +65,14 @@ describe('convertPlayerColorLut', () => {
   it('composes one LUT row per player colour into a 256×N PNG (armor rows degrade without recipes)', async () => {
     const outDir = await outTreeWithSources();
     const result = await convertPlayerColorLut(
-      fs,
       rootsAt(outDir),
       outDir,
-      await indexSourceAssets(fs, rootsAt(outDir)),
+      await indexSourceAssets(rootsAt(outDir)),
     );
 
     expect(result.colors).toBe(PLAYER_COLORS.length);
     expect(result.armorTiers).toBe(1); // no readable recipes - player rows only
-    expect(result.png).toBe(vjoin(BOBS_DIR, 'player-lut.png'));
+    expect(result.png).toBe(`${BOBS_DIR}/player-lut.png`);
 
     const png = await decodePng(await readFile(join(outDir, result.png)));
     expect(png.width).toBe(256); // 256 palette entries per row
@@ -103,10 +98,9 @@ describe('convertPlayerColorLut', () => {
     );
 
     const result = await convertPlayerColorLut(
-      fs,
       rootsAt(outDir),
       outDir,
-      await indexSourceAssets(fs, rootsAt(outDir)),
+      await indexSourceAssets(rootsAt(outDir)),
     );
 
     expect(result.armorTiers).toBe(5); // none + wool/leather/chain/plate blocks
@@ -118,7 +112,7 @@ describe('convertPlayerColorLut', () => {
     const { path: outDir, cleanup } = await makeTempDir('player-lut-empty');
     tempCleanups.push(cleanup);
     await expect(
-      convertPlayerColorLut(fs, rootsAt(outDir), outDir, await indexSourceAssets(fs, rootsAt(outDir))),
+      convertPlayerColorLut(rootsAt(outDir), outDir, await indexSourceAssets(rootsAt(outDir))),
     ).rejects.toThrow(/test_human_00\.pcx not found/);
   });
 });

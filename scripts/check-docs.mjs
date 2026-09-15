@@ -18,7 +18,6 @@ const ticketAreas = new Set([
   'render',
   'sim',
   'tooling',
-  'vfs',
 ]);
 const failures = [];
 

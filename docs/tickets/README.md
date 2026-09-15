@@ -44,7 +44,7 @@ detail is load-bearing.
 
 Every ticket has an area and priority near the top. `Area` is a comma-separated list drawn from
 `app`, `audio`, `data`, `desktop`, `lockstep`, `net-client`, `net-protocol`,
-`net-server`, `pipeline`, `render`, `sim`, `tooling`, and `vfs`.
+`net-server`, `pipeline`, `render`, `sim`, and `tooling`.
 Use optional `Focus` metadata for a narrower folder or subsystem instead of encoding it in `Area`.
 
 - `P1`: a verified legal/release blocker or broken core path that prevents a correct playable game;

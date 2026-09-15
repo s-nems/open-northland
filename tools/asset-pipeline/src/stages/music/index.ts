@@ -1,8 +1,9 @@
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { FNV_OFFSET_BASIS, fnvHex, fnvMixWord } from '@open-northland/data';
-import { type ReadableVfs, readText, type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeSegmentAudiopath, decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
 import { errorMessage } from '../../errors.js';
-import type { StageItemReporter } from '../../progress.js';
+import { statIfExists, writeFileWithParents } from '../../files.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { interpretSegment } from './interpret.js';
@@ -81,10 +82,10 @@ export interface MusicStageResult {
 
 /**
  * What the stored oggs were rendered from: this stage's render version and the byte sizes of every
- * segment and bank under `DataX/DM2`. The Vfs seam exposes no mtime, so a swapped mod release is
- * recognised by input size rather than by time. A same-size edit therefore reads as unchanged, and
- * the synthesizer and encoder are pinned to exact versions in `package.json` because a caret bump
- * would change rendered bytes without changing anything this identity can see.
+ * segment and bank under `DataX/DM2`, not their mtimes, which a fresh unpack of the same archive
+ * resets. A same-size edit therefore reads as unchanged, and the synthesizer and encoder are pinned
+ * to exact versions in `package.json` because a caret bump would change rendered bytes without
+ * changing anything this identity can see.
  */
 interface RenderIdentity {
   readonly renderVersion: number;
@@ -92,10 +93,10 @@ interface RenderIdentity {
 }
 
 /** FNV-1a over the input sizes, so the manifest carries one short token instead of a file list. */
-async function sourcesFingerprint(fs: ReadableVfs, dm2: string, files: readonly string[]): Promise<string> {
+async function sourcesFingerprint(dm2: string, files: readonly string[]): Promise<string> {
   let hash = FNV_OFFSET_BASIS;
   for (const file of files) {
-    const size = (await fs.stat(vjoin(dm2, file)))?.size ?? 0;
+    const size = (await statIfExists(join(dm2, file)))?.size ?? 0;
     const text = `${file.toLowerCase()}:${size};`;
     for (let i = 0; i < text.length; i++) hash = fnvMixWord(hash, text.charCodeAt(i));
   }
@@ -108,10 +109,10 @@ interface StoredManifest extends RenderIdentity {
 }
 
 /** The identity and rows the stored manifest carries, or a blank one when there is none to trust. */
-async function storedManifest(fs: ReadableVfs, musicDir: string): Promise<StoredManifest> {
+async function storedManifest(musicDir: string): Promise<StoredManifest> {
   const tracks = new Map<string, ManifestTrack>();
   try {
-    const parsed: unknown = JSON.parse(await readText(fs, vjoin(musicDir, MUSIC_MANIFEST_NAME)));
+    const parsed: unknown = JSON.parse(await readFile(join(musicDir, MUSIC_MANIFEST_NAME), 'utf8'));
     if (typeof parsed === 'object' && parsed !== null) {
       const { renderVersion, sources, tracks: rows } = parsed as Record<string, unknown>;
       if (typeof rows === 'object' && rows !== null) {
@@ -137,26 +138,21 @@ async function storedManifest(fs: ReadableVfs, musicDir: string): Promise<Stored
  * manifest. Incremental: oggs rendered from the same inputs by the same version are kept. A segment
  * that fails leaves the others alone.
  */
-export async function renderMusicStage(
-  fs: Vfs,
-  roots: SourceRoots,
-  outDir: string,
-  onItem?: StageItemReporter,
-): Promise<MusicStageResult> {
-  const dm2 = await findPathCaseInsensitive(fs, roots.mod, ['DataX', 'DM2']);
+export async function renderMusicStage(roots: SourceRoots, outDir: string): Promise<MusicStageResult> {
+  const dm2 = await findPathCaseInsensitive(roots.mod, ['DataX', 'DM2']);
   if (dm2 === undefined)
     return { rendered: 0, kept: 0, failed: 0, skipped: 'no DataX/DM2 under the mod root' };
-  const entries = await fs.readdir(dm2);
+  const entries = await readdir(dm2, { withFileTypes: true });
   const segments = entries
-    .filter((entry) => entry.kind === 'file' && entry.name.toLowerCase().endsWith('.sgt'))
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.sgt'))
     .map((entry) => entry.name)
     .sort();
   if (segments.length === 0) return { rendered: 0, kept: 0, failed: 0, skipped: 'no segments in DataX/DM2' };
 
-  const musicDir = vjoin(outDir, MUSIC_DIR);
-  await fs.mkdir(musicDir);
-  const sources = await sourcesFingerprint(fs, dm2, [...segments, ...(await dlsFileNames(fs, dm2))]);
-  const stored = await storedManifest(fs, musicDir);
+  const musicDir = join(outDir, MUSIC_DIR);
+  await mkdir(musicDir, { recursive: true });
+  const sources = await sourcesFingerprint(dm2, [...segments, ...(await dlsFileNames(dm2))]);
+  const stored = await storedManifest(musicDir);
   const sameInputs = stored.renderVersion === RENDER_VERSION && stored.sources === sources;
 
   const manifest = new Map<string, ManifestTrack>();
@@ -164,15 +160,13 @@ export async function renderMusicStage(
   let rendered = 0;
   let kept = 0;
   let failed = 0;
-  let processed = 0;
 
   const renderOne = async (segment: string): Promise<void> => {
-    onItem?.(processed++, segments.length);
     const stem = segment.replace(/\.sgt$/i, '').toLowerCase();
     const file = `${stem}.ogg`;
-    const outPath = vjoin(musicDir, file);
+    const outPath = join(musicDir, file);
     try {
-      const segmentBytes = await fs.readFile(vjoin(dm2, segment));
+      const segmentBytes = await readFile(join(dm2, segment));
       const timing = decodeSegmentTiming(segmentBytes);
       if (timing === undefined) throw new Error('no segh header');
       const totalS = musicTimeToSeconds(timing.lengthTicks, timing.tempos);
@@ -180,7 +174,7 @@ export async function renderMusicStage(
         throw new Error(`segment length ${timing.lengthTicks} ticks is out of range`);
       }
       const storedTrack = stored.tracks.get(stem);
-      if (sameInputs && storedTrack !== undefined && (await fs.stat(outPath))?.kind === 'file') {
+      if (sameInputs && storedTrack !== undefined && (await statIfExists(outPath))?.isFile()) {
         manifest.set(stem, storedTrack);
         kept++;
         return;
@@ -197,7 +191,7 @@ export async function renderMusicStage(
       }
       // Equal ends mean the frame clock never ran: no band ever opened a performance channel.
       if (loopEndFrame <= loopStartFrame) throw new Error('the segment opened no performance channel');
-      if (banksPromise === undefined) banksPromise = loadDlsBanks(fs, dm2);
+      if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
       const banks = await banksPromise;
       const synthesized = await synthesizeEvents(events, banks, SAMPLE_RATE, renderS * SAMPLE_RATE);
       const audiopath = decodeSegmentAudiopath(segmentBytes);
@@ -215,13 +209,16 @@ export async function renderMusicStage(
         loopStartS: loopStartFrame / SAMPLE_RATE,
         loopEndS: loopEndFrame / SAMPLE_RATE,
       });
-      await fs.writeFile(outPath, await encodeOgg(synthesized, loopEndFrame, SAMPLE_RATE, VBR_QUALITY));
+      await writeFileWithParents(
+        outPath,
+        await encodeOgg(synthesized, loopEndFrame, SAMPLE_RATE, VBR_QUALITY),
+      );
       rendered++;
     } catch (err) {
       manifest.delete(stem);
       // Drop any ogg an earlier version left here: the keep check tests existence, not provenance, so
       // a survivor would be adopted as this version's render on the next run.
-      await fs.rm(outPath);
+      await rm(outPath, { force: true });
       failed++;
       console.warn(`[pipeline] music: ${segment} failed: ${errorMessage(err)}`);
     }
@@ -233,7 +230,7 @@ export async function renderMusicStage(
   }
 
   const tracks = Object.fromEntries([...manifest.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  await writeJsonFile(fs, outDir, vjoin(MUSIC_DIR, MUSIC_MANIFEST_NAME), {
+  await writeJsonFile(outDir, `${MUSIC_DIR}/${MUSIC_MANIFEST_NAME}`, {
     renderVersion: RENDER_VERSION,
     sources,
     tracks,

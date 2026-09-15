@@ -1,4 +1,3 @@
-import { type ReadableVfs, vjoin } from '@open-northland/vfs';
 import { CULTURESNATION_MOD } from '../../mod-root.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
@@ -18,27 +17,27 @@ export interface IniSource {
  * `Data/logic/*.ini` tables are the mod's patched copies of the base ones. A missing source is skipped
  * with a warning, so a partial mod tree still yields an IR.
  */
-export async function resolveIniSources(fs: ReadableVfs, roots: SourceRoots): Promise<IniSource[]> {
+export async function resolveIniSources(roots: SourceRoots): Promise<IniSource[]> {
   const wanted: { rel: string; layer: 'base' | 'mod' }[] = [
-    { rel: vjoin('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
-    { rel: vjoin('Data', 'logic', 'jobtypes.ini'), layer: 'base' },
-    { rel: vjoin('Data', 'logic', 'humanjobexperiencetypes.ini'), layer: 'base' },
-    { rel: vjoin('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
-    { rel: vjoin('Data', 'logic', 'vehicletypes.ini'), layer: 'base' },
-    { rel: vjoin('Data', 'logic', 'armortypes.ini'), layer: 'base' },
-    { rel: vjoin('Data', 'logic', 'animaltypes.ini'), layer: 'base' },
-    { rel: vjoin(CULTURESNATION_MOD, 'tribetypes12', 'tribetypes.ini'), layer: 'mod' },
-    { rel: vjoin(CULTURESNATION_MOD, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
-    { rel: vjoin(CULTURESNATION_MOD, 'types', 'weapons.ini'), layer: 'mod' },
-    { rel: vjoin(CULTURESNATION_MOD, 'types', 'houses.ini'), layer: 'mod' },
+    { rel: 'Data/logic/goodtypes.ini', layer: 'base' },
+    { rel: 'Data/logic/jobtypes.ini', layer: 'base' },
+    { rel: 'Data/logic/humanjobexperiencetypes.ini', layer: 'base' },
+    { rel: 'Data/logic/landscapetypes.ini', layer: 'base' },
+    { rel: 'Data/logic/vehicletypes.ini', layer: 'base' },
+    { rel: 'Data/logic/armortypes.ini', layer: 'base' },
+    { rel: 'Data/logic/animaltypes.ini', layer: 'base' },
+    { rel: `${CULTURESNATION_MOD}/tribetypes12/tribetypes.ini`, layer: 'mod' },
+    { rel: `${CULTURESNATION_MOD}/atomicanimations12/atomicanimations.ini`, layer: 'mod' },
+    { rel: `${CULTURESNATION_MOD}/types/weapons.ini`, layer: 'mod' },
+    { rel: `${CULTURESNATION_MOD}/types/houses.ini`, layer: 'mod' },
     // The renderer's `[bobseq]` animation table.
-    { rel: vjoin(CULTURESNATION_MOD, 'animation', 'mapmoveableanimations', 'animations.ini'), layer: 'mod' },
+    { rel: `${CULTURESNATION_MOD}/animation/mapmoveableanimations/animations.ini`, layer: 'mod' },
     // The `[GfxHouse]` graphics twin of the logic house table above.
-    { rel: vjoin(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'), layer: 'mod' },
+    { rel: `${CULTURESNATION_MOD}/budynki12/houses/houses.ini`, layer: 'mod' },
   ];
   const sources: IniSource[] = [];
   for (const { rel, layer } of wanted) {
-    const path = await resolveSourceFile(fs, roots, rel);
+    const path = await resolveSourceFile(roots, rel);
     if (path === undefined) {
       console.warn(`[pipeline] ini source not found, skipping: ${rel}`);
       continue;

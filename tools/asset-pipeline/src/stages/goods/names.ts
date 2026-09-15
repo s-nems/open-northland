@@ -1,4 +1,3 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import {
   cifBytesToSections,
   extractStringnById,
@@ -20,7 +19,7 @@ const GOOD_NAME_LOCALES = [
 ] as const;
 
 function goodNamesPath(dir: string, encrypted: boolean): string {
-  return vjoin('Data', 'text', dir, 'strings', 'gameobjects', encrypted ? 'goods.cif' : 'goods.ini');
+  return `Data/text/${dir}/strings/gameobjects/${encrypted ? 'goods.cif' : 'goods.ini'}`;
 }
 
 /**
@@ -45,7 +44,6 @@ export function resolveGoodNames(
 
 /** Read every {@link GOOD_NAME_LOCALES} good-name table (missing files skipped) and join onto the goods. */
 export async function loadGoodNames(
-  fs: Vfs,
   roots: SourceRoots,
   goods: readonly (GoodLike & { readonly typeId: number })[],
 ): Promise<Record<string, Record<string, string>>> {
@@ -53,7 +51,7 @@ export async function loadGoodNames(
   for (const { code, dir, encrypted } of GOOD_NAME_LOCALES) {
     let bytes: Uint8Array;
     try {
-      bytes = await readSourceFile(fs, roots, goodNamesPath(dir, encrypted));
+      bytes = await readSourceFile(roots, goodNamesPath(dir, encrypted));
     } catch {
       console.warn(`[pipeline] goods: name table for "${code}" missing; skipping that locale`);
       continue;

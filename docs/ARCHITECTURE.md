@@ -39,7 +39,6 @@ asset-pipeline -> generated content -> app / desktop
   tick clock, and command frames. It holds no content and runs no simulation. The contract is
   `docs/NETWORK.md`.
 - `packages/app` owns browser input, menus, HUD, the frame loop, and package wiring.
-- `packages/vfs` is the file-system seam the pipeline writes through.
 - `packages/desktop` serves the browser build and the converted content through Electron.
 - `tools/asset-pipeline` converts the CulturesNation mod into local, validated content.
 

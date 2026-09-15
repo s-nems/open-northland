@@ -1,4 +1,4 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { readFile } from 'node:fs/promises';
 import {
   type BmdPaletteBinding,
   cifBytesToSections,
@@ -91,7 +91,7 @@ interface GraphicsBindingSource {
   readonly buildTime?: true;
 }
 
-const INIS = vjoin('Data', 'engine2d', 'inis');
+const INIS = 'Data/engine2d/inis';
 
 /** Both `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]` (per-job equipment skin) layers
  *  of a human graphics file, flattened onto the one binding shape the conversion consumes. */
@@ -104,41 +104,41 @@ function readHumanJobGraphics(sections: readonly RuleSection[]): BmdPaletteBindi
 
 /** The binding skins, in the order their records enter the binding list. */
 const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
-  { path: vjoin(INIS, 'animals', 'jobgraphics.ini'), read: extractGraphicsBindings },
+  { path: `${INIS}/animals/jobgraphics.ini`, read: extractGraphicsBindings },
   /** Carts and ships. Same flat `[jobgraphics]` grammar as the animals `.ini`, differing only in
    *  cross-ref key (`logicvehicle`, which leaves `jobId` undefined). */
   {
-    path: vjoin(INIS, 'vehicles', 'jobgraphics.cif'),
+    path: `${INIS}/vehicles/jobgraphics.cif`,
     encrypted: true,
     read: extractGraphicsBindings,
   },
   /** The human body/head bob sets, `.cif`-only (no readable twin). */
   {
-    path: vjoin(INIS, 'humans', 'jobgraphics.cif'),
+    path: `${INIS}/humans/jobgraphics.cif`,
     encrypted: true,
     read: readHumanJobGraphics,
   },
   /** The map's pre-placed landscape-object bobs (trees, bushes, signs, wonders, harbours). The ~99 tree
    *  species share a dozen palettes, so records repeat a `(bmd, palette)` pair. */
   {
-    path: vjoin(INIS, 'landscapes', 'landscapes.cif'),
+    path: `${INIS}/landscapes/landscapes.cif`,
     encrypted: true,
     read: extractLandscapeGraphics,
     dedupe: true,
   },
   /** The mod's readable human twin. */
-  { path: vjoin(CULTURESNATION_MOD, 'types', 'humanstype', 'jobgraphics.ini'), read: readHumanJobGraphics },
+  { path: `${CULTURESNATION_MOD}/types/humanstype/jobgraphics.ini`, read: readHumanJobGraphics },
   /** The mod's broader per-tribe cart/ship set (22 records across tribes 1..4 against the base `.cif`'s
    *  6 across tribes 1 and 4); the base pairs are a strict subset and dedup at conversion. */
   {
-    path: vjoin(CULTURESNATION_MOD, 'types', 'vehiclestype', 'jobgraphics.ini'),
+    path: `${CULTURESNATION_MOD}/types/vehiclestype/jobgraphics.ini`,
     read: extractGraphicsBindings,
   },
   /** Every settlement house bound to its `ls_houses_*.bmd` body and palette. Records repeat a
    *  bob+palette across tribes and levels (the ~25 viking-home records all bind `ls_houses_viking` with
    *  `house01`/`house02`). The only source claiming build-time `.bmd`s. */
   {
-    path: vjoin(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'),
+    path: `${CULTURESNATION_MOD}/budynki12/houses/houses.ini`,
     read: extractBuildingGraphics,
     dedupe: true,
     buildTime: true,
@@ -146,7 +146,7 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
 ];
 
 /** The palette `editname` index every binding's `paletteName` resolves against. */
-const PALETTE_INDEX_INI = vjoin(INIS, 'palettes', 'palettes.ini');
+const PALETTE_INDEX_INI = `${INIS}/palettes/palettes.ini`;
 
 /**
  * The scout's guidepost is bound by the engine, not by any data table: "guidepost" appears in no
@@ -165,15 +165,14 @@ const GUIDEPOST_BINDING: BmdPaletteBinding = {
 
 /** Decodes one source into sections, or warns and yields nothing so a partial install still converts. */
 async function readSections(
-  fs: Vfs,
   roots: SourceRoots,
   relPath: string,
   encrypted = false,
 ): Promise<RuleSection[] | undefined> {
   try {
-    const path = await resolveSourceFile(fs, roots, relPath);
+    const path = await resolveSourceFile(roots, relPath);
     if (path === undefined) throw new Error('unresolved');
-    const bytes = await fs.readFile(path);
+    const bytes = await readFile(path);
     return encrypted ? cifBytesToSections(bytes) : iniBytesToSections(bytes);
   } catch {
     console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${relPath}`);
@@ -189,18 +188,18 @@ async function readSections(
  * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so
  * there is no bob set to atlas.
  */
-export async function resolveGraphicsBindings(fs: Vfs, roots: SourceRoots): Promise<GraphicsBindingSet> {
+export async function resolveGraphicsBindings(roots: SourceRoots): Promise<GraphicsBindingSet> {
   const bindings: BmdPaletteBinding[] = [];
   const buildTimeBmds = new Set<string>();
   for (const source of GRAPHICS_BINDING_SOURCES) {
-    const sections = await readSections(fs, roots, source.path, source.encrypted);
+    const sections = await readSections(roots, source.path, source.encrypted);
     if (sections === undefined) continue;
     const records = source.read(sections);
     if (source.buildTime) for (const record of records) buildTimeBmds.add(record.bmd);
     bindings.push(...(source.dedupe ? dedupeBindings(records) : records));
   }
   bindings.push(GUIDEPOST_BINDING);
-  const palettesIni = await readSections(fs, roots, PALETTE_INDEX_INI);
+  const palettesIni = await readSections(roots, PALETTE_INDEX_INI);
   return {
     bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],

@@ -1,7 +1,6 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/vfs" },
     { "path": "packages/data" },
     { "path": "packages/sim" },
     { "path": "packages/lockstep" },

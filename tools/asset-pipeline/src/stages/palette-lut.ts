@@ -1,8 +1,9 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { join } from 'node:path';
 import { buildPaletteLutImage, PALETTE_ENTRIES, PALETTE_RGB_BYTES } from '../decoders/image.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
+import { writeFileWithParents } from '../files.js';
 import type { SourceRoots } from '../roots.js';
 import { BOBS_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
@@ -36,7 +37,6 @@ export interface PaletteLutResult {
  * with an {@link identityPalette} row, so a partial install still leaves the row order fixed.
  */
 export async function buildPaletteLut(
-  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   sources: readonly PaletteLutSource[],
@@ -48,7 +48,7 @@ export async function buildPaletteLut(
   for (const src of sources) {
     let palette: Uint8Array | undefined;
     try {
-      palette = decodePcx(await readSourceFile(fs, roots, src.file)).palette;
+      palette = decodePcx(await readSourceFile(roots, src.file)).palette;
     } catch (err) {
       console.warn(
         `[pipeline] ${log.label}: ${log.noun} ${src.name} unreadable (${errorMessage(err)}); using neutral row`,
@@ -58,7 +58,7 @@ export async function buildPaletteLut(
     ordered.push(palette);
     byName.set(src.name, palette);
   }
-  await writeLutPng(fs, outDir, stem, ordered);
+  await writeLutPng(outDir, stem, ordered);
   return { stem, names: sources.map((s) => s.name), byName };
 }
 
@@ -67,13 +67,12 @@ export async function buildPaletteLut(
  * `<BOBS_DIR>/<stem>.png`.
  */
 export async function writeLutPng(
-  fs: Vfs,
   outDir: string,
   stem: string,
   orderedPalettes: readonly Uint8Array[],
 ): Promise<void> {
-  await fs.writeFile(
-    vjoin(outDir, BOBS_DIR, `${stem}.png`),
+  await writeFileWithParents(
+    join(outDir, BOBS_DIR, `${stem}.png`),
     await encodePng(buildPaletteLutImage(orderedPalettes)),
   );
 }

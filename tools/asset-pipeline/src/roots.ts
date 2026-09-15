@@ -1,6 +1,7 @@
-import { type ReadableVfs, relIn, vjoin } from '@open-northland/vfs';
+import { readdir } from 'node:fs/promises';
+import { join, relative, sep } from 'node:path';
+import { statIfExists, walkFiles } from './files.js';
 import { CULTURESNATION_HOME_URL, CULTURESNATION_MOD } from './mod-root.js';
-import { walkFiles } from './walk.js';
 
 /** The mod subtrees the stages read by name; the on-disk spelling varies, so resolve them through
  *  `resolveSourceFile` or match them lower-cased. */
@@ -16,8 +17,9 @@ export interface SourceRoots {
   readonly modVersion?: string | undefined;
 }
 
-/** One source file found under the root: its root-relative path and its absolute path. */
+/** One source file found under the root. */
 export interface SourceFile {
+  /** Root-relative and `/`-separated on every host: matched lower-cased and recorded in the IR as is. */
   readonly rel: string;
   readonly path: string;
 }
@@ -50,7 +52,6 @@ export function pickCaseFoldedEntry(
  * case-insensitive macOS/Windows filesystem hides and a case-sensitive Linux one does not.
  */
 export async function findPathCaseInsensitive(
-  fs: ReadableVfs,
   dir: string,
   segments: readonly string[],
 ): Promise<string | undefined> {
@@ -58,13 +59,13 @@ export async function findPathCaseInsensitive(
   for (const segment of segments) {
     let entries: string[];
     try {
-      entries = (await fs.readdir(current)).map((e) => e.name);
+      entries = await readdir(current);
     } catch {
       return undefined; // `current` missing or not a directory - the path does not resolve
     }
     const match = pickCaseFoldedEntry(entries, segment, current);
     if (match === undefined) return undefined;
-    current = vjoin(current, match);
+    current = join(current, match);
   }
   return current;
 }
@@ -74,12 +75,8 @@ export async function findPathCaseInsensitive(
  * on either separator, since callers pass either a joined constant or an ini-borne reference already
  * forward-slashed by `normalizeAssetPath`.
  */
-export async function resolveSourceFile(
-  fs: ReadableVfs,
-  roots: SourceRoots,
-  rel: string,
-): Promise<string | undefined> {
-  return findPathCaseInsensitive(fs, roots.mod, rel.split(/[\\/]+/));
+export async function resolveSourceFile(roots: SourceRoots, rel: string): Promise<string | undefined> {
+  return findPathCaseInsensitive(roots.mod, rel.split(/[\\/]+/));
 }
 
 /**
@@ -89,13 +86,12 @@ export async function resolveSourceFile(
  * propagates as an environmental error.
  */
 export async function collectSourceFiles(
-  fs: ReadableVfs,
   roots: SourceRoots,
   match: (relLower: string) => boolean,
 ): Promise<SourceFile[]> {
   const byKey = new Map<string, SourceFile>();
-  for await (const path of walkFiles(fs, roots.mod)) {
-    const rel = relIn(roots.mod, path);
+  for await (const path of walkFiles(roots.mod)) {
+    const rel = relative(roots.mod, path).split(sep).join('/');
     const key = rel.toLowerCase();
     if (!match(key)) continue;
     const twin = byKey.get(key);
@@ -111,21 +107,17 @@ export async function collectSourceFiles(
 }
 
 /** Collects every file whose last path segment is `name`, case-insensitively. */
-export async function collectSourceFilesNamed(
-  fs: ReadableVfs,
-  roots: SourceRoots,
-  name: string,
-): Promise<SourceFile[]> {
+export async function collectSourceFilesNamed(roots: SourceRoots, name: string): Promise<SourceFile[]> {
   const suffix = `/${name.toLowerCase()}`;
-  return collectSourceFiles(fs, roots, (rel) => `/${rel}`.endsWith(suffix));
+  return collectSourceFiles(roots, (rel) => `/${rel}`.endsWith(suffix));
 }
 
 /**
  * Validates the mod root, the conversion's only input: it must contain a `DataCnmd/` directory,
  * because the tribe/weapon/house tables are readable only there.
  */
-export async function resolveModRoot(fs: ReadableVfs, modRoot: string): Promise<string> {
-  if ((await fs.stat(vjoin(modRoot, CULTURESNATION_MOD)))?.kind === 'dir') return modRoot;
+export async function resolveModRoot(modRoot: string): Promise<string> {
+  if ((await statIfExists(join(modRoot, CULTURESNATION_MOD)))?.isDirectory()) return modRoot;
   throw new Error(
     `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ - point it at the unpacked culturesnation ` +
       `mod (the directory that contains DataCnmd/ and CnModMaps/), downloaded from ` +

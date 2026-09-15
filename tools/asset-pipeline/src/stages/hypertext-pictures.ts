@@ -1,10 +1,12 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { HypertextPicture } from '@open-northland/data';
-import { type Vfs, vjoin } from '@open-northland/vfs';
 import { type IncludeResolver, type PictureResolver, renderHypertext } from '../decoders/hypertext.js';
 import { assertPaletteBytes, paletteToRgba } from '../decoders/image.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
+import { writeFileWithParents } from '../files.js';
 import { HYPERTEXT_PICTURES_DIR } from './gui/paths.js';
 
 /** The dir a page's `$local$\graphics\<file>` argument resolves against, beside its text files. */
@@ -25,7 +27,6 @@ export type PictureLookup = (name: string) => Promise<string | undefined>;
  * absent or undecodable picture warns and is left out, so its page renders without it.
  */
 export async function resolvePagePictures(
-  fs: Vfs,
   outDir: string,
   find: PictureLookup,
   pages: Iterable<string>,
@@ -46,7 +47,7 @@ export async function resolvePagePictures(
       continue;
     }
     try {
-      pictures.set(name, await emitPicture(fs, outDir, await fs.readFile(path)));
+      pictures.set(name, await emitPicture(outDir, await readFile(path)));
     } catch (err) {
       console.warn(`[pipeline] ${label}: picture ${name} undecodable: ${errorMessage(err)}`);
     }
@@ -54,7 +55,7 @@ export async function resolvePagePictures(
   return (name) => pictures.get(name);
 }
 
-async function emitPicture(fs: Vfs, outDir: string, bytes: Uint8Array): Promise<HypertextPicture> {
+async function emitPicture(outDir: string, bytes: Uint8Array): Promise<HypertextPicture> {
   const { width, height, pixels, palette } = decodePcx(bytes);
   if (palette === undefined) throw new Error('picture has no palette');
   assertPaletteBytes(palette, 'hypertext picture');
@@ -62,6 +63,9 @@ async function emitPicture(fs: Vfs, outDir: string, bytes: Uint8Array): Promise<
   const name = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
   const file = `${name.slice(0, NAME_DIGEST_CHARS)}.png`;
   const rgba = paletteToRgba(pixels, palette, (i) => (pixels[i] === COLOR_KEY_INDEX ? 0 : 0xff));
-  await fs.writeFile(vjoin(outDir, HYPERTEXT_PICTURES_DIR, file), await encodePng({ width, height, rgba }));
+  await writeFileWithParents(
+    join(outDir, HYPERTEXT_PICTURES_DIR, file),
+    await encodePng({ width, height, rgba }),
+  );
   return { kind: 'picture', file, width, height };
 }

@@ -1,12 +1,9 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildIr, resolveIniSources } from '../src/stages/ir/index.js';
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
 import { makeTempDir } from './support/game-tree.js';
-
-const fs = nodeVfs();
 
 describe('buildIr / resolveIniSources', () => {
   let game: string;
@@ -63,12 +60,12 @@ describe('buildIr / resolveIniSources', () => {
   });
 
   it('records only a caller-supplied mod release label', async () => {
-    expect((await buildIr(fs, { mod: game })).manifest.modVersion).toBeUndefined();
-    expect((await buildIr(fs, { mod: game, modVersion: '1.3.1' })).manifest.modVersion).toBe('1.3.1');
+    expect((await buildIr({ mod: game })).manifest.modVersion).toBeUndefined();
+    expect((await buildIr({ mod: game, modVersion: '1.3.1' })).manifest.modVersion).toBe('1.3.1');
   });
 
   it('reads the readable .ini sources and assembles a validated ContentSet', async () => {
-    const set = await buildIr(fs, { mod: game });
+    const set = await buildIr({ mod: game });
 
     expect(set.manifest.generatedFrom).toEqual({ mod: game });
     expect(set.goods.map((g) => g.id)).toEqual(['wood']);
@@ -101,13 +98,13 @@ describe('buildIr / resolveIniSources', () => {
       join(game, 'DataCnmd', 'tribetypes12', 'tribetypes.ini'),
       '[tribetype]\ntype 1\nname "viking"\nsetatomic 99 5 "viking_carry"\n',
     );
-    await expect(buildIr(fs, { mod: game })).rejects.toThrow(/unknown jobType 99/);
+    await expect(buildIr({ mod: game })).rejects.toThrow(/unknown jobType 99/);
   });
 
   it('drops a missing source with a warning instead of aborting', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     // The DataCnmd rels are always requested and resolve against the mod root this fixture lays down.
-    const noOverlay = await resolveIniSources(fs, { mod: game });
+    const noOverlay = await resolveIniSources({ mod: game });
     // Sort both sides: sources resolve in wanted-list order, not path order.
     expect(noOverlay.map((s) => s.file).sort()).toEqual(
       [
@@ -127,11 +124,11 @@ describe('buildIr / resolveIniSources', () => {
     // unrelated to this missing-source resilience check.)
     await rm(join(game, 'Data', 'logic', 'goodtypes.ini'));
     await rm(join(game, 'Data', 'logic', 'armortypes.ini'));
-    const partial = await resolveIniSources(fs, { mod: game });
+    const partial = await resolveIniSources({ mod: game });
     expect(partial.some((s) => s.file.endsWith('goodtypes.ini'))).toBe(false);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/not found.*goodtypes\.ini/));
 
-    const set = await buildIr(fs, { mod: game });
+    const set = await buildIr({ mod: game });
     expect(set.goods).toEqual([]); // missing goods source -> empty, rest still present
     expect(set.jobs.length).toBe(2);
     warn.mockRestore();
