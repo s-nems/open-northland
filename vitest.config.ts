@@ -2,6 +2,9 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 /** Bounded so several worktrees running suites at once do not oversubscribe one machine. */
 const MAX_WORKERS = 4;
+/** A hang guard only: a loaded four-core runner stretches a 6 s file past the 5 s default. */
+const TEST_TIMEOUT_MS = 120_000;
+const SHARED = { isolate: false, testTimeout: TEST_TIMEOUT_MS };
 
 const APP_SETUP_FILES = [
   './packages/app/test/support/silence-diag.ts',
@@ -22,7 +25,7 @@ export default defineConfig({
       {
         test: {
           name: 'app',
-          isolate: false,
+          ...SHARED,
           include: ['packages/app/test/**/*.test.ts'],
           // Spread the defaults: an explicit `exclude` REPLACES them, which would drop `**/dist/**`.
           exclude: [...configDefaults.exclude, CONTENT_TESTS],
@@ -32,7 +35,7 @@ export default defineConfig({
       {
         test: {
           name: 'core',
-          isolate: false,
+          ...SHARED,
           include: ['{packages,tools}/*/test/**/*.test.ts'],
           exclude: [...configDefaults.exclude, 'packages/app/**'],
         },
@@ -40,7 +43,7 @@ export default defineConfig({
       {
         test: {
           name: 'content',
-          isolate: false,
+          ...SHARED,
           include: [CONTENT_TESTS],
           setupFiles: APP_SETUP_FILES,
         },

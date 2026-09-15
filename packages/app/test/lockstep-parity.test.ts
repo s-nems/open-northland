@@ -10,8 +10,6 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
 
 /** Enough ticks past a scene's authored setup to run its systems; the scene tests own the full runs. */
 const PARITY_TICKS = 120;
-/** The battle scene runs both loops for the parity ticks; a two-core CI runner needs about 10 s. */
-const SCENE_RUN_TIMEOUT_MS = 30_000;
 
 function ticksFor(runTicks: number): number {
   return Math.min(runTicks, PARITY_TICKS);
@@ -27,7 +25,7 @@ function drive(sim: Simulation, ticks: number): Simulation {
   return sim;
 }
 
-describe('loopback driver parity', { timeout: SCENE_RUN_TIMEOUT_MS }, () => {
+describe('loopback driver parity', () => {
   for (const scene of SCENES) {
     it(`reaches the same state as the direct loop on '${scene.id}'`, () => {
       const ticks = ticksFor(scene.runTicks);
