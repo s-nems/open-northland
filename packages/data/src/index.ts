@@ -4,6 +4,7 @@ export * from './footprint.js';
 export * from './job-atomics.js';
 export * from './json-fingerprint.js';
 export * from './lookup.js';
+export * from './map-lobby.js';
 export * from './missions/index.js';
 export * from './schema/index.js';
 export * from './technology.js';

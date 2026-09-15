@@ -1,13 +1,13 @@
 // The menu-backdrop capture harness - `npm run menu-backdrops`. It boots the app's `?backdrop=<map>`
 // entry (one ambient-settlement frame, no HUD, ready flag like `?shot`) for each curated framing
-// below and writes JPEG stills into `content/backdrops/`, which `/backdrops-index` serves to the
-// menu's rotation. The stills contain decoded original art, so they live in the gitignored
-// `content/` tree and NEVER enter the repository; re-run this script after `npm run pipeline`.
+// below, writes JPEG stills into `content/backdrops/` and lists them in `content/backdrops-index.json`,
+// which the menu's rotation reads. The stills contain decoded original art, so they live in the
+// gitignored `content/` tree and NEVER enter the repository; re-run this script after `npm run pipeline`.
 //
 // Usage:  npm run menu-backdrops
 //         node packages/app/scripts/menu-backdrops.mjs [--only <mapId>] [--out <dir>]
 
-import { mkdir, readdir, unlink } from 'node:fs/promises';
+import { mkdir, readdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -41,6 +41,15 @@ function arg(name, fallback) {
 
 const only = arg('only', '');
 const outDir = resolve(process.cwd(), arg('out', resolve(appRoot, '../../content/backdrops')));
+/** The listing the menu fetches, beside the stills directory it names. */
+const indexFile = resolve(outDir, '..', 'backdrops-index.json');
+
+/** Every still in the folder, in code-unit order, so a partial `--only` run lists the whole set. */
+async function writeIndex() {
+  const files = (await readdir(outDir)).filter((file) => file.endsWith('.jpg')).sort();
+  await writeFile(indexFile, `${JSON.stringify(files, null, 2)}\n`);
+  console.log(`menu-backdrops: listed ${files.length} still(s) in ${indexFile}`);
+}
 
 async function main() {
   const shots = only ? SHOTS.filter((s) => s.map === only) : SHOTS;
@@ -109,6 +118,7 @@ async function main() {
     await browser.close();
     await server.close();
   }
+  await writeIndex();
   console.log('menu-backdrops: stills are gitignored content - eyeball them before trusting the set.');
   if (failures > 0) process.exit(1);
 }

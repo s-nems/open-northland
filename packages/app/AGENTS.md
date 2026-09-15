@@ -15,8 +15,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   envelope, and pre-tick world assembly through `sim.enqueueSetup()`. Tempo and pause are session clock
   operations, not loop fields. Do not mutate live component stores from UI or renderer glue.
 - Read the world through snapshots and explicit simulation probes.
-- Load generated content through the shared network/resolver seams. A checkout without `content/`
-  must still boot using synthetic fallback content or a clear unavailable state.
+- Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
+  the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
+  fallback content or a clear unavailable state.
 - Keep `main.ts` and `launch.ts` a small URL dispatcher. Entry modules assemble their mode and share
   the common game runtime. Reach them only through the `src/routes.ts` thunks: a static `entries/`
   import anywhere in the shell puts every mode back into the first download, which the build's size

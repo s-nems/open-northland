@@ -1,5 +1,4 @@
 import { type MusicManifest, parseMusicManifest } from '@open-northland/audio';
-import { withBaseUrl } from '../base-url.js';
 
 /**
  * The rendered-music fetch boundary: the pipeline's `music/manifest.json`, or null when no music was
@@ -7,7 +6,7 @@ import { withBaseUrl } from '../base-url.js';
  */
 export async function loadMusicManifest(fetchImpl: typeof fetch = fetch): Promise<MusicManifest | null> {
   try {
-    const res = await fetchImpl(withBaseUrl('/music/manifest.json'));
+    const res = await fetchImpl('/music/manifest.json');
     if (!res.ok) return null;
     return parseMusicManifest(await res.json());
   } catch {

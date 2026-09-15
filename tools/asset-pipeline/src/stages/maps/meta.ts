@@ -98,11 +98,7 @@ async function resolveMapHeader(
  * `{ <stringId>: <text> }`, preferring the readable `strings.ini` over its encrypted `strings.cif`
  * twin. An unreadable or empty table falls through to the next form, then the next language.
  */
-export async function loadMapStringTables(
-  fs: Vfs,
-  mapDir: string,
-  rel: string,
-): Promise<MapStringTables> {
+export async function loadMapStringTables(fs: Vfs, mapDir: string, rel: string): Promise<MapStringTables> {
   const tables: MapStringTables = {};
   for (const lang of MAP_TEXT_LANGUAGES) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {

@@ -1,8 +1,8 @@
 import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { errorMessage } from '../../errors.js';
-import type { SourceRoots } from '../../roots.js';
-import { BOBS_DIR, emitIndexedAndPreviewAtlas, writeJsonFile } from '../content-tree.js';
+import { MOD_BOBS_DIR, type SourceRoots } from '../../roots.js';
+import { emitIndexedAndPreviewAtlas, writeJsonFile } from '../content-tree.js';
 import { identityPalette, writeLutPng } from '../palette-lut.js';
 import { readSourceFile } from '../source-files.js';
 import { buildGoodIcons, GOODS_ATLAS_STEM, type GoodIcon, loadGoods } from './icons.js';
@@ -21,7 +21,7 @@ export { resolveGoodNames } from './names.js';
  */
 
 /** The shared good-pile bob sheet (155 bobs, up to 5 growth states per good). */
-const GOODS_BMD = vjoin(BOBS_DIR, 'ls_goods.bmd');
+const GOODS_BMD = vjoin(MOD_BOBS_DIR, 'ls_goods.bmd');
 
 /** `loadLayer` stem of the emitted recolourable indexed goods atlas. */
 const GOODS_INDEXED_STEM = `${GOODS_ATLAS_STEM}.indexed`;

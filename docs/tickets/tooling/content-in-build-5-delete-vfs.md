@@ -1,7 +1,6 @@
 # Delete the vfs seam and read the file system directly in the pipeline
 
 **Area:** vfs, pipeline · **Focus:** content delivery · **Priority:** P3
-**Blocked by:** [Write the served content layout](content-in-build-2-served-layout.md)
 
 `packages/vfs` exists so one conversion codebase could run over Node and over browser storage.
 After the preceding tickets the pipeline runs only in Node (a developer's shell and the release
@@ -14,8 +13,9 @@ against it.
 
 - Pipeline stages and `run.ts` take a root path and use `node:fs/promises` and `node:path`
   directly. `resolveModRoot` and `walk.ts` do the same.
-- The two tests that build trees with the memory adapter (`test/roots.test.ts`,
-  `test/music-stage.test.ts`) write their fixtures into a temporary directory instead.
+- The tests that build trees with the memory adapter (`test/roots.test.ts`, `test/music-stage.test.ts`,
+  `test/sounds-stage.test.ts`, `test/listings.test.ts`) write their fixtures into a temporary
+  directory instead.
 - The in-process embedding surface has no host left: delete `src/progress.ts` with the `progress`
   parameters the stages thread through, the `./progress` and `./mod-root` subpath exports in
   `package.json`, and narrow `src/index.ts` to what the CLI and the tests import. The CLI stays the

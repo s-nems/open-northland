@@ -7,11 +7,12 @@ import { type Bmd, BOB_TYPE_1BIT, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
 import { bmdToAtlas, convertBmdTree, convertShadowBmdTree } from '../src/stages/bmd/index.js';
+import { BOBS_DIR } from '../src/stages/content-tree.js';
 import { indexSourceAssets } from '../src/stages/source-files.js';
 import { packLineControl, sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette, solidPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
-import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
+import { makeTempDir } from './support/game-tree.js';
 
 const fs = nodeVfs();
 

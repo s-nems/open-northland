@@ -1,12 +1,12 @@
-import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+import type { MapsIndexPlayerSlot } from '@open-northland/data';
 import type { LocalSeat } from '@open-northland/lockstep';
 
 /**
  * Pure roster state behind the lobby screen: seats, colours and vacant modes over the slots
- * `/maps-index` serves. No DOM, so it is unit-tested headlessly.
+ * `maps-index.json` lists. No DOM, so it is unit-tested headlessly.
  */
 
-/** One map player slot as `/maps-index` serves it. */
+/** One map player slot as `maps-index.json` lists it. */
 export type MapPlayerSlot = MapsIndexPlayerSlot;
 
 /** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */

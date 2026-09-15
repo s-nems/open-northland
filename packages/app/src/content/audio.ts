@@ -1,6 +1,5 @@
 import { buildSoundIndex, defaultBindings, SoundDriver } from '@open-northland/audio';
 import type { SoundBank } from '@open-northland/data';
-import { withBaseUrl } from '../base-url.js';
 import type { ContentIr } from './ir/rows.js';
 
 /**
@@ -27,7 +26,7 @@ export function createSoundDriver(ir: ContentIr | null): SoundDriver | null {
   if (!hasSoundContent(sounds)) return null;
   const index = buildSoundIndex(sounds, ir?.gfxPatterns ?? [], ir?.terrainPatterns ?? []);
   return new SoundDriver(index, defaultBindings(), {
-    baseUrl: withBaseUrl('/sounds/'),
-    musicBaseUrl: withBaseUrl('/music/'),
+    baseUrl: '/sounds/',
+    musicBaseUrl: '/music/',
   });
 }

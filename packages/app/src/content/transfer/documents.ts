@@ -1,6 +1,5 @@
 import { jsonFingerprint, MapScript, parseTerrainMap } from '@open-northland/data';
 import { MAX_BLOB_BYTES } from '@open-northland/net-protocol';
-import { withBaseUrl } from '../../base-url.js';
 
 export const MAX_MAP_TRANSFER_BYTES = MAX_BLOB_BYTES;
 // The owned six-sons map exceeds the relay limit but can still be verified and played locally.
@@ -59,7 +58,7 @@ export function readVerifiedMapDocuments(handle: VerifiedMapDocuments, mapId: st
 }
 
 async function readDocument(path: string, fetchImpl: typeof fetch): Promise<unknown> {
-  const response = await fetchImpl(withBaseUrl(path));
+  const response = await fetchImpl(path);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Cannot read ${path}: HTTP ${response.status}`);
   const length = Number(response.headers.get('content-length'));

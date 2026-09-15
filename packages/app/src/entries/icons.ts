@@ -1,5 +1,4 @@
-import type { BobsIndexEntry } from '@open-northland/content-resolver/wire';
-import { withBaseUrl } from '../base-url.js';
+import { BobsIndex, type BobsIndexEntry } from '@open-northland/data';
 import { GUI_FRAMES } from '../content/gui-atlas-map.js';
 import { fetchJsonOrNull } from '../content/net.js';
 import { formatMessage, messages } from '../i18n/index.js';
@@ -12,18 +11,13 @@ import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay
  * degrades to a "run the pipeline" message.
  */
 
-/** A wrong-typed row drops instead of reaching the gallery with fields that read `undefined`. */
-function parseBobsEntry(raw: unknown): BobsIndexEntry | undefined {
-  if (typeof raw !== 'object' || raw === null) return undefined;
-  const { stem, base, variant } = raw as Record<string, unknown>;
-  if (typeof stem !== 'string' || stem === '') return undefined;
-  if (typeof base !== 'string' || typeof variant !== 'string') return undefined;
-  return { stem, base, variant };
-}
+const BOBS_INDEX_URL = '/bobs-index.json';
 
+/** The listing the pipeline wrote, or none: a document this build cannot read shows the "run the
+ *  pipeline" message rather than a partial gallery. */
 export function parseBobsIndex(data: unknown): readonly BobsIndexEntry[] {
-  if (!Array.isArray(data)) return [];
-  return data.map(parseBobsEntry).filter((entry) => entry !== undefined);
+  const parsed = BobsIndex.safeParse(data);
+  return parsed.success ? parsed.data : [];
 }
 
 interface AtlasFrameJson {
@@ -100,7 +94,7 @@ function groupLabel(base: string): string {
 
 export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchParams): void {
   void (async () => {
-    const index = parseBobsIndex(await fetchJsonOrNull<unknown>('/bobs-index'));
+    const index = parseBobsIndex(await fetchJsonOrNull<unknown>(BOBS_INDEX_URL));
     if (index.length === 0) {
       mountMessage(messages().icons.title, messages().icons.missingDetail);
       return;
@@ -183,7 +177,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
         meta.textContent = formatMessage(messages().icons.loadFailed, { stem });
         return;
       }
-      grid.style.setProperty('--sheet', `url('${withBaseUrl(`/bobs/${stem}.png`)}')`);
+      grid.style.setProperty('--sheet', `url('/bobs/${stem}.png')`);
       grid.style.setProperty('--sw', String(atlas.width));
       grid.style.setProperty('--sh', String(atlas.height));
       const withName = stem.startsWith(`${GUI_BASE}.`);

@@ -16,6 +16,7 @@ export const PIPELINE_STAGES = [
   'transitions',
   'maps',
   'music',
+  'listings',
 ] as const;
 
 export type PipelineStageId = (typeof PIPELINE_STAGES)[number];

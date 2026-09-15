@@ -3,24 +3,32 @@
 The asset pipeline converts the unpacked CulturesNation mod into a local `content/` directory. The
 directory is ignored by Git because it contains derived game data.
 
-Runtime rules are stored in one JSON document:
+The tree is laid out exactly as the app fetches it, so every host serves it as static files from `/`:
 
 ```text
 content/
   ir.json                 validated rules and presentation bindings
+  maps-index.json         one entry per decoded map: name, provenance, lobby seats, listing header
+  bobs-index.json         the viewable atlases, for the icon gallery
   maps/
     <id>.json             decoded terrain
     <id>.meta.json        menu metadata and the map's provenance
     <id>.script.json      optional player and mission data
     <id>.strings.json     optional per-language string table
     <id>.png              optional thumbnail
-  Data/...                decoded atlases, palettes, fonts, and other runtime files
-  gui/...                 decoded interface assets
-  goods/...               decoded goods art
+  bobs/                   atlases and colour LUTs
+  textures/               ground pages and transition overlays
+  sounds/                 the mod's wav tree
+  music/                  rendered tracks and their manifest
+  gui/                    decoded interface assets
+  gui-bitmaps/            window and button fills
+  goods/                  decoded goods art
+  terrain-palettes/       the vertex colour palette map scripts index
+  backdrops/              menu stills, with backdrops-index.json beside them (npm run menu-backdrops)
 ```
 
-The exact asset tree grows as more decoders are connected. Code should use the shared resolver rather
-than guessing paths.
+`packages/data` validates the listings and sidecars the app reads; file names referenced from
+`ir.json` are lower-cased like the references.
 
 ## `ir.json`
 

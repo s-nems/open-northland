@@ -29,7 +29,7 @@ export const DEFAULT_SESSION_SEED = 7;
 export const DEFAULT_SESSION_SPEED = 1;
 
 /** The seat rows an entry knows before a world exists: a map script's roster, or the lobby's
- *  `/maps-index` rows. */
+ *  `maps-index.json` rows. */
 export interface SessionRosterSlot {
   readonly player: number;
   readonly colorId: number;

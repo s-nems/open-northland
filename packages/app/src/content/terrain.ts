@@ -7,7 +7,6 @@ import {
   type TransitionPattern,
   texturePageKey,
 } from '@open-northland/render';
-import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/index.js';
 import { loadIr } from './ir/load.js';
 import type { ContentIr } from './ir/rows.js';
@@ -117,7 +116,7 @@ export async function loadRealTerrain(
   await Promise.all(
     [...pageKeys].map(async (key) => {
       try {
-        pages.set(key, await loadPage(withBaseUrl(`/textures/${key}.png`)));
+        pages.set(key, await loadPage(`/textures/${key}.png`));
       } catch {
         diag.warn('content', `terrain: page ${key}.png failed to load; its triangles fall back`);
       }

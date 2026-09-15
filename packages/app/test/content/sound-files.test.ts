@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { contentDir, hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /** The subtree the `/sounds/` route serves; the IR's `file` values are relative to it. */
-const SOUNDS_DIR = 'Data/engine2d/bin/sounds';
+const SOUNDS_DIR = 'sounds';
 
 /**
  * Every wav the decoded sound bank names is a file the same run wrote, so a sound the game asks for

@@ -256,7 +256,7 @@ describe('convertMapDatTree', () => {
       join(dir, 'text', 'eng', 'strings.ini'),
       rawBytes('[text]\nstringn 0 "Name"\nstringn 12 "Pay the tribute"\n'),
     );
-    const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
+    const done = await convertMapDatTree(fs, { mod: game }, out);
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ strings: true });
     const strings = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.strings.json'), 'utf8'));
     expect(strings).toEqual({
@@ -264,7 +264,7 @@ describe('convertMapDatTree', () => {
       eng: { 0: 'Name', 12: 'Pay the tribute' },
     });
     await rm(join(dir, 'text'), { recursive: true, force: true });
-    const rerun = await convertMapDatTree(fs, { game, mod: undefined }, out);
+    const rerun = await convertMapDatTree(fs, { mod: game }, out);
     expect(rerun.find((d) => d.id === 'tutorial_002')).toMatchObject({ strings: false });
     await expect(readFile(join(out, 'maps', 'tutorial_002.strings.json'))).rejects.toThrow();
   });

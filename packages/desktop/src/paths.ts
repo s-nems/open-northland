@@ -18,7 +18,7 @@ export interface ShellRootInputs {
 export interface ShellRoots {
   /** The built web app (`packages/app/dist`). */
   readonly appRoot: string;
-  /** The converted content tree the content routes serve from. */
+  /** The converted content tree, served as static files beside the app. */
   readonly contentRoot: string;
 }
 

@@ -28,7 +28,7 @@ const CIVILIZATIONS: WorldTribes = [1, 2, 3, 4, 7];
 const INDEXED = 'indexed';
 
 function bobsDir(): string {
-  return resolve(contentDir(), 'Data/engine2d/bin/bobs');
+  return resolve(contentDir(), 'bobs');
 }
 
 function atlasExists(stem: string): boolean {

@@ -1,38 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { parseBobsIndex } from '../src/entries/icons.js';
 
-/**
- * The `?icons` gallery's `/bobs-index` narrowing. The payload type is shared with the node builder that
- * emits it, but a type is a compile-time link only: a host serving something else must degrade that one
- * row rather than hand the gallery an entry whose fields read `undefined`.
- */
+/** The `?icons` gallery reads `bobs-index.json` through the shared schema: a listing this build cannot
+ *  read shows no gallery rather than rows with fields that read `undefined`. */
 describe('parseBobsIndex', () => {
-  it('keeps well-formed rows, variant included when the stem carries one', () => {
-    expect(
-      parseBobsIndex([
-        { stem: 'ls_gui_window.iconsleft', base: 'ls_gui_window', variant: 'iconsleft' },
-        { stem: 'ls_goods', base: 'ls_goods', variant: '' },
-      ]),
-    ).toEqual([
+  it('keeps a well-formed listing, variant included when the stem carries one', () => {
+    const listing = [
       { stem: 'ls_gui_window.iconsleft', base: 'ls_gui_window', variant: 'iconsleft' },
       { stem: 'ls_goods', base: 'ls_goods', variant: '' },
-    ]);
+    ];
+    expect(parseBobsIndex(listing)).toEqual(listing);
   });
 
-  it('drops a row with a missing, empty or wrong-typed field, keeping the rest', () => {
-    expect(
-      parseBobsIndex([
-        { stem: '', base: 'ls_goods', variant: '' },
-        { stem: 'ls_goods', base: 'ls_goods' },
-        { stem: 'ls_houses_viking', base: 7, variant: '' },
-        'ls_goods',
-        null,
-        { stem: 'ls_goods', base: 'ls_goods', variant: '' },
-      ]),
-    ).toEqual([{ stem: 'ls_goods', base: 'ls_goods', variant: '' }]);
-  });
-
-  it('reads a non-array payload as no atlases at all', () => {
+  it('reads a listing with a malformed row, or no listing, as no atlases at all', () => {
+    expect(parseBobsIndex([{ stem: 'ls_houses_viking', base: 7, variant: '' }])).toEqual([]);
     expect(parseBobsIndex(null)).toEqual([]);
     expect(parseBobsIndex({ stems: [] })).toEqual([]);
   });

@@ -1,8 +1,8 @@
 import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { errorMessage } from '../../errors.js';
-import type { SourceRoots } from '../../roots.js';
-import { BOBS_DIR, emitIndexedAndPreviewAtlas } from '../content-tree.js';
+import { MOD_BOBS_DIR, type SourceRoots } from '../../roots.js';
+import { emitIndexedAndPreviewAtlas } from '../content-tree.js';
 import { readSourceFile } from '../source-files.js';
 
 /** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
@@ -17,8 +17,8 @@ interface GuiAtlasSource {
  * use `context`), so that is its best single preview palette; the bubble sheet uses `gui_bubbles`.
  */
 const GUI_ATLASES: readonly GuiAtlasSource[] = [
-  { stem: 'ls_gui_window', bmd: vjoin(BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
-  { stem: 'ls_gui_bubbles', bmd: vjoin(BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
+  { stem: 'ls_gui_window', bmd: vjoin(MOD_BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
+  { stem: 'ls_gui_bubbles', bmd: vjoin(MOD_BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
 ];
 
 export interface GuiAtlasResult {
@@ -32,7 +32,7 @@ export interface GuiAtlasResult {
 }
 
 /**
- * Decodes each GUI bob sheet into an indexed atlas plus an RGBA preview atlas under `BOBS_DIR`, taking the
+ * Decodes each GUI bob sheet into an indexed atlas plus an RGBA preview atlas under `bobs/`, taking the
  * preview colours from `paletteByName`. A missing sheet or preview palette skips that sheet only.
  */
 export async function convertGuiAtlases(

@@ -6,7 +6,7 @@ the engine's own rule but changes 96 of the 124 decoded maps.
 
 `matchParticipants` (`packages/app/src/game/match-participants.ts`) builds the participant list from the
 local seat plus the `?ai=` seats, and the lobby only offers seats the map marks claimable
-(`multiplayer.humanOptionSlots`, `packages/content-resolver/src/maps-index.ts`). Scenario seats never
+(`claimable`, `packages/data/src/map-lobby.ts`). Scenario seats never
 reach the list, so `matchSystem` neither kills them nor waits for them.
 
 Two consequences over the decoded corpus (124 maps with a roster):

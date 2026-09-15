@@ -1,66 +1,21 @@
-import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
-import { MapProvenance } from '@open-northland/data';
+import { MapsIndex, type MapsIndexEntry } from '@open-northland/data';
+import { diag } from '../diag/log.js';
 import { fetchJsonOrNull } from './net.js';
 
-/** Lobby fields fall back to the no-`[multiplayer]`-table reading for sidecars predating them. */
-function parsePlayerSlot(raw: unknown): MapsIndexPlayerSlot | undefined {
-  if (typeof raw !== 'object' || raw === null) return undefined;
-  const { player, type, tribeId, colorId, name, claimable, hidden, aiAllowed } = raw as Record<
-    string,
-    unknown
-  >;
-  if (typeof player !== 'number' || !Number.isInteger(player) || player < 0) return undefined;
-  if (type !== 'human' && type !== 'ai') return undefined;
-  if (typeof tribeId !== 'number' || typeof colorId !== 'number') return undefined;
-  return {
-    player,
-    type,
-    tribeId,
-    colorId,
-    ...(typeof name === 'string' ? { name } : {}),
-    claimable: typeof claimable === 'boolean' ? claimable : type === 'human',
-    hidden: hidden === true,
-    aiAllowed: aiAllowed !== false,
-  };
-}
+export const MAPS_INDEX_URL = '/maps-index.json';
 
+/** The listing the pipeline wrote, or none: a document this build cannot read lists no maps rather
+ *  than a guessed subset. */
 export function parseMapsIndex(data: unknown): readonly MapsIndexEntry[] {
-  if (!Array.isArray(data)) return [];
-  const entries: MapsIndexEntry[] = [];
-  for (const item of data) {
-    if (typeof item !== 'object' || item === null) continue;
-    const { id, name, description, minimap, players, fixedColors, mapTypes, multiplayerOnly, provenance } =
-      item as Record<string, unknown>;
-    const campaign = parseCampaign((item as Record<string, unknown>).campaign);
-    if (typeof id !== 'string' || id === '') continue;
-    const slots = Array.isArray(players) ? players.map(parsePlayerSlot).filter((s) => s !== undefined) : [];
-    const origin = MapProvenance.safeParse(provenance);
-    entries.push({
-      id,
-      ...(origin.success ? { provenance: origin.data } : {}),
-      ...(typeof name === 'string' ? { name } : {}),
-      ...(typeof description === 'string' ? { description } : {}),
-      minimap: minimap === true,
-      ...(slots.length > 0 ? { players: slots } : {}),
-      ...(fixedColors === true ? { fixedColors: true } : {}),
-      ...(Array.isArray(mapTypes)
-        ? { mapTypes: mapTypes.filter((code): code is number => Number.isInteger(code)) }
-        : {}),
-      ...(multiplayerOnly === true ? { multiplayerOnly: true } : {}),
-      ...(campaign === undefined ? {} : { campaign }),
-    });
+  if (data === null) return [];
+  const parsed = MapsIndex.safeParse(data);
+  if (!parsed.success) {
+    diag.warn('content', `maps-index: ${MAPS_INDEX_URL} does not match this build; run the pipeline again`);
+    return [];
   }
-  return entries;
-}
-
-function parseCampaign(raw: unknown): MapsIndexEntry['campaign'] {
-  if (typeof raw !== 'object' || raw === null) return undefined;
-  const { campaignId, missionId } = raw as Record<string, unknown>;
-  if (typeof campaignId !== 'number' || typeof missionId !== 'number') return undefined;
-  if (!Number.isSafeInteger(campaignId) || !Number.isSafeInteger(missionId)) return undefined;
-  return { campaignId, missionId };
+  return parsed.data;
 }
 
 export async function loadMapList(): Promise<readonly MapsIndexEntry[]> {
-  return parseMapsIndex(await fetchJsonOrNull<unknown>('/maps-index'));
+  return parseMapsIndex(await fetchJsonOrNull<unknown>(MAPS_INDEX_URL));
 }

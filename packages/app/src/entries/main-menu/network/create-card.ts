@@ -1,5 +1,4 @@
 import { MAX_ROOM_NAME_LENGTH } from '@open-northland/net-protocol';
-import { withBaseUrl } from '../../../base-url.js';
 import { errorText } from '../../../diag/error-text.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SaveBytes } from '../../../view/runtime/save-load/codec.js';
@@ -153,7 +152,7 @@ export function createRoomCard(options: CreateCardOptions) {
       thumb.replaceChildren();
       if (item?.minimap) {
         const img = document.createElement('img');
-        img.src = withBaseUrl(`/maps/${encodeURIComponent(item.id)}.png`);
+        img.src = `/maps/${encodeURIComponent(item.id)}.png`;
         img.alt = '';
         thumb.append(img);
       }

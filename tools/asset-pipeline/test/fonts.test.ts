@@ -4,10 +4,11 @@ import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeFnt, type Font } from '../src/decoders/fnt/codec.js';
 import { decodePng } from '../src/decoders/png.js';
+import { BOBS_DIR } from '../src/stages/content-tree.js';
 import { convertFontColorLut, convertFontStage, convertFonts } from '../src/stages/fonts.js';
 import { sampleGlyphBmd } from './fixtures/bmd.js';
 import { paletteCarrier } from './fixtures/pcx.js';
-import { BOBS_DIR, type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
+import { type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
 
 const fs = nodeVfs();
 

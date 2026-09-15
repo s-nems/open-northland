@@ -12,7 +12,7 @@ import { contentDir, repoRoot } from './content-dir.mjs';
 const dir = contentDir();
 // A full pipeline run emits all three; guarding each keeps the explicit mode from passing
 // vacuously when a lane vanishes (the map suite and the roster's on-disk checks would skip).
-const REQUIRED = ['ir.json', 'maps', 'Data/engine2d/bin/bobs'];
+const REQUIRED = ['ir.json', 'maps', 'bobs'];
 const missing = REQUIRED.filter((rel) => !existsSync(resolve(dir, rel)));
 if (missing.length > 0) {
   console.error(`test:content needs generated content - missing under ${dir}: ${missing.join(', ')}`);

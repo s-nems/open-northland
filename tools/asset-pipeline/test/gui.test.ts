@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeBmd } from '../src/decoders/bmd/index.js';
 import { encodeCursor } from '../src/decoders/cur.js';
 import { decodePng } from '../src/decoders/png.js';
+import { MOD_BOBS_DIR } from '../src/roots.js';
+import { BOBS_DIR } from '../src/stages/content-tree.js';
 import {
   BODY_SHADOW_MIN_LUMA,
   convertCursors,
@@ -19,7 +21,7 @@ import { sampleGlyphBmd } from './fixtures/bmd.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
 import { paletteCarrier } from './fixtures/pcx.js';
-import { BOBS_DIR, type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
+import { type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
 
 const fs = nodeVfs();
 
@@ -60,8 +62,8 @@ describe('gui stage', () => {
     // Palettes.
     for (const f of PALETTE_FILES) await writeGame(f, paletteCarrier());
     // Bob sheets.
-    await writeGame(join(BOBS_DIR, 'ls_gui_window.bmd'), encodeBmd(sampleGlyphBmd()));
-    await writeGame(join(BOBS_DIR, 'ls_gui_bubbles.bmd'), encodeBmd(sampleGlyphBmd()));
+    await writeGame(join(MOD_BOBS_DIR, 'ls_gui_window.bmd'), encodeBmd(sampleGlyphBmd()));
+    await writeGame(join(MOD_BOBS_DIR, 'ls_gui_bubbles.bmd'), encodeBmd(sampleGlyphBmd()));
     // Strings, both languages, in the real `[control]`/`[text]` grammar (`stringn` sets the id, `string`
     // auto-increments). `pol`'s first entry stores raw CP1250 BYTES (0xEA='ę', 0xB3='ł' in CP1250) as a
     // latin1 string, so the fixture round-trips a real Polish string through the stage's CP1250 re-decode.
@@ -207,7 +209,7 @@ describe('gui stage', () => {
   });
 
   it('skips a missing bob sheet with a warning instead of aborting', async () => {
-    await rm(join(game, BOBS_DIR, 'ls_gui_bubbles.bmd'));
+    await rm(join(game, MOD_BOBS_DIR, 'ls_gui_bubbles.bmd'));
     const { byName } = await convertGuiPaletteLut(fs, { mod: game }, out);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const atlases = await convertGuiAtlases(fs, { mod: game }, out, byName);

@@ -20,7 +20,7 @@ describe('worldNamesOf', () => {
   });
 });
 
-// Node has no server behind `/maps-index`, so the fetched index degrades to empty pass-through.
+// Node has no server behind `/maps-index.json`, so the fetched listing degrades to empty pass-through.
 describe('worldNameIndex', () => {
   it('degrades to token pass-through without a served maps index', async () => {
     const worldName = await worldNameIndex();

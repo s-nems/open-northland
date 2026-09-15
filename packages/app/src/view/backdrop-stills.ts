@@ -1,12 +1,10 @@
-import { withBaseUrl } from '../base-url.js';
-
 /** Names a still under `content/backdrops/`, and outlives the page load from the menu into a game. */
 const LAST_SHOWN_KEY = 'open-northland.backdrop.lastShown';
 /** The pool a visit fetched, so the next launch can paint a still before any network round trip. */
 const POOL_KEY = 'open-northland.backdrop.pool';
 
 export function stillUrl(file: string): string {
-  return withBaseUrl(`/backdrops/${encodeURIComponent(file)}`);
+  return `/backdrops/${encodeURIComponent(file)}`;
 }
 
 /** An array of file names; any other payload reads as absent. */

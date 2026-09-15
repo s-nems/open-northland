@@ -22,7 +22,7 @@ if (selected.length === 0 || unknown.length > 0) {
 const dir = contentDir();
 // The browser boots the real entries, so it needs what they fetch: the IR, a decoded map, and the
 // sprite bobs. Without them the page halts on the missing-content notice and never starts a game.
-const REQUIRED = ['ir.json', 'maps', 'Data/engine2d/bin/bobs'];
+const REQUIRED = ['ir.json', 'maps', 'bobs'];
 const missing = REQUIRED.filter((rel) => !existsSync(resolve(dir, rel)));
 if (missing.length > 0) {
   console.error(`test:engines needs generated content - missing under ${dir}: ${missing.join(', ')}`);

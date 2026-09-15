@@ -4,7 +4,6 @@ import {
   type MusicTrack,
   WebAudioEngine,
 } from '@open-northland/audio';
-import { withBaseUrl } from '../../base-url.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { startSound } from '../../view/sound-start.js';
 import { rotationOrder } from './rotation.js';
@@ -44,7 +43,7 @@ export function menuMusicTracks(
 export function startMenuMusic(signal: AbortSignal): void {
   const settings = menuSettings();
   const engine = new WebAudioEngine({
-    musicBaseUrl: withBaseUrl('/music/'),
+    musicBaseUrl: '/music/',
     musicVolume: settings.musicVolume,
   });
   engine.setEnabled(settings.soundEnabled);

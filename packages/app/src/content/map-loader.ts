@@ -6,7 +6,6 @@ import {
   parseTerrainMap,
   type TerrainMapFile,
 } from '@open-northland/data';
-import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/index.js';
 
 /**
@@ -38,7 +37,7 @@ export async function loadTerrainMap(
     return null;
   }
   try {
-    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.json`));
+    const res = await fetchImpl(`/maps/${safe}.json`);
     if (!res.ok) {
       diag.warn(
         'content',
@@ -64,7 +63,7 @@ export async function loadMapMeta(id: string, fetchImpl: typeof fetch = fetch): 
   const safe = safeMapId(id);
   if (safe === null) return null;
   try {
-    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.meta.json`));
+    const res = await fetchImpl(`/maps/${safe}.meta.json`);
     if (!res.ok) return null;
     return MapMeta.parse(await res.json());
   } catch (err) {
@@ -85,7 +84,7 @@ export async function loadMapBriefing(
   const safe = safeMapId(id);
   if (safe === null) return null;
   try {
-    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.briefing.json`));
+    const res = await fetchImpl(`/maps/${safe}.briefing.json`);
     if (!res.ok) return null;
     return MapBriefing.parse(await res.json());
   } catch (err) {
@@ -105,7 +104,7 @@ export async function loadMapStrings(
   const safe = safeMapId(id);
   if (safe === null) return null;
   try {
-    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.strings.json`));
+    const res = await fetchImpl(`/maps/${safe}.strings.json`);
     if (!res.ok) return null;
     return MapStrings.parse(await res.json());
   } catch (err) {
@@ -123,7 +122,7 @@ export async function loadMapScript(id: string, fetchImpl: typeof fetch = fetch)
   const safe = safeMapId(id);
   if (safe === null) return null;
   try {
-    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.script.json`));
+    const res = await fetchImpl(`/maps/${safe}.script.json`);
     if (!res.ok) return null;
     return MapScript.parse(await res.json());
   } catch (err) {

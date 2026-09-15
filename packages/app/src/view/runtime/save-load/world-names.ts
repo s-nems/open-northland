@@ -1,4 +1,4 @@
-import type { MapsIndexEntry } from '@open-northland/content-resolver/wire';
+import type { MapsIndexEntry } from '@open-northland/data';
 import { loadMapList } from '../../../content/maps-index.js';
 import { sceneCopy } from '../../../i18n/index.js';
 

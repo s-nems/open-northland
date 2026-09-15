@@ -8,7 +8,6 @@ const ticketReferenceFile = /\.(?:[cm]?[jt]sx?|json|ya?ml)$/;
 const ticketAreas = new Set([
   'app',
   'audio',
-  'content-resolver',
   'data',
   'desktop',
   'lockstep',

@@ -13,17 +13,14 @@ async function modWith(files: readonly string[]): Promise<ReturnType<typeof memo
 }
 
 describe('copySoundTree', () => {
-  it('copies the sounds tree to the served spelling the IR references', async () => {
+  it('copies the sounds tree to sounds/ at the lower-cased spelling the IR references', async () => {
     const fs = await modWith([
       'Data/Engine2D/bin/Sounds/Static/Axe01.WAV',
       'data/engine2d/bin/sounds/gui/click_confirm.wav',
     ]);
     const copied = await copySoundTree(fs, { mod: MOD, modVersion: undefined }, OUT);
-    expect(copied.sort()).toEqual([
-      'Data/engine2d/bin/sounds/gui/click_confirm.wav',
-      'Data/engine2d/bin/sounds/static/axe01.wav',
-    ]);
-    expect([...(await fs.readFile(`${OUT}/Data/engine2d/bin/sounds/static/axe01.wav`))]).toEqual([1]);
+    expect(copied.sort()).toEqual(['sounds/gui/click_confirm.wav', 'sounds/static/axe01.wav']);
+    expect([...(await fs.readFile(`${OUT}/sounds/static/axe01.wav`))]).toEqual([1]);
   });
 
   it('leaves wavs outside the sounds tree and non-wav files inside it alone', async () => {
@@ -33,7 +30,7 @@ describe('copySoundTree', () => {
       'Data/engine2d/bin/sounds/misc/thunder.wav',
     ]);
     const copied = await copySoundTree(fs, { mod: MOD, modVersion: undefined }, OUT);
-    expect(copied).toEqual(['Data/engine2d/bin/sounds/misc/thunder.wav']);
+    expect(copied).toEqual(['sounds/misc/thunder.wav']);
     expect(await fs.stat(`${OUT}/CnModMaps/some_map/briefing.wav`)).toBeUndefined();
   });
 });

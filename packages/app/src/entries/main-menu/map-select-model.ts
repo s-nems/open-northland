@@ -1,4 +1,4 @@
-import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/data';
 import { MAP_TYPE } from '@open-northland/data';
 
 /**

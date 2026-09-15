@@ -15,7 +15,6 @@
     { "path": "../net-client" },
     { "path": "../render" },
     { "path": "../audio" },
-    { "path": "../content-resolver" },
     { "path": "../art-contracts" }
   ]
 }

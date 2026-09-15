@@ -1,4 +1,4 @@
-import { type MapScript, MapStrings } from '@open-northland/data';
+import { type MapMeta, type MapScript, MapStrings } from '@open-northland/data';
 import { type Vfs, vdirname, vjoin, writeText } from '@open-northland/vfs';
 import {
   cifBytesToSections,
@@ -9,6 +9,7 @@ import {
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { collectSourceFilesNamed, findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
+import { MAPS_DIR } from '../content-tree.js';
 import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
 import { loadMapStringTables, preferredStringTable, resolveMapMeta } from './meta.js';
@@ -29,8 +30,10 @@ export interface MapDatConversion {
   readonly minimap: boolean;
   /** The emitted minimap was synthesized from the decoded cells. */
   readonly minimapSynthesized: boolean;
-  /** Whether a `maps/<id>.script.json` roster/mission sidecar was emitted. */
-  readonly script: boolean;
+  /** The emitted `maps/<id>.meta.json`. */
+  readonly meta: MapMeta;
+  /** The emitted `maps/<id>.script.json`, when the map ships a decodable script. */
+  readonly script?: MapScript;
   /** Whether a `maps/<id>.briefing.json` mission-window text sidecar was emitted. */
   readonly briefing: boolean;
   /** Whether a `maps/<id>.strings.json` per-language string table was emitted. */
@@ -54,7 +57,7 @@ export async function convertMapDatTree(
 ): Promise<MapDatConversion[]> {
   const found = excludeStringTableCopies(await collectSourceFilesNamed(fs, roots, 'map.dat'));
   // This stage is the only writer under <outDir>/maps, so a wholesale reset is safe.
-  await fs.rm(vjoin(outDir, 'maps'));
+  await fs.rm(vjoin(outDir, MAPS_DIR));
   const done: MapDatConversion[] = [];
   for (const [processed, { rel, path }] of found.entries()) {
     onItem?.(processed, found.length);
@@ -96,17 +99,17 @@ export async function convertMapDatTree(
         }
       }
     }
-    const output = vjoin('maps', `${id}.json`);
+    const output = vjoin(MAPS_DIR, `${id}.json`);
     // Compact JSON: the lanes are hundreds of thousands of numbers, and one per line costs ~8x size.
     await writeText(fs, vjoin(outDir, output), `${JSON.stringify(terrain)}\n`);
 
     // A same-id twin converted earlier this run may have emitted sidecars; clear them so
     // last-write-wins covers the sidecars, not just the grid.
-    const metaPath = vjoin(outDir, 'maps', `${id}.meta.json`);
-    const pngPath = vjoin(outDir, 'maps', `${id}.png`);
-    const scriptPath = vjoin(outDir, 'maps', `${id}.script.json`);
-    const briefingPath = vjoin(outDir, 'maps', `${id}.briefing.json`);
-    const stringsPath = vjoin(outDir, 'maps', `${id}.strings.json`);
+    const metaPath = vjoin(outDir, MAPS_DIR, `${id}.meta.json`);
+    const pngPath = vjoin(outDir, MAPS_DIR, `${id}.png`);
+    const scriptPath = vjoin(outDir, MAPS_DIR, `${id}.script.json`);
+    const briefingPath = vjoin(outDir, MAPS_DIR, `${id}.briefing.json`);
+    const stringsPath = vjoin(outDir, MAPS_DIR, `${id}.strings.json`);
     await fs.rm(metaPath);
     await fs.rm(pngPath);
     await fs.rm(scriptPath);
@@ -118,7 +121,7 @@ export async function convertMapDatTree(
     }
     const strings = preferredStringTable(stringTables);
     const metadata = await resolveMapMeta(fs, mapDir, rel, cifSections, strings);
-    const metaFile = { ...metadata, provenance: mapProvenance(rel) };
+    const metaFile: MapMeta = { ...metadata, provenance: mapProvenance(rel) };
     await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
@@ -170,7 +173,8 @@ export async function convertMapDatTree(
       output,
       minimap,
       minimapSynthesized,
-      script: scriptFile !== undefined,
+      meta: metaFile,
+      ...(scriptFile !== undefined ? { script: scriptFile } : {}),
       briefing,
       strings: Object.keys(stringTables).length > 0,
     });

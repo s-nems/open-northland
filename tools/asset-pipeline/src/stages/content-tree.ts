@@ -3,39 +3,19 @@ import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/at
 import type { Bmd } from '../decoders/bmd/index.js';
 import { encodePng } from '../decoders/png.js';
 
-/** The canonical casing of the output's `Data/` tree: the exact spelling the content routes serve. */
-export const DATA_DIR = 'Data';
+// The output tree is served as static files, so each directory's name is the URL root the app fetches
+// it at, and every file inside is lower-cased because the IR's references are.
 
-/** The `content/` subtree served at the app's `/bobs/` route (bob atlases + the player/GUI/font colour LUTs). */
-export const BOBS_DIR = vjoin(DATA_DIR, 'engine2d', 'bin', 'bobs');
-
-/** The `content/` subtree served at the app's `/textures/` route (ground pages + transition overlays). */
-export const TEXTURES_DIR = vjoin(DATA_DIR, 'engine2d', 'bin', 'textures');
-
-/** The `content/` subtree served at the app's `/sounds/` route (the extracted `.wav` tree). */
-export const SOUNDS_DIR = vjoin(DATA_DIR, 'engine2d', 'bin', 'sounds');
-
-/** The `content/` subtree served at the app's `/gui-bitmaps/` route (menu/HUD backdrops). */
-export const GUI_BITMAPS_DIR = vjoin(DATA_DIR, 'gui', 'bitmaps');
-
-/** The subtrees the app addresses through a fixed route, in the spelling those routes match. */
-const SERVED_DIRS: readonly string[] = [BOBS_DIR, TEXTURES_DIR, SOUNDS_DIR, GUI_BITMAPS_DIR];
-
-/**
- * The output-relative path a derived file must be written at, given its source's spelling. The
- * content routes match case-sensitively, so inside a served subtree the spelling is
- * canonical: the route's own casing plus a lower-cased tail. Paths outside those subtrees pass through.
- */
-export function servedRelPath(rel: string): string {
-  const segments = rel.split(/[\\/]+/);
-  for (const dir of SERVED_DIRS) {
-    const root = dir.split('/');
-    if (segments.length <= root.length) continue;
-    if (!root.every((s, i) => segments[i]?.toLowerCase() === s.toLowerCase())) continue;
-    return vjoin(dir, ...segments.slice(root.length).map((s) => s.toLowerCase()));
-  }
-  return rel;
-}
+/** Bob atlases plus the player, GUI and font colour LUTs. */
+export const BOBS_DIR = 'bobs';
+/** Ground texture pages and transition overlays. */
+export const TEXTURES_DIR = 'textures';
+/** The mod's `.wav` tree. */
+export const SOUNDS_DIR = 'sounds';
+/** Menu and HUD backdrop fills. */
+export const GUI_BITMAPS_DIR = 'gui-bitmaps';
+/** Decoded map grids and their sidecars. */
+export const MAPS_DIR = 'maps';
 
 /**
  * Writes `value` as pretty-printed JSON (2-space indent, trailing newline) to `<outDir>/<relPath>`,

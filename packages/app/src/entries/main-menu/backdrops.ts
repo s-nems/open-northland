@@ -17,6 +17,8 @@ import { rotationOrder } from './rotation.js';
  * static brand art stands.
  */
 
+/** The listing `npm run menu-backdrops` writes beside the stills it captured. */
+const BACKDROPS_INDEX_URL = '/backdrops-index.json';
 /** How long one still stays before the next crossfades in; menu.css sizes the matching push-in. */
 const DWELL_MS = 14_000;
 
@@ -76,7 +78,7 @@ function setSceneArt(host: HTMLElement, url: string): void {
 
 /** False leaves the static art standing; an aborted menu reports true, having nothing to fall back to. */
 async function boot(host: HTMLElement, opening: string | null, signal: AbortSignal): Promise<boolean> {
-  const files = parseStillList(await fetchJsonOrNull<unknown>('/backdrops-index'));
+  const files = parseStillList(await fetchJsonOrNull<unknown>(BACKDROPS_INDEX_URL));
   // An unreachable route says nothing about the pool; an empty one clears the cached copy.
   if (files === null) return false;
   rememberPool(files);

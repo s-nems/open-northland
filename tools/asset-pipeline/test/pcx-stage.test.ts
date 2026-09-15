@@ -5,7 +5,8 @@ import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
-import { TEXTURES_DIR } from '../src/stages/content-tree.js';
+import { MOD_GUI_BITMAPS_DIR, MOD_TEXTURES_DIR } from '../src/roots.js';
+import { GUI_BITMAPS_DIR, TEXTURES_DIR } from '../src/stages/content-tree.js';
 import { composeMaskedTransitionPages, convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
@@ -47,18 +48,21 @@ describe('convertPcxTree', () => {
     await rm(join(game, '..'), { recursive: true, force: true });
   });
 
-  it('mirrors every .pcx into the out dir as a .png, preserving the subtree', async () => {
+  it('converts the texture pages and GUI bitmaps into their served directories as .png', async () => {
     const { bytes, width, height } = samplePcx();
-    await mkdir(join(game, 'pics', 'gui'), { recursive: true });
-    await writeFile(join(game, 'logo.pcx'), bytes);
-    await writeFile(join(game, 'pics', 'gui', 'button.PCX'), bytes); // case-insensitive match
-    await writeFile(join(game, 'pics', 'notes.txt'), 'ignore me');
+    await mkdir(join(game, MOD_TEXTURES_DIR), { recursive: true });
+    await mkdir(join(game, MOD_GUI_BITMAPS_DIR), { recursive: true });
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'text_000.pcx'), bytes);
+    await writeFile(join(game, MOD_GUI_BITMAPS_DIR, 'bg_button.PCX'), bytes); // case-insensitive match
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'notes.txt'), 'ignore me');
 
     const done = await convertPcxTree(fs, { mod: game }, out);
 
-    expect(done.map((c) => c.output).sort()).toEqual(['logo.png', 'pics/gui/button.png']);
-    const png = await readFile(join(out, 'logo.png'));
-    const decoded = await decodePng(png);
+    expect(done.map((c) => c.output).sort()).toEqual([
+      vjoin(GUI_BITMAPS_DIR, 'bg_button.png'),
+      vjoin(TEXTURES_DIR, 'text_000.png'),
+    ]);
+    const decoded = await decodePng(await readFile(join(out, TEXTURES_DIR, 'text_000.png')));
     expect(decoded.width).toBe(width);
     expect(decoded.height).toBe(height);
     // Close the loop: the bytes that survived readFile -> pcxToPng -> writeFile -> readFile must
@@ -66,12 +70,15 @@ describe('convertPcxTree', () => {
     expect(Array.from(decoded.rgba)).toEqual(Array.from(expandToRgba(decodePcx(bytes)).rgba));
   });
 
-  it('writes a served subtree at the route spelling, whatever the source layer spelled', async () => {
-    // A loose tree may spell the textures root any way a case-insensitive host accepted; the page
-    // is served at `/textures/<pageKey>.png` and the loaders read a 404 as absent content.
+  it('lower-cases the served name whatever the source tree spelled, and leaves other pictures alone', async () => {
+    // The page is fetched at `/textures/<pageKey>.png` from a lower-cased IR reference, and a
+    // loader reads a 404 as absent content. Map folders and hypertext pictures have their own stages.
     const { bytes } = samplePcx();
-    await mkdir(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures'), { recursive: true });
+    await mkdir(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures', 'Old'), { recursive: true });
+    await mkdir(join(game, 'CnModMaps', 'arena'), { recursive: true });
     await writeFile(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures', 'Text_000.pcx'), bytes);
+    await writeFile(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures', 'Old', 'text_001.pcx'), bytes);
+    await writeFile(join(game, 'CnModMaps', 'arena', 'minimap.pcx'), bytes);
 
     const done = await convertPcxTree(fs, { mod: game }, out);
 
@@ -81,14 +88,15 @@ describe('convertPcxTree', () => {
 
   it('skips a malformed .pcx with a warning instead of aborting the batch', async () => {
     const { bytes } = samplePcx();
-    await writeFile(join(game, 'good.pcx'), bytes);
-    await writeFile(join(game, 'broken.pcx'), Uint8Array.from([0x0a, 0x05, 0x01])); // too short
+    await mkdir(join(game, MOD_TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'good.pcx'), bytes);
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'broken.pcx'), Uint8Array.from([0x0a, 0x05, 0x01])); // too short
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertPcxTree(fs, { mod: game }, out);
 
-    expect(done.map((c) => c.input)).toEqual(['good.pcx']);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped broken\.pcx: pcx:/));
+    expect(done.map((c) => c.input)).toEqual([join(MOD_TEXTURES_DIR, 'good.pcx')]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped .*broken\.pcx: pcx:/));
     warn.mockRestore();
   });
 
@@ -100,7 +108,7 @@ describe('convertPcxTree', () => {
     // The colour picture expands through its palette; the MASK picture's raw palette-index bytes
     // become the alpha channel directly (the engine convention - no palette expansion for the mask).
     // The IR hands the LOWERCASED normalized paths; the stage must still resolve the real-cased
-    // Data/engine2d/bin/textures tree and write back into it (the /textures serving contract).
+    // Data/engine2d/bin/textures tree and write into the served textures/ directory.
     const width = 2;
     const height = 2;
     const colour = encodePcx({
@@ -115,9 +123,9 @@ describe('convertPcxTree', () => {
       pixels: Uint8Array.from([0, 128, 200, 255]),
       palette: rampPalette(),
     });
-    await mkdir(join(game, TEXTURES_DIR), { recursive: true });
-    await writeFile(join(game, TEXTURES_DIR, 'tran_meadow.pcx'), colour);
-    await writeFile(join(game, TEXTURES_DIR, 'tran_meadow_a.pcx'), mask);
+    await mkdir(join(game, MOD_TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_meadow.pcx'), colour);
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_meadow_a.pcx'), mask);
 
     const done = await composeMaskedTransitionPages(fs, { mod: game }, out, [
       {
@@ -152,9 +160,9 @@ describe('convertPcxTree', () => {
       palette: rampPalette(),
     });
     const mask = encodePcx({ width: 1, height: 1, pixels: Uint8Array.from([9]), palette: rampPalette() });
-    await mkdir(join(game, TEXTURES_DIR), { recursive: true });
-    await writeFile(join(game, TEXTURES_DIR, 'tran_bad.pcx'), colour);
-    await writeFile(join(game, TEXTURES_DIR, 'tran_bad_a.pcx'), mask);
+    await mkdir(join(game, MOD_TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_bad.pcx'), colour);
+    await writeFile(join(game, MOD_TEXTURES_DIR, 'tran_bad_a.pcx'), mask);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await composeMaskedTransitionPages(fs, { mod: game }, out, [

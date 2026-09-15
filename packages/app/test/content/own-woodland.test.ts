@@ -51,7 +51,7 @@ describe.runIf(hasRealIr())('own woodland content joins', () => {
           readFileSync(
             join(
               contentDir(),
-              `Data/engine2d/bin/bobs/${name.startsWith('mushroom ') ? 'ls_mushrooms' : 'ls_meadows'}.${row.paletteName}.atlas.json`,
+              `bobs/${name.startsWith('mushroom ') ? 'ls_mushrooms' : 'ls_meadows'}.${row.paletteName}.atlas.json`,
             ),
             'utf8',
           ),

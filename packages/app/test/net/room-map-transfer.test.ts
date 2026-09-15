@@ -41,9 +41,11 @@ function room(): RoomView {
 function transport(local: boolean, kind = 'user'): typeof fetch {
   return async (input) => {
     const path = String(input);
-    if (path === '/maps-index')
+    if (path === '/maps-index.json')
       return new Response(
-        JSON.stringify(local ? [{ id: 'island', provenance: { kind, folder: 'UserMaps/island' } }] : []),
+        JSON.stringify(
+          local ? [{ id: 'island', minimap: false, provenance: { kind, folder: 'UserMaps/island' } }] : [],
+        ),
       );
     return local && path === '/maps/island.json'
       ? new Response(JSON.stringify(MAP))
@@ -144,7 +146,7 @@ it('drops completion after leave or a new room even when fetch ignores abort', a
 
 it('uses creation-time verified documents instead of reloading a changed local map', async () => {
   const fetchImpl: typeof fetch = async (input) => {
-    if (String(input) === '/maps-index') return transport(true)(input);
+    if (String(input) === '/maps-index.json') return transport(true)(input);
     throw new Error('map documents must not be fetched again');
   };
   const s = setup(true, 'Host', fetchImpl);
@@ -159,9 +161,11 @@ it('uses creation-time verified documents instead of reloading a changed local m
 
 it('vetoes delivery of a locally known unknown-origin map even when its id casing differs', async () => {
   const fetchImpl: typeof fetch = async (input) =>
-    String(input) === '/maps-index'
+    String(input) === '/maps-index.json'
       ? new Response(
-          JSON.stringify([{ id: 'ISLAND', provenance: { kind: 'unknown', folder: 'Data/maps/island' } }]),
+          JSON.stringify([
+            { id: 'ISLAND', minimap: false, provenance: { kind: 'unknown', folder: 'Data/maps/island' } },
+          ]),
         )
       : new Response('', { status: 404 });
   const s = setup(false, 'Guest', fetchImpl);

@@ -1,7 +1,6 @@
 # Build the converted content in CI and ship it inside the installers and the web image
 
 **Area:** tooling, pipeline, desktop · **Focus:** release · **Priority:** P2
-**Blocked by:** [Write the served content layout](content-in-build-2-served-layout.md)
 
 After the two preceding tickets nothing but a developer's shell produces `content/`: the desktop
 `extraResources` entry copies an empty tree on a CI runner, and there is no web image at all. A

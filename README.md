@@ -78,7 +78,6 @@ See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for commands, diagnostics, and 
 packages/
   app/               Browser shell, input, menus, HUD, and scenes
   audio/             Sound selection and Web Audio playback
-  content-resolver/  Shared routing for generated content
   data/              Validated schemas and content loaders
   desktop/           Electron shell serving the app and the converted content
   render/            PixiJS isometric renderer

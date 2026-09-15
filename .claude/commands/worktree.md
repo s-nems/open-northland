@@ -107,7 +107,7 @@ cd "$worktree/packages/app" && ./node_modules/.bin/vite --port "$PORT" --strictP
 ```
 
 Before sending the URL, prove the listener's cwd is this worktree (`lsof -nP -iTCP:$PORT
--sTCP:LISTEN`) and that `/maps-index` answers 200 - a 404 there means the content link is missing.
+-sTCP:LISTEN`) and that `/maps-index.json` answers 200 - a 404 there means the content link is missing.
 Report the port and pid with the link.
 
 ## 7. Handoff

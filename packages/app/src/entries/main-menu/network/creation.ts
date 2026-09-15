@@ -1,4 +1,4 @@
-import type { MapsIndexEntry } from '@open-northland/content-resolver/wire';
+import { type MapsIndexEntry, mapLobbySlots } from '@open-northland/data';
 import { prepareInitialSave } from '@open-northland/net-client';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import { loadMapList } from '../../../content/maps-index.js';
@@ -27,19 +27,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   const { script } = readVerifiedMapDocuments(handle);
   assertMultiplayerMap(script);
   const metadata: MapsIndexEntry | undefined = (await loadMapList()).find((item) => item.id === mapId);
-  const players =
-    metadata?.players ??
-    script?.players.map((slot) => {
-      const allowed = script.multiplayer?.slotOptions.find((row) => row.player === slot.player)?.allowed;
-      const { name, ...player } = slot;
-      return {
-        ...player,
-        ...(name === undefined ? {} : { name }),
-        claimable: slot.type === 'human' || allowed?.includes('human') === true,
-        hidden: script.multiplayer?.hiddenSlots.includes(slot.player) ?? false,
-        aiAllowed: allowed === undefined || allowed.includes('ai'),
-      };
-    });
+  const players = metadata?.players ?? (script === null ? undefined : mapLobbySlots(script));
   if (!players?.some((slot) => slot.claimable && !slot.hidden) || !script?.players.length)
     throw new Error('This map has no playable seats');
   const roster = new Map(players.map((slot) => [slot.player, slot]));

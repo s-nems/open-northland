@@ -10,10 +10,10 @@ must remain outside the repository.
 CulturesNation mod
        |
        v
-asset-pipeline -> generated content -> content-resolver -> app / desktop
-                                               commands |
-                                                        v
-                         data schemas/loaders ->       sim
+asset-pipeline -> generated content -> app / desktop
+                                  commands |
+                                           v
+            data schemas/loaders ->       sim
                                                         |
                                       snapshots + events
                                                         v
@@ -39,8 +39,7 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
   tick clock, and command frames. It holds no content and runs no simulation. The contract is
   `docs/NETWORK.md`.
 - `packages/app` owns browser input, menus, HUD, the frame loop, and package wiring.
-- `packages/content-resolver` maps content URLs onto the generated directory for every host.
-- `packages/vfs` is the file-system seam the pipeline and the content routes share.
+- `packages/vfs` is the file-system seam the pipeline writes through.
 - `packages/desktop` serves the browser build and the converted content through Electron.
 - `tools/asset-pipeline` converts the CulturesNation mod into local, validated content.
 
@@ -91,8 +90,9 @@ The full contract is in [`../packages/sim/AGENTS.md`](../packages/sim/AGENTS.md)
 ## Content boundary
 
 The pipeline writes one validated rules document at `content/ir.json`, plus decoded maps, atlases,
-GUI files, and audio. Runtime packages load these through `packages/data` and
-`packages/content-resolver`; the sim never parses original `.ini`, `.cif`, or binary files.
+GUI files, audio, and the `maps-index.json`/`bobs-index.json` listings, laid out exactly as the app
+fetches them, so every host serves the tree as static files. Runtime packages validate what they load
+through `packages/data`; the sim never parses original `.ini`, `.cif`, or binary files.
 
 Synthetic fallback content under `packages/app/src/` keeps normal tests and development scenes
 usable without copyrighted data. See [`DATA-FORMAT.md`](DATA-FORMAT.md).

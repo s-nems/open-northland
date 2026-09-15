@@ -2,6 +2,13 @@ import { type ReadableVfs, relIn, vjoin } from '@open-northland/vfs';
 import { CULTURESNATION_HOME_URL, CULTURESNATION_MOD } from './mod-root.js';
 import { walkFiles } from './walk.js';
 
+/** The mod subtrees the stages read by name; the on-disk spelling varies, so resolve them through
+ *  `resolveSourceFile` or match them lower-cased. */
+export const MOD_BOBS_DIR = 'Data/engine2d/bin/bobs';
+export const MOD_TEXTURES_DIR = 'Data/engine2d/bin/textures';
+export const MOD_SOUNDS_DIR = 'Data/engine2d/bin/sounds';
+export const MOD_GUI_BITMAPS_DIR = 'Data/gui/bitmaps';
+
 /** The source tree one conversion reads: the unpacked culturesnation mod. */
 export interface SourceRoots {
   readonly mod: string;

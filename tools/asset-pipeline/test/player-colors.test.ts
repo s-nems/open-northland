@@ -6,9 +6,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
 import { decodePng } from '../src/decoders/png.js';
+import { BOBS_DIR } from '../src/stages/content-tree.js';
 import { convertPlayerColorLut } from '../src/stages/player-colors.js';
 import { indexSourceAssets } from '../src/stages/source-files.js';
-import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
+import { makeTempDir } from './support/game-tree.js';
 
 const fs = nodeVfs();
 

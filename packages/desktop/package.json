@@ -12,10 +12,6 @@
     "dist": "npm run build && electron-builder --config electron-builder.yml",
     "dist:win": "npm run build && electron-builder --config electron-builder.yml --win"
   },
-  "dependencies": {
-    "@open-northland/content-resolver": "*",
-    "@open-northland/vfs": "*"
-  },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "electron": "^43.1.1",

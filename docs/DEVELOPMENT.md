@@ -42,6 +42,11 @@ lobby compares between players. CnMod 1.3.2 is the current verified input; treat
 unverified until the real pipeline and content gates pass. The generated `content/` tree is ignored
 by Git.
 
+The output is laid out exactly as the app fetches it, so every host serves it as static files from
+`/`: `ir.json`, the `maps-index.json` and `bobs-index.json` listings, and the `maps/`, `bobs/`,
+`textures/`, `sounds/`, `music/`, `gui/`, `gui-bitmaps/`, `goods/` and `terrain-palettes/` directories.
+`npm run menu-backdrops` adds `backdrops/` and `backdrops-index.json` beside them.
+
 The music stage renders the DirectMusic soundtrack (`DataX/DM2`, which the mod ships) to one ogg
 track per segment entirely in Node: segment interpretation, DLS synthesis, reverb, and ogg encoding
 all run from npm dependencies, with no native toolchain. Without `DataX/DM2` the stage is skipped

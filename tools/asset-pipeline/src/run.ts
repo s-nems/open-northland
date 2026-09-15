@@ -5,12 +5,13 @@ import { errorMessage } from './errors.js';
 import type { PipelineProgress } from './progress.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
-import { SOUNDS_DIR, TEXTURES_DIR } from './stages/content-tree.js';
+import { MAPS_DIR, SOUNDS_DIR, TEXTURES_DIR } from './stages/content-tree.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
 import { HYPERTEXT_PICTURES_DIR } from './stages/gui/paths.js';
 import { writeIr } from './stages/ir/index.js';
+import { BOBS_INDEX_FILE, MAPS_INDEX_FILE, writeListings } from './stages/listings.js';
 import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
 import { renderMusicStage } from './stages/music/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
@@ -21,6 +22,7 @@ import {
 } from './stages/player-colors.js';
 import { copySoundTree } from './stages/sounds.js';
 import { indexSourceAssets } from './stages/source-files.js';
+import { convertVertexPalette, VERTEX_PALETTE_FILE } from './stages/vertex-palette.js';
 
 /** Runs the full conversion of the mod root into the IR under `args.out`; `progress` is optional telemetry. */
 export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgress): Promise<void> {
@@ -37,6 +39,10 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   progress?.stage?.('pictures');
   const pictures = await convertPcxTree(fs, roots, args.out, progress?.item);
   console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
+  const vertexPalette = await convertVertexPalette(fs, roots, args.out);
+  console.log(
+    `[pipeline] vertex palette: ${vertexPalette.length} entries -> ${vjoin(args.out, VERTEX_PALETTE_FILE)}`,
+  );
 
   progress?.stage?.('atlases');
   const graphics = await resolveGraphicsBindings(fs, roots);
@@ -144,14 +150,14 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
   const minimaps = terrains.filter((t) => t.minimap).length;
   const synthesized = terrains.filter((t) => t.minimapSynthesized).length;
-  const scripts = terrains.filter((t) => t.script).length;
+  const scripts = terrains.filter((t) => t.script !== undefined).length;
   const briefings = terrains.filter((t) => t.briefing).length;
   const stringTables = terrains.filter((t) => t.strings).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
       `(${totalCells} cells total, ${minimaps} minimap(s) ` +
       `of which ${synthesized} synthesized, ${scripts} script sidecar(s), ${stringTables} string ` +
-      `table(s), ${briefings} briefing sidecar(s)) into ${vjoin(args.out, 'maps')}`,
+      `table(s), ${briefings} briefing sidecar(s)) into ${vjoin(args.out, MAPS_DIR)}`,
   );
 
   progress?.stage?.('music');
@@ -162,4 +168,9 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
       : `[pipeline] music: ${music.rendered} rendered, ${music.kept} kept, ${music.failed} failed ` +
           `into ${vjoin(args.out, 'music')}`,
   );
+
+  // Last, so the bobs listing sees every atlas the stages above wrote.
+  progress?.stage?.('listings');
+  await writeListings(fs, args.out, terrains);
+  console.log(`[pipeline] listings: ${MAPS_INDEX_FILE}, ${BOBS_INDEX_FILE} into ${args.out}`);
 }

@@ -38,7 +38,7 @@ describe.runIf(hasRealIr())('roster is backed by decoded content', () => {
   });
 
   it('every head look composes over its body walk range (no headless cell)', () => {
-    const bobs = resolve(contentDir(), 'Data/engine2d/bin/bobs');
+    const bobs = resolve(contentDir(), 'bobs');
     if (!existsSync(bobs)) return;
     const byLib = new Map((rawIrUnderTest() as Ir).bobSequences?.map((s) => [s.imagelib, s.sequences ?? []]));
     interface AtlasFrameLite {
@@ -77,7 +77,7 @@ describe.runIf(hasRealIr())('roster is backed by decoded content', () => {
   });
 
   it('every roster body + head atlas is decoded on disk (no 404 in the gallery)', () => {
-    const bobs = resolve(contentDir(), 'Data/engine2d/bin/bobs');
+    const bobs = resolve(contentDir(), 'bobs');
     // Skip if the bobs dir itself isn't present (partial content/).
     if (!existsSync(bobs)) return;
     for (const c of VIKING_CHARACTERS) {

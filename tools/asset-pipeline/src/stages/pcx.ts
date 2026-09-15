@@ -3,8 +3,8 @@ import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
-import { collectSourceFiles, type SourceRoots } from '../roots.js';
-import { servedRelPath, TEXTURES_DIR } from './content-tree.js';
+import { collectSourceFiles, MOD_GUI_BITMAPS_DIR, MOD_TEXTURES_DIR, type SourceRoots } from '../roots.js';
+import { GUI_BITMAPS_DIR, TEXTURES_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
@@ -34,9 +34,9 @@ export interface PcxConversion {
  * `<stem>.masked.png` under {@link TEXTURES_DIR}. The mask picture's raw palette-index byte is the
  * coverage value and becomes the alpha channel directly (format oracle in docs/SOURCES.md).
  *
- * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} because the IR's normalized
- * paths are lowercased; every real `[transition]` record lives in that one directory. Pairs are deduped
- * by texture path, and a missing or undecodable picture is logged and skipped.
+ * Sources resolve by basename under the mod's textures directory because the IR's normalized paths
+ * are lowercased; every real `[transition]` record lives in that one directory. Pairs are deduped by
+ * texture path, and a missing or undecodable picture is logged and skipped.
  */
 export async function composeMaskedTransitionPages(
   fs: Vfs,
@@ -47,7 +47,7 @@ export async function composeMaskedTransitionPages(
   const done: PcxConversion[] = [];
   const seen = new Set<string>();
   const readTexturePcx = (normalizedPath: string): Promise<Uint8Array> =>
-    readSourceFile(fs, roots, vjoin(TEXTURES_DIR, vbasename(normalizedPath)));
+    readSourceFile(fs, roots, vjoin(MOD_TEXTURES_DIR, vbasename(normalizedPath)));
   for (const pair of pairs) {
     if (seen.has(pair.texture)) continue;
     seen.add(pair.texture);
@@ -73,11 +73,16 @@ export async function composeMaskedTransitionPages(
   return done;
 }
 
+/** The flat mod directories whose `.pcx` pictures the app fetches, and the served directory each lands in. */
+const PICTURE_DIRS: readonly { readonly source: string; readonly output: string }[] = [
+  { source: MOD_TEXTURES_DIR, output: TEXTURES_DIR },
+  { source: MOD_GUI_BITMAPS_DIR, output: GUI_BITMAPS_DIR },
+];
+
 /**
- * Converts every `.pcx` under the mod root to a `.png` under `outDir`, one per relative path,
- * canonicalized for the served subtrees ({@link servedRelPath}). A picture that fails to read or
- * decode is logged and skipped; an output-write failure or an unreadable root propagates as an
- * environmental error.
+ * Converts every `.pcx` in the {@link PICTURE_DIRS} to a lower-cased `.png` under `outDir`. A picture
+ * that fails to read or decode is logged and skipped; an output-write failure or an unreadable root
+ * propagates as an environmental error.
  */
 export async function convertPcxTree(
   fs: Vfs,
@@ -86,18 +91,31 @@ export async function convertPcxTree(
   onItem?: StageItemReporter,
 ): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
-  for (const { rel: input, path } of await collectSourceFiles(fs, roots, (rel) => rel.endsWith('.pcx'))) {
-    const output = servedRelPath(input.replace(/\.pcx$/i, '.png'));
-    let png: Uint8Array;
-    try {
-      png = await pcxToPng(await fs.readFile(path));
-    } catch (err) {
-      console.warn(`[pipeline] skipped ${input}: ${errorMessage(err)}`);
-      continue;
+  for (const dir of PICTURE_DIRS) {
+    const prefix = `${dir.source.toLowerCase()}/`;
+    const pictures = await collectSourceFiles(
+      fs,
+      roots,
+      (rel) => rel.startsWith(prefix) && rel.endsWith('.pcx') && !rel.slice(prefix.length).includes('/'),
+    );
+    for (const { rel: input, path } of pictures) {
+      const output = vjoin(
+        dir.output,
+        vbasename(input)
+          .toLowerCase()
+          .replace(/\.pcx$/, '.png'),
+      );
+      let png: Uint8Array;
+      try {
+        png = await pcxToPng(await fs.readFile(path));
+      } catch (err) {
+        console.warn(`[pipeline] skipped ${input}: ${errorMessage(err)}`);
+        continue;
+      }
+      await fs.writeFile(vjoin(outDir, output), png);
+      done.push({ input, output });
+      onItem?.(done.length);
     }
-    await fs.writeFile(vjoin(outDir, output), png);
-    done.push({ input, output });
-    onItem?.(done.length);
   }
   return done;
 }

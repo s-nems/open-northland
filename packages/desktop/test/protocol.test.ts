@@ -17,7 +17,7 @@ describe('routePathOf', () => {
     expect(routePathOf('assets', '/gravel-DqJ8dxXq.png')).toBe('/assets/gravel-DqJ8dxXq.png');
   });
 
-  it('keeps the raw pathname raw - decoding belongs to the shared resolver', () => {
+  it('keeps the raw pathname raw - the file lookup decodes it', () => {
     expect(routePathOf('game', '/maps/two%20words.json')).toBe('/maps/two%20words.json');
   });
 });

@@ -1,7 +1,6 @@
-import type { MapsIndexProvenance } from '@open-northland/content-resolver/wire';
+import type { MapProvenance } from '@open-northland/data';
 import type { ClientMessage, RoomView, ServerMessage } from '@open-northland/net-protocol';
-import { withBaseUrl } from '../../base-url.js';
-import { parseMapsIndex } from '../maps-index.js';
+import { MAPS_INDEX_URL, parseMapsIndex } from '../maps-index.js';
 import { loadPersistedMap, persistedMapOrigin, persistVerifiedMap } from './cache.js';
 import { decodeMapTransfer, encodeMapTransfer, mapDeliveryAllowed } from './codec.js';
 import {
@@ -29,7 +28,7 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
   let generation = 0;
   let abort: AbortController | undefined;
   let documents: VerifiedMapDocuments | null = null;
-  let origin: MapsIndexProvenance | undefined;
+  let origin: MapProvenance | undefined;
   let locallyListed = false;
   let loaded = false;
   let loading = false;
@@ -115,7 +114,7 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
     try {
       const [handle, response] = await Promise.all([
         roomPrepared?.mapId === mapId ? roomPrepared : loadVerifiedMapDocuments(mapId, transport),
-        transport(withBaseUrl('/maps-index')),
+        transport(MAPS_INDEX_URL),
       ]);
       if (!response.ok && response.status !== 404)
         throw new Error(`Cannot read map provenance: HTTP ${response.status}`);

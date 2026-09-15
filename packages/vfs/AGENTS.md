@@ -1,6 +1,6 @@
 # Vfs package contract
 
-`packages/vfs` is the file-system seam the asset pipeline and the content routes share. The root
+`packages/vfs` is the file-system seam the asset pipeline writes through. The root
 [`AGENTS.md`](../../AGENTS.md) applies.
 
 - Paths are `/`-separated; each adapter defines its root form (`node` takes native absolute paths,

@@ -1,4 +1,3 @@
-import { withBaseUrl } from '../../base-url.js';
 import { playerSwatchHex } from '../../catalog/roster.js';
 import { bcp47Tag, formatMessage, messages, tribeName } from '../../i18n/index.js';
 import { generatedMapPreview } from './map-preview.js';
@@ -90,7 +89,7 @@ export function createMapDetailsCard(): MapDetailsCard {
     };
     if (item.minimap) {
       // A broken decoded PNG falls back to the client-side rasterized preview.
-      previewImg.src = withBaseUrl(`/maps/${encodeURIComponent(item.id)}.png`);
+      previewImg.src = `/maps/${encodeURIComponent(item.id)}.png`;
       previewImg.hidden = false;
     } else {
       applyGenerated();

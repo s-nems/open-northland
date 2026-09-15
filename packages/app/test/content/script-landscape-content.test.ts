@@ -1,10 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { MapScript } from '@open-northland/data';
+import { MapScript, VertexPalette } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { scriptLandscapeTypes } from '../../src/content/script-landscape.js';
-import { vertexPaletteFromPcx } from '../../src/content/vertex-palette.js';
 import { resolveMissionScript } from '../../src/game/world/mission-script.js';
 import { contentDir, hasRealIr, rawIrUnderTest } from './helpers.js';
 
@@ -27,15 +26,12 @@ describe.runIf(hasRealIr())('script landscape content joins', () => {
     expect(placements).toBeGreaterThan(0);
   });
 
-  const palettePath = resolve(contentDir(), 'Data/engine2d/bin/palettes/misc/vertexcolors.pcx');
+  const palettePath = resolve(contentDir(), 'terrain-palettes/vertexcolors.json');
   it.skipIf(!existsSync(palettePath))(
-    'reads the owned vertex PCX as 256 RGB entries rather than a grayscale ramp',
+    'ships the vertex palette as 256 RGB entries rather than a grayscale ramp',
     () => {
-      const bytes = readFileSync(palettePath);
-      expect(bytes[bytes.length - 769]).toBe(12);
-      const palette = vertexPaletteFromPcx(bytes);
-      expect(palette).toHaveLength(256);
-      expect(palette?.some((rgb) => ((rgb >> 16) & 255) !== (rgb & 255))).toBe(true);
+      const palette = VertexPalette.parse(JSON.parse(readFileSync(palettePath, 'utf8')));
+      expect(palette.some((rgb) => ((rgb >> 16) & 255) !== (rgb & 255))).toBe(true);
     },
   );
 });

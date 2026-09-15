@@ -7,6 +7,5 @@
     "types": ["node"],
     "emitDeclarationOnly": true
   },
-  "include": ["src/**/*.ts"],
-  "references": [{ "path": "../content-resolver" }, { "path": "../vfs" }]
+  "include": ["src/**/*.ts"]
 }
