@@ -23,7 +23,7 @@ const SHOTS = [
   { map: 'demo_mainmenu_10' },
   { map: 'mroczny_swiat' },
   { map: 'saracen_4' },
-  { map: 'kraina_starych_bohatero_w' },
+  { map: 'kraina_starych_bohaterow' },
   { map: 'burza_piaskowa' },
   { map: 'straznicypolnocy' },
   { map: 'wielka_inwazja' },

@@ -21,11 +21,14 @@ export function mapCifToInfo(
 /**
  * Slugs a map's containing-folder name into its `MapInfo` `id`. The `.cif` logic header carries no
  * human-readable id, so the one-per-folder name is the stable cross-reference key, slugged like the
- * type ids the `.ini` extractors mint.
+ * type ids the `.ini` extractors mint. Letters with a combining mark fold to the base letter first,
+ * so the id does not depend on the Unicode normalization the host file system stored the folder in.
  */
 export function mapIdFromPath(mapCifRelPath: string): string {
   const folder = vdirname(mapCifRelPath).split(/[\\/]/).pop() ?? mapCifRelPath;
   return folder
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')

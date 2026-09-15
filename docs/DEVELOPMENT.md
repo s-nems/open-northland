@@ -28,7 +28,17 @@ started with: restart it after changing sim, render, data, or audio source.
 
 ## Local game content
 
-Generate content from the unpacked CulturesNation mod, the directory that holds `DataCnmd/`:
+A release builds `content/` from the pinned CulturesNation archive, and the same command does it
+locally:
+
+```bash
+npm run build:content                               # downloads https://game.opennorthland.org/cnmod.zip
+npm run build:content -- --zip "../CnMod 1.3.2.zip" # or takes a local copy of the archive
+```
+
+It verifies the archive's SHA-256, unpacks it into a temporary directory with `scripts/unzip.mjs`,
+replaces any existing `content/` and runs the pipeline. While working on the pipeline itself, run it
+directly against an unpacked mod, the directory that holds `DataCnmd/`:
 
 ```bash
 npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content
@@ -259,10 +269,32 @@ See [own asset runtime](art/OWN-ASSET-RUNTIME.md) for exports, markers and curre
 Use `npm run art -- list` and follow [the art pipeline](art/PIPELINE.md) for candidate builds, review,
 approval and publication. This workshop is independent of `npm run pipeline`, which decodes the mod.
 
+## Web image
+
+The `Release` workflow builds the converted content once, then the desktop installers, the web image
+and the relay image from one resolved commit. The web image, `ghcr.io/s-nems/open-northland-web`, is
+nginx serving `packages/app/dist` and `content/` from one document root: the app at `/`, the hashed
+`/assets/` cached for good, everything else revalidated, a missing path a plain 404, and `/healthz`
+for the host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
+
+The installers and the web image contain decoded original content. They are distributed only through
+the private repository's releases and its private GHCR packages, never pushed to a public registry.
+
+To build and check the image locally, after `npm run build` with a `content/` in place:
+
+```bash
+npm run web:image
+node deploy/web/smoke-image.mjs open-northland-web
+docker run --rm --publish 8080:80 open-northland-web
+```
+
+The smoke check runs the image and reads the served contract back; `deploy/web/smoke-image.mjs`
+lists what it asks for.
+
 ## Relay image
 
-The `Release` workflow builds the desktop installers and the relay image from one resolved commit and
-publishes the relay to `ghcr.io/s-nems/open-northland-relay`, for `linux/amd64` and `linux/arm64`.
+The relay image, `ghcr.io/s-nems/open-northland-relay`, is published for `linux/amd64` and
+`linux/arm64`.
 Every build gets a `sha-<short>` tag; `latest` moves only once the installers and the download page
 are published, and only for a dispatch of the branch head, so rebuilding an older commit cannot roll a
 deployment backwards. The image is built from `packages/net-server/Dockerfile`: the relay and

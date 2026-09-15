@@ -24,6 +24,13 @@ describe('mapIdFromPath', () => {
     expect(mapIdFromPath(join('CnModMaps', 'tutorial_002', 'map.cif'))).toBe('tutorial_002');
     expect(mapIdFromPath(join('CnModMaps', 'SPECJALNA- FORTECA', 'map.cif'))).toBe('specjalna_forteca');
   });
+  it('folds accented letters the same way whichever normalization the file system stored', () => {
+    expect(mapIdFromPath('CnModMaps/Kraina Starych Bohater\u00f3w/map.cif')).toBe('kraina_starych_bohaterow');
+    expect(mapIdFromPath('CnModMaps/Kraina Starych Bohatero\u0301w/map.cif')).toBe(
+      'kraina_starych_bohaterow',
+    );
+    expect(mapIdFromPath('CnModMaps/Magiczny_Las \u2014 12 players/map.cif')).toBe('magiczny_las_12_players');
+  });
 
   it('handles forward-slash paths regardless of host separator', () => {
     expect(mapIdFromPath('CnModMaps/Zgielk2/map.cif')).toBe('zgielk2');
