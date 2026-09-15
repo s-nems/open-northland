@@ -287,14 +287,8 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       missions.push(mission(sec));
     }
   }
-  const scripted =
-    players.length +
-    diplomacy.length +
-    specialItems.length +
-    misc.length +
-    missions.length +
-    humanNames.length +
-    permissions.length;
+  const playerLines = players.length + diplomacy.length + specialItems.length + misc.length;
+  const scripted = playerLines + missions.length + humanNames.length + permissions.length;
   if (scripted === 0 && multiplayer === undefined) return undefined;
   return MapScript.parse({
     players,

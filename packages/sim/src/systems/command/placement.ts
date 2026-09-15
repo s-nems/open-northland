@@ -75,10 +75,7 @@ export function placeBuilding(
   if (command.force !== true) {
     // A house paper names its house whether or not the tribe has unlocked it.
     const techGated = paper === undefined || paper.kind === 'placeAny';
-    if (
-      techGated &&
-      !buildingEnabled(world, ctx, command.owner, command.tribe, command.buildingType)
-    ) {
+    if (techGated && !buildingEnabled(world, ctx, command.owner, command.tribe, command.buildingType)) {
       return;
     }
 

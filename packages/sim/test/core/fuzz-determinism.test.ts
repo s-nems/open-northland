@@ -276,7 +276,7 @@ const CHEST_OPENER = (NUCLEUS_HOME + 9) as Entity;
 /** The preamble's attached settler: the last entity it creates. The attach assertion pins the id, so a
  *  preamble that grows another entity fails loudly here rather than quietly stopping the coverage. */
 const ATTACHED_SETTLER = (PREAMBLE_CHESTS.length + 11) as Entity;
-const FUZZ_SEEDS = [11, 29, 47] as const;
+const FUZZ_SEEDS = [13, 29, 47] as const;
 /** Past the tribute table's 44 slots, so the out-of-range refusal is rolled too. */
 const TRIBUTE_SLOT_RANGE = 48;
 const TICKS = 600;

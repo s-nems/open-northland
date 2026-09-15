@@ -1,5 +1,6 @@
 import type {
   ContentSet,
+  MapDiplomacy,
   MapScript,
   MapSpecialItem,
   TerrainMapFile,
