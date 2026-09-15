@@ -9,16 +9,26 @@ Open Northland is an independent, cross-platform engine for *Cultures - 8th Wond
 Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
 an offline asset pipeline.
 
-The repository does not include game files or decoded assets. The maps, graphics, and audio come
-from the free [CulturesNation](https://culturesnation.pl) community mod, which carries the game data
-and is converted locally into a `content/` directory. The original game's own campaigns and tutorials
-live in its packed archives and are not converted.
+The repository is private and never contains original game files or decoded content; `npm run
+check:assets` rejects both in CI. The maps, graphics, and audio a build plays come from the free
+[CulturesNation](https://culturesnation.pl) community mod, whose archive is a build input: a release
+downloads the pinned `cnmod.zip` from `game.opennorthland.org`, converts it into `content/`, and packs
+that tree into the desktop installers and the web image. Those two artifacts contain decoded
+original data and go no further than this repository's releases and GHCR packages, which must stay
+private; [`docs/LEGAL.md`](docs/LEGAL.md) is the canonical wording.
 
-To test it out, try:
-- [Browser-based build](https://game.opennorthland.org) (as a quick-access demo)
-- [Desktop application builds](https://github.com/s-nems/open-northland/tags) (preferred distribution)
+The original assets are a stand-in while the project's own are made ([`docs/art/`](docs/art/AGENTS.md));
+replacing them is the goal.
 
-![A settlement rendered by Open Northland using locally decoded game data](docs/images/settlement.webp)
+![A settlement rendered by Open Northland from decoded game data](docs/images/settlement.webp)
+
+## Builds
+
+The `Release` workflow, dispatched from the Actions tab against `main`, publishes a `build-<short-sha>`
+prerelease with unsigned installers for Windows, macOS, and Linux and pushes the web demo image
+`ghcr.io/s-nems/open-northland-web`. Both need a GitHub login with access to the repository. The
+desktop build is the way to play; the web image is a quick demo. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+describes the workflow and the local equivalents.
 
 ## Status
 
@@ -26,14 +36,15 @@ Open Northland is pre-alpha. The current build has a playable settlement economy
 gathering, production, progression, combat, fog, population systems, and a basic computer player.
 It can load decoded maps and render terrain, buildings, settlers, effects, and the HUD.
 
-Campaign scripting, save games, and multiplayer are not complete. Desktop development builds exist,
-but stable signed releases do not. Current actionable work lives in [`docs/tickets/`](docs/tickets/).
+Campaign scripting, save games, and multiplayer are not complete. Releases are unsigned development
+builds named after their commit; there is no versioned release train. Current actionable work lives
+in [`docs/tickets/`](docs/tickets/).
 
 ## Requirements
 
 - Node.js `^20.19.0` or `>=22.12.0`
-- The free CulturesNation mod for playable content: `CnMod 1.3.2.zip` (about 570 MB) is the current
-  verified input. Unpack it yourself and point `npm run pipeline` at it.
+- For playable content, the pinned CulturesNation archive (`CnMod 1.3.2.zip`, about 570 MB), which
+  `npm run build:content` downloads and converts.
 
 ## Build and test
 
@@ -44,23 +55,24 @@ npm test
 npm run check
 ```
 
-The source, tests, and headless scene checks work without the original game. `npm run build`
-typechecks the workspaces and creates the browser bundle in `packages/app/dist/`. The playable
-browser entries need generated content (next section); without it they show a notice explaining how
-to generate it.
+The source, tests, and headless scene checks work without the mod. `npm run build` typechecks the
+workspaces and creates the browser bundle in `packages/app/dist/`. The playable browser entries need
+converted content (next section); without it they show a notice.
 
-## Generate local content
+## Local content
 
 ```bash
-npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content
+npm run build:content
 npm run dev
 ```
 
-`--mod-root` is the unpacked mod archive, the directory that holds `DataCnmd/`; a game folder with
-the mod installed inside it works too. `--mod-version <label>` stamps the release so multiplayer
-lobbies can compare it. A newer mod release must be verified before replacing the 1.3.2 baseline.
+`build:content` verifies the archive's SHA-256, unpacks it, replaces `content/`, and runs the
+pipeline, exactly as the release does; `-- --zip <file>` converts a local copy of the archive instead
+of downloading it. While working on the pipeline itself, run `npm run pipeline` directly against an
+unpacked mod (see `docs/DEVELOPMENT.md`).
 
-Generated content is ignored by Git. Do not commit or redistribute it.
+Converted content is ignored by Git. Never commit it, and never share it or a build that carries it
+outside the channel `docs/LEGAL.md` allows.
 
 The development server opens on the main menu. Useful direct entries are:
 
@@ -77,28 +89,36 @@ See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for commands, diagnostics, and 
 ```text
 packages/
   app/               Browser shell, input, menus, HUD, and scenes
+  art-contracts/     Shape contracts the project's own assets are validated against
   audio/             Sound selection and Web Audio playback
   data/              Validated schemas and content loaders
   desktop/           Electron shell serving the app and the converted content
+  lockstep/          Session driver: when a tick runs and which commands it carries
+  net-client/        One client of a relayed session
+  net-protocol/      Lockstep wire protocol
+  net-server/        Multiplayer relay
   render/            PixiJS isometric renderer
   sim/               Deterministic simulation
 tools/
-  asset-pipeline/    Converts the CulturesNation mod into local content
-content/             Generated locally and ignored by Git
+  asset-pipeline/    Converts the CulturesNation mod into the served content tree
+  art-pipeline/      Builds and publishes the project's own assets
+deploy/web/          nginx image of the built app and the converted content
+scripts/             Repository checks, content build, benchmarks
+content/             Converted locally or by the release, ignored by Git
 docs/                Design notes, format research, and open tickets
 ```
 
 Start with the [documentation index](docs/README.md) for the design and data flow.
 
-## Contributing
+## Working in the repository
 
-Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request.
-Coding agents must also read [`AGENTS.md`](AGENTS.md).
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Coding agents must also
+read [`AGENTS.md`](AGENTS.md).
 
 ## License and trademarks
 
 Open Northland is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
-This is an independent community project. It is not affiliated with or endorsed by Funatics
-Software, Daedalic Entertainment, or another rights holder of the *Cultures* series. Game names are
-used only to describe compatibility. The full notice is in [`docs/LEGAL.md`](docs/LEGAL.md).
+This is an independent project. It is not affiliated with or endorsed by Funatics Software, Daedalic
+Entertainment, or another rights holder of the *Cultures* series. Game names are used only to
+describe compatibility. The full notice is in [`docs/LEGAL.md`](docs/LEGAL.md).

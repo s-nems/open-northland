@@ -8,10 +8,14 @@ nearest package contract.
 
 ## Repository and legal boundary
 
-The repository may sit beside an unpacked CulturesNation mod archive, the pipeline's only input: it
-carries the game's data files. An owned game installation beside it serves reverse-engineering
-evidence, never the pipeline. Never commit original files, mod files, decoded content, binary probes,
-or reference captures from the original.
+The repository is private and never contains original game files, mod files, decoded content, binary
+probes, or reference captures from the original. `npm run check:assets` rejects tracked `content/`,
+original file types, and unreviewed binaries; review covers the rest. The CulturesNation mod archive
+is the pipeline's only input and a build input: a release converts the pinned archive once and ships
+the decoded content inside the desktop installers and the web image, which go no further than the
+repository's releases and GHCR packages, both kept private. The original assets are a stand-in while
+the project's own are made. An owned game installation beside the checkout serves
+reverse-engineering evidence, never the pipeline.
 
 This is an independent AGPL-3.0-or-later implementation. Do not copy or translate another engine's
 code. Base format and behavior work must use the sources allowed by `docs/SOURCES.md`. The canonical

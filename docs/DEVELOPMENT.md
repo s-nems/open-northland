@@ -16,6 +16,7 @@ npm test -- scenario    # tests matching a name
 npm run test:watch      # watch mode
 npm run check           # Biome formatting and lint checks
 npm run check:fix       # apply safe formatting and lint fixes
+npm run check:assets    # reject original, decoded, or unreviewed binary files
 npm run check:docs      # validate Markdown and ticket links/contracts
 npm run tickets:list    # priority-sorted ticket view
 ```
@@ -28,8 +29,9 @@ started with: restart it after changing sim, render, data, or audio source.
 
 ## Local game content
 
-A release builds `content/` from the pinned CulturesNation archive, and the same command does it
-locally:
+A release builds `content/` from the pinned CulturesNation archive and ships the tree inside the
+desktop installers and the web image; nothing is converted on a player's machine. The same command
+does it locally:
 
 ```bash
 npm run build:content                               # downloads https://game.opennorthland.org/cnmod.zip
@@ -50,7 +52,7 @@ fonts, strings, and the mod's maps. A game folder with the mod installed inside 
 tutorials are not converted. `--mod-version <label>` stamps the manifest with the mod release the
 lobby compares between players. CnMod 1.3.2 is the current verified input; treat a newer release as
 unverified until the real pipeline and content gates pass. The generated `content/` tree is ignored
-by Git.
+by Git and `npm run check:assets` fails on anything tracked under it.
 
 The output is laid out exactly as the app fetches it, so every host serves it as static files from
 `/`: `ir.json`, the `maps-index.json` and `bobs-index.json` listings, and the `maps/`, `bobs/`,
@@ -245,6 +247,22 @@ or another profile. Enter opens the chat line. The perf overlay's third line and
 the round trip, the assigned input delay, the click-to-apply time and the jitter buffer's depth. A
 forced divergence for a resync check is a console mutation of `__opennorthland.sim` in one window.
 
+## Release builds
+
+The `Release` workflow is dispatched by hand from the Actions tab against `main`, or against an
+older commit of it through the `commit` input. It converts the content once with
+`npm run build:content`, hands the tree to the other jobs as a one-day workflow artifact, builds the
+desktop installers natively on Windows, macOS and Linux together with the web image and the relay
+image, then publishes a `build-<short-sha>` prerelease holding the installers, with notes that name
+the images. Every part comes from the one resolved commit. `latest` on the web and relay images moves
+only after a complete release dispatched without the `commit` input, so rebuilding an older commit
+cannot roll a deployment backwards.
+
+The installers and the web image contain decoded original content, so the releases and the GHCR
+packages must stay private and a host that pulls the web image must not be public;
+[`LEGAL.md`](LEGAL.md) has the rule. Downloading either needs a GitHub login with access to the
+repository. The relay image carries neither content nor the simulation.
+
 ## Desktop packaging
 
 ```bash
@@ -271,14 +289,10 @@ approval and publication. This workshop is independent of `npm run pipeline`, wh
 
 ## Web image
 
-The `Release` workflow builds the converted content once, then the desktop installers, the web image
-and the relay image from one resolved commit. The web image, `ghcr.io/s-nems/open-northland-web`, is
-nginx serving `packages/app/dist` and `content/` from one document root: the app at `/`, the hashed
-`/assets/` cached for good, everything else revalidated, a missing path a plain 404, and `/healthz`
-for the host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
-
-The installers and the web image contain decoded original content. They are distributed only through
-the private repository's releases and its private GHCR packages, never pushed to a public registry.
+The web image, `ghcr.io/s-nems/open-northland-web`, is the quick demo of a commit: nginx serving
+`packages/app/dist` and `content/` from one document root, the app at `/`, the hashed `/assets/`
+cached for good, everything else revalidated, a missing path a plain 404, and `/healthz` for the
+host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
 
 To build and check the image locally, after `npm run build` with a `content/` in place:
 
@@ -294,12 +308,9 @@ lists what it asks for.
 ## Relay image
 
 The relay image, `ghcr.io/s-nems/open-northland-relay`, is published for `linux/amd64` and
-`linux/arm64`.
-Every build gets a `sha-<short>` tag; `latest` moves only once the installers and the download page
-are published, and only for a dispatch of the branch head, so rebuilding an older commit cannot roll a
-deployment backwards. The image is built from `packages/net-server/Dockerfile`: the relay and
-protocol packages compiled once, then only those two and `ws` in a Node image, so it carries neither
-the simulation nor a content directory. It starts on environment variables alone:
+`linux/arm64` with a `sha-<short>` tag per build. It is built from `packages/net-server/Dockerfile`:
+the relay and protocol packages compiled once, then only those two and `ws` in a Node image, so it
+carries neither the simulation nor a content directory. It starts on environment variables alone:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
