@@ -116,7 +116,8 @@ read [`AGENTS.md`](AGENTS.md).
 
 ## License and trademarks
 
-Open Northland is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
+Open Northland's code is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE). The project's
+own artwork, sounds and models are not: their terms are in [`LICENSE-ASSETS`](LICENSE-ASSETS).
 
 This is an independent project. It is not affiliated with or endorsed by Funatics Software, Daedalic
 Entertainment, or another rights holder of the *Cultures* series. Game names are used only to

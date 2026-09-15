@@ -1,7 +1,8 @@
 # Legal notice
 
-Open Northland is an independent engine reimplementation licensed under the GNU Affero General Public
-License, version 3 or later. The complete license is in [`../LICENSE`](../LICENSE).
+Open Northland's program code is licensed under the GNU Affero General Public License, version 3 or
+later. The complete license is in [`../LICENSE`](../LICENSE). The project's own assets are licensed
+separately; see [Own assets](#own-assets).
 
 ## Repository
 
@@ -34,6 +35,15 @@ distributed only through this repository's releases and its GHCR packages, to pe
 the repository. They must not be published on a public registry, website, or store, a host that
 serves the web image must not be reachable by the public, and neither the decoded content nor a build
 that carries it may be shared outside that channel.
+
+## Own assets
+
+The project's own artwork, sounds, models and their sources under `docs/art/` and
+`packages/app/src/assets/own/`, together with the project logo and icons, are copyrighted and not
+covered by the AGPL. Their terms are in [`../LICENSE-ASSETS`](../LICENSE-ASSETS): they may be used to
+build, run, test and contribute to Open Northland and redistributed unmodified inside a free build of
+it. Commercial distribution, use in another product, separate redistribution, and model training need
+written permission.
 
 ## Independent implementation
 
