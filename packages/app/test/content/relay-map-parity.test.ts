@@ -167,35 +167,39 @@ async function playThrough(
   return clients;
 }
 
-describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)) && existsSync(realMapPath(TWELVE_SEAT_MAP_ID)))(
-  'relayed sessions on a decoded map',
-  () => {
-    it('two clients on unequal links end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
-      const [fast, slow] = await playThrough(MAP_ID, 2);
-      // The slower link is budgeted a longer delay; the state above did not depend on it.
-      expect(slow?.delayTicks).toBeGreaterThan(fast?.delayTicks ?? Number.POSITIVE_INFINITY);
-    });
+/** `ON_RELAY_PARITY=off` skips the file: these runs are most of the content suite's time. */
+const RUN_PARITY =
+  process.env.ON_RELAY_PARITY !== 'off' &&
+  hasRealIr() &&
+  existsSync(realMapPath(MAP_ID)) &&
+  existsSync(realMapPath(TWELVE_SEAT_MAP_ID));
 
-    it('four clients end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
-      await playThrough(MAP_ID, 4);
-    });
+describe.runIf(RUN_PARITY)('relayed sessions on a decoded map', () => {
+  it('two clients on unequal links end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
+    const [fast, slow] = await playThrough(MAP_ID, 2);
+    // The slower link is budgeted a longer delay; the state above did not depend on it.
+    expect(slow?.delayTicks).toBeGreaterThan(fast?.delayTicks ?? Number.POSITIVE_INFINITY);
+  });
 
-    it('twelve clients fill the twelve-seat map and end on one state', {
-      timeout: RUN_TIMEOUT_MS,
-    }, async () => {
-      await playThrough(TWELVE_SEAT_MAP_ID, 12);
-    });
+  it('four clients end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
+    await playThrough(MAP_ID, 4);
+  });
 
-    it('brings a diverged client back from the other’s snapshot on the real map', {
-      timeout: RUN_TIMEOUT_MS,
-    }, async () => {
-      expect(RUN_TICKS).toBeGreaterThan(DIVERGE_AT_TICK);
-      const [reference, diverged] = await playThrough(MAP_ID, 2, { diverge: 1 });
-      expect(diverged?.desyncs).toHaveLength(1);
-      expect(diverged?.desyncs[0]).toMatchObject({ tick: DIVERGE_AT_TICK + 1, reference: reference?.nick });
-      expect(diverged?.restoredFrom).toHaveLength(1);
-      expect(reference?.snapshotsSent).toBe(1);
-      expect(reference?.desyncs).toEqual([]);
-    });
-  },
-);
+  it('twelve clients fill the twelve-seat map and end on one state', {
+    timeout: RUN_TIMEOUT_MS,
+  }, async () => {
+    await playThrough(TWELVE_SEAT_MAP_ID, 12);
+  });
+
+  it('brings a diverged client back from the other’s snapshot on the real map', {
+    timeout: RUN_TIMEOUT_MS,
+  }, async () => {
+    expect(RUN_TICKS).toBeGreaterThan(DIVERGE_AT_TICK);
+    const [reference, diverged] = await playThrough(MAP_ID, 2, { diverge: 1 });
+    expect(diverged?.desyncs).toHaveLength(1);
+    expect(diverged?.desyncs[0]).toMatchObject({ tick: DIVERGE_AT_TICK + 1, reference: reference?.nick });
+    expect(diverged?.restoredFrom).toHaveLength(1);
+    expect(reference?.snapshotsSent).toBe(1);
+    expect(reference?.desyncs).toEqual([]);
+  });
+});

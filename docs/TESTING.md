@@ -123,6 +123,10 @@ loaders, id joins, overlay behavior, or scenarios based on real extracted rows. 
 runs in it play a few hundred ticks by default; `ON_RELAY_TICKS=10000` lengthens them for a
 change to the relay or the lockstep seams.
 
+`ON_RELAY_PARITY=off` skips `relay-map-parity.test.ts`, which is more than half of the suite's
+runtime. The release content job sets it; a local `npm run test:content` always runs the file, so a
+change to the relay or the lockstep seams still needs one.
+
 `test:pipeline` performs a fresh conversion into a temporary directory and runs the real-content
 checks against that result. Use it for source parsing, schemas, decoders, map conversion, and output
 layout changes. It reads the unpacked mod at `CULTURES_MOD_ROOT`, `../CNMod-1.3.2` by default.
