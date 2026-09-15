@@ -8,7 +8,12 @@ vi.mock('../../src/view/runtime/raf-loop.js', () => ({
   },
 }));
 
-import { type FrameLoopDeps, startFrameLoop } from '../../src/view/runtime/frame-loop.js';
+import type { FrameLoopDeps } from '../../src/view/runtime/frame-loop.js';
+
+// Test files share one module registry, so the fake above only reaches `frame-loop.ts` when that
+// module is imported into a registry cleared of the real raf loop.
+vi.resetModules();
+const { startFrameLoop } = await import('../../src/view/runtime/frame-loop.js');
 
 it('polls confirmed finish when an adopted terminal save advances zero ticks and emits no events', () => {
   const afterPoll = new Error('stop before rendering');

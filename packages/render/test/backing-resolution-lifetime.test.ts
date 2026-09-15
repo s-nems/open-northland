@@ -13,7 +13,10 @@ vi.mock('pixi.js', () => ({
   Assets: {},
 }));
 
-import { createWindowPixiApp } from '../src/gpu/pixi-app.js';
+// `pixi.js` is a real ESM package, so its exports cannot be spied in place, and test files share
+// one module registry. Clear it, then import the subject, so the subject sees the fake above.
+vi.resetModules();
+const { createWindowPixiApp } = await import('../src/gpu/pixi-app.js');
 
 afterEach(() => vi.unstubAllGlobals());
 it('releases resize and DPR listeners when the renderer is destroyed', async () => {

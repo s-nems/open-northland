@@ -1,6 +1,5 @@
 import type { TextureSource } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { diag } from '../src/diag/log.js';
 
 /**
  * `loadTextureIfPresent` is the optional-texture half of the degrade policy in `content/net.ts`. Its
@@ -23,7 +22,13 @@ vi.mock('@open-northland/render', () => ({
   loadAtlasSource: ((url, scaleMode, alpha) => source.load(url, scaleMode, alpha)) as LoadAtlasSource,
 }));
 
+// Test files share one module registry, so the fake above only reaches `content/net.ts` when that
+// module is imported into a registry cleared of the real render package. The subject's `diag` has
+// to come from that same fresh graph; the suite's setup file silenced only the original instance.
+vi.resetModules();
 const { loadTextureIfPresent } = await import('../src/content/net.js');
+const { diag } = await import('../src/diag/log.js');
+diag.setConsoleLevel('silent');
 
 const LUT_URL = '/bobs/player-lut.png';
 

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Simulation } from '../../src/index.js';
+import * as cells from '../../src/systems/settlers/targets/cell-index.js';
 import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -7,18 +8,20 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 // Counts every InteractionCellIndex construction, so the tests below can prove collectTargets
 // defers the three index builds to their first accessor instead of paying them eagerly per tick.
-// (vi.hoisted, because the hoisted vi.mock factory below closes over it.)
-const constructed = vi.hoisted(() => vi.fn());
-vi.mock('../../src/systems/settlers/targets/cell-index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/systems/settlers/targets/cell-index.js')>();
-  class CountingIndex extends actual.InteractionCellIndex {
-    constructor(...args: ConstructorParameters<typeof actual.InteractionCellIndex>) {
-      super(...args);
-      constructed();
-    }
-  }
-  return { ...actual, InteractionCellIndex: CountingIndex };
+// A construct trap keeps the real prototype, and spying the live export rather than mocking the
+// module reaches a subject an earlier file in this worker already imported.
+const constructed = vi.fn();
+const CountingIndex = new Proxy(cells.InteractionCellIndex, {
+  construct(target, args) {
+    constructed();
+    return Reflect.construct(target, args);
+  },
 });
+
+beforeEach(() => {
+  vi.spyOn(cells, 'InteractionCellIndex').mockImplementation(CountingIndex);
+});
+afterEach(() => vi.restoreAllMocks());
 
 function fixture() {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });

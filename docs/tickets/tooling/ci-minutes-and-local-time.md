@@ -109,7 +109,7 @@ directories by the owner's criterion with sizes (known candidates `docs/art/buil
     project with the reason recorded); move `packages/app/test/content/**` out of the default projects
     into a `content` project that only `npm run test:content` runs (it already targets that path);
     cap workers (`maxWorkers`) so parallel worktrees do not oversubscribe; update `docs/TESTING.md` and
-    delete `docs/tickets/tooling/vitest-module-import-cost.md`.
+    delete the superseded `vitest-module-import-cost.md` ticket.
 4b. Release. `workflow_dispatch` inputs `linux` and `macX64` (default false) gate the AppImage job and
     the x64 dmg; `electron-builder.yml` mac target arm64 by default, x64 added through the CLI arch
     flag when the input is set; build the web app once in an ubuntu job and pass `packages/app/dist`

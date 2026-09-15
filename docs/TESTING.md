@@ -11,10 +11,18 @@ npm run build
 npm test
 ```
 
-`npm test` runs the normal Vitest projects, including simulation hygiene, deterministic state hashes,
-integration tests, and headless acceptance scenes. CI runs this suite on Ubuntu; a Windows run is
+`npm test` runs the `app` and `core` Vitest projects: simulation hygiene, deterministic state hashes,
+integration tests, and headless acceptance scenes. A third project, `content`, holds
+`packages/app/test/content`; only `npm run test:content` selects it, so a checkout with generated
+content still gets the same fast default suite. CI runs `npm test` on Ubuntu; a Windows run is
 available through the CI workflow's manual dispatch checkbox. Formatting and production build checks
 run once on Ubuntu.
+
+No project isolates modules: the files a worker runs share one module registry, so a test must not
+depend on being the first to import one. Name module-level fixtures uniquely and restore whatever the
+test patches. To replace a module the subject imports, either spy on the imported namespace, or call
+`vi.resetModules()` and import the subject dynamically: `vi.mock` alone cannot re-apply to a module an
+earlier file already loaded.
 
 During development, narrow the test command by name:
 

@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { productionSystem } from '../../src/systems/index.js';
+import * as spatial from '../../src/systems/spatial/nodes.js';
 import { testContent } from '../fixtures/content.js';
 import {
   CYCLE_TICKS,
@@ -15,18 +16,20 @@ import {
 
 // Counts every NodeBuckets construction, so the tests below can prove productionSystem builds its
 // operator index only when a workplace actually looks up operators - never on a workshop-less or
-// fully starved tick. (vi.hoisted, because the hoisted vi.mock factory below closes over it.)
-const constructed = vi.hoisted(() => vi.fn());
-vi.mock('../../src/systems/spatial/nodes.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/systems/spatial/nodes.js')>();
-  class CountingBuckets extends actual.NodeBuckets {
-    constructor(...args: ConstructorParameters<typeof actual.NodeBuckets>) {
-      super(...args);
-      constructed();
-    }
-  }
-  return { ...actual, NodeBuckets: CountingBuckets };
+// fully starved tick. A construct trap keeps the real prototype, and spying the live export rather
+// than mocking the module reaches a subject an earlier file in this worker already imported.
+const constructed = vi.fn();
+const CountingBuckets = new Proxy(spatial.NodeBuckets, {
+  construct(target, args) {
+    constructed();
+    return Reflect.construct(target, args);
+  },
 });
+
+beforeEach(() => {
+  vi.spyOn(spatial, 'NodeBuckets').mockImplementation(CountingBuckets);
+});
+afterEach(() => vi.restoreAllMocks());
 
 describe('productionSystem operator-index dormancy', () => {
   it('builds no settler index on a tick with no producing workplace', () => {

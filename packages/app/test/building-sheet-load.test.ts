@@ -30,6 +30,9 @@ vi.mock('../src/content/ir/load.js', async () => {
   };
 });
 
+// Test files share one module registry, so the fake above only reaches the sheet loader when that
+// module is imported into a registry cleared of the real IR loader.
+vi.resetModules();
 const { loadBuildingSheet } = await import('../src/content/sprite-sheet/buildings.js');
 
 function bob(tribeId: number, typeId: number, bobId: number, over: Partial<BuildingBobRow> = {}) {

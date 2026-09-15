@@ -13,8 +13,8 @@ import { defineComponent, World } from '../../src/ecs/world.js';
  *    `cachesCoherent`), not later as an unexplained golden/hash divergence.
  */
 // Component names are unique per process, so the cases share these two rather than redefining them.
-const A = defineComponent<{ n: number }>('A', 'economy');
-const B = defineComponent<{ n: number }>('B', 'economy');
+const A = defineComponent<{ n: number }>('CacheA', 'economy');
+const B = defineComponent<{ n: number }>('CacheB', 'economy');
 
 describe('World cache coherence', () => {
   it('canonicalEntities returns a frozen array - in-place mutation throws at the offender', () => {
@@ -54,12 +54,12 @@ describe('World cache coherence', () => {
     // entity's own add order must not leak into the walk.
     const names: string[] = [];
     w.forEachComponent(second, (name) => names.push(name));
-    expect(names).toEqual(['A', 'B']);
+    expect(names).toEqual(['CacheA', 'CacheB']);
     expect(w.verifyCaches()).toEqual([]);
     w.remove(second, B);
     w.destroy(first);
     expect(w.verifyCaches()).toEqual([]);
-    expect(w.componentEntries(second).map(([name]) => name)).toEqual(['A']);
+    expect(w.componentEntries(second).map(([name]) => name)).toEqual(['CacheA']);
   });
 
   it('verifyCaches reports a membership list that disagrees with the stores', () => {
@@ -71,7 +71,7 @@ describe('World cache coherence', () => {
     // a listed index the entity does not carry.
     const memberships = Reflect.get(w, 'memberships') as Map<Entity, number[]>;
     memberships.delete(e);
-    expect(w.verifyCaches()).toEqual(['entity 1 carries A but its membership list misses it']);
+    expect(w.verifyCaches()).toEqual(['entity 1 carries CacheA but its membership list misses it']);
 
     // The list-side branch: an index the entity does not carry.
     memberships.set(e, [0, 7]);
@@ -92,7 +92,7 @@ describe('World cache coherence', () => {
     // A registered verifier can never preempt the World's own two checks.
     expect(w.verifyCaches()).toEqual([
       'canonicalEntities cache diverges at index 0: cached 999, alive 1 - stale memo',
-      'entity 1 carries A but its membership list misses it',
+      'entity 1 carries CacheA but its membership list misses it',
       'registered says stale',
     ]);
   });
