@@ -110,7 +110,6 @@ export {
   exportSaveGame,
   type FogSection,
   parseSaveGame,
-  type RestoredSimulation,
   type RestoreOptions,
   type RngSection,
   restoreSimulation,

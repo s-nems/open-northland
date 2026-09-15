@@ -172,7 +172,7 @@ describe('a save taken with commands in flight', () => {
     expect(commandsSection(s).pending).toEqual([{ ...setNeeds(false) }]);
 
     const parsed = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(s))));
-    const restored = restoreSimulation(parsed, { content: testContent() }).sim;
+    const restored = restoreSimulation(parsed, { content: testContent() });
     expect(restored.hashState()).toBe(s.hashState());
     expect(restored.commands.scheduledCount).toBe(0);
     expect(restored.commands.pendingCount).toBe(1);

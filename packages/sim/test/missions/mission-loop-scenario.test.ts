@@ -83,7 +83,7 @@ describe('a self-re-activating mission on a random timer', () => {
       .command({ kind: 'setMissionsEnabled', enabled: true })
       .run(RUN_TICKS / 2).sim;
     const bytes = serializeSaveGame(exportSaveGame(live, { mapId: 'mission-loop' }));
-    const { sim: restored } = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
       content: testContent(),
       // Mission definitions are content, so the restore is handed the script the run was built with.
       missions: LOOP,
@@ -177,7 +177,7 @@ describe('a wave that spawns, numbers and clears a group', () => {
     expect(playerTally(live.world, 2).humansDied).toBe(1);
 
     const bytes = serializeSaveGame(exportSaveGame(live, { mapId: 'mission-wave' }));
-    const { sim: restored } = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
       content: testContent(),
       map: WAVE_MAP,
       missions: SPAWN_ONLY,

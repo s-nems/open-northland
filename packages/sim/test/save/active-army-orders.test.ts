@@ -16,7 +16,7 @@ import { testContent } from '../fixtures/content.js';
 function restored(original: Simulation, width: number, height: number): Simulation {
   expect(original.commands.pendingCount).toBe(0);
   const save = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(original))));
-  const copy = restoreSimulation(save, { content: testContent(), map: grassMap(width, height) }).sim;
+  const copy = restoreSimulation(save, { content: testContent(), map: grassMap(width, height) });
   expect(copy.hashState()).toBe(original.hashState());
   return copy;
 }

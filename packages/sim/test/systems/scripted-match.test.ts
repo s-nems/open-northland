@@ -40,7 +40,7 @@ function check(sim: Simulation, tick = CHECK_TICK): void {
 function restore(sim: Simulation): Simulation {
   return restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim)))), {
     content: sim.content,
-  }).sim;
+  });
 }
 
 describe('scripted match participants', () => {

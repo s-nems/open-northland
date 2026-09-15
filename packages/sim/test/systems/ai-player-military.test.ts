@@ -839,7 +839,7 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
     const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
       content: aiContent(),
       map: grassNodeMap(128, 96),
-    }).sim;
+    });
     expect(restored.hashState()).toBe(sim.hashState());
     expect(serializeSaveGame(exportSaveGame(restored))).toBe(bytes);
 

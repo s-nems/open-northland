@@ -201,7 +201,7 @@ describe('the unlock tables', () => {
       .command({ kind: 'setMissionsEnabled', enabled: true })
       .run(FIRST_PASS).sim;
     const bytes = serializeSaveGame(exportSaveGame(live, { mapId: 'mission-tech' }));
-    const { sim: restored } = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
       content: testContent(),
       missions: { missions: script },
     });

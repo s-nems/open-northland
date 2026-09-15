@@ -39,7 +39,6 @@ The document also contains a manifest:
 {
   "manifest": {
     "version": 3,
-    "contentRevision": 5,
     "generatedFrom": { "mod": "<local mod path>" },
     "locale": "eng"
   },
@@ -52,10 +51,6 @@ The document also contains a manifest:
 The optional manifest `modVersion` is an explicit pipeline caller label (`--mod-version` in the CLI).
 Absence means unknown. It is never inferred from `generatedFrom.mod`, which records a local path.
 The lobby compares the label alongside fingerprints of the actual content.
-
-`contentRevision` is the pipeline's conversion revision, embedded so a running game can name its
-content identity (a save file records it). Synthetic content without pipeline provenance parses as
-revision 0.
 
 The remaining arrays are omitted from this example. Read the schema for the current complete list.
 The `generatedFrom` paths are local provenance. Do not paste the manifest into an issue or diagnostic
@@ -168,7 +163,7 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
 { "header": { "...": "..." }, "sections": [] }
 ```
 
-- `header` holds `{kind, formatVersion, irVersion, contentRevision, contentFingerprint, savedAt, mapId, mapFingerprint, entry, session,
+- `header` holds `{kind, formatVersion, irVersion, contentFingerprint, savedAt, mapId, mapFingerprint, entry, session,
   seed, tick}` and is the document's first key, so a reader classifies compatibility without
   touching sections. A later format may compress the sections but never the header. `entry` is a
   caller-recorded relaunch token, opaque to the sim like `mapId`: the app stores the entry URL
@@ -213,9 +208,8 @@ Approximation: the original also restores the camera.
 Reading is split in two: `parseSaveGame` validates an untrusted document's structure (header
 identity, the exact section order, allocation coherence, pending envelopes), and `restoreSimulation`
 materializes it onto a fresh sim, validating value shapes as it goes plus everything that needs
-loaded content or a map, and finally runs the core invariants over the rebuilt world. The IR version and map fingerprint must match exactly; a `contentRevision`
-difference is reported to the caller, never a rejection, because the revision also bumps for
-presentation-only decoder fixes. A non-null `contentFingerprint` must match the resolved content.
+loaded content or a map, and finally runs the core invariants over the rebuilt world. The IR version
+and map fingerprint must match exactly. A non-null `contentFingerprint` must match the resolved content.
 The shared `packages/data/src/content-fingerprint.ts` function hashes canonical JSON with SHA-256,
 preserving table and array order while excluding installation paths, provenance, goods/job display
 names, locale, map inventory and sound data. It includes balance and content bindings as well as ids;

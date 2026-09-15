@@ -20,20 +20,13 @@ export interface RestoreOptions {
   missions?: MissionScript;
 }
 
-export interface RestoredSimulation {
-  readonly sim: Simulation;
-  /** True when the loaded content's conversion revision differs from the save's; reported for the
-   *  UI, never a rejection. */
-  readonly contentRevisionDiffers: boolean;
-}
-
 /**
  * Build a fresh {@link Simulation} standing at a validated save's tick boundary: stores in saved
  * registration and insertion order, the RNG stream position, fog masks with their derived bounds
  * rebuilt, and the pending command queue. Throws naming the failing path on any save the loaded
  * content or map cannot honor; a rejected save constructs nothing the caller can see.
  */
-export function restoreSimulation(save: SaveGame, opts: RestoreOptions): RestoredSimulation {
+export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulation {
   const header = save.header;
   const loaded = opts.content.manifest;
   if (header.irVersion !== loaded.version) {
@@ -89,7 +82,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
   if (violations.length > 0) {
     throw new Error(`save state violates the core invariants: ${violations.join('; ')}`);
   }
-  return { sim, contentRevisionDiffers: header.contentRevision !== loaded.contentRevision };
+  return sim;
 }
 
 /**

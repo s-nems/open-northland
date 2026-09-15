@@ -1,10 +1,4 @@
-import {
-  halfCellMapFromCells,
-  type RestoredSimulation,
-  restoreSimulation,
-  type SaveGame,
-  Simulation,
-} from '@open-northland/sim';
+import { halfCellMapFromCells, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { setupPlacementTribes } from '../game/placement-tribes.js';
 import { resolveWorldContent, type WorldContentOptions } from '../game/sandbox/index.js';
@@ -55,7 +49,7 @@ export function restoreSceneSim(
   scene: SceneWorld,
   save: SaveGame,
   options: WorldContentOptions = {},
-): RestoredSimulation {
+): Simulation {
   return restoreSimulation(save, {
     content: resolveWorldContent(scene.terrain, options),
     map: {

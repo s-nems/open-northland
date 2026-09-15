@@ -79,7 +79,6 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
       kind: SAVE_KIND,
       formatVersion: SAVE_FORMAT_VERSION,
       irVersion: sim.content.manifest.version,
-      contentRevision: sim.content.manifest.contentRevision,
       contentFingerprint: simContentFingerprint(sim.content),
       savedAt,
       mapId: opts.mapId ?? null,

@@ -88,7 +88,7 @@ describe('player technology discoveries', () => {
     technologySystem(sim.world, ctx);
     sim.world.destroy(worker);
     expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
-    const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content }).sim;
+    const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content });
     expect(buildingEnabled(restored.world, ctxOf(restored), PLAYER, TRIBE, SMITHY)).toBe(true);
   });
 });
@@ -110,7 +110,7 @@ it('fallback profession edges remain discovered after the enabling worker is los
   sim.step();
   sim.world.destroy(worker);
   expect(buildingEnabled(sim.world, ctxOf(sim), 0, 1, 4)).toBe(true);
-  const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content }).sim;
+  const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content });
   sim.run(3);
   restored.run(3);
   expect(restored.hashState()).toBe(sim.hashState());

@@ -277,7 +277,7 @@ describe('matchSystem - death and victory over the declared participants', () =>
     runTo(sim, FIRST_CHECK_TICK);
 
     const bytes = serializeSaveGame(exportSaveGame(sim));
-    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), { content: testContent() }).sim;
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), { content: testContent() });
     expect(restored.hashState()).toBe(sim.hashState());
     expect(serializeSaveGame(exportSaveGame(restored))).toBe(bytes);
     expect(restored.matchOutcome(P0)).toBe('victory');

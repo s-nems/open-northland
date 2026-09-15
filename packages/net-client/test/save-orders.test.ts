@@ -39,7 +39,7 @@ it('adds authoritative orders to the originally captured world even if the live 
   const captured = await promise;
   expect(captured.header.tick).toBe(0);
   expect(save.sections.find((section) => section.id === 'commands')?.continuation).toEqual([]);
-  const restored = restoreSimulation(captured, { content: testContent() }).sim;
+  const restored = restoreSimulation(captured, { content: testContent() });
   restored.step();
   expect(restored.commands.log).toEqual([]);
   restored.step();

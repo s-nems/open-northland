@@ -37,7 +37,7 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
 }
 
 async function restoreWorld(_session: GameSession, save: SaveGame): Promise<Simulation> {
-  return restoreSimulation(save, { content: testContent() }).sim;
+  return restoreSimulation(save, { content: testContent() });
 }
 
 function client(nick: string): HeadlessClient {

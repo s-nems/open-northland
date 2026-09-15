@@ -15,4 +15,4 @@ export {
   type SaveGameSection,
 } from './format.js';
 export { parseSaveGame } from './parse.js';
-export { type RestoredSimulation, type RestoreOptions, restoreSimulation } from './restore.js';
+export { type RestoreOptions, restoreSimulation } from './restore.js';

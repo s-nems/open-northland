@@ -27,7 +27,6 @@ export async function loadLobbyCompatibility(
     content: jsonFingerprint({
       content: contentFingerprint(content),
       resolved: contentFingerprint(mergeRealContent(content).content),
-      revision: content.manifest.contentRevision,
       modVersion: content.manifest.modVersion ?? null,
       // Authored placements join raw script names before the runtime localizes display labels.
       authoredNames: {

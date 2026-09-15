@@ -187,7 +187,7 @@ export function roundTrip(sim: Simulation): Simulation {
     content: sim.content,
     map: grassNodeMap(MAP_NODES, MAP_NODES),
     ...(sim.missions !== undefined ? { missions: sim.missions } : {}),
-  }).sim;
+  });
   expect(restored.hashState()).toBe(sim.hashState());
   return restored;
 }

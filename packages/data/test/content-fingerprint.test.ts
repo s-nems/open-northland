@@ -15,11 +15,10 @@ function content() {
 }
 
 describe('content fingerprints', () => {
-  it('ignores local paths, display names and revision while retaining row order', () => {
+  it('ignores local paths and display names while retaining row order', () => {
     const original = content();
     const moved = structuredClone(original);
     moved.manifest.generatedFrom.mod = '/another/installation';
-    moved.manifest.contentRevision++;
     moved.manifest.locale = 'pol';
     moved.goods = moved.goods.map((good) => ({ ...good, name: 'translated' }));
     expect(contentFingerprint(moved)).toBe(contentFingerprint(original));
@@ -27,7 +26,7 @@ describe('content fingerprints', () => {
     expect(contentFingerprint(moved)).not.toBe(contentFingerprint(original));
   });
 
-  it('detects id remapping and balance changes without a revision bump', () => {
+  it('detects id remapping and balance changes', () => {
     const original = content();
     for (const patch of [{ id: 'stone' }, { typeId: 7 }, { weight: 11 }]) {
       const changed = { ...original, goods: original.goods.map((good) => ({ ...good, ...patch })) };

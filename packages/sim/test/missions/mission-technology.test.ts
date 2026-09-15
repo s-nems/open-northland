@@ -52,7 +52,7 @@ it('AllowGood removes a map ban without granting technology, and survives save/l
   expect(sim.unlockStatus('good', PLANK, TRIBE, PLAYER).allowed).toBe(false);
   sim.run(FIRST_PASS);
   expect(sim.unlockStatus('good', PLANK, TRIBE, PLAYER)).toMatchObject({ allowed: true, enabled: false });
-  const { sim: restored } = restoreSimulation(exportSaveGame(sim), {
+  const restored = restoreSimulation(exportSaveGame(sim), {
     content: sim.content,
     map: grassNodeMap(48, 48),
     ...(sim.missions !== undefined ? { missions: sim.missions } : {}),

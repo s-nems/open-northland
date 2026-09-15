@@ -110,7 +110,7 @@ describe('script landscape state and blockers', () => {
     setBuildForbidden(sim.world, terrain, POINT, 2, true);
     setVertexColors(sim.world, terrain, POINT, 2, 90, false);
     const saved = parseSaveGame(JSON.parse(JSON.stringify(exportSaveGame(sim))));
-    const restored = restoreSimulation(saved, { content: sim.content, map: map() }).sim;
+    const restored = restoreSimulation(saved, { content: sim.content, map: map() });
     expect(restored.hashState()).toBe(sim.hashState());
     const { revision: _a, ...before } = sim.landscapeEdits();
     const { revision: _b, ...after } = restored.landscapeEdits();

@@ -38,13 +38,11 @@ describe('lobby world identity', () => {
     expect(changedMap.content).toBe(original.content);
   });
 
-  it('detects pipeline revisions but ignores owner-specific paths', async () => {
+  it('ignores owner-specific paths', async () => {
     const original = await identity();
     const moved = structuredClone(IR);
     moved.manifest.generatedFrom.mod = '/another/owner';
     expect((await identity({ '/ir.json': moved })).content).toBe(original.content);
-    moved.manifest.contentRevision++;
-    expect((await identity({ '/ir.json': moved })).content).not.toBe(original.content);
   });
 
   it('checks explicit mod versions and names used by authored placement joins', async () => {

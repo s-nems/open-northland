@@ -24,7 +24,7 @@ it('restores paused transport orders after endogenous commands without changing 
   expect(sim.tick).toBe(0);
   expect(sim.hashState()).toBe(before);
   expect(sim.commands.pendingCount).toBe(1);
-  const restored = restoreSimulation(saved, { content }).sim;
+  const restored = restoreSimulation(saved, { content });
   const resumed = new LockstepDriver({ sim: restored, transport: new LoopbackTransport(), paused: true });
   const savedAgain = resumed.captureSave();
   expect(savedAgain).toEqual(saved);
@@ -65,10 +65,10 @@ it('a new human seat supersedes the old room AI takeover while retaining player 
       { applyTick: 2, envelope: command },
     ],
   });
-  const reconnect = restoreSimulation(save, { content }).sim;
+  const reconnect = restoreSimulation(save, { content });
   reconnect.step();
   expect(components.isAiPlayer(reconnect.world, 1)).toBe(true);
-  const resumed = restoreSimulation(save, { content }).sim;
+  const resumed = restoreSimulation(save, { content });
   applyInitialSaveSeats(resumed, {
     initialSave: { tick: 0, fingerprint: 'a'.repeat(64) },
     world: { kind: 'scene', sceneId: 'test' },

@@ -75,7 +75,6 @@ describe('restoreMapWorld', () => {
     const { save, bytes } = exported(sim, 'm1');
     const restored = restoreMapWorld(options, save);
     expect(restored.kind).toBe('authored');
-    expect(restored.contentRevisionDiffers).toBe(false);
     expectExactRestore(sim, restored.sim, bytes, 'm1');
   });
 
@@ -112,8 +111,6 @@ describe('restoreSceneSim', () => {
     sim.run(20);
     const token = `scene:${collisionScene.id}`;
     const { save, bytes } = exported(sim, token);
-    const restored = restoreSceneSim(collisionScene, save);
-    expect(restored.contentRevisionDiffers).toBe(false);
-    expectExactRestore(sim, restored.sim, bytes, token);
+    expectExactRestore(sim, restoreSceneSim(collisionScene, save), bytes, token);
   });
 });

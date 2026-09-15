@@ -398,7 +398,7 @@ describe('unavailable goal verdicts', () => {
     sim.run(FIRST_PASS);
     expect(records(sim)[2]?.active).toBe(true);
     const save = parseSaveGame(JSON.parse(JSON.stringify(exportSaveGame(sim))));
-    const { sim: restored } = restoreSimulation(save, {
+    const restored = restoreSimulation(save, {
       content: testContent(),
       missions: { missions: definitions },
     });

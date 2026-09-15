@@ -35,7 +35,7 @@ it('loads a guide-only map, preserving nearby authored posts and mission detecti
   sim.run(systems.MISSION_EVALUATION_TICKS);
   expect([...sim.world.query(components.Signpost)]).toHaveLength(2);
   expect(components.missionRecords(sim.world)[0]?.evaluated).toBe(true);
-  const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content, map, missions }).sim;
+  const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content, map, missions });
   expect(restored.hashState()).toBe(sim.hashState());
   expect([...restored.world.query(components.Signpost)]).toHaveLength(2);
 });

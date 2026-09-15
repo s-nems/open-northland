@@ -2,7 +2,6 @@ import { type Vfs, vjoin } from '@open-northland/vfs';
 import type { Args } from './args.js';
 import { decodePng } from './decoders/png.js';
 import { errorMessage } from './errors.js';
-import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
@@ -31,7 +30,6 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   };
   console.log(`[pipeline] mod=${roots.mod} out=${args.out}`);
 
-  await clearPipelineManifest(fs, args.out);
   await fs.mkdir(args.out);
 
   // Stages run in dependency order. Sources resolve mod .ini over base .cif; docs/SOURCES.md carries
@@ -164,8 +162,4 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
       : `[pipeline] music: ${music.rendered} rendered, ${music.kept} kept, ${music.failed} failed ` +
           `into ${vjoin(args.out, 'music')}`,
   );
-
-  // Stamped last: its presence is what marks a conversion that ran to completion.
-  await writePipelineManifest(fs, args.out);
-  console.log(`[pipeline] stamped ${vjoin(args.out, PIPELINE_MANIFEST_NAME)}`);
 }

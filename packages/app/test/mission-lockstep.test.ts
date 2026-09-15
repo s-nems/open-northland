@@ -43,7 +43,7 @@ describe('scripted worlds over lockstep', () => {
     const driver = drivers[0];
     if (driver === undefined) throw new Error('Missing driver');
     const save = parseSaveGame(JSON.parse(serializeSaveGame(driver.captureSave())));
-    const restored = restoreSceneSim(scene, save).sim;
+    const restored = restoreSceneSim(scene, save);
     expect(restored.hashState()).toBe(first.hashState());
     first.run(TICKS);
     restored.run(TICKS);
@@ -68,7 +68,7 @@ describe('scripted worlds over lockstep', () => {
     expect(sim.openTributes(0).some((row) => row.slot === TIMBER_TRIBUTE)).toBe(true);
     driver.submit(playerCommand(0, { kind: 'payTribute', player: 0, slot: TIMBER_TRIBUTE }));
     const save = parseSaveGame(JSON.parse(serializeSaveGame(driver.captureSave())));
-    const restored = restoreSceneSim(scene, save).sim;
+    const restored = restoreSceneSim(scene, save);
     const resumed = new LockstepDriver({ sim: restored, transport: new LoopbackTransport() });
     for (let tick = 0; tick < TICKS; tick++) {
       driver.runTick();

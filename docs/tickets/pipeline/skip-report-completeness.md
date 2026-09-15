@@ -5,10 +5,8 @@
 Every extraction stage degrades by logging and continuing, which is the right policy for a batch tool
 over a possibly-partial install. The run's own output does not record that it happened.
 
-`runPipeline` returns `void` and `manifest.ts` stamps `{ irVersion, contentRevision }`
-unconditionally, so a conversion that skipped fonts, cursors, and maps writes a manifest
-byte-identical to a clean run. Nothing that later loads the content can tell the two apart. The
-manifest doc calls it the completion marker; it marks termination.
+`runPipeline` returns `void`, so a conversion that skipped fonts, cursors, and maps ends exactly like
+a clean run. Nothing that later loads the content can tell the two apart.
 
 The same missing seam makes the stage tests brittle: seventeen sites across ten test files spy on
 `console.warn` and assert on English prose, so rewording a warning breaks tests that are not about
@@ -19,14 +17,13 @@ the record that a skip happened.
 
 ## Scope
 
-Give the stages a structured skip reporter, return the collected report from `runPipeline`, and fold a
-skip summary into the manifest so a partial conversion is visible to its consumers. Keep the console
+Give the stages a structured skip reporter, return the collected report from `runPipeline`, and have
+the CLI exit non-zero on a partial conversion so a release build cannot ship one. Keep the console
 output for CLI users and migrate stages incrementally. Replace the console spies with assertions on
 the returned report.
 
 `packages/app/src/diag/log.ts` is the app-side precedent, but a tool must not depend on
-`packages/app`: take the pattern, not the module. Changing the manifest shape is an output-contract
-change, so check the content routes in the same pass.
+`packages/app`: take the pattern, not the module.
 
 ## Verify
 

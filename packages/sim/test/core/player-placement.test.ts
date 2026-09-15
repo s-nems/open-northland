@@ -98,7 +98,7 @@ describe('roster-authorized placement tribes', () => {
 
   it('saves and restores permissions; a legacy world remains undeclared and cannot place', () => {
     const legacy = fresh();
-    const resumedLegacy = restoreSimulation(exportSaveGame(legacy), { content: legacy.content }).sim;
+    const resumedLegacy = restoreSimulation(exportSaveGame(legacy), { content: legacy.content });
     expect(playerPlacementTribes(resumedLegacy.world, 0)).toBeNull();
     resumedLegacy.enqueue(playerCommand(0, placement));
     resumedLegacy.step();
@@ -107,7 +107,7 @@ describe('roster-authorized placement tribes', () => {
     const live = fresh();
     declare(live, [1]);
     live.step();
-    const restored = restoreSimulation(exportSaveGame(live), { content: live.content }).sim;
+    const restored = restoreSimulation(exportSaveGame(live), { content: live.content });
     expect(playerPlacementTribes(restored.world, 0)).toEqual([1]);
     for (const sim of [live, restored]) {
       sim.enqueue(playerCommand(0, placement));

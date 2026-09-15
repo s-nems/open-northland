@@ -776,7 +776,7 @@ function assertSaveRoundTrip(sim: Simulation, liveHash: string, content: Content
   const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
     content,
     map: grassMap(MAP_W, MAP_H),
-  }).sim;
+  });
   if (restored.hashState() !== liveHash) {
     throw new Error(`tick ${sim.tick}: the restored sim hashes differently from the live one`);
   }

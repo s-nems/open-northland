@@ -113,11 +113,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   let sim: Simulation;
   if (stagedSave !== null) {
     try {
-      const restored = restoreSceneSim(scene, stagedSave, worldOptions);
-      if (restored.contentRevisionDiffers) {
-        diag.warn('boot', 'the save was made on another content revision; presentation may differ');
-      }
-      sim = restored.sim;
+      sim = restoreSceneSim(scene, stagedSave, worldOptions);
     } catch (err) {
       haltOnFailedRestore(err);
       return;

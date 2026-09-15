@@ -21,7 +21,7 @@ function client(nick: string) {
     token: `${nick}-0123456789abcdef`,
     nick,
     buildWorld: async () => new Simulation({ seed: 7, content: testContent() }),
-    restoreWorld: async (_session, save) => restoreSimulation(save, { content: testContent() }).sim,
+    restoreWorld: async (_session, save) => restoreSimulation(save, { content: testContent() }),
   });
 }
 describe('manual save accepted orders end to end', () => {
@@ -73,8 +73,8 @@ describe('manual save accepted orders end to end', () => {
     );
     const target = save.header.tick + 10;
     const restored = [
-      restoreSimulation(save, { content: testContent() }).sim,
-      restoreSimulation(save, { content: testContent() }).sim,
+      restoreSimulation(save, { content: testContent() }),
+      restoreSimulation(save, { content: testContent() }),
     ];
     for (const sim of restored) sim.run(target - sim.tick);
     a.setPaused(false);

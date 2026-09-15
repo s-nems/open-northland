@@ -50,7 +50,7 @@ describe('sub-mission transitions', () => {
       content: sim.content,
       map: grassNodeMap(MAP_NODES, MAP_NODES),
       ...(sim.missions !== undefined ? { missions: sim.missions } : {}),
-    }).sim;
+    });
     expect(exportSaveGame(restored, { mapId: 'parent' })).toEqual(parent);
     restored.run(MISSION_EVALUATION_TICKS);
     expect(restored.events.current().some((e) => e.kind === 'missionSubMission')).toBe(false);

@@ -13,7 +13,6 @@ const HEADER = {
   kind: 'open-northland-save',
   formatVersion: SAVE_FORMAT_VERSION,
   irVersion: 3,
-  contentRevision: 0,
   mapId: 'twierdza',
   mapFingerprint: 'aa11',
   entry: '?map=twierdza&player=2',

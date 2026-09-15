@@ -204,11 +204,7 @@ export async function assembleMapWorld(
     let chestPlacements: readonly number[] = [];
     if (stagedSave !== null) {
       try {
-        const restoredWorld = restoreMapWorld(worldOptions, stagedSave);
-        if (restoredWorld.contentRevisionDiffers) {
-          diag.warn('boot', 'the save was made on another content revision; presentation may differ');
-        }
-        sim = restoredWorld.sim;
+        sim = restoreMapWorld(worldOptions, stagedSave).sim;
       } catch (err) {
         haltOnFailedRestore(err);
         return null;

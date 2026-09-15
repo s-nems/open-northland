@@ -23,11 +23,11 @@ import { LandscapeGfx, LandscapeType } from '../landscape/objects.js';
 import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
 import { GfxPattern, GfxPatternTransition, TrianglePatternType } from '../landscape/terrain.js';
 import { MapInfo } from '../maps/info.js';
-import { IR_VERSION, NO_PIPELINE_REVISION } from './ir-version.js';
+import { IR_VERSION } from './ir-version.js';
 
-// The two version constants live on the schema-free `./ir-version` subpath, so a shell that only
-// stamps or compares content does not pull the zod graph in.
-export { IR_VERSION, NO_PIPELINE_REVISION };
+// The version constant lives on the schema-free `./ir-version` subpath, so a caller that only compares
+// content versions does not pull the zod graph in.
+export { IR_VERSION };
 
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.strictObject({
@@ -35,8 +35,6 @@ export const IrManifest = z.strictObject({
     error: (issue) =>
       `IR version mismatch: content reports ${String(issue.input)}, this build reads ${IR_VERSION}.`,
   }),
-  /** The pipeline's conversion revision, part of a save file's content identity. */
-  contentRevision: z.number().int().nonnegative().default(NO_PIPELINE_REVISION),
   modVersion: z.string().trim().min(1).max(128).optional(),
   /** Local provenance of the conversion: the mod root it read. */
   generatedFrom: z.strictObject({ mod: z.string() }),

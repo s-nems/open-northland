@@ -8,7 +8,7 @@ export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. A reader accepts
  *  exactly this version and rejects any other, never migrating. */
-export const SAVE_FORMAT_VERSION = 9;
+export const SAVE_FORMAT_VERSION = 10;
 
 /** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
  *  is rejected at export. */
@@ -19,9 +19,8 @@ export const SAVE_MAP_KEY = '$map';
 export interface SaveGameHeader {
   readonly kind: typeof SAVE_KIND;
   readonly formatVersion: number;
-  /** Content identity: the IR schema version and pipeline conversion revision the run was built on. */
+  /** Content identity: the IR schema version the run was built on. */
   readonly irVersion: number;
-  readonly contentRevision: number;
   readonly contentFingerprint: string | null;
   /** Unix milliseconds supplied by the caller, or null when no creation time was recorded. */
   readonly savedAt: number | null;

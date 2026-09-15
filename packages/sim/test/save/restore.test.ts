@@ -85,11 +85,10 @@ describe('restoreSimulation continuation', () => {
     const original = scenario();
     original.enqueue(adminCommand({ kind: 'setNeedsEnabled', enabled: false }));
     const { save } = throughBytes(original, 'campaign_01');
-    const { sim: restored, contentRevisionDiffers } = restoreSimulation(save, {
+    const restored = restoreSimulation(save, {
       content: testContent(),
       map: grassCellMap(MAP_CELLS, MAP_CELLS),
     });
-    expect(contentRevisionDiffers).toBe(false);
     expect(restored.tick).toBe(original.tick);
     expect(restored.rng.getState()).toBe(original.rng.getState());
     expect(restored.commands.pendingCount).toBe(1);
@@ -120,7 +119,7 @@ describe('restoreSimulation continuation', () => {
   it('re-exports a freshly restored sim byte-identically to the original save', () => {
     const original = scenario();
     const { bytes, save } = throughBytes(original, 'campaign_01');
-    const { sim: restored } = restoreSimulation(save, {
+    const restored = restoreSimulation(save, {
       content: testContent(),
       map: grassCellMap(MAP_CELLS, MAP_CELLS),
     });
@@ -131,7 +130,7 @@ describe('restoreSimulation continuation', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     while (sim.rng.getState() >= 0) sim.rng.next();
     const { bytes, save } = throughBytes(sim);
-    const { sim: restored } = restoreSimulation(save, { content: testContent() });
+    const restored = restoreSimulation(save, { content: testContent() });
     expect(restored.rng.getState()).toBe(sim.rng.getState());
     expect(serializeSaveGame(exportSaveGame(restored))).toBe(bytes);
   });
@@ -144,7 +143,7 @@ describe('restoreSimulation continuation', () => {
     sim.world.remove(b, Tag);
     sim.world.add(b, Tag, { n: b });
     const { bytes, save } = throughBytes(sim);
-    const { sim: restored } = restoreSimulation(save, { content: testContent() });
+    const restored = restoreSimulation(save, { content: testContent() });
     expect([...restored.world.query(Tag)]).toEqual([a, c, b]);
     expect(serializeSaveGame(exportSaveGame(restored))).toBe(bytes);
   });
@@ -157,7 +156,7 @@ describe('restoreSimulation continuation', () => {
     const e = sim.world.create();
     sim.world.add(e, Amounts, { amounts });
     const { bytes, save } = throughBytes(sim);
-    const { sim: restored } = restoreSimulation(save, { content: testContent() });
+    const restored = restoreSimulation(save, { content: testContent() });
     const value = restored.world.get(e, Amounts);
     expect(value.amounts).toBeInstanceOf(Map);
     expect([...value.amounts.entries()]).toEqual([
@@ -270,17 +269,6 @@ describe('restoreSimulation rejection', () => {
     expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/violates the core invariants/);
   });
 
-  it('reports a contentRevision difference instead of rejecting', () => {
-    const original = new Simulation({ seed: 1, content: testContent() });
-    original.run(3);
-    const doc = docOf(original);
-    doc.header.contentRevision = 7;
-    const { sim: restored, contentRevisionDiffers } = restoredFromDoc(doc);
-    expect(contentRevisionDiffers).toBe(true);
-    expect(restored.tick).toBe(original.tick);
-    expect(restored.hashState()).toBe(original.hashState());
-  });
-
   it('rejects changed content ids, ordering and balance before reading saved stores', () => {
     const content = testContent();
     const save = exportSaveGame(new Simulation({ seed: 1, content }));
@@ -304,7 +292,5 @@ describe('restoreSimulation rejection', () => {
     for (const target of changed) {
       expect(() => restoreSimulation(save, { content: target })).toThrow(/contentFingerprint/);
     }
-    const revisionOnly = { ...content, manifest: { ...content.manifest, contentRevision: 42 } };
-    expect(restoreSimulation(save, { content: revisionOnly }).contentRevisionDiffers).toBe(true);
   });
 });

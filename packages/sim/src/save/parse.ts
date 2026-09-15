@@ -55,7 +55,6 @@ function parsedHeader(value: unknown): SaveGameHeader {
     kind: SAVE_KIND,
     formatVersion: SAVE_FORMAT_VERSION,
     irVersion: asCount(raw.irVersion, `${at}.irVersion`),
-    contentRevision: asCount(raw.contentRevision, `${at}.contentRevision`),
     contentFingerprint: parseContentFingerprint(raw.contentFingerprint),
     savedAt: parseSavedAt(raw.savedAt),
     mapId: asNullableString(raw.mapId, `${at}.mapId`),

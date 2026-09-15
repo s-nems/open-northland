@@ -102,7 +102,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
     typeId: CARPENTER,
   });
 
-  const restored = restoreSimulation(exportSaveGame(sim), { content, map }).sim;
+  const restored = restoreSimulation(exportSaveGame(sim), { content, map });
   restored.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
   const terrain = restored.terrain;
   if (terrain === undefined) throw new Error('missing terrain');

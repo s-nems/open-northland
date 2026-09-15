@@ -19,14 +19,14 @@ const create = () => new Simulation({ seed: 7, content: testContent() });
 const restore = (sim: Simulation) =>
   restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim)))), {
     content: testContent(),
-  }).sim;
+  });
 
 describe('saved accepted command continuation', () => {
   it('applies endogenous, inherited, then fresh input without transport sequence collisions', () => {
     const sim = create();
     sim.enqueue(adminCommand({ kind: 'setNeedsEnabled', enabled: true }));
     const saved = exportSaveGame(sim, { continuation: [input(1, false)] });
-    const copy = restoreSimulation(saved, { content: testContent() }).sim;
+    const copy = restoreSimulation(saved, { content: testContent() });
     copy.commands.enqueueAt(input(1, true).envelope, 1, 0);
     sim.commands.enqueueAt(input(1, false).envelope, 1, 0);
     sim.commands.enqueueAt(input(1, true).envelope, 1, 1);
@@ -48,7 +48,7 @@ describe('saved accepted command continuation', () => {
     const saved = exportSaveGame(sim, { continuation: [input(3, false), input(5, true)] });
     const merged = withSaveContinuation(saved, [input(3, true)]);
     expect(saved.sections.find((s) => s.id === 'commands')?.continuation).toHaveLength(2);
-    let copy = restoreSimulation(merged, { content: testContent() }).sim;
+    let copy = restoreSimulation(merged, { content: testContent() });
     copy.step();
     copy = restore(copy);
     copy.step();
@@ -70,7 +70,7 @@ describe('saved accepted command continuation', () => {
     sim.run(5);
     const completed = withSaveContinuation(captured, [input(2, false)]);
     expect(completed.header.tick).toBe(0);
-    const copy = restoreSimulation(completed, { content: testContent() }).sim;
+    const copy = restoreSimulation(completed, { content: testContent() });
     copy.run(2);
     expect(copy.commands.log).toHaveLength(1);
     expect(copy.commands.log[0]?.applyTick).toBe(2);
@@ -80,7 +80,7 @@ describe('saved accepted command continuation', () => {
     const supplied = input(3, false);
     const saved = exportSaveGame(create(), { continuation: [supplied] });
     (supplied.envelope.command as { enabled: boolean }).enabled = true;
-    const sim = restoreSimulation(saved, { content: testContent() }).sim;
+    const sim = restoreSimulation(saved, { content: testContent() });
     const snapshot = sim.commands.continuationSnapshot();
     (snapshot[0]?.envelope.command as { enabled: boolean }).enabled = true;
     expect(sim.commands.continuationSnapshot()[0]?.envelope.command).toEqual(

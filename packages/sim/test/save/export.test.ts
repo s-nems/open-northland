@@ -74,7 +74,6 @@ describe('exportSaveGame header', () => {
       kind: SAVE_KIND,
       formatVersion: SAVE_FORMAT_VERSION,
       irVersion: content.manifest.version,
-      contentRevision: content.manifest.contentRevision,
       contentFingerprint: contentFingerprint(content),
       savedAt: null,
       mapId: 'campaign_01',

@@ -68,7 +68,7 @@ function client(nick: string, localDefeat = false) {
     nick,
     buildWorld: async () => buildWorld(localDefeat),
     restoreWorld: async (_session: GameSession, save: SaveGame) =>
-      restoreSimulation(save, { content: testContent() }).sim,
+      restoreSimulation(save, { content: testContent() }),
   });
 }
 async function assembled(localDefeat = false) {

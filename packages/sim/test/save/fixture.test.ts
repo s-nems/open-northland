@@ -58,11 +58,10 @@ describe('committed save fixture', () => {
   it('parses, restores, and re-exports byte-identically on the current build', () => {
     const committed = readFileSync(FIXTURE_PATH, 'utf8').trimEnd();
     const save = parseSaveGame(JSON.parse(committed));
-    const { sim, contentRevisionDiffers } = restoreSimulation(save, {
+    const sim = restoreSimulation(save, {
       content: testContent(),
       map: grassCellMap(MAP_CELLS, MAP_CELLS),
     });
-    expect(contentRevisionDiffers).toBe(false);
     expect(sim.checkInvariants()).toEqual([]);
     expect(serializeSaveGame(exportSaveGame(sim, { mapId: FIXTURE_MAP_ID }))).toBe(committed);
   });

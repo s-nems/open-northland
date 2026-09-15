@@ -163,8 +163,6 @@ export type RestoreWorldOptions = Pick<
 export interface RestoredMapWorld {
   readonly sim: Simulation;
   readonly kind: MapWorldKind;
-  /** True when the save's conversion revision differs from the loaded content's; presentation-only. */
-  readonly contentRevisionDiffers: boolean;
 }
 
 /**
@@ -180,16 +178,15 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
       ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}),
     };
     const base = demoWorldBase(undefined, demo);
-    const restored = restoreSimulation(save, { content: base.content, map: base.terrain });
-    return { ...restored, kind: 'demo' };
+    return { sim: restoreSimulation(save, { content: base.content, map: base.terrain }), kind: 'demo' };
   }
   const authored = authoredWorldContent(terrain, options);
-  const restored = restoreSimulation(save, {
+  const sim = restoreSimulation(save, {
     content: authored ?? resolveWorldContent(terrain, options.content),
     map: terrain,
     ...(options.script?.missions !== undefined ? { missions: options.script.missions } : {}),
   });
-  return { ...restored, kind: authored !== null ? 'authored' : 'bare' };
+  return { sim, kind: authored !== null ? 'authored' : 'bare' };
 }
 
 /** The authored path's content, or null exactly when `runWorld` would fall through to the bare map. */
