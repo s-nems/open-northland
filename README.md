@@ -25,8 +25,9 @@ replacing them is the goal.
 
 The game ships as a desktop app and as a web app, both built from the same `packages/app`. The
 `Release` workflow, dispatched from the Actions tab against `main`, publishes a `build-<short-sha>`
-prerelease with unsigned desktop installers for Windows, macOS, and Linux and pushes the web app
-image `ghcr.io/s-nems/open-northland-web`. Both need a GitHub login with access to the repository.
+prerelease with unsigned desktop installers for Windows and Apple Silicon macOS, adds the Linux
+AppImage and the Intel mac dmg when the dispatch asks for them, and pushes the web app image
+`ghcr.io/s-nems/open-northland-web`. Both need a GitHub login with access to the repository.
 [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) describes the workflow and the local equivalents.
 
 ## Status

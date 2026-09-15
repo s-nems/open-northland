@@ -35,11 +35,12 @@ nsis:
 portable:
   artifactName: ${productName}-${version}-portable.exe
 mac:
-  # Both arches pinned for the same reason as win x64: the default is the build host's arch, which
-  # would silently skip Intel macs. Two dmgs instead of one universal - half the download each.
+  # arm64 pinned for the same reason as win x64: the default is the build host's arch. An Intel dmg
+  # costs a whole extra mac build, so the release adds it on request with
+  # `--mac dmg:x64 dmg:arm64`, which replaces this list.
   target:
     - target: dmg
-      arch: [x64, arm64]
+      arch: [arm64]
   identity: null
   artifactName: ${productName}-${version}-${arch}.dmg
 linux:

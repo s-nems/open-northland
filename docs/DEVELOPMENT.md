@@ -240,13 +240,17 @@ forced divergence for a resync check is a console mutation of `__opennorthland.s
 ## Release builds
 
 The `Release` workflow is dispatched by hand from the Actions tab against `main`, or against an
-older commit of it through the `commit` input. It converts the content once with
-`npm run build:content`, runs `npm run test:content` over the fresh tree, hands it to the other jobs
-as a one-day workflow artifact, builds the desktop installers natively on Windows, macOS and Linux
-together with the web image and the relay image, then publishes a `build-<short-sha>` prerelease
-holding the installers, with notes that name the images. Every part comes from the one resolved
-commit. `latest` on the web and relay images moves only after a complete release dispatched without
-the `commit` input, so rebuilding an older commit cannot roll a deployment backwards.
+older commit of it through the `commit` input. One Ubuntu job builds the web app and converts the
+content with `npm run build:content` - the rendered music is cached between runs, keyed on the
+archive pin and the music stage's sources - then runs `npm run test:content` over the fresh tree
+without the relayed-session runs and hands the app build and the content to the other jobs as
+one-day workflow artifacts. The packaging and image jobs take that build instead of repeating it.
+A default run packs the Windows installers and the Apple Silicon dmg natively; the `linux` and
+`macX64` checkboxes add the AppImage and the Intel dmg. The web image and the relay image build
+alongside, and a `build-<short-sha>` prerelease publishes whichever installers the run produced,
+with notes that name the images. Every part comes from the one resolved commit. `latest` on the web
+and relay images moves only after a complete release dispatched without the `commit` input, so
+rebuilding an older commit cannot roll a deployment backwards.
 
 The installers and the web image contain decoded original content; [`LEGAL.md`](LEGAL.md) says
 where they may go. Downloading either needs a GitHub login with access to the repository. The relay
