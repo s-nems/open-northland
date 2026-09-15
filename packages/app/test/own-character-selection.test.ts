@@ -17,10 +17,12 @@ function look(): SettlerCharacter {
 describe('own character selection', () => {
   const man = look(),
     woman = look(),
+    boy = look(),
     fallback = look();
   const loaded = new Map([
     ['man-silver', man],
     ['woman-blonde', woman],
+    ['boy-straw', boy],
   ]);
 
   it('loads the adult woman with her own animation binding', () => {
@@ -31,8 +33,9 @@ describe('own character selection', () => {
     expect(selected?.byJob[JOB_SCOUT]).toBe(fallback);
   });
 
-  it('leaves an unselected young job on the placeholder body', () => {
+  it('routes the boy job to his own body and leaves the girl on the placeholder', () => {
     const selected = selectOwnCharacters(loaded, fallback, null);
+    expect(selected?.youngByJob[JOB_CHILD_MALE]).toBe(boy);
     expect(selected?.youngByJob[JOB_CHILD_FEMALE]).toBe(fallback);
     expect(selected?.default.variants).toEqual([man]);
   });
