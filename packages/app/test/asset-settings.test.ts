@@ -12,10 +12,11 @@ import { defaultSettings, parseStoredSettings } from '../src/view/settings-store
 afterEach(() => vi.unstubAllGlobals());
 
 describe('asset settings', () => {
-  it('defaults new, old, and invalid settings to own assets', () => {
+  it('defaults new, old, and invalid settings to original assets while preserving an own-assets choice', () => {
     for (const raw of [null, '{}', '{"assets":"unknown"}']) {
-      expect(parseStoredSettings(raw).assets).toBe('own');
+      expect(parseStoredSettings(raw).assets).toBe('original');
     }
+    expect(parseStoredSettings('{"assets":"own"}').assets).toBe('own');
     expect(parseStoredSettings('{"assets":"original"}').assets).toBe('original');
   });
 
@@ -30,11 +31,16 @@ describe('asset settings', () => {
   });
 
   it('adopts the saved choice in the menu without overwriting explicit links', () => {
-    const stored = { ...defaultSettings(), assets: 'original' } as const;
+    const stored = defaultSettings();
     const params = new URLSearchParams();
     expect(adoptSettings(stored, params).session.assets).toBe('original');
-    expect(params.get('assets')).toBe('original');
-    expect(adoptSettings(stored, new URLSearchParams('assets=own')).session.assets).toBe('own');
+    expect(params.has('assets')).toBe(false);
+
+    const own = { ...stored, assets: 'own' } as const;
+    const ownParams = new URLSearchParams();
+    expect(adoptSettings(own, ownParams).session.assets).toBe('own');
+    expect(ownParams.get('assets')).toBe('own');
+    expect(adoptSettings(own, new URLSearchParams('assets=original')).session.assets).toBe('original');
   });
 
   it('saves edits, clears overrides on reset, and rereads changes made in game', () => {
@@ -63,10 +69,10 @@ describe('asset settings', () => {
     updateSettings({ soundEnabled: false });
     expect(parseStoredSettings(raw).assets).toBe('original');
     updateSettings({ assets: 'original' });
-    expect(new URL(href).searchParams.get('assets')).toBe('original');
+    expect(new URL(href).searchParams.has('assets')).toBe(false);
     updateSettings({ assets: 'own' });
     expect(parseStoredSettings(raw).assets).toBe('own');
-    expect(new URL(href).searchParams.has('assets')).toBe(false);
+    expect(new URL(href).searchParams.get('assets')).toBe('own');
     raw = '{"assets":"original"}';
     adoptStoredSettings(new URLSearchParams());
     expect(menuSettings().assets).toBe('original');

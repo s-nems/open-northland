@@ -10,6 +10,8 @@ import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
 
 export type AssetSet = 'own' | 'original';
 
+export const DEFAULT_ASSET_SET: AssetSet = 'original';
+
 /** Drawn-frame cap in frames per second; `null` follows the display's own refresh rate. */
 export type FpsLimit = 30 | 60 | null;
 
@@ -48,7 +50,7 @@ export interface MenuSettings {
 /** A player who never chose a language follows the browser's. */
 export function defaultSettings(): MenuSettings {
   return {
-    assets: 'own',
+    assets: DEFAULT_ASSET_SET,
     displayMode: 'window',
     renderScale: DEFAULT_RENDER_SCALE,
     uiScaleFactor: DEFAULT_UI_SCALE_FACTOR,
@@ -99,7 +101,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
   if (typeof data !== 'object' || data === null) return defaults;
   const record = data as Record<string, unknown>;
   return {
-    assets: record.assets === 'original' ? 'original' : defaults.assets,
+    assets: record.assets === 'own' || record.assets === 'original' ? record.assets : defaults.assets,
     displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
     renderScale: clampRenderScale(record.renderScale),
     uiScaleFactor: clampFactor(record.uiScaleFactor),

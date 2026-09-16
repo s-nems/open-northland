@@ -272,7 +272,7 @@ player's machine.
 
 ## Own-art production
 
-Own assets are the default. Choose Own or Original in Settings → Graphics; changes during a game
+Original assets are the default. Choose Own or Original in Settings → Graphics; changes during a game
 apply to the next game. `assets=own` / `assets=original` URL parameters override the stored choice.
 
 Own environment development on a playable map: `?map=magiczny_las&assets=own&intro=off`.

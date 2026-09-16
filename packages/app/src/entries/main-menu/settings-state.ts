@@ -1,6 +1,11 @@
 import { defaultLocale, localeParam, setActiveLocale } from '../../i18n/index.js';
 import { assetSetFor } from '../../view/asset-settings.js';
-import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
+import {
+  DEFAULT_ASSET_SET,
+  type MenuSettings,
+  persistSettings,
+  readStoredSettings,
+} from '../../view/settings-store.js';
 
 /**
  * The menu's settings session: the persisted store plus URL overrides. `assets`, `lang`, and `sound` are
@@ -24,7 +29,11 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
       // The elided default is the browser's language, so a `lang`-less link follows whoever opens it.
       value: settings.language === defaultLocale() ? null : settings.language,
     },
-    { key: 'assets', param: 'assets', value: settings.assets === 'own' ? null : settings.assets },
+    {
+      key: 'assets',
+      param: 'assets',
+      value: settings.assets === DEFAULT_ASSET_SET ? null : settings.assets,
+    },
     { key: 'soundEnabled', param: 'sound', value: settings.soundEnabled ? null : 'off' },
   ];
 }
