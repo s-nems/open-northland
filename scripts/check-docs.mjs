@@ -1,9 +1,9 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { lstat, readFile, stat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ignoredDirectories = new Set(['.git', '.art-build', 'content', 'coverage', 'dist', 'node_modules']);
 const ticketReferenceFile = /\.(?:[cm]?[jt]sx?|json|ya?ml)$/;
 const ticketAreas = new Set([
   'app',
@@ -21,14 +21,22 @@ const ticketAreas = new Set([
 ]);
 const failures = [];
 
-async function markdownFiles(directory) {
+async function repositoryFiles() {
+  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  });
   const files = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
-    const path = resolve(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await markdownFiles(path)));
-    else if (entry.isFile() && entry.name.endsWith('.md') && !entry.name.endsWith('.local.md'))
-      files.push(path);
+  for (const path of new Set(paths.split('\0').filter(Boolean))) {
+    if (!path.endsWith('.md') && !ticketReferenceFile.test(path)) continue;
+    const absolute = resolve(repoRoot, path);
+    try {
+      if ((await lstat(absolute)).isFile()) files.push(absolute);
+    } catch (error) {
+      // A tracked file deleted in the working tree is no longer documentation to check.
+      if (error.code !== 'ENOENT') throw error;
+    }
   }
   return files;
 }
@@ -202,7 +210,8 @@ function checkCommands(filesAndContent, packageJson) {
   }
 }
 
-const files = await markdownFiles(repoRoot);
+const repository = await repositoryFiles();
+const files = repository.filter((path) => path.endsWith('.md') && !path.endsWith('.local.md'));
 const filesAndContent = await Promise.all(files.map(async (path) => [path, await readFile(path, 'utf8')]));
 const ticketDependencies = new Map();
 for (const [path, markdown] of filesAndContent) {
@@ -220,19 +229,11 @@ for (const [path, markdown] of filesAndContent) {
 }
 checkTicketCycles(ticketDependencies);
 
-const referenceFiles = [];
-const stack = [repoRoot];
-while (stack.length > 0) {
-  const current = stack.pop();
-  for (const entry of await readdir(current, { withFileTypes: true })) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
-    const path = resolve(current, entry.name);
-    if (entry.isDirectory()) stack.push(path);
-    else if (entry.isFile() && ticketReferenceFile.test(entry.name)) {
-      referenceFiles.push([path, await readFile(path, 'utf8')]);
-    }
-  }
-}
+const referenceFiles = await Promise.all(
+  repository
+    .filter((path) => ticketReferenceFile.test(path))
+    .map(async (path) => [path, await readFile(path, 'utf8')]),
+);
 await checkTicketReferences([...filesAndContent, ...referenceFiles]);
 
 const packageJson = JSON.parse(await readFile(resolve(repoRoot, 'package.json'), 'utf8'));

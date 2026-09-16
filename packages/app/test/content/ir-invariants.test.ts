@@ -26,9 +26,7 @@ import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 // absence means the extraction dropped a core table, not that the mod changed.
 const CORE_GOOD_IDS = ['wood', 'stone', 'wheat'] as const;
 
-// Goods with a deliberately numbers-free balance entry - known open calibration work, pinned here so
-// the dead-balance invariant names exactly the accepted gaps and any NEW dead good still fails
-// (mushroom: docs/tickets/app/herb-mushroom-field-farming.md).
+// Mushroom gathering remains uncalibrated; any additional zero-balance good must fail.
 const KNOWN_UNCALIBRATED_GOOD_IDS: readonly string[] = ['mushroom'];
 
 // The goods harvested as a finite deposit the collector chips one unit at a time (`GatherMode 'mine'`).
