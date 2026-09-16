@@ -1,6 +1,13 @@
 import { parseContentSet } from '@open-northland/data';
 import { expect, it } from 'vitest';
-import { Building, Owner, Position, Settler, TrainingOrder } from '../../src/components/index.js';
+import {
+  Building,
+  discoverTechnology,
+  Owner,
+  Position,
+  Settler,
+  TrainingOrder,
+} from '../../src/components/index.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
 import { learn } from '../../src/systems/orders/education.js';
 import {
@@ -22,6 +29,50 @@ const CARPENTER = 2;
 const SMITH = 5;
 const PLANK = 2;
 const WOOD_TRACK = 1;
+
+it('refuses a school course until the profession is discovered', () => {
+  const base = testContent();
+  const content = parseContentSet({
+    ...base,
+    buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
+    tribes: base.tribes.map((t) => ({
+      ...t,
+      technology: { houses: [] },
+      jobEnables: [{ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER }],
+      jobRequirements: [
+        {
+          target: 'job',
+          targetId: CARPENTER,
+          requirement: 'need',
+          amount: 1,
+          experienceTypes: [WOOD_TRACK],
+        },
+        {
+          target: 'job',
+          targetId: CARPENTER,
+          requirement: 'train',
+          amount: 1,
+          experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+        },
+      ],
+    })),
+  });
+  const sim = new Simulation({ seed: 3, content, map: grassCellMap(12, 12) });
+  const pupil = settlerAt(sim, { jobType: WOODCUTTER, tribe: TRIBE });
+  sim.world.add(pupil, Owner, { player: 0 });
+  const school = sim.world.create();
+  sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
+  sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
+  sim.world.add(school, Owner, { player: 0 });
+  const command = { kind: 'learn', entity: pupil, house: school, target: 'job', typeId: CARPENTER } as const;
+
+  learn(sim.world, ctxOf(sim), command);
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
+
+  discoverTechnology(sim.world, 0, TRIBE, 'job', CARPENTER);
+  learn(sim.world, ctxOf(sim), command);
+  expect(sim.world.get(pupil, TrainingOrder).lesson).toEqual({ kind: 'job', typeId: CARPENTER });
+});
 
 it('a school lesson qualifies only its chosen target and survives a saved in-progress lesson', () => {
   const base = testContent();
@@ -127,6 +178,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
   expect(restored.events.current()).toContainEqual({
     kind: 'settlerTrained',
     entity: pupil,
+    course: 'school',
     target: 'job',
     typeId: CARPENTER,
   });
@@ -158,6 +210,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
   expect(restored.events.current()).toContainEqual({
     kind: 'settlerTrained',
     entity: pupil,
+    course: 'school',
     target: 'good',
     typeId: PLANK,
   });

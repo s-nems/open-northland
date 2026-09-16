@@ -99,6 +99,7 @@ const FLAG = 92;
 
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
+  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
   building: () => 'Dom',
   player: () => 'Gracz',
   stance: (state) => state,

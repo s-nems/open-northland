@@ -43,6 +43,7 @@ const naming: MessageNaming = {
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
+  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
   text: (type, parts) =>
     `${parts.subjectName ?? '?'}:${type}${
       parts.technologySections === undefined
@@ -240,6 +241,7 @@ describe('user messages from sim events', () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'person' },
       { id: 2, player: ENEMY, kind: 'person' },
+      { id: 3, player: LOCAL, kind: 'person', col: 5 },
     ]);
     const trainedNaming: MessageNaming = {
       ...naming,
@@ -247,9 +249,10 @@ describe('user messages from sim events', () => {
     };
     const raised = messagesFromEvents(
       [
-        { kind: 'settlerTrained', entity: e(1), target: 'job', typeId: 31 },
-        { kind: 'settlerTrained', entity: e(1), target: 'good', typeId: 9 },
-        { kind: 'settlerTrained', entity: e(2), target: 'job', typeId: 31 },
+        { kind: 'settlerTrained', entity: e(1), course: 'barracks', target: 'job', typeId: 31 },
+        { kind: 'settlerTrained', entity: e(1), course: 'school', target: 'good', typeId: 9 },
+        { kind: 'settlerTrained', entity: e(2), course: 'school', target: 'job', typeId: 31 },
+        { kind: 'settlerTrained', entity: e(3), course: 'school', target: 'job', typeId: 12 },
       ],
       snap,
       null,
@@ -264,8 +267,8 @@ describe('user messages from sim events', () => {
         about: null,
         goodType: null,
         technologies: null,
-        jobType: 7,
-        text: `S1:${USER_MESSAGE_TYPE.canDoNewJob}:-`,
+        jobType: 31,
+        text: 'barracks:S1:job:31',
       },
       {
         type: USER_MESSAGE_TYPE.canProduceNewGood,
@@ -276,6 +279,16 @@ describe('user messages from sim events', () => {
         technologies: null,
         jobType: 7,
         text: `S1:${USER_MESSAGE_TYPE.canProduceNewGood}:good:9`,
+      },
+      {
+        type: USER_MESSAGE_TYPE.canDoNewJob,
+        subject: { kind: 'settler', entity: e(3) },
+        at: { hx: 10, hy: 4 },
+        about: null,
+        goodType: null,
+        technologies: null,
+        jobType: 12,
+        text: 'school:S3:job:12',
       },
     ]);
   });

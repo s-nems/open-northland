@@ -16,7 +16,7 @@ import {
   settlerTribeOf,
   trainingHouseOf,
 } from '../../game/snapshot.js';
-import { technologyLabel, technologyReason } from '../../game/technology.js';
+import { technologyLabel } from '../../game/technology.js';
 import { messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, DIALOG_STYLE, el } from '../overlay.js';
 
@@ -62,11 +62,12 @@ export function openSchoolDialog(
       label,
     );
     const unlock = status?.(target, targetId, tribe.typeId, ownerPlayerOf(student));
-    const reason = unlock === undefined ? null : technologyReason(content, unlock);
+    // A school teaches knowledge the settlement has already discovered; locked courses are not choices.
+    if (unlock !== undefined && !unlock.enabled) continue;
     const learned = students.every((id) =>
       settlerLearnedOf(entityById(snapshot, id)?.components ?? {}, target).includes(targetId),
     );
-    const refusal = reason ?? (learned ? copy.schoolLearned : full ? copy.schoolFull : null);
+    const refusal = learned ? copy.schoolLearned : full ? copy.schoolFull : null;
     if (refusal !== null) {
       button.disabled = true;
       button.style.opacity = '0.5';

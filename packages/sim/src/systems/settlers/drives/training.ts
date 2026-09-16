@@ -62,7 +62,13 @@ export function planTraining(
     if (order.lesson === undefined) {
       const jobType = enlist(world, ctx, e);
       if (jobType !== null)
-        ctx.events.emit({ kind: 'settlerTrained', entity: e, target: 'job', typeId: jobType });
+        ctx.events.emit({
+          kind: 'settlerTrained',
+          entity: e,
+          course: 'barracks',
+          target: 'job',
+          typeId: jobType,
+        });
     } else {
       const s = world.mut(e, Settler);
       s.learned ??= { job: [], good: [] };
@@ -76,6 +82,7 @@ export function planTraining(
       ctx.events.emit({
         kind: 'settlerTrained',
         entity: e,
+        course: 'school',
         target: order.lesson.kind,
         typeId: order.lesson.typeId,
       });

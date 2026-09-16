@@ -356,6 +356,8 @@ export const plGame = {
     title: 'Komunikat',
     remove: 'Usuń komunikat',
     select: 'Pokaż',
+    becameSoldier: '{name} został żołnierzem',
+    learnedProfession: '{name} nauczył się zawodu: {profession}',
     levelTooltips: {
       '0': 'Każdy komunikat',
       '1': 'Bez drobiazgów',
@@ -376,8 +378,6 @@ export const plGame = {
       '17': 'nie ma zajęcia',
       '18': 'nie zna drogi bez nowych drogowskazów',
       '23': 'nie ma gdzie pracować',
-      '38': 'może produkować nowy towar',
-      '39': 'może podjąć nowy zawód',
       '47': 'ledwo się trzyma',
       '51': 'dorasta',
       '53': 'nie znajduje pary',

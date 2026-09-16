@@ -155,11 +155,8 @@ export function messagesFromEvents(
       case 'settlerTrained': {
         const e = ownedPerson(ev.entity);
         if (e !== undefined) {
-          raiser.settler(
-            ev.target === 'job' ? USER_MESSAGE_TYPE.canDoNewJob : USER_MESSAGE_TYPE.canProduceNewGood,
-            e,
-            ev.target === 'good' ? ev.typeId : null,
-          );
+          if (ev.target === 'job') raiser.trained(USER_MESSAGE_TYPE.canDoNewJob, e, ev.course, ev.typeId);
+          else raiser.settler(USER_MESSAGE_TYPE.canProduceNewGood, e, ev.typeId);
         }
         break;
       }

@@ -49,6 +49,8 @@ export type SimEvent =
       /** A barracks or school course granted this settler a new job or production qualification. */
       readonly kind: 'settlerTrained';
       readonly entity: Entity;
+      /** The course that completed, so the UI can distinguish enlistment from school education. */
+      readonly course: 'barracks' | 'school';
       readonly target: 'job' | 'good';
       readonly typeId: number;
     }

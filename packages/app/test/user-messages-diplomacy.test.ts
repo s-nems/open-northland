@@ -8,6 +8,7 @@ const RIVAL = 2;
 
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
+  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
   building: () => 'Dom',
   player: (player) => `Gracz ${player}`,
   stance: (state) => state,

@@ -18,6 +18,8 @@ export interface MessageNaming {
   /** A paper's name, for the note about finding one. */
   paper(paper: Paper): string;
   technology(kind: 'job' | 'good' | 'house', typeId: number): string;
+  /** Localized completion wording for barracks enlistment and school education. */
+  training(course: 'barracks' | 'school', subjectName: string, jobName: string): string;
   text(type: UserMessageType, parts: MessageTextParts): string;
 }
 
@@ -68,6 +70,20 @@ export class MessageRaiser {
           stanceName: null,
         });
       },
+    );
+  }
+
+  trained(type: UserMessageType, e: SnapshotEntity, course: 'barracks' | 'school', jobType: number): void {
+    const subject: MessageSubject = { kind: 'settler', entity: e.id };
+    this.raise(
+      `${type}|settler:${e.id}`,
+      { type, subject, at: nodeOf(e), about: null, goodType: null, technologies: null, jobType },
+      () =>
+        this.naming.training(
+          course,
+          this.naming.settler(e, this.snapshot).name,
+          this.naming.technology('job', jobType),
+        ),
     );
   }
 

@@ -195,6 +195,7 @@ describe('trainSoldier - the barracks drill', () => {
     expect(events).toContainEqual({
       kind: 'settlerTrained',
       entity: recruit,
+      course: 'barracks',
       target: 'job',
       typeId: SOLDIER_JOB,
     });

@@ -6,7 +6,7 @@ import type { GuiArt } from '../../../content/gui-art.js';
 import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
-import { messages, professionLabel } from '../../../i18n/index.js';
+import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import { contains } from '../../geometry.js';
 import type { TooltipSurface } from '../../tooltip-surface.js';
 import type { PanelContext } from '../context.js';
@@ -134,6 +134,13 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     paper: deps.paperLabel,
     technology: deps.technologyLabel,
+    training: (course, subjectName, jobName) =>
+      formatMessage(
+        course === 'barracks'
+          ? messages().userMessages.becameSoldier
+          : messages().userMessages.learnedProfession,
+        { name: subjectName, profession: jobName },
+      ),
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
   };
 }
