@@ -10,7 +10,8 @@ The owned CnMod `DataCnmd/tribetypes12/tribetypes.ini` supplies `jobEnables*`, `
 profession-general and product-specific experience tracks. `DataCnmd/types/houses.ini` supplies
 `logicSchoolSize`. The pipeline carries the complete lists, including repeated house requirements.
 
-- A worker who qualifies for a profession or product discovers it for that player and tribe.
+- A worker who qualifies for a profession or product discovers it for that player and tribe. Merely
+  starting a map already assigned to a gated profession does not bypass its experience requirement.
   Qualifying for a new profession also exposes its basic products, preventing circular prerequisites
   between a workshop and the first product its future worker can make.
 - A building requires every listed profession and product discovery. These are capabilities, not

@@ -15,6 +15,7 @@ import {
   goodEnabled,
   grantWorkExperience,
   jobEnabled,
+  rawXpForRepeats,
 } from '../../src/systems/progression/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -31,7 +32,12 @@ const SMITHY = 4;
 const WOOD = 1;
 const WOOD_TRACK = 1;
 
-function setup() {
+function setup(
+  houseRequirements: { readonly jobs: readonly number[]; readonly goods: readonly number[] } = {
+    jobs: [WOODCUTTER, CARPENTER],
+    goods: [PLANK],
+  },
+) {
   const base = testContent();
   const content = parseContentSet({
     ...base,
@@ -40,7 +46,7 @@ function setup() {
         ? t
         : {
             ...t,
-            technology: { houses: [{ house: SMITHY, jobs: [WOODCUTTER, CARPENTER], goods: [PLANK] }] },
+            technology: { houses: [{ house: SMITHY, ...houseRequirements }] },
             jobRequirements: [
               {
                 requirement: 'need',
@@ -64,6 +70,21 @@ function setup() {
 }
 
 describe('player technology discoveries', () => {
+  it('does not discover an authored current profession before that worker qualifies for it', () => {
+    const { sim, worker, ctx } = setup({ jobs: [CARPENTER], goods: [] });
+    setSettlerJob(sim.world, worker, CARPENTER);
+
+    technologySystem(sim.world, ctx);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(false);
+    expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(false);
+
+    const track = sim.content.jobExperience.find((candidate) => candidate.typeId === WOOD_TRACK);
+    sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, rawXpForRepeats(track, 3));
+    technologySystem(sim.world, ctx);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+    expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
+  });
+
   it('work discovers a profession and its basic product, opening a house before that profession is staffed', () => {
     const { sim, worker, ctx } = setup();
     technologySystem(sim.world, ctx);

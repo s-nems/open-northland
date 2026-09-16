@@ -98,8 +98,10 @@ export const technologySystem: System = (world, ctx) => {
     if (sameInput(previous.get(entity), input)) continue;
     previous.set(entity, input);
     changed = true;
-    discover(owner, s.tribe, 'job', s.jobType);
     const subject = { owner, tribe: s.tribe, experience: s.experience, learned: s.learned };
+    if (settlerMeetsNeed(world, ctx, subject, 'job', s.jobType)) {
+      discover(owner, s.tribe, 'job', s.jobType);
+    }
     for (const edge of tribe.jobEnables) {
       if (edge.jobType !== s.jobType || edge.kind === 'vehicle') continue;
       if (!typeAllowed(world, ctx, owner, s.tribe, edge.kind, edge.targetId)) continue;
