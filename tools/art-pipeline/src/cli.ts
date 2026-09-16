@@ -17,13 +17,19 @@ import { recover } from './transaction.js';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const usage =
-  'art list | build <id|all> | validate <id|all> | review <id> [--port 5188] | preview <id> [<id>...] | approve <id> --digest <hash> --reviewer <name> | publish <id> | recover [id]';
+  'art list | build <id|all> [--force] | validate <id|all> | review <id> [--port 5188] | preview <id> [<id>...] | approve <id> --digest <hash> --reviewer <name> | publish <id> | recover [id]';
 try {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
-    options: { port: { type: 'string' }, digest: { type: 'string' }, reviewer: { type: 'string' } },
+    options: {
+      force: { type: 'boolean' },
+      port: { type: 'string' },
+      digest: { type: 'string' },
+      reviewer: { type: 'string' },
+    },
   });
   const [command, id, ...extra] = positionals;
+  if (values.force && command !== 'build') throw new Error('--force is only valid for build');
   if (extra.length && command !== 'preview') throw new Error(usage);
   if (command === 'list') {
     console.log(
@@ -50,8 +56,17 @@ try {
           ? catalogSchema.parse(await json(resolve(root, 'docs/art/assets.json'))).assets.map((a) => a.id)
           : [id];
       for (const assetId of ids) {
-        const result =
-          command === 'build' ? await buildAsset(root, assetId) : (await candidate(root, assetId)).report;
+        const built =
+          command === 'build' ? await buildAsset(root, assetId, { force: values.force ?? false }) : undefined;
+        const result = built ?? (await candidate(root, assetId)).report;
+        if (built) {
+          const e = built.execution;
+          console.log(
+            `${assetId}: ${e.status} (${e.reason}), ${e.total.toFixed(0)} ms; ${Object.entries(e.timings)
+              .map(([stage, ms]) => `${stage}=${ms.toFixed(0)} ms`)
+              .join(', ')}`,
+          );
+        }
         console.log(`${assetId}: ${Object.keys(result.files).length} files, ${result.digest}`);
       }
     } else if (command === 'preview') console.log(await preparePreview(root, [id, ...extra]));
