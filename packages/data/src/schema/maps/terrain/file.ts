@@ -43,6 +43,8 @@ const TerrainMapFields = z.strictObject({
    * band 7 sits mostly under land patterns on river maps). Raw probe data with no runtime consumer.
    */
   shore: CellLane.optional(),
+  /** Raw `lmco` continent id at every half-cell node (`2W x 2H`), used by water-edge jobs. */
+  continents: CellLane.optional(),
   /** Populated `map.dat` `lafm` fish-swarm slots, in authored slot order. */
   fishSwarms: z.array(MapFishSwarm).optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
@@ -59,6 +61,17 @@ const cellCount = (m: TerrainMapValue): number => m.width * m.height;
 
 function fishSwarmsInRange(m: TerrainMapValue): boolean {
   return m.fishSwarms?.every((swarm) => swarm.hx < m.width * 2 && swarm.hy < m.height * 2) ?? true;
+}
+
+function halfCellLaneLength(field: 'continents'): TerrainMapInvariant {
+  return {
+    ok: (m) => {
+      const lane = m[field];
+      return lane === undefined || lane.length === cellCount(m) * 4;
+    },
+    message: (m) => `terrain map ${field} length ${m[field]?.length} != width*height*4 (${cellCount(m) * 4})`,
+    path: [field],
+  };
 }
 
 function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: TerrainMapValue): boolean {
@@ -156,6 +169,12 @@ const INVARIANTS: readonly TerrainMapInvariant[] = [
   cellLaneLength('elevation'),
   cellLaneLength('brightness'),
   cellLaneLength('shore'),
+  halfCellLaneLength('continents'),
+  {
+    ok: (m) => (m.fishSwarms?.length ?? 0) === 0 || m.continents !== undefined,
+    message: () => 'terrain map populated fish swarms require a continent lane',
+    path: ['continents'],
+  },
   {
     ok: fishSwarmsInRange,
     message: () => 'terrain map fish swarm lies outside the half-cell grid',

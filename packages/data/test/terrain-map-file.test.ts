@@ -67,6 +67,7 @@ function base(): Record<string, unknown> {
     elevation: PER_CELL_LANE,
     brightness: PER_CELL_LANE,
     shore: PER_CELL_LANE,
+    continents: new Array(HALF_CELL_X_BOUND * HALF_CELL_Y_BOUND).fill(7),
     fishSwarms: [{ hx: HALF_CELL_X_BOUND - 1, hy: HALF_CELL_Y_BOUND - 1, count: 30, continent: 7 }],
   };
 }
@@ -189,10 +190,25 @@ describe('parseTerrainMap cross-lane invariants', () => {
       message: 'terrain map shore length 11 != width*height (12)',
     },
     {
+      name: 'a continent lane one half-cell short',
+      map: {
+        ...base(),
+        continents: new Array(HALF_CELL_X_BOUND * HALF_CELL_Y_BOUND - 1).fill(7),
+      },
+      path: 'continents',
+      message: 'terrain map continents length 47 != width*height*4 (48)',
+    },
+    {
       name: 'a fish swarm outside the half-cell grid',
       map: { ...base(), fishSwarms: [{ hx: HALF_CELL_X_BOUND, hy: 0, count: 1, continent: 0 }] },
       path: 'fishSwarms',
       message: 'terrain map fish swarm lies outside the half-cell grid',
+    },
+    {
+      name: 'populated fish swarms without continent data',
+      map: { ...base(), continents: undefined },
+      path: 'continents',
+      message: 'terrain map populated fish swarms require a continent lane',
     },
   ];
 

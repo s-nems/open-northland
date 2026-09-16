@@ -156,6 +156,38 @@ describe('fishing', () => {
     expect(sim.world.has(fisher, WorkFlag)).toBe(true);
   });
 
+  it('does not fish while its assigned HQ has no room for another catch', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(16, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 8, hy: 3, count: 2, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+
+    const hq = sim.world.create();
+    sim.world.add(hq, Position, positionOfNode(2, 3));
+    sim.world.add(hq, Building, { buildingType: 1, tribe: 1, built: fx.fromInt(1), level: 0 });
+    sim.world.add(hq, Stockpile, { amounts: new Map([[FOOD, 150]]) });
+    sim.world.add(hq, Owner, { player: 0 });
+    const fisher = fisherAt(sim, c.x, c.y);
+    sim.world.add(fisher, Owner, { player: 0 });
+    assignWorker(sim.world, ctxOf(sim), {
+      kind: 'assignWorker',
+      entity: fisher,
+      building: hq,
+      jobPriority: [FISHER],
+    });
+
+    for (let tick = 0; tick < 20; tick++) sim.step();
+
+    expect(sim.world.has(fisher, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(fisher, Carrying)).toBe(false);
+    expect(sim.world.get(fisher, Settler).experience.get(900)).toBeUndefined();
+    expect(sim.world.get(swarm, FishSwarm).count).toBe(2);
+  });
+
   it('runs cast/failure retries, catches one fish, and leaves the swarm depleted', () => {
     const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
     const terrain = sim.terrain;
@@ -241,6 +273,47 @@ describe('fishing', () => {
     expect(terrain.coordsOf(goal)).toEqual({ x: 8, y: 3 });
   });
 
+  it('uses the selected water continent and excludes a swarm exactly 20 nodes from its edge', () => {
+    const width = 30;
+    const height = 6;
+    const typeIds = new Array<number>(width * height).fill(0);
+    const landVertices = new Array<boolean>(width * height).fill(true);
+    const waterContinents = new Array<number>(width * height).fill(1);
+    for (let y = 0; y < height; y++) {
+      for (let x = 2; x < width; x++) {
+        const node = y * width + x;
+        typeIds[node] = 1;
+        landVertices[node] = false;
+        waterContinents[node] = 7;
+      }
+    }
+    const map = { resolution: 'half-cell' as const, width, height, typeIds, landVertices, waterContinents };
+
+    const atBoundary = new Simulation({ seed: 4, content: fishingContent(), map });
+    const terrain = atBoundary.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    addFishSwarms(atBoundary.world, terrain, [{ hx: 22, hy: 3, count: 2, continent: 7 }]);
+    const blocked = fisherAt(atBoundary, 1, 3);
+    atBoundary.step();
+    expect(atBoundary.world.has(blocked, CurrentAtomic)).toBe(false);
+
+    const inside = new Simulation({ seed: 4, content: fishingContent(), map });
+    const insideTerrain = inside.terrain;
+    if (insideTerrain === undefined) throw new Error('test needs terrain');
+    const [matching, otherWater] = addFishSwarms(inside.world, insideTerrain, [
+      { hx: 21, hy: 3, count: 2, continent: 7 },
+      { hx: 3, hy: 3, count: 2, continent: 8 },
+    ]);
+    if (matching === undefined || otherWater === undefined) throw new Error('fish swarms did not spawn');
+    const allowed = fisherAt(inside, 1, 3);
+    inside.step();
+    const effect = inside.world.get(allowed, CurrentAtomic).effect;
+    expect(effect).toMatchObject({ kind: 'fish', swarm: matching });
+    expect(effect).not.toMatchObject({ swarm: otherWater });
+    if (effect.kind !== 'fish') throw new Error('expected fishing atomic');
+    expect(insideTerrain.coordsOf(effect.water)).toEqual({ x: 2, y: 3 });
+  });
+
   it('does not fall back to an arbitrary land point when a real map has no valid water edge', () => {
     const waterMap = waterColumnMap(8, 4, 3);
     const map = { ...waterMap, landVertices: waterMap.typeIds.map(() => true) };
@@ -286,10 +359,7 @@ describe('fishing', () => {
     sim.world.mut(planned, FishSwarm).count = 0;
     const shore = sim.world.get(planned, FishSwarm).shore;
     if (shore === null) throw new Error('planned swarm has no shore');
-    const c = terrain.coordsOf(shore);
-    const fisher = fisherAt(sim, c.x, c.y);
-
-    expect(takeFishNear(sim.world, terrain, fisher, 7)).toBe(fallback);
+    expect(takeFishNear(sim.world, terrain, shore, 7)).toBe(fallback);
     expect(sim.world.get(fallback, FishSwarm).count).toBe(1);
   });
 });

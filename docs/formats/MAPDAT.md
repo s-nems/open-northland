@@ -69,6 +69,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `emla` | half-cell | placed landscape-object ids |
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
 | `lmms` | half-cell | max moveable-unit size per the CulturesNation docs: distance from blocked nodes capped at 7 (range verified); collapsed to the cell `shore` lane |
+| `lmco` | half-cell | original continent id per node; retained for water-edge jobs to match authored fish swarms |
 | `lafm` | fixed records | authored fish swarms: populated position/count/continent records become persistent sim stocks |
 
 ### Verified `lafm` fish table
@@ -95,7 +96,7 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | Tag | Kind | Meaning |
 | --- | --- | --- |
 | `lmpa`, `lmpb` | derivable | pattern `LogicType` per triangle (water = 1, void = {0, 5, 6}, land = rest) |
-| `lmco`, `laco` | derivable | flood-filled continent id per node, plus the continent table (type, anchor, size) |
+| `laco` | derivable | continent table (type, anchor, size); `lmco` node ids are imported |
 | `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions (derivation verified below) |
 | `lmpr` | derivable | roughness 0..5 slowing movement; 1 on water and road nodes |
 | `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas (derivation verified below) |

@@ -8,7 +8,17 @@ const VERSION_2_CAPACITY = 500;
 
 /** Decode populated slots from the fixed-size `lafm` fish-manager payload. */
 export function decodeFishSwarms(chunk: MapDatChunk): MapFishSwarm[] {
-  const capacity = chunk.version === 2 ? VERSION_2_CAPACITY : VERSION_1_CAPACITY;
+  let capacity: number;
+  switch (chunk.version) {
+    case 1:
+      capacity = VERSION_1_CAPACITY;
+      break;
+    case 2:
+      capacity = VERSION_2_CAPACITY;
+      break;
+    default:
+      throw new Error(`mapdat: unsupported lafm version ${chunk.version}`);
+  }
   const expected = capacity * RECORD_SIZE + 4;
   if (chunk.length !== expected) {
     throw new Error(`mapdat: lafm v${chunk.version} payload is ${chunk.length} bytes, expected ${expected}`);

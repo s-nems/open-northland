@@ -21,8 +21,8 @@ function lafm(
   return payload;
 }
 
-function chunk(payload: Uint8Array) {
-  const map = decodeMapDat(encodeMapDat([{ tag: 'lafm', version: 2, payload }]));
+function chunk(payload: Uint8Array, version = 2) {
+  const map = decodeMapDat(encodeMapDat([{ tag: 'lafm', version, payload }]));
   return map.chunks[0] as ReturnType<typeof decodeMapDat>['chunks'][number];
 }
 
@@ -51,5 +51,9 @@ describe('decodeFishSwarms', () => {
     expect(() => decodeFishSwarms(chunk(lafm([{ slot: 0, x: 1, y: 2, count: 31, continent: 1 }])))).toThrow(
       /maximum is 30/,
     );
+  });
+
+  it('rejects an unsupported table version instead of interpreting it as v1', () => {
+    expect(() => decodeFishSwarms(chunk(lafm([]), 3))).toThrow(/unsupported lafm version 3/);
   });
 });

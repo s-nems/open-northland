@@ -19,8 +19,12 @@ export class TerrainGraph extends TerrainEdges {
     props: ReadonlyMap<number, LandscapeProps>,
     readonly landscapes?: LandscapeMapInput,
     readonly landVertices?: readonly boolean[],
+    readonly waterContinents?: readonly number[],
   ) {
     super(width, height, typeIds, props);
+    if (waterContinents !== undefined && waterContinents.length !== this.nodeCount) {
+      throw new Error(`water continent lane has ${waterContinents.length} nodes, expected ${this.nodeCount}`);
+    }
     this.components = this.computeComponents();
   }
 

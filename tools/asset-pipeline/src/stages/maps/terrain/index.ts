@@ -9,6 +9,7 @@ import {
   unpackMapLayer,
 } from '../../../decoders/mapdat/index.js';
 import { errorMessage } from '../../../errors.js';
+import { continentsFromMapDat } from './continents.js';
 import { type GroundLayer, groundFromMapDat } from './ground.js';
 import type { DecodedMap } from './lane.js';
 import { type ObjectsLayer, objectsFromMapDat } from './objects.js';
@@ -30,6 +31,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   readonly brightness?: number[];
   /** Per-cell `lmms` band, the lane collapsed to the cell-centre node. */
   readonly shore?: number[];
+  /** Raw `lmco` continent id per half-cell node. */
+  readonly continents?: number[];
   /** Populated authored fish-swarm slots (`lafm`). */
   readonly fishSwarms?: Array<{ hx: number; hy: number; count: number; continent: number }>;
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs). */
@@ -69,6 +72,13 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   }
   const terrain = lmltToTerrainMap(unpackMapLayer(lmlt), size);
   const decoded: DecodedMap = { map, size };
+  const fish = findChunk(map, 'lafm');
+  const fishSwarms = fish === undefined ? undefined : decodeFishSwarms(fish);
+  const strictContinents = fishSwarms !== undefined && fishSwarms.length > 0;
+  const continents = continentsFromMapDat(decoded);
+  if (strictContinents && continents === undefined) {
+    throw new Error('mapdat: populated lafm fish table requires an lmco continent lane');
+  }
   return {
     ...terrain,
     ...layer('ground', 'ground lanes', () => groundFromMapDat(decoded)),
@@ -77,9 +87,7 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     ...layer('elevation', 'elevation lane', () => elevationFromMapDat(decoded)),
     ...layer('brightness', 'brightness lane', () => brightnessFromMapDat(decoded)),
     ...layer('shore', 'shore lane', () => shoreFromMapDat(decoded)),
-    ...layer('fishSwarms', 'fish swarms', () => {
-      const fish = findChunk(map, 'lafm');
-      return fish === undefined ? undefined : decodeFishSwarms(fish);
-    }),
+    ...(continents === undefined ? {} : { continents }),
+    ...(fishSwarms === undefined ? {} : { fishSwarms }),
   };
 }

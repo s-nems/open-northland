@@ -1,10 +1,10 @@
 import { FishSwarm, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { hexDistance, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { FishSwarmInput, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { fishSwarmsNearNode } from '../spatial/fish.js';
-import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../spatial/metric.js';
+import { closer, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../spatial/metric.js';
 
 export const MAX_FISH_PER_SWARM = 30;
 export const FISH_CAST_ATOMIC = 36;
@@ -69,22 +69,19 @@ function nearestShore(terrain: TerrainGraph, water: NodeId): NodeId | null {
 export function takeFishNear(
   world: World,
   terrain: TerrainGraph,
-  fisher: Entity,
+  water: NodeId,
   continent: number,
 ): Entity | null {
-  const position = world.tryGet(fisher, Position);
-  if (position === undefined) return null;
-  const here = nodeOfPosition(position.x, position.y);
-  const origin = terrain.nodeAtClamped(here.hx, here.hy);
+  const origin = terrain.coordsOf(water);
   let best: { entity: Entity; node: NodeId; distance: number } | null = null;
-  for (const entity of fishSwarmsNearNode(world, here.hx, here.hy, FISH_SHORE_SEARCH_RADIUS)) {
+  for (const entity of fishSwarmsNearNode(world, origin.x, origin.y, FISH_SHORE_SEARCH_RADIUS - 1)) {
     const swarm = world.get(entity, FishSwarm);
     if (swarm.count <= 0 || swarm.continent !== continent) continue;
     const at = world.get(entity, Position);
     const point = nodeOfPosition(at.x, at.y);
     const node = terrain.nodeAtClamped(point.hx, point.hy);
-    const distance = manhattan(terrain, origin, node);
-    if (distance > FISH_SHORE_SEARCH_RADIUS) continue;
+    const distance = hexDistance({ hx: origin.x, hy: origin.y }, point);
+    if (distance >= FISH_SHORE_SEARCH_RADIUS) continue;
     if (best === null || closer(distance, node, best.distance, best.node)) {
       best = { entity, node, distance };
     }

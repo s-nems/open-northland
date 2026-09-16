@@ -184,6 +184,11 @@ describe('allowedActions - one settler', () => {
     expect(bare.has('showWorkArea')).toBe(false);
     const flagged = allowedActions(content, snapshotOf([settler(1, JOB_COLLECTOR, { workFlag: true })]), [1]);
     expect(flagged.has('showWorkArea')).toBe(true);
+    for (const job of [JOB_COLLECTOR, JOB_HUNTER, JOB_FISHER]) {
+      const employed = allowedActions(content, snapshotOf([settler(1, job, { workplace: true })]), [1]);
+      expect(employed.has('assignWorkArea')).toBe(false);
+      expect(employed.has('showWorkArea')).toBe(false);
+    }
   });
 
   it('offers the fishing delivery flag and shows it after placement', () => {

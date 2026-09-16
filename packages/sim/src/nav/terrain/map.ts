@@ -13,6 +13,8 @@ export interface TerrainMap {
   readonly landscapes?: LandscapeMapInput;
   /** Ground vertex land mask, row-major on the half-cell grid. */
   readonly landVertices?: readonly boolean[];
+  /** Original `lmco` connectivity id at each half-cell node. */
+  readonly waterContinents?: readonly number[];
   /** Authored fish-manager rows, already addressed on this half-cell grid. */
   readonly fishSwarms?: readonly FishSwarmInput[] | undefined;
   /** Half-cell grid width, twice the map's cell columns. */
@@ -42,6 +44,7 @@ export interface CellTerrainMap {
   /** Row-major landscape typeId per cell; length must equal width*height. */
   readonly typeIds: ReadonlyArray<number>;
   readonly fishSwarms?: readonly FishSwarmInput[] | undefined;
+  readonly waterContinents?: readonly number[] | undefined;
 }
 
 /**
@@ -78,6 +81,7 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
     width,
     height,
     typeIds,
+    ...(map.waterContinents !== undefined ? { waterContinents: map.waterContinents } : {}),
     ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),
   };
 }
@@ -97,5 +101,13 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
   for (const id of typeIds) {
     if (!props.has(id)) throw new Error(`terrain map references landscape typeId ${id} absent from content`);
   }
-  return new TerrainGraph(map.width, map.height, typeIds, props, map.landscapes, map.landVertices);
+  return new TerrainGraph(
+    map.width,
+    map.height,
+    typeIds,
+    props,
+    map.landscapes,
+    map.landVertices,
+    map.waterContinents,
+  );
 }

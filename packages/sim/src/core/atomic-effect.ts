@@ -1,5 +1,6 @@
 import type { EquipCategory } from '@open-northland/data';
 import type { Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /** The effect an atomic action applies on completion. */
 export type AtomicEffect =
@@ -8,6 +9,8 @@ export type AtomicEffect =
   | {
       readonly kind: 'fish';
       readonly swarm: Entity;
+      /** The adjacent water point selected with the shore; the catch reuses its continent and range. */
+      readonly water: NodeId;
       readonly goodType: number;
       readonly repeatsLeft: number;
       readonly phase: 'cast' | 'retry' | 'result';

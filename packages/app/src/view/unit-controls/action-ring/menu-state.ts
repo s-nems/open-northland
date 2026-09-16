@@ -89,6 +89,7 @@ function offersMode(
 function worksAnArea(content: ContentSet, e: SnapshotEntity, job: number | null): boolean {
   return (
     tradeAssignable(e) &&
+    workplaceOf(e) === undefined &&
     job !== null &&
     (harvestJobsOf(content).has(job) || systems.isFisherJob(content, job))
   );

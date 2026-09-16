@@ -108,7 +108,12 @@ function collisionTerrain(
 ): TerrainMap | null {
   if (map === null) return null;
   if (scripted && ir !== null) return buildScriptLandscapeTerrain(map, ir);
-  return ir === null ? halfCellMapFromCells(map) : buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
+  return ir === null
+    ? halfCellMapFromCells({
+        ...map,
+        ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
+      })
+    : buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
 }
 
 function runWorld(

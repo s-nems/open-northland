@@ -49,6 +49,7 @@ describe('mapDatToTerrain', () => {
     const bytes = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
       { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      { tag: 'lmco', version: 1, payload: packMapLayer(new Uint8Array(8).fill(9)) },
       {
         tag: 'lafm',
         version: 2,
@@ -62,6 +63,42 @@ describe('mapDatToTerrain', () => {
       { hx: 3, hy: 1, count: 17, continent: 9 },
       { hx: 0, hy: 0, count: 5, continent: 2 },
     ]);
+  });
+
+  it('rejects a present corrupt lafm gameplay table instead of silently dropping its swarms', () => {
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(4)) },
+      { tag: 'lafm', version: 2, payload: new Uint8Array(12) },
+    ]);
+    expect(() => mapDatToTerrain(bytes)).toThrow(/lafm v2 payload is 12 bytes/);
+  });
+
+  it('rejects missing or corrupt continent data for a populated fish table', () => {
+    const chunks = [
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      {
+        tag: 'lafm',
+        version: 2,
+        payload: fishPayload([{ slot: 0, hx: 1, hy: 0, count: 2, continent: 9 }]),
+      },
+    ];
+    expect(() => mapDatToTerrain(encodeMapDat(chunks))).toThrow(/requires an lmco continent lane/);
+    expect(() =>
+      mapDatToTerrain(
+        encodeMapDat([...chunks, { tag: 'lmco', version: 1, payload: packMapLayer(new Uint8Array(7)) }]),
+      ),
+    ).toThrow(/lmco continent lane has 7 half-cells/);
+  });
+
+  it('carries the raw lmco continent ids at half-cell resolution', () => {
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      { tag: 'lmco', version: 1, payload: packMapLayer(Uint8Array.from([1, 1, 7, 7, 1, 1, 7, 7])) },
+    ]);
+    expect(mapDatToTerrain(bytes).continents).toEqual([1, 1, 7, 7, 1, 1, 7, 7]);
   });
 
   it('throws on a map.dat with no lmlt landscape-type chunk', () => {

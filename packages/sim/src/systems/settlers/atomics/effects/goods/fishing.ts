@@ -45,9 +45,10 @@ export function advanceFishingAtomic(
   }
 
   const swarm = world.tryGet(effect.swarm, FishSwarm);
+  const waterContinent = ctx.terrain?.waterContinents?.[effect.water] ?? swarm?.continent;
   const caughtFrom =
-    swarm !== undefined && ctx.terrain !== undefined && !world.has(fisher, Carrying)
-      ? takeFishNear(world, ctx.terrain, fisher, swarm.continent)
+    waterContinent !== undefined && ctx.terrain !== undefined && !world.has(fisher, Carrying)
+      ? takeFishNear(world, ctx.terrain, effect.water, waterContinent)
       : null;
   const caught = caughtFrom !== null;
   if (caught) {
