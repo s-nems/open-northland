@@ -181,8 +181,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         visuals.hideAll();
         return;
       }
-      // Space opens with no cursor to pin to. Approximation: the selection's centroid stands in, projected
-      // on the session's first frame and then frozen like any other anchor.
+      // A caller without a pointer sample falls back to the selection centroid on the session's first
+      // frame, then freezes it like any other anchor.
       anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y) };
       if (menu === null || !sameIds(menu.ids, centre.ids)) {
         menu = {
@@ -215,10 +215,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     return {
       update,
-      toggle: (): void => {
+      toggle: (atClient): void => {
         if (mode === 'jobs') closeJobWindow();
         else if (mode === 'menu') closeMenu();
-        else openMenu(); // no cursor on the Space path, so `update` pins the centroid next frame
+        else openMenu(atClient);
       },
       open: openMenu,
       close: closeMenu,

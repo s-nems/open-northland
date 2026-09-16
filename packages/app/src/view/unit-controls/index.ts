@@ -52,6 +52,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const marquee = createSelectionMarquee();
+  /** Last browser cursor point, retained so a keyboard-opened menu can share the click-open anchor. */
+  let pointer: { readonly x: number; readonly y: number } | null = null;
 
   const unitTargets = createUnitTargets({
     snapshot: opts.snapshot,
@@ -130,6 +132,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const overviewPress = createOverviewOrders({ pickMode, orders: () => orders });
 
   const onMouseDown = (e: MouseEvent): void => {
+    pointer = { x: e.clientX, y: e.clientY };
     // The HUD claims its own clicks before any world picking. The ring claim covers the right button
     // too, since its own listener consumes left clicks only.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
@@ -152,6 +155,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const onMouseMove = (e: MouseEvent): void => {
+    pointer = { x: e.clientX, y: e.clientY };
     marquee.update(e.clientX, e.clientY);
   };
 
@@ -178,7 +182,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const onKeyDown = (e: KeyboardEvent): void => {
     if (isActionHotkey(e, opts.bindings, 'actionRing')) {
       e.preventDefault(); // Space (the default binding) would otherwise scroll the page
-      chrome.actions().toggle(); // the info card is always-on; the hotkey toggles only the action ring
+      chrome.actions().toggle(pointer ?? undefined);
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
       armAttackMove();
     } else if (e.code === 'Escape') {
