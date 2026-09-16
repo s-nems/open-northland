@@ -6,6 +6,7 @@ import {
   CurrentAtomic,
   DeliveryFlag,
   FishSwarm,
+  MoveGoal,
   Owner,
   Position,
   Settler,
@@ -25,7 +26,7 @@ import {
 import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassNodeMap } from '../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 
 const FISHER = 22;
 const FISH = 122;
@@ -163,6 +164,41 @@ describe('fishing', () => {
     }
     expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
     expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
+  });
+
+  it("chooses a reachable nearby bank instead of the swarm's single spawn-time shore", () => {
+    const waterMap = waterColumnMap(8, 4, 3);
+    const map = { ...waterMap, landVertices: waterMap.typeIds.map((typeId) => typeId !== 1) };
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 6, hy: 3, count: 3, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const spawnShore = sim.world.get(swarm, FishSwarm).shore;
+    if (spawnShore === null) throw new Error('fish swarm has no shore');
+    expect(terrain.coordsOf(spawnShore).x).toBeLessThan(6); // deterministic spawn fallback picked west bank
+
+    const fisher = fisherAt(sim, 9, 3); // east bank, disconnected from the stored west-bank point
+    sim.step();
+
+    const goal = sim.world.get(fisher, MoveGoal).cell;
+    expect(terrain.coordsOf(goal)).toEqual({ x: 8, y: 3 });
+  });
+
+  it('does not fall back to an arbitrary land point when a real map has no valid water edge', () => {
+    const waterMap = waterColumnMap(8, 4, 3);
+    const map = { ...waterMap, landVertices: waterMap.typeIds.map(() => true) };
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 6, hy: 3, count: 3, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const fisher = fisherAt(sim, 9, 3);
+
+    sim.step();
+
+    expect(sim.world.has(fisher, MoveGoal)).toBe(false);
+    expect(sim.world.has(fisher, CurrentAtomic)).toBe(false);
   });
 
   it('reproduces only a nonempty, nonfull swarm on the 2160-tick cadence', () => {

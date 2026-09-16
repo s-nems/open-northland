@@ -41,6 +41,9 @@ const KISS_ATOMIC_IDS = [20, 21] as const;
  *  its partner. */
 const CHAT_ATOMIC_IDS = [14, 15] as const;
 
+/** The fisher's cast, catch and failed-cast actions (`setatomic 22 36..38`) all play toward the water. */
+const FISHING_ATOMIC_IDS = [36, 37, 38] as const;
+
 /**
  * Every atomic whose runner faces its target while the swing plays; such a settler has stopped walking,
  * so without this it keeps its last walk heading and swings beside the node it works. Facing the target
@@ -52,6 +55,7 @@ export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ...Object.values(HARVEST_ATOMIC_IDS),
   ...KISS_ATOMIC_IDS,
   ...CHAT_ATOMIC_IDS,
+  ...FISHING_ATOMIC_IDS,
 ]);
 
 interface SceneIndex {

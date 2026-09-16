@@ -88,6 +88,17 @@ describe('buildScene - settler facing derivation', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // faces E, into the tree
   });
 
+  it.each([36, 37, 38])('a fisher action (atomic %i) faces its fish swarm in the water', (atomicId) => {
+    const fisher = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId, elapsed: 3, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // stale westward walk
+    });
+    const swarm = entity(2, 2, 1, { FishSwarm: { count: 5, continent: 1, shore: null } });
+    const scene = buildScene(snapshotOf([fisher, swarm]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // E, toward the water
+  });
+
   it('a builder (atomic 39) faces the construction site from either side', () => {
     // The builder stands east of the site with a stale path still pointing east. Action 39 has authored
     // per-direction hammer lists, so the facing selects real frames.
