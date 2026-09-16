@@ -20,8 +20,9 @@ Measured breakdown of the 246 that do not land (re-measure before acting - count
   `potter` → `brick` ×6, `smith`, `mason`, `sewer`, `brewer`, `druid`, `armorer`). **The real gap.**
 - **86 `„gold”`** - a source typo covered by
   [typographic-quoted values](../pipeline/setproducedgood-typographic-quotes.md). Not this ticket.
-- **62 `fisher` → `fish`** - `fish` carries no harvest atomic and `fisher` no harvest grant, so no work
-  flag exists to narrow. Only actionable if fishing ever becomes flag work.
+- **62 `fisher` → `fish`** - intentionally need no work flag: the dedicated fishing drive selects
+  authored `lafm` swarms and can produce only fish. These rows still do not land as craft selections,
+  but no gameplay choice is lost.
 - **38 `hunter` → `prey` / 13 `farmer` → `wheat`** - **no action needed, do not "fix" these.** `prey` is
   the resource, not a good; the hunter falls back to every good it can harvest (`leather` + `meat` +
   `wool`, all harvest atomic 33), which is what hunted carcasses yield. A farmer is bound to its farm by
@@ -40,6 +41,6 @@ Measured breakdown of the 246 that do not land (re-measure before acting - count
 ## Verify
 
 - `npm test`; extend `packages/sim/test/settlers/gatherer-flag/yard/commands.cases.ts` (the spawn-pick
-  cases) and `packages/app/test/content/authored-map-gather-good.test.ts`, whose `fisher` row already
-  pins one known drop.
+  cases) and `packages/app/test/content/authored-map-gather-good.test.ts`. Its `fisher` row pins the
+  intentional no-flag path used by the dedicated fishing mechanic.
 - `npm run test:content`; re-count how many of the 819 land, and state the new number.

@@ -4,6 +4,7 @@ export type DrawKind =
   | 'tile'
   | 'building'
   | 'settler'
+  | 'fish'
   | 'resource'
   | 'berrybush'
   | 'chest'

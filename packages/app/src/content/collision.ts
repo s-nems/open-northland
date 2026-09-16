@@ -172,5 +172,11 @@ export function buildCollisionTerrain(
     });
   }
 
-  return { resolution: 'half-cell', width: nodeW, height: nodeH, typeIds };
+  return {
+    resolution: 'half-cell',
+    width: nodeW,
+    height: nodeH,
+    typeIds,
+    ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),
+  };
 }

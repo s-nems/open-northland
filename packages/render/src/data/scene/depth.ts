@@ -9,6 +9,7 @@ import type { DrawKind } from './draw-item.js';
  */
 const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
+  fish: 0,
   resource: 0,
   berrybush: 0, // a bush sits behind the settler foraging it, like a resource node
   stump: 0,

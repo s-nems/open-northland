@@ -21,6 +21,11 @@ export const PLANT_ATOMIC = 34;
 /** The farmer's watering action (`goodtypes.ini` wheat `atomicForCultivating 35`). */
 export const CULTIVATE_ATOMIC = 35;
 
+/** The fisher's cast, caught-fish, and failed-cast sequence. */
+export const FISH_CAST_ATOMIC = 36;
+export const FISH_CAUGHT_ATOMIC = 37;
+export const FISH_FAILED_ATOMIC = 38;
+
 /**
  * The store-exchange pair every trade shares (`tribetypes.ini setatomic <job> 22/23`): lift a load (22)
  * and pile it into a store (23).

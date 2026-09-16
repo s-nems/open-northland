@@ -1,6 +1,7 @@
 import type {
   BuildingTypeBinding,
   DirectionalAnim,
+  FishBinding,
   ResourceTypeBinding,
   SpriteBindings,
   StockpileBinding,
@@ -36,6 +37,7 @@ export function buildHumanBindings(
     readonly trunk?: ResourceTypeBinding;
     readonly berrybush?: ResourceTypeBinding;
     readonly chest?: ResourceTypeBinding;
+    readonly fish?: FishBinding;
   } = {},
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
@@ -74,5 +76,7 @@ export function buildHumanBindings(
     ...(layered.berrybush !== undefined ? { berrybush: layered.berrybush } : {}),
     // A closed chest draws its own `ls_chest` record frame, wooden or magical.
     ...(layered.chest !== undefined ? { chest: layered.chest } : {}),
+    // A swarm draws one representative fish; the original draws one independently moving bob per unit.
+    ...(layered.fish !== undefined ? { fish: layered.fish } : {}),
   };
 }

@@ -24,6 +24,7 @@ export const ARROW = {
 const KIND_COLOURS: Record<BoxKind, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
+  fish: 0x5da9c9,
   resource: 0x2f7d32,
   berrybush: 0xb03050, // red berries on a fruited bush
   stockpile: 0xb08040, // a sandy heap or delivery flag
@@ -63,6 +64,7 @@ function drawArrow(g: Graphics): Graphics {
 function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
   if (kind === 'building') return { bodyW: 28, bodyH: 40 };
   if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap or flag base
+  if (kind === 'fish') return { bodyW: 18, bodyH: 8 };
   // The arrow's own extent, tip to tail and across the head.
   if (kind === 'projectile') {
     return { bodyW: ARROW.head.tipX - ARROW.shaft.tailX, bodyH: 2 * ARROW.head.halfSpan };

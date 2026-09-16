@@ -1,5 +1,6 @@
 import type { MapStaticObjects } from '../../../decoders/ini.js';
 import {
+  decodeFishSwarms,
   decodeMapDat,
   decodeMapSize,
   findChunk,
@@ -29,6 +30,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   readonly brightness?: number[];
   /** Per-cell `lmms` band, the lane collapsed to the cell-centre node. */
   readonly shore?: number[];
+  /** Populated authored fish-swarm slots (`lafm`). */
+  readonly fishSwarms?: Array<{ hx: number; hy: number; count: number; continent: number }>;
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs). */
   readonly entities?: MapStaticObjects;
 }
@@ -74,5 +77,9 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     ...layer('elevation', 'elevation lane', () => elevationFromMapDat(decoded)),
     ...layer('brightness', 'brightness lane', () => brightnessFromMapDat(decoded)),
     ...layer('shore', 'shore lane', () => shoreFromMapDat(decoded)),
+    ...layer('fishSwarms', 'fish swarms', () => {
+      const fish = findChunk(map, 'lafm');
+      return fish === undefined ? undefined : decodeFishSwarms(fish);
+    }),
   };
 }

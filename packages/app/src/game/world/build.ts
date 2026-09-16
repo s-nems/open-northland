@@ -32,6 +32,9 @@ export function newWorldSim(
     map,
     ...(script.missions !== undefined ? { missions: script.missions } : {}),
   });
+  if (map.fishSwarms !== undefined && sim.terrain !== undefined) {
+    systems.addFishSwarms(sim.world, sim.terrain, map.fishSwarms);
+  }
   for (const row of script.permissions ?? []) components.setMapPermission(sim.world, row);
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   for (const row of diplomacy) {

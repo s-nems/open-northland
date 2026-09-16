@@ -1,0 +1,128 @@
+import type { ContentSet } from '@open-northland/data';
+import { describe, expect, it } from 'vitest';
+import { addPerson, Carrying, CurrentAtomic, FishSwarm, Position } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { fx, positionOfNode, Simulation } from '../../src/index.js';
+import {
+  addFishSwarms,
+  FISH_CAST_ATOMIC,
+  FISH_CAUGHT_ATOMIC,
+  FISH_FAILED_ATOMIC,
+  fishReproductionSystem,
+  takeFishNear,
+} from '../../src/systems/economy/fish.js';
+import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
+
+const FISHER = 22;
+const FISH = 122;
+
+function fishingContent(): ContentSet {
+  const base = testContent();
+  return {
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: FISH,
+        id: 'fish',
+        weight: 1,
+        atomics: {},
+        productionInputs: [],
+        classification: { producedOnMap: true, producedInHouse: false, inputGood: false },
+      },
+    ],
+    jobs: [
+      ...base.jobs,
+      { typeId: FISHER, id: 'fisher', allowedAtomics: [36, 37, 38], forbiddenAtomics: [] },
+    ],
+    jobExperience: [
+      ...base.jobExperience,
+      {
+        typeId: 900,
+        id: 'fisher_fish',
+        jobType: FISHER,
+        goodType: FISH,
+        experienceFactor: 1,
+        baseRepeatCounter: 2,
+      },
+    ],
+  };
+}
+
+function fisherAt(sim: Simulation, hx: number, hy: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(hx, hy));
+  addPerson(sim.world, e, {
+    tribe: 1,
+    jobType: FISHER,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map(),
+  });
+  return e;
+}
+
+describe('fishing', () => {
+  it('runs cast/failure retries, catches one fish, and leaves the swarm depleted', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 5, hy: 3, count: 1, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, c.x, c.y);
+
+    const seen: number[] = [];
+    for (let tick = 0; tick < 24 && !sim.world.has(fisher, Carrying); tick++) {
+      sim.step();
+      const atomic = sim.world.tryGet(fisher, CurrentAtomic)?.atomicId;
+      if (atomic !== undefined && seen.at(-1) !== atomic) seen.push(atomic);
+    }
+
+    expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_FAILED_ATOMIC, FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
+    expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FISH, amount: 1 });
+    expect(sim.world.get(swarm, FishSwarm)).toMatchObject({ count: 0, continent: 7 });
+  });
+
+  it('reproduces only a nonempty, nonfull swarm on the 2160-tick cadence', () => {
+    const sim = new Simulation({ seed: 1, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const swarms = addFishSwarms(sim.world, terrain, [
+      { hx: 2, hy: 2, count: 0, continent: 1 },
+      { hx: 5, hy: 2, count: 2, continent: 1 },
+      { hx: 8, hy: 2, count: 30, continent: 1 },
+    ]);
+    // Empty authored slots are intentionally not materialized.
+    expect(swarms).toHaveLength(2);
+    fishReproductionSystem(sim.world, { ...ctxOf(sim), tick: 2159 });
+    expect(swarms.map((e) => sim.world.get(e, FishSwarm).count)).toEqual([2, 30]);
+    fishReproductionSystem(sim.world, { ...ctxOf(sim), tick: 2160 });
+    expect(swarms.map((e) => sim.world.get(e, FishSwarm).count)).toEqual([3, 30]);
+  });
+
+  it('reselects a nearby nonempty swarm when a planned target was depleted by another fisher', () => {
+    const sim = new Simulation({ seed: 1, content: fishingContent(), map: grassNodeMap(20, 8) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [planned, fallback] = addFishSwarms(sim.world, terrain, [
+      { hx: 5, hy: 3, count: 1, continent: 7 },
+      { hx: 8, hy: 3, count: 2, continent: 7 },
+    ]);
+    if (planned === undefined || fallback === undefined) throw new Error('fish swarms did not spawn');
+    sim.world.mut(planned, FishSwarm).count = 0;
+    const shore = sim.world.get(planned, FishSwarm).shore;
+    if (shore === null) throw new Error('planned swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, c.x, c.y);
+
+    expect(takeFishNear(sim.world, terrain, fisher, 7)).toBe(fallback);
+    expect(sim.world.get(fallback, FishSwarm).count).toBe(1);
+  });
+});

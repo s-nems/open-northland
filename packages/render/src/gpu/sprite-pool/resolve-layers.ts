@@ -51,6 +51,14 @@ export function resolveLayers(
         return resolveCharacterLayers(sheet.characters, item, tick, gaitClock);
       bobId = resolveSpriteBobId(item, sheet.bindings, tick);
       break;
+    case 'fish': {
+      const binding = sheet.bindings.fish;
+      if (binding === undefined || sheet.families?.[binding.layer] === undefined) return null;
+      const bob = resolveSpriteBobId(item, sheet.bindings, tick);
+      if (bob === null) return null;
+      const resolved = layeredLayerFor(sheet, 'fish', { layer: binding.layer, bob });
+      return resolved === null ? null : [resolved];
+    }
     case 'building': {
       const branch = resolveBuildingLayers(sheet, item, tick);
       if (branch.done) return branch.layers;

@@ -43,9 +43,9 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers - the setproducedgoo
         // keeps the gather-everything default rather than costing the map its settler.
         { role: COLLECTOR, tribe: 'viking', player: HUMAN_PLAYER, hx: 20, hy: 20, producedGood: '„gold”' },
         { role: COLLECTOR, tribe: 'viking', player: HUMAN_PLAYER, hx: 26, hy: 26 }, // no pick authored
-        // A real corpus shape the sim has no home for (62 rows): `fish` carries no harvest atomic and a
-        // fisher gets no work flag, so the pick drops. A known limitation, not a join failure
-        // (`stampGatherGood` names it) - pinned so it surfaces if fishing ever becomes flag work.
+        // The 62 fisher→fish corpus rows need no flag: the dedicated fishing drive can only collect
+        // fish from authored swarms. Keep the no-flag route pinned so it cannot accidentally become a
+        // generic gatherer while setproducedgood is extended for workshops.
         { role: FISHER, tribe: 'viking', player: HUMAN_PLAYER, hx: 30, hy: 30, producedGood: FISH },
       ],
       animals: [],
@@ -72,7 +72,7 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers - the setproducedgoo
     // Only the two flag-harvestable picks narrow a flag; the rest keep the gather-everything default.
     const picks = settlers.map((e) => sim.world.tryGet(e, WorkFlag)?.goodType);
     expect(picks).toEqual([goodTypeOf(WOOD), goodTypeOf(STONE), undefined, undefined, undefined]);
-    // The fisher's drop is the trade carrying no work flag at all, not a narrowed one.
+    // The dedicated fisher carries no work flag at all; its fishing drive is already fish-only.
     const fisher = settlers[4];
     if (fisher === undefined) throw new Error('the authored fisher did not resolve');
     expect(sim.world.has(fisher, WorkFlag)).toBe(false);

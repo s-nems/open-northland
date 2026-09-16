@@ -3,6 +3,7 @@ import { fx } from '../../../core/fixed.js';
 import type { System } from '../../context.js';
 import { applyEffect } from './effects/apply.js';
 import { applyPendingStaggers, type PendingStagger, resolveAttackHit } from './effects/combat/index.js';
+import { advanceFishingAtomic } from './effects/goods/fishing.js';
 import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
 import { applyAtomicNeedEvents } from './effects/need-events.js';
 import { emitAtomicSoundCues } from './sound-cue.js';
@@ -49,8 +50,16 @@ export const atomicSystem: System = (world, ctx) => {
       continue;
     }
 
+    const completedAtomicId = atomic.atomicId;
+    if (atomic.effect.kind === 'fish') {
+      const continues = advanceFishingAtomic(world, ctx, e, atomic, atomic.effect);
+      ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });
+      if (continues) continue;
+      world.remove(e, CurrentAtomic);
+      continue;
+    }
     const extracted = applyEffect(world, ctx, e, atomic);
-    ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
+    ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });
     // A multi-swing harvest holds the settler across swings, re-arming in place so this iteration stays
     // safe; only the swing that extracts hands it back to the planner. "Non-interruptible" protects the
     // swing in flight, not the whole job, so a parked order releases the settler at this boundary.

@@ -14,7 +14,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
-import { MILITARY_MODE } from '../../readviews/index.js';
+import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
@@ -29,6 +29,7 @@ import {
   planBuilder,
   planCarrierHaul,
   planDelivery,
+  planFisher,
   planGatherer,
   planPorter,
   planProducer,
@@ -183,9 +184,10 @@ function planEconomy(
   // A worker bound to a recipe workshop: a carrier ferries, a craftsman produces. A gatherer bound there
   // is not its operator - it runs the gather rung below and banks its harvest into the building, so it
   // is excluded here rather than routed into the craft loop.
-  const workplace = jobCanHarvest(ctx, plan.jobType)
-    ? null
-    : boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
+  const workplace =
+    jobCanHarvest(ctx, plan.jobType) || isFisherJob(ctx.content, plan.jobType)
+      ? null
+      : boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
   if (workplace !== null) {
     if (isCarrierJob(ctx, plan.jobType)) {
       planWorkshopSupplier(plan, workplace, pass.spacing);
@@ -199,6 +201,7 @@ function planEconomy(
 
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 
+  if (planFisher(plan)) return;
   if (planGatherer(plan, pass.harvestClaims)) return;
   if (planPorter(plan)) return;
 

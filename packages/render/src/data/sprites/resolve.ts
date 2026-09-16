@@ -21,6 +21,14 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
       return null;
     case 'projectile':
       return null;
+    case 'fish': {
+      const binding = bindings.fish;
+      if (binding === undefined || binding.bobs.length === 0) return null;
+      const frame = Math.floor(tick / Math.max(1, binding.ticksPerFrame)) + item.ref;
+      return (
+        binding.bobs[((frame % binding.bobs.length) + binding.bobs.length) % binding.bobs.length] ?? null
+      );
+    }
     case 'settler':
       return bindings.settler === undefined ? null : resolveSettlerBobId(bindings.settler, item, tick);
     case 'building':

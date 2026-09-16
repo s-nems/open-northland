@@ -60,6 +60,7 @@ export {
   isDruidJob,
   isFighterJob,
   isFighterJobRow,
+  isFisherJob,
   isHeroJob,
   isHeroJobRow,
   isHunterJob,

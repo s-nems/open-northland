@@ -13,12 +13,21 @@ export interface TerrainMap {
   readonly landscapes?: LandscapeMapInput;
   /** Ground vertex land mask, row-major on the half-cell grid. */
   readonly landVertices?: readonly boolean[];
+  /** Authored fish-manager rows, already addressed on this half-cell grid. */
+  readonly fishSwarms?: readonly FishSwarmInput[] | undefined;
   /** Half-cell grid width, twice the map's cell columns. */
   readonly width: number;
   /** Half-cell grid height, twice the map's cell rows. */
   readonly height: number;
   /** Row-major landscape typeId per half-cell; length must equal width*height. */
   readonly typeIds: ReadonlyArray<number>;
+}
+
+export interface FishSwarmInput {
+  readonly hx: number;
+  readonly hy: number;
+  readonly count: number;
+  readonly continent: number;
 }
 
 /** A terrain grid authored at visual-cell resolution. Upsample through {@link halfCellMapFromCells}
@@ -32,6 +41,7 @@ export interface CellTerrainMap {
   readonly height: number;
   /** Row-major landscape typeId per cell; length must equal width*height. */
   readonly typeIds: ReadonlyArray<number>;
+  readonly fishSwarms?: readonly FishSwarmInput[] | undefined;
 }
 
 /**
@@ -63,7 +73,13 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
       typeIds[base + width + 1] = t;
     }
   }
-  return { resolution: 'half-cell', width, height, typeIds };
+  return {
+    resolution: 'half-cell',
+    width,
+    height,
+    typeIds,
+    ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),
+  };
 }
 
 /**

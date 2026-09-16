@@ -67,6 +67,7 @@ function base(): Record<string, unknown> {
     elevation: PER_CELL_LANE,
     brightness: PER_CELL_LANE,
     shore: PER_CELL_LANE,
+    fishSwarms: [{ hx: HALF_CELL_X_BOUND - 1, hy: HALF_CELL_Y_BOUND - 1, count: 30, continent: 7 }],
   };
 }
 
@@ -186,6 +187,12 @@ describe('parseTerrainMap cross-lane invariants', () => {
       map: { ...base(), shore: PER_CELL_LANE.slice(0, -1) },
       path: 'shore',
       message: 'terrain map shore length 11 != width*height (12)',
+    },
+    {
+      name: 'a fish swarm outside the half-cell grid',
+      map: { ...base(), fishSwarms: [{ hx: HALF_CELL_X_BOUND, hy: 0, count: 1, continent: 0 }] },
+      path: 'fishSwarms',
+      message: 'terrain map fish swarm lies outside the half-cell grid',
     },
   ];
 

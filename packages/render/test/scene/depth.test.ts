@@ -7,6 +7,7 @@ const ALL_KINDS = [
   'tile',
   'building',
   'settler',
+  'fish',
   'resource',
   'berrybush',
   'chest',

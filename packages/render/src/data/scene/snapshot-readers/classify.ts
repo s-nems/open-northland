@@ -4,6 +4,10 @@ import type { SpriteKind } from '../draw-item.js';
 export function classify(components: Readonly<Record<string, unknown>>): SpriteKind | null {
   if ('Projectile' in components) return 'projectile';
   if ('Building' in components) return 'building';
+  if ('FishSwarm' in components) {
+    const fish = components.FishSwarm as { count?: unknown } | undefined;
+    return typeof fish?.count === 'number' && fish.count > 0 ? 'fish' : null;
+  }
   if ('Resource' in components) return 'resource';
   if ('BerryBush' in components) return 'berrybush';
   if ('Chest' in components || 'OpenedChest' in components) return 'chest';

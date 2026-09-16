@@ -1,4 +1,5 @@
 import { defineComponent, type Entity } from '../../ecs/world.js';
+import type { NodeId } from '../../nav/terrain/index.js';
 
 /**
  * A harvestable resource node (a tree, ore vein, berry bush) yielding its `goodType` to `harvestAtomic`
@@ -17,6 +18,16 @@ export const Resource = defineComponent<{
    *  first advanced and deleted when a unit frees. */
   strikes?: number;
 }>('Resource', 'economy');
+
+/**
+ * One persistent fish-manager swarm. Empty swarms remain so depletion is stable; only a positive swarm
+ * reproduces. `shore` is the nearest walkable stand resolved when the authored map is assembled.
+ */
+export const FishSwarm = defineComponent<{
+  count: number;
+  readonly continent: number;
+  readonly shore: NodeId | null;
+}>('FishSwarm', 'economy');
 
 /**
  * The still-buried yields of a multi-good {@link Resource} node, in extraction order: when the current good

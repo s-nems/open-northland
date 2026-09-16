@@ -27,6 +27,7 @@ export {
   resolveChestReward,
 } from './chests/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
+export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';
 export { isOnMission } from './family/eligibility.js';
 export {
   createResourceNode,

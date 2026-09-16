@@ -3,6 +3,9 @@ import {
   BUILD_GUIDE_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   CULTIVATE_ATOMIC,
+  FISH_CAST_ATOMIC,
+  FISH_CAUGHT_ATOMIC,
+  FISH_FAILED_ATOMIC,
   HARVEST_CADAVER_ATOMIC,
   PLANT_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
@@ -19,6 +22,7 @@ import {
   JOB_CHILD_MALE,
   JOB_CIVILIST,
   JOB_COLLECTOR,
+  JOB_FISHER,
   JOB_HUNTER,
   JOB_IDLE,
   JOB_SCOUT,
@@ -81,6 +85,12 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       allowedAtomics: HUNTER_JOB_ATOMICS,
     },
     {
+      typeId: JOB_FISHER,
+      id: 'fisher',
+      name: professionLabel('fisher'),
+      allowedAtomics: [FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC, FISH_FAILED_ATOMIC],
+    },
+    {
       typeId: JOB_FARMER_SLOT,
       id: 'farmer',
       name: professionLabel('farmer'),
@@ -106,9 +116,8 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       jobs.set(profession.jobType, { typeId: profession.jobType, id: profession.key });
     }
   }
-  // Shared with the gatherer worker-slot trades below, so a settler assigned to a collector or fisher
-  // slot can harvest and bank into its building. Reusing this set for the fisher is a named
-  // approximation: the sandbox has no fish resources.
+  // Shared with the ordinary gatherer worker-slot trades below. The fisher is already declared above
+  // with its dedicated shore-work atomics.
   const gathererAtomics = GATHERERS.map((gatherer) => gatherer.atomic);
   for (const slots of Object.values(BUILDING_WORKER_SLOTS)) {
     for (const worker of slots) {

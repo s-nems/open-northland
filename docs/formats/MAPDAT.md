@@ -69,6 +69,16 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `emla` | half-cell | placed landscape-object ids |
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
 | `lmms` | half-cell | max moveable-unit size per the CulturesNation docs: distance from blocked nodes capped at 7 (range verified); collapsed to the cell `shore` lane |
+| `lafm` | fixed records | authored fish swarms: populated position/count/continent records become persistent sim stocks |
+
+### Verified `lafm` fish table
+
+Version 2 is a fixed 6004-byte payload: 500 little-endian 12-byte records followed by a `u32`
+slot count (500 throughout the owned corpus). Each record is `{ u16 hx, u16 hy, u32 count,
+u32 continent }`. A zero count is an unused slot; populated records retain slot order. Across the
+124 owned `map.dat` files, all carry the version-2 table, 78 contain populated swarms, and the
+observed maximum count is 30. The pipeline imports only populated records and validates their
+half-cell coordinates against the emitted map dimensions.
 
 The loader also exposes per-lane dimensions and dictionaries needed to resolve numeric ids.
 
@@ -94,7 +104,6 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | `lasw` | derivable | pathfinding sector graph: 10x10-cell sectors, land and water planes, 52 bytes each |
 | `emmi` | authored | road-overlay type per half-cell node |
 | `lmlp` | authored | owner and palette of pre-placed stockades and gates per node |
-| `lafm` | authored | fish swarms: fixed 500-slot table of position, count, continent |
 | `emvc` | authored | vertex colors per cell (optional chunk, like `lmhf`) |
 
 Ground collision currently joins `empa` and `empb` through `gfxPatterns` to

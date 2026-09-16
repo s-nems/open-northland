@@ -32,6 +32,9 @@ import { loadCharacters } from './characters.js';
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
+// `DrawAtom_FishManager_DoDraw` in the owned `the original` selects headings 0..17 from this BMD.
+const FISH_ATLAS = 'ls_fishes.butterfly01';
+const FISH_BOBS = Array.from({ length: 18 }, (_, bob) => bob);
 
 /** The scout's guidepost atlases: bob 0 the post, bobs 1..18 the direction board in ~20° angular steps
  *  around the post top. Each owner draws its own `ls_guidepost.player_NN` bake, baked rather than
@@ -123,6 +126,7 @@ export async function loadHumanSpriteSheet(
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
   for (const s of chestAtlasStems(chestRefs)) stems.add(s);
+  stems.add(FISH_ATLAS);
   // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
   stems.add(GUIDEPOST_ATLAS_BAKED);
   for (let p = 0; p < PLAYER_COLOR_COUNT; p++) stems.add(guidepostPlayerAtlas(p));
@@ -180,6 +184,9 @@ export async function loadHumanSpriteSheet(
         ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
         ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
         ...(chestBinding !== undefined ? { chest: chestBinding } : {}),
+        ...(gatheringLoaded.has(FISH_ATLAS)
+          ? { fish: { layer: FISH_ATLAS, bobs: FISH_BOBS, ticksPerFrame: 4 } }
+          : {}),
       }),
       ...signpostBinding,
     },

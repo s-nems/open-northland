@@ -53,6 +53,7 @@ export {
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,
+  type FishBinding,
   FLAG_WAVE_TICKS_PER_FRAME,
   type FrameListAnim,
   GFX_DIR_TO_FACING,

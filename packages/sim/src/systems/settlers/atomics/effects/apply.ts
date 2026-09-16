@@ -54,6 +54,9 @@ export function applyEffect(
       grantWorkExperience(world, ctx, settler, effect.goodType, units);
       return units;
     }
+    // Fishing owns its multi-clip state machine in the executor; it never reaches the generic applier.
+    case 'fish':
+      return;
     case 'pickup':
       pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
       return;

@@ -9,6 +9,13 @@ import type { SettlerStateBinding } from './settler-bindings.js';
 
 export type { SpriteKind };
 
+/** One representative fish from a persistent swarm, animated through the source's 18 headings. */
+export interface FishBinding {
+  readonly layer: string;
+  readonly bobs: readonly number[];
+  readonly ticksPerFrame: number;
+}
+
 /**
  * Which atlas bob id draws each drawable kind. A plain number is the kind's single
  * all-types/all-states frame; a table binds per state, type or good. An absent optional entry draws the
@@ -18,6 +25,7 @@ export type SpriteBindings = Readonly<{
   settler: number | SettlerStateBinding;
   building: number | BuildingTypeBinding;
   resource: number | ResourceTypeBinding;
+  fish?: FishBinding;
   stockpile?: number | StockpileBinding;
   /** A felled tree's stump/debris. */
   stump?: number | ResourceTypeBinding;

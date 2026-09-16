@@ -8,7 +8,7 @@ export {
   lookupFrame,
   type SpriteAtlas,
 } from './atlas.js';
-export type { SpriteBindings, SpriteKind } from './bindings.js';
+export type { FishBinding, SpriteBindings, SpriteKind } from './bindings.js';
 export {
   bobKey,
   buildTimeThreshold,

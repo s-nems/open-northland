@@ -4,6 +4,22 @@ import { encodeMapDat, encodeMapSize, packMapLayer, packX6elLayer } from '../src
 import { mapDatToTerrain } from '../src/stages/maps/index.js';
 import { buildMapDat, encodeStringList } from './fixtures/mapdat.js';
 
+function fishPayload(
+  entries: readonly { slot: number; hx: number; hy: number; count: number; continent: number }[],
+): Uint8Array {
+  const bytes = new Uint8Array(500 * 12 + 4);
+  const view = new DataView(bytes.buffer);
+  for (const entry of entries) {
+    const offset = entry.slot * 12;
+    view.setUint16(offset, entry.hx, true);
+    view.setUint16(offset + 2, entry.hy, true);
+    view.setUint32(offset + 4, entry.count, true);
+    view.setUint32(offset + 8, entry.continent, true);
+  }
+  view.setUint32(500 * 12, 500, true);
+  return bytes;
+}
+
 describe('mapDatToTerrain', () => {
   it('decodes a synthetic map.dat into the per-cell TerrainMap (dominant half-cell per cell)', () => {
     // 2×1 grid = a 4×2 half-cell lane. Cell 0's 2×2 block is uniform raw 2; cell 1's block is
@@ -27,6 +43,25 @@ describe('mapDatToTerrain', () => {
     // 1×1 grid, block [5,5,5,2] -> raw 5 dominates (3 vs 1) and passes through unshifted.
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [5, 5, 5, 2]));
     expect(terrain).toEqual({ width: 1, height: 1, typeIds: [5] });
+  });
+
+  it('carries populated lafm slots into the authored fish-swarm layer in slot order', () => {
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      {
+        tag: 'lafm',
+        version: 2,
+        payload: fishPayload([
+          { slot: 1, hx: 3, hy: 1, count: 17, continent: 9 },
+          { slot: 4, hx: 0, hy: 0, count: 5, continent: 2 },
+        ]),
+      },
+    ]);
+    expect(mapDatToTerrain(bytes).fishSwarms).toEqual([
+      { hx: 3, hy: 1, count: 17, continent: 9 },
+      { hx: 0, hy: 0, count: 5, continent: 2 },
+    ]);
   });
 
   it('throws on a map.dat with no lmlt landscape-type chunk', () => {

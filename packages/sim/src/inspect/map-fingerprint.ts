@@ -4,9 +4,15 @@ import type { TerrainMap } from '../nav/terrain/index.js';
 /** Dynamic landscape inputs shape navigation and must match when restoring sparse edits. */
 export function mapFingerprint(map: TerrainMap): string {
   const ground = terrainGridFingerprint(map);
-  if (map.landscapes === undefined && map.landVertices === undefined) return ground;
+  if (map.landscapes === undefined && map.landVertices === undefined && map.fishSwarms === undefined)
+    return ground;
   const input = JSON.stringify(
-    { ground, landscapes: map.landscapes, landVertices: map.landVertices },
+    {
+      ground,
+      landscapes: map.landscapes,
+      landVertices: map.landVertices,
+      fishSwarms: map.fishSwarms,
+    },
     (_key, value: unknown) => {
       if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
       return Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));

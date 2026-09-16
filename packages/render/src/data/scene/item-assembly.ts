@@ -58,6 +58,8 @@ export function assembleItem(
     case 'stump':
       assignStaticFields(item, kind, components);
       break;
+    case 'fish':
+      break;
     case 'berrybush':
       assignBerryBushFields(item, components);
       break;

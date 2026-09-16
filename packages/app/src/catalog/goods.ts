@@ -39,8 +39,9 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 119, id: 'bread', name: 'Bread', storable: true },
   { typeId: 120, id: 'candy', name: 'Candy', storable: true },
   { typeId: 121, id: 'meat', name: 'Meat', storable: true },
-  // Fish (122) and sausage (123) are curated out for the same reason: `landscapes.cif` binds both to
-  // gold's bar frames, so they can only ever read as gold bars, and `meat` already covers produced food.
+  // Fish has no landscape-store form: authored `lafm` swarms are its source and carrying uses the
+  // dedicated good animation. Sausage (123) remains curated out because its map form reads as gold bars.
+  { typeId: 122, id: 'fish', name: 'Fish', storable: true },
   { typeId: 124, id: 'brick', name: 'Brick', storable: true },
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
   { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },

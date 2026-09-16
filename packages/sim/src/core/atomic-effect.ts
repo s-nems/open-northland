@@ -6,6 +6,13 @@ export type AtomicEffect =
   | { readonly kind: 'move'; readonly to: { x: number; y: number } }
   | { readonly kind: 'harvest'; readonly resource: Entity; readonly goodType: number }
   | {
+      readonly kind: 'fish';
+      readonly swarm: Entity;
+      readonly goodType: number;
+      readonly repeatsLeft: number;
+      readonly phase: 'cast' | 'retry' | 'result';
+    }
+  | {
       readonly kind: 'pickup';
       readonly goodType: number;
       readonly amount: number;

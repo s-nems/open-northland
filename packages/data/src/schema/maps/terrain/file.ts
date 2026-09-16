@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TypeId } from '../../record.js';
 import { TerrainEntities } from '../entities.js';
 import { TRANSITION_NONE, TRANSITION_PAIRS } from './encoding.js';
+import { MapFishSwarm } from './fish.js';
 import { CellLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
 
 /**
@@ -42,6 +43,8 @@ const TerrainMapFields = z.strictObject({
    * band 7 sits mostly under land patterns on river maps). Raw probe data with no runtime consumer.
    */
   shore: CellLane.optional(),
+  /** Populated `map.dat` `lafm` fish-swarm slots, in authored slot order. */
+  fishSwarms: z.array(MapFishSwarm).optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
   entities: TerrainEntities.optional(),
 });
@@ -53,6 +56,10 @@ const PLACEMENT_STRIDE = 3;
 const HALF_CELLS_PER_CELL = 2;
 
 const cellCount = (m: TerrainMapValue): number => m.width * m.height;
+
+function fishSwarmsInRange(m: TerrainMapValue): boolean {
+  return m.fishSwarms?.every((swarm) => swarm.hx < m.width * 2 && swarm.hy < m.height * 2) ?? true;
+}
 
 function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: TerrainMapValue): boolean {
   const p = objects.placements;
@@ -149,6 +156,11 @@ const INVARIANTS: readonly TerrainMapInvariant[] = [
   cellLaneLength('elevation'),
   cellLaneLength('brightness'),
   cellLaneLength('shore'),
+  {
+    ok: fishSwarmsInRange,
+    message: () => 'terrain map fish swarm lies outside the half-cell grid',
+    path: ['fishSwarms'],
+  },
 ];
 
 export const TerrainMapFile = TerrainMapFields.check((ctx) => {

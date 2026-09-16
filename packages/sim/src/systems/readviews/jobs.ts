@@ -109,6 +109,11 @@ export function isSeaJob(job: JobType): boolean {
   return job.id.endsWith(SEA_JOB_SUFFIX);
 }
 
+/** The shore-working fisher, distinct from its currently inert `fisher_sea` vehicle specialization. */
+export function isFisherJob(content: ContentSet, jobType: number | null): boolean {
+  return jobType !== null && contentIndex(content).jobs.get(jobType)?.id === 'fisher';
+}
+
 /** Sorted ascending by `typeId`, so enumeration does not depend on declaration order. */
 export function seaJobs(content: ContentSet): JobType[] {
   return content.jobs.filter(isSeaJob).sort((a, b) => a.typeId - b.typeId);

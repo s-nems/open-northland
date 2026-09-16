@@ -7,5 +7,6 @@
 
 export * from './container.js';
 export * from './dictionary.js';
+export * from './fish.js';
 export * from './layers.js';
 export * from './terrain.js';
