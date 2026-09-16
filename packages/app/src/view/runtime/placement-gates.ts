@@ -1,9 +1,9 @@
-import type { Simulation } from '@open-northland/sim';
+import type { Paper, Simulation } from '@open-northland/sim';
 import type { FogGates } from '../projections/index.js';
 
 /** The live placement rules the click gates and the cursor ghosts share. */
 export interface PlacementGates {
-  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
 }
 
@@ -19,10 +19,11 @@ export function createPlacementGates(
   tribe?: number,
 ): PlacementGates {
   return {
-    // The seat probe applies the tech gate itself, so the cursor pays it once per node.
-    canPlaceAt: (typeId, col, row) =>
+    // A paper bypasses only technology; fog, footprint and contested-ground rules still apply.
+    canPlaceAt: (typeId, col, row, paper) =>
       fogGates.seesNode(col, row) &&
-      (sim.placementProbe(typeId, localPlayer, tribe)?.canPlace(col, row) ?? true),
+      (sim.placementProbe(typeId, localPlayer, paper === undefined ? tribe : undefined)?.canPlace(col, row) ??
+        true),
     canPlaceSignpostAt: (col, row) =>
       fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
   };

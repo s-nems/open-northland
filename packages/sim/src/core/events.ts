@@ -1,3 +1,4 @@
+import type { ChestKind } from '../components/chest.js';
 import type { Paper } from '../components/papers.js';
 import type { Entity } from '../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../nav/halfcell.js';
@@ -229,10 +230,12 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
-      /** A settler opened `chest` this tick and its contents were handed out; the chest entity is gone by
-       *  the snapshot. */
+      /** A settler opened `chest` this tick and its contents were handed out. The original transitions
+       *  both chest landscape types to `void`, so the chest entity is gone by the snapshot. */
       readonly kind: 'chestOpened';
       readonly chest: Entity;
+      readonly chestKind: ChestKind;
+      readonly player: number;
       readonly at: HalfCellNode;
     }
   | {

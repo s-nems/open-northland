@@ -83,7 +83,7 @@ export interface ToolPanelOptions {
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
-  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Client (CSS px) → Pixi screen px mapper, shared with the unit controls. */
   readonly screenScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
@@ -124,6 +124,8 @@ export interface ToolPanelController {
   claimsWheel(clientX: number, clientY: number): boolean;
   /** The building typeId currently being placed, or null when not in build mode. */
   placementType(): number | null;
+  /** The paper paying for the active placement, or null for normal construction. */
+  placementPaper(): Paper | null;
   /** Per-frame hook; the HUD layout arrives as an accessor so a closed window never runs its
    *  `buildHud` scan. */
   update(hudFor: () => HudLayout): void;
@@ -140,6 +142,7 @@ export interface ToolPanelState {
   readonly speed: GameSpeedControl;
   readonly windows: ToolWindowsState;
   readonly placementType: number | null;
+  readonly placementPaper: Paper | null;
   readonly goodType: number | null;
   readonly messages: MessageFeedState;
 }
@@ -388,6 +391,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       claimsPointer,
       claimsWheel,
       placementType: () => placement.activeType(),
+      placementPaper: () => placement.activePaper(),
       update(hudFor): void {
         if (mountedStrip.syncResolution()) {
           speedButton.syncGlyph();
@@ -402,6 +406,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         speed: speedButton.state(),
         windows: windows.state(),
         placementType: placement.activeType(),
+        placementPaper: placement.activePaper(),
         goodType: goodsDrop.activeGood(),
         messages: messageCenter.state(),
       }),
@@ -411,7 +416,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       restore(state): void {
         speedButton.restore(state.speed);
         windows.restore(state.windows);
-        if (state.placementType !== null) placement.enter(state.placementType);
+        if (state.placementType !== null)
+          placement.enter(state.placementType, state.placementPaper ?? undefined);
         if (state.goodType !== null) goodsDrop.enter(state.goodType);
         messageCenter.restore(state.messages);
         syncPriorityGlyph();

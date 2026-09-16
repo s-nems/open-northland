@@ -52,6 +52,14 @@ function eventKey(ev: SimEvent): string {
   return `${ev.kind}:${emitter}`;
 }
 
+/** Chest opening emits both its kind-specific lid sound and the common jingle; distinct keys keep the
+ *  playback driver's debounce from collapsing either half. */
+function soundKey(ev: SimEvent, sound: EventSound): string {
+  const key = eventKey(ev);
+  if (ev.kind !== 'chestOpened') return key;
+  return sound.kind === 'spatial' ? `${key}:${ev.chestKind}` : `${key}:jingle`;
+}
+
 /** A jingle's one-shot: full gain, centred, carrying the music duck its `MusicType` holds for. */
 function jingleShot(files: readonly string[], key: string, musicType: number): OneShot {
   const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
@@ -60,14 +68,18 @@ function jingleShot(files: readonly string[], key: string, musicType: number): O
     : { files, gain: JINGLE_GAIN, pan: 0, key, duckMusicMs };
 }
 
-/** Which sound a given event triggers, per the bindings (a melee `combatHit` keys on its weapon class with
- *  the generic-melee `byEvent` fallback). */
-function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | undefined {
+/** Which sounds a given event triggers, per the bindings. A melee hit picks one weapon-specific sound
+ *  with the generic fallback; a chest adds its kind-specific lid sound to the common jingle. */
+function resolveBindings(ev: SimEvent, bindings: SoundBindings): EventSound[] {
   if (ev.kind === 'combatHit' && ev.weaponMainType !== undefined) {
     const byWeapon = bindings.byCombatWeapon?.get(ev.weaponMainType);
-    if (byWeapon !== undefined) return byWeapon;
+    if (byWeapon !== undefined) return [byWeapon];
   }
-  return bindings.byEvent[ev.kind];
+  const common = bindings.byEvent[ev.kind];
+  if (ev.kind !== 'chestOpened') return common === undefined ? [] : [common];
+  const lid = bindings.byChestKind?.[ev.chestKind];
+  if (lid === undefined) return common === undefined ? [] : [common];
+  return common === undefined ? [lid] : [lid, common];
 }
 
 /**
@@ -82,8 +94,8 @@ function firesForLocalPlayer(ev: SimEvent, localPlayer: number | undefined): boo
 }
 
 interface PendingBase {
-  readonly ev: SimEvent;
   readonly files: readonly string[];
+  readonly key: string;
   /** The explicit `at` half-cell node, or null when the position must come from `entity`'s
    *  snapshot Position (a fractional tile). The two spaces project through different renderer
    *  mappings - see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
@@ -147,7 +159,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
-        pending.push({ kind: 'cue', ev, files, node: null, entity: id });
+        pending.push({ kind: 'cue', files, key: eventKey(ev), node: null, entity: id });
       }
       continue;
     }
@@ -155,40 +167,48 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     if (ev.kind === 'missionSound') {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       if (files !== undefined && files.length > 0) {
-        pending.push({ kind: 'sfx', ev, files, node: ev.at, entity: undefined });
+        pending.push({ kind: 'sfx', files, key: eventKey(ev), node: ev.at, entity: undefined });
       }
       continue;
     }
-    const sound = resolveBinding(ev, bindings);
-    if (sound === undefined) continue;
-    if (sound.kind === 'jingle') {
-      const files = index.jinglesByMusicType.get(sound.musicType);
-      if (files === undefined || files.length === 0) continue;
-      if (sound.localPlayerOnly && 'player' in ev && !firesForLocalPlayer(ev, localPlayer)) continue;
-      if (sound.screenGated !== true) {
-        if (sound.localPlayerOnly && !('player' in ev)) continue; // no owner path for a map-wide jingle
-        shots.push(jingleShot(files, eventKey(ev), sound.musicType));
+    for (const sound of resolveBindings(ev, bindings)) {
+      if (sound.kind === 'jingle') {
+        const files = index.jinglesByMusicType.get(sound.musicType);
+        if (files === undefined || files.length === 0) continue;
+        if (sound.localPlayerOnly && 'player' in ev && !firesForLocalPlayer(ev, localPlayer)) continue;
+        if (sound.screenGated !== true) {
+          if (sound.localPlayerOnly && !('player' in ev)) continue; // no owner path for a map-wide jingle
+          shots.push(jingleShot(files, soundKey(ev, sound), sound.musicType));
+          continue;
+        }
+        const node = eventNode(ev);
+        const id = eventEntity(ev);
+        let ownerEntity: number | null = null;
+        if (sound.localPlayerOnly && !('player' in ev)) {
+          if (id === undefined || localPlayer === undefined) continue; // owner unresolvable → silent
+          ownerEntity = id;
+        }
+        if (node === null && id === undefined) continue; // nowhere to anchor → silent under the gate
+        if (id !== undefined && (node === null || ownerEntity !== null)) neededIds.add(id);
+        pending.push({
+          kind: 'stinger',
+          files,
+          key: soundKey(ev, sound),
+          node,
+          entity: id,
+          ownerEntity,
+          musicType: sound.musicType,
+        });
         continue;
       }
+      const files = groupFiles(index, sound.group);
+      if (files === undefined) continue;
       const node = eventNode(ev);
-      const id = eventEntity(ev);
-      let ownerEntity: number | null = null;
-      if (sound.localPlayerOnly && !('player' in ev)) {
-        if (id === undefined || localPlayer === undefined) continue; // owner unresolvable → silent
-        ownerEntity = id;
-      }
-      if (node === null && id === undefined) continue; // nowhere to anchor → silent under the gate
-      if (id !== undefined && (node === null || ownerEntity !== null)) neededIds.add(id);
-      pending.push({ kind: 'stinger', ev, files, node, entity: id, ownerEntity, musicType: sound.musicType });
-      continue;
+      const id = node === null ? eventEntity(ev) : undefined;
+      if (node === null && id === undefined) continue;
+      if (id !== undefined) neededIds.add(id);
+      pending.push({ kind: 'sfx', files, key: soundKey(ev, sound), node, entity: id });
     }
-    const files = groupFiles(index, sound.group);
-    if (files === undefined) continue;
-    const node = eventNode(ev);
-    const id = node === null ? eventEntity(ev) : undefined;
-    if (node === null && id === undefined) continue;
-    if (id !== undefined) neededIds.add(id);
-    pending.push({ kind: 'sfx', ev, files, node, entity: id });
   }
   // Pass 2: locate + spatialise the pending positioned events (off-screen or position-less → silent).
   const facts = neededIds.size > 0 ? emitterFacts(snapshot, neededIds) : null;
@@ -208,9 +228,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     }
     if (spatial === null) continue; // off screen → silent
     if (p.kind === 'stinger') {
-      shots.push(jingleShot(p.files, eventKey(p.ev), p.musicType));
+      shots.push(jingleShot(p.files, p.key, p.musicType));
     } else {
-      shots.push({ files: p.files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key: eventKey(p.ev) });
+      shots.push({
+        files: p.files,
+        gain: spatial.gain * SFX_GAIN,
+        pan: spatial.pan,
+        key: p.key,
+      });
     }
   }
   return shots;

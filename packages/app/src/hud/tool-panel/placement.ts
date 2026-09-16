@@ -16,7 +16,7 @@ export interface PlacementDeps {
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule for the held type at a tile (`Simulation.placementProbe`); a click on
    *  a rejecting tile is inert, so build mode only ends on a placement that lands. */
-  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
@@ -28,6 +28,8 @@ export interface PlacementController {
   isActive(): boolean;
   /** The building typeId currently being placed, or null when not in placement. */
   activeType(): number | null;
+  /** The paper paying for the active placement, or null for an ordinary construction site. */
+  activePaper(): Paper | null;
   /** Hold `typeId` for placement; a `paper` rides the placement command and buys a finished building. */
   enter(typeId: number, paper?: Paper): void;
   cancel(): void;
@@ -54,6 +56,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   return {
     isActive: () => placementType !== null,
     activeType: () => placementType,
+    activePaper: () => placementPaper,
     enter: (typeId, paper): void => {
       placementType = typeId;
       placementPaper = paper ?? null;
@@ -65,7 +68,15 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     handleClick: (clientX, clientY): boolean => {
       if (placementType === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
-      if (tile !== null && deps.canPlaceAt(placementType, tile.col, tile.row)) {
+      if (
+        tile !== null &&
+        deps.canPlaceAt(
+          placementType,
+          tile.col,
+          tile.row,
+          placementPaper === null ? undefined : placementPaper,
+        )
+      ) {
         deps.enqueue({
           kind: 'placeBuilding',
           buildingType: placementType,

@@ -84,7 +84,7 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
 
   unstampResourceFootprint(world, chest);
   world.destroy(chest);
-  ctx.events.emit({ kind: 'chestOpened', chest, at });
+  ctx.events.emit({ kind: 'chestOpened', chest, chestKind: kind, player, at });
 
   switch (reward.kind) {
     case 'goods':

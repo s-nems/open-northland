@@ -119,7 +119,7 @@ describe('placing with a paper', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
-  it('a house paper names its house past the tech gate; a place-any paper still answers to it', () => {
+  it('every placing paper authorizes its chosen house past the tech gate', () => {
     const sim = fresh();
     const smithyPaper: Paper = { kind: 'placeHouse', param: GATED_SMITHY };
     sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: anyHouse });
@@ -129,9 +129,10 @@ describe('placing with a paper', () => {
     sim.enqueue(playerCommand(P0, { ...command, x: 20, y: 20, paper: smithyPaper }));
     sim.step();
     const placed = buildings(sim);
-    expect(placed).toHaveLength(1);
-    expect(sim.world.get(placed[0] as Entity, Building).buildingType).toBe(GATED_SMITHY);
-    expect(sim.papers(P0)).toEqual([anyHouse]);
+    expect(placed).toHaveLength(2);
+    expect(placed.map((e) => sim.world.get(e, Building).buildingType)).toEqual([GATED_SMITHY, GATED_SMITHY]);
+    expect(sim.papers(P0)).toEqual([]);
+    expect(sim.events.current().filter((event) => event.kind === 'buildingPlaced')).toHaveLength(2);
   });
 
   it('a paper the seat does not hold, or that names another house, places nothing and spends nothing', () => {

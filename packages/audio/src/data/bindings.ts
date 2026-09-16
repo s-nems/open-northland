@@ -45,8 +45,11 @@ export const JINGLE_DUCK_HOLD_MS: ReadonlyMap<number, number> = new Map([
 ]);
 
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
-/** Construction hammering - placed at a newly-sited building/boat. */
+/** Construction hammering; house builders cue it from their animation, while boat placement binds it here. */
 export const GROUP_HAMMER_WOOD = 'Hammer Wood';
+/** The two lid sounds the chest callback selects by landscape kind before ringing the common jingle. */
+export const GROUP_OPEN_WOODEN_CHEST = 'Open Wooden Chest';
+export const GROUP_OPEN_MAGICAL_CHEST = 'Open Magical Chest';
 /** Sawing - a workshop producing (bound to `goodProduced`). */
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
@@ -98,7 +101,6 @@ export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>>
 export function defaultBindings(): SoundBindings {
   return {
     byEvent: {
-      buildingPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
       boatPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
       // Life-event stingers ring only for the local player's own events and only from the visible
       // screen. The defence alarm stays map-wide: it acknowledges the player's own raise-alarm
@@ -112,6 +114,7 @@ export function defaultBindings(): SoundBindings {
       settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH, localPlayerOnly: true, screenGated: true },
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
+      chestOpened: { kind: 'jingle', musicType: JINGLE_OPEN_CHEST, localPlayerOnly: true },
       // The match verdicts are map-wide too: the player's own seat is what decided them.
       playerWon: { kind: 'jingle', musicType: JINGLE_WON, localPlayerOnly: true },
       playerDefeated: { kind: 'jingle', musicType: JINGLE_LOST, localPlayerOnly: true },
@@ -128,5 +131,9 @@ export function defaultBindings(): SoundBindings {
       [WEAPON_MAIN_TYPE_SPEAR, { kind: 'spatial', group: GROUP_SPEAR_HIT }],
       [WEAPON_MAIN_TYPE_SWORD, { kind: 'spatial', group: GROUP_SWORD_HIT }],
     ]),
+    byChestKind: {
+      wooden: { kind: 'spatial', group: GROUP_OPEN_WOODEN_CHEST },
+      magical: { kind: 'spatial', group: GROUP_OPEN_MAGICAL_CHEST },
+    },
   };
 }

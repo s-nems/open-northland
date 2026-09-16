@@ -96,10 +96,17 @@ export interface ToolWindowsState {
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container, heldPaper } = deps;
+  const paperAwareBuildings = deps.buildings.map((building) => ({
+    ...building,
+    // A place-any paper opens this same menu, but its authorization replaces the normal technology
+    // reason. Other menu constraints remain in the placement probe after the pick.
+    disabledReason: (): string | null =>
+      heldPaper.held() === null ? (building.disabledReason?.() ?? null) : null,
+  }));
   const menu = createTabbedListWindow({
     ctx,
     container,
-    source: buildingTabbedList(deps.buildings),
+    source: buildingTabbedList(paperAwareBuildings),
     onPick: (b) => {
       const paper = heldPaper.take();
       if (paper === null) deps.onPickBuilding(b.typeId);

@@ -1,4 +1,5 @@
 import type { PlacementOverlayFrame } from '@open-northland/render';
+import type { Paper } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { type PlacementCursorInput, placementCursor } from '../src/view/runtime/placement-cursor.js';
 
@@ -18,6 +19,7 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
   let signpostProbes = 0;
   const input: PlacementCursorInput = {
     placementType: null,
+    placementPaper: null,
     signpostActive: false,
     buildingOverlay: () => BUILDING_WASH,
     signpostOverlay: () => {
@@ -62,6 +64,22 @@ describe('placement cursor', () => {
     const f = frame({ placementType: HOUSE, canPlaceAt: () => false });
 
     expect(f.cursor()).toEqual({ overlay: BUILDING_WASH, ghost: null });
+  });
+
+  it('passes a held paper to the probe so its technology bypass also governs the ghost', () => {
+    const paper: Paper = { kind: 'placeAny', param: 0 };
+    const seen: Array<Paper | undefined> = [];
+    const f = frame({
+      placementType: HOUSE,
+      placementPaper: paper,
+      canPlaceAt: (_type, _col, _row, activePaper) => {
+        seen.push(activePaper);
+        return activePaper !== undefined;
+      },
+    });
+
+    expect(f.cursor().ghost?.kind).toBe('building');
+    expect(seen).toEqual([paper]);
   });
 
   it('hides the ghost while the pointer is off the canvas', () => {

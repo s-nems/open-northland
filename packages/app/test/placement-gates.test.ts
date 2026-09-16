@@ -1,5 +1,5 @@
 import { cellAnchorNode, components, halfCellMapFromCells, Simulation } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { JOB_SOLDIER_SWORD } from '../src/catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
@@ -14,12 +14,13 @@ import { createPlacementGates, type PlacementGates } from '../src/view/runtime/p
 
 const MAP_W = 24;
 const MAP_H = 12;
+const VIKING = 1;
 /** The enemy swordsman's cell, and a site two cells off him against one across the map. */
 const RAIDER = { x: 6, y: 4 };
 const NEAR = cellAnchorNode(8, 4);
 const FAR = cellAnchorNode(18, 8);
 
-function openField(): { sim: Simulation; gates: PlacementGates } {
+function openField(): { sim: Simulation; gates: PlacementGates; fog: ReturnType<typeof createFogGates> } {
   const terrain = grassTerrain(MAP_W, MAP_H);
   const sim = new Simulation({
     seed: 1,
@@ -28,7 +29,7 @@ function openField(): { sim: Simulation; gates: PlacementGates } {
   });
   const fog = createFogGates();
   fog.setFrame(null); // fog off: only the placement rules decide
-  return { sim, gates: createPlacementGates(sim, fog, HUMAN_PLAYER) };
+  return { sim, gates: createPlacementGates(sim, fog, HUMAN_PLAYER), fog };
 }
 
 describe('placement gates - the ground an enemy army contests', () => {
@@ -46,5 +47,20 @@ describe('placement gates - the ground an enemy army contests', () => {
 
     for (const e of [...sim.world.query(components.Settler)]) sim.world.destroy(e);
     expect(gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).toBe(true);
+  });
+
+  it('omits only the technology tribe from a paper-paid probe', () => {
+    const { sim, fog } = openField();
+    const gates = createPlacementGates(sim, fog, HUMAN_PLAYER, VIKING);
+    const probe = vi.spyOn(sim, 'placementProbe');
+    const paper = { kind: 'placeAny', param: 0 } as const;
+
+    gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy);
+    gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy, paper);
+
+    expect(probe.mock.calls).toEqual([
+      [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],
+      [BUILDING_HOME_00, HUMAN_PLAYER, undefined],
+    ]);
   });
 });

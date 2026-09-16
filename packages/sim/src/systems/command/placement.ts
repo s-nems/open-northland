@@ -73,9 +73,11 @@ export function placeBuilding(
   }
 
   if (command.force !== true) {
-    // A house paper names its house whether or not the tribe has unlocked it.
-    const techGated = paper === undefined || paper.kind === 'placeAny';
-    if (techGated && !buildingEnabled(world, ctx, command.owner, command.tribe, command.buildingType)) {
+    // A placing paper authorizes the chosen house whether it names one type or lets the player choose any.
+    if (
+      paper === undefined &&
+      !buildingEnabled(world, ctx, command.owner, command.tribe, command.buildingType)
+    ) {
       return;
     }
 

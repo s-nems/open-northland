@@ -68,8 +68,8 @@ describe('buildSoundGalleryModel', () => {
     expect(finished?.clips).toEqual(['jingles/jingles_housebuilt.wav']);
   });
 
-  it('binds placement and production to their positional groups', () => {
-    expect(model.actions.find((a) => a.label === 'Postawienie budynku')?.sound).toBe('Hammer Wood');
+  it('binds boat placement and production to their positional groups', () => {
+    expect(model.actions.find((a) => a.label === 'Zwodowanie łodzi')?.sound).toBe('Hammer Wood');
     expect(model.actions.find((a) => a.label === 'Produkcja towaru')?.sound).toBe('Carpenter Saw');
   });
 
@@ -99,7 +99,8 @@ describe('buildSoundGalleryModel', () => {
     // Swing and release moved to the animation cue, so nothing binds them - and no row claims they exist.
     const labels = model.actions.map((a) => a.label);
     expect(labels).not.toContain('Rąbanie drzewa');
-    expect(labels).toContain('Postawienie budynku');
+    expect(labels).not.toContain('Postawienie budynku');
+    expect(labels).toContain('Zwodowanie łodzi');
   });
 
   it('shows a group missing from the bank with an empty clip list, not a crash', () => {
@@ -108,7 +109,7 @@ describe('buildSoundGalleryModel', () => {
     // Voice groups still listed (the pools are static), each with no clips since the bank is empty.
     expect(m.voices.flatMap((v) => v.groups).every((g) => g.clips.length === 0)).toBe(true);
     // A spatial action whose group is missing resolves to an empty clip list (still shown for auditing).
-    expect(m.actions.find((a) => a.label === 'Postawienie budynku')?.clips).toEqual([]);
+    expect(m.actions.find((a) => a.label === 'Zwodowanie łodzi')?.clips).toEqual([]);
     expect(m.cues).toEqual([]);
   });
 });

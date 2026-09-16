@@ -1,6 +1,6 @@
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
-import type { Command, PlayerCommand } from '@open-northland/sim';
+import type { Command, Paper, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
@@ -40,7 +40,7 @@ export interface GameToolPanelDeps {
   /** The goods palette's sandbox world-edit seam; a closure, so it follows a scene restart. */
   readonly enqueueAdmin: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
-  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */

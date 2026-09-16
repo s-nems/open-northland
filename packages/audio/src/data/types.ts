@@ -1,5 +1,5 @@
 import type { Camera } from '@open-northland/render/data';
-import type { SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
+import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from './bank.js';
 
 /**
@@ -77,6 +77,9 @@ export type EventSound =
  */
 export interface SoundBindings {
   readonly byEvent: Partial<Record<SimEventKind, EventSound>>;
+  /** The original plays a kind-specific positioned lid sound in addition to the common open-chest
+   *  jingle. Optional so synthetic/custom banks can leave chest opening silent. */
+  readonly byChestKind?: Readonly<Record<ChestKind, EventSound>>;
   /**
    * A melee `combatHit`'s weapon-specific impact sound, keyed by the striker's `weaponMainType`
    * (1 fist / 2 spear / 3 sword / 4 saber / 5 axe - `WEAPON_MAIN_TYPE_*`). A class with no entry (or a

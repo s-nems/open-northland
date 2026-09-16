@@ -19,12 +19,25 @@ describe('VIKING_VOICE_POOLS', () => {
 });
 
 describe('defaultBindings', () => {
-  it('binds life events to jingles and placement/production to spatial groups', () => {
+  it('binds life events to jingles and production to spatial groups', () => {
     const b = defaultBindings();
     expect(b.byEvent.buildingFinished?.kind).toBe('jingle');
     expect(b.byEvent.settlerBorn?.kind).toBe('jingle');
-    expect(b.byEvent.buildingPlaced).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
+    expect(b.byEvent.buildingPlaced).toBeUndefined();
     expect(b.byEvent.goodProduced).toEqual({ kind: 'spatial', group: 'Carpenter Saw' });
+  });
+
+  it('binds chest opening to its kind-specific lid sound and the local-player jingle', () => {
+    const b = defaultBindings();
+    expect(b.byChestKind).toEqual({
+      wooden: { kind: 'spatial', group: 'Open Wooden Chest' },
+      magical: { kind: 'spatial', group: 'Open Magical Chest' },
+    });
+    expect(b.byEvent.chestOpened).toEqual({
+      kind: 'jingle',
+      musicType: 30,
+      localPlayerOnly: true,
+    });
   });
 
   it('marks every life-event jingle own-player-only and screen-gated', () => {

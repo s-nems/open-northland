@@ -545,6 +545,12 @@ describe('tool windows registry', () => {
   it('a house paper goes straight to placement; a place-any paper opens the menu and rides its next pick', () => {
     const { ctx: base } = stubContext();
     const picks: [number, Paper | undefined][] = [];
+    let firstBuildingLocked = true;
+    const buildings = BUILDINGS.map((building, index) =>
+      index === 0
+        ? { ...building, disabledReason: () => (firstBuildingLocked ? 'technology locked' : null) }
+        : building,
+    );
     const papers: Paper[] = [
       { kind: 'placeHouse', param: 23 },
       { kind: 'placeAny', param: 0 },
@@ -553,7 +559,7 @@ describe('tool windows registry', () => {
     const windows = createToolWindows({
       ctx: base,
       container: new Container(),
-      buildings: BUILDINGS,
+      buildings,
       goods: [],
       grants: GRANTS,
       counters: stubCountersSeam().seam,
@@ -604,6 +610,7 @@ describe('tool windows registry', () => {
     expect(heldPaper.isActive()).toBe(false);
 
     // Closing the menu without a pick drops the held paper: the next pick is an ordinary site.
+    firstBuildingLocked = false;
     extras.toggle();
     extras.handleClick(...centreXY(plansTab));
     extras.handleClick(...centreXY(anyRow));
@@ -772,7 +779,7 @@ describe('tool windows registry', () => {
 describe('placement controller', () => {
   function mount(
     screenToTile: (x: number, y: number) => { col: number; row: number } | null,
-    canPlaceAt: (typeId: number, col: number, row: number) => boolean = () => true,
+    canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean = () => true,
   ) {
     const { ctx } = stubContext();
     const commands: Command[] = [];
@@ -823,6 +830,23 @@ describe('placement controller', () => {
     placement.enter(23);
     placement.handleClick(10, 10);
     expect(commands[1]).not.toHaveProperty('paper');
+  });
+
+  it('passes a paper through the live gate so technology cannot reject its placement', () => {
+    const paper = { kind: 'placeAny', param: 0 } as const;
+    const seen: Array<typeof paper | undefined> = [];
+    const { placement, commands } = mount(
+      () => ({ col: 4, row: 2 }),
+      (_type, _col, _row, activePaper) => {
+        seen.push(activePaper as typeof paper | undefined);
+        return activePaper !== undefined;
+      },
+    );
+
+    placement.enter(23, paper);
+    expect(placement.handleClick(10, 10)).toBe(true);
+    expect(seen).toEqual([paper]);
+    expect(commands).toHaveLength(1);
   });
 
   it('a click on ground the placement rule rejects is consumed but inert (mode survives)', () => {

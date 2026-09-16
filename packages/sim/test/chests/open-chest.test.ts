@@ -152,6 +152,8 @@ describe('the openChest order', () => {
     expect(events.find((e) => e.kind === 'chestOpened')).toEqual({
       kind: 'chestOpened',
       chest,
+      chestKind: 'wooden',
+      player: P0,
       at: { hx: 16, hy: 16 },
     });
     // The opener stood on a work cell next to the chest, never on it.

@@ -21,6 +21,8 @@ import {
 const bank: SoundBank = {
   staticGroups: [
     { name: 'Hammer Wood', sfx: [{ file: 'static/hammer01.wav', params: [80] }] },
+    { name: 'Open Wooden Chest', sfx: [{ file: 'static/woodenchest.wav', params: [80] }] },
+    { name: 'Open Magical Chest', sfx: [{ file: 'static/magicalchest.wav', params: [80] }] },
     { name: 'Woodcutter Axe', logicSoundType: 9, sfx: [{ file: 'static/axe01.wav', params: [80] }] },
     // Combat impact groups (the weapon-specific melee hits + the bow shot/arrow-hit).
     { name: 'Weapon Sword Short Hit', sfx: [{ file: 'static/swordhit01.wav', params: [80] }] },
@@ -48,6 +50,7 @@ const bank: SoundBank = {
     { name: '', musicType: 23, sfx: [{ file: 'jingles/jingles_birth.wav', params: [] }] },
     { name: '', musicType: 25, sfx: [{ file: 'jingles/jingles_death.wav', params: [] }] },
     { name: '', musicType: 24, sfx: [{ file: 'jingles/jingles_civildefense.wav', params: [] }] },
+    { name: '', musicType: 30, sfx: [{ file: 'jingles/jingles_openchest.wav', params: [] }] },
   ],
 };
 const gfxPatterns = [{ id: 5, editGroups: ['meadow green'] }] as unknown as GfxPattern[];
@@ -111,15 +114,33 @@ function direct(
 }
 
 describe('directAudio one-shots', () => {
-  it('fires a positioned action SFX for an on-screen building placement', () => {
-    // `at` is a half-cell node: cell (5,5) anchors at node (11,10) - the same screen point as tile (5,5).
+  it('does not invent a placement sound before any builder starts hammering', () => {
     const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } }]);
-    expect(frame.oneShots).toHaveLength(1);
-    const shot = frame.oneShots[0];
-    expect(shot?.files).toEqual(['static/hammer01.wav']);
-    expect(shot?.gain).toBeGreaterThan(0);
-    expect(shot?.pan).toBeCloseTo(0, 5); // centred emitter
-    expect(shot?.key).toBe('buildingPlaced:11,10');
+    expect(frame.oneShots).toEqual([]);
+  });
+
+  it('plays the kind-specific chest sound and local-player open-chest jingle together', () => {
+    const opened: SimEvent = {
+      kind: 'chestOpened',
+      chest: entity(12),
+      chestKind: 'wooden',
+      player: 0,
+      at: { hx: 11, hy: 10 },
+    };
+    const frame = direct([opened], { localPlayer: 0 });
+    expect(frame.oneShots.map((shot) => shot.files)).toEqual([
+      ['jingles/jingles_openchest.wav'],
+      ['static/woodenchest.wav'],
+    ]);
+    expect(frame.oneShots.map((shot) => shot.key)).toEqual([
+      'chestOpened:11,10:jingle',
+      'chestOpened:11,10:wooden',
+    ]);
+    expect(frame.oneShots[0]?.duckMusicMs).toBe(3000);
+
+    expect(direct([opened], { localPlayer: 1 }).oneShots.map((shot) => shot.files)).toEqual([
+      ['static/woodenchest.wav'],
+    ]);
   });
 
   it("rings the house-built jingle for the local player's own on-screen building", () => {
@@ -461,9 +482,9 @@ describe('authored cue one-shots', () => {
   it("keeps a fogged settler silent while leaving the map's own events fog-agnostic", () => {
     const events: readonly SimEvent[] = [
       { kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_MALE },
-      { kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } },
+      { kind: 'boatPlaced', entity: entity(7), at: { hx: 11, hy: 10 } },
     ];
     const frame = direct(events, { visibleTile: () => false });
-    expect(frame.oneShots.map((s) => s.key)).toEqual(['buildingPlaced:11,10']);
+    expect(frame.oneShots.map((s) => s.key)).toEqual(['boatPlaced:11,10']);
   });
 });

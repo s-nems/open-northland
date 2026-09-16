@@ -1,7 +1,7 @@
 import type { MusicStanding } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type { HudLayout, HudModel } from '@open-northland/render';
-import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type { Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
@@ -58,7 +58,7 @@ export interface FrameLoopDeps {
   readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   /** Memoized by snapshot identity and the selection version, and fog-filtered. */
   readonly lifeHeartsFor: (snap: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
-  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   /** The civilization the local seat builds as; the placement ghost previews its bodies. */
   readonly placementTribe: number;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
@@ -195,6 +195,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // pure projection and never calls back into the sim.
     const cursor = placementCursor({
       placementType: toolPanel.controller.placementType(),
+      placementPaper: toolPanel.controller.placementPaper(),
       signpostActive: controls.signpostPlacementActive(),
       buildingOverlay,
       signpostOverlay,
