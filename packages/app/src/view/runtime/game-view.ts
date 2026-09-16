@@ -181,7 +181,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   let loop: RafLoop | null = null;
   let systemMenu: ReturnType<typeof createSystemMenu> | null = null;
-  let disposeHud = (): void => undefined;
+  const cleanup: (() => void)[] = [];
   let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
   const lifetime = new AbortController();
@@ -215,14 +215,24 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     if (destroyed) return;
     destroyed = true;
     lifetime.abort();
-    loop?.stop();
-    systemMenu?.dispose();
-    disposeHud();
-    verdict?.dispose();
-    deps.cameraCtl.dispose();
+    const errors: unknown[] = [];
+    for (const dispose of [
+      () => loop?.stop(),
+      () => systemMenu?.dispose(),
+      ...cleanup.splice(0).reverse(),
+      () => verdict?.dispose(),
+      () => cameraCtl.dispose(),
+    ]) {
+      try {
+        dispose();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
     // Leaving the debug seams set would pin this sim, renderer and stats for the document's lifetime.
-    delete window.__opennorthland;
+    if (window.__opennorthland?.sim === sim) delete window.__opennorthland;
     if (currentDiagGameSession()?.sim === sim) setDiagGameSession(null);
+    if (errors.length > 0) throw new AggregateError(errors, 'Game view cleanup failed');
   };
   const quitToMenu = (): void => {
     destroy();
@@ -230,435 +240,452 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     else window.location.search = menuSearch();
   };
 
-  const storedSettings = readStoredSettings();
-  // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
-  const uiScaleParam = floatParam(params, 'uiscale', 0);
-  const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
-  const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
+  try {
+    const storedSettings = readStoredSettings();
+    // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
+    const uiScaleParam = floatParam(params, 'uiscale', 0);
+    const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
+    const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
 
-  const lang = currentLocale();
-  const keyBindings = storedSettings.keyBindings;
-  const frameStats = new FrameStats();
+    const lang = currentLocale();
+    const keyBindings = storedSettings.keyBindings;
+    const frameStats = new FrameStats();
 
-  // A checkout without a decoded sound bank degrades to silence.
-  const soundDriver = await mountGamePresentation(params, renderer, deps.musicType ?? null, lifetime.signal);
+    // A checkout without a decoded sound bank degrades to silence.
+    const soundDriver = await mountGamePresentation(
+      params,
+      renderer,
+      deps.musicType ?? null,
+      lifetime.signal,
+    );
+    cleanup.push(() => soundDriver?.close());
 
-  // Along the bottom edge between the minimap and the details panel, clear of the notes up top.
-  const perfCorner = perfCornerForUiScale(uiscale);
-  const perf = mountPerfOverlay(perfCorner.left, perfCorner.right, perfCorner.bottom);
+    // Along the bottom edge between the minimap and the details panel, clear of the notes up top.
+    const perfCorner = perfCornerForUiScale(uiscale);
+    const perf = mountPerfOverlay(perfCorner.left, perfCorner.right, perfCorner.bottom);
+    cleanup.push(() => perf.dispose());
 
-  // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
-  const fogGates = createFogGates();
+    // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
+    const fogGates = createFogGates();
 
-  const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(
-    sim,
-    fogGates,
-    localPlayer,
-    seatTribeOf(localPlayer),
-  );
-
-  // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
-  // draws over the strip's lower buttons on a short screen.
-  let minimap: MinimapHandle | undefined;
-
-  // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
-  // the sim on every mousemove.
-  const pointerAt = trackCanvasPointer(canvas, lifetime.signal);
-
-  // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
-  // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
-  // seat reaching into another's units.
-  const readOnly = deps.readOnly === true;
-  const overseer = deps.observer === true && !readOnly;
-  // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
-  const issueTrusted = (command: Command): void => {
-    if (!sharedClock) driver.submit(adminCommand(command));
-  };
-  const issueCommand = (command: PlayerCommand): void => {
-    if (readOnly) return;
-    driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
-  };
-
-  const menuGoods = menuGoodsFromContent(sim.content);
-  const goodLabelByType = new Map(menuGoods.map((g) => [g.goodType, g.label]));
-  const { diplomacyView, buildReason } = createTickMemoViews(sim, seatTribeOf);
-  const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
-    diplomacyPanelRows(diplomacyView, {
+    const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(
+      sim,
+      fogGates,
       localPlayer,
-      rosterPlayers: deps.rosterPlayers ?? [],
-      observer: deps.observer === true,
-      goodLabelOf: (goodType) => goodLabelByType.get(goodType),
-      canPay: !readOnly,
+      seatTribeOf(localPlayer),
+    );
+
+    // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
+    // draws over the strip's lower buttons on a short screen.
+    let minimap: MinimapHandle | undefined;
+
+    // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
+    // the sim on every mousemove.
+    const pointerAt = trackCanvasPointer(canvas, lifetime.signal);
+
+    // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
+    // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
+    // seat reaching into another's units.
+    const readOnly = deps.readOnly === true;
+    const overseer = deps.observer === true && !readOnly;
+    // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
+    const issueTrusted = (command: Command): void => {
+      if (!sharedClock) driver.submit(adminCommand(command));
+    };
+    const issueCommand = (command: PlayerCommand): void => {
+      if (readOnly) return;
+      driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
+    };
+
+    const menuGoods = menuGoodsFromContent(sim.content);
+    const goodLabelByType = new Map(menuGoods.map((g) => [g.goodType, g.label]));
+    const { diplomacyView, buildReason } = createTickMemoViews(sim, seatTribeOf);
+    const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
+      diplomacyPanelRows(diplomacyView, {
+        localPlayer,
+        rosterPlayers: deps.rosterPlayers ?? [],
+        observer: deps.observer === true,
+        goodLabelOf: (goodType) => goodLabelByType.get(goodType),
+        canPay: !readOnly,
+        ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+        ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+        ...(deps.mapText !== undefined ? { tributeText: deps.mapText } : {}),
+      });
+    const mapText = deps.mapText ?? ((): undefined => undefined);
+    const briefFor: (page: number | null) => MissionBrief | null =
+      deps.missionBriefSource === undefined
+        ? () => null
+        : missionBriefReader(
+            deps.missionBriefSource,
+            {
+              tick: () => sim.tick,
+              status: () => sim.missionStatus(),
+              outcome: () => sim.matchOutcome(localPlayer),
+            },
+            mapText,
+          );
+
+    // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
+    // reach them through these slots.
+    let selectEntity: ((id: number) => void) | null = null;
+    let overviewPress: UnitControls['overviewPress'] | null = null;
+    // Its own chip: the pile and stock-row tooltips hide whenever the pointer is over the HUD.
+    const noteTooltip = createTooltip();
+    cleanup.push(() => noteTooltip.destroy());
+    let missionWindowOpen = false;
+    const toolPanel = await mountGameToolPanel({
+      app,
+      canvas,
+      uiscale,
+      camera: () => cameraCtl.camera(),
+      enqueue: issueCommand,
+      enqueueAdmin: (command) => {
+        if (!readOnly) issueTrusted(command);
+      },
+      grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
+      counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
+      papers: { read: () => sim.papers(localPlayer) },
+      diplomacyRows,
+      onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
+      canPlaceAt,
+      mapSize: deps.mapSize,
+      ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+      buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
+        ...entry,
+        disabledReason: () => buildReason(localPlayer, entry.typeId),
+      })),
+      goods: sharedClock ? [] : menuGoods,
+      lang,
+      bindings: keyBindings,
+      tribe: seatTribeOf(localPlayer),
+      owner: localPlayer,
+      onSpeed: (spec, cause) => applyGameSpeed(driver, spec, cause),
+      deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
+      overlayReserve: () => minimap?.panelRect() ?? null,
+      onSystemMenu: () => systemMenu?.toggle(),
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+      missionBrief: briefFor,
+      missionBriefingHistory: () => sim.missionBriefingHistory(),
+      missionReplayPage: () => sim.missionBriefingPage(),
+      // The original stops game time behind its large windows.
+      onLargeWindow: (open) => {
+        missionWindowOpen = open;
+        if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
+        else pauseHolds.release(PAUSE_HOLDER_MISSION);
+      },
+      ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-      ...(deps.mapText !== undefined ? { tributeText: deps.mapText } : {}),
+      tooltip: noteTooltip,
+      onSelectMessageTarget: (target) => {
+        const at = messageTargetAnchor(sim.snapshot(), target, deps.elevation);
+        if (at !== null) jumpToWorld(at.x, at.y);
+        if (target.entity !== null) selectEntity?.(target.entity);
+      },
     });
-  const mapText = deps.mapText ?? ((): undefined => undefined);
-  const briefFor: (page: number | null) => MissionBrief | null =
-    deps.missionBriefSource === undefined
-      ? () => null
-      : missionBriefReader(
-          deps.missionBriefSource,
-          {
-            tick: () => sim.tick,
-            status: () => sim.missionStatus(),
-            outcome: () => sim.matchOutcome(localPlayer),
-          },
-          mapText,
-        );
 
-  // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
-  // reach them through these slots.
-  let selectEntity: ((id: number) => void) | null = null;
-  let overviewPress: UnitControls['overviewPress'] | null = null;
-  // Its own chip: the pile and stock-row tooltips hide whenever the pointer is over the HUD.
-  const noteTooltip = createTooltip();
-  let missionWindowOpen = false;
-  const toolPanel = await mountGameToolPanel({
-    app,
-    canvas,
-    uiscale,
-    camera: () => cameraCtl.camera(),
-    enqueue: issueCommand,
-    enqueueAdmin: (command) => {
-      if (!readOnly) issueTrusted(command);
-    },
-    grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
-    counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
-    papers: { read: () => sim.papers(localPlayer) },
-    diplomacyRows,
-    onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
-    canPlaceAt,
-    mapSize: deps.mapSize,
-    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
-      ...entry,
-      disabledReason: () => buildReason(localPlayer, entry.typeId),
-    })),
-    goods: sharedClock ? [] : menuGoods,
-    lang,
-    bindings: keyBindings,
-    tribe: seatTribeOf(localPlayer),
-    owner: localPlayer,
-    onSpeed: (spec, cause) => applyGameSpeed(driver, spec, cause),
-    deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
-    overlayReserve: () => minimap?.panelRect() ?? null,
-    onSystemMenu: () => systemMenu?.toggle(),
-    ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
-    missionBrief: briefFor,
-    missionBriefingHistory: () => sim.missionBriefingHistory(),
-    missionReplayPage: () => sim.missionBriefingPage(),
-    // The original stops game time behind its large windows.
-    onLargeWindow: (open) => {
-      missionWindowOpen = open;
-      if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
-      else pauseHolds.release(PAUSE_HOLDER_MISSION);
-    },
-    ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
-    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-    tooltip: noteTooltip,
-    onSelectMessageTarget: (target) => {
-      const at = messageTargetAnchor(sim.snapshot(), target, deps.elevation);
-      if (at !== null) jumpToWorld(at.x, at.y);
-      if (target.entity !== null) selectEntity?.(target.entity);
-    },
-  });
+    cleanup.push(() => toolPanel.dispose());
 
-  // The verdict panel rides the same event stream the entry's own hook does; a spectator seat has no
-  // verdict to hear.
-  if (deps.observer !== true || sharedClock) {
-    verdict = createMatchResultOverlay({
+    // The verdict panel rides the same event stream the entry's own hook does; a spectator seat has no
+    // verdict to hear.
+    if (deps.observer !== true || sharedClock) {
+      verdict = createMatchResultOverlay({
+        localPlayer,
+        sharedClock,
+        uiString: toolPanel.controller.uiString,
+        pause: () => pauseHolds.hold(PAUSE_HOLDER_VERDICT),
+        resume: () => pauseHolds.release(PAUSE_HOLDER_VERDICT),
+        onQuit: quitToMenu,
+      });
+    }
+    // Assembled below, once the controls and the camera it steers exist.
+    const terrainColors = await mountScriptTerrainColors(sim, renderer);
+    let presentation: ReturnType<typeof createScriptPresentation> | null = null;
+    const subMissions = createSubMissions({
+      sim,
+      captureSave: (options) => driver.captureSave(options),
+      params,
+      worldToken: deps.worldToken ?? null,
+      ...(deps.parentSave !== undefined ? { parent: deps.parentSave } : {}),
+      ...(deps.prepareSubMission !== undefined ? { prepare: deps.prepareSubMission } : {}),
+      pause: () => {
+        if (!sharedClock) driver.setPaused(true);
+      },
+      resume: () => {
+        if (!sharedClock) driver.setPaused(false);
+      },
+      teardown: teardownWorld,
+    });
+    const onEvents = createWorldEventHandler({
+      content: sim.content,
+      player: localPlayer,
+      signal: lifetime.signal,
+      forward: (events) => deps.onEvents?.(events),
+      terrainColors,
+      subMissions: (events) => !sharedClock && subMissions.onEvents(events),
+      verdict: (events) => {
+        if (deps.observer !== true) verdict?.onEvents(events);
+      },
+      presentation: (events) => presentation?.onEvents(events),
+    });
+
+    // Injected rather than imported: `hud/` never imports `view/`.
+    const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
+      clientToScreenPx(canvas, app.renderer.resolution, clientX, clientY);
+    const jumpToWorld = (wx: number, wy: number): void => {
+      const zoom = cameraCtl.camera().scale ?? 1;
+      cameraCtl.jumpTo(cameraCenteredOnWorld(wx, wy, zoom, app.screen.width, app.screen.height));
+    };
+    // Mounted after the tool panel (draw order) and before the unit controls, so that a minimap click
+    // never falls through to unit selection or a world order.
+    minimap = await mountMinimap({
+      app,
+      canvas,
+      terrain: deps.terrainGrid,
+      cellColours: deps.minimapCellColours,
+      colourOf: deps.terrainColour,
+      ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+      uiscale,
+      camera: () => cameraCtl.camera(),
+      onJump: jumpToWorld,
+      onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,
+      toScreenPx: clientToScreen,
+    });
+
+    // Open windows and the minimap claim against both camera gestures. The tool-panel strip deliberately
+    // does not, so edge-pan and wheel zoom keep working over it.
+    const mountedMinimap = minimap;
+    cleanup.push(() => mountedMinimap.dispose());
+    const hudClaims = (clientX: number, clientY: number): boolean =>
+      toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY);
+    cameraCtl.setPointerGuard(hudClaims);
+    cameraCtl.setEdgeGuard(hudClaims);
+
+    // Late-bound: the badge projection below needs the fog gates and the building index.
+    let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
+
+    const detailsTooltip = createTooltip();
+    cleanup.push(() => detailsTooltip.destroy());
+    const controls = await createUnitControls({
+      technologyStatus: (kind, typeId, tribe, player) => sim.unlockStatus(kind, typeId, tribe, player),
+      canChooseJob: (id, jobType) => sim.canChooseJob(id as Entity, jobType),
+      app,
+      canvas,
+      uiscale,
+      camera: () => cameraCtl.camera(),
+      snapshot: () => sim.snapshot(),
+      mapSize: deps.mapSize,
+      ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+      humanPlayer: localPlayer,
+      observer: deps.observer === true,
+      hostileToward: (owner) => sim.diplomacyStance(localPlayer, owner) === 'enemy',
+      lang,
+      bindings: keyBindings,
+      professions: pickerEntries(),
+      content: sim.content,
+      mapText,
+      ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
+      ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+      enqueue: issueCommand,
+      centerOn: jumpToWorld,
+      drawnItems: () => renderer.drawnItems(),
+      doorBadges: () => pickableDoorBadges?.() ?? [],
+      equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
+      boundsOf: (ref) => renderer.entityBounds(ref),
+      pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
+      claimPointer: (x: number, y: number) =>
+        toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
+      // A separate instance from the ground tooltip below, which the frame loop hides whenever the
+      // pointer is over the HUD - exactly when this one must stay shown.
+      tooltip: detailsTooltip,
+    });
+    cleanup.push(() => controls.dispose());
+    selectEntity = controls.selectEntity;
+    overviewPress = controls.overviewPress;
+
+    const {
+      goodLabel,
+      buildingDoors,
+      overlayFrame,
+      signpostOverlayFrame,
+      hudFor,
+      hudModelFor,
+      doorBadgesFor,
+      constructionSignsFor,
+      settlerBubblesFor,
+      lifeHeartsFor,
+    } = await createViewReadModels({
+      placementTribe: seatTribeOf(localPlayer),
+      sim,
+      mapSize: deps.mapSize,
       localPlayer,
-      sharedClock,
-      uiString: toolPanel.controller.uiString,
-      pause: () => pauseHolds.hold(PAUSE_HOLDER_VERDICT),
-      resume: () => pauseHolds.release(PAUSE_HOLDER_VERDICT),
-      onQuit: quitToMenu,
+      fogGates,
+      tribes: deps.tribes ?? [PRIMARY_TRIBE],
+      ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+      ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+      selection: { ids: controls.selectedIds, version: controls.selectionVersion },
     });
+    pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
+
+    // The script's markers and washes draw over the world and under every HUD plane.
+    const scriptOverlay = new Container();
+    cleanup.push(() => scriptOverlay.destroy({ children: true }));
+    scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
+    app.stage.addChild(scriptOverlay);
+    presentation = createScriptPresentation({
+      sim,
+      missionTrace: hasDebugFlag(params, 'missions'),
+      localPlayer,
+      toolPanel,
+      controls,
+      centerOn: jumpToWorld,
+      screen: () => app.screen,
+      ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+      markers: createScriptMarkers(scriptOverlay, await loadGuiArt(), deps.elevation),
+      effects: createScriptEffects(scriptOverlay, deps.elevation),
+      mapText,
+      now: () => performance.now(),
+      exit: () => queueMicrotask(quitToMenu),
+    });
+
+    const mountedPresentation = presentation;
+    cleanup.push(() => mountedPresentation.dispose());
+
+    // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
+    const debugMounts = mountDebugOverlays({
+      app,
+      canvas,
+      params,
+      sim,
+      perf,
+      initialToolsEnabled: storedSettings.debugToolsEnabled,
+      allowWorldEdits: !sharedClock,
+      // The admin palette is a dev channel rather than part of the seat's HUD, so a read-only spectator
+      // still pokes with it.
+      enqueue: issueTrusted,
+      renderer,
+      cameraCtl,
+      ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+      buildingsByType: buildingDoors,
+      clientToScreen,
+      clientToTile: (x, y) => toolPanel.clientToTile(x, y),
+      claimPointer: (x, y) => controls.claimsPointer(x, y),
+      goodLabel,
+      seatTribeOf,
+    });
+
+    cleanup.push(() => debugMounts.dispose());
+
+    // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.
+    const worldTooltip = createWorldTooltip({
+      renderer,
+      camera: () => cameraCtl.camera(),
+      clientToScreen,
+      goodLabel,
+      ...chestTooltipLines(sim.content, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
+      pointer: pointerAt,
+      suppressed: (clientX, clientY) =>
+        toolPanel.controller.placementType() !== null ||
+        toolPanel.claimPointer(clientX, clientY) ||
+        controls.claimsPointer(clientX, clientY),
+    });
+
+    cleanup.push(() => worldTooltip.destroy());
+
+    const liveSettings = createLiveGameSettings({
+      screen: app.screen,
+      initialViewport: deps.initialViewport,
+      params,
+      stored: storedSettings,
+      pinnedUiScale,
+      camera: cameraCtl,
+      toolPanel,
+      minimap: mountedMinimap,
+      controls,
+      perf,
+      sound: soundDriver,
+      setDebugToolsEnabled: debugMounts.setToolsEnabled,
+    });
+    cleanup.push(() => liveSettings.dispose());
+
+    systemMenu = createSystemMenu({
+      onQuit: quitToMenu,
+      saveLoad: {
+        ...saveLoad,
+        forcePause: () => pauseHolds.hold(PAUSE_HOLDER_MENU),
+        releaseForcedPause: () => pauseHolds.release(PAUSE_HOLDER_MENU),
+      },
+      settings: liveSettings.settings,
+      setCameraSuspended: cameraCtl.setSuspended,
+      canLoad: !sharedClock,
+    });
+
+    installDebugHandle({
+      sim,
+      renderer,
+      sheet: deps.sheet,
+      cameraCtl,
+      canvas,
+      driver,
+      netReadout,
+      frameStats,
+      profile,
+    });
+
+    // This mount owns construction; the loop owns the pinned per-frame order.
+    loop = startFrameLoop({
+      deps: { ...deps, onEvents },
+      suspended: subMissions.isPending,
+      fpsLimit: storedSettings.fpsLimit,
+      onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
+      isDisposed: () => destroyed,
+      driver,
+      frameStats,
+      fogGates,
+      toolPanel,
+      minimap: mountedMinimap,
+      controls,
+      worldTooltip,
+      geometryDebug: debugMounts.geometryDebug,
+      overlayFrame,
+      signpostOverlayFrame,
+      hudFor,
+      hudModelFor,
+      doorBadgesFor,
+      constructionSignsFor,
+      settlerBubblesFor,
+      lifeHeartsFor,
+      canPlaceAt,
+      canPlaceSignpostAt,
+      placementTribe: seatTribeOf(localPlayer),
+      soundDriver,
+      presentation,
+      portraitVisible: () => !missionWindowOpen,
+      perf,
+      netReadout,
+      pointer: pointerAt,
+      syncViewport: liveSettings.syncViewport,
+    });
+
+    if (deps.introAtStart === true) toolPanel.controller.openMission();
+    // A restored save of a decided match says so at once, since no event will repeat the verdict.
+    if (deps.observer !== true) verdict?.announce(sim.matchOutcome(localPlayer));
+
+    return {
+      destroy,
+      lifetime: lifetime.signal,
+      syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
+      hudInsetLeftPx: perfCornerForUiScale(uiscale).left,
+      get hudInsetBottomLeftPx() {
+        const rect = mountedMinimap.panelRect();
+        return Math.max(perfCornerForUiScale(uiscale).left, rect === null ? 0 : rect.x + rect.w + 12);
+      },
+    };
+  } catch (error) {
+    try {
+      destroy();
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'Game view mount and cleanup failed');
+    }
+    throw error;
   }
-  // Assembled below, once the controls and the camera it steers exist.
-  const terrainColors = await mountScriptTerrainColors(sim, renderer);
-  let presentation: ReturnType<typeof createScriptPresentation> | null = null;
-  const subMissions = createSubMissions({
-    sim,
-    captureSave: (options) => driver.captureSave(options),
-    params,
-    worldToken: deps.worldToken ?? null,
-    ...(deps.parentSave !== undefined ? { parent: deps.parentSave } : {}),
-    ...(deps.prepareSubMission !== undefined ? { prepare: deps.prepareSubMission } : {}),
-    pause: () => {
-      if (!sharedClock) driver.setPaused(true);
-    },
-    resume: () => {
-      if (!sharedClock) driver.setPaused(false);
-    },
-    teardown: teardownWorld,
-  });
-  const onEvents = createWorldEventHandler({
-    content: sim.content,
-    player: localPlayer,
-    signal: lifetime.signal,
-    forward: (events) => deps.onEvents?.(events),
-    terrainColors,
-    subMissions: (events) => !sharedClock && subMissions.onEvents(events),
-    verdict: (events) => {
-      if (deps.observer !== true) verdict?.onEvents(events);
-    },
-    presentation: (events) => presentation?.onEvents(events),
-  });
-
-  // Injected rather than imported: `hud/` never imports `view/`.
-  const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
-    clientToScreenPx(canvas, app.renderer.resolution, clientX, clientY);
-  const jumpToWorld = (wx: number, wy: number): void => {
-    const zoom = cameraCtl.camera().scale ?? 1;
-    cameraCtl.jumpTo(cameraCenteredOnWorld(wx, wy, zoom, app.screen.width, app.screen.height));
-  };
-  // Mounted after the tool panel (draw order) and before the unit controls, so that a minimap click
-  // never falls through to unit selection or a world order.
-  minimap = await mountMinimap({
-    app,
-    canvas,
-    terrain: deps.terrainGrid,
-    cellColours: deps.minimapCellColours,
-    colourOf: deps.terrainColour,
-    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-    uiscale,
-    camera: () => cameraCtl.camera(),
-    onJump: jumpToWorld,
-    onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,
-    toScreenPx: clientToScreen,
-  });
-
-  // Open windows and the minimap claim against both camera gestures. The tool-panel strip deliberately
-  // does not, so edge-pan and wheel zoom keep working over it.
-  const mountedMinimap = minimap;
-  const hudClaims = (clientX: number, clientY: number): boolean =>
-    toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY);
-  cameraCtl.setPointerGuard(hudClaims);
-  cameraCtl.setEdgeGuard(hudClaims);
-
-  // Late-bound: the badge projection below needs the fog gates and the building index.
-  let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
-
-  const detailsTooltip = createTooltip();
-  const controls = await createUnitControls({
-    technologyStatus: (kind, typeId, tribe, player) => sim.unlockStatus(kind, typeId, tribe, player),
-    canChooseJob: (id, jobType) => sim.canChooseJob(id as Entity, jobType),
-    app,
-    canvas,
-    uiscale,
-    camera: () => cameraCtl.camera(),
-    snapshot: () => sim.snapshot(),
-    mapSize: deps.mapSize,
-    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    humanPlayer: localPlayer,
-    observer: deps.observer === true,
-    hostileToward: (owner) => sim.diplomacyStance(localPlayer, owner) === 'enemy',
-    lang,
-    bindings: keyBindings,
-    professions: pickerEntries(),
-    content: sim.content,
-    mapText,
-    ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
-    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-    enqueue: issueCommand,
-    centerOn: jumpToWorld,
-    drawnItems: () => renderer.drawnItems(),
-    doorBadges: () => pickableDoorBadges?.() ?? [],
-    equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
-    boundsOf: (ref) => renderer.entityBounds(ref),
-    pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
-    claimPointer: (x: number, y: number) =>
-      toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
-    // A separate instance from the ground tooltip below, which the frame loop hides whenever the
-    // pointer is over the HUD - exactly when this one must stay shown.
-    tooltip: detailsTooltip,
-  });
-  selectEntity = controls.selectEntity;
-  overviewPress = controls.overviewPress;
-
-  const {
-    goodLabel,
-    buildingDoors,
-    overlayFrame,
-    signpostOverlayFrame,
-    hudFor,
-    hudModelFor,
-    doorBadgesFor,
-    constructionSignsFor,
-    settlerBubblesFor,
-    lifeHeartsFor,
-  } = await createViewReadModels({
-    placementTribe: seatTribeOf(localPlayer),
-    sim,
-    mapSize: deps.mapSize,
-    localPlayer,
-    fogGates,
-    tribes: deps.tribes ?? [PRIMARY_TRIBE],
-    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-    ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
-    selection: { ids: controls.selectedIds, version: controls.selectionVersion },
-  });
-  pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
-
-  // The script's markers and washes draw over the world and under every HUD plane.
-  const scriptOverlay = new Container();
-  scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
-  app.stage.addChild(scriptOverlay);
-  presentation = createScriptPresentation({
-    sim,
-    missionTrace: hasDebugFlag(params, 'missions'),
-    localPlayer,
-    toolPanel,
-    controls,
-    centerOn: jumpToWorld,
-    screen: () => app.screen,
-    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    markers: createScriptMarkers(scriptOverlay, await loadGuiArt(), deps.elevation),
-    effects: createScriptEffects(scriptOverlay, deps.elevation),
-    mapText,
-    now: () => performance.now(),
-    exit: () => queueMicrotask(quitToMenu),
-  });
-
-  // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
-  const debugMounts = mountDebugOverlays({
-    app,
-    canvas,
-    params,
-    sim,
-    perf,
-    initialToolsEnabled: storedSettings.debugToolsEnabled,
-    allowWorldEdits: !sharedClock,
-    // The admin palette is a dev channel rather than part of the seat's HUD, so a read-only spectator
-    // still pokes with it.
-    enqueue: issueTrusted,
-    renderer,
-    cameraCtl,
-    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    buildingsByType: buildingDoors,
-    clientToScreen,
-    clientToTile: (x, y) => toolPanel.clientToTile(x, y),
-    claimPointer: (x, y) => controls.claimsPointer(x, y),
-    goodLabel,
-    seatTribeOf,
-  });
-
-  // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.
-  const worldTooltip = createWorldTooltip({
-    renderer,
-    camera: () => cameraCtl.camera(),
-    clientToScreen,
-    goodLabel,
-    ...chestTooltipLines(sim.content, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
-    pointer: pointerAt,
-    suppressed: (clientX, clientY) =>
-      toolPanel.controller.placementType() !== null ||
-      toolPanel.claimPointer(clientX, clientY) ||
-      controls.claimsPointer(clientX, clientY),
-  });
-
-  const liveSettings = createLiveGameSettings({
-    screen: app.screen,
-    initialViewport: deps.initialViewport,
-    params,
-    stored: storedSettings,
-    pinnedUiScale,
-    camera: cameraCtl,
-    toolPanel,
-    minimap: mountedMinimap,
-    controls,
-    perf,
-    sound: soundDriver,
-    setDebugToolsEnabled: debugMounts.setToolsEnabled,
-  });
-  systemMenu = createSystemMenu({
-    onQuit: quitToMenu,
-    saveLoad: {
-      ...saveLoad,
-      forcePause: () => pauseHolds.hold(PAUSE_HOLDER_MENU),
-      releaseForcedPause: () => pauseHolds.release(PAUSE_HOLDER_MENU),
-    },
-    settings: liveSettings.settings,
-    setCameraSuspended: cameraCtl.setSuspended,
-    canLoad: !sharedClock,
-  });
-  const mountedPresentation = presentation;
-  disposeHud = (): void => {
-    soundDriver?.close();
-    detailsTooltip.destroy();
-    debugMounts.dispose();
-    liveSettings.dispose();
-    toolPanel.dispose();
-    noteTooltip.destroy();
-    mountedMinimap.dispose();
-    controls.dispose();
-    mountedPresentation.dispose();
-    scriptOverlay.destroy({ children: true });
-    perf.dispose();
-    worldTooltip.destroy();
-  };
-
-  installDebugHandle({
-    sim,
-    renderer,
-    sheet: deps.sheet,
-    cameraCtl,
-    canvas,
-    driver,
-    netReadout,
-    frameStats,
-    profile,
-  });
-
-  // This mount owns construction; the loop owns the pinned per-frame order.
-  loop = startFrameLoop({
-    deps: { ...deps, onEvents },
-    suspended: subMissions.isPending,
-    fpsLimit: storedSettings.fpsLimit,
-    onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
-    isDisposed: () => destroyed,
-    driver,
-    frameStats,
-    fogGates,
-    toolPanel,
-    minimap: mountedMinimap,
-    controls,
-    worldTooltip,
-    geometryDebug: debugMounts.geometryDebug,
-    overlayFrame,
-    signpostOverlayFrame,
-    hudFor,
-    hudModelFor,
-    doorBadgesFor,
-    constructionSignsFor,
-    settlerBubblesFor,
-    lifeHeartsFor,
-    canPlaceAt,
-    canPlaceSignpostAt,
-    placementTribe: seatTribeOf(localPlayer),
-    soundDriver,
-    presentation,
-    portraitVisible: () => !missionWindowOpen,
-    perf,
-    netReadout,
-    pointer: pointerAt,
-    syncViewport: liveSettings.syncViewport,
-  });
-
-  if (deps.introAtStart === true) toolPanel.controller.openMission();
-  // A restored save of a decided match says so at once, since no event will repeat the verdict.
-  if (deps.observer !== true) verdict?.announce(sim.matchOutcome(localPlayer));
-
-  return {
-    destroy,
-    lifetime: lifetime.signal,
-    syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
-    hudInsetLeftPx: perfCornerForUiScale(uiscale).left,
-    get hudInsetBottomLeftPx() {
-      const rect = mountedMinimap.panelRect();
-      return Math.max(perfCornerForUiScale(uiscale).left, rect === null ? 0 : rect.x + rect.w + 12);
-    },
-  };
 }

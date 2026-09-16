@@ -30,17 +30,22 @@ export async function mountGamePresentation(
 ): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
   const sound = createSoundDriver(ir);
-  if (sound !== null) {
-    const settings = readStoredSettings();
-    sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
-    sound.setSfxVolume(settings.soundVolume);
-    sound.setMusicVolume(settings.musicVolume);
-    startSound(sound, { ...(signal !== undefined ? { signal } : {}) });
-    if (musicType !== null) void startMapMusic(sound, musicType);
+  try {
+    if (sound !== null) {
+      const settings = readStoredSettings();
+      sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
+      sound.setSfxVolume(settings.soundVolume);
+      sound.setMusicVolume(settings.musicVolume);
+      startSound(sound, { ...(signal !== undefined ? { signal } : {}) });
+      if (musicType !== null) void startMapMusic(sound, musicType);
+    }
+    if (assetSetFor(params) === 'own') return sound;
+    renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
+    renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
+    renderer.setBuildingSignGfx(await loadBuildingSignGfx());
+    return sound;
+  } catch (error) {
+    sound?.close();
+    throw error;
   }
-  if (assetSetFor(params) === 'own') return sound;
-  renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
-  renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
-  renderer.setBuildingSignGfx(await loadBuildingSignGfx());
-  return sound;
 }
