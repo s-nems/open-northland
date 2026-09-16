@@ -178,7 +178,13 @@ export class LayerBinder {
       layer.atlasW ?? layer.frame.width,
       layer.atlasH ?? layer.frame.height,
     );
-    spr.place(originX, originY, camScale * layer.scale, frame.screenW, frame.screenH);
+    spr.place(
+      originX + (layer.dx ?? 0) * camScale,
+      originY + (layer.dy ?? 0) * camScale,
+      camScale * layer.scale,
+      frame.screenW,
+      frame.screenH,
+    );
     spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh
     spr.player = playerRow;
     spr.visible = true;

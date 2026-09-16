@@ -19,14 +19,14 @@ import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
-import { isHunterJob } from '../readviews/index.js';
+import { isFisherJob, isHunterJob } from '../readviews/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 
-// The gatherer work-flag lifecycle. Minting and removal go through `bindFreshFlag` and `removeWorkFlag`, so
-// a `DeliveryFlag` exists exactly while a live gatherer references it. Authored: auto-planting a flag the
+// The field-worker flag lifecycle. Minting and removal go through `bindFreshFlag` and `removeWorkFlag`, so
+// a `DeliveryFlag` exists exactly while a live worker references it. Authored: auto-planting a flag the
 // moment a settler becomes a gatherer is a convention of this engine rather than observed behavior.
 
-/** The gatherer's work flag while its flag entity still exists; a stale binding reads as undefined. */
+/** The field worker's flag while its marker entity still exists; a stale binding reads as undefined. */
 export function liveWorkFlag(
   world: World,
   e: Entity,
@@ -138,13 +138,13 @@ export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType:
 }
 
 /**
- * Sync a settler's work flag to its new `jobType`: a job that can harvest keeps its live flag or gets a
- * fresh one at its feet, and any other job drops the flag rather than stranding an owner-less one on the
- * map. A settler already bound to a workplace takes no flag, so a caller that binds employment must bind
- * before calling here.
+ * Sync a settler's work flag to its new `jobType`: a field gatherer or fisher keeps its live flag or gets
+ * a fresh one at its feet, and any other job drops the flag rather than stranding an owner-less one on the
+ * map. A building-employed ordinary gatherer takes no flag; a fisher keeps one as its catch-delivery yard.
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  if (jobCanHarvest(ctx, jobType) && !world.has(e, JobAssignment)) {
+  const usesFlag = isFisherJob(ctx.content, jobType) || !world.has(e, JobAssignment);
+  if (jobUsesWorkFlag(ctx, jobType) && usesFlag) {
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {
       // Keep the flag, re-fitting the binding to the new trade.
@@ -193,4 +193,9 @@ export function removeWorkFlag(world: World, e: Entity): void {
  */
 export function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {
   return contentIndex(ctx.content).harvestJobs.has(jobType);
+}
+
+/** A field gatherer or land fisher whose catch is collected at its movable delivery flag. */
+export function jobUsesWorkFlag(ctx: SystemContext, jobType: number): boolean {
+  return jobCanHarvest(ctx, jobType) || isFisherJob(ctx.content, jobType);
 }

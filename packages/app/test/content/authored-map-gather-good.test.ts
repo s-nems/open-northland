@@ -43,9 +43,8 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers - the setproducedgoo
         // keeps the gather-everything default rather than costing the map its settler.
         { role: COLLECTOR, tribe: 'viking', player: HUMAN_PLAYER, hx: 20, hy: 20, producedGood: '„gold”' },
         { role: COLLECTOR, tribe: 'viking', player: HUMAN_PLAYER, hx: 26, hy: 26 }, // no pick authored
-        // The 62 fisher→fish corpus rows need no flag: the dedicated fishing drive can only collect
-        // fish from authored swarms. Keep the no-flag route pinned so it cannot accidentally become a
-        // generic gatherer while setproducedgood is extended for workshops.
+        // The 62 fisher→fish corpus rows use the fisher's flag only as their catch-delivery yard; the
+        // dedicated fishing drive still limits their work to authored fish swarms.
         { role: FISHER, tribe: 'viking', player: HUMAN_PLAYER, hx: 30, hy: 30, producedGood: FISH },
       ],
       animals: [],
@@ -69,12 +68,13 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers - the setproducedgoo
     // All five humans resolved - a dropped join would pass the picks assertion vacuously.
     const settlers = [...sim.world.query(Settler)];
     expect(settlers.length).toBe(5);
-    // Only the two flag-harvestable picks narrow a flag; the rest keep the gather-everything default.
+    // Only the two ordinary flag-harvestable picks narrow a flag; the fisher's flag is not a generic
+    // resource filter.
     const picks = settlers.map((e) => sim.world.tryGet(e, WorkFlag)?.goodType);
     expect(picks).toEqual([goodTypeOf(WOOD), goodTypeOf(STONE), undefined, undefined, undefined]);
-    // The dedicated fisher carries no work flag at all; its fishing drive is already fish-only.
+    // The dedicated fisher carries its own movable catch-delivery flag.
     const fisher = settlers[4];
     if (fisher === undefined) throw new Error('the authored fisher did not resolve');
-    expect(sim.world.has(fisher, WorkFlag)).toBe(false);
+    expect(sim.world.has(fisher, WorkFlag)).toBe(true);
   });
 });

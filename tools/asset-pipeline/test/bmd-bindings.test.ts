@@ -5,8 +5,8 @@ import { jobBaseGraphicsToBindings, resolveGraphicsBindings } from '../src/stage
 import { buildStringCif } from './fixtures/cif.js';
 import { makeTempDir } from './support/game-tree.js';
 
-/** The hand-authored guidepost binding appended LAST on every resolve (engine-bound in the original -
- *  no data table names it; see resolveGraphicsBindings). */
+/** Engine-owned bindings appended on every resolve; no ordinary graphics record names these pairs. */
+const FISH_BINDING = ['data/engine2d/bin/bobs/ls_fishes.bmd', 'fishes'];
 const GUIDEPOST_BINDING = ['data/engine2d/bin/bobs/ls_guidepost.bmd', 'bridge01'];
 
 describe('resolveGraphicsBindings', () => {
@@ -35,10 +35,11 @@ describe('resolveGraphicsBindings', () => {
 
     const { bindings, palettes } = await resolveGraphicsBindings({ mod: game });
 
-    expect(bindings).toHaveLength(2); // the animals record + the appended guidepost hand-binding
+    expect(bindings).toHaveLength(3); // the animals record + the two engine-owned bindings
     expect(bindings[0]?.bmd).toBe('data/bobs/body.bmd');
     expect(bindings[0]?.paletteName).toBe('bear01');
-    expect([bindings[1]?.bmd, bindings[1]?.paletteName]).toEqual(GUIDEPOST_BINDING);
+    expect([bindings[1]?.bmd, bindings[1]?.paletteName]).toEqual(FISH_BINDING);
+    expect([bindings[2]?.bmd, bindings[2]?.paletteName]).toEqual(GUIDEPOST_BINDING);
     expect(palettes).toEqual([{ name: 'bear01', gfxFile: 'data/pal/bear01.pcx' }]);
   });
 
@@ -67,6 +68,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/body00.bmd', 'human_body'],
       ['data/bobs/head00.bmd', 'human_head'],
       ['data/bobs/head01.bmd', 'human_head'],
+      FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
     // The body slot keeps its shadow + cross-refs; the random tint is not emitted as a binding.
@@ -110,6 +112,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/body00.bmd', 'test_human_00'],
       ['data/bobs/head00.bmd', 'test_human_00'],
       ['data/bobs/body01.bmd', 'test_human_00'],
+      FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
     expect(bindings[1]?.shadowBmd).toBe('data/bobs/body00_s.bmd');
@@ -144,6 +147,7 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/lion.bmd', 'lion01'],
       ['data/bobs/cart.bmd', 'oxcart'],
+      FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
     expect(bindings[1]?.shadowBmd).toBe('data/bobs/cart_s.bmd');
@@ -189,6 +193,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/cart.bmd', 'oxcart'],
       ['data/bobs/cart.bmd', 'oxcart'],
       ['data/bobs/ship.bmd', 'human_ship01'],
+      FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
     // The mod's extra tribe-3 ship carries its own per-tribe cross-ref (the base .cif lacks it).
@@ -213,6 +218,7 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/ls_houses_viking.bmd', 'house01'],
       ['data/bobs/ls_houses_viking.bmd', 'house02'],
+      FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
     expect([...buildTimeBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
@@ -287,19 +293,20 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/modbody.bmd', 'modbody01'],
       ['data/bobs/modcart.bmd', 'modcart01'],
       ['data/bobs/houses.bmd', 'house01'],
+      FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
     // Only the [GfxHouse] leg claims a build-time bake.
     expect([...buildTimeBmds]).toEqual(['data/bobs/houses.bmd']);
   });
 
-  it('returns only the hand-authored guidepost with a warning when every source is missing', async () => {
+  it('returns only the engine-owned bindings with a warning when every source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const { bindings, palettes } = await resolveGraphicsBindings({ mod: game }); // nothing laid down
 
-    // The unconditional guidepost hand-binding remains (convertBmdTree skips it when unresolvable).
-    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([GUIDEPOST_BINDING]);
+    // Unconditional engine bindings remain (convertBmdTree skips them when unresolvable).
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([FISH_BINDING, GUIDEPOST_BINDING]);
     expect(palettes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/jobgraphics\.ini/));
     warn.mockRestore();

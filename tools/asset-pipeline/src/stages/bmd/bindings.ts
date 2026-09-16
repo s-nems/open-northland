@@ -163,6 +163,15 @@ const GUIDEPOST_BINDING: BmdPaletteBinding = {
   jobId: undefined,
 };
 
+/** The fish manager chooses this bob set and palette directly; no landscape record binds the pair. */
+const FISH_BINDING: BmdPaletteBinding = {
+  bmd: 'data/engine2d/bin/bobs/ls_fishes.bmd',
+  shadowBmd: undefined,
+  paletteName: 'fishes',
+  tribeId: undefined,
+  jobId: undefined,
+};
+
 /** Decodes one source into sections, or warns and yields nothing so a partial install still converts. */
 async function readSections(
   roots: SourceRoots,
@@ -182,7 +191,7 @@ async function readSections(
 
 /**
  * Reads every {@link GRAPHICS_BINDING_SOURCES} skin and merges their `.bmd`-to-palette pairings into one
- * flat list, followed by the {@link GUIDEPOST_BINDING}.
+ * flat list, followed by the engine-owned fish and guidepost bindings.
  *
  * The goods graphics table (`goods/goodgraphics.cif`) is deliberately absent: its `[goodgraphics]`
  * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so
@@ -198,7 +207,7 @@ export async function resolveGraphicsBindings(roots: SourceRoots): Promise<Graph
     if (source.buildTime) for (const record of records) buildTimeBmds.add(record.bmd);
     bindings.push(...(source.dedupe ? dedupeBindings(records) : records));
   }
-  bindings.push(GUIDEPOST_BINDING);
+  bindings.push(FISH_BINDING, GUIDEPOST_BINDING);
   const palettesIni = await readSections(roots, PALETTE_INDEX_INI);
   return {
     bindings,

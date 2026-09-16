@@ -8,6 +8,9 @@ export interface ResolvedLayer {
   readonly source: TextureSource;
   readonly frame: AtlasFrame;
   readonly scale: number;
+  /** Per-instance offset from the entity anchor in world pixels, used by independently moving swarms. */
+  readonly dx?: number;
+  readonly dy?: number;
   readonly shear?: number;
   readonly atlasW?: number;
   readonly atlasH?: number;

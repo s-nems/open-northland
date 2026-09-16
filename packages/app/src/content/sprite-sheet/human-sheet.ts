@@ -32,8 +32,9 @@ import { loadCharacters } from './characters.js';
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
-// `DrawAtom_FishManager_DoDraw` in the owned `the original` selects headings 0..17 from this BMD.
-const FISH_ATLAS = 'ls_fishes.butterfly01';
+// `DrawAtom_FishManager_DoDraw` in the owned `the original` uses the special `fishes` palette and
+// selects one of the first 18 directional bobs from this BMD for every fish in the swarm.
+const FISH_ATLAS = 'ls_fishes.fishes';
 const FISH_BOBS = Array.from({ length: 18 }, (_, bob) => bob);
 
 /** The scout's guidepost atlases: bob 0 the post, bobs 1..18 the direction board in ~20° angular steps
@@ -185,7 +186,7 @@ export async function loadHumanSpriteSheet(
         ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
         ...(chestBinding !== undefined ? { chest: chestBinding } : {}),
         ...(gatheringLoaded.has(FISH_ATLAS)
-          ? { fish: { layer: FISH_ATLAS, bobs: FISH_BOBS, ticksPerFrame: 4 } }
+          ? { fish: { layer: FISH_ATLAS, bobs: FISH_BOBS, ticksPerFrame: 1 } }
           : {}),
       }),
       ...signpostBinding,

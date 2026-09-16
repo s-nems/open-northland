@@ -20,8 +20,8 @@ Measured breakdown of the 246 that do not land (re-measure before acting - count
   `potter` → `brick` ×6, `smith`, `mason`, `sewer`, `brewer`, `druid`, `armorer`). **The real gap.**
 - **86 `„gold”`** - a source typo covered by
   [typographic-quoted values](../pipeline/setproducedgood-typographic-quotes.md). Not this ticket.
-- **62 `fisher` → `fish`** - intentionally need no work flag: the dedicated fishing drive selects
-  authored `lafm` swarms and can produce only fish. These rows still do not land as craft selections,
+- **62 `fisher` → `fish`** - use the fisher's work flag as the catch-delivery yard; the dedicated
+  fishing drive selects authored `lafm` swarms and can produce only fish. These rows still do not land as craft selections,
   but no gameplay choice is lost.
 - **38 `hunter` → `prey` / 13 `farmer` → `wheat`** - **no action needed, do not "fix" these.** `prey` is
   the resource, not a good; the hunter falls back to every good it can harvest (`leather` + `meat` +

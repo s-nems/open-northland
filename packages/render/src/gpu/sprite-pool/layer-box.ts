@@ -31,8 +31,8 @@ export function layerDrawBox(
   displayReveal: number | undefined,
   perPixelReveal: boolean,
 ): void {
-  out.ox = layer.frame.offsetX * layer.scale;
-  out.oy = layer.frame.offsetY * layer.scale;
+  out.ox = layer.frame.offsetX * layer.scale + (layer.dx ?? 0);
+  out.oy = layer.frame.offsetY * layer.scale + (layer.dy ?? 0);
   out.hiddenTop =
     !perPixelReveal && layer.reveal !== undefined && displayReveal !== undefined
       ? Math.round((1 - displayReveal) * layer.frame.height)

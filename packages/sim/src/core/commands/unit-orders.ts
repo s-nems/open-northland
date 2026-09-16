@@ -146,8 +146,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Place or move one owned gatherer's work flag to (x,y). The gatherer then harvests only within
-       * that flag's radius and banks its harvest on the ground beside it; the flag holds no stockpile.
+       * Place or move one owned field worker's flag to (x,y). A gatherer searches its radius; a fisher
+       * uses it as the yard where the catch is banked. The flag itself holds no stockpile.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;

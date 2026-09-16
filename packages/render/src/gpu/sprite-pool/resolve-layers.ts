@@ -54,10 +54,7 @@ export function resolveLayers(
     case 'fish': {
       const binding = sheet.bindings.fish;
       if (binding === undefined || sheet.families?.[binding.layer] === undefined) return null;
-      const bob = resolveSpriteBobId(item, sheet.bindings, tick);
-      if (bob === null) return null;
-      const resolved = layeredLayerFor(sheet, 'fish', { layer: binding.layer, bob });
-      return resolved === null ? null : [resolved];
+      return resolveFishSchool(sheet, item, tick);
     }
     case 'building': {
       const branch = resolveBuildingLayers(sheet, item, tick);
@@ -129,6 +126,46 @@ export function resolveLayers(
   add({ source: sheet.source, atlas: sheet.atlas });
   for (const overlay of sheet.overlays ?? []) add(overlay);
   return layers.length > 0 ? layers : null;
+}
+
+/**
+ * Resolve one layer per fish in the authored stock. analysis establishes the observable contract: the
+ * renderer loops over the swarm count, moves each fish independently on sinusoidal paths and selects
+ * its directional bob from velocity. `fishPoint` deliberately approximates those paths with our own
+ * deterministic curves, keeping presentation motion out of the simulation.
+ */
+function resolveFishSchool(sheet: SpriteSheet, item: DrawItem, tick: number): ResolvedLayer[] | null {
+  const binding = sheet.bindings.fish;
+  if (binding === undefined || binding.bobs.length === 0) return null;
+  const count = Math.max(0, Math.min(30, Math.trunc(item.swarmCount ?? 0)));
+  const layers: ResolvedLayer[] = [];
+  const t = tick / Math.max(1, binding.ticksPerFrame);
+  for (let fish = 0; fish < count; fish++) {
+    const now = fishPoint(item.ref, fish, t);
+    const before = fishPoint(item.ref, fish, t - 0.25);
+    const heading = fishHeadingIndex(now.x - before.x, now.y - before.y, binding.bobs.length);
+    const bob = binding.bobs[heading];
+    if (bob === undefined) continue;
+    const layer = layeredLayerFor(sheet, 'fish', { layer: binding.layer, bob });
+    if (layer !== null) layers.push({ ...layer, dx: now.x, dy: now.y });
+  }
+  return layers;
+}
+
+/** Map screen velocity to the original fish sheet's clockwise-descending directional order. */
+export function fishHeadingIndex(dx: number, dy: number, headingCount: number): number {
+  if (headingCount <= 0) return 0;
+  const angle = Math.atan2(dy, dx);
+  const turn = (((angle / (Math.PI * 2)) % 1) + 1) % 1;
+  return Math.floor((1 - turn) * headingCount) % headingCount;
+}
+
+function fishPoint(ref: number, fish: number, t: number): { x: number; y: number } {
+  const phase = ref * 0.754877666 + fish * 2.39996323;
+  return {
+    x: Math.sin(t * 0.071 + phase) * 90 + Math.sin(t * 0.019 + phase * 1.7) * 20,
+    y: Math.sin(t * 0.053 + phase * 1.3) * 60 + Math.sin(t * 0.031 + phase * 0.7) * 20,
+  };
 }
 
 /**

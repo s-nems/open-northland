@@ -16,6 +16,7 @@ import {
   bindFreshFlag,
   jobCanHarvest,
   jobCanHarvestGood,
+  jobUsesWorkFlag,
   liveWorkFlag,
   relocateWorkFlag,
 } from '../../economy/work-flag.js';
@@ -34,14 +35,14 @@ import { isOrderableSettler } from '../guards.js';
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
- * Place or move one owned gatherer's work flag to node (x,y) - see the command doc. An existing flag is
+ * Place or move one owned gatherer/fisher flag to node (x,y) - see the command doc. An existing flag is
  * relocated and only the marker moves, because a flag stores nothing and the goods already dropped stay
  * pinned to their tiles; otherwise a fresh flag is minted there and bound with the trade's radius.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
  * iron mine" lands on the ore itself. The snap carries the settler's signpost confinement, so the flag can
- * only land on ground that settler may work. Only a gatherer carries a work flag, so the order on any other
- * trade is a no-op rather than a stray flag.
+ * only land on ground that settler may work. The order on any other trade is a no-op rather than a stray
+ * flag.
  */
 export function setWorkFlag(
   world: World,
@@ -53,7 +54,7 @@ export function setWorkFlag(
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
   const jobType = world.get(e, Settler).jobType;
-  if (jobType === null || !jobCanHarvest(ctx, jobType)) return; // only a gatherer carries a work flag
+  if (jobType === null || !jobUsesWorkFlag(ctx, jobType)) return;
 
   const live = liveWorkFlag(world, e);
   // Confinement folds into the snap rather than filtering its winner, so a click near the band edge snaps

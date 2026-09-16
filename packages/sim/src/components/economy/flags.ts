@@ -2,8 +2,8 @@ import { defineComponent, type Entity } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 
 /**
- * Binds a gatherer to its own flag - the collection point it carries every harvested good to, and the
- * centre of the bounded area it looks for work in:
+ * Binds a field worker to its own flag - the collection point it carries every harvested good to. For
+ * an ordinary gatherer it is also the centre of the bounded area it looks for work in:
  *
  *  - it harvests only nodes within `radius` (integer node-distance) of `flag`, and with nothing in range
  *    stands idle beside the flag rather than roaming the map;
@@ -12,6 +12,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
  *  - `goodType` narrows new harvest targets to one map good; absence accepts every good the job may harvest.
  *
  * A gatherer without the component roams for the nearest node anywhere and hauls to the nearest store.
+ * A fisher always carries one so its catch returns to the player's chosen yard.
  */
 export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number }>(
   'WorkFlag',

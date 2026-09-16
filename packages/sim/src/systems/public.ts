@@ -93,6 +93,7 @@ export {
   isCarrierJobRow,
   isFighterJob,
   isFighterJobRow,
+  isFisherJob,
   isHeroJob,
   isHeroJobRow,
   isHunterJob,

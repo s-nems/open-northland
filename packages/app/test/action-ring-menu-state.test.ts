@@ -5,6 +5,7 @@ import {
   JOB_BUILDER,
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
+  JOB_FISHER,
   JOB_HEROINE_BOW,
   JOB_HUNTER,
   JOB_SCOUT,
@@ -182,6 +183,14 @@ describe('allowedActions - one settler', () => {
     expect(bare.has('assignWorkArea')).toBe(true);
     expect(bare.has('showWorkArea')).toBe(false);
     const flagged = allowedActions(content, snapshotOf([settler(1, JOB_COLLECTOR, { workFlag: true })]), [1]);
+    expect(flagged.has('showWorkArea')).toBe(true);
+  });
+
+  it('offers the fishing delivery flag and shows it after placement', () => {
+    const bare = allowedActions(content, snapshotOf([settler(1, JOB_FISHER)]), [1]);
+    expect(bare.has('assignWorkArea')).toBe(true);
+    expect(bare.has('showWorkArea')).toBe(false);
+    const flagged = allowedActions(content, snapshotOf([settler(1, JOB_FISHER, { workFlag: true })]), [1]);
     expect(flagged.has('showWorkArea')).toBe(true);
   });
 

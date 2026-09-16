@@ -163,9 +163,8 @@ export function spawnSettler(
   // Before the flag: a settler its map posts to a workplace is not a flag gatherer, and planting one first
   // would only destroy it again.
   attachAuthoredBuildings(world, ctx, e, command);
-  // A gatherer is bound to a work flag planted at its feet the moment it is born, so it searches its flag's
-  // radius rather than the whole map. A non-gathering trade gets no flag. Authored rule approximating the
-  // original's observed collector-flag work area.
+  // A gatherer or fisher is bound to a work flag planted at its feet the moment it is born. Gatherers
+  // search its radius; fishers also use it as the yard where they bank their catch.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
   stampGatherGood(world, ctx, e, command);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });

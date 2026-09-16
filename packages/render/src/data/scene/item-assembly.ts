@@ -59,6 +59,7 @@ export function assembleItem(
       assignStaticFields(item, kind, components);
       break;
     case 'fish':
+      assignFishFields(item, components);
       break;
     case 'berrybush':
       assignBerryBushFields(item, components);
@@ -97,4 +98,9 @@ export function assembleItem(
     item.player = build.playerColourOf(item.player);
   }
   return item;
+}
+
+function assignFishFields(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {
+  const fish = components.FishSwarm as { count?: unknown } | undefined;
+  if (typeof fish?.count === 'number') item.swarmCount = Math.max(0, Math.min(30, Math.trunc(fish.count)));
 }

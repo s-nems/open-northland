@@ -9,7 +9,7 @@ import type { SettlerStateBinding } from './settler-bindings.js';
 
 export type { SpriteKind };
 
-/** One representative fish from a persistent swarm, animated through the source's 18 headings. */
+/** A persistent swarm's fish art and heading frames. */
 export interface FishBinding {
   readonly layer: string;
   readonly bobs: readonly number[];

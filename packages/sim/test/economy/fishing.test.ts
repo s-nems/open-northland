@@ -1,8 +1,18 @@
 import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { addPerson, Carrying, CurrentAtomic, FishSwarm, Position } from '../../src/components/index.js';
+import {
+  addPerson,
+  Carrying,
+  CurrentAtomic,
+  DeliveryFlag,
+  FishSwarm,
+  Owner,
+  Position,
+  Stockpile,
+  WorkFlag,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, positionOfNode, Simulation } from '../../src/index.js';
+import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import {
   addFishSwarms,
   FISH_CAST_ATOMIC,
@@ -11,6 +21,7 @@ import {
   fishReproductionSystem,
   takeFishNear,
 } from '../../src/systems/economy/fish.js';
+import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -67,6 +78,25 @@ function fisherAt(sim: Simulation, hx: number, hy: number): Entity {
 }
 
 describe('fishing', () => {
+  it('plants a movable catch-delivery flag for a land fisher', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const fisher = fisherAt(sim, 4, 3);
+    sim.world.add(fisher, Owner, { player: 0 });
+
+    syncWorkFlagToJob(sim.world, ctxOf(sim), fisher, FISHER);
+
+    const flag = sim.world.get(fisher, WorkFlag).flag;
+    expect(sim.world.has(flag, DeliveryFlag)).toBe(true);
+    expect(sim.world.has(flag, Position)).toBe(true);
+
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: fisher, x: 8, y: 3 });
+    sim.step();
+    expect(nodeOfPosition(sim.world.get(flag, Position).x, sim.world.get(flag, Position).y)).toEqual({
+      hx: 8,
+      hy: 3,
+    });
+  });
+
   it('runs cast/failure retries, catches one fish, and leaves the swarm depleted', () => {
     const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
     const terrain = sim.terrain;
@@ -77,6 +107,7 @@ describe('fishing', () => {
     if (shore === null) throw new Error('fish swarm has no shore');
     const c = terrain.coordsOf(shore);
     const fisher = fisherAt(sim, c.x, c.y);
+    syncWorkFlagToJob(sim.world, ctxOf(sim), fisher, FISHER);
 
     const seen: number[] = [];
     for (let tick = 0; tick < 24 && !sim.world.has(fisher, Carrying); tick++) {
@@ -88,6 +119,14 @@ describe('fishing', () => {
     expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_FAILED_ATOMIC, FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
     expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FISH, amount: 1 });
     expect(sim.world.get(swarm, FishSwarm)).toMatchObject({ count: 0, continent: 7 });
+
+    for (let tick = 0; tick < 100 && sim.world.has(fisher, Carrying); tick++) sim.step();
+    const banked = [...sim.world.query(Stockpile)].reduce(
+      (sum, entity) => sum + (sim.world.get(entity, Stockpile).amounts.get(FISH) ?? 0),
+      0,
+    );
+    expect(sim.world.has(fisher, Carrying)).toBe(false);
+    expect(banked).toBe(1);
   });
 
   it('reproduces only a nonempty, nonfull swarm on the 2160-tick cadence', () => {
