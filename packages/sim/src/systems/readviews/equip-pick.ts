@@ -1,18 +1,11 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import {
-  ownerOf,
-  Position,
-  Settler,
-  Stockpile,
-  sameSideAs,
-  UnderConstruction,
-} from '../../components/index.js';
+import { ownerOf, Position, Settler, Stockpile, sameSideAs } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { mayFetchGoodFrom } from '../stores/index.js';
+import { accessibleStockAmounts, mayFetchGoodFrom } from '../stores/index.js';
 import { isFighterJob } from './jobs.js';
 
 /** One equip pick-menu row: an equippable good for the slot and how many units the settler can reach. */
@@ -47,14 +40,15 @@ export function equipPickList(
   const limit = terrain === undefined ? null : navigationLimitFor(world, content, terrain, entity);
   const onSide = sameSideAs(world, ownerOf(world, entity)); // the errand never fetches a rival's stock
   for (const store of world.query(Stockpile, Position)) {
-    if (world.has(store, UnderConstruction)) continue; // a site is a sink, never a source
+    const stock = accessibleStockAmounts(world, store);
+    if (stock === undefined) continue;
     if (!onSide(store)) continue;
     if (limit !== null && terrain !== undefined) {
       const p = world.get(store, Position);
       const n = nodeOfPosition(p.x, p.y);
       if (!limit.allowsNode(terrain.nodeAtClamped(n.hx, n.hy))) continue;
     }
-    for (const [goodType, amount] of world.get(store, Stockpile).amounts) {
+    for (const [goodType, amount] of stock) {
       const held = available.get(goodType);
       if (held === undefined || amount <= 0) continue;
       if (!mayFetchGoodFrom(world, ctx, store, goodType)) continue;

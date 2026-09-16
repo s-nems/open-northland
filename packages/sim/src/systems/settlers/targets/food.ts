@@ -18,6 +18,7 @@ import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { exportedGoodForm, isFood } from '../../readviews/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
+import { accessibleStockAmounts } from '../../stores/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
@@ -88,9 +89,9 @@ function edibleFoodGoodFor(
  * conversion. The returned type is the raw one, which is what comes off the shelf.
  */
 export function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
-  const stock = world.tryGet(entity, Stockpile);
+  const stock = accessibleStockAmounts(world, entity);
   if (stock === undefined) return null; // no shelf at all - the caller need not pre-check
-  for (const [goodType, amount] of stockpileEntries(stock)) {
+  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
     if (amount <= 0) continue;
     if (!isFood(ctx, exportedGoodForm(ctx, goodType))) continue;
     return goodType;

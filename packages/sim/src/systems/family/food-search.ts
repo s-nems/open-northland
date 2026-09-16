@@ -8,6 +8,7 @@ import type { SystemContext } from '../context.js';
 import { exportedGoodForm, isFood } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { accessibleStockAmounts } from '../stores/index.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to before
@@ -126,7 +127,7 @@ export class ExternalFoodIndex {
  */
 function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
   let lowest: number | null = null;
-  for (const [goodType, amount] of world.get(store, Stockpile).amounts) {
+  for (const [goodType, amount] of accessibleStockAmounts(world, store) ?? []) {
     if (amount <= 0 || (lowest !== null && goodType >= lowest)) continue;
     if (isFood(ctx, exportedGoodForm(ctx, goodType))) lowest = goodType;
   }

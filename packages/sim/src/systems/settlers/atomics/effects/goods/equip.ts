@@ -5,13 +5,12 @@ import {
   EquipOrder,
   equipSlotValue,
   MISC_EQUIP_SLOTS,
-  Stockpile,
-  setStockAmount,
   writeEquipSlot,
 } from '../../../../../components/index.js';
 import { fx } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
+import { accessibleStockAmounts, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { addCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 import { pileupIntoStore } from './transfer.js';
@@ -43,7 +42,7 @@ function advanceOrder(world: World, settler: Entity, stage: 'stow' | 'return'): 
 }
 
 /**
- * Resolve one completed `equip`: move one unit of `goodType` out of `from`'s {@link Stockpile} straight
+ * Resolve one completed `equip`: move one unit of `goodType` out of `from`'s accessible inventory straight
  * into the settler's equipment slot. A still-fresh swapped-out good lands on the back for the errand's stow
  * step, a part-used one is destroyed by the take-off rule. A source gone or emptied since the planner chose
  * it wears nothing and the errand re-searches. The settler reached here empty-handed, so {@link addCarry}
@@ -58,11 +57,11 @@ export function equipFromStore(
   group: EquipCategory,
   slot: number,
 ): void {
-  const stock = world.tryGet(from, Stockpile);
+  const stock = accessibleStockAmounts(world, from);
   if (stock === undefined) return;
-  const have = stock.amounts.get(goodType) ?? 0;
+  const have = stock.get(goodType) ?? 0;
   if (have <= 0) return;
-  setStockAmount(world, from, goodType, have - 1);
+  setAccessibleStockAmount(world, from, goodType, have - 1);
   reapEmptyLoosePile(world, from);
   const previous = equipSlotValue(ensureEquipment(world, settler), group, slot);
   writeEquipSlot(world.mut(settler, Equipment), group, slot, { goodType, degreeOfUse: fx.fromInt(0) });

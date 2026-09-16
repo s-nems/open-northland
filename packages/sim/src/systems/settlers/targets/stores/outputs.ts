@@ -1,9 +1,9 @@
-import { Stockpile, sameSideAs, stockpileEntries, UnderConstruction } from '../../../../components/index.js';
+import { sameSideAs, stockpileEntries } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { mergedRecipeOf } from '../../../stores/index.js';
+import { accessibleStockAmounts, mergedRecipeOf } from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
@@ -14,11 +14,11 @@ import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
  */
 export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
   for (const e of stockpiles) {
-    if (world.has(e, UnderConstruction)) continue; // a site's stock is construction material, not output
+    const stock = accessibleStockAmounts(world, e);
+    if (stock === undefined) continue;
     const recipe = mergedRecipeOf(world, ctx, e);
     if (recipe === undefined) continue;
-    const stock = world.get(e, Stockpile);
-    for (const [goodType, amount] of stockpileEntries(stock)) {
+    for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
       if (amount > 0 && recipe.outputs.some((o) => o.goodType === goodType)) return true;
     }
   }
@@ -63,12 +63,13 @@ function haulableOutputGood(
   deliverable: (goodType: number) => boolean,
   entity: Entity,
 ): number | null {
-  // A construction site's stock is its delivered materials, never finished output: an upgrading sawmill
-  // would otherwise offer its own construction wood as a recipe output and a carrier would strip it.
-  if (world.has(entity, UnderConstruction)) return null;
+  // A from-scratch site's stock is delivered material, never output. An upgrade exposes only its separate
+  // ordinary inventory, so a carrier cannot strip the construction hold.
+  const stock = accessibleStockAmounts(world, entity);
+  if (stock === undefined) return null;
   const recipe = mergedRecipeOf(world, ctx, entity);
   if (recipe === undefined) return null; // not a workplace - passive stores aren't hauled from
-  for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
+  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
     if (amount <= 0) continue;
     if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
     if (!deliverable(goodType)) continue; // no reachable sink

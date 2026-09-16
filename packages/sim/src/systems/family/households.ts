@@ -6,8 +6,6 @@ import {
   Marriage,
   Residence,
   Settler,
-  Stockpile,
-  setStockAmount,
   stockpileEntries,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -16,6 +14,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
 import { canonicalById } from '../spatial/nodes.js';
+import { accessibleStockAmounts, setAccessibleStockAmount } from '../stores/index.js';
 
 /** The `home`-kind {@link BuildingType} of a completed house entity, or undefined when the entity is dead,
  *  not a building, still under construction, or not a home. */
@@ -112,12 +111,12 @@ export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, hous
   }
 }
 
-/** Total edible units ({@link isFood}) in `house`'s stockpile - the larder the family draws on. */
+/** Total edible units ({@link isFood}) in `house`'s accessible inventory - the family larder. */
 export function storedFoodUnits(world: World, ctx: SystemContext, house: Entity): number {
-  const stock = world.tryGet(house, Stockpile);
+  const stock = accessibleStockAmounts(world, house);
   if (stock === undefined) return 0;
   let total = 0;
-  for (const [goodType, amount] of stockpileEntries(stock)) {
+  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
     if (amount > 0 && isFood(ctx, goodType)) total += amount;
   }
   return total;
@@ -140,18 +139,18 @@ export function setFoodReserve(world: World, house: Entity, amount: number): voi
 }
 
 /**
- * Consume `units` edible units from `house`'s stockpile, lowest goodType first; a shortfall consumes what
+ * Consume `units` edible units from `house`'s accessible inventory, lowest goodType first; a shortfall consumes what
  * is there.
  */
 export function consumeFoodUnits(world: World, ctx: SystemContext, house: Entity, units: number): void {
-  const stock = world.tryGet(house, Stockpile);
+  const stock = accessibleStockAmounts(world, house);
   if (stock === undefined) return;
   let left = units;
-  for (const [goodType, amount] of stockpileEntries(stock)) {
+  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
     if (left <= 0) break;
     if (amount <= 0 || !isFood(ctx, goodType)) continue;
     const take = Math.min(amount, left);
-    setStockAmount(world, house, goodType, amount - take);
+    setAccessibleStockAmount(world, house, goodType, amount - take);
     left -= take;
   }
 }

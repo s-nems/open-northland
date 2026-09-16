@@ -12,9 +12,7 @@ import {
   Position,
   Settler,
   Stance,
-  Stockpile,
   SupplyRun,
-  UnderConstruction,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
@@ -24,7 +22,7 @@ import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE } from '../../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
-import { mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
+import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
 import { nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import type { PlannerPass } from './pass.js';
@@ -226,7 +224,7 @@ interface PlayerStock {
 
 /**
  * Total store and pile stock of every granted good, per granting player, in one walk of the candidate
- * stores. A construction site and a workshop's own input reserve are excluded, matching
+ * stores. A from-scratch construction site and a workshop's own input reserve are excluded, matching
  * {@link nearestStoreHolding}; an unowned pile counts for every player.
  *
  * This bounds the reservation, it does not promise reachability: stock in other signpost networks and
@@ -245,9 +243,9 @@ function collectGrantedStock(
     rows.push({ player, totals, goods: specs.map(({ goodType }) => ({ goodType, units: 0 })) });
   }
   for (const store of targets.stockpiles) {
-    if (world.has(store, UnderConstruction)) continue;
+    const amounts = accessibleStockAmounts(world, store);
+    if (amounts === undefined) continue;
     const owner = ownerOf(world, store);
-    const amounts = world.get(store, Stockpile).amounts;
     // The reserve rule is keyed by store and cannot vary by player, so it is hoisted out of the
     // stores × players × goods walk below.
     const reserved = mergedRecipeOf(world, ctx, store)?.inputs;

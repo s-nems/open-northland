@@ -1,8 +1,9 @@
-import { BerryBush, Carrying, Position, Stockpile, setStockAmount } from '../../../../../components/index.js';
+import { BerryBush, Carrying, Position } from '../../../../../components/index.js';
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { BERRY_STAGE_TICKS } from '../../../../economy/berries.js';
+import { accessibleStockAmounts, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 
@@ -13,11 +14,11 @@ import { reapEmptyLoosePile } from './piles.js';
  */
 export function consumeFood(world: World, settler: Entity, from: Entity | null, goodType: number): void {
   if (from !== null) {
-    const stock = world.tryGet(from, Stockpile);
+    const stock = accessibleStockAmounts(world, from);
     if (stock === undefined) return;
-    const have = stock.amounts.get(goodType) ?? 0;
+    const have = stock.get(goodType) ?? 0;
     if (have <= 0) return;
-    setStockAmount(world, from, goodType, have - 1);
+    setAccessibleStockAmount(world, from, goodType, have - 1);
     reapEmptyLoosePile(world, from);
     return;
   }

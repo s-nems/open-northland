@@ -17,6 +17,7 @@ import {
   setNeedsEnabled,
   setSettlerJob,
   TrainingOrder,
+  Upgrading,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Fixed } from '../../src/core/fixed.js';
@@ -54,6 +55,8 @@ const VIKING = 1;
 const HUMAN_PLAYER = 0;
 const RIVAL_PLAYER = 1;
 const ARMOURY = 22;
+const FORGE = 25;
+const FORGE_UPGRADE = 26;
 /** Appended by this suite alone, out of the 10..19 band the shared fixture reserves for that. */
 const BREWHOUSE = 10;
 /** The fixture's soldier trade (`soldier_unarmed`) - what `isFighterJob` reads off the job slug. */
@@ -66,6 +69,53 @@ function freshSim(): Simulation {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 6) });
   setNeedsEnabled(sim.world, false); // isolate the errand from the needs drives
   return sim;
+}
+
+function upgradeableForgeSim(): Simulation {
+  const base = testContent();
+  const forge = {
+    typeId: FORGE,
+    id: 'forge_00',
+    kind: 'workplace' as const,
+    produces: [SWORD],
+    stock: [
+      { goodType: WOOD, capacity: 10, initial: 0 },
+      { goodType: SWORD, capacity: 10, initial: 0 },
+    ],
+    recipes: [
+      {
+        inputs: [{ goodType: WOOD, amount: 1 }],
+        outputs: [{ goodType: SWORD, amount: 1 }],
+        ticks: 20,
+      },
+    ],
+    upgradeTarget: FORGE_UPGRADE,
+  };
+  const content = parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      forge,
+      {
+        ...forge,
+        typeId: FORGE_UPGRADE,
+        id: 'forge_01',
+        construction: [{ goodType: WOOD, amount: 1 }],
+        upgradeTarget: undefined,
+      },
+    ],
+  });
+  const sim = new Simulation({ seed: 1, content, map: grassMap(16, 6) });
+  setNeedsEnabled(sim.world, false);
+  return sim;
+}
+
+function forgeAt(sim: Simulation, x: number, y: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType: FORGE, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map() });
+  return e;
 }
 
 function ownedSettler(sim: Simulation, x: number, y: number): Entity {
@@ -201,6 +251,25 @@ function terrainNodeAt(sim: Simulation, x: Fixed, y: Fixed): NodeId {
 }
 
 describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
+  it('takes a stored output weapon from a forge while that building is being upgraded', () => {
+    const sim = upgradeableForgeSim();
+    const settler = ownedSettler(sim, 2, 2);
+    const forge = forgeAt(sim, 8, 2);
+    sim.world.mut(forge, Stockpile).amounts.set(SWORD, 1);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: forge });
+    sim.step();
+
+    expect(sim.world.get(forge, Upgrading).savedStock.get(SWORD)).toBe(1);
+    expect(sim.equipPickList(settler, 'weapon')).toEqual([{ goodType: SWORD, available: 1 }]);
+
+    sim.enqueueSetup(equip(settler, SWORD, 'weapon'));
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(SWORD);
+    expect(sim.world.get(forge, Upgrading).savedStock.get(SWORD)).toBe(0);
+    expect(sim.world.get(forge, Stockpile).amounts.get(SWORD) ?? 0).toBe(0);
+  });
+
   it('fetches the good from a pile, wears it fresh and returns to the issue node', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
