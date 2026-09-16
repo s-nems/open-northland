@@ -1,69 +1,31 @@
 ---
-description: Clean all bloated, historical, or redundant code comments in one file or tight feature without changing behavior.
+description: Clean redundant or historical comments in one file or tight feature without changing behavior.
 argument-hint: <sim|render|app|pipeline|path|feature>
 ---
 
 # Clean code comments
 
-Clean one batch in `$ARGUMENTS`; with no scope, take the top of the candidate queue below. The batch
-unit is one file cleaned completely; extend to a tight feature folder when its files share one
-vocabulary. Do not leave a file half-cleaned.
+Apply the comment rules in [AGENTS.md](../../AGENTS.md) and the relevant package contract to
+`$ARGUMENTS`. Resolve `sim`, `render`, and `app` to their packages, and `pipeline` to
+`tools/asset-pipeline`. Preserve unrelated working changes.
 
-Resolve `sim`, `render`, and `app` to their packages, and `pipeline` to `tools/asset-pipeline`.
+With no scope, select one file with historical attribution, redundant narration or long comment
+blocks. Read its implementation and relevant callers/tests before editing. Length alone is not a
+reason to remove a comment; a pass with no useful changes is valid.
 
-## Select the batch
+## Boundaries
 
-1. Read the root and nearest package `AGENTS.md` files.
-2. Check `git status`; preserve existing work and skip files whose unrelated edits cannot be isolated.
-3. Build the candidate queue with deterministic searches, in priority order:
-   1. banned history and attribution:
-      `git grep -ilE '(//|\*).*(20[0-9]{2}-[0-9]{2}|user (decision|feedback|rule|request|order|recollection|observation)|as requested|revised)' -- 'packages/**/src/**' 'tools/**/src/**'`;
-   2. the scope's most comment-heavy files: highest comment-to-code ratio, longest comment blocks,
-      densest `{@link}` chains.
-4. Read the selected file beside its implementation, types, and relevant tests or callers. Do not
-   judge a comment by length alone.
+- Change comments only. The sole code exception is an import made unused by removing a `{@link}`;
+  name that deletion in the report. Strings, test titles, shaders and templates are executable data.
+- Preserve source evidence, uncertainty and binding exceptions. Never strengthen a claim while
+  shortening it. Use `authored` for a tuning decision and `observation` for a recollection;
+  `approximation` describes divergence from the original game.
+- If a comment needs a code or type change to become unnecessary, leave it for a separate refactor.
+- Do not relocate discarded prose to another document or change surrounding code layout.
 
-## Classify before editing
+Review the diff against the implementation: useful facts survive, historical narration does not,
+and behavior is unchanged. Run `git diff --check` and the applicable checks from
+[TESTING.md](../../docs/TESTING.md). Follow existing commit authorization; an explicitly requested
+autonomous cleanup loop commits each verified batch.
 
-- Delete history and prose already expressed by code, names, types, or tests.
-- Shorten a useful comment to one current fact in one direct sentence, normally one to three lines.
-- Never strengthen a claim while shortening: do not introduce `only`, `always`, `never`, or `exactly`
-  unless the code proves it; keep the original's hedges.
-- Rewrite provenance impersonally and keep the fact: a dated user decision becomes `authored`, a
-  recollection becomes `observation`; preserve `.ini` keys, byte evidence, and approximation names.
-  Reserve `approximation` for divergence from the original game; a performance cap or tuning value
-  is `authored`.
-- A deliberate exception that still binds ("X is intentionally not in this list") is a current fact,
-  not history: rewrite it impersonally, never delete it.
-- Keep indivisible protocol layouts, security or legal boundaries, and byte-level format evidence.
-- Leave a comment unchanged when its real fix requires a rename, type, extraction, or behavior change;
-  report that hotspot as a candidate for `/refactor-cleanup` instead.
-
-## Keep the pass comment-only
-
-- Change comment text only. Do not modify executable code, types, data, assertions, or snapshots.
-- Deleting an import left unused solely by a removed `{@link}` is the one allowed code edit; name it
-  in the report.
-- Do not edit string literals - test titles and shader or template-literal sources are code, not
-  comments - and do not re-join or re-wrap code lines after removing a trailing comment; leave code
-  layout untouched.
-- Do not move discarded prose into a new ticket or document.
-- Do not perform blind replacements. Re-read every result beside the code.
-
-## Verify, commit, report
-
-Review the full diff and confirm every changed line belongs to a comment. Then check both sides of
-the diff:
-
-- old side: every deleted attribution or dated marker has an impersonal successor carrying the same
-  fact;
-- new side: no touched comment still carries a date, attribution, revision label, or ticket/PR path.
-
-Run `git diff --check` and the normal repository gates required by `AGENTS.md`.
-
-In an autonomous cleanup loop, commit each verified batch in the repository's Conventional Commit
-style without asking. Otherwise do not commit unless requested.
-
-Report the scope, comments deleted, shortened, and deliberately retained, verification, and the
-remaining candidate queue in order, so the next run starts without re-scanning. A clean run with no
-useful changes is valid.
+Report the scope, material exceptions and verification. List remaining candidates only if requested.

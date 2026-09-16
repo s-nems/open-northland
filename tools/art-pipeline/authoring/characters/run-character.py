@@ -19,6 +19,53 @@ DEFAULT = {
 }
 
 
+def render_options(recipe, clip, facing, run, model, out):
+    render = recipe.get('render', DEFAULT['render'])
+    name = f"{clip['name']}-{facing}"
+    options = [
+        '--glb', model / clip['file'],
+        '--out', out,
+        '--facing', facing,
+        '--angle', str(recipe['angle']),
+        '--frames', str(clip.get('frames', recipe['frames'])),
+        '--toon', str(render['toon']),
+        '--size', str(render['size']),
+        '--texture', run / recipe.get('texture_dir', 'projected') / f'texture-{facing}.png',
+    ]
+    for key, value in recipe['sprite'].items():
+        options += ['--' + key.replace('_', '-'), str(value)]
+    if render['unlit']:
+        options += ['--unlit']
+    for light in ('sun', 'world'):
+        if light in render:
+            options += ['--' + light, str(render[light])]
+    if clip.get('prop'):
+        options += ['--prop', clip['prop']]
+    if clip.get('renderPadding'):
+        options += ['--padding', str(clip['renderPadding'])]
+    if clip.get('equipment'):
+        options += ['--equipment', run / clip['equipment']]
+    if clip.get('limb_texture'):
+        options += ['--limb-texture', run / clip['limb_texture']]
+    if clip.get('limb_occlusion'):
+        options += ['--limb-occlusion', str(clip['limb_occlusion'])]
+    if clip.get('range'):
+        options += ['--range', ','.join(map(str, clip['range']))]
+    if clip.get('fix_root'):
+        options += ['--fix-root']
+    if clip.get('samplePhases'):
+        options += ['--sample-phases', ','.join(map(str, clip['samplePhases']))]
+    if recipe.get('camera_reference'):
+        options += ['--camera-reference', run / recipe['camera_reference'] / f'{name}.json']
+    if recipe.get('camera_cache'):
+        options += ['--camera-cache', run / recipe['camera_cache'] / f'{name}.json']
+    if recipe.get('bodyProportions'):
+        options += ['--body-proportions', run / recipe['bodyProportions']]
+    if recipe.get('head'):
+        options += ['--head-model', run / recipe['head']['model'], '--head-config', run / recipe['head']['config']]
+    return options
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('run', type=Path)
@@ -117,36 +164,7 @@ def main():
                     name = f"{clip['name']}-{facing}"
                     out = work/('shadow-render' if stage == 'shadows' else 'render')/name
                     out.mkdir(parents=True,exist_ok=True)
-                    options = ['--glb',model/clip['file'],'--out',out,'--facing',facing,'--angle',angle,'--frames',clip_count,'--toon',str(recipe.get('render',DEFAULT['render'])['toon']),'--size',str(recipe.get('render',DEFAULT['render'])['size']),'--texture',run/recipe.get('texture_dir','projected')/f'texture-{facing}.png',*knobs('sprite')]
-                    if recipe.get('render',DEFAULT['render'])['unlit']:
-                        options += ['--unlit']
-                    for light in ('sun', 'world'):
-                        if light in recipe.get('render',DEFAULT['render']):
-                            options += ['--'+light, str(recipe['render'][light])]
-                    if clip.get('prop'):
-                        options += ['--prop',clip['prop']]
-                    if clip.get('renderPadding'):
-                        options += ['--padding', str(clip['renderPadding'])]
-                    if clip.get('equipment'):
-                        options += ['--equipment',run/clip['equipment']]
-                    if clip.get('limb_texture'):
-                        options += ['--limb-texture',run/clip['limb_texture']]
-                    if clip.get('limb_occlusion'):
-                        options += ['--limb-occlusion', str(clip['limb_occlusion'])]
-                    if clip.get('range'):
-                        options += ['--range',','.join(map(str,clip['range']))]
-                    if clip.get('fix_root'):
-                        options += ['--fix-root']
-                    if clip.get('samplePhases'):
-                        options += ['--sample-phases', ','.join(map(str, clip['samplePhases']))]
-                    if recipe.get('camera_reference'):
-                        options += ['--camera-reference',run/recipe['camera_reference']/f'{name}.json']
-                    if recipe.get('camera_cache'):
-                        options += ['--camera-cache',run/recipe['camera_cache']/f'{name}.json']
-                    if recipe.get('bodyProportions'):
-                        options += ['--body-proportions', run/recipe['bodyProportions']]
-                    if recipe.get('head'):
-                        options += ['--head-model', run/recipe['head']['model'], '--head-config', run/recipe['head']['config']]
+                    options = render_options(recipe, clip, facing, run, model, out)
                     if stage == 'shadows':
                         options += ['--shadow-only']
                         dependencies = [value for value in options if isinstance(value, Path) and value.is_file()]
@@ -203,7 +221,7 @@ def main():
             manifest = {
                 'title':f'{run.name} — baseline animacji',
                 'catalog_url':os.path.relpath(SCRIPTS.parents[3]/'docs/art/characters/index.html', directory),
-                'description':'E · Mocniejsza separacja. Projekcja 2K, unlit, ostrzejszy eksport i wewnętrzna krawędź. Kolor twarzy wymaga lokalnej korekty.',
+                'description':f"Eksport postaci {run.name}. Ustawienia i źródła: recipe.json.",
                 'note':'Aktualny eksport do oceny. Zakres zatwierdzenia opisuje README postaci. Tła są próbkami tekstur do oceny czytelności; skalę i kontakty sprawdzaj także w grze.',
                 'columns':[{'name':f,'description':''} for f in facings],
                 'backgrounds':backgrounds,'rows':rows,
