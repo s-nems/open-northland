@@ -48,6 +48,7 @@ const FUR_BOOTS = 10;
 const TOOL_WOODEN = 11;
 const MEAD = 13;
 const LONG_SWORD = 17;
+const MAIL = 18;
 const WOOD = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
@@ -268,6 +269,22 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.tryGet(settler, Equipment)?.weapon ?? null).toBeNull();
   });
 
+  it('cancels an active weapon fetch when the fighter changes to a civilian trade in flight', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
+    pileAt(sim, 12, 2, SWORD, 1);
+    sim.enqueueSetup(equip(settler, SWORD, 'weapon'));
+    sim.run(2);
+    expect(sim.world.has(settler, EquipOrder)).toBe(true);
+
+    sim.enqueueSetup({ kind: 'setJob', entity: settler, jobType: WOODCUTTER });
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+    expect(sim.world.tryGet(settler, Equipment)?.weapon ?? null).toBeNull();
+  });
+
   it('takes a stored output weapon from a forge while that building is being upgraded', () => {
     const sim = upgradeableForgeSim();
     const settler = ownedSettler(sim, 2, 2);
@@ -326,6 +343,29 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.get(armoury, Stockpile).amounts.get(SWORD)).toBe(1);
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
     expect(sim.world.has(settler, Carrying)).toBe(false);
+  });
+
+  it('queues a group armor order before a later weapon order without losing either under stock contention', () => {
+    const sim = freshSim();
+    const settlers = Array.from({ length: 5 }, (_, i) => {
+      const settler = ownedSettler(sim, 2, 1 + i);
+      setSettlerJob(sim.world, settler, FIGHTER_JOB);
+      return settler;
+    });
+    const armorPile = pileAt(sim, 12, 2, MAIL, 4);
+    const weaponPile = pileAt(sim, 12, 4, LONG_SWORD, 6);
+
+    for (const settler of settlers) sim.enqueueSetup(equip(settler, MAIL, 'armor'));
+    for (const settler of settlers) sim.enqueueSetup(equip(settler, LONG_SWORD, 'weapon'));
+    sim.run(2 * ERRAND_TICKS);
+
+    expect(settlers.filter((e) => sim.world.tryGet(e, Equipment)?.armor?.goodType === MAIL)).toHaveLength(4);
+    expect(
+      settlers.filter((e) => sim.world.tryGet(e, Equipment)?.weapon?.goodType === LONG_SWORD),
+    ).toHaveLength(5);
+    expect(sim.world.isAlive(armorPile)).toBe(false);
+    expect(sim.world.get(weaponPile, Stockpile).amounts.get(LONG_SWORD)).toBe(1);
+    for (const settler of settlers) expect(sim.world.has(settler, EquipOrder)).toBe(false);
   });
 
   it('swap: a part-used replaced good is destroyed instead of stowed', () => {

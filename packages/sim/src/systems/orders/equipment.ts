@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   Equipment,
   EquipOrder,
+  type EquipOrderIntent,
   equipSlotValue,
   MISC_EQUIP_SLOTS,
   MoveGoal,
@@ -49,8 +50,8 @@ function isEquipOrderable(world: World, e: Entity): boolean {
 }
 
 /**
- * Stamp the errand and make it authoritative like `moveUnit`: the current action and route are cancelled,
- * and a fresh errand replaces a previous one. `returnTo` captures the node the settler stands on at issue.
+ * Stamp or queue an errand. A player order for another equipment slot waits behind the active player
+ * errand; a later order for the same slot remains latest-wins. `returnTo` captures the issue position.
  */
 function stampEquipOrder(
   world: World,
@@ -58,19 +59,34 @@ function stampEquipOrder(
   e: Entity,
   spec: { group: EquipCategory; slot: number; goodType: number | null },
 ): void {
+  const p = world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  const intent: EquipOrderIntent = {
+    ...spec,
+    returnTo: terrain.nodeAtClamped(n.hx, n.hy),
+  };
+  const active = world.tryMut(e, EquipOrder);
+  if (active?.issuer === 'player' && (active.group !== spec.group || active.slot !== spec.slot)) {
+    active.queued ??= [];
+    const sameSlot = active.queued.findIndex(
+      (queued) => queued.group === spec.group && queued.slot === spec.slot,
+    );
+    if (sameSlot < 0) active.queued.push(intent);
+    else active.queued[sameSlot] = intent;
+    return;
+  }
+  const queued = active?.issuer === 'player' ? (active.queued ?? []) : [];
   world.remove(e, CurrentAtomic);
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, Stranded);
   world.remove(e, PlayerOrder);
   world.remove(e, TrainingOrder); // and a barracks drill, which outranks this errand and would outlast it
-  const p = world.get(e, Position);
-  const n = nodeOfPosition(p.x, p.y);
   world.add(e, EquipOrder, {
-    ...spec,
-    returnTo: terrain.nodeAtClamped(n.hx, n.hy),
+    ...intent,
     stage: 'acquire',
     issuer: 'player',
+    queued,
   });
 }
 

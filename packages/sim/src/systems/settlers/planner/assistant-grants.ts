@@ -128,6 +128,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         returnTo: here,
         stage: 'acquire',
         issuer: 'assistant-grant',
+        queued: [],
       });
       tally.total += 1;
       tally.byGood.set(spec.goodType, underway + 1);

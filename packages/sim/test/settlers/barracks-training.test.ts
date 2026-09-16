@@ -381,6 +381,7 @@ describe('trainSoldier - the barracks drill', () => {
       returnTo: 0 as NodeId,
       stage: 'acquire',
       issuer: 'player',
+      queued: [],
     });
 
     sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });

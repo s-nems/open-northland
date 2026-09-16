@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE } from '../../src/components/index.js';
+import { FOG_MODE, Settler } from '../../src/components/index.js';
 import {
   exportSaveGame,
   parseSaveGame,
@@ -23,6 +23,8 @@ const JOB_IDLE = 0;
 const JOB_SCOUT = 27;
 const HQ_BUILDING = 1;
 const WOOD_GOOD = 1;
+const SHOES_GOOD = 8;
+const TOOL_GOOD = 11;
 const MAP_CELLS = 8;
 const FIXTURE_TICKS = 24;
 const FIXTURE_MAP_ID = 'fixture';
@@ -43,7 +45,14 @@ function fixtureSim(): Simulation {
     owner: P0,
   });
   sim.enqueueSetup({ kind: 'dropGood', good: WOOD_GOOD, x: 6, y: 6, amount: 3 });
+  sim.enqueueSetup({ kind: 'dropGood', good: SHOES_GOOD, x: 6, y: 8, amount: 1 });
+  sim.enqueueSetup({ kind: 'dropGood', good: TOOL_GOOD, x: 6, y: 10, amount: 1 });
   sim.run(FIXTURE_TICKS);
+  const scout = [...sim.world.query(Settler)][0];
+  if (scout === undefined) throw new Error('save fixture scout missing');
+  sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'boots', slot: 0, goodType: SHOES_GOOD });
+  sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'tool', slot: 0, goodType: TOOL_GOOD });
+  sim.step(); // freeze one active equip order with the second intent queued behind it
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;
 }

@@ -181,6 +181,7 @@ function dispatchWeaponFetch(
       returnTo: route.here,
       stage: 'acquire',
       issuer: 'assistant-recruit',
+      queued: [],
     });
     return;
   }
@@ -202,6 +203,7 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
     returnTo: route.here,
     stage: 'acquire',
     issuer: 'assistant-recruit',
+    queued: [],
   });
   return true;
 }

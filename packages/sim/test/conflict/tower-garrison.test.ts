@@ -382,6 +382,7 @@ describe('the tower garrison - where the watch sits in the drive ladder', () => 
       returnTo: terrainNodeAt(sim, 2, 3),
       stage: 'acquire',
       issuer: 'player',
+      queued: [],
     });
 
     run(sim, WALK_TICKS);

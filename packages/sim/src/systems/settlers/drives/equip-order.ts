@@ -8,10 +8,13 @@ import {
   ownerOf,
   type SettlerIdentity,
 } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
+import { canEquipCategory } from '../../readviews/equip-pick.js';
+import { isHeroJob } from '../../readviews/jobs.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
@@ -86,6 +89,7 @@ export function planEquipOrder(
     owner: ownerOf(world, e),
     targets,
   };
+  if (order.issuer === 'player' && !playerIntentAllowed(ctx, settler, order)) return finishEquipOrder(errand);
   switch (order.stage) {
     case 'acquire':
       return order.goodType === null ? planTakeOff(errand) : planFetch(errand, order.goodType);
@@ -94,6 +98,20 @@ export function planEquipOrder(
     case 'return':
       return planReturn(errand);
   }
+}
+
+/** Recheck a player intent when it becomes active: the settler's profession may have changed meanwhile. */
+function playerIntentAllowed(
+  ctx: SystemContext,
+  settler: SettlerIdentity,
+  intent: Pick<EquipOrderState, 'group' | 'goodType'>,
+): boolean {
+  if (isHeroJob(ctx.content, settler.jobType)) return false;
+  if (intent.goodType === null) return true;
+  const good = contentIndex(ctx.content).goods.get(intent.goodType);
+  return (
+    good?.equip?.category === intent.group && canEquipCategory(ctx.content, settler.jobType, intent.group)
+  );
 }
 
 /**
@@ -133,7 +151,7 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
     // A held assistant order would pin a cap slot and a reserved unit across a delivery of unbounded
     // length, so it is dropped and re-dispatched on a later stride beat. A player order waits instead.
     if (order.issuer !== 'player') {
-      world.remove(entity, EquipOrder);
+      finishEquipOrder(errand);
       return false;
     }
     startDrop(world, ctx, entity);
@@ -197,12 +215,10 @@ function planReturn(errand: EquipErrand): boolean {
   // An automatic hand-out is complete at the stock source. Walking back to its dispatch point made a
   // newly armed recruit march to the barracks it had just left, despite having no further drill there.
   if (order.issuer === 'assistant-recruit') {
-    world.remove(entity, EquipOrder);
-    return false;
+    return finishEquipOrder(errand);
   }
   if (here === order.returnTo || avoid?.(order.returnTo) === true) {
-    world.remove(entity, EquipOrder);
-    return false;
+    return finishEquipOrder(errand);
   }
   world.add(entity, MoveGoal, { cell: order.returnTo });
   return true;
@@ -211,6 +227,26 @@ function planReturn(errand: EquipErrand): boolean {
 function endErrand(errand: EquipErrand): boolean {
   errand.order.stage = 'return';
   return planReturn(errand);
+}
+
+/** Finish the active intent and promote the next player intent, if any. */
+function finishEquipOrder(errand: EquipErrand): boolean {
+  const { world, ctx, entity, settler, order } = errand;
+  for (;;) {
+    const next = order.queued?.shift();
+    if (next === undefined) {
+      world.remove(entity, EquipOrder);
+      return false;
+    }
+    if (!playerIntentAllowed(ctx, settler, next)) continue;
+    order.group = next.group;
+    order.slot = next.slot;
+    order.goodType = next.goodType;
+    order.returnTo = next.returnTo;
+    order.stage = 'acquire';
+    order.issuer = 'player';
+    return true;
+  }
 }
 
 /** The nearest same-side store that can take `goodType`. */

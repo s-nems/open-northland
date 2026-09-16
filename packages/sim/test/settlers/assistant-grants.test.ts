@@ -367,6 +367,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
         returnTo: terrain.nodeAtClamped(0, 0),
         stage: 'acquire',
         issuer,
+        queued: [],
       });
       sim.world.add(e, Carrying, { goodType: WOOD, amount: 1 });
     }
@@ -406,6 +407,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
         returnTo: terrain.nodeAtClamped(0, 0),
         stage: 'acquire',
         issuer: 'assistant-grant',
+        queued: [],
       });
       stuck.push(e);
     }
@@ -468,6 +470,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
         returnTo: terrain.nodeAtClamped(0, 0),
         stage: 'acquire',
         issuer: 'assistant-grant',
+        queued: [],
       });
     }
     const live = ownedSettler(sim, 2, 2);

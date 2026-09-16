@@ -58,11 +58,7 @@ export function writeEquipSlot(
   eq[group] = value;
 }
 
-/**
- * A player equip errand in flight on a settler: one slot address and one intent - `goodType` set puts that
- * good on, null takes the worn good off. `settlers/drives/equip-order.ts` owns the stage protocol.
- */
-export const EquipOrder = defineComponent<{
+export interface EquipOrderIntent {
   group: EquipCategory;
   /** The misc row; 0 for every single-slot group. */
   slot: number;
@@ -70,8 +66,20 @@ export const EquipOrder = defineComponent<{
   /** The node the settler stood on at issue, so the errand ends where it began (authored: the manual
    *  describes the window's item list, not how the settler fetches). */
   returnTo: NodeId;
-  stage: 'acquire' | 'stow' | 'return';
-  /** The player's click or one of the assistant's automatic hand-outs. Player orders set a carried load
-   *  down mid-errand; automatic orders yield it. Recruit arming additionally finishes at the stock source. */
-  issuer: 'player' | 'assistant-grant' | 'assistant-recruit';
-}>('EquipOrder', 'settlers');
+}
+
+/**
+ * An equip errand in flight on a settler. Player orders for other slots wait in `queued`, preserving the
+ * click order; another order for the active slot still replaces it. `settlers/drives/equip-order.ts` owns
+ * the stage protocol.
+ */
+export const EquipOrder = defineComponent<
+  EquipOrderIntent & {
+    stage: 'acquire' | 'stow' | 'return';
+    /** The player's click or one of the assistant's automatic hand-outs. Player orders set a carried load
+     *  down mid-errand; automatic orders yield it. Recruit arming additionally finishes at the stock source. */
+    issuer: 'player' | 'assistant-grant' | 'assistant-recruit';
+    /** Later player intents for different slots, in click order. */
+    queued: EquipOrderIntent[];
+  }
+>('EquipOrder', 'settlers');
