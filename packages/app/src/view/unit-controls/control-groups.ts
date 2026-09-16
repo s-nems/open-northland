@@ -1,3 +1,4 @@
+import type { ElevationField } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { isBuilding, isSettler, ownerPlayerOf } from '../../game/snapshot.js';
 import {
@@ -8,6 +9,7 @@ import {
   type KeyBindings,
   matchesKeyboardBinding,
 } from '../../hud/keybindings.js';
+import { entityAnchor } from '../projections/entity-anchor.js';
 
 export type ControlGroupCommand = Readonly<{
   action: ControlGroupAction;
@@ -43,6 +45,37 @@ export interface ControlGroups {
   addExclusive(action: ControlGroupAction, ids: Iterable<number>): void;
   /** Current valid members, or null when the group cannot change the selection. */
   recall(action: ControlGroupAction, isSelectable: (id: number) => boolean): readonly number[] | null;
+}
+
+/**
+ * What a recall of `ids` does: the original's `Group_Select` centres the view on a group whose every
+ * member is already selected, and selects the group otherwise (`an original routine`, the original).
+ */
+export function groupRecallEffect(
+  ids: readonly number[],
+  selected: ReadonlySet<number>,
+): 'centre' | 'select' {
+  return ids.every((id) => selected.has(id)) ? 'centre' : 'select';
+}
+
+/** The world-px centroid of the members' ground anchors (the original's `an original routine` mean),
+ *  or null when none is positioned. */
+export function groupCentre(
+  snapshot: WorldSnapshot,
+  ids: readonly number[],
+  elevation?: ElevationField,
+): { x: number; y: number } | null {
+  let x = 0;
+  let y = 0;
+  let count = 0;
+  for (const id of ids) {
+    const at = entityAnchor(snapshot, id, elevation);
+    if (at === null) continue;
+    x += at.x;
+    y += at.y;
+    count++;
+  }
+  return count === 0 ? null : { x: x / count, y: y / count };
 }
 
 /** Group recall may reach off-screen actors, but never dead, foreign, neutral, or livestock entities. */

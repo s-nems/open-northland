@@ -6,7 +6,13 @@ import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js
 import { allowedActions } from './action-ring/menu-state.js';
 import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
-import { controlGroupCommand, createControlGroups, isControlGroupMember } from './control-groups.js';
+import {
+  controlGroupCommand,
+  createControlGroups,
+  groupCentre,
+  groupRecallEffect,
+  isControlGroupMember,
+} from './control-groups.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
@@ -225,7 +231,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         const ids = controlGroups.recall(groupCommand.action, (id) =>
           isControlGroupMember(snapshot, id, opts.humanPlayer, opts.observer === true),
         );
-        if (ids !== null) applySelection(ids, false);
+        if (ids === null) return;
+        if (groupRecallEffect(ids, selection.ids()) === 'centre') {
+          const centre = groupCentre(snapshot, ids, opts.elevation);
+          if (centre !== null) opts.centerOn(centre.x, centre.y);
+        } else {
+          applySelection(ids, false);
+        }
       }
     } else if (isActionHotkey(e, opts.bindings, 'actionRing')) {
       e.preventDefault(); // Space (the default binding) would otherwise scroll the page

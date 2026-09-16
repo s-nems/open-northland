@@ -1,11 +1,15 @@
+import { tileToScreen } from '@open-northland/render';
+import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
 import {
   controlGroupCommand,
   createControlGroups,
+  groupCentre,
+  groupRecallEffect,
   isControlGroupMember,
 } from '../src/view/unit-controls/control-groups.js';
-import { snapshotOf } from './support/snapshot.js';
+import { building, settler, snapshotOf } from './support/snapshot.js';
 
 const press = (overrides: Partial<Parameters<typeof controlGroupCommand>[0]> = {}) => ({
   code: 'Digit1',
@@ -123,5 +127,27 @@ describe('control groups', () => {
     expect(groups.recall('controlGroup1', (id) => id === 2)).toEqual([2]);
     expect(groups.recall('controlGroup1', () => false)).toBeNull();
     expect(groups.recall('controlGroup1', () => true)).toBeNull();
+  });
+});
+
+describe('recall of an already selected group', () => {
+  it('centres only when every member is selected; a partial or wider selection selects', () => {
+    expect(groupRecallEffect([1, 2], new Set([1, 2]))).toBe('centre');
+    expect(groupRecallEffect([1, 2], new Set([1, 2, 3]))).toBe('centre'); // members plus others
+    expect(groupRecallEffect([1, 2], new Set([1]))).toBe('select');
+    expect(groupRecallEffect([1, 2], new Set())).toBe('select');
+  });
+
+  it('centres on the mean ground anchor of the positioned members, buildings included', () => {
+    const snapshot = snapshotOf([
+      settler(1, 6, null), // no Position: contributes nothing
+      building(2, 1, 2, 4),
+      { id: 3, components: { Settler: {}, Position: { x: fx.fromInt(6), y: fx.fromInt(8) } } },
+    ]);
+    const a = tileToScreen(2, 4);
+    const b = tileToScreen(6, 8);
+
+    expect(groupCentre(snapshot, [1, 2, 3])).toEqual({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    expect(groupCentre(snapshot, [1])).toBeNull();
   });
 });

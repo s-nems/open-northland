@@ -3,12 +3,16 @@ import {
   bindingAllowedFor,
   bindingFromKeyboardEvent,
   bindingFromMouseEvent,
+  CONTROL_GROUP_ACTIONS,
   KEYBINDING_ACTIONS,
   type KeybindingAction,
   keyDisplayLabel,
 } from '../hud/keybindings.js';
 import { messages } from '../i18n/index.js';
 import type { MenuSettings } from './settings-store.js';
+
+/** The group-recall keys, whose rows also explain the centring press. */
+const RECALL_ACTIONS: ReadonlySet<string> = new Set(CONTROL_GROUP_ACTIONS);
 
 export interface ControlsTab {
   rows(): HTMLElement[];
@@ -109,6 +113,7 @@ export function createControlsTab(opts: {
       return opts.settingRow(text.bindings[action], chip, {
         tip: [
           action === 'workFlagOrder' ? text.pointerBindingRebindTip : text.bindingRebindTip,
+          ...(RECALL_ACTIONS.has(action) ? [text.recallSelectedTip] : []),
           ...(opts.deferredTip === undefined ? [] : [opts.deferredTip]),
         ].join(' '),
       });

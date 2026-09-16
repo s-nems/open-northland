@@ -213,6 +213,7 @@ export const plSurfaces = {
       bindingUnassigned: 'nieprzypisany',
       bindingFixedTip: 'Stały skrót, nie można go zmienić.',
       bindingRebindTip: 'Kliknij, potem naciśnij nowy klawisz lub kombinację. Esc anuluje.',
+      recallSelectedTip: 'Naciśnięty, gdy grupa jest już zaznaczona, wyśrodkowuje widok na grupie.',
       pointerBindingRebindTip:
         'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia. Esc anuluje.',
       autosaveNote: 'Zmiany zapisują się od razu.',

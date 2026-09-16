@@ -217,6 +217,7 @@ export const enSurfaces = {
       bindingUnassigned: 'unbound',
       bindingFixedTip: 'Fixed shortcut, it cannot be changed.',
       bindingRebindTip: 'Click, then press the new key or combination. Esc cancels.',
+      recallSelectedTip: 'Pressed while the group is already selected, it centres the view on the group.',
       pointerBindingRebindTip:
         'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to selection. Esc cancels.',
       autosaveNote: 'Changes are saved immediately.',
