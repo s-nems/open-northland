@@ -10,7 +10,8 @@
     "build": "tsc --build && node scripts/bundle.mjs",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --config electron-builder.yml",
-    "dist:win": "npm run build && electron-builder --config electron-builder.yml --win"
+    "dist:win": "npm run build && electron-builder --config electron-builder.yml --win",
+    "test:e2e": "node scripts/bundle.mjs && vitest run --config vitest.e2e.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

@@ -19,10 +19,12 @@ const CONTENT_TESTS = 'packages/app/test/content/**/*.test.ts';
  * No project isolates modules, so a test file must not depend on being the first to import one.
  */
 export default defineConfig({
+  ssr: { resolve: { conditions: ['source', 'module', 'node', 'development|production'] } },
   test: {
     maxWorkers: MAX_WORKERS,
     projects: [
       {
+        extends: true,
         test: {
           name: 'app',
           ...SHARED,
@@ -33,6 +35,7 @@ export default defineConfig({
         },
       },
       {
+        extends: true,
         test: {
           name: 'core',
           ...SHARED,
@@ -41,6 +44,7 @@ export default defineConfig({
         },
       },
       {
+        extends: true,
         test: {
           name: 'content',
           ...SHARED,

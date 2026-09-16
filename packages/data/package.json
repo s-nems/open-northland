@@ -6,8 +6,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./ir-version": "./dist/schema/content/ir-version.js"
+    ".": {
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./ir-version": {
+      "source": "./src/schema/content/ir-version.ts",
+      "default": "./dist/schema/content/ir-version.js"
+    }
   },
   "scripts": {
     "build": "tsc --build"

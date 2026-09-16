@@ -24,9 +24,13 @@ npm run tickets:list    # priority-sorted ticket view
 Use `npm install` only when dependencies or the lockfile need to change. For the shorter edit/test
 loop and completion checks without duplicate typechecking, see [TESTING.md](TESTING.md#standard-gates).
 
-`dev` and `shot` compile the workspace packages before starting Vite, which resolves every
-`@open-northland/*` import to that package's `dist/`. A running server keeps serving the build it
-started with: restart it after changing sim, render, data, or audio source.
+`dev` and `shot` use the workspace packages' `source` exports directly. Vite watches their source
+files; no separate compiler is needed. Changes to the client identity inputs (app, data, sim,
+lockstep, net-client, net-protocol, or the lockfile) restart Vite and reload connected pages, ending
+any active game so new code cannot retain an old multiplayer identity.
+
+Production builds and plain Node tools use `dist/`. Run `npx tsc --build` before running a Node tool
+against changed package sources; `npm run build` performs the full typecheck and production build.
 
 ## Local game content
 
@@ -218,8 +222,7 @@ Use separate browser profiles/private windows for two independent players. The d
 not deployed by the repository. For a local relay, enter `ws://127.0.0.1:8765`.
 
 To serve an isolated generated content tree with Vite, set `ON_CONTENT_DIR` to an absolute path or a
-path relative to the checkout. This is the same override the content test runner accepts. Restart
-Vite after multiplayer source changes so its client build identity includes them.
+path relative to the checkout. This is the same override the content test runner accepts.
 
 The developer entry remains available in two windows of one dev server. The first creates
 the room and waits for `players` people; it rewrites its URL to the room's id, which the others
@@ -262,6 +265,7 @@ image carries neither content nor the simulation.
 ```bash
 npm run desktop
 npm run desktop:dist
+npm run test:desktop    # app:// boot and save/load across a relaunch; requires local content
 ```
 
 `desktop` opens the checkout's `packages/app/dist` and `content/` in an Electron window;

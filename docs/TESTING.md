@@ -24,10 +24,9 @@ test patches. To replace a module the subject imports, either spy on the importe
 `vi.resetModules()` and import the subject dynamically: `vi.mock` alone cannot re-apply to a module an
 earlier file already loaded.
 
-During iteration, compile package exports and run only the affected tests:
+During iteration, run only the affected tests:
 
 ```bash
-npx tsc --build
 npx vitest run --project core packages/sim/test/core/hygiene.test.ts
 npx vitest run --project app packages/app/test/scenes
 ```
@@ -35,12 +34,14 @@ npx vitest run --project app packages/app/test/scenes
 Replace the paths with the affected tests; include dependent packages when their contracts change.
 `--project core` and `--project app` exclude real-content tests. For a selection spanning both,
 use `--project='!content'`. A path filters files; `-t 'test name'` filters test titles.
-Run `tsc --build` again after package source changes: workspace imports resolve to `dist/`.
-These focused runs do not replace the completion gates or typecheck test sources.
+Vitest selects the workspace packages' `source` exports, so package edits are tested immediately.
+Focused runs and watch mode transpile TypeScript; they do not typecheck it or replace completion gates.
+Production builds and plain Node tools still use `dist/`; run `npx tsc --build` before a Node tool
+when its package sources changed.
 
 `npm test -- scenario` also filters files, but first runs every script test and the full production
-and test typecheck. Use it for completion, not on every edit. `npm run test:watch` performs that
-initial typecheck; after package edits, rebuild their exports in another terminal.
+and test typecheck. Use it for completion, not on every edit. `npm run test:watch -- <path>` watches
+the selected tests and their source dependencies without a separate compiler process.
 
 For completion, `npm run build` already includes the typecheck. To run the standard gates without
 repeating it through `npm test`:
@@ -141,9 +142,8 @@ npm run test:engines                              # Electron, Chromium, WebKit, 
 ON_ENGINES=electron,chromium npm run test:engines # a subset
 ```
 
-It needs generated content (the browser entries halt without it), a built workspace (the runner
-builds it), and the Playwright browsers of the repository's Playwright version: `npm ci` installs
-none of them, so run `npx playwright install chromium webkit firefox` once; Electron comes with the
+It needs generated content (the browser entries halt without it) and the Playwright browsers of the
+repository's Playwright version: `npm ci` installs none of them, so run `npx playwright install chromium webkit firefox` once; Electron comes with the
 desktop package. Electron and Chromium are gates, so a mismatch fails the run. WebKit and Firefox
 are informative: their verdict is printed, never asserted, and a divergence there is filed as a sim
 ticket naming the first diverging tick. An unknown or empty `ON_ENGINES` selection fails the run
@@ -153,6 +153,16 @@ The workloads are the `sandbox` scene over its acceptance run, hashed every 20 t
 of `magiczny_las` with six AI seats, hashed every 100 because a full hash of that world is slow. A
 divergence names the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serves
 the checkout's `content/` only.
+
+## Desktop boot and persistence
+
+`npm run test:desktop` builds the app and shell, then launches Electron on `app://` with an isolated
+temporary profile. It checks menu map previews, both sprite URL spellings, and save → relaunch → load
+with the same tick and state hash. It needs converted content including `magiczny_las`, opens a real
+window, and runs locally rather than in CI. `ON_CONTENT_DIR` selects the content tree.
+
+This exercises the built shell; installer resource inclusion and visual/audio quality still need
+platform and human checks. Run it after desktop boot/protocol changes or changes to save/load wiring.
 
 ## Acceptance scenes
 

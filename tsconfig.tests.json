@@ -11,6 +11,7 @@
   },
   "include": [
     "packages/*/test/**/*",
+    "packages/*/test-e2e/**/*",
     "tools/*/test/**/*",
     "packages/app/bench/**/*",
     "tools/*/test-browser/**/*"

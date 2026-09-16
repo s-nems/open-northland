@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Guard + runner for the manual cross-engine determinism check (docs/TESTING.md "Cross-engine
-// determinism"): it needs generated content, Playwright browsers and a built workspace, so it never
+// determinism"): it needs generated content, Playwright browsers, so it never
 // runs in CI. `ON_ENGINES` picks the engines (default `all`); the suite skips without it.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -30,8 +30,6 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-// Vite resolves every `@open-northland/*` import to that package's `dist/`, so an unbuilt workspace
-// would serve a stale sim to the browsers while Node's reference ran the working tree.
 function run(args) {
   const result = spawnSync('npx', args, {
     stdio: 'inherit',
@@ -45,5 +43,4 @@ function run(args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-run(['tsc', '--build']);
 run(['vitest', 'run', 'packages/app/test/engines', '--disableConsoleIntercept']);

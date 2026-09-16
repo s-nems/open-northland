@@ -22,6 +22,8 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
 ## Build and verification
 
 Root commands are documented in [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Unit-test the
-routing and path rules without Electron. Packaging needs platform checks: verify that the window opens
+routing and path rules without Electron. `npm run test:desktop` exercises the built `app://` shell
+and save/load across a relaunch on a temporary profile; prerequisites and scope are in
+[`docs/TESTING.md`](../../docs/TESTING.md#desktop-boot-and-persistence). Packaging needs platform checks: verify that the window opens
 on the main menu, a map starts, a save survives a relaunch, and the packaged app carries
 `resources/content/ir.json` on the affected operating system.
