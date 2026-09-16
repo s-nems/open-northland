@@ -3,15 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-/**
- * Prints the JavaScript each entry module pulls in to boot, so a mode's growth shows up in the build
- * it lands in. Reports only; nothing here fails a build. Stylesheets and art are left out: both are
- * shell-level and constant across modes, so they would shift every row by the same amount.
- *
- * Routes come from the entry chunk's `dynamicImports`, so a mode added to src/routes.ts appears here
- * without editing this script. Sizes are summed per chunk because the browser gzips each response
- * separately; one stream over the same bytes would compress slightly better.
- */
+// Sum static JavaScript dependencies per URL entry; exclude stylesheets, images and lazy subroutes.
+// Gzip each file separately to match separate HTTP responses. This report sets no size gate.
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '../dist');
 const manifest = JSON.parse(readFileSync(resolve(dist, '.vite/manifest.json'), 'utf8'));
@@ -48,7 +41,10 @@ const entryKey = Object.keys(manifest).find((key) => manifest[key].isEntry);
 if (entryKey === undefined) throw new Error('no entry chunk in the vite manifest');
 
 const rows = [{ label: 'shell (every mode)', ...measure([entryKey]) }];
-for (const routeKey of manifest[entryKey].dynamicImports ?? []) {
+// Bundling can move the route table from the entry into one of its static dependencies.
+const routes = new Set([...closure(entryKey)].flatMap((key) => manifest[key]?.dynamicImports ?? []));
+for (const routeKey of routes) {
+  if (!routeKey.startsWith('src/entries/')) continue;
   const label = routeKey.replace(/^src\/entries\//, '').replace(/(\/index)?\.ts$/, '');
   rows.push({ label, ...measure([entryKey, routeKey]) });
 }
