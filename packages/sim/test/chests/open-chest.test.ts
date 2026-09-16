@@ -1,3 +1,4 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
@@ -12,12 +13,13 @@ import {
   Position,
   Settler,
   Stockpile,
+  technologyDiscovered,
   Vehicle,
 } from '../../src/components/index.js';
 import type { SimEvent } from '../../src/core/events.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { playerCommand, Simulation } from '../../src/index.js';
+import { exportSaveGame, playerCommand, restoreSimulation, Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import {
   createChest,
@@ -55,11 +57,44 @@ const SHOES_CHEST = 26;
 const ANY_HOUSE_CHEST = 50;
 const CIVILISTS_CHEST = 92;
 const UNKNOWN_CHEST = 40;
+const SMITHY_REWARD = 70;
+const SMITH = 13;
+const SMITHY_LEVEL_2 = 32;
+const LONG_SWORD = 42;
 /** The fixture's catchable cow: an owned one is an orderable `Settler` that is no person. */
 const COW_TRIBE = 13;
 
 function fresh(): Simulation {
   return new Simulation({ seed: 7, content: testContent(), map: grassCellMap(16, 16) });
+}
+
+function workshopSim(): Simulation {
+  const base = testContent();
+  const content = parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: LONG_SWORD, id: 'sword_long', weight: 1 }],
+    buildings: [...base.buildings, { typeId: SMITHY_LEVEL_2, id: 'work_smithy_01', kind: 'workplace' }],
+    tribes: base.tribes.map((tribe) =>
+      tribe.typeId !== VIKING
+        ? tribe
+        : {
+            ...tribe,
+            technology: { houses: [] },
+            jobEnables: [...tribe.jobEnables, { jobType: SMITH, kind: 'good', targetId: LONG_SWORD }],
+            jobRequirements: [
+              ...tribe.jobRequirements,
+              {
+                requirement: 'need',
+                target: 'job',
+                targetId: SMITH,
+                amount: 1,
+                experienceTypes: [1],
+              },
+            ],
+          },
+    ),
+  });
+  return new Simulation({ seed: 7, content, map: grassCellMap(16, 16) });
 }
 
 function spawn(sim: Simulation, jobType: number, x: number, y: number, player = P0): Entity {
@@ -112,6 +147,7 @@ describe('chest contents', () => {
     });
     expect(resolveChestReward(content, 'wooden', CIVILISTS_CHEST)).toEqual({
       kind: 'settlers',
+      tribe: VIKING,
       jobType: CIVILIST,
       count: 3,
     });
@@ -207,6 +243,40 @@ describe('the openChest order', () => {
       expect(sim.world.get(e, Owner).player).toBe(P0);
     }
     expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('a workshop reward permanently enables its Viking trade and products', () => {
+    const sim = workshopSim();
+    expect(sim.unlockStatus('job', SMITH, VIKING, P0).enabled).toBe(false);
+    expect(sim.unlockStatus('good', LONG_SWORD, VIKING, P0).enabled).toBe(false);
+    const chest = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: SMITHY_REWARD,
+      x: 10,
+      y: 10,
+    });
+    const opener = spawn(sim, WOODCUTTER, 6, 6);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest }));
+    stepUntilOpened(sim, chest);
+
+    expect(sim.papers(P0)).toEqual([{ kind: 'placeStockedHouse', param: SMITHY_LEVEL_2 }]);
+    expect(technologyDiscovered(sim.world, P0, VIKING, 'job', SMITH)).toBe(true);
+    expect(technologyDiscovered(sim.world, P0, VIKING, 'good', LONG_SWORD)).toBe(true);
+    const smith = [...sim.world.query(Settler)].find(
+      (entity) => entity !== opener && sim.world.get(entity, Settler).jobType === SMITH,
+    );
+    if (smith === undefined) throw new Error('workshop reward did not spawn its smith');
+    expect(sim.world.get(smith, Owner).player).toBe(P0);
+    sim.world.destroy(smith);
+    expect(sim.unlockStatus('job', SMITH, VIKING, P0).enabled).toBe(true);
+    expect(sim.unlockStatus('good', LONG_SWORD, VIKING, P0).enabled).toBe(true);
+
+    const restored = restoreSimulation(exportSaveGame(sim), {
+      content: sim.content,
+      map: grassCellMap(16, 16),
+    });
+    expect(restored.unlockStatus('job', SMITH, VIKING, P0).enabled).toBe(true);
+    expect(restored.unlockStatus('good', LONG_SWORD, VIKING, P0).enabled).toBe(true);
   });
 
   it('a hero opens a magical chest, and it holds more of the same', () => {

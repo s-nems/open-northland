@@ -9,6 +9,7 @@ import {
   humansKilledHolds,
   soldiersDiedHolds,
 } from './goals/casualties.js';
+import { chestNearPoint } from './goals/chests.js';
 import { neededMatches } from './goals/count.js';
 import {
   animalsExploredHolds,
@@ -170,6 +171,8 @@ function goalHolds(
       return soldiersNearPoint(pass, op);
     case 'NumberOfCivilainsNearPos':
       return civiliansNearPoint(pass, op);
+    case 'ChestNearPos':
+      return chestNearPoint(pass, op);
     case 'NumberOfHousesInArea':
       return housesInArea(pass.world, op);
     case 'NumberOfAnimalsInArea':

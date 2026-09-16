@@ -1,24 +1,19 @@
-# Implement reward chests and connect map scripts
+# Complete the remaining land-vehicle chest reward
 
 **Area:** sim, app, pipeline · **Priority:** P2
 
-Landscape placement can display a chest, but there is no reward-chest interaction or payload runtime.
-The assistant panel's chest terminology is unrelated to this mechanic.
+Reward chests, their interaction, persistent opened state, map-script placement/detection, paper
+rewards and permanent workshop-production unlocks are implemented. The remaining known parity gap is
+the catapult reward because the simulation does not yet support land vehicles.
 
 ## Scope
 
-- Verify chest categories, rewards and opening rules against owned readable content and the original.
-- Model placed chests and their payload, eligibility, opening and consumption; connect player interaction
-  and feedback to the same authoritative sim state.
-- Implement ChestNearPos, SetRandomChestOnPosition and SetRandomChestOnRandomPos.
-- Use deterministic reward and position selection, with explicit refusal when no valid position exists.
-- Preserve unopened payloads and consumed state through save/load, preventing duplicate rewards.
-- Integrate technology rewards with the common progression rules; update support and MISSIONS.md. A
-  good reward is the one path that also enables the good's producing job
-  (`Tool_TechTree_EnableGoodProduction`, per-good job table on the tribe; `EnableGood` does not).
+- Implement land vehicles and the catapult type used by chest row 91.
+- Spawn the catapult for both wooden and magical row-91 chests, matching the original placement and
+  ownership behavior.
+- Replace the documented empty-reward approximation in the chest table and mission format notes.
 
 ## Verify
 
-Cover detection, opening, each supported reward category, repeated interaction, blocked placement and
-save/load. Review a registered scene showing the interaction and reward. Run the relevant checks,
-plus pipeline/content checks if extraction changes.
+Cover catapult spawning, ownership, blocked placement, repeated interaction and save/load. Run the
+vehicle, chest and mission test suites plus the full repository gates.

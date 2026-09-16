@@ -31,6 +31,8 @@ export interface ScriptLandscapeType {
   readonly groups: readonly LandscapeRemovalGroup[];
   readonly resource?: ResourceSpec;
   readonly bushGfxIndex?: number;
+  /** A placed record backed by the interactive chest entity rather than the static landscape layer. */
+  readonly chest?: { readonly kind: 'wooden' | 'magical'; readonly gfxIndex: number };
 }
 
 export interface ScriptLandscapePlacement {

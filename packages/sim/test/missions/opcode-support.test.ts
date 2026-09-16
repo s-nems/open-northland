@@ -68,6 +68,7 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
     range: 3,
     amount: 1,
   },
+  ChestNearPos: { opcode: 'ChestNearPos', point: POINT, range: 3 },
   NumberOfHousesInArea: {
     opcode: 'NumberOfHousesInArea',
     player: 0,
@@ -147,6 +148,8 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
     amount: 1,
   },
   SetAnimal: { opcode: 'SetAnimal', player: 20, tribe: 1, job: 0, point: POINT, objectId: 7, behaviour: 0 },
+  SetRandomChestOnPosition: { opcode: 'SetRandomChestOnPosition', amount: 2, point: POINT },
+  SetRandomChestOnRandomPos: { opcode: 'SetRandomChestOnRandomPos', amount: 2 },
   SetHouse: {
     opcode: 'SetHouse',
     player: 0,

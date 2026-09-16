@@ -169,7 +169,14 @@ export function spawnMapChests(
   let spawned = 0;
   const placementByEntity = new Map<Entity, number>();
   for (const { kind, gfxIndex, hx, hy, contents, placement } of mapChestSpawns(objects, ir)) {
-    const e = systems.createChest(sim.world, sim.content, { kind, contents, x: hx, y: hy, gfxIndex });
+    const e = systems.createChest(sim.world, sim.content, {
+      kind,
+      contents,
+      x: hx,
+      y: hy,
+      gfxIndex,
+      ...(sim.terrain?.landscapes !== undefined ? { landscapeId: placement } : {}),
+    });
     placementByEntity.set(e, placement);
     spawned++;
   }

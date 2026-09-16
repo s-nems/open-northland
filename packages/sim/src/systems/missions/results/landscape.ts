@@ -1,8 +1,8 @@
 import { landscapeTopologyRevision } from '../../../components/landscape.js';
-import type { LandscapeRemovalGroup } from '../../../nav/terrain/index.js';
+import type { LandscapeRemovalGroup, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { dynamicBlockLayers } from '../../footprint/index.js';
 import { removeLandscapes, setBuildForbidden, setLandscape, setVertexColors } from '../../landscape/edits.js';
 import { invalidateLandscapeRoutes } from '../../landscape/routes.js';
-import { landscapeBlocks } from '../../landscape/view.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 
@@ -56,8 +56,8 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
     return;
   }
   const revision = landscapeTopologyRevision(pass.world);
-  // The memo hands out a fresh set after an edit, so the old one stays comparable.
-  const before = landscapeBlocks(pass.world, terrain).walk;
+  // Resource-backed placements update their footprint cache in place, so retain the old membership.
+  const before = blockedNodes(pass, terrain);
   if (op.opcode === 'SetLandscape') {
     if (!setLandscape(pass.world, pass.ctx, op.point, op.landscape, op.level)) {
       pass.reportFailed(mission, op.opcode);
@@ -81,14 +81,22 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
     );
   }
   if (revision !== landscapeTopologyRevision(pass.world)) {
-    // A removed resource frees nodes, which no route needs re-planning for; only the landscape layer
-    // can block a node a route already crosses.
-    const after = landscapeBlocks(pass.world, terrain).walk;
-    if (before.size !== after.size || [...before].some((node) => !after.has(node))) {
+    // Freed nodes do not invalidate an existing route. A newly blocked node can cross one, whether
+    // it came from the landscape layer or a resource-backed chest/deposit.
+    const after = blockedNodes(pass, terrain);
+    if ([...after].some((node) => !before.has(node))) {
       invalidateLandscapeRoutes(pass.world, terrain);
     }
     pass.ctx.events.emit({ kind: 'missionLandscapeChanged' });
   }
+}
+
+function blockedNodes(pass: MissionPass, terrain: TerrainGraph): Set<NodeId> {
+  const nodes = new Set<NodeId>();
+  for (const layer of dynamicBlockLayers(pass.world, pass.ctx, terrain)) {
+    for (const node of layer) nodes.add(node);
+  }
+  return nodes;
 }
 
 /** The hexagon radius a removal clears: `RemoveLandscapesInArea` stops one ring short of its `range`

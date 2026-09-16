@@ -3,6 +3,7 @@ import { landscapeEditState, writeLandscapeEdits } from '../../components/landsc
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../nav/halfcell.js';
 import type { LandscapeRemovalGroup, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { createChest } from '../chests/index.js';
 import type { SystemContext } from '../context.js';
 import { createBerryBush } from '../economy/berries.js';
 import {
@@ -79,17 +80,25 @@ export function setLandscape(
       : type.resource?.remaining;
   // Validate the replacement's resource before removing the existing object.
   const resource =
-    type.resource === undefined
-      ? undefined
-      : createResourceNode(world, ctx.content, {
-          ...type.resource,
-          ...(remaining !== undefined ? { remaining } : {}),
+    type.chest !== undefined
+      ? createChest(world, ctx.content, {
+          ...type.chest,
+          contents: level,
           x: point.hx,
           y: point.hy,
           landscapeId: id,
-        });
+        })
+      : type.resource === undefined
+        ? undefined
+        : createResourceNode(world, ctx.content, {
+            ...type.resource,
+            ...(remaining !== undefined ? { remaining } : {}),
+            x: point.hx,
+            y: point.hy,
+            landscapeId: id,
+          });
   if (resource === null) return false;
-  if (resource !== undefined) {
+  if (resource !== undefined && type.chest === undefined) {
     const footprint = world.get(resource, ResourceFootprint);
     stampResourceFootprintData(world, resource, {
       walk: type.walk.map((cell) => ({ ...cell })),

@@ -3,11 +3,12 @@ import {
   addPaper,
   Chest,
   type ChestKind,
+  discoverTechnology,
+  LandscapeResource,
   OpenedChest,
   Owner,
   type Paper,
   Position,
-  Settler,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -37,6 +38,8 @@ export interface ChestSpec {
   readonly y: number;
   /** The `[GfxLandscape]` record the map placed; omitted for a scene spawn, which takes the kind's first. */
   readonly gfxIndex?: number;
+  /** The authored or scripted landscape placement this entity replaces. */
+  readonly landscapeId?: number;
 }
 
 /** Assemble a closed chest: its position, contents, the record it draws by, and the blocking footprint
@@ -50,6 +53,7 @@ export function createChest(world: World, content: ContentSet, spec: ChestSpec):
     contents: spec.contents,
     ...(record !== undefined ? { gfxIndex: record.index } : {}),
   });
+  if (spec.landscapeId !== undefined) world.add(e, LandscapeResource, { id: spec.landscapeId });
   stampResourceFootprintData(world, e, chestFootprint(record));
   return e;
 }
@@ -69,9 +73,7 @@ export function jobCanOpenChest(content: ContentSet, jobType: number | null, kin
  * stand up at the chest for the opener's player and tribe, and animals spawn as a herd there. A chest
  * already open whiffs.
  *
- * Approximations: the original also switches the named good's production on for a workshop paper, which
- * the presence-based tech gate covers while the spawned worker lives; chest settlers take the opener's
- * tribe where the original mints vikings; and the catapult chest opens empty (no land vehicles).
+ * Approximation: the catapult chest opens empty because the sim has no land vehicles.
  */
 export function openChest(world: World, ctx: SystemContext, opener: Entity, chest: Entity): void {
   if (!world.isAlive(chest) || !world.has(chest, Chest)) return;
@@ -82,7 +84,6 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
   const { kind, contents } = closed;
   const p = world.get(chest, Position);
   const at = eventAt(p.x, p.y);
-  const tribe = world.get(opener, Settler).tribe;
   const reward = resolveChestReward(ctx.content, kind, contents);
 
   unstampResourceFootprint(world, chest);
@@ -110,10 +111,11 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
       return;
     case 'workshop':
       grantPaper(world, ctx, player, reward.paper, chest, at);
-      standUpSettlers(world, ctx, player, tribe, reward.jobType, 1, at);
+      unlockWorkshopProduction(world, player, reward.tribe, reward.jobType, reward.goodTypes);
+      standUpSettlers(world, ctx, player, reward.tribe, reward.jobType, 1, at);
       return;
     case 'settlers':
-      standUpSettlers(world, ctx, player, tribe, reward.jobType, reward.count, at);
+      standUpSettlers(world, ctx, player, reward.tribe, reward.jobType, reward.count, at);
       return;
     case 'animals':
       spawnAnimalHerd(world, ctx, {
@@ -129,6 +131,19 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
     default:
       assertNever(reward);
   }
+}
+
+/** `Tool_TechTree_EnableGoodProduction`: each workshop reward permanently enables its producing trade
+ * and every named product for the player's Viking technology table. */
+function unlockWorkshopProduction(
+  world: World,
+  player: number,
+  tribe: number,
+  jobType: number,
+  goodTypes: readonly number[],
+): void {
+  discoverTechnology(world, player, tribe, 'job', jobType);
+  for (const goodType of goodTypes) discoverTechnology(world, player, tribe, 'good', goodType);
 }
 
 /** Add `paper` to `player`'s list and announce it; a full list drops the paper silently. */

@@ -6,6 +6,7 @@ import {
   setImportMarker,
   setPlayerBehaviour,
 } from './behaviour.js';
+import { setRandomChest } from './chests.js';
 import { addGoodsToAnyStock, addGoodsToArea, addGoodsToHouses, removeGoodsFromArea } from './goods.js';
 import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
@@ -106,6 +107,10 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       return;
     case 'SetAnimal':
       spawnScriptedAnimal(pass, result);
+      return;
+    case 'SetRandomChestOnPosition':
+    case 'SetRandomChestOnRandomPos':
+      setRandomChest(pass, index, result);
       return;
     case 'SetHouse':
       placeScriptedHouse(pass, index, result);

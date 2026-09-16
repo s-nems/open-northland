@@ -6,7 +6,11 @@ import { resourceSpecFor } from '../game/sandbox/place/index.js';
 import { buildCollisionTerrain } from './collision.js';
 import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
-import { BUSH_WITH_FRUITS_LOGIC_TYPE, harvestGoodByObjectName } from './map-resources.js';
+import {
+  BUSH_WITH_FRUITS_LOGIC_TYPE,
+  chestKindByLogicType,
+  harvestGoodByObjectName,
+} from './map-resources.js';
 
 // Shipped result reference memberships, with its spacing typos resolved to actual GfxLandscape EditNames.
 const REMOVAL_NAMES: Readonly<Record<LandscapeRemovalGroup, readonly string[]>> = {
@@ -36,6 +40,7 @@ const REMOVAL_NAMES: Readonly<Record<LandscapeRemovalGroup, readonly string[]>> 
 
 export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
   const harvestByName = harvestGoodByObjectName(ir);
+  const chestKindByType = chestKindByLogicType(ir);
   const gatherers = new Map(GATHERERS.map((g) => [g.id, g]));
   return (ir.landscapeGfx ?? []).map((g) => {
     const name = g.editName?.trim().toLowerCase() ?? '';
@@ -44,6 +49,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
     );
     const ref = g.editName === undefined ? undefined : harvestByName.get(g.editName);
     const gatherer = ref === undefined ? undefined : gatherers.get(ref.goodId);
+    const chestKind = chestKindByType.get(g.logicType);
     let resource: ScriptLandscapeType['resource'];
     if (gatherer !== undefined && ref !== undefined) {
       const {
@@ -65,6 +71,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
       groups,
       ...(resource === undefined ? {} : { resource }),
       ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),
+      ...(chestKind === undefined ? {} : { chest: { kind: chestKind, gfxIndex: g.index } }),
     };
   });
 }
@@ -93,7 +100,9 @@ export function buildScriptLandscapeTerrain(map: TerrainMapFile, ir: ContentIr):
         hx,
         hy,
         level: objects.levels?.[id] ?? 1,
-        ...(type?.resource !== undefined || type?.bushGfxIndex !== undefined ? { resourceBacked: true } : {}),
+        ...(type?.resource !== undefined || type?.bushGfxIndex !== undefined || type?.chest !== undefined
+          ? { resourceBacked: true }
+          : {}),
       });
     });
   }

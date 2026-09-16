@@ -10,9 +10,14 @@ import { contentIndex } from '../../core/content-index.js';
 export type ChestReward =
   | { readonly kind: 'goods'; readonly good: string; readonly count: Readonly<Record<ChestKind, number>> }
   | { readonly kind: 'paper'; readonly paper: PaperKind; readonly house?: string }
-  /** A `placeStockedHouse` paper for `house`, plus one `worker` of its trade standing at the chest. */
-  | { readonly kind: 'workshop'; readonly house: string; readonly worker: string }
-  | { readonly kind: 'settlers'; readonly job: string; readonly count: number }
+  /** A stocked-house paper, its Viking worker, and the production permanently enabled with it. */
+  | {
+      readonly kind: 'workshop';
+      readonly house: string;
+      readonly worker: string;
+      readonly goods: readonly string[];
+    }
+  | { readonly kind: 'settlers'; readonly job: string; readonly tribe: string; readonly count: number }
   | { readonly kind: 'animals'; readonly tribe: string; readonly count: number }
   /** The original spawns a catapult; the sim has no land vehicles, so this opens empty. */
   | { readonly kind: 'vehicle' };
@@ -28,11 +33,11 @@ function goods(good: string, count: Readonly<Record<ChestKind, number>>): ChestR
 function house(house: string): ChestReward {
   return { kind: 'paper', paper: 'placeHouse', house };
 }
-function workshop(house: string, worker: string): ChestReward {
-  return { kind: 'workshop', house, worker };
+function workshop(house: string, worker: string, goods: readonly string[]): ChestReward {
+  return { kind: 'workshop', house, worker, goods };
 }
 function settlers(job: string): ChestReward {
-  return { kind: 'settlers', job, count: SPAWNED_SETTLERS };
+  return { kind: 'settlers', job, tribe: 'viking', count: SPAWNED_SETTLERS };
 }
 
 /**
@@ -76,11 +81,19 @@ export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, 
   [63, house('work_bakery_00')],
   [64, house('headquarters')],
   [65, house('school')],
-  [70, workshop('work_smithy_01', 'smith')],
-  [71, workshop('work_druid_00', 'druid')],
-  [72, workshop('work_coin_mint', 'coin_maker')],
-  [73, workshop('work_druid_01', 'druid')],
-  [74, workshop('work_armory_00', 'armorer')],
+  [70, workshop('work_smithy_01', 'smith', ['sword_long'])],
+  [71, workshop('work_druid_00', 'druid', ['holy_oil'])],
+  [72, workshop('work_coin_mint', 'coin_maker', ['coin'])],
+  [
+    73,
+    workshop('work_druid_01', 'druid', [
+      'holy_oil',
+      'potion_food_small',
+      'potion_stamina_small',
+      'potion_heal_small',
+    ]),
+  ],
+  [74, workshop('work_armory_00', 'armorer', ['bow_short'])],
   [90, { kind: 'animals', tribe: 'wolves', count: 5 }],
   [91, { kind: 'vehicle' }],
   [92, settlers('civilist')],
@@ -94,8 +107,14 @@ export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, 
 export type ResolvedChestReward =
   | { readonly kind: 'goods'; readonly goodType: number; readonly amount: number }
   | { readonly kind: 'paper'; readonly paper: Paper }
-  | { readonly kind: 'workshop'; readonly paper: Paper; readonly jobType: number }
-  | { readonly kind: 'settlers'; readonly jobType: number; readonly count: number }
+  | {
+      readonly kind: 'workshop';
+      readonly paper: Paper;
+      readonly tribe: number;
+      readonly jobType: number;
+      readonly goodTypes: readonly number[];
+    }
+  | { readonly kind: 'settlers'; readonly tribe: number; readonly jobType: number; readonly count: number }
   | { readonly kind: 'animals'; readonly tribe: number; readonly count: number }
   | { readonly kind: 'nothing' };
 
@@ -123,12 +142,28 @@ export function resolveChestReward(
     case 'workshop': {
       const param = index.buildingTypeBySlug.get(reward.house);
       const jobType = index.jobTypeBySlug.get(reward.worker);
-      if (param === undefined || jobType === undefined) return NOTHING;
-      return { kind: 'workshop', paper: { kind: 'placeStockedHouse', param }, jobType };
+      const tribe = index.tribeTypeBySlug.get('viking');
+      const goodTypes: number[] = [];
+      for (const id of reward.goods) {
+        const goodType = index.goodTypeBySlug.get(id);
+        if (goodType === undefined) return NOTHING;
+        goodTypes.push(goodType);
+      }
+      if (param === undefined || jobType === undefined || tribe === undefined) return NOTHING;
+      return {
+        kind: 'workshop',
+        paper: { kind: 'placeStockedHouse', param },
+        tribe,
+        jobType,
+        goodTypes,
+      };
     }
     case 'settlers': {
       const jobType = index.jobTypeBySlug.get(reward.job);
-      return jobType === undefined ? NOTHING : { kind: 'settlers', jobType, count: reward.count };
+      const tribe = index.tribeTypeBySlug.get(reward.tribe);
+      return jobType === undefined || tribe === undefined
+        ? NOTHING
+        : { kind: 'settlers', tribe, jobType, count: reward.count };
     }
     case 'animals': {
       const tribe = index.tribeTypeBySlug.get(reward.tribe);

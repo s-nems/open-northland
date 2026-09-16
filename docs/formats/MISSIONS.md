@@ -240,7 +240,7 @@ trade ledger); the rest no map writes.
 | 50 | `IsMissionDone` | 21 | mission `n`'s stored goal flags satisfy its rule | 325 |
 | 51 | `NumberOfSoldiersNearPos` | 1, 16, 17, 9, 7 | at least `amount` non-hero soldiers of the player within `range`, vehicle crews included | 24 |
 | 52 | `NumberOfCivilainsNearPos` | 1, 16, 17, 9, 7 | as above for civilians; a hero counts in neither | 14 |
-| 53 | `ChestNearPos` | 16, 17, 9 | a chest landscape lies within `range` of the point | 6 \* |
+| 53 | `ChestNearPos` | 16, 17, 9 | a still-closed wooden or magical chest lies within `range` of the point | 6 |
 | 54 | `NumberOfGoodsInArea` | 1, 6, 7, 16, 17, 9 | goods on the ground plus the own stock (as `GoodsGlobal`) of the player's finished houses within `range` reach `amount` | 113 |
 | 55 | `NumberOfHousesInArea` | 1, 15, 7, 16, 17, 9 | the player has at least `amount` finished houses of the type within `range` | 33 |
 | 56 | `NumberOfGoodsInHousesInArea` | 1, 6, 7, 16, 17, 9 | the own stock of the player's finished houses within `range` reaches `amount` | 8 |
@@ -315,7 +315,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
 | 50 | `SetHumanBehaviourFlag` | 10, 7, 32 | OR or clear the mask on humans with the id | sim | 436 |
-| 51 | `SetRandomChestOnRandomPos` | 7 | drop a random chest of the category somewhere | sim | 0 \* |
+| 51 | `SetRandomChestOnRandomPos` | 7 | choose a reward from the category mask, then try six random land points and drop a wooden chest at the first clear one | sim | 0 |
 | 52 | `RemoveHumansNearPos` | 16, 17, 9 | mark every human within `range` for removal | sim | 20 |
 | 53 | `StopHumanByPlayerId` | 1 | stop every walking human of the player and reset its work target | sim | 45 |
 | 54 | `SetAnimal` | 1, 3, 4, 16, 17, 14, 29 | spawn an animal with the id and behaviour | sim | 591 |
@@ -364,12 +364,14 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on confirmed land nodes within `range` and update the display | both | 17 |
 | 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 \* |
 | 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 \* |
-| 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 \* |
+| 100 | `SetRandomChestOnPosition` | 7, 16, 17 | choose a reward from the category mask and drop a wooden chest at the nearest free point on the same landmass, searching through radius 9 | sim | 41 |
 | 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, starting `range` steps north-west of it and turning east, south-east, south-west, west, north-west, north-east with `range` steps a side, and on every `index`th step of each side (the count restarts per side; a range or index of 0 reads as 1) place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points and the marker overlay, which borrows the GUI marker's first bob (approximation) | both | 0 |
 | 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | both | 7 |
 
 Chest categories for 51 and 100 are a bitmask (docs): 1 soldiers, 2 tower, 4 catapult, 8 goods,
-16 buildings, 64 potions, 128 amulets, 256 wolves, 512 armours, 1024 lions.
+16 buildings, 32 empty (places nothing), 64 potions, 128 amulets, 256 wolves, 512 armours, 1024
+lions. The category and reward draws are deterministic simulation RNG draws. Category 4 currently
+opens empty because land vehicles are not implemented.
 
 The corpus never uses goals 8, 10, 14, 15, 16, 17, 23, 33, 44, 49, 60, 61, 62 and results 14, 15, 46,
 48, 51, 75, 76, 77, 87, 88, 94, 95, 96, 98, 101. Twenty result opcodes cover 82 percent of all result
