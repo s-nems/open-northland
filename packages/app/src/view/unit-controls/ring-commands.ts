@@ -5,8 +5,8 @@ import type { PickModeController } from './pick-mode.js';
 export interface RingCommandDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   readonly pickMode: PickModeController;
-  /** Open the settler's equipment window - the app's stand-in for the original's equipment page. */
-  readonly openEquipment: (settler: number) => void;
+  /** Open the equipment-good picker for the current settler selection. */
+  readonly openEquipment: (settlers: readonly number[]) => void;
   /** Show or hide the work-area circle of every settler in the selection that carries a work flag. */
   readonly toggleWorkArea: (targets: readonly number[]) => void;
 }
@@ -40,7 +40,7 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       each((entity) => ({ kind: 'orderNeed', entity, need: NEED_OF[id] }));
       return;
     case 'changeEquipment':
-      if (single !== undefined) deps.openEquipment(single);
+      deps.openEquipment(targets);
       return;
     case 'showWorkArea':
       deps.toggleWorkArea(targets);

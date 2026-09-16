@@ -7,7 +7,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { loadUiFont } from '../../content/ui-font.js';
-import { type EquipSlotRef, equipmentRows } from '../../hud/details-panel/index.js';
+import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { messages } from '../../i18n/index.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
@@ -21,10 +21,78 @@ export interface EquipPickControllerOptions {
 
 export interface EquipPickController {
   open(settlerId: number, ref: EquipSlotRef): void;
-  /** The whole settler's gear, one row per slot - the ring's "Change Equipment" entry point. Picking a
-   *  row steps into {@link open} for that slot. */
-  openAll(settlerId: number): void;
+  /** Every good the whole selection can wear and reach - the ring's "Change Equipment" entry point. */
+  openAll(settlerIds: readonly number[]): void;
   dispose(): void;
+}
+
+export interface CommonEquipPick extends EquipPickEntry {
+  readonly group: EquipCategory;
+}
+
+const EQUIP_GROUPS: readonly EquipCategory[] = ['boots', 'tool', 'weapon', 'armor', 'misc'];
+
+/** The content-ordered intersection of goods every selected settler can currently fetch and wear. */
+export function commonEquipPicks(
+  content: ContentSet,
+  settlerIds: readonly number[],
+  pickList: EquipPickControllerOptions['pickList'],
+): CommonEquipPick[] {
+  if (settlerIds.length === 0) return [];
+  const picksBySettler = settlerIds.map((entity) => {
+    const picks = new Map<number, CommonEquipPick>();
+    for (const group of EQUIP_GROUPS) {
+      for (const row of pickList(entity, group)) picks.set(row.goodType, { ...row, group });
+    }
+    return picks;
+  });
+  const rows: CommonEquipPick[] = [];
+  for (const good of content.goods) {
+    const first = picksBySettler[0]?.get(good.typeId);
+    if (first === undefined) continue;
+    let available = first.available;
+    let common = true;
+    for (let i = 1; i < picksBySettler.length; i++) {
+      const pick = picksBySettler[i]?.get(good.typeId);
+      if (pick === undefined || pick.group !== first.group) {
+        common = false;
+        break;
+      }
+      available = Math.min(available, pick.available);
+    }
+    if (common) rows.push({ goodType: good.typeId, group: first.group, available });
+  }
+  return rows;
+}
+
+/** Fixed groups replace their only slot; misc fills the first gap and replaces slot zero once full. */
+export function equipSlotFor(components: Readonly<Record<string, unknown>>, group: EquipCategory): number {
+  if (group !== 'misc') return 0;
+  const equipment = components.Equipment as { readonly misc?: unknown } | undefined;
+  if (!Array.isArray(equipment?.misc)) return 0;
+  const free = equipment.misc.findIndex((slot) => slot == null);
+  return free < 0 ? 0 : free;
+}
+
+/** One selected good becomes one order per still-live selected settler. */
+export function selectionEquipCommands(
+  snapshot: WorldSnapshot,
+  settlerIds: readonly number[],
+  pick: Pick<CommonEquipPick, 'goodType' | 'group'>,
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  for (const settlerId of settlerIds) {
+    const entity = entityById(snapshot, settlerId);
+    if (entity === undefined) continue;
+    commands.push({
+      kind: 'equipGood',
+      entity: settlerId as Entity,
+      group: pick.group,
+      slot: equipSlotFor(entity.components, pick.group),
+      goodType: pick.goodType,
+    });
+  }
+  return commands;
 }
 
 function slotTitle(group: EquipCategory): string {
@@ -69,20 +137,22 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
       }
       w.show();
     },
-    openAll: (settlerId): void => {
-      const entity = entityById(opts.snapshot(), settlerId);
-      if (entity === undefined) return;
+    openAll: (settlerIds): void => {
+      const snapshot = opts.snapshot();
+      const targets = settlerIds.filter((id) => entityById(snapshot, id) !== undefined);
+      if (targets.length === 0) return;
       const w = win();
       w.setTitle(messages().actionRing.changeEquipment);
       w.clearList();
-      const empty = messages().hud.equipSlotFree;
-      for (const row of equipmentRows(opts.content, entity.components)) {
-        for (const [slot, worn] of row.slots.entries()) {
-          const name = row.slots.length > 1 ? `${slotTitle(row.group)} ${slot + 1}` : slotTitle(row.group);
-          w.addRow(`${name}: ${worn.label ?? empty}`, () => {
-            controller.open(settlerId, { group: row.group, slot });
-          });
-        }
+      const rows = commonEquipPicks(opts.content, targets, opts.pickList);
+      if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
+      for (const row of rows) {
+        const def = goods.find((g) => g.typeId === row.goodType);
+        const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
+        w.addRow(label, () => {
+          for (const command of selectionEquipCommands(opts.snapshot(), targets, row)) opts.enqueue(command);
+          w.hide();
+        });
       }
       w.show();
     },

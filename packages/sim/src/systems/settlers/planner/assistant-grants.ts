@@ -127,7 +127,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         goodType: spec.goodType,
         returnTo: here,
         stage: 'acquire',
-        issuer: 'assistant',
+        issuer: 'assistant-grant',
       });
       tally.total += 1;
       tally.byGood.set(spec.goodType, underway + 1);

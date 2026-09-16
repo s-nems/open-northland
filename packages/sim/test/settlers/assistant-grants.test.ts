@@ -358,7 +358,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     pileAt(sim, 12, 2, SHOES, 2);
     for (const [e, issuer] of [
       [byPlayer, 'player'],
-      [byAssistant, 'assistant'],
+      [byAssistant, 'assistant-grant'],
     ] as const) {
       sim.world.add(e, EquipOrder, {
         group: 'boots',
@@ -405,7 +405,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
         goodType: SHOES,
         returnTo: terrain.nodeAtClamped(0, 0),
         stage: 'acquire',
-        issuer: 'assistant',
+        issuer: 'assistant-grant',
       });
       stuck.push(e);
     }
@@ -467,7 +467,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
         goodType: SHOES,
         returnTo: terrain.nodeAtClamped(0, 0),
         stage: 'acquire',
-        issuer: 'assistant',
+        issuer: 'assistant-grant',
       });
     }
     const live = ownedSettler(sim, 2, 2);

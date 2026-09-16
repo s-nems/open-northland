@@ -49,7 +49,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       issueRingCommand(id, targets, {
         enqueue: opts.enqueue,
         pickMode,
-        openEquipment: (settler) => equipPicker?.openAll(settler),
+        openEquipment: (settlers) => equipPicker?.openAll(settlers),
         toggleWorkArea: workArea.toggle,
       }),
   });

@@ -7,16 +7,16 @@ import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
 function harness(): {
   issued: PlayerCommand[];
   armed: PickMode[];
-  equipmentFor: number[];
+  equipmentFor: number[][];
   workAreaFor: number[][];
   pickMode: PickModeController;
   enqueue: (command: PlayerCommand) => void;
-  openEquipment: (settler: number) => void;
+  openEquipment: (settlers: readonly number[]) => void;
   toggleWorkArea: (targets: readonly number[]) => void;
 } {
   const issued: PlayerCommand[] = [];
   const armed: PickMode[] = [];
-  const equipmentFor: number[] = [];
+  const equipmentFor: number[][] = [];
   const workAreaFor: number[][] = [];
   const pickMode: PickModeController = {
     arm: (mode) => {
@@ -36,7 +36,7 @@ function harness(): {
     workAreaFor,
     pickMode,
     enqueue: (command) => issued.push(command),
-    openEquipment: (settler) => equipmentFor.push(settler),
+    openEquipment: (settlers) => equipmentFor.push([...settlers]),
     toggleWorkArea: (targets) => workAreaFor.push([...targets]),
   };
 }
@@ -113,10 +113,10 @@ describe('issueRingCommand', () => {
 
   it('routes the two view-only orders to their own seams', () => {
     const h = harness();
-    issueRingCommand('changeEquipment', [4], h);
+    issueRingCommand('changeEquipment', [4, 9], h);
     issueRingCommand('showWorkArea', [4], h);
     issueRingCommand('explore', [7], h);
-    expect(h.equipmentFor).toEqual([4]);
+    expect(h.equipmentFor).toEqual([[4, 9]]);
     expect(h.workAreaFor).toEqual([[4]]);
     expect(h.armed).toEqual([{ kind: 'explore', scout: 7 }]);
     expect(h.issued).toEqual([]);

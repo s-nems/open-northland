@@ -180,7 +180,7 @@ function dispatchWeaponFetch(
       goodType,
       returnTo: route.here,
       stage: 'acquire',
-      issuer: 'assistant',
+      issuer: 'assistant-recruit',
     });
     return;
   }
@@ -201,7 +201,7 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
     goodType: pick,
     returnTo: route.here,
     stage: 'acquire',
-    issuer: 'assistant',
+    issuer: 'assistant-recruit',
   });
   return true;
 }

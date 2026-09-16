@@ -310,6 +310,7 @@ describe('allowedActions - several settlers', () => {
         'attackMode',
         'attackPosition',
         'attackVehicle',
+        'changeEquipment',
         'changeProfession',
         'defenceMode',
         'eat',

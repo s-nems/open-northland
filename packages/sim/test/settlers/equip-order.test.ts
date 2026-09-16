@@ -253,9 +253,25 @@ function terrainNodeAt(sim: Simulation, x: Fixed, y: Fixed): NodeId {
 }
 
 describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
+  it('rejects a stale weapon pick after the selected fighter changes to a civilian trade', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
+    pileAt(sim, 8, 2, SWORD, 1);
+
+    expect(sim.equipPickList(settler, 'weapon')).toEqual([{ goodType: SWORD, available: 1 }]);
+    setSettlerJob(sim.world, settler, WOODCUTTER); // the menu row is now stale
+    sim.enqueueSetup(equip(settler, SWORD, 'weapon'));
+    sim.step();
+
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+    expect(sim.world.tryGet(settler, Equipment)?.weapon ?? null).toBeNull();
+  });
+
   it('takes a stored output weapon from a forge while that building is being upgraded', () => {
     const sim = upgradeableForgeSim();
     const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
     const forge = forgeAt(sim, 8, 2);
     sim.world.mut(forge, Stockpile).amounts.set(SWORD, 1);
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: forge });
@@ -295,6 +311,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
   it('swap: the replaced good is stowed into a store that can take it', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
     // A weapon swap is the fresh-stow shape: boots wear per walked waypoint, so a swapped-out pair
     // is part-used (destroyed) by the time the settler reaches its replacement; a permanent weapon
     // arrives at the pile still fresh and stows.
@@ -725,6 +742,7 @@ describe('equipPickList - the pick-menu read view', () => {
   it('lists only the slot group’s goods with reachable units, summed over stores, in content order', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
     pileAt(sim, 8, 2, SHOES, 3);
     pileAt(sim, 10, 2, SHOES, 2);
     pileAt(sim, 12, 2, SWORD, 1);
@@ -758,5 +776,14 @@ describe('equipPickList - the pick-menu read view', () => {
     expect(sim.equipPickList(civilian, 'tool')).toEqual([{ goodType: TOOL_WOODEN, available: 2 }]);
     expect(sim.equipPickList(fighter, 'tool')).toEqual([]);
     expect(sim.equipPickList(fighter, 'boots')).toEqual([{ goodType: SHOES, available: 1 }]);
+  });
+
+  it('offers a civilian no weapon or armor rows', () => {
+    const sim = freshSim();
+    const civilian = ownedSettler(sim, 2, 2);
+    pileAt(sim, 8, 2, SWORD, 1);
+
+    expect(sim.equipPickList(civilian, 'weapon')).toEqual([]);
+    expect(sim.equipPickList(civilian, 'armor')).toEqual([]);
   });
 });

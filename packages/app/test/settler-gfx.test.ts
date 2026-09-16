@@ -1,6 +1,11 @@
 import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { ATTACK_ATOMIC, WELL_DRAW_ATOMIC } from '../src/catalog/atomics.js';
+import {
+  ATTACK_ATOMIC,
+  STORE_PICKUP_ATOMIC,
+  STORE_PILEUP_ATOMIC,
+  WELL_DRAW_ATOMIC,
+} from '../src/catalog/atomics.js';
 import { JOB_SOLDIER_UNARMED } from '../src/catalog/jobs.js';
 import {
   ADULT_CHARACTER_BY_JOB,
@@ -489,6 +494,21 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
       37: { seq: 'human_man_fisher_work_fishing' },
       38: { seq: 'human_man_fisher_work_fishing' },
     });
+  });
+
+  it('binds each mutable warrior look to its authored pickup gesture', () => {
+    for (const id of [
+      'warrior',
+      'warrior-spear',
+      'warrior-sword',
+      'warrior-broadsword',
+      'warrior-shortbow',
+      'warrior-longbow',
+    ] as const) {
+      const atomics = CHARACTER_SPECS[id].atomics;
+      expect(atomics?.[STORE_PICKUP_ATOMIC]?.seq, id).toMatch(/pick_up/i);
+      expect(atomics?.[STORE_PILEUP_ATOMIC]?.seq, id).toBe(atomics?.[STORE_PICKUP_ATOMIC]?.seq);
+    }
   });
 
   it('arming a mutable warrior draws the same body its job does (the three weapon tables agree)', () => {

@@ -72,7 +72,7 @@ export const ACTION_COMMANDS: readonly ActionCommand[] = [
   { id: 'goTo', arm: BOTTOM_ARM, icon: 'order_go_to', multi: false },
 
   { id: 'changeProfession', arm: TOP_ARM, icon: 'order_change_profession', multi: true },
-  { id: 'changeEquipment', arm: TOP_ARM, icon: 'order_change_equipment', multi: false },
+  { id: 'changeEquipment', arm: TOP_ARM, icon: 'order_change_equipment', multi: true },
   { id: 'assignWorkArea', arm: TOP_ARM, icon: 'order_assign_work_area', multi: false },
   { id: 'showWorkArea', arm: TOP_ARM, icon: 'order_show_work_area', multi: false },
   { id: 'erectSignpost', arm: TOP_ARM, icon: 'order_erect_signpost', multi: false },

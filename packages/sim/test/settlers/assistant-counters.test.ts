@@ -429,6 +429,8 @@ describe('the training queue', () => {
     runUntil(sim, () => (sim.world.tryGet(recruit, Equipment)?.armor ?? null) !== null, 2000, 'armor');
     expect(sim.world.tryGet(recruit, Equipment)?.armor?.goodType).toBe(ARMOR_CHAIN_GOOD);
     runUntil(sim, () => !sim.world.has(recruit, AssistantRecruit), 200, 'booking released');
+    runUntil(sim, () => !sim.world.has(recruit, EquipOrder), 200, 'arming errand released');
+    expect(sim.world.get(recruit, Position)).toMatchObject({ x: fx.fromInt(9), y: fx.fromInt(3) });
   });
 
   it('releases a recruit unarmored when no armor is in store, once its weapon landed', () => {

@@ -20,13 +20,13 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isFighterJob, isHeroJob } from '../readviews/index.js';
+import { canEquipCategory, isHeroJob } from '../readviews/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * The equip-window order handlers only validate and stamp the {@link EquipOrder} errand; a drive runs it.
- * The original's soldier-only `allowequip` gate lives in the panel's row model, not here, so a raw command
- * can still dress a civilian in a display-only weapon.
+ * The equip-window order handlers validate and stamp the {@link EquipOrder} errand; a drive runs it.
+ * Wearability is checked here as well as in the picker so a profession change between opening the window
+ * and clicking a row cannot dress a civilian in arms or hand a fighter a tool.
  */
 
 /** Whether (`group`, `slot`) addresses a real equipment slot (the misc row indexed, 0 elsewhere). */
@@ -87,12 +87,12 @@ export function equipGood(
   if (terrain === undefined) return; // mapless sim: no stores to fetch from
   const e = command.entity;
   if (!isEquipOrderable(world, e)) return;
-  if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
+  const jobType = world.get(e, Settler).jobType;
+  if (isHeroJob(ctx.content, jobType)) return;
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined || good.equip.category !== command.group) return;
-  // A fighter keeps no tool, so the order is refused here rather than shed on enlistment later.
-  if (command.group === 'tool' && isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
+  if (!canEquipCategory(ctx.content, jobType, command.group)) return;
   stampEquipOrder(world, terrain, e, {
     group: command.group,
     slot: command.slot,

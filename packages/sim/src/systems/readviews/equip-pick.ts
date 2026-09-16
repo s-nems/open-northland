@@ -14,10 +14,17 @@ export interface EquipPickEntry {
   readonly available: number;
 }
 
+/** Whether the trade may wear this equipment category in the original change-equipment window. */
+export function canEquipCategory(content: ContentSet, jobType: number | null, group: EquipCategory): boolean {
+  const fighter = isFighterJob(content, jobType);
+  return fighter ? group !== 'tool' : group !== 'weapon' && group !== 'armor';
+}
+
 /**
  * Every good wearable in a `group` slot that `entity` could fetch right now, in content `goods` order,
- * with the reachable unit count. A good with no reachable unit is omitted, and a fighter's tool menu is
- * empty because `equipGood` refuses a tool on a soldier or hero.
+ * with the reachable unit count. A good with no reachable unit is omitted. The original's group window
+ * intersects `IsAbleToEquipGoodNow` across the selection: fighters lose tools, civilians lose arms, and
+ * boots/misc remain common to both.
  *
  * Mirrors the equip errand's source predicate, with two approximations against its exact walk: the
  * confinement gate tests the store's own node rather than its interaction cell, and the
@@ -30,7 +37,7 @@ export function equipPickList(
   entity: Entity,
   group: EquipCategory,
 ): EquipPickEntry[] {
-  if (group === 'tool' && isFighterJob(content, world.tryGet(entity, Settler)?.jobType ?? null)) return [];
+  if (!canEquipCategory(content, world.tryGet(entity, Settler)?.jobType ?? null, group)) return [];
   const available = new Map<number, number>(); // insertion = content order, the menu's row order
   for (const good of content.goods) {
     if (good.equip?.category === group) available.set(good.typeId, 0);

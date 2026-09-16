@@ -132,7 +132,7 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
   if (world.has(entity, Carrying)) {
     // A held assistant order would pin a cap slot and a reserved unit across a delivery of unbounded
     // length, so it is dropped and re-dispatched on a later stride beat. A player order waits instead.
-    if (order.issuer === 'assistant') {
+    if (order.issuer !== 'player') {
       world.remove(entity, EquipOrder);
       return false;
     }
@@ -183,9 +183,9 @@ function planStow(errand: EquipErrand): boolean {
  *  and returns false so the economy re-tasks the settler the same tick. */
 function planReturn(errand: EquipErrand): boolean {
   const { world, ctx, terrain, entity, order, here, avoid, targets } = errand;
-  // An assistant weapon errand chains its armor want from the store it stands at rather than walking
-  // home in between, so one outing dresses the recruit. The armor's own return falls through.
-  if (order.issuer === 'assistant' && order.group === 'weapon') {
+  // A recruit weapon errand chains its armor want from the store it stands at rather than walking
+  // in between, so one outing dresses the recruit and finishes at the final stock source.
+  if (order.issuer === 'assistant-recruit' && order.group === 'weapon') {
     const chained = chainRecruitArmor(world, ctx, terrain, targets, entity, here, avoid);
     if (chained !== null) {
       order.group = 'armor';
@@ -193,6 +193,12 @@ function planReturn(errand: EquipErrand): boolean {
       order.stage = 'acquire';
       return planFetch(errand, chained);
     }
+  }
+  // An automatic hand-out is complete at the stock source. Walking back to its dispatch point made a
+  // newly armed recruit march to the barracks it had just left, despite having no further drill there.
+  if (order.issuer === 'assistant-recruit') {
+    world.remove(entity, EquipOrder);
+    return false;
   }
   if (here === order.returnTo || avoid?.(order.returnTo) === true) {
     world.remove(entity, EquipOrder);

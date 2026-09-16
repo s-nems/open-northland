@@ -71,7 +71,7 @@ export const EquipOrder = defineComponent<{
    *  describes the window's item list, not how the settler fetches). */
   returnTo: NodeId;
   stage: 'acquire' | 'stow' | 'return';
-  /** The player's click or the assistant's hand-out: a player order sets a carried load down mid-errand,
-   *  the assistant's drops it. */
-  issuer: 'player' | 'assistant';
+  /** The player's click or one of the assistant's automatic hand-outs. Player orders set a carried load
+   *  down mid-errand; automatic orders yield it. Recruit arming additionally finishes at the stock source. */
+  issuer: 'player' | 'assistant-grant' | 'assistant-recruit';
 }>('EquipOrder', 'settlers');
