@@ -21,8 +21,8 @@ export interface ClickHits {
 }
 
 /**
- * The order a click resolves what it landed on. A door marker beats the building it hangs on: a sign row
- * is a small target the house's pixel hit would swallow, and a garrison flag flies far above its box.
+ * The order a click resolves what it landed on. Markers beat ordinary units and buildings: flags and
+ * sign rows are small intentional targets, while a building's larger sprite may overlap them.
  */
 export function createClickHits(deps: ClickHitDeps): ClickHits {
   /** An enemy building's markers are not selection proxies for the men behind them. */
@@ -44,8 +44,8 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
     doorMarkerAt,
     selectionAt: (wx, wy) =>
       doorMarkerAt(wx, wy)?.ref ??
-      pickTopAt(deps.targets.owned(), wx, wy) ??
       pickTopAt(deps.targets.flags(), wx, wy) ??
+      pickTopAt(deps.targets.owned(), wx, wy) ??
       pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }

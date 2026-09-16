@@ -20,6 +20,7 @@ const ENEMY_PLAYER = 1;
 const SIGN_ROW_SETTLER = 40;
 const GARRISON_TOWER = 50;
 const OWNED_UNIT = 60;
+const OWNED_BUILDING = 61;
 const FLAG_GATHERER = 70;
 const SIGNPOST = 80;
 
@@ -103,16 +104,17 @@ describe('click hit priority', () => {
     expect(selected({ ...ALL, badges: [flagOnlyDoor()] })).toBe(GARRISON_TOWER);
   });
 
-  it('falls to the unit under the cursor when the door carries no marker', () => {
-    expect(selected({ ...ALL, badges: [] })).toBe(OWNED_UNIT);
+  it('gives a drop-off flag priority over an overlapping unit or building', () => {
+    expect(selected({ ...ALL, badges: [] })).toBe(FLAG_GATHERER);
+    expect(selected({ flags: FLAG_ARM, owned: [under(OWNED_BUILDING, 'building')] })).toBe(FLAG_GATHERER);
   });
 
-  it('takes a drop-off flag as a gatherer proxy only when no unit is under the cursor', () => {
-    expect(selected({ ...ALL, badges: [], owned: [] })).toBe(FLAG_GATHERER);
+  it('falls to the unit under the cursor when the door carries no marker or drop-off flag', () => {
+    expect(selected({ ...ALL, badges: [], flags: [] })).toBe(OWNED_UNIT);
   });
 
   it('resolves a signpost last', () => {
-    expect(selected({ ...ALL, badges: [], owned: [], flags: [] })).toBe(SIGNPOST);
+    expect(selected({ ...ALL, badges: [], flags: [], owned: [] })).toBe(SIGNPOST);
   });
 
   it('answers bare ground with null', () => {
@@ -157,7 +159,7 @@ describe('click hits on a door marker', () => {
       observer: false,
     });
     expect(noBadges.doorMarkerAt(CLICK.x, CLICK.y)).toBeNull();
-    expect(noBadges.selectionAt(CLICK.x, CLICK.y)).toBe(OWNED_UNIT);
+    expect(noBadges.selectionAt(CLICK.x, CLICK.y)).toBe(FLAG_GATHERER);
   });
 });
 
@@ -165,7 +167,7 @@ describe('click hits on another player’s door', () => {
   it('never lets an enemy marker select the men behind it, or mask the arms below', () => {
     const hostile: Arms = { ...ALL, badges: [mannedDoor(ENEMY_PLAYER)] };
     expect(hitsFor(hostile).doorMarkerAt(CLICK.x, CLICK.y)).toBeNull();
-    expect(selected(hostile)).toBe(OWNED_UNIT);
+    expect(selected(hostile)).toBe(FLAG_GATHERER);
     expect(selected({ badges: [flagOnlyDoor(ENEMY_PLAYER)] })).toBeNull();
   });
 
