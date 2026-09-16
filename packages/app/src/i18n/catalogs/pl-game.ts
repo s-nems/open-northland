@@ -161,7 +161,6 @@ export const plGame = {
       wooden: 'Skrzynia',
       magical: 'Magiczna skrzynia',
       open: 'Otwórz skrzynię',
-      magicalOnly: 'Otworzy ją tylko druid lub bohater',
     },
     resources: 'Surowce',
     statuses: {

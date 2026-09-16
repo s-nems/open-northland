@@ -164,7 +164,6 @@ export const enGame = {
       wooden: 'Chest',
       magical: 'Magic chest',
       open: 'Open chest',
-      magicalOnly: 'Only a druid or a hero can open it',
     },
     resources: 'Resources',
     statuses: {

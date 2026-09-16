@@ -116,9 +116,8 @@ const CHEST_NAME_STRING_ID: Readonly<Record<ChestKind, number>> = { wooden: 112,
 const OPEN_CHEST_STRING_ID = 35;
 
 /**
- * The chest lines of the world tooltip over the live sim: the kind's name, and under it the open order
- * when `player`'s selection holds an adult who may open that kind, the druid-or-hero note when it holds
- * settlers who may not, nothing with no settler selected.
+ * The chest lines of the world tooltip over the live sim: the kind's name, and after it the open order
+ * when `player`'s selection holds an adult who may open that kind; otherwise the name alone.
  */
 export function chestTooltipLines(
   content: ContentSet,
@@ -130,14 +129,12 @@ export function chestTooltipLines(
   return {
     chestLabel: (kind) => uiString('misc', CHEST_NAME_STRING_ID[kind], labels[kind]),
     chestOrderLine: (snapshot, kind) => {
-      let selected = false;
       for (const id of selectedIds()) {
         const e = entityById(snapshot, id);
         if (e === undefined || !isSettler(e) || ownerPlayerOf(e) !== player) continue;
-        selected = true;
         if (canOpenChest(e, kind, content)) return uiString('misclogic', OPEN_CHEST_STRING_ID, labels.open);
       }
-      return selected && kind === 'magical' ? labels.magicalOnly : null;
+      return null;
     },
   };
 }
