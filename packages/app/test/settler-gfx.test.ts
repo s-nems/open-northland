@@ -2,6 +2,7 @@ import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   ATTACK_ATOMIC,
+  OPEN_CHEST_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   WELL_DRAW_ATOMIC,
@@ -496,7 +497,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
     });
   });
 
-  it('binds each mutable warrior look to its authored pickup gesture', () => {
+  it('binds each mutable warrior look to its authored pickup gesture, the chest bend included', () => {
     for (const id of [
       'warrior',
       'warrior-spear',
@@ -508,6 +509,9 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
       const atomics = CHARACTER_SPECS[id].atomics;
       expect(atomics?.[STORE_PICKUP_ATOMIC]?.seq, id).toMatch(/pick_up/i);
       expect(atomics?.[STORE_PILEUP_ATOMIC]?.seq, id).toBe(atomics?.[STORE_PICKUP_ATOMIC]?.seq);
+      // A soldier sent to a chest plays the same bend (`[gfxanimatomic]` action 91 names the pick_up
+      // strip for every soldier job); unbound, the atomic would stand still.
+      expect(atomics?.[OPEN_CHEST_ATOMIC]?.seq, id).toBe(atomics?.[STORE_PICKUP_ATOMIC]?.seq);
     }
   });
 

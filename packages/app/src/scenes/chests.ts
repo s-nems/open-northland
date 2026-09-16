@@ -1,19 +1,19 @@
 import type { ChestKind, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, ONE, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_COLLECTOR } from '../catalog/jobs.js';
+import { JOB_COLLECTOR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import { BUILDING_WELL, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * Chests and papers: four collectors are each sent to a chest at tick 0 - a wooden food chest, a wooden
- * chest holding three civilists, a wooden chest holding a well paper, and a magical shoes chest that only
- * a druid or hero may open, so its collector refuses - while the seat spends a paper it already holds on
- * a well that stands finished at once. Watch three settlers walk to their chests, bend over the lid, and
- * the chests vanish; the found-paper note names the well paper, which the extras window's plans tab then
- * lists for a click; the magical chest stays closed with nobody at it; the first well never shows a
- * foundation.
+ * Chests and papers: four openers are each sent to a chest at tick 0 - a sword soldier to a wooden food
+ * chest, collectors to a wooden chest holding three civilists, a wooden chest holding a well paper, and a
+ * magical shoes chest that only a druid or hero may open, so its collector refuses - while the seat
+ * spends a paper it already holds on a well that stands finished at once. Watch three settlers walk to
+ * their chests, bend over the lid (the soldier on his own armed body), and the chests vanish; the
+ * found-paper note names the well paper, which the extras window's plans tab then lists for a click; the
+ * magical chest stays closed with nobody at it; the first well never shows a foundation.
  */
 
 const MAP_W = 30;
@@ -47,15 +47,16 @@ function chestAt(sim: Simulation, kind: ChestKind, contents: number, x: number, 
 }
 
 function build(sim: Simulation): void {
+  // Every adult trade opens a wooden chest; the soldier proves the bend on an armed body too.
   const stations = [
-    { kind: 'wooden', contents: FOOD_CHEST },
-    { kind: 'wooden', contents: CIVILISTS_CHEST },
-    { kind: 'wooden', contents: WELL_PAPER_CHEST },
-    { kind: 'magical', contents: SHOES_CHEST },
+    { kind: 'wooden', contents: FOOD_CHEST, opener: JOB_SOLDIER_SWORD },
+    { kind: 'wooden', contents: CIVILISTS_CHEST, opener: JOB_COLLECTOR },
+    { kind: 'wooden', contents: WELL_PAPER_CHEST, opener: JOB_COLLECTOR },
+    { kind: 'magical', contents: SHOES_CHEST, opener: JOB_COLLECTOR },
   ] as const;
   stations.forEach((station, i) => {
     const chest = chestAt(sim, station.kind, station.contents, stationX(i), ROW_Y);
-    const opener = spawnSettlerDirect(sim, JOB_COLLECTOR, stationX(i), ROW_Y - 3);
+    const opener = spawnSettlerDirect(sim, station.opener, stationX(i), ROW_Y - 3);
     sim.enqueueSetup({ kind: 'openChest', entity: opener, chest });
   });
   sim.enqueueSetup({ kind: 'grantPaper', player: HUMAN_PLAYER, paper: { ...WELL_PAPER } });

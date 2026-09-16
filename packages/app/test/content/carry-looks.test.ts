@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { carryWalkSeqs, sequencesFor } from '../../src/content/ir/joins.js';
+import { OPEN_CHEST_ATOMIC } from '../../src/catalog/atomics.js';
+import { carryWalkSeqs, gfxAtomicProgramsByAction, sequencesFor } from '../../src/content/ir/joins.js';
 import { BODY_IMAGELIB, type ContentIr } from '../../src/content/ir/rows.js';
 import { CHARACTER_SPECS, carryAnimsByGood } from '../../src/content/settler-gfx/index.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
@@ -44,5 +45,23 @@ describe.runIf(hasRealIr())('the [gfxwalkatomic] carry table binds against decod
     const carrySeqs = carryWalkSeqs(ir, VIKING_ANIM_TRIBE, CHARACTER_SPECS.warrior.logicJob);
     expect(carrySeqs.size).toBeGreaterThan(0);
     expect([...new Set(carrySeqs.values())]).toEqual(['human_man_warrior_empty_walk']);
+  });
+});
+
+describe.runIf(hasRealIr())("the warrior chest bend is the source's own action-91 record", () => {
+  it("names each warrior look's pick_up strip in a viking `[gfxanimatomic]` row for the chest", () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const chestPrograms = gfxAtomicProgramsByAction(ir, VIKING_ANIM_TRIBE).get(OPEN_CHEST_ATOMIC);
+    for (const id of [
+      'warrior',
+      'warrior-spear',
+      'warrior-sword',
+      'warrior-broadsword',
+      'warrior-shortbow',
+      'warrior-longbow',
+    ] as const) {
+      const seq = CHARACTER_SPECS[id].atomics[OPEN_CHEST_ATOMIC].seq;
+      expect(chestPrograms?.get(seq)?.dirFrames.length, `${id}: ${seq}`).toBeGreaterThan(0);
+    }
   });
 });

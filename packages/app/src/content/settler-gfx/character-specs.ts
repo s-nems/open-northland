@@ -289,8 +289,9 @@ export const CHARACTER_SPECS = {
   },
   // The attack and aggressive-gait names below are the viking (`logicdefines.inc` TRIBE_TYPE_HUMAN_VIKING
   // = 1) joins; their per-direction frame counts match the viking atomicanimation lengths (spear 27,
-  // sword_long 29, bows 12/28). Each body also authors its own `*_pick_up` strip for goods handling; the
-  // unarmed body authors no `_agressive` gait.
+  // sword_long 29, bows 12/28). Each body also authors its own `*_pick_up` strip, which the source's
+  // action-22/23/91 rows bind for goods handling and the chest bend alike; the unarmed body authors no
+  // `_agressive` gait.
   warrior: {
     gfxJobs: [JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_UNARMED,
@@ -302,6 +303,7 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: { seq: 'human_man_warrior_empty_sleep' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_warrior_empty_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_warrior_empty_pick_up' },
+      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_warrior_empty_pick_up' },
     },
   },
   'warrior-spear': {
@@ -315,6 +317,7 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_spear_sleep' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
+      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
     },
     engaged: {
       moving: 'human_man_Warrior_spear_walk_agressive',
@@ -332,6 +335,7 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_Sword_Sleep' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_Sword_Pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_Sword_Pick_up' },
+      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_Sword_Pick_up' },
     },
     engaged: {
       moving: 'human_man_Warrior_Sword_Walk_agressive',
@@ -349,6 +353,7 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_Broadsword_sleep' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_Broadsword_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_Broadsword_pick_up' },
+      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_Broadsword_pick_up' },
     },
     engaged: {
       moving: 'human_man_Warrior_Broadsword_walk_agressive',
@@ -368,6 +373,7 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: { seq: 'human_man_warrior_empty_sleep' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_pick_up' },
+      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_pick_up' },
     },
     engaged: {
       moving: 'human_man_Warrior_Shortbow_walk_agressive',
@@ -385,6 +391,7 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_Longbow_sleep' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_Longbow_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_Longbow_pick_up' },
+      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_Longbow_pick_up' },
     },
     engaged: {
       moving: 'human_man_Warrior_Longbow_walk_agressive',
