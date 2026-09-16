@@ -4,11 +4,12 @@ import {
   DeliveryFlag,
   Stockpile,
   setStockAmount,
+  Upgrading,
 } from '../../../../../components/index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
-import { bankedSlot } from '../../../../stores/index.js';
+import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
@@ -40,14 +41,16 @@ export function pickupFromStore(
     addCarry(world, settler, carried, amount);
     return;
   }
-  const stock = world.tryGet(from, Stockpile);
+  const stock = accessibleStockAmounts(world, from);
   if (stock === undefined) return;
-  const have = stock.amounts.get(goodType) ?? 0;
+  const have = stock.get(goodType) ?? 0;
   const moved = Math.min(amount, have);
   if (moved <= 0) return;
-  setStockAmount(world, from, goodType, have - moved);
+  setAccessibleStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);
-  flushBankedBonus(world, ctx, from); // the freed slot may release a capacity-blocked bonus unit
+  // An upgrading workplace is stood down, and its live Stockpile is construction material rather than
+  // the output shelf a banked production bonus belongs in.
+  if (!world.has(from, Upgrading)) flushBankedBonus(world, ctx, from);
   reapEmptyLoosePile(world, from);
 }
 

@@ -14,7 +14,11 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isTemple } from '../../readviews/index.js';
-import { mayFetchGoodFrom, typeProducesGoodWithoutInputs } from '../../stores/index.js';
+import {
+  accessibleStockAmounts,
+  mayFetchGoodFrom,
+  typeProducesGoodWithoutInputs,
+} from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { buriedUnderBuilding, canStoreGood, storeYieldsGood } from './stores/stock.js';
 
@@ -121,9 +125,9 @@ export class TargetBands {
 
   private inputSourceKind(walls: ReadonlySet<NodeId>, e: Entity, goodType: number): InputSourceKind | null {
     const { world, ctx, terrain } = this;
-    if (world.has(e, UnderConstruction)) return null;
+    const stock = accessibleStockAmounts(world, e);
     if (
-      (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0 &&
+      (stock?.get(goodType) ?? 0) > 0 &&
       mayFetchGoodFrom(world, ctx, e, goodType) &&
       !buriedUnderBuilding(world, terrain, walls, e)
     ) {
@@ -153,6 +157,7 @@ export class TargetBands {
       w.componentGeneration(Building) +
       w.componentValueGeneration(Building) +
       w.componentGeneration(Upgrading) +
+      w.componentValueGeneration(Upgrading) +
       w.componentGeneration(Vehicle) +
       w.componentGeneration(DeliveryFlag)
     );

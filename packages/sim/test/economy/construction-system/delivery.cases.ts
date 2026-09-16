@@ -12,6 +12,7 @@ import {
   Stockpile,
   SupplyRun,
   UnderConstruction,
+  Upgrading,
 } from '../../../src/components/index.js';
 import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -334,6 +335,39 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(sim.world.get(builder, SupplyRun)).toMatchObject({ site, goodType: STONE });
     // The near shelf wins: an output is nobody's reserve, so the far warehouse is never walked to.
     expect(firstPickup(sim, builder)).toMatchObject({ goodType: STONE, from: workshop });
+  });
+
+  it("keeps an upgrading pottery's stored output available to another construction site", () => {
+    const base = constructionContent();
+    const potteryType = base.buildings.find((type) => type.typeId === WORKSHOP);
+    if (potteryType === undefined) throw new Error('construction fixture has no pottery workshop');
+    const potteryUpgrade = 6;
+    const content = {
+      ...base,
+      buildings: [
+        ...base.buildings.map((type) =>
+          type.typeId === WORKSHOP ? { ...type, upgradeTarget: potteryUpgrade } : type,
+        ),
+        { ...potteryType, typeId: potteryUpgrade, id: 'work_mason_01' },
+      ],
+    };
+    const sim = new Simulation({ seed: 13, content, map: grassMap(12, 1) });
+    const site = siteAt(sim, HOUSE, 0, 0);
+    const pottery = builtBuildingAt(sim, WORKSHOP, 4, 0, [[STONE, 5]]);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: pottery });
+    sim.step();
+    // Two bricks seed the pottery's own upgrade hold; its three surplus bricks remain ordinary stock.
+    expect(sim.world.get(pottery, Stockpile).amounts.get(STONE)).toBe(2);
+    expect(sim.world.get(pottery, Upgrading).savedStock.get(STONE)).toBe(3);
+    const builder = builderAt(sim, 3, 0);
+    sim.world.add(builder, SiteAssignment, { site, pinned: true });
+
+    expect(firstPickup(sim, builder)).toMatchObject({ goodType: STONE, from: pottery });
+    for (let i = 0; i < 20 && !sim.world.has(builder, Carrying); i++) sim.step();
+
+    expect(sim.world.get(builder, Carrying)).toMatchObject({ goodType: STONE, amount: 1 });
+    expect(sim.world.get(pottery, Upgrading).savedStock.get(STONE)).toBe(2);
+    expect(sim.world.get(pottery, Stockpile).amounts.get(STONE)).toBe(2);
   });
 
   it('a builder POSTED to a foundation raises that one, not the nearest', () => {

@@ -16,6 +16,7 @@ export {
   neededConstructionGoods,
   upgradeTierOf,
 } from './construction.js';
+export { accessibleStockAmounts, setAccessibleStockAmount } from './inventory.js';
 export {
   isWorkplaceOperator,
   operatorCountOf,

@@ -1,11 +1,4 @@
-import {
-  Building,
-  GroundDrop,
-  Position,
-  Stockpile,
-  sameSideAs,
-  UnderConstruction,
-} from '../../../../components/index.js';
+import { Building, GroundDrop, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
@@ -13,6 +6,7 @@ import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import {
+  accessibleStockAmounts,
   bankedSlot,
   buildingProduces,
   isYardHeap,
@@ -160,8 +154,9 @@ export function buriedUnderBuilding(
 /**
  * The nearest store that holds at least one unit of `goodType` and may be stripped of it, by Manhattan
  * distance from `here` with an ascending-cell-id tie-break, or null. The counter to
- * {@link nearestStoreFor}, which finds a store that can take a good. A construction site (a sink, never
- * a source), a pile buried under a building's walls, and a workshop's own input reserve are excluded.
+ * {@link nearestStoreFor}, which finds a store that can take a good. A from-scratch construction site,
+ * a pile buried under a building's walls, and a workshop's own input reserve are excluded. An upgrade
+ * site keeps its ordinary inventory available while its separate construction hold stays protected.
  */
 export function nearestStoreHolding(
   bands: TargetBands,
@@ -193,9 +188,9 @@ export function storeYieldsGood(
   store: Entity,
   goodType: number,
 ): boolean {
+  const stock = accessibleStockAmounts(world, store);
   return (
-    (world.get(store, Stockpile).amounts.get(goodType) ?? 0) > 0 &&
-    !world.has(store, UnderConstruction) && // a site is a sink, never a source to strip
+    (stock?.get(goodType) ?? 0) > 0 &&
     mayFetchGoodFrom(world, ctx, store, goodType) &&
     !buriedUnderBuilding(world, terrain, walls, store)
   );
