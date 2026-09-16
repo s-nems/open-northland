@@ -43,7 +43,7 @@ const DYING_HEALTH_DIVISOR = 10;
 const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffect['kind']>(['idle']);
 
 /** What a settler is doing, as far as the note about having no work is concerned. */
-type Occupation = 'idle' | 'walking' | 'busy';
+export type Occupation = 'idle' | 'walking' | 'busy';
 
 export interface SnapshotMessageSource {
   /** The messages due at this snapshot; empty between sweeps. */
@@ -62,7 +62,7 @@ function isEffectlessAtomic(components: Components): boolean {
  * Approximation: a producer parked outside for missing inputs and a gatherer whose resource ran out carry
  * no component either and read as idle, so they get this note in place of one naming the missing good.
  */
-function occupationOf(snapshot: WorldSnapshot, e: SnapshotEntity): Occupation {
+export function occupationOf(snapshot: WorldSnapshot, e: SnapshotEntity): Occupation {
   const c = e.components;
   if (c.PlayerOrder !== undefined || c.Garrison !== undefined || isIndoorSettler(snapshot, c)) return 'busy';
   if (c.CurrentAtomic !== undefined) return isEffectlessAtomic(c) ? 'idle' : 'busy';
@@ -80,7 +80,7 @@ function holdsPost(e: SnapshotEntity): boolean {
 /** True for a settler employed at a finished building; one waiting on a site still going up is working
  *  to plan. Quieter than the original, which asks only that the worker's house is not mid-upgrade and
  *  says nothing about employment. */
-function hasWorkplaceToWorkAt(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+export function hasWorkplaceToWorkAt(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const workplace = workplaceOf(e);
   if (workplace === undefined) return false;
   const building = entityById(snapshot, workplace);
