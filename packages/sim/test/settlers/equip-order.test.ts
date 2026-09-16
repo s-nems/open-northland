@@ -368,6 +368,36 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     for (const settler of settlers) expect(sim.world.has(settler, EquipOrder)).toBe(false);
   });
 
+  it('continues to the next queued equipment type before returning to the issue point', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
+    const start = sim.world.get(settler, Position);
+    const home = nodeOfPosition(start.x, start.y);
+    pileAt(sim, 12, 2, MAIL, 1);
+    pileAt(sim, 12, 4, LONG_SWORD, 1);
+    sim.enqueueSetup(equip(settler, MAIL, 'armor'));
+    sim.enqueueSetup(equip(settler, LONG_SWORD, 'weapon'));
+
+    let woreArmorBeforeWeapon = false;
+    let returnedBetweenItems = false;
+    for (let tick = 0; tick < 2 * ERRAND_TICKS; tick++) {
+      sim.run(1);
+      const equipment = sim.world.tryGet(settler, Equipment);
+      if (equipment?.armor?.goodType !== MAIL || equipment.weapon !== null) continue;
+      woreArmorBeforeWeapon = true;
+      const at = sim.world.get(settler, Position);
+      const node = nodeOfPosition(at.x, at.y);
+      if (node.hx === home.hx && node.hy === home.hy) returnedBetweenItems = true;
+    }
+
+    expect(woreArmorBeforeWeapon).toBe(true);
+    expect(returnedBetweenItems).toBe(false);
+    expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(LONG_SWORD);
+    const back = sim.world.get(settler, Position);
+    expect(nodeOfPosition(back.x, back.y)).toEqual(home);
+  });
+
   it('swap: a part-used replaced good is destroyed instead of stowed', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);

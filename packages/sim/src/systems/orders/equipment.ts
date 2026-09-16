@@ -68,11 +68,12 @@ function stampEquipOrder(
   const active = world.tryMut(e, EquipOrder);
   if (active?.issuer === 'player' && (active.group !== spec.group || active.slot !== spec.slot)) {
     active.queued ??= [];
+    const queuedIntent = { ...intent, returnTo: active.returnTo };
     const sameSlot = active.queued.findIndex(
       (queued) => queued.group === spec.group && queued.slot === spec.slot,
     );
-    if (sameSlot < 0) active.queued.push(intent);
-    else active.queued[sameSlot] = intent;
+    if (sameSlot < 0) active.queued.push(queuedIntent);
+    else active.queued[sameSlot] = queuedIntent;
     return;
   }
   const queued = active?.issuer === 'player' ? (active.queued ?? []) : [];

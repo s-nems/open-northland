@@ -201,6 +201,9 @@ function planStow(errand: EquipErrand): boolean {
  *  and returns false so the economy re-tasks the settler the same tick. */
 function planReturn(errand: EquipErrand): boolean {
   const { world, ctx, terrain, entity, order, here, avoid, targets } = errand;
+  // A queued player intent continues from the current stock/stow point. Only the final intent walks
+  // back to the shared issue position, avoiding a potentially huge round trip between equipment types.
+  if (order.issuer === 'player' && promoteQueuedEquipOrder(errand)) return true;
   // A recruit weapon errand chains its armor want from the store it stands at rather than walking
   // in between, so one outing dresses the recruit and finishes at the final stock source.
   if (order.issuer === 'assistant-recruit' && order.group === 'weapon') {
@@ -231,13 +234,17 @@ function endErrand(errand: EquipErrand): boolean {
 
 /** Finish the active intent and promote the next player intent, if any. */
 function finishEquipOrder(errand: EquipErrand): boolean {
-  const { world, ctx, entity, settler, order } = errand;
+  if (promoteQueuedEquipOrder(errand)) return true;
+  errand.world.remove(errand.entity, EquipOrder);
+  return false;
+}
+
+/** Promote the next still-valid player intent without an intermediate return trip. */
+function promoteQueuedEquipOrder(errand: EquipErrand): boolean {
+  const { ctx, settler, order } = errand;
   for (;;) {
     const next = order.queued?.shift();
-    if (next === undefined) {
-      world.remove(entity, EquipOrder);
-      return false;
-    }
+    if (next === undefined) return false;
     if (!playerIntentAllowed(ctx, settler, next)) continue;
     order.group = next.group;
     order.slot = next.slot;
