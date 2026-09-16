@@ -79,6 +79,22 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(owned.length).toBe(targetsOver(fullScene).owned().length - 1);
   });
 
+  it('exposes visible resource nodes as right-click targets', () => {
+    const resource = {
+      ref: 90_020,
+      kind: 'resource',
+      x: 120,
+      y: 80,
+      depth: 80,
+      goodType: 4,
+    } satisfies DrawItem;
+
+    expect(targetsOver([resource]).resources()).toEqual([
+      { ref: resource.ref, x: resource.x, y: resource.y, kind: 'resource', box: undefined },
+    ]);
+    expect(targetsOver([{ ...resource, ghost: true }]).resources()).toEqual([]);
+  });
+
   it('never targets a fog ghost or the force-drawn portrait subject', () => {
     // A remembered enemy structure the fog has swallowed, and our own selected settler force-drawn for
     // the details-panel portrait: both are in the draw list, neither is under the cursor.

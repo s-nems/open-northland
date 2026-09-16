@@ -23,7 +23,7 @@ const HIVE = 11;
 const BAKERY = 12;
 const BREWERY = 13;
 const WAREHOUSE = 7; // testContent's general storage - extended below to stock the utility outputs
-const PICKUP_ATOMIC = 22; // water binds no produce atomic → the draw falls back to the pickup gesture
+const WELL_DRAW_ATOMIC = 44;
 const HONEY_PRODUCE_ATOMIC = 45; // honey binds this produce atomic → the draw uses it
 
 const DRAW_TICKS = 4; // the well/hive recipe's own work time (small, so a self-service run closes fast)
@@ -61,7 +61,7 @@ function utilityContent(): ContentSet {
       // draws its own by running the recipe in place.
       {
         typeId: WELL,
-        id: 'well',
+        id: 'work_well_00',
         kind: 'workplace',
         workers: [{ jobType: CARRIER, count: 1 }],
         stock: [{ goodType: WATER, capacity: 1, initial: 0 }],
@@ -70,7 +70,7 @@ function utilityContent(): ContentSet {
       },
       {
         typeId: HIVE,
-        id: 'hive',
+        id: 'work_hive_00',
         kind: 'workplace',
         workers: [{ jobType: CARRIER, count: 1 }],
         stock: [{ goodType: HONEY, capacity: 1, initial: 0 }],
@@ -140,7 +140,7 @@ describe('utility self-service - MODE 1: a consumer draws a missing input from a
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 3, 0));
   });
 
-  it('draws water in place when standing on the well (the fallback gesture, no produce atomic bound)', () => {
+  it('draws water in place with the well pump action', () => {
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const bakery = buildingAt(sim, BAKERY, 3, 0); // the bakery, elsewhere
     const well = buildingAt(sim, WELL, 0, 0);
@@ -149,12 +149,12 @@ describe('utility self-service - MODE 1: a consumer draws a missing input from a
     plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(baker, CurrentAtomic);
-    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic.atomicId).toBe(WELL_DRAW_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'draw', goodType: WATER, utility: well });
     expect(atomic.duration).toBe(DRAW_TICKS); // the well recipe's own work time
   });
 
-  it('draws honey from the hive with the same neutral gesture (ignoring the good’s produce atomic)', () => {
+  it('draws honey from the hive with the original hive pick-up action', () => {
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const brewery = buildingAt(sim, BREWERY, 3, 0);
     const hive = buildingAt(sim, HIVE, 0, 0);
@@ -163,9 +163,7 @@ describe('utility self-service - MODE 1: a consumer draws a missing input from a
     plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(brewer, CurrentAtomic);
-    // Honey binds a produce atomic (HONEY_PRODUCE_ATOMIC) but the draw uses the neutral pickup gesture
-    // for every good and worker - the drawer's trade is not the utility's (no beekeeper-only animation).
-    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic.atomicId).toBe(HONEY_PRODUCE_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'draw', goodType: HONEY, utility: hive });
   });
 

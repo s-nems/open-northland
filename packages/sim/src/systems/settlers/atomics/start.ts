@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  Building,
   CARRY_CAPACITY,
   Carrying,
   CurrentAtomic,
@@ -63,6 +64,10 @@ export const EXERCISE_ATOMIC_ID = 89;
 /** The original's generic pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good
  *  pickup. */
 export const PICKUP_ATOMIC_ID = 22;
+
+/** The utility-specific draw actions selected by the original from the target house type. */
+export const WELL_DRAW_ATOMIC_ID = 44;
+export const HIVE_DRAW_ATOMIC_ID = 45;
 
 /** The build-house slot bound for the builder job across every tribe (source basis
  *  `DataCnmd/tribetypes12/tribetypes.ini` and the builder's `allowatomic 39` in `jobtypes.ini`). */
@@ -155,12 +160,28 @@ export function startPickup(
 }
 
 /**
- * Issue the `draw` atomic against a shared utility such as a well or a hive. `ticks` is the utility
- * recipe's work time to extract one unit, not an animation length. Approximation: no crank animation is
- * decoded, so the gesture reuses the generic goods-handling clip.
+ * Issue the utility-specific `draw` atomic. The original chooses action 44 for `work_well_00` and 45 for
+ * `work_hive_00`; another input-less producer falls back to the generic pick-up. `ticks` remains the
+ * utility recipe's authored work time, so the render loops the gesture until one unit is ready.
  */
-export function startDraw(world: World, e: Entity, goodType: number, utility: Entity, ticks: number): void {
-  startAtomic(world, e, PICKUP_ATOMIC_ID, { kind: 'draw', goodType, utility }, ticks, utility);
+export function startDraw(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  goodType: number,
+  utility: Entity,
+  ticks: number,
+): void {
+  const building = world.tryGet(utility, Building);
+  const id =
+    building === undefined ? undefined : contentIndex(ctx.content).buildings.get(building.buildingType)?.id;
+  const atomicId =
+    id === 'work_well_00'
+      ? WELL_DRAW_ATOMIC_ID
+      : id === 'work_hive_00'
+        ? HIVE_DRAW_ATOMIC_ID
+        : PICKUP_ATOMIC_ID;
+  startAtomic(world, e, atomicId, { kind: 'draw', goodType, utility }, ticks, utility);
 }
 
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {

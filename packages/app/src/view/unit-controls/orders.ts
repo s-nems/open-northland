@@ -46,6 +46,9 @@ export interface UnitOrderController {
   /** `onBuilding` is a building resolved from a marker rather than the world pixel under the cursor
    *  (a garrison flag hangs far above the tower it stands for). */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): void;
+  /** Move the selected gatherers' work flags to a world click; clicking a resource also narrows their
+   *  gathering filter to that resource's good. */
+  issueSetWorkFlagAt(event: MouseEvent): void;
   /** The ground orders name a half-cell node rather than a cursor, so the map overview can issue them
    *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. */
   issueSetWorkFlag(target: Tile): void;
@@ -233,11 +236,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
   };
 
-  const issueSetWorkFlag = (target: Tile): void => {
+  const issueSetWorkFlag = (target: Tile, goodType?: number): void => {
     const movers = deps.targets.ownedSettlersIn(deps.selected());
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const flag = clampTile(target, width, height);
+    const snapshot = deps.snapshot();
     for (const mover of movers) {
       deps.enqueue({
         kind: 'setWorkFlag',
@@ -245,12 +249,31 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         x: flag.col,
         y: flag.row,
       });
+      if (goodType === undefined) continue;
+      const settler = entityById(snapshot, mover.ref);
+      const jobType = settler === undefined ? undefined : settlerJobType(settler);
+      if (jobType === undefined || !systems.jobCanHarvestGood({ content: deps.content }, jobType, goodType)) {
+        continue;
+      }
+      deps.enqueue({ kind: 'setGatherGood', entity: mover.ref as Entity, goodType });
     }
+  };
+
+  const issueSetWorkFlagAt = (event: MouseEvent): void => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const resource = pickTopAt(deps.targets.resources(), world.x, world.y);
+    const entity = resource === null ? undefined : entityById(deps.snapshot(), resource);
+    const value = entity?.components.Resource as { goodType?: unknown } | undefined;
+    issueSetWorkFlag(
+      worldToTile(world.x, world.y, deps.elevation),
+      typeof value?.goodType === 'number' ? value.goodType : undefined,
+    );
   };
 
   return {
     dispose: () => closeSchool?.(),
     issueRightClick,
+    issueSetWorkFlagAt,
     issueSetWorkFlag,
     issueMoveTo,
     issueAttackMove,

@@ -33,6 +33,8 @@ export interface SettlerActions {
   update(camera: Camera, snapshot: WorldSnapshot): void;
   /** Toggle/step the menu (Space): closed→menu, jobs→menu, menu→closed. */
   toggle(atClient?: { readonly x: number; readonly y: number }): void;
+  /** Open the profession list directly for the live selected settlers. */
+  openProfessions(targets: readonly number[]): void;
   /**
    * Open the default action menu, idempotent to the `menu` face. `atClient` pins it on that client
    * (CSS) point, as the original pins on the cursor at bring-up; omitted, it pins on the centroid.

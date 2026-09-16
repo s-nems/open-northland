@@ -33,6 +33,11 @@ export const FISH_FAILED_ATOMIC = 38;
 export const STORE_PICKUP_ATOMIC = 22;
 export const STORE_PILEUP_ATOMIC = 23;
 
+/** Drawing water from a well and honey from a hive. The original selects these actions from the
+ *  utility's building type: the well pumps, while the hive reuses the generic pick-up bend. */
+export const WELL_DRAW_ATOMIC = 44;
+export const HIVE_DRAW_ATOMIC = 45;
+
 /**
  * The combat attack swing (`setatomic <job> 81 "..._attack"`). Its animation is the directional
  * `FrameListAnim` layout, not a bobseq range, so a melee pool is not `length / 8`.

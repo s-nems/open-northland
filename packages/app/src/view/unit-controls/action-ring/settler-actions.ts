@@ -220,6 +220,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         else if (mode === 'menu') closeMenu();
         else openMenu(atClient);
       },
+      openProfessions: (targets): void => {
+        actionTargets = [...targets];
+        openJobWindow();
+      },
       open: openMenu,
       close: closeMenu,
       claimsPointer: input.claimsPointer,

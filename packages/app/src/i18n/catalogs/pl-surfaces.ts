@@ -164,6 +164,7 @@ export const plSurfaces = {
         panDown: 'Przesuwanie mapy w dół',
         pauseToggle: 'Pauza',
         actionRing: 'Pierścień akcji jednostki',
+        professionPicker: 'Lista zawodów osadnika',
         attackMove: 'Atak w marszu',
         cancel: 'Anuluj / zamknij / odznacz',
         addToSelection: 'Dodawanie do zaznaczenia',

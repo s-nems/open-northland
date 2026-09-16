@@ -99,6 +99,17 @@ describe('buildScene - settler facing derivation', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // E, toward the water
   });
 
+  it('a worker drawing from a well (atomic 44) faces the utility', () => {
+    const worker = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 44, elapsed: 30, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 },
+    });
+    const well = entity(2, 2, 1, { Building: { buildingType: 10, built: ONE } });
+    const scene = buildScene(snapshotOf([worker, well]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4);
+  });
+
   it('a builder (atomic 39) faces the construction site from either side', () => {
     // The builder stands east of the site with a stale path still pointing east. Action 39 has authored
     // per-direction hammer lists, so the facing selects real frames.

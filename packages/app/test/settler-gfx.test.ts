@@ -305,17 +305,23 @@ describe('characterBinding', () => {
     const spec = {
       gfxJobs: [6],
       waitSeq: 'wait',
-      atomics: { 10: { seq: 'eat' }, 12: { seq: 'pray', ticksPerFrame: 2 } },
+      atomics: {
+        10: { seq: 'eat' },
+        12: { seq: 'pray', ticksPerFrame: 2 },
+        22: { seq: 'eat', loop: true },
+      },
     } as const;
     const programsByAction = new Map([
       [10, new Map([['eat', { dirFrames: [[0, 1, 1, 2]], mode: 1 }]])],
       [12, new Map([['pray', { dirFrames: [[3, 4, 4, 5]], mode: 0 }]])],
+      [22, new Map([['eat', { dirFrames: [[0, 1, 1, 2]], mode: 0 }]])],
     ]);
-    // The authored list replaces the strip reading entirely; the cadence override still applies, and
-    // only the mode-1 record loops.
+    // The authored list replaces the strip reading entirely; cadence and an explicit long-action loop
+    // still apply, while an ordinary mode-0 record remains one-shot.
     expect(characterBinding(spec, seqs, [], { programsByAction })?.byAtomic).toEqual({
       10: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
       12: { start: 1647, frameLists: [[3, 4, 4, 5]], ticksPerFrame: 2 },
+      22: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
     });
   });
 

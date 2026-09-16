@@ -141,7 +141,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     if (pickMode.handleMouseDown(e)) return;
     if (e.button === 2) {
-      if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(nodeAt(e.clientX, e.clientY));
+      if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlagAt(e);
       else {
         const w = toWorld(e.clientX, e.clientY);
         const marker = clickHits.doorMarkerAt(w.x, w.y);
@@ -183,6 +183,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (isActionHotkey(e, opts.bindings, 'actionRing')) {
       e.preventDefault(); // Space (the default binding) would otherwise scroll the page
       chrome.actions().toggle(pointer ?? undefined);
+    } else if (isActionHotkey(e, opts.bindings, 'professionPicker')) {
+      const ids = [...selection.ids()];
+      if (allowedActions(opts.content, opts.snapshot(), ids).has('changeProfession')) {
+        chrome.actions().openProfessions(ids);
+      }
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
       armAttackMove();
     } else if (e.code === 'Escape') {

@@ -161,6 +161,7 @@ describe('pick-mode highlight cost', () => {
         flags: () => [],
         signposts: () => [],
         chests: () => [],
+        resources: () => [],
         wildlife: () => [],
         ownedSettlersIn: () => [],
       },

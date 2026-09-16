@@ -41,6 +41,8 @@ export interface UnitTargets {
   /** The closed chests on screen - the "open chest" click's targets. A chest is nobody's, so every seat
    *  may send a settler to it. */
   chests(): Pickable[];
+  /** Visible resource nodes that a selected gatherer may use as its resource-filter target. */
+  resources(): Pickable[];
   /**
    * The wild creatures on screen - the "attack animal" order's targets. Claimed livestock carries an
    * owner and is property rather than game, so it stays out, exactly as the sim's ordered-target rule
@@ -171,6 +173,15 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         if (it.kind !== 'chest' || !isHitTarget(it)) continue;
+        out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
+      }
+      return out;
+    },
+
+    resources(): Pickable[] {
+      const out: Pickable[] = [];
+      for (const it of deps.drawnItems()) {
+        if (it.kind !== 'resource' || !isHitTarget(it)) continue;
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
       }
       return out;

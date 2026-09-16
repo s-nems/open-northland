@@ -20,6 +20,7 @@ describe('parseKeyBindings', () => {
     expect(parsed.pauseToggle).toBe('KeyO');
     expect(parsed.panLeft).toBe('ArrowLeft');
     expect(parsed.actionRing).toBe('Space');
+    expect(parsed.professionPicker).toBe('KeyC');
   });
 
   it('drops an invalid or unbindable code to the default', () => {

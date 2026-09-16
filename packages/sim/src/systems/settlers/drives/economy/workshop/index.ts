@@ -156,7 +156,7 @@ function routeToInputSource(
   // A draw runs the utility recipe's own `ticks`, its work time for one unit.
   const ticks = recipesByProductOf(world, ctx, source.utility)?.get(source.goodType)?.ticks ?? 1;
   atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.utility, here), () =>
-    startDraw(world, entity, source.goodType, source.utility, ticks),
+    startDraw(world, ctx, entity, source.goodType, source.utility, ticks),
   );
 }
 

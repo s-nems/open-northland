@@ -9,6 +9,7 @@ import {
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
   HARVEST_CADAVER_ATOMIC,
+  HIVE_DRAW_ATOMIC,
   IRON_HARVEST_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
@@ -20,6 +21,7 @@ import {
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   TALK_ATOMIC,
+  WELL_DRAW_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
 import {
@@ -92,10 +94,19 @@ export interface CharacterSpec {
   readonly carryPrefix?: string;
   /**
    * Atomic id → its action sequence on this body (the `setatomic` join). `phaseStart` tunes only the strip
-   * fallback, `ticksPerFrame` applies to that and to the authored frame lists.
+   * fallback, `ticksPerFrame` applies to that and to the authored frame lists, and `loop` repeats a gesture
+   * whose sim action intentionally outlasts one authored playthrough.
    */
   readonly atomics?: Readonly<
-    Record<number, { readonly seq: string; readonly phaseStart?: number; readonly ticksPerFrame?: number }>
+    Record<
+      number,
+      {
+        readonly seq: string;
+        readonly phaseStart?: number;
+        readonly ticksPerFrame?: number;
+        readonly loop?: true;
+      }
+    >
   >;
   /**
    * The attack swing bobseq name. Its layout comes from the per-facing frame lists, so the name must be
@@ -149,6 +160,8 @@ export const CHARACTER_SPECS = {
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [OPEN_CHEST_ATOMIC]: { seq: PICKUP_SEQ },
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
+      [WELL_DRAW_ATOMIC]: { seq: 'human_man_fountain_push', loop: true },
+      [HIVE_DRAW_ATOMIC]: { seq: PICKUP_SEQ, loop: true },
     },
   },
   scout: {

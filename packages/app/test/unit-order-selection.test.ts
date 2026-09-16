@@ -1,6 +1,7 @@
 import { halfCellToScreen } from '@open-northland/render';
 import { type Command, fx, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import type { Tile } from '../src/view/picking.js';
 import { createUnitOrderController, type UnitOrderController } from '../src/view/unit-controls/orders.js';
@@ -63,6 +64,7 @@ const targets: UnitTargets = {
   flags: () => [],
   signposts: () => [],
   chests: () => [],
+  resources: () => [],
   wildlife: () => [],
   ownedSettlersIn: (refs) =>
     UNITS.filter((u) => refs.has(u.id)).map((u) => {
@@ -140,6 +142,79 @@ describe('unit orders against a selection that moves under them', () => {
       { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
       { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
       { kind: 'setWorkFlag', entity: GUARD.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
+    ]);
+  });
+
+  it('keeps plain right-click on a resource as an ordinary move order', () => {
+    const issued: Command[] = [];
+    const resource = { id: 50, goodType: 3, at: OPEN_GROUND };
+    const p = halfCellToScreen(resource.at.hx, resource.at.hy);
+    const resourceTargets: UnitTargets = {
+      ...targets,
+      resources: () => [{ ref: resource.id, x: p.x, y: p.y, kind: 'resource' }],
+    };
+    const snapshot = snapshotOf([
+      ...UNITS.map((unit) =>
+        unit === SCOUT
+          ? {
+              ...standing(unit),
+              components: { ...standing(unit).components, Settler: { jobType: JOB_COLLECTOR } },
+            }
+          : standing(unit),
+      ),
+      { id: resource.id, components: { Resource: { goodType: resource.goodType } } },
+    ]);
+    const orders = createUnitOrderController({
+      selected: () => new Set([SCOUT.id]),
+      targets: resourceTargets,
+      snapshot: () => snapshot,
+      content: CONTENT,
+      mapSize: MAP_SIZE,
+      toWorld: (clientX, clientY) => ({ x: clientX, y: clientY }),
+      enqueue: (command) => issued.push(command),
+      selectOwnSettler: () => {},
+      openActions: () => {},
+    });
+
+    orders.issueRightClick(clickOn(resource.at));
+
+    expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: resource.at.hx, y: resource.at.hy }]);
+  });
+
+  it('moves the work flag and changes the gatherer filter on Ctrl+right-click over a resource', () => {
+    const issued: Command[] = [];
+    const p = halfCellToScreen(OPEN_GROUND.hx, OPEN_GROUND.hy);
+    const snapshot = snapshotOf([
+      ...UNITS.map((unit) =>
+        unit === SCOUT
+          ? {
+              ...standing(unit),
+              components: { ...standing(unit).components, Settler: { jobType: JOB_COLLECTOR } },
+            }
+          : standing(unit),
+      ),
+      { id: 50, components: { Resource: { goodType: 3 } } },
+    ]);
+    const orders = createUnitOrderController({
+      selected: () => new Set([SCOUT.id]),
+      targets: {
+        ...targets,
+        resources: () => [{ ref: 50, x: p.x, y: p.y, kind: 'resource' }],
+      },
+      snapshot: () => snapshot,
+      content: CONTENT,
+      mapSize: MAP_SIZE,
+      toWorld: (clientX, clientY) => ({ x: clientX, y: clientY }),
+      enqueue: (command) => issued.push(command),
+      selectOwnSettler: () => {},
+      openActions: () => {},
+    });
+
+    orders.issueSetWorkFlagAt(clickOn(OPEN_GROUND));
+
+    expect(issued).toEqual([
+      { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
+      { kind: 'setGatherGood', entity: SCOUT.id, goodType: 3 },
     ]);
   });
 });

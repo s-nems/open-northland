@@ -168,6 +168,7 @@ export const enSurfaces = {
         panDown: 'Pan map down',
         pauseToggle: 'Pause',
         actionRing: 'Unit action ring',
+        professionPicker: 'Settler profession list',
         attackMove: 'Attack-move',
         cancel: 'Cancel / close / deselect',
         addToSelection: 'Add to selection',

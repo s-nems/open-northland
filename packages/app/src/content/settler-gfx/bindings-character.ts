@@ -165,7 +165,7 @@ export function characterBinding(
       byAtomic[Number(atomicId)] = {
         start: row.start,
         frameLists: frameListsByFacing(program.dirFrames),
-        ...(program.mode === GFX_ANIM_MODE_LOOP ? { loop: true } : {}),
+        ...(program.mode === GFX_ANIM_MODE_LOOP || action.loop === true ? { loop: true } : {}),
         ...(action.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
       };
       continue;
@@ -180,6 +180,7 @@ export function characterBinding(
       ...anim,
       ...(action.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
       ...(action.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
+      ...(action.loop === true ? { loop: true } : {}),
     };
   }
 

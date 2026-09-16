@@ -36,6 +36,7 @@ const targets: UnitTargets = {
   flags: () => [],
   signposts: () => [],
   chests: () => [],
+  resources: () => [],
   wildlife: () => [],
   ownedSettlersIn: (refs) =>
     refs.has(SCOUT.id) ? [{ ref: SCOUT.id, ...halfCellToScreen(SCOUT.col * 2, SCOUT.row * 2) }] : [],

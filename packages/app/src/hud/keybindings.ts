@@ -6,6 +6,7 @@ export const KEYBINDING_ACTIONS = [
   'panRight',
   'pauseToggle',
   'actionRing',
+  'professionPicker',
   'attackMove',
 ] as const;
 
@@ -21,6 +22,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panDown: 'ArrowDown',
   pauseToggle: 'KeyP',
   actionRing: 'Space',
+  professionPicker: 'KeyC',
   attackMove: 'KeyA',
 };
 
