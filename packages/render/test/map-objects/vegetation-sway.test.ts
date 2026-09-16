@@ -21,6 +21,36 @@ const tree: MapObjectSprite = {
 };
 
 describe('own vegetation breeze', () => {
+  it('smooths only enabled breeze between ticks and restores the baseline immediately', () => {
+    const container = new Container();
+    const layer = new MapObjectLayer(container, new TextureCache());
+    // Keep an authored multi-frame sequence beside the breeze: fractional time must not select frames.
+    layer.set([{ ...tree, frames: [frame, { ...frame, x: 8 }] }]);
+    layer.update(WIDE, 20, undefined, undefined, 20);
+    const sprite = container.children[0];
+    if (!(sprite instanceof Sprite)) throw new Error('Missing tree');
+    const baselineX = sprite.x;
+    const baselineTexture = sprite.texture;
+    layer.update(WIDE, 20, undefined, undefined, 20.5);
+    expect(sprite.x).toBe(baselineX);
+    layer.setEnvironmentMotion(true);
+    layer.update(WIDE, 20, undefined, undefined, 20.5);
+    expect(sprite.x).not.toBe(baselineX);
+    expect(sprite.texture).toBe(baselineTexture);
+    sprite.updateLocalTransform();
+    const root = sprite.localTransform.apply({ x: 4, y: 7 });
+    expect(root.x).toBeCloseTo(tree.x, 10);
+    expect(root.y).toBeCloseTo(tree.y, 10);
+    layer.update(WIDE, 20, () => FOG_STATE.EXPLORED, 1, 20.6);
+    const frozenX = sprite.x;
+    layer.update(WIDE, 20, () => FOG_STATE.EXPLORED, 1, 20.9);
+    expect(sprite.x).toBe(frozenX);
+    layer.setEnvironmentMotion(false);
+    layer.update(WIDE, 20, undefined, undefined, 20.9);
+    expect(sprite.x).toBe(baselineX);
+    layer.destroy();
+  });
+
   it('moves the crown, fixes the root and freezes under fog', () => {
     const container = new Container();
     const layer = new MapObjectLayer(container, new TextureCache());
@@ -53,6 +83,9 @@ describe('own vegetation breeze', () => {
     };
     const item = { kind: 'resource' as const, ref: 1, x: tree.x, y: tree.y, depth: 0 };
     expect(resolveLayers(sheet, item, 20)?.[0]?.shear).toBe(vegetationShear(20, tree.x, tree.y, 0.01));
+    expect(resolveLayers(sheet, item, 20, 20, 20.5)?.[0]?.shear).toBe(
+      vegetationShear(20.5, tree.x, tree.y, 0.01),
+    );
     expect(resolveLayers(sheet, { ...item, ghost: true }, 20)?.[0]?.shear).toBe(
       vegetationShear(0, tree.x, tree.y, 0.01),
     );

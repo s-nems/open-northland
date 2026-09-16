@@ -36,6 +36,7 @@ import {
   NO_SIGNS,
   NO_WORK_AREAS,
   SPRITE_CULL_MARGIN,
+  type WorldEnhancements,
   type WorldFrame,
   type WorldRendererOptions,
 } from './frame.js';
@@ -69,6 +70,11 @@ export class WorldRenderer {
 
   private readonly viewSmoothing: boolean;
   private readonly playerColourOf: ((player: number) => number) | undefined;
+  private enhancements: WorldEnhancements = {
+    enhancedSampling: false,
+    softShadows: false,
+    environmentMotion: false,
+  };
 
   constructor(app: Application, opts?: WorldRendererOptions) {
     this.app = app;
@@ -100,6 +106,14 @@ export class WorldRenderer {
     this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true, opts?.spriteSmoothing);
     this.chrome.attach(app.stage);
     app.stage.addChild(this.hud.container);
+    if (opts?.enhancements !== undefined) this.setGraphicsEnhancements(opts.enhancements);
+  }
+
+  setGraphicsEnhancements(next: WorldEnhancements): void {
+    this.enhancements = { ...next };
+    this.textureCache.setSoftShadows(next.softShadows);
+    this.terrain.setEnvironmentMotion(next.environmentMotion);
+    this.mapObjects.setEnvironmentMotion(next.environmentMotion);
   }
 
   setPaused(paused: boolean): void {
@@ -187,7 +201,9 @@ export class WorldRenderer {
     const snapResolution = this.viewSmoothing ? this.app.renderer.resolution : undefined;
     const camera =
       snapResolution === undefined ? frame.camera : snapCameraToDevicePixels(frame.camera, snapResolution);
-    if (this.viewSmoothing) this.chrome.applyWorldSampling(camera.scale ?? 1);
+    if (this.viewSmoothing) {
+      this.chrome.applyWorldSampling(camera.scale ?? 1, this.enhancements.enhancedSampling);
+    }
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
     // Cull anchors and AABBs stay pre-lift, so without the extra `maxLift` a chunk or sprite baked up a
@@ -201,7 +217,7 @@ export class WorldRenderer {
     this.terrain.cull(vp);
     this.terrain.animate(tick + alpha);
     const fogFrame = this.fog.update(snapshot, vp);
-    this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
+    this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha);
     const portraitRef = this.portrait.subjectRef();
     this.pool.reconcile({
       snapshot,
@@ -213,6 +229,8 @@ export class WorldRenderer {
       elevation: this.elevation,
       alpha,
       snapResolution,
+      enhancedSampling: this.enhancements.enhancedSampling,
+      environmentMotion: this.enhancements.environmentMotion,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),

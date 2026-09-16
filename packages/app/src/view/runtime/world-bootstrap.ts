@@ -10,6 +10,7 @@ import {
 import { diag } from '../../diag/index.js';
 import { messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
+import { graphicsEnhancementsFor } from '../graphics-enhancements.js';
 import { mountMessage, navButton } from '../overlay.js';
 import { postFxParam } from '../params.js';
 import { readStoredSettings } from '../settings-store.js';
@@ -43,6 +44,7 @@ export function createWorldRenderer(
   playerColourOf?: (player: number) => number,
 ): WorldRenderer {
   return new WorldRenderer(app, {
+    enhancements: graphicsEnhancementsFor(params, readStoredSettings()),
     sheet,
     viewSmoothing: true,
     spriteSmoothing: readStoredSettings().spriteSmoothing,

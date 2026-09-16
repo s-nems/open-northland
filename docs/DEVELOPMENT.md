@@ -171,6 +171,15 @@ stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reprodu
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
 
+The graphics-polish experiment adds three live Graphics switches: softer pixels (including
+palette-resolved original characters), soft shadows, and environment motion. They default on in
+this experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
+`polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of these
+switches saves the effective set and clears the URL override. Use the same map, camera and zoom for
+A/B review, including ×2 and zoom-out while panning. Original tree frame animations remain intact;
+the motion experiment changes water and the breeze on own vegetation. Shadow bakes have an 8 MiB
+RGBA budget plus CPU copies and fall back to original shadows when unavailable or over budget.
+
 Debug modes:
 
 - `debug=diag` records replay and state-hash diagnostics;

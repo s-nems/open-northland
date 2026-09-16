@@ -105,6 +105,14 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     return (this.vars.uniforms.uFlip[0] ?? 0) > 0.5;
   }
 
+  /** Resolve neighbouring palette entries before blending; never interpolate the stored indices. */
+  set smoothSampling(on: boolean) {
+    const next = on ? 1 : 0;
+    if (this.vars.uniforms.uSampling[0] === next) return;
+    this.vars.uniforms.uSampling[0] = next;
+    this.vars.update();
+  }
+
   /**
    * Point the sprite at one atlas frame: bind the indexed atlas source and rewrite the quad to the frame's
    * native pixel size at its draw offset, with UVs into the `atlasWidth × atlasHeight` sheet. Screen

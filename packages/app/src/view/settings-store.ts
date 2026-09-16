@@ -36,6 +36,9 @@ export interface MenuSettings {
   /** The world post pass: a warm-graded vignette over the world, under the HUD. */
   readonly postFxEnabled: boolean;
   readonly spriteSmoothing: boolean;
+  readonly enhancedSampling: boolean;
+  readonly softShadows: boolean;
+  readonly environmentMotion: boolean;
   readonly fpsLimit: FpsLimit;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
@@ -66,6 +69,9 @@ export function defaultSettings(): MenuSettings {
     uiScaleFactor: DEFAULT_UI_SCALE_FACTOR,
     postFxEnabled: true,
     spriteSmoothing: true,
+    enhancedSampling: true,
+    softShadows: true,
+    environmentMotion: true,
     fpsLimit: null,
     soundEnabled: true,
     soundVolume: DEFAULT_SFX_VOLUME,
@@ -128,6 +134,11 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     postFxEnabled: typeof record.postFxEnabled === 'boolean' ? record.postFxEnabled : defaults.postFxEnabled,
     spriteSmoothing:
       typeof record.spriteSmoothing === 'boolean' ? record.spriteSmoothing : defaults.spriteSmoothing,
+    enhancedSampling:
+      typeof record.enhancedSampling === 'boolean' ? record.enhancedSampling : defaults.enhancedSampling,
+    softShadows: typeof record.softShadows === 'boolean' ? record.softShadows : defaults.softShadows,
+    environmentMotion:
+      typeof record.environmentMotion === 'boolean' ? record.environmentMotion : defaults.environmentMotion,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),

@@ -9,6 +9,17 @@ import {
 import { createGameViewportCoordinator } from '../src/view/runtime/game-viewport.js';
 import { defaultSettings } from '../src/view/settings-store.js';
 
+it('applies a graphics experiment immediately without changing the other two choices', async () => {
+  const h = harness();
+  await h.settings.update({ softShadows: false });
+  expect(h.settings.current().softShadows).toBe(false);
+  expect(h.setGraphicsEnhancements).toHaveBeenCalledWith({
+    enhancedSampling: true,
+    softShadows: false,
+    environmentMotion: true,
+  });
+});
+
 function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const persist = vi.fn();
   const setUiScaleFactor = vi.fn(async () => true);
@@ -19,6 +30,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setKeyBindings = vi.fn();
   const setCameraInputSettings = vi.fn();
   const setDebugToolsEnabled = vi.fn();
+  const setGraphicsEnhancements = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
       ...defaultSettings(),
@@ -37,6 +49,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setKeyBindings,
     setCameraInputSettings,
     setDebugToolsEnabled,
+    setGraphicsEnhancements,
     ...overrides,
   });
   return {
@@ -50,6 +63,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setKeyBindings,
     setCameraInputSettings,
     setDebugToolsEnabled,
+    setGraphicsEnhancements,
   };
 }
 

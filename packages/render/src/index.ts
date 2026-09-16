@@ -191,6 +191,7 @@ export { TextureCache } from './gpu/texture-cache.js';
 export {
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,
+  type WorldEnhancements,
   type WorldFrame,
   WorldRenderer,
   type WorldRendererOptions,

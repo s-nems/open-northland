@@ -10,6 +10,20 @@ function atlas(cache: TextureCache, scaleMode: 'nearest' | 'linear'): TextureSou
 }
 
 describe('world sprite smoothing', () => {
+  it('switches enhanced magnification off live and restores the original source on dispose', () => {
+    const cache = new TextureCache();
+    const source = atlas(cache, 'nearest');
+    const chrome = new WorldChrome(cache, false, false);
+    chrome.applyWorldSampling(2, true);
+    expect(source.scaleMode).toBe('linear');
+    chrome.applyWorldSampling(2, false);
+    expect(source.scaleMode).toBe('nearest');
+    chrome.applyWorldSampling(2, true);
+    chrome.destroy();
+    expect(source.scaleMode).toBe('nearest');
+    cache.clear();
+    source.destroy();
+  });
   it('keeps sampling disabled at every zoom', () => {
     const cache = new TextureCache();
     const source = atlas(cache, 'nearest');

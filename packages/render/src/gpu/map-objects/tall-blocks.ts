@@ -80,6 +80,8 @@ export class TallObjectLayer {
   private blockByObject = new Map<MapObjectSprite, TallBlock>();
   /** The animation tick the tall-object frames were last refreshed for. */
   private lastAnimTick = -1;
+  private lastMotionTime = -1;
+  private lastShadowRevision = -1;
 
   /** Tall objects attach to `spriteLayer` so they interleave with entities in one painter order. */
   constructor(
@@ -164,7 +166,7 @@ export class TallObjectLayer {
 
   /** Bind the pose at `clock` onto a member's sprites. False when that pose has no frame, which
    *  leaves the member untouched. */
-  private bindPose(po: PooledObject, sprite: Sprite, clock: number): boolean {
+  private bindPose(po: PooledObject, sprite: Sprite, clock: number, motionTime: number): boolean {
     const obj = po.obj;
     const frameIndex = objectFrameIndexAt(obj, clock);
     const frame = obj.frames[frameIndex];
@@ -172,7 +174,7 @@ export class TallObjectLayer {
     // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
     const lift = obj.lift ?? 0;
     sprite.texture = this.textures.get(obj.source, frame);
-    const shear = vegetationShear(clock, obj.x, obj.y, obj.sway ?? 0);
+    const shear = vegetationShear(motionTime, obj.x, obj.y, obj.sway ?? 0);
     setVegetationShear(sprite, obj.scale, shear);
     sprite.position.set(
       obj.x + (frame.offsetX + frame.offsetY * shear) * obj.scale,
@@ -182,7 +184,7 @@ export class TallObjectLayer {
       const shadowFrame = obj.shadow.frames[frameIndex];
       po.shadowSprite.visible = shadowFrame !== undefined; // a pose with no silhouette just hides it
       if (shadowFrame !== undefined) {
-        po.shadowSprite.texture = this.textures.get(obj.shadow.source, shadowFrame);
+        po.shadowSprite.texture = this.textures.getShadow(obj.shadow.source, shadowFrame);
         po.shadowSprite.position.set(
           obj.x + shadowFrame.offsetX * obj.scale,
           obj.y - lift + shadowFrame.offsetY * obj.scale,
@@ -198,8 +200,15 @@ export class TallObjectLayer {
    * dimmed with its animation frozen, since a ghost is a memory, not a live feed - and a virgin map
    * object never changes until first worked, so the real object is its own last-seen ghost.
    */
-  update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
+  update(
+    vp: Viewport,
+    tick: number,
+    fogStateOfCell?: (cellX: number, cellY: number) => number,
+    motionTime: number = tick,
+  ): void {
     const animAdvanced = tick !== this.lastAnimTick;
+    const motionAdvanced = motionTime !== this.lastMotionTime;
+    const shadowsChanged = this.lastShadowRevision !== this.textures.shadowRevision;
     for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
@@ -228,9 +237,11 @@ export class TallObjectLayer {
         // The frozen/live pose switches with the tint.
         const rebind =
           !po.attached ||
+          shadowsChanged ||
           watched !== po.lastWatched ||
-          (watched && animAdvanced && (obj.frames.length > 1 || obj.sway !== undefined));
-        if (rebind && !this.bindPose(po, sprite, watched ? tick : 0)) continue;
+          (watched && animAdvanced && obj.frames.length > 1) ||
+          (watched && motionAdvanced && obj.sway !== undefined);
+        if (rebind && !this.bindPose(po, sprite, watched ? tick : 0, watched ? motionTime : 0)) continue;
         po.lastWatched = watched;
         if (!po.attached) {
           this.spriteLayer.addChild(sprite);
@@ -241,6 +252,8 @@ export class TallObjectLayer {
       }
     }
     this.lastAnimTick = tick;
+    this.lastMotionTime = motionTime;
+    this.lastShadowRevision = this.textures.shadowRevision;
   }
 
   /** Free the tall-object sprites (a map change re-invalidates them). */
@@ -254,5 +267,7 @@ export class TallObjectLayer {
     this.blocks.clear();
     this.blockByObject.clear();
     this.lastAnimTick = -1;
+    this.lastMotionTime = -1;
+    this.lastShadowRevision = -1;
   }
 }

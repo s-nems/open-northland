@@ -61,6 +61,7 @@ export function presentItem(
   tick: number,
   frameAlpha: number,
   sheet: SpriteSheet | undefined,
+  environmentMotion = false,
 ): ResolvedLayer[] | null {
   if (track.motion.tick === -1) track.atomicPose.item = undefined;
   const atomic = atomicPose(item, tick, track.atomicPose);
@@ -86,5 +87,6 @@ export function presentItem(
     revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal),
     clocks.animation,
     clocks.gait,
+    environmentMotion ? tick + frameAlpha : clocks.animation,
   );
 }

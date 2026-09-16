@@ -154,6 +154,13 @@ export const enSurfaces = {
         'Smooths own character edges and zoomed-out world sprites. Does not change text rendering.',
       postFx: 'Post-processing',
       postFxTip: 'A vignette and warm colour grade layered over the world.',
+      enhancedSampling: 'Experiment: softer pixels',
+      enhancedSamplingTip:
+        'Also smooths original characters and the enlarged world. Applies immediately; switch off to compare sharpness.',
+      softShadows: 'Experiment: soft shadows',
+      softShadowsTip: 'Gently softens shadow edges. Applies immediately.',
+      environmentMotion: 'Experiment: environment motion',
+      environmentMotionTip: 'Adds water variation and smooths wind in own vegetation. Applies immediately.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',

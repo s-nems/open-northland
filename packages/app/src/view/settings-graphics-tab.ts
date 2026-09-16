@@ -97,6 +97,14 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(assets.root, 'assets');
+  const experiments = (['enhancedSampling', 'softShadows', 'environmentMotion'] as const).map((key) => {
+    const toggle = togglePill(settings[key], (enabled) => {
+      void store.update({ [key]: enabled });
+    });
+    toggle.setAttribute('aria-label', text[key]);
+    toggle.dataset.settingsFocus = key;
+    return settingRow(text[key], toggle, { tip: text[`${key}Tip`] });
+  });
   return [
     settingRow(text.assets, assets.root, { tip: deferredTip(text.assetsTip) }),
     settingRow(text.displayMode, displaySeg.root),
@@ -107,5 +115,6 @@ export function graphicsSettingsRows(
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
     settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),
     settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
+    ...experiments,
   ];
 }

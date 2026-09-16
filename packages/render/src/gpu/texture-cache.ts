@@ -2,6 +2,7 @@ import { CanvasSource, Rectangle, Texture, type TextureSource } from 'pixi.js';
 import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
+import { SoftShadowCache } from './soft-shadow-cache.js';
 
 /**
  * Threshold quantisation step for the per-pixel reveal bakes: the eased reveal walks 0-255 thresholds in
@@ -28,6 +29,9 @@ interface RevealBake {
  * re-mints a texture in the steady state.
  */
 export class TextureCache {
+  private readonly softShadows = new SoftShadowCache();
+  private useSoftShadows = false;
+  private shadowVersion = 0;
   private readonly cache = new Map<AtlasFrame, Texture>();
   private readonly pages = new Set<TextureSource>();
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
@@ -38,10 +42,27 @@ export class TextureCache {
   /** Reveal bakes per frame, keyed by quantised threshold. */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
+  get shadowRevision(): number {
+    return this.shadowVersion;
+  }
+
+  setSoftShadows(enabled: boolean): void {
+    if (this.useSoftShadows === enabled) return;
+    this.useSoftShadows = enabled;
+    this.shadowVersion++;
+  }
+
+  getShadow(source: TextureSource, frame: AtlasFrame): Texture {
+    return (this.useSoftShadows ? this.softShadows.get(source, frame) : null) ?? this.get(source, frame);
+  }
+
   get(source: TextureSource, frame: AtlasFrame): Texture {
     let tex = this.cache.get(frame);
     if (tex === undefined) {
-      tex = new Texture({ source, frame: new Rectangle(frame.x, frame.y, frame.width, frame.height) });
+      tex = new Texture({
+        source,
+        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+      });
       this.cache.set(frame, tex);
       this.pages.add(source);
     }
@@ -124,6 +145,7 @@ export class TextureCache {
     const cached = byThreshold.get(q);
     if (cached !== undefined) {
       cached.stamp = frameStamp;
+      cached.texture.source.scaleMode = source.scaleMode;
       return cached.texture;
     }
     const canvas = bakeRevealCanvas(source, frame, times, q);
@@ -155,6 +177,7 @@ export class TextureCache {
    *  unregisters it. Sub-rect views destroy at Pixi's default `destroySource: false` so the app-owned
    *  page outlives the renderer; the reveal bakes own their canvas source and take it with them. */
   clear(): void {
+    this.softShadows.clear();
     for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();
     for (const byTop of this.cropCache.values()) {

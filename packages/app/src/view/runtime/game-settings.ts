@@ -1,3 +1,4 @@
+import type { WorldEnhancements } from '@open-northland/render';
 import type { CameraInputSettings } from '../camera/index.js';
 import type { MenuSettings } from '../settings-store.js';
 
@@ -22,6 +23,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
+  readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
 }
 
 /** An explicit session URL choice wins over the persisted sound preference. */
@@ -56,6 +58,17 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
       deps.setCameraInputSettings(current);
     }
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
+    if (
+      patch.enhancedSampling !== undefined ||
+      patch.softShadows !== undefined ||
+      patch.environmentMotion !== undefined
+    ) {
+      deps.setGraphicsEnhancements({
+        enhancedSampling: current.enhancedSampling,
+        softShadows: current.softShadows,
+        environmentMotion: current.environmentMotion,
+      });
+    }
   };
   return {
     current: () => current,

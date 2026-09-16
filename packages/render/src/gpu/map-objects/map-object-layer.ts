@@ -24,6 +24,8 @@ interface UpdateInputs {
   readonly maxX: number;
   readonly maxY: number;
   readonly tick: number;
+  readonly motionTime: number;
+  readonly shadowRevision: number;
   readonly fogEpoch: number | undefined;
 }
 
@@ -37,9 +39,19 @@ export class MapObjectLayer {
   /** The last frame's inputs; an identical frame skips the walk since the retained scene already
    *  matches. `remove` needs no reset - it detaches and zeroes directly. */
   private lastInputs: UpdateInputs | null = null;
+  private environmentMotion = false;
 
-  constructor(spriteLayer: Container, textures: TextureCache) {
+  constructor(
+    spriteLayer: Container,
+    private readonly textures: TextureCache,
+  ) {
     this.tall = new TallObjectLayer(spriteLayer, textures);
+  }
+
+  setEnvironmentMotion(enabled: boolean): void {
+    if (this.environmentMotion === enabled) return;
+    this.environmentMotion = enabled;
+    this.lastInputs = null;
   }
 
   /** Call once per map. */
@@ -118,7 +130,10 @@ export class MapObjectLayer {
     tick: number,
     fogStateOfCell?: (cellX: number, cellY: number) => number,
     fogEpoch?: number,
+    timeTicks: number = tick,
   ): void {
+    const motionTime = this.environmentMotion ? timeTicks : tick;
+    const shadowRevision = this.textures.shadowRevision;
     // A fog probe without an epoch has no change signal, so such a frame never counts as identical.
     const fogKeyed = fogStateOfCell === undefined || fogEpoch !== undefined;
     const last = this.lastInputs;
@@ -130,12 +145,23 @@ export class MapObjectLayer {
       last.maxX === vp.maxX &&
       last.maxY === vp.maxY &&
       last.tick === tick &&
+      last.motionTime === motionTime &&
+      last.shadowRevision === shadowRevision &&
       last.fogEpoch === fogEpoch
     ) {
       return;
     }
     this.lastInputs = fogKeyed
-      ? { minX: vp.minX, minY: vp.minY, maxX: vp.maxX, maxY: vp.maxY, tick, fogEpoch }
+      ? {
+          minX: vp.minX,
+          minY: vp.minY,
+          maxX: vp.maxX,
+          maxY: vp.maxY,
+          tick,
+          motionTime,
+          shadowRevision,
+          fogEpoch,
+        }
       : null;
     for (const chunk of this.decorChunks.values()) {
       const visible = aabbIntersects(vp, chunk);
@@ -160,7 +186,7 @@ export class MapObjectLayer {
         batch.geometry.getBuffer('aUV').update();
       }
     }
-    this.tall.update(vp, tick, fogStateOfCell);
+    this.tall.update(vp, tick, fogStateOfCell, motionTime);
   }
 
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */

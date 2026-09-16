@@ -29,7 +29,7 @@ const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
 const WAVE_SHIMMER = 0.08;
 /** The shimmer's own angular speed - off the swell's so glints don't pulse in lockstep. */
 const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
-/** The two waves' common period (lcm of 30 and 21 ticks): the clock wraps modulo this, so the f32
+/** The waves' common period (lcm of 30, 21, 42 and 35 ticks): the clock wraps modulo this, so the f32
  *  `uWave.x` never grows into `sin` precision loss over a long session. */
 export const WAVE_TIME_PERIOD_TICKS = 210;
 
@@ -45,14 +45,20 @@ const FIELD_VERTEX = `#version 300 es
   out vec3 vVertexColor;
   out float vWave;
   out float vWavePhase;
+  out float vCrossWavePhase;
   uniform vec2 uWave; // x = animation time (sim ticks), y = master amplitude scale (0 = still)
+  uniform float uEnvironmentMotion;
   ${matrixBlock}
   void main(void) {
     float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
     vec2 pos = aPosition;
     // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/terrain/water.ts).
+    float crossPhase = (aPosition.x - aPosition.y * 1.3) * 0.025;
+    float swell = sin(uWave.x * ${WAVE_RADIANS_PER_TICK.toFixed(8)} + phase);
+    // Artistic approximation: crossing swells retain the same maximum displacement and coast mask.
+    float crossedSwell = 0.68 * swell + 0.32 * sin(uWave.x * ${((2 * Math.PI) / 42).toFixed(8)} + crossPhase);
     pos.y -= aWave * uWave.y * ${WAVE_AMPLITUDE_PX.toFixed(4)}
-      * sin(uWave.x * ${WAVE_RADIANS_PER_TICK.toFixed(8)} + phase);
+      * mix(swell, crossedSwell, uEnvironmentMotion);
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
     gl_Position = vec4((mvp * vec3(pos, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
@@ -60,6 +66,7 @@ const FIELD_VERTEX = `#version 300 es
     vVertexColor = aVertexColor;
     vWave = aWave;
     vWavePhase = phase;
+    vCrossWavePhase = crossPhase;
   }
 `;
 
@@ -72,11 +79,13 @@ const FIELD_FRAGMENT = `#version 300 es
   in vec3 vVertexColor;
   in float vWave;
   in float vWavePhase;
+  in float vCrossWavePhase;
 
   uniform sampler2D uTexture;
   uniform sampler2D uBrightnessTex;
   uniform vec4 uColor;
   uniform vec2 uWave;
+  uniform float uEnvironmentMotion;
 
   out vec4 finalColor;
 
@@ -84,8 +93,12 @@ const FIELD_FRAGMENT = `#version 300 es
     vec4 texel = texture(uTexture, vUV);
     float lane = texture(uBrightnessTex, vBrightnessUV).r * ${(255 / BRIGHTNESS_NEUTRAL).toFixed(8)};
     // Water shimmer: a second travelling wave glints the shaded water surface (0 on land).
+    float shimmer = sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
+    float crossGlint = sin(uWave.x * ${((2 * Math.PI) / 35).toFixed(8)} - vCrossWavePhase * 2.1);
+    // Softer intersecting glints avoid a uniform whole-surface pulse. UVs stay inside their atlas tile.
+    float polishedShimmer = 0.55 * shimmer + 0.3 * crossGlint + 0.15 * shimmer * crossGlint;
     lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
-      * sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
+      * mix(shimmer, polishedShimmer, uEnvironmentMotion);
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
   }
@@ -129,12 +142,15 @@ let vertexProgram: GlProgram | undefined;
 /** The map's water-animation uniform group: `uWave = [timeTicks, amplitudeScale]`, mutated in place per
  *  frame (a `Float32Array`, because a shared program re-uploads only changed contents). One group per
  *  map, shared by every shaded mesh, so the per-frame animation is one write instead of one per chunk. */
-export type WaveUniforms = UniformGroup & { readonly uniforms: { readonly uWave: Float32Array } };
+export type WaveUniforms = UniformGroup & {
+  readonly uniforms: { readonly uWave: Float32Array; uEnvironmentMotion: number };
+};
 
 /** Make the map's shared water-animation uniform group (time 0, full amplitude). */
 export function makeWaveUniforms(): WaveUniforms {
   return new UniformGroup({
     uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' },
+    uEnvironmentMotion: { value: 0, type: 'f32' },
   }) as WaveUniforms;
 }
 

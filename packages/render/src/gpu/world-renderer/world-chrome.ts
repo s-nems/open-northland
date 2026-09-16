@@ -62,8 +62,8 @@ export class WorldChrome {
    * its cutout samples the flipped pages linear and slightly soft. A per-render flip would touch every
    * page twice a frame.
    */
-  applyWorldSampling(scale: number): void {
-    if (this.spriteSmoothing && scale < 1) {
+  applyWorldSampling(scale: number, enhanced = false): void {
+    if (enhanced || (this.spriteSmoothing && scale < 1)) {
       for (const source of this.textures.pageSources()) {
         if (this.linearPages.has(source)) continue;
         if (source.scaleMode !== 'nearest') continue; // a page someone loaded linear stays theirs

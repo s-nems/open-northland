@@ -676,6 +676,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       perf,
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,
+      setGraphicsEnhancements: (next) => renderer.setGraphicsEnhancements(next),
       setKeyBindings: (next) => {
         Object.assign(keyBindings, next);
         cameraCtl.setBindings(next);

@@ -40,6 +40,8 @@ import { SpriteSceneCache } from './scene-cache.js';
 const POOL_REAP_BUDGET = 32;
 
 export interface PoolFrame {
+  readonly enhancedSampling?: boolean;
+  readonly environmentMotion?: boolean;
   readonly snapshot: WorldSnapshot;
   /** The margin-inflated world-space box the camera frames - the sprite cull rectangle. */
   readonly viewport: Viewport;

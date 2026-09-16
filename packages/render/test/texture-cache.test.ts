@@ -1,6 +1,7 @@
 import { TextureSource } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AtlasFrame, BuildTimeSheet } from '../src/data/sprites/index.js';
+import * as drawable from '../src/gpu/drawable-resource.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 
 const SOURCE = new TextureSource({ width: 64, height: 64 });
@@ -65,6 +66,33 @@ describe('TextureCache.croppedBottom', () => {
 
 describe('TextureCache.revealed', () => {
   const TIMES: BuildTimeSheet = { width: 64, height: 64, values: new Uint8Array(64 * 64) };
+
+  it('changes cached construction sampling live without rebaking the reveal', () => {
+    const source = new TextureSource({ width: 64, height: 64, scaleMode: 'linear' });
+    const cache = new TextureCache();
+    const drawImage = vi.fn();
+    const ctx = {
+      canvas: { width: FRAME.width, height: FRAME.height },
+      drawImage,
+      getImageData: () => ({ data: new Uint8ClampedArray(FRAME.width * FRAME.height * 4) }),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+    const readable = vi.spyOn(drawable, 'isDrawableResource').mockReturnValue(true);
+    const context = vi.spyOn(drawable, 'readable2dContext').mockReturnValue(ctx);
+    try {
+      const revealed = cache.revealed(source, FRAME, TIMES, 128, 1);
+      expect(revealed?.source.scaleMode).toBe('linear');
+      source.scaleMode = 'nearest';
+      expect(cache.revealed(source, FRAME, TIMES, 128, 2)).toBe(revealed);
+      expect(revealed?.source.scaleMode).toBe('nearest');
+      expect(drawImage).toHaveBeenCalledTimes(1);
+    } finally {
+      context.mockRestore();
+      readable.mockRestore();
+      cache.clear();
+      source.destroy();
+    }
+  });
 
   it('returns the plain full frame at threshold 255 (fully revealed, no bake)', () => {
     const cache = new TextureCache();

@@ -10,7 +10,7 @@ export function presentEntity(
   frame: PoolFrame,
   sheet: SpriteSheet | undefined,
 ) {
-  const layers = presentItem(pe, item, frame.tick, frame.alpha, sheet);
+  const layers = presentItem(pe, item, frame.tick, frame.alpha, sheet, frame.environmentMotion === true);
   pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
   return layers;
 }

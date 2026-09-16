@@ -48,6 +48,14 @@ export class TerrainLayer {
    *  {@link animate} is one write per frame rather than one per chunk. */
   private waveGroup: WaveUniforms | undefined;
   private hasWater = false;
+  private environmentMotion = false;
+
+  setEnvironmentMotion(enabled: boolean): void {
+    this.environmentMotion = enabled;
+    if (this.waveGroup === undefined) return;
+    this.waveGroup.uniforms.uEnvironmentMotion = enabled ? 1 : 0;
+    this.waveGroup.update();
+  }
 
   /**
    * (Re)build the cached terrain from a grid - call once per map, since a terrain edit re-invalidates
@@ -86,6 +94,7 @@ export class TerrainLayer {
     const wave = makeWaveField(terrain.ground, terrain.width, terrain.height);
     this.hasWater = wave !== NO_WAVE && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
+    this.waveGroup.uniforms.uEnvironmentMotion = this.environmentMotion ? 1 : 0;
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
       laneTexWidth: this.laneTexWidth,

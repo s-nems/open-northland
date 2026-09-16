@@ -37,6 +37,7 @@ uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
 uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off / 1 full band / 2 round corners)
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) - for the 'round' corner key
 uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
+uniform vec2 uSampling;     // .x: resolve palette colours before bilinear sampling (world only)
 
 // GUI transparent key, a floating-HUD deviation with no original mechanism behind it (the engine blitter
 // has no colour key; source basis "Left tool panel"). The in-game GUI palettes reserve palette index 0 as a
@@ -50,7 +51,41 @@ const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the
 const float KEY_ROUND_CLIP = 1.0;  // 'round' mode: fade out past this normalized radius (the disc fills the
                                    // frame, touching its edges at rad 1.0; corners run to ~1.41) → clean disc
 
+vec4 resolvedTexel(ivec2 pixel) {
+  ivec2 size = textureSize(uTexture, 0);
+  vec2 uv = (vec2(pixel) + 0.5) / vec2(size);
+  // The frame boundary is transparent, not the next packed bob or the atlas's edge colour.
+  if (any(lessThan(uv, uFrameUV.xy)) || any(greaterThanEqual(uv, uFrameUV.zw))) return vec4(0.0);
+  vec4 t = texelFetch(uTexture, pixel, 0);
+  float index = floor(t.r * 255.0 + 0.5);
+  vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
+  return vec4(textureLod(uLut, lutUV, 0.0).rgb * t.a, t.a);
+}
+
+vec4 resolvedBilinear(vec2 uv) {
+  vec2 p = uv * vec2(textureSize(uTexture, 0)) - 0.5;
+  ivec2 base = ivec2(floor(p));
+  vec2 f = fract(p);
+  return mix(mix(resolvedTexel(base), resolvedTexel(base + ivec2(1, 0)), f.x),
+             mix(resolvedTexel(base + ivec2(0, 1)), resolvedTexel(base + ivec2(1, 1)), f.x), f.y);
+}
+
 void main(void) {
+  // GUI keying/silhouettes retain their exact existing path. A 2x2 footprint reduces minification
+  // sparkle without filtering indices or allocating per-player RGBA atlases. Not a mipmap substitute
+  // at extreme zoom-out: sampling cost is deliberately bounded.
+  if (uSampling.x > 0.5 && uColorKey.x < 0.5 && uSilhouette.w < 0.5) {
+    vec2 footprint = max(fwidth(vUV) - 1.0 / vec2(textureSize(uTexture, 0)), vec2(0.0)) * 0.25;
+    if (max(footprint.x, footprint.y) < 0.000001) {
+      finalColor = resolvedBilinear(vUV);
+      return;
+    }
+    finalColor = (resolvedBilinear(vUV + vec2(-footprint.x, -footprint.y))
+                + resolvedBilinear(vUV + vec2(footprint.x, -footprint.y))
+                + resolvedBilinear(vUV + vec2(-footprint.x, footprint.y))
+                + resolvedBilinear(vUV + footprint)) * 0.25;
+    return;
+  }
   // textureLod(..., 0.0) samples the base level only: an averaged mip index decodes to the wrong entry.
   vec4 texel = textureLod(uTexture, vUV, 0.0);
   if (texel.a == 0.0) discard; // unwritten bob pixel
@@ -109,6 +144,7 @@ export interface PalettedUniforms {
     uFrameUV: Float32Array;
     /** [r, g, b, on] - the flat silhouette override colour (normalized), on > 0.5 enables it. */
     uSilhouette: Float32Array;
+    uSampling: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -135,6 +171,7 @@ export function createPalettedShader(lut: TextureSource, colours: number): Shade
     uFlip: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
     uFrameUV: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' as const },
     uSilhouette: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
+    uSampling: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
   };
   return Shader.from({
     gl: { vertex: VERTEX, fragment: FRAGMENT },

@@ -18,7 +18,14 @@ export interface BuildingHighlightItem {
   readonly ok: boolean;
 }
 
+export interface WorldEnhancements {
+  readonly enhancedSampling: boolean;
+  readonly softShadows: boolean;
+  readonly environmentMotion: boolean;
+}
+
 export interface WorldRendererOptions {
+  readonly enhancements?: WorldEnhancements;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**

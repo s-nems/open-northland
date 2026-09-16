@@ -18,7 +18,10 @@ import {
 import type { ResolvedLayer } from './resolved-layer.js';
 import type { PoolFrame } from './sprite-pool.js';
 
-export type BindFrame = Pick<PoolFrame, 'camera' | 'screenW' | 'screenH' | 'highlight' | 'snapResolution'>;
+export type BindFrame = Pick<
+  PoolFrame,
+  'camera' | 'screenW' | 'screenH' | 'highlight' | 'snapResolution' | 'enhancedSampling'
+>;
 
 /** Assign-mode candidate-building tints, pale so they wash over the building art rather than
  *  repaint it. */
@@ -187,6 +190,7 @@ export class LayerBinder {
       frame.screenH,
     );
     spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh
+    spr.smoothSampling = frame.enhancedSampling === true;
     spr.player = lutRow;
     spr.visible = true;
   }
@@ -215,7 +219,9 @@ export class LayerBinder {
       revealTexture ??
       (box.hiddenTop > 0
         ? this.textures.cropped(layer.source, layer.frame, box.hiddenTop)
-        : this.textures.get(layer.source, layer.frame));
+        : layer.shadow === true
+          ? this.textures.getShadow(layer.source, layer.frame)
+          : this.textures.get(layer.source, layer.frame));
     const shear = layer.shear ?? 0;
     spr.position.set(box.ox + box.drawnOy * shear, box.drawnOy);
     setVegetationShear(spr, layer.scale, shear);
