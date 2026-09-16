@@ -158,9 +158,17 @@ export function characterBinding(
 
   const byAtomic: Record<number, SpriteFrameRef> = {};
   for (const [atomicId, action] of Object.entries(spec.atomics ?? {})) {
-    const row = seqByName.get(action.seq);
+    const seqs = typeof action.seq === 'string' ? [action.seq] : action.seq;
+    const authored = programsByAction?.get(Number(atomicId));
+    const playable = seqs.find((name) => {
+      const row = seqByName.get(name);
+      return row !== undefined && drawsProgram(authored?.get(name), row, bodyAtlas);
+    });
+    const seq = playable ?? seqs.find((name) => seqByName.has(name));
+    if (seq === undefined) continue;
+    const row = seqByName.get(seq);
     if (row === undefined || row.length <= 0) continue;
-    const program = programsByAction?.get(Number(atomicId))?.get(action.seq);
+    const program = authored?.get(seq);
     if (drawsProgram(program, row, bodyAtlas)) {
       byAtomic[Number(atomicId)] = {
         start: row.start,

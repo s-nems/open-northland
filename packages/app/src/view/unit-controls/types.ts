@@ -50,6 +50,8 @@ export interface UnitControlsOptions {
   /** The last drawn frame's culled, depth-sorted draw list (empty before the first). Clicks hit-test
    *  against it, so picking inherits the frame's viewport and fog culls. */
   readonly drawnItems: () => readonly DrawItem[];
+  /** Whether a resource's live tile is currently visible rather than only remembered through fog. */
+  readonly resourceVisible?: (tileX: number, tileY: number) => boolean;
   /** The frame's fog-filtered door badges; absent or empty disables badge picking. */
   readonly doorBadges?: () => readonly DoorBadge[];
   /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent leaves the equipment

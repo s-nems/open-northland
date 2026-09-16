@@ -29,6 +29,8 @@ export interface UnitTargetsDeps {
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
   /** Terrain lift used to project retained map resources, which do not enter the entity draw list. */
   readonly elevation?: ElevationField | undefined;
+  /** Whether a retained resource is live-visible rather than only remembered through fog. */
+  readonly resourceVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   /** Pixel-accurate refinement of {@link boundsOf} for building targets, or undefined to keep the box. */
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
 }
@@ -210,7 +212,10 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         const value = entity.components.Resource as { goodType?: unknown } | undefined;
         const position = positionOf(entity);
         if (typeof value?.goodType !== 'number' || position === undefined) continue;
-        const at = projectTile(deps.elevation, position.x / ONE, position.y / ONE);
+        const tileX = position.x / ONE;
+        const tileY = position.y / ONE;
+        if (deps.resourceVisible?.(tileX, tileY) === false) continue;
+        const at = projectTile(deps.elevation, tileX, tileY);
         out.push({ ref: entity.id, x: at.x, y: at.y, kind: 'resource', goodType: value.goodType });
       }
       return out;

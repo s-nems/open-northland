@@ -12,10 +12,10 @@ import { buildingAt, cell, ctxOf, grassMap, settlerAt } from './producer-supply/
 // (MODE 2, the delivery preference). The utility goods/buildings live in a LOCAL content extension (not the
 // shared fixture, whose typeIds 10..14 the placement tests already claim for footprinted houses).
 
-const WATER = 7;
-const BREAD = 8;
-const HONEY = 9;
-const ALE = 10;
+const WATER = 207;
+const BREAD = 208;
+const HONEY = 209;
+const ALE = 210;
 const OPERATOR = 2; // the bakery/brewery craftsman (the fixture's carpenter job, reused as the operator)
 const CARRIER = 24;
 const WELL = 10;
@@ -37,7 +37,7 @@ function utilityContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      { typeId: WATER, id: 'water', weight: 1 }, // no produce atomic - a draw of it uses the fallback gesture
+      { typeId: WATER, id: 'water', weight: 1 }, // no produce atomic - the bio-pattern draw uses the well gesture
       { typeId: BREAD, id: 'bread', weight: 1 },
       { typeId: HONEY, id: 'honey', weight: 1, atomics: { produce: HONEY_PRODUCE_ATOMIC } },
       { typeId: ALE, id: 'ale', weight: 1 },
@@ -63,6 +63,7 @@ function utilityContent(): ContentSet {
         typeId: WELL,
         id: 'work_well_00',
         kind: 'workplace',
+        buildOnBioPattern: true,
         workers: [{ jobType: CARRIER, count: 1 }],
         stock: [{ goodType: WATER, capacity: 1, initial: 0 }],
         produces: [WATER],
@@ -72,6 +73,7 @@ function utilityContent(): ContentSet {
         typeId: HIVE,
         id: 'work_hive_00',
         kind: 'workplace',
+        buildOnBioPattern: true,
         workers: [{ jobType: CARRIER, count: 1 }],
         stock: [{ goodType: HONEY, capacity: 1, initial: 0 }],
         produces: [HONEY],

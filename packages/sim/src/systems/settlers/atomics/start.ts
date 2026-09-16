@@ -65,9 +65,8 @@ export const EXERCISE_ATOMIC_ID = 89;
  *  pickup. */
 export const PICKUP_ATOMIC_ID = 22;
 
-/** The utility-specific draw actions selected by the original from the target house type. */
+/** The dedicated well draw action; the hive's action comes from its output good's production atomic. */
 export const WELL_DRAW_ATOMIC_ID = 44;
-export const HIVE_DRAW_ATOMIC_ID = 45;
 
 /** The build-house slot bound for the builder job across every tribe (source basis
  *  `DataCnmd/tribetypes12/tribetypes.ini` and the builder's `allowatomic 39` in `jobtypes.ini`). */
@@ -160,8 +159,9 @@ export function startPickup(
 }
 
 /**
- * Issue the utility-specific `draw` atomic. The original chooses action 44 for `work_well_00` and 45 for
- * `work_hive_00`; another input-less producer falls back to the generic pick-up. `ticks` remains the
+ * Issue the utility-specific `draw` atomic. The two bio-pattern utilities are the well and hive; the
+ * hive's output carries action 45 as its production atomic, while the well's otherwise unbound output
+ * uses action 44. Another input-less producer falls back to the generic pick-up. `ticks` remains the
  * utility recipe's authored work time, so the render loops the gesture until one unit is ready.
  */
 export function startDraw(
@@ -173,14 +173,11 @@ export function startDraw(
   ticks: number,
 ): void {
   const building = world.tryGet(utility, Building);
-  const id =
-    building === undefined ? undefined : contentIndex(ctx.content).buildings.get(building.buildingType)?.id;
+  const index = contentIndex(ctx.content);
+  const definition = building === undefined ? undefined : index.buildings.get(building.buildingType);
+  const produceAtomic = index.goods.get(goodType)?.atomics.produce;
   const atomicId =
-    id === 'work_well_00'
-      ? WELL_DRAW_ATOMIC_ID
-      : id === 'work_hive_00'
-        ? HIVE_DRAW_ATOMIC_ID
-        : PICKUP_ATOMIC_ID;
+    definition?.buildOnBioPattern === true ? (produceAtomic ?? WELL_DRAW_ATOMIC_ID) : PICKUP_ATOMIC_ID;
   startAtomic(world, e, atomicId, { kind: 'draw', goodType, utility }, ticks, utility);
 }
 

@@ -15,7 +15,7 @@ import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
-import type { ContentContext, SystemContext } from '../context.js';
+import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
@@ -129,7 +129,7 @@ export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, bu
  * Whether `jobType` may harvest `goodType`: the good needs a harvest atomic the trade is granted, and a
  * field-farmed good is never flag-harvested.
  */
-export function jobCanHarvestGood(ctx: ContentContext, jobType: number, goodType: number): boolean {
+export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType: number): boolean {
   const index = contentIndex(ctx.content);
   const good = index.goods.get(goodType);
   const harvest = good?.atomics.harvest;

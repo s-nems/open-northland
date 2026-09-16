@@ -6,6 +6,7 @@ import type {
   SpriteSheet,
   WorldRenderer,
 } from '@open-northland/render';
+import { fogTileVisible } from '@open-northland/render';
 import {
   adminCommand,
   type Command,
@@ -487,6 +488,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       enqueue: issueCommand,
       centerOn: jumpToWorld,
       drawnItems: () => renderer.drawnItems(),
+      resourceVisible: (tileX, tileY) => {
+        const fog = deps.observer === true ? null : sim.fogView(localPlayer);
+        return fog === null || fogTileVisible(fog, tileX, tileY);
+      },
       doorBadges: () => pickableDoorBadges?.() ?? [],
       equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
       boundsOf: (ref) => renderer.entityBounds(ref),

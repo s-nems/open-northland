@@ -1,6 +1,6 @@
 import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { ATTACK_ATOMIC } from '../src/catalog/atomics.js';
+import { ATTACK_ATOMIC, WELL_DRAW_ATOMIC } from '../src/catalog/atomics.js';
 import { JOB_SOLDIER_UNARMED } from '../src/catalog/jobs.js';
 import {
   ADULT_CHARACTER_BY_JOB,
@@ -323,6 +323,23 @@ describe('characterBinding', () => {
       12: { start: 1647, frameLists: [[3, 4, 4, 5]], ticksPerFrame: 2 },
       22: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
     });
+  });
+
+  it('uses the tribe-authored pickup variant when its well action has no fountain program', () => {
+    const seqs = new Map([
+      ['human_man_generic_wait', { name: 'human_man_generic_wait', start: 100, length: 8 }],
+      ['human_man_fountain_push', { name: 'human_man_fountain_push', start: 200, length: 16 }],
+      ['human_man_generic_pick_up', { name: 'human_man_generic_pick_up', start: 300, length: 16 }],
+    ]);
+    const programsByAction = new Map([
+      [WELL_DRAW_ATOMIC, new Map([['human_man_generic_pick_up', { dirFrames: [[0, 1, 2]], mode: 0 }]])],
+    ]);
+
+    expect(
+      characterBinding(CHARACTER_SPECS.civilian, seqs, [], { programsByAction })?.byAtomic?.[
+        WELL_DRAW_ATOMIC
+      ],
+    ).toEqual({ start: 300, frameLists: [[0, 1, 2]], loop: true });
   });
 
   it('idles on the wait seq gfxAtomics program (looped) instead of cycling the raw wait strip', () => {

@@ -28,9 +28,6 @@ export {
 } from './chests/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';
-// The app's resource right-click must filter the same (job, good) pairs as setGatherGood, so a
-// non-gatherer still receives its ordinary move order when clicking through a resource sprite.
-export { jobCanHarvestGood } from './economy/work-flag.js';
 export { isOnMission } from './family/eligibility.js';
 export {
   createResourceNode,

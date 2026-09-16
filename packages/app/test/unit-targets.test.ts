@@ -27,6 +27,7 @@ describe('unit-controls targets over the renderer frame', () => {
   const targetsOver = (
     drawn: readonly DrawItem[],
     hostileToward: (owner: number) => boolean = () => true,
+    resourceVisible?: (tileX: number, tileY: number) => boolean,
   ): UnitTargets =>
     createUnitTargets({
       snapshot: () => snapshot,
@@ -36,6 +37,7 @@ describe('unit-controls targets over the renderer frame', () => {
       drawnItems: () => drawn,
       boundsOf: undefined,
       pixelHitOf: undefined,
+      resourceVisible,
     });
 
   const ownerOf = (ref: number): number | undefined => {
@@ -116,6 +118,13 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(targetsOver([]).resources()).toEqual([
       { ref: resource.id, x: 8 * 34, y: 6 * 38, kind: 'resource', goodType: 5 },
     ]);
+    expect(
+      targetsOver(
+        [],
+        () => true,
+        () => false,
+      ).resources(),
+    ).toEqual([]);
   });
 
   it('never targets a fog ghost or the force-drawn portrait subject', () => {

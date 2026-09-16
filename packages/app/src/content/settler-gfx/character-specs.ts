@@ -101,7 +101,8 @@ export interface CharacterSpec {
     Record<
       number,
       {
-        readonly seq: string;
+        /** Preferred body sequence, or source-authored tribe variants in preference order. */
+        readonly seq: string | readonly string[];
         readonly phaseStart?: number;
         readonly ticksPerFrame?: number;
         readonly loop?: true;
@@ -160,7 +161,7 @@ export const CHARACTER_SPECS = {
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [OPEN_CHEST_ATOMIC]: { seq: PICKUP_SEQ },
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
-      [WELL_DRAW_ATOMIC]: { seq: 'human_man_fountain_push', loop: true },
+      [WELL_DRAW_ATOMIC]: { seq: ['human_man_fountain_push', PICKUP_SEQ], loop: true },
       [HIVE_DRAW_ATOMIC]: { seq: PICKUP_SEQ, loop: true },
     },
   },
