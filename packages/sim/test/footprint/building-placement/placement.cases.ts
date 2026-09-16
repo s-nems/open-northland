@@ -19,6 +19,7 @@ import {
 } from '../../../src/systems/index.js';
 
 import {
+  BIO_HUT,
   buildingsPlaced,
   ctxOf,
   grassCells,
@@ -284,6 +285,36 @@ describe('buildable terrain channel - walkable ground that rejects building', ()
     expect(terrain.isBuildable(terrain.nodeAt(14, 10))).toBe(false); // building may not
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 13, 9)).toBe(false);
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 13)).toBe(true); // clear ground
+  });
+});
+
+describe('bio-pattern placement - wells and hives need grass', () => {
+  const BARREN = 2;
+
+  it('rejects a bio-pattern building on buildable barren ground in both the command gate and overlay probe', () => {
+    const cells = grassCells(16, 16);
+    cells.typeIds[3 * 16 + 3] = BARREN; // nodes (6..7, 6..7), under the fixture body's two cells
+    const sim = new Simulation({
+      seed: 1,
+      content: placementContent(),
+      map: halfCellMapFromCells(cells),
+    });
+    const terrain = terrainOf(sim);
+
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 6)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, BIO_HUT, 6, 6)).toBe(false);
+    expect(placementProbe(sim.world, sim.content, terrain, BIO_HUT).canPlace(6, 6)).toBe(false);
+
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: BIO_HUT, x: 6, y: 6, tribe: VIKING });
+    sim.step();
+    expect(buildingsPlaced(sim)).toBe(0);
+  });
+
+  it('accepts the same bio-pattern building when its body stands on plantable grass', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, BIO_HUT, 6, 6)).toBe(true);
+    expect(placementProbe(sim.world, sim.content, terrain, BIO_HUT).canPlace(6, 6)).toBe(true);
   });
 });
 

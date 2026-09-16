@@ -95,6 +95,11 @@ export const BuildingType = z.strictObject({
    * {@link construction}. Absent when the graphics table has no record for the type.
    */
   footprint: BuildingFootprint.optional(),
+  /**
+   * Extracted `logichousetype` `logicbuildonbiopattern`: the building's walk-block body must stand on
+   * ground carrying the vegetation regrow/plant flags. The source sets it for wells and hives.
+   */
+  buildOnBioPattern: z.boolean().default(false),
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
   canEnableDefenceMode: z.boolean().default(false),
   /**

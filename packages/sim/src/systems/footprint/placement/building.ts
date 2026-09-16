@@ -1,10 +1,10 @@
 import { type BuildingFootprint, type ContentSet, footprintCellDx } from '@open-northland/data';
 import { landscapeEditState } from '../../../components/landscape.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { landscapeBlocks } from '../../landscape/view.js';
-import { buildingFootprintOf } from '../geometry.js';
 import { BUILDING_ZONE, EXCLUSION, eachBlockerCell, OBSTACLE, placementBlockerVersion } from './blockers.js';
 
 // Building placement evaluates the blocker channels of ./blockers.ts over a version-memoized mask grid that
@@ -34,7 +34,13 @@ interface PlacementGrid {
  * no oracle: holding the reserved rings disjoint matches observed settlement density, while letting them
  * overlap packs about twice as densely.
  */
-function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: number, y: number): boolean {
+function canPlaceAnchor(
+  grid: PlacementGrid,
+  footprint: BuildingFootprint,
+  buildOnBioPattern: boolean,
+  x: number,
+  y: number,
+): boolean {
   const { terrain, obstacle, exclusion } = grid;
   const w = terrain.width;
   const h = terrain.height;
@@ -55,6 +61,16 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx >= 0 && cy >= 0 && cx < w && cy < h && exclusion[cy * w + cx] === 1) return false;
+  }
+  // 3. `logicbuildonbiopattern` checks the walk-block body against the source's vegetation ground flags.
+  // The original tests every surrounding triangle; the collision join conservatively collapses each
+  // cell's two triangles into `plantable`, so wells and hives accept grass and reject sand/plaster.
+  if (buildOnBioPattern) {
+    for (const c of footprint.blocked) {
+      const cx = x + footprintCellDx(y, c);
+      const cy = y + c.dy;
+      if (!terrain.inBounds(cx, cy) || !terrain.isPlantable(terrain.nodeAt(cx, cy))) return false;
+    }
   }
   return true;
 }
@@ -142,8 +158,9 @@ function memoizedPlacementGrid(world: World, content: ContentSet, terrain: Terra
 
 /**
  * Whether a building of `buildingType` may be placed with its anchor at integer tile `(x, y)`, per the rule
- * on {@link canPlaceAnchor}. A type without a footprint has no collision model and validates trivially.
- * Settlers never block placement: the foundation appears under them and they walk off.
+ * on {@link canPlaceAnchor}. A type without a footprint has no collision model; a bio-pattern type still
+ * checks its anchor ground. Settlers never block placement: the foundation appears under them and they
+ * walk off.
  */
 export function canPlaceBuilding(
   world: World,
@@ -153,9 +170,22 @@ export function canPlaceBuilding(
   x: number,
   y: number,
 ): boolean {
-  const footprint = buildingFootprintOf(ctx.content, buildingType);
-  if (footprint === undefined) return !scriptForbids(world, terrain, x, y);
-  return canPlaceAnchor(memoizedPlacementGrid(world, ctx.content, terrain), footprint, x, y);
+  const building = contentIndex(ctx.content).buildings.get(buildingType);
+  const footprint = building?.footprint;
+  const buildOnBioPattern = building?.buildOnBioPattern === true;
+  if (footprint === undefined) {
+    return (
+      !scriptForbids(world, terrain, x, y) &&
+      (!buildOnBioPattern || (terrain.inBounds(x, y) && terrain.isPlantable(terrain.nodeAt(x, y))))
+    );
+  }
+  return canPlaceAnchor(
+    memoizedPlacementGrid(world, ctx.content, terrain),
+    footprint,
+    buildOnBioPattern,
+    x,
+    y,
+  );
 }
 
 /** Whether a script closed the node to building; a node off the map is nobody's to forbid. */
@@ -172,9 +202,9 @@ export interface PlacementProbe {
 /**
  * A {@link PlacementProbe} for `buildingType` with its footprint resolved once, so a caller can probe a
  * whole band against the same rule the `placeBuilding` command gates on without re-resolving content per
- * cell. A footprint-less type always reports placeable, matching its command-time behavior. The probe
- * reads the memo's shared mask arrays, which are re-stamped in place on the next blocker change, so drain
- * a probe's band before the world can change again.
+ * cell. A footprint-less type has no collision rule but retains any bio-pattern ground restriction. The
+ * probe reads the memo's shared mask arrays, which are re-stamped in place on the next blocker change, so
+ * drain a probe's band before the world can change again.
  */
 export function placementProbe(
   world: World,
@@ -182,8 +212,18 @@ export function placementProbe(
   terrain: TerrainGraph,
   buildingType: number,
 ): PlacementProbe {
-  const footprint = buildingFootprintOf(content, buildingType);
-  if (footprint === undefined) return { canPlace: (x, y) => !scriptForbids(world, terrain, x, y) };
+  const building = contentIndex(content).buildings.get(buildingType);
+  const footprint = building?.footprint;
+  const buildOnBioPattern = building?.buildOnBioPattern === true;
+  if (footprint === undefined) {
+    return {
+      canPlace: (x, y) =>
+        !scriptForbids(world, terrain, x, y) &&
+        (!buildOnBioPattern || (terrain.inBounds(x, y) && terrain.isPlantable(terrain.nodeAt(x, y)))),
+    };
+  }
   const grid = memoizedPlacementGrid(world, content, terrain);
-  return { canPlace: (x, y) => canPlaceAnchor(grid, footprint, x, y) };
+  return {
+    canPlace: (x, y) => canPlaceAnchor(grid, footprint, buildOnBioPattern, x, y),
+  };
 }

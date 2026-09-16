@@ -15,6 +15,7 @@ describe('extractBuildings', () => {
         id: 'wardenhall',
         kind: 'storage', // logicmaintype 1
         homeSize: 0,
+        buildOnBioPattern: false,
         canEnableDefenceMode: true, // logicCanEnableDefenceMode 1
         workers: [{ jobType: 51, count: 3 }],
         stock: [
@@ -32,6 +33,7 @@ describe('extractBuildings', () => {
         id: 'burrow_nest_00',
         kind: 'home', // logicmaintype 2
         homeSize: 1, // logichomesize
+        buildOnBioPattern: false,
         canEnableDefenceMode: false,
         workers: [],
         stock: [{ goodType: 20, capacity: 4, initial: 1 }],
@@ -46,6 +48,7 @@ describe('extractBuildings', () => {
         id: 'grind_lodge_00',
         kind: 'workplace', // logicmaintype 3
         homeSize: 0,
+        buildOnBioPattern: true,
         canEnableDefenceMode: false,
         workers: [{ jobType: 51, count: 1 }],
         stock: [],

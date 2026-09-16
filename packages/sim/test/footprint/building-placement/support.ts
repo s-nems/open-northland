@@ -40,6 +40,7 @@ export const VIKING = 1;
 export const WOODCUTTER = 1;
 export const HQ = 1; // testContent headquarters - footprint-less
 export const HUT = 10; // the footprinted fixture type added below
+export const BIO_HUT = 99; // the same footprint with `logicbuildonbiopattern`
 
 // A 2-node body at level 0 that grows to 3 nodes at the family max, with a one-node margin ring
 // around the max body (the reserved zone) and a door on the west side, outside the walls.
@@ -74,6 +75,16 @@ export function placementContent(): ContentSet {
           { goodType: 2, capacity: 10, initial: 0 },
         ],
         recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
+        footprint: HUT_FOOTPRINT,
+      },
+      {
+        typeId: BIO_HUT,
+        id: 'bio_hut',
+        kind: 'workplace',
+        buildOnBioPattern: true,
+        workers: [{ jobType: WOODCUTTER, count: 1 }],
+        stock: [],
+        recipes: [],
         footprint: HUT_FOOTPRINT,
       },
     ],
@@ -126,7 +137,13 @@ export function referenceCanPlace(
   y: number,
 ): boolean {
   const footprint = buildingFootprintOf(sim.content, buildingType);
-  if (footprint === undefined) return true; // no collision model - places freely
+  const building = sim.content.buildings.find((b) => b.typeId === buildingType);
+  if (footprint === undefined) {
+    return (
+      building?.buildOnBioPattern !== true ||
+      (terrain.inBounds(x, y) && terrain.isPlantable(terrain.nodeAt(x, y)))
+    );
+  }
   const obstacles = new Set<string>();
   const exclusions = new Set<string>();
   eachBlockerCell(sim.world, sim.content, (bx, by, channel) => {
@@ -142,6 +159,13 @@ export function referenceCanPlace(
   }
   for (const c of footprint.familyBody) {
     if (exclusions.has(`${x + footprintCellDx(y, c)},${y + c.dy}`)) return false;
+  }
+  if (building?.buildOnBioPattern === true) {
+    for (const c of footprint.blocked) {
+      const cx = x + footprintCellDx(y, c);
+      const cy = y + c.dy;
+      if (!terrain.inBounds(cx, cy) || !terrain.isPlantable(terrain.nodeAt(cx, cy))) return false;
+    }
   }
   return true;
 }

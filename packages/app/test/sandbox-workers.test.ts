@@ -42,6 +42,12 @@ describe('sandbox building worker slots', () => {
     expect(cap(1)).toBe(12); // headquarters: 3 carriers + 9 hands
   });
 
+  it('keeps the extracted grass-only placement flag on wells and hives', () => {
+    expect(byType.get(10)?.buildOnBioPattern).toBe(true);
+    expect(byType.get(11)?.buildOnBioPattern).toBe(true);
+    expect(byType.get(12)?.buildOnBioPattern).toBe(false); // the farm's fields need grass, not its house
+  });
+
   it('leaves residences employing nobody', () => {
     for (const typeId of [2, 3, 4, 5, 6]) expect(byType.get(typeId)?.workers.length ?? 0).toBe(0);
   });

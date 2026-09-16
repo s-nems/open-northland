@@ -216,6 +216,7 @@ logicmaintype 3
 logicworker 51 1
 logicproduction 22
 logicproduction 20
+logicbuildonbiopattern 1
 `;
 
 export const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><00000210> Don't modify this line!
