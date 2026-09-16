@@ -89,6 +89,12 @@ export class LayerBinder {
     const bounds = this.layerBounds;
     bounds.reset();
     const displayReveal = pe.reveal;
+    const enhanceBuilding =
+      frame.enhancedSampling === true &&
+      item.kind === 'building' &&
+      item.builtPct === undefined &&
+      item.upgradePct === undefined &&
+      displayReveal === undefined;
     let hasSelection = false;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
@@ -116,7 +122,7 @@ export class LayerBinder {
         const row = layerLutRow(pe.palette, layer, playerRow);
         this.bindPalettedLayer(pe, i, layer, originX, originY, camScale, frame, row);
       } else {
-        this.bindPlainLayer(pe, i, layer, revealTexture, box, tint);
+        this.bindPlainLayer(pe, i, layer, revealTexture, box, tint, enhanceBuilding);
       }
       if (layer.boundsExempt === true) continue;
       const selection = layer.frame.selectionEllipse;
@@ -202,6 +208,7 @@ export class LayerBinder {
     revealTexture: Texture | null,
     box: LayerDrawBox,
     tint: number,
+    enhanceBuilding: boolean,
   ): void {
     let spr = pe.sprites[i];
     if (spr === undefined) {
@@ -221,7 +228,9 @@ export class LayerBinder {
         ? this.textures.cropped(layer.source, layer.frame, box.hiddenTop)
         : layer.shadow === true
           ? this.textures.getShadow(layer.source, layer.frame)
-          : this.textures.get(layer.source, layer.frame));
+          : enhanceBuilding && layer.reveal === undefined && layer.revealWindow === undefined
+            ? this.textures.getBuilding(layer.source, layer.frame)
+            : this.textures.get(layer.source, layer.frame));
     const shear = layer.shear ?? 0;
     spr.position.set(box.ox + box.drawnOy * shear, box.drawnOy);
     setVegetationShear(spr, layer.scale, shear);

@@ -75,7 +75,12 @@ export function resolveLayers(
         const layers = layeredLayersWithShadow(sheet, 'resource', draw);
         const sway = draw.layer === undefined ? undefined : sheet.families?.[draw.layer]?.sway;
         if (sway === undefined || layers === null) return layers;
-        const shear = vegetationShear(item.ghost === true ? 0 : vegetationClock, item.x, item.y, sway);
+        const shear = vegetationShear(
+          item.ghost === true || item.frozen === true ? 0 : vegetationClock,
+          item.x,
+          item.y,
+          sway,
+        );
         return layers.map((layer) => (layer.shadow ? layer : { ...layer, shear }));
       }
       bobId = draw.bob;

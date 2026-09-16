@@ -65,9 +65,14 @@ export function presentItem(
 ): ResolvedLayer[] | null {
   if (track.motion.tick === -1) track.atomicPose.item = undefined;
   const atomic = atomicPose(item, tick, track.atomicPose);
-  const smooth = characterInterpolatesMotion(sheet?.characters, item);
-  const alpha = drawAlphaForKind(track.kind, frameAlpha, smooth);
-  const pose = smooth ? interpolateAtomicPose(atomic, alpha) : atomic;
+  const authoredSmooth = characterInterpolatesMotion(sheet?.characters, item);
+  const smooth = authoredSmooth || (environmentMotion && track.kind === 'settler');
+  const held = item.ghost === true || item.frozen === true;
+  const actionBoundary = track.kind === 'settler' && !authoredSmooth && item.state !== 'moving';
+  const alpha = held || actionBoundary ? 1 : drawAlphaForKind(track.kind, frameAlpha, smooth);
+  const pose = authoredSmooth ? interpolateAtomicPose(atomic, alpha) : atomic;
+  // A remembered/portrait pose must not finish a pending movement or resume it when watched again.
+  if (held) track.motion.tick = -1;
   trackMotion(
     track.motion,
     tick,
@@ -81,7 +86,7 @@ export function presentItem(
   // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the
   // same eased reveal as a from-scratch one.
   track.reveal = easeReveal(track.reveal, item.builtPct ?? item.upgradePct);
-  const clocks = motionClocks(item, tick, alpha, track.motion, smooth);
+  const clocks = motionClocks(item, tick, frameAlpha, track.motion, smooth, environmentMotion);
   return resolveLayers(
     sheet,
     revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal),

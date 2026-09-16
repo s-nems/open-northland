@@ -171,18 +171,28 @@ stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reprodu
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
 
-The graphics-polish experiment adds three live Graphics switches: softer pixels (including
-palette-resolved original characters), soft shadows, and environment motion. They default on in
+The graphics-polish experiment adds three live Graphics switches: texture quality (including
+palette-resolved original characters), soft shadows, and smoother motion. They default on in
 this experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
 `polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of these
 switches saves the effective set and clears the URL override. Use the same map, camera and zoom for
-A/B review, including ×2 and zoom-out while panning. Original tree frame animations remain intact;
-the motion experiment changes water and the breeze on own vegetation. Shadow bakes have an 8 MiB
-RGBA budget plus CPU copies and fall back to original shadows when unavailable or over budget.
+A/B review, including ×2 and zoom-out while panning. Motion interpolates original humans, animals
+and fish, enriches water and smooths the breeze on own vegetation. Original work/tree/building clips
+retain their authored images and durations: a fractional clock does not invent additional frames.
+Own-art motion interpolation remains enabled according to its authored binding when the switch is off.
+Projectiles, damage smoke, fades and building collapse already use interpolated presentation clocks.
+Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back to original shadows when
+unavailable or over budget.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
 minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
 the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already
 mipmapped own terrain keeps its existing sampling. The HUD and simulation coordinates are unchanged.
+At close zoom, original terrain also gets a small opaque-interior contrast boost capped at eight
+8-bit RGB levels before lighting. Finished buildings use isolated native-size frames with mipmaps
+and similarly bounded interior detail; alpha, anchors and picking bounds stay unchanged. The building
+cache caps its full mip chains at 32 MiB GPU plus CPU canvas copies, falling back when unavailable,
+oversized or full. Construction, upgrades, shadows and already-mipmapped art bypass building detail.
+Bakes occur synchronously on first use and can add a frame-time spike; cached frames avoid repeat work.
 
 Debug modes:
 

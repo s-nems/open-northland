@@ -17,8 +17,8 @@ const matrixBlock = `
   uniform mat3 uTransformMatrix;
 `;
 
-// Four bounded bilinear taps approximate a pixel footprint without mixing adjacent atlas tiles.
-// Existing mipmapped materials retain their hardware filtering; this is not a full mipmap substitute.
+// Original terrain gets bounded close-up detail and four-tap minification, not a full mipmap substitute.
+// Existing mipmapped materials retain their hardware filtering.
 const TERRAIN_SAMPLE = `
   in vec4 vSampleBounds;
   uniform float uEnhancedSampling;
@@ -28,11 +28,28 @@ const TERRAIN_SAMPLE = `
     vec2 dx = dFdx(vUV);
     vec2 dy = dFdy(vUV);
     float footprint = max(length(dx * size), length(dy * size));
-    if (uEnhancedSampling < 0.5 || uManualSampling < 0.5 || footprint <= 1.0)
+    if (uEnhancedSampling < 0.5 || uManualSampling < 0.5)
       return texture(uTexture, vUV);
     vec2 centre = (vSampleBounds.xy + vSampleBounds.zw) * 0.5;
     vec2 low = min(vSampleBounds.xy + 0.5 / size, centre);
     vec2 high = max(vSampleBounds.zw - 0.5 / size, centre);
+    if (footprint <= 1.0) {
+      vec4 texel = textureLod(uTexture, vUV, 0.0);
+      // Artistic detail boost, fading out before minification. Never sharpen alpha or across a
+      // translucent transition edge, and cap the RGB change at eight 8-bit levels before lighting.
+      float amount = 0.2 * (1.0 - smoothstep(0.5, 1.0, footprint));
+      if (amount <= 0.0 || texel.a < 0.999) return texel;
+      vec2 stepX = vec2(1.0 / size.x, 0.0);
+      vec2 stepY = vec2(0.0, 1.0 / size.y);
+      vec4 left = textureLod(uTexture, clamp(vUV - stepX, low, high), 0.0);
+      vec4 right = textureLod(uTexture, clamp(vUV + stepX, low, high), 0.0);
+      vec4 top = textureLod(uTexture, clamp(vUV - stepY, low, high), 0.0);
+      vec4 bottom = textureLod(uTexture, clamp(vUV + stepY, low, high), 0.0);
+      if (min(min(left.a, right.a), min(top.a, bottom.a)) < 0.999) return texel;
+      vec3 detail = texel.rgb - 0.25 * (left.rgb + right.rgb + top.rgb + bottom.rgb);
+      vec3 correction = clamp(detail * amount, vec3(-8.0 / 255.0), vec3(8.0 / 255.0));
+      return vec4(clamp(texel.rgb + correction, vec3(0.0), vec3(texel.a)), texel.a);
+    }
     // Bound the footprint at strong minification: the four taps cannot represent arbitrarily many texels.
     float radius = 0.25 * min(1.0, 4.0 / footprint);
     vec2 a = (dx + dy) * radius;

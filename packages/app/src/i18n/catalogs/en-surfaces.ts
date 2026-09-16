@@ -154,13 +154,14 @@ export const enSurfaces = {
         'Smooths own character edges and zoomed-out world sprites. Does not change text rendering.',
       postFx: 'Post-processing',
       postFxTip: 'A vignette and warm colour grade layered over the world.',
-      enhancedSampling: 'Experiment: softer pixels',
+      enhancedSampling: 'Experiment: texture quality',
       enhancedSamplingTip:
-        'Smooths original characters, camera movement and zoomed-out terrain. Applies immediately; switch off to compare sharpness.',
+        'Smooths the image and camera movement and enhances terrain and finished-building detail. Applies immediately.',
       softShadows: 'Experiment: soft shadows',
       softShadowsTip: 'Gently softens shadow edges. Applies immediately.',
-      environmentMotion: 'Experiment: environment motion',
-      environmentMotionTip: 'Adds water variation and smooths wind in own vegetation. Applies immediately.',
+      environmentMotion: 'Experiment: smoother motion',
+      environmentMotionTip:
+        'Interpolates settlers, animals and fish; enriches water and smooths the breeze. Does not add frames to original animations.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',

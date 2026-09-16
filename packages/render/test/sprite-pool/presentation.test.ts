@@ -56,6 +56,9 @@ describe('interpolated character clocks', () => {
     expect(motionClocks(WALKER, 10, 0.25, track, false).gait).toBe(6);
     expect(motionClocks(IDLE_SETTLER, 10, 0.25, track, true).animation).toBe(46.25);
     expect(motionClocks({ ...IDLE_SETTLER, frozen: true }, 10, 0.25, track, true).animation).toBe(0);
+    expect(motionClocks({ ...WALKER, frozen: true }, 10, 0.75, track, true).gait).toBe(0);
+    expect(motionClocks({ ...WALKER, ghost: true }, 10, 0.25, track, true).gait).toBe(0);
+    expect(motionClocks(SITE, 10, 0.25, track, false, true).animation).toBe(10.25);
   });
 });
 

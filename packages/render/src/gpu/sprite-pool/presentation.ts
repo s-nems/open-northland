@@ -39,8 +39,14 @@ export function motionClocks(
   alpha: number,
   motion: MotionTrack,
   smooth: boolean,
+  continuousAnimation = false,
 ) {
-  const clock = smooth ? Math.max(0, tick - 1 + clamp01(alpha)) : tick;
+  if (item.ghost === true || item.frozen === true) return { animation: 0, gait: 0 };
+  const clock = smooth
+    ? Math.max(0, tick - 1 + clamp01(alpha))
+    : continuousAnimation
+      ? tick + clamp01(alpha)
+      : tick;
   return {
     animation: animationClock(item, clock),
     gait:

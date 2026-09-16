@@ -1,6 +1,7 @@
 import { CanvasSource, Rectangle, Texture, type TextureSource } from 'pixi.js';
 import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
+import { BuildingTextureCache } from './building-texture-cache.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
 
@@ -29,6 +30,7 @@ interface RevealBake {
  * re-mints a texture in the steady state.
  */
 export class TextureCache {
+  private readonly buildings = new BuildingTextureCache();
   private readonly softShadows = new SoftShadowCache();
   private useSoftShadows = false;
   private shadowVersion = 0;
@@ -54,6 +56,10 @@ export class TextureCache {
 
   getShadow(source: TextureSource, frame: AtlasFrame): Texture {
     return (this.useSoftShadows ? this.softShadows.get(source, frame) : null) ?? this.get(source, frame);
+  }
+
+  getBuilding(source: TextureSource, frame: AtlasFrame): Texture {
+    return this.buildings.get(source, frame) ?? this.get(source, frame);
   }
 
   get(source: TextureSource, frame: AtlasFrame): Texture {
@@ -177,6 +183,7 @@ export class TextureCache {
    *  unregisters it. Sub-rect views destroy at Pixi's default `destroySource: false` so the app-owned
    *  page outlives the renderer; the reveal bakes own their canvas source and take it with them. */
   clear(): void {
+    this.buildings.clear();
     this.softShadows.clear();
     for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();

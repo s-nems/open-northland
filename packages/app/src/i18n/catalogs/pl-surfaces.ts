@@ -151,13 +151,14 @@ export const plSurfaces = {
         'Wygładza krawędzie własnych postaci i pomniejszanych sprite’ów świata. Nie zmienia renderowania napisów.',
       postFx: 'Postprocessing',
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
-      enhancedSampling: 'Eksperyment: łagodniejsze piksele',
+      enhancedSampling: 'Eksperyment: jakość tekstur',
       enhancedSamplingTip:
-        'Wygładza oryginalne postacie, ruch kamery i pomniejszony teren. Działa od razu; wyłącz, aby porównać ostrość.',
+        'Wygładza obraz i ruch kamery oraz poprawia detal terenu i gotowych budynków. Działa od razu.',
       softShadows: 'Eksperyment: miękkie cienie',
       softShadowsTip: 'Delikatnie zmiękcza krawędzie cieni. Działa od razu.',
-      environmentMotion: 'Eksperyment: ruch otoczenia',
-      environmentMotionTip: 'Urozmaica wodę i wygładza wiatr we własnej roślinności. Działa od razu.',
+      environmentMotion: 'Eksperyment: płynniejszy ruch',
+      environmentMotionTip:
+        'Interpoluje ruch osadników, zwierząt i ryb; urozmaica wodę i wygładza wiatr. Nie dodaje klatek do oryginalnych animacji.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',
