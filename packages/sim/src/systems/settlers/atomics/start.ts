@@ -13,7 +13,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import { fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext, SystemContext } from '../../context.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { atomicClipNameAtHome, atomicDuration, atomicDurationForName } from '../../readviews/animations.js';
 import type { PlannerContext } from '../planner/context.js';
@@ -62,11 +62,8 @@ export const PRAY_ATOMIC_ID = 12;
 export const EXERCISE_ATOMIC_ID = 89;
 
 /** The original's generic pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good
- *  pickup. */
+ *  pickup. A house may name its own shelf action instead ({@link collectAtomicOf}). */
 export const PICKUP_ATOMIC_ID = 22;
-
-/** The dedicated well draw action; the hive's action comes from its output good's production atomic. */
-export const WELL_DRAW_ATOMIC_ID = 44;
 
 /** The build-house slot bound for the builder job across every tribe (source basis
  *  `DataCnmd/tribetypes12/tribetypes.ini` and the builder's `allowatomic 39` in `jobtypes.ini`). */
@@ -135,9 +132,17 @@ export function atOrWalk(world: World, e: Entity, here: NodeId, cell: NodeId, st
   else world.add(e, MoveGoal, { cell });
 }
 
+/** The action lifting goods off `store`'s shelf: the house's own `collectAtomic` (the well pump, the hive
+ *  pick-up), else the generic pick-up; a store that is no building has only the generic one. */
+export function collectAtomicOf(world: World, ctx: ContentContext, store: Entity): number {
+  const building = world.tryGet(store, Building);
+  if (building === undefined) return PICKUP_ATOMIC_ID;
+  return contentIndex(ctx.content).buildings.get(building.buildingType)?.collectAtomic ?? PICKUP_ATOMIC_ID;
+}
+
 /**
- * Issue the generic `pickup` atomic against the store or pile `from`. The `pickup` effect caps the move
- * at what the source actually holds, so `amount` is a request, not a guarantee.
+ * Issue the `pickup` atomic against the store or pile `from`. The `pickup` effect caps the move at what
+ * the source actually holds, so `amount` is a request, not a guarantee.
  */
 export function startPickup(
   world: World,
@@ -148,21 +153,21 @@ export function startPickup(
   goodType: number,
   amount: number,
 ): void {
+  const atomicId = collectAtomicOf(world, ctx, from);
   startAtomic(
     world,
     e,
-    PICKUP_ATOMIC_ID,
+    atomicId,
     { kind: 'pickup', goodType, amount, from },
-    atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
+    atomicDuration(ctx.content, settler, atomicId),
     from,
   );
 }
 
 /**
- * Issue the utility-specific `draw` atomic. The two bio-pattern utilities are the well and hive; the
- * hive's output carries action 45 as its production atomic, while the well's otherwise unbound output
- * uses action 44. Another input-less producer falls back to the generic pick-up. `ticks` remains the
- * utility recipe's authored work time, so the render loops the gesture until one unit is ready.
+ * Issue the `draw` atomic: a consumer cranking a shared utility in place for one unit plays the same
+ * gesture a carrier plays lifting that unit off its shelf. `ticks` remains the utility recipe's authored
+ * work time, so the render loops the gesture until one unit is ready.
  */
 export function startDraw(
   world: World,
@@ -172,12 +177,7 @@ export function startDraw(
   utility: Entity,
   ticks: number,
 ): void {
-  const building = world.tryGet(utility, Building);
-  const index = contentIndex(ctx.content);
-  const definition = building === undefined ? undefined : index.buildings.get(building.buildingType);
-  const produceAtomic = index.goods.get(goodType)?.atomics.produce;
-  const atomicId =
-    definition?.buildOnBioPattern === true ? (produceAtomic ?? WELL_DRAW_ATOMIC_ID) : PICKUP_ATOMIC_ID;
+  const atomicId = collectAtomicOf(world, ctx, utility);
   startAtomic(world, e, atomicId, { kind: 'draw', goodType, utility }, ticks, utility);
 }
 

@@ -1,10 +1,10 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Carrying, CurrentAtomic, MoveGoal, Stockpile } from '../../src/components/index.js';
+import { Carrying, CurrentAtomic, MoveGoal, Owner, Resting, Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { buildingAt, cell, ctxOf, grassMap, settlerAt } from './producer-supply/support.js';
+import { buildingAt, cell, ctxOf, grassMap, PICKUP_ATOMIC, settlerAt } from './producer-supply/support.js';
 
 // Consumer self-service at shared utility buildings (the well, the hive): a producer worker - or its bound
 // carrier - short a recipe input that NO store holds draws its own from an input-less utility that mints it
@@ -23,8 +23,8 @@ const HIVE = 11;
 const BAKERY = 12;
 const BREWERY = 13;
 const WAREHOUSE = 7; // testContent's general storage - extended below to stock the utility outputs
-const WELL_DRAW_ATOMIC = 44;
-const HONEY_PRODUCE_ATOMIC = 45; // honey binds this produce atomic → the draw uses it
+const WELL_DRAW_ATOMIC = 44; // the well's `collectAtomic`, the original's pump at house logictype 10
+const HIVE_DRAW_ATOMIC = 45; // the hive's, at logictype 11
 
 const DRAW_TICKS = 4; // the well/hive recipe's own work time (small, so a self-service run closes fast)
 
@@ -37,9 +37,9 @@ function utilityContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      { typeId: WATER, id: 'water', weight: 1 }, // no produce atomic - the bio-pattern draw uses the well gesture
+      { typeId: WATER, id: 'water', weight: 1 },
       { typeId: BREAD, id: 'bread', weight: 1 },
-      { typeId: HONEY, id: 'honey', weight: 1, atomics: { produce: HONEY_PRODUCE_ATOMIC } },
+      { typeId: HONEY, id: 'honey', weight: 1 },
       { typeId: ALE, id: 'ale', weight: 1 },
     ],
     buildings: [
@@ -64,6 +64,7 @@ function utilityContent(): ContentSet {
         id: 'work_well_00',
         kind: 'workplace',
         buildOnBioPattern: true,
+        collectAtomic: WELL_DRAW_ATOMIC,
         workers: [{ jobType: CARRIER, count: 1 }],
         stock: [{ goodType: WATER, capacity: 1, initial: 0 }],
         produces: [WATER],
@@ -74,6 +75,7 @@ function utilityContent(): ContentSet {
         id: 'work_hive_00',
         kind: 'workplace',
         buildOnBioPattern: true,
+        collectAtomic: HIVE_DRAW_ATOMIC,
         workers: [{ jobType: CARRIER, count: 1 }],
         stock: [{ goodType: HONEY, capacity: 1, initial: 0 }],
         produces: [HONEY],
@@ -165,7 +167,7 @@ describe('utility self-service - MODE 1: a consumer draws a missing input from a
     plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(brewer, CurrentAtomic);
-    expect(atomic.atomicId).toBe(HONEY_PRODUCE_ATOMIC);
+    expect(atomic.atomicId).toBe(HIVE_DRAW_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'draw', goodType: HONEY, utility: hive });
   });
 
@@ -232,13 +234,23 @@ describe('utility self-service - MODE 1: a consumer draws a missing input from a
     plannerSystem(sim.world, ctxOf(sim));
 
     // The well MAKES water, so its shelf is a source like any warehouse - and picking the standing
-    // unit up beats re-cranking the recipe for one.
-    expect(sim.world.get(baker, CurrentAtomic).effect).toEqual({
-      kind: 'pickup',
-      goodType: WATER,
-      amount: 1,
-      from: well,
-    });
+    // unit up beats re-cranking the recipe for one. Lifting it is the well's own pump gesture.
+    const atomic = sim.world.get(baker, CurrentAtomic);
+    expect(atomic.effect).toEqual({ kind: 'pickup', goodType: WATER, amount: 1, from: well });
+    expect(atomic.atomicId).toBe(WELL_DRAW_ATOMIC);
+  });
+
+  it('lifts a unit off an ordinary store with the generic pick-up', () => {
+    const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(8, 1) });
+    const bakery = buildingAt(sim, BAKERY, 0, 0);
+    const warehouse = buildingAt(sim, WAREHOUSE, 2, 0, [[WATER, 1]]);
+    const baker = settlerAt(sim, 2, 0, OPERATOR, bakery); // standing on the warehouse
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(baker, CurrentAtomic);
+    expect(atomic.effect).toEqual({ kind: 'pickup', goodType: WATER, amount: 1, from: warehouse });
+    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
   });
 
   it('end to end: an UNSTAFFED well feeds the bakery - bread is baked with nobody posted at the well', () => {
@@ -273,6 +285,34 @@ describe('utility self-service - MODE 1: a consumer draws a missing input from a
 });
 
 describe('utility self-service - MODE 2: a posted utility carrier feeds nearby consumers first', () => {
+  it('waits on the well door in view, pumps the minted unit out and stays the presence gate', () => {
+    const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
+    const well = buildingAt(sim, WELL, 2, 0);
+    buildingAt(sim, BAKERY, 0, 0); // the consumer the minted water goes to
+    const porter = settlerAt(sim, 2, 0, CARRIER, well); // the well's posted carrier, on its door
+    sim.world.add(porter, Owner, { player: 0 }); // a player's settler; unowned fixtures wait inside
+    sim.world.add(well, Owner, { player: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // Nothing to haul yet: the carrier stands on the door rather than hiding inside the well.
+    expect(sim.world.has(porter, Resting)).toBe(false);
+    expect(sim.world.has(porter, MoveGoal)).toBe(false);
+    expect(sim.world.has(porter, CurrentAtomic)).toBe(false);
+
+    // Its presence runs the well; the minted unit is lifted out with the pump gesture.
+    let minted = 0;
+    for (let i = 0; i < DRAW_TICKS * 3 && minted === 0; i++) {
+      sim.step();
+      minted = sim.world.get(well, Stockpile).amounts.get(WATER) ?? 0;
+    }
+    expect(minted).toBe(1);
+    for (let i = 0; i < DRAW_TICKS && !sim.world.has(porter, CurrentAtomic); i++) sim.step();
+    const atomic = sim.world.get(porter, CurrentAtomic);
+    expect(atomic.atomicId).toBe(WELL_DRAW_ATOMIC);
+    expect(atomic.effect).toEqual({ kind: 'pickup', goodType: WATER, amount: 1, from: well });
+  });
+
   it('routes the well’s water to a nearby bakery before central storage', () => {
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const well = buildingAt(sim, WELL, 5, 0);

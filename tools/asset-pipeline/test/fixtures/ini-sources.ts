@@ -217,6 +217,15 @@ logicworker 51 1
 logicproduction 22
 logicproduction 20
 logicbuildonbiopattern 1
+
+[logichousetype]
+debugname "work well 00"
+logictype 10
+logicmaintype 3
+logicworker 51 1
+logicstock 20 1 0
+logicproduction 20
+logicbuildonbiopattern 1
 `;
 
 export const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><00000210> Don't modify this line!

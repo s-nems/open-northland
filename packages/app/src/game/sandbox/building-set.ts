@@ -120,6 +120,7 @@ export interface SandboxBuildingRow {
   footprint?: BuildingFootprint;
   upgradeTarget?: number;
   buildOnBioPattern?: boolean;
+  collectAtomic?: number;
   canEnableDefenceMode?: boolean;
   /** How many civilians the building shelters in defence mode. */
   shelterCapacity?: number;
@@ -284,6 +285,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     hitpoints: buildingHitpoints(b.kind),
     ...(upgradeTarget !== undefined ? { upgradeTarget } : {}),
     ...(b.buildOnBioPattern ? { buildOnBioPattern: true } : {}),
+    ...(b.collectAtomic !== undefined ? { collectAtomic: b.collectAtomic } : {}),
     ...(b.canEnableDefenceMode ? { canEnableDefenceMode: true, shelterCapacity: shelterCapacityFor(b) } : {}),
     ...(slots !== undefined ? { workers: slots } : {}),
     ...(b.kind === 'home' ? homeRow(b) : {}),

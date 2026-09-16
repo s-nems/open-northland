@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Provenance, TypeId } from '../record.js';
+import { AtomicId, Provenance, TypeId } from '../record.js';
 import { BuildingFootprint } from './building-footprint.js';
 import { GoodQuantity } from './goods.js';
 
@@ -100,6 +100,12 @@ export const BuildingType = z.strictObject({
    * ground carrying the vegetation regrow/plant flags. The source sets it for wells and hives.
    */
   buildOnBioPattern: z.boolean().default(false),
+  /**
+   * The action a settler plays lifting goods off this house's shelf; absent, the generic pick-up. Engine
+   * behavior, not an `.ini` key: the original's carrier collect selects action 44 at the well (`logictype`
+   * 10) and 45 at the hive (11), byte-verified in `an original routine`.
+   */
+  collectAtomic: AtomicId.optional(),
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
   canEnableDefenceMode: z.boolean().default(false),
   /**

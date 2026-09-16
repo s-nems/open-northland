@@ -175,9 +175,13 @@ function holdInsideWorkplace(plan: PlannerContext, workplace: Entity, seats?: Wo
   });
 }
 
-/** Loiter beside the workplace door rather than on it, so a bound worker with nothing to do neither runs
- *  the craft nor hides indoors, and may strike up an idle chat with a nearby idler. Unowned fixtures keep
- *  the wait-inside behaviour so their state hashes stay byte-identical. */
+/**
+ * Loiter beside the workplace door rather than on it, so a bound worker with nothing to do neither runs
+ * the craft nor hides indoors, and may strike up an idle chat with a nearby idler. One that drives the
+ * craft by its presence (the well's or hive's carrier) stands on the door in view, where the operator
+ * gate counts it and the next unit is lifted from; the original's carrier likewise waits at the house it
+ * collects from. Unowned fixtures keep the wait-inside behaviour so their state hashes stay byte-identical.
+ */
 function loiterByDoor(
   plan: PlannerContext,
   workplace: Entity,
@@ -185,11 +189,15 @@ function loiterByDoor(
   drivesProduction: boolean,
 ): void {
   const { world, ctx, terrain, entity, here } = plan;
-  if (!world.has(entity, Owner) || drivesProduction) {
+  if (!world.has(entity, Owner)) {
     holdInsideWorkplace(plan, workplace);
     return;
   }
   const door = interactionCell(world, ctx, terrain, workplace, here);
+  if (drivesProduction) {
+    atOrWalk(world, entity, here, door, () => {});
+    return;
+  }
   const stand = loiterCell(world, terrain, entity, here, door, spacing);
   atOrWalk(world, entity, here, stand, () => {
     const { x, y } = terrain.coordsOf(here);

@@ -1,13 +1,14 @@
 import { type CellTerrainMap, components, type Simulation } from '@open-northland/sim';
+import { HIVE_DRAW_ATOMIC, WELL_DRAW_ATOMIC } from './atomics.js';
 import { TERRAIN_OPEN } from './terrain.js';
 
 /**
  * The committed catalog of viking buildings, keyed by `Building.buildingType`, the original's
  * `[GfxHouse]` `LogicType`: the id a `placeBuilding` command stamps and the renderer's bob-lookup key.
  *
- * `typeId`, `id`, `kind`, `buildOnBioPattern` and `canEnableDefenceMode` are transcribed verbatim from `ir.json`'s
- * `buildings`; `label` is hand-authored English. Level suffixes are 1-based for the player even though
- * the ids stay 0-indexed.
+ * `typeId`, `id`, `kind`, `buildOnBioPattern`, `collectAtomic` and `canEnableDefenceMode` are transcribed
+ * verbatim from `ir.json`'s `buildings`; `label` is hand-authored English. Level suffixes are 1-based for
+ * the player even though the ids stay 0-indexed.
  *
  * Scope is the 41 real viking buildings (`typeId` 1..41), every one with a decoded bob. `work_murek`
  * (typeId 55) is omitted because the mod binds no viking bob for it, so it would draw the fallback house.
@@ -30,6 +31,8 @@ export interface VikingBuilding {
   /** Coarse class from `ir.json`: `home` | `storage` | `workplace` | `tower` | `training`. */
   readonly kind: string;
   readonly buildOnBioPattern?: true;
+  /** The house-specific shelf pick-up action; absent, the generic pick-up. */
+  readonly collectAtomic?: number;
   readonly canEnableDefenceMode?: true;
 }
 
@@ -44,8 +47,22 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 7, id: 'stock_00', label: 'Warehouse (level 1)', kind: 'storage' },
   { typeId: 8, id: 'stock_01', label: 'Warehouse (level 2)', kind: 'storage' },
   { typeId: 9, id: 'stock_02', label: 'Warehouse (level 3)', kind: 'storage' },
-  { typeId: 10, id: 'work_well_00', label: 'Well', kind: 'workplace', buildOnBioPattern: true },
-  { typeId: 11, id: 'work_hive_00', label: 'Beehive / apiary', kind: 'workplace', buildOnBioPattern: true },
+  {
+    typeId: 10,
+    id: 'work_well_00',
+    label: 'Well',
+    kind: 'workplace',
+    buildOnBioPattern: true,
+    collectAtomic: WELL_DRAW_ATOMIC,
+  },
+  {
+    typeId: 11,
+    id: 'work_hive_00',
+    label: 'Beehive / apiary',
+    kind: 'workplace',
+    buildOnBioPattern: true,
+    collectAtomic: HIVE_DRAW_ATOMIC,
+  },
   { typeId: 12, id: 'work_farm_00', label: 'Grain farm', kind: 'workplace' },
   { typeId: 13, id: 'work_mill_00', label: 'Mill', kind: 'workplace' },
   { typeId: 14, id: 'work_bakery_00', label: 'Bakery (level 1)', kind: 'workplace' },

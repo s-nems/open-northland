@@ -14,6 +14,16 @@ const HOUSE_KIND_BY_MAIN_TYPE: Readonly<Record<number, BuildingKind>> = {
   7: BUILDING_KIND.wonder,
 };
 
+/**
+ * The house-specific collect action by `logictype`, engine behavior with no `.ini` key: the original's
+ * carrier collect plays the well pump at type 10 and the hive pick-up at type 11, the generic pick-up
+ * elsewhere (`an original routine`, byte-verified).
+ */
+const COLLECT_ATOMIC_BY_LOGIC_TYPE: Readonly<Record<number, number>> = {
+  10: 44,
+  11: 45,
+};
+
 function houseKind(mainType: number | undefined): BuildingType['kind'] {
   if (mainType === undefined) return 'maintype_unknown';
   return HOUSE_KIND_BY_MAIN_TYPE[mainType] ?? `maintype_${mainType}`;
@@ -21,9 +31,9 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
 
 /**
  * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
- * `debugname`. `logicbuildonbiopattern` is retained because it directly gates placement; unrelated
- * graphics and placement extras (`debugcolor`, `logicvehicletype`, other `logicbuildon*`/`logicignore*`)
- * remain outside this type-table slice.
+ * `debugname`. `logicbuildonbiopattern` is retained because it directly gates placement, and the engine's
+ * per-type collect action is joined here; unrelated graphics and placement extras (`debugcolor`,
+ * `logicvehicletype`, other `logicbuildon*`/`logicignore*`) remain outside this type-table slice.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
   const buildings: BuildingType[] = [];
@@ -57,6 +67,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
         schoolSize: getInt(sec, 'logicSchoolSize'),
         homeSize: getInt(sec, 'logichomesize') ?? 0,
         buildOnBioPattern: getInt(sec, 'logicbuildonbiopattern') === 1,
+        collectAtomic: COLLECT_ATOMIC_BY_LOGIC_TYPE[typeId],
         canEnableDefenceMode: getInt(sec, 'logicCanEnableDefenceMode') === 1,
         workers,
         stock,

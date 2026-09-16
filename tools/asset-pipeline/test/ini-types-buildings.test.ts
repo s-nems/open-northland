@@ -58,6 +58,22 @@ describe('extractBuildings', () => {
         shelterCapacity: 0,
         source: src,
       },
+      {
+        typeId: 10,
+        id: 'work_well_00',
+        kind: 'workplace',
+        homeSize: 0,
+        buildOnBioPattern: true,
+        collectAtomic: 44, // the engine's well pump for logictype 10, not an .ini key
+        canEnableDefenceMode: false,
+        workers: [{ jobType: 51, count: 1 }],
+        stock: [{ goodType: 20, capacity: 1, initial: 0 }],
+        produces: [20],
+        recipes: [],
+        construction: [],
+        shelterCapacity: 0,
+        source: src,
+      },
     ]);
   });
 
