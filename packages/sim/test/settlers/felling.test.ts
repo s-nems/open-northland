@@ -98,12 +98,10 @@ function totalWood(sim: Simulation): number {
 }
 
 describe('felling - chopping a tree down', () => {
-  it('the fixture pins a real felling spec (chops + yield both positive)', () => {
+  it('a chop decrements chopsLeft and yields NOTHING onto the back', () => {
+    // A zeroed felling spec would fell the tree on the first swing and make the counts below vacuous.
     expect(CHOPS_TO_FELL).toBeGreaterThan(0);
     expect(TREE_WOOD_YIELD).toBeGreaterThan(0);
-  });
-
-  it('a chop decrements chopsLeft and yields NOTHING onto the back', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const tree = placeFellableTree(sim, 0, 0);
     const cutter = makeWoodcutter(sim, 0, 0);

@@ -1,21 +1,29 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MapMeta, MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import type { ContentIr } from '../../src/content/ir/rows.js';
+import { mapChestSpawns } from '../../src/content/map-resources.js';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
  * Cross-file invariants between the decoded maps (`<content>/maps/*.json`) and the IR - the seam
  * `parseTerrainMap`'s per-file schema cannot see: a map is only playable when every ground typeId
- * and placed-object name it carries resolves in the SAME pipeline run's ir.json. Every map is also
- * run through the real loader's zod parse, so a truncated or lane-skewed emit fails here instead of
- * at first open in the browser. Skips without generated content (see `helpers.ts`).
+ * and placed-object name it carries resolves in the SAME pipeline run's ir.json, and every chest it
+ * places authors a type the sim's contents table knows. Every map is also run through the real
+ * loader's zod parse, so a truncated or lane-skewed emit fails here instead of at first open in the
+ * browser. Skips without generated content (see `helpers.ts`).
  */
 
 /** Zod over ~125 maps (~5.5M cells) takes seconds; whichever test parses first pays it once. Sized
  *  as a hang-guard with room for a CPU-contended full parallel run (observed timing out at 60s under
  *  multi-session machine load), not as a benchmark. */
 const MAP_PARSE_TIMEOUT_MS = 180_000;
+
+const WOODEN_CHEST_LOGIC_TYPE = 85;
+const MAGICAL_CHEST_LOGIC_TYPE = 86;
+const UNASSIGNED_MOD_CHEST_TYPE = 13;
 
 function mapsDir(): string {
   return resolve(contentDir(), 'maps');
@@ -110,6 +118,33 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
         const unknown = (map.objects?.types ?? []).filter((n) => !known.has(n));
         expect(unknown, `map ${file} places objects absent from ir.json landscapeGfx`).toEqual([]);
       }
+    },
+    MAP_PARSE_TIMEOUT_MS,
+  );
+
+  it(
+    'the chest join finds both chest records, and every map authors a known type on every chest',
+    () => {
+      // The sim opens a chest empty when its authored type is not in the contents table, so a gap there
+      // turns a treasure into nothing with no symptom.
+      const ir = rawIrUnderTest() as ContentIr;
+      const chestRecords = (ir.landscapeGfx ?? []).filter(
+        (g) => g.logicType === WOODEN_CHEST_LOGIC_TYPE || g.logicType === MAGICAL_CHEST_LOGIC_TYPE,
+      );
+      expect(chestRecords.map((g) => g.editName).sort()).toEqual(['chest magical', 'chest wooden']);
+      let chests = 0;
+      const unknown = new Set<number>();
+      for (const map of parsedMaps().values()) {
+        if (map.objects === undefined) continue;
+        for (const chest of mapChestSpawns(map.objects, ir)) {
+          chests++;
+          if (!systems.CHEST_CONTENTS.has(chest.contents)) unknown.add(chest.contents);
+        }
+      }
+      expect(chests).toBeGreaterThan(0);
+      // Ten mod-map chests author type 13, a row the original's dispatch lacks as well: they open empty
+      // there too. Any other unknown type is a table gap.
+      expect([...unknown], 'chest types the table does not know').toEqual([UNASSIGNED_MOD_CHEST_TYPE]);
     },
     MAP_PARSE_TIMEOUT_MS,
   );

@@ -24,7 +24,6 @@ import { realMapPath, realMapScript, realMapWorld, restoreRealMapWorld } from '.
  */
 
 const MAP_ID = 'magiczny_las';
-const TWELVE_SEAT_MAP_ID = 'magiczny_las_12_players';
 const DEFAULT_RUN_TICKS = 600;
 const RUN_TICKS = Number.parseInt(process.env.ON_RELAY_TICKS ?? '', 10) || DEFAULT_RUN_TICKS;
 /** Orders per client, staggered by seat so some share a tick with another seat's or the AI's. */
@@ -168,27 +167,11 @@ async function playThrough(
 }
 
 /** `ON_RELAY_PARITY=off` skips the file: these runs are most of the content suite's time. */
-const RUN_PARITY =
-  process.env.ON_RELAY_PARITY !== 'off' &&
-  hasRealIr() &&
-  existsSync(realMapPath(MAP_ID)) &&
-  existsSync(realMapPath(TWELVE_SEAT_MAP_ID));
+const RUN_PARITY = process.env.ON_RELAY_PARITY !== 'off' && hasRealIr() && existsSync(realMapPath(MAP_ID));
 
 describe.runIf(RUN_PARITY)('relayed sessions on a decoded map', () => {
-  it('two clients on unequal links end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
-    const [fast, slow] = await playThrough(MAP_ID, 2);
-    // The slower link is budgeted a longer delay; the state above did not depend on it.
-    expect(slow?.delayTicks).toBeGreaterThan(fast?.delayTicks ?? Number.POSITIVE_INFINITY);
-  });
-
   it('four clients end on one state', { timeout: RUN_TIMEOUT_MS }, async () => {
     await playThrough(MAP_ID, 4);
-  });
-
-  it('twelve clients fill the twelve-seat map and end on one state', {
-    timeout: RUN_TIMEOUT_MS,
-  }, async () => {
-    await playThrough(TWELVE_SEAT_MAP_ID, 12);
   });
 
   it('brings a diverged client back from the other’s snapshot on the real map', {

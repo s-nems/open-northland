@@ -26,11 +26,6 @@ describe('playableTribes', () => {
     });
     expect(playableTribes(content)).toEqual([]);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = tribeContent();
-    expect(playableTribes(content)).toEqual(playableTribes(content));
-  });
 });
 
 describe('isPlayableTribe', () => {
@@ -44,13 +39,5 @@ describe('isPlayableTribe', () => {
 
   it('is false for an unknown tribe id (no matching record)', () => {
     expect(isPlayableTribe(tribeContent(), 99)).toBe(false);
-  });
-
-  it('agrees with playableTribes membership for every declared tribe', () => {
-    const content = tribeContent();
-    const playable = new Set(playableTribes(content).map((t) => t.typeId));
-    for (const tribe of content.tribes) {
-      expect(isPlayableTribe(content, tribe.typeId)).toBe(playable.has(tribe.typeId));
-    }
   });
 });

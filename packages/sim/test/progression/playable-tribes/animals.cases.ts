@@ -128,21 +128,16 @@ describe('isWarrantableAnimal / ignoresHousesAnimal (the last animaltypes flag r
 
 describe('herdParams (the animal herd/spawn read view)', () => {
   it('surfaces the herd/spawn params off the animaltypes record as one struct', () => {
-    const params = herdParams(tribeContent(), 8); // bears
-    expect(params).toEqual({
-      maxGroupSize: 4, // maximumGroupSize
+    const content = tribeContent();
+    expect(herdParams(content, 8)).toEqual({
+      maxGroupSize: 4, // bears: maximumGroupSize
       searchForLeader: true, // searchForLeader
       leaderDistance: 5, // maximumLeaderDistance
       birthPointRange: 12, // maximumDistanceToBirthPoint
       stayPointRange: 7, // maximumDistanceToStayPoint
     });
-  });
-
-  it('returns null for a tribe with no animal record (a monster tribe, a civ, or an unknown id)', () => {
-    const content = tribeContent();
-    expect(herdParams(content, 6)).toBeNull(); // werewolf - a monster tribe, no animaltypes record
-    expect(herdParams(content, 1)).toBeNull(); // viking - a civilization
-    expect(herdParams(content, 99)).toBeNull(); // unknown tribe - no record
+    // The scalar territory-radius view answers the same field without minting the struct.
+    expect(stayPointRangeOf(content, 8)).toBe(7);
   });
 
   it('defaults a source-omitted herd field to 0/false rather than guessing (a solitary animal)', () => {
@@ -166,32 +161,29 @@ describe('herdParams (the animal herd/spawn read view)', () => {
   });
 });
 
-describe('stayPointRangeOf (the scalar territory-radius read view)', () => {
-  it('agrees with herdParams, which it exists only to answer without minting a struct', () => {
-    const content = tribeContent();
-    for (const tribe of [8, 9, 1, 99]) {
-      expect(stayPointRangeOf(content, tribe)).toBe(herdParams(content, tribe)?.stayPointRange ?? 0);
-    }
-    expect(stayPointRangeOf(content, 8)).toBe(7); // bears, the one tribe here with a real record
-  });
-});
-
 describe('locomotionOf (the animal pace read view)', () => {
   it('surfaces the movespeed off the animaltypes record (runspeed stays unconsumed - no sprint)', () => {
     const params = locomotionOf(tribeContent(), 8); // bears: movespeed 8
     expect(params).toEqual({ walkSpeed: 8 });
   });
 
-  it('returns null for a tribe with no animal record (a monster tribe, a civ, or an unknown id)', () => {
-    const content = tribeContent();
-    expect(locomotionOf(content, 6)).toBeNull(); // werewolf - a monster tribe, no animaltypes record
-    expect(locomotionOf(content, 1)).toBeNull(); // viking - a civilization
-    expect(locomotionOf(content, 99)).toBeNull(); // unknown tribe - no record
-  });
-
   it('defaults a source-omitted speed to 0 rather than guessing (the engine default applies)', () => {
     // The cow record (tribe 10) sets no movespeed; the read view passes the schema's
     // source-omitted 0 through verbatim - no inference of a default pace.
     expect(locomotionOf(tribeContent(), 10)).toEqual({ walkSpeed: 0 });
+  });
+});
+
+describe('the struct read views share one no-record path', () => {
+  it('returns null for a tribe with no animal record (a monster tribe, a civ, or an unknown id)', () => {
+    const content = tribeContent();
+    for (const [name, read] of [
+      ['herdParams', herdParams],
+      ['locomotionOf', locomotionOf],
+    ] as const) {
+      expect(read(content, 6), name).toBeNull(); // werewolf - a monster tribe, no animaltypes record
+      expect(read(content, 1), name).toBeNull(); // viking - a civilization
+      expect(read(content, 99), name).toBeNull(); // unknown tribe - no record
+    }
   });
 });

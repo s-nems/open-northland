@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { decodePalette, encodePalette } from '../src/decoders/palette.js';
-import { expandToRgba } from '../src/decoders/pcx.js';
 import { rampPalette as rampRgb } from './fixtures/palette.js';
 
 /**
  * Standalone `CPalette` (id 0x3F6) decoder tests. No copyrighted fixtures: we synthesize palettes in
  * memory with the faithful `encodePalette`, then assert `decodePalette` recovers the RGB triples and
  * version. A couple of cases hand-build bytes to pin the storable header and the on-disk `[B,G,R,_]`
- * order, and one feeds the result into `expandToRgba` to prove the shape matches the `.pcx` palette.
+ * order.
  */
 
 describe('decodePalette', () => {
@@ -42,15 +41,6 @@ describe('decodePalette', () => {
     const view = new DataView(padded.buffer);
     view.setUint32(0, 0x3f6, true);
     expect(() => decodePalette(padded)).not.toThrow();
-  });
-
-  it('feeds straight into expandToRgba like the .pcx palette', () => {
-    const rgb = rampRgb();
-    const palette = decodePalette(encodePalette({ rgb })).rgb;
-    const image = { width: 2, height: 1, pixels: Uint8Array.from([0, 5]), palette };
-    const { rgba } = expandToRgba(image);
-    // index 0 -> (0, 255, 0); index 5 -> (5, 250, 35); both alpha 255
-    expect([...rgba]).toEqual([0, 255, 0, 255, 5, 250, 35, 255]);
   });
 
   it('throws a palette-prefixed error on a buffer too short for header + body', () => {

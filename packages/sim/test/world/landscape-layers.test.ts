@@ -95,11 +95,6 @@ describe('universalLayerLandscape', () => {
     const ids = universalLayerLandscape(landscapeContent()).map((t) => t.id);
     expect(ids).toEqual(['void']);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = landscapeContent();
-    expect(universalLayerLandscape(content)).toEqual(universalLayerLandscape(content));
-  });
 });
 
 describe('isLandLayerType', () => {
@@ -118,10 +113,5 @@ describe('landLayerLandscape', () => {
     // Mirrors the real IR shape: every row but `void` carries allowedonland (86/87 there).
     const typeIds = landLayerLandscape(landscapeContent()).map((t) => t.typeId);
     expect(typeIds).toEqual([30, 40, 82, 84]); // grass, tree, wall, wall_gate_open - void(1) excluded
-  });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = landscapeContent();
-    expect(landLayerLandscape(content)).toEqual(landLayerLandscape(content));
   });
 });

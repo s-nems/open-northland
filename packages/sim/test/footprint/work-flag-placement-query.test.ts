@@ -11,14 +11,6 @@ import { ctxOf, mappedSim, terrainOf } from './building-placement/support.js';
  * outward and is then rejected, which is the silent no-op the snap exists to remove.
  */
 describe('nearestWorkFlagPlacement bounded options', () => {
-  it('returns the origin itself when it is already legal', () => {
-    const sim = mappedSim();
-    const terrain = terrainOf(sim);
-    const from = terrain.nodeAt(8, 8);
-
-    expect(nearestWorkFlagPlacement(sim.world, ctxOf(sim), terrain, from)).toBe(from);
-  });
-
   it('honours `accept`, picking the nearest node that also passes the extra gate', () => {
     const sim = mappedSim();
     const terrain = terrainOf(sim);

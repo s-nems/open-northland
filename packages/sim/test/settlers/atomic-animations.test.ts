@@ -133,13 +133,6 @@ describe('atomicAnimationByName', () => {
   it('returns undefined for a name with no record (an unresolvable binding is expected, not malformed)', () => {
     expect(atomicAnimationByName(animationContent(), 'nonexistent_anim')).toBeUndefined();
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = animationContent();
-    expect(atomicAnimationByName(content, 'viking_idle')).toEqual(
-      atomicAnimationByName(content, 'viking_idle'),
-    );
-  });
 });
 
 describe('isInterruptibleAtomic', () => {
@@ -202,13 +195,6 @@ describe('atomicEventChannelDelta', () => {
     const content = animationContent();
     expect(atomicEventChannelDelta(content, 'viking_walk', ATOMIC_EVENT_CHANNEL.HUNGER)).toBe(0); // no events
     expect(atomicEventChannelDelta(content, 'nonexistent_anim', ATOMIC_EVENT_CHANNEL.HUNGER)).toBe(0); // unknown
-  });
-
-  it('is byte-stable call-to-call (a pure fold over content)', () => {
-    const content = animationContent();
-    expect(atomicEventChannelDelta(content, 'viking_sleep', ATOMIC_EVENT_CHANNEL.REST)).toBe(
-      atomicEventChannelDelta(content, 'viking_sleep', ATOMIC_EVENT_CHANNEL.REST),
-    );
   });
 
   it('sums across BOTH event streams on a channel (eventx self-drain + plain event)', () => {

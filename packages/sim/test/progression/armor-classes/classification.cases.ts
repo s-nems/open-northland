@@ -48,9 +48,4 @@ describe('armorByClass', () => {
   it('is empty for content with no armor (parseContentSet defaults armor to [])', () => {
     expect(armorByClass(parseContentSet({ ...SCAFFOLD })).size).toBe(0);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = armorContent();
-    expect(armorByClass(content)).toEqual(armorByClass(content));
-  });
 });

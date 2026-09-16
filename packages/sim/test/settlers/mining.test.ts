@@ -114,12 +114,10 @@ function totalStone(sim: Simulation): number {
 }
 
 describe('mining - chipping a deposit', () => {
-  it('the fixture pins a real deposit spec (size + levels both positive)', () => {
+  it('a chip drops ONE ore pile at the deposit, drains it by one, and carries NOTHING on the back', () => {
+    // A zeroed deposit spec would empty the node on the first chip and make the counts below vacuous.
     expect(DEPOSIT_SIZE).toBeGreaterThan(0);
     expect(DEPOSIT_LEVELS).toBeGreaterThan(0);
-  });
-
-  it('a chip drops ONE ore pile at the deposit, drains it by one, and carries NOTHING on the back', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const deposit = placeDeposit(sim, 4, 0);
     const miner = makeMiner(sim, 4, 0);

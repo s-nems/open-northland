@@ -41,6 +41,23 @@ npm run test:watch
 Do not use a browser scene to replace a cheap state assertion. Do not claim visual or audio
 correctness from a headless test.
 
+## Tests not worth writing
+
+- Calling a pure function twice with the same argument is not a determinism test: the hygiene scan
+  owns ambient nondeterminism and the fuzz suite owns run-to-run equality. Reserve
+  `expect(run()).toBe(run())` for two independently built simulations.
+- A test whose only assertion is that its own fixture is non-degenerate is not a test. Assert the
+  premise inside the first test that depends on it.
+- Do not assert one accessor against another that reads the same field. Pin both against a named
+  value from the fixture.
+- A test that needs the decoded map corpus joins the file that already parses it. Without isolation
+  only same-file memoization is guaranteed to be reused, so do not lift the parse into a helper.
+- Do not step a restored simulation alongside the live one for a whole scenario. Compare once, at the
+  checkpoint the restore is about.
+- A scale ladder is one contract, not one per rung. Keep the smallest case that reaches the branch.
+- To prove a write happened, read the value back. A spy's call count cannot tell a correct write from
+  a wrong one.
+
 ## Scenario harness
 
 The simulation harness queues commands, advances ticks, and checks the resulting world:

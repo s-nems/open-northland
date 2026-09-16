@@ -109,11 +109,6 @@ describe('shipVehicles', () => {
     });
     expect(shipVehicles(content)).toEqual([]);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = vehicleContent();
-    expect(shipVehicles(content)).toEqual(shipVehicles(content));
-  });
 });
 
 describe('largestShipCapacity', () => {

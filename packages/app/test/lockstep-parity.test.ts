@@ -11,6 +11,10 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
 /** Enough ticks past a scene's authored setup to run its systems; the scene tests own the full runs. */
 const PARITY_TICKS = 120;
 
+/** The scenes reaching distinct system sets. The driver rule is one contract, so running it on every
+ *  registered scene repeats it rather than widening it. */
+const PARITY_SCENES = ['battle', 'construction', 'sandbox', 'tower-defence'];
+
 function ticksFor(runTicks: number): number {
   return Math.min(runTicks, PARITY_TICKS);
 }
@@ -26,8 +30,9 @@ function drive(sim: Simulation, ticks: number): Simulation {
 }
 
 describe('loopback driver parity', () => {
-  for (const scene of SCENES) {
-    it(`reaches the same state as the direct loop on '${scene.id}'`, () => {
+  for (const id of PARITY_SCENES) {
+    it(`reaches the same state as the direct loop on '${id}'`, () => {
+      const scene = SCENES.find((s) => s.id === id) ?? raise(`no '${id}' scene in the registry`);
       const ticks = ticksFor(scene.runTicks);
       const direct = createSceneSim(scene);
       direct.run(ticks);

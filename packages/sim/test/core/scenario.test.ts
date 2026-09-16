@@ -15,17 +15,12 @@ const BEAR = 10;
  * mechanic-specific outcomes live beside their systems and in acceptance scenes. See docs/TESTING.md.
  */
 
-describe('content loads and validates', () => {
-  it('test fixture passes schema + cross-reference validation', () => {
-    const content = testContent();
-    expect(content.buildings.length).toBeGreaterThan(0);
-    expect(content.goods.find((g) => g.id === 'wood')).toBeDefined();
-  });
-});
-
 describe('integration: deterministic over many ticks', () => {
   it('two sims with same seed produce identical state hashes', () => {
     const content = testContent();
+    // A fixture with no buildings and no wood leaves the run nothing to diverge over.
+    expect(content.buildings.length).toBeGreaterThan(0);
+    expect(content.goods.find((g) => g.id === 'wood')).toBeDefined();
     const a = new Simulation({ seed: 7, content });
     const b = new Simulation({ seed: 7, content });
     a.run(500);

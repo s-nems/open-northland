@@ -75,9 +75,4 @@ describe('seaJobs', () => {
     });
     expect(seaJobs(content)).toEqual([]);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = jobContent();
-    expect(seaJobs(content)).toEqual(seaJobs(content));
-  });
 });

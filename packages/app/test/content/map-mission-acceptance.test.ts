@@ -85,14 +85,12 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
     const order = playerCommand(0, { kind: 'moveUnit', entity: hero, x: goal.point.hx, y: goal.point.hy });
     const previousHumans = new Set(sim.world.query(components.Person));
     sim.enqueue(order);
-    restored.enqueue(order);
     let ticks = 0;
     while (
       (components.missionRecords(sim.world)[REINFORCEMENT_MISSION]?.fireCount ?? 0) === 0 &&
       ticks < MOVEMENT_BUDGET_TICKS
     ) {
       sim.step();
-      restored.step();
       collectEvents();
       ticks++;
     }
@@ -111,22 +109,16 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
       y: encounter.point.hy,
     });
     sim.enqueue(approach);
-    restored.enqueue(approach);
     for (
       let tick = 0;
       tick < MOVEMENT_BUDGET_TICKS && !sim.missionBriefingHistory().includes(ENCOUNTER_PAGE);
       tick++
     ) {
       sim.step();
-      restored.step();
       collectEvents();
     }
     expect(sim.missionStatus()[ENCOUNTER_MISSION]).toMatchObject({ done: true, fireCount: 1 });
     expect(briefingPages).toContain(ENCOUNTER_PAGE);
-    expect(restored.hashState()).toBe(sim.hashState());
-    expect(serializeSaveGame(exportSaveGame(restored, { mapId: MAP_ID }))).toBe(
-      serializeSaveGame(exportSaveGame(sim, { mapId: MAP_ID })),
-    );
     expect(components.missionRecords(sim.world)[VICTORY_MISSION]?.fireCount ?? 0).toBe(0);
     expect(scriptFailures).toEqual([]);
   }, 90_000);

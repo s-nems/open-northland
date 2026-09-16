@@ -117,11 +117,6 @@ describe('rangedWeapons', () => {
     const content = weaponFixture();
     expect(rangedWeapons(content)).toEqual([]);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = weaponContent();
-    expect(rangedWeapons(content)).toEqual(rangedWeapons(content));
-  });
 });
 
 describe('siegeWeapons', () => {
@@ -213,11 +208,6 @@ describe('weaponsByClass', () => {
     const content = weaponFixture();
     expect(weaponsByClass(content).size).toBe(0);
   });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = weaponContent();
-    expect(weaponsByClass(content)).toEqual(weaponsByClass(content));
-  });
 });
 
 /**
@@ -268,11 +258,6 @@ describe('weaponsByJob', () => {
   it('is empty for content with no weapons (parseContentSet defaults weapons to [])', () => {
     const content = weaponFixture();
     expect(weaponsByJob(content).size).toBe(0);
-  });
-
-  it('is byte-stable call-to-call (a pure function of content)', () => {
-    const content = jobWeaponContent();
-    expect(weaponsByJob(content)).toEqual(weaponsByJob(content));
   });
 });
 
