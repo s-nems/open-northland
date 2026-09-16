@@ -15,7 +15,7 @@ import {
   TrainingOrder,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
+import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../src/systems/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training.js';
@@ -163,8 +163,13 @@ function qualifiesAsSoldier(sim: Simulation, e: Entity): boolean {
   return settlerMeetsNeed(sim.world, ctxOf(sim), needSubjectOf(sim.world, e), 'job', SOLDIER_JOB);
 }
 
-function run(sim: Simulation, ticks: number): void {
-  for (let i = 0; i < ticks; i++) sim.step();
+function run(sim: Simulation, ticks: number): SimEvent[] {
+  const events: SimEvent[] = [];
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    events.push(...sim.events.current());
+  }
+  return events;
 }
 
 function terrainOf(sim: Simulation): TerrainGraph {
@@ -185,8 +190,14 @@ describe('trainSoldier - the barracks drill', () => {
     expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
     expect(sim.world.has(recruit, MoveGoal)).toBe(true); // heading for the door
 
-    run(sim, RUN_TICKS);
+    const events = run(sim, RUN_TICKS);
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
+    expect(events).toContainEqual({
+      kind: 'settlerTrained',
+      entity: recruit,
+      target: 'job',
+      typeId: SOLDIER_JOB,
+    });
     // The flip is the drill's whole product: nothing banked, so the XP-gate stays closed even for
     // him - the barracks remains the only route onto the trade (authored rule).
     expect(qualifiesAsSoldier(sim, recruit)).toBe(false);
@@ -200,10 +211,11 @@ describe('trainSoldier - the barracks drill', () => {
     const veteran = settlerAt(sim, SOLDIER_JOB, 2, 3);
 
     sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house });
-    run(sim, RUN_TICKS);
+    const events = run(sim, RUN_TICKS);
 
     expect(jobOf(sim, veteran)).toBe(SOLDIER_JOB);
     expect(sim.world.has(veteran, TrainingOrder)).toBe(false);
+    expect(events.some((event) => event.kind === 'settlerTrained')).toBe(false);
   });
 
   it('banks no experience stat at all - the trade flip is the whole product', () => {

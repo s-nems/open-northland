@@ -236,6 +236,50 @@ describe('user messages from sim events', () => {
     ]);
   });
 
+  it("announces this seat's completed barracks and school qualifications", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: ENEMY, kind: 'person' },
+    ]);
+    const trainedNaming: MessageNaming = {
+      ...naming,
+      text: (type, parts) => `${parts.subjectName ?? '?'}:${type}:${parts.goodName ?? '-'}`,
+    };
+    const raised = messagesFromEvents(
+      [
+        { kind: 'settlerTrained', entity: e(1), target: 'job', typeId: 31 },
+        { kind: 'settlerTrained', entity: e(1), target: 'good', typeId: 9 },
+        { kind: 'settlerTrained', entity: e(2), target: 'job', typeId: 31 },
+      ],
+      snap,
+      null,
+      LOCAL,
+      trainedNaming,
+    );
+    expect(raised.map((r) => ({ ...r.pending, text: r.compose() }))).toEqual([
+      {
+        type: USER_MESSAGE_TYPE.canDoNewJob,
+        subject: { kind: 'settler', entity: e(1) },
+        at: { hx: 6, hy: 4 },
+        about: null,
+        goodType: null,
+        technologies: null,
+        jobType: 7,
+        text: `S1:${USER_MESSAGE_TYPE.canDoNewJob}:-`,
+      },
+      {
+        type: USER_MESSAGE_TYPE.canProduceNewGood,
+        subject: { kind: 'settler', entity: e(1) },
+        at: { hx: 6, hy: 4 },
+        about: null,
+        goodType: 9,
+        technologies: null,
+        jobType: 7,
+        text: `S1:${USER_MESSAGE_TYPE.canProduceNewGood}:good:9`,
+      },
+    ]);
+  });
+
   it('announces an eliminated seat to everyone, naming the player rather than an entity', () => {
     const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const out = run([{ kind: 'playerDefeated', player: ENEMY }], snap);

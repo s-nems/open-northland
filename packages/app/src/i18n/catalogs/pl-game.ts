@@ -376,6 +376,8 @@ export const plGame = {
       '17': 'nie ma zajęcia',
       '18': 'nie zna drogi bez nowych drogowskazów',
       '23': 'nie ma gdzie pracować',
+      '38': 'może produkować nowy towar',
+      '39': 'może podjąć nowy zawód',
       '47': 'ledwo się trzyma',
       '51': 'dorasta',
       '53': 'nie znajduje pary',

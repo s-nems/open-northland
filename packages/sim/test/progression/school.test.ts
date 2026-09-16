@@ -20,6 +20,7 @@ const TRIBE = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
 const SMITH = 5;
+const PLANK = 2;
 const WOOD_TRACK = 1;
 
 it('a school lesson qualifies only its chosen target and survives a saved in-progress lesson', () => {
@@ -29,7 +30,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
     buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
     tribes: base.tribes.map((t) => ({
       ...t,
-      jobEnables: [],
+      jobEnables: [{ jobType: CARPENTER, kind: 'good', targetId: PLANK }],
       jobRequirements: [
         {
           target: 'job',
@@ -43,6 +44,13 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
           targetId: CARPENTER,
           requirement: 'train',
           amount: 2,
+          experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+        },
+        {
+          target: 'good',
+          targetId: PLANK,
+          requirement: 'train',
+          amount: 1,
           experienceTypes: [TRAINING_EXPERIENCE_TYPE],
         },
         { target: 'job', targetId: SMITH, requirement: 'need', amount: 50, experienceTypes: [WOOD_TRACK] },
@@ -116,8 +124,41 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
     null,
   );
   expect(restored.world.get(pupil, Settler).jobType).toBe(CARPENTER);
+  expect(restored.events.current()).toContainEqual({
+    kind: 'settlerTrained',
+    entity: pupil,
+    target: 'job',
+    typeId: CARPENTER,
+  });
   const subject = needSubjectOf(restored.world, pupil);
   expect(settlerMeetsNeed(restored.world, ctxOf(restored), subject, 'job', CARPENTER)).toBe(true);
   expect(settlerMeetsNeed(restored.world, ctxOf(restored), subject, 'job', SMITH)).toBe(false);
   expect(restored.world.get(pupil, Settler).experience.size).toBe(0);
+
+  learn(restored.world, ctxOf(restored), {
+    kind: 'learn',
+    entity: pupil,
+    house: school,
+    target: 'good',
+    typeId: PLANK,
+  });
+  expect(restored.world.has(pupil, TrainingOrder)).toBe(true);
+  restored.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
+  restored.events.clear();
+  planTraining(
+    restored.world,
+    ctxOf(restored),
+    terrain,
+    pupil,
+    restored.world.get(pupil, Settler),
+    terrain.nodeAt(2, 2),
+    null,
+  );
+  expect(restored.world.get(pupil, Settler).learned?.good).toContain(PLANK);
+  expect(restored.events.current()).toContainEqual({
+    kind: 'settlerTrained',
+    entity: pupil,
+    target: 'good',
+    typeId: PLANK,
+  });
 });

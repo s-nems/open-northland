@@ -152,6 +152,17 @@ export function messagesFromEvents(
         );
         break;
       }
+      case 'settlerTrained': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) {
+          raiser.settler(
+            ev.target === 'job' ? USER_MESSAGE_TYPE.canDoNewJob : USER_MESSAGE_TYPE.canProduceNewGood,
+            e,
+            ev.target === 'good' ? ev.typeId : null,
+          );
+        }
+        break;
+      }
       case 'playerDefeated':
         // Every seat hears an elimination: the original's own record carries the broadcast player id
         // rather than one seat's (the original symbols).

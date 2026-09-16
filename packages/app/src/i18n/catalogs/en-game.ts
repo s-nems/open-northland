@@ -391,6 +391,8 @@ export const enGame = {
       '17': 'has nothing to do',
       '18': 'cannot find the way without more signposts',
       '23': 'has nowhere to work',
+      '38': 'can produce a new good',
+      '39': 'can take on a new profession',
       '47': 'is barely holding on',
       '51': 'came of age',
       '53': 'finds no one to wed',

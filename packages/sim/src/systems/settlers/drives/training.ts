@@ -59,8 +59,11 @@ export function planTraining(
   // because `enlist` retires its trade, and the rungs below were entered with the old one.
   if (order.drillTicksLeft <= 0) {
     abandonDrill(world, e);
-    if (order.lesson === undefined) enlist(world, ctx, e);
-    else {
+    if (order.lesson === undefined) {
+      const jobType = enlist(world, ctx, e);
+      if (jobType !== null)
+        ctx.events.emit({ kind: 'settlerTrained', entity: e, target: 'job', typeId: jobType });
+    } else {
       const s = world.mut(e, Settler);
       s.learned ??= { job: [], good: [] };
       const ids = s.learned[order.lesson.kind];
@@ -70,6 +73,12 @@ export function planTraining(
         world.remove(e, JobAssignment);
         reidleAsJob(world, ctx, e, order.lesson.typeId);
       }
+      ctx.events.emit({
+        kind: 'settlerTrained',
+        entity: e,
+        target: order.lesson.kind,
+        typeId: order.lesson.typeId,
+      });
     }
     return true;
   }
@@ -132,10 +141,10 @@ function abandonDrill(world: World, e: Entity): boolean {
  * The only trade change made from inside the planner sweep: `reidleAsJob` destroys the recruit's work flag
  * and may drop a ground pile, so a list `beginPlannerPass` holds must not index either.
  */
-function enlist(world: World, ctx: SystemContext, e: Entity): void {
-  if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
+function enlist(world: World, ctx: SystemContext, e: Entity): number | null {
+  if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return null;
   const jobType = baseSoldierJobType(ctx.content);
-  if (jobType === null) return;
+  if (jobType === null) return null;
   world.remove(e, JobAssignment); // its old post is not a soldier's, and nothing re-posts on its own
   reidleAsJob(world, ctx, e, jobType);
   // A counter-funded recruit pays its counter here if the base class was the whole ask; a weapon-class
@@ -144,4 +153,5 @@ function enlist(world: World, ctx: SystemContext, e: Entity): void {
     consumeAssistantCounter(world, ownerOf(world, e), 'trainSoldiers');
     world.remove(e, AssistantRecruit);
   }
+  return jobType;
 }

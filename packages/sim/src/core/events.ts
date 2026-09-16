@@ -46,6 +46,13 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
+      /** A barracks or school course granted this settler a new job or production qualification. */
+      readonly kind: 'settlerTrained';
+      readonly entity: Entity;
+      readonly target: 'job' | 'good';
+      readonly typeId: number;
+    }
+  | {
       /** A settler found no way: an ordered walk, a chase or its work lies past its signpost reach. */
       readonly kind: 'settlerLost';
       readonly entity: Entity;

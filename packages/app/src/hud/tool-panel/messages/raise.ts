@@ -46,7 +46,7 @@ export class MessageRaiser {
     private readonly naming: MessageNaming,
   ) {}
 
-  settler(type: UserMessageType, e: SnapshotEntity): void {
+  settler(type: UserMessageType, e: SnapshotEntity, goodType: number | null = null): void {
     const subject: MessageSubject = { kind: 'settler', entity: e.id };
     this.raise(
       `${type}|settler:${e.id}`,
@@ -55,7 +55,7 @@ export class MessageRaiser {
         subject,
         at: nodeOf(e),
         about: null,
-        goodType: null,
+        goodType,
         technologies: null,
         jobType: jobTypeOf(e),
       },
@@ -64,7 +64,7 @@ export class MessageRaiser {
         return this.naming.text(type, {
           subjectName: named.name,
           jobLabel: named.jobLabel,
-          goodName: null,
+          goodName: goodType === null ? null : this.naming.technology('good', goodType),
           stanceName: null,
         });
       },
