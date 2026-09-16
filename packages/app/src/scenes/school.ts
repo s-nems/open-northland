@@ -22,6 +22,9 @@ export const schoolScene: SceneDefinition = {
     const pupil = spawnSettlerDirect(sim, JOB_COLLECTOR, PUPIL_AT.x, PUPIL_AT.y);
     spawnSettlerDirect(sim, JOB_JOINER, JOINER_AT.x, JOINER_AT.y);
     spawnSettlerDirect(sim, JOB_COLLECTOR, BYSTANDER_AT.x, BYSTANDER_AT.y);
+    // This scene exercises the course itself; technology discovery has its own acceptance scene. The
+    // override must precede `learn` in the setup queue so real content admits the lesson on tick one.
+    sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: false });
     sim.enqueueSetup({ kind: 'learn', entity: pupil, house: school, target: 'job', typeId: JOB_JOINER });
   },
   runTicks: RUN_TICKS,
