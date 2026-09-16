@@ -221,19 +221,23 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
       if (hit === null) return false;
       switch (hit.kind) {
         case 'close':
+          ctx.cue('confirm');
           close();
           break;
         case 'tab':
+          ctx.cue('confirm');
           selected = hit.tab;
           scrollTop = 0;
           rebuild();
           break;
         case 'scroll':
+          ctx.cue('confirm');
           scrollBy(hit.dir * layout.scroll.visible); // page toward the click
           break;
         case 'row': {
           const { item } = hit;
-          if (item.disabledReason?.()) break;
+          if (item.disabledReason?.()) break; // a greyed row is no button
+          ctx.cue('confirm');
           close();
           deps.onPick(item);
           break;

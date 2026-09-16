@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { type Entity, entityById, systems } from '@open-northland/sim';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
@@ -23,6 +24,8 @@ export interface UnitChromeCallbacks {
   readonly assignHome: (id: number) => void;
   readonly selectEntity: (id: number) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  /** The GUI click feedback the ring's and the panel's buttons press with. */
+  readonly cue: (cue: UiCue) => void;
 }
 
 export interface UnitChromeHandle {
@@ -74,6 +77,7 @@ export async function createUnitChrome(
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
       ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
+      onUiCue: callbacks.cue,
       onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
       onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
       onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
@@ -130,6 +134,7 @@ export async function createUnitChrome(
         for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
       },
       onCommand: callbacks.ringCommand,
+      cue: callbacks.cue,
     });
 
   const mount = async (uiscale: number): Promise<MountedUnitChrome> => {

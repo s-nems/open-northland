@@ -209,12 +209,16 @@ export function createMessageWindow(deps: MessageWindowDeps): MessageWindow {
     handleClick: (x, y): boolean => {
       if (shown === null || layout === null || !shell.claims(layout.window, x, y)) return false;
       const id = shown.id;
-      if (contains(layout.closeRect, x, y)) close();
-      else if (canSelect(shown) && contains(layout.selectPlate, x, y)) {
+      if (contains(layout.closeRect, x, y)) {
+        ctx.cue('confirm');
+        close();
+      } else if (canSelect(shown) && contains(layout.selectPlate, x, y)) {
+        ctx.cue('confirm');
         // Closing first keeps the window off the spot the view is about to centre on (approximation).
         close();
         deps.onSelect(id);
       } else if (contains(layout.removePlate, x, y)) {
+        ctx.cue('confirm');
         close();
         deps.onRemove(id);
       }

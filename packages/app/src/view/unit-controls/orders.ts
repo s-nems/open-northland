@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
 import {
@@ -40,24 +41,31 @@ export interface UnitOrderDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   readonly selectOwnSettler: (id: number) => void;
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
+  /** The GUI click the school dialog's buttons confirm with; absent, silent. */
+  readonly cue?: (cue: UiCue) => void;
 }
 
+/**
+ * Every order reports whether it commanded anyone: a press that finds no settler in the selection, or
+ * no target under the cursor, issues nothing, and the caller's click feedback follows that answer.
+ */
 export interface UnitOrderController {
   /** `onBuilding` is a building resolved from a marker rather than the world pixel under the cursor
-   *  (a garrison flag hangs far above the tower it stands for). */
-  issueRightClick(event: MouseEvent, onBuilding?: number | null): void;
+   *  (a garrison flag hangs far above the tower it stands for). True when the press selected a settler
+   *  or gave the selected settlers an order. */
+  issueRightClick(event: MouseEvent, onBuilding?: number | null): boolean;
   /** Move the selected gatherers' work flags to a world click; clicking a resource also narrows their
    *  gathering filter to that resource's good. */
-  issueSetWorkFlagAt(event: MouseEvent): void;
+  issueSetWorkFlagAt(event: MouseEvent): boolean;
   /** The ground orders name a half-cell node rather than a cursor, so the map overview can issue them
    *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. */
-  issueSetWorkFlag(target: Tile): void;
-  issueMoveTo(target: Tile): void;
-  issueAttackMove(target: Tile): void;
+  issueSetWorkFlag(target: Tile): boolean;
+  issueMoveTo(target: Tile): boolean;
+  issueAttackMove(target: Tile): boolean;
   /** Strike one enemy of `kind` under the cursor; a click that hits none of them orders nothing. */
-  issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): void;
+  issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): boolean;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
-  issueAttackAnimal(event: MouseEvent): void;
+  issueAttackAnimal(event: MouseEvent): boolean;
   dispose(): void;
 }
 
@@ -88,35 +96,34 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     // The whole selection, not just `movers`: standing units keep their ground reserved.
     selected: ReadonlySet<number>,
     kind: WalkOrderKind,
-  ): void => {
-    if (movers.length === 0) return;
+  ): boolean => {
+    if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const seat = clampTile(target, width, height);
     const blocked = occupiedTiles(selected);
     for (const order of assignFormation(movers, seat, width, height, blocked)) {
       deps.enqueue({ kind, entity: order.ref as Entity, x: order.tile.col, y: order.tile.row });
     }
+    return true;
   };
 
-  const issueRightClick = (event: MouseEvent, onBuilding?: number | null): void => {
+  const issueRightClick = (event: MouseEvent, onBuilding?: number | null): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const own = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
     if (own !== null) {
       deps.selectOwnSettler(own);
       deps.openActions({ x: event.clientX, y: event.clientY });
-      return;
+      return true;
     }
     const selected = deps.selected();
-    if (selected.size === 0) return;
+    // A selected building, flag or signpost takes no orders: nobody to command, nothing to confirm.
     const commanded = deps.targets.ownedSettlersIn(selected);
+    if (commanded.length === 0) return false;
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
-    if (enemy !== null) {
-      strike(commanded, enemy);
-      return;
-    }
+    if (enemy !== null) return strike(commanded, enemy);
     // A chest nobody selected may open is walked to like any ground.
     const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
-    if (chest !== null && openChest(commanded, chest)) return;
+    if (chest !== null && openChest(commanded, chest)) return true;
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
       const snapshot = deps.snapshot();
@@ -136,8 +143,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
           building,
           deps.enqueue,
           deps.technologyStatus,
+          deps.cue,
         );
-        return;
+        return true;
       }
       const slots = def?.workers;
       const underConstruction = entity?.components.UnderConstruction !== undefined;
@@ -180,9 +188,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
           jobPriority,
         });
       }
-      return;
+      return true;
     }
-    issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
+    return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
   };
 
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as
@@ -204,41 +212,42 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return sent;
   };
 
-  const strike = (commanded: readonly FormationUnit[], enemy: number): void => {
+  const strike = (commanded: readonly FormationUnit[], enemy: number): boolean => {
     for (const unit of commanded) {
       deps.enqueue({ kind: 'attackUnit', entity: unit.ref as Entity, target: enemy as Entity });
     }
+    return commanded.length > 0;
   };
 
-  const issueAttackTarget = (event: MouseEvent, kind: UnitTargetKind): void => {
+  const issueAttackTarget = (event: MouseEvent, kind: UnitTargetKind): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const enemy = pickTopAt(
       deps.targets.enemies().filter((p) => p.kind === kind),
       world.x,
       world.y,
     );
-    if (enemy !== null) strike(deps.targets.ownedSettlersIn(deps.selected()), enemy);
+    return enemy !== null && strike(deps.targets.ownedSettlersIn(deps.selected()), enemy);
   };
 
-  const issueAttackAnimal = (event: MouseEvent): void => {
+  const issueAttackAnimal = (event: MouseEvent): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const prey = pickTopAt(deps.targets.wildlife(), world.x, world.y);
-    if (prey !== null) strike(deps.targets.ownedSettlersIn(deps.selected()), prey);
+    return prey !== null && strike(deps.targets.ownedSettlersIn(deps.selected()), prey);
   };
 
-  const issueMoveTo = (target: Tile): void => {
+  const issueMoveTo = (target: Tile): boolean => {
     const selected = deps.selected();
-    issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
+    return issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
   };
 
-  const issueAttackMove = (target: Tile): void => {
+  const issueAttackMove = (target: Tile): boolean => {
     const selected = deps.selected();
-    issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
+    return issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
   };
 
-  const issueSetWorkFlag = (target: Tile, goodType?: number): void => {
+  const issueSetWorkFlag = (target: Tile, goodType?: number): boolean => {
     const movers = deps.targets.ownedSettlersIn(deps.selected());
-    if (movers.length === 0) return;
+    if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const flag = clampTile(target, width, height);
     for (const mover of movers) {
@@ -254,15 +263,16 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       // render/snapshot pair while still letting setWorkFlag reject non-gatherers normally.
       deps.enqueue({ kind: 'setGatherGood', entity: mover.ref as Entity, goodType });
     }
+    return true;
   };
 
-  const issueSetWorkFlagAt = (event: MouseEvent): void => {
+  const issueSetWorkFlagAt = (event: MouseEvent): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const resources = deps.targets.resources();
     const resource = pickNearestAt(resources, world.x, world.y);
     const goodType =
       resource === null ? undefined : resources.find((target) => target.ref === resource)?.goodType;
-    issueSetWorkFlag(worldToTile(world.x, world.y, deps.elevation), goodType);
+    return issueSetWorkFlag(worldToTile(world.x, world.y, deps.elevation), goodType);
   };
 
   return {

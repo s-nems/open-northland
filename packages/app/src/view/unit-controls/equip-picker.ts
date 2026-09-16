@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
   type Entity,
@@ -17,6 +18,8 @@ export interface EquipPickControllerOptions {
   readonly content: ContentSet;
   readonly snapshot: () => WorldSnapshot;
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The GUI click a picked row and the ✕ box confirm with; absent, silent. */
+  readonly cue?: (cue: UiCue) => void;
 }
 
 export interface EquipPickController {
@@ -110,6 +113,7 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
       uiFont,
       title: '',
       onDismiss: () => window_?.hide(),
+      ...(opts.cue !== undefined ? { cue: opts.cue } : {}),
     });
     return window_;
   };

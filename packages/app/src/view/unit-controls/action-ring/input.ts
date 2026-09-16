@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { Graphics } from 'pixi.js';
 import {
   type ActionOrderId,
@@ -31,6 +32,8 @@ export interface ActionRingInputContext {
   /** Clear the hover highlight and tooltip. */
   readonly hideTransient: () => void;
   readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  /** The GUI click a pressed button confirms with. */
+  readonly cue: (cue: UiCue) => void;
   readonly openJobWindow: () => void;
   /** Close both faces, list and ring. */
   readonly closeMenu: () => void;
@@ -63,11 +66,12 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     const hit = hitTestActionRing(ctx.getLayout(), x, y);
     if (hit === null) return;
     e.stopImmediatePropagation(); // the click is the ring's, never world picking's
+    if (isPendingAction(hit.id)) return; // drawn for fidelity, with no order behind it yet
+    ctx.cue('confirm');
     if (hit.id === 'changeProfession') {
       ctx.openJobWindow();
       return;
     }
-    if (isPendingAction(hit.id)) return; // drawn for fidelity, with no order behind it yet
     // The targets are read before closing: closing is what ends the session they belong to.
     const targets = ctx.getTargets();
     ctx.closeMenu();

@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
   DoorBadge,
@@ -262,6 +263,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifetime.signal,
     );
     cleanup.push(() => soundDriver?.close());
+    // The HUD's click feedback, played straight from the input event rather than through the sim.
+    const uiCue = (cue: UiCue): void => soundDriver?.cue(cue);
 
     // Along the bottom edge between the minimap and the details panel, clear of the notes up top.
     const perfCorner = perfCornerForUiScale(uiscale);
@@ -385,6 +388,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (at !== null) jumpToWorld(at.x, at.y);
         if (target.entity !== null) selectEntity?.(target.entity);
       },
+      onUiCue: uiCue,
     });
 
     cleanup.push(() => toolPanel.dispose());
@@ -502,6 +506,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       // A separate instance from the ground tooltip below, which the frame loop hides whenever the
       // pointer is over the HUD - exactly when this one must stay shown.
       tooltip: detailsTooltip,
+      onUiCue: uiCue,
     });
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;

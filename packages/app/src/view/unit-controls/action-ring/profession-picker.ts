@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { PickerEntry } from '../../../catalog/professions.js';
 import type { UiFont } from '../../../content/ui-font.js';
 import { uiLabel } from '../../../i18n/index.js';
@@ -9,6 +10,8 @@ export interface ProfessionPickerOptions {
   readonly onPick: (jobType: number) => void;
   /** The window was dismissed without a pick: the ✕ box or a backdrop click. */
   readonly onDismiss: () => void;
+  /** The GUI click a picked row and the ✕ box confirm with. */
+  readonly cue: (cue: UiCue) => void;
 }
 
 export interface ProfessionPicker {
@@ -27,6 +30,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
     uiFont: opts.uiFont,
     title: uiLabel('changeProfession'),
     onDismiss: opts.onDismiss,
+    cue: opts.cue,
   });
   let unlocked: ((jobType: number) => boolean) | undefined;
   let reason: ((jobType: number) => string) | undefined;

@@ -84,6 +84,20 @@ describe('SoundDriver', () => {
     expect((ctx.sources[0] as FakeSource).started).toBe(true);
   });
 
+  it('fires a GUI cue at once from the input event, and drops it while inaudible', async () => {
+    const { driver, ctx, fetched } = makeDriver();
+    driver.cue('confirm');
+    await flush();
+    expect(fetched).toHaveLength(0); // no gesture yet: nothing to hear it
+    await driver.resume();
+    driver.cue('confirm');
+    driver.cue('fail');
+    await flush();
+    expect(fetched).toEqual(['/sounds/gui/click_confirm.wav', '/sounds/gui/click_fail.wav']);
+    expect(ctx.sources).toHaveLength(2);
+    expect((ctx.sources[0] as FakeSource).started).toBe(true);
+  });
+
   it('starts the ambient bed for on-screen terrain handed through the frame input', async () => {
     const { driver, ctx } = makeDriver();
     await driver.resume();

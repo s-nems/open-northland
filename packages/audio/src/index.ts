@@ -15,6 +15,7 @@ export {
   AMBIENT_MAX_GAIN,
   AMBIENT_MAX_SAMPLES,
   directAudio,
+  HOUSE_CRASH_MIN_BUILT,
   JINGLE_GAIN,
   MAX_AMBIENT_BEDS,
   SFX_GAIN,
@@ -54,6 +55,7 @@ export type {
   OneShot,
   SoundBindings,
 } from './data/types.js';
+export { UI_CUE_FILES, UI_CUE_GAIN, type UiCue, uiCueShot } from './data/ui-cues.js';
 export {
   AMBIENT_FADE_S,
   type AudioEngineOptions,

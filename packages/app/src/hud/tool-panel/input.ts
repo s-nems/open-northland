@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { type Container, Graphics } from 'pixi.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import { isActionHotkey } from '../hotkeys.js';
@@ -35,6 +36,10 @@ export interface ToolPanelInputDeps {
   readonly bindings: KeyBindings;
   readonly activateButton: (id: ToolButtonId) => void;
   readonly togglePause: () => void;
+  /** The GUI click: a pressed strip button confirms, a held mode called off by right-click or Esc
+   *  fails (Esc is an approximation: only the mouse cancel is byte-verified). A strip button that drops
+   *  a held mode plays only its own confirm. */
+  readonly cue: (cue: UiCue) => void;
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
 }
 
@@ -70,6 +75,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         // defer; when it runs later, stopping the event keeps the now-clear claim from reading the
         // press as a world move order.
         consume();
+        deps.cue('fail');
         for (const mode of held) mode.cancel();
         return;
       }
@@ -87,8 +93,10 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     // Priority: strip button > open pop-up > a held mode.
     const btn = hitTestToolPanel(layout, x, y);
     let consumed = btn !== null;
-    if (btn !== null) deps.activateButton(btn);
-    else consumed = windows.handleClick(x, y, { bigStep: e.ctrlKey || e.metaKey });
+    if (btn !== null) {
+      deps.cue('confirm');
+      deps.activateButton(btn);
+    } else consumed = windows.handleClick(x, y, { bigStep: e.ctrlKey || e.metaKey });
     if (!consumed && !overPopup) consumed = deps.notes.handleNoteClick(x, y, 0, e.shiftKey);
     for (const mode of held) {
       if (consumed) break;
@@ -129,6 +137,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         sheet.close();
         return;
       }
+      if (anyHeld()) deps.cue('fail');
       for (const mode of held) {
         if (mode.isActive()) mode.cancel();
       }

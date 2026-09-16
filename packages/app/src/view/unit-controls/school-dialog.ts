@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
 import {
   type Entity,
@@ -27,6 +28,8 @@ export function openSchoolDialog(
   house: number,
   enqueue: (command: PlayerCommand) => void,
   status?: Simulation['unlockStatus'],
+  /** The GUI click each course button and the close button confirm with; absent, silent. */
+  cue?: (cue: UiCue) => void,
 ): (() => void) | undefined {
   const first = students[0];
   const student = first === undefined ? undefined : entityById(snapshot, first);
@@ -74,6 +77,7 @@ export function openSchoolDialog(
       button.title = refusal;
     }
     button.addEventListener('click', () => {
+      cue?.('confirm');
       for (const entity of students)
         enqueue({
           kind: 'learn',
@@ -87,7 +91,10 @@ export function openSchoolDialog(
     dialog.append(button);
   }
   const close = el('button', BUTTON_STYLE, copy.schoolClose);
-  close.addEventListener('click', () => dialog.close());
+  close.addEventListener('click', () => {
+    cue?.('confirm');
+    dialog.close();
+  });
   dialog.append(close);
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
   document.body.append(dialog);

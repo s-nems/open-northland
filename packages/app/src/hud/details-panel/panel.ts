@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
@@ -36,6 +37,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   readonly playerColourOf?: (player: number) => number;
   /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field. */
   readonly onSelectEntity?: (entityId: number) => void;
+  /** The GUI click every pressed panel button and worker portrait confirms with; absent, silent. */
+  readonly onUiCue?: (cue: UiCue) => void;
   /** Cursor tooltip naming the hovered stock row, injected structurally so the hud layer never imports
    *  the view-layer element; absent → no stock-row tooltip. */
   readonly tooltip?: {
@@ -144,11 +147,15 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     // A worker sprite claims the click ahead of any tab or button under it.
     const worker = workerField.hitTest(x, y);
     if (worker !== null) {
+      opts.onUiCue?.('confirm');
       opts.onSelectEntity?.(worker);
       return true;
     }
     const click = panelClickAt(view, x, y, toggleModifier);
-    if (click !== null) applyPanelClick(click, opts, selectStockTab);
+    if (click !== null) {
+      opts.onUiCue?.('confirm');
+      applyPanelClick(click, opts, selectStockTab);
+    }
     return true;
   };
 

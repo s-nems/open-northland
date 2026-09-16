@@ -11,6 +11,7 @@ import {
   nextMusicMood,
 } from '../data/music/index.js';
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
+import { type UiCue, uiCueShot } from '../data/ui-cues.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
 
 /** One frame's world state, handed to {@link SoundDriver.update} once per rendered frame. */
@@ -103,6 +104,11 @@ export class SoundDriver {
   /** Set the music volume (0..1). */
   setMusicVolume(volume: number): void {
     this.engine.setMusicVolume(volume);
+  }
+
+  /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */
+  cue(cue: UiCue): void {
+    this.engine.fire([uiCueShot(cue)]);
   }
 
   /** Decide + play one frame of audio from the current world state. */

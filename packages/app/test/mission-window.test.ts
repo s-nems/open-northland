@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
@@ -23,9 +24,15 @@ const SCREEN = { width: 1024, height: 768 };
 const LINE_H = 10;
 const RUN_W = 40;
 
-function stubContext(): { ctx: PanelContext; made: string[]; placedY: Map<string, number> } {
+function stubContext(): {
+  ctx: PanelContext;
+  made: string[];
+  placedY: Map<string, number>;
+  cues: UiCue[];
+} {
   const made: string[] = [];
   const placedY = new Map<string, number>();
+  const cues: UiCue[] = [];
   const layout = buildToolPanelLayout(1);
   const ctx: PanelContext = {
     layout,
@@ -47,9 +54,12 @@ function stubContext(): { ctx: PanelContext; made: string[]; placedY: Map<string
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
+    cue: (cue) => {
+      cues.push(cue);
+    },
     atScale: (scale) => ({ ...ctx, scale }),
   };
-  return { ctx, made, placedY };
+  return { ctx, made, placedY, cues };
 }
 
 const BOOK: HypertextBook = {
@@ -78,7 +88,7 @@ function mount(
   replayPage: number | null = null,
   briefingHistory: readonly number[] = [],
 ) {
-  const { ctx, made, placedY } = stubContext();
+  const { ctx, made, placedY, cues } = stubContext();
   const opened: boolean[] = [];
   const asked: (number | null)[] = [];
   const window = createMissionWindow({
@@ -96,7 +106,7 @@ function mount(
     now,
   });
   const layout = layoutMissionWindow(SCREEN, null);
-  return { window, made, placedY, opened, asked, layout };
+  return { window, made, placedY, opened, asked, layout, cues };
 }
 
 const middle = (r: Rect): [number, number] => [r.x + r.w / 2, r.y + r.h / 2];
@@ -210,13 +220,15 @@ describe('createMissionWindow', () => {
   });
 
   it('keeps the arrows off a short goal list and reopens on the task tab', () => {
-    const { window, made, layout } = mount();
+    const { window, made, layout, cues } = mount();
     window.toggle();
     const goalsTab = layout.tabs.find((t) => t.tab === 'goals');
     if (goalsTab === undefined) throw new Error('no goals tab');
     window.handleClick(...middle(goalsTab.rect));
-    // Nothing to scroll: a press on the (hidden) Down arrow is consumed but moves nothing.
+    expect(cues).toEqual(['confirm']); // the tab is a button
+    // Nothing to scroll: a press on the (hidden) Down arrow is consumed but moves nothing, and clicks nothing.
     expect(window.handleClick(...middle(layout.scrollDown))).toBe(true);
+    expect(cues).toEqual(['confirm']);
     window.close();
     made.length = 0;
     window.toggle();

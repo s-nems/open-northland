@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { UiFont } from '../../content/ui-font.js';
 import { el } from '../overlay.js';
 
@@ -141,11 +142,13 @@ export interface PickerWindow {
   dispose(): void;
 }
 
-/** The ✕ box and a backdrop click fire `onDismiss`; the owner decides whether that hides the window. */
+/** The ✕ box and a backdrop click fire `onDismiss`; the owner decides whether that hides the window.
+ *  The ✕ box and every enabled row confirm through `cue`; the backdrop is no button. */
 export function createPickerWindow(opts: {
   readonly uiFont: UiFont;
   readonly title: string;
   readonly onDismiss: () => void;
+  readonly cue?: (cue: UiCue) => void;
 }): PickerWindow {
   const fontFamily = `${opts.uiFont.family}, ${SERIF_FALLBACK}`;
   installPickerScrollbarStyle();
@@ -158,7 +161,10 @@ export function createPickerWindow(opts: {
   const title = el('div', TITLE_STYLE, opts.title);
   header.append(title);
   const close = el('div', CLOSE_STYLE, '✕');
-  close.addEventListener('click', () => opts.onDismiss());
+  close.addEventListener('click', () => {
+    opts.cue?.('confirm');
+    opts.onDismiss();
+  });
   header.append(close);
   window_.append(header);
 
@@ -195,7 +201,10 @@ export function createPickerWindow(opts: {
       row.addEventListener('mouseleave', () => {
         row.style.background = ROW_BG;
       });
-      row.addEventListener('click', onPick);
+      row.addEventListener('click', () => {
+        opts.cue?.('confirm');
+        onPick();
+      });
       list.append(row);
     },
     addNote: (label): void => {

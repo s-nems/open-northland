@@ -20,4 +20,4 @@ export {
   AMBIENT_MAX_SAMPLES,
   MAX_AMBIENT_BEDS,
 } from './ambient.js';
-export { JINGLE_GAIN, SFX_GAIN } from './events.js';
+export { HOUSE_CRASH_MIN_BUILT, JINGLE_GAIN, SFX_GAIN } from './events.js';

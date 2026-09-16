@@ -56,6 +56,7 @@ export function createGoodsDropController(deps: GoodsDropDeps): GoodsDropControl
       const tile = deps.screenToTile(clientX, clientY);
       if (tile !== null) {
         deps.enqueue({ kind: 'dropGood', good: goodType, x: tile.col, y: tile.row, amount: DROP_AMOUNT });
+        ctx.cue('confirm');
       }
       return true;
     },

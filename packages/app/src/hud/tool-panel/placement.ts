@@ -23,7 +23,8 @@ export interface PlacementDeps {
 }
 
 /** Placement mode: pick a building in the menu, then one left-click on buildable ground places and
- *  exits the mode, as in the original. Esc or right-click abandons. */
+ *  exits the mode, as in the original. Esc or right-click abandons. The landing click confirms through
+ *  the GUI cue; the world itself makes no sound for a new site. */
 export interface PlacementController {
   isActive(): boolean;
   /** The building typeId currently being placed, or null when not in placement. */
@@ -88,6 +89,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
           underConstruction: true,
           ...(placementPaper !== null ? { paper: placementPaper } : {}),
         });
+        ctx.cue('confirm');
         exitPlacement();
       }
       return true;

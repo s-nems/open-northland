@@ -218,10 +218,17 @@ export class WebAudioEngine {
   /** Apply one decided frame: fire its one-shots, reconcile its ambient loops, settle the duck. */
   apply(frame: AudioFrame): void {
     const ctx = this.ctx;
-    if (!this.canPlay() || ctx === null || this.samples === null || this.mixer === null) return;
-    for (const shot of frame.oneShots) this.playOneShot(ctx, this.samples, shot);
+    if (!this.canPlay() || ctx === null || this.mixer === null) return;
+    this.fire(frame.oneShots);
     this.mixer.reconcile(frame.ambient);
     this.updateMusicDuck(ctx);
+  }
+
+  /** Fire one-shots outside a frame decision - a GUI cue answering an input event right away. */
+  fire(shots: readonly OneShot[]): void {
+    const ctx = this.ctx;
+    if (!this.canPlay() || ctx === null || this.samples === null) return;
+    for (const shot of shots) this.playOneShot(ctx, this.samples, shot);
   }
 
   /** Duck the music under a ringing jingle, extending the hold a running duck already has. */

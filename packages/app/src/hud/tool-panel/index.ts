@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, SpriteSheet } from '@open-northland/render';
 import type { Command, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
@@ -109,6 +110,8 @@ export interface ToolPanelOptions {
   readonly tooltip?: TooltipSurface;
   /** A note's Select: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
+  /** The GUI click feedback: every pressed button confirms, a cancelled hold fails. Absent, silent. */
+  readonly onUiCue?: (cue: UiCue) => void;
 }
 
 export interface ToolPanelController {
@@ -233,6 +236,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       bitmaps,
       uiString,
       screen: () => app.screen,
+      cue: opts.onUiCue ?? ((): void => undefined),
       ...(opts.overlayReserve !== undefined ? { overlayReserve: opts.overlayReserve } : {}),
       toClient: (x, y) => {
         const { sx, sy, rect } = opts.screenScale(canvas);
@@ -361,6 +365,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       bindings: opts.bindings,
       activateButton,
       togglePause: () => speedButton.togglePause(),
+      cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => {
         const { x, y } = toCanvas(clientX, clientY);
         return !windows.mission.claims(x, y) && opts.deferToOverlay?.(clientX, clientY) === true;

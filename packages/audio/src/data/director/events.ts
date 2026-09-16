@@ -2,6 +2,7 @@ import {
   entityById,
   eventNode,
   type HalfCellNode,
+  ONE,
   type SimEvent,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -23,6 +24,13 @@ export const JINGLE_GAIN = 0.9;
 /** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. Approximation:
  *  settler voices share it, since the data ranks no authored cue above another. */
 export const SFX_GAIN = 0.8;
+/**
+ * Least construction progress (fixed-point fraction of ONE) at which a destroyed building crashes
+ * audibly. Byte evidence (`the original`, `an original routine`): a finished house, a house
+ * in an upgrade, or a site at least half built collapses with the crash sound; a less-built site is
+ * torn down silently.
+ */
+export const HOUSE_CRASH_MIN_BUILT = ONE / 2;
 
 /**
  * The entity that names a spatial event's emitter, or `undefined` when it names none. Only asked of an
@@ -69,12 +77,14 @@ function jingleShot(files: readonly string[], key: string, musicType: number): O
 }
 
 /** Which sounds a given event triggers, per the bindings. A melee hit picks one weapon-specific sound
- *  with the generic fallback; a chest adds its kind-specific lid sound to the common jingle. */
+ *  with the generic fallback; a chest adds its kind-specific lid sound to the common jingle; a building
+ *  torn down before {@link HOUSE_CRASH_MIN_BUILT} makes no sound. */
 function resolveBindings(ev: SimEvent, bindings: SoundBindings): EventSound[] {
   if (ev.kind === 'combatHit' && ev.weaponMainType !== undefined) {
     const byWeapon = bindings.byCombatWeapon?.get(ev.weaponMainType);
     if (byWeapon !== undefined) return [byWeapon];
   }
+  if (ev.kind === 'buildingDestroyed' && ev.upgrading !== true && ev.built < HOUSE_CRASH_MIN_BUILT) return [];
   const common = bindings.byEvent[ev.kind];
   if (ev.kind !== 'chestOpened') return common === undefined ? [] : [common];
   const lid = bindings.byChestKind?.[ev.chestKind];

@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import type {
   BuildingHighlightItem,
@@ -60,6 +61,9 @@ export interface UnitControlsOptions {
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;
+  /** The GUI click feedback: a pressed button, a taken selection or an accepted order confirms, a
+   *  cancelled pick fails. Absent, silent. */
+  readonly onUiCue?: (cue: UiCue) => void;
   readonly tooltip?: {
     show(clientX: number, clientY: number, text: string): void;
     hide(): void;

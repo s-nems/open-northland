@@ -224,12 +224,14 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       const m = noteAt(x, y);
       if (m === undefined) return false;
       if (button === RIGHT_BUTTON) {
+        ctx.cue('confirm');
         if (shift) feed.removeAll(true);
         else feed.remove(m.id, true);
         deps.tooltip?.hide();
         return true;
       }
       if (button !== LEFT_BUTTON) return false;
+      ctx.cue('confirm');
       messageWindow.open(m);
       return true;
     },

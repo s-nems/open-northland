@@ -250,6 +250,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (!shell.isOpen() || menuLayout === null) return false;
       const hit = hitTestExtrasMenu(menuLayout, x, y);
       if (hit === null) return false;
+      if (hit.kind !== 'window') ctx.cue('confirm');
       switch (hit.kind) {
         case 'close':
           close();

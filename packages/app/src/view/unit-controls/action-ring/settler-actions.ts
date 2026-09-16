@@ -111,6 +111,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       },
       // Steps back to the ring, keeping the unit selected.
       onDismiss: (): void => closeJobWindow(),
+      cue: opts.cue,
     });
     cleanup.push(() => picker.dispose());
 
@@ -208,6 +209,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       getTargets: () => actionTargets,
       hideTransient,
       onCommand: opts.onCommand,
+      cue: opts.cue,
       openJobWindow,
       closeMenu,
     });

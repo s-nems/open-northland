@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { isActionHotkey, isTypingTarget } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
@@ -10,7 +11,7 @@ import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
-import { createPickModeController } from './pick-mode.js';
+import { createPickModeController, pickPressCue } from './pick-mode.js';
 import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
@@ -27,6 +28,11 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
 
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
+  // The GUI click: a press that takes a selection or commands someone confirms, one that calls an armed
+  // pick off fails. Byte evidence (`the original`, `an original routine` in
+  // `gui_main_mode 1`): the confirming right click and a single selecting click play `click_confirm`,
+  // `Action_DoCancel` plays `click_fail`, and a drag select or a click on empty ground plays nothing.
+  const cue: (kind: UiCue) => void = opts.onUiCue ?? ((): void => undefined);
   const selection = createUnitSelection();
   const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
@@ -38,6 +44,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           content: opts.content,
           snapshot: opts.snapshot,
           enqueue: opts.enqueue,
+          cue,
         });
   const workArea = createWorkAreaOverlay();
   // `pickMode` is built below; the arrows defer the reads to click time.
@@ -52,6 +59,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         openEquipment: (settlers) => equipPicker?.openAll(settlers),
         toggleWorkArea: workArea.toggle,
       }),
+    cue,
   });
 
   const marquee = createSelectionMarquee();
@@ -132,12 +140,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     enqueue: opts.enqueue,
     selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => chrome.actions().open(atClient),
+    cue,
   });
 
   const overviewPress = createOverviewOrders({
     pickMode,
     orders: () => orders,
     workFlagBinding: () => opts.bindings.workFlagOrder,
+    cue,
   });
 
   const onMouseDown = (e: MouseEvent): void => {
@@ -148,16 +158,25 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // The details panel routes its buttons through the same claim, so no panel-owned listener races this one.
     if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
-    if (pickMode.handleMouseDown(e)) return;
+    const pick = pickMode.handleMouseDown(e);
+    if (pick !== null) {
+      const pickCue = pickPressCue(pick);
+      if (pickCue !== null) cue(pickCue);
+      return;
+    }
     if (matchesMouseBinding(e, opts.bindings.workFlagOrder)) {
-      orders.issueSetWorkFlagAt(e);
+      if (orders.issueSetWorkFlagAt(e)) cue('confirm');
       return;
     }
     if (e.button === 2) {
       const w = toWorld(e.clientX, e.clientY);
       const marker = clickHits.doorMarkerAt(w.x, w.y);
-      if (marker?.kind === 'settler') applySelection([marker.ref], false);
-      else orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null);
+      if (marker?.kind === 'settler') {
+        applySelection([marker.ref], false);
+        cue('confirm');
+      } else if (orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null)) {
+        cue('confirm');
+      }
       return;
     }
     if (e.button !== 0) return; // middle belongs to the camera controller's pan
@@ -174,14 +193,17 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const release = marquee.release(e.clientX, e.clientY);
     if (release === null) return;
     if (release.moved) {
+      // A drag select is silent in the original; only the single click below confirms.
       const a = toWorld(release.startX, release.startY);
       const b = toWorld(e.clientX, e.clientY);
       applySelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
       const hit = clickHits.selectionAt(w.x, w.y);
-      if (hit !== null) applySelection([hit], e.shiftKey);
-      else if (!e.shiftKey) applySelection([], false);
+      if (hit !== null) {
+        applySelection([hit], e.shiftKey);
+        cue('confirm');
+      } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
     }
   };
 
@@ -219,8 +241,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (e.code === 'Escape') {
       // Escape steps back one level: job list, then an armed pick mode, then the selection itself.
       if (chrome.actions().handleEscape()) return;
-      if (pickMode.isArmed()) pickMode.cancel();
-      else applySelection([], false);
+      if (pickMode.isArmed()) {
+        pickMode.cancel();
+        cue('fail'); // approximation: the original's cancel click is a mouse path; Esc is unverified
+      } else applySelection([], false);
     }
   };
 

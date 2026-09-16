@@ -304,6 +304,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       if (!shell.isOpen() || layout === null) return false;
       const hit = hitTestMissionWindow(layout, x, y);
       if (hit === null) return false;
+      // The close box, a tab, a painted arrow or a link is a button; the sheet and plain text are not.
+      if (hit.kind === 'close' || hoverRectAt(x, y) !== null) deps.ctx.cue('confirm');
       switch (hit.kind) {
         case 'close':
           setOpen(false);

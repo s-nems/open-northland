@@ -100,7 +100,7 @@ describe('unit orders against a selection that moves under them', () => {
     const { selection, orders, issued } = harness();
 
     selection.apply([SCOUT.id], false);
-    orders.issueRightClick(clickOn(OPEN_GROUND));
+    expect(orders.issueRightClick(clickOn(OPEN_GROUND))).toBe(true); // an order: the click confirms
     expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy }]);
 
     issued.length = 0;
@@ -113,9 +113,25 @@ describe('unit orders against a selection that moves under them', () => {
     const { selection, orders, issued } = harness([SCOUT.id]);
 
     selection.apply([], false);
-    orders.issueRightClick(clickOn(OPEN_GROUND));
+    expect(orders.issueRightClick(clickOn(OPEN_GROUND))).toBe(false); // nobody to command: no click either
 
     expect(issued).toEqual([]);
+  });
+
+  it('reports no order for a selection with no settler in it (a building or flag)', () => {
+    const BUILDING_ID = 77;
+    const { selection, orders, issued } = harness();
+
+    const ground: Tile = { col: OPEN_GROUND.hx, row: OPEN_GROUND.hy };
+    selection.apply([BUILDING_ID], false);
+    expect(orders.issueRightClick(clickOn(OPEN_GROUND))).toBe(false);
+    expect(orders.issueMoveTo(ground)).toBe(false);
+    expect(orders.issueSetWorkFlag(ground)).toBe(false);
+    expect(issued).toEqual([]);
+
+    selection.apply([SCOUT.id], false);
+    expect(orders.issueMoveTo(ground)).toBe(true);
+    expect(issued).toHaveLength(1);
   });
 
   it('frees the ground the current selection stands on when it attack-moves', () => {

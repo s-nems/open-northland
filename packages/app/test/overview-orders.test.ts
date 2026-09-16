@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { halfCellToScreen } from '@open-northland/render';
 import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -57,8 +58,11 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
   press: OverviewPress;
   pickMode: PickModeController;
   issued: Command[];
+  cues: UiCue[];
+  selection: ReturnType<typeof createUnitSelection>;
 } {
   const issued: Command[] = [];
+  const cues: UiCue[] = [];
   const selection = createUnitSelection();
   selection.apply([SCOUT.id], false);
   const orders = createUnitOrderController({
@@ -87,8 +91,11 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
     pickMode,
     orders: () => orders,
     workFlagBinding: () => workFlagBinding,
+    cue: (cue) => {
+      cues.push(cue);
+    },
   });
-  return { press, pickMode, issued };
+  return { press, pickMode, issued, cues, selection };
 }
 
 describe('orders named on the map overview', () => {
@@ -151,5 +158,50 @@ describe('orders named on the map overview', () => {
 
     expect(issued).toEqual([]);
     expect(pickMode.isArmed()).toBe(false);
+  });
+
+  it('clicks confirm for an order that commanded someone, fail for a called-off pick, nothing otherwise', () => {
+    const { press, pickMode, cues, selection } = harness();
+
+    pressOn(press, FAR_NODE, { button: 2 }); // the scout walks
+    expect(cues).toEqual(['confirm']);
+
+    pickMode.arm({ kind: 'attack-move' });
+    pressOn(press, FAR_NODE, { button: 0 }); // resolves the armed spot pick
+    expect(cues).toEqual(['confirm', 'confirm']);
+
+    pickMode.arm({ kind: 'attack-move' });
+    pressOn(press, FAR_NODE, { button: 2 }); // called off
+    expect(cues).toEqual(['confirm', 'confirm', 'fail']);
+
+    pickMode.arm({ kind: 'workplace', settler: SCOUT.id });
+    pressOn(press, FAR_NODE, { button: 0 }); // stays armed: the press only scrolls the view
+    expect(cues).toHaveLength(3);
+    pickMode.cancel();
+
+    selection.apply([], false);
+    expect(pressOn(press, FAR_NODE, { button: 2 })).toBe(true); // the overview keeps the press...
+    expect(cues).toHaveLength(3); // ...but nobody walked, so nothing clicks
+  });
+});
+
+describe('a world press on an armed pick mode', () => {
+  const click = (button: number): MouseEvent => ({ clientX: 10, clientY: 10, button }) as MouseEvent;
+
+  it('reports an order, a miss, or a call-off, and nothing when no mode is armed', () => {
+    const { pickMode, issued } = harness();
+    expect(pickMode.handleMouseDown(click(0))).toBeNull();
+
+    pickMode.arm({ kind: 'attack-move' });
+    expect(pickMode.handleMouseDown(click(0))).toBe('ordered');
+    expect(issued).toHaveLength(1);
+
+    pickMode.arm({ kind: 'workplace', settler: SCOUT.id });
+    expect(pickMode.handleMouseDown(click(0))).toBe('missed'); // no building under the press
+    expect(pickMode.isArmed()).toBe(false);
+
+    pickMode.arm({ kind: 'attack-move' });
+    expect(pickMode.handleMouseDown(click(2))).toBe('calledOff');
+    expect(issued).toHaveLength(1);
   });
 });

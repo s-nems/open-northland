@@ -49,6 +49,7 @@ function stubContext(): { ctx: PanelContext; made: Made[] } {
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => ({ width: 800, height: 600 }),
+    cue: () => undefined,
     atScale: (scale) => ({ ...ctx, scale }),
   };
   return { ctx, made };

@@ -8,6 +8,7 @@ import {
   buildSoundIndex,
   defaultBindings,
   directAudio,
+  HOUSE_CRASH_MIN_BUILT,
   JINGLE_GAIN,
   type SoundBindings,
 } from '../src/index.js';
@@ -29,6 +30,7 @@ const bank: SoundBank = {
     { name: 'Weapon Spear Hit', sfx: [{ file: 'static/spearhit01.wav', params: [80] }] },
     { name: 'Weapon Bow Long', logicSoundType: 75, sfx: [{ file: 'static/bow01.wav', params: [80] }] },
     { name: 'Weapon Bow Hit', sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
+    { name: 'House Crash', sfx: [{ file: 'static/housecrash01.wav', params: [80] }] },
     // The chat voice pair - like every cue group, resolved by its logicSoundType id.
     { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
     {
@@ -191,6 +193,26 @@ describe('directAudio one-shots', () => {
   it('stays silent for an off-screen emitter', () => {
     const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { hx: 200, hy: 200 } }]);
     expect(frame.oneShots).toHaveLength(0);
+  });
+
+  it('crashes a finished or half-built house down at its node, and tears a fresh site down silently', () => {
+    const razed = (built: number, upgrading?: boolean): SimEvent => ({
+      kind: 'buildingDestroyed',
+      entity: entity(7),
+      player: 0,
+      buildingType: 2,
+      tribe: 1,
+      built,
+      ...(upgrading === true ? { upgrading } : {}),
+      at: { hx: 11, hy: 10 },
+    });
+    expect(direct([razed(ONE)]).oneShots[0]?.files).toEqual(['static/housecrash01.wav']);
+    expect(direct([razed(ONE)]).oneShots[0]?.key).toBe('buildingDestroyed:11,10');
+    expect(direct([razed(HOUSE_CRASH_MIN_BUILT)]).oneShots).toHaveLength(1);
+    expect(direct([razed(HOUSE_CRASH_MIN_BUILT - 1)]).oneShots).toHaveLength(0);
+    expect(direct([razed(0)]).oneShots).toHaveLength(0);
+    // A house re-opened for an upgrade counts the upgrade's own progress, yet falls as a whole house.
+    expect(direct([razed(0, true)]).oneShots).toHaveLength(1);
   });
 
   it('ignores events with no binding and bindings with no bank group', () => {

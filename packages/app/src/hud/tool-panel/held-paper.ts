@@ -38,6 +38,7 @@ export function createHeldPaperController(ctx: PanelContext, container: Containe
     cancel: drop,
     handleClick: (): boolean => {
       if (paper === null) return false;
+      ctx.cue('fail'); // a world click with a paper in hand calls the hold off
       drop();
       return true;
     },

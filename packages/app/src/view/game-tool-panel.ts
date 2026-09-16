@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
 import type { Command, Paper, PlayerCommand } from '@open-northland/sim';
@@ -84,6 +85,8 @@ export interface GameToolPanelDeps {
   readonly tooltip?: TooltipSurface;
   /** A note's Select: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
+  /** The GUI click feedback for the panel's buttons and held modes; absent, silent. */
+  readonly onUiCue?: (cue: UiCue) => void;
 }
 
 export interface GameToolPanelHandle {
@@ -190,6 +193,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onSelectMessageTarget !== undefined
         ? { onSelectMessageTarget: deps.onSelectMessageTarget }
         : {}),
+      ...(deps.onUiCue !== undefined ? { onUiCue: deps.onUiCue } : {}),
     });
 
   const mounts = createReplaceableMount(

@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { UI_CUE_FILES } from '@open-northland/audio';
 import { describe, expect, it } from 'vitest';
 import { contentDir, hasRealIr, loadContentUnderTest } from './helpers.js';
 
@@ -18,5 +19,11 @@ describe.runIf(hasRealIr())('decoded sound bank', () => {
     expect(files.size).toBeGreaterThan(0);
     const missing = [...files].filter((file) => !existsSync(resolve(contentDir(), SOUNDS_DIR, file)));
     expect(missing).toEqual([]);
+  });
+
+  it('carries the GUI click wavs the engine hardwires outside the bank', () => {
+    for (const file of Object.values(UI_CUE_FILES)) {
+      expect(existsSync(resolve(contentDir(), SOUNDS_DIR, file)), file).toBe(true);
+    }
   });
 });

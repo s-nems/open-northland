@@ -7,6 +7,7 @@ import {
   Position,
   recordHumanDeath,
   Settler,
+  Upgrading,
   Wedding,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
@@ -57,6 +58,7 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
     buildingType: building.buildingType,
     tribe: building.tribe,
     built: building.built,
+    ...(world.has(e, Upgrading) ? { upgrading: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   unbindWorkersOf(world, ctx, e);

@@ -88,6 +88,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     claims: (x, y) => shell.claims(rect, x, y),
     handleClick: (x, y): boolean => {
       if (!shell.claims(rect, x, y)) return false;
+      ctx.cue('confirm'); // the whole sheet is its close button
       close();
       return true;
     },

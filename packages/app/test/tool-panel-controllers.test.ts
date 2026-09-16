@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { type HudLayout, terrainWorldBounds } from '@open-northland/render';
 import type { Command, Paper } from '@open-northland/sim';
 import { Container, Graphics, Texture } from 'pixi.js';
@@ -43,9 +44,15 @@ import { messages } from '../src/i18n/index.js';
 
 const SCREEN = { width: 800, height: 600 };
 
-/** A PanelContext whose text factory records what it was asked to build (no Pixi text, no fonts). */
-function stubContext(overlayReserve?: () => Rect | null): { ctx: PanelContext; made: string[] } {
+/** A PanelContext whose text factory records what it was asked to build (no Pixi text, no fonts), and
+ *  whose GUI cue records every click it was asked to play. */
+function stubContext(overlayReserve?: () => Rect | null): {
+  ctx: PanelContext;
+  made: string[];
+  cues: UiCue[];
+} {
   const made: string[] = [];
+  const cues: UiCue[] = [];
   const layout = buildToolPanelLayout(1);
   const ctx: PanelContext = {
     layout,
@@ -64,10 +71,13 @@ function stubContext(overlayReserve?: () => Rect | null): { ctx: PanelContext; m
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
+    cue: (cue) => {
+      cues.push(cue);
+    },
     ...(overlayReserve !== undefined ? { overlayReserve } : {}),
     atScale: (scale) => ({ ...ctx, scale }),
   };
-  return { ctx, made };
+  return { ctx, made, cues };
 }
 
 const BUILDINGS: readonly MenuBuildingEntry[] = [
@@ -215,6 +225,27 @@ describe('tabbed-list window controller (build menu)', () => {
     menu.toggle();
     expect(menu.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(menu.isOpen()).toBe(true);
+  });
+
+  it('clicks confirm for a row, a tab and the close box, but not for the window body', () => {
+    const { ctx, cues } = stubContext();
+    const menu = menuWindow(ctx, BUILDINGS, () => undefined);
+    menu.toggle();
+    const geo = expectedMenuLayout(ctx);
+    // The window's bottom margin is consumed but is no button.
+    const body = { x: geo.window.x + 2, y: geo.window.y + geo.window.h - 2 };
+    expect(menu.handleClick(body.x, body.y)).toBe(true);
+    expect(cues).toEqual([]);
+    const row = centreOf(geo.rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    menu.handleClick(row.x, row.y); // picks and closes
+    expect(cues).toEqual(['confirm']);
+    menu.toggle();
+    const tab = centreOf(geo.tabs[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    menu.handleClick(tab.x, tab.y);
+    expect(cues).toEqual(['confirm', 'confirm']);
+    const close = centreOf(expectedMenuLayout(ctx).closeRect);
+    menu.handleClick(close.x, close.y);
+    expect(cues).toEqual(['confirm', 'confirm', 'confirm']);
   });
 
   it('consumes the wheel over the open window and ignores it outside', () => {
@@ -781,7 +812,7 @@ describe('placement controller', () => {
     screenToTile: (x: number, y: number) => { col: number; row: number } | null,
     canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean = () => true,
   ) {
-    const { ctx } = stubContext();
+    const { ctx, cues } = stubContext();
     const commands: Command[] = [];
     const placement = createPlacementController({
       ctx,
@@ -793,7 +824,7 @@ describe('placement controller', () => {
       tribe: 1,
       owner: 0,
     });
-    return { placement, commands };
+    return { placement, commands, cues };
   }
 
   it('places a construction site at an accepted tile and EXITS build mode (one click = one foundation)', () => {
@@ -869,6 +900,26 @@ describe('placement controller', () => {
     placement.cancel();
     expect(placement.isActive()).toBe(false);
     expect(placement.handleClick(10, 10)).toBe(false);
+  });
+
+  it('clicks confirm when the site lands; the cancel itself is silent (the input layer fails it)', () => {
+    const { placement, cues } = mount(() => ({ col: 4, row: 2 }));
+    placement.enter(23);
+    placement.handleClick(10, 10);
+    expect(cues).toEqual(['confirm']);
+    placement.enter(23);
+    placement.cancel();
+    expect(cues).toEqual(['confirm']);
+  });
+
+  it('a rejected tile clicks nothing: the world makes no sound for a site that did not land', () => {
+    const { placement, cues } = mount(
+      () => ({ col: 4, row: 2 }),
+      () => false,
+    );
+    placement.enter(23);
+    placement.handleClick(10, 10);
+    expect(cues).toEqual([]);
   });
 });
 

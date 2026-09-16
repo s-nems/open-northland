@@ -71,6 +71,17 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     expect(sim.world.get(e, Upgrading).seeded.get(STONE)).toBe(2); // recorded for cancel refund
   });
 
+  it('announces a demolition mid-upgrade as an upgrading house, not a fresh site', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
+    sim.step();
+    sim.enqueueSetup({ kind: 'demolish', building: e });
+    sim.step();
+    const razed = sim.events.current().find((ev) => ev.kind === 'buildingDestroyed');
+    expect(razed).toMatchObject({ entity: e, built: 0, upgrading: true });
+  });
+
   it('an upgrade site bills only the DIFFERENCE - the target tier own cost, not the cumulative bill', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     const e = placeBuiltHome(sim, HOME_L0, 0);

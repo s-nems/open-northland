@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import type { Entity, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
@@ -139,18 +140,41 @@ export interface PickModeDeps {
   readonly setArmedCursor: (armed: boolean) => void;
 }
 
+/**
+ * What a press did to an armed mode, for the caller's click feedback: `ordered` placed the order,
+ * `missed` found no target under the press (approximation: the original keeps its tool armed after a
+ * miss, this drops it), `calledOff` was any other button. Null when no mode was armed.
+ */
+export type PickPress = 'ordered' | 'missed' | 'calledOff';
+
+/** The GUI click a pick press answers with: an order confirms, a call-off fails, a miss is silent. */
+export function pickPressCue(press: PickPress): UiCue | null {
+  switch (press) {
+    case 'ordered':
+      return 'confirm';
+    case 'calledOff':
+      return 'fail';
+    case 'missed':
+      return null;
+    default: {
+      const unreachable: never = press;
+      return unreachable;
+    }
+  }
+}
+
 export interface PickModeController {
   arm(mode: PickMode): void;
   cancel(): void;
   isArmed(): boolean;
   signpostActive(): boolean;
-  /** True when a mode was armed: the press resolved or cancelled it, so the caller must not fall through
-   *  to selection or an order. */
-  handleMouseDown(event: MouseEvent): boolean;
+  /** Non-null when a mode was armed: the press resolved or cancelled it, so the caller must not fall
+   *  through to selection or an order. */
+  handleMouseDown(event: MouseEvent): PickPress | null;
   /** A press on the map overview, which names the node `target` and nothing drawn there. A spot-target
    *  mode resolves; one that needs a picked unit or building stays armed, so scrolling the overview to
-   *  find that target does not call it off. True when the armed mode took the press. */
-  handleOverviewPress(button: number, target: Tile): boolean;
+   *  find that target does not call it off. Non-null when the armed mode took the press. */
+  handleOverviewPress(button: number, target: Tile): PickPress | null;
   highlight(): readonly BuildingHighlightItem[] | null;
 }
 
@@ -165,27 +189,26 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   };
   const cancel = (): void => setMode(null);
 
-  const resolveBuilding = (event: MouseEvent, kind: BuildingPickKind, settler: number): void => {
+  const resolveBuilding = (event: MouseEvent, kind: BuildingPickKind, settler: number): boolean => {
     const w = deps.toWorld(event.clientX, event.clientY);
     const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
-    if (building === null) return;
+    if (building === null) return false;
     const order = BUILDING_PICKS[kind].order(deps.snapshot(), settler, building, buildingsByType);
-    if (order !== null) deps.enqueue(order);
+    if (order === null) return false;
+    deps.enqueue(order);
+    return true;
   };
 
-  const resolveSpot = (mode: SpotMode, named: Tile): void => {
+  const resolveSpot = (mode: SpotMode, named: Tile): boolean => {
     const { width, height } = nodeBounds(deps.mapSize);
     const target = clampTile(named, width, height);
     switch (mode.kind) {
       case 'destination':
-        deps.orders().issueMoveTo(target);
-        return;
+        return deps.orders().issueMoveTo(target);
       case 'work-area':
-        deps.orders().issueSetWorkFlag(target);
-        return;
+        return deps.orders().issueSetWorkFlag(target);
       case 'attack-move':
-        deps.orders().issueAttackMove(target);
-        return;
+        return deps.orders().issueAttackMove(target);
       // Named deviation from the observed original, which erects with a right-click on lit ground: this
       // places with a left-click and dims blocked ground, matching build placement.
       case 'signpost':
@@ -195,7 +218,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           x: target.col,
           y: target.row,
         });
-        return;
+        return true;
       // The explore order centres the scout's sweep on the named spot, as the original does.
       case 'explore':
         deps.enqueue({
@@ -204,7 +227,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           x: target.col,
           y: target.row,
         });
-        return;
+        return true;
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled spot pick mode: ${JSON.stringify(unreachable)}`);
@@ -212,23 +235,19 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
   };
 
-  const resolvePicked = (mode: Exclude<PickMode, SpotMode>, event: MouseEvent): void => {
+  const resolvePicked = (mode: Exclude<PickMode, SpotMode>, event: MouseEvent): boolean => {
     switch (mode.kind) {
       case 'workplace':
       case 'home':
       case 'building-site':
       case 'learning-place':
-        resolveBuilding(event, mode.kind, mode.settler);
-        return;
+        return resolveBuilding(event, mode.kind, mode.settler);
       case 'attack-settler':
-        deps.orders().issueAttackTarget(event, 'settler');
-        return;
+        return deps.orders().issueAttackTarget(event, 'settler');
       case 'attack-building':
-        deps.orders().issueAttackTarget(event, 'building');
-        return;
+        return deps.orders().issueAttackTarget(event, 'building');
       case 'attack-animal':
-        deps.orders().issueAttackAnimal(event);
-        return;
+        return deps.orders().issueAttackAnimal(event);
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
@@ -236,29 +255,29 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
   };
 
-  const handleMouseDown = (event: MouseEvent): boolean => {
+  const pressOutcome = (ordered: boolean): PickPress => (ordered ? 'ordered' : 'missed');
+
+  const handleMouseDown = (event: MouseEvent): PickPress | null => {
     const mode = pickMode;
-    if (mode === null) return false;
+    if (mode === null) return null;
     // A selection change cancels any armed mode, so the selection read at click time is still the one
     // this mode was armed for.
     cancel();
-    if (event.button !== 0) return true; // any other button just calls the mode off
-    if (isSpotMode(mode)) resolveSpot(mode, deps.nodeAt(event.clientX, event.clientY));
-    else resolvePicked(mode, event);
-    return true;
+    if (event.button !== 0) return 'calledOff'; // any other button just calls the mode off
+    if (isSpotMode(mode)) return pressOutcome(resolveSpot(mode, deps.nodeAt(event.clientX, event.clientY)));
+    return pressOutcome(resolvePicked(mode, event));
   };
 
-  const handleOverviewPress = (button: number, target: Tile): boolean => {
+  const handleOverviewPress = (button: number, target: Tile): PickPress | null => {
     const mode = pickMode;
-    if (mode === null) return false;
+    if (mode === null) return null;
     if (button !== 0) {
       cancel(); // any other button just calls the mode off
-      return true;
+      return 'calledOff';
     }
-    if (!isSpotMode(mode)) return false;
+    if (!isSpotMode(mode)) return null;
     cancel();
-    resolveSpot(mode, target);
-    return true;
+    return pressOutcome(resolveSpot(mode, target));
   };
 
   /** Read every frame, so the O(entities) pass is memoized on everything it reads: the snapshot instance

@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import type { UiString } from '../../content/gui-gfx.js';
@@ -36,6 +37,8 @@ export interface PanelContext {
   readonly uiString: UiString;
   /** The live renderer size, read at each placement and never cached. */
   readonly screen: () => { readonly width: number; readonly height: number };
+  /** The GUI click a pressed button confirms with and a cancelled hold fails with. */
+  readonly cue: (cue: UiCue) => void;
   /** The screen-px box of the bottom-corner overlay drawn over this panel. A pop-up list that spans it
    *  shortens toward clearing it: presses under the overlay are deferred to it, so a covered row is dead. */
   readonly overlayReserve?: () => Rect | null;

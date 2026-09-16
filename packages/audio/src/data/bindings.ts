@@ -52,6 +52,8 @@ export const GROUP_OPEN_WOODEN_CHEST = 'Open Wooden Chest';
 export const GROUP_OPEN_MAGICAL_CHEST = 'Open Magical Chest';
 /** Sawing - a workshop producing (bound to `goodProduced`). */
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
+/** A house coming down (LogicSoundType 42), razed in combat or torn down by its owner. */
+export const GROUP_HOUSE_CRASH = 'House Crash';
 
 // --- Combat impact SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set decoded from
 //     `soundfx.cif`). ---
@@ -119,6 +121,8 @@ export function defaultBindings(): SoundBindings {
       playerWon: { kind: 'jingle', musicType: JINGLE_WON, localPlayerOnly: true },
       playerDefeated: { kind: 'jingle', musicType: JINGLE_LOST, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
+      // The director withholds this below HOUSE_CRASH_MIN_BUILT: a site under half built comes down silently.
+      buildingDestroyed: { kind: 'spatial', group: GROUP_HOUSE_CRASH },
       combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
       // No release entry: `projectileLaunched` fires whether or not the clip sounds, so binding it would
       // double the bowstring the 19 cued ranged clips author. The three that author none (the hero bows)

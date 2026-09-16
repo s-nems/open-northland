@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
 import type { Camera } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
@@ -26,6 +27,8 @@ export interface SettlerActionsOptions {
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
   /** One ring button was clicked for the selected settlers; the menu has already closed. */
   readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;
+  /** The GUI click every pressed ring button and picked profession confirms with. */
+  readonly cue: (cue: UiCue) => void;
 }
 
 export interface SettlerActions {

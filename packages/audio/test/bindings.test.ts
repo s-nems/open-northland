@@ -25,6 +25,8 @@ describe('defaultBindings', () => {
     expect(b.byEvent.settlerBorn?.kind).toBe('jingle');
     expect(b.byEvent.buildingPlaced).toBeUndefined();
     expect(b.byEvent.goodProduced).toEqual({ kind: 'spatial', group: 'Carpenter Saw' });
+    // Positioned, for every owner: an enemy's house falls as audibly as our own.
+    expect(b.byEvent.buildingDestroyed).toEqual({ kind: 'spatial', group: 'House Crash' });
   });
 
   it('binds chest opening to its kind-specific lid sound and the local-player jingle', () => {

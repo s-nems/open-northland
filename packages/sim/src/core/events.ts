@@ -105,6 +105,9 @@ export type SimEvent =
       /** Build progress at destruction as a fixed-point fraction of ONE (65536 = finished), so an
        *  unfinished site collapses through its construction-stage body. */
       readonly built: number;
+      /** Set when the building was a standing house re-opened as an upgrade site, whose `built` counts
+       *  the upgrade alone: it still comes down as a whole house. */
+      readonly upgrading?: boolean;
       readonly at?: HalfCellNode;
     }
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }
