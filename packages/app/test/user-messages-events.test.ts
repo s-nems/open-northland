@@ -42,7 +42,13 @@ const naming: MessageNaming = {
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
-  text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
+  technology: (kind, typeId) => `${kind}:${typeId}`,
+  text: (type, parts) =>
+    `${parts.subjectName ?? '?'}:${type}${
+      parts.technologySections === undefined
+        ? ''
+        : `:${parts.technologySections.jobs.join(',')}|${parts.technologySections.goods.join(',')}|${parts.technologySections.houses.join(',')}`
+    }`,
 };
 
 /** Raised messages flattened for assertions: the identity fields plus the composed text. */
@@ -170,6 +176,66 @@ describe('user messages from sim events', () => {
     expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.grewUp, 1]]);
   });
 
+  it("turns the local seat's discoveries into important settler notes", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: ENEMY, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'technologyDiscovered', entity: e(1), player: LOCAL, tribe: 1, technology: 'job', typeId: 8 },
+        {
+          kind: 'technologyDiscovered',
+          entity: e(1),
+          player: LOCAL,
+          tribe: 1,
+          technology: 'good',
+          typeId: 9,
+        },
+        {
+          kind: 'technologyDiscovered',
+          entity: e(1),
+          player: LOCAL,
+          tribe: 1,
+          technology: 'house',
+          typeId: 10,
+        },
+        {
+          kind: 'technologyDiscovered',
+          entity: e(1),
+          player: LOCAL,
+          tribe: 1,
+          technology: 'house',
+          typeId: 11,
+        },
+        // A duplicate event in the same advancement batch must not duplicate the list entry.
+        { kind: 'technologyDiscovered', entity: e(1), player: LOCAL, tribe: 1, technology: 'job', typeId: 8 },
+        { kind: 'technologyDiscovered', entity: e(2), player: ENEMY, tribe: 1, technology: 'job', typeId: 8 },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject, m.technologies, m.text])).toEqual([
+      [
+        USER_MESSAGE_TYPE.experienceUnlocks,
+        { kind: 'settler', entity: e(1) },
+        [
+          { kind: 'job', typeId: 8 },
+          { kind: 'good', typeId: 9 },
+        ],
+        `S1:${USER_MESSAGE_TYPE.experienceUnlocks}:job:8|good:9|`,
+      ],
+      [
+        USER_MESSAGE_TYPE.experienceUnlocks,
+        { kind: 'settler', entity: e(1) },
+        [
+          { kind: 'house', typeId: 10 },
+          { kind: 'house', typeId: 11 },
+        ],
+        `S1:${USER_MESSAGE_TYPE.experienceUnlocks}:||house:10,house:11`,
+      ],
+    ]);
+  });
+
   it('announces an eliminated seat to everyone, naming the player rather than an entity', () => {
     const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const out = run([{ kind: 'playerDefeated', player: ENEMY }], snap);
@@ -180,6 +246,7 @@ describe('user messages from sim events', () => {
         at: null,
         about: ENEMY,
         goodType: null,
+        technologies: null,
         jobType: null,
         text: `Gracz:${USER_MESSAGE_TYPE.playerDied}`,
       },

@@ -25,7 +25,16 @@ function pending(
   subject: MessageSubject | null = { kind: 'settler', entity: 7 },
   extra: Partial<PendingMessage> = {},
 ): PendingMessage {
-  return { type, subject, at: null, about: null, goodType: null, jobType: null, ...extra };
+  return {
+    type,
+    subject,
+    at: null,
+    about: null,
+    goodType: null,
+    technologies: null,
+    jobType: null,
+    ...extra,
+  };
 }
 
 describe('message feed', () => {
@@ -72,6 +81,26 @@ describe('message feed', () => {
     expect(feed.add(lost(3), TICK, TEXT)).toBe('accepted');
     expect(feed.add(lost(2), TICK, TEXT)).toBe('duplicate');
     expect(feed.displayed()).toHaveLength(4);
+  });
+
+  it('keeps the work and building lists from one experience gain as two messages', () => {
+    const feed = createMessageFeed();
+    const work = pending(USER_MESSAGE_TYPE.experienceUnlocks, undefined, {
+      technologies: [
+        { kind: 'job', typeId: 8 },
+        { kind: 'good', typeId: 9 },
+      ],
+    });
+    const buildings = pending(USER_MESSAGE_TYPE.experienceUnlocks, undefined, {
+      technologies: [
+        { kind: 'house', typeId: 10 },
+        { kind: 'house', typeId: 11 },
+      ],
+    });
+    expect(feed.add(work, TICK, TEXT)).toBe('accepted');
+    expect(feed.add(buildings, TICK, TEXT)).toBe('accepted');
+    expect(feed.add(work, TICK + 1, TEXT)).toBe('duplicate');
+    expect(feed.displayed()).toHaveLength(2);
   });
 
   it('forgets a dismissed message after its lifetime, so it can be raised again', () => {

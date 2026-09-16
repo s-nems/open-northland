@@ -18,7 +18,15 @@ const NO_MESSAGES: readonly RaisedMessage[] = [];
 
 function seatNote(naming: MessageNaming, type: UserMessageType, seat: MetSeat): RaisedMessage {
   return {
-    pending: { type, subject: null, at: null, about: seat.player, goodType: null, jobType: null },
+    pending: {
+      type,
+      subject: null,
+      at: null,
+      about: seat.player,
+      goodType: null,
+      technologies: null,
+      jobType: null,
+    },
     compose: () =>
       naming.text(type, {
         subjectName: naming.player(seat.player),

@@ -80,6 +80,7 @@ function note(
     at: null,
     about: null,
     goodType: null,
+    technologies: null,
     jobType: null,
     priority: 2,
     tick: RAISED,

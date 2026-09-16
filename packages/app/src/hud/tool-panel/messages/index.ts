@@ -55,6 +55,7 @@ export interface MessageCenterDeps {
   readonly buildingLabel: (typeId: number) => string | undefined;
   /** A paper's display name, for the note about finding one. */
   readonly paperLabel: (paper: Paper) => string;
+  readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   readonly playerLabel: (player: number) => string | null;
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
@@ -132,6 +133,7 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       `${deps.ctx.uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`,
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     paper: deps.paperLabel,
+    technology: deps.technologyLabel,
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
   };
 }

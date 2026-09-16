@@ -29,6 +29,7 @@ import {
 } from '../../diag/index.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
+import { technologyLabel } from '../../game/technology.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -355,6 +356,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         disabledReason: () => buildReason(localPlayer, entry.typeId),
       })),
       goods: sharedClock ? [] : menuGoods,
+      technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
@@ -416,9 +418,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       teardown: teardownWorld,
     });
     const onEvents = createWorldEventHandler({
-      content: sim.content,
-      player: localPlayer,
-      signal: lifetime.signal,
       forward: (events) => deps.onEvents?.(events),
       terrainColors,
       subMissions: (events) => !sharedClock && subMissions.onEvents(events),

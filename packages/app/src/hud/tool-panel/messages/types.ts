@@ -87,6 +87,11 @@ export type MessageSubject =
   | { readonly kind: 'settler'; readonly entity: number }
   | { readonly kind: 'building'; readonly entity: number };
 
+export interface MessageTechnology {
+  readonly kind: 'job' | 'good' | 'house';
+  readonly typeId: number;
+}
+
 /** What a source raises: the identity the feed dedupes on, before any text is composed for it. */
 export interface PendingMessage {
   readonly type: UserMessageType;
@@ -97,6 +102,8 @@ export interface PendingMessage {
    *  player-scoped note. Part of the identity, so two deaths inside one lifetime stay two notes. */
   readonly about: number | null;
   readonly goodType: number | null;
+  /** Newly available capabilities carried together by the original's experience-unlock record. */
+  readonly technologies: readonly MessageTechnology[] | null;
   /** The subject settler's trade when the message was raised; the priority rule for a missing good
    *  reads it. */
   readonly jobType: number | null;

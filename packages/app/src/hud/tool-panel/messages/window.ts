@@ -127,17 +127,23 @@ export function createMessageWindow(deps: MessageWindowDeps): MessageWindow {
       return width;
     };
     const lines: string[] = [];
-    let line = '';
-    for (const word of text.split(' ')) {
-      const candidate = line === '' ? word : `${line} ${word}`;
-      if (line !== '' && measure(candidate) > maxNative) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = candidate;
+    for (const paragraph of text.split('\n')) {
+      if (paragraph === '') {
+        lines.push('');
+        continue;
       }
+      let line = '';
+      for (const word of paragraph.split(' ')) {
+        const candidate = line === '' ? word : `${line} ${word}`;
+        if (line !== '' && measure(candidate) > maxNative) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = candidate;
+        }
+      }
+      if (line !== '') lines.push(line);
     }
-    if (line !== '') lines.push(line);
     return lines;
   };
 

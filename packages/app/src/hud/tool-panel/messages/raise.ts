@@ -17,6 +17,7 @@ export interface MessageNaming {
   stance(state: DiplomacyState): string;
   /** A paper's name, for the note about finding one. */
   paper(paper: Paper): string;
+  technology(kind: 'job' | 'good' | 'house', typeId: number): string;
   text(type: UserMessageType, parts: MessageTextParts): string;
 }
 
@@ -49,7 +50,15 @@ export class MessageRaiser {
     const subject: MessageSubject = { kind: 'settler', entity: e.id };
     this.raise(
       `${type}|settler:${e.id}`,
-      { type, subject, at: nodeOf(e), about: null, goodType: null, jobType: jobTypeOf(e) },
+      {
+        type,
+        subject,
+        at: nodeOf(e),
+        about: null,
+        goodType: null,
+        technologies: null,
+        jobType: jobTypeOf(e),
+      },
       () => {
         const named = this.naming.settler(e, this.snapshot);
         return this.naming.text(type, {
@@ -66,7 +75,7 @@ export class MessageRaiser {
     const subject: MessageSubject = { kind: 'building', entity: e.id };
     this.raise(
       `${type}|building:${e.id}`,
-      { type, subject, at: nodeOf(e), about: null, goodType: null, jobType: null },
+      { type, subject, at: nodeOf(e), about: null, goodType: null, technologies: null, jobType: null },
       () =>
         this.naming.text(type, {
           subjectName: this.naming.building(e),

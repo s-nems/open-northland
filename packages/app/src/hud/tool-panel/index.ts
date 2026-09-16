@@ -54,6 +54,8 @@ export interface ToolPanelOptions {
   readonly buildings: readonly MenuBuildingEntry[];
   /** The goods the drop palette lists. */
   readonly goods: readonly MenuGoodEntry[];
+  /** Localized name of a profession, good, or building announced by a discovery note. */
+  readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
@@ -318,6 +320,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       localPlayer: opts.owner,
       buildingLabel: (typeId) => labelByType.get(typeId),
       paperLabel: nameOfPaper,
+      technologyLabel: opts.technologyLabel,
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.diplomacyRows,

@@ -11,6 +11,8 @@ import type { Fixed } from './fixed.js';
 export type SimEvent =
   | {
       readonly kind: 'technologyDiscovered';
+      /** The settler whose qualification exposed the technology, matching the original user message. */
+      readonly entity: Entity;
       readonly player: number;
       readonly tribe: number;
       readonly technology: 'job' | 'good' | 'house';

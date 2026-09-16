@@ -25,6 +25,7 @@ const naming: MessageNaming = {
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
+  technology: (kind, typeId) => `${kind}:${typeId}`,
   text: (type) => String(type),
 };
 

@@ -77,7 +77,6 @@ export const enGame = {
     raiseAlarmHint: 'Sound the alarm: every civilian in range hides here and shoots from cover.',
     lowerAlarmHint: 'Call off the alarm: the settlers sheltering here go back to work.',
     upgrade: 'Upgrade',
-    technologyDiscovered: 'New discovery',
     schoolProgress: 'Learning {target}: {seconds}s left',
     schoolTitle: 'School',
     schoolHint: 'Choose a profession or product to study. Your settlement must have discovered it first.',
@@ -378,6 +377,13 @@ export const enGame = {
     },
     /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
     rows: {
+      '33': 'can now do the following based on experience',
+      '34': 'New professions',
+      '35': 'New goods',
+      '36': 'New buildings',
+      '38': 'can produce a new good',
+      '39': 'can take on a new profession',
+      '40': "'s tribe can construct a new building",
       '10': 'goes hungry',
       '11': 'is wasting away from hunger',
       '12': 'is worn out',

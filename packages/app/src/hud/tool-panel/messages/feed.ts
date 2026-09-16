@@ -77,7 +77,11 @@ export function defaultMessageFeedState(): MessageFeedState {
  *  position: a settler that walked between two raises still repeats one message, not two. */
 function identityKey(m: PendingMessage): string {
   const subject = m.subject === null ? `about:${m.about ?? ''}` : `${m.subject.kind}:${m.subject.entity}`;
-  return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}`;
+  const technologies =
+    m.technologies === null
+      ? ''
+      : m.technologies.map((technology) => `${technology.kind}:${technology.typeId}`).join(',');
+  return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}`;
 }
 
 /** Two "cannot find" complaints about one good from settlers standing close together. */

@@ -47,6 +47,8 @@ export interface GameToolPanelDeps {
   readonly elevation?: ElevationField;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly goods: readonly MenuGoodEntry[];
+  /** Localized name of a profession, good, or building announced by a discovery note. */
+  readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -156,6 +158,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       uiscale,
       buildings: deps.buildings,
       goods: deps.goods,
+      technologyLabel: deps.technologyLabel,
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,

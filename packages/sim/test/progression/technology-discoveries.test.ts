@@ -4,6 +4,7 @@ import {
   discoverTechnology,
   Owner,
   Settler,
+  setMapPermission,
   setSettlerJob,
   TechnologyDiscoveries,
   technologyDiscovered,
@@ -99,6 +100,106 @@ describe('player technology discoveries', () => {
     expect(goodEnabled(sim.world, ctx, PLAYER, TRIBE, PLANK)).toBe(true);
     expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
     expect(buildingEnabled(sim.world, ctx, RIVAL, TRIBE, SMITHY)).toBe(false);
+  });
+
+  it('attributes every discovery notification to the worker who earned it', () => {
+    const { sim, worker } = setup();
+    const ctx = { ...ctxOf(sim), tick: 2 };
+    technologySystem(sim.world, ctx);
+    sim.events.clear();
+
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    technologySystem(sim.world, ctx);
+
+    expect(sim.events.current().filter((event) => event.kind === 'technologyDiscovered')).toEqual([
+      {
+        kind: 'technologyDiscovered',
+        entity: worker,
+        player: PLAYER,
+        tribe: TRIBE,
+        technology: 'job',
+        typeId: CARPENTER,
+      },
+      {
+        kind: 'technologyDiscovered',
+        entity: worker,
+        player: PLAYER,
+        tribe: TRIBE,
+        technology: 'good',
+        typeId: PLANK,
+      },
+      {
+        kind: 'technologyDiscovered',
+        entity: worker,
+        player: PLAYER,
+        tribe: TRIBE,
+        technology: 'house',
+        typeId: SMITHY,
+      },
+    ]);
+  });
+
+  it('attributes a house cascade to the qualifying worker when another settler also discovers in the tick', () => {
+    const { sim, worker } = setup();
+    const ctx = { ...ctxOf(sim), tick: 2 };
+    technologySystem(sim.world, ctx);
+    sim.events.clear();
+    const other = settlerAt(sim, { tribe: TRIBE, jobType: 3 });
+    sim.world.add(other, Owner, { player: PLAYER });
+
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    technologySystem(sim.world, ctx);
+
+    expect(
+      sim.events
+        .current()
+        .filter((event) => event.kind === 'technologyDiscovered' && event.technology === 'house'),
+    ).toEqual([
+      {
+        kind: 'technologyDiscovered',
+        entity: worker,
+        player: PLAYER,
+        tribe: TRIBE,
+        technology: 'house',
+        typeId: SMITHY,
+      },
+    ]);
+  });
+
+  it('attributes a permission-gated house to a qualified worker when permission arrives', () => {
+    const { sim, worker } = setup();
+    const ctx = { ...ctxOf(sim), tick: 2 };
+    setMapPermission(sim.world, {
+      player: PLAYER,
+      tribe: TRIBE,
+      kind: 'house',
+      typeId: SMITHY,
+      allowed: false,
+    });
+    technologySystem(sim.world, ctx);
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    technologySystem(sim.world, ctx);
+    sim.events.clear();
+
+    setMapPermission(sim.world, {
+      player: PLAYER,
+      tribe: TRIBE,
+      kind: 'house',
+      typeId: SMITHY,
+      allowed: true,
+    });
+    technologySystem(sim.world, ctx);
+
+    expect(sim.events.current().filter((event) => event.kind === 'technologyDiscovered')).toEqual([
+      {
+        kind: 'technologyDiscovered',
+        entity: worker,
+        player: PLAYER,
+        tribe: TRIBE,
+        technology: 'house',
+        typeId: SMITHY,
+      },
+    ]);
   });
 
   it('discoveries survive retraining, death and save restoration', () => {

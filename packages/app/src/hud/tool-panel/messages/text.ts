@@ -82,6 +82,9 @@ const STOCK_FULL_NO_GOOD_STRING_ID = 28;
 const EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID = 59;
 const BACKPACK_FULL_DETAIL_STRING_ID = 60;
 const UNKNOWN_HERO_DIED_STRING_ID = 121;
+const EXPERIENCE_JOB_STRING_ID = 34;
+const EXPERIENCE_GOOD_STRING_ID = 35;
+const EXPERIENCE_HOUSE_STRING_ID = 36;
 /** The placeholder the stock-full row carries for the good's name. */
 const GOOD_PLACEHOLDER = '%s';
 
@@ -126,6 +129,12 @@ export interface MessageTextParts {
   readonly goodName: string | null;
   /** The stance the row about another seat reports; null for every row that names none. */
   readonly stanceName: string | null;
+  /** Localized lists carried by one experience-unlock notification. */
+  readonly technologySections?: {
+    readonly jobs: readonly string[];
+    readonly goods: readonly string[];
+    readonly houses: readonly string[];
+  };
   /** The found paper's name, appended after a dash as the original formats its found-object note. */
   readonly detail?: string;
 }
@@ -165,6 +174,18 @@ export function composeMessageText(
   }
   if (name === 'equipmentNotFound') return lead(`${base} ${row(EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID)}`);
   if (name === 'backpackFull') return lead(`${base} ${row(BACKPACK_FULL_DETAIL_STRING_ID)}`);
+  if (name === 'experienceUnlocks' && parts.technologySections !== undefined) {
+    const sections = [
+      [EXPERIENCE_JOB_STRING_ID, parts.technologySections.jobs],
+      [EXPERIENCE_GOOD_STRING_ID, parts.technologySections.goods],
+      [EXPERIENCE_HOUSE_STRING_ID, parts.technologySections.houses],
+    ] as const;
+    const details = sections
+      .filter(([, values]) => values.length > 0)
+      .map(([label, values]) => `${row(label)}:\n${values.map((value) => `- ${value}`).join('\n')}`)
+      .join('\n\n');
+    return `${lead(base)}:\n${details}`;
+  }
   if (GOOD_APPENDED.has(name) && parts.goodName !== null) return lead(`${base} ${parts.goodName}`);
   if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return lead(`${base} ${parts.stanceName}`);
   return lead(base);

@@ -1,7 +1,7 @@
 import { entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { isBuilding, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
-import { type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
+import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
 
 function isPerson(e: SnapshotEntity): boolean {
   return e.components.Person !== undefined;
@@ -23,6 +23,16 @@ export function messagesFromEvents(
   naming: MessageNaming,
 ): RaisedMessage[] {
   const raiser = new MessageRaiser(snapshot, naming);
+  const discoveries = new Map<number, MessageTechnology[]>();
+  for (const ev of events) {
+    if (ev.kind !== 'technologyDiscovered' || ev.player !== localPlayer) continue;
+    const grouped = discoveries.get(ev.entity) ?? [];
+    if (!grouped.some((technology) => technology.kind === ev.technology && technology.typeId === ev.typeId)) {
+      grouped.push({ kind: ev.technology, typeId: ev.typeId });
+      discoveries.set(ev.entity, grouped);
+    }
+  }
+  const announcedDiscoveries = new Set<number>();
   const ownedPerson = (id: number): SnapshotEntity | undefined => {
     const e = entityById(snapshot, id);
     return e !== undefined && isPerson(e) && ownedBy(e, localPlayer) ? e : undefined;
@@ -44,7 +54,15 @@ export function messagesFromEvents(
     // Deaths have no subject left to key on, so the reaped id stands in.
     raiser.raise(
       `${USER_MESSAGE_TYPE.humanDied}|dead:${entity}`,
-      { type: USER_MESSAGE_TYPE.humanDied, subject: null, at, about: entity, goodType: null, jobType: null },
+      {
+        type: USER_MESSAGE_TYPE.humanDied,
+        subject: null,
+        at,
+        about: entity,
+        goodType: null,
+        technologies: null,
+        jobType: null,
+      },
       () => {
         let named: { readonly name: string; readonly jobLabel: string | null } | null = null;
         if (previous !== null) {
@@ -88,6 +106,52 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.grewUp, e);
         break;
       }
+      case 'technologyDiscovered': {
+        if (ev.player !== localPlayer || announcedDiscoveries.has(ev.entity)) break;
+        announcedDiscoveries.add(ev.entity);
+        const e = ownedPerson(ev.entity);
+        if (e === undefined) break;
+        const all = discoveries.get(ev.entity) ?? [];
+        const subject = { kind: 'settler' as const, entity: e.id };
+        const raiseGroup = (key: string, technologies: readonly MessageTechnology[]): void => {
+          if (technologies.length === 0) return;
+          raiser.raise(
+            `${USER_MESSAGE_TYPE.experienceUnlocks}|settler:${e.id}|${key}`,
+            {
+              type: USER_MESSAGE_TYPE.experienceUnlocks,
+              subject,
+              at: null,
+              about: null,
+              goodType: null,
+              technologies,
+              jobType: null,
+            },
+            () => {
+              const named = naming.settler(e, snapshot);
+              const labels = (kind: MessageTechnology['kind']): string[] =>
+                technologies
+                  .filter((technology) => technology.kind === kind)
+                  .map((technology) => naming.technology(technology.kind, technology.typeId));
+              return naming.text(USER_MESSAGE_TYPE.experienceUnlocks, {
+                subjectName: named.name,
+                jobLabel: named.jobLabel,
+                goodName: null,
+                stanceName: null,
+                technologySections: { jobs: labels('job'), goods: labels('good'), houses: labels('house') },
+              });
+            },
+          );
+        };
+        raiseGroup(
+          'work',
+          all.filter((technology) => technology.kind !== 'house'),
+        );
+        raiseGroup(
+          'buildings',
+          all.filter((technology) => technology.kind === 'house'),
+        );
+        break;
+      }
       case 'playerDefeated':
         // Every seat hears an elimination: the original's own record carries the broadcast player id
         // rather than one seat's (the original symbols).
@@ -99,6 +163,7 @@ export function messagesFromEvents(
             at: null,
             about: ev.player,
             goodType: null,
+            technologies: null,
             jobType: null,
           },
           () =>
@@ -125,6 +190,7 @@ export function messagesFromEvents(
               at: ev.at,
               about: ev.chest,
               goodType: null,
+              technologies: null,
               jobType: null,
             },
             () =>

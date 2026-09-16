@@ -13,6 +13,13 @@ const ROWS: Readonly<Record<number, string>> = {
   10: 'row10',
   27: 'row27 %s tail',
   28: 'row28',
+  33: 'może teraz wykonywać następujące prace',
+  34: 'Nowe zawody',
+  35: 'Nowe towary',
+  36: 'Nowe budynki',
+  38: 'może produkować nowy towar',
+  39: 'może podjąć nowy zawód',
+  40: 'plemię może wybudować nowy budynek',
   50: 'row50',
   58: 'row58',
   60: 'row60',
@@ -30,7 +37,19 @@ const compose = (
   jobLabel: string | null = null,
   goodName: string | null = null,
   stanceName: string | null = null,
-) => composeMessageText(type, { subjectName, jobLabel, goodName, stanceName }, deps);
+  technologySections?: { jobs: readonly string[]; goods: readonly string[]; houses: readonly string[] },
+) =>
+  composeMessageText(
+    type,
+    {
+      subjectName,
+      jobLabel,
+      goodName,
+      stanceName,
+      ...(technologySections !== undefined ? { technologySections } : {}),
+    },
+    deps,
+  );
 
 describe('user message text', () => {
   it('maps every type to a messages row', () => {
@@ -70,6 +89,25 @@ describe('user message text', () => {
     expect(compose(USER_MESSAGE_TYPE.diplomacyChanged, 'Gracz 2', null, null, 'przyjazny')).toBe(
       'Gracz 2 <132> przyjazny',
     );
+  });
+
+  it('groups professions and goods, while a building-only record remains its own list', () => {
+    expect(
+      compose(USER_MESSAGE_TYPE.experienceUnlocks, 'Bjorn', 'Rolnik', null, null, {
+        jobs: ['Młynarz'],
+        goods: ['Mąka', 'Chleb'],
+        houses: [],
+      }),
+    ).toBe(
+      'Bjorn (Rolnik) może teraz wykonywać następujące prace:\nNowe zawody:\n- Młynarz\n\nNowe towary:\n- Mąka\n- Chleb',
+    );
+    expect(
+      compose(USER_MESSAGE_TYPE.experienceUnlocks, 'Bjorn', 'Rolnik', null, null, {
+        jobs: [],
+        goods: [],
+        houses: ['Młyn', 'Piekarnia'],
+      }),
+    ).toBe('Bjorn (Rolnik) może teraz wykonywać następujące prace:\nNowe budynki:\n- Młyn\n- Piekarnia');
   });
 
   it('falls back to the catalog row when the decoded strings are absent', () => {
