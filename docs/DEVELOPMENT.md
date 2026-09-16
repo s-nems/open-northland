@@ -179,6 +179,10 @@ switches saves the effective set and clears the URL override. Use the same map, 
 A/B review, including ×2 and zoom-out while panning. Original tree frame animations remain intact;
 the motion experiment changes water and the breeze on own vegetation. Shadow bakes have an 8 MiB
 RGBA budget plus CPU copies and fall back to original shadows when unavailable or over budget.
+Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
+minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
+the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already
+mipmapped own terrain keeps its existing sampling. The HUD and simulation coordinates are unchanged.
 
 Debug modes:
 

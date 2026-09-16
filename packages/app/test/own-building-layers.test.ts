@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadOwnBuildingLayers } from '../src/content/own-assets/building-layers.js';
 import { ownBuildingManifest } from '../src/content/own-assets/building-manifest.js';
 
-const mocks = vi.hoisted(() => ({ texture: vi.fn(), pixels: vi.fn() }));
+const mocks = vi.hoisted(() => {
+  // Workers share modules: re-import the loader against these mocks even if another test loaded it.
+  vi.resetModules();
+  return { texture: vi.fn(), pixels: vi.fn() };
+});
 vi.mock('pixi.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('pixi.js')>()),
   Assets: { load: mocks.texture },

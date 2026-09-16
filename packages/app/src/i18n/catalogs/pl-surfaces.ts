@@ -153,7 +153,7 @@ export const plSurfaces = {
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       enhancedSampling: 'Eksperyment: łagodniejsze piksele',
       enhancedSamplingTip:
-        'Wygładza także oryginalne postacie i powiększony świat. Działa od razu; wyłącz, aby porównać ostrość.',
+        'Wygładza oryginalne postacie, ruch kamery i pomniejszony teren. Działa od razu; wyłącz, aby porównać ostrość.',
       softShadows: 'Eksperyment: miękkie cienie',
       softShadowsTip: 'Delikatnie zmiękcza krawędzie cieni. Działa od razu.',
       environmentMotion: 'Eksperyment: ruch otoczenia',

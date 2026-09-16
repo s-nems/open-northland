@@ -49,6 +49,14 @@ export class TerrainLayer {
   private waveGroup: WaveUniforms | undefined;
   private hasWater = false;
   private environmentMotion = false;
+  private enhancedSampling = false;
+
+  setEnhancedSampling(enabled: boolean): void {
+    this.enhancedSampling = enabled;
+    if (this.waveGroup === undefined) return;
+    this.waveGroup.uniforms.uEnhancedSampling = enabled ? 1 : 0;
+    this.waveGroup.update();
+  }
 
   setEnvironmentMotion(enabled: boolean): void {
     this.environmentMotion = enabled;
@@ -94,6 +102,7 @@ export class TerrainLayer {
     const wave = makeWaveField(terrain.ground, terrain.width, terrain.height);
     this.hasWater = wave !== NO_WAVE && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
+    this.waveGroup.uniforms.uEnhancedSampling = this.enhancedSampling ? 1 : 0;
     this.waveGroup.uniforms.uEnvironmentMotion = this.environmentMotion ? 1 : 0;
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,

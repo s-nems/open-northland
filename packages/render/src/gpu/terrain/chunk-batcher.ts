@@ -48,6 +48,15 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
   geometry.addAttribute('aVertexColor', {
     buffer: new Float32Array((batch.positions.length / 2) * 3).fill(1),
   });
+  // Each emitted triangle owns its three vertices, including repeated corners at seams.
+  const bounds = new Float32Array((batch.uvs.length / 2) * 4);
+  for (let i = 0; i < batch.uvs.length; i += 6) {
+    const us = [batch.uvs[i] ?? 0, batch.uvs[i + 2] ?? 0, batch.uvs[i + 4] ?? 0];
+    const vs = [batch.uvs[i + 1] ?? 0, batch.uvs[i + 3] ?? 0, batch.uvs[i + 5] ?? 0];
+    const rect = [Math.min(...us), Math.min(...vs), Math.max(...us), Math.max(...vs)];
+    for (let v = 0; v < 3; v++) bounds.set(rect, (i / 2 + v) * 4);
+  }
+  geometry.addAttribute('aSampleBounds', { buffer: bounds, format: 'float32x4' });
   registerTerrainNodes(geometry, batch.nodes);
   if (batch.brightnessUVs.length > 0) {
     geometry.addAttribute('aBrightnessUV', { buffer: new Float32Array(batch.brightnessUVs) });
@@ -127,7 +136,11 @@ export class ChunkBatcher {
         const shader = makeShadedTerrainShader(batch.source, this.brightnessTex, this.wave);
         out.push(new Mesh({ geometry, texture, shader }));
       } else {
-        const mesh = new Mesh({ geometry, texture, shader: makeTintedTerrainShader(batch.source) });
+        const mesh = new Mesh({
+          geometry,
+          texture,
+          shader: makeTintedTerrainShader(batch.source, this.wave),
+        });
         mesh.tint = batch.tint ?? 0xffffff;
         out.push(mesh);
       }

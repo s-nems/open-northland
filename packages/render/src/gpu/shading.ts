@@ -17,6 +17,36 @@ const matrixBlock = `
   uniform mat3 uTransformMatrix;
 `;
 
+// Four bounded bilinear taps approximate a pixel footprint without mixing adjacent atlas tiles.
+// Existing mipmapped materials retain their hardware filtering; this is not a full mipmap substitute.
+const TERRAIN_SAMPLE = `
+  in vec4 vSampleBounds;
+  uniform float uEnhancedSampling;
+  uniform float uManualSampling;
+  vec4 sampleTerrain() {
+    vec2 size = vec2(textureSize(uTexture, 0));
+    vec2 dx = dFdx(vUV);
+    vec2 dy = dFdy(vUV);
+    float footprint = max(length(dx * size), length(dy * size));
+    if (uEnhancedSampling < 0.5 || uManualSampling < 0.5 || footprint <= 1.0)
+      return texture(uTexture, vUV);
+    vec2 centre = (vSampleBounds.xy + vSampleBounds.zw) * 0.5;
+    vec2 low = min(vSampleBounds.xy + 0.5 / size, centre);
+    vec2 high = max(vSampleBounds.zw - 0.5 / size, centre);
+    // Bound the footprint at strong minification: the four taps cannot represent arbitrarily many texels.
+    float radius = 0.25 * min(1.0, 4.0 / footprint);
+    vec2 a = (dx + dy) * radius;
+    vec2 b = (dx - dy) * radius;
+    vec4 filtered = 0.25 * (
+      textureLod(uTexture, clamp(vUV + a, low, high), 0.0) +
+      textureLod(uTexture, clamp(vUV - a, low, high), 0.0) +
+      textureLod(uTexture, clamp(vUV + b, low, high), 0.0) +
+      textureLod(uTexture, clamp(vUV - b, low, high), 0.0));
+    if (footprint >= 1.5) return filtered;
+    return mix(texture(uTexture, vUV), filtered, smoothstep(1.0, 1.5, footprint));
+  }
+`;
+
 // Water-surface animation constants, an approximation tuned by eye. Time is measured in sim ticks, so
 // the phase follows the interpolated sim clock and never wall-clock time.
 /** Peak vertical bob (world px) at full wave amplitude. */
@@ -35,6 +65,8 @@ export const WAVE_TIME_PERIOD_TICKS = 210;
 
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
+  in vec4 aSampleBounds;
+  out vec4 vSampleBounds;
   in vec2 aUV;
   in vec2 aBrightnessUV;
   in vec3 aVertexColor;
@@ -50,6 +82,7 @@ const FIELD_VERTEX = `#version 300 es
   uniform float uEnvironmentMotion;
   ${matrixBlock}
   void main(void) {
+    vSampleBounds = aSampleBounds;
     float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
     vec2 pos = aPosition;
     // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/terrain/water.ts).
@@ -89,8 +122,10 @@ const FIELD_FRAGMENT = `#version 300 es
 
   out vec4 finalColor;
 
+  ${TERRAIN_SAMPLE}
+
   void main(void) {
-    vec4 texel = texture(uTexture, vUV);
+    vec4 texel = sampleTerrain();
     float lane = texture(uBrightnessTex, vBrightnessUV).r * ${(255 / BRIGHTNESS_NEUTRAL).toFixed(8)};
     // Water shimmer: a second travelling wave glints the shaded water surface (0 on land).
     float shimmer = sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
@@ -143,7 +178,7 @@ let vertexProgram: GlProgram | undefined;
  *  frame (a `Float32Array`, because a shared program re-uploads only changed contents). One group per
  *  map, shared by every shaded mesh, so the per-frame animation is one write instead of one per chunk. */
 export type WaveUniforms = UniformGroup & {
-  readonly uniforms: { readonly uWave: Float32Array; uEnvironmentMotion: number };
+  readonly uniforms: { readonly uWave: Float32Array; uEnvironmentMotion: number; uEnhancedSampling: number };
 };
 
 /** Make the map's shared water-animation uniform group (time 0, full amplitude). */
@@ -151,6 +186,7 @@ export function makeWaveUniforms(): WaveUniforms {
   return new UniformGroup({
     uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' },
     uEnvironmentMotion: { value: 0, type: 'f32' },
+    uEnhancedSampling: { value: 0, type: 'f32' },
   }) as WaveUniforms;
 }
 
@@ -173,6 +209,7 @@ export function makeShadedTerrainShader(
       uSampler: source.style,
       uBrightnessTex: brightnessTex,
       waveVars: wave,
+      sampling: terrainSamplingUniforms(source),
     },
   });
 }
@@ -192,12 +229,15 @@ export function makeShadedDecorShader(source: TextureSource): Shader {
 
 const COLOR_VERTEX = `#version 300 es
   in vec2 aPosition;
+  in vec4 aSampleBounds;
+  out vec4 vSampleBounds;
   in vec2 aUV;
   in vec3 aVertexColor;
   out vec2 vUV;
   out vec3 vVertexColor;
   ${matrixBlock}
   void main(void) {
+    vSampleBounds = aSampleBounds;
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
     gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
@@ -211,17 +251,32 @@ const COLOR_FRAGMENT = `#version 300 es
   uniform sampler2D uTexture;
   uniform vec4 uColor;
   out vec4 finalColor;
+  ${TERRAIN_SAMPLE}
   void main(void) {
-    vec4 texel = texture(uTexture, vUV);
+    vec4 texel = sampleTerrain();
     finalColor = vec4(texel.rgb * vVertexColor, texel.a) * uColor;
   }
 `;
 let colorProgram: GlProgram | undefined;
 
-export function makeTintedTerrainShader(source: TextureSource): Shader {
+function terrainSamplingUniforms(source: TextureSource): UniformGroup {
+  return new UniformGroup({
+    uManualSampling: {
+      value: source.autoGenerateMipmaps || source.mipLevelCount > 1 ? 0 : 1,
+      type: 'f32',
+    },
+  });
+}
+
+export function makeTintedTerrainShader(source: TextureSource, wave = makeWaveUniforms()): Shader {
   colorProgram ??= new GlProgram({ vertex: COLOR_VERTEX, fragment: COLOR_FRAGMENT });
   return new Shader({
     glProgram: colorProgram,
-    resources: { uTexture: source, uSampler: source.style },
+    resources: {
+      uTexture: source,
+      uSampler: source.style,
+      waveVars: wave,
+      sampling: terrainSamplingUniforms(source),
+    },
   });
 }

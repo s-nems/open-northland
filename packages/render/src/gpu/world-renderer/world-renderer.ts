@@ -112,6 +112,7 @@ export class WorldRenderer {
   setGraphicsEnhancements(next: WorldEnhancements): void {
     this.enhancements = { ...next };
     this.textureCache.setSoftShadows(next.softShadows);
+    this.terrain.setEnhancedSampling(next.enhancedSampling);
     this.terrain.setEnvironmentMotion(next.environmentMotion);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);
   }
@@ -198,12 +199,16 @@ export class WorldRenderer {
       flagged = NO_REFS,
       workAreas = NO_WORK_AREAS,
     } = frame;
-    const snapResolution = this.viewSmoothing ? this.app.renderer.resolution : undefined;
+    // Filtered sprites can move continuously; pixel snapping would reintroduce one-pixel pan/feet
+    // jumps. Keep the old alignment only for the baseline nearest-sampled presentation.
+    const snapResolution =
+      this.viewSmoothing && !this.enhancements.enhancedSampling ? this.app.renderer.resolution : undefined;
     const camera =
       snapResolution === undefined ? frame.camera : snapCameraToDevicePixels(frame.camera, snapResolution);
-    if (this.viewSmoothing) {
-      this.chrome.applyWorldSampling(camera.scale ?? 1, this.enhancements.enhancedSampling);
-    }
+    this.chrome.applyWorldSampling(
+      this.viewSmoothing ? (camera.scale ?? 1) : 1,
+      this.enhancements.enhancedSampling,
+    );
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
     // Cull anchors and AABBs stay pre-lift, so without the extra `maxLift` a chunk or sprite baked up a
