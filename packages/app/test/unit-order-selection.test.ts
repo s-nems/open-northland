@@ -184,22 +184,14 @@ describe('unit orders against a selection that moves under them', () => {
   it('moves the work flag and changes the gatherer filter on Ctrl+right-click over a resource', () => {
     const issued: Command[] = [];
     const p = halfCellToScreen(OPEN_GROUND.hx, OPEN_GROUND.hy);
-    const snapshot = snapshotOf([
-      ...UNITS.map((unit) =>
-        unit === SCOUT
-          ? {
-              ...standing(unit),
-              components: { ...standing(unit).components, Settler: { jobType: JOB_COLLECTOR } },
-            }
-          : standing(unit),
-      ),
-      { id: 50, components: { Resource: { goodType: 3 } } },
-    ]);
+    // The rendered target is the click's source of truth. It may outlive the snapshot that produced the
+    // current controls frame; the sim validates the selected settler and good when applying the command.
+    const snapshot = snapshotOf(UNITS.map(standing));
     const orders = createUnitOrderController({
       selected: () => new Set([SCOUT.id]),
       targets: {
         ...targets,
-        resources: () => [{ ref: 50, x: p.x, y: p.y, kind: 'resource' }],
+        resources: () => [{ ref: 50, x: p.x, y: p.y, kind: 'resource', goodType: 5 }],
       },
       snapshot: () => snapshot,
       content: CONTENT,
@@ -214,7 +206,7 @@ describe('unit orders against a selection that moves under them', () => {
 
     expect(issued).toEqual([
       { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },
-      { kind: 'setGatherGood', entity: SCOUT.id, goodType: 3 },
+      { kind: 'setGatherGood', entity: SCOUT.id, goodType: 5 },
     ]);
   });
 });

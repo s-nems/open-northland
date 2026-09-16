@@ -63,6 +63,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     drawnItems: opts.drawnItems,
     boundsOf: opts.boundsOf,
     pixelHitOf: opts.pixelHitOf,
+    elevation: opts.elevation,
   });
 
   /** Client (CSS) coords to world px. */

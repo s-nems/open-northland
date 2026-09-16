@@ -13,6 +13,7 @@ import {
   pickDoorBadgeRow,
   pickGarrisonFlag,
   pickInRect,
+  pickNearestAt,
   pickTopAt,
   screenToWorld,
   worldToTile,
@@ -206,6 +207,16 @@ describe('pickTopAt', () => {
       pixelHit: (): boolean | undefined => undefined, // unreadable atlas / not drawn this frame
     };
     expect(pickTopAt([t], 140, 60)).toBe(8); // the pre-mask behaviour stands
+  });
+});
+
+describe('pickNearestAt', () => {
+  it('picks the resource planted nearest the click when tall fallback boxes overlap', () => {
+    const clicked = { ref: 1, x: 100, y: 100, kind: 'resource' as const };
+    const frontNeighbour = { ref: 2, x: 110, y: 130, kind: 'resource' as const };
+
+    expect(pickTopAt([clicked, frontNeighbour], 100, 100)).toBe(2);
+    expect(pickNearestAt([clicked, frontNeighbour], 100, 100)).toBe(1);
   });
 });
 

@@ -24,6 +24,9 @@ export interface Pickable {
   readonly y: number;
   /** The drawable kind, so a click hit-box can be sized per kind when exact bounds aren't available. */
   readonly kind?: 'settler' | 'building' | 'resource' | 'signpost' | 'chest';
+  /** A resource target's good. Kept on the hit target so an order uses the exact object the player
+   *  clicked instead of looking it up again in a potentially newer simulation snapshot. */
+  readonly goodType?: number;
   /** Exact rendered sprite bounds in world px; absent off-screen or without a renderer, which falls back
    *  to the kind box. */
   readonly box?: EntityBounds | undefined;
@@ -161,6 +164,27 @@ export function pickTopAt(targets: readonly Pickable[], wx: number, wy: number):
       best = t.ref;
       bestY = t.y;
       bestRef = t.ref;
+    }
+  }
+  return best;
+}
+
+/** The hit target whose feet anchor is closest to the click. Resource sprites often overlap in dense
+ *  forests, while retained map objects have no per-pixel picker; choosing the nearest planted anchor
+ *  makes a click on a resource's ground position select that resource instead of a taller neighbour. */
+export function pickNearestAt(targets: readonly Pickable[], wx: number, wy: number): number | null {
+  let best: number | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestRef = Number.NEGATIVE_INFINITY;
+  for (const target of targets) {
+    if (!hits(target, wx, wy)) continue;
+    const dx = wx - target.x;
+    const dy = wy - target.y;
+    const distance = dx * dx + dy * dy;
+    if (distance < bestDistance || (distance === bestDistance && target.ref > bestRef)) {
+      best = target.ref;
+      bestDistance = distance;
+      bestRef = target.ref;
     }
   }
   return best;

@@ -90,9 +90,32 @@ describe('unit-controls targets over the renderer frame', () => {
     } satisfies DrawItem;
 
     expect(targetsOver([resource]).resources()).toEqual([
-      { ref: resource.ref, x: resource.x, y: resource.y, kind: 'resource', box: undefined },
+      {
+        ref: resource.ref,
+        x: resource.x,
+        y: resource.y,
+        kind: 'resource',
+        box: undefined,
+        goodType: resource.goodType,
+      },
     ]);
     expect(targetsOver([{ ...resource, ghost: true }]).resources()).toEqual([]);
+  });
+
+  it('projects retained map resources that are absent from the entity draw list', () => {
+    const resource = {
+      id: 90_021,
+      components: {
+        Position: { x: 4 * ONE, y: 6 * ONE },
+        LandscapeResource: { id: 10 },
+        Resource: { goodType: 5 },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, resource] };
+
+    expect(targetsOver([]).resources()).toEqual([
+      { ref: resource.id, x: 8 * 34, y: 6 * 38, kind: 'resource', goodType: 5 },
+    ]);
   });
 
   it('never targets a fog ghost or the force-drawn portrait subject', () => {

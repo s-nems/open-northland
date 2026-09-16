@@ -23,7 +23,7 @@ import {
   positionOf,
   settlerJobType,
 } from '../../game/snapshot.js';
-import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
+import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import { openSchoolDialog } from './school-dialog.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
@@ -241,7 +241,6 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const flag = clampTile(target, width, height);
-    const snapshot = deps.snapshot();
     for (const mover of movers) {
       deps.enqueue({
         kind: 'setWorkFlag',
@@ -250,24 +249,20 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         y: flag.row,
       });
       if (goodType === undefined) continue;
-      const settler = entityById(snapshot, mover.ref);
-      const jobType = settler === undefined ? undefined : settlerJobType(settler);
-      if (jobType === undefined || !systems.jobCanHarvestGood({ content: deps.content }, jobType, goodType)) {
-        continue;
-      }
+      // This is player intent; the sim is the authority on whether each selected settler may gather the
+      // clicked good. Keeping the app out of that gate also avoids dropping the filter against a stale
+      // render/snapshot pair while still letting setWorkFlag reject non-gatherers normally.
       deps.enqueue({ kind: 'setGatherGood', entity: mover.ref as Entity, goodType });
     }
   };
 
   const issueSetWorkFlagAt = (event: MouseEvent): void => {
     const world = deps.toWorld(event.clientX, event.clientY);
-    const resource = pickTopAt(deps.targets.resources(), world.x, world.y);
-    const entity = resource === null ? undefined : entityById(deps.snapshot(), resource);
-    const value = entity?.components.Resource as { goodType?: unknown } | undefined;
-    issueSetWorkFlag(
-      worldToTile(world.x, world.y, deps.elevation),
-      typeof value?.goodType === 'number' ? value.goodType : undefined,
-    );
+    const resources = deps.targets.resources();
+    const resource = pickNearestAt(resources, world.x, world.y);
+    const goodType =
+      resource === null ? undefined : resources.find((target) => target.ref === resource)?.goodType;
+    issueSetWorkFlag(worldToTile(world.x, world.y, deps.elevation), goodType);
   };
 
   return {

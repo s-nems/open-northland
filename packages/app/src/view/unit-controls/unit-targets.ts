@@ -1,4 +1,11 @@
-import { type DrawItem, type EntityBounds, ONE, tileToScreen } from '@open-northland/render';
+import {
+  type DrawItem,
+  type ElevationField,
+  type EntityBounds,
+  ONE,
+  projectTile,
+  tileToScreen,
+} from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { gathererByFlag, isSettler, isWildlife, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
 import { isHitTarget, type Pickable } from '../picking.js';
@@ -20,6 +27,8 @@ export interface UnitTargetsDeps {
   readonly drawnItems: () => readonly DrawItem[];
   /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
+  /** Terrain lift used to project retained map resources, which do not enter the entity draw list. */
+  readonly elevation?: ElevationField | undefined;
   /** Pixel-accurate refinement of {@link boundsOf} for building targets, or undefined to keep the box. */
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
 }
@@ -180,9 +189,29 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
     resources(): Pickable[] {
       const out: Pickable[] = [];
+      const emitted = new Set<number>();
       for (const it of deps.drawnItems()) {
         if (it.kind !== 'resource' || !isHitTarget(it)) continue;
-        out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
+        emitted.add(it.ref);
+        out.push({
+          ref: it.ref,
+          x: it.x,
+          y: it.y,
+          kind: it.kind,
+          box: deps.boundsOf?.(it.ref),
+          ...(it.goodType !== undefined ? { goodType: it.goodType } : {}),
+        });
+      }
+      // Virgin decoded-map resources are retained by the landscape layer and deliberately omitted from
+      // the entity draw list. Project those live snapshot entities here so Ctrl+RMB can still identify
+      // the tree/deposit the player sees; once first worked, the ordinary draw-item path takes over.
+      for (const entity of deps.snapshot().entities) {
+        if (emitted.has(entity.id) || entity.components.LandscapeResource === undefined) continue;
+        const value = entity.components.Resource as { goodType?: unknown } | undefined;
+        const position = positionOf(entity);
+        if (typeof value?.goodType !== 'number' || position === undefined) continue;
+        const at = projectTile(deps.elevation, position.x / ONE, position.y / ONE);
+        out.push({ ref: entity.id, x: at.x, y: at.y, kind: 'resource', goodType: value.goodType });
       }
       return out;
     },
