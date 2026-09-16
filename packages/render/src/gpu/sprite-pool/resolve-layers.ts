@@ -163,8 +163,10 @@ export function fishHeadingIndex(dx: number, dy: number, headingCount: number): 
 function fishPoint(ref: number, fish: number, t: number): { x: number; y: number } {
   const phase = ref * 0.754877666 + fish * 2.39996323;
   return {
-    x: Math.sin(t * 0.071 + phase) * 90 + Math.sin(t * 0.019 + phase * 1.7) * 20,
-    y: Math.sin(t * 0.053 + phase * 1.3) * 60 + Math.sin(t * 0.031 + phase * 0.7) * 20,
+    // Calibrated to the original's 12 Hz world clock: a broad crossing takes tens of seconds, with a
+    // smaller ripple layered over it. The phase curves remain our deterministic approximation.
+    x: Math.sin(t * 0.0097 + phase) * 90 + Math.sin(t * 0.002 + phase * 1.7) * 20,
+    y: Math.sin(t * 0.004 + phase * 1.3) * 60 + Math.sin(t * 0.019 + phase * 0.7) * 20,
   };
 }
 

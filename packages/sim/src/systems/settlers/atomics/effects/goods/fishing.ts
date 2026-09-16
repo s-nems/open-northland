@@ -10,6 +10,7 @@ import {
 } from '../../../../economy/fish.js';
 import { grantWorkExperience } from '../../../../progression/index.js';
 import { atomicDuration } from '../../../../readviews/animations.js';
+import { edibleGoodFormOf } from '../../../../readviews/food.js';
 
 type RunningAtomic = NonNullable<(typeof CurrentAtomic)['__value']>;
 type FishingEffect = Extract<RunningAtomic['effect'], { kind: 'fish' }>;
@@ -50,7 +51,9 @@ export function advanceFishingAtomic(
       : null;
   const caught = caughtFrom !== null;
   if (caught) {
-    world.add(fisher, Carrying, { goodType: effect.goodType, amount: 1 });
+    // The original catch callback puts good 16 (`food_simple`) in the fisher's hands, while the raw fish
+    // id remains the work/experience specialization. Resolve by slug so modded numeric ids stay valid.
+    world.add(fisher, Carrying, { goodType: edibleGoodFormOf(ctx.content, effect.goodType), amount: 1 });
     grantWorkExperience(world, ctx, fisher, effect.goodType, 1);
   }
   transition(world, ctx, fisher, atomic, caught ? FISH_CAUGHT_ATOMIC : FISH_FAILED_ATOMIC, {

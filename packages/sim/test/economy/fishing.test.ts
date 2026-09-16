@@ -8,6 +8,7 @@ import {
   FishSwarm,
   Owner,
   Position,
+  Settler,
   Stockpile,
   WorkFlag,
 } from '../../src/components/index.js';
@@ -28,6 +29,7 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 
 const FISHER = 22;
 const FISH = 122;
+const FOOD = 3;
 
 function fishingContent(): ContentSet {
   const base = testContent();
@@ -55,8 +57,8 @@ function fishingContent(): ContentSet {
         id: 'fisher_fish',
         jobType: FISHER,
         goodType: FISH,
-        experienceFactor: 1,
-        baseRepeatCounter: 2,
+        experienceFactor: 150,
+        baseRepeatCounter: 5,
       },
     ],
   };
@@ -110,23 +112,57 @@ describe('fishing', () => {
     syncWorkFlagToJob(sim.world, ctxOf(sim), fisher, FISHER);
 
     const seen: number[] = [];
-    for (let tick = 0; tick < 24 && !sim.world.has(fisher, Carrying); tick++) {
+    for (let tick = 0; tick < 60 && !sim.world.has(fisher, Carrying); tick++) {
       sim.step();
       const atomic = sim.world.tryGet(fisher, CurrentAtomic)?.atomicId;
       if (atomic !== undefined && seen.at(-1) !== atomic) seen.push(atomic);
     }
 
-    expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_FAILED_ATOMIC, FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
-    expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FISH, amount: 1 });
+    expect(seen).toEqual([
+      FISH_CAST_ATOMIC,
+      FISH_FAILED_ATOMIC,
+      FISH_CAST_ATOMIC,
+      FISH_FAILED_ATOMIC,
+      FISH_CAST_ATOMIC,
+      FISH_FAILED_ATOMIC,
+      FISH_CAST_ATOMIC,
+      FISH_FAILED_ATOMIC,
+      FISH_CAST_ATOMIC,
+      FISH_CAUGHT_ATOMIC,
+    ]);
+    expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
+    expect(sim.world.get(fisher, Settler).experience.get(900)).toBe(150);
     expect(sim.world.get(swarm, FishSwarm)).toMatchObject({ count: 0, continent: 7 });
 
     for (let tick = 0; tick < 100 && sim.world.has(fisher, Carrying); tick++) sim.step();
     const banked = [...sim.world.query(Stockpile)].reduce(
-      (sum, entity) => sum + (sim.world.get(entity, Stockpile).amounts.get(FISH) ?? 0),
+      (sum, entity) => sum + (sim.world.get(entity, Stockpile).amounts.get(FOOD) ?? 0),
       0,
     );
     expect(sim.world.has(fisher, Carrying)).toBe(false);
     expect(banked).toBe(1);
+  });
+
+  it('uses fisher experience to reduce failed casts, down to one successful attempt', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 5, hy: 3, count: 1, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, c.x, c.y);
+    sim.world.mut(fisher, Settler).experience.set(900, 10_000);
+
+    const seen: number[] = [];
+    for (let tick = 0; tick < 12 && !sim.world.has(fisher, Carrying); tick++) {
+      sim.step();
+      const atomic = sim.world.tryGet(fisher, CurrentAtomic)?.atomicId;
+      if (atomic !== undefined && seen.at(-1) !== atomic) seen.push(atomic);
+    }
+    expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
+    expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
   });
 
   it('reproduces only a nonempty, nonfull swarm on the 2160-tick cadence', () => {

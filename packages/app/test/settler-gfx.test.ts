@@ -460,6 +460,12 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
       expect(specId !== undefined && CHARACTER_SPECS[specId].gfxJobs.at(-1)).toBe(JOB_SOLDIER_UNARMED);
     }
     expect(ADULT_CHARACTER_BY_JOB[5]).toBe('woman');
+    expect(ADULT_CHARACTER_BY_JOB[22]).toBe('fisher');
+    expect(CHARACTER_SPECS.fisher.atomics).toMatchObject({
+      36: { seq: 'human_man_fisher_work_fishing' },
+      37: { seq: 'human_man_fisher_work_fishing' },
+      38: { seq: 'human_man_fisher_work_fishing' },
+    });
   });
 
   it('arming a mutable warrior draws the same body its job does (the three weapon tables agree)', () => {

@@ -56,5 +56,15 @@ describe('fish swarm rendering', () => {
     expect(later?.map((layer) => [layer.dx, layer.dy])).not.toEqual(
       first?.map((layer) => [layer.dx, layer.dy]),
     );
+    const next = resolveLayers(sheet, item, 1);
+    const greatestStep = Math.max(
+      ...(first?.map((layer, i) =>
+        Math.hypot(
+          (next?.[i]?.dx ?? layer.dx ?? 0) - (layer.dx ?? 0),
+          (next?.[i]?.dy ?? layer.dy ?? 0) - (layer.dy ?? 0),
+        ),
+      ) ?? []),
+    );
+    expect(greatestStep).toBeLessThan(2);
   });
 });

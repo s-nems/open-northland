@@ -1,10 +1,11 @@
-import { FishSwarm } from '../../../../components/index.js';
+import { FishSwarm, Settler } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
+import { fx } from '../../../../core/fixed.js';
 import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { FISH_CAST_ATOMIC, FISH_SHORE_SEARCH_RADIUS } from '../../../economy/fish.js';
 import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
-import { workRepeatsFor } from '../../../progression/index.js';
+import { experienceBonus, trackFor, workRepeatsFor } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isFisherJob } from '../../../readviews/index.js';
 import { fishSwarmsNearNode } from '../../../spatial/fish.js';
@@ -57,7 +58,7 @@ export function planFisher(plan: PlannerContext): boolean {
         kind: 'fish',
         swarm: best.entity,
         goodType: fishGood,
-        repeatsLeft: workRepeatsFor(ctx, plan.jobType, fishGood),
+        repeatsLeft: fishingRetriesFor(plan, fishGood),
         phase: 'cast',
       },
       atomicDuration(ctx.content, plan, FISH_CAST_ATOMIC),
@@ -65,4 +66,22 @@ export function planFisher(plan: PlannerContext): boolean {
     ),
   );
   return true;
+}
+
+/**
+ * Cast attempts needed for one catch. analysis's `an original routine` subtracts up to
+ * five retries along the shared experience curve; for the authored fisher base of five this yields
+ * 5 attempts as a novice and 1 once experienced. Tools are intentionally omitted until fishing rods are
+ * simulated.
+ */
+function fishingRetriesFor(plan: PlannerContext, fishGood: number): number {
+  const base = workRepeatsFor(plan.ctx, plan.jobType, fishGood);
+  const settler = plan.world.tryGet(plan.entity, Settler);
+  const track = plan.jobType === null ? undefined : trackFor(plan.ctx, plan.jobType, fishGood);
+  // Our save encoding stores `experienceFactor` points per catch. Dividing by the original percentage
+  // scale (100), rather than back by the track factor, preserves that factor's authored learning rate:
+  // fisher 150 improves half again as quickly as a factor-100 trade.
+  const scaledExperience = track === undefined ? 0 : (settler?.experience.get(track.typeId) ?? 0) / 100;
+  const learned = Math.floor(fx.toFloat(experienceBonus(scaledExperience)) * 5);
+  return Math.max(1, base - learned);
 }
