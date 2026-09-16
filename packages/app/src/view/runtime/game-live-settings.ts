@@ -44,6 +44,7 @@ export interface LiveGameSettingsDeps {
   readonly perf: PerfOverlayHandle;
   readonly sound: SoundDriver | null;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
+  readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
 }
 
 export interface LiveGameSettings {
@@ -107,6 +108,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setLanguage: (language) => {
       syncCarriedParam('lang', language === defaultLocale() ? null : language);
     },
+    setKeyBindings: deps.setKeyBindings,
     setDebugToolsEnabled: deps.setDebugToolsEnabled,
   });
 

@@ -1,6 +1,8 @@
 import {
   assignBinding,
-  isBindableCode,
+  bindingAllowedFor,
+  bindingFromKeyboardEvent,
+  bindingFromMouseEvent,
   KEYBINDING_ACTIONS,
   type KeybindingAction,
   keyDisplayLabel,
@@ -26,23 +28,30 @@ export function createControlsTab(opts: {
 }): ControlsTab {
   let cancelCapture: (() => void) | null = null;
 
-  const paintKeyChip = (chip: HTMLElement, code: string | null): void => {
+  const paintKeyChip = (chip: HTMLElement, binding: string | null): void => {
     const text = messages().mainMenu.settings;
     chip.classList.remove('is-capturing');
-    chip.classList.toggle('is-unassigned', code === null);
+    chip.classList.toggle('is-unassigned', binding === null);
     chip.textContent =
-      code === null ? text.bindingUnassigned : keyDisplayLabel(code, { space: text.keySpace });
+      binding === null
+        ? text.bindingUnassigned
+        : keyDisplayLabel(binding, {
+            space: text.keySpace,
+            mouseLeft: text.mouseLeft,
+            mouseMiddle: text.mouseMiddle,
+            mouseRight: text.mouseRight,
+          });
   };
 
   const startCapture = (action: KeybindingAction, chip: HTMLButtonElement): void => {
     cancelCapture?.();
     const text = messages().mainMenu.settings;
     chip.classList.add('is-capturing');
-    chip.textContent = text.bindingPrompt;
+    chip.textContent = action === 'workFlagOrder' ? text.pointerBindingPrompt : text.bindingPrompt;
     const stop = (): void => {
       cancelCapture = null;
       window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('mousedown', onPress, true);
+      window.removeEventListener('mousedown', onMouse, true);
       window.removeEventListener('blur', stop);
       paintKeyChip(chip, opts.current().keyBindings[action]);
     };
@@ -51,26 +60,39 @@ export function createControlsTab(opts: {
         stop();
         return;
       }
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      event.preventDefault();
-      event.stopPropagation();
       if (event.code === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
         stop();
         return;
       }
-      if (!isBindableCode(event.code)) return;
-      const next = assignBinding(opts.current().keyBindings, action, event.code);
+      const binding = bindingFromKeyboardEvent(event);
+      if (binding === null || !bindingAllowedFor(action, binding)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const next = assignBinding(opts.current().keyBindings, action, binding);
       void opts.update({ keyBindings: next }).then((applied) => {
         stop();
         if (applied) opts.repaintPanel(`binding:${action}`);
       });
     };
-    const onPress = (event: MouseEvent): void => {
-      if (event.target !== chip) stop();
+    const onMouse = (event: MouseEvent): void => {
+      const binding = bindingFromMouseEvent(event);
+      if (binding === null || !bindingAllowedFor(action, binding)) {
+        if (event.target !== chip) stop();
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const next = assignBinding(opts.current().keyBindings, action, binding);
+      void opts.update({ keyBindings: next }).then((applied) => {
+        stop();
+        if (applied) opts.repaintPanel(`binding:${action}`);
+      });
     };
     cancelCapture = stop;
     window.addEventListener('keydown', onKey, true);
-    window.addEventListener('mousedown', onPress, true);
+    window.addEventListener('mousedown', onMouse, true);
     window.addEventListener('blur', stop);
   };
 
@@ -85,10 +107,10 @@ export function createControlsTab(opts: {
       paintKeyChip(chip, bindings[action]);
       chip.addEventListener('click', () => startCapture(action, chip));
       return opts.settingRow(text.bindings[action], chip, {
-        tip:
-          opts.deferredTip === undefined
-            ? text.bindingRebindTip
-            : `${text.bindingRebindTip} ${opts.deferredTip}`,
+        tip: [
+          action === 'workFlagOrder' ? text.pointerBindingRebindTip : text.bindingRebindTip,
+          ...(opts.deferredTip === undefined ? [] : [opts.deferredTip]),
+        ].join(' '),
       });
     });
     const fixedRow = (label: string, keys: string): HTMLDivElement => {
@@ -103,7 +125,6 @@ export function createControlsTab(opts: {
       fixedRow(text.bindings.addToSelection, text.shiftClick),
       fixedRow(text.bindings.coarseStep, text.ctrlClick),
       fixedRow(text.bindings.craftToggle, text.ctrlClick),
-      fixedRow(text.bindings.workFlagOrder, text.ctrlRightClick),
     ];
   };
 

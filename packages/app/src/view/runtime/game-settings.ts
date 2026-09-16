@@ -18,6 +18,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setSfxVolume: (volume: number) => void;
   readonly setMusicVolume: (volume: number) => void;
   readonly setLanguage: (language: MenuSettings['language']) => void;
+  readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
 }
 
@@ -42,6 +43,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.soundVolume !== undefined) deps.setSfxVolume(patch.soundVolume);
     if (patch.musicVolume !== undefined) deps.setMusicVolume(patch.musicVolume);
     if (patch.language !== undefined) deps.setLanguage(patch.language);
+    if (patch.keyBindings !== undefined) deps.setKeyBindings(patch.keyBindings);
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
   };
   return {

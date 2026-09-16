@@ -1,4 +1,31 @@
-/** Display order of the bindings table; also the priority order when stored codes collide. */
+export const CONTROL_GROUP_ACTIONS = [
+  'controlGroup1',
+  'controlGroup2',
+  'controlGroup3',
+  'controlGroup4',
+  'controlGroup5',
+  'controlGroup6',
+  'controlGroup7',
+  'controlGroup8',
+  'controlGroup9',
+  'controlGroup0',
+] as const;
+
+export type ControlGroupAction = (typeof CONTROL_GROUP_ACTIONS)[number];
+export type ControlGroupMode = 'recall' | 'replace' | 'add';
+
+const CONTROL_GROUP_REPLACE_ACTIONS = CONTROL_GROUP_ACTIONS.map((group) => `${group}Replace` as const);
+const CONTROL_GROUP_ADD_ACTIONS = CONTROL_GROUP_ACTIONS.map((group) => `${group}Add` as const);
+
+export const CONTROL_GROUP_BINDING_ACTIONS = [
+  ...CONTROL_GROUP_ACTIONS,
+  ...CONTROL_GROUP_REPLACE_ACTIONS,
+  ...CONTROL_GROUP_ADD_ACTIONS,
+] as const;
+
+export type ControlGroupBindingAction = (typeof CONTROL_GROUP_BINDING_ACTIONS)[number];
+
+/** Display order of the bindings table; also the priority order when stored bindings collide. */
 export const KEYBINDING_ACTIONS = [
   'panUp',
   'panDown',
@@ -8,12 +35,24 @@ export const KEYBINDING_ACTIONS = [
   'actionRing',
   'professionPicker',
   'attackMove',
+  'workFlagOrder',
+  ...CONTROL_GROUP_BINDING_ACTIONS,
 ] as const;
 
-/** Rebindable player actions. A binding is a `KeyboardEvent.code`; `null` is unbound. */
+/** Rebindable player actions. A binding is a normalized input chord; `null` is unbound. */
 export type KeybindingAction = (typeof KEYBINDING_ACTIONS)[number];
-
 export type KeyBindings = Readonly<Record<KeybindingAction, string | null>>;
+
+const controlGroupDefaults = Object.fromEntries(
+  CONTROL_GROUP_ACTIONS.flatMap((action, index) => {
+    const digit = index === 9 ? 0 : index + 1;
+    return [
+      [action, `Digit${digit}`],
+      [`${action}Replace`, `Ctrl+Digit${digit}`],
+      [`${action}Add`, `Shift+Digit${digit}`],
+    ];
+  }),
+) as Pick<KeyBindings, ControlGroupBindingAction>;
 
 export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panLeft: 'ArrowLeft',
@@ -24,44 +63,121 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   actionRing: 'Space',
   professionPicker: 'KeyC',
   attackMove: 'KeyA',
+  workFlagOrder: 'Primary+Mouse2',
+  ...controlGroupDefaults,
 };
 
-/** Codes a binding may take: plain game keys only. Modifiers, Escape (the fixed cancel key), and
- *  browser-owned keys (Tab, Enter, the F-row) stay out. */
-const BINDABLE_CODE =
-  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
-
-export function isBindableCode(code: string): boolean {
-  return BINDABLE_CODE.test(code);
+export function controlGroupBinding(action: ControlGroupBindingAction): {
+  readonly group: ControlGroupAction;
+  readonly mode: ControlGroupMode;
+} {
+  const group = CONTROL_GROUP_ACTIONS.find((candidate) => action.startsWith(candidate));
+  if (group === undefined) throw new Error(`Unknown control-group binding: ${action}`);
+  return {
+    group,
+    mode: action.endsWith('Replace') ? 'replace' : action.endsWith('Add') ? 'add' : 'recall',
+  };
 }
 
-/**
- * Parse a stored bindings blob. Per action: an explicit `null` stays unbound, a valid code is kept,
- * anything else falls back to the default. A code claimed twice stays with the earlier action and
- * unbinds the later one, so a code never fires two actions.
- */
+/** Codes a binding may take. Escape (the fixed cancel key), Tab, Enter, and the F-row stay out. */
+const BINDABLE_KEY_CODE =
+  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
+const BINDABLE_POINTER_CODE = /^Mouse[012]$/;
+const MODIFIER_ORDER = ['Primary', 'Ctrl', 'Shift', 'Alt', 'Meta'] as const;
+
+export function isBindableCode(code: string): boolean {
+  return BINDABLE_KEY_CODE.test(code);
+}
+
+export function isBindableBinding(binding: string): boolean {
+  const parts = binding.split('+');
+  const code = parts.pop();
+  if (code === undefined || (!BINDABLE_KEY_CODE.test(code) && !BINDABLE_POINTER_CODE.test(code)))
+    return false;
+  const modifiers = new Set(parts);
+  if (
+    modifiers.size !== parts.length ||
+    parts.some((part) => !MODIFIER_ORDER.some((item) => item === part)) ||
+    (modifiers.has('Primary') && (modifiers.has('Ctrl') || modifiers.has('Meta')))
+  ) {
+    return false;
+  }
+  const normalized = MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier));
+  return normalized.every((modifier, index) => parts[index] === modifier);
+}
+
+function eventBinding(
+  code: string,
+  event: Pick<KeyboardEvent | MouseEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'>,
+): string {
+  const modifiers = [
+    ...(event.ctrlKey ? ['Ctrl'] : []),
+    ...(event.shiftKey ? ['Shift'] : []),
+    ...(event.altKey ? ['Alt'] : []),
+    ...(event.metaKey ? ['Meta'] : []),
+  ];
+  return [...modifiers, code].join('+');
+}
+
+export function bindingFromKeyboardEvent(event: KeyboardEvent): string | null {
+  return isBindableCode(event.code) ? eventBinding(event.code, event) : null;
+}
+
+export function bindingFromMouseEvent(event: MouseEvent): string | null {
+  const code = `Mouse${event.button}`;
+  return BINDABLE_POINTER_CODE.test(code) ? eventBinding(code, event) : null;
+}
+
+export function matchesKeyboardBinding(event: KeyboardEvent, binding: string | null): boolean {
+  const actual = bindingFromKeyboardEvent(event);
+  return binding !== null && actual !== null && matchesEventBinding(actual, binding);
+}
+
+export function matchesMouseBinding(event: MouseEvent, binding: string | null): boolean {
+  const actual = bindingFromMouseEvent(event);
+  return binding !== null && actual !== null && matchesEventBinding(actual, binding);
+}
+
+function matchesEventBinding(actual: string, expected: string): boolean {
+  if (!expected.startsWith('Primary+')) return actual === expected;
+  const rest = expected.slice('Primary+'.length);
+  return actual === `Ctrl+${rest}` || actual === `Meta+${rest}`;
+}
+
+export function bindingAllowedFor(action: KeybindingAction, binding: string): boolean {
+  const parts = binding.split('+');
+  const code = parts.at(-1) ?? '';
+  const mouse = code.startsWith('Mouse');
+  if (action === 'workFlagOrder') {
+    return mouse && code !== 'Mouse1' && parts.length > 1 && binding !== 'Shift+Mouse0';
+  }
+  return !mouse && !parts.includes('Primary');
+}
+
+/** Parse stored bindings, filling missing or malformed actions from the current defaults. */
 export function parseKeyBindings(value: unknown): KeyBindings {
   const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
   const taken = new Set<string>();
   const result = {} as Record<KeybindingAction, string | null>;
   for (const action of KEYBINDING_ACTIONS) {
     const stored = record[action];
-    let code: string | null;
-    if (stored === null) code = null;
-    else if (typeof stored === 'string' && isBindableCode(stored)) code = stored;
-    else code = DEFAULT_KEY_BINDINGS[action];
-    if (code !== null && taken.has(code)) code = null;
-    if (code !== null) taken.add(code);
-    result[action] = code;
+    let binding: string | null;
+    if (stored === null) binding = null;
+    else if (typeof stored === 'string' && isBindableBinding(stored) && bindingAllowedFor(action, stored)) {
+      binding = stored;
+    } else binding = DEFAULT_KEY_BINDINGS[action];
+    if (binding !== null && taken.has(binding)) binding = null;
+    if (binding !== null) taken.add(binding);
+    result[action] = binding;
   }
   return result;
 }
 
-/** Give `code` to `action`; an action previously holding that code becomes unbound. */
-export function assignBinding(bindings: KeyBindings, action: KeybindingAction, code: string): KeyBindings {
-  const next: Record<KeybindingAction, string | null> = { ...bindings, [action]: code };
+/** Give `binding` to `action`; an action previously holding the same chord becomes unbound. */
+export function assignBinding(bindings: KeyBindings, action: KeybindingAction, binding: string): KeyBindings {
+  const next: Record<KeybindingAction, string | null> = { ...bindings, [action]: binding };
   for (const other of KEYBINDING_ACTIONS) {
-    if (other !== action && bindings[other] === code) next[other] = null;
+    if (other !== action && bindings[other] === binding) next[other] = null;
   }
   return next;
 }
@@ -83,16 +199,26 @@ const CODE_LABELS: Readonly<Record<string, string>> = {
   Backquote: '`',
 };
 
-/** Key-cap label for a binding code; `names` carries the locale's word for the space bar. */
-export function keyDisplayLabel(code: string, names: { readonly space: string }): string {
-  if (code === 'Space') return names.space;
-  const symbol = CODE_LABELS[code];
-  if (symbol !== undefined) return symbol;
-  const letter = /^Key([A-Z])$/.exec(code)?.[1];
-  if (letter !== undefined) return letter;
+export interface BindingDisplayNames {
+  readonly space: string;
+  readonly mouseLeft?: string;
+  readonly mouseMiddle?: string;
+  readonly mouseRight?: string;
+}
+
+/** Player-facing label for a normalized binding chord. */
+export function keyDisplayLabel(binding: string, names: BindingDisplayNames): string {
+  const parts = binding.split('+');
+  const code = parts.pop() ?? binding;
+  let codeLabel = CODE_LABELS[code] ?? code;
+  if (code === 'Space') codeLabel = names.space;
+  else if (code === 'Mouse0') codeLabel = names.mouseLeft ?? 'Mouse 1';
+  else if (code === 'Mouse1') codeLabel = names.mouseMiddle ?? 'Mouse 3';
+  else if (code === 'Mouse2') codeLabel = names.mouseRight ?? 'Mouse 2';
+  else codeLabel = /^Key([A-Z])$/.exec(code)?.[1] ?? codeLabel;
   const digit = /^Digit([0-9])$/.exec(code)?.[1];
-  if (digit !== undefined) return digit;
+  if (digit !== undefined) codeLabel = digit;
   const numpad = /^Numpad([0-9])$/.exec(code)?.[1];
-  if (numpad !== undefined) return `Num ${numpad}`;
-  return code; // Home, End, PageUp… read fine as raw codes
+  if (numpad !== undefined) codeLabel = `Num ${numpad}`;
+  return [...parts.map((part) => (part === 'Primary' ? 'Ctrl/Cmd' : part)), codeLabel].join(' + ');
 }

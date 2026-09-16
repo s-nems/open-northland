@@ -1,6 +1,6 @@
 import type { Camera } from '@open-northland/render';
 import { isTypingTarget } from '../../hud/hotkeys.js';
-import type { KeyBindings } from '../../hud/keybindings.js';
+import { bindingFromKeyboardEvent, type KeyBindings } from '../../hud/keybindings.js';
 import {
   type CameraTuning,
   DEFAULT_CAMERA_TUNING,
@@ -27,6 +27,8 @@ const PAN_ACTIONS: readonly PanAction[] = ['panLeft', 'panRight', 'panUp', 'panD
 
 export interface CameraController {
   camera(): Camera;
+  /** Apply changed shortcuts immediately and release any key held under the previous mapping. */
+  setBindings(bindings: KeyBindings): void;
   /** Apply held-arrow-key panning for a wall-clock delta in ms; call once per frame. */
   update(dtMs: number): void;
   /** Replace the frame outright; an in-flight middle-drag keeps panning from the new frame. */
@@ -55,12 +57,12 @@ export function createCameraController(
   bindings: KeyBindings,
 ): CameraController {
   let cam: Camera = initial;
+  let activeBindings = bindings;
   const tuning: CameraTuning = DEFAULT_CAMERA_TUNING;
-  const panActionByCode = new Map<string, PanAction>();
-  for (const action of PAN_ACTIONS) {
-    const code = bindings[action];
-    if (code !== null) panActionByCode.set(code, action);
-  }
+  const panActionFor = (event: KeyboardEvent): PanAction | undefined => {
+    const binding = bindingFromKeyboardEvent(event);
+    return binding === null ? undefined : PAN_ACTIONS.find((action) => activeBindings[action] === binding);
+  };
   const held = new Set<PanAction>();
   let dragging = false;
   let lastX = 0;
@@ -117,16 +119,31 @@ export function createCameraController(
   };
   const onKeyDown = (e: KeyboardEvent): void => {
     if (suspended) return;
-    const action = panActionByCode.get(e.code);
-    // Modifier combos stay with the browser: a pan key rebound to a letter must not hijack shortcuts
-    // like Cmd+A, and macOS swallows the keyup of a key released while Meta is held.
-    if (action === undefined || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+    const action = panActionFor(e);
+    if (action === undefined || isTypingTarget(e.target)) return;
     held.add(action);
     e.preventDefault(); // arrow keys (the default bindings) would otherwise scroll the page
   };
   const onKeyUp = (e: KeyboardEvent): void => {
-    const action = panActionByCode.get(e.code);
-    if (action !== undefined) held.delete(action);
+    const releasedModifier = e.code.startsWith('Control')
+      ? 'Ctrl'
+      : e.code.startsWith('Shift')
+        ? 'Shift'
+        : e.code.startsWith('Alt')
+          ? 'Alt'
+          : e.code.startsWith('Meta')
+            ? 'Meta'
+            : null;
+    for (const action of PAN_ACTIONS) {
+      const binding = activeBindings[action];
+      if (binding === null) continue;
+      const parts = binding.split('+');
+      const usesReleasedModifier =
+        releasedModifier !== null &&
+        (parts.includes(releasedModifier) ||
+          (parts.includes('Primary') && (releasedModifier === 'Ctrl' || releasedModifier === 'Meta')));
+      if (parts.at(-1) === e.code || usesReleasedModifier) held.delete(action);
+    }
   };
   // Losing focus mid-gesture drops the keyup or mouseup, which would leave a key stuck in `held` or
   // `dragging` stuck true.
@@ -147,6 +164,10 @@ export function createCameraController(
 
   return {
     camera: () => cam,
+    setBindings: (next) => {
+      activeBindings = next;
+      held.clear();
+    },
     jumpTo: (next) => {
       cam = next;
       // Retargeted, so a jump never carries the old glide into the new view.

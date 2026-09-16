@@ -134,7 +134,10 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       }
     }
     // Each pause toggle re-rasterizes the strip, so key repeat must not flicker it.
-    if (isActionHotkey(e, deps.bindings, 'pauseToggle') && !sheet.isOpen()) deps.togglePause();
+    if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {
+      e.preventDefault();
+      if (!sheet.isOpen()) deps.togglePause();
+    }
   };
 
   canvas.addEventListener('mousedown', onMouseDown);

@@ -62,8 +62,17 @@ const install = (bindings: KeyBindings = DEFAULT_KEY_BINDINGS) => {
     move: (x: number, y: number, over: unknown = canvas): void => {
       win.emit('mousemove', { clientX: x, clientY: y, target: over });
     },
-    press: (code: string): void => {
-      win.emit('keydown', { code, target: null, preventDefault: (): void => undefined });
+    press: (code: string, modifiers: Partial<KeyboardEvent> = {}): void => {
+      win.emit('keydown', {
+        code,
+        target: null,
+        ctrlKey: false,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: (): void => undefined,
+        ...modifiers,
+      });
     },
     release: (code: string): void => {
       win.emit('keyup', { code });
@@ -161,9 +170,32 @@ describe('createCameraController pan bindings', () => {
     ctl.dispose();
   });
 
+  it('reads a changed pan binding without remounting the controller', () => {
+    const bindings = { ...DEFAULT_KEY_BINDINGS } as Record<keyof typeof DEFAULT_KEY_BINDINGS, string | null>;
+    const { ctl, press, release } = install(bindings);
+
+    bindings.panLeft = 'Alt+KeyJ';
+    ctl.setBindings(bindings);
+    press('ArrowLeft');
+    expect(panStep(ctl)).toBe(0);
+    press('KeyJ', { altKey: true });
+    expect(panStep(ctl)).toBeGreaterThan(0);
+    release('KeyJ');
+    ctl.dispose();
+  });
+
   it('never pans on an unbound action', () => {
     const { ctl, press } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: null });
     press('ArrowLeft');
+    expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+
+  it('stops a modifier chord when its modifier is released first', () => {
+    const { ctl, press, release } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: 'Meta+KeyJ' });
+    press('KeyJ', { metaKey: true });
+    expect(panStep(ctl)).toBeGreaterThan(0);
+    release('MetaLeft');
     expect(panStep(ctl)).toBe(0);
     ctl.dispose();
   });

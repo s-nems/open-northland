@@ -17,7 +17,7 @@ export interface SettingsPageStore {
   update(patch: Partial<MenuSettings>): Promise<boolean>;
   readonly pinnedUiScale: number | null;
   effectiveUiScaleFor(factor: number): number;
-  /** True when boot-owned graphics, language, and bindings are being edited from a running game. */
+  /** True when boot-owned graphics and language are being edited from a running game. */
   readonly bootOwnedChangesDeferred?: boolean;
 }
 
@@ -237,7 +237,6 @@ export function createSettingsPage(opts: {
         renderPanel();
         restoreFocus(focusKey ?? null);
       },
-      ...(opts.settings.bootOwnedChangesDeferred === true ? { deferredTip: text.nextGameTip } : {}),
     });
     const rowsFor: Record<SettingsTab, () => HTMLElement[]> = {
       graphics: graphicsRows,

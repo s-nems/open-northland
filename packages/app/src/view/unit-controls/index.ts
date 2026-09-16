@@ -1,9 +1,11 @@
-import { isActionHotkey } from '../../hud/hotkeys.js';
+import { isActionHotkey, isTypingTarget } from '../../hud/hotkeys.js';
+import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { allowedActions } from './action-ring/menu-state.js';
 import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
+import { controlGroupCommand, createControlGroups, isControlGroupMember } from './control-groups.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
@@ -26,6 +28,7 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selection = createUnitSelection();
+  const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
   const equipPicker: EquipPickController | null =
     opts.equipPickList === undefined
@@ -131,7 +134,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     openActions: (atClient) => chrome.actions().open(atClient),
   });
 
-  const overviewPress = createOverviewOrders({ pickMode, orders: () => orders });
+  const overviewPress = createOverviewOrders({
+    pickMode,
+    orders: () => orders,
+    workFlagBinding: () => opts.bindings.workFlagOrder,
+  });
 
   const onMouseDown = (e: MouseEvent): void => {
     pointer = { x: e.clientX, y: e.clientY };
@@ -142,14 +149,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     if (pickMode.handleMouseDown(e)) return;
+    if (matchesMouseBinding(e, opts.bindings.workFlagOrder)) {
+      orders.issueSetWorkFlagAt(e);
+      return;
+    }
     if (e.button === 2) {
-      if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlagAt(e);
-      else {
-        const w = toWorld(e.clientX, e.clientY);
-        const marker = clickHits.doorMarkerAt(w.x, w.y);
-        if (marker?.kind === 'settler') applySelection([marker.ref], false);
-        else orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null);
-      }
+      const w = toWorld(e.clientX, e.clientY);
+      const marker = clickHits.doorMarkerAt(w.x, w.y);
+      if (marker?.kind === 'settler') applySelection([marker.ref], false);
+      else orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null);
       return;
     }
     if (e.button !== 0) return; // middle belongs to the camera controller's pan
@@ -182,15 +190,31 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (isActionHotkey(e, opts.bindings, 'actionRing')) {
+    const groupCommand = isTypingTarget(e.target) ? null : controlGroupCommand(e, opts.bindings);
+    if (groupCommand !== null) {
+      e.preventDefault();
+      if (groupCommand.mode === 'replace') {
+        controlGroups.replace(groupCommand.action, selection.ids());
+      } else if (groupCommand.mode === 'add') {
+        controlGroups.addExclusive(groupCommand.action, selection.ids());
+      } else {
+        const snapshot = opts.snapshot();
+        const ids = controlGroups.recall(groupCommand.action, (id) =>
+          isControlGroupMember(snapshot, id, opts.humanPlayer, opts.observer === true),
+        );
+        if (ids !== null) applySelection(ids, false);
+      }
+    } else if (isActionHotkey(e, opts.bindings, 'actionRing')) {
       e.preventDefault(); // Space (the default binding) would otherwise scroll the page
       chrome.actions().toggle(pointer ?? undefined);
     } else if (isActionHotkey(e, opts.bindings, 'professionPicker')) {
+      e.preventDefault();
       const ids = [...selection.ids()];
       if (allowedActions(opts.content, opts.snapshot(), ids).has('changeProfession')) {
         chrome.actions().openProfessions(ids);
       }
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
+      e.preventDefault();
       armAttackMove();
     } else if (e.code === 'Escape') {
       // Escape steps back one level: job list, then an armed pick mode, then the selection itself.

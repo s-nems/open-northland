@@ -1,3 +1,4 @@
+import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { type Tile, worldToTile } from '../picking.js';
 import type { UnitOrderController } from './orders.js';
 import type { PickModeController } from './pick-mode.js';
@@ -14,6 +15,7 @@ export interface OverviewOrderDeps {
   readonly pickMode: Pick<PickModeController, 'handleOverviewPress'>;
   /** Read at press time; the order controller is built after the pick mode it resolves through. */
   readonly orders: () => UnitOrderController;
+  readonly workFlagBinding: () => string | null;
 }
 
 /** True when the press became an order, so the overview must not also scroll the view to it. */
@@ -24,9 +26,12 @@ export function createOverviewOrders(deps: OverviewOrderDeps): OverviewPress {
     // The flat inverse: the overview plots the map without the world view's terrain lift.
     const target: Tile = worldToTile(worldX, worldY);
     if (deps.pickMode.handleOverviewPress(event.button, target)) return true;
+    if (matchesMouseBinding(event, deps.workFlagBinding())) {
+      deps.orders().issueSetWorkFlag(target);
+      return true;
+    }
     if (event.button !== 2) return false;
-    if (event.ctrlKey || event.metaKey) deps.orders().issueSetWorkFlag(target);
-    else deps.orders().issueMoveTo(target);
+    deps.orders().issueMoveTo(target);
     return true;
   };
 }

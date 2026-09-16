@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   assignBinding,
+  bindingAllowedFor,
+  bindingFromKeyboardEvent,
+  bindingFromMouseEvent,
+  CONTROL_GROUP_BINDING_ACTIONS,
   DEFAULT_KEY_BINDINGS,
+  isBindableBinding,
   isBindableCode,
   keyDisplayLabel,
+  matchesMouseBinding,
   parseKeyBindings,
 } from '../src/hud/keybindings.js';
 
@@ -23,6 +29,12 @@ describe('parseKeyBindings', () => {
     expect(parsed.professionPicker).toBe('KeyC');
   });
 
+  it('keeps modifier chords distinct from their plain base key', () => {
+    const parsed = parseKeyBindings({ pauseToggle: 'Ctrl+KeyO', actionRing: 'KeyO' });
+    expect(parsed.pauseToggle).toBe('Ctrl+KeyO');
+    expect(parsed.actionRing).toBe('KeyO');
+  });
+
   it('drops an invalid or unbindable code to the default', () => {
     expect(parseKeyBindings({ pauseToggle: 7 }).pauseToggle).toBe('KeyP');
     expect(parseKeyBindings({ pauseToggle: 'Escape' }).pauseToggle).toBe('KeyP');
@@ -37,6 +49,47 @@ describe('parseKeyBindings', () => {
     const parsed = parseKeyBindings({ panLeft: 'KeyP' });
     expect(parsed.panLeft).toBe('KeyP');
     expect(parsed.pauseToggle).toBeNull();
+  });
+
+  it('fills older stored settings with the default 1-0 control-group bindings', () => {
+    const parsed = parseKeyBindings({ pauseToggle: 'KeyO' });
+    expect([
+      parsed.controlGroup1,
+      parsed.controlGroup1Replace,
+      parsed.controlGroup1Add,
+      parsed.controlGroup2,
+      parsed.controlGroup3,
+      parsed.controlGroup4,
+      parsed.controlGroup5,
+      parsed.controlGroup6,
+      parsed.controlGroup7,
+      parsed.controlGroup8,
+      parsed.controlGroup9,
+      parsed.controlGroup0,
+    ]).toEqual([
+      'Digit1',
+      'Ctrl+Digit1',
+      'Shift+Digit1',
+      'Digit2',
+      'Digit3',
+      'Digit4',
+      'Digit5',
+      'Digit6',
+      'Digit7',
+      'Digit8',
+      'Digit9',
+      'Digit0',
+    ]);
+  });
+});
+
+describe('control-group settings order', () => {
+  it('lists all recalls, then replacements, then steal-add bindings', () => {
+    expect(CONTROL_GROUP_BINDING_ACTIONS).toEqual([
+      ...Array.from({ length: 10 }, (_, index) => `controlGroup${index === 9 ? 0 : index + 1}`),
+      ...Array.from({ length: 10 }, (_, index) => `controlGroup${index === 9 ? 0 : index + 1}Replace`),
+      ...Array.from({ length: 10 }, (_, index) => `controlGroup${index === 9 ? 0 : index + 1}Add`),
+    ]);
   });
 });
 
@@ -72,6 +125,67 @@ describe('isBindableCode', () => {
   });
 });
 
+describe('input chords', () => {
+  it('accepts normalized keyboard and mouse chords', () => {
+    for (const binding of ['Shift+Digit2', 'Ctrl+KeyG', 'Ctrl+Shift+KeyG', 'Ctrl+Mouse2', 'Primary+Mouse2']) {
+      expect(isBindableBinding(binding), binding).toBe(true);
+    }
+    for (const binding of [
+      'ShiftLeft+Digit2',
+      'Shift+Shift+Digit2',
+      'Shift+Ctrl+KeyG',
+      'Ctrl+Primary+Mouse2',
+      'Mouse4',
+      'Ctrl+Escape',
+    ]) {
+      expect(isBindableBinding(binding), binding).toBe(false);
+    }
+  });
+
+  it('keeps work-flag bindings modified and away from the camera button', () => {
+    expect(bindingAllowedFor('workFlagOrder', 'Ctrl+Mouse2')).toBe(true);
+    expect(bindingAllowedFor('workFlagOrder', 'Mouse2')).toBe(false);
+    expect(bindingAllowedFor('workFlagOrder', 'Shift+Mouse1')).toBe(false);
+    expect(bindingAllowedFor('workFlagOrder', 'Shift+Mouse0')).toBe(false);
+  });
+
+  it('matches the primary mouse modifier to Ctrl or Cmd', () => {
+    const event = (overrides: Partial<MouseEvent>) =>
+      ({
+        button: 2,
+        ctrlKey: false,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        ...overrides,
+      }) as MouseEvent;
+    expect(matchesMouseBinding(event({ ctrlKey: true }), 'Primary+Mouse2')).toBe(true);
+    expect(matchesMouseBinding(event({ metaKey: true }), 'Primary+Mouse2')).toBe(true);
+    expect(matchesMouseBinding(event({ shiftKey: true }), 'Primary+Mouse2')).toBe(false);
+  });
+
+  it('normalizes event modifiers in a stable order', () => {
+    expect(
+      bindingFromKeyboardEvent({
+        code: 'Digit2',
+        ctrlKey: true,
+        shiftKey: true,
+        altKey: false,
+        metaKey: false,
+      } as KeyboardEvent),
+    ).toBe('Ctrl+Shift+Digit2');
+    expect(
+      bindingFromMouseEvent({
+        button: 2,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+      } as MouseEvent),
+    ).toBe('Ctrl+Mouse2');
+  });
+});
+
 describe('keyDisplayLabel', () => {
   const names = { space: 'Spacja' };
 
@@ -82,6 +196,11 @@ describe('keyDisplayLabel', () => {
     expect(keyDisplayLabel('ArrowLeft', names)).toBe('←');
     expect(keyDisplayLabel('Comma', names)).toBe(',');
     expect(keyDisplayLabel('Space', names)).toBe('Spacja');
+    expect(keyDisplayLabel('Shift+Digit2', names)).toBe('Shift + 2');
+    expect(keyDisplayLabel('Ctrl+Mouse2', { ...names, mouseRight: 'prawy klik' })).toBe('Ctrl + prawy klik');
+    expect(keyDisplayLabel('Primary+Mouse2', { ...names, mouseRight: 'prawy klik' })).toBe(
+      'Ctrl/Cmd + prawy klik',
+    );
   });
 
   it('leaves navigation keys as their code', () => {

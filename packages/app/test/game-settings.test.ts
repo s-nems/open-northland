@@ -16,6 +16,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setSfxVolume = vi.fn();
   const setMusicVolume = vi.fn();
   const setLanguage = vi.fn();
+  const setKeyBindings = vi.fn();
   const setDebugToolsEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
@@ -32,6 +33,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSfxVolume,
     setMusicVolume,
     setLanguage,
+    setKeyBindings,
     setDebugToolsEnabled,
     ...overrides,
   });
@@ -43,6 +45,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSfxVolume,
     setMusicVolume,
     setLanguage,
+    setKeyBindings,
     setDebugToolsEnabled,
   };
 }
@@ -56,6 +59,8 @@ describe('createGameSettingsRuntime', () => {
     await h.settings.update({ soundVolume: 0.35 });
     await h.settings.update({ musicVolume: 0.45 });
     await h.settings.update({ debugToolsEnabled: true });
+    const keyBindings = { ...defaultSettings().keyBindings, controlGroup1Replace: 'Alt+Digit1' };
+    await h.settings.update({ keyBindings });
 
     expect(h.settings.current()).toMatchObject({
       uiScaleFactor: 1.2,
@@ -63,6 +68,7 @@ describe('createGameSettingsRuntime', () => {
       soundVolume: 0.35,
       musicVolume: 0.45,
       debugToolsEnabled: true,
+      keyBindings,
     });
     expect(h.persist.mock.calls).toEqual([
       [{ uiScaleFactor: 1.2 }],
@@ -70,12 +76,14 @@ describe('createGameSettingsRuntime', () => {
       [{ soundVolume: 0.35 }],
       [{ musicVolume: 0.45 }],
       [{ debugToolsEnabled: true }],
+      [{ keyBindings }],
     ]);
     expect(h.setUiScaleFactor).toHaveBeenCalledWith(1.2);
     expect(h.setSoundEnabled).toHaveBeenCalledWith(false);
     expect(h.setSfxVolume).toHaveBeenCalledWith(0.35);
     expect(h.setMusicVolume).toHaveBeenCalledWith(0.45);
     expect(h.setDebugToolsEnabled).toHaveBeenCalledWith(true);
+    expect(h.setKeyBindings).toHaveBeenCalledWith(keyBindings);
   });
 
   it('persists the complete settings model and projects the next-game language choice', async () => {

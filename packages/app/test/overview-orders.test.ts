@@ -2,6 +2,7 @@ import { halfCellToScreen } from '@open-northland/render';
 import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { sandboxContent } from '../src/game/sandbox/index.js';
+import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
 import { createOverviewOrders, type OverviewPress } from '../src/view/unit-controls/overview-orders.js';
 import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
@@ -52,7 +53,11 @@ const pressOn = (
   return press(spot.x, spot.y, event as MouseEvent);
 };
 
-function harness(): { press: OverviewPress; pickMode: PickModeController; issued: Command[] } {
+function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
+  press: OverviewPress;
+  pickMode: PickModeController;
+  issued: Command[];
+} {
   const issued: Command[] = [];
   const selection = createUnitSelection();
   selection.apply([SCOUT.id], false);
@@ -78,7 +83,11 @@ function harness(): { press: OverviewPress; pickMode: PickModeController; issued
     orders: () => orders,
     setArmedCursor: () => {},
   });
-  const press = createOverviewOrders({ pickMode, orders: () => orders });
+  const press = createOverviewOrders({
+    pickMode,
+    orders: () => orders,
+    workFlagBinding: () => workFlagBinding,
+  });
   return { press, pickMode, issued };
 }
 
@@ -96,6 +105,21 @@ describe('orders named on the map overview', () => {
 
     pressOn(press, FAR_NODE, { button: 2, ctrlKey: true });
 
+    expect(issued).toEqual([{ kind: 'setWorkFlag', entity: SCOUT.id, x: FAR_NODE.hx, y: FAR_NODE.hy }]);
+  });
+
+  it('keeps Cmd as the macOS form of the default work-flag binding', () => {
+    const { press, issued } = harness();
+
+    pressOn(press, FAR_NODE, { button: 2, metaKey: true });
+
+    expect(issued).toEqual([{ kind: 'setWorkFlag', entity: SCOUT.id, x: FAR_NODE.hx, y: FAR_NODE.hy }]);
+  });
+
+  it('uses the rebound mouse chord for a work flag', () => {
+    const { press, issued } = harness('Shift+Mouse0');
+
+    expect(pressOn(press, FAR_NODE, { button: 0, shiftKey: true })).toBe(true);
     expect(issued).toEqual([{ kind: 'setWorkFlag', entity: SCOUT.id, x: FAR_NODE.hx, y: FAR_NODE.hy }]);
   });
 

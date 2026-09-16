@@ -250,7 +250,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
 
     const lang = currentLocale();
-    const keyBindings = storedSettings.keyBindings;
+    // Input owners share this stable object, updated in place by the in-game settings page.
+    const keyBindings = { ...storedSettings.keyBindings };
     const frameStats = new FrameStats();
 
     // A checkout without a decoded sound bank degrades to silence.
@@ -608,6 +609,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       perf,
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,
+      setKeyBindings: (next) => {
+        Object.assign(keyBindings, next);
+        cameraCtl.setBindings(next);
+      },
     });
     cleanup.push(() => liveSettings.dispose());
 
