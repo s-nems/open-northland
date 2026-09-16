@@ -112,7 +112,7 @@ export function assignWorker(
 
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
   reidleAsJob(world, ctx, e, jobType);
-  bindEmployment(world, ctx, e, b, jobType);
+  bindEmployment(world, e, b);
 }
 
 /**

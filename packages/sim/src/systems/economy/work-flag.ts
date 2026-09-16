@@ -138,12 +138,12 @@ export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType:
 }
 
 /**
- * Sync a settler's work flag to its new `jobType`: a field gatherer or fisher keeps its live flag or gets
- * a fresh one at its feet, and any other job drops the flag rather than stranding an owner-less one on the
- * map. A building-employed ordinary gatherer takes no flag; a fisher keeps one as its catch-delivery yard.
+ * Sync a settler's work flag to its new `jobType`: an unposted field gatherer or fisher keeps its live flag
+ * or gets a fresh one at its feet, and every other job drops the flag rather than stranding an owner-less
+ * one on the map. A building-employed collector banks directly into its workplace instead.
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  const usesFlag = isFisherJob(ctx.content, jobType) || !world.has(e, JobAssignment);
+  const usesFlag = !world.has(e, JobAssignment);
   if (jobUsesWorkFlag(ctx, jobType) && usesFlag) {
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {

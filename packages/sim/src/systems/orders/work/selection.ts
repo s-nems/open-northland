@@ -35,9 +35,10 @@ import { isOrderableSettler } from '../guards.js';
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
- * Place or move one owned gatherer/fisher flag to node (x,y) - see the command doc. An existing flag is
+ * Place or move one unposted gatherer/fisher flag to node (x,y) - see the command doc. An existing flag is
  * relocated and only the marker moves, because a flag stores nothing and the goods already dropped stay
- * pinned to their tiles; otherwise a fresh flag is minted there and bound with the trade's radius.
+ * pinned to their tiles; otherwise a fresh flag is minted there and bound with the trade's radius. A
+ * building-employed collector has no delivery flag: its workplace is both its work anchor and sink.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
  * iron mine" lands on the ore itself. The snap carries the settler's signpost confinement, so the flag can
@@ -53,6 +54,7 @@ export function setWorkFlag(
   if (terrain === undefined) return; // mapless: no cells to plant a flag on
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
+  if (world.has(e, JobAssignment)) return;
   const jobType = world.get(e, Settler).jobType;
   if (jobType === null || !jobUsesWorkFlag(ctx, jobType)) return;
 

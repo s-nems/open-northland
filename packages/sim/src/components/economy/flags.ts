@@ -12,7 +12,8 @@ import type { NodeId } from '../../nav/terrain/index.js';
  *  - `goodType` narrows new harvest targets to one map good; absence accepts every good the job may harvest.
  *
  * A gatherer without the component roams for the nearest node anywhere and hauls to the nearest store.
- * A fisher always carries one so its catch returns to the player's chosen yard.
+ * An unposted fisher carries one so its catch returns to the player's chosen yard; a posted fisher banks
+ * directly into its workplace.
  */
 export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number }>(
   'WorkFlag',

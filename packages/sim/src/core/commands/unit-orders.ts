@@ -146,8 +146,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Place or move one owned field worker's flag to (x,y). A gatherer searches its radius; a fisher
-       * uses it as the yard where the catch is banked. The flag itself holds no stockpile.
+       * Place or move one unposted field worker's flag to (x,y). A gatherer searches its radius; a fisher
+       * uses it as the yard where the catch is banked. A worker posted to a building banks there instead,
+       * so this order is ignored until it is unassigned. The flag itself holds no stockpile.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;

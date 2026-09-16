@@ -2,10 +2,12 @@ import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
+  Building,
   Carrying,
   CurrentAtomic,
   DeliveryFlag,
   FishSwarm,
+  JobAssignment,
   MoveGoal,
   Owner,
   Position,
@@ -24,6 +26,7 @@ import {
   takeFishNear,
 } from '../../src/systems/economy/fish.js';
 import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
+import { assignWorker, unassignWorker } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -51,6 +54,11 @@ function fishingContent(): ContentSet {
       ...base.jobs,
       { typeId: FISHER, id: 'fisher', allowedAtomics: [36, 37, 38], forbiddenAtomics: [] },
     ],
+    buildings: base.buildings.map((building) =>
+      building.typeId === 1
+        ? { ...building, workers: [...(building.workers ?? []), { jobType: FISHER, count: 1 }] }
+        : building,
+    ),
     jobExperience: [
       ...base.jobExperience,
       {
@@ -98,6 +106,54 @@ describe('fishing', () => {
       hx: 8,
       hy: 3,
     });
+  });
+
+  it('retires the flag of an HQ-employed fisher and banks the catch directly into the HQ', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(16, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 8, hy: 3, count: 1, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+
+    const hq = sim.world.create();
+    sim.world.add(hq, Position, positionOfNode(2, 3));
+    sim.world.add(hq, Building, { buildingType: 1, tribe: 1, built: fx.fromInt(1), level: 0 });
+    sim.world.add(hq, Stockpile, { amounts: new Map() });
+    sim.world.add(hq, Owner, { player: 0 });
+
+    const fisher = fisherAt(sim, c.x, c.y);
+    sim.world.add(fisher, Owner, { player: 0 });
+    syncWorkFlagToJob(sim.world, ctxOf(sim), fisher, FISHER);
+    const oldFlag = sim.world.get(fisher, WorkFlag).flag;
+
+    assignWorker(sim.world, ctxOf(sim), {
+      kind: 'assignWorker',
+      entity: fisher,
+      building: hq,
+      jobPriority: [FISHER],
+    });
+
+    expect(sim.world.get(fisher, JobAssignment).workplace).toBe(hq);
+    expect(sim.world.has(fisher, WorkFlag)).toBe(false);
+    expect(sim.world.isAlive(oldFlag)).toBe(false);
+
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: fisher, x: 6, y: 3 });
+    sim.step();
+    expect(sim.world.has(fisher, WorkFlag)).toBe(false);
+
+    for (let tick = 0; tick < 500 && (sim.world.get(hq, Stockpile).amounts.get(FOOD) ?? 0) === 0; tick++) {
+      sim.step();
+    }
+
+    expect(sim.world.has(fisher, Carrying)).toBe(false);
+    expect(sim.world.get(hq, Stockpile).amounts.get(FOOD)).toBe(1);
+
+    unassignWorker(sim.world, ctxOf(sim), { kind: 'unassignWorker', entity: fisher });
+    expect(sim.world.has(fisher, JobAssignment)).toBe(false);
+    expect(sim.world.has(fisher, WorkFlag)).toBe(true);
   });
 
   it('runs cast/failure retries, catches one fish, and leaves the swarm depleted', () => {
