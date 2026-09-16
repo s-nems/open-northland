@@ -6,7 +6,7 @@ export function classify(components: Readonly<Record<string, unknown>>): SpriteK
   if ('Building' in components) return 'building';
   if ('Resource' in components) return 'resource';
   if ('BerryBush' in components) return 'berrybush';
-  if ('Chest' in components) return 'chest';
+  if ('Chest' in components || 'OpenedChest' in components) return 'chest';
   if ('Stump' in components) return 'stump';
   if ('Signpost' in components) return 'signpost';
   if ('Settler' in components) return 'settler';

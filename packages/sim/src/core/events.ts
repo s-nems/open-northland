@@ -231,7 +231,7 @@ export type SimEvent =
     }
   | {
       /** A settler opened `chest` this tick and its contents were handed out. The original transitions
-       *  both chest landscape types to `void`, so the chest entity is gone by the snapshot. */
+       *  its logic to `void` while retaining the paired open-chest graphics record. */
       readonly kind: 'chestOpened';
       readonly chest: Entity;
       readonly chestKind: ChestKind;
@@ -239,8 +239,8 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
-      /** `paper` entered `player`'s papers list this tick, out of `chest` (gone by the snapshot) at `at`
-       *  (the original's "a new object has been found" message). */
+      /** `paper` entered `player`'s papers list this tick, out of `chest` at `at` (the original's
+       *  "a new object has been found" message). */
       readonly kind: 'paperFound';
       readonly player: number;
       readonly paper: Paper;

@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  Chest,
   JobAssignment,
   PAPER_KINDS,
   type Paper,
@@ -893,7 +894,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     if (!attachedToWork && sim.world.tryGet(ATTACHED_SETTLER, Settler)?.jobType === ATTACH_TRADE) {
       attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
     }
-    if (!chestOpened) chestOpened = !sim.world.isAlive(FOOD_CHEST_ID);
+    if (!chestOpened) chestOpened = !sim.world.has(FOOD_CHEST_ID, Chest);
     if (sim.tick % CHECKPOINT_EVERY === 0) {
       const hash = sim.hashState();
       checkpoints.push(hash);

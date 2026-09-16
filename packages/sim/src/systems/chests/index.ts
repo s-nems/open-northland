@@ -3,6 +3,7 @@ import {
   addPaper,
   Chest,
   type ChestKind,
+  OpenedChest,
   Owner,
   type Paper,
   Position,
@@ -19,7 +20,7 @@ import { stampResourceFootprintData, unstampResourceFootprint } from '../footpri
 import { isHeroJob } from '../readviews/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { resolveChestReward } from './contents.js';
-import { chestFootprint, chestRecord } from './footprint.js';
+import { chestFootprint, chestRecord, openedChestRecord } from './footprint.js';
 
 export { CHEST_CONTENTS, type ChestReward, resolveChestReward } from './contents.js';
 
@@ -63,9 +64,10 @@ export function jobCanOpenChest(content: ContentSet, jobType: number | null, kin
 }
 
 /**
- * Hand a chest's contents out to `opener`'s player and remove the chest. Goods heap on the ground around
- * the chest's cell, a paper enters the player's list (raising `paperFound`), settlers stand up at the
- * chest for the opener's player and tribe, and animals spawn as a herd there. A chest already gone whiffs.
+ * Hand a chest's contents out to `opener`'s player and leave its inert open visual behind. Goods heap on
+ * the ground around the chest's cell, a paper enters the player's list (raising `paperFound`), settlers
+ * stand up at the chest for the opener's player and tribe, and animals spawn as a herd there. A chest
+ * already open whiffs.
  *
  * Approximations: the original also switches the named good's production on for a workshop paper, which
  * the presence-based tech gate covers while the spawned worker lives; chest settlers take the opener's
@@ -76,14 +78,23 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
   const owner = world.tryGet(opener, Owner);
   if (owner === undefined) return;
   const player = owner.player;
-  const { kind, contents } = world.get(chest, Chest);
+  const closed = world.get(chest, Chest);
+  const { kind, contents } = closed;
   const p = world.get(chest, Position);
   const at = eventAt(p.x, p.y);
   const tribe = world.get(opener, Settler).tribe;
   const reward = resolveChestReward(ctx.content, kind, contents);
 
   unstampResourceFootprint(world, chest);
-  world.destroy(chest);
+  const openRecord = openedChestRecord(ctx.content, kind, closed.gfxIndex);
+  world.remove(chest, Chest);
+  world.add(chest, OpenedChest, {
+    ...(openRecord?.index !== undefined
+      ? { gfxIndex: openRecord.index }
+      : closed.gfxIndex !== undefined
+        ? { gfxIndex: closed.gfxIndex }
+        : {}),
+  });
   ctx.events.emit({ kind: 'chestOpened', chest, chestKind: kind, player, at });
 
   switch (reward.kind) {

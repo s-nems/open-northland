@@ -6,6 +6,7 @@ import {
   CurrentAtomic,
   DeferredOrder,
   OpenChestOrder,
+  OpenedChest,
   Owner,
   Person,
   Position,
@@ -82,10 +83,10 @@ function looseGoods(sim: Simulation, good: number): number {
   return total;
 }
 
-/** Step until the chest is gone (or the budget runs out); returns the events of every tick stepped. */
+/** Step until the chest is open (or the budget runs out); returns the events of every tick stepped. */
 function stepUntilOpened(sim: Simulation, chest: Entity, budget = 400): SimEvent[] {
   const events: SimEvent[] = [];
-  for (let t = 0; t < budget && sim.world.isAlive(chest); t++) {
+  for (let t = 0; t < budget && sim.world.has(chest, Chest); t++) {
     sim.step();
     events.push(...sim.events.current());
   }
@@ -139,13 +140,15 @@ describe('the openChest order', () => {
     expect(sim.world.has(opener, OpenChestOrder)).toBe(true);
     let sawClip = false;
     const events: SimEvent[] = [];
-    for (let t = 0; t < 400 && sim.world.isAlive(chest); t++) {
+    for (let t = 0; t < 400 && sim.world.has(chest, Chest); t++) {
       sim.step();
       events.push(...sim.events.current());
       if (sim.world.tryGet(opener, CurrentAtomic)?.atomicId === OPEN_CHEST_ATOMIC_ID) sawClip = true;
     }
     expect(sawClip).toBe(true);
-    expect(sim.world.isAlive(chest)).toBe(false);
+    expect(sim.world.isAlive(chest)).toBe(true);
+    expect(sim.world.has(chest, Chest)).toBe(false);
+    expect(sim.world.has(chest, OpenedChest)).toBe(true);
     expect(sim.world.has(opener, OpenChestOrder)).toBe(false);
     expect(blockedCells(sim)).toBe(0); // the cell is free again
     expect(looseGoods(sim, SIMPLE_FOOD)).toBe(30);
@@ -173,7 +176,8 @@ describe('the openChest order', () => {
     const hero = spawn(sim, HERO, 6, 6);
     sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: hero, chest }));
     const events = stepUntilOpened(sim, chest);
-    expect(sim.world.isAlive(chest)).toBe(false);
+    expect(sim.world.isAlive(chest)).toBe(true);
+    expect(sim.world.has(chest, OpenedChest)).toBe(true);
     expect(sim.papers(P0)).toEqual([{ kind: 'placeAny', param: 0 }]);
     expect(events.find((e) => e.kind === 'paperFound')).toEqual({
       kind: 'paperFound',
@@ -218,7 +222,8 @@ describe('the openChest order', () => {
     sim.step();
     expect(sim.world.has(hero, OpenChestOrder)).toBe(true);
     stepUntilOpened(sim, magical);
-    expect(sim.world.isAlive(magical)).toBe(false);
+    expect(sim.world.isAlive(magical)).toBe(true);
+    expect(sim.world.has(magical, OpenedChest)).toBe(true);
     expect(looseGoods(sim, SHOES)).toBe(9);
   });
 
@@ -352,7 +357,8 @@ describe('the openChest order', () => {
     const opener = spawn(sim, WOODCUTTER, 6, 6);
     sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest }));
     stepUntilOpened(sim, chest);
-    expect(sim.world.isAlive(chest)).toBe(false);
+    expect(sim.world.isAlive(chest)).toBe(true);
+    expect(sim.world.has(chest, OpenedChest)).toBe(true);
     expect(sim.papers(P0)).toEqual([]);
     expect([...sim.world.query(Settler)]).toHaveLength(1);
   });

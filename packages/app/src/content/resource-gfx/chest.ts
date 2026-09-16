@@ -14,8 +14,16 @@ export function resolveChestRefs(ir: ContentIr | null): ChestRef[] {
   const out: ChestRef[] = [];
   if (ir === null) return out;
   const kindByLogicType = chestKindByLogicType(ir);
+  const editNames = new Set<string>();
   for (const rec of ir.landscapeGfx ?? []) {
-    if (!kindByLogicType.has(rec.logicType)) continue;
+    if (!kindByLogicType.has(rec.logicType) || rec.editName === undefined) continue;
+    editNames.add(rec.editName);
+    editNames.add(`${rec.editName} open`);
+  }
+  for (const rec of ir.landscapeGfx ?? []) {
+    if (!kindByLogicType.has(rec.logicType) && (rec.editName === undefined || !editNames.has(rec.editName))) {
+      continue;
+    }
     const node = nodeRefFrom(rec);
     if (node !== undefined) out.push({ gfxIndex: rec.index, node });
   }

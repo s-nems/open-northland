@@ -1,4 +1,5 @@
 import { parseContentSet } from '@open-northland/data';
+import { resolveResourceDraw } from '@open-northland/render';
 import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
@@ -21,6 +22,7 @@ const MAGICAL_CHEST_LOGIC_TYPE = 86;
 function fixtureIr(): ContentIr {
   return {
     landscape: [
+      { typeId: 1, id: 'void' },
       { typeId: WOODEN_CHEST_LOGIC_TYPE, id: 'chest_wooden' },
       { typeId: MAGICAL_CHEST_LOGIC_TYPE, id: 'chest_magical' },
     ],
@@ -35,12 +37,28 @@ function fixtureIr(): ContentIr {
         frames: [{ state: 1, bobIds: [0] }],
       },
       {
+        index: 844,
+        editName: 'chest magical open',
+        logicType: 1,
+        bmd: 'data/engine2d/bin/bobs/ls_chest.bmd',
+        paletteName: 'rock03',
+        frames: [{ state: 1, bobIds: [1] }],
+      },
+      {
         index: 845,
         editName: 'chest wooden',
         logicType: WOODEN_CHEST_LOGIC_TYPE,
         bmd: 'data/engine2d/bin/bobs/ls_chest.bmd',
         paletteName: 'human_player10',
         frames: [{ state: 1, bobIds: [2] }],
+      },
+      {
+        index: 846,
+        editName: 'chest wooden open',
+        logicType: 1,
+        bmd: 'data/engine2d/bin/bobs/ls_chest.bmd',
+        paletteName: 'human_player10',
+        frames: [{ state: 1, bobIds: [3] }],
       },
     ],
     gatheringPipeline: [{ goodType: 5, goodId: 'wood', harvest: { landscapeType: 4, gfxIndices: [100] } }],
@@ -106,10 +124,15 @@ describe('spawnMapChests', () => {
 describe('the chest draw binding', () => {
   it('binds each record under its own index and falls back to the first loaded chest', () => {
     const refs = resolveChestRefs(fixtureIr());
-    expect(refs.map((r) => r.gfxIndex)).toEqual([843, 845]);
+    expect(refs.map((r) => r.gfxIndex)).toEqual([843, 844, 845, 846]);
     const loaded = new Set(['ls_chest.rock03', 'ls_chest.human_player10']);
     const binding = buildChestBinding(refs, loaded);
     expect(binding?.byGfxIndex?.[845]).toEqual([{ layer: 'ls_chest.human_player10', bob: 2 }]);
+    expect(binding?.byGfxIndex?.[846]).toEqual([{ layer: 'ls_chest.human_player10', bob: 3 }]);
+    if (binding === undefined) throw new Error('no chest binding');
+    expect(
+      resolveResourceDraw(binding, { kind: 'chest', ref: 1, x: 0, y: 0, depth: 0, gfxIndex: 846 }),
+    ).toEqual({ layer: 'ls_chest.human_player10', bob: 3 });
     expect(binding?.default).toEqual({ layer: 'ls_chest.rock03', bob: 0 });
     expect(buildChestBinding(refs, new Set())).toBeUndefined();
   });

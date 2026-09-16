@@ -93,7 +93,7 @@ export function assignBerryBushFields(
   if (level !== undefined) item.level = level;
 }
 
-/** A chest draws its own `[GfxLandscape]` record's one frame; `gfxIndex` picks wooden or magical. */
+/** A chest draws its own `[GfxLandscape]` record's one frame; `gfxIndex` also selects closed or open. */
 export function assignChestFields(
   item: MutableDrawItem,
   components: Readonly<Record<string, unknown>>,

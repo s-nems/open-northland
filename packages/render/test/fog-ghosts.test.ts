@@ -83,6 +83,12 @@ describe('FogGhostStore', () => {
     expect(next.map((g) => g.ref).sort()).toEqual([2, 3, 5]);
   });
 
+  it('draws an opened chest by its inert open graphics record', () => {
+    const chest = entity(5, 15, 4, { OpenedChest: { gfxIndex: 846 } });
+    const scene = collectSpriteScene(snapshotOf([chest]));
+    expect(scene.items[0]).toMatchObject({ ref: 5, kind: 'chest', gfxIndex: 846 });
+  });
+
   it('adopt() captures a ref sight-unseen on the next rebuild (the map handover seam)', () => {
     const store = new FogGhostStore();
     store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 1));
