@@ -3,7 +3,6 @@ import {
   createWindowPixiApp,
   type GalleryCellSpec,
   type SpriteLayer,
-  type TextureSource,
 } from '@open-northland/render';
 import {
   characterLabel,
@@ -15,7 +14,13 @@ import {
   VIKING_CHARACTERS,
   type VikingCharacter,
 } from '../catalog/roster.js';
-import { loadBodyClips, loadGalleryLayers, loadPlayerLut, MissingAtlasError } from '../content/ir/load.js';
+import {
+  loadBodyClips,
+  loadGalleryLayers,
+  loadPlayerLut,
+  MissingAtlasError,
+  type PlayerLut,
+} from '../content/ir/load.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { createCameraController, MIN_ZOOM } from '../view/camera/index.js';
 import { mountMessage } from '../view/overlay.js';
@@ -117,7 +122,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  let lut: TextureSource | undefined;
+  let lut: PlayerLut | undefined;
   if (paletted) {
     lut = await loadPlayerLut();
     if (lut === undefined) {
@@ -147,10 +152,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  // The LUT row count comes from the texture's own height, not a constant, so the shader's row lookup
-  // cannot desync from the PNG.
-  const palette = lut !== undefined ? { source: lut, colours: lut.pixelHeight } : undefined;
-  await startGallery(canvas, params, cells, { char, view }, palette);
+  await startGallery(canvas, params, cells, { char, view }, lut);
 }
 
 async function startGallery(
@@ -158,7 +160,7 @@ async function startGallery(
   params: URLSearchParams,
   cells: readonly GalleryCellSpec[],
   overlay: { readonly char: VikingCharacter | null; readonly view: GalleryView },
-  palette?: { readonly source: TextureSource; readonly colours: number },
+  palette?: PlayerLut,
 ): Promise<void> {
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);

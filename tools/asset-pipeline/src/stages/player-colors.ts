@@ -18,7 +18,12 @@ import {
   rampAliasMap,
 } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
-import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../decoders/player-palette.js';
+import {
+  composeHeadPalette,
+  composePlayerPalette,
+  PLAYER_COLORS,
+  synthesizePlayerSource,
+} from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import { writeFileWithParents } from '../files.js';
@@ -57,6 +62,8 @@ export interface PlayerColorLutResult {
   readonly colors: number;
   /** Row blocks in the LUT: 1 when the armor recipes were unreadable, else {@link ARMOR_PALETTE_TIERS}. */
   readonly armorTiers: number;
+  /** The row after the last block: the head palette, shared by every player and tier. */
+  readonly headRow: number;
 }
 
 /** The `[RandomPalette]` recipe file naming the `human_armor_%3.3d` armor recolors. */
@@ -102,9 +109,10 @@ async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) =
 }
 
 /**
- * Builds the per-player palettes and their armor recolors and stacks them into a `256 x (16 * tiers)`
- * LUT PNG at `row = 16 * armorTier + player`. Throws on a missing base or reference palette; unreadable
- * armor recipes degrade to the 16-row player-only LUT.
+ * Builds the per-player palettes and their armor recolors and stacks them into a `256 x (16 * tiers + 1)`
+ * LUT PNG at `row = 16 * armorTier + player`, with the head palette as the one row after the blocks.
+ * Throws on a missing base or reference palette; unreadable armor recipes degrade to the 16-row
+ * player-only block.
  */
 export async function convertPlayerColorLut(
   roots: SourceRoots,
@@ -136,9 +144,11 @@ export async function convertPlayerColorLut(
   } catch (err) {
     console.warn(`[pipeline] armor recolor rows skipped: ${errorMessage(err)}`);
   }
+  const headRow = palettes.length;
+  palettes.push(composeHeadPalette(base));
   const pngRel = `${BOBS_DIR}/player-lut.png`;
   await writeFileWithParents(join(outDir, pngRel), await encodePng(buildPaletteLutImage(palettes)));
-  return { png: pngRel, colors: PLAYER_COLORS.length, armorTiers };
+  return { png: pngRel, colors: PLAYER_COLORS.length, armorTiers, headRow };
 }
 
 /**

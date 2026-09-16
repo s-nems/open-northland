@@ -1,4 +1,4 @@
-import { PalettedSprite, type ResolvedLayer, type SpriteSheet } from '@open-northland/render';
+import { layerLutRow, PalettedSprite, type ResolvedLayer, type SpriteSheet } from '@open-northland/render';
 import { type Application, type Container, Rectangle, Sprite, Texture } from 'pixi.js';
 
 /**
@@ -22,8 +22,9 @@ export class SettlerSpritePool {
     this.drawn.clear();
   }
 
-  /** `zIndex` orders the layer against its container's other children, for a caller whose sprites
-   *  interleave with art it does not own; omit it to keep insertion order. */
+  /** `playerRow` is the body's LUT row; a head layer reads the head row instead. `zIndex` orders the
+   *  layer against its container's other children, for a caller whose sprites interleave with art it
+   *  does not own; omit it to keep insertion order. */
   drawLayer(
     key: string,
     layer: ResolvedLayer,
@@ -49,7 +50,7 @@ export class SettlerSpritePool {
         layer.atlasH ?? layer.frame.height,
       );
       spr.place(feetX, feetY, zoom * layer.scale, this.app.screen.width, this.app.screen.height);
-      spr.player = playerRow;
+      spr.player = layerLutRow(lut, layer, playerRow);
       spr.visible = true;
     } else {
       let spr = this.sprites.get(key);

@@ -8,18 +8,22 @@ import type {
   SpriteBindings,
   SpriteKind,
 } from '../data/sprites/index.js';
+import type { ResolvedLayer } from './sprite-pool/resolved-layer.js';
 
 /** The player-colour LUT the paletted settler meshes read team colours through. The texture carries one
  *  `playerRows`-row block per recolor tier (`row = tier * playerRows + player`, tier 0 = the plain
- *  player rows). */
+ *  player rows), then the head row. */
 export interface PlayerColourLut {
   readonly source: TextureSource;
-  /** Total row count, across every armor-tier block. */
+  /** Total row count, the head row included. */
   readonly colours: number;
   /** Rows per armor-tier block. */
   readonly playerRows: number;
   /** Worn armor `goodType` → its recolor tier (`armortypes.ini` `type`, 1..4). */
   readonly armorTierByGood: ReadonlyMap<number, number>;
+  /** The row after the blocks, which a head overlay reads: the original composes a head palette apart
+   *  from the body's, and the team recipes patch the body's bands only. */
+  readonly headRow: number;
 }
 
 /** The `(armor tier, player)` block row when the worn `armorGood` resolves to a tier the texture
@@ -34,7 +38,16 @@ export function paletteLutRow(
   const tier = palette.armorTierByGood.get(armorGood);
   if (tier === undefined) return base;
   const row = tier * palette.playerRows + base;
-  return row < palette.colours ? row : base;
+  return row < palette.headRow ? row : base;
+}
+
+/** The row one resolved layer reads: the head row for a head overlay, else the body's `bodyRow`. */
+export function layerLutRow(
+  palette: PlayerColourLut,
+  layer: Pick<ResolvedLayer, 'head'>,
+  bodyRow: number,
+): number {
+  return layer.head === true ? palette.headRow : bodyRow;
 }
 
 export interface SpriteLayer {

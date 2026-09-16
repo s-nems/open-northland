@@ -68,7 +68,7 @@ export async function runPipeline(args: Args): Promise<void> {
   });
   console.log(
     `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
-      `${lut ? `, ${lut.colors}-colour ×${lut.armorTiers}-tier LUT -> ${lut.png}` : ' (LUT skipped)'}` +
+      `${lut ? `, ${lut.colors}-colour ×${lut.armorTiers}-tier + head LUT -> ${lut.png}` : ' (LUT skipped)'}` +
       `, ${guideAtlases} guidepost player atlas(es)`,
   );
 

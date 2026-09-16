@@ -92,12 +92,26 @@ async function loadBuildTimeSheet(url: string): Promise<BuildTimeSheet | undefin
   return { width: img.width, height: img.height, values };
 }
 
+/** The served player-colour LUT and the rows the pipeline stacked into it. */
+export interface PlayerLut {
+  readonly source: TextureSource;
+  /** Total rows, the head row included. */
+  readonly colours: number;
+  /** The head palette row, the one after the player blocks. */
+  readonly headRow: number;
+}
+
 /**
- * The player-colour LUT texture (`/bobs/player-lut.png`, a `256 × (colours × armor tiers)` sheet) the
- * paletted character atlases are read through; `undefined` when the pipeline hasn't produced it.
+ * The player-colour LUT (`/bobs/player-lut.png`): one 16-row player block per armor tier, then one head
+ * row, the layout `convertPlayerColorLut` writes. The row count comes from the texture's own height, not
+ * a constant, so the shader's row lookup cannot desync from the PNG. `undefined` when the pipeline hasn't
+ * produced it.
  */
-export function loadPlayerLut(): Promise<TextureSource | undefined> {
-  return loadTextureIfPresent('/bobs/player-lut.png');
+export async function loadPlayerLut(): Promise<PlayerLut | undefined> {
+  const source = await loadTextureIfPresent('/bobs/player-lut.png');
+  if (source === undefined) return undefined;
+  const colours = source.pixelHeight;
+  return { source, colours, headRow: colours - 1 };
 }
 
 let contentIrPromise: Promise<unknown> | null = null;

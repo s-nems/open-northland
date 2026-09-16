@@ -144,6 +144,7 @@ export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
 export { type EntityBounds, type ResolvedLayer, resolveLayers } from './gpu/sprite-pool/index.js';
 export {
+  layerLutRow,
   paletteLutRow,
   type SettlerCharacter,
   type SettlerCharacterSet,

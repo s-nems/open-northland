@@ -13,8 +13,8 @@ import { makeTempDir } from './support/game-tree.js';
  * Covers the player-colour LUT stage's contract shape: one row per {@link PLAYER_COLORS} slot (10
  * shipped `playerNN.pcx` + 6 hue-rotated synthetics), times one 16-row block per armor tier when the
  * `human_armor_00N` recipes resolve (`row = 16*tier + player`), degrading to the 16-row player-only
- * LUT when they don't. The row ORDER is the invariant the renderer mirrors, so the row count
- * (= palette height) is what is asserted here.
+ * block when they don't, then the one head row. The row ORDER is the invariant the renderer mirrors,
+ * so the row count (= palette height) is what is asserted here.
  */
 const CREATURES_DIR = join('Data', 'engine2d', 'bin', 'palettes', 'creatures');
 
@@ -73,10 +73,35 @@ describe('convertPlayerColorLut', () => {
     expect(result.colors).toBe(PLAYER_COLORS.length);
     expect(result.armorTiers).toBe(1); // no readable recipes - player rows only
     expect(result.png).toBe(`${BOBS_DIR}/player-lut.png`);
+    expect(result.headRow).toBe(PLAYER_COLORS.length); // the row after the one block
 
     const png = await decodePng(await readFile(join(outDir, result.png)));
     expect(png.width).toBe(256); // 256 palette entries per row
-    expect(png.height).toBe(PLAYER_COLORS.length); // one row per player slot, in slot order
+    expect(png.height).toBe(PLAYER_COLORS.length + 1); // one row per player slot, in slot order, + head
+  });
+
+  it('composes the head row from the base with the eyebrow band copied from the hair band', async () => {
+    const outDir = await outTreeWithSources();
+    const result = await convertPlayerColorLut(
+      rootsAt(outDir),
+      outDir,
+      await indexSourceAssets(rootsAt(outDir)),
+    );
+
+    const png = await decodePng(await readFile(join(outDir, result.png)));
+    const base = palette(0);
+    const rgbAt = (row: number, index: number): number[] => {
+      const o = (row * png.width + index) * 4;
+      return [png.rgba[o] ?? -1, png.rgba[o + 1] ?? -1, png.rgba[o + 2] ?? -1];
+    };
+    const baseAt = (index: number): number[] => [...base.subarray(index * 3, index * 3 + 3)];
+    // Head band 5 (`Patch 21`, eyebrows) reads head band 4 (`Patch 20`, hair); the team bands stay base.
+    for (let k = 0; k < 16; k++) {
+      expect(rgbAt(result.headRow, 80 + k)).toEqual(baseAt(64 + k));
+      expect(rgbAt(result.headRow, 160 + k)).toEqual(baseAt(160 + k));
+    }
+    // A player row still carries the ramp on its band 5, which is why the head needs its own row.
+    expect(rgbAt(0, 80)).not.toEqual(baseAt(80));
   });
 
   it('appends one 16-row block per armor tier when the recipes and ramps resolve', async () => {
@@ -104,8 +129,9 @@ describe('convertPlayerColorLut', () => {
     );
 
     expect(result.armorTiers).toBe(5); // none + wool/leather/chain/plate blocks
+    expect(result.headRow).toBe(PLAYER_COLORS.length * 5);
     const png = await decodePng(await readFile(join(outDir, result.png)));
-    expect(png.height).toBe(PLAYER_COLORS.length * 5); // row = 16*tier + player
+    expect(png.height).toBe(PLAYER_COLORS.length * 5 + 1); // row = 16*tier + player, then the head row
   });
 
   it('throws when the base creature palette is absent from the out tree', async () => {

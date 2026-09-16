@@ -31,8 +31,9 @@ differ from it at every index the guidepost draws".
 ## Scope
 
 - Compose one LUT block per distinct base palette the human `[jobbasegraphics]` records name, keeping
-  the existing `(armor tier, player)` layout inside each block, and carry the block order to the app so
-  a character resolves its own. `buildPaletteLutImage` already takes an ordered row list.
+  the existing `(armor tier, player)` layout and the trailing head row inside each block, and carry the
+  block order to the app so a character resolves its own. `buildPaletteLutImage` already takes an
+  ordered row list.
 - Give the render's `paletteLutRow` the block term and let a settler character name its block.
 - Fall back to `gfxpaletterandom` when a record names no base palette, so the two byzantine bodies
   bind at all; confirm against the running original that `grizzu` is the skin they wear.

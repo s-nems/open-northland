@@ -55,6 +55,7 @@ export function resolveCharacterLayers(
         scale,
         atlasW: head.atlas.width,
         atlasH: head.atlas.height,
+        head: true,
       });
     }
   }

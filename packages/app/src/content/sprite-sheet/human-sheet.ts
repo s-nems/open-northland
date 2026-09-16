@@ -208,8 +208,7 @@ export async function loadHumanSpriteSheet(
     ...(lut !== undefined
       ? {
           palette: {
-            source: lut,
-            colours: lut.pixelHeight,
+            ...lut,
             playerRows: PLAYER_COLOR_COUNT,
             armorTierByGood: armorTiersByGood(ir),
           },

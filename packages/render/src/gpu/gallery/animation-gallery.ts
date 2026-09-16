@@ -1,8 +1,8 @@
-import { type Application, Container, Graphics, Sprite, Text, type TextureSource } from 'pixi.js';
+import { type Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import { type Camera, cameraScreenX, cameraScreenY } from '../../data/projection/index.js';
 import { lookupFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import type { SpriteLayer } from '../sprite-sheet.js';
+import type { PlayerColourLut, SpriteLayer } from '../sprite-sheet.js';
 import { TextureCache } from '../texture-cache.js';
 import {
   CELL_H,
@@ -46,6 +46,9 @@ export interface GalleryCellSpec {
   readonly player?: number;
 }
 
+/** The LUT a paletted gallery reads; see {@link PlayerColourLut} for the rows. */
+export type GalleryPalette = Pick<PlayerColourLut, 'source' | 'colours' | 'headRow'>;
+
 /** One cell's retained display objects (built once, textures swapped per frame). */
 interface GalleryCell {
   readonly clip: GalleryClip;
@@ -71,7 +74,7 @@ export class AnimationGallery {
   private readonly columns: number;
   private readonly cellCount: number;
   /** When set, cells draw through the player-colour LUT ({@link PalettedSprite}) instead of baked textures. */
-  private readonly palette: { readonly source: TextureSource; readonly colours: number } | undefined;
+  private readonly palette: GalleryPalette | undefined;
 
   constructor(
     app: Application,
@@ -81,10 +84,10 @@ export class AnimationGallery {
       readonly direction?: GalleryDirection;
       /**
        * The player-colour LUT (a `256 × colours` texture) and its row count. When given, every cell
-       * draws through it at the cell's {@link GalleryCellSpec.player} row; absent, cells take the
-       * plain baked-texture path.
+       * draws through it at the cell's {@link GalleryCellSpec.player} row, its head overlays at the
+       * head row; absent, cells take the plain baked-texture path.
        */
-      readonly palette?: { readonly source: TextureSource; readonly colours: number };
+      readonly palette?: GalleryPalette;
     },
   ) {
     this.app = app;
@@ -182,10 +185,11 @@ export class AnimationGallery {
           spr.visible = false;
           continue;
         }
-        if (spr instanceof PalettedSprite) {
+        const palette = this.palette;
+        if (spr instanceof PalettedSprite && palette !== undefined) {
           spr.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
           spr.place(originX, originY, scale, resW, resH);
-          spr.player = cell.player;
+          spr.player = i === 0 ? cell.player : palette.headRow;
         } else {
           spr.texture = this.textures.get(layer.source, frame);
           spr.position.set(frame.offsetX, frame.offsetY);

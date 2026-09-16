@@ -138,7 +138,7 @@ export class WorkerSpriteOverlay {
       if (r === null) return;
       const cellX = inner.x + slotW * i + gapOffset;
       const feetX = cellX + slotW / 2;
-      // Same (armor tier, player) LUT row the world pool binds, so the portrait matches the map look.
+      // The body's (armor tier, player) LUT row the world pool binds, so the figure matches the map look.
       const row = this.sheet === undefined ? 0 : settlerPaletteLutRow(this.sheet, r.item);
       for (let li = 0; li < r.layers.length; li++) {
         const layer = r.layers[li];

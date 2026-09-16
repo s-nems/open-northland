@@ -32,4 +32,6 @@ export interface ResolvedLayer {
    * test, since clicking the darkened ground beside a caster must not select it.
    */
   readonly shadow?: true;
+  /** A settler's head overlay, which the paletted path reads through the LUT's head row. */
+  readonly head?: true;
 }

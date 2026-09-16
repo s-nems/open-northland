@@ -6,14 +6,21 @@
  * The `randompalette.ini` `player_00…09` recipes bind the `Player NN` ramp, colour-range 1 of a
  * `playerNN.pcx`, onto the men's clothing patches. The original ships 10 player colours; the extra six
  * are hue-rotated approximations with no original equivalent.
+ *
+ * A human carries two palettes, body and head, each from the base its record names for that half: a
+ * recipe's `Patch` id 0..15 addresses body band `id`, 16..31 head band `id - 16` (`RandomPalette_Execute`
+ * in the owned `the original`). The player recipes patch body bands only, so the head never wears the
+ * team ramp.
  */
 
 import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
 
+/** One palette band, a `Patch` target or a `[GfxPalette16]` ramp, is 16 indices. */
+const BAND_LENGTH = 16;
 /** First index of the source `Player NN` ramp inside a `playerNN.pcx` (colour-range 1 = indices 16–31). */
 export const PLAYER_RAMP_START = 16;
 /** Length of the player ramp (a 16-colour `[GfxPalette16]` ramp). */
-const PLAYER_RAMP_LENGTH = 16;
+const PLAYER_RAMP_LENGTH = BAND_LENGTH;
 
 /**
  * The body-palette index runs that receive a player's colour ramp: patch 10 (indices 160–175, the men's
@@ -28,6 +35,11 @@ export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
   [80, 95],
   [160, 175],
 ];
+
+/** Head band 4 (`Patch 20`) is the hair, beard and moustache ramp; band 5 (`Patch 21`) the eyebrows
+ *  (the mod's own `inis/humans/palety - info.txt` band notes). */
+const HEAD_HAIR_BAND = 4;
+const HEAD_EYEBROW_BAND = 5;
 
 export interface PlayerColorDef {
   readonly id: number;
@@ -97,6 +109,20 @@ export function composePlayerPalette(base: Uint8Array, source: Uint8Array): Uint
       out[o + 2] = source[s + 2] ?? 0;
     }
   }
+  return out;
+}
+
+/**
+ * The head palette every player's heads read: the body base with the eyebrow band copied from the hair
+ * band. Approximation: the human `*_Base` recipes roll that copy (`Patch 21 20 35`) against a lighter
+ * blond or face-skin option and `Egy_Soldier_Base` leaves the band alone; the copy is taken
+ * deterministically, and the heads authored on another base palette read this one's row too.
+ */
+export function composeHeadPalette(base: Uint8Array): Uint8Array {
+  assertPalette(base, 'base palette');
+  const out = copyPalette(base);
+  const from = HEAD_HAIR_BAND * BAND_LENGTH * 3;
+  out.copyWithin(HEAD_EYEBROW_BAND * BAND_LENGTH * 3, from, from + BAND_LENGTH * 3);
   return out;
 }
 

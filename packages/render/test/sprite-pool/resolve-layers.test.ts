@@ -151,6 +151,26 @@ describe('resolveLayers - wildlife species resolution', () => {
       [HUMAN_BOB, true, 64],
     ]);
   });
+
+  it('marks only the head overlay as the head layer (it reads the LUT head row, not the team row)', () => {
+    const headSource = {} as TextureSource;
+    const withHead: SpriteSheet = {
+      ...sheet,
+      characters: {
+        byJob: {},
+        default: {
+          body: { source: humanSource, atlas: humanAtlas },
+          heads: [{ source: headSource, atlas: humanAtlas }],
+          binding: { idle: HUMAN_BOB },
+        },
+      },
+    };
+    const layers = resolveLayers(withHead, settler(HUMAN_TRIBE), 0) ?? [];
+    expect(layers.map((l) => [l.source === headSource, l.head ?? false])).toEqual([
+      [false, false],
+      [true, true],
+    ]);
+  });
 });
 
 describe('resolveLayers - the per-tribe civilization looks', () => {

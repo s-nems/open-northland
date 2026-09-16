@@ -4,7 +4,7 @@ import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/pro
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import { type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
+import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
@@ -110,7 +110,8 @@ export class LayerBinder {
       const box = this.drawBox;
       layerDrawBox(box, layer, displayReveal, revealTexture !== null);
       if (pe.paletted) {
-        this.bindPalettedLayer(pe, i, layer, originX, originY, camScale, frame, playerRow);
+        const row = layerLutRow(pe.palette, layer, playerRow);
+        this.bindPalettedLayer(pe, i, layer, originX, originY, camScale, frame, row);
       } else {
         this.bindPlainLayer(pe, i, layer, revealTexture, box, tint);
       }
@@ -164,7 +165,7 @@ export class LayerBinder {
     originY: number,
     camScale: number,
     frame: BindFrame,
-    playerRow: number,
+    lutRow: number,
   ): void {
     let spr = pe.sprites[i];
     if (spr === undefined) {
@@ -186,7 +187,7 @@ export class LayerBinder {
       frame.screenH,
     );
     spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh
-    spr.player = playerRow;
+    spr.player = lutRow;
     spr.visible = true;
   }
 

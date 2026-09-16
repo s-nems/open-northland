@@ -21,6 +21,16 @@ separate and converts both to a common RGBA representation.
 Player colors, GUI elements, fonts, and some building families use palette lookup textures rather than
 duplicated RGBA atlases.
 
+A human draws its body and head bobs through two palettes, each starting from the base its
+`[jobbasegraphics]` record names for that half (`gfxpalettebasebody`, `gfxpalettebasehead`). A
+`randompalette.ini` `Patch <id> <ramp|patch> <weight>` line overwrites one 16-entry band: id 0..15
+addresses body band `id`, 16..31 head band `id - 16`, and a numeric source copies the band it names in
+the same way; the weights of one id's lines are summed and rolled, and lines apply in file order
+(`RandomPalette_Execute`, the original). The `player_NN` and `woman_NN` recipes patch body bands
+only, so a head never carries the team ramp. The human `*_Base` recipes roll the eyebrows (head band 5)
+from the already rolled hair band (`Patch 21 20 35`) against a lighter blond or face-skin option;
+`Egy_Soldier_Base` leaves them at the base.
+
 ## Bob animations (`.bmd`)
 
 A bob manager contains frame records, line-control words, and packed scanline data. A frame record
