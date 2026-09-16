@@ -1,9 +1,9 @@
 import {
   buildSpriteScene,
   type DrawItem,
-  paletteLutRow,
   resolveLayers,
   type SpriteSheet,
+  settlerPaletteLutRow,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, type Container as PixiContainer } from 'pixi.js';
@@ -122,7 +122,12 @@ export class WorkerSpriteOverlay {
       if (stanceLayers === null || stanceBody === undefined) return null;
       const layers = clock === INDOOR_POSE_TICK ? stanceLayers : resolveLayers(this.sheet, item, clock);
       if (layers === null || layers.length === 0) return null;
-      return { id, item, layers, bodyH: Math.max(1, stanceBody.frame.height * stanceBody.scale) };
+      return {
+        id,
+        item,
+        layers,
+        bodyH: Math.max(1, stanceBody.frame.height * stanceBody.scale),
+      };
     });
     const tallest = Math.max(1, ...resolved.map((r) => r?.bodyH ?? 1));
     const zoom = (inner.h * CHAR_FILL) / tallest;
@@ -133,9 +138,8 @@ export class WorkerSpriteOverlay {
       if (r === null) return;
       const cellX = inner.x + slotW * i + gapOffset;
       const feetX = cellX + slotW / 2;
-      const lut = this.sheet?.palette;
       // Same (armor tier, player) LUT row the world pool binds, so the portrait matches the map look.
-      const row = lut === undefined ? 0 : paletteLutRow(lut, r.item.player, r.item.armorGood);
+      const row = this.sheet === undefined ? 0 : settlerPaletteLutRow(this.sheet, r.item);
       for (let li = 0; li < r.layers.length; li++) {
         const layer = r.layers[li];
         if (layer !== undefined) this.pool.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, row);

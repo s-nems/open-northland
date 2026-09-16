@@ -5,7 +5,7 @@ import {
   type TextureSource,
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { JOB_CIVILIST, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../src/catalog/jobs.js';
+import { JOB_CIVILIST, JOB_HERO_SWORD, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../src/catalog/jobs.js';
 import type { BobSeqRow, ContentIr, JobGraphicsRow } from '../src/content/ir/rows.js';
 import { tribeLooks } from '../src/content/settler-gfx/index.js';
 import type { LoadedLook, ResolvedLook } from '../src/content/sprite-sheet/character-looks.js';
@@ -33,6 +33,7 @@ const ir: ContentIr = {
   jobGraphics: [
     row(VIKING, JOB_CIVILIST, 'cr_hum_body_00'),
     row(VIKING, JOB_SOLDIER_UNARMED, 'cr_hum_body_05'),
+    row(VIKING, JOB_HERO_SWORD, 'cr_hum_body_60'),
     row(FRANK, JOB_CIVILIST, 'cr_hum_body_30'),
     row(FRANK, JOB_SOLDIER_UNARMED, 'cr_hum_body_32'),
     // The weresnake authors a soldier and no civilian at all.
@@ -78,6 +79,39 @@ describe('tribeCharacters', () => {
     expect(viking?.byJob[JOB_SOLDIER_UNARMED]?.body).toBe(vikingIn.layersByBody.get('cr_hum_body_05')?.body);
     expect(frank?.default.body).toBe(frankIn.layersByBody.get('cr_hum_body_30')?.body);
     expect(frank?.byJob[JOB_SOLDIER_UNARMED]?.body).toBe(frankIn.layersByBody.get('cr_hum_body_32')?.body);
+  });
+
+  it('pins a hero job to its unique decoded body ahead of equipped weapon looks', () => {
+    const inputs = inputsFor(VIKING, ['cr_hum_body_00', 'cr_hum_body_05', 'cr_hum_body_60']);
+    const sequencesByBody = new Map(inputs.sequencesByBody);
+    sequencesByBody.set('cr_hum_body_60', seqs(['hero_walk', 'hero_wait']));
+    const heroIr: ContentIr = {
+      ...ir,
+      gfxWalkAtomics: [
+        {
+          tribe: VIKING,
+          job: JOB_HERO_SWORD,
+          goodType: 0,
+          bodySeq: 'hero_walk',
+          dirFrames: Array.from({ length: 8 }, () => [0]),
+        },
+      ],
+      gfxAtomics: [
+        {
+          tribe: VIKING,
+          job: JOB_HERO_SWORD,
+          action: 2,
+          bodySeq: 'hero_wait',
+          mode: 1,
+          dirFrames: [[0]],
+        },
+      ],
+    };
+    const table = tribeCharacters(heroIr, [], VIKING, { ...inputs, sequencesByBody });
+    const uniqueBody = inputs.layersByBody.get('cr_hum_body_60')?.body;
+
+    expect(table?.byJob[JOB_HERO_SWORD]?.body).toBe(uniqueBody);
+    expect(table?.fixedByJob?.[JOB_HERO_SWORD]?.body).toBe(uniqueBody);
   });
 
   it('fills a job the tribe authors no record for from the base table', () => {

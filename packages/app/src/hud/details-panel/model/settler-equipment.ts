@@ -79,20 +79,21 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   const jobType = num(s.jobType);
   const job = jobType === undefined ? undefined : ctx.jobs.find((j) => j.typeId === jobType);
   const fighter = job !== undefined && systems.isFighterJobRow(job);
+  const hero = job !== undefined && systems.isHeroJobRow(job);
   if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
     rows.push({
       titleId: HUMANWINDOW.weapon,
       fallback: slots.weapon,
       group: 'weapon',
       slots: [slotModel(ctx, eq?.weapon)],
-      wearable: true,
+      wearable: !hero,
     });
     rows.push({
       titleId: HUMANWINDOW.armor,
       fallback: slots.armor,
       group: 'armor',
       slots: [slotModel(ctx, eq?.armor)],
-      wearable: true,
+      wearable: !hero,
     });
   }
   rows.push({
@@ -100,7 +101,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
     fallback: slots.boots,
     group: 'boots',
     slots: [slotModel(ctx, eq?.boots)],
-    wearable: true,
+    wearable: !hero,
   });
   if (!fighter || eq?.tool != null) {
     rows.push({
@@ -108,7 +109,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
       fallback: slots.tools,
       group: 'tool',
       slots: [slotModel(ctx, eq?.tool)],
-      wearable: !fighter,
+      wearable: !fighter && !hero,
     });
   }
   const misc = Array.isArray(eq?.misc) ? (eq.misc as RawEquipSlot[]) : [];
@@ -119,7 +120,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
     fallback: slots.misc,
     group: 'misc',
     slots: miscSlots,
-    wearable: true,
+    wearable: !hero,
   });
   return rows;
 }

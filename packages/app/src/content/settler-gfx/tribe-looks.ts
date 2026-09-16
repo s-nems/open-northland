@@ -16,10 +16,9 @@ export interface TribeLook {
   readonly headPalette: string;
 }
 
-/** What a record with no `gfxpalettebasebody` falls to: the skin 52 of the 71 records name outright. The
- *  four that leave it unnamed name only a `gfxpaletterandom` - the two byzantine `grizzu` bodies, which the
- *  pipeline emits no atlas for at all, and the byzantine and frank job-40 records on the plain soldier
- *  body, which this default resolves correctly. */
+/** What a record with no `gfxpalettebasebody` falls to: the skin most records name outright and the same
+ *  floor the BMD pipeline decodes such bodies with. `gfxpaletterandom` remains a runtime tint range rather
+ *  than a base bob palette; until that composition is supported, this keeps its unique body drawable. */
 const DEFAULT_PALETTE = 'test_human_00';
 
 /** The bob-set prefix of the human bodies. A `[jobbasegraphics]` record may name an animal body instead -

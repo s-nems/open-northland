@@ -45,6 +45,7 @@ interface IdSets {
   /** Keyed by each record's own `.index`, which need not match its position in the table. */
   readonly landscapeGfxIndices: ReadonlySet<number>;
   readonly patternIds: ReadonlySet<number>;
+  readonly armorIds: ReadonlySet<number>;
 }
 
 function buildIdSets(set: ContentSet): IdSets {
@@ -57,6 +58,7 @@ function buildIdSets(set: ContentSet): IdSets {
     landscapeIds: new Set(set.landscape.map((l) => l.typeId)),
     landscapeGfxIndices: new Set(set.landscapeGfx.map((g) => g.index)),
     patternIds: new Set(set.gfxPatterns.map((p) => p.id)),
+    armorIds: new Set(set.armor.map((a) => a.typeId)),
   };
 }
 
@@ -270,10 +272,12 @@ function checkTerrainPatterns(set: ContentSet, { patternIds }: IdSets): string[]
 
 // `resolveJobAtomics` tolerates a dangling or cyclic `baseJob` by inheriting nothing, which would
 // leave a job quietly short of atomics, so both faults are caught here instead.
-function checkJobs(set: ContentSet, { jobIds }: IdSets): string[] {
+function checkJobs(set: ContentSet, { armorIds, jobIds }: IdSets): string[] {
   const errors: string[] = [];
   const firstRows = firstByTypeId(set.jobs);
   for (const j of firstRows.values()) {
+    if (j.fixedArmorType !== undefined && !armorIds.has(j.fixedArmorType))
+      errors.push(`job "${j.id}" references unknown fixed armorType ${j.fixedArmorType}`);
     if (j.baseJob === undefined) continue;
     if (!jobIds.has(j.baseJob)) {
       errors.push(`job "${j.id}" references unknown base jobType ${j.baseJob}`);

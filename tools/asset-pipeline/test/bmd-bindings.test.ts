@@ -95,7 +95,7 @@ describe('resolveGraphicsBindings', () => {
         { level: 2, text: 'gfxbobmanagerhead 0 "Data\\Bobs\\Head00.bmd"' },
         { level: 2, text: 'gfxpalettebasebody "test_human_00"' },
         { level: 2, text: 'gfxpalettebasehead "test_human_00"' },
-        // A second section name (jobchangegraphics) must not be picked up by the base extractor.
+        // A palette-less job-change body uses the same human palette floor as a palette-less hero.
         { level: 1, text: 'jobchangegraphics' },
         { level: 2, text: 'logictribe 1' },
         { level: 2, text: 'gfxbobmanagerbody 0 "Data\\Bobs\\Body01.bmd"' },
@@ -104,12 +104,12 @@ describe('resolveGraphicsBindings', () => {
 
     const { bindings } = await resolveGraphicsBindings({ mod: game });
 
-    // Base animals binding first, then the flattened base-human body + head slots; the
-    // jobchangegraphics body00 record is NOT emitted (different section name).
+    // Base animals binding first, then the flattened base-human body + head slots and job-change body.
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/lion.bmd', 'lion01'],
       ['data/bobs/body00.bmd', 'test_human_00'],
       ['data/bobs/head00.bmd', 'test_human_00'],
+      ['data/bobs/body01.bmd', 'test_human_00'],
       GUIDEPOST_BINDING,
     ]);
     expect(bindings[1]?.shadowBmd).toBe('data/bobs/body00_s.bmd');
@@ -336,7 +336,7 @@ describe('jobBaseGraphicsToBindings', () => {
     ]);
   });
 
-  it('drops slots whose palette editname is absent (nothing to resolve against)', () => {
+  it('drops a head whose palette editname is absent while preserving the body binding', () => {
     const flat = jobBaseGraphicsToBindings([
       {
         tribeId: undefined,
@@ -356,6 +356,30 @@ describe('jobBaseGraphicsToBindings', () => {
         paletteName: 'b_pal',
         tribeId: undefined,
         jobId: undefined,
+      },
+    ]);
+  });
+
+  it('emits a body-only random-palette hero through the runtime human palette floor', () => {
+    const flat = jobBaseGraphicsToBindings([
+      {
+        tribeId: 3,
+        jobId: 42,
+        body: [{ index: 0, bmd: 'data/bobs/body73.bmd', shadowBmd: 'data/bobs/body73_s.bmd' }],
+        head: [],
+        bodyPalette: undefined,
+        headPalette: undefined,
+        randomPalette: 'grizzu_small',
+      },
+    ]);
+
+    expect(flat).toEqual([
+      {
+        bmd: 'data/bobs/body73.bmd',
+        shadowBmd: 'data/bobs/body73_s.bmd',
+        paletteName: 'test_human_00',
+        tribeId: 3,
+        jobId: 42,
       },
     ]);
   });

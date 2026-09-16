@@ -31,7 +31,7 @@ import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
-import { isAnimalTribe, settlerHitpoints } from '../readviews/index.js';
+import { isAnimalTribe, isHeroJob, settlerHitpoints } from '../readviews/index.js';
 import { attachAuthoredBuildings } from './attach.js';
 
 /**
@@ -103,15 +103,35 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   const adultPool = tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS;
   const hitpoints = override ?? (young ? DEFAULT_SETTLER_HITPOINTS : adultPool);
   world.add(e, Health, { hitpoints, max: hitpoints });
-  if (spec.armorClass !== undefined && spec.armorClass > 0) {
-    world.add(e, Armor, { armorClass: spec.armorClass });
+  const heroJob = isHeroJob(content, spec.jobType);
+  const fixedHeroArmor = heroJob ? contentIndex(content).jobs.get(spec.jobType)?.fixedArmorType : undefined;
+  const armorClass = fixedHeroArmor ?? spec.armorClass;
+  if (armorClass !== undefined && armorClass > 0) {
+    world.add(e, Armor, { armorClass });
   }
   if (spec.weaponTypeId !== undefined && spec.weaponTypeId > 0) {
     world.add(e, Weapon, { weaponTypeId: spec.weaponTypeId });
   }
-  // Loose `!= null` because a command is the replay wire format, where an explicit `null` also means
-  // "no equipment".
-  if (spec.equipment != null) {
+  // A hero's weapon and armor are part of the authored class, not player-controlled inventory. Resolve
+  // the weapon from the same (tribe, job) record combat uses and the armor good from the fixed armor type,
+  // so map placement, mission `sethuman` and admin spawning all produce the same permanent loadout.
+  const fixedHeroWeapon = heroJob
+    ? contentIndex(content).weaponsByTribeAndJob.get(spec.tribe)?.get(spec.jobType)?.goodType
+    : undefined;
+  const fixedHeroArmorGood =
+    fixedHeroArmor === undefined ? undefined : contentIndex(content).armor.get(fixedHeroArmor)?.goodType;
+  if (heroJob && (fixedHeroWeapon !== undefined || fixedHeroArmorGood !== undefined)) {
+    world.add(
+      e,
+      Equipment,
+      equipmentFromCommand({
+        ...(fixedHeroWeapon !== undefined ? { weapon: { goodType: fixedHeroWeapon } } : {}),
+        ...(fixedHeroArmorGood !== undefined ? { armor: { goodType: fixedHeroArmorGood } } : {}),
+      }),
+    );
+  } else if (!heroJob && spec.equipment != null) {
+    // Loose `!= null` because a command is the replay wire format, where an explicit `null` also means
+    // "no equipment".
     world.add(e, Equipment, equipmentFromCommand(spec.equipment));
   }
   if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {

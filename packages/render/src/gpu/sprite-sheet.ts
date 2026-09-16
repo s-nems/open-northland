@@ -1,5 +1,5 @@
 import type { TextureSource } from 'pixi.js';
-import type { InHouseProgramLookup } from '../data/scene/index.js';
+import type { DrawItem, InHouseProgramLookup } from '../data/scene/index.js';
 import type {
   BuildTimeSheet,
   ByJobTable,
@@ -81,6 +81,27 @@ export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
     /** Every animal-record tribe, bound or not - the membership test above. */
     readonly tribes: ReadonlySet<number>;
   };
+}
+
+/**
+ * The palette row for one indexed settler body. A fixed-by-job character is an authored identity (the
+ * hero bodies), not a generic soldier body: its armor still affects combat and equipment, but does not
+ * select an armor-colour block. The base player row remains active for any authored team-colour pixels.
+ */
+export function settlerPaletteLutRow(
+  sheet: Pick<SpriteSheet, 'palette' | 'characters'> | undefined,
+  item: DrawItem,
+): number {
+  const palette = sheet?.palette;
+  if (palette === undefined) return 0;
+  const table =
+    (item.tribe !== undefined ? sheet?.characters?.byTribe?.[item.tribe] : undefined) ?? sheet?.characters;
+  const fixedCharacter =
+    item.kind === 'settler' &&
+    item.young !== true &&
+    item.jobType !== undefined &&
+    table?.fixedByJob?.[item.jobType] !== undefined;
+  return paletteLutRow(palette, item.player, fixedCharacter ? undefined : item.armorGood);
 }
 
 /**

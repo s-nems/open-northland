@@ -100,6 +100,8 @@ export interface ByJobTable<T> {
   readonly byJob: Readonly<Record<number, T>>;
   /** Looks for an `Age`-carrying (born-young) settler, keyed by its age-class `jobType` (1..4). */
   readonly youngByJob?: Readonly<Record<number, T>>;
+  /** Permanent authored arms by job (heroes); selected before mutable equipment state. */
+  readonly fixedByJob?: Readonly<Record<number, T>>;
   /** A warrior's look by equipped weapon good, since the drawn weapon follows the equipment slot rather
    *  than the job. */
   readonly byWeaponGood?: Readonly<Record<number, T>>;

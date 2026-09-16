@@ -5,6 +5,12 @@ import {
   JOB_BABY_MALE,
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
+  JOB_HERO_AXE,
+  JOB_HERO_SABER,
+  JOB_HERO_SPEAR,
+  JOB_HERO_SWORD,
+  JOB_HERO_UNARMED,
+  JOB_HEROINE_BOW,
   JOB_HUNTER,
   JOB_SOLDIER,
   JOB_WOMAN,
@@ -45,6 +51,7 @@ import {
   type SettlerPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
+import { jobDisplayName } from '../src/hud/details-panel/model/context.js';
 import type { PanelBar } from '../src/hud/details-panel/model/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
@@ -60,6 +67,24 @@ function equipmentWorld(): { snapshot: WorldSnapshot; ctx: UnitPanelModelContext
 }
 
 describe('selection details panel model', () => {
+  it('shows the generic hero profession for every hero job instead of a body-specific name', () => {
+    const base = sandboxCtx();
+    const heroes = [
+      [JOB_HERO_UNARMED, 'hero_unarmed', 'Bohater'],
+      [JOB_HERO_SPEAR, 'hero_spear_siegfried', 'Bohater'],
+      [JOB_HERO_SWORD, 'hero_sword_bjarni', 'Bohater'],
+      [JOB_HERO_SABER, 'hero_saber_hatschi', 'Bohater'],
+      [JOB_HERO_AXE, 'hero_axe', 'Bohater'],
+      [JOB_HEROINE_BOW, 'heroine_bow_xena', 'Bohater'],
+    ] as const;
+    const ctx = {
+      ...base,
+      jobs: heroes.map(([typeId, id]) => ({ typeId, id, allowedAtomics: [], forbiddenAtomics: [] })),
+    };
+
+    for (const [typeId, , label] of heroes) expect(jobDisplayName(ctx, typeId)).toBe(label);
+  });
+
   it('reflects a selected headquarters from the sandbox acceptance scene', () => {
     const sim = createSceneSim(sandboxScene);
     sim.step();
@@ -786,6 +811,91 @@ describe('selection details panel model', () => {
     expect(rowsFor(JOB_SOLDIER)).toEqual(['weapon', 'armor', 'boots', 'misc']);
     // Back to a trade: the arms rows go, the tool row returns.
     expect(rowsFor(JOB_COLLECTOR)).toEqual(['boots', 'tool', 'misc']);
+  });
+
+  it('shows a hero without need bars and with a read-only permanent loadout', () => {
+    const baseCtx = sandboxCtx();
+    const ctx = {
+      ...baseCtx,
+      jobs: [
+        ...baseCtx.jobs,
+        {
+          typeId: JOB_HERO_SABER,
+          id: 'hero_saber_hatschi',
+          allowedAtomics: [],
+          forbiddenAtomics: [],
+        },
+      ],
+    };
+    const weaponGood = ctx.goods.find((good) => good.equip?.category === 'weapon');
+    if (weaponGood === undefined) throw new Error('sandbox content has no weapon good');
+    const armorGood = ctx.goods.find((good) => good.equip?.category === 'armor');
+    if (armorGood === undefined) throw new Error('sandbox content has no armor good');
+    const snapshot = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: {
+            tribe: 1,
+            jobType: JOB_HERO_SABER,
+            hunger: ONE,
+            fatigue: ONE,
+            piety: ONE,
+            enjoyment: ONE,
+            experience: [],
+          },
+          Health: { hitpoints: 300, max: 300 },
+          Owner: { player: 0 },
+          Equipment: {
+            boots: null,
+            tool: null,
+            weapon: { goodType: weaponGood.typeId, degreeOfUse: 0 },
+            armor: { goodType: armorGood.typeId, degreeOfUse: 0 },
+            misc: [null, null, null, null],
+          },
+        },
+      },
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.name).toBe('Hatchie');
+    expect(model.profession).toBe('Bohater');
+    expect(model.bars).toHaveLength(1);
+    expect(model.equipmentRows.find((row) => row.group === 'weapon')?.slots[0]?.occupied).toBe(true);
+    expect(model.equipmentRows.find((row) => row.group === 'armor')?.slots[0]?.occupied).toBe(true);
+    expect(model.equipmentRows.every((row) => !row.wearable)).toBe(true);
+  });
+
+  it('uses a map-authored hero name ahead of the reused hero body name', () => {
+    const baseCtx = sandboxCtx();
+    const ctx = {
+      ...baseCtx,
+      jobs: [
+        ...baseCtx.jobs,
+        {
+          typeId: JOB_HERO_SABER,
+          id: 'hero_saber_hatschi',
+          allowedAtomics: [],
+          forbiddenAtomics: [],
+        },
+      ],
+      mapText: (stringId: number) => (stringId === 100 ? 'Ykol' : undefined),
+    };
+    const snapshot = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_HERO_SABER, experience: [] },
+          ScriptedName: { stringId: 100 },
+        },
+      },
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.name).toBe('Ykol');
+    expect(model.profession).toBe('Bohater');
   });
 
   it('shows empty equipment rows for a settler with no Equipment component', () => {

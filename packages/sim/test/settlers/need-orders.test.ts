@@ -7,7 +7,9 @@ import {
   NoRegeneration,
   Owner,
   Position,
+  Settler,
   Stockpile,
+  setSettlerJob,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
@@ -26,6 +28,7 @@ const HEADQUARTERS = 1;
 const TEMPLE = 3;
 const EAT_ATOMIC = 10;
 const PRAY_ATOMIC = 12;
+const HERO_JOB = 45;
 /** Well under the ¾·ONE eat threshold: nothing but an order sends this settler to a larder. */
 const FED: Fixed = fx.div(ONE, fx.fromInt(4));
 /** Just over it, so the drive fires on its own. */
@@ -57,6 +60,22 @@ function storeAt(sim: Simulation, x: number, y: number, food: number): Entity {
 }
 
 describe('orderNeed - answering a need on command', () => {
+  it('refuses need and regeneration orders for a hero', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const hero = ownedSettlerAt(sim, 2, 0, { hunger: HUNGRY });
+    setSettlerJob(sim.world, hero, HERO_JOB);
+    storeAt(sim, 2, 0, 3);
+
+    sim.enqueueSetup({ kind: 'orderNeed', entity: hero, need: 'hunger' });
+    sim.enqueueSetup({ kind: 'setRegeneration', entity: hero, enabled: false });
+    sim.step();
+
+    expect(sim.world.has(hero, NeedOrder)).toBe(false);
+    expect(sim.world.has(hero, NoRegeneration)).toBe(false);
+    expect(sim.world.has(hero, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(hero, Settler).jobType).toBe(HERO_JOB);
+  });
+
   it('sends a fed settler to the larder and clears the order once the meal lands', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = ownedSettlerAt(sim, 2, 0, { hunger: FED });

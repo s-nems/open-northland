@@ -4,8 +4,8 @@
  */
 
 /**
- * A settler's hitpoint pool (`TribeType.hitpoints`), an approximation on the real data scale (source
- * basis "Combat hit resolution"): animal `hitpointsAdult` runs to about 15000-20000, the HQ 100000, and
- * a real sword hits 1600, so at 5000 a fighter takes about 3 sword swings.
+ * A settler's hitpoint pool (`TribeType.hitpoints`). Byte-level evidence: the original's
+ * `an original routine` returns 5000 for every job, including heroes. Its one
+ * observed exception is a Byzantine wooden-spearman special case, which is outside this shared pool.
  */
 export const HUMAN_HITPOINTS = 5000;

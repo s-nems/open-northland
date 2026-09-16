@@ -17,7 +17,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { NEED_DRIVE_THRESHOLD, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { isFood, jobNeedsReligion } from '../../readviews/index.js';
+import { isFood, isHeroJob, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import {
   atOrWalk,
@@ -50,6 +50,7 @@ export function anyNeedPressing(
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed; piety: Fixed },
   ordered?: NeedKind,
 ): boolean {
+  if (isHeroJob(content, settler.jobType)) return false;
   return (
     ordered !== undefined ||
     settler.hunger >= NEED_DRIVE_THRESHOLD ||
@@ -90,6 +91,7 @@ export function answerNeedInPlace(
   e: Entity,
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
 ): boolean {
+  if (isHeroJob(ctx.content, settler.jobType)) return false;
   const ordered = orderedNeed(world, e);
   if (pressing(settler.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
@@ -151,6 +153,7 @@ export function planNeeds(
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
   spacing: PlannerSpacing,
 ): boolean {
+  if (isHeroJob(ctx.content, settler.jobType)) return false;
   // A script may freeze a unit's needs: they neither rise nor get answered, so it never leaves its post
   // to eat, sleep or pray (`MISSIONS.md`, behaviour bit 0).
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN)) return false;

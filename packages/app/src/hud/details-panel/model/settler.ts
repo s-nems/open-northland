@@ -71,14 +71,18 @@ function needBar(label: string, deficit: number | undefined): PanelBar {
  * shows (Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map
  * onto 1:1.
  */
-export function satisfactionBars(ent: SnapshotEntity, needsEnabled: boolean): PanelBar[] {
+export function satisfactionBars(
+  ent: SnapshotEntity,
+  needsEnabled: boolean,
+  carriesNeeds = true,
+): PanelBar[] {
   const hud = messages().hud;
   const comps: Comp = ent.components;
   const s = (comps.Settler ?? {}) as Comp;
   const bars: PanelBar[] = [];
   const health = healthBar(ent);
   if (health !== null) bars.push(health);
-  if (!needsEnabled) return bars;
+  if (!needsEnabled || !carriesNeeds) return bars;
   // A settler still growing carries no needs at all (`lifecycle/needs/system.ts`), so it shows its health
   // and nothing else.
   if (comps.Age !== undefined) return bars;

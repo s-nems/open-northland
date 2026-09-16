@@ -10,6 +10,7 @@ import {
   carryHeadAnims,
   characterBinding,
   directionalAnimFromSeq,
+  HERO_JOBS,
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from '../src/content/settler-gfx/index.js';
@@ -461,7 +462,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
     expect(ADULT_CHARACTER_BY_JOB[5]).toBe('woman');
   });
 
-  it('arming a warrior draws the same body its job does (the three weapon tables agree)', () => {
+  it('arming a mutable warrior draws the same body its job does (the three weapon tables agree)', () => {
     // `pickByJob` prefers the equipped-weapon body (`WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG`) over the job
     // body (`ADULT_CHARACTER_BY_JOB`), so for every soldier/hero job that spawns with a weapon good
     // (`WEAPON_GOOD_SLUG_BY_JOB`), the armed look MUST equal the job's own look - otherwise arming a
@@ -469,10 +470,20 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
     // tables.
     for (const [jobStr, slug] of Object.entries(WEAPON_GOOD_SLUG_BY_JOB)) {
       const job = Number(jobStr);
+      if (HERO_JOBS.includes(job)) continue;
       const armed = WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG[slug];
       const byJob = ADULT_CHARACTER_BY_JOB[job];
       expect(armed, `weapon good ${slug} (job ${job})`).toBeDefined();
       expect(armed, `job ${job}: armed body must match its job body`).toBe(byJob);
+    }
+  });
+
+  it('maps every hero class to its own fixed character spec', () => {
+    for (const job of HERO_JOBS) {
+      const specId = ADULT_CHARACTER_BY_JOB[job];
+      expect(specId, `hero job ${job}`).toBeDefined();
+      expect(specId?.startsWith('hero-'), `hero job ${job} → ${specId}`).toBe(true);
+      expect(specId !== undefined && CHARACTER_SPECS[specId].gfxJobs[0]).toBe(job);
     }
   });
 

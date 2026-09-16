@@ -137,10 +137,10 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       cancelTraining(world, command);
       return;
     case 'orderNeed':
-      orderNeed(world, command);
+      orderNeed(world, ctx, command);
       return;
     case 'setRegeneration':
-      setRegeneration(world, command);
+      setRegeneration(world, ctx, command);
       return;
     case 'exploreArea':
       exploreArea(world, ctx, command);

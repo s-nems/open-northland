@@ -48,19 +48,19 @@ function dedupeBindings(records: readonly BmdPaletteBinding[]): BmdPaletteBindin
 /**
  * Flattens `[jobbasegraphics]` records into the flat {@link BmdPaletteBinding} shape. A human draws from
  * a body bob (coloured by `gfxpalettebasebody`) plus numbered head bobs (`gfxpalettebasehead`), so each
- * indexed slot becomes one binding paired with its palette. A slot whose palette `editname` is absent is
- * dropped, and the `gfxpaletterandom` tint is a per-settler runtime range rather than a bob palette, so
- * it is never emitted.
+ * indexed slot becomes one binding paired with its palette. A body without `gfxpalettebasebody` uses the
+ * same `test_human_00` floor as the runtime look join; this keeps body-only hero records such as Grizzu
+ * decodable while their `gfxpaletterandom` tint remains a separate, currently unsupported runtime range.
+ * A head whose palette `editname` is absent is dropped.
  */
 export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBinding[]): BmdPaletteBinding[] {
   const bindings: BmdPaletteBinding[] = [];
   for (const rec of records) {
     for (const slot of rec.body) {
-      if (rec.bodyPalette === undefined) continue;
       bindings.push({
         bmd: slot.bmd,
         shadowBmd: slot.shadowBmd,
-        paletteName: rec.bodyPalette,
+        paletteName: rec.bodyPalette ?? 'test_human_00',
         tribeId: rec.tribeId,
         jobId: rec.jobId,
       });

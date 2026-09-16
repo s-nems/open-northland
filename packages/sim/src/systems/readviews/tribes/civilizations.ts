@@ -38,8 +38,8 @@ export function declaresNoTrades(content: ContentSet, tribeType: number): boolea
  * The hitpoint pool an adult settler of `tribeType` carries, `0` when the tribe has no record or leaves it
  * unset.
  *
- * Approximation: the original's human HP is not in the readable data, so {@link TribeType.hitpoints} is
- * supplied at the content boundary.
+ * The original's human HP is not in the readable data, so the byte-evidenced value is supplied through
+ * {@link TribeType.hitpoints} at the content boundary.
  */
 export function settlerHitpoints(content: ContentSet, tribeType: number): number {
   return contentIndex(content).tribes.get(tribeType)?.hitpoints ?? 0;

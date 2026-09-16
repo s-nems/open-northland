@@ -87,6 +87,27 @@ function rawRealLike(): ContentSet {
 }
 
 describe('mergeRealContent', () => {
+  it('overlays the engine-authored permanent armor onto every hero class', () => {
+    const raw = rawRealLike();
+    const heroes = [
+      ['hero_unarmed', 1],
+      ['hero_spear_siegfried', 4],
+      ['hero_sword_bjarni', 3],
+      ['hero_saber_hatschi', 3],
+      ['hero_axe', 3],
+      ['heroine_bow_xena', 2],
+    ] as const;
+    const realLike = parseContentSet({
+      ...raw,
+      jobs: [...raw.jobs, ...heroes.map(([id], index) => ({ typeId: 42 + index, id }))],
+    });
+
+    const { content } = mergeRealContent(realLike);
+    for (const [id, fixedArmorType] of heroes) {
+      expect(content.jobs.find((job) => job.id === id)?.fixedArmorType).toBe(fixedArmorType);
+    }
+  });
+
   it('pins the clean-room felling/mining balance into the zeroed gathering blocks', () => {
     const raw = rawRealLike();
     // Precondition: the stand-in ships dead gathering, like real ir.json.

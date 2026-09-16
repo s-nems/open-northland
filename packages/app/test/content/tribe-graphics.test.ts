@@ -10,7 +10,12 @@ import {
 } from '../../src/content/building-gfx/index.js';
 import { humanSequences, playableSequences } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
-import { CHARACTER_SPEC_ENTRIES, tribeLooks } from '../../src/content/settler-gfx/index.js';
+import {
+  ADULT_CHARACTER_BY_JOB,
+  CHARACTER_SPEC_ENTRIES,
+  HERO_JOBS,
+  tribeLooks,
+} from '../../src/content/settler-gfx/index.js';
 import type { WorldTribes } from '../../src/game/world-tribes.js';
 import { contentDir, hasRealIr, rawIrUnderTest } from './helpers.js';
 
@@ -62,6 +67,21 @@ describe.runIf(hasRealIr())('every civilization is drawable', () => {
           expect(atlasExists(`${head}.${INDEXED}`), `tribe ${tribe} '${specId}' head ${head}`).toBe(true);
         }
       }
+    }
+  });
+
+  it('keeps every explicitly authored hero on its own decoded body', () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    if (!existsSync(bobsDir())) return;
+    const rows = (ir.jobGraphics ?? []).filter((row) => HERO_JOBS.includes(row.job));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const specId = ADULT_CHARACTER_BY_JOB[row.job];
+      const exact = specId === undefined ? undefined : tribeLooks(ir, row.tribe).get(specId)?.[0];
+      expect(exact?.job, `tribe ${row.tribe} hero ${row.job} did not win its look chain`).toBe(row.job);
+      expect(atlasExists(`${exact?.bodyBmd}.${INDEXED}`), `hero body ${exact?.bodyBmd} is not decoded`).toBe(
+        true,
+      );
     }
   });
 

@@ -18,6 +18,8 @@ const DRAIN = needBar(NEED_DRAIN_UNITS_PER_TICK);
 
 /** A soldier job id (jobtypes.ini soldiers 31..41) - a fighter, whose company need is frozen. */
 const SOLDIER_JOB = 31;
+/** The fixture hero class, classified from its `hero_*` content id. */
+const HERO_JOB = 45;
 /** The fixture bear (tribe 10), a tribe with an `[animaltype]` record - what `isAnimalTribe` reads. */
 const ANIMAL_TRIBE = 10;
 /** The fixture monster tribe (16): no `[animaltype]` record, so not wildlife, and no `jobEnables`. */
@@ -93,6 +95,28 @@ describe('needsSystem: the wildlife exemption, and only wildlife', () => {
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(idle, Settler).hunger).toBe(DRAIN);
+  });
+});
+
+describe('needsSystem: heroes carry no needs', () => {
+  it('keeps all four bars fixed for a hero of a trading civilization', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const hero = settlerWithHunger(sim, fx.fromInt(0), { jobType: HERO_JOB });
+    const initial = sim.world.get(hero, Settler);
+    const before = {
+      hunger: initial.hunger,
+      fatigue: initial.fatigue,
+      piety: initial.piety,
+      enjoyment: initial.enjoyment,
+    };
+
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+
+    const after = sim.world.get(hero, Settler);
+    expect(after.hunger).toBe(before.hunger);
+    expect(after.fatigue).toBe(before.fatigue);
+    expect(after.piety).toBe(before.piety);
+    expect(after.enjoyment).toBe(before.enjoyment);
   });
 });
 

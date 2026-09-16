@@ -337,6 +337,32 @@ export const CHARACTER_SPECS = {
       idle: 'human_man_Warrior_Longbow_wait_agressive',
     },
   },
+  // Hero bodies carry their arms in the authored bob set. Their exact walk, wait and attack sequence
+  // names come from this tribe's animation rows; the soldier entry is only a missing-body fallback.
+  'hero-unarmed': {
+    gfxJobs: [JOB_HERO_UNARMED, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_HERO_UNARMED,
+  },
+  'hero-spear': {
+    gfxJobs: [JOB_HERO_SPEAR, JOB_SOLDIER_SPEAR, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_HERO_SPEAR,
+  },
+  'hero-sword': {
+    gfxJobs: [JOB_HERO_SWORD, JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_HERO_SWORD,
+  },
+  'hero-saber': {
+    gfxJobs: [JOB_HERO_SABER, JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_HERO_SABER,
+  },
+  'hero-axe': {
+    gfxJobs: [JOB_HERO_AXE, JOB_SOLDIER_AXE_BIG, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_HERO_AXE,
+  },
+  'hero-bow': {
+    gfxJobs: [JOB_HEROINE_BOW, JOB_ARCHER_LONG, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_HEROINE_BOW,
+  },
 } satisfies Readonly<Record<string, CharacterSpec>>;
 
 export type CharacterSpecId = keyof typeof CHARACTER_SPECS;
@@ -350,10 +376,9 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
 
 /**
  * Adult `jobType` → character spec id, the viking `[jobbasegraphics]` join transcribed from the mod's
- * `types/humanstype/jobgraphics.ini` (`logictribe 1`) plus the `jobtypes` soldier family. The axe jobs
- * borrow the broadsword because the body authors no axe set, and the sabers the sword bodies. Named
- * approximation: heroes borrow the warrior body of their `baseatomics` soldier class. An unmapped job falls
- * to the `civilian` default.
+ * `types/humanstype/jobgraphics.ini` (`logictribe 1`) plus the `jobtypes` soldier family. Soldier axe jobs
+ * borrow the broadsword because the body authors no axe set; heroes resolve through their own
+ * `(tribe, job)` graphics rows. An unmapped job falls to the `civilian` default.
  */
 export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   [JOB_WOMAN]: 'woman',
@@ -370,13 +395,23 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
   [JOB_SOLDIER_AXE_BIG]: 'warrior-broadsword',
   [JOB_ARCHER]: 'warrior-shortbow',
   [JOB_ARCHER_LONG]: 'warrior-longbow',
-  [JOB_HERO_UNARMED]: 'warrior',
-  [JOB_HERO_SPEAR]: 'warrior-spear',
-  [JOB_HERO_SWORD]: 'warrior-sword',
-  [JOB_HERO_SABER]: 'warrior-broadsword',
-  [JOB_HERO_AXE]: 'warrior-broadsword',
-  [JOB_HEROINE_BOW]: 'warrior-longbow',
+  [JOB_HERO_UNARMED]: 'hero-unarmed',
+  [JOB_HERO_SPEAR]: 'hero-spear',
+  [JOB_HERO_SWORD]: 'hero-sword',
+  [JOB_HERO_SABER]: 'hero-saber',
+  [JOB_HERO_AXE]: 'hero-axe',
+  [JOB_HEROINE_BOW]: 'hero-bow',
 };
+
+/** Hero jobs whose authored body and arms are one permanent visual identity. */
+export const HERO_JOBS: readonly number[] = [
+  JOB_HERO_UNARMED,
+  JOB_HERO_SPEAR,
+  JOB_HERO_SWORD,
+  JOB_HERO_SABER,
+  JOB_HERO_AXE,
+  JOB_HEROINE_BOW,
+];
 
 /**
  * Equipped weapon good id-slug → warrior spec: the weapon in a settler's `Equipment.weapon` slot decides
@@ -399,7 +434,9 @@ export const UNARMED_WARRIOR_SPEC: CharacterSpecId = 'warrior';
 /** The jobs a disarm strips to {@link UNARMED_WARRIOR_SPEC}: the jobs the spawn seam can arm with a weapon
  *  good. A job that can never re-arm keeps its body, so the axe soldiers (no axe good exists) never lose
  *  their drawn axe to an unrelated equip. */
-export const WARRIOR_JOBS: readonly number[] = Object.keys(WEAPON_GOOD_SLUG_BY_JOB).map(Number);
+export const WARRIOR_JOBS: readonly number[] = Object.keys(WEAPON_GOOD_SLUG_BY_JOB)
+  .map(Number)
+  .filter((job) => !HERO_JOBS.includes(job));
 
 /**
  * Age-class `jobType` (a settler that carries `Age`) → character spec id, the baby and child bodies from

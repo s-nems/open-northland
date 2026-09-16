@@ -56,9 +56,9 @@ export const TribeType = z.strictObject({
   id: z.string(),
   name: z.string().optional(),
   /**
-   * The hitpoint pool an adult settler of this tribe carries. Human HP is not in the readable data
-   * (source basis "Combat hit resolution"), so this is an approximation supplied at the content
-   * boundary; `0` means unset and the sim falls back to its `DEFAULT_SETTLER_HITPOINTS`.
+   * The hitpoint pool an adult settler of this tribe carries. Human HP is not in the readable data, so
+   * the byte-evidenced value is supplied at the content boundary; `0` means unset and the sim falls back
+   * to its `DEFAULT_SETTLER_HITPOINTS`.
    */
   hitpoints: z.number().int().nonnegative().default(0),
   /** `setatomic` bindings in file order - a tribe's atomic→animation vocabulary, per job. */

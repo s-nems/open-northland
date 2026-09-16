@@ -302,6 +302,14 @@ export const enGame = {
     woman: 'Woman',
     civilist: 'Civilian',
   },
+  heroNames: {
+    hero_unarmed: 'Hero',
+    hero_spear_siegfried: 'Sigurd',
+    hero_sword_bjarni: 'Bjarni',
+    hero_saber_hatschi: 'Hatchie',
+    hero_axe: 'Axe hero',
+    heroine_bow_xena: 'Cyra',
+  },
   admin: {
     toggle: '🛠 Admin / Debug',
     title: 'Admin and debug tools',

@@ -104,8 +104,8 @@ export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string 
 /**
  * A job's display name, shared by the worker-slot rows and a settler's profession title. Life-stage roles
  * (baby/child/woman/civilist, not picker professions) are keyed by the content job's string id through
- * `messages().lifeStage`; a trade the profession catalog does not carry falls back to its content job
- * name, then to the localized idle label.
+ * the locale catalog. Every hero role is shown as the generic profession "Hero": maps reuse one hero
+ * body for different named characters, so the job id is not a reliable personal name.
  */
 export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | undefined): string {
   if (jobType === undefined) return jobLabel(undefined);
@@ -113,7 +113,22 @@ export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | und
   const job = ctx.jobs.find((j) => j.typeId === jobType);
   const stages: Readonly<Record<string, string | undefined>> = messages().lifeStage;
   const stage = job?.id !== undefined ? stages[job.id] : undefined;
-  return stage ?? job?.name ?? jobLabel(jobType);
+  const hero = job !== undefined && systems.isHeroJobRow(job) ? messages().heroNames.hero_unarmed : undefined;
+  return stage ?? hero ?? job?.name ?? jobLabel(jobType);
+}
+
+/**
+ * A hero's conventional name when no map-authored name exists. This is only a fallback: mission maps
+ * reuse the same visual/job role for Ykol, Loke and Hatchie, and their `ScriptedName` must win.
+ */
+export function heroFallbackName(
+  ctx: UnitPanelModelContext,
+  jobType: number | undefined,
+): string | undefined {
+  const job = ctx.jobs.find((j) => j.typeId === jobType);
+  if (job === undefined || !systems.isHeroJobRow(job)) return undefined;
+  const heroes: Readonly<Record<string, string | undefined>> = messages().heroNames;
+  return heroes[job.id];
 }
 
 /** Whether a job slot is the transport trade, decided by the sim's own carrier rule over the panel's

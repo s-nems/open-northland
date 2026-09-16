@@ -217,6 +217,18 @@ describe('pickByJob - the per-job character pick', () => {
     expect(pickByJob(armed, 3, true, 41)).toBe('civilian');
   });
 
+  it('a fixed job keeps its authored body even when the equipment weapon disagrees or is empty', () => {
+    const heroes: ByJobTable<string> = {
+      byJob: { 44: 'bjarni' },
+      fixedByJob: { 44: 'bjarni' },
+      byWeaponGood: { 41: 'warrior-sword' },
+      unarmedByJob: { 44: 'warrior' },
+      default: 'civilian',
+    };
+    expect(pickByJob(heroes, 44, false, 41)).toBe('bjarni');
+    expect(pickByJob(heroes, 44, false, null)).toBe('bjarni');
+  });
+
   it('an explicitly EMPTY weapon slot (null) strips a weapon-job to its bare-hands look', () => {
     const armed: ByJobTable<string> = {
       byJob: { 34: 'warrior-sword', 5: 'woman' },

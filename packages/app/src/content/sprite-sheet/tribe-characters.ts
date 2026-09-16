@@ -23,6 +23,7 @@ import {
   carryHeadAnims,
   characterBinding,
   type GoodRef,
+  HERO_JOBS,
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
   UNARMED_WARRIOR_SPEC,
@@ -177,6 +178,11 @@ export function tribeCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
+  const fixedByJob: Record<number, SettlerCharacter> = { ...base?.fixedByJob };
+  for (const job of HERO_JOBS) {
+    const char = byJob[job];
+    if (char !== undefined) fixedByJob[job] = char;
+  }
   // The equipped-weapon look table, joined slug → the running content's good typeId, so the key matches
   // whatever `Equipment.weapon.goodType` the sim actually stamps.
   const byWeaponGood: Record<number, SettlerCharacter> = { ...base?.byWeaponGood };
@@ -191,5 +197,5 @@ export function tribeCharacters(
   const unarmedByJob: Record<number, SettlerCharacter> = { ...base?.unarmedByJob };
   const bareWarrior = bySpec.get(UNARMED_WARRIOR_SPEC);
   if (bareWarrior !== undefined) for (const job of WARRIOR_JOBS) unarmedByJob[job] = bareWarrior;
-  return { byJob, youngByJob, byWeaponGood, unarmedByJob, default: fallback };
+  return { byJob, youngByJob, fixedByJob, byWeaponGood, unarmedByJob, default: fallback };
 }

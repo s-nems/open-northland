@@ -43,6 +43,11 @@ export function isFighterJobRow(job: Pick<JobType, 'id'>): boolean {
   return isFighterRole(jobRoleOfId(job.id));
 }
 
+/** {@link isHeroJob} for a caller holding a job row rather than the running content. */
+export function isHeroJobRow(job: Pick<JobType, 'id'>): boolean {
+  return jobRoleOfId(job.id) === 'hero';
+}
+
 /**
  * Whether the trade serves a piety need (`jobtypes.ini` `needsReligionFlag`: joiner, armorer, smith). Every
  * other trade's piety bar is inert, even the sewer's, whose armour clips drain it.

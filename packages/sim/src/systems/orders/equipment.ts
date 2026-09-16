@@ -20,7 +20,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isFighterJob } from '../readviews/index.js';
+import { isFighterJob, isHeroJob } from '../readviews/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
@@ -87,6 +87,7 @@ export function equipGood(
   if (terrain === undefined) return; // mapless sim: no stores to fetch from
   const e = command.entity;
   if (!isEquipOrderable(world, e)) return;
+  if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined || good.equip.category !== command.group) return;
@@ -112,6 +113,7 @@ export function unequipGood(
   if (terrain === undefined) return;
   const e = command.entity;
   if (!isEquipOrderable(world, e)) return;
+  if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const eq = world.tryGet(e, Equipment);
   if (eq === undefined || equipSlotValue(eq, command.group, command.slot) === null) return;

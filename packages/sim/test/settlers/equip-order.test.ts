@@ -61,6 +61,8 @@ const FORGE_UPGRADE = 26;
 const BREWHOUSE = 10;
 /** The fixture's soldier trade (`soldier_unarmed`) - what `isFighterJob` reads off the job slug. */
 const FIGHTER_JOB = 31;
+/** The fixture's hero trade; heroes keep the equipment authored with their class. */
+const HERO_JOB = 45;
 
 /** Enough ticks for a fetch across the small map plus the stow and return legs. */
 const ERRAND_TICKS = 600;
@@ -664,6 +666,21 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     sim.enqueueSetup(equip(e, SHOES));
     sim.step();
     expect(sim.world.has(e, EquipOrder)).toBe(true); // boots stay orderable on a fighter
+  });
+
+  it('refuses every equip and unequip order on a hero', () => {
+    const sim = freshSim();
+    const hero = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, hero, HERO_JOB);
+    wear(sim, hero, { weapon: SWORD });
+    pileAt(sim, 12, 2, LONG_SWORD, 1);
+
+    sim.enqueueSetup(equip(hero, LONG_SWORD, 'weapon'));
+    sim.enqueueSetup({ kind: 'unequipGood', entity: hero, group: 'weapon', slot: 0 });
+    sim.step();
+
+    expect(sim.world.has(hero, EquipOrder)).toBe(false);
+    expect(sim.world.get(hero, Equipment).weapon?.goodType).toBe(SWORD);
   });
 });
 

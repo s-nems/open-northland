@@ -1,9 +1,9 @@
 import {
   buildSpriteScene,
   type DrawItem,
-  paletteLutRow,
   resolveLayers,
   type SpriteSheet,
+  settlerPaletteLutRow,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application, Container } from 'pixi.js';
@@ -55,13 +55,12 @@ export class NotePortraits {
     });
     const items = new Map<number, DrawItem>();
     for (const it of scene) if (it.kind === 'settler') items.set(it.ref, it);
-    const lut = this.sheet.palette;
     entries.forEach((entry, i) => {
       const item = items.get(entry.entity);
       if (item === undefined) return;
       const layers = resolveLayers(this.sheet, item, STILL_POSE_TICK);
       if (layers === null) return;
-      const row = lut === undefined ? 0 : paletteLutRow(lut, item.player, item.armorGood);
+      const row = settlerPaletteLutRow(this.sheet, item);
       for (const [li, layer] of layers.entries()) {
         this.pool.drawLayer(`${i}:${li}`, layer, entry.feetX, entry.feetY, scale, row, entry.zIndex);
       }

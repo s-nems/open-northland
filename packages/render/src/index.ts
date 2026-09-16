@@ -148,6 +148,7 @@ export {
   type SettlerCharacterSet,
   type SpriteLayer,
   type SpriteSheet,
+  settlerPaletteLutRow,
 } from './gpu/sprite-sheet.js';
 export {
   bakeToFlippedSprite,

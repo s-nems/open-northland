@@ -17,6 +17,9 @@ export const JobType = z.strictObject({
   needsReligion: z.boolean().optional(),
   /** `ignoresHomeHouseFlag`; the behaviour it gates is `readviews/jobs.ts`'s. */
   ignoresHomeHouse: z.boolean().optional(),
+  /** Permanent armor type assigned by the engine when this job is spawned. This is distinct from armor
+   *  a player equips and therefore cannot be removed or replaced. */
+  fixedArmorType: TypeId.optional(),
   source: Provenance.optional(),
 });
 export type JobType = z.infer<typeof JobType>;

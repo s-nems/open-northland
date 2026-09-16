@@ -161,8 +161,9 @@ export function resolveSettlerBobId(
 }
 
 /**
- * Precedence for an adult: a mapped weapon good, then an explicitly empty weapon slot's bare-hands
- * look, then the job. A young item keys the age-class table, and any miss lands on `default`.
+ * Precedence for an adult: a fixed authored job, a mapped weapon good, then an explicitly empty weapon
+ * slot's bare-hands look, then the job. A young item keys the age-class table, and any miss lands on
+ * `default`.
  */
 export function pickByJob<T>(
   table: ByJobTable<T>,
@@ -170,6 +171,10 @@ export function pickByJob<T>(
   young: boolean,
   weaponGood?: number | null,
 ): T {
+  if (!young && jobType !== undefined) {
+    const fixed = table.fixedByJob?.[jobType];
+    if (fixed !== undefined) return fixed;
+  }
   // Children never carry a weapon slot, so the equipped weapon only decides an adult's look.
   if (!young && weaponGood != null) {
     const armed = table.byWeaponGood?.[weaponGood];

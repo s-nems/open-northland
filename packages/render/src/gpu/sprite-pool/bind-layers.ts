@@ -4,7 +4,7 @@ import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/pro
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import { paletteLutRow, type SpriteSheet } from '../sprite-sheet.js';
+import { type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
@@ -80,7 +80,7 @@ export class LayerBinder {
     const originX = snapToDevicePixels(cameraScreenX(frame.camera, drawX), snap);
     const originY = snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap);
     // The (armor tier, player) LUT row - worn armor recolours the clothing bands. Unused on the plain path.
-    const playerRow = pe.paletted ? paletteLutRow(pe.palette, item.player, item.armorGood) : 0;
+    const playerRow = pe.paletted && this.sheet !== undefined ? settlerPaletteLutRow(this.sheet, item) : 0;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
     // Feet-local union of the drawn rects: one box for mesh and plain layers alike.
     const bounds = this.layerBounds;

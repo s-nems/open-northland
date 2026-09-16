@@ -34,6 +34,7 @@ import {
   buildingDef,
   buildingTitle,
   type Comp,
+  heroFallbackName,
   jobDisplayName,
   type UnitPanelModelContext,
 } from './context.js';
@@ -235,6 +236,7 @@ export function buildUnitPanelModel(
       entityId,
       name:
         scriptedName(ctx, comps) ??
+        heroFallbackName(ctx, num(s.jobType)) ??
         characterName(
           num(s.tribe) ?? PRIMARY_TRIBE,
           num(s.jobType),
@@ -255,7 +257,11 @@ export function buildUnitPanelModel(
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(snapshot, comps),
-      bars: satisfactionBars(ent, needsRuleEnabled(snapshot)),
+      bars: satisfactionBars(
+        ent,
+        needsRuleEnabled(snapshot),
+        !ctx.jobs.some((job) => job.typeId === num(s.jobType) && systems.isHeroJobRow(job)),
+      ),
       work: settlerWork(ctx, snapshot, comps, progressionGated),
       experience: experienceRows(ctx, comps),
       upcomingUnlocks: unlockProgressRows(ctx, comps, progressionGated),

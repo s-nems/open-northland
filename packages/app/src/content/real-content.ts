@@ -3,6 +3,7 @@ import {
   type ContentSet,
   type GoodType,
   hasFieldFarmAtomics,
+  type JobType,
   parseContentSet,
   parseGeneratedContentSet,
   type WeaponType,
@@ -21,6 +22,17 @@ import { loadIrRaw } from './ir/load.js';
 import { fetchJsonOrNull } from './net.js';
 
 let contentSetPromise: Promise<ContentSet | null> | null = null;
+
+/** The permanent armor `an original routine` assigns to hero jobs in the original. These are
+ * armor-type ids, not player-worn goods: 42→wool, 43→plate, 44..46→chain, 47→leather. */
+const HERO_ARMOR_BY_JOB_ID: Readonly<Record<string, number | undefined>> = {
+  hero_unarmed: 1,
+  hero_spear_siegfried: 4,
+  hero_sword_bjarni: 3,
+  hero_saber_hatschi: 3,
+  hero_axe: 3,
+  heroine_bow_xena: 2,
+};
 
 /**
  * Fetch and validate the served `content/ir.json` into the sim's `ContentSet` at the app boundary.
@@ -82,6 +94,13 @@ function withEquipClass(good: GoodType): GoodType {
   if (good.equip !== undefined) return good;
   const equip = EQUIP_CLASS_BY_SLUG.get(good.id);
   return equip !== undefined ? { ...good, equip } : good;
+}
+
+/** Add the engine-authored armor a hero is born with. Extracted `jobtypes.ini` has no field for it: the
+ * assignment is a hard-coded job switch in `an original routine`, so it belongs in this runtime overlay. */
+function withHeroArmor(job: JobType): JobType {
+  const fixedArmorType = HERO_ARMOR_BY_JOB_ID[job.id];
+  return fixedArmorType === undefined ? job : { ...job, fixedArmorType };
 }
 
 /** Give WOOL the carcass-harvest atomic. In the source wool is purely a husbandry product (no harvest
@@ -155,6 +174,7 @@ export function mergeRealContent(
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
     .map((g) => g.id);
   const buildings = real.buildings.map(withShelterCapacity);
+  const jobs = real.jobs.map(withHeroArmor);
   const cataloged = new Set(VIKING_BUILDINGS.map((b) => b.id));
   const uncatalogedBuildings = real.buildings.filter((b) => !cataloged.has(b.id)).map((b) => b.id);
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
@@ -185,6 +205,7 @@ export function mergeRealContent(
     content: parseContentSet({
       ...real,
       goods,
+      jobs,
       buildings,
       landscape,
       tribes,

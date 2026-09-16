@@ -288,6 +288,14 @@ export const plGame = {
     woman: 'Kobieta',
     civilist: 'Cywil',
   },
+  heroNames: {
+    hero_unarmed: 'Bohater',
+    hero_spear_siegfried: 'Sigurd',
+    hero_sword_bjarni: 'Bjarni',
+    hero_saber_hatschi: 'Hatchie',
+    hero_axe: 'Bohater z toporem',
+    heroine_bow_xena: 'Cyra',
+  },
   admin: {
     toggle: '🛠 Admin / Debug',
     title: 'Narzędzia admina i debugowania',

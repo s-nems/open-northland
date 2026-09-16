@@ -14,7 +14,7 @@ import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { System, SystemContext } from '../../context.js';
 import { tryDeathSaveDraught } from '../../equipment/index.js';
-import { declaresNoTrades, isFighterJob } from '../../readviews/index.js';
+import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
 import { applyNeedUnits, NEED_DRAIN_UNITS_PER_TICK, NEED_RESERVE_UNITS, needBar } from './scale.js';
 
 /** The spread of a settler's starting deficit, half a bar, so a map opens with varied satisfaction instead
@@ -86,6 +86,7 @@ export function carriesNeeds(world: World, content: ContentSet, e: Entity): bool
     !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN) &&
     settler !== undefined &&
     !world.has(e, Age) &&
+    !isHeroJob(content, settler.jobType) &&
     !declaresNoTrades(content, settler.tribe)
   );
 }
