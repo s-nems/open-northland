@@ -98,4 +98,18 @@ describe('setJob - the profession tree gates the manual trade change', () => {
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: fresh, jobType: CARPENTER });
     expect(sim.world.get(fresh, Settler).jobType).toBe(CARPENTER); // free start: any civilian trade
   });
+
+  it('keeps a starting profession available after changing away from it', () => {
+    const sim = gatedSim();
+    const baker = ownedSettler(sim, CARPENTER);
+    setProfessionProgression(sim.world, false);
+
+    setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: baker, jobType: WOODCUTTER });
+    expect(sim.world.get(baker, Settler).jobType).toBe(WOODCUTTER);
+    expect(sim.world.get(baker, Settler).learned?.job).toEqual([CARPENTER]);
+
+    setProfessionProgression(sim.world, true);
+    setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: baker, jobType: CARPENTER });
+    expect(sim.world.get(baker, Settler).jobType).toBe(CARPENTER);
+  });
 });

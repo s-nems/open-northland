@@ -14,6 +14,7 @@ import {
   Settler,
   Stockpile,
   TrainingOrder,
+  UnderConstruction,
   Wedding,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -662,6 +663,17 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'setJob', entity: woman(), jobType: SOLDIER });
     sim.step();
     expect(sim.world.get(woman(), Settler).jobType).toBe(WOMAN); // the woman role is for life
+  });
+
+  it('reserves a home for the family while it is still under construction', () => {
+    const { sim, woman, home } = familySim(16);
+    sim.world.mut(home(), Building).built = fx.fromInt(0);
+    sim.world.add(home(), UnderConstruction, { labor: fx.fromInt(0) });
+
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
   });
 
   it('a housewife hoards: with a home and no child order she stocks the larder to capacity', () => {

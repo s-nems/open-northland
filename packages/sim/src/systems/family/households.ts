@@ -16,14 +16,20 @@ import { isFood } from '../readviews/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../stores/index.js';
 
-/** The `home`-kind {@link BuildingType} of a completed house entity, or undefined when the entity is dead,
- *  not a building, still under construction, or not a home. */
-export function builtHomeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
+/** The `home`-kind {@link BuildingType} of a house entity, including one still under construction. */
+function homeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
   if (!world.isAlive(house)) return undefined;
   const b = world.tryGet(house, Building);
-  if (b === undefined || b.built < ONE) return undefined;
+  if (b === undefined) return undefined;
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   return type?.kind === 'home' ? type : undefined;
+}
+
+/** The `home`-kind {@link BuildingType} of a completed house entity. */
+export function builtHomeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
+  const type = homeType(world, ctx, house);
+  if (type === undefined || world.get(house, Building).built < ONE) return undefined;
+  return type;
 }
 
 /** The settlers living in `house`, ascending entity id. */
@@ -94,11 +100,12 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
 }
 
 /**
- * Move `e`'s household into `house`, where `e` is a settler. Refuses anything but a completed home of its
- * own tribe with a free family slot; the caller owns whichever admission rules its path adds on top.
+ * Reserve `house` for `e`'s household, where `e` is a settler. The reservation may be made while the home
+ * is under construction; household drives continue to require {@link builtHomeType} before using it.
+ * Refuses another tribe's home or one without a free family slot.
  */
 export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
-  const type = builtHomeType(world, ctx, house);
+  const type = homeType(world, ctx, house);
   if (type === undefined) return;
   if (world.get(house, Building).tribe !== world.get(e, Settler).tribe) return;
   const family = familyOf(world, e);

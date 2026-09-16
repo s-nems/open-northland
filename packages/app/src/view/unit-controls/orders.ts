@@ -154,13 +154,14 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
           deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
           continue;
         }
-        // Moving in and drilling need the building standing, so a foundation falls through to employment,
-        // whose slots are open from the moment it is placed.
+        // A home may be reserved before it stands; its household drives wait for completed construction.
+        if (def?.kind === 'home') {
+          deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
+          continue;
+        }
+        // Drilling needs the building standing, so a foundation falls through to employment, whose slots
+        // are open from the moment it is placed.
         if (!underConstruction) {
-          if (def?.kind === 'home') {
-            deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
-            continue;
-          }
           if (trainsRatherThanEmploys(def, currentJob)) {
             deps.enqueue({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
             continue;

@@ -11,7 +11,7 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * The "przypisz dom" verdict - the residential twin of `assign-highlight.test.ts`. A home is green iff
- * it is an own, built `home` with a free FAMILY slot (`homeSize` counts families, not heads) for the
+ * it is an own `home` with a free FAMILY slot (`homeSize` counts families, not heads) for the
  * settler's household. The key invariant, as on the workplace side: the highlight (`computeHouseHighlight`,
  * what the player sees green) and the click resolver (`houseAssignableAt`, what a click binds) must agree
  * home-for-home, so a green home never silently cancels the click and a red one never binds.
@@ -27,7 +27,7 @@ const HOUSES = new Map<number, HouseInfo>([
   [MILL_TYPE, { kind: 'production' }],
 ]);
 
-/** A built home of `player` (unbuilt/under-construction variants below are the negative cases). */
+/** A built home of `player`. */
 function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRIBE): Ent {
   return {
     id,
@@ -85,6 +85,20 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
     expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(true);
   });
 
+  it('greens an own home under construction and reserves its family slot', () => {
+    const site: Ent = {
+      id: 10,
+      components: {
+        Building: { buildingType: HOME_TYPE, built: 0, tribe: TRIBE },
+        UnderConstruction: {},
+        Owner: { player: HUMAN_PLAYER },
+      },
+    };
+    const snap = snapshotOf([person(1), site]);
+    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([{ id: 10, ok: true }]);
+    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(true);
+  });
+
   it('reds a home already holding homeSize other families', () => {
     const snap = snapshotOf([
       person(1),
@@ -102,28 +116,10 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
     expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(true);
   });
 
-  it('skips a non-home building, an unbuilt home, a site, and another player’s home', () => {
-    const site: Ent = {
-      id: 12,
-      components: {
-        Building: { buildingType: HOME_TYPE, built: ONE },
-        UnderConstruction: {},
-        Owner: { player: HUMAN_PLAYER },
-      },
-    };
-    const unbuilt: Ent = {
-      id: 13,
-      components: { Building: { buildingType: HOME_TYPE, built: ONE - 1 }, Owner: { player: HUMAN_PLAYER } },
-    };
-    const snap = snapshotOf([
-      person(1),
-      home(11, HUMAN_PLAYER, MILL_TYPE),
-      site,
-      unbuilt,
-      home(14, ENEMY_PLAYER),
-    ]);
+  it('skips a non-home building and another player’s home', () => {
+    const snap = snapshotOf([person(1), home(11, HUMAN_PLAYER, MILL_TYPE), home(14, ENEMY_PLAYER)]);
     expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([]); // never tinted, not even red
-    for (const id of [11, 12, 13, 14]) expect(houseAssignableAt(snap, id, 1, HOUSES)).toBe(false);
+    for (const id of [11, 14]) expect(houseAssignableAt(snap, id, 1, HOUSES)).toBe(false);
   });
 
   it('reds an own home of ANOTHER TRIBE, which the sim’s assignHouse refuses', () => {

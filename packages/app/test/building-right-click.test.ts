@@ -13,8 +13,7 @@ import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 /**
  * The right-click ladder over an own building. A construction site is hired into by the rules of the
  * building it will become, with one rung on top: a trade that can raise a foundation joins its crew
- * instead. Moving in and drilling are the standing building's own rules - the sim honours neither on a
- * foundation - so a site drops through those to employment rather than answering with a dead click.
+ * instead. A family may reserve a home before it stands; drilling still requires a completed building.
  */
 
 const { addPerson, Building, Owner, Position, Stockpile, UnderConstruction } = components;
@@ -185,12 +184,12 @@ describe('right-clicking a construction site', () => {
     expect(issued[0]).toMatchObject({ kind: 'assignWorker', entity: idle, building: site });
   });
 
-  it('leaves a home foundation alone - no worker slots, and no family slot until it stands', () => {
+  it('reserves a home foundation for the selected family', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, BUILDING_HOME_00);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, idle, site)).toEqual([]);
+    expect(rightClick(sim, idle, site)).toEqual([{ kind: 'assignHouse', entity: idle, house: site }]);
   });
 });
 

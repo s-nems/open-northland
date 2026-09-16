@@ -19,6 +19,7 @@ import {
   OpenChestOrder,
   Owner,
   Position,
+  Settler,
   SiteAssignment,
   SupplyRun,
   setSettlerJob,
@@ -49,6 +50,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player
   // order, drill and equipment promotion; growing out of an age class still reclasses the settler.
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return;
+  rememberCurrentJob(world, e, jobType);
   setSettlerJob(world, e, jobType);
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
   world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer
@@ -80,6 +82,20 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   syncWorkFlagToJob(world, ctx, e, jobType);
   world.remove(e, GatherSelection); // the picks die with the employment they were made under
   world.remove(e, CraftSelection);
+}
+
+/** A profession already practised by this settler remains available after retraining. */
+function rememberCurrentJob(world: World, e: Entity, nextJob: number): void {
+  const current = world.get(e, Settler);
+  if (
+    current.jobType === null ||
+    current.jobType === nextJob ||
+    current.learned?.job.includes(current.jobType) === true
+  )
+    return;
+  const settler = world.mut(e, Settler);
+  settler.learned ??= { job: [], good: [] };
+  settler.learned.job.push(current.jobType);
 }
 
 /**

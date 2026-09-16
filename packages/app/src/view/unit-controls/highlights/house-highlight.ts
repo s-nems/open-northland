@@ -6,7 +6,7 @@ import {
   familiesByHome,
   type HomeFamily,
   isAdult,
-  isFinishedBuilding,
+  isBuilding,
   isSettler,
   marriageOf,
   ownerPlayerOf,
@@ -35,8 +35,8 @@ export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[
   return family;
 }
 
-function isBuiltHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseInfo>): boolean {
-  if (!isFinishedBuilding(e)) return false;
+function isHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseInfo>): boolean {
+  if (!isBuilding(e)) return false;
   const typeId = buildingTypeOf(e);
   return typeId !== undefined && housesByType.get(typeId)?.kind === 'home';
 }
@@ -67,7 +67,7 @@ export function computeHouseHighlight(
   const families = familiesByHome(snapshot);
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
-    if (!isBuiltHome(e, housesByType)) continue;
+    if (!isHome(e, housesByType)) continue;
     if (ownerPlayerOf(e) !== ownerPlayerOf(settler)) continue;
     const ok =
       buildingTribeOf(e) === settlerTribeOf(settler) &&
@@ -86,7 +86,7 @@ export function houseAssignableAt(
   const settler = entityById(snapshot, settlerId);
   const house = entityById(snapshot, buildingId);
   if (settler === undefined || !isSettler(settler) || house === undefined) return false;
-  if (!isBuiltHome(house, housesByType)) return false;
+  if (!isHome(house, housesByType)) return false;
   if (ownerPlayerOf(house) !== ownerPlayerOf(settler)) return false;
   if (buildingTribeOf(house) !== settlerTribeOf(settler)) return false;
   const families = familiesByHome(snapshot).get(buildingId);
