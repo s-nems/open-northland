@@ -1,20 +1,6 @@
-// The committed screenshot harness - `npm run shot` (see docs/TESTING.md "Visual validation via
-// Playwright"). It boots the app's deterministic, headless render entry (`?shot`), waits on the
-// `window.__opennorthlandShotReady` flag the entry sets after drawing ONE frame, and writes a PNG an agent
-// (or a human) eyeballs for GROSS correctness - never auto-passed, never byte-compared (the GPU
-// rasteriser isn't byte-stable across machines; the sim is, the pixels aren't).
-//
-// Reproducible because: the sim is seed-deterministic and `buildScene` is pure, so `?shot&seed&ticks`
-// always feeds the renderer the same draw list. This is a committed script (not the Playwright MCP)
-// so it lives in the repo, runs in CI, and can later graduate to golden-image diffs.
-//
-// Usage:  node packages/app/scripts/shot.mjs [--seed N] [--ticks N] [--map id] [--atlas] [--out path.png]
-//         npm run shot -- --seed 7 --ticks 20 --out shot.png
-//         npm run shot -- --map oasis_o_plenty   # draw an actual decoded content/maps/<id>.json grid
-//         npm run shot -- --atlas                # bind the free synthetic atlas (textured sprites)
-//         npm run shot -- --atlas real           # bind the REAL decoded human-body atlas (needs content/)
-//         npm run shot -- --atlas real --zoom 5  # magnify + centre on the sprites (judge decoded pixels)
-//         npm run shot -- --map <id> --terrain   # draw the ground from REAL decoded text_*.pcx (needs content/)
+// Capture the deterministic ?shot entry after its ready flag; fail on page errors.
+// Inputs are reproducible, GPU pixels are not guaranteed byte-identical. Inspect the PNG.
+// Usage and options: docs/DEVELOPMENT.md, Screenshots.
 
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

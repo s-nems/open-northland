@@ -1,12 +1,19 @@
 # Documentation
 
-Start with these pages:
+Read the root contract first, then only the references needed for the task:
 
-1. [`ARCHITECTURE.md`](ARCHITECTURE.md) explains the package boundaries and runtime flow.
-2. [`ECS.md`](ECS.md) describes the simulation model.
-3. [`DATA-FORMAT.md`](DATA-FORMAT.md) covers generated content and the validated IR.
-4. [`TESTING.md`](TESTING.md) lists the test layers and required gates.
-5. [`DEVELOPMENT.md`](DEVELOPMENT.md) is the command and local-development reference.
+| Task | Start here |
+| --- | --- |
+| Understand package ownership or runtime flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Change simulation state or systems | `packages/sim/AGENTS.md`, then [ECS.md](ECS.md) |
+| Change generated content or joins | Package contract, then [DATA-FORMAT.md](DATA-FORMAT.md) |
+| Choose checks or reproduce a defect | [TESTING.md](TESTING.md) |
+| Run the app, content conversion or diagnostics | Relevant section of [DEVELOPMENT.md](DEVELOPMENT.md) |
+| Create or revise artwork | [art/AGENTS.md](art/AGENTS.md), then the relevant asset recipe |
+| Select backlog work | `npm run tickets:list`, then the selected ticket |
+
+Package trees, manifests and test files are the source of truth for file locations and executable
+behavior. Open deeper format and art references when the task needs their evidence.
 
 Other references:
 

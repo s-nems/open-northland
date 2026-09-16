@@ -53,8 +53,8 @@ Keep these points in mind:
 - Keep changes focused and remove dead code you encounter in the part you edit.
 - Add player-visible behavior to an acceptance scene when practical.
 
-CI runs formatting and build checks on Linux. The test suite runs on Linux, macOS, and Windows to
-catch platform-specific determinism failures.
+CI runs formatting, build and test checks on Ubuntu. A Windows test run is available through
+manual workflow dispatch; macOS is not a CI gate.
 
 ## Commits and tickets
 

@@ -12,7 +12,7 @@ npm run desktop         # Electron development build
 npm run relay           # lockstep relay server on PORT (default 8765)
 npm run build           # typecheck and build the browser app, then report per-mode JS size
 npm test                # normal Vitest suite
-npm test -- scenario    # tests matching a name
+npm test -- scenario    # test files matching a path fragment (includes full typecheck)
 npm run test:watch      # watch mode
 npm run check           # Biome formatting and lint checks
 npm run check:fix       # apply safe formatting and lint fixes
@@ -21,7 +21,8 @@ npm run check:docs      # validate Markdown and ticket links/contracts
 npm run tickets:list    # priority-sorted ticket view
 ```
 
-Use `npm install` only when dependencies or the lockfile need to change.
+Use `npm install` only when dependencies or the lockfile need to change. For the shorter edit/test
+loop and completion checks without duplicate typechecking, see [TESTING.md](TESTING.md#standard-gates).
 
 `dev` and `shot` compile the workspace packages before starting Vite, which resolves every
 `@open-northland/*` import to that package's `dist/`. A running server keeps serving the build it

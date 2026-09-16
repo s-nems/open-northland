@@ -3,7 +3,7 @@
 **Area:** app · **Focus:** scenes · **Priority:** P3
 
 `packages/sim/test/core/hygiene.test.ts` rejects `Math.random`, `Date.now`, `new Date`,
-`performance.now`, transcendental `Math.*`, and locale APIs, but it scans `packages/sim/src` only.
+`performance.now`, transcendental `Math.*`, and locale APIs, but it scans only `packages/sim/src` and `packages/lockstep/src`.
 The acceptance scenes' `build(sim)` bodies and the sandbox catalog under `packages/app/src` also write
 pre-tick-zero simulation state, and no scan or run-twice check covers them: every same-seed hash
 comparison lives in `packages/sim/test/`, over sim fixtures rather than the app's setup path.

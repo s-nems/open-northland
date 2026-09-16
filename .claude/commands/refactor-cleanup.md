@@ -44,21 +44,9 @@ one finding; breadth is not a score. Do not make a cleanup tour through other ra
 optimize without a measured cost, an obvious complexity problem, or a repeated allocation in a known
 hot path.
 
-For every touched production module, classify its explanatory comments, regardless of focus:
-
-- delete when code already states the fact;
-- encode when the comment reveals a missing name, type, function, or boundary;
-- retain for units, invariants, source basis, approximations, and necessary reasons.
-
-`encode` is structural work, not successful comment deletion. Do not copy investigation, benchmark
-results, caller inventories, or the commit rationale into source comments. In tests, prefer scenario,
-fixture, and assertion names over prose that narrates the case.
-
-When code is moved or extracted, treat the old module and every destination module as one comment
-budget. Re-evaluate each moved comment instead of copying it mechanically, and do not add summary
-JSDoc merely because a module or export is new. A behavior-preserving refactor may grow the combined
-prose only for a previously unstated irreducible fact, which must be named in the final report.
-
+Apply the root contract's comment rules across source and destination modules together. Delete
+redundancy, encode missing structure, and retain units, invariants, evidence and necessary reasons.
+Moving prose is not cleanup.
 State the selected hotspot, expected benefit, preserved behavior, and risk before editing.
 
 ## Refactor
@@ -81,8 +69,9 @@ nearby observations in the report rather than fixing or documenting them in the 
 
 ## Verify and report
 
-Run focused tests first, then the applicable repository gates. Review the final diff with
-`code-reviewer`, plus `engine-reviewer` for sim or hot frame paths, when the change is non-trivial.
+Run focused tests first, then the applicable repository gates. Review the final diff using the
+`code-reviewer` checklist, plus `engine-reviewer` for sim or hot frame paths. Delegate an independent
+review when useful for the risk and scope; a separate agent is not required for a small cleanup.
 Run a `bench:*` benchmark only when the selected finding's claim is about performance: there, compare
 a benchmark or report the exact operation/complexity reduction without inventing wall-clock gains. A
 pass with no performance claim proves itself with tests and deterministic evidence, not wall-clock.

@@ -19,8 +19,9 @@ State the exact scope and diff stat before starting.
 
 ## Apply the relevant lenses
 
-Read the corresponding files under `.claude/agents/` and run independent reviewers in parallel when
-the client supports it.
+Read the applicable checklists under `.claude/agents/`. Review small diffs directly. For broad or
+risky work, delegate independent concerns when useful and supported; give each reviewer the exact
+diff, question and evidence needed. Do not have several agents rediscover the whole repository.
 
 - `code-reviewer`: any source, test, tool, or configuration change.
 - `engine-reviewer`: sim, fixed point, command flow, content schemas, or per-tick/per-frame paths.

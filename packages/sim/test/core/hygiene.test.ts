@@ -3,12 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/**
- * Encodes the determinism anti-patterns (AGENTS.md) as a TEST, not just a doc: the packages whose
- * output must be byte-identical on every engine contain no ambient nondeterminism. An LLM agent will
- * reach for Math.random/Date.now reflexively; this turns "the agent read the rule" into "the build
- * fails". Scans production sources only, not tests.
- */
+// Sim and lockstep production code must not depend on ambient nondeterminism.
 const DETERMINISTIC_SRC = [
   fileURLToPath(new URL('../../src', import.meta.url)),
   fileURLToPath(new URL('../../../lockstep/src', import.meta.url)),

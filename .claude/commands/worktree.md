@@ -1,174 +1,90 @@
 ---
-description: Execute one requested task in an isolated worktree, verify it, wait for approval, then fast-forward merge.
+description: Complete one task in an isolated worktree, verify it, then fast-forward when authorized.
 argument-hint: <task or docs/tickets/<area>/<name>.md>
 ---
 
 # Worktree workflow
 
-Execute `$ARGUMENTS` and nothing broader. If it is empty, ask for a task. Read `AGENTS.md` and the
-contracts for packages you touch.
+Execute `$ARGUMENTS`; ask for a task if empty. Read root and touched-package contracts. User
+instructions override this default isolation workflow, including authorization to work on `main`.
+Do not edit the primary checkout before integration. Preserve existing work; never use the shared
+Git stash or overwrite another session's changes.
 
-Never edit the primary checkout before merge. Never merge without explicit user approval.
+## Create or resume
 
-## 1. Create the worktree
-
-Confirm the primary checkout has no operation in progress. Preserve any user changes there.
-
-Derive paths from Git:
+Derive the primary checkout from Git, inspect status and worktrees, then choose a short task branch:
 
 ```bash
 git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
 primary_root=$(dirname "$git_common_dir")
-```
-
-Choose a short slug and an honest branch prefix such as `feat/`, `fix/`, `refactor/`, or `docs/`.
-Create a sibling worktree from current `main` and run `npm ci` inside it:
-
-```bash
 GIT_LFS_SKIP_SMUDGE=1 git worktree add -b <prefix>/<slug> "$(dirname "$primary_root")/on-<slug>" main
 ```
 
-The human-only art sources under `docs/art` are in Git LFS, and the environment variable checks them
-out as pointers instead of copying gigabytes into the worktree. Every gate, the app build and
-`npm run art -- build all` pass without a single LFS object. If the branch or worktree already
-exists, inspect it before deciding whether this is a resume or a collision.
+If the branch or worktree exists, inspect it before resuming. Run `npm ci` in a new worktree.
+Copy ignored `AGENTS.override.md` and `CLAUDE.local.md` from the primary checkout when present,
+without overwriting existing files. Use its `.env` by absolute path only in the process that needs it.
+Fetch LFS objects only for sources the task opens; see [DEVELOPMENT.md](../../docs/DEVELOPMENT.md#git-lfs).
 
-A task that opens or re-exports an art source fetches that one package first, never the whole repo:
+Verify ticket claims against code and allowed evidence before implementing. Read callers and tests;
+state the bounded change, verification path and any human acceptance needed.
 
-```bash
-git lfs pull -I "docs/art/buildings/house-2/**"
-```
+## Implement, verify and review
 
-## 2. Verify the task
+Follow root code/comment rules. Each change should serve the requested outcome. Use focused tests
+while editing, then [TESTING.md](../../docs/TESTING.md#choosing-the-required-checks). Before integration,
+worktree runs may scope Vitest to changed packages and their dependents; the full suite runs once on
+integrated `main`. Real-content and pipeline gates still apply. Benchmark only performance claims.
 
-If the task is a ticket, read it and confirm its claims against current code and allowed source
-evidence. Correct stale research in the ticket rather than implementing a false premise.
+Review the full `main...HEAD` diff, including uncommitted changes before committing. Apply the relevant
+[/audit](audit.md) lenses; read changed modules with callers and tests. Use a separate reviewer for
+an independent, risky concern when useful, with a bounded scope and concise findings. Small changes
+can be reviewed directly. Fix verified defects and rerun affected checks.
 
-Inspect callers, tests, dependency direction, and existing patterns. State a short implementation
-plan and any required human verification. Do not pull adjacent ticket work into the branch.
+For refactors, report `Scope: cohesive | fragmented`, `Structure: improved | neutral | regressed`,
+and `Comments: improved | neutral | regressed`. Fragmented scope or a regression requires fixes.
 
-## 3. Implement and test
+Delete completed tickets or reduce partial tickets to remaining work. Follow the
+[ticket admission rules](../../docs/tickets/README.md) for deferred findings; do not create a cleanup
+backlog by default. Run `git diff --check`, inspect the final diff and commit with Conventional Commit
+style. The completing commit includes the tracker changes.
 
-Make the smallest complete change. Add the lowest useful regression test. Keep the worktree usable
-after each coherent patch.
+## Prepare human verification
 
-Apply the touched-file ratchet while implementing. Do not use an existing cleanup ticket to justify
-adding a responsibility or narrative section to an overgrown file. Comments added or changed by the
-task must carry an irreducible invariant, unit, source basis, approximation, or necessary reason; keep
-investigation and commit rationale out of production JSDoc.
+For player-visible work, leave a verified server running. Internal changes need no preview server.
+Use primary content through a symlink only for read-only tasks; content-writing tasks need an
+independent copy. Compile the worktree before serving because package imports resolve to `dist/`.
 
-For a refactor, keep every hunk tied to one selected hotspot. Judge comments across an extracted source
-and all destination modules together; moving prose and adding new module summaries does not improve the
-comment budget. Do not add a bespoke source scanner when types, structure, or an existing hygiene rule
-can express the boundary.
-
-Run focused tests while working, then the matching gates from `AGENTS.md` and `docs/TESTING.md`.
-`npm run check`, `npm run typecheck`, and `npm run build` cost seconds, so run them whole; scope the
-Vitest run to the packages the diff touches **and the packages that depend on them** (a `sim` change
-still runs `packages/app`). Vitest sizes its worker pool to the machine, so several worktrees each
-running the whole suite oversubscribe it many times over - step 9 is where the suite runs whole, on
-merged `main`. Pipeline and real-content gates remain
-local-only requirements when their scope applies. Run a `bench:*` benchmark only when the task's claim
-is about performance; a task without such a claim does not benchmark.
-
-## 4. Review the diff
-
-Run `code-reviewer` for every code diff, plus the other applicable lenses from `/audit`, before
-handoff. The review unit is the full `main...HEAD` diff, not individual commits: cumulative effects
-across a branch's commits are part of what is reviewed. Triage findings against the source and fix
-agreed blockers and should-fix items. Repeat focused verification after fixes.
-
-Read every touched production module in full, once with comments mentally hidden. Names, types, and
-boundaries must still expose its responsibilities and control flow. Require the review to report
-`Scope: cohesive | fragmented` plus structure and comment verdicts as `improved`, `neutral`, or
-`regressed`; a refactor with fragmented scope or either `regressed` verdict must be fixed before
-handoff.
-
-For visual or audio work, name the exact scene, map, and thing to look at or listen for. Do not
-self-approve pixels or sound.
-
-## 5. Close the tracker and commit
-
-Before the completing commit:
-
-- delete a finished ticket;
-- rewrite a partial ticket to only the remaining work;
-- file only verified, valuable deferred findings, after deduping.
-
-For refactor cleanup, report unrelated findings instead of filing follow-up tickets unless the user
-requested backlog updates or a material blocker would otherwise be lost.
-
-Re-read the full diff and confirm that source comments do not repeat its commit rationale and that no
-added comment carries a calendar date, attribution, revision label, or conversation reference;
-grepping the diff's added lines for `20[0-9]{2}-` and the attribution vocabulary is a sufficient
-check. Run `git diff --check`, and commit with the repository's Conventional Commit style. The
-completing commit must include the final tracker state.
-
-## 6. Serve the branch for verification
-
-Player-visible work is handed off with a running app, not with a request that the user start one.
-Purely internal work (perf, docs, sim-internal refactor) says so in one line instead.
-
-`content/` is gitignored, so link it first: `ln -s "$primary_root/content" "$worktree/content"`.
-A branch that writes content takes `cp -Rc` instead - the pipeline refuses to write through a link.
-
-`:5173` is the primary checkout's. Take a free port from `5174-5199` (`scripts/dev-ports.sh`) and
-start Vite from inside the worktree; a workspace-level `npm run dev` has resolved to the primary
-checkout's `packages/app` before:
+`:5173` belongs to the primary checkout. Find a free port in `5174–5199` with `scripts/dev-ports.sh`:
 
 ```bash
-cd "$worktree/packages/app" && ./node_modules/.bin/vite --port "$PORT" --strictPort
+cd "$worktree/packages/app"
+npm run dev -- --port "$PORT" --strictPort
 ```
 
-Before sending the URL, prove the listener's cwd is this worktree (`lsof -nP -iTCP:$PORT
--sTCP:LISTEN`) and that `/maps-index.json` answers 200 - a 404 there means the content link is missing.
-Report the port and pid with the link.
+Prove the listener's cwd belongs to this worktree with `lsof -nP -iTCP:$PORT -sTCP:LISTEN`; for
+real-content entries verify `/maps-index.json` returns 200. Open the actual scene and inspect console
+errors and the changed behavior. A responding server alone is not verification. Report URL, port,
+pid and any checks still needing a human. Asset handoffs follow
+[PIPELINE.md](../../docs/art/PIPELINE.md), including candidate gallery and real-map review.
 
-## 7. Handoff
+Report commits, changed behavior, checks and remaining risks. If integration is not already
+authorized, ask for approval of this concrete result; otherwise continue.
 
-Report the branch, commit(s), changed behavior, checks, scope, structure and comment verdicts, review
-result, and exact human verification including the live URL. Then stop and wait. Do not merge on
-implied approval.
+## Integrate and clean up
 
-## 8. Refresh and merge after approval
+1. Check `git log --oneline main..<branch>`. If empty, verify the task is already present and clean up.
+2. Fetch the target remote when configured. Update a clean local `main` by fast-forward when possible;
+   if local and remote target histories diverged, report it rather than rewriting unrelated commits.
+3. Rebase the task onto current `main`. Inspect all conflict paths before resolving, stage only intended
+   files, and review the resulting diff. Rerun affected checks if the effective change differs.
+4. Recheck `main`; rebase again if it advanced. In a clean primary checkout on `main`, integrate with
+   `git merge --ff-only <branch>`. If it is dirty or on another branch, preserve it and arrange a clean
+   integration checkout; do not silently move a checked-out branch underneath another session.
+5. On integrated `main`, run the repository checks and full suite from `TESTING.md`. A scoped branch
+   run does not cover concurrent integration. Fix failures before reporting completion.
+6. Stop task processes by recorded pid and verify released ports. Confirm the task branch is an
+   ancestor of `main`, remove the worktree and delete the merged branch. Keep a requested review
+   server alive until the user finishes review.
 
-Check `git log --oneline main..<branch>` first: empty means another session already rebased and
-landed this work, so verify the behavior survived and go straight to cleanup.
-
-Fetch current `main` and rebase the task branch onto it. Resolve conflicts inside the worktree: at
-every conflict stop, list all conflicted files before resolving anything, and never stage blindly
-with `git add -A`. After the rebase, audit the result for leftover conflict markers and unintended
-deletions. If the effective diff changed, rerun relevant checks and review the changed parts before
-merging.
-
-Fast-forward `main` only:
-
-- clean primary checkout on `main`: `git -C "$primary_root" merge --ff-only <branch>`;
-- primary checkout on another branch: update `main` without changing that checkout;
-- dirty primary checkout on `main`: stop and ask the user to clear or preserve it.
-
-Never reset or overwrite primary changes, and never `git stash` anywhere in this repo - the stash
-stack is shared by every worktree, so a concurrent session pops your entry.
-
-## 9. Verify merged main
-
-A branch green in isolation still breaks `main`: a type another worktree landed, a doc link to a
-ticket this branch deleted, formatting left by conflict resolution. In the primary checkout, run the
-`ci.yml` gates on merged `main` - `npm run check:assets`, `npm run check:docs`, `npm run check`,
-`npm run build`, `npm test` - then fix on `main` and commit, or revert the merge. CI tests on Ubuntu
-only, so flag golden-hash work as unproven on other operating systems; a Windows run is available
-through the CI workflow's manual dispatch checkbox.
-
-## 10. Clean up
-
-Kill the verification server by its recorded pid and confirm the port is free, so it returns to the
-pool instead of serving a deleted checkout. Stop other processes started by the workflow. Confirm the
-branch is an ancestor of `main`, remove the worktree, then delete the merged branch. Report the merged
-commits and cleanup result.
-
-At the very end, list every ticket created by this branch. For each, state why it was created and what
-concrete problem it is meant to solve; if none were created, say so explicitly. Ask the user to confirm
-keeping the new tickets—merge approval does not count as that confirmation.
-
-If the user abandons the task, confirm before removing the worktree and force-deleting an unmerged
-branch.
+Report integrated commits, verification, cleanup and any new tickets with their concrete purpose.
+Ask before discarding an abandoned, unmerged worktree.

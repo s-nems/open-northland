@@ -22,5 +22,6 @@ sprite-sheet loads even though those loaders know their item counts.
 - A throttled `?map=` load shows the card from the first useful paint and advances through long phases.
 - A fast boot shows no flash and adds no forced-frame delay; a bare-checkout `?scene=` reaches its
   missing-content notice without inheriting the shell.
-- `npm run shot` is byte-identical; `npm test`, `npm run check`, and `npm run build` pass.
+- `npm run shot` reaches readiness without page errors or a loading overlay; inspect the capture.
+  `npm test`, `npm run check`, and `npm run build` pass.
 

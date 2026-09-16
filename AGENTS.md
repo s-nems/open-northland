@@ -43,48 +43,36 @@ legal wording is in `docs/LEGAL.md`.
 
 ## Code quality
 
-- Prefer names and structure that explain the code without PR context.
-- Prefer no comment when names, types, and tests already state the contract. A useful comment records
-  one otherwise-hidden fact: a unit, invariant, ownership boundary, non-obvious constraint, or source
-  basis. Do not narrate control flow or restate the implementation.
-- Comments describe the current contract, never its history. Never put calendar dates, user/author
-  attribution, conversation, plan, ticket, or PR references, or labels such as "user decision",
-  "feedback", or "revised" in code comments. State source basis impersonally (`manual`, `.ini` key,
-  byte evidence, observation, or approximation); keep decision history in the ticket or commit.
-- JSDoc is not required for every export, interface member, or local helper. Do not document a symbol
-  when its name and type already state the contract.
-- Write one direct sentence about one fact. Most comments fit in one to three physical lines; treat
-  anything longer as a structural problem and shorten the comment, improve the code, or move the detail
-  to a test, ticket, or focused document. Only indivisible protocol layouts, security/legal boundaries,
-  and byte-level format evidence justify a longer block.
-- Do not write mini design documents above modules or exports. Avoid phase and caller inventories,
-  `{@link}` chains that restate the import graph, repeated examples, rhetorical asides, emphasis
-  through capitals, and chains of parenthetical remarks.
-- When behavior changes, rewrite or delete its comment so only the new invariant remains; never append
-  a dated correction or revision note. Leave unrelated historical comments to a dedicated comment
-  pass instead of widening a feature diff.
-- Give each fact one durable home. Investigation, benchmarks, caller inventories, and decision history
-  belong in tests, tickets, or the completing commit, not repeated in production JSDoc.
-- When extracting or moving code, review comments across the old and new modules as one budget. Moving
-  prose is not an improvement, and a behavior-preserving refactor should not grow that budget unless it
-  exposes a previously unstated invariant. Do not add a module header or JSDoc to every new export by
-  default.
-- Refactor structure before adding a long comment about phases, branch purpose, or ownership.
-- Group by feature. When a file passes roughly 300 lines or mixes concerns, extract the relevant
-  concern into a feature folder and preserve public imports through a small barrel when useful.
-- Delete dead code and commented-out blocks. Git is the archive.
-- Deduplicate when a second real caller proves the shared concept. Do not add speculative helpers.
-- Leave touched code cleaner, but do not turn a bounded task into a repository rewrite.
-- Do not add another responsibility, narrative section, or longer orchestration path to an already
-  overgrown file. Extract the concern related to the task; an existing or newly filed cleanup ticket
-  does not permit making the file worse.
-- Enforce boundaries through package structure, types, and existing lint or hygiene checks where
-  possible. Do not add a one-off regex source scanner to prove a local refactor; reserve source scans
-  for repository-wide syntactic contracts that cannot be expressed by those mechanisms.
+- Use names, types and focused functions that explain the code without the conversation or PR.
+  Group by feature; split mixed responsibilities, not files merely exceeding a line count. Around
+  300 lines is a review cue, not a limit for tables, schemas or cohesive implementations.
+- Keep ownership explicit. Prefer composition and narrow domain interfaces; do not introduce a
+  framework, service layer, wrapper or helper without a concrete caller and a simpler resulting API.
+  Share a helper when a second real caller proves the concept. Check existing tools before adding one.
+- Delete dead code and commented-out blocks. Improve touched code without expanding a bounded task
+  into a repository rewrite. Do not add responsibilities to an already overgrown module.
+- Enforce boundaries through packages, types and existing lint/hygiene checks. A bespoke regex scanner
+  is not proof of a local refactor; source scans are for otherwise unenforceable repository contracts.
+- Use strict TypeScript: no `any`, narrow `unknown`, exhaustive discriminated unions, string-literal
+  unions over `enum`, `readonly` for stable data, `import type`, and proven absence handling instead
+  of non-null assertions.
 
-Use strict TypeScript deliberately: no `any`, narrow `unknown`, prefer discriminated unions with
-exhaustive switches, use string-literal unions rather than `enum`, mark stable data `readonly`, use
-`import type`, and prove absence cases instead of using non-null assertions.
+### Comments and documentation
+
+- Keep facts with one owner: rules in the nearest contract, usage in the relevant reference, current
+  work in a ticket, history in Git. Link to the owner instead of copying its checklist.
+- A comment earns its place with a unit, invariant, ownership boundary, non-obvious reason or source
+  basis. Omit prose that repeats names, types or control flow; JSDoc is not required for every export.
+- Usually state one fact in one to three lines. Longer protocol layouts, security/legal constraints
+  and byte evidence are valid exceptions. Otherwise improve structure or put the detail in a test
+  or focused reference. Avoid module essays, caller inventories and chains of `{@link}` references.
+- Describe the current contract, not dates, authors, conversations, tickets, PRs or revisions. Preserve
+  source basis and uncertainty when shortening. Rewrite obsolete comments instead of appending updates.
+- When extracting code, count source and destination comments together. Moving prose or adding a header
+  to every new module is not an improvement; add prose only for a previously unstated necessary fact.
+- Markdown should answer a reader's task with verified facts and runnable examples. Omit repeated
+  summaries, generic advice and investigation transcripts. Do not compress format evidence or art
+  provenance merely to meet a word budget.
 
 ## Persisted state
 
@@ -132,26 +120,35 @@ File deferred work only when it is verified, actionable, valuable enough to sche
 covered. Group closely related findings. Minor observations can stay in the current report instead of
 becoming permanent tracker noise.
 
-`/worktree` is the primary isolated workflow: create a worktree, implement one requested task, verify
-and review it, update the ticket, ask for approval, then fast-forward merge. Other workflows are
-documented under `.claude/commands/`.
+Use the current checkout when the user authorizes it; otherwise `/worktree` provides isolation.
+Preserve existing changes. Prior authorization to commit or integrate remains valid; do not add
+another approval round. Rebase task branches onto current target, then fast-forward; never merge
+the target into a task branch or rewrite unrelated history.
 
-## Verification
+## Context and verification
 
-- Prove behavior at the lowest useful layer: unit, integration, headless scenario, then browser scene.
-- Normal code expects `npm run check`, `npm run build`, and `npm test`.
-- Pipeline and content schema changes also need `npm run test:pipeline` against the local mod.
-- Own-art build and delivery changes follow `docs/art/PIPELINE.md` verification; changed content joins
-  still require the real-content checks below.
-- Real-content loaders and joins need `npm run test:content` when local content exists.
-- Golden hashes move only for intentional behavior changes.
-- Visual and audio changes need human review. Automated checks can prove data decisions, stability,
-  and absence of obvious crashes, not final pixels or sound.
-- Player-visible mechanics should have a registered acceptance scene when it adds useful state and
-  presentation coverage.
+Start with this contract, local workspace instructions, the requested task and relevant package
+contracts. Search the owning feature, callers and tests before loading broad references. The
+[documentation index](docs/README.md) routes additional reading; do not load the whole ticket backlog,
+all package contracts or art source records for an unrelated change.
 
-Commands and local tools are listed in `docs/DEVELOPMENT.md`. Test modes are explained in
-`docs/TESTING.md`.
+Use [TESTING.md](docs/TESTING.md) as the single required-check matrix. Run focused tests during
+iteration and the applicable gates at completion. Repeat successful gates only after relevant changes;
+serialize full suites and benchmarks on a shared machine. Keep full logs outside the conversation
+and report failures, counts and missing checks.
+
+Review the complete task diff for correctness, ownership, readability and useful test coverage.
+Use the applicable checklists in `.claude/agents/` as review lenses in either client. A separate
+reviewer is useful for an independent, risky concern, not mandatory ceremony for every edit. Give any
+reviewer a bounded diff, question and required evidence; verify findings before making changes.
+
+Prove behavior at the lowest useful layer: unit, integration, headless scenario, browser.
+Golden hashes change only for intentional behavior changes. Player-visible mechanics should have a
+registered acceptance scene when it adds useful coverage. Agents inspect screenshots, console errors,
+state and integration themselves; final visual/audio acceptance remains human. For environment art,
+follow the ×2 world-view trial and door-to-character calibration in `docs/art/WORLD-STYLE.md`.
+
+Commands and local tools: [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Package contracts
 

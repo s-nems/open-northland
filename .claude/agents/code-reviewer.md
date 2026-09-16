@@ -28,24 +28,10 @@ Check, in order:
 Read changed production code once with comments mentally hidden. If its phases, ownership, or state
 transitions disappear, flag missing code structure rather than asking for a shorter explanation.
 
-Comments should state an invariant, unit, source basis, approximation, or necessary reason. Flag:
-
-- any comment the diff adds or edits that carries a calendar date, user or author attribution, a
-  revision or feedback label, or a conversation, plan, ticket, or PR reference; this alone makes the
-  comment verdict `regressed`;
-- JSDoc that only repeats a symbol's name or type;
-- new or expanded prose copied from investigation, tests, handoff, or commit rationale;
-- repeated facts with more than one owner;
-- long blocks whose facts could be expressed by names, types, functions, or module boundaries;
-- an overgrown touched file made worse despite an existing cleanup ticket.
-
-For moved or extracted code, compare the old module and all destination modules as one comment budget.
-Mechanically relocated prose plus new module or export summaries is not an improvement. Treat increased
-narrative prose or longer blocks as a regression unless the diff introduces a genuinely new
-irreducible fact.
-
-Do not demand comments on every export or interface member. Source protocols and security or
-determinism invariants may need denser prose, but every retained sentence must carry a distinct fact.
+Apply the root contract's comment rules. Flag added history, redundant JSDoc, copied investigation
+or long prose compensating for missing structure. For extractions, judge old and new modules as
+one comment budget. Retain source, unit, ownership, security and determinism facts; do not demand
+comments on every export. Increased narrative without a necessary new fact is a regression.
 
 Confirm every finding in the current file and cite a real line. Return concise blocker, should-fix,
 and note sections using:

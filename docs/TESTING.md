@@ -24,12 +24,38 @@ test patches. To replace a module the subject imports, either spy on the importe
 `vi.resetModules()` and import the subject dynamically: `vi.mock` alone cannot re-apply to a module an
 earlier file already loaded.
 
-During development, narrow the test command by name:
+During iteration, compile package exports and run only the affected tests:
 
 ```bash
-npm test -- scenario
-npm run test:watch
+npx tsc --build
+npx vitest run --project core packages/sim/test/core/hygiene.test.ts
+npx vitest run --project app packages/app/test/scenes
 ```
+
+Replace the paths with the affected tests; include dependent packages when their contracts change.
+`--project core` and `--project app` exclude real-content tests. For a selection spanning both,
+use `--project='!content'`. A path filters files; `-t 'test name'` filters test titles.
+Run `tsc --build` again after package source changes: workspace imports resolve to `dist/`.
+These focused runs do not replace the completion gates or typecheck test sources.
+
+`npm test -- scenario` also filters files, but first runs every script test and the full production
+and test typecheck. Use it for completion, not on every edit. `npm run test:watch` performs that
+initial typecheck; after package edits, rebuild their exports in another terminal.
+
+For completion, `npm run build` already includes the typecheck. To run the standard gates without
+repeating it through `npm test`:
+
+```bash
+npm run check
+npm run build
+npm run test:scripts
+npx vitest run --project='!content'
+```
+
+This is equivalent to the standard gates above; keep the standalone `npm test` entry for CI and
+fresh test runs. Run `npm run check:assets` and `npm run check:docs` before committing repository
+changes. Do not run multiple full suites or a benchmark alongside a build on the same machine.
+The root Vitest configuration caps its worker pool at four; simultaneous runners still multiply it.
 
 ## Test layers
 
@@ -205,6 +231,8 @@ See [`DEVELOPMENT.md`](DEVELOPMENT.md) for benchmark controls.
 - Sim behavior: standard gates plus a focused determinism or scenario test.
 - Pipeline or schema: standard gates plus `npm run test:pipeline`.
 - Real-content consumers: standard gates plus `npm run test:content` when local content exists.
+- Own-art build or delivery: [art pipeline verification](art/PIPELINE.md#verification), plus
+  real-content checks when compatibility joins change.
 - Sort comparators, the local float allowance, or the state hash: standard gates plus
   `npm run test:engines` when local content and the Playwright browsers exist.
 - Visual or audio work: matching automated checks plus a stated human review step.
