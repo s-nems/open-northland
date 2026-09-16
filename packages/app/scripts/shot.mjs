@@ -38,7 +38,7 @@ async function main() {
   // serves index.html + main.ts exactly as `npm run dev` does.
   const server = await createServer({
     root: appRoot,
-    server: { port: 0, open: false },
+    server: { host: '127.0.0.1', port: 0, open: false },
     logLevel: 'warn',
   });
   await server.listen();
@@ -50,7 +50,7 @@ async function main() {
   const zoomParam = zoom ? `&zoom=${encodeURIComponent(zoom)}` : '';
   const terrainParam = terrain ? '&terrain' : '';
   const hudParam = noHud ? '&hud=0' : '';
-  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}${zoomParam}${terrainParam}${hudParam}`;
+  const url = `http://127.0.0.1:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}${zoomParam}${terrainParam}${hudParam}`;
 
   const browser = await chromium.launch();
   let failed = false;

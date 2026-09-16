@@ -38,6 +38,7 @@
     "web:image": "docker buildx build --file deploy/web/Dockerfile --build-context app=packages/app/dist --build-context content=content --tag open-northland-web --load deploy/web",
     "dev": "npm run dev --workspace @open-northland/app --",
     "dev:ports": "scripts/dev-ports.sh",
+    "dev:verify": "npm run dev:verify --workspace @open-northland/app --",
     "dev:reset": "scripts/dev-reset.sh",
     "shot": "npm run shot --workspace @open-northland/app --",
     "pipeline": "npm run start --workspace @open-northland/asset-pipeline --",

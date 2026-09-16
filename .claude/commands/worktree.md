@@ -20,7 +20,8 @@ primary_root=$(dirname "$git_common_dir")
 GIT_LFS_SKIP_SMUDGE=1 git worktree add -b <prefix>/<slug> "$(dirname "$primary_root")/on-<slug>" main
 ```
 
-If the branch or worktree exists, inspect it before resuming. Run `npm ci` in a new worktree.
+If the branch or worktree exists, inspect it before resuming. Run `npm ci` in a new worktree;
+never symlink `node_modules` from another checkout (its workspace links point at that checkout).
 Copy ignored `AGENTS.override.md` and `CLAUDE.local.md` from the primary checkout when present,
 without overwriting existing files. Use its `.env` by absolute path only in the process that needs it.
 Fetch LFS objects only for sources the task opens; see [DEVELOPMENT.md](../../docs/DEVELOPMENT.md#git-lfs).
@@ -46,21 +47,15 @@ style. The completing commit includes the tracker changes.
 
 ## Prepare human verification
 
-For player-visible work, leave a verified server running. Internal changes need no preview server.
-Use primary content through a symlink only for read-only tasks; content-writing tasks need an
-independent copy. Compile the worktree before serving because package imports resolve to `dist/`.
+For player-visible work, a working preview link is part of completion, including when integration
+is already authorized. Follow [preview verification](../../docs/DEVELOPMENT.md#worktree-previews):
+start from the task checkout, verify its identity and current build, then inspect the changed
+behavior in the browser. Internal changes need no preview server.
 
-`:5173` belongs to the primary checkout. Find a free port in `5174–5199` with `scripts/dev-ports.sh`:
-
-```bash
-cd "$worktree/packages/app"
-npm run dev -- --port "$PORT" --strictPort
-```
-
-Prove the listener's cwd belongs to this worktree with `lsof -nP -iTCP:$PORT -sTCP:LISTEN`; for
-real-content entries verify `/maps-index.json` returns 200. Open the actual scene and inspect console
-errors and the changed behavior. A responding server alone is not verification. Report URL, port,
-pid and any checks still needing a human. Asset handoffs follow
+Keep the task preview available while awaiting review/integration. Do not substitute `:5173`, a
+production preview, or another session's listener for unmerged changes; fix the preview or report
+the blocker. After integration, hand off verified primary `main` and clean up task servers below.
+Asset handoffs follow
 [PIPELINE.md](../../docs/art/PIPELINE.md), including candidate gallery and real-map review.
 
 Report commits, changed behavior, checks and remaining risks. If integration is not already
@@ -78,9 +73,15 @@ authorized, ask for approval of this concrete result; otherwise continue.
    integration checkout; do not silently move a checked-out branch underneath another session.
 5. On integrated `main`, run the repository checks and full suite from `TESTING.md`. A scoped branch
    run does not cover concurrent integration. Fix failures before reporting completion.
-6. Stop task processes by recorded pid and verify released ports. Confirm the task branch is an
-   ancestor of `main`, remove the worktree and delete the merged branch. Keep a requested review
-   server alive until the user finishes review.
+6. For player-visible work, verify the primary app on `:5173` from the primary checkout, exercise
+   the integrated change, and include that clickable URL in the final response. A task URL is for
+   changes still awaiting integration. Report a blocker if primary preview cannot be verified.
+7. Follow [server cleanup](../../docs/DEVELOPMENT.md#worktree-previews): stop every temporary server
+   started by this session, including earlier attempts and child Node/Vite processes. Verify their
+   exit and released ports before removing the worktree; do not leave a listener with a deleted cwd.
+   Confirm the branch is an ancestor of `main`, then remove the worktree and merged branch. Retain
+   a task preview only on explicit user request, naming the remaining PID/port. Keep the primary
+   development server running.
 
 Report integrated commits, verification, cleanup and any new tickets with their concrete purpose.
 Ask before discarding an abandoned, unmerged worktree.

@@ -36,8 +36,9 @@ printf '%s\n' "$listeners" | while IFS= read -r line; do
       seen="$seen$pid:$port "
       cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
       note=''
-      case "$cwd" in
-        "$PRIMARY_ROOT" | "$PRIMARY_ROOT"/*) note='  <- primary checkout' ;;
+      checkout="$(git -C "${cwd:-/}" rev-parse --show-toplevel 2>/dev/null || true)"
+      case "$checkout" in
+        "$PRIMARY_ROOT") note='  <- primary checkout' ;;
         *)
           if [ "$port" = "$PRIMARY_PORT" ]; then
             note='  !! holds the primary port but is NOT the primary checkout'

@@ -32,6 +32,55 @@ any active game so new code cannot retain an old multiplayer identity.
 Production builds and plain Node tools use `dist/`. Run `npx tsc --build` before running a Node tool
 against changed package sources; `npm run build` performs the full typecheck and production build.
 
+## Worktree previews
+
+Port `5173` belongs to the primary checkout on `main`. Linked worktrees default to `5174`;
+choose a free port in `5174–5199` with `npm run dev:ports`. Development servers fail on a busy
+port instead of silently moving. Use `127.0.0.1` consistently for startup, verification and links.
+Automated harnesses can request `port: 0`; this searches from `5174`, never the main port.
+
+Run these commands from the **task worktree root** (replace `5175` with the chosen free port):
+
+```bash
+primary_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+ON_CONTENT_DIR="$primary_root/content" npm run dev -- --port 5175
+# In a second terminal, after the server reports ready:
+npm run dev:verify -- 'http://127.0.0.1:5175/?map=magiczny_las'
+```
+
+Use the client's persistent terminal/background process support and keep its PID and log path.
+Install dependencies with `npm ci` in each worktree; shared `node_modules` can resolve workspace
+imports to another checkout. Vite rejects workspace imports outside this checkout's `src/` trees.
+Development serves source directly; compiling `dist/` does not fix a wrong preview.
+
+`dev:verify` compares `/__dev/checkout` with this checkout's real path and current client-build hash,
+then checks generated IR, nonempty map/sprite indexes, the requested map (or first indexed map),
+and a sprite atlas/PNG over HTTP. Missing content fails verification even if the menu boots.
+The endpoint reports the serving PID, branch/HEAD at startup and content directory; HTTP 200 alone
+does not prove identity. An older server without this endpoint must be restarted. The build hash
+covers multiplayer identity inputs, not assets or every rendering module.
+
+After the last edit or rebase, run verification, open the **same URL** in a browser, inspect console
+errors and exercise the changed behavior. For real maps also check `/maps-index.json` and the chosen
+map load. The command above shares primary content for read-only use. Tasks writing content need
+their own copy and `ON_CONTENT_DIR` pointing there. If the primary content is absent, prepare it
+using [Local game content](#local-game-content); never hand off the fallback app as a real-map
+preview. Browser verification is required even when identity matches, especially for asset changes.
+
+Immediately before handoff, rerun `dev:verify` and give a clickable link to the tested map/scene,
+the checkout/branch, and any remaining human checks. Before integration, keep the task preview
+available. After integration, verify the primary app on `:5173` from the primary checkout and hand
+off that URL. The primary app must actually contain the integrated change.
+
+At session cleanup, stop **all temporary servers started by this session**, including abandoned
+attempts and test harnesses. Check recorded PIDs against their current command/cwd before stopping
+them; stop their Node/Vite children too, not just the npm wrapper. Wait for exit, then use
+`npm run dev:ports` to confirm the task listeners disappeared before deleting their worktree.
+Do this on failure/cancellation too. Leave the primary development server and other sessions'
+processes alone; never use `killall node`, `pkill node`, or kill by port alone. Retain a task server
+only on explicit user request and report its PID/port. `npm run dev:reset` explicitly replaces the
+primary server and must not be used to start a worktree preview.
+
 ## Local game content
 
 A release builds `content/` from the pinned CulturesNation archive and ships the tree inside the

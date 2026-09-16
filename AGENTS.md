@@ -125,6 +125,13 @@ Preserve existing changes. Prior authorization to commit or integrate remains va
 another approval round. Rebase task branches onto current target, then fast-forward; never merge
 the target into a task branch or rewrite unrelated history.
 
+Player-visible work ends with a running, verified preview and a clickable URL in the final response.
+Follow [preview verification](docs/DEVELOPMENT.md#worktree-previews); `:5173` is reserved for the
+primary checkout on `main`. After integration, verify and link the primary app, then stop the task's
+servers before removing its worktree. Retain a task preview only when the user requests it. Track
+and stop all temporary servers owned by the session, including intermediate test runs; see the
+linked cleanup procedure. If preview verification fails, report the blocker instead of an unverified URL.
+
 ## Context and verification
 
 Start with this contract, local workspace instructions, the requested task and relevant package

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:verify": "node scripts/dev-verify.mjs",
     "build": "tsc --build && vite build && node scripts/bundle-report.mjs",
     "preview": "vite preview",
     "shot": "node scripts/shot.mjs"
