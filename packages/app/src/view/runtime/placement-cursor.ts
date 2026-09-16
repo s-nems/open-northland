@@ -14,7 +14,7 @@ export interface PlacementCursorInput {
   readonly signpostActive: boolean;
   /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
    *  band it would discard. */
-  readonly buildingOverlay: (buildingType: number) => PlacementOverlayFrame | null;
+  readonly buildingOverlay: (buildingType: number, paper?: Paper) => PlacementOverlayFrame | null;
   readonly signpostOverlay: () => PlacementOverlayFrame | null;
   /** The tile under the cursor, or null off the map or off the canvas. */
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
@@ -33,18 +33,14 @@ export interface PlacementCursorInput {
 export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const { placementType } = input;
   const signpostFrame = placementType === null && input.signpostActive ? input.signpostOverlay() : null;
-  const overlay = placementType === null ? signpostFrame : input.buildingOverlay(placementType);
+  const paper = input.placementPaper === null ? undefined : input.placementPaper;
+  const overlay = placementType === null ? signpostFrame : input.buildingOverlay(placementType, paper);
   if (placementType === null && signpostFrame === null) return { overlay, ghost: null };
 
   const tile = input.tileAt();
   if (tile === null) return { overlay, ghost: null };
   if (placementType !== null) {
-    return input.canPlaceAt(
-      placementType,
-      tile.col,
-      tile.row,
-      input.placementPaper === null ? undefined : input.placementPaper,
-    )
+    return input.canPlaceAt(placementType, tile.col, tile.row, paper)
       ? {
           overlay,
           ghost: {

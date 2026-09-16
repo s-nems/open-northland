@@ -9,6 +9,7 @@ import {
   spawnSandboxSettler,
   WEAPON_SWORD,
 } from '../src/game/sandbox/index.js';
+import { makeOverlayFrameSource } from '../src/view/placement-overlay.js';
 import { createFogGates } from '../src/view/projections/index.js';
 import { createPlacementGates, type PlacementGates } from '../src/view/runtime/placement-gates.js';
 
@@ -57,6 +58,22 @@ describe('placement gates - the ground an enemy army contests', () => {
 
     gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy);
     gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy, paper);
+
+    expect(probe.mock.calls).toEqual([
+      [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],
+      [BUILDING_HOME_00, HUMAN_PLAYER, undefined],
+    ]);
+  });
+
+  it('uses the same paper technology bypass for the bright buildable-ground overlay', () => {
+    const { sim } = openField();
+    const overlay = makeOverlayFrameSource(sim, { width: MAP_W, height: MAP_H }, HUMAN_PLAYER, VIKING);
+    const probe = vi.spyOn(sim, 'placementProbe');
+    const camera = { offsetX: 0, offsetY: 0, scale: 1 };
+    const paper = { kind: 'placeHouse', param: BUILDING_HOME_00 } as const;
+
+    overlay(BUILDING_HOME_00, camera, 320, 200);
+    overlay(BUILDING_HOME_00, camera, 320, 200, paper);
 
     expect(probe.mock.calls).toEqual([
       [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],

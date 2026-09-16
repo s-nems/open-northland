@@ -68,18 +68,24 @@ describe('placement cursor', () => {
 
   it('passes a held paper to the probe so its technology bypass also governs the ghost', () => {
     const paper: Paper = { kind: 'placeAny', param: 0 };
-    const seen: Array<Paper | undefined> = [];
+    const gatePapers: Array<Paper | undefined> = [];
+    const overlayPapers: Array<Paper | undefined> = [];
     const f = frame({
       placementType: HOUSE,
       placementPaper: paper,
+      buildingOverlay: (_type, activePaper) => {
+        overlayPapers.push(activePaper);
+        return BUILDING_WASH;
+      },
       canPlaceAt: (_type, _col, _row, activePaper) => {
-        seen.push(activePaper);
+        gatePapers.push(activePaper);
         return activePaper !== undefined;
       },
     });
 
     expect(f.cursor().ghost?.kind).toBe('building');
-    expect(seen).toEqual([paper]);
+    expect(gatePapers).toEqual([paper]);
+    expect(overlayPapers).toEqual([paper]);
   });
 
   it('hides the ghost while the pointer is off the canvas', () => {

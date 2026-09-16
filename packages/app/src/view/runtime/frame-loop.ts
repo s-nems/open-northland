@@ -131,8 +131,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     stance: harshestStance(sim, musicRoster),
   });
   // Bound once, so a frame never mints a fresh pair of closures.
-  const buildingOverlay = (buildingType: number) =>
-    overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height);
+  const buildingOverlay = (buildingType: number, paper?: Paper) =>
+    overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height, paper);
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;

@@ -4,7 +4,7 @@ import {
   type PlacementOverlayFrame,
   visibleTileRange,
 } from '@open-northland/render';
-import { FOG_STATE, type Simulation } from '@open-northland/sim';
+import { FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { nodeBandOfCells } from './picking.js';
 
@@ -24,13 +24,19 @@ export function makeOverlayFrameSource(
   // The seat whose fog and enemies gate the overlay.
   player: number = HUMAN_PLAYER,
   tribe?: number,
-): (buildingType: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+): (
+  buildingType: number,
+  camera: Camera,
+  screenW: number,
+  screenH: number,
+  paper?: Paper,
+) => PlacementOverlayFrame | null {
   const band = makeBandProber(sim, mapSize, player);
-  return (buildingType, camera, screenW, screenH) =>
+  return (buildingType, camera, screenW, screenH, paper) =>
     band(
-      () => sim.placementProbe(buildingType, player, tribe),
+      () => sim.placementProbe(buildingType, player, paper === undefined ? tribe : undefined),
       (probe, band) =>
-        `b${buildingType}:${sim.placementBlockerVersion()}:${probe.contestedKeyWithin(band.minCol, band.maxCol, band.minRow, band.maxRow)}`,
+        `b${buildingType}:${paper === undefined ? 'tech' : 'paper'}:${sim.placementBlockerVersion()}:${probe.contestedKeyWithin(band.minCol, band.maxCol, band.minRow, band.maxRow)}`,
       camera,
       screenW,
       screenH,
