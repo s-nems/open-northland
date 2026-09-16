@@ -1,5 +1,5 @@
 ---
-description: Review a diff with the project lenses and report ranked findings without editing.
+description: Review a bounded diff and report verified findings without editing.
 argument-hint: [git range, branch, or paths; defaults to the current diff]
 ---
 
@@ -17,32 +17,20 @@ commit fixes unless the user asks in a later turn.
 
 State the exact scope and diff stat before starting.
 
-## Apply the relevant lenses
+## Review
 
-Read the applicable checklists under `.claude/agents/`. Review small diffs directly. For broad or
-risky work, delegate independent concerns when useful and supported; give each reviewer the exact
-diff, question and evidence needed. Do not have several agents rediscover the whole repository.
+Follow root `AGENTS.md` for reviewer count, handoff and model selection. Use
+[code-reviewer](../agents/code-reviewer.md); its engine and fidelity sections apply only when the diff
+touches those concerns. The same checklist works for direct review or one independent reviewer.
 
-- `code-reviewer`: any source, test, tool, or configuration change.
-- `engine-reviewer`: sim, fixed point, command flow, content schemas, or per-tick/per-frame paths.
-- `gameplay-reviewer`: mechanics, extracted data, source claims, or player-facing UI/input.
-- general correctness: broad or risky behavior not covered by the named lenses.
-
-Skip lenses that cannot apply and say why. Documentation-only changes still need direct fact, link,
-example, and readability checks even when all code lenses are skipped.
+For fidelity questions, verify the evidence using the reviewer's source procedure and available MCP
+tools. A passing test or agreement between reviewers is not proof of original behavior.
 
 ## Triage and report
 
-Verify every proposed finding in the current source. Merge duplicates and drop preference-only
-comments.
+Verify proposed findings in the current source before accepting them. Follow the reviewer's concise
+finding format; merge duplicates and drop preference-only comments.
 
-Rank findings as blocker, should-fix, or note. Use:
-
-```text
-file:line: defect; failure scenario; suggested fix
-```
-
-Add your own agree/disagree judgement for findings returned by reviewers. Name any visual or audio
-checks that still need a human and give the exact scene or URL. Preserve the code reviewer's scope,
-structure, and comment verdicts in the report; fragmented scope or either `regressed` verdict makes a
-refactor need fixes. End with one verdict: merge-ready, needs fixes, or needs human review.
+Report material verification gaps and any exact scene or URL needing human acceptance. End with one
+verdict: merge-ready, needs fixes, or needs verification. Do not claim merge-ready while a required
+check remains unresolved.

@@ -70,26 +70,15 @@ nearby observations in the report rather than fixing or documenting them in the 
 ## Verify and report
 
 Run focused tests first, then the applicable repository gates. Review the final diff using the
-`code-reviewer` checklist, plus `engine-reviewer` for sim or hot frame paths. Delegate an independent
-review when useful for the risk and scope; a separate agent is not required for a small cleanup.
+[code-reviewer](../agents/code-reviewer.md) checklist and root review policy.
 Run a `bench:*` benchmark only when the selected finding's claim is about performance: there, compare
 a benchmark or report the exact operation/complexity reduction without inventing wall-clock gains. A
 pass with no performance claim proves itself with tests and deterministic evidence, not wall-clock.
 
 Re-read each touched production module once with comments mentally hidden. For moved or extracted
 code, compare the combined comment prose before and after rather than judging each destination in
-isolation. Report scope, structure, and comment verdicts as shown below, naming any long comment
-retained and the irreducible fact it carries:
-
-```text
-Scope: cohesive | fragmented
-Structure: improved | neutral | regressed
-Comments: improved | neutral | regressed
-```
-
-`Comments: neutral` is not available when narrative prose or long blocks grew without a newly required
-irreducible fact. A refactor with fragmented scope or either `regressed` verdict is not ready for
-handoff.
+isolation. Fix fragmented scope, structural regressions and added prose without a necessary new fact
+before handoff; report concrete issues rather than mandatory scope/structure/comment verdicts.
 
 Do not create follow-up tickets during cleanup by default. Report other verified findings so the user
 can choose the next run, and end the report with the remaining verified hotspots ranked, so the next
@@ -97,4 +86,4 @@ run starts from the top without re-diagnosing the scope. File a ticket only when
 backlog updates or a material blocker would otherwise be lost; dedupe first and keep it compact.
 
 Do not commit unless requested. Report the completed hotspot, changed files, verification, preserved
-behavior, scope, structure and comment verdicts, reviewer triage, and remaining risk.
+behavior and remaining risk.

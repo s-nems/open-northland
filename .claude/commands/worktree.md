@@ -36,12 +36,8 @@ worktree runs may scope Vitest to changed packages and their dependents; the ful
 integrated `main`. Real-content and pipeline gates still apply. Benchmark only performance claims.
 
 Review the full `main...HEAD` diff, including uncommitted changes before committing. Apply the relevant
-[/audit](audit.md) lenses; read changed modules with callers and tests. Use a separate reviewer for
-an independent, risky concern when useful, with a bounded scope and concise findings. Small changes
-can be reviewed directly. Fix verified defects and rerun affected checks.
-
-For refactors, report `Scope: cohesive | fragmented`, `Structure: improved | neutral | regressed`,
-and `Comments: improved | neutral | regressed`. Fragmented scope or a regression requires fixes.
+[/audit](audit.md) checks and root review policy. Fix verified defects, including scope or structure
+regressions, and rerun affected checks.
 
 Delete completed tickets or reduce partial tickets to remaining work. Follow the
 [ticket admission rules](../../docs/tickets/README.md) for deferred findings; do not create a cleanup

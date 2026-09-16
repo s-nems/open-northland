@@ -138,9 +138,14 @@ serialize full suites and benchmarks on a shared machine. Keep full logs outside
 and report failures, counts and missing checks.
 
 Review the complete task diff for correctness, ownership, readability and useful test coverage.
-Use the applicable checklists in `.claude/agents/` as review lenses in either client. A separate
-reviewer is useful for an independent, risky concern, not mandatory ceremony for every edit. Give any
-reviewer a bounded diff, question and required evidence; verify findings before making changes.
+Use [code-reviewer](.claude/agents/code-reviewer.md) in either client, applying only relevant sections.
+Review documentation and small changes directly. For substantial behavior changes or refactors, use
+one independent reviewer when supported. Add a second only for a named, independent uncertainty,
+such as fidelity to the original; do not assign overlapping full-diff reviews or recursive delegation.
+Give the reviewer the exact diff range or working-tree scope, goal, constraints, evidence paths and
+test results, without the full conversation. Choose model and reasoning effort for the risk, not
+automatically the strongest available setting. Verify findings before editing; after fixes, review
+the changed areas and affected contracts rather than restarting the whole review.
 
 Prove behavior at the lowest useful layer: unit, integration, headless scenario, browser.
 Golden hashes change only for intentional behavior changes. Player-visible mechanics should have a
