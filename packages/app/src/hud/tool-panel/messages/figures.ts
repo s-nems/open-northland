@@ -5,6 +5,7 @@ import {
   layerLutRow,
   type PresentationTrack,
   presentItem,
+  type ResolvedLayer,
   type SpriteSheet,
   settlerPaletteLutRow,
 } from '@open-northland/render';
@@ -12,14 +13,35 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { FigureFrames } from './figure-frames.js';
 
 /** The figure's map-px multiplier on its thumbnail, and how far above the thumbnail's bottom edge its
- *  feet stand (design px). */
+ *  feet stand (design px): the usual place, and the closest a covered card's lowered figure comes. */
 const THUMB_ZOOM = 1.05;
 const THUMB_FEET_INSET = 10;
+const THUMB_FEET_INSET_MIN = 2;
 
-/** One card's figure canvas and the settler it shows. */
+/** Where the feet go (canvas px): the usual inset, or lower on a covered card so the figure's middle
+ *  meets the middle of the visible strip, stopping at the minimum inset from the bottom edge. */
+function feetLine(
+  layers: readonly ResolvedLayer[],
+  height: number,
+  visible: number,
+  zoom: number,
+  pixelScale: number,
+): number {
+  const usual = height - THUMB_FEET_INSET * pixelScale;
+  let top = 0;
+  for (const layer of layers) {
+    top = Math.min(top, (layer.dy ?? 0) * zoom + layer.frame.offsetY * zoom * layer.scale);
+  }
+  const centred = height - visible / 2 - top / 2;
+  return Math.min(Math.max(usual, centred), height - THUMB_FEET_INSET_MIN * pixelScale);
+}
+
+/** One card's figure canvas, the settler it shows and how much of the card's height the fan leaves
+ *  uncovered (design px, the card's whole height when the cards fit). */
 export interface NoticeFigureSlot {
   readonly entity: number;
   readonly canvas: HTMLCanvasElement;
+  readonly visible: number;
 }
 
 /** The canvases' shared size on screen: the content box in design px and the device px per design px. */
@@ -77,9 +99,9 @@ export class NoticeFigures {
       const layers = presentItem(track, item, tick, alpha, this.sheet);
       if (layers === null) continue;
       const bodyRow = settlerPaletteLutRow(this.sheet, item);
-      const feetX = width / 2;
-      const feetY = height - THUMB_FEET_INSET * pixelScale;
       const zoom = THUMB_ZOOM * pixelScale;
+      const feetX = width / 2;
+      const feetY = feetLine(layers, height, slot.visible * pixelScale, zoom, pixelScale);
       for (const layer of layers) {
         const row =
           this.sheet.palette === undefined ? bodyRow : layerLutRow(this.sheet.palette, layer, bodyRow);

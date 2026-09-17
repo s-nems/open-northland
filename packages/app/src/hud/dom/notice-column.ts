@@ -161,10 +161,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     return li instanceof HTMLLIElement ? li : null;
   };
 
-  /** A hovered or focused card parts its neighbours, which can push the last card past the edge for
-   *  the moment; the badge waits for the fan to close again. */
   const updateMore = (): void => {
-    if (list.matches(':hover') || list.contains(document.activeElement)) return;
     const fold = list.scrollTop + list.clientHeight;
     let below = 0;
     for (const li of items()) if (li.offsetTop + li.offsetHeight - FOLD_TOLERANCE > fold) below++;
@@ -173,6 +170,8 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     column.classList.toggle(OVERFLOWING, list.scrollHeight > list.clientHeight + 1);
   };
 
+  /** How far each fanned card lies under the one before it (design px); 0 when the cards fit. */
+  let overlap = 0;
   /** Fan the cards so they all fit: one uniform overlap, weightier cards in front. Fanned cards keep
    *  one event line, so the heights are measured again once the fan is on. */
   const layout = (): void => {
@@ -185,7 +184,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       column.clientHeight - list.offsetTop - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
     column.classList.remove(STACKED);
     const heights = (): number[] => shown.map((li) => li.offsetHeight);
-    let overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
+    overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
     if (overlap > 0) {
       column.classList.add(STACKED);
       overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
@@ -339,10 +338,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       const bottom = top + list.clientHeight;
       const slots: NoticeFigureSlot[] = [];
       let box: NoticeFigureBox = { width: 0, height: 0, pixelScale: 0 };
-      for (const li of items()) {
-        if (li.offsetTop + li.offsetHeight <= top || li.offsetTop >= bottom) continue;
+      items().forEach((li, i) => {
+        if (li.offsetTop + li.offsetHeight <= top || li.offsetTop >= bottom) return;
         const canvas = li.querySelector('.on-notice__preview--settler');
-        if (!(canvas instanceof HTMLCanvasElement)) continue;
+        if (!(canvas instanceof HTMLCanvasElement)) return;
         // One rect read serves every card: the plane's scale is theirs. The bitmap fills the content
         // box inside the thumbnail's border.
         if (box.pixelScale === 0) {
@@ -352,8 +351,9 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
             pixelScale: (canvas.getBoundingClientRect().width / canvas.offsetWidth) * devicePixelRatio,
           };
         }
-        slots.push({ entity: Number(li.dataset.entity), canvas });
-      }
+        const covered = i === 0 ? 0 : overlap;
+        slots.push({ entity: Number(li.dataset.entity), canvas, visible: li.offsetHeight - covered });
+      });
       return { slots, box };
     },
     dispose: (): void => {

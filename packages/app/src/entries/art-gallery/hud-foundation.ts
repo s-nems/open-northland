@@ -52,7 +52,7 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
     id: 3,
     level: 2,
     subject: 'Plemię Ragnara',
-    short: 'Kontakt: neutralne',
+    short: 'Obcy: neutralny',
     full: 'Plemię Ragnara pierwszy kontakt, nastawienie neutralne',
     thumb: { kind: 'glyph', glyph: 'banner', dim: false },
     canGo: false,

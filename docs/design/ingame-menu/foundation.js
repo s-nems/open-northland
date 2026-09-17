@@ -295,15 +295,34 @@ function canvasFor(element, kind) {
   element.replaceWith(canvas);
   return canvas;
 }
+/* The feet stand at the usual line, or lower on a covered notice card so the figure's middle meets the
+   middle of the card's visible strip, stopping short of the bottom edge (canvas px). */
+const FEET_LINE = 150;
+const FEET_LINE_MAX = CANVAS - 6;
+const FIGURE_SCALE = 3.2;
+function feetLine(canvas, frames) {
+  const notice = canvas.closest('.notice');
+  if (notice === null || !notice.closest('.notices').classList.contains('stacked')) return FEET_LINE;
+  const covered = parseFloat(getComputedStyle(notice).getPropertyValue('--covered')) || 0;
+  const perPx = CANVAS / canvas.clientHeight;
+  const visible = (notice.clientHeight - covered) * perPx;
+  let top = 0;
+  for (const frame of frames) if (frame) top = Math.min(top, frame.offsetY * FIGURE_SCALE);
+  return Math.min(Math.max(FEET_LINE, CANVAS - visible / 2 - top / 2), FEET_LINE_MAX);
+}
 async function mountCharacter(slot) {
   const canvas = canvasFor(slot, 'settler-preview');
   const { layers, frames } = await character(Number(slot.dataset.settler));
   const context = canvas.getContext('2d');
   context.imageSmoothingEnabled = false;
-  const scale = 3.2;
+  const scale = FIGURE_SCALE;
   const paint = (time) => {
     // Review-only walk loop; not the subject's live simulation activity or timing.
     const index = reduced.matches ? 0 : Math.floor(time / (1000 / REVIEW_FPS)) % frames.length;
+    const feetY = feetLine(
+      canvas,
+      layers.map((layer) => layer.frames.get(frames[index])),
+    );
     context.clearRect(0, 0, CANVAS, CANVAS);
     for (const layer of layers) {
       const frame = layer.frames.get(frames[index]);
@@ -316,7 +335,7 @@ async function mountCharacter(slot) {
         r.width,
         r.height,
         CANVAS / 2 + frame.offsetX * scale,
-        150 + frame.offsetY * scale,
+        feetY + frame.offsetY * scale,
         r.width * scale,
         r.height * scale,
       );

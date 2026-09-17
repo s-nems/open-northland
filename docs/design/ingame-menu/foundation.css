@@ -640,23 +640,13 @@ button.medallion:hover {
     margin-top 0.14s,
     clip-path 0.14s;
 }
-.notice:hover,
-.notice:focus-within {
-  z-index: 100;
-}
 /* Cards that do not fit fan downwards: an earlier (weightier) card lies over the top of the next,
-   leaving the event line of every card visible with its seal at the strip's top. Hover pushes the
-   neighbours apart. */
+   leaving the event line of every card visible with its seal at the strip's top. Nothing moves on
+   hover or focus: the whole message opens beside the column instead, so the × and the card stay
+   where the pointer found them. */
 .notice + .notice {
   --covered: var(--overlap);
   margin-top: calc(-1 * var(--overlap));
-}
-.notice + .notice:hover,
-.notice + .notice:focus-within,
-.notice:hover + .notice,
-.notice:focus-within + .notice {
-  --covered: 0px;
-  margin-top: 0;
 }
 /* The covered part is clipped away rather than layered, so a glyph box never shows through the card
    in front. The other edges leave room for the focus ring and the fan shadow. */
@@ -682,9 +672,7 @@ button.medallion:hover {
     transparent
   );
   color: var(--text);
-  transition:
-    transform 0.12s,
-    background 0.12s;
+  transition: background 0.12s;
 }
 .notice-card:before {
   content: "";
@@ -699,7 +687,6 @@ button.medallion:hover {
   border-top-color: color-mix(in srgb, var(--wax-danger) 70%, transparent);
 }
 .notice-card:hover {
-  transform: translateX(3px);
   background: linear-gradient(
     90deg,
     transparent 0 44px,
@@ -725,20 +712,19 @@ button.medallion:hover {
     color-mix(in srgb, var(--fill) 97%, #000)
   );
 }
-/* Fanned cards keep one event line and cast a shadow on the next, so the strip reads as an edge;
-   the hovered card unfolds to its full text. */
+/* Fanned cards keep one event line and cast a shadow on the next, so the strip reads as an edge. */
 .notices.stacked .notice-card {
   box-shadow: 0 3px 8px #0008;
 }
-.notices.stacked .notice:not(:hover, :focus-within) .notice-card b {
+.notices.stacked .notice-card b {
   -webkit-line-clamp: 1;
 }
 /* A covered card keeps its event line in the strip, level with the seal; its subject line lies under
    the card before, where its descenders would peek out of the clip. */
-.notices.stacked .notice:not(:hover, :focus-within) + .notice:not(:hover, :focus-within) .notice-card {
+.notices.stacked .notice + .notice .notice-card {
   justify-content: flex-end;
 }
-.notices.stacked .notice:not(:hover, :focus-within) + .notice:not(:hover, :focus-within) .notice-card small {
+.notices.stacked .notice + .notice .notice-card small {
   visibility: hidden;
 }
 /* Arrival: a short slide in; an urgent seal pulses three times, then rests. */
@@ -777,11 +763,15 @@ button.medallion:hover {
   border: 1px solid #c9a26233;
   background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
 }
-/* A subject with no body to show: a building, a lost settler, a seat, a found item. */
+/* A subject with no body to show: a building, a lost settler, a seat, a found item. The glyph sits in
+   the box's middle, or in the middle of the visible strip on a covered card, like the figure does. */
 .settler-preview.glyph {
   display: grid;
-  place-items: center;
+  place-items: start center;
+  /* The glyph is 32 px in a 70 px content box: the padding never pushes it past the bottom. */
+  padding-top: min(calc(19px + var(--covered) / 2), calc(70px - 32px));
   color: var(--bronze);
+  transition: padding-top 0.14s;
 }
 .settler-preview.glyph svg {
   width: 32px;
@@ -802,7 +792,7 @@ button.medallion:hover {
 /* Subject first, then the event, as the sentence reads; the event line stays out of the overlap. */
 .notice-card small {
   display: block;
-  padding-right: 12px;
+  padding-right: 22px;
   overflow: hidden;
   font-size: 11px;
   line-height: 1.25;
@@ -816,7 +806,7 @@ button.medallion:hover {
   -webkit-line-clamp: 2;
   overflow: hidden;
   margin-top: 2px;
-  padding-right: 12px;
+  padding-right: 22px;
   font-size: 11.5px;
   line-height: 1.25;
   color: var(--text-hi);
@@ -866,23 +856,27 @@ button.medallion:hover {
 .notice-card:focus-visible .go {
   opacity: 1;
 }
+/* The × stays on every card, at the top of the visible strip when fanned, so a covered card can be
+   dismissed without parting the fan; the text lines keep clear of it. */
 .notice-dismiss {
   position: absolute;
   right: 3px;
-  top: 3px;
-  width: 22px;
-  height: 22px;
+  top: calc(var(--covered) + 3px);
+  width: 18px;
+  height: 18px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: #0009;
   color: var(--muted);
-  opacity: 0;
-  transition: opacity 0.12s;
+  opacity: 0.65;
+  transition:
+    opacity 0.12s,
+    top 0.14s;
 }
 .notice-dismiss svg {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2.4;

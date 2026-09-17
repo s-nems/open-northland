@@ -807,21 +807,11 @@
     margin-top 0.14s,
     clip-path 0.14s;
 }
-.on-hud .on-notice:hover,
-.on-hud .on-notice:focus-within {
-  z-index: 100;
-}
-/* Fanned: each card slides under the one before it; the hovered card and its neighbours part. */
+/* Fanned: each card slides under the one before it. Nothing moves on hover or focus: the whole
+   message opens beside the column instead, so the × and the card stay where the pointer found them. */
 .on-hud .on-notice + .on-notice {
   --covered: var(--overlap);
   margin-top: calc(-1 * var(--overlap));
-}
-.on-hud .on-notice + .on-notice:hover,
-.on-hud .on-notice + .on-notice:focus-within,
-.on-hud .on-notice:hover + .on-notice,
-.on-hud .on-notice:focus-within + .on-notice {
-  --covered: 0px;
-  margin-top: 0;
 }
 /* The covered part is clipped away rather than layered, so the DOM glyph boxes and the Pixi figures
    under the plane agree on which card is in front. The other edges leave room for the focus ring
@@ -849,9 +839,7 @@
     transparent
   );
   color: var(--text);
-  transition:
-    transform 0.12s,
-    background 0.12s;
+  transition: background 0.12s;
 }
 .on-hud .on-notice__card::before {
   content: "";
@@ -866,7 +854,6 @@
   border-top-color: color-mix(in srgb, var(--wax-danger) 70%, transparent);
 }
 .on-hud .on-notice__card:hover {
-  transform: translateX(3px);
   background: linear-gradient(
     90deg,
     transparent 0 60px,
@@ -931,10 +918,15 @@
 .on-hud .on-notice__preview--settler {
   display: block;
 }
+/* A glyph sits in the box's middle, or in the middle of the visible strip on a covered card, like the
+   painted figure does. */
 .on-hud .on-notice__preview--glyph {
   display: grid;
-  place-items: center;
+  place-items: start center;
+  /* The glyph is 32 px in a 70 px content box: the padding never pushes it past the bottom. */
+  padding-top: min(calc(19px + var(--covered) / 2), calc(70px - 32px));
   color: var(--bronze);
+  transition: padding-top 0.14s;
 }
 .on-hud .on-notice__preview--glyph .on-glyph {
   width: 32px;
@@ -947,7 +939,7 @@
 }
 .on-hud .on-notice__subject {
   display: block;
-  padding-right: 12px;
+  padding-right: 22px;
   overflow: hidden;
   font-size: 11px;
   line-height: 1.25;
@@ -964,27 +956,20 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
   margin-top: 2px;
-  padding-right: 12px;
+  padding-right: 22px;
   font-size: 11.5px;
   line-height: 1.25;
   color: var(--text-hi);
 }
-.on-hud .on-notices--stacked .on-notice:not(:hover, :focus-within) .on-notice__event {
+.on-hud .on-notices--stacked .on-notice__event {
   -webkit-line-clamp: 1;
 }
 /* A covered card keeps its event line in the strip, level with the seal; its subject line lies under
    the card before, where its descenders would peek out of the clip. */
-.on-hud .on-notices--stacked
-  .on-notice:not(:hover, :focus-within)
-  + .on-notice:not(:hover, :focus-within)
-  .on-notice__card {
+.on-hud .on-notices--stacked .on-notice + .on-notice .on-notice__card {
   justify-content: flex-end;
 }
-.on-hud
-  .on-notices--stacked
-  .on-notice:not(:hover, :focus-within)
-  + .on-notice:not(:hover, :focus-within)
-  .on-notice__subject {
+.on-hud .on-notices--stacked .on-notice + .on-notice .on-notice__subject {
   visibility: hidden;
 }
 /* The seal sits on the thumbnail's top-right corner, at the top of the visible strip when fanned. */
@@ -1014,23 +999,27 @@
 .on-hud .on-notice__card:focus-visible .on-notice__go {
   opacity: 1;
 }
+/* The × stays on every card, at the top of the visible strip when fanned, so a covered card can be
+   dismissed without parting the fan; the text lines keep clear of it. */
 .on-hud .on-notice__dismiss {
   position: absolute;
   right: 3px;
-  top: 3px;
-  width: 22px;
-  height: 22px;
+  top: calc(var(--covered) + 3px);
+  width: 18px;
+  height: 18px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: #0009;
   color: var(--muted);
-  opacity: 0;
-  transition: opacity 0.12s;
+  opacity: 0.65;
+  transition:
+    opacity 0.12s,
+    top 0.14s;
 }
 .on-hud .on-notice__dismiss .on-glyph {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   stroke-width: 2.4;
 }
 .on-hud .on-notice:hover .on-notice__dismiss,
