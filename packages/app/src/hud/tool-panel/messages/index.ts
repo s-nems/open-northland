@@ -15,7 +15,6 @@ import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
 import { noticeThumb, orderNotes } from './cards.js';
-import { createDeselectionDismisser, type UnitSelectionView } from './deselection.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
 import { NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
@@ -27,7 +26,6 @@ import { isNoteOver, isSubjectGone } from './retire.js';
 import { composeMessageText, type MessageText, type ShortLabels } from './text.js';
 import type { UserMessage } from './types.js';
 
-export type { UnitSelectionView } from './deselection.js';
 export type { MessageFeedState } from './feed.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 
@@ -73,12 +71,7 @@ export interface MessageCenter {
   /** Per frame: raise this frame's events and a due snapshot sweep as notes, retire the stale ones,
    *  redraw what changed and paint the figures; `alpha` is the frame's inter-tick fraction, as the map
    *  draws with. */
-  present(
-    snapshot: WorldSnapshot,
-    events: readonly SimEvent[],
-    selection: UnitSelectionView,
-    alpha: number,
-  ): void;
+  present(snapshot: WorldSnapshot, events: readonly SimEvent[], alpha: number): void;
   state(): MessageFeedState;
   /** Adopt another mount's feed, so a HUD rescale keeps the notes and the level. */
   restore(state: MessageFeedState): void;
@@ -167,7 +160,6 @@ function cardOf(m: UserMessage, tick: number): NoticeCardView {
 export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const { ctx } = deps;
   let feed = createMessageFeed(deps.initial);
-  const dismissDeselected = createDeselectionDismisser(() => feed);
   const naming = makeNaming(deps);
   const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
   const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
@@ -205,8 +197,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   };
 
   return {
-    present: (snapshot, events, selection, alpha): void => {
-      dismissDeselected(selection);
+    present: (snapshot, events, alpha): void => {
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
         if (events.length > 0) {

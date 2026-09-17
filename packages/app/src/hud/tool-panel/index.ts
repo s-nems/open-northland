@@ -38,7 +38,6 @@ import {
   type MessageFeedState,
   type MessageTarget,
   type NoticeGallery,
-  type UnitSelectionView,
 } from './messages/index.js';
 import type { MissionHumanLookup } from './mission/index.js';
 import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
@@ -150,12 +149,7 @@ export interface ToolPanelController {
   mapViews(): readonly MapViewFrame[];
   /** Per-frame hook for the notification column: this frame's unfiltered sim events and the snapshot
    *  after them. */
-  presentMessages(
-    snapshot: WorldSnapshot,
-    events: readonly SimEvent[],
-    selection: UnitSelectionView,
-    alpha: number,
-  ): void;
+  presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[], alpha: number): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
   /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
@@ -442,8 +436,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         for (const mode of held) mode.placeBanner();
       },
       mapViews: () => windows.mission.mapViews(),
-      presentMessages: (snapshot, events, selection, alpha) =>
-        messageCenter.present(snapshot, events, selection, alpha),
+      presentMessages: (snapshot, events, alpha) => messageCenter.present(snapshot, events, alpha),
       state: () => ({
         speed: speed.state(),
         windows: windows.state(),

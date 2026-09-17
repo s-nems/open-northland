@@ -785,13 +785,13 @@
   flex: 0 1 auto;
   min-height: 0;
   margin: 0;
-  /* Room for the 2 px focus ring at 3 px offset inside the scroll clip. */
-  padding: 6px 8px 8px 6px;
+  /* Room for the 2 px focus ring at 3 px offset inside the scroll clip. The list scrolls without a
+     scrollbar: the fade and the "more" pill say there is more. */
+  padding: 6px 6px 8px 6px;
   list-style: none;
   overflow: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--bronze-lo) transparent;
+  scrollbar-width: none;
   pointer-events: auto;
 }
 .on-hud .on-notices--overflowing .on-notices__list {

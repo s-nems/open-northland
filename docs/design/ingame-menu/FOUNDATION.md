@@ -129,7 +129,9 @@ lifetime, dedupe and priority table.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
   dismisses one card; Shift with any of them dismisses all. The × stays on every card, so a covered
-  card closes without parting the fan.
+  card closes without parting the fan. Nothing else the player does removes a card: selecting or
+  deselecting its subject leaves it (the original clears a human's notes on deselect; dropped as a
+  user rule), so a card goes only by dismissal, when its cause ends or when its lifetime runs out.
 - The whole message in the original's wording unfolds in a box to the right of the column on hover
   or focus of any card, and a press pins it when the card has no target.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
@@ -137,8 +139,8 @@ lifetime, dedupe and priority table.
   of the strip. The covered part of a card is clipped, never drawn over the card in front. A covered
   card's figure or glyph moves down to the middle of its visible strip. Nothing moves or grows on
   hover or focus: the whole message opens beside the column instead, so the × stays under the pointer.
-  Below a 30 px strip per card the fan stops, the list scrolls, the bottom fades and a "jeszcze N"
-  badge counts the cards past the edge.
+  Below a 30 px strip per card the fan stops, the list scrolls without a scrollbar, the bottom fades
+  and a "jeszcze N" badge counts the cards past the edge.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures are painted only on
   cards inside the list's visible area; a paused game holds their frame. Reduced motion drops the
   slide and the pulse, never the figure's activity, which is game content like the map.

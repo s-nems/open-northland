@@ -66,8 +66,6 @@ export interface MessageFeed {
   remove(id: number, toHistory: boolean): boolean;
   /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
   removeAll(toHistory: boolean): void;
-  /** Dismiss one settler's notes, with no history entry, so a later raise shows again. */
-  removeSettler(entity: number): boolean;
   /** Drop notes `over` reports as ended and, unless `ageless`, notes past their lifetime (dismissed
    *  notes then also stay remembered for good). */
   expire(tick: number, over: (m: UserMessage) => boolean, ageless?: boolean): void;
@@ -109,10 +107,6 @@ function similarMessage(a: PendingMessage, b: PendingMessage): boolean {
 
 function expired(m: UserMessage, tick: number): boolean {
   return !isStandingNote(m.type) && tick - m.tick >= MESSAGE_LIFETIME_TICKS;
-}
-
-function aboutSettler(m: UserMessage, entity: number): boolean {
-  return m.subject !== null && m.subject.kind === 'settler' && m.subject.entity === entity;
 }
 
 /** One of the two buffers: insertion order plus an identity index for the exact-match test. */
@@ -221,8 +215,6 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     removeAll: (toHistory) => {
       dropDisplayed((m) => !messagePassesFilter(m.priority, level), toHistory);
     },
-    removeSettler: (entity) =>
-      dropDisplayed((m) => !aboutSettler(m, entity) || isStandingNote(m.type), false),
     expire: (tick, over, ageless = false) => {
       const live = (m: UserMessage): boolean => (ageless || !expired(m, tick)) && !over(m);
       dropDisplayed(live, false);

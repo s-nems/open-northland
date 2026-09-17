@@ -620,12 +620,11 @@ button.medallion:hover {
   min-height: 0;
   margin: 0;
   /* Room for the 2 px focus ring at 3 px offset inside the scroll clip. */
-  padding: 6px 8px 8px 6px;
+  padding: 6px 6px 8px 6px;
   list-style: none;
   overflow: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-width: none;
 }
 .notices.overflowing .notice-list {
   mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
