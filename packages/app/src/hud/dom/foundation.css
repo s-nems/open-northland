@@ -826,15 +826,15 @@
   flex-direction: column;
   justify-content: center;
   width: 100%;
-  min-height: 68px;
-  padding: 8px 12px 8px 66px;
+  min-height: 52px;
+  padding: 7px 10px 7px 57px;
   text-align: left;
   border: 0;
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    transparent 0 60px,
-    color-mix(in srgb, var(--deep) 94%, transparent) 64px,
+    transparent 0 50px,
+    color-mix(in srgb, var(--deep) 94%, transparent) 54px,
     color-mix(in srgb, var(--deep) 82%, transparent) 88%,
     transparent
   );
@@ -844,7 +844,7 @@
 .on-hud .on-notice__card::before {
   content: "";
   position: absolute;
-  inset: 5px 4px 5px 60px;
+  inset: 5px 4px 5px 50px;
   border-top: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
   border-bottom: 1px solid #0006;
   pointer-events: none;
@@ -856,8 +856,8 @@
 .on-hud .on-notice__card:hover {
   background: linear-gradient(
     90deg,
-    transparent 0 60px,
-    color-mix(in srgb, var(--fill) 96%, transparent) 64px,
+    transparent 0 50px,
+    color-mix(in srgb, var(--fill) 96%, transparent) 54px,
     color-mix(in srgb, var(--fill) 84%, transparent) 88%,
     transparent
   );
@@ -865,8 +865,8 @@
 .on-hud .on-notices--stacked .on-notice__card {
   background: linear-gradient(
     90deg,
-    transparent 0 60px,
-    var(--deep) 64px,
+    transparent 0 50px,
+    var(--deep) 54px,
     color-mix(in srgb, var(--deep) 97%, #000)
   );
   box-shadow: 0 3px 8px #0008;
@@ -874,8 +874,8 @@
 .on-hud .on-notices--stacked .on-notice__card:hover {
   background: linear-gradient(
     90deg,
-    transparent 0 60px,
-    var(--fill) 64px,
+    transparent 0 50px,
+    var(--fill) 54px,
     color-mix(in srgb, var(--fill) 97%, #000)
   );
 }
@@ -907,8 +907,8 @@
   position: absolute;
   left: -4px;
   bottom: 0;
-  width: 64px;
-  height: 72px;
+  width: 54px;
+  height: 56px;
   pointer-events: none;
   border-radius: 8px;
   border: 1px solid #c9a26233;
@@ -923,60 +923,45 @@
 .on-hud .on-notice__preview--glyph {
   display: grid;
   place-items: start center;
-  /* The glyph is 32 px in a 70 px content box: the padding never pushes it past the bottom. */
-  padding-top: min(calc(19px + var(--covered) / 2), calc(70px - 32px));
+  /* The glyph is 28 px in a 54 px content box: the padding never pushes it past the bottom. */
+  padding-top: min(calc(13px + var(--covered) / 2), calc(54px - 28px));
   color: var(--bronze);
   transition: padding-top 0.14s;
 }
 .on-hud .on-notice__preview--glyph .on-glyph {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   stroke-width: 1.6;
 }
 .on-hud .on-notice__preview--dim {
   color: var(--muted);
   background: radial-gradient(ellipse at 50% 65%, #ffffff10, transparent 75%), #10171588;
 }
-.on-hud .on-notice__subject {
-  display: block;
-  padding-right: 22px;
-  overflow: hidden;
-  font-size: 11px;
-  line-height: 1.25;
-  color: #ddd5c1;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.on-hud .on-notice__subject[hidden] {
-  display: none;
-}
+/* The card's one line: the subject (name · trade) is only in the whole message beside the column. */
 .on-hud .on-notice__event {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  margin-top: 2px;
-  padding-right: 22px;
-  font-size: 11.5px;
+  padding-right: 20px;
+  font-size: 11px;
   line-height: 1.25;
   color: var(--text-hi);
+  transition: transform 0.14s;
 }
 .on-hud .on-notices--stacked .on-notice__event {
   -webkit-line-clamp: 1;
 }
-/* A covered card keeps its event line in the strip, level with the seal; its subject line lies under
-   the card before, where its descenders would peek out of the clip. */
-.on-hud .on-notices--stacked .on-notice + .on-notice .on-notice__card {
-  justify-content: flex-end;
+/* A covered card's line moves down to the middle of the visible strip, level with the seal and the ×,
+   without changing the card's size. */
+.on-hud .on-notices--stacked .on-notice + .on-notice .on-notice__event {
+  transform: translateY(calc(var(--covered) / 2));
 }
-.on-hud .on-notices--stacked .on-notice + .on-notice .on-notice__subject {
-  visibility: hidden;
-}
-/* The seal sits on the thumbnail's top-right corner, at the top of the visible strip when fanned. */
+/* The seal sits on the thumbnail's right edge, on the line of the text and the ×. */
 .on-hud .on-notice__card > .on-seal {
   position: absolute;
-  left: 53px;
-  top: calc(var(--covered) + 2px);
+  left: 40px;
+  top: calc(var(--covered) + (100% - var(--covered)) / 2 - 6px);
   z-index: 1;
   transition: top 0.14s;
 }
@@ -999,14 +984,14 @@
 .on-hud .on-notice__card:focus-visible .on-notice__go {
   opacity: 1;
 }
-/* The × stays on every card, at the top of the visible strip when fanned, so a covered card can be
-   dismissed without parting the fan; the text lines keep clear of it. */
+/* The × stays on every card, centred in the visible strip, so a covered card can be dismissed
+   without parting the fan; the text line keeps clear of it. */
 .on-hud .on-notice__dismiss {
   position: absolute;
   right: 3px;
-  top: calc(var(--covered) + 3px);
-  width: 18px;
-  height: 18px;
+  top: calc(var(--covered) + (100% - var(--covered)) / 2 - 8px);
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -1018,8 +1003,8 @@
     top 0.14s;
 }
 .on-hud .on-notice__dismiss .on-glyph {
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
   stroke-width: 2.4;
 }
 .on-hud .on-notice:hover .on-notice__dismiss,

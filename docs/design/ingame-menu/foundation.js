@@ -108,7 +108,7 @@ const noticeEmpty = notices.querySelector('.notice-empty');
 const noticeCount = notices.querySelector('[data-count]');
 const noticeFull = document.querySelector('#notice-full');
 /* Below this visible strip per card the fan stops and the list scrolls instead. */
-const MIN_CARD_STRIP = 32;
+const MIN_CARD_STRIP = 30;
 const CARD_GAP = 7;
 const LEVEL_OF_FILTER = { Wszystkie: 0, 'Ważne i pilne': 1, 'Tylko pilne': 2 };
 const LEVEL_NAMES = ['zwykłe', 'ważne', 'pilne'];

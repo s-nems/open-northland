@@ -65,7 +65,7 @@ filters are an explicit exception in this mouse/keyboard study.
 - Bottom actions: 56 × 64 px on a 44 px medallion, with persistent labels and a selected marker.
 - Construction: 540 px wide, content-sized rather than filling the screen vertically.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
-- Notifications: 198 px, no opaque background in unused column space.
+- Notifications: 184 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px, touching the bottom-left corner.
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum
@@ -85,7 +85,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | --- | --- | --- |
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | pause / ×1 / ×2 / ×3 segments, menu medallion; counters and clock come with ticket 04 |
-| Notifications | left 10, top 18, width 198, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
+| Notifications | left 10, top 18, width 184, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
@@ -116,19 +116,20 @@ lifetime, dedupe and priority table.
   filtered or not, so the filter only hides (the original drops filtered notes). Levels: all,
   notable and important, important only. The tally cannot pass three digits.
 - Order: important first, then notable, then routine; within a weight the newest first.
-- A card is the subject line (name · trade, or the building, seat or paper) over the event line, at
-  11/11.5 px. The event line is a short label per message type from the app catalog, capitalised,
-  short enough to fit the card without an ellipsis (a good or stance the row is about follows a
-  colon: "Brak: drewno", "Obcy: wrogi"); the original's sentence is never on the card. The
-  thumbnail is the live settler painted into the card's own canvas, as on the map with its current
-  activity, motion and pace, over a translucent backing that shows the map through; an attacked
-  settler, a building, a death, a seat, a paper and a subjectless row show a bronze line glyph instead
-  (swords, house, dim skull, banner, chest, scroll). The seal sits on the thumbnail's top-right corner;
-  an urgent card's hairline takes the wax colour.
+- A card is one event line at 11 px beside a 54 × 56 thumbnail, 52 px tall when the cards fit; the
+  subject (name · trade, the building, seat or paper) is only in the whole message. The event line is
+  a short label per message type from the app catalog, capitalised, short enough to fit the card
+  without an ellipsis (a good or stance the row is about follows a colon: "Brak: drewno",
+  "Obcy: wrogi"); the original's sentence is never on the card. The thumbnail is the live settler
+  painted into the card's own canvas, as on the map with its current activity, motion and pace, over
+  a translucent backing that shows the map through; an attacked settler, a building, a death, a seat,
+  a paper and a subjectless row show a bronze line glyph instead (swords, house, dim skull, banner,
+  chest, scroll). The seal on the thumbnail's right edge, the event line and the × share one line,
+  centred in the card's visible part; an urgent card's hairline takes the wax colour.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
-  dismisses one card; Shift with any of them dismisses all. The × stays on every card, at the top of
-  its visible strip when fanned, so a covered card closes without parting the fan.
+  dismisses one card; Shift with any of them dismisses all. The × stays on every card, so a covered
+  card closes without parting the fan.
 - The whole message in the original's wording unfolds in a box to the right of the column on hover
   or focus of any card, and a press pins it when the card has no target.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
@@ -136,7 +137,7 @@ lifetime, dedupe and priority table.
   of the strip. The covered part of a card is clipped, never drawn over the card in front. A covered
   card's figure or glyph moves down to the middle of its visible strip. Nothing moves or grows on
   hover or focus: the whole message opens beside the column instead, so the × stays under the pointer.
-  Below a 32 px strip per card the fan stops, the list scrolls, the bottom fades and a "jeszcze N"
+  Below a 30 px strip per card the fan stops, the list scrolls, the bottom fades and a "jeszcze N"
   badge counts the cards past the edge.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures are painted only on
   cards inside the list's visible area; a paused game holds their frame. Reduced motion drops the

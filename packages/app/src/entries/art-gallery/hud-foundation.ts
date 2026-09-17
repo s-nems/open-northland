@@ -31,7 +31,6 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
   {
     id: 1,
     level: 2,
-    subject: 'Leif · budowniczy',
     short: 'Głoduje',
     full: 'Leif (budowniczy) umiera z głodu',
     thumb: { kind: 'settler', entity: 1 },
@@ -41,7 +40,6 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
   {
     id: 2,
     level: 2,
-    subject: 'Sigrun · zbieraczka',
     short: 'Nie żyje',
     full: 'Sigrun (zbieraczka) już nie z nami',
     thumb: { kind: 'glyph', glyph: 'skull', dim: true },
@@ -51,7 +49,6 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
   {
     id: 3,
     level: 2,
-    subject: 'Plemię Ragnara',
     short: 'Obcy: neutralny',
     full: 'Plemię Ragnara pierwszy kontakt, nastawienie neutralne',
     thumb: { kind: 'glyph', glyph: 'banner', dim: false },
@@ -61,7 +58,6 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
   {
     id: 4,
     level: 1,
-    subject: 'Eirik · drwal',
     short: 'Brak surowców',
     full: 'Eirik (drwal) brakuje materiału budowlanego',
     thumb: { kind: 'settler', entity: 2 },
@@ -71,7 +67,6 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
   {
     id: 5,
     level: 0,
-    subject: 'Chata rybaka',
     short: 'Ukończono',
     full: 'Chata rybaka - budowa zakończona',
     thumb: { kind: 'glyph', glyph: 'house', dim: false },

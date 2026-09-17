@@ -156,7 +156,6 @@ function cardOf(m: UserMessage, tick: number): NoticeCardView {
   return {
     id: m.id,
     level: m.priority,
-    subject: m.text.subject,
     short: m.text.short,
     full: m.text.full,
     thumb: noticeThumb(m.type, m.subject),

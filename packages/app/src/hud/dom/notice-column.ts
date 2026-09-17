@@ -6,7 +6,7 @@ import type { MessagePriorityLevel } from '../tool-panel/messages/types.js';
 import { GLYPH } from './icons.js';
 
 /** Below this visible strip per card (design px) the fan stops and the list scrolls instead. */
-const MIN_CARD_STRIP = 32;
+const MIN_CARD_STRIP = 30;
 /** The gap between unfanned cards (design px); mirrors `.on-notice` in foundation.css. */
 const CARD_GAP = 7;
 /** A card counts as below the fold once more than this much of it (design px) is past the edge. */
@@ -31,7 +31,6 @@ const FILTER_LEVELS: readonly MessagePriorityLevel[] = [0, 1, 2];
 export interface NoticeCardView {
   readonly id: number;
   readonly level: MessagePriorityLevel;
-  readonly subject: string | null;
   /** The event line, short enough to fit the card. */
   readonly short: string;
   /** The whole message, shown beside the column on hover or focus. */
@@ -93,19 +92,16 @@ export function noticeCardMarkup(card: NoticeCardView, dismissLabel: string): st
   li.className = `on-notice${seal === '' ? '' : ` on-notice--${seal}`}${card.fresh ? ` ${FRESH}` : ''}`;
   li.dataset.id = String(card.id);
   if (card.thumb.kind === 'settler') li.dataset.entity = String(card.thumb.entity);
-  li.innerHTML = `<button type="button" class="on-notice__card">${previewMarkup(card.thumb)}<small class="on-notice__subject"></small><b class="on-notice__event"></b><i class="on-seal${seal === '' ? '' : ` on-seal--${seal}`}" aria-hidden="true"></i>${card.canGo ? GLYPH.go : ''}</button><button type="button" class="on-notice__dismiss">${GLYPH.close}</button>`;
+  li.innerHTML = `<button type="button" class="on-notice__card">${previewMarkup(card.thumb)}<b class="on-notice__event"></b><i class="on-seal${seal === '' ? '' : ` on-seal--${seal}`}" aria-hidden="true"></i>${card.canGo ? GLYPH.go : ''}</button><button type="button" class="on-notice__dismiss">${GLYPH.close}</button>`;
   const button = li.querySelector('.on-notice__card');
-  const subject = li.querySelector('.on-notice__subject');
   const event = li.querySelector('.on-notice__event');
   const dismiss = li.querySelector('.on-notice__dismiss');
-  if (button === null || subject === null || event === null || dismiss === null) {
+  if (button === null || event === null || dismiss === null) {
     throw new Error('notice column: card markup incomplete');
   }
   button.setAttribute('aria-label', card.full);
   // A card with no target is a disclosure: a press pins its whole message.
   if (!card.canGo) button.setAttribute('aria-expanded', 'false');
-  subject.textContent = card.subject ?? '';
-  subject.toggleAttribute('hidden', card.subject === null);
   event.textContent = card.short;
   dismiss.setAttribute('aria-label', dismissLabel);
   return li.outerHTML;
