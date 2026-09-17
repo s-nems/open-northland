@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@open-northland/data';
+import { type TerrainMapFile, WERESNAKE_TRIBE, WEREWOLF_TRIBE } from '@open-northland/data';
 import { components, type World } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { buildMapWorld } from '../src/entries/map/world.js';
@@ -51,4 +51,31 @@ it('seats the strategic AI as the map’s [AIData] toggles say', () => {
   // One module off, the rest on.
   expect(components.aiModuleRuns(world, 4, 'military')).toBe(false);
   expect(components.aiModuleRuns(world, 4, 'houseBuild')).toBe(true);
+});
+
+it('gives a monster tribe’s computer seat the scripted handler alone', () => {
+  // `an original routine`: a `PLAYER_TYPE_AI` seat always gets the scripted handler, and the strategic
+  // one only when its tribe is neither weresnake nor werewolf, whatever `[AIData]` says.
+  const { sim } = buildMapWorld({
+    seed: 3,
+    map,
+    ir: null,
+    content: {},
+    aiSeats: [1, 2],
+    assistantSeats: [],
+    fog: null,
+    progression: null,
+    needs: null,
+    playerRoster: [
+      { player: 1, type: 'ai', tribeId: WERESNAKE_TRIBE, colorId: 1 },
+      { player: 2, type: 'ai', tribeId: WEREWOLF_TRIBE, colorId: 2 },
+    ],
+    script: { ai: [{ player: 1, disabled: false, strategicOff: [], conditions: [], tasks: [] }] },
+  });
+  sim.step();
+  const { world } = sim;
+  for (const seat of [1, 2]) {
+    expect(scripted(world, seat)).toBe(true);
+    expect(components.AI_MODULE_IDS.some((id) => components.aiModuleRuns(world, seat, id))).toBe(false);
+  }
 });

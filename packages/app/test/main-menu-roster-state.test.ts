@@ -44,7 +44,7 @@ describe('roster state', () => {
 
   it('defaults a claimable authored-ai slot to AI and drops it when toggled to idle', () => {
     // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human. The
-    // non-claimable slot 2 stays script-driven - the strategic AI never attaches to it.
+    // non-claimable slot 2 is the map's own computer seat, which is not the lobby's to list.
     const lobby = [
       { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
       { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: true },

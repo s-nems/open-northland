@@ -4,10 +4,10 @@ import { sessionRoles } from '../src/game/session-roles.js';
 import { mapSession } from '../src/game/session-url.js';
 
 const ROSTER = [
-  { player: 0, colorId: 0 },
-  { player: 1, colorId: 1 },
-  { player: 2, colorId: 2 },
-];
+  { player: 0, colorId: 0, type: 'human', claimable: true },
+  { player: 1, colorId: 1, type: 'human', claimable: true },
+  { player: 2, colorId: 2, type: 'human', claimable: true },
+] as const;
 
 function session(search: string): GameSession {
   return mapSession(new URLSearchParams(search), ROSTER);
@@ -28,6 +28,16 @@ describe('sessionRoles', () => {
       assistantSeats: [2],
       matchParticipants: [2],
     });
+  });
+
+  it('matches the map’s own computer seats too, unless the script exempts them', () => {
+    // The engine's per-tick check counts every seat in use, claimable or not; `playerneverdies`
+    // is the only exemption. A scenario seat the lobby never lists therefore has to fall (or be
+    // exempt) before the person wins.
+    const roster = [...ROSTER, { player: 6, colorId: 9, type: 'ai', claimable: false }] as const;
+    const scenario = mapSession(new URLSearchParams('map=las&player=0&ai=1'), roster);
+    expect(sessionRoles(scenario, []).matchParticipants).toEqual([0, 1, 6]);
+    expect(sessionRoles(scenario, [6]).matchParticipants).toEqual([0, 1]);
   });
 
   it('keeps the overseer’s default seat granted and out of the match', () => {

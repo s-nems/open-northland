@@ -4,6 +4,7 @@ import { onOffParam } from '../../../game/session-rules.js';
 import {
   DEFAULT_SESSION_SEED,
   DEFAULT_SESSION_SPEED,
+  type SessionRosterSlot,
   seatMode,
   sessionSearch,
 } from '../../../game/session-url.js';
@@ -75,7 +76,7 @@ export function lobbySlotRows(
 /**
  * The session Start launches. Every rule is set rather than left to the world, so a stale carried param
  * cannot leak into the next map. A roster with no claimable seat starts seatless: nothing is claimed
- * and no seat auto-plays.
+ * and no offered seat auto-plays; the map's own computer seats play either way.
  */
 export function lobbySession(
   mapId: string,
@@ -91,7 +92,7 @@ export function lobbySession(
     seats: orderedSeats(
       lobbySeats(players, localSeat).map((slot) => ({
         player: slot.player,
-        mode: seatMode(slot.player, localSeat, ai),
+        mode: seatMode(slot, localSeat, ai),
         color: state.colors.get(slot.player) ?? slot.colorId,
       })),
     ),
@@ -107,12 +108,9 @@ export function lobbySession(
 
 /** The listed slots plus the seat a seatless roster falls back to, which the launched game plays and
  *  the launch URL therefore has to carry. */
-function lobbySeats(
-  players: readonly MapPlayerSlot[],
-  localSeat: SeatChoice,
-): readonly { player: number; colorId: number }[] {
+function lobbySeats(players: readonly MapPlayerSlot[], localSeat: SeatChoice): readonly SessionRosterSlot[] {
   if (typeof localSeat !== 'number' || players.some((slot) => slot.player === localSeat)) return players;
-  return [...players, { player: localSeat, colorId: localSeat }];
+  return [...players, { player: localSeat, colorId: localSeat, type: 'human', claimable: true }];
 }
 
 /** The `?map=` entry Start navigates to: {@link lobbySession} as a URL. */

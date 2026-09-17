@@ -13,6 +13,8 @@ import {
   MapAiTask,
   MapScript,
   type MapScriptLine,
+  WERESNAKE_TRIBE,
+  WEREWOLF_TRIBE,
 } from '@open-northland/data';
 import { GOOD_TYPE_CODES } from './good-type-codes.js';
 import type { RuleProp, RuleSection } from './grammar.js';
@@ -33,8 +35,8 @@ const MACRO_CODES: Readonly<Record<string, number>> = {
   TRIBE_TYPE_HUMAN_FRANK: 2,
   TRIBE_TYPE_HUMAN_BYZANTINE: 3,
   TRIBE_TYPE_HUMAN_SARACEN: 4,
-  TRIBE_TYPE_HUMAN_WERESNAKE: 5,
-  TRIBE_TYPE_HUMAN_WEREWOLF: 6,
+  TRIBE_TYPE_HUMAN_WERESNAKE: WERESNAKE_TRIBE,
+  TRIBE_TYPE_HUMAN_WEREWOLF: WEREWOLF_TRIBE,
   TRIBE_TYPE_HUMAN_EGYPT: 7,
   PLAYER_COLOR_ID_BLUE: 0,
   PLAYER_COLOR_ID_RED: 1,

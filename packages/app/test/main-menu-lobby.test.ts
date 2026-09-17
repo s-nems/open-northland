@@ -85,10 +85,12 @@ describe('initialLobbyOptions', () => {
 
 const OPTIONS = { fog: 'reveal', professionProgression: true, settlerNeeds: true } as const;
 
-/** The seats the launched session declares as AI, which is what `?ai=` carries. */
+/** The offered seats the launched session declares as AI, which is what `?ai=` carries. */
 function aiSeatsOfLobby(state: RosterState, players: readonly MapsIndexPlayerSlot[]): number[] {
   return lobbySession('zatoka', state, players, OPTIONS)
-    .seats.filter((seat) => seat.mode === 'ai')
+    .seats.filter(
+      (seat) => seat.mode === 'ai' && players.some((p) => p.player === seat.player && p.claimable),
+    )
     .map((seat) => seat.player);
 }
 
@@ -99,13 +101,14 @@ describe('lobbySession', () => {
     slot(2, { colorId: 9 }),
   ];
 
-  it('falls back to the default seat on an unclaimed roster, with no seat auto-playing', () => {
+  it('falls back to the default seat on an unclaimed roster, with no offered seat auto-playing', () => {
     // An all-AI roster offers nothing to claim, so Start is not gated on one; the launched game plays
-    // the fallback seat, and the descriptor has to say so or it would not survive its own URL.
+    // the fallback seat, and the descriptor has to say so or it would not survive its own URL. The
+    // map's own computer seat (slot 2) plays regardless.
     const state = initialRosterState(players);
     const session = lobbySession('zatoka', state, players, OPTIONS);
     expect(session.localSeat).toBe(0);
-    expect(session.seats.map((seat) => seat.mode)).toEqual(['human', 'idle', 'idle']);
+    expect(session.seats.map((seat) => seat.mode)).toEqual(['human', 'idle', 'ai']);
     expect(aiSeatsOfLobby(state, players)).toEqual([]);
   });
 
@@ -115,7 +118,7 @@ describe('lobbySession', () => {
     state = claimSeat(state, 1);
     const session = lobbySession('zatoka', state, players, OPTIONS);
     expect(session.localSeat).toBe(1);
-    expect(session.seats.map((seat) => seat.mode)).toEqual(['idle', 'human', 'idle']);
+    expect(session.seats.map((seat) => seat.mode)).toEqual(['idle', 'human', 'ai']);
   });
 
   it('keeps every slot eligible for AI behind a spectator seat', () => {
@@ -174,6 +177,16 @@ describe('lobbyStartEntry', () => {
     expect(params.get('map')).toBe('zatoka');
     expect(params.get('player')).toBe('0');
     expect(params.get('ai')).toBe('1'); // the vacant authored-ai seat keeps auto-playing
+    // The map's own computer seats need no naming: a Forteca-style roster launches with `?ai=` of the
+    // offered seats alone, and the session still plays them.
+    const forteca = [...players, slot(2), slot(6, { hidden: true })];
+    const entry = new URLSearchParams(
+      lobbyStartEntry('forteca', initialLobbyState(forteca), forteca, OPTIONS),
+    );
+    expect(entry.get('ai')).toBe('1');
+    expect(
+      lobbySession('forteca', initialLobbyState(forteca), forteca, OPTIONS).seats.map((seat) => seat.mode),
+    ).toEqual(['human', 'ai', 'ai', 'ai']);
     expect(params.get('fog')).toBe('recon');
     expect(params.get('progression')).toBe('off');
     expect(params.get('needs')).toBe('off');

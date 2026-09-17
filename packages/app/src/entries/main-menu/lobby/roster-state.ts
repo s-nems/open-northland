@@ -73,7 +73,9 @@ export function setSlotColor(state: RosterState, slot: number, colorId: number):
   return { ...state, colors };
 }
 
-/** A slot's effective mode is the toggle's when set, else the authored default. */
+/** The offered seats the strategic AI plays, what `?ai=` carries: a slot's effective mode is the
+ *  toggle's when set, else the authored default. The map's own computer seats are not the lobby's to
+ *  list; see `isMapComputerSeat`. */
 export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): number[] {
   return players
     .filter(

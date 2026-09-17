@@ -1,3 +1,4 @@
+import { mapLobbySlots } from '@open-northland/data';
 import { type GameSession, localPlayerOf, seatColourOf } from '@open-northland/lockstep';
 import {
   createWindowPixiApp,
@@ -130,7 +131,7 @@ export async function assembleMapWorld(
       mapId !== null ? loadMapStrings(mapId) : null,
     ]);
     if (plan.multiplayer) assertMultiplayerMap(script);
-    const session = plan.sessionFor(script?.players ?? []);
+    const session = plan.sessionFor(script === null ? [] : mapLobbySlots(script));
     const localPlayer = localPlayerOf(session);
     const playerColourOf = seatColourOf(session);
     diag.info('boot', 'game start', { entry: 'map', decodedMap: loaded !== null, session });

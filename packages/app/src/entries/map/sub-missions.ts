@@ -1,3 +1,4 @@
+import { mapLobbySlots } from '@open-northland/data';
 import { localPlayerOf } from '@open-northland/lockstep';
 import { exportSaveGame, type SaveGame, type SimEvent } from '@open-northland/sim';
 import { loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
@@ -70,7 +71,7 @@ export function mapSubMissionLoader(
     const params = new URLSearchParams(inputs.params);
     for (const key of ['scene', 'center', 'intro']) params.delete(key);
     params.set('map', target);
-    const session = mapSession(params, source.players);
+    const session = mapSession(params, mapLobbySlots(source));
     const world = buildMapWorld({
       ...options,
       ...sessionWorldOptions(session, source, missionWorld),

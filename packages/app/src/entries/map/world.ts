@@ -1,9 +1,11 @@
-import type {
-  ContentSet,
-  MapDiplomacy,
-  MapScript,
-  MapSpecialItem,
-  TerrainMapFile,
+import {
+  type ContentSet,
+  type MapDiplomacy,
+  type MapScript,
+  type MapSpecialItem,
+  type TerrainMapFile,
+  WERESNAKE_TRIBE,
+  WEREWOLF_TRIBE,
 } from '@open-northland/data';
 import type { SessionRules } from '@open-northland/lockstep';
 import {
@@ -19,6 +21,7 @@ import {
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { buildScriptLandscapeTerrain } from '../../content/script-landscape.js';
+import { playerTribe } from '../../game/map-roster.js';
 import { setupPlacementTribes } from '../../game/placement-tribes.js';
 import {
   mapResourceObjectNames,
@@ -91,6 +94,10 @@ export interface MapWorld {
  *  0-tick snapshot would not, while leaving the spawned settlers at their start. */
 const PLACEMENT_DRAIN_TICKS = 1;
 
+/** The tribes whose computer seats get the scripted handler alone: the original's AI manager
+ *  (`an original routine`) withholds the strategic handler from a `PLAYER_TYPE_AI` seat of either. */
+const TRIBES_WITHOUT_STRATEGIC_AI: ReadonlySet<number> = new Set([WERESNAKE_TRIBE, WEREWOLF_TRIBE]);
+
 /** Session rules and visibility are applied before the briefing can pause the world. */
 export function buildMapWorld(options: MapWorldOptions): MapWorld {
   const terrain = collisionTerrain(options.map, options.ir, options.script?.missions !== undefined);
@@ -146,11 +153,13 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     missions: options.missions ?? (scripted ? true : null),
     fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null),
   });
+  const roster = options.playerRoster === undefined ? null : { players: options.playerRoster };
   for (const seat of options.aiSeats) {
     const authored = options.script?.ai?.find((row) => row.player === seat);
     // `AI_Disable` stops both handlers yet leaves the seat a computer player; `HAI_Disable*` stops
-    // the named strategic modules alone.
-    const off = authored?.disabled ? components.AI_MODULE_IDS : (authored?.strategicOff ?? []);
+    // the named strategic modules alone, as does a monster tribe.
+    const strategicOff = authored?.disabled || TRIBES_WITHOUT_STRATEGIC_AI.has(playerTribe(roster, seat));
+    const off = strategicOff ? components.AI_MODULE_IDS : (authored?.strategicOff ?? []);
     sim.enqueueSetup({
       kind: 'setPlayerAi',
       player: seat,

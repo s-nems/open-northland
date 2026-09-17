@@ -1,3 +1,4 @@
+import { mapLobbySlots } from '@open-northland/data';
 import {
   isReadOnlySpectator,
   isSpectator,
@@ -160,7 +161,7 @@ export async function presentMapWorld(
           validateSavedMap: (save: SaveGame) => validateSavedMap(related, save),
         }),
     worldToken: mapId,
-    saveEntrySearch: formatSearch(sessionSearch(session, script?.players ?? [])),
+    saveEntrySearch: formatSearch(sessionSearch(session, script === null ? [] : mapLobbySlots(script))),
     introAtStart: runtime.introAtStart && sim.missions === undefined,
     musicType: meta?.musicType ?? null,
     missionBriefSource: {

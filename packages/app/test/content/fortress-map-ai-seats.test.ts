@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { MapScript, TerrainMapFile } from '@open-northland/data';
+import { MapScript, mapLobbySlots, TerrainMapFile } from '@open-northland/data';
 import { components, hexDistanceBetween, type Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, type MapWorldOptions } from '../../src/entries/map/world.js';
+import { mapSession } from '../../src/game/session-url.js';
+import { sessionWorldOptions } from '../../src/game/session-world.js';
 import { mapScriptWorld } from '../../src/game/world/mission-script.js';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -72,6 +74,16 @@ function ownedSoldiers(sim: Simulation, seat: number): number {
 }
 
 describe.runIf(hasRealIr())('the fortress map’s authored AI seats', () => {
+  it('seats every computer player from the search the lobby writes, which names the offered seats only', async () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const root = resolve(contentDir(), 'maps');
+    const script = MapScript.parse(JSON.parse(readFileSync(resolve(root, `${MAP_ID}.script.json`), 'utf8')));
+    const search = new URLSearchParams(`map=${MAP_ID}&player=0&ai=1,2,3`);
+    const session = mapSession(search, mapLobbySlots(script));
+    const { aiSeats } = sessionWorldOptions(session, script, mapScriptWorld(script, ir));
+    expect(aiSeats).toEqual([...ALLY_SEATS, ...FORTRESS_SEATS]);
+  });
+
   it('leaves the fortress without a strategic brain and its allies with one, and carries the program', async () => {
     const { sim, script } = await fortressWorld();
     expect(script.ai.map((row) => row.player)).toEqual(FORTRESS_SEATS);

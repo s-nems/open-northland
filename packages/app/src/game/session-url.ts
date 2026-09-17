@@ -1,4 +1,4 @@
-import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
+import { MAP_PLAYER_COLOR_COUNT, type MapsIndexPlayerSlot } from '@open-northland/data';
 import {
   DEFAULT_LOCAL_PLAYER,
   type GameSession,
@@ -28,11 +28,19 @@ export const DEFAULT_SESSION_SEED = 7;
 /** The wall-clock multiplier a session starts at when `?speed=` names none. */
 export const DEFAULT_SESSION_SPEED = 1;
 
-/** The seat rows an entry knows before a world exists: a map script's roster, or the lobby's
- *  `maps-index.json` rows. */
-export interface SessionRosterSlot {
-  readonly player: number;
-  readonly colorId: number;
+/** The seat rows an entry knows before a world exists: a map script's roster read against its
+ *  `[multiplayer]` table (`mapLobbySlots`), or the lobby's `maps-index.json` rows. */
+export type SessionRosterSlot = Pick<MapsIndexPlayerSlot, 'player' | 'colorId' | 'type' | 'claimable'>;
+
+/**
+ * An authored-`ai` seat no person may take: the map's own computer player, which no lobby choice and
+ * no `?ai=` list re-types (original: every `PLAYER_TYPE_AI` seat runs the AI handlers; that the
+ * multiplayer table re-types only the seats it offers a person is inferred from the table). A
+ * `playeroption` row offering nothing at all still leaves the seat a computer player here, where a
+ * network room would close it (`authoredVacantMode`); no corpus map authors such a row.
+ */
+export function isMapComputerSeat(slot: SessionRosterSlot): boolean {
+  return slot.type === 'ai' && !slot.claimable;
 }
 
 /** `?map=<id>`; null when the search names none, which draws the fallback strip instead of a map. */
@@ -87,7 +95,11 @@ export function sessionSearch(
       .filter((seat) => seat.color !== (authored.get(seat.player) ?? seat.player))
       .map((seat) => `${seat.player}:${seat.color}`);
     if (recoloured.length > 0) params.set('colors', recoloured.join(','));
-    const ai = session.seats.filter((seat) => seat.mode === 'ai').map((seat) => seat.player);
+    // The map's own computer seats play without being named, so `?ai=` lists the person's choices only.
+    const mapComputer = new Set(roster.filter(isMapComputerSeat).map((slot) => slot.player));
+    const ai = session.seats
+      .filter((seat) => seat.mode === 'ai' && !mapComputer.has(seat.player))
+      .map((seat) => seat.player);
     if (ai.length > 0) params.set('ai', ai.join(','));
     // Only a map takes its seed from the search; a scene's is its own, so writing one would lie.
     if (session.seed !== DEFAULT_SESSION_SEED) params.set('seed', String(session.seed));
@@ -123,23 +135,27 @@ function rosterSeats(
 ): readonly SessionSeat[] {
   const overrides = colorOverridesParam(params);
   const ai = new Set(aiSeatsParam(params).filter(isValidPlayer));
-  const authored = new Map(roster.map((slot) => [slot.player, slot.colorId]));
+  const authored = new Map(roster.map((slot) => [slot.player, slot]));
   const players = new Set([...authored.keys(), ...ai, ...overrides.keys()]);
   if (typeof localSeat === 'number') players.add(localSeat);
   return orderedSeats(
-    [...players].map((player) => ({
-      player,
-      mode: seatMode(player, localSeat, ai),
-      // A seat the map never authored keeps its slot id as its colour, the roster-less default.
-      color: overrides.get(player) ?? authored.get(player) ?? player,
-    })),
+    [...players].map((player) => {
+      // A seat the map never authored is a claimable one that keeps its slot id as its colour.
+      const slot = authored.get(player) ?? { player, colorId: player, type: 'human', claimable: true };
+      return {
+        player,
+        mode: seatMode(slot, localSeat, ai),
+        color: overrides.get(player) ?? slot.colorId,
+      };
+    }),
   );
 }
 
-/** The claimed seat is played by the person even when `?ai=` also lists it: one seat cannot be both. */
-export function seatMode(player: number, localSeat: LocalSeat, ai: ReadonlySet<number>): SeatMode {
-  if (player === localSeat) return 'human';
-  return ai.has(player) ? 'ai' : 'idle';
+/** The claimed seat is played by the person even when `?ai=` also lists it: one seat cannot be both.
+ *  Otherwise `?ai=` and the map's own computer seats play as AI, and the rest sit out. */
+export function seatMode(slot: SessionRosterSlot, localSeat: LocalSeat, ai: ReadonlySet<number>): SeatMode {
+  if (slot.player === localSeat) return 'human';
+  return ai.has(slot.player) || isMapComputerSeat(slot) ? 'ai' : 'idle';
 }
 
 /** `?colors=<slot>:<colorId>,…`, dropping malformed pairs. Colours are bounded to the roster's id

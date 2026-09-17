@@ -12,6 +12,10 @@ import { Provenance } from '../record.js';
 /** How many player-colour ids the original defines (`PLAYER_COLOR_ID_MAXIMUM`): ids are `0..9`. */
 export const MAP_PLAYER_COLOR_COUNT = 10;
 
+/** The `TRIBE_TYPE_HUMAN_*` codes of the two humanoid monster tribes a roster row can name. */
+export const WERESNAKE_TRIBE = 5;
+export const WEREWOLF_TRIBE = 6;
+
 /**
  * One `player <slot> <type> <tribe> <colorId>` roster row. `type` is `PLAYER_TYPE_HUMAN 1` (a seat a
  * person may take) or `PLAYER_TYPE_AI 2` (script-driven); `tribeId` is the `TRIBE_TYPE_HUMAN_*` code

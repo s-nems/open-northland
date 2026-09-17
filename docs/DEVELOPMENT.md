@@ -156,7 +156,9 @@ loading a save preserves its stored mission rules.
 | `?shot` | single-frame screenshot entry used by the harness |
 
 Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`,
-`intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. `seed=<n>` picks
+`intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. `ai=<seat,...>`
+names the seats a person could have taken that the strategic AI plays instead; a map's own computer
+seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;
 without it the map entry keeps its fixed default. Without `lang`
 the language follows the browser, and English stands in for a

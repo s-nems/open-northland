@@ -39,7 +39,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
     save?.header.entry == null
       ? new Map<number, number>()
       : new Map(
-          mapSession(new URLSearchParams(save.header.entry), script.players).seats.map((seat) => [
+          mapSession(new URLSearchParams(save.header.entry), players).seats.map((seat) => [
             seat.player,
             seat.color,
           ]),

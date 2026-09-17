@@ -490,7 +490,9 @@ and `aidata`) configures the two AI handlers every existing player owns. Reading
 loader and tick unless marked otherwise:
 
 - The **scripted handler** runs the authored tasks and conditions below. It is enabled for a seat of
-  player type AI only; `AI_Disable <player>` switches it off together with the strategic one. Each
+  player type AI only (this build: `isMapComputerSeat`, which `?ai=` cannot switch off; that the
+  multiplayer lobby's `playeroption` choice sets the type of the seats it offers is inferred from
+  the table, unverified); `AI_Disable <player>` switches it off together with the strategic one. Each
   seat takes a turn every 60 ticks (seat `p` on tick `3p` of the round). Every turn it lists the
   seat's soldiers that man no workhouse and carry no [behaviour bit 5](#human-behaviour-flags), and
   a soldier joining the list gets the hold stance and its regenerate-in-world flag cleared, so it
@@ -510,8 +512,8 @@ loader and tick unless marked otherwise:
   `HAI_Disable{CollectResources,GuideBuild,HomeExpansion,HouseBuild,HouseUpgrade,Military,RoadBuild}`
   one module each (the house build and upgrade forms take a category index below 8). This build maps
   the blanket forms and the five un-indexed module forms onto the strategic AI's module enables
-  (`MapAiSeat` in the script sidecar); the corpus authors only `HAI_Disable` (339 lines) and
-  `AI_Disable` (115). The monster-tribe rule is not applied.
+  (`MapAiSeat` in the script sidecar), and world assembly applies the monster-tribe rule from the
+  roster row's tribe; the corpus authors only `HAI_Disable` (339 lines) and `AI_Disable` (115).
 
 The rest of the section is the scripted handler's program, extracted as typed rows (`MapAiSeat` in
 the script sidecar) and run by `systems/ai-program` for a computer seat whose strategic military

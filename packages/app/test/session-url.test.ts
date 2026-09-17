@@ -14,9 +14,16 @@ import {
  */
 
 const ROSTER: readonly SessionRosterSlot[] = [
-  { player: 0, colorId: 7 },
-  { player: 1, colorId: 4 },
-  { player: 2, colorId: 9 },
+  { player: 0, colorId: 7, type: 'human', claimable: true },
+  { player: 1, colorId: 4, type: 'human', claimable: true },
+  { player: 2, colorId: 9, type: 'ai', claimable: true },
+];
+
+/** A Forteca-style roster: three seats a person may take, then the map's own computer seats. */
+const SCENARIO_ROSTER: readonly SessionRosterSlot[] = [
+  ...ROSTER,
+  { player: 3, colorId: 3, type: 'ai', claimable: false },
+  { player: 6, colorId: 9, type: 'ai', claimable: false },
 ];
 
 function session(search: string) {
@@ -54,6 +61,27 @@ describe('mapSession', () => {
     ]);
   });
 
+  it('plays the map’s own computer seats whatever `?ai=` lists, the claimed one excepted', () => {
+    // A seat nobody may take is a `PLAYER_TYPE_AI` seat in every game the original runs, so a
+    // lobby-written `?ai=1,2` or a hand-typed URL that never names it still runs its handlers.
+    const modes = (search: string) =>
+      mapSession(new URLSearchParams(search), SCENARIO_ROSTER).seats.map((seat) => [seat.player, seat.mode]);
+    expect(modes('map=forteca&player=0&ai=1,2')).toEqual([
+      [0, 'human'],
+      [1, 'ai'],
+      [2, 'ai'],
+      [3, 'ai'],
+      [6, 'ai'],
+    ]);
+    expect(modes('map=forteca&player=6')).toEqual([
+      [0, 'idle'],
+      [1, 'idle'],
+      [2, 'idle'],
+      [3, 'ai'],
+      [6, 'human'],
+    ]);
+  });
+
   it('overrides authored colours and drops a pair no consumer could render', () => {
     // An out-of-range colour renders differently per consumer (the sprite LUT clamps, the minimap
     // wraps, the signpost atlas misses), so it keeps the authored one instead.
@@ -74,9 +102,9 @@ describe('mapSession', () => {
   it('lists seats in ascending order however the map or the search wrote them', () => {
     // World assembly enqueues one setup command per AI seat in this order, so it cannot be left to the
     // order a roster was authored in or a `?ai=` list was typed in.
-    const shuffled = [
-      { player: 2, colorId: 9 },
-      { player: 0, colorId: 7 },
+    const shuffled: readonly SessionRosterSlot[] = [
+      { player: 2, colorId: 9, type: 'human', claimable: true },
+      { player: 0, colorId: 7, type: 'human', claimable: true },
     ];
     expect(mapSession(new URLSearchParams('map=zatoka'), shuffled).seats.map((s) => s.player)).toEqual([
       0, 2,
@@ -107,6 +135,14 @@ describe('sessionSearch', () => {
   it('writes only what the person chose, and always the seat', () => {
     const parsed = session('map=zatoka');
     expect(sessionSearch(parsed, ROSTER).toString()).toBe('map=zatoka&player=0');
+  });
+
+  it('leaves the map’s own computer seats out of `?ai=`, which lists the person’s choices', () => {
+    const parsed = mapSession(new URLSearchParams('map=forteca&player=0&ai=2'), SCENARIO_ROSTER);
+    expect(parsed.seats.filter((seat) => seat.mode === 'ai').map((seat) => seat.player)).toEqual([2, 3, 6]);
+    const search = sessionSearch(parsed, SCENARIO_ROSTER);
+    expect(search.toString()).toBe('map=forteca&player=0&ai=2');
+    expect(mapSession(search, SCENARIO_ROSTER)).toEqual(parsed);
   });
 
   it('names a scene without a roster of its own', () => {
