@@ -11,7 +11,9 @@ the seat from setup.
 
 ## Scope
 
-- Model Script/AI/Idle for every visible, unclaimed seat; default authored AI seats to Script.
+- Model Script/AI/Idle for every claimable seat left unclaimed; default an authored-`ai` one to Script.
+  A non-claimable authored-`ai` seat is the map's own computer player (`isMapComputerSeat`) and offers
+  no choice.
 - Treat authored closed seats as non-participants and do not spawn their entities. They are not a
   fourth player-selectable AI mode.
 - Round-trip the selection through the menu URL/setup input and localize the labels.

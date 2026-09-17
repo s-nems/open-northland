@@ -39,7 +39,8 @@ export { WAVE_GATHER_TICKS } from './plan.js';
  * toggles do not reach, lists the soldiers, mans the towers and answers an attack (byte evidence: the
  * the original's `an original routine` calling `an original routine`,
  * `an original routine` and `an original routine`). The shape and radii of the defence here are
- * approximations.
+ * approximations. The home half also runs for a seat whose scripted handler is off while the module is
+ * on, a pairing no map produces: `AI_Disable` switches the modules off with the handler.
  */
 function runMilitary(
   world: World,

@@ -83,7 +83,7 @@ export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   const refilling = seatRefillingAt(world, ctx.tick);
   for (const e of world.query(Person)) {
-    if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, e);
+    if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
     const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);
   }
@@ -91,10 +91,12 @@ export const needsSystem: System = (world, ctx) => {
 
 /**
  * Handler turns between one computer seat's refills. Byte evidence: the original's scripted AI handler
- * on every twelfth of its turns writes a full bar over every food and stamina bar of the seat's humans
- * that has dropped below the critical mark (the the original's `an original routine` and
- * its `an original routine`). A bar sits below the critical mark for at most
- * the minute before its seat's turn.
+ * on every twelfth of its turns writes a full bar over every food and stamina bar of the seat's
+ * soldiers and heroes that has dropped below the critical mark (the the original's
+ * `an original routine` and its `an original routine`, which
+ * walks the sector list `an original routine` fills with the soldier and hero jobs, and
+ * the seat's vehicle commanders). A civilian of the seat is left to its own seeking. A bar sits below
+ * the critical mark for at most the minute before its seat's turn.
  */
 export const AI_NEED_REFILL_TURNS = 12;
 
@@ -104,11 +106,11 @@ function seatRefillingAt(world: World, tick: number): number | null {
   return scriptedSeatOnTurn(world, tick);
 }
 
-/** The refill itself: hunger and fatigue only, written over whatever gate would otherwise hold the
- *  bar, as the original writes the fields directly. Company and piety are left to fall. */
-function refillCriticalNeeds(world: World, e: Entity): void {
+/** The refill itself: a fighter's hunger and fatigue only, written over whatever gate would otherwise
+ *  hold the bar, as the original writes the fields directly. Company and piety are left to fall. */
+function refillCriticalNeeds(world: World, ctx: SystemContext, e: Entity): void {
   const settler = world.tryGet(e, Settler);
-  if (settler === undefined) return;
+  if (settler === undefined || !isFighterJob(ctx.content, settler.jobType)) return;
   const hungry = settler.hunger > NEED_CRITICAL_THRESHOLD;
   const tired = settler.fatigue > NEED_CRITICAL_THRESHOLD;
   if (!hungry && !tired) return;

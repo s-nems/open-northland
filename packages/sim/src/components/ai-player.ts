@@ -26,7 +26,7 @@ export function aiModuleEnables(overrides?: Partial<AiModuleEnables>): AiModuleE
  * `Data/GameSourceIncludes/logicdefines.inc:358`). At most one carrier entity exists per player, and a
  * player with no carrier is a human seat. The original runs two handlers for such a seat: the
  * strategic one behind `modules`, and the scripted one behind `scripted` (the map's `[AIData]`
- * program, tower manning, the defence answer and the minute refill of the seat's food and stamina).
+ * program, tower manning, the defence answer and the minute refill of its soldiers' food and stamina).
  * `AI_Disable` switches both off yet leaves the seat a computer player, which the needs rules read.
  */
 export const AiPlayer = defineComponent<{

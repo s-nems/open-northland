@@ -1,4 +1,4 @@
-import type { Simulation } from '@open-northland/sim';
+import { components, type Simulation } from '@open-northland/sim';
 import type { GameSession } from './descriptor.js';
 
 export interface InitialSaveIdentity {
@@ -19,7 +19,12 @@ export function parseInitialSaveIdentity(value: unknown): InitialSaveIdentity {
   return { fingerprint: raw.fingerprint, tick: raw.tick };
 }
 
-/** A saved room changes seat control on its first resumed tick; saved rules and diplomacy stay intact. */
+/**
+ * A saved room changes seat control on its first resumed tick; saved rules and diplomacy stay intact.
+ * Only a seat changing hands is re-seated: a seat the save already runs as the room seats it keeps its
+ * saved handlers and module toggles (the map's `[AIData]` rows), which a bare `setPlayerAi` would reset
+ * to a full computer player.
+ */
 export function applyInitialSaveSeats(sim: Simulation, session: GameSession): void {
   if (session.initialSave === undefined || sim.tick !== session.initialSave.tick) {
     throw new Error('initial save seat setup requires the declared saved tick');
@@ -28,6 +33,8 @@ export function applyInitialSaveSeats(sim: Simulation, session: GameSession): vo
     (envelope) => envelope.origin === 'admin' && envelope.command.kind === 'setPlayerAi',
   );
   for (const seat of session.seats) {
-    sim.enqueueSetup({ kind: 'setPlayerAi', player: seat.player, enabled: seat.mode === 'ai' });
+    const enabled = seat.mode === 'ai';
+    if (components.isAiPlayer(sim.world, seat.player) === enabled) continue;
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: seat.player, enabled });
   }
 }

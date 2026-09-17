@@ -80,7 +80,41 @@ it('a new human seat supersedes the old room AI takeover while retaining player 
   });
   resumed.run(3);
   expect(components.isAiPlayer(resumed.world, 1)).toBe(false);
+  // The discarded takeover is not replaced by a no-op hand-back, so the player order is the first command.
   expect(resumed.commands.log.filter((entry) => entry.origin === 'player')).toEqual([
-    { ...command, applyTick: 2, sequence: 1 },
+    { ...command, applyTick: 2, sequence: 0 },
   ]);
+});
+
+it('a resumed room keeps the saved handlers and module toggles of a seat that stays a computer player', () => {
+  const content = testContent();
+  const sim = new Simulation({ seed: 5, content });
+  const strategicOff = Object.fromEntries(components.AI_MODULE_IDS.map((id) => [id, false]));
+  sim.enqueueSetup({ kind: 'setPlayerAi', player: 6, enabled: true, modules: strategicOff });
+  sim.enqueueSetup({ kind: 'setPlayerAi', player: 7, enabled: true, modules: strategicOff, scripted: false });
+  sim.step();
+  const save = exportSaveGame(sim, { continuation: [] });
+  const resumed = restoreSimulation(save, { content });
+  applyInitialSaveSeats(resumed, {
+    initialSave: { tick: 1, fingerprint: 'a'.repeat(64) },
+    world: { kind: 'scene', sceneId: 'test' },
+    seed: 5,
+    localSeat: 0,
+    speed: 1,
+    seats: [
+      { player: 0, mode: 'human', color: 0 },
+      { player: 6, mode: 'ai', color: 6 },
+      { player: 7, mode: 'ai', color: 7 },
+      { player: 8, mode: 'ai', color: 8 },
+    ],
+    rules: { fog: null, progression: null, needs: null },
+  });
+  resumed.run(2);
+  expect(components.aiModuleRuns(resumed.world, 6, 'military')).toBe(false);
+  const disabled = components.aiPlayerEntity(resumed.world, 7);
+  expect(disabled).not.toBeNull();
+  if (disabled !== null) expect(resumed.world.get(disabled, components.AiPlayer).scripted).toBe(false);
+  // A seat the save ran as a person is handed to a full computer player.
+  expect(components.aiModuleRuns(resumed.world, 8, 'military')).toBe(true);
+  expect(components.isAiPlayer(resumed.world, 0)).toBe(false);
 });

@@ -497,8 +497,10 @@ loader and tick unless marked otherwise:
   seat's soldiers that man no workhouse and carry no [behaviour bit 5](#human-behaviour-flags), and
   a soldier joining the list gets the hold stance and its regenerate-in-world flag cleared, so it
   never starts a need task and never walks off to eat or sleep; on every twelfth turn the handler
-  writes a full bar over every food and stamina bar of the seat's humans that has fallen below the
-  critical mark, which is all that feeds a listed man. Needs themselves run for every human as
+  writes a full bar over every food and stamina bar of the seat's soldiers, heroes and vehicle
+  commanders that has fallen below the critical mark (`an original routine`
+  walks the soldier-and-hero sector list), which is all that feeds a listed man; a civilian of the
+  seat seeks food and sleep like anyone's. Needs themselves run for every human as
   [behaviour bit 0](#human-behaviour-flags) allows, and two rules of the human itself apply to every
   computer-type player, handlers or not: a need task that fails (nothing to eat within 40 nodes, no
   bed, no temple) writes the sated level over that need's bar, and no message the human raises

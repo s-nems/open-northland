@@ -325,9 +325,13 @@ describe('a relayed session under faults', () => {
     expectAgreement(captures, [ania, bartek]);
     expect(ania.rejections).toEqual([]);
     expect(bartek.rejections).toEqual([]);
-    expect(captures.get(ania)?.log.filter(([, , command]) => command.kind === 'setPlayerAi')).toHaveLength(
-      SEATS.length,
-    );
+    // The save seated nobody, so only the seat the room hands to a computer player is re-seated.
+    expect(
+      captures
+        .get(ania)
+        ?.log.filter(([, , command]) => command.kind === 'setPlayerAi')
+        .map(([, , c]) => c),
+    ).toEqual([{ kind: 'setPlayerAi', player: 2, enabled: true }]);
   });
 
   it('refuses lobby map replacement after a session starts', async () => {
