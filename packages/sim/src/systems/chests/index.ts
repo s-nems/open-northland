@@ -9,6 +9,7 @@ import {
   Owner,
   type Paper,
   Position,
+  Settler,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -20,6 +21,7 @@ import { scatterSpilledStock } from '../economy/goods-spill.js';
 import { stampResourceFootprintData, unstampResourceFootprint } from '../footprint/index.js';
 import { isHeroJob } from '../readviews/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
+import { createVehicle } from '../vehicles/create.js';
 import { resolveChestReward } from './contents.js';
 import { chestFootprint, chestRecord, openedChestRecord } from './footprint.js';
 
@@ -70,10 +72,8 @@ export function jobCanOpenChest(content: ContentSet, jobType: number | null, kin
 /**
  * Hand a chest's contents out to `opener`'s player and leave its inert open visual behind. Goods heap on
  * the ground around the chest's cell, a paper enters the player's list (raising `paperFound`), settlers
- * stand up at the chest for the opener's player and tribe, and animals spawn as a herd there. A chest
- * already open whiffs.
- *
- * Approximation: the catapult chest opens empty because the sim has no land vehicles.
+ * stand up at the chest for the opener's player and tribe, animals spawn as a herd there, and a vehicle
+ * stands on the chest's node for the opener's player and tribe. A chest already open whiffs.
  */
 export function openChest(world: World, ctx: SystemContext, opener: Entity, chest: Entity): void {
   if (!world.isAlive(chest) || !world.has(chest, Chest)) return;
@@ -124,6 +124,15 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
         x: at.hx,
         y: at.hy,
         count: reward.count,
+      });
+      return;
+    case 'vehicle':
+      createVehicle(world, ctx, {
+        vehicleType: reward.vehicleType,
+        tribe: world.get(opener, Settler).tribe,
+        owner: player,
+        x: at.hx,
+        y: at.hy,
       });
       return;
     case 'nothing':

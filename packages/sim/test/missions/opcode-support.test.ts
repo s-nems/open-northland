@@ -29,6 +29,7 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   IsMissionDone: { opcode: 'IsMissionDone', missionIndex: 0 },
   BuildHumans: { opcode: 'BuildHumans', player: 0, job: 1, amount: 1, humanId: 7 },
   BuildHouses: { opcode: 'BuildHouses', player: 0, houseType: 1, amount: 1, objectId: 7 },
+  BuildVehicles: { opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 },
   HumansDied: { opcode: 'HumansDied', humanId: 7 },
   HousesDied: { opcode: 'HousesDied', objectId: 7 },
   AnimalsDied: { opcode: 'AnimalsDied', objectId: 7 },
@@ -355,9 +356,9 @@ describe('the published opcode support lists', () => {
   });
 
   it('reports an opcode outside the lists, so the lists are the whole of it', () => {
-    expect(
-      reportedOpcodes([{ opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 }], []),
-    ).toEqual(['BuildVehicles']);
+    expect(reportedOpcodes([{ opcode: 'FindVehicles', player: 0, vehicleId: 7 }], [])).toEqual([
+      'FindVehicles',
+    ]);
     expect(reportedOpcodes([], [{ opcode: 'RemoveVehicles', vehicleId: 1 }])).toEqual(['RemoveVehicles']);
   });
 });

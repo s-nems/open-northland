@@ -1,4 +1,6 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
+  Building,
   DeliveryFlag,
   JobAssignment,
   ownerOf,
@@ -11,6 +13,7 @@ import {
   UnderConstruction,
   WorkFlag,
 } from '../../../../components/index.js';
+import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
@@ -56,6 +59,7 @@ export type DeliveryRule =
     };
 
 export const DELIVERY_RULES: readonly DeliveryRule[] = [
+  { kind: 'bound', resolve: toOwnVehicleSite },
   { kind: 'bound', resolve: toConsumingWorkplace },
   { kind: 'bound', resolve: toOwnDeliveryFlag },
   { kind: 'searched', resolve: toStorageOffFarm },
@@ -82,6 +86,22 @@ export function deliverySearchArea(plan: PlannerContext): DeliverySearchArea {
     avoid,
     avoidSite: unreachableSiteStand(world, ctx, terrain, targets.yard.blocked, here, avoid),
   };
+}
+
+/** A workshop worker crewing a vehicle site (`drives/economy/vehicle-yard`) carries the bill's goods to
+ *  that site. Above the consuming-workplace rule because the bill shares the workshop's inputs: the wood a
+ *  joiner fetched for a cart must not land on the joinery's plank shelf. */
+function toOwnVehicleSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
+  const { world, ctx, entity, tribe, owner, inbound } = plan;
+  const assigned = world.tryGet(entity, SiteAssignment);
+  if (assigned === undefined || assigned.pinned || !world.has(assigned.site, UnderConstruction)) return null;
+  const type = world.tryGet(assigned.site, Building)?.buildingType;
+  if (type === undefined || contentIndex(ctx.content).buildings.get(type)?.kind !== BUILDING_KIND.vehicle) {
+    return null;
+  }
+  return constructionSiteNeeds(world, ctx, assigned.site, tribe, owner, goodType, inbound, entity)
+    ? assigned.site
+    : null;
 }
 
 /** A fetched input goes to the bound workshop that consumes it, so a picked-up input is never

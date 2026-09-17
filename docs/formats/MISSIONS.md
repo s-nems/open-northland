@@ -191,7 +191,7 @@ trade ledger); the rest no map writes.
 | # | Goal | Parameters | Holds when | Uses |
 | --- | --- | --- | --- | --- |
 | 0 | `True` | | always | 265 |
-| 1 | `BuildVehicles` | 1, 5, 7, 12 | the player owns at least `amount` vehicles of the type; every match gets object id `arg4` | 2 \* |
+| 1 | `BuildVehicles` | 1, 5, 7, 12 | the player owns at least `amount` vehicles of the type; every match gets object id `arg4` | 2 |
 | 2 | `BuildHumans` | 1, 4, 7, 10 | the player has at least `amount` humans with the job; every match gets object id `arg4` (0 clears the id it carried) unless `arg4` is 12345 | 21 |
 | 3 | `BuildHouses` | 1, 15, 7, 14 | the player owns at least `amount` finished houses of the type; every match gets object id `arg4`, 0 and 12345 included | 165 |
 | 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total | 3 \* |
@@ -373,8 +373,8 @@ reports `missionUnsupported` once; the same tickets carry them.
 
 Chest categories for 51 and 100 are a bitmask (docs): 1 soldiers, 2 tower, 4 catapult, 8 goods,
 16 buildings, 32 empty (places nothing), 64 potions, 128 amulets, 256 wolves, 512 armours, 1024
-lions. The category and reward draws are deterministic simulation RNG draws. Category 4 currently
-opens empty because land vehicles are not implemented.
+lions. The category and reward draws are deterministic simulation RNG draws. Category 4 (chest row 91)
+stands a catapult on the chest's node for the opener's player and tribe.
 
 The corpus never uses goals 8, 10, 14, 15, 16, 17, 23, 33, 44, 49, 60, 61, 62 and results 14, 15, 46,
 48, 51, 75, 76, 77, 87, 88, 94, 95, 96, 98, 101. Twenty result opcodes cover 82 percent of all result
@@ -794,9 +794,7 @@ sprite; ordinary maps keep the existing collision path.
 The result reference calls `SetLandscape`'s fourth value **Size** and gives only `1` for the final
 flag. The implementation preserves size as the placement level and replaces the object at its anchor;
 the final flag has no modeled effect. These are approximations. Chest sizes reach 96 although their
-graphics have one frame state: the value cannot generally mean a frame number. Chests can be placed
-and removed visually, but opening them, distributing rewards and interpreting that payload remain
-unimplemented.
+graphics have one frame state: the value cannot generally mean a frame number.
 
 The vertex color argument is a palette index, corroborated by the result reference and the owned
 `Data/engine2d/bin/palettes/misc/vertexcolors.pcx`, whose colour table the pipeline writes to

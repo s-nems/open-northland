@@ -1,3 +1,4 @@
+import type { BuildingType } from '@open-northland/data';
 import {
   Building,
   DefenceMode,
@@ -100,13 +101,50 @@ export function placeBuilding(
   // Spent only once every gate has passed, so a refused placement keeps the paper.
   if (paper !== undefined && command.owner !== undefined && !takePaper(world, command.owner, paper)) return;
 
-  const underConstruction = paper === undefined && command.underConstruction === true;
-  const fillStock = paper === undefined ? command.fillStock === true : paper.kind === 'placeStockedHouse';
+  assembleBuilding(world, ctx, type, {
+    buildingType: command.buildingType,
+    tribe: command.tribe,
+    owner: command.owner,
+    missionId: command.missionId,
+    x: command.x,
+    y: command.y,
+    underConstruction: paper === undefined && command.underConstruction === true,
+    fillStock: paper === undefined ? command.fillStock === true : paper.kind === 'placeStockedHouse',
+    initialGoods: command.initialGoods,
+  });
+}
+
+/** What {@link assembleBuilding} puts down: the gated `placeBuilding` fields past their gates. */
+export interface BuildingSpec {
+  readonly buildingType: number;
+  readonly tribe: number;
+  readonly owner: number | undefined;
+  readonly missionId: number | undefined;
+  /** The anchor, a half-cell node. */
+  readonly x: number;
+  readonly y: number;
+  readonly underConstruction: boolean;
+  readonly fillStock: boolean;
+  readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[] | undefined;
+}
+
+/**
+ * Put a building of `type` on the map, every gate already passed: the one assembly the player's placement,
+ * a script's house and a workshop's hidden vehicle site share, so all three carry the same components in
+ * the same order. Returns the entity.
+ */
+export function assembleBuilding(
+  world: World,
+  ctx: SystemContext,
+  type: BuildingType,
+  spec: BuildingSpec,
+): Entity {
+  const { underConstruction, fillStock } = spec;
   const e = world.create();
   // The anchor is a half-cell node; its Position is the node's fractional tile coords.
-  world.add(e, Position, positionOfNode(command.x, command.y));
+  world.add(e, Position, positionOfNode(spec.x, spec.y));
   const built = underConstruction ? fx.fromInt(0) : ONE;
-  world.add(e, Building, { buildingType: command.buildingType, tribe: command.tribe, built, level: 0 });
+  world.add(e, Building, { buildingType: spec.buildingType, tribe: spec.tribe, built, level: 0 });
   const amounts = new Map<number, number>();
   if (underConstruction) {
     // The ConstructionSystem ramps Health up as the site rises; it starts at 1 so a foundation is never a
@@ -124,7 +162,7 @@ export function placeBuilding(
     // Authored starting stock is unclamped and not limited to the type's declared slots (Walhalla authors
     // 1000 iron into a 45-capacity barn). Approximation: additive-vs-replace is unobserved in the
     // original, and the verb is "add goods".
-    for (const g of command.initialGoods ?? []) {
+    for (const g of spec.initialGoods ?? []) {
       if (g.amount > 0) amounts.set(g.good, (amounts.get(g.good) ?? 0) + g.amount);
     }
     // A placed-built building arrives at full life so it can be besieged; a type with no extracted
@@ -133,8 +171,8 @@ export function placeBuilding(
       world.add(e, Health, { hitpoints: type.hitpoints, max: type.hitpoints });
   }
   world.add(e, Stockpile, { amounts });
-  stampOwner(world, e, command.owner);
-  stampMissionId(world, e, command.missionId);
+  stampOwner(world, e, spec.owner);
+  stampMissionId(world, e, spec.missionId);
   // The plot is impassable from this tick. The placement gates ignore work flags, loose goods and the
   // placer's own signposts, and a forced placement ignores every post, so a house may legally land on any
   // of them; each is displaced outward rather than walled in.
@@ -148,7 +186,8 @@ export function placeBuilding(
   destroyStumpsInReserved(world, ctx, e);
   // A field declares no build area, so it never refuses a site - this is the only thing that clears one.
   destroyFieldsUnderBuilding(world, ctx, e);
-  ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
+  ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: spec.x, hy: spec.y } });
+  return e;
 }
 
 /**

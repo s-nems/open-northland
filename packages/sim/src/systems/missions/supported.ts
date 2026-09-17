@@ -15,6 +15,7 @@ export const SUPPORTED_GOALS = [
   'IsMissionDone',
   'BuildHumans',
   'BuildHouses',
+  'BuildVehicles',
   'HumansDied',
   'HousesDied',
   'AnimalsDied',

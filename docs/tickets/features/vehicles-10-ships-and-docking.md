@@ -14,7 +14,9 @@ needs no port ([VEHICLES.md](../../formats/VEHICLES.md#ships-and-docking)).
   `systems/footprint/vehicle-clearance.ts`) applies on water, so a ship keeps two nodes of
   clearance from the shore. Land and water continents share the continent key the goto and
   `snapVehicleTarget` compare (`systems/vehicles/movement.ts`, today the anchor's static land
-  component, which refuses a ship at sea).
+  component, which refuses a ship at sea). The ship yard's site search
+  (`systems/footprint/placement/vehicle-site.ts`) computes its water clearance on the spot; fold it
+  into the water-side field once one exists.
 - `dockVehicle {vehicle, x, y}` (`g`): commander required; a moored ship boards everyone first
   (`boardCrew` in `systems/vehicles/boarding.ts` is that pass; `moveVehicle` shows how a goal is
   held under `waitsForHuman` until it returns true);

@@ -28,6 +28,7 @@ import {
   JOB_FISHER,
   JOB_HUNTER,
   JOB_IDLE,
+  JOB_JOINER,
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
@@ -74,6 +75,14 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       allowedAtomics: GATHERERS.map((gatherer) => gatherer.atomic),
     },
     { typeId: JOB_CARRIER, id: 'carrier', name: professionLabel('carrier') },
+    // Extracted `jobtypes.ini` 9 `allowatomic 39`: the joiner swings the build-house action on the
+    // yard site of a vehicle it makes.
+    {
+      typeId: JOB_JOINER,
+      id: 'joiner',
+      name: professionLabel('joiner'),
+      allowedAtomics: [BUILD_HOUSE_ATOMIC],
+    },
     // Extracted `jobtypes.ini` 27 `allowatomic 43`, the signpost-erecting swing.
     {
       typeId: JOB_SCOUT,

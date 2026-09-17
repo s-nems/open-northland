@@ -58,6 +58,9 @@ const FOOD_CHEST = 20;
 const SHOES_CHEST = 26;
 const ANY_HOUSE_CHEST = 50;
 const CIVILISTS_CHEST = 92;
+const CATAPULT_CHEST = 91;
+/** The fixture's catapult vehicle type (`vehicletypes.ini` 5). */
+const CATAPULT = 5;
 const UNKNOWN_CHEST = 40;
 const SMITHY_REWARD = 70;
 const SMITH = 13;
@@ -296,6 +299,28 @@ describe('the openChest order', () => {
         degreeOfUse: fx.fromInt(0),
       });
     }
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('the catapult chest stands a catapult on the chest for the opener’s player and tribe', () => {
+    const sim = fresh();
+    const chest = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: CATAPULT_CHEST,
+      x: 10,
+      y: 10,
+    });
+    const opener = spawn(sim, WOODCUTTER, 6, 6);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest }));
+    stepUntilOpened(sim, chest);
+    const vehicles = [...sim.world.query(Vehicle)];
+    expect(vehicles).toHaveLength(1);
+    const [catapult] = vehicles;
+    if (catapult === undefined) throw new Error('unreachable');
+    expect(sim.world.get(catapult, Vehicle)).toMatchObject({ vehicleType: CATAPULT, tribe: VIKING });
+    expect(sim.world.get(catapult, Owner).player).toBe(P0);
+    const p = sim.world.get(catapult, Position);
+    expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: 10, hy: 10 });
     expect(sim.checkInvariants()).toEqual([]);
   });
 

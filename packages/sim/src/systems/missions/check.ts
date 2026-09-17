@@ -29,6 +29,7 @@ import {
   attachedToWorkHouseHolds,
   buildHousesHolds,
   buildHumansHolds,
+  buildVehiclesHolds,
   humanJobHolds,
   humansWithHomeHolds,
   populationHolds,
@@ -130,6 +131,8 @@ function goalHolds(
       return buildHumansHolds(pass, op);
     case 'BuildHouses':
       return buildHousesHolds(pass, op);
+    case 'BuildVehicles':
+      return buildVehiclesHolds(pass, op);
     case 'HumansDied':
       return humansGone(pass.world, op.humanId);
     case 'HousesDied':

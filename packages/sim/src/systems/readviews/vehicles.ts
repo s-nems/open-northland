@@ -1,4 +1,5 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
+import { contentIndex } from '../../core/content-index.js';
 
 /**
  * A ship or boat rather than a land cart or siege engine, keyed on `vehicletypes.ini` `passengerslots`
@@ -32,4 +33,13 @@ export function largestShipCapacity(content: ContentSet): number {
     if (isShipVehicle(vehicle) && vehicle.stockSlots > best) best = vehicle.stockSlots;
   }
   return best;
+}
+
+/**
+ * The `vehicle`-kind house a workshop raises to make `goodType`, or undefined for an ordinary ware. A
+ * vehicle good is never crafted as a recipe cycle or shelved: its production is a hidden construction
+ * site of this house beside the workshop (docs/formats/VEHICLES.md "Construction").
+ */
+export function vehicleHouseOfGood(content: ContentSet, goodType: number): number | undefined {
+  return contentIndex(content).goods.get(goodType)?.vehicleHouse;
 }

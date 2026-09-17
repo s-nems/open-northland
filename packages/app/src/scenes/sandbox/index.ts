@@ -98,7 +98,9 @@ export const sandboxScene: SceneDefinition = {
     {
       label: 'the full viking building catalog is placed (every type, every level)',
       predicate: (sim) => {
-        const placed = placedBuildingTypes(sim);
+        // The joinery's default rotation also opens handcart yards; those are not catalog houses.
+        const catalog = new Set(VIKING_BUILDINGS.map((b) => b.typeId));
+        const placed = new Set([...placedBuildingTypes(sim)].filter((t) => catalog.has(t)));
         return (
           [...VILLAGE_TYPE_IDS].every((t) => placed.has(t)) &&
           placed.size === VILLAGE_TYPE_IDS.size &&

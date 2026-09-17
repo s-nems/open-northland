@@ -19,8 +19,8 @@ export type ChestReward =
     }
   | { readonly kind: 'settlers'; readonly job: string; readonly tribe: string; readonly count: number }
   | { readonly kind: 'animals'; readonly tribe: string; readonly count: number }
-  /** The original spawns a catapult; the sim has no land vehicles, so this opens empty. */
-  | { readonly kind: 'vehicle' };
+  /** A vehicle of the named type, spawned at the chest for the opener. */
+  | { readonly kind: 'vehicle'; readonly vehicle: string };
 
 const SINGLE = { wooden: 1, magical: 3 } as const;
 const POTIONS = { wooden: 12, magical: 18 } as const;
@@ -95,7 +95,7 @@ export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, 
   ],
   [74, workshop('work_armory_00', 'armorer', ['bow_short'])],
   [90, { kind: 'animals', tribe: 'wolves', count: 5 }],
-  [91, { kind: 'vehicle' }],
+  [91, { kind: 'vehicle', vehicle: 'catapult' }],
   [92, settlers('civilist')],
   [93, settlers('woman')],
   [94, settlers('soldier_sword_long')],
@@ -116,6 +116,7 @@ export type ResolvedChestReward =
     }
   | { readonly kind: 'settlers'; readonly tribe: number; readonly jobType: number; readonly count: number }
   | { readonly kind: 'animals'; readonly tribe: number; readonly count: number }
+  | { readonly kind: 'vehicle'; readonly vehicleType: number }
   | { readonly kind: 'nothing' };
 
 const NOTHING: ResolvedChestReward = { kind: 'nothing' };
@@ -170,7 +171,9 @@ export function resolveChestReward(
       if (tribe === undefined || !index.animalsByTribe.has(tribe)) return NOTHING;
       return { kind: 'animals', tribe, count: reward.count };
     }
-    case 'vehicle':
-      return NOTHING;
+    case 'vehicle': {
+      const vehicleType = index.vehicleTypeBySlug.get(reward.vehicle);
+      return vehicleType === undefined ? NOTHING : { kind: 'vehicle', vehicleType };
+    }
   }
 }

@@ -99,8 +99,13 @@ export function stockRows(
 ): StockRow[] {
   const live = liveAmounts(stockpile);
   const tenths = bonusTenths(productionBonus);
-  // A species slot counts the herd grazing outside, so it belongs to Produkcja, not Magazyn.
-  const slots = (def?.stock ?? []).filter((slot) => ctx.livestockTribeOfGood?.(slot.goodType) == null);
+  // A species slot counts the herd grazing outside, so it belongs to Produkcja, not Magazyn; a vehicle
+  // good's slot never holds anything, since the vehicle is built on a yard and never shelved.
+  const slots = (def?.stock ?? []).filter(
+    (slot) =>
+      ctx.livestockTribeOfGood?.(slot.goodType) == null &&
+      goodDef(ctx, slot.goodType)?.vehicleHouse === undefined,
+  );
   return slots.map((slot) => {
     const goodId = goodDef(ctx, slot.goodType)?.id;
     return {

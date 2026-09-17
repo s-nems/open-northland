@@ -64,6 +64,20 @@ Failure reasons 8 (no spot) and 9 (a parked vehicle blocks every ring point) rai
 `vehicleSiteNotFound` / `vehicleSiteOccupied` messages. Chest kind `[` spawns a catapult for the
 opener. Map scripts and `SetVehicle` are the other spawn sources.
 
+Open Northland (`systems/settlers/drives/economy/vehicle-yard.ts`, `systems/footprint/placement/vehicle-site.ts`):
+the operator's craft rotation treats a vehicle good as a turn taken outside on the yard site, never as a
+cycle, and moves past it once the site launched; the site is a `SiteAssignment` crew membership like a
+builder's, the yard's bill is fetched through the ordinary site-supply rungs, and builders and haulers
+never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
+cursor (the original's scheduling is not decoded); the work point is the house door for both hammering
+and the ship site's shore test, so "a water continent bordering the worker's continent" reduces to the
+door lying on the worker's land component; a ship site's water clearance is computed on the spot as
+"`logicsize` rings of one water continent around every body node" because the land free-size field
+stops at the shore; a parked vehicle counts as reason 9 only when it stands on the house body, since a
+vehicle is also a placement obstacle for the reserved margin; a failed search parks the worker for the
+failed-goal memo's span before it looks again; the finished site leaves without a collapse event and
+heaps any surplus delivered past the bill. The chest catapult takes the opener's tribe.
+
 ## Crew
 
 - Attach (human command 0x26; payload vehicle index + unique id): same player, job in

@@ -6,6 +6,7 @@ import {
   Residence,
   restampMissionId,
   Settler,
+  Vehicle,
 } from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -45,6 +46,21 @@ export function buildHousesHolds(
     if (ownerOf(world, e) === op.player) matches.push(e);
   }
   tagMatches(world, matches, op.objectId);
+  return countReaches(matches.length, op.amount);
+}
+
+/** Holds once the player owns `amount` vehicles of the type, tagging them like {@link buildHumansHolds}. */
+export function buildVehiclesHolds(
+  pass: MissionPass,
+  op: Extract<MissionGoalOp, { opcode: 'BuildVehicles' }>,
+): boolean {
+  const { world } = pass;
+  const matches: Entity[] = [];
+  for (const e of world.query(Vehicle)) {
+    if (world.get(e, Vehicle).vehicleType !== op.vehicleType) continue;
+    if (ownerOf(world, e) === op.player) matches.push(e);
+  }
+  tagMatches(world, matches, op.vehicleId);
   return countReaches(matches.length, op.amount);
 }
 

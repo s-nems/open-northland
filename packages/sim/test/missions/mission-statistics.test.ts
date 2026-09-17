@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { playerTally } from '../../src/components/index.js';
 import { missionObjects, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { ctxOf } from '../fixtures/context.js';
 import {
   CARPENTER,
@@ -34,6 +35,9 @@ import {
 const UNTAGGED = 12345;
 /** One tick in, a setup spawn stands with the id its line stamped. */
 const SPAWNED = 1;
+/** The fixture's cart and catapult vehicle types. */
+const HANDCART = 1;
+const CATAPULT = 5;
 
 const NO_TALLY = { humansDied: 0, soldiersDied: 0, humansKilled: 0 };
 
@@ -338,5 +342,24 @@ describe('the counting goals that tag what they counted', () => {
     sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, 43)).toHaveLength(1);
+  });
+
+  it('counts and stamps the player`s vehicles of the type', () => {
+    const sim = goalSim({
+      opcode: 'BuildVehicles',
+      player: 2,
+      vehicleType: HANDCART,
+      amount: 1,
+      vehicleId: 44,
+    });
+    // Another player's cart, and this player's catapult, are not this player's carts.
+    createVehicle(sim.world, ctxOf(sim), { vehicleType: HANDCART, tribe: VIKING, owner: 3, x: 4, y: 4 });
+    createVehicle(sim.world, ctxOf(sim), { vehicleType: CATAPULT, tribe: VIKING, owner: 2, x: 8, y: 8 });
+    sim.run(FIRST_PASS);
+    expect(holds(sim)).toBe(false);
+    createVehicle(sim.world, ctxOf(sim), { vehicleType: HANDCART, tribe: VIKING, owner: 2, x: 12, y: 4 });
+    sim.run(FIRST_PASS);
+    expect(holds(sim)).toBe(true);
+    expect(missionObjects(sim.world, 44)).toHaveLength(1);
   });
 });

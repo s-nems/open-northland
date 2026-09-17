@@ -16,8 +16,10 @@ import { EXTENDED_GOODS, PRODUCE_ATOMIC_BY_GOOD_ID } from '../../../../catalog/g
 import { CARCASS_GOOD_SLUGS } from '../../../../catalog/hunting.js';
 import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
 import {
+  BUILDING_HANDCART_YARD,
   GOOD_COIN,
   GOOD_GOLD,
+  GOOD_HANDCART,
   GOOD_IRON,
   GOOD_MUD,
   GOOD_MUSHROOM,
@@ -28,6 +30,10 @@ import {
   GOOD_WOOD,
 } from '../../ids/index.js';
 import type { SandboxContentExtras } from '../types.js';
+
+/** The vehicle good to yard pairing of `logicdefines.inc` (`GOOD_TYPE_VEHICLE_*` / `HOUSE_TYPE_VEHICLE_*`),
+ *  for the one vehicle the sandbox builds. */
+const VEHICLE_HOUSE_BY_GOOD: ReadonlyMap<number, number> = new Map([[GOOD_HANDCART, BUILDING_HANDCART_YARD]]);
 
 export function buildSandboxGoods(extras: SandboxContentExtras): readonly object[] {
   const localName = (id: string): { name?: string } => {
@@ -92,6 +98,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       // The extracted leather/meat rows carry this harvest atomic; wool's is a named approximation.
       const carcassGood = (CARCASS_GOOD_SLUGS as readonly string[]).includes(good.id);
       const produce = PRODUCE_ATOMIC_BY_GOOD_ID[good.id];
+      const vehicleHouse = VEHICLE_HOUSE_BY_GOOD.get(good.typeId);
       const atomics = {
         ...(carcassGood ? { harvest: HARVEST_CADAVER_ATOMIC } : {}),
         ...(good.typeId === GOOD_WHEAT
@@ -108,6 +115,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
         ...(good.homeQuality !== undefined ? { homeQuality: good.homeQuality } : {}),
         ...(Object.keys(atomics).length > 0 ? { atomics } : {}),
         ...(good.typeId === GOOD_WHEAT ? { farming: FARMING_BALANCE_BY_ID.wheat } : {}),
+        ...(vehicleHouse !== undefined ? { vehicleHouse } : {}),
       };
     }),
   ];

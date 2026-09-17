@@ -27,25 +27,6 @@ export function pairVehicleGoods(goods: readonly GoodType[], buildings: readonly
 }
 
 /**
- * Strips vehicle goods (those paired with a vehicle house) from every building's `stock` and
- * `produces`, so no workshop stores or crafts a vehicle as a ware: the original builds vehicles on a
- * yard instead. Runs before the recipe join so no vehicle recipe is materialized.
- */
-export function stripVehicleGoods(
-  buildings: readonly BuildingType[],
-  goods: readonly GoodType[],
-): BuildingType[] {
-  const vehicleGoods = new Set(goods.filter((g) => g.vehicleHouse !== undefined).map((g) => g.typeId));
-  if (vehicleGoods.size === 0) return [...buildings];
-  return buildings.map((b) => {
-    const stock = b.stock.filter((s) => !vehicleGoods.has(s.goodType));
-    const produces = b.produces.filter((g) => !vehicleGoods.has(g));
-    if (stock.length === b.stock.length && produces.length === b.produces.length) return b;
-    return BuildingType.parse({ ...b, stock, produces });
-  });
-}
-
-/**
  * Materializes each producing building's `recipes` from its `produces` list, taking each recipe's inputs
  * from the output good's own `productionInputs`, which is the only place the source carries them. Inputs
  * are sorted by `goodType` so the result never depends on source order. A building that already carries

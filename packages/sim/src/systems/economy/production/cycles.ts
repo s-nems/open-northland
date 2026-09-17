@@ -13,7 +13,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { birthHerdAnimal, herdRoom, speciesHerdOf } from '../../livestock/index.js';
 import { recipeOutputsEnabled } from '../../progression/index.js';
-import { livestockTribeOfGood } from '../../readviews/index.js';
+import { livestockTribeOfGood, vehicleHouseOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
 /** The herd the original breeds from: exactly two grown animals of the species, no more and no fewer
@@ -33,6 +33,7 @@ export function startableCycleCount(
   building: Entity,
   recipe: Recipe,
 ): number {
+  if (isYardBuilt(ctx, recipe)) return 0;
   if (
     !recipeOutputsEnabled(world, ctx, ownerOf(world, building), world.get(building, Building).tribe, recipe)
   ) {
@@ -59,6 +60,13 @@ function breedableCycles(world: World, ctx: SystemContext, building: Entity, rec
   }
   if (speciesHerdOf(world, ctx, building, species).adults !== BREEDING_PAIR) return 0;
   return Math.max(0, herdRoom(world, ctx, building, species));
+}
+
+/** A recipe whose product is a vehicle good: the workshop's worker raises a yard site for it instead of
+ *  running a cycle (`systems/settlers/drives/economy/vehicle-yard`), so no cycle of it ever starts. */
+export function isYardBuilt(ctx: SystemContext, recipe: Recipe): boolean {
+  const product = recipe.outputs[0]?.goodType;
+  return product !== undefined && vehicleHouseOfGood(ctx.content, product) !== undefined;
 }
 
 /** How many cycles of `recipe` the stocked INPUTS cover - the input half of {@link startableCycleCount}. */
@@ -112,6 +120,7 @@ export function shelfBlockedOutput(world: World, ctx: SystemContext, building: E
   const owner = ownerOf(world, building);
   let blocked: number | null = null;
   for (const recipe of recipes.values()) {
+    if (isYardBuilt(ctx, recipe)) continue; // built on a yard, never shelved
     if (!recipeOutputsEnabled(world, ctx, owner, b.tribe, recipe)) continue; // locked: shipping a unit would not help
     if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one
     if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null;

@@ -24,7 +24,7 @@ their vehicle half. Semantics in [VEHICLES.md](../../formats/VEHICLES.md#map-scr
   `ChangeMissionIdOfVehiclesInRange`, `ChangeMissionIdOfPlayersVehiclesOnContinent`,
   `RemoveVehiclesWithMissionId` (50-vehicle cap, crews only with the flag, wreck effect), and the
   vehicle halves of `MoveUnitsInArea`, `ChangePlayerPlayerId`, `ChangePlayerIdInArea`.
-- Goals: `GoodsInVehicles`, `FindVehicles`, `FindPosByVehicles`, `FindHumansByVehicles`,
+- Goals (`BuildVehicles` is done): `GoodsInVehicles`, `FindVehicles`, `FindPosByVehicles`, `FindHumansByVehicles`,
   `FindVehiclesByVehicles`, `FindHousesByVehicles`, `IsHumanInVehicle`, `NumberOfVehiclesInArea`,
   `NumberOfGoodsInVehiclesInArea`; `FindPosByPlayersMapMoveable` admits vehicles.
 - Crews, cargo, orders and mission ids survive save/load and sub-mission return.

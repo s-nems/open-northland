@@ -67,11 +67,11 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const id of listed) expect(ids, `summary good '${id}' missing`).toContain(id);
   });
 
-  it('every vehicle yard pairs with one vehicle good, and no building stocks or produces one', async () => {
-    // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicles-8-workshop-construction.md):
-    // each `vehicle`-kind house spawns a type the vehicle table carries and is opened by exactly one
-    // good, and the strip keys on that pairing, so a pairing gap would silently bring handcarts back
-    // as loaves of bread - this pins the regenerated IR.
+  it('every vehicle yard pairs with one vehicle good, which some workshop lists as a product', async () => {
+    // Vehicles are yard-built: each `vehicle`-kind house spawns a type the vehicle table carries and is
+    // opened by exactly one good, and a joinery lists that good among its products (`logicproduction`)
+    // so the yard drive has a turn to take. The production gate keys on the pairing, so a pairing gap
+    // would craft handcarts as loaves of bread - this pins the regenerated IR.
     const { real } = await loadContentUnderTest();
     const vehicleTypes = new Set(real.vehicles.map((v) => v.typeId));
     const yards = real.buildings.filter((b) => b.kind === 'vehicle');
@@ -79,21 +79,19 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     const goodsByYard = new Map(
       yards.map((b) => [b.typeId, real.goods.filter((g) => g.vehicleHouse === b.typeId)]),
     );
+    const produced = new Set(real.buildings.flatMap((b) => b.produces));
     for (const yard of yards) {
       expect(
         yard.vehicleType !== undefined && vehicleTypes.has(yard.vehicleType),
         `${yard.id} spawns no vehicle`,
       ).toBe(true);
+      const goods = goodsByYard.get(yard.typeId) ?? [];
       expect(
-        goodsByYard.get(yard.typeId)?.map((g) => g.id),
+        goods.map((g) => g.id),
         `${yard.id} pairs with one good`,
       ).toHaveLength(1);
-    }
-    const vehicleGoods = new Set(real.goods.filter((g) => g.vehicleHouse !== undefined).map((g) => g.typeId));
-    for (const b of real.buildings) {
-      for (const s of b.stock)
-        expect(vehicleGoods, `${b.id} stocks a vehicle good`).not.toContain(s.goodType);
-      for (const p of b.produces) expect(vehicleGoods, `${b.id} produces a vehicle good`).not.toContain(p);
+      for (const g of goods) expect(produced.has(g.typeId), `${g.id} is nobody's product`).toBe(true);
+      expect(yard.construction.length, `${yard.id} has no bill`).toBeGreaterThan(0);
     }
   });
 

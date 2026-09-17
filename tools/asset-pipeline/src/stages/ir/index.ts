@@ -14,7 +14,7 @@ import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { decodeMapTree } from '../maps/index.js';
 import { applyBuildingGraphicsOverlays } from './building-overlays.js';
-import { fillBuildingRecipes, pairVehicleGoods, stripVehicleGoods } from './building-recipes.js';
+import { fillBuildingRecipes, pairVehicleGoods } from './building-recipes.js';
 import { loadCifTable, loadIniTable } from './cif-tables.js';
 import { buildGatheringPipeline } from './gathering-pipeline.js';
 import { correctJobExperience } from './job-experience.js';
@@ -103,8 +103,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   );
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
   const pairedGoods = pairVehicleGoods(goods, buildingsWithCosts);
-  const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, pairedGoods);
-  const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, pairedGoods, tribes);
+  const buildingsWithRecipes = fillBuildingRecipes(buildingsWithCosts, pairedGoods, tribes);
   const correctedJobExperience = correctJobExperience(jobExperience, tribes);
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { mod: basename(roots.mod) } },

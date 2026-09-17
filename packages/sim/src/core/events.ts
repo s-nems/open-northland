@@ -119,6 +119,16 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
+      /**
+       * A workshop worker whose product is a vehicle found nowhere to raise its site: `notFound` when no
+       * ring point of the work centre qualifies, `occupied` when a parked vehicle was the only objection.
+       * The player's `vehicleSiteNotFound` / `vehicleSiteOccupied` notes.
+       */
+      readonly kind: 'vehicleSiteRefused';
+      readonly entity: Entity;
+      readonly reason: 'notFound' | 'occupied';
+    }
+  | {
       /** A marry order found nobody eligible to wed inside the issuer's allowed area. */
       readonly kind: 'marriageUnmatched';
       readonly entity: Entity;

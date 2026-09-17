@@ -1,9 +1,9 @@
 import type { Recipe } from '@open-northland/data';
-import { CraftSelection } from '../../../components/index.js';
+import { Building, CraftSelection, ownerOf } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { beginCycle, canStartCycle, waitingForRecipeInput } from './cycles.js';
+import { needSubjectOf, recipeOutputsEnabled, settlerMeetsNeed } from '../../progression/index.js';
+import { beginCycle, canStartCycle, isYardBuilt, waitingForRecipeInput } from './cycles.js';
 
 /**
  * The products of `recipes` this operator may craft, in rotation order: its {@link CraftSelection} goods,
@@ -25,12 +25,60 @@ export function craftablePool(
   return picked.length > 0 ? picked : [...recipes.keys()].filter(earned);
 }
 
+/** The product an operator's rotation takes next: `good` at `index` into its craftable `pool`. */
+export interface RotationPick {
+  readonly good: number;
+  readonly index: number;
+  readonly pool: readonly number[];
+}
+
 /**
- * Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start. The walk
- * takes the first startable product from the rotation cursor and advances the cursor past it. A product
- * with a full shelf is skipped, while one waiting for inputs holds its turn so a cheaper recipe cannot
- * consume each incoming unit. A first-ever start stamps an empty selection so the position persists.
+ * The next product of `operator`'s rotation at `building`, or null when no chosen product can start: the
+ * walk takes the first product from the rotation cursor that is either startable or yard-built. A
+ * yard-built product is the planner's turn (`drives/economy/vehicle-yard`) rather than a cycle here, so it
+ * stops the walk like a start would. A product with a full shelf is skipped, while one waiting for inputs
+ * holds its turn so a cheaper recipe cannot consume each incoming unit.
  */
+export function nextRotationPick(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operator: Entity,
+  recipes: ReadonlyMap<number, Recipe>,
+): RotationPick | null {
+  const pool = craftablePool(world, ctx, operator, recipes);
+  if (pool.length === 0) return null; // no recipes at all, or none this operator has earned yet
+  const cursor = world.tryGet(operator, CraftSelection)?.cursor ?? 0;
+  for (let i = 0; i < pool.length; i++) {
+    const index = (cursor + i) % pool.length;
+    const good = pool[index];
+    const recipe = good !== undefined ? recipes.get(good) : undefined;
+    if (good === undefined || recipe === undefined) continue;
+    if (yardTurnOpen(world, ctx, building, recipe) || canStartCycle(world, ctx, building, recipe)) {
+      return { good, index, pool };
+    }
+    if (waitingForRecipeInput(world, ctx, building, recipe)) return null;
+  }
+  return null;
+}
+
+/** A yard-built product the player's tribe may make: the yard turn's own start gate, since a vehicle is
+ *  never a cycle and `canStartCycle` refuses it outright. */
+function yardTurnOpen(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
+  if (!isYardBuilt(ctx, recipe)) return false;
+  const b = world.get(building, Building);
+  return recipeOutputsEnabled(world, ctx, ownerOf(world, building), b.tribe, recipe);
+}
+
+/** Move the rotation past `pick`, so alternation resumes after the product just taken. A first-ever
+ *  advance stamps an empty selection so the rotation position persists. */
+export function advanceRotation(world: World, operator: Entity, pick: RotationPick): void {
+  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
+  world.mut(operator, CraftSelection).cursor = (pick.index + 1) % pick.pool.length;
+}
+
+/** Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start or
+ *  the choice is a yard-built vehicle, whose turn the planner takes and advances. */
 export function startCycleFor(
   world: World,
   ctx: SystemContext,
@@ -41,28 +89,21 @@ export function startCycleFor(
   const choice = nextCycleFor(world, ctx, building, operator, recipes);
   if (choice === undefined) return;
   beginCycle(world, building, choice.recipe, choice.good);
-  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
-  world.mut(operator, CraftSelection).cursor = choice.nextCursor;
+  advanceRotation(world, operator, choice);
 }
 
+/** {@link nextRotationPick} as a cycle to begin, or undefined when the pick is a yard-built vehicle. */
 export function nextCycleFor(
   world: World,
   ctx: SystemContext,
   building: Entity,
   operator: Entity,
   recipes: ReadonlyMap<number, Recipe>,
-): { good: number; recipe: Recipe; nextCursor: number } | undefined {
-  const pool = craftablePool(world, ctx, operator, recipes);
-  const cursor = world.tryGet(operator, CraftSelection)?.cursor ?? 0;
-  for (let i = 0; i < pool.length; i++) {
-    const good = pool[(cursor + i) % pool.length];
-    const recipe = good === undefined ? undefined : recipes.get(good);
-    if (good === undefined || recipe === undefined) continue;
-    if (canStartCycle(world, ctx, building, recipe)) {
-      return { good, recipe, nextCursor: (cursor + i + 1) % pool.length };
-    }
-    if (waitingForRecipeInput(world, ctx, building, recipe)) return;
-  }
+): (RotationPick & { readonly recipe: Recipe }) | undefined {
+  const pick = nextRotationPick(world, ctx, building, operator, recipes);
+  const recipe = pick === null ? undefined : recipes.get(pick.good);
+  if (pick === null || recipe === undefined || isYardBuilt(ctx, recipe)) return undefined;
+  return { ...pick, recipe };
 }
 
 /** Let a startable product take the turn when the planner found no source for the next recipe's input. */

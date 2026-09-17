@@ -42,3 +42,6 @@ export const BUILDING_DRUID_HUT_01 = 36;
 export const BUILDING_BARRACKS = 39;
 /** The watchtower (`tower_00`); `tower_01` (41) is the chain's top. */
 export const BUILDING_WATCHTOWER = 40;
+/** The handcart yard (`houses.ini` logictype 42, `logicvehicletype 1`): the hidden site a joinery raises
+ *  for a handcart, never a house the player places. */
+export const BUILDING_HANDCART_YARD = 42;

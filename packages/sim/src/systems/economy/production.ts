@@ -20,11 +20,18 @@ export {
 } from './production/bonus-output.js';
 export {
   BREEDING_PAIR,
+  isYardBuilt,
   outputRoomForCycles,
   shelfBlockedOutput,
   startableCycleCount,
 } from './production/cycles.js';
-export { craftablePool, skipUnfundedRecipe } from './production/rotation.js';
+export {
+  advanceRotation,
+  craftablePool,
+  nextRotationPick,
+  type RotationPick,
+  skipUnfundedRecipe,
+} from './production/rotation.js';
 
 /**
  * One workplace turns input goods into output goods over time, one independent batch per present operator,

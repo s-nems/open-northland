@@ -1,3 +1,4 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
   Crop,
@@ -10,6 +11,7 @@ import {
   Stockpile,
   UnderConstruction,
 } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -41,7 +43,9 @@ export interface TargetCandidates {
   readonly buildings: readonly Entity[];
   /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-prayer-site pick. */
   readonly buildingCells: InteractionCellIndex;
-  /** Building construction sites, kept separate so an idle world scans an empty list. */
+  /** Building construction sites builders and haulers serve, kept separate so an idle world scans an
+   *  empty list. A vehicle house's hidden site is not among them: only the workshop worker raising it
+   *  crews it. */
   readonly constructionSites: readonly Entity[];
   /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks. */
   readonly constructionSiteCells: InteractionCellIndex;
@@ -54,6 +58,8 @@ export interface TargetCandidates {
   /** Walls carrying {@link Damaged}, indexed like {@link repairSiteCells}; kept apart because builders
    *  mend walls only once no building site is left. */
   readonly wallRepairCells: InteractionCellIndex;
+  /** The unfinished vehicle sites, for the yard drive's reuse pick. */
+  readonly vehicleSites: readonly Entity[];
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
   /** {@link groundDrops} under every good each pile holds, ascending-id, so a scan for one good never
@@ -89,7 +95,13 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
 
   const stockpiles = world.canonicalQuery(Stockpile, Position);
   const buildings = world.canonicalQuery(Building, Position);
-  const constructionSites = world.canonicalQuery(UnderConstruction, Building, Position);
+  const constructionSites: Entity[] = [];
+  const vehicleSites: Entity[] = [];
+  const index = contentIndex(ctx.content);
+  for (const e of world.canonicalQuery(UnderConstruction, Building, Position)) {
+    const kind = index.buildings.get(world.get(e, Building).buildingType)?.kind;
+    (kind === BUILDING_KIND.vehicle ? vehicleSites : constructionSites).push(e);
+  }
   let cropsByFarm: Map<Entity, Entity[]> | undefined;
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
@@ -114,6 +126,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       return buildingCells;
     },
     constructionSites,
+    vehicleSites,
     get constructionSiteCells() {
       constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, constructionSites);
       return constructionSiteCells;

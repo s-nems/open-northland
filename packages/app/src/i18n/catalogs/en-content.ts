@@ -232,6 +232,11 @@ export const enContent = {
       summary:
         'Every cart, ship and catapult of two civilizations standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a trader pulling its handcart away, the debris of a cart wrecked on the first tick, and a crewed ox cart and catapult driving east along the bottom rows, the catapult at half the pace.',
     },
+    'vehicle-yard': {
+      title: 'Vehicle yard',
+      summary:
+        'A level-3 joinery whose two joiners are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.',
+    },
     school: {
       title: 'Learning a profession',
       summary:

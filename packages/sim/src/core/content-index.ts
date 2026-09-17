@@ -152,6 +152,7 @@ export interface ContentIndex {
   readonly buildingTypeBySlug: ReadonlyMap<string, number>;
   readonly jobTypeBySlug: ReadonlyMap<string, number>;
   readonly tribeTypeBySlug: ReadonlyMap<string, number>;
+  readonly vehicleTypeBySlug: ReadonlyMap<string, number>;
   /** Landscape `typeId` by slug, first declaration wins. */
   readonly landscapeTypeBySlug: ReadonlyMap<string, number>;
   /**
@@ -252,6 +253,11 @@ function buildIndex(content: ContentSet): ContentIndex {
       content.tribes,
       (t) => t.id,
       (t) => t.typeId,
+    ),
+    vehicleTypeBySlug: valueByKey(
+      content.vehicles,
+      (v) => v.id,
+      (v) => v.typeId,
     ),
     landscapeTypeBySlug: valueByKey(
       content.landscape,

@@ -12,6 +12,7 @@ import {
   BUILDING_DRUID_HUT,
   BUILDING_DRUID_HUT_01,
   BUILDING_FARM,
+  BUILDING_HANDCART_YARD,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
@@ -36,6 +37,7 @@ import {
   GOOD_FOOD_SIMPLE,
   GOOD_FURNITURE,
   GOOD_GOLD,
+  GOOD_HANDCART,
   GOOD_HERB,
   GOOD_HOLY_OIL,
   GOOD_IRON,
@@ -60,6 +62,7 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   GOOD_WOOL,
+  VEHICLE_HANDCART,
 } from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
 
@@ -86,6 +89,11 @@ const DRUID_INPUT_CAPACITY = 10;
 const DRUID_HUT_OIL_CAPACITY = 15;
 const DRUID_HUT_01_OUTPUT_CAPACITY = 25;
 const CRAFT_INPUT_CAPACITY = 10;
+// Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
+// vehicle good is built on a yard, not shelved.
+const JOINERY_CART_CAPACITY = 20;
+// Extracted "viking handcart" (house 42): `logicvehicletype 1`, a 2-wood bill, the real footprint.
+const HANDCART_YARD_WOOD = 2;
 
 export interface StockSlot {
   readonly goodType: number;
@@ -153,6 +161,8 @@ export interface SandboxBuildingRow {
   canEnableDefenceMode?: boolean;
   /** How many civilians the building shelters in defence mode. */
   shelterCapacity?: number;
+  /** The vehicle a finished site of this `vehicle`-kind house spawns. */
+  vehicleType?: number;
 }
 
 /** Extracted `logicstock 16 25` / `43 25` on both tower tiers. */
@@ -230,6 +240,18 @@ function joineryUpgrade(outputCapacity: number, inputCapacity: number): Partial<
         outputs: [{ goodType: GOOD_FURNITURE, amount: 1 }],
         ticks: DEFAULT_RECIPE_TICKS,
       },
+    ],
+  };
+}
+
+function withHandcart(row: Partial<SandboxBuildingRow>): Partial<SandboxBuildingRow> {
+  return {
+    ...row,
+    stock: [...(row.stock ?? []), { goodType: GOOD_HANDCART, capacity: JOINERY_CART_CAPACITY, initial: 0 }],
+    produces: [...(row.produces ?? []), GOOD_HANDCART],
+    recipes: [
+      ...(row.recipes ?? []),
+      { inputs: [], outputs: [{ goodType: GOOD_HANDCART, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS },
     ],
   };
 }
@@ -406,10 +428,12 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     ],
   },
   // Extracted `work joinery 01..03` household-good lane: two wood become one furniture. The same rows
-  // also retain the joinery's wooden- and iron-tool recipes; vehicle outputs are deliberately absent,
-  // matching the generated-content join that strips vehicle goods from ordinary workshop production.
+  // also retain the joinery's wooden- and iron-tool recipes.
   [BUILDING_JOINERY_01]: joineryUpgrade(20, CRAFT_INPUT_CAPACITY),
-  [BUILDING_JOINERY_02]: joineryUpgrade(25, CRAFT_INPUT_CAPACITY),
+  // The level-3 joinery ("work joinery 02") also lists the handcart among its products
+  // (`logicproduction 59`): its joiner's turn for a cart is a yard site beside the shop, not a cycle, so
+  // the cart recipe carries no inputs; the yard's bill is what the cart costs.
+  [BUILDING_JOINERY_02]: withHandcart(joineryUpgrade(25, CRAFT_INPUT_CAPACITY)),
   [BUILDING_JOINERY_03]: joineryUpgrade(25, 20),
   // Extracted `work pottery 00/01`: the upgrade keeps bricks, adds tiles, and unlocks crockery.
   [BUILDING_POTTERY]: {
@@ -437,6 +461,49 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     ],
   },
 };
+
+/** The handcart yard: no worker slot of its own, since the joiner building the cart crews the site. */
+function handcartYardRow(): SandboxBuildingRow {
+  return {
+    typeId: BUILDING_HANDCART_YARD,
+    id: 'handcart',
+    kind: 'vehicle',
+    vehicleType: VEHICLE_HANDCART,
+    construction: [{ goodType: GOOD_WOOD, amount: HANDCART_YARD_WOOD }],
+    hitpoints: buildingHitpoints('vehicle'),
+    footprint: {
+      blocked: [
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 0 },
+        { dx: 1, dy: 0 },
+        { dx: 0, dy: 1 },
+      ],
+      familyBody: [
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 0 },
+        { dx: 1, dy: 0 },
+        { dx: 0, dy: 1 },
+      ],
+      reserved: [
+        { dx: 0, dy: -2 },
+        { dx: 1, dy: -2 },
+        { dx: -1, dy: -1 },
+        { dx: 0, dy: -1 },
+        { dx: 1, dy: -1 },
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: 0 },
+        { dx: 1, dy: 0 },
+        { dx: 2, dy: 0 },
+        { dx: -1, dy: 1 },
+        { dx: 0, dy: 1 },
+        { dx: 1, dy: 1 },
+        { dx: 0, dy: 2 },
+        { dx: 1, dy: 2 },
+      ],
+      door: { dx: -1, dy: 1 },
+    },
+  };
+}
 
 /** Extracted per home tier: `houses.ini` `logichomesize` 1..5 and `logicstock 16/17 <cap> 1`. */
 const HOME_TIERS = [
@@ -498,6 +565,7 @@ export function buildSandboxBuildings(extras: SandboxContentExtras): Map<number,
       ...footprintOf(b.typeId, b.kind),
     });
   }
+  buildings.set(BUILDING_HANDCART_YARD, handcartYardRow());
   for (const b of extras.buildings ?? []) {
     if (!buildings.has(b.typeId)) {
       const kind = b.kind ?? 'workplace';

@@ -356,6 +356,26 @@ describe('user messages from sim events', () => {
     expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.wantsToPray, 1]]);
   });
 
+  it("notes this seat's workshop worker that found nowhere for its vehicle site, by reason", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: ENEMY, kind: 'person' },
+      { id: 3, player: LOCAL, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'vehicleSiteRefused', entity: e(1), reason: 'notFound' },
+        { kind: 'vehicleSiteRefused', entity: e(2), reason: 'notFound' },
+        { kind: 'vehicleSiteRefused', entity: e(3), reason: 'occupied' },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([
+      [USER_MESSAGE_TYPE.vehicleSiteNotFound, 1],
+      [USER_MESSAGE_TYPE.vehicleSiteOccupied, 3],
+    ]);
+  });
+
   it('notes a marry order that found nobody', () => {
     const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const out = run([{ kind: 'marriageUnmatched', entity: e(1) }], snap);

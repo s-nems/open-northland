@@ -232,6 +232,11 @@ export const plContent = {
       summary:
         'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek, szczątki wozu rozbitego w pierwszej turze oraz wóz z wołem i katapulta z załogą jadące na wschód dolnymi rzędami, katapulta o połowę wolniej.',
     },
+    'vehicle-yard': {
+      title: 'Warsztat wozów',
+      summary:
+        'Stolarnia trzeciego poziomu, której dwaj stolarze mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
+    },
     school: {
       title: 'Nauka zawodu',
       summary:

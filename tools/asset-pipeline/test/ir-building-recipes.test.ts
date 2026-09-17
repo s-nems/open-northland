@@ -1,11 +1,7 @@
 import { BuildingType, DEFAULT_RECIPE_TICKS, GoodType, TribeType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { extractGoods, parseIniSections } from '../src/decoders/ini.js';
-import {
-  fillBuildingRecipes,
-  pairVehicleGoods,
-  stripVehicleGoods,
-} from '../src/stages/ir/building-recipes.js';
+import { fillBuildingRecipes, pairVehicleGoods } from '../src/stages/ir/building-recipes.js';
 import { GOODTYPES_INI } from './fixtures/ini-sources.js';
 
 describe('fillBuildingRecipes', () => {
@@ -186,43 +182,5 @@ describe('pairVehicleGoods', () => {
     const workshop = BuildingType.parse({ typeId: 46, id: 'not_a_yard', kind: 'workplace', source: src });
     const [catapult] = pairVehicleGoods([good(63, 'catapult')], [workshop]);
     expect(catapult?.vehicleHouse).toBeUndefined();
-  });
-});
-
-describe('stripVehicleGoods', () => {
-  const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
-  const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
-  // 'guildmark' (27) doubles as a vehicle good here: the strip keys on the `vehicleHouse` pairing.
-  const goodsWithCart = GOODS.map((g) => (g.typeId === 27 ? GoodType.parse({ ...g, vehicleHouse: 42 }) : g));
-
-  it('drops a vehicle good from stock and produces, so the recipe join never materializes it', () => {
-    const workshop = BuildingType.parse({
-      typeId: 40,
-      id: 'wainwright',
-      kind: 'workplace',
-      produces: [27, 31],
-      stock: [
-        { goodType: 22, capacity: 10, initial: 0 },
-        { goodType: 27, capacity: 5, initial: 0 },
-      ],
-      source: src,
-    });
-    const [stripped] = stripVehicleGoods([workshop], goodsWithCart);
-    expect(stripped?.stock.map((s) => s.goodType)).toEqual([22]);
-    expect(stripped?.produces).toEqual([31]);
-    const [filled] = fillBuildingRecipes([stripped ?? workshop], goodsWithCart, []);
-    expect(filled?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType))).toEqual([31]);
-  });
-
-  it('leaves buildings untouched when no good is paired with a vehicle house', () => {
-    const workshop = BuildingType.parse({
-      typeId: 41,
-      id: 'plain',
-      kind: 'workplace',
-      produces: [31],
-      source: src,
-    });
-    const [same] = stripVehicleGoods([workshop], GOODS);
-    expect(same).toBe(workshop); // identity preserved - nothing to strip
   });
 });

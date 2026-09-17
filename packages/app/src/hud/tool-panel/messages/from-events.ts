@@ -119,6 +119,17 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.wantsToPray, e);
         break;
       }
+      case 'vehicleSiteRefused': {
+        const e = ownedPerson(ev.entity);
+        if (e === undefined) break;
+        raiser.settler(
+          ev.reason === 'occupied'
+            ? USER_MESSAGE_TYPE.vehicleSiteOccupied
+            : USER_MESSAGE_TYPE.vehicleSiteNotFound,
+          e,
+        );
+        break;
+      }
       case 'marriageUnmatched': {
         const e = ownedPerson(ev.entity);
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.noOneToMarry, e);

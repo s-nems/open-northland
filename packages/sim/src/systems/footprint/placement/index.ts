@@ -11,6 +11,13 @@ export {
   placementProbe,
 } from './building.js';
 export {
+  findVehicleSite,
+  reusableVehicleSite,
+  VEHICLE_SITE_PLACEMENT_RINGS,
+  VEHICLE_SITE_REUSE_RINGS,
+  type VehicleSiteVerdict,
+} from './vehicle-site.js';
+export {
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
   noteWorkFlagMove,

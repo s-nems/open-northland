@@ -329,13 +329,13 @@ describe('an opcode this build cannot run', () => {
   it('reports it once per mission and treats the goal as not held', () => {
     const sim = missionSim([
       mission({
-        goals: [{ opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 }],
+        goals: [{ opcode: 'FindVehicles', player: 0, vehicleId: 7 }],
         results: [{ opcode: 'Exit' }],
       }),
     ]);
     sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
-      { kind: 'missionUnsupported', mission: 0, opcode: 'BuildVehicles' },
+      { kind: 'missionUnsupported', mission: 0, opcode: 'FindVehicles' },
     ]);
     expect(records(sim)[0]?.active).toBe(true);
     sim.run(PASS_TICKS);
@@ -358,13 +358,7 @@ describe('an opcode this build cannot run', () => {
 });
 
 describe('unavailable goal verdicts', () => {
-  const unknown: MissionGoalOp = {
-    opcode: 'BuildVehicles',
-    player: 0,
-    vehicleType: 1,
-    amount: 1,
-    vehicleId: 7,
-  };
+  const unknown: MissionGoalOp = { opcode: 'FindVehicles', player: 0, vehicleId: 7 };
   const falseGoal: MissionGoalOp = { opcode: 'IfMissionIsActive', missionIndex: 999 };
 
   it.each([

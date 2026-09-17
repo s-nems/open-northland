@@ -26,6 +26,7 @@ import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
+import { planVehicleYard } from '../vehicle-yard.js';
 import { startCraftAtomic } from './craft.js';
 import {
   type InputShortfall,
@@ -117,6 +118,9 @@ export function planProducer(
   const { world, ctx } = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
+
+  // A vehicle turn is worked outside on a yard site, so it comes before any seat is claimed.
+  if (planVehicleYard(plan, workplace, spacing)) return;
 
   const own = operatorRecipes(world, ctx, workplace, plan.entity);
   let seats = seatClaims.get(workplace);

@@ -1,11 +1,15 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
   CraftSelection,
   consumeGoods,
   type GoodsLine,
   Health,
+  JobAssignment,
+  ownerOf,
   Palisade,
   PalisadeBlocking,
+  Position,
   Settler,
   Stockpile,
   setStockAmount,
@@ -16,6 +20,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
@@ -31,9 +36,11 @@ import {
   isWorkplaceOperator,
   upgradeTierOf,
 } from '../stores/index.js';
+import { createVehicle } from '../vehicles/create.js';
 import { destroyBerryBushesInReserved } from './berries.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
+import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
 import { clearRepairedDamage } from './repair.js';
 import { destroyStumpsInReserved } from './stumps.js';
 
@@ -50,6 +57,8 @@ import { destroyStumpsInReserved } from './stumps.js';
  */
 export const constructionSystem: System = (world, ctx) => {
   const occupancy = new WallSiteOccupancy(world, ctx);
+  // A finished vehicle site is destroyed, so launches wait for the walk to end.
+  const launches: Entity[] = [];
   // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
   // one tick settle their plots in a canonical order.
   for (const e of world.canonicalQuery(UnderConstruction)) {
@@ -65,30 +74,35 @@ export const constructionSystem: System = (world, ctx) => {
       // A type missing from content has an empty bill and a zero labor total, which would read as
       // complete and finish the site for free.
       if (!contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
-      advanceBuildingSite(world, ctx, e, building, constructionBillOf(world, ctx, e));
+      if (advanceBuildingSite(world, ctx, e, building, constructionBillOf(world, ctx, e)) === 'launch') {
+        launches.push(e);
+      }
     } else if (wall !== undefined) {
       advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e), occupancy);
     }
   }
+  for (const site of launches) launchVehicle(world, ctx, site);
 };
 
 type BuildingState = NonNullable<(typeof Building)['__value']>;
 type PalisadeState = NonNullable<(typeof Palisade)['__value']>;
 
 /** Advance one building site this tick. `cost` is the site's bill, spent into the structure on
- *  completion. */
+ *  completion. A completed vehicle site answers `launch` for the caller to turn into its vehicle. */
 function advanceBuildingSite(
   world: World,
   ctx: SystemContext,
   e: Entity,
   building: DeepReadonly<BuildingState>,
   cost: ReadonlyArray<{ goodType: number; amount: number }>,
-): void {
+): 'launch' | undefined {
   const labor = world.get(e, UnderConstruction).labor;
   // A free (empty-cost) type has nothing to install, so its labor requirement is waived.
   const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
     consumeMaterials(world, e, cost);
+    const type = contentIndex(ctx.content).buildings.get(building.buildingType);
+    if (type?.kind === BUILDING_KIND.vehicle && type.vehicleType !== undefined) return 'launch';
     finishBuilding(world, ctx, e, building);
     return;
   }
@@ -212,6 +226,31 @@ function preserveProductionChoices(
     if (selection === undefined) world.add(worker, CraftSelection, { goods: retained.slice(), cursor: 0 });
     else world.mut(worker, CraftSelection).goods = retained.slice();
   }
+}
+
+/**
+ * A finished vehicle site frees its plot and puts the vehicle it was for on the anchor node for the
+ * site's owner and tribe (docs/formats/VEHICLES.md "Construction"). The site leaves without a
+ * `buildingDestroyed`: nothing collapses, and a surplus a supplier delivered past the bill heaps on the
+ * ground like a razed store's.
+ */
+function launchVehicle(world: World, ctx: SystemContext, site: Entity): void {
+  const { buildingType, tribe } = world.get(site, Building);
+  const vehicleType = contentIndex(ctx.content).buildings.get(buildingType)?.vehicleType;
+  if (vehicleType === undefined) return;
+  const p = world.get(site, Position);
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  const owner = ownerOf(world, site);
+  const spill = spilledStockOf(world, site);
+  world.destroy(site);
+  scatterSpilledStock(world, ctx, spill);
+  createVehicle(world, ctx, {
+    vehicleType,
+    tribe,
+    ...(owner !== undefined ? { owner } : {}),
+    x: hx,
+    y: hy,
+  });
 }
 
 /**
