@@ -1,0 +1,175 @@
+# Vehicles
+
+Handcarts, ox carts, ships and catapults are one entity class in the original. This reference
+holds the rules read from `Wonders.x64` (c2re, fully symbolled macOS build) and from the mod's
+readable `.ini` files. Every rule below is byte-verified unless marked *inferred* or *open*.
+Corpus counts come from `CNMod-1.3.2/CnModMaps`. Tickets under `docs/tickets/features/vehicles-*`
+implement this document; Open Northland approximations are named where they are made.
+
+## Type table (`Data/logic/vehicletypes.ini`)
+
+Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 1`, `CART_OX 2`,
+`SHIP_SMALL 3`, `SHIP_BIG 4`, `CATAPULT 5`, `CART_NO_OX 6`. A vehicle also has a job id
+`type + 49` (50..55): 52 and 53 are the ship jobs, 54 the catapult job.
+
+| Key | Runtime meaning |
+| --- | --- |
+| `logicsize` | Clearance class the vehicle needs: a node is passable when its free-size class `>= logicsize`. Also the footprint radius (hex disc) and the ruin-scatter radius. Carts 0, catapult 1, ships 2. |
+| `stockslots` | One shared unit budget across all goods (15, 30, 50, 200, catapult 0). |
+| `logicgood n` | Storable good ids (1..55). Storage is a byte per allowed good: current, wanted, reserved. Goods 18, 19, 22 alias onto 16 and 20 onto 17 when not listed themselves. |
+| `passengerslots` | Ordinary passenger slots. The commander occupies one extra slot at index `passengerslots`, so real capacity is `passengerslots + 1`. |
+| `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54. Carts: 24, 25. |
+| `logiccommander n` | Parsed but no reader found (*inferred* dead). The commander is the first attached human with an allowed job. |
+| `passengervector a b` | Door geometry: direction offset `a` from the facing, distance `b`. `b` is also the ring radius searched around a dock click (ships: 2 4). |
+| `stockvector` | Parsed, no logic reader found (*open*; probably a render-side cargo point). |
+| `vehicleslots` | Carried-vehicle slots: small ship 1, big ship 0. |
+| `logicdragginganimaltribe` | Animal tribe the cart recruits (ox cart without ox: tribe 10). |
+| `logictransformvehicleType` | Type the vehicle becomes when the animal arrives (6 -> 2). |
+
+Hit points (table indexed by type): ship small 5000, ship big 5000, catapult 3000, everything
+else 1000. Vision: 15 default, ship small 20, ship big 25, catapult 20. Vehicles have no armour.
+
+## Construction
+
+A workshop never stocks a vehicle good (59 handcart .. 63 catapult; `goodtypes.ini` marks them
+`isProducedOnMapFlag 1`, `atomicForProduction 39`). Each vehicle good pairs with a house type 42..46 (`logicmaintype 6`, `logicvehicletype n`, `logicworker 24 3`; the two ship houses
+also carry `logicignorecontinentsflag 1`). The worker producing that good:
+
+1. reuses an unfinished vehicle site within hex rings `r < 20` of the work centre, otherwise picks a
+   build point within `r < 10` (5 and 10 for jobs 18 and 29) where every footprint node has
+   free-size class `>= logicsize`, house placement is allowed, and no parked vehicle stands inside;
+   with `logicignorecontinentsflag` the point's continent must differ from the worker's and the
+   house work point must lie on the worker's continent, which is how a ship site lands on the water
+   beside the shipyard;
+2. fetches and carries the house's construction goods like building materials (the IR's
+   `construction` list of houses 42..46: handcart 2 wood, ox cart 5 wood, small ship 5 leather +
+   10 wood, big ship 5 leather + 15 wood, catapult 9 wood + 1 iron);
+3. works on the site with the ordinary build animation;
+4. when the site reaches the finished state the house is freed and a vehicle of `logicvehicletype`
+   spawns at the house position for the same player and tribe, with mission id 0.
+
+Failure reasons 8 (no spot) and 9 (a parked vehicle blocks every ring point) raise the
+`vehicleSiteNotFound` / `vehicleSiteOccupied` messages. Chest kind `[` spawns a catapult for the
+opener. Map scripts and `SetVehicle` are the other spawn sources.
+
+## Crew
+
+- Attach (human command 0x26; payload vehicle index + unique id): same player, job in
+  `logicpassenger`, and either no commander yet or a free ordinary slot. No distance check. The
+  human leaves his work house, drops attack targets and walks to the vehicle. Attaching to another
+  vehicle detaches first.
+- The first attached human fills the commander slot; detaching the commander promotes the first
+  remaining allowed-job passenger. No commander means the vehicle cannot move, dock or fire.
+- Detach (0x27): refused for a ship not moored; a vehicle riding a carrier is sent out first; the
+  human is put on the door cell. Several ordinary human commands force a detach first.
+- Board (0x28, "moves inside"): succeeds only when the human stands on the door point. Aboard, the
+  human is removed from the map (`IsInVehicle`). Leaving happens on the door cell, which for a
+  moored ship is its mooring point on the shore.
+- Boarding drive: for every slot the vehicle sends 0x28 to a passenger on the door's continent and
+  0x27 to one on another continent (stragglers are dropped, not awaited). A passenger with a
+  pending need blocks boarding. Task 3 "waits for human" while anyone is outside.
+- Carried vehicles: a small ship takes one cart or catapult (`q` load into carrier, `s` move
+  inside, `r` leave). The carried vehicle's crew transfers to the carrier.
+
+## Cargo
+
+Wanted amounts are the per-vehicle request list. `Stock_ModifyAmount` clamps to capacity, refuses
+negative stock and, when not riding a carrier, sets wanted to the new actual amount. Carriers
+(job 24) serve a vehicle whose `wanted > reserved` for any good: they search loose goods within
+radius 40 of the door, then a house, then the guide network, and carry one unit to the door.
+Unload (`f`) has the carrier flush one reserved unit at a time out of the vehicle. The vehicle
+window edits wanted by 1 (10 with Shift), clamped to `[0, stockslots]`, and clears all wanted.
+
+## Movement
+
+One navigation graph. A node is passable for a vehicle when its blocked bit is clear and its
+free-size class (3 bits per node; how the original computes it is *open*) is `>= logicsize`.
+A goto (`e`) also requires the target's continent id to equal the vehicle's, which keeps ships on
+their sea and carts on their landmass (continent type 1 is land). Path budget 60 nodes. Humans
+inside the footprint are shoved away. Move speed per node `max(3, (g*2 + 4) << catapult)` with
+`g` the ground speed class, ticks per node `(speed + 9999) / speed`; the catapult is the only
+vehicle with the doubling. `p` stops (task 5 "interrupted") and returns to the current node.
+
+Open Northland approximation: the free-size class is the largest hex-disc radius of passable
+same-continent nodes around the node, capped at 7.
+
+## Ships and docking
+
+Ships never attack. A ship spawns moored when a land continent borders it within
+`passengervector[1]` steps, otherwise with no mooring point. Dock (`g`) on a land point: needs a
+commander; a moored ship boards everyone first; then scans the hex ring of radius
+`passengervector[1]` around the point for a node on the ship's continent with clearance
+`>= logicsize`, walks there, stores the mooring point and task 1 "docks"; on arrival the dock
+animation plays and the moored flag is set. No port building is involved. The bas-c label
+`IsShipAtSea` is inverted: it is the moored flag. Unload people (`f` on a ship) empties the crew
+onto the door cell only when it is on land. A ship destroyed at sea frees every passenger and any
+carried vehicle; ships leave no wreck and no cargo.
+
+## Catapult
+
+Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon 21. Weapon 21
+(`weapons.ini`, equal for all tribes): range 8..24, munition type 2, speed 3, `hitself 1`,
+`createsmoke 1` lifetime 20, damage `0:8000 1:4000 2:6000 3:2000 4:2000 6:350 7:3625`, hit
+sound 90. No ammunition and no reload counter; cadence is the 48-tick attack clip.
+
+Stances (init 3): 3 hold = scan 8..24 around the guard position, never reposition; 2 defence =
+scan 0..40 around the guard position, abandon the chase beyond 60; 1 attack = scan 0..40 around
+the current position. The command-to-stance mapping is *inferred*. Targeting prefers enemy units in
+buildings, then enemy houses, keeping the nearer of the new and current target; too close backs off,
+in range fires, too far approaches.
+
+Firing uses the shared delayed weapon-hit path of archers: at clip tick 1 the scatter roll
+`r = rand % 100` against `accuracy = commanderSkill + 10` offsets the impact by up to
+`(r - accuracy) * (dist / 4) / r` per axis when `r >= accuracy`; flight ticks `dist * 8 / speed`;
+the hit list covers humans, animals, houses, vehicles and landscape, including the owner's own
+(`hitself`). Only weapon 21 demolishes landscape of main type 4 (walls): subtype `> 2` transitions
+to the next stage, else the node is cleared.
+
+Damage to any vehicle: `damage[6] * 200 / (200 - min(armour, 100))`, armour 0, halved for
+player 0 on easy. At 0 hit points the vehicle is removed; carts and catapults scatter ruin
+landscape on 51 % of footprint nodes and drop all cargo within radius 10.
+
+## Lifecycle
+
+- Ownership changes only through map scripts (`ChangeVehiclesPlayerId`); there is no capture.
+- A defeated player's vehicles are destroyed, not transferred (animals go to player 20).
+- There is no dismantle, sell or store command. Player commands: go to, unload people, dock, attack
+  inhabitants / building / vehicle / position, attack / defence / hold stance, attach vehicle,
+  detach vehicle, unload goods.
+- Vehicle tasks shown in the window: 0 none, 1 docks, 2 attacks, 3 waits for human, 4 waits for
+  animal, 5 interrupted, 6 boards ship.
+- Draught animal: an ox cart without ox (type 6) sets task 4 and recruits the animal itself from the
+  owner's animals of tribe 10 on the door's continent, skipping the first two eligible animals
+  (a breeding pair) and taking the nearest; the animal walks over, is consumed, and the cart becomes
+  type 2 in place. Missing animal on a goto raises `vehicleNoAnimal`.
+
+## Map scripts
+
+`[StaticObjects]` rows (see [MISSIONS.md](MISSIONS.md) for the loader):
+
+- `setvehicle <player> "<tribe>" "<type>" <x> <y> <missionId>`: seven columns; an eighth `0` on
+  15 corpus rows is never read. The row runs only for an occupied seat (no `player >= 20` bypass),
+  and a dropped row also drops its trailing modifiers. 592 rows in 51 of 123 maps: catapult 364,
+  ship small 128, ox cart 54, handcart 38, ship big 8; 57 rows carry a mission id.
+- `addgoods "<good>" <n>` after `setvehicle`: adds to reserved and current, never to wanted.
+- `attachtovehicle <x> <y>` after `sethuman`: attaches the human to the first vehicle on that node
+  through the normal attach gate (the first one becomes commander); it does not move him.
+- `moveintovehicle`: the human boards the vehicle he was attached to (removed from the map).
+
+Results: `SendVehicle` and `DockVehicle` snap the point to the nearest unblocked node with the same
+continent key within radius 9, then queue `e` / `g` like a player click. `AddGoodsToVehicle` adds
+the full amount to every matching vehicle and raises wanted by the same amount.
+`AttachHumanToVehicle` resolves the first vehicle with the id and queues the attach command for
+every matching human. `RemoveVehiclesWithMissionId` handles at most 50 vehicles, removes crews only
+when its flag is set, and stamps a wreck effect. `RemoveVehicles` frees silently. `MoveUnitsInArea`,
+`ChangePlayerPlayerId` and `ChangePlayerIdInArea` include vehicles.
+
+## Graphics
+
+`DataCnmd/types/vehiclestype/jobgraphics.ini`: carts and the catapult draw from
+`CR_Veh_Body_00.bmd` (palettes `goods01`, `oxcart`, `goods_bow`), ships from `LS_vehicles.bmd`
+palette `human_Ship01` with player colour from the ship palette table. Bob sequences:
+`vehicles_bullcart_wait` 0+48, `_walk` 48+96, `_empty_wait` 144+1, `vehicles_catapult_attack`
+145+96, `vehicles_catapult_drive` 241+64, `vehicles_handcart_wait` 305+1. Atomic actions: 2 idle,
+4 ship movement, 81 attack, 84 dock, 8 facings. Ship rows use raw frame indices without
+`gfxbobseqbody`, which is why the IR has no `gfxAtomics` rows for jobs 52 and 53.

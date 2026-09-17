@@ -66,7 +66,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   });
 
   it('no building stocks or produces a vehicle good (stripVehicleGoods holds on real data)', async () => {
-    // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicle-yard-construction.md);
+    // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicles-8-workshop-construction.md);
     // the strip keys on the goodtype↔vehicletype slug identity, so a slug drift would silently bring
     // handcarts back as loaves of bread - this pins the regenerated IR.
     const { real } = await loadContentUnderTest();

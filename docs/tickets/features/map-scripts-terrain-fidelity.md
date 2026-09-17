@@ -12,7 +12,7 @@ vertex tint projection and landscape placement arguments.
   the current cell/node projection is sufficient or needs a more faithful rendering seam.
 - Establish the `SetLandscape` size and final-flag behavior and implement confirmed missing effects.
 - Keep rendering, collision and saved edits consistent. Preserve explicit approximations until verified.
-- Update MISSIONS.md. Chest payload and opening belong to [reward chests](map-scripts-chests.md).
+- Update MISSIONS.md. Chest payload and opening are implemented; the catapult reward belongs to [workshop construction](vehicles-8-workshop-construction.md).
 
 ## Verify
 
