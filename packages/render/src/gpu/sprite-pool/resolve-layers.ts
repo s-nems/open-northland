@@ -7,6 +7,7 @@ import {
   resolveSignpostDraw,
   resolveSpriteBobId,
   resolveStockpileDraw,
+  resolveVehicleDraw,
 } from '../../data/sprites/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { vegetationShear } from '../vegetation-sway.js';
@@ -136,6 +137,13 @@ function pushLayers(
       const draw = resolveCraftFxDraw(sheet.bindings.craftfx, item, tick);
       if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
       return pushLayeredWithShadow(out, sheet, 'craftfx', draw);
+    }
+    case 'vehicle': {
+      // Every vehicle look names its family atlas; an unloaded one draws the placeholder, never a human
+      // frame from the shared body atlas.
+      const draw = resolveVehicleDraw(sheet.bindings.vehicle, item, tick, gaitClock);
+      if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
+      return pushLayeredWithShadow(out, sheet, 'vehicle', draw);
     }
     default: {
       const _exhaustive: never = item.kind;

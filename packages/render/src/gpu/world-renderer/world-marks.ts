@@ -112,6 +112,13 @@ export class WorldMarks {
     );
   }
 
+  /** The debris a wrecked cart or catapult scatters over its ruin nodes; `null` draws the procedural planks. */
+  setWreckGfx(gfx: CombatBonesGfx | null): void {
+    this.effects.setWreckGfx(
+      gfx === null ? undefined : { ...gfx, scale: gfx.scale ?? 1, textures: this.textures },
+    );
+  }
+
   /** `null` leaves the bubble layer drawing nothing. */
   setBubbleGfx(gfx: SettlerBubbleGfx | null): void {
     this.bubbles.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textures });

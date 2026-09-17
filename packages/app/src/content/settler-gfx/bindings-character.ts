@@ -249,6 +249,7 @@ export function characterBinding(
       : undefined;
 
   const bySubClip = subClips !== undefined ? subClipAnims(subClips, seqByName) : {};
+  const crewMoving = eightDirAnim(seqByName, spec.crewWalkSeq, walkLists);
 
   return {
     idle,
@@ -257,6 +258,7 @@ export function characterBinding(
     ...(Object.keys(bySubClip).length > 0 ? { bySubClip } : {}),
     ...(carrying !== undefined ? { carrying } : {}),
     ...(engaged !== undefined ? { engaged } : {}),
+    ...(crewMoving !== undefined ? { crew: { moving: crewMoving } } : {}),
   };
 }
 

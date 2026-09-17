@@ -225,3 +225,26 @@ and Frank have a big-ship binding, and the Viking one is the 32-frame `ve_test_s
 still index the 98-frame `LS_vehicles` layout, so its loaded hull (bobs 66..94) has no frame,
 while the Frank one has hulls but no gait; the ox-less cart has records for Viking and Frank only; the handcart's drive reuses
 `vehicles_bullcart_walk`; Byzantine carts and the Saracen ox cart have a wait but no drive.
+
+Open Northland draws a vehicle as one `vehicle` draw item bound per `(tribe, vehicleType)` from the
+lane (`packages/app/src/content/vehicle-gfx`, `packages/render/src/data/sprites/vehicle.ts`), with
+these choices for the holes:
+
+- A tribe with no rows (Egypt) draws the world's base tribe's looks (`fallbackTribe`, the viking),
+  and so does a row that binds nothing (the Byzantine and Saracen ox-less cart).
+- A clip naming a bob the baked body lacks is dropped at load, so the Viking big ship sails on its
+  empty hull (`ve_test_ship` holds bobs 0..31); a cart with a wait but no drive stands its wait while
+  it moves. Every state falls back down `loaded → unloaded → wait`.
+- The catapult loops its 40-frame shot over the 48-tick attack cadence while `task` is `attacks` and
+  stages `fx smoke` (weapon 21's `createsmoke`) for the last 20 ticks of each cycle; which smoke record
+  and where in the clip the shot releases are approximations.
+- Ship player colour: the pipeline bakes only `ls_vehicles.human_ship01`, so every player sails the
+  player-one hull today and the binding carries no per-owner atlas. The cheap route when team colour is
+  wanted is the characters' path, one indexed `ls_vehicles.indexed` atlas plus a ten-row ship LUT
+  (`human_ship01..10`) read through `PalettedSprite` (the hull bobs are the same type 1/4 as the
+  character bobs), about 1.5 MB in all, not ten 1.5 MB bakes.
+- The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps.
+- A wreck's `ruins` nodes draw the `debris wood` `[GfxLandscape]` records for the bone pile's lifetime
+  (approximation: the ruin landscape type is unidentified, see above).
+- The trader's `human_man_z00Trader_walk` gait plays only while a vehicle's `passengers` seat it; a
+  lone trader walks the carrier's gait. The seat lists are the only rider-side signal today.

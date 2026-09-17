@@ -14,6 +14,7 @@ export type DrawKind =
   | 'grounddrop'
   | 'signpost'
   | 'projectile'
+  | 'vehicle'
   | 'craftfx';
 
 export type SpriteKind = Exclude<DrawKind, 'tile'>;
@@ -25,6 +26,16 @@ export type EntityKind = Exclude<SpriteKind, 'craftfx'>;
 /** A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
  *  `tribetypes` `setatomic` maps an atomic to its animation). */
 export type SpriteState = 'idle' | 'moving' | 'acting';
+
+/** A vehicle's standing task, the original's vehicle-window numbering 0..6 as names (`Vehicle.task`). */
+export type VehicleDrawTask =
+  | 'none'
+  | 'docks'
+  | 'attacks'
+  | 'waitsForHuman'
+  | 'waitsForAnimal'
+  | 'interrupted'
+  | 'boardsShip';
 
 /** The draw fields a fog ghost keeps from its last sighting, shared by every sprite kind. */
 export interface StaticDrawFields {
@@ -49,8 +60,9 @@ export interface StaticDrawFields {
   /** A resource node's `Resource.gfxIndex`: the exact `[GfxLandscape]` record it was spawned from, so a
    *  map keeps its species variety. Omitted for an admin/scene-spawned node. */
   gfxIndex?: number;
-  /** A settler's `Settler.tribe` or a building's `Building.tribe`: the key of the per-tribe look tables,
-   *  and for a wildlife entity (a settler of an animal tribe with a null `jobType`) the species key. */
+  /** A settler's `Settler.tribe`, a building's `Building.tribe` or a vehicle's `Vehicle.tribe`: the key
+   *  of the per-tribe look tables, and for a wildlife entity (a settler of an animal tribe with a null
+   *  `jobType`) the species key. */
   tribe?: number;
   /** Edge posts this palisade draws: those standing nearer it than the edge's other end, and a gate
    *  collar's. Each offset is feet-local draw px; the optional percentage selects the interpolated
@@ -59,6 +71,18 @@ export interface StaticDrawFields {
   /** An unfinished palisade site: its plan stake until a builder claims it, then the stake's stone ring
    *  with the ordinary delivery/work flag planted in it, and no heap for its wood, until the wall stands. */
   palisadeSite?: 'unclaimed' | 'claimed';
+  /**
+   * For a settler or vehicle: facing direction index (0..7) a directional binding indexes by. The
+   * `CR_Hum_Body` blocks are not a uniform rotation (source basis "Settler facing"): `0 SW, 1 W, 2 NW,
+   * 3 NE, 4 E, 5 SE, 6 S, 7 N`. Omitted for a settler that is not moving; a vehicle always carries its
+   * `Vehicle.facing`, remapped from the six map-point directions.
+   */
+  facing?: number;
+  /** For a settler, signpost or vehicle: the team-colour slot - the row of the `256×N` colour LUT a
+   *  `PalettedSprite` reads its clothing-band indices through, and the signpost's or ship's baked
+   *  per-colour atlas. Defaults to the owning `Owner.player` slot, or carries the mapped colour when
+   *  the scene was built with a `playerColourOf`. */
+  player?: number;
 }
 
 /**
@@ -89,18 +113,19 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  binding advances one frame per `ticksPerFrame` of these, so every action animates at the same
    *  cadence. */
   readonly elapsed?: number;
-  /**
-   * For a settler: facing direction index (0..7) a directional binding indexes by. The `CR_Hum_Body`
-   * blocks are not a uniform rotation (source basis "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE, 4 E,
-   * 5 SE, 6 S, 7 N`. Omitted when not moving.
-   */
-  readonly facing?: number;
   /** For a settler: hauling a good (`Carrying` present). Orthogonal to {@link state}, since a settler
    *  can carry while `moving` or `acting`; the loaded gait replaces the empty-handed one (the
-   *  original's `..._walk_wood` instead of `..._walk`). */
+   *  original's `..._walk_wood` instead of `..._walk`). For a vehicle: its hold is not empty. */
   readonly carrying?: boolean;
-  /** For a {@link carrying} settler: the hauled `Carrying.goodType`, which draws the matching load. */
+  /** For a {@link carrying} settler: the hauled `Carrying.goodType`, which draws the matching load. For
+   *  a carrying vehicle: the good with the most units aboard. */
   readonly carryGood?: number;
+  /** For a settler: seated in a vehicle's crew (`Vehicle.passengers` names it), which switches on the
+   *  binding's crew gait (the trader's cart pull). The sim carries no rider-side component yet, so the
+   *  scene reads the seat lists. */
+  readonly crew?: boolean;
+  /** For a vehicle: its standing task, which picks the attack clip while it `attacks`. */
+  readonly task?: VehicleDrawTask;
   /** For a settler: combat-engaged (`Engagement` present). Orthogonal to {@link state}: the readied
    *  `..._agressive` gait replaces the relaxed economy one, though a bound attack swing still wins
    *  mid-swing. */
@@ -117,11 +142,6 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly weaponGood?: number | null;
   /** {@link weaponGood}'s twin for the `Equipment.armor` slot, the armor-recolor key, same tri-state. */
   readonly armorGood?: number | null;
-  /** For a settler/signpost: the team-colour slot - the row of the `256×N` colour LUT a `PalettedSprite`
-   *  reads its clothing-band indices through, and the signpost's baked per-colour atlas. Defaults to the
-   *  owning `Owner.player` slot, or carries the mapped colour when the scene was built with a
-   *  `playerColourOf`. */
-  readonly player?: number;
   /** For a settler: born young (`Age` present), the only thing separating the age-class `jobType` ids
    *  1..4 from a synthetic fixture's colliding adult job ids. */
   readonly young?: boolean;

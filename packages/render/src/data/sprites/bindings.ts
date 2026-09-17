@@ -8,6 +8,7 @@ import type {
   StockpileBinding,
 } from './layered-bindings.js';
 import type { SettlerStateBinding } from './settler-bindings.js';
+import type { VehicleBinding } from './vehicle-bindings.js';
 
 export type { SpriteKind };
 
@@ -42,6 +43,8 @@ export type SpriteBindings = Readonly<{
   signpost?: SignpostBinding;
   /** The effects an in-house program stages beside its worker (a cauldron's fire and smoke). */
   craftfx?: CraftFxBinding;
+  /** The carts, ships and catapults, per tribe and type. */
+  vehicle?: VehicleBinding;
 }>;
 
 /** The decor kinds with no shared kind layer, each bound under its own key. A ground drop's kind and

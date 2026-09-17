@@ -17,10 +17,12 @@ constant against the catapult but has no launcher that is a vehicle, and no targ
 - Targeting: enemy units inside buildings, then enemy houses, keeping the nearer of new and current;
   hostility by diplomacy; too close backs off, in range fires, too far approaches or scans a
   radius-5 flood for a firing node.
-- Fire: 48-tick attack clip, event at tick 1: scatter roll against `commanderSkill + 10`, flight
-  `dist * 8 / speed`, one delayed hit covering humans, animals, houses, vehicles and landscape,
-  including the owner's own (`hitself`); the commander gains experience for weapon 21; only weapon 21
-  demolishes landscape of main type 4 (walls: subtype `> 2` steps down, else cleared).
+- Fire: 48-tick attack clip (the renderer loops the shot and its smoke off `Vehicle.task ===
+  'attacks'`, so the sim owns the task, not the clip), event at tick 1: scatter roll against
+  `commanderSkill + 10`, flight `dist * 8 / speed`, one delayed hit covering humans, animals, houses,
+  vehicles and landscape, including the owner's own (`hitself`); the commander gains experience for
+  weapon 21; only weapon 21 demolishes landscape of main type 4 (walls: subtype `> 2` steps down,
+  else cleared).
 - Damage to vehicles from any weapon: `targetMaterial` already reads the `damage[6]` column for a
   `Vehicle` and the cleanup removes it at 0 hit points; add the `vehicleAttacked` message, let
   soldiers be ordered to attack a vehicle (`attackVehicle` ring order), and include vehicles in the

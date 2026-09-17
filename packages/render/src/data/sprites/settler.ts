@@ -38,7 +38,7 @@ function heldStep(holds: readonly number[], time: number): number {
 }
 
 /** Subtick clips accept a fractional presentation clock; original bindings retain integer cadence. */
-function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
+export function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   if (typeof ref === 'number') return ref;
   const minimum = 'subtick' in ref && ref.subtick === true ? Number.EPSILON : 1;
   const ticksPerFrame = Math.max(minimum, ref.ticksPerFrame ?? 1);
@@ -104,6 +104,7 @@ export function movingFrameRef(binding: SettlerStateBinding, item: DrawItem): Sp
   const loaded = item.carryGood === undefined ? undefined : carry?.byGood?.[item.carryGood];
   return (
     (item.engaged ? binding.engaged?.moving : undefined) ??
+    (item.crew ? binding.crew?.moving : undefined) ??
     loaded?.moving ??
     carry?.moving ??
     binding.moving ??

@@ -7,6 +7,7 @@ export type {
   SpriteDrawItem,
   SpriteKind,
   SpriteState,
+  VehicleDrawTask,
 } from './draw-item.js';
 export { type HolyFireBinding, type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 export type { InHouseProgramLookup } from './in-house.js';

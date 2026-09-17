@@ -3,6 +3,7 @@ import { ONE } from '../../projection/index.js';
 import { readNumField } from '../../snapshot/index.js';
 import type { StaticDrawFields } from '../draw-item.js';
 import { readStockpile } from './stockpile-readers.js';
+import { readVehicleStaticFields } from './vehicle-readers.js';
 
 function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Building', 'buildingType');
@@ -190,6 +191,8 @@ const STATIC_DRAW_KEYS = [
   'tribe',
   'palisadePosts',
   'palisadeSite',
+  'facing',
+  'player',
 ] as const;
 // A key missing from STATIC_DRAW_KEYS makes _UncopiedKey non-never and fails to compile here, so a new
 // StaticDrawFields entry cannot be silently dropped by the hand copy below.
@@ -213,17 +216,20 @@ function copyStaticField<K extends keyof StaticDrawFields>(
 }
 
 /**
- * Assign the {@link StaticDrawFields} a building / resource / stump / chest / goods heap draws by onto
+ * Assign the {@link StaticDrawFields} a building / resource / stump / chest / goods heap / vehicle draws by onto
  * `target` in place - no intermediate object, so the per-frame scene build allocates nothing - omitting
  * absent facts. The one place that choice lives, so the live scene build and the fog-ghost capture
  * cannot drift apart.
  */
 export function assignStaticFields(
   target: StaticDrawFields,
-  kind: 'building' | 'palisade' | 'resource' | 'stump' | 'chest' | 'stockpile',
+  kind: 'building' | 'palisade' | 'resource' | 'stump' | 'chest' | 'stockpile' | 'vehicle',
   components: Readonly<Record<string, unknown>>,
 ): void {
   switch (kind) {
+    case 'vehicle':
+      readVehicleStaticFields(target, components);
+      return;
     case 'building': {
       const typeId = readBuildingType(components);
       if (typeId !== undefined) target.typeId = typeId;

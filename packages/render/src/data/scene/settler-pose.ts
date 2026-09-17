@@ -49,6 +49,12 @@ export function settlerPose(
   return { state: readSpriteState(components), actingAtomic, targetFacing };
 }
 
+/** A vehicle's drawn pose: in transit or standing, read off the same path components as a settler. Its
+ *  attack is a standing task rather than an atomic, so the binding reads it from the item's `task`. */
+export function vehiclePose(components: Readonly<Record<string, unknown>>): SettlerPose {
+  return { state: readSpriteState(components), actingAtomic: null, targetFacing: undefined };
+}
+
 /** A worker at its craft: the house tile its drawn anchor and depth come from, and the clip clock and
  *  join keys its choreography is looked up by. Cheap enough to read before the viewport cull. */
 export interface CraftAnchor {

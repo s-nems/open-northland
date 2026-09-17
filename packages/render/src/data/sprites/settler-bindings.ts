@@ -76,6 +76,14 @@ export interface SettlerStateBinding {
     readonly idle?: SpriteFrameRef;
     readonly moving?: SpriteFrameRef;
   };
+  /**
+   * The gait while seated in a vehicle's crew: the trader's `human_man_z00Trader_walk` cart pull, which
+   * the original binds to the trader job and draws only with a cart in hand. A lone crewless trader
+   * walks the plain gait. Falls back to the un-seated slot.
+   */
+  readonly crew?: {
+    readonly moving?: SpriteFrameRef;
+  };
 }
 
 /**

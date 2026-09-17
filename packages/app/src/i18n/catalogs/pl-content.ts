@@ -227,6 +227,11 @@ export const plContent = {
         '3': 'Sąsiedzi proszą o kamień na drogę między nami.',
       },
     },
+    vehicles: {
+      title: 'Pojazdy',
+      summary:
+        'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek i szczątki wozu rozbitego w pierwszej turze.',
+    },
     school: {
       title: 'Nauka zawodu',
       summary:

@@ -89,9 +89,10 @@ export type RulesCommand =
  * over existing systems rather than original mechanics.
  */
 export type DebugCommand =
-  /** Kill `target`, a settler or animal only: drain its `Health` pool to 0 so the CleanupSystem reaps it
-   *  next tick with the normal `settlerDied` event. A building under construction carries a `Health` pool
-   *  but is not killable here; `demolish` owns its worker-unbind seam. */
+  /** Kill `target`, a settler, animal or vehicle only: drain its `Health` pool to 0 so the CleanupSystem
+   *  reaps it next tick with the normal `settlerDied` or `vehicleDestroyed` event. A building under
+   *  construction carries a `Health` pool but is not killable here; `demolish` owns its worker-unbind
+   *  seam. */
   | { readonly kind: 'debugKill'; readonly target: Entity }
   /** Hand `player` one `paper` outright, as a chest would; dropped for a slot outside `[0, MAX_PLAYERS)`
    *  or when the player's slots are full. */

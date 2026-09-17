@@ -6,6 +6,7 @@ import {
   readCraftPerformance,
   readPosition,
   readStoreExchangeRef,
+  readVehicleCrew,
 } from './snapshot-readers/index.js';
 
 /**
@@ -76,6 +77,7 @@ interface SceneIndex {
   readonly targetPositions: ReadonlyMap<number, { x: number; y: number }>;
   readonly signposts: readonly EntitySnapshot[];
   readonly palisades: readonly EntitySnapshot[];
+  readonly vehicleCrew: ReadonlySet<number>;
 }
 
 const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
@@ -84,6 +86,8 @@ const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
 const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
 
 const NO_ENTITIES: readonly EntitySnapshot[] = [];
+
+const NO_CREW: ReadonlySet<number> = new Set();
 
 /**
  * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
@@ -129,6 +133,12 @@ export function palisadesOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] 
   return sceneIndexOf(snapshot).palisades;
 }
 
+/** Every settler seated in some vehicle's crew, read off the vehicles' seat lists: the sim keeps no
+ *  rider-side marker, so this is the one place a crewman is told apart from a walker. */
+export function vehicleCrewOf(snapshot: WorldSnapshot): ReadonlySet<number> {
+  return sceneIndexOf(snapshot).vehicleCrew;
+}
+
 function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
   const cached = indexBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
@@ -136,8 +146,15 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
   const wanted = new Set<number>();
   const signposts: EntitySnapshot[] = [];
   const palisades: EntitySnapshot[] = [];
+  let vehicleCrew: Set<number> | undefined;
   for (const entity of snapshot.entities) {
     const components = entity.components;
+    if ('Vehicle' in components) {
+      for (const rider of readVehicleCrew(components)) {
+        vehicleCrew ??= new Set();
+        vehicleCrew.add(rider);
+      }
+    }
     if ('Building' in components && readBuiltPct(components) === undefined) {
       enterableStores.add(entity.id);
     }
@@ -157,6 +174,7 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
     targetPositions: positionsOfRefs(snapshot, wanted),
     signposts: signposts.length > 0 ? signposts : NO_ENTITIES,
     palisades: palisades.length > 0 ? palisades : NO_ENTITIES,
+    vehicleCrew: vehicleCrew ?? NO_CREW,
   };
   indexBySnapshot.set(snapshot, index);
   return index;

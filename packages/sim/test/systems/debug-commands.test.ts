@@ -11,7 +11,9 @@ import {
 import type { Fixed } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * The DEBUG / cheat commands the admin panel issues - `debugKill`, `debugSetNeeds`, `debugFillStockpile`
@@ -30,6 +32,9 @@ const WORKPLACE_STOCK: readonly [number, number][] = [
 ];
 const GRANARY = 6; // fixture building kind 'storage' - used as a construction-site body (no home upgrade)
 const GRANARY_MAX_HP = 100;
+
+/** The test content's cart type. */
+const HANDCART = 1;
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
@@ -86,6 +91,20 @@ describe('debugKill', () => {
     expect(sim.events.current().some((ev) => ev.kind === 'settlerDied')).toBe(true);
   });
 
+  it('wrecks a vehicle through the CleanupSystem with a vehicleDestroyed event', () => {
+    const sim = fresh();
+    const cart = createVehicle(sim.world, ctxOf(sim), { vehicleType: HANDCART, x: 4, y: 4, tribe: VIKING });
+    if (cart === null) throw new Error('the test content ships a handcart');
+
+    sim.enqueueSetup({ kind: 'debugKill', target: cart });
+    sim.step();
+
+    expect(sim.world.isAlive(cart)).toBe(false);
+    expect(
+      sim.events.current().some((ev) => ev.kind === 'vehicleDestroyed' && ev.cause === 'destroyed'),
+    ).toBe(true);
+  });
+
   it('a target with no Health (a finished building) is an untouched no-op', () => {
     const sim = fresh();
     const store = sim.world.create();
@@ -97,7 +116,7 @@ describe('debugKill', () => {
     expect(sim.world.has(store, Building)).toBe(true); // still standing
   });
 
-  it('a construction site (a Building that DOES carry Health) survives - killable is settler-only', () => {
+  it('a construction site (a Building that DOES carry Health) survives - killable is settler or vehicle only', () => {
     const sim = fresh();
     const site = sim.world.create();
     sim.world.add(site, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
@@ -109,7 +128,7 @@ describe('debugKill', () => {
     sim.enqueueSetup({ kind: 'debugKill', target: site });
     sim.step();
 
-    // Gated on Settler: the site is NOT reaped by the kill (that would bypass demolish's worker-unbind
+    // Gated on Settler / Vehicle: the site is NOT reaped by the kill (that would bypass demolish's worker-unbind
     // seam). It survives as a live building - its Health pool is never drained to 0. (This GRANARY has an
     // empty construction cost, so constructionSystem also finishes it this tick; the point here is only
     // that debugKill left it standing, not what its final HP is.)

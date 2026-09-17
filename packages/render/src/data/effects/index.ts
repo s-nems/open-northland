@@ -20,6 +20,7 @@ export {
   effectKey,
   foldCombatEffects,
   MAX_ACTIVE_EFFECTS,
+  WRECK_LIFETIME_TICKS,
 } from './marks.js';
 export {
   DAMAGE_SMOKE_STEP,

@@ -11,7 +11,9 @@ rework restyles it later.
 
 ## Scope
 
-- Picking: a vehicle is selectable by its footprint; hover tooltip with type, owner and task.
+- Picking: a vehicle is selectable by its footprint; hover tooltip with type, owner and task. The
+  sprite pool already stamps bounds and a pixel hit test for `vehicle` draw items (`DrawKind`), so
+  `click-hits.ts` needs the kind, not a new hit path.
 - Details panel `vehicle` model, layout and sections: name and task string, hit points, commander
   and passengers (click selects the settler), carried vehicle, cargo rows with wanted `-/+`
   (10 with Shift) and a clear-all button, unload goods, detach from carrier, and for carts the trade

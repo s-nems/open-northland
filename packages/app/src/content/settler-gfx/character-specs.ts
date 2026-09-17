@@ -87,6 +87,9 @@ export interface CharacterSpec {
   readonly gfxJobs: readonly number[];
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
   readonly walkSeq?: string;
+  /** The ×8 cycle played instead of {@link walkSeq} while seated in a vehicle's crew (the trader's cart
+   *  pull); absent → the crew walks the plain cycle. */
+  readonly crewWalkSeq?: string;
   /** The standing-idle `[bobseq]`; absent → idle holds the walk's first frame per facing. */
   readonly waitSeq?: string;
   /**
@@ -178,12 +181,13 @@ export const CHARACTER_SPECS = {
     atomics: CIVILIAN_ATOMICS,
   },
   // The trader pulls its cart (`human_man_z00Trader_walk`, the handcart gait the original binds to the
-  // trader job's action 2); everything else is the generic man body. Approximation: the original draws
-  // the plain walk until the trader commands a cart, which here it always does.
+  // trader job's action 2) only while it crews one; on its own it walks like a carrier. Everything else is
+  // the generic man body.
   trader: {
     gfxJobs: [JOB_TRADER, JOB_CIVILIST],
     logicJob: JOB_CIVILIST,
-    walkSeq: 'human_man_z00Trader_walk',
+    walkSeq: 'human_man_generic_walk',
+    crewWalkSeq: 'human_man_z00Trader_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
     attack: 'human_man_Civilian_Fight_punch',

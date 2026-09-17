@@ -38,6 +38,7 @@ import {
   resolveStumpRef,
 } from '../resource-gfx/index.js';
 import { buildHumanBindings, type GoodRef } from '../settler-gfx/index.js';
+import { loadVehicleSheet, VEHICLE_ATTACK_SMOKE_FX } from '../vehicle-gfx/index.js';
 import { loadBuildingSheet } from './buildings.js';
 import { loadCharacters } from './characters.js';
 
@@ -139,8 +140,9 @@ export async function loadHumanSpriteSheet(
   const stumpRef = resolveStumpRef(ir);
   const berryBushRefs = resolveBerryBushRefs(ir);
   const chestRefs = resolveChestRefs(ir);
-  // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too.
-  const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME]);
+  // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too, and the
+  // catapult's shot smoke with them.
+  const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME, VEHICLE_ATTACK_SMOKE_FX]);
   const palisadeRefs = resolvePalisadeGfxRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
@@ -172,9 +174,17 @@ export async function loadHumanSpriteSheet(
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   const craftFxBinding = buildCraftFxBinding(craftFxRefs, gatheringLoaded);
   const palisadeBinding = buildPalisadeBinding(palisadeRefs, gatheringLoaded);
-  // The building and gathering families merge into one map: their served stems are disjoint (`ls_houses_*`
-  // vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
-  const families = { ...buildings.families, ...gatheringFamilies };
+  // The carts, ships and catapults: their own `cr_veh_body_00` / `ls_vehicles` pages, bound for every
+  // tribe the IR rows cover with the base tribe standing in for the rest.
+  const vehicles = await loadVehicleSheet(
+    ir,
+    tribes[0],
+    craftFxBinding?.byName[VEHICLE_ATTACK_SMOKE_FX] !== undefined,
+  );
+  // The building, gathering and vehicle families merge into one map: their served stems are disjoint
+  // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms` vs `cr_veh_*`/`ls_vehicles`), so
+  // the merge never collides.
+  const families = { ...buildings.families, ...gatheringFamilies, ...vehicles.families };
   const guidepostFrames = (layer: string) => ({
     post: { layer, bob: GUIDEPOST_POST_BOB },
     boards: GUIDEPOST_BOARD_BOBS.map((bob) => ({ layer, bob })),
@@ -215,6 +225,7 @@ export async function loadHumanSpriteSheet(
       ...signpostBinding,
       ...(craftFxBinding !== undefined ? { craftfx: craftFxBinding } : {}),
       ...(palisadeBinding !== undefined ? { palisade: palisadeBinding } : {}),
+      ...(vehicles.binding !== undefined ? { vehicle: vehicles.binding } : {}),
     },
     overlays: [head],
     // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind

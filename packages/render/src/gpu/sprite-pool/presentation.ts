@@ -59,8 +59,9 @@ export function motionClocks(
 }
 
 /**
- * Retain a walker's heading through a route gap or arrival, and present idle after a blocked route
- * stops making progress. Wildlife has no persisted human turn heading to supply its idle facing.
+ * Retain a settler's or vehicle's heading through a route gap or arrival, and present idle after a
+ * blocked route stops making progress. Wildlife has no persisted human turn heading to supply its idle
+ * facing.
  */
 export function walkPose(
   item: DrawItem,
@@ -70,7 +71,11 @@ export function walkPose(
 ): DrawItem {
   // An in-house walk is authored, not tracked: its slow shuffle would read as stalled and freeze the
   // worker mid-stride, and its facing comes from the program rather than from a heading.
-  if (kind !== 'settler' || item.inHouse === true || (item.state !== 'moving' && item.state !== 'idle'))
+  if (
+    (kind !== 'settler' && kind !== 'vehicle') ||
+    item.inHouse === true ||
+    (item.state !== 'moving' && item.state !== 'idle')
+  )
     return item;
   const state = item.state === 'moving' && isStalled(motion) ? 'idle' : item.state;
   const facing = item.facing ?? lastFacing;

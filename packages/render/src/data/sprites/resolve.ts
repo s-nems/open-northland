@@ -9,6 +9,7 @@ import {
   resolveStockpileDraw,
 } from './layered.js';
 import { resolveSettlerBobId } from './settler.js';
+import { resolveVehicleDraw } from './vehicle.js';
 
 /**
  * Frame selection alone, without the atlas lookup, so the GPU layer can draw one id from several
@@ -61,6 +62,8 @@ export function resolveSpriteBobId(
       return bindings.stockpile === undefined
         ? null
         : resolveStockpileDraw(bindings.stockpile, item, tick).bob;
+    case 'vehicle':
+      return resolveVehicleDraw(bindings.vehicle, item, tick)?.bob ?? null;
     default: {
       const _exhaustive: never = item.kind;
       void _exhaustive;

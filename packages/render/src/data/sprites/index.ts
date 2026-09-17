@@ -50,4 +50,13 @@ export type {
   SettlerStateBinding,
   SpriteFrameRef,
 } from './settler-bindings.js';
+export {
+  ATTACK_SMOKE_TICKS,
+  attackSmokeShowing,
+  resolveVehicleDraw,
+  VEHICLE_ATTACK_TICKS,
+  vehicleLookFor,
+  vehicleMovingRef,
+} from './vehicle.js';
+export type { VehicleBinding, VehicleLook, VehicleTribeLooks } from './vehicle-bindings.js';
 export { FLAG_WAVE_TICKS_PER_FRAME, type WaveLoop, waveFrameAt } from './wave-loop.js';

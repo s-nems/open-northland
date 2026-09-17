@@ -28,6 +28,10 @@ and no vehicle mover; a vehicle stands where `createVehicle` put it (`systems/ve
 
 Out of scope: water movement (ships ticket), the commander walking to the cart (crew ticket).
 
+The renderer reads a moving vehicle the way it reads a settler: `PathFollow` / `MoveGoal` /
+`PathRequest` give the `moving` state, `Vehicle.facing` (a hex direction) the heading, and the sprite
+pool interpolates `Position` between ticks, so a mover must keep `facing` current as it steps.
+
 ## Verify
 
 Unit tests: clearance classes on a synthetic map, continent refusal, speed and tick counts for a

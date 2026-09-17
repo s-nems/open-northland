@@ -59,14 +59,34 @@ async function loadLayerOrNull(key: string, shadowStem?: string): Promise<Sprite
 /** The resting `cadaver human bones` records of `ls_skeletons.bmd`, each a single still frame. */
 const HUMAN_BONES_EDIT_NAMES = ['cadaver human bones01', 'cadaver human bones02', 'cadaver human bones03'];
 
+/** The `debris wood` records of `ls_ground.bmd`, each a single still frame: the splinters a wrecked cart
+ *  or catapult leaves on its ruin nodes. Approximation: the ruin landscape type the original scatters is
+ *  not identified (docs/formats/VEHICLES.md), so these are picked by look. */
+const WRECK_DEBRIS_EDIT_NAMES = ['debris wood 01', 'debris wood 02', 'debris wood 03', 'debris wood 04'];
+
 /**
  * Resolve the decoded human bone-pile art for the combat-feedback layer. Returns `null` when the
  * `landscapeGfx` join or its atlas is absent, so the renderer falls back to its procedural pile.
  */
-export async function loadCombatBones(
+export function loadCombatBones(
   ir: ContentIr,
 ): Promise<{ source: SpriteLayer['source']; frames: AtlasFrame[] } | null> {
-  const rows = (ir.landscapeGfx ?? []).filter((r) => HUMAN_BONES_EDIT_NAMES.includes(r.editName ?? ''));
+  return loadStillMarks(ir, HUMAN_BONES_EDIT_NAMES);
+}
+
+/** The wreck-debris twin of {@link loadCombatBones}; `null` falls back to the procedural planks. */
+export function loadWreckDebris(
+  ir: ContentIr,
+): Promise<{ source: SpriteLayer['source']; frames: AtlasFrame[] } | null> {
+  return loadStillMarks(ir, WRECK_DEBRIS_EDIT_NAMES);
+}
+
+/** The first frame of each named single-state record, all from the first record's atlas. */
+async function loadStillMarks(
+  ir: ContentIr,
+  editNames: readonly string[],
+): Promise<{ source: SpriteLayer['source']; frames: AtlasFrame[] } | null> {
+  const rows = (ir.landscapeGfx ?? []).filter((r) => editNames.includes(r.editName ?? ''));
   const first = rows[0];
   if (first === undefined) return null;
   const key = servedAtlasStem(first);

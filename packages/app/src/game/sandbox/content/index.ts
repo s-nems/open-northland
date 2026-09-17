@@ -18,6 +18,7 @@ import { buildSandboxAtomicAnimations } from './catalog/atomic-animations.js';
 import { buildSandboxGoods } from './catalog/goods.js';
 import { buildSandboxJobs } from './catalog/jobs.js';
 import { buildSandboxTribes } from './catalog/tribes.js';
+import { buildSandboxVehicles } from './catalog/vehicles.js';
 import type { SandboxContentExtras, WorldContentOptions } from './types.js';
 
 export type { SandboxContentExtras, WorldContentOptions } from './types.js';
@@ -49,13 +50,20 @@ const COLLECTOR_GENERAL_XP_TRACK = {
   experienceFactor: 100,
 } as const;
 
+/** The goods rows are built loosely typed; the vehicle holds key on their `typeId`. */
+function hasTypeId(row: object): row is { readonly typeId: number } {
+  return typeof (row as { typeId?: unknown }).typeId === 'number';
+}
+
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
   const buildings = buildSandboxBuildings(extras);
   const jobs = buildSandboxJobs(extras);
   const tribes = buildSandboxTribes([...jobs.keys()], extras);
+  const goods = buildSandboxGoods(extras);
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { mod: 'opennorthland-global-sandbox' }, locale: 'eng' },
-    goods: buildSandboxGoods(extras),
+    goods,
+    vehicles: buildSandboxVehicles(goods.filter(hasTypeId), [...jobs.keys()]),
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),
     landscape: sandboxLandscape(map),

@@ -35,6 +35,7 @@ const KIND_COLOURS: Record<BoxKind, number> = {
   grounddrop: 0x8a5a2a, // a log-brown trunk on the ground
   signpost: 0xdeb060, // a pale-wood guidepost
   craftfx: 0xe07a30, // an ember-orange staged effect
+  vehicle: 0x8c6a3c, // a cart-wood brown hull
 };
 
 /** Half-extents (world px) of the ground footprint diamond a box placeholder stands on. The drawn
@@ -79,6 +80,7 @@ function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
   if (kind === 'building') return { bodyW: 28, bodyH: 40 };
   if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap or flag base
   if (kind === 'fish') return { bodyW: 18, bodyH: 8 };
+  if (kind === 'vehicle') return { bodyW: 26, bodyH: 18 }; // a low, wide hull
   // The arrow's own extent, tip to tail and across the head.
   if (kind === 'projectile') {
     return { bodyW: ARROW.head.tipX - ARROW.shaft.tailX, bodyH: 2 * ARROW.head.halfSpan };

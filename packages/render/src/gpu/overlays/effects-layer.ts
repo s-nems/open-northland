@@ -17,11 +17,11 @@ import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
- * The decoded bone-pile art for a death - the original's `cadaver human bones` landscape objects from
- * `ls_skeletons.bmd`, as the shared atlas page plus a few interchangeable frames. Unset (a checkout with
- * no `content/`) falls back to the procedural pile.
+ * Decoded still art for a ground mark, as the shared atlas page plus a few interchangeable frames: the
+ * bone pile of a death (the original's `cadaver human bones` objects from `ls_skeletons.bmd`) or the
+ * debris of a wreck. Unset (a checkout with no `content/`) falls back to the procedural mark.
  */
-interface BonesGfx {
+interface MarkGfx {
   readonly source: TextureSource;
   readonly frames: readonly AtlasFrame[];
   readonly textures: TextureCache;
@@ -31,9 +31,9 @@ interface BonesGfx {
 
 /**
  * The combat-feedback layer - the transient marks a fight leaves: a blood spurt where a blow lands, a
- * bone pile where a unit falls. A client-side projection of the sim's one-shot events, never sim state,
- * with one world-space node per mark keyed by `effectKey`. Blood is a named procedural approximation;
- * bones draw the real decoded cadaver sprite when supplied.
+ * bone pile where a unit falls, debris where a cart or catapult is wrecked. A client-side projection of
+ * the sim's one-shot events, never sim state, with one world-space node per mark keyed by `effectKey`.
+ * Blood is a named procedural approximation; bones and debris draw the decoded sprites when supplied.
  */
 
 /** Blood: dark and bright red droplets, with a dark rim so a drop reads on any ground. */
@@ -54,6 +54,12 @@ const BLOOD_RADIUS_SEED = 100;
 /** World-px length and thickness of one bone shaft in a pile. */
 const BONE_LEN = 9;
 const BONE_THICK = 2.4;
+/** Wreck debris: splintered cart wood, drawn as a few dark planks when no decoded debris is supplied. */
+const PLANK_FILL = 0x6b4a2a;
+const PLANK_OUTLINE = 0x2e1f10;
+const PLANK_LEN = 11;
+const PLANK_THICK = 2.6;
+const PLANKS_PER_WRECK = 3;
 
 export class CombatEffectsLayer {
   /** Added below the sprite layer by the renderer, so a fighter walks over the bones. */
@@ -67,10 +73,16 @@ export class CombatEffectsLayer {
   /** Reused per-frame scratch of keys drawn this frame (avoids a per-frame allocation). */
   private readonly seen = new Set<string>();
   /** Unset draws the procedural pile. */
-  private bones: BonesGfx | undefined;
+  private bones: MarkGfx | undefined;
+  /** Unset draws the procedural planks. */
+  private wreck: MarkGfx | undefined;
 
-  setBonesGfx(bones: BonesGfx | undefined): void {
+  setBonesGfx(bones: MarkGfx | undefined): void {
     this.bones = bones;
+  }
+
+  setWreckGfx(wreck: MarkGfx | undefined): void {
+    this.wreck = wreck;
   }
 
   /** Fold this frame's events, across every sim sub-step, into the live mark list. */
@@ -118,13 +130,12 @@ export class CombatEffectsLayer {
   }
 
   /** A mark's node, minted once. Its origin is the anchor the layer positions: the wound for blood, the
-   *  feet for bones. */
+   *  feet for bones and debris. */
   private makeMark(kind: CombatEffectKind, seed: number): Container {
     if (kind === 'blood') return makeBlood(seed);
-    if (this.bones !== undefined && this.bones.frames.length > 0) {
-      return makeBonesSprite(this.bones, seed);
-    }
-    return drawBones(new Graphics(), seed);
+    const gfx = kind === 'bones' ? this.bones : this.wreck;
+    if (gfx !== undefined && gfx.frames.length > 0) return makeMarkSprite(gfx, seed);
+    return kind === 'bones' ? drawBones(new Graphics(), seed) : drawPlanks(new Graphics(), seed);
   }
 }
 
@@ -155,17 +166,34 @@ function animateBlood(node: Container, effect: CombatEffect, tick: number): void
   }
 }
 
-/** A seed-picked decoded bone frame, wrapped so the container origin is the feet: the frame's own
+/** A seed-picked decoded frame, wrapped so the container origin is the feet: the frame's own
  *  `offsetX/offsetY` place its top-left relative to that anchor, like the map-object layer. */
-function makeBonesSprite(bones: BonesGfx, seed: number): Container {
+function makeMarkSprite(gfx: MarkGfx, seed: number): Container {
   const c = new Container();
-  const frame = bones.frames[seed % bones.frames.length];
+  const frame = gfx.frames[seed % gfx.frames.length];
   if (frame === undefined) return c;
-  const sprite = new Sprite(bones.textures.get(bones.source, frame));
-  sprite.scale.set(bones.scale);
-  sprite.position.set(frame.offsetX * bones.scale, frame.offsetY * bones.scale);
+  const sprite = new Sprite(gfx.textures.get(gfx.source, frame));
+  sprite.scale.set(gfx.scale);
+  sprite.position.set(frame.offsetX * gfx.scale, frame.offsetY * gfx.scale);
   c.addChild(sprite);
   return c;
+}
+
+/** A few splintered planks at seeded angles, squashed onto the ground plane - a stand-in for the debris. */
+function drawPlanks(g: Graphics, seed: number): Graphics {
+  for (let i = 0; i < PLANKS_PER_WRECK; i++) {
+    const a = frac(seed, i) * Math.PI;
+    const hx = (Math.cos(a) * PLANK_LEN) / 2;
+    const hy = (Math.sin(a) * 0.6 * PLANK_LEN) / 2;
+    const ox = (frac(seed, i + PLANKS_PER_WRECK) - 0.5) * PLANK_LEN;
+    g.moveTo(ox - hx, -hy)
+      .lineTo(ox + hx, hy)
+      .stroke({ width: PLANK_THICK + 1.4, color: PLANK_OUTLINE, cap: 'square' });
+    g.moveTo(ox - hx, -hy)
+      .lineTo(ox + hx, hy)
+      .stroke({ width: PLANK_THICK, color: PLANK_FILL, cap: 'square' });
+  }
+  return g;
 }
 
 /** A small bone pile: two crossed shafts at a seeded angle plus a skull dot - a stand-in for the skeleton. */

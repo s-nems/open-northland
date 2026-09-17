@@ -24,6 +24,7 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   // the schema reads that file order as depth.
   craftfx: 2.5,
   settler: 3,
+  vehicle: 3, // a cart and its crewman share a feet row; the id tiebreak orders them
   projectile: 4, // an arrow in flight crosses over the fighters it flies between
 };
 

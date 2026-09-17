@@ -227,6 +227,11 @@ export const enContent = {
         '3': 'The neighbours ask for stone to pave the road between us.',
       },
     },
+    vehicles: {
+      title: 'Vehicles',
+      summary:
+        'Every cart, ship and catapult of two civilizations standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a trader pulling its handcart away, and the debris of a cart wrecked on the first tick.',
+    },
     school: {
       title: 'Learning a profession',
       summary:

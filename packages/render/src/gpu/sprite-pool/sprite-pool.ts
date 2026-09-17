@@ -221,6 +221,9 @@ export class SpritePool {
       ghosts: frame.ghosts,
       ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
       ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
+      ...(this.sheet?.bindings.vehicle?.attackFx !== undefined
+        ? { vehicleAttackFx: this.sheet.bindings.vehicle.attackFx }
+        : {}),
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });

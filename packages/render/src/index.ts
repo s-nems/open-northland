@@ -41,6 +41,7 @@ export {
   type SceneGround,
   type SceneTerrain,
   terrainMapToScene,
+  type VehicleDrawTask,
 } from './data/scene/index.js';
 export {
   type AtlasFrame,
@@ -79,6 +80,10 @@ export {
   type SpriteFrameRef,
   type StockpileBinding,
   subClipKey,
+  VEHICLE_ATTACK_TICKS,
+  type VehicleBinding,
+  type VehicleLook,
+  type VehicleTribeLooks,
   type WaveLoop,
   waveFrameAt,
 } from './data/sprites/index.js';

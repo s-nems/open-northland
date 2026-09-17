@@ -17,7 +17,8 @@ the trade tabs of the vehicle window exist only for carts
   exact idle behaviour is open; name the approximation).
 - `MoveVehicleNearHouse`: before loading at a stop, the trader moves the cart to a node within 5
   steps of the house (search radius 20) and detaches when no node exists.
-- The trader's walk clip: cart gait only while attached; the cart draws its own sprite.
+- The trader's walk clip already follows the seat: the renderer plays the cart gait for a settler a
+  vehicle's `passengers` names and the carrier's walk otherwise, and the cart draws its own sprite.
 - Details panel: the Handel section shows the attached cart with its load; the vehicle window's
   trade tabs (select trade house, select trader, detach trader) map to the existing trade commands.
 - Update `?scene=trade` to spawn a handcart and attach the trader; update the trade section of

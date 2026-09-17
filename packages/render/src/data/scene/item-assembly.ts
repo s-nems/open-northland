@@ -13,7 +13,8 @@ import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import { assignPalisadeFields, type PalisadeLayout } from './palisade-connections.js';
 import type { SettlerPose } from './settler-pose.js';
-import { assignStaticFields } from './snapshot-readers/index.js';
+import { vehicleCrewOf } from './snapshot-index.js';
+import { assignStaticFields, readVehicleFields } from './snapshot-readers/index.js';
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
@@ -52,6 +53,12 @@ export function assembleItem(
   switch (kind) {
     case 'settler':
       assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing);
+      if (vehicleCrewOf(build.snapshot).has(entity.id)) item.crew = true;
+      break;
+    case 'vehicle':
+      // Its `state` came with the pose: a vehicle in transit reads `moving` off the same path
+      // components a settler does.
+      readVehicleFields(item, components);
       break;
     case 'building':
       assignBuildingFields(item, components);

@@ -2,15 +2,16 @@ import { UNLOADED_GOOD_TYPE } from '@open-northland/data';
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
+import { attackSmokeShowing } from '../sprites/vehicle.js';
 import type { ElevationField } from '../terrain/index.js';
 import { pushBuildingFxItems, pushCraftFxItems, pushGhostItems } from './collect-fields.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
 import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
-import type { InHousePose, InHouseProgramLookup } from './in-house.js';
+import type { InHouseOverlay, InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
 import { palisadeLayoutOf } from './palisade-connections.js';
-import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose } from './settler-pose.js';
+import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
 import { classify, readPosition } from './snapshot-readers/index.js';
 import type { SpriteSpatialIndex } from './spatial-index.js';
@@ -66,6 +67,8 @@ export interface SpriteSceneOptions {
   readonly inHousePrograms?: InHouseProgramLookup | undefined;
   /** Source-authored home anchors and the resolved looping flame effect. */
   readonly holyFire?: HolyFireLookup | undefined;
+  /** The smoke an attacking catapult stages beside itself while its shot lingers; absent stages none. */
+  readonly vehicleAttackFx?: InHouseOverlay | undefined;
 }
 
 /**
@@ -106,6 +109,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     playerColourOf,
     inHousePrograms,
     holyFire,
+    vehicleAttackFx,
   } = opts;
   const items: MutableSpriteDrawItem[] = [];
   const collected = new Set<number>();
@@ -156,7 +160,9 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
       inHouse?.pose ??
       (kind === 'settler' && !indoorSettler
         ? settlerPose(components, tileX, tileY, posByRef)
-        : STANDING_POSE);
+        : kind === 'vehicle'
+          ? vehiclePose(components)
+          : STANDING_POSE);
     const item = assembleItem(build, entity, kind, tileX, tileY, screen, pose);
     // Being choreographed excuses only the indoor hiding: the portrait frames the worker at his craft
     // instead of soloing a hidden sprite, but an offscreen or fogged subject still draws for it alone.
@@ -172,6 +178,14 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     }
     // Only a kept or forced settler gets this far indoors without a craft to show.
     else if (indoorSettler) item.frozen = true;
+    else if (
+      kind === 'vehicle' &&
+      item.task === 'attacks' &&
+      vehicleAttackFx !== undefined &&
+      attackSmokeShowing(snapshot.tick)
+    ) {
+      pushCraftFxItems(items, collected, item, [vehicleAttackFx], screen, tileX, tileY);
+    }
     if (kind === 'building') {
       pushBuildingFxItems(
         items,

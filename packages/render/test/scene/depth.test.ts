@@ -17,6 +17,7 @@ const ALL_KINDS = [
   'grounddrop',
   'signpost',
   'projectile',
+  'vehicle',
   'craftfx',
 ] as const satisfies readonly DrawKind[];
 // A DrawKind missing from the tuple above makes _MissingKind non-never and fails to compile here, so

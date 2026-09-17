@@ -1,0 +1,155 @@
+import { FOG_STATE } from '@open-northland/sim';
+import { describe, expect, it } from 'vitest';
+import { FogGhostStore } from '../../src/data/fog/index.js';
+import { buildSpriteScene } from '../../src/data/scene/index.js';
+import { classify } from '../../src/data/scene/snapshot-readers/index.js';
+import { GFX_DIR_TO_FACING } from '../../src/data/sprites/settler.js';
+import { ATTACK_SMOKE_TICKS, VEHICLE_ATTACK_TICKS } from '../../src/data/sprites/vehicle.js';
+import { entity, fogViewOf, snapshotOf } from '../support/fixtures.js';
+
+/**
+ * A `Vehicle` entity becomes one `vehicle` draw item carrying its binding keys, heading, owner, task and
+ * load, ghosts through the fog like a building, stages its shot smoke while attacking, and marks the
+ * settlers seated in it as crew. Component shapes mirror `packages/sim/src/components/vehicle.ts` as the
+ * snapshot clones them (Maps as `[key, value]` pairs).
+ */
+
+const OXCART = 2;
+const CATAPULT = 5;
+const VIKING = 1;
+const PLAYER = 3;
+const WOOD = 5;
+const STONE = 4;
+const HEX_SOUTH_WEST = 2;
+
+function vehicle(
+  id: number,
+  fields: Partial<{
+    vehicleType: number;
+    facing: number;
+    task: string;
+    lines: [number, { current: number; wanted: number; reserved: number }][];
+    passengers: ({ entity: number; inside: boolean } | null)[];
+    moving: boolean;
+  }> = {},
+) {
+  return entity(id, 4, 2, {
+    Vehicle: {
+      vehicleType: fields.vehicleType ?? OXCART,
+      tribe: VIKING,
+      task: fields.task ?? 'none',
+      facing: fields.facing ?? 0,
+      moored: false,
+      mooring: null,
+      harnessed: false,
+      carrier: null,
+      passengers: fields.passengers ?? [null],
+      vehicles: [],
+    },
+    VehicleStock: { lines: fields.lines ?? [] },
+    Health: { hitpoints: 1000, max: 1000 },
+    Owner: { player: PLAYER },
+    ...(fields.moving ? { PathFollow: { waypoints: [], index: 0 } } : {}),
+  });
+}
+
+describe('vehicle draw items', () => {
+  it('classifies a Vehicle entity as the vehicle kind', () => {
+    expect(classify(vehicle(1).components)).toBe('vehicle');
+  });
+
+  it('carries the binding keys, the remapped heading, the owner and the task', () => {
+    const [item] = buildSpriteScene(
+      snapshotOf([vehicle(1, { vehicleType: CATAPULT, facing: HEX_SOUTH_WEST, task: 'attacks' })]),
+    );
+    expect(item).toMatchObject({
+      kind: 'vehicle',
+      ref: 1,
+      typeId: CATAPULT,
+      tribe: VIKING,
+      facing: GFX_DIR_TO_FACING[HEX_SOUTH_WEST],
+      player: PLAYER,
+      task: 'attacks',
+      state: 'idle',
+    });
+    expect(item?.carrying).toBeUndefined();
+  });
+
+  it('reads the hold as the load, the fullest good first, and the path as motion', () => {
+    const [item] = buildSpriteScene(
+      snapshotOf([
+        vehicle(1, {
+          moving: true,
+          lines: [
+            [STONE, { current: 2, wanted: 0, reserved: 0 }],
+            [WOOD, { current: 5, wanted: 0, reserved: 0 }],
+          ],
+        }),
+      ]),
+    );
+    expect(item).toMatchObject({ state: 'moving', carrying: true, carryGood: WOOD });
+    const [empty] = buildSpriteScene(
+      snapshotOf([vehicle(1, { lines: [[WOOD, { current: 0, wanted: 4, reserved: 0 }]] })]),
+    );
+    expect(empty?.carrying).toBeUndefined();
+  });
+
+  it('maps the owner slot through playerColourOf like a settler', () => {
+    const [item] = buildSpriteScene(snapshotOf([vehicle(1)]), { playerColourOf: (p) => p + 10 });
+    expect(item?.player).toBe(PLAYER + 10);
+  });
+
+  it('flags a settler seated in a vehicle as crew, aboard or still walking to it', () => {
+    const rider = entity(2, 1, 1, { Settler: { jobType: 25, tribe: VIKING } });
+    const walker = entity(3, 2, 1, { Settler: { jobType: 25, tribe: VIKING } });
+    const items = buildSpriteScene(
+      snapshotOf([vehicle(1, { passengers: [{ entity: 2, inside: false }] }), rider, walker]),
+    );
+    expect(items.find((i) => i.ref === 2)?.crew).toBe(true);
+    expect(items.find((i) => i.ref === 3)?.crew).toBeUndefined();
+  });
+
+  it('stages the shot smoke beside an attacking vehicle only in the smoke tail of the cycle', () => {
+    const fx = { name: 'fx smoke', dx: 0, dy: -36 };
+    const attacking = vehicle(1, { vehicleType: CATAPULT, task: 'attacks' });
+    const smoky = buildSpriteScene(snapshotOf([attacking], VEHICLE_ATTACK_TICKS - 1), {
+      vehicleAttackFx: fx,
+    });
+    expect(smoky.map((i) => i.kind).sort()).toEqual(['craftfx', 'vehicle']);
+    const smoke = smoky.find((i) => i.kind === 'craftfx');
+    const body = smoky.find((i) => i.kind === 'vehicle');
+    expect(smoke).toMatchObject({ fxName: 'fx smoke', x: body?.x, y: (body?.y ?? 0) - 36 });
+    const quiet = buildSpriteScene(snapshotOf([attacking], VEHICLE_ATTACK_TICKS - ATTACK_SMOKE_TICKS - 1), {
+      vehicleAttackFx: fx,
+    });
+    expect(quiet.map((i) => i.kind)).toEqual(['vehicle']);
+    // No effect bound, or not attacking: nothing staged.
+    expect(buildSpriteScene(snapshotOf([attacking], VEHICLE_ATTACK_TICKS - 1)).map((i) => i.kind)).toEqual([
+      'vehicle',
+    ]);
+    expect(
+      buildSpriteScene(snapshotOf([vehicle(1, { vehicleType: CATAPULT })], VEHICLE_ATTACK_TICKS - 1), {
+        vehicleAttackFx: fx,
+      }).map((i) => i.kind),
+    ).toEqual(['vehicle']);
+  });
+
+  it('ghosts through the fog with its type, tribe, heading and owner, like a building', () => {
+    const store = new FogGhostStore();
+    const seen = vehicle(1, { facing: HEX_SOUTH_WEST });
+    const cell = '4,2';
+    store.update(snapshotOf([seen]), fogViewOf(new Map([[cell, FOG_STATE.VISIBLE]]), 1));
+    const ghosts = store.update(snapshotOf([]), fogViewOf(new Map([[cell, FOG_STATE.EXPLORED]]), 2));
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0]).toMatchObject({
+      kind: 'vehicle',
+      ref: 1,
+      typeId: OXCART,
+      tribe: VIKING,
+      facing: GFX_DIR_TO_FACING[HEX_SOUTH_WEST],
+      player: PLAYER,
+    });
+    const [item] = buildSpriteScene(snapshotOf([]), { ghosts });
+    expect(item).toMatchObject({ kind: 'vehicle', ghost: true, facing: GFX_DIR_TO_FACING[HEX_SOUTH_WEST] });
+  });
+});

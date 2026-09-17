@@ -5,7 +5,7 @@ import { loadSettlerBubbleGfx } from '../../content/bubbles.js';
 import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadMusicManifest } from '../../content/music.js';
-import { loadCombatBones } from '../../content/objects.js';
+import { loadCombatBones, loadWreckDebris } from '../../content/objects.js';
 import { presentationPack } from '../../presentation/pack.js';
 import { readStoredSettings } from '../settings-store.js';
 import { startSound } from '../sound-start.js';
@@ -42,6 +42,7 @@ export async function mountGamePresentation(
     }
     if (presentationPack(params) !== null) return sound;
     renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
+    renderer.setWreckGfx(ir !== null ? await loadWreckDebris(ir) : null);
     renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
     renderer.setBuildingSignGfx(await loadBuildingSignGfx());
     return sound;

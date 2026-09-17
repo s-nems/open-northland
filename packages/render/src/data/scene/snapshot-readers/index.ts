@@ -36,3 +36,4 @@ export {
   readSpriteState,
   readStoreExchangeRef,
 } from './unit-readers.js';
+export { readVehicleCrew, readVehicleFields, readVehicleStaticFields } from './vehicle-readers.js';

@@ -7,14 +7,17 @@ import type { ElevationField } from '../terrain/index.js';
 import { fogCellOfTile } from './mask.js';
 
 /**
- * The viewer's remembered statics: a building, wall, resource node, stump, chest or goods heap that was once
- * seen keeps drawing on explored ground, frozen at its last-seen state until the player re-sees the
- * cell. Render-side and per local viewer only - the sim reads its own masks, so determinism is
- * untouched. Authored approximation: the original never un-sees ground (the classic map without fog
- * of war), so it has no ghosts.
+ * The viewer's remembered statics: a building, wall, resource node, stump, chest, goods heap or vehicle
+ * that was once seen keeps drawing on explored ground, frozen at its last-seen state until the player
+ * re-sees the cell (a vehicle stays where it was last seen, like a building). Render-side and per local
+ * viewer only - the sim reads its own masks, so determinism is untouched. Authored approximation: the
+ * original never un-sees ground (the classic map without fog of war), so it has no ghosts.
  */
 
-type FogGhostKind = Extract<DrawKind, 'building' | 'palisade' | 'resource' | 'stump' | 'chest' | 'stockpile'>;
+type FogGhostKind = Extract<
+  DrawKind,
+  'building' | 'palisade' | 'resource' | 'stump' | 'chest' | 'stockpile' | 'vehicle'
+>;
 
 /** One remembered static, frozen at its last sighting. Tile coords are floats in tile units. */
 export type FogGhost = Readonly<StaticDrawFields> & {
@@ -33,7 +36,8 @@ function isGhostKind(kind: EntityKind | null): kind is FogGhostKind {
     kind === 'resource' ||
     kind === 'stump' ||
     kind === 'chest' ||
-    kind === 'stockpile'
+    kind === 'stockpile' ||
+    kind === 'vehicle'
   );
 }
 
@@ -122,14 +126,14 @@ export class FogGhostStore {
     }
 
     // Taking effect, a RECON map seeds every natural resource, map chest and goods heap wherever it
-    // stands, as the known-terrain view shows the map's placed objects; buildings and walls stay intel
+    // stands, as the known-terrain view shows the map's placed objects; buildings, walls and vehicles stay intel
     // the player has to see for himself.
     for (const entity of snapshot.entities) {
       if (staticRefs?.has(entity.id)) continue;
       const kind = classify(entity.components);
       if (!isGhostKind(kind)) continue;
       const adopted = this.pendingAdopt.has(entity.id);
-      const seeded = seedResources && kind !== 'building' && kind !== 'palisade';
+      const seeded = seedResources && kind !== 'building' && kind !== 'palisade' && kind !== 'vehicle';
       let sighted = false;
       if (!adopted && !seeded) {
         const pos = readPosition(entity.components);

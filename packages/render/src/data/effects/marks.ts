@@ -6,7 +6,7 @@ import type { SimEvent } from '@open-northland/sim';
  * exactly.
  */
 
-export type CombatEffectKind = 'blood' | 'bones';
+export type CombatEffectKind = 'blood' | 'bones' | 'wreck';
 
 export interface CombatEffect {
   readonly kind: CombatEffectKind;
@@ -29,6 +29,12 @@ export const BLOOD_LIFETIME_TICKS = 60;
  * but that param's unit is not readable.
  */
 export const BONES_LIFETIME_TICKS = 1800;
+/**
+ * How long a wreck's debris lingers, in sim ticks. Approximation: the original scatters a ruin
+ * landscape over the footprint, whose type and decay are not identified (docs/formats/VEHICLES.md), so
+ * the debris shares the bone pile's tail.
+ */
+export const WRECK_LIFETIME_TICKS = BONES_LIFETIME_TICKS;
 /** The fraction of a mark's lifetime it holds full opacity before fading over the remaining tail. */
 const BLOOD_FADE_HOLD = 0.35;
 const BONES_FADE_HOLD = 0.8;
@@ -36,7 +42,19 @@ const BONES_FADE_HOLD = 0.8;
 export const MAX_ACTIVE_EFFECTS = 400;
 
 function effectLifetime(kind: CombatEffectKind): number {
-  return kind === 'blood' ? BLOOD_LIFETIME_TICKS : BONES_LIFETIME_TICKS;
+  switch (kind) {
+    case 'blood':
+      return BLOOD_LIFETIME_TICKS;
+    case 'bones':
+      return BONES_LIFETIME_TICKS;
+    case 'wreck':
+      return WRECK_LIFETIME_TICKS;
+    default: {
+      const _exhaustive: never = kind;
+      void _exhaustive;
+      return BONES_LIFETIME_TICKS;
+    }
+  }
 }
 
 /**
@@ -63,10 +81,15 @@ function seedFrom(sourceId: number, tick: number): number {
   return (Math.imul(sourceId, 2654435761) + Math.imul(tick, 40503)) >>> 0;
 }
 
+/** Ruin nodes beyond this stride into one event share a seed's neighbour; a footprint is a hex disc of
+ *  radius at most 2 (19 nodes), so it never reaches it. */
+const RUIN_SEED_STRIDE = 64;
+
 /**
  * Fold this frame's combat events into the live mark list: a blood splatter per landed blow, a bone
  * pile per human death (an animal death leaves no bones - see the event's `animal` doc for the source
- * basis), expired marks dropped and the list capped at {@link MAX_ACTIVE_EFFECTS}.
+ * basis), a debris mark per ruin node of a wrecked vehicle (the sim drew the nodes; a scripted removal
+ * and a ship carry none), expired marks dropped and the list capped at {@link MAX_ACTIVE_EFFECTS}.
  */
 export function foldCombatEffects(
   active: readonly CombatEffect[],
@@ -91,6 +114,16 @@ export function foldCombatEffects(
         hy: ev.at.hy,
         spawnTick: tick,
         seed: seedFrom(ev.entity, tick),
+      });
+    } else if (ev.kind === 'vehicleDestroyed') {
+      ev.ruins.forEach((node, i) => {
+        next.push({
+          kind: 'wreck',
+          hx: node.hx,
+          hy: node.hy,
+          spawnTick: tick,
+          seed: seedFrom(ev.entity * RUIN_SEED_STRIDE + i, tick),
+        });
       });
     }
   }

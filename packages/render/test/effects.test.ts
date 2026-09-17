@@ -10,6 +10,7 @@ import {
   effectKey,
   foldCombatEffects,
   MAX_ACTIVE_EFFECTS,
+  WRECK_LIFETIME_TICKS,
 } from '../src/data/effects/index.js';
 import { CombatEffectsLayer } from '../src/gpu/overlays/effects-layer.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
@@ -87,6 +88,31 @@ describe('foldCombatEffects', () => {
 
   it('drops a death with no position (no `at` → nowhere to place bones)', () => {
     expect(foldCombatEffects([], [died(4, false)], 1)).toEqual([]);
+  });
+
+  it('leaves one debris mark per ruin node of a wrecked vehicle, and none for a ruinless removal', () => {
+    const wrecked = (entity: number, ruins: { hx: number; hy: number }[]): SimEvent => ({
+      kind: 'vehicleDestroyed',
+      entity: asEntity(entity),
+      player: 0,
+      vehicleType: 5,
+      tribe: 1,
+      cause: 'destroyed',
+      at: at(6, 6),
+      ruins,
+    });
+    const out = foldCombatEffects([], [wrecked(9, [at(6, 6), at(7, 6), at(6, 7)])], 3);
+    expect(out.map((e) => e.kind)).toEqual(['wreck', 'wreck', 'wreck']);
+    expect(out.map((e) => [e.hx, e.hy])).toEqual([
+      [6, 6],
+      [7, 6],
+      [6, 7],
+    ]);
+    expect(new Set(out.map(effectKey)).size).toBe(3);
+    expect(foldCombatEffects([], [wrecked(9, [])], 3)).toEqual([]);
+    // Debris lingers as long as a bone pile.
+    expect(foldCombatEffects(out, [], WRECK_LIFETIME_TICKS + 4)).toEqual([]);
+    expect(foldCombatEffects(out, [], WRECK_LIFETIME_TICKS + 2)).toHaveLength(3);
   });
 
   it('expires a mark once past its lifetime, keeping younger ones', () => {

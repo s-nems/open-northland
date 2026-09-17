@@ -184,6 +184,10 @@ export class WorldRenderer {
     this.marks.setBonesGfx(gfx);
   }
 
+  setWreckGfx(gfx: CombatBonesGfx | null): void {
+    this.marks.setWreckGfx(gfx);
+  }
+
   setSettlerBubbleGfx(gfx: SettlerBubbleGfx | null): void {
     this.marks.setBubbleGfx(gfx);
   }
