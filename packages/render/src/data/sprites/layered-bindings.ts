@@ -90,6 +90,18 @@ export interface SignpostBinding {
   readonly byPlayer?: readonly (SignpostBinding | undefined)[];
 }
 
+/** The looping `[GfxLandscape]` effects the in-house programs stage beside their workers, each keyed by
+ *  the record's `EditName` the program names, with its lowest state's whole frame list. */
+export interface CraftFxBinding {
+  readonly byName: Readonly<Record<string, CraftFxLoopRef>>;
+}
+
+export interface CraftFxLoopRef {
+  readonly layer: string;
+  /** Played one frame per tick, as the map-object layer plays a looping landscape record. */
+  readonly frames: WaveLoop<number>;
+}
+
 export interface StockpileBinding {
   /** Heap frames per `goodType`, ordered fewest to most units. */
   readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;

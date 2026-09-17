@@ -4,6 +4,7 @@ import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { spriteDepth } from './depth.js';
 import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
+import type { InHouseOverlay } from './in-house.js';
 import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from './projectile-arc.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import {
@@ -111,10 +112,19 @@ export function assignStockpileFields(
 }
 
 /**
+ * The extra items one entity emits beside its own (a signpost's boards, the effects a craft stages) ride
+ * synthetic negative refs, unique per (owner, slot) for a slot below this stride, so a pooled extra never
+ * collides with a real entity id or with another owner's extras. Sized by the widest family, the boards.
+ */
+const EXTRA_ITEM_SLOTS = SIGNPOST_BOARD_FRAMES + 1;
+
+export function extraItemRef(owner: number, slot: number): number {
+  return -(owner * EXTRA_ITEM_SLOTS + slot + 1);
+}
+
+/**
  * Append one direction-board item per connected in-range neighbour, sharing the post's feet anchor.
- * Board refs are synthetic negatives, unique per (signpost, angle bucket), so pooled boards never
- * collide with real entity ids. Boards bypass the caller's shared push site, so their owner colour is
- * mapped here.
+ * Boards bypass the caller's shared push site, so their owner colour is mapped here.
  */
 export function pushSignpostItems(
   items: MutableSpriteDrawItem[],
@@ -130,7 +140,7 @@ export function pushSignpostItems(
   const postPlayer = readOwnerPlayer(components);
   if (postPlayer !== undefined) item.player = postPlayer;
   for (const bucket of signpostBoardsOf(snapshot).get(item.ref) ?? []) {
-    const boardRef = -(item.ref * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
+    const boardRef = extraItemRef(item.ref, bucket);
     liveRefs.add(boardRef);
     const board: MutableSpriteDrawItem = {
       kind: 'signpost',
@@ -146,6 +156,39 @@ export function pushSignpostItems(
     }
     if (lift !== 0) board.lift = lift;
     items.push(board);
+  }
+}
+
+/**
+ * Append the effects a worker's program stages this moment, each at its own offset from the workplace
+ * anchor the worker itself is drawn against, and depth-sorted on that anchor like the worker. A program
+ * beyond the ref stride's slots stages only the first ones; the extracted programs stage at most two.
+ */
+export function pushCraftFxItems(
+  items: MutableSpriteDrawItem[],
+  liveRefs: Set<number>,
+  worker: MutableSpriteDrawItem,
+  overlays: readonly InHouseOverlay[],
+  house: { x: number; y: number },
+  tileX: number,
+  tileY: number,
+): void {
+  for (let slot = 0; slot < overlays.length && slot < EXTRA_ITEM_SLOTS; slot++) {
+    const overlay = overlays[slot];
+    if (overlay === undefined) continue;
+    const ref = extraItemRef(worker.ref, slot);
+    liveRefs.add(ref);
+    const fx: MutableSpriteDrawItem = {
+      kind: 'craftfx',
+      ref,
+      x: house.x + overlay.dx,
+      y: house.y + overlay.dy,
+      depth: spriteDepth(tileX, tileY, 'craftfx'),
+      state: 'idle',
+      fxName: overlay.name,
+    };
+    if (worker.lift !== undefined) fx.lift = worker.lift;
+    items.push(fx);
   }
 }
 

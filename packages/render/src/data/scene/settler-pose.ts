@@ -1,7 +1,13 @@
 import { ONE } from '../projection/index.js';
 import { gfxDirToFacing } from '../sprites/settler.js';
 import type { SpriteState } from './draw-item.js';
-import { type InHousePose, type InHouseProgramLookup, inHousePose } from './in-house.js';
+import {
+  type InHouseOverlay,
+  type InHousePose,
+  type InHouseProgramLookup,
+  inHouseOverlays,
+  inHousePose,
+} from './in-house.js';
 import { TARGET_FACING_ATOMIC_IDS } from './snapshot-index.js';
 import {
   facingTowardTile,
@@ -56,10 +62,12 @@ export interface CraftAnchor {
   readonly duration: number;
 }
 
-/** A worker drawn inside its workplace: the pose its program puts it in, ready for the draw item. */
+/** A worker drawn inside its workplace: the pose its program puts it in, ready for the draw item, and
+ *  the effects the program stages beside it at this moment. */
 export interface InHouseDraw {
   readonly pose: SettlerPose;
   readonly inHouse: InHousePose;
+  readonly overlays: readonly InHouseOverlay[];
 }
 
 /**
@@ -102,5 +110,6 @@ export function inHouseDrawAt(
   return {
     pose: { state: pose.state, actingAtomic: null, targetFacing: gfxDirToFacing(pose.dir) },
     inHouse: pose,
+    overlays: inHouseOverlays(program, anchor.elapsed, anchor.duration),
   };
 }

@@ -10,7 +10,7 @@ import {
   pushSignpostItems,
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
-import type { MutableSpriteDrawItem, SpriteKind } from './draw-item.js';
+import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import type { SettlerPose } from './settler-pose.js';
 import { assignStaticFields } from './snapshot-readers/index.js';
 
@@ -26,7 +26,7 @@ export interface SceneBuild {
 export function assembleItem(
   build: SceneBuild,
   entity: EntitySnapshot,
-  kind: SpriteKind,
+  kind: EntityKind,
   tileX: number,
   tileY: number,
   screen: { x: number; y: number },

@@ -18,6 +18,10 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   grounddrop: 1,
   signpost: 1, // the post occludes like a small building
   stockpile: 2,
+  // A staged effect (the cauldron's fire and smoke, the forge's flame) sits on the house and its piles but
+  // behind the worker tending it: every extracted program lists its overlays before its first walk, and
+  // the schema reads that file order as depth.
+  craftfx: 2.5,
   settler: 3,
   projectile: 4, // an arrow in flight crosses over the fighters it flies between
 };

@@ -1,7 +1,7 @@
-import type { SpriteKind } from '../draw-item.js';
+import type { EntityKind } from '../draw-item.js';
 
 /** Which drawable kind a snapshot entity is, by the first marker component it carries. */
-export function classify(components: Readonly<Record<string, unknown>>): SpriteKind | null {
+export function classify(components: Readonly<Record<string, unknown>>): EntityKind | null {
   if ('Projectile' in components) return 'projectile';
   if ('Building' in components) return 'building';
   if ('FishSwarm' in components) {

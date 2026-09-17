@@ -32,6 +32,7 @@ const KIND_COLOURS: Record<BoxKind, number> = {
   chest: 0x9a6a2e, // a banded wooden chest
   grounddrop: 0x8a5a2a, // a log-brown trunk on the ground
   signpost: 0xdeb060, // a pale-wood guidepost
+  craftfx: 0xe07a30, // an ember-orange staged effect
 };
 
 /** Half-extents (world px) of the ground footprint diamond a box placeholder stands on. The drawn

@@ -30,8 +30,22 @@ export interface InHousePose {
   readonly clip?: InHouseClip;
 }
 
+/** A `[GfxLandscape]` effect a program stages at one moment: the record's `EditName` and where it
+ *  draws, as an offset from the house's own screen anchor (world px). */
+export interface InHouseOverlay {
+  readonly name: string;
+  readonly dx: number;
+  readonly dy: number;
+}
+
 /** A program's windows are percentages of the atomic's length. */
 const PERCENT = 100;
+
+/** How far through a `duration`-tick performance `elapsed` ticks reach, on the windows' percent scale; a
+ *  zero-length performance reads as its opening moment. */
+function programPercent(elapsed: number, duration: number): number {
+  return duration > 0 ? (Math.min(elapsed, duration) / duration) * PERCENT : 0;
+}
 
 /** Where a program that names no walk at all leaves its worker facing. */
 const DEFAULT_GFX_DIR = 0;
@@ -67,7 +81,7 @@ function walkPose(entry: GfxInHouseWalk, from: GfxInHouseWalk | undefined, pct: 
  * where its final walk put it, which is the doorway it leaves through.
  */
 export function inHousePose(program: GfxInHouseProgram, elapsed: number, duration: number): InHousePose {
-  const pct = duration > 0 ? (Math.min(elapsed, duration) / duration) * PERCENT : 0;
+  const pct = programPercent(elapsed, duration);
   let lastWalk: GfxInHouseWalk | undefined;
   for (const entry of program.entries) {
     if (entry.kind === 'walk') {
@@ -92,4 +106,23 @@ export function inHousePose(program: GfxInHouseProgram, elapsed: number, duratio
     dy: lastWalk?.y ?? 0,
     goodType: lastWalk?.goodType ?? UNLOADED_GOOD_TYPE,
   };
+}
+
+/**
+ * The landscape effects `program` has open `elapsed` ticks into a `duration`-tick performance (the fire
+ * under the druid's cauldron, the smoke over it, the kiln's and the forge's flame), in file order. The
+ * `houseBob` overlays, which redraw one of the house's own bob layers, are not staged yet.
+ */
+export function inHouseOverlays(
+  program: GfxInHouseProgram,
+  elapsed: number,
+  duration: number,
+): InHouseOverlay[] {
+  const pct = programPercent(elapsed, duration);
+  const open: InHouseOverlay[] = [];
+  for (const entry of program.entries) {
+    if (entry.kind !== 'landscape' || !contains(entry, pct)) continue;
+    open.push({ name: entry.name, dx: entry.x, dy: entry.y });
+  }
+  return open;
 }

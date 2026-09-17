@@ -3,6 +3,7 @@ import { type AtlasFrame, lookupFrame, type SpriteAtlas } from './atlas.js';
 import type { SpriteBindings } from './bindings.js';
 import {
   resolveBuildingDraw,
+  resolveCraftFxDraw,
   resolveResourceDraw,
   resolveSignpostDraw,
   resolveStockpileDraw,
@@ -45,6 +46,8 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
     }
     case 'signpost':
       return resolveSignpostDraw(bindings.signpost, item)?.bob ?? null;
+    case 'craftfx':
+      return resolveCraftFxDraw(bindings.craftfx, item, tick)?.bob ?? null;
     case 'stockpile':
       return bindings.stockpile === undefined
         ? null

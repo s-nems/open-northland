@@ -4,6 +4,7 @@ import type {
   BuildingTribeTables,
   BuildingTypeBinding,
   ConstructionLayerRef,
+  CraftFxBinding,
   LayeredBobRef,
   ResourceTypeBinding,
   SignpostBinding,
@@ -220,4 +221,17 @@ export function resolveSignpostDraw(
   if (item.boardIndex === undefined) return unwrapBobRef(b.post);
   const board = b.boards[Math.min(b.boards.length - 1, Math.max(0, item.boardIndex))];
   return board === undefined ? null : unwrapBobRef(board);
+}
+
+/** The frame a staged effect loops to at `tick`, one frame per tick, or `null` for an effect whose record
+ *  the binding never loaded. */
+export function resolveCraftFxDraw(
+  binding: CraftFxBinding | undefined,
+  item: DrawItem,
+  tick: number,
+): BuildingDraw | null {
+  const loop = item.fxName === undefined ? undefined : binding?.byName[item.fxName];
+  if (loop === undefined) return null;
+  const bob = loop.frames[((tick % loop.frames.length) + loop.frames.length) % loop.frames.length];
+  return bob === undefined ? null : { bob, layer: loop.layer };
 }

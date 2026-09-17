@@ -12,9 +12,14 @@ export type DrawKind =
   | 'stump'
   | 'grounddrop'
   | 'signpost'
-  | 'projectile';
+  | 'projectile'
+  | 'craftfx';
 
 export type SpriteKind = Exclude<DrawKind, 'tile'>;
+
+/** The kinds a snapshot entity classifies as. A `craftfx` item is staged by a worker's in-house program
+ *  beside that worker, never read off an entity of its own. */
+export type EntityKind = Exclude<SpriteKind, 'craftfx'>;
 
 /** A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
  *  `tribetypes` `setatomic` maps an atomic to its animation). */
@@ -150,6 +155,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For an {@link inHouse} settler mid-motion: the sub-clip it performs and how far through it. Absent
    *  while the program has it crossing the room. */
   readonly craftClip?: InHouseClip;
+  /** For a `craftfx` item: the `[GfxLandscape]` record (`EditName`) the in-house program stages here, a
+   *  looping effect such as the fire under a cauldron. */
+  readonly fxName?: string;
 }
 
 /** The mutable twin of {@link DrawItem}, used only while one item is being assembled: fields are

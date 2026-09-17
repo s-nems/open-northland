@@ -52,6 +52,8 @@ export {
   buildTimeThreshold,
   type CarryingBinding,
   type ConstructionLayerRef,
+  type CraftFxBinding,
+  type CraftFxLoopRef,
   type DirectionalAnim,
   type FishBinding,
   FLAG_WAVE_TICKS_PER_FRAME,

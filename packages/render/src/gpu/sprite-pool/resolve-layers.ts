@@ -1,6 +1,7 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import {
   lookupFrame,
+  resolveCraftFxDraw,
   resolveResourceDraw,
   resolveSignpostDraw,
   resolveSpriteBobId,
@@ -94,6 +95,13 @@ export function resolveLayers(
     case 'berrybush':
     case 'chest':
       return resolveDecorLayers(sheet, item, item.kind);
+    case 'craftfx': {
+      // Every effect ref is layer-qualified, so an unloaded `ls_smoke` family draws the placeholder rather
+      // than a human frame from the shared body atlas.
+      const draw = resolveCraftFxDraw(sheet.bindings.craftfx, item, tick);
+      if (draw === null || !hasLoadedFamily(sheet, draw)) return null;
+      return layeredLayersWithShadow(sheet, 'craftfx', draw);
+    }
     default: {
       const _exhaustive: never = item.kind;
       void _exhaustive;

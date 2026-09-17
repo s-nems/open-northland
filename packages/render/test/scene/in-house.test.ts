@@ -1,6 +1,6 @@
 import type { GfxInHouseProgram } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { inHousePose } from '../../src/data/scene/in-house.js';
+import { inHouseOverlays, inHousePose } from '../../src/data/scene/in-house.js';
 import { collectSpriteScene } from '../../src/data/scene/index.js';
 import { ONE, tileToScreen } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
@@ -18,12 +18,15 @@ const FLOUR = 11;
 const BREAD = 19;
 
 /** The viking baker's program, trimmed to the shape that matters here: a seed point, one walk in with
- *  flour, the knead sub-clip, and one walk out with bread. */
+ *  flour, the knead sub-clip, and one walk out with bread, with the druid's cauldron fire and smoke
+ *  staged in front of the walks the way every extracted program lists its overlays. */
 const BAKER_PROGRAM: GfxInHouseProgram = {
   tribe: VIKING,
   job: BAKER,
   action: MAKE_BREAD,
   entries: [
+    { kind: 'landscape', name: 'fx fire small', x: 69, y: 66, from: 10, to: 90 },
+    { kind: 'landscape', name: 'fx smoke', x: 72, y: 30, from: 10, to: 95 },
     { kind: 'walk', dir: 3, goodType: FLOUR, x: 75, y: 29, from: 0, to: 0 },
     { kind: 'walk', dir: 2, goodType: FLOUR, x: 15, y: 45, from: 0, to: 20 },
     { kind: 'clip', action: MAKE_BREAD, subId: 1, dir: 5, from: 20, to: 60 },
@@ -64,6 +67,19 @@ describe('inHousePose', () => {
 
   it('reads a zero-length performance as its opening moment instead of dividing by zero', () => {
     expect(inHousePose(BAKER_PROGRAM, 0, 0)).toMatchObject({ state: 'moving', dx: 75, dy: 29 });
+  });
+});
+
+describe('inHouseOverlays', () => {
+  it('stages each effect only while its own window is open, in file order', () => {
+    expect(inHouseOverlays(BAKER_PROGRAM, 5, 100)).toEqual([]);
+    expect(inHouseOverlays(BAKER_PROGRAM, 50, 100)).toEqual([
+      { name: 'fx fire small', dx: 69, dy: 66 },
+      { name: 'fx smoke', dx: 72, dy: 30 },
+    ]);
+    // The fire dies at 90 while the smoke lingers to 95.
+    expect(inHouseOverlays(BAKER_PROGRAM, 92, 100)).toEqual([{ name: 'fx smoke', dx: 72, dy: 30 }]);
+    expect(inHouseOverlays(BAKER_PROGRAM, 100, 100)).toEqual([]);
   });
 });
 
@@ -134,6 +150,41 @@ describe('a choreographed worker in the sprite scene', () => {
       fogVisible: () => false,
     });
     expect(fogged.items.find((i) => i.kind === 'settler')?.portraitOnly).toBe(true);
+  });
+
+  it('stages the program’s open effects beside the worker on synthetic refs the pool keeps live', () => {
+    const scene = collectSpriteScene(bakingSnapshot(50), { inHousePrograms: lookup });
+    const fx = scene.items.filter((i) => i.kind === 'craftfx');
+    const house = tileToScreen(4, 4);
+    // Both share the house's depth, so the sorted list orders them by ref, not by file order.
+    expect(fx.map((i) => ({ name: i.fxName, x: i.x, y: i.y }))).toEqual(
+      expect.arrayContaining([
+        { name: 'fx fire small', x: house.x + 69, y: house.y + 66 },
+        { name: 'fx smoke', x: house.x + 72, y: house.y + 30 },
+      ]),
+    );
+    expect(fx).toHaveLength(2);
+    // Behind the worker they are staged for, and distinct from every real entity.
+    const worker = scene.items.find((i) => i.kind === 'settler');
+    for (const item of fx) {
+      expect(item.ref).toBeLessThan(0);
+      expect(scene.liveRefs.has(item.ref)).toBe(true);
+      expect(item.depth).toBeLessThan(worker?.depth ?? Number.NEGATIVE_INFINITY);
+    }
+    expect(new Set(fx.map((i) => i.ref)).size).toBe(2);
+    // Outside every window nothing is staged, and the refs leave the live set for the pool to retire.
+    const done = collectSpriteScene(bakingSnapshot(98), { inHousePrograms: lookup });
+    expect(done.items.some((i) => i.kind === 'craftfx')).toBe(false);
+    for (const item of fx) expect(done.liveRefs.has(item.ref)).toBe(false);
+  });
+
+  it('stages nothing for a subject kept only for the portrait', () => {
+    const fogged = collectSpriteScene(bakingSnapshot(50), {
+      inHousePrograms: lookup,
+      portraitRef: 1,
+      fogVisible: () => false,
+    });
+    expect(fogged.items.some((i) => i.kind === 'craftfx')).toBe(false);
   });
 
   it('keeps an unchoreographed craft out of sight, as it is without the programs at all', () => {

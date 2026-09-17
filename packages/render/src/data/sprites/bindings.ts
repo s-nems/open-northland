@@ -1,6 +1,7 @@
 import type { SpriteKind } from '../scene/index.js';
 import type {
   BuildingTypeBinding,
+  CraftFxBinding,
   ResourceTypeBinding,
   SignpostBinding,
   StockpileBinding,
@@ -37,4 +38,6 @@ export type SpriteBindings = Readonly<{
   chest?: number | ResourceTypeBinding;
   /** The post and direction-board frames of a scout's signpost. */
   signpost?: SignpostBinding;
+  /** The effects an in-house program stages beside its worker (a cauldron's fire and smoke). */
+  craftfx?: CraftFxBinding;
 }>;

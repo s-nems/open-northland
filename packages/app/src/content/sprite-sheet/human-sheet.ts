@@ -2,7 +2,15 @@ import type { SpriteLayer, SpriteSheet } from '@open-northland/render';
 import { INDEXED_CHARACTER_PALETTE, PLAYER_COLOR_COUNT } from '../../catalog/roster.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { loadAnimalCharacters } from '../animal-gfx/index.js';
-import { BUILDING_SCALE, HOUSE_ATLAS, TREE_ATLAS, VIKING_TRIBE } from '../building-gfx/index.js';
+import {
+  BUILDING_SCALE,
+  buildCraftFxBinding,
+  craftFxAtlasStems,
+  HOUSE_ATLAS,
+  resolveCraftFxRefs,
+  TREE_ATLAS,
+  VIKING_TRIBE,
+} from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
 import { inHouseProgramLookup, sequencesFor, shadowStemsByAtlasStem } from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
@@ -123,10 +131,13 @@ export async function loadHumanSpriteSheet(
   const stumpRef = resolveStumpRef(ir);
   const berryBushRefs = resolveBerryBushRefs(ir);
   const chestRefs = resolveChestRefs(ir);
+  // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too.
+  const craftFxRefs = resolveCraftFxRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
   for (const s of chestAtlasStems(chestRefs)) stems.add(s);
+  for (const s of craftFxAtlasStems(craftFxRefs)) stems.add(s);
   stems.add(FISH_ATLAS);
   // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
   stems.add(GUIDEPOST_ATLAS_BAKED);
@@ -149,6 +160,7 @@ export async function loadHumanSpriteSheet(
   const berryBushBinding = buildBerryBushBinding(berryBushRefs, gatheringLoaded);
   const chestBinding = buildChestBinding(chestRefs, gatheringLoaded);
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
+  const craftFxBinding = buildCraftFxBinding(craftFxRefs, gatheringLoaded);
   // The building and gathering families merge into one map: their served stems are disjoint (`ls_houses_*`
   // vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildings.families, ...gatheringFamilies };
@@ -190,6 +202,7 @@ export async function loadHumanSpriteSheet(
           : {}),
       }),
       ...signpostBinding,
+      ...(craftFxBinding !== undefined ? { craftfx: craftFxBinding } : {}),
     },
     overlays: [head],
     // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind
