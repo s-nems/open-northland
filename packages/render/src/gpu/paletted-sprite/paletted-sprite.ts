@@ -118,14 +118,6 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     this.vars.uniforms.uSampling[0] = next;
     this.vars.update();
   }
-  get sampling(): PalettedSampling {
-    const value = this.vars.uniforms.uSampling[0] ?? 0;
-    return (
-      (Object.keys(PALETTED_SAMPLING_MODES) as PalettedSampling[]).find(
-        (mode) => PALETTED_SAMPLING_MODES[mode] === value,
-      ) ?? 'nearest'
-    );
-  }
 
   /**
    * Point the sprite at one atlas frame: bind the indexed atlas source and rewrite the quad to the frame's

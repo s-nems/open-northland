@@ -35,8 +35,9 @@ const TERRAIN_SAMPLE = `
     vec2 high = max(vSampleBounds.zw - 0.5 / size, centre);
     if (footprint < 1.0) {
       // Catmull-Rom bicubic magnification (a published reconstruction filter): sharper than the
-      // sampler's bilinear without haloing, bounded to the tile so a neighbour never bleeds in.
-      // Overshoot is clamped to the premultiplied range. Fades into bilinear as texels reach pixel size.
+      // sampler's bilinear, with its ringing at hard edges clamped to the premultiplied range rather
+      // than removed. Bounded to the tile so a neighbour never bleeds in; fades into bilinear as
+      // texels reach pixel size.
       vec2 p = vUV * size - 0.5;
       vec2 f = fract(p);
       vec2 base = (floor(p) + 0.5) / size;

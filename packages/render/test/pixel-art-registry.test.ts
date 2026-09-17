@@ -1,13 +1,15 @@
 import { Texture, TextureSource } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   isMagnifiedTexture,
   markMagnifiedTexture,
   markPixelArtSource,
-  onPixelArtMagnifyMode,
   pixelArtMagnifyMode,
   setPixelArtMagnification,
 } from '../src/gpu/pixel-art-registry.js';
+
+// The mode is module-global and the worker shares modules across files.
+afterEach(() => setPixelArtMagnification('bilinear'));
 
 describe('pixel-art registry', () => {
   it('magnifies only textures minted from a marked page', () => {
@@ -30,13 +32,13 @@ describe('pixel-art registry', () => {
     other.destroy();
   });
 
-  it('publishes the shader mode of each scaler to its listeners', () => {
-    const seen: number[] = [];
-    onPixelArtMagnifyMode((mode) => seen.push(mode));
+  it('maps each scaler onto the shader mode, with the sampler filter at 0', () => {
+    expect(pixelArtMagnifyMode()).toBe(0);
     setPixelArtMagnification('xbr');
+    expect(pixelArtMagnifyMode()).toBe(2);
     setPixelArtMagnification('sharp');
+    expect(pixelArtMagnifyMode()).toBe(1);
     setPixelArtMagnification('bilinear');
-    expect(seen).toEqual([2, 1, 0]);
     expect(pixelArtMagnifyMode()).toBe(0);
   });
 });

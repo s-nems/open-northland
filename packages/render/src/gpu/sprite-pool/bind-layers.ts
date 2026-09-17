@@ -4,6 +4,7 @@ import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/pro
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
+import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
@@ -197,7 +198,8 @@ export class LayerBinder {
       frame.screenH,
     );
     spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh
-    spr.sampling = frame.enhancedSampling === true ? (frame.pixelArtScaler ?? 'xbr') : 'nearest';
+    spr.sampling =
+      frame.enhancedSampling === true ? (frame.pixelArtScaler ?? DEFAULT_PIXEL_ART_SCALER) : 'nearest';
     spr.player = lutRow;
     spr.visible = true;
   }

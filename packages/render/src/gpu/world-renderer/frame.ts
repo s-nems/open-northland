@@ -27,7 +27,7 @@ export interface WorldEnhancements {
 
 export interface WorldRendererOptions {
   readonly enhancements?: WorldEnhancements;
-  /** Diagnostic A/B choice for the experiment; `xbr` when absent. */
+  /** Diagnostic A/B choice for the experiment; `DEFAULT_PIXEL_ART_SCALER` when absent. */
   readonly pixelArtScaler?: PixelArtScaler | undefined;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;

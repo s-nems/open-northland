@@ -42,7 +42,7 @@ const POOL_REAP_BUDGET = 32;
 
 export interface PoolFrame {
   readonly enhancedSampling?: boolean;
-  /** How original pixel art magnifies under enhanced sampling; `xbr` when absent. */
+  /** How original pixel art magnifies under enhanced sampling; the registry default when absent. */
   readonly pixelArtScaler?: PixelArtScaler;
   readonly environmentMotion?: boolean;
   readonly snapshot: WorldSnapshot;

@@ -152,7 +152,7 @@ export {
   type PalettedSampling,
   PalettedSprite,
 } from './gpu/paletted-sprite/index.js';
-export { markPixelArtSource, type PixelArtScaler } from './gpu/pixel-art-registry.js';
+export type { PixelArtScaler } from './gpu/pixel-art-registry.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
 export {
   createPresentationTrack,

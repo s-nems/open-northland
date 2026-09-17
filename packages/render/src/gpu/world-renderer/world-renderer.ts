@@ -20,7 +20,11 @@ import {
   PortraitInsetLayer,
   type SettlerBubbleGfx,
 } from '../overlays/index.js';
-import { type PixelArtScaler, setPixelArtMagnification } from '../pixel-art-registry.js';
+import {
+  DEFAULT_PIXEL_ART_SCALER,
+  type PixelArtScaler,
+  setPixelArtMagnification,
+} from '../pixel-art-registry.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
@@ -83,7 +87,7 @@ export class WorldRenderer {
     installWorldBatcher(); // before the sprite layer's render group builds its first batch
     this.app = app;
     this.viewSmoothing = opts?.viewSmoothing === true;
-    this.pixelArtScaler = opts?.pixelArtScaler ?? 'xbr';
+    this.pixelArtScaler = opts?.pixelArtScaler ?? DEFAULT_PIXEL_ART_SCALER;
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
     // Own Pixi render group: moving sprites re-write zIndex every frame, and that must re-sort and
