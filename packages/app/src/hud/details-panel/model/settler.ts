@@ -14,6 +14,7 @@ import {
 import type { EquipRow } from './settler-equipment.js';
 import type { UnlockProgressRowModel } from './settler-unlocks.js';
 import type { SettlerWorkModel } from './settler-work.js';
+import type { TradePanelModel } from './trade.js';
 
 /** The four military stances (`MILITARY_MODE`). The original carries no string for the sim's own states,
  *  so the "Postawa" line's labels come from the app's own bundle. */
@@ -46,6 +47,8 @@ export interface SettlerPanelModel {
   /** The Ogólne stat bars: Zdrowie (only for a unit with Health), then the need bars when they apply. */
   readonly bars: readonly PanelBar[];
   readonly work: SettlerWorkModel;
+  /** The Handel section: non-null for a trader. */
+  readonly trade: TradePanelModel | null;
   /** Every specialization the settler has trained, most-trained first; empty when it has none. */
   readonly experience: readonly ExperienceRowModel[];
   /** Progress toward the professions this settler's current work unlocks next; empty while progression

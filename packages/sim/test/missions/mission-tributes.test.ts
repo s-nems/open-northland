@@ -339,6 +339,19 @@ describe('the payTribute command', () => {
     expect(paidHolds(sim)).toBe(true);
   });
 
+  it('drains the headquarters first however late it was built', () => {
+    const sim = tributeSim([create(), demand(WOOD, 4)]);
+    place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: WOOD, amount: 6 }] });
+    place(sim, { type: HEADQUARTERS });
+    sim.run(FIRST_PASS);
+    pay(sim);
+    // The warehouse has the lower entity id and could cover the whole demand, yet the headquarters
+    // type goes first (reading of the original's three-pass drain).
+    expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(HQ_WOOD - 4);
+    expect(stockAt(sim, WAREHOUSE, WOOD)).toBe(6);
+    expect(tributeSlot(sim.world, SLOT)?.paid).toBe(true);
+  });
+
   it('takes nothing while the stores cannot cover a demand, and nothing twice', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
     place(sim, { type: HEADQUARTERS });

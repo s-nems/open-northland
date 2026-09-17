@@ -28,6 +28,7 @@ import { technologyScene } from './technology.js';
 import { terrainEditsScene } from './terrain-edits.js';
 import { towerDefenceScene } from './tower-defence.js';
 import { towerGarrisonScene } from './tower-garrison.js';
+import { tradeScene } from './trade.js';
 import { tributeScene } from './tribute.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
@@ -72,6 +73,7 @@ export const SCENES: readonly SceneDefinition[] = [
   aiDefenceScene,
   deathLootScene,
   victoryScene,
+  tradeScene,
   tributeScene,
   presentationScene,
   terrainEditsScene,

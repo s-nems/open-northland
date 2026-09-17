@@ -12,6 +12,7 @@ import {
   grantWorkExperience,
 } from '../../../progression/index.js';
 import { erectSignpost } from '../../../signposts/index.js';
+import { loadCart, unloadCart } from '../../../trade/index.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
   consumeFood,
@@ -65,6 +66,12 @@ export function applyEffect(
       return;
     case 'pileup':
       if (pileupIntoStore(world, ctx, settler, effect.store) > 0) grantCarryExperience(world, ctx, settler);
+      return;
+    case 'cartLoad':
+      loadCart(world, ctx, settler, effect.from, effect.goodType);
+      return;
+    case 'cartUnload':
+      unloadCart(world, ctx, settler, effect.store, effect.goodType);
       return;
     // The meal itself was paid out at the clip's own event frame; the unit leaves the shelf here. The eat
     // clips carry no `interruptable`, so an order parks behind one rather than splitting the two halves.

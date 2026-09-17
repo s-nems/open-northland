@@ -5,6 +5,9 @@ import {
   hitGatherChoice,
   hitPortrait,
   hitStockTab,
+  hitTradeDetach,
+  hitTradeImport,
+  hitTradeOffer,
   nextCraftGoods,
 } from './hit-test.js';
 import { type ButtonAction, type EquipSlotRef, equipActionKey } from './layout/index.js';
@@ -27,7 +30,17 @@ export type PanelClick =
   | { readonly kind: 'assignWorkplace'; readonly entityId: number }
   | { readonly kind: 'unassignWorkplace'; readonly entityId: number }
   | { readonly kind: 'assignHome'; readonly entityId: number }
-  | { readonly kind: 'unassignHome'; readonly entityId: number };
+  | { readonly kind: 'unassignHome'; readonly entityId: number }
+  | { readonly kind: 'attachTradeHouse'; readonly entityId: number }
+  | { readonly kind: 'detachTradeHouse'; readonly entityId: number; readonly house: number }
+  | {
+      readonly kind: 'setTradeImport';
+      readonly entityId: number;
+      readonly house: number;
+      readonly goodType: number;
+      readonly on: boolean;
+    }
+  | { readonly kind: 'setTradeAgreement'; readonly entityId: number; readonly agreement: number };
 
 /** The intent of the settler choice/equip blocks, which sit above the button column in probe order. */
 const settlerFieldClick = (
@@ -49,6 +62,21 @@ const settlerFieldClick = (
     );
     return { kind: 'setCraftGoods', entityId, goods };
   }
+  const mark = hitTradeImport(view, x, y);
+  if (mark !== undefined) {
+    return {
+      kind: 'setTradeImport',
+      entityId,
+      house: mark.house,
+      goodType: mark.goodType,
+      on: !mark.selected,
+    };
+  }
+  const offer = hitTradeOffer(view, x, y);
+  if (offer !== undefined)
+    return { kind: 'setTradeAgreement', entityId, agreement: offer.selected ? -1 : offer.index };
+  const detach = hitTradeDetach(view, x, y);
+  if (detach !== undefined) return { kind: 'detachTradeHouse', entityId, house: detach };
   const equipHit = hitEquipAction(view, x, y);
   if (equipHit === undefined) return null;
   return equipHit.kind === 'unequip'
@@ -80,6 +108,8 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
           return { kind: 'assignHome', entityId };
         case 'unassign-home':
           return { kind: 'unassignHome', entityId };
+        case 'attach-trade-house':
+          return { kind: 'attachTradeHouse', entityId };
         default:
           return null; // a building-only action, which no settler layout routes
       }
@@ -111,7 +141,7 @@ export const panelClickAt = (
   return hit === null || !hit.enabled ? null : buttonClick(view, hit.action);
 };
 
-/** Everything a hover changes in the drawn panel, so a rebuild is skipped while all three hold. */
+/** Everything a hover changes in the drawn panel, so a rebuild is skipped while every field holds. */
 export interface PanelHover {
   readonly action: ButtonAction | null;
   /** The hovered gather or craft choice (the blocks never coexist): `undefined` = none, `null` = the
@@ -119,19 +149,42 @@ export interface PanelHover {
   readonly choiceGood: number | null | undefined;
   /** The hovered equip button's {@link equipActionKey}, stable across rebuilds. */
   readonly equipAction: string | null;
+  /** The hovered import mark of a trader's route, by stop house and good. */
+  readonly tradeImport: { readonly house: number; readonly goodType: number } | null;
+  /** The hovered agreement row's table index. */
+  readonly tradeOffer: number | null;
+  /** The house whose detach button is hovered. */
+  readonly tradeDetach: number | null;
 }
 
-export const NO_PANEL_HOVER: PanelHover = { action: null, choiceGood: undefined, equipAction: null };
+export const NO_PANEL_HOVER: PanelHover = {
+  action: null,
+  choiceGood: undefined,
+  equipAction: null,
+  tradeImport: null,
+  tradeOffer: null,
+  tradeDetach: null,
+};
 
 export const panelHoverAt = (view: PanelView, x: number, y: number): PanelHover => {
   const gather = hitGatherChoice(view, x, y);
   const equipHit = hitEquipAction(view, x, y);
+  const mark = hitTradeImport(view, x, y);
   return {
     action: hitButton(view, x, y)?.action ?? null,
     choiceGood: gather !== undefined ? gather : hitCraftChoice(view, x, y),
     equipAction: equipHit !== undefined ? equipActionKey(equipHit) : null,
+    tradeImport: mark === undefined ? null : { house: mark.house, goodType: mark.goodType },
+    tradeOffer: hitTradeOffer(view, x, y)?.index ?? null,
+    tradeDetach: hitTradeDetach(view, x, y) ?? null,
   };
 };
 
 export const sameHover = (a: PanelHover, b: PanelHover): boolean =>
-  a.action === b.action && a.choiceGood === b.choiceGood && a.equipAction === b.equipAction;
+  a.action === b.action &&
+  a.choiceGood === b.choiceGood &&
+  a.equipAction === b.equipAction &&
+  a.tradeImport?.house === b.tradeImport?.house &&
+  a.tradeImport?.goodType === b.tradeImport?.goodType &&
+  a.tradeOffer === b.tradeOffer &&
+  a.tradeDetach === b.tradeDetach;

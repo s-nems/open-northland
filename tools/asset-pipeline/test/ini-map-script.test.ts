@@ -37,6 +37,12 @@ setname	100	100
 setname 101 101 
 setname x 7
 
+[misc_tradeagreement]
+
+tradeagreement          769          #GOOD_TYPE_MEAD          1          #GOOD_TYPE_ARMOR_LEATHER          4
+tradeagreement 900 #GOOD_TYPE_WHEAT 4 #GOOD_TYPE_AMULET_CRITICAL_HIT 1
+tradeagreement 901 #GOOD_TYPE_NOTAGOOD 4 #GOOD_TYPE_GOLD 1
+
 [MissionData]
 debuginfo "StartText"
 description 300
@@ -91,6 +97,11 @@ esult "AddTributeGoods" 15 "coin" 40
     expect(script?.humanNames).toEqual([
       { humanId: 100, stringId: 100 },
       { humanId: 101, stringId: 101 },
+    ]);
+    // Trade agreements resolve their goods through the GOOD_TYPE_* codes; an unknown macro drops the row.
+    expect(script?.tradeAgreements).toEqual([
+      { missionId: 769, giveGood: 43, giveAmount: 1, takeGood: 34, takeAmount: 4 },
+      { missionId: 900, giveGood: 4, giveAmount: 4, takeGood: 54, takeAmount: 1 },
     ]);
     expect(script?.missions).toHaveLength(2);
     expect(script?.missions[0]).toMatchObject({

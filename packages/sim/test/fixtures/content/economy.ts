@@ -160,6 +160,8 @@ export const economyContent = {
     // 36 is a second fixture carrier id; 24 is the original's real one (`logicworker 24`).
     { typeId: 36, id: 'carrier' },
     { typeId: 24, id: 'carrier' },
+    // The land trader (job 25): works a route between two houses instead of a workplace; never goes home.
+    { typeId: 25, id: 'trader', ignoresHomeHouse: true },
   ],
   buildings: [
     {

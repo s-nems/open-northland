@@ -1,6 +1,14 @@
-import { messages } from '../../i18n/index.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import { contains } from '../geometry.js';
-import { type ButtonHit, type EquipActionHit, type EquipSlotRef, stockSlotRects } from './layout/index.js';
+import {
+  type ButtonHit,
+  type EquipActionHit,
+  type EquipSlotRef,
+  stockSlotRects,
+  type TradeImportHit,
+  type TradeOfferHit,
+  tradeButtons,
+} from './layout/index.js';
 import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
@@ -17,7 +25,7 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
         ? view.layout.buttons
         : [...view.layout.buttons, view.layout.defenceToggle];
     case 'settler':
-      return view.layout.workControls.map((c) => c.button);
+      return [...view.layout.workControls.map((c) => c.button), ...tradeButtons(view.layout.trade)];
     case 'signpost':
       return [view.layout.button];
     case 'empty':
@@ -64,6 +72,28 @@ export const nextCraftGoods = (
   else next.add(goodType);
   if (next.size === 0 || next.size === products.length) return [];
   return products.filter((g) => next.has(g));
+};
+
+/** The import mark under a canvas point in a trader's Handel section, or undefined. */
+export const hitTradeImport = (view: PanelView, x: number, y: number): TradeImportHit | undefined => {
+  if (view.kind !== 'settler' || view.layout.trade === null) return undefined;
+  for (const stop of view.layout.trade.stops) {
+    const hit = stop.imports.find((h) => contains(h.rect, x, y));
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
+};
+
+/** The agreement row under a canvas point in a trader's Handel section, or undefined. */
+export const hitTradeOffer = (view: PanelView, x: number, y: number): TradeOfferHit | undefined => {
+  if (view.kind !== 'settler' || view.layout.trade === null) return undefined;
+  return view.layout.trade.offers.find((h) => contains(h.rect, x, y));
+};
+
+/** The stop whose detach button holds a canvas point, or undefined. */
+export const hitTradeDetach = (view: PanelView, x: number, y: number): number | undefined => {
+  if (view.kind !== 'settler' || view.layout.trade === null) return undefined;
+  return view.layout.trade.stops.find((stop) => contains(stop.detach.rect, x, y))?.house;
 };
 
 /** The per-slot equipment action button under a canvas point, or undefined (settler layouts only). */
@@ -118,9 +148,11 @@ const buildingHealthValue = (view: PanelView, x: number, y: number): string | nu
 /** The Praca control buttons' tooltips; the drawn labels name the order, so these spell out what it does. */
 const workControlHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
+  const hud = messages().hud;
+  const tradeHint = tradeControlHint(view, x, y, hud);
+  if (tradeHint !== null) return tradeHint;
   const action = view.layout.workControls.find((c) => contains(c.button.rect, x, y))?.action;
   if (action === undefined) return null;
-  const hud = messages().hud;
   switch (action) {
     case 'assign-workplace':
       return hud.assignWorkplaceHint;
@@ -131,6 +163,23 @@ const workControlHint = (view: PanelView, x: number, y: number): string | null =
     case 'unassign-home':
       return hud.unassignHomeHint;
   }
+};
+
+/** The Handel section's tooltips: the route buttons, an import mark's good, an agreement row. */
+const tradeControlHint = (
+  view: Extract<PanelView, { kind: 'settler' }>,
+  x: number,
+  y: number,
+  hud: ReturnType<typeof messages>['hud'],
+): string | null => {
+  const trade = view.layout.trade;
+  if (trade === null) return null;
+  if (trade.attach !== null && contains(trade.attach.button.rect, x, y)) return hud.tradeAttachHouseHint;
+  if (trade.stops.some((stop) => contains(stop.detach.rect, x, y))) return hud.tradeDetachHouse;
+  const mark = hitTradeImport(view, x, y);
+  if (mark !== undefined) return formatMessage(hud.tradeImportHint, { good: mark.label });
+  if (hitTradeOffer(view, x, y) !== undefined) return hud.tradeOfferHint;
+  return null;
 };
 
 /** The alarm toggle's tooltip names what the click will do, so the wording flips with the current mode. */

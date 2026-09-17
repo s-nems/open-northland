@@ -113,6 +113,7 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   DiplomacyState: { opcode: 'DiplomacyState', player: 0, otherPlayer: 1, state: 'friend' },
   PlayerSeen: { opcode: 'PlayerSeen', player: 0, otherPlayer: 1 },
   PlayerAttackedByPlayer: { opcode: 'PlayerAttackedByPlayer', otherPlayer: 1, player: 0 },
+  NumberOfGoodsTraded: { opcode: 'NumberOfGoodsTraded', player: 0, otherPlayer: 1, amount: 1 },
   PayTribute: { opcode: 'PayTribute', slot: 0 },
 };
 

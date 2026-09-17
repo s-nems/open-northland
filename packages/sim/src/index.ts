@@ -156,4 +156,5 @@ export {
 export { WALK_TICKS_PER_CELL } from './systems/movement/system.js';
 export * as systems from './systems/public.js';
 export type { EquipPickEntry } from './systems/readviews/index.js';
+export type { TradeOffer, TraderView, TradeStopView } from './systems/trade/index.js';
 export { FOG_STATE } from './systems/vision/index.js';

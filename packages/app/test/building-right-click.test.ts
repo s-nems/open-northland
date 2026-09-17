@@ -68,6 +68,7 @@ function rightClick(
   const pickable: Pickable = { ref: building, x: 0, y: 0 };
   const targets: UnitTargets = {
     owned: (kind) => (kind === 'building' ? [pickable] : []),
+    buildings: () => [pickable],
     enemies: () => [],
     flags: () => [],
     signposts: () => [],

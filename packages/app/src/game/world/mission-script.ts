@@ -164,10 +164,11 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
   const diplomacy = script?.diplomacy ?? [];
   const ai = script?.ai ?? [];
   const humanNames = script?.humanNames ?? [];
+  const tradeAgreements = script?.tradeAgreements ?? [];
   const roster =
     script !== null && script.players.length > 0 ? { participants: scriptMatchParticipants(script) } : {};
   if (script === null || rows === null || script.missions.length === 0)
-    return { ...permissionRows, diplomacy, ai, humanNames, ...roster };
+    return { ...permissionRows, diplomacy, ai, humanNames, tradeAgreements, ...roster };
   const join = resolveMissionScript(script.missions, rows);
   if (join.unknownOpcodes > 0 || join.tokenMismatches > 0 || join.unresolvedNames.length > 0) {
     const named = join.unresolvedNames.slice(0, NAMES_IN_WARNING).join(', ');
@@ -186,6 +187,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     diplomacy,
     ai,
     humanNames,
+    tradeAgreements,
     ...roster,
     missions: join.script,
     victory: scriptedVictory ? 'script' : 'elimination',

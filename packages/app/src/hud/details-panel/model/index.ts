@@ -48,6 +48,7 @@ import {
 import { equipmentRows } from './settler-equipment.js';
 import { unlockProgressRows } from './settler-unlocks.js';
 import { settlerWork } from './settler-work.js';
+import { tradeOfferLabel, tradePanelModel } from './trade.js';
 
 export { type BarTone, barTone, type PanelBar, remainingPct } from './bars.js';
 export type {
@@ -65,6 +66,7 @@ export { HUMANWINDOW } from './humanwindow.js';
 export type { SettlerPanelModel } from './settler.js';
 export { type EquipGroup, type EquipRow, type EquipSlotModel, equipmentRows } from './settler-equipment.js';
 export type { UnlockProgressRowModel } from './settler-unlocks.js';
+export type { TradeImportModel, TradeOfferModel, TradePanelModel, TradeStopModel } from './trade.js';
 
 export interface MultiSettlerPanelModel {
   readonly kind: 'multi-settler';
@@ -201,6 +203,7 @@ export function buildUnitPanelModel(
           : (ctx.technologyReason?.('house', def.upgradeTarget, num(b.tribe) ?? 0, ownerPlayerOf(ent)) ??
             null),
       upgradeCost: upgradable ? upgradeCostRows(ctx, def) : [],
+      tradeOffers: (ctx.tradeOffersAt?.(entityId) ?? []).map((offer) => tradeOfferLabel(ctx, offer)),
     };
   }
 
@@ -263,6 +266,7 @@ export function buildUnitPanelModel(
         !ctx.jobs.some((job) => job.typeId === num(s.jobType) && systems.isHeroJobRow(job)),
       ),
       work: settlerWork(ctx, snapshot, comps, progressionGated),
+      trade: tradePanelModel(ctx, snapshot, entityId),
       experience: experienceRows(ctx, comps),
       upcomingUnlocks: unlockProgressRows(ctx, comps, progressionGated),
       equipmentRows: equipmentRows(ctx, comps),

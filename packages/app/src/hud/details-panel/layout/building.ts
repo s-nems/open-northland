@@ -55,7 +55,9 @@ export type ButtonAction =
   | 'assign-workplace'
   | 'unassign-workplace'
   | 'assign-home'
-  | 'unassign-home';
+  | 'unassign-home'
+  | 'attach-trade-house'
+  | 'detach-trade-house';
 
 export interface ButtonHit {
   readonly action: ButtonAction;
@@ -91,6 +93,9 @@ export interface BuildingLayout {
   readonly stockTabHits: readonly Rect[];
   /** Always present: a construction site keeps its workers window. */
   readonly workers: SectionRect;
+  /** The trade agreements window, only for a house that offers any. */
+  readonly offers: SectionRect | null;
+  readonly offerRows: readonly Rect[];
 }
 
 /**
@@ -178,6 +183,7 @@ export function layoutBuilding(
     (stockCompact ? 0 : Math.round(STOCK_TAB_H * s) + Math.round(STOCK_TAB_GAP * s)) +
     stockRows * Math.round(STOCK_ROW_H * s);
   const workersBodyH = MAX_WORKER_ROWS * Math.round(ROW_H * s);
+  const offersBodyH = model.tradeOffers.length * Math.round(ROW_H * s);
 
   const heights = [
     sectionAt(0, 0, w, generalBodyH, s).frame.h,
@@ -186,6 +192,7 @@ export function layoutBuilding(
     showProduction ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
     stockRowCount > 0 ? sectionAt(0, 0, w, stockBodyH, s).frame.h : 0,
     sectionAt(0, 0, w, workersBodyH, s).frame.h,
+    offersBodyH > 0 ? sectionAt(0, 0, w, offersBodyH, s).frame.h : 0,
   ];
   const gaps = gap * (heights.filter((h) => h > 0).length - 1);
   const panel = panelRect(heights.reduce((a, b) => a + b, 0) + gaps, screen, s);
@@ -249,6 +256,16 @@ export function layoutBuilding(
     stockTabHits = stockTabRects(stockTabStrip, s, DETAILS_STOCK_TAB_COUNT);
   }
   const workers = next(workersBodyH);
+  const offers = offersBodyH > 0 ? next(offersBodyH) : null;
+  const offerRows: Rect[] =
+    offers === null
+      ? []
+      : model.tradeOffers.map((_, i) => ({
+          x: offers.body.x,
+          y: offers.body.y + i * Math.round(ROW_H * s),
+          w: offers.body.w,
+          h: Math.round(ROW_H * s),
+        }));
 
   return {
     kind: 'building',
@@ -268,5 +285,7 @@ export function layoutBuilding(
     stockRows,
     stockTabHits,
     workers,
+    offers,
+    offerRows,
   };
 }

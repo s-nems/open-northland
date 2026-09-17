@@ -157,6 +157,7 @@ describe('pick-mode highlight cost', () => {
       snapshot,
       targets: {
         owned: () => [],
+        buildings: () => [],
         enemies: () => [],
         flags: () => [],
         signposts: () => [],

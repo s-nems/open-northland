@@ -34,6 +34,12 @@ export function isCarrierJobId(id: string): boolean {
   return id === 'carrier';
 }
 
+/** Whether a job id names the land trader (`jobtypes.ini` 25), the trade that plies a cart between two
+ *  houses. The sea variant is excluded: the original's `trader_sea` job task is an empty stub. */
+export function isTraderJobId(id: string): boolean {
+  return id === 'trader';
+}
+
 /** The job typeIds of each role. */
 export type JobRoleSets = Readonly<Record<JobRole, ReadonlySet<number>>>;
 

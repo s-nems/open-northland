@@ -51,6 +51,7 @@ import {
   unequipGood,
 } from '../orders/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
+import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
 import { isAuthorized } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
@@ -201,6 +202,16 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'payTribute':
       payTribute(world, ctx, command);
+      return;
+    case 'attachTradeHouse':
+    case 'detachTradeHouse':
+    case 'setTradeImport':
+    case 'clearTradeImports':
+    case 'setTradeAgreement':
+      applyTradeCommand(world, ctx, command);
+      return;
+    case 'addTradeAgreement':
+      registerTradeAgreement(world, ctx, command);
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);

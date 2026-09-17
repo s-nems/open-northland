@@ -34,6 +34,7 @@ const WORLD: WorldSnapshot = snapshotOf([
 /** Nothing is pickable, so every press resolves to open ground. */
 const targets: UnitTargets = {
   owned: () => [],
+  buildings: () => [],
   enemies: () => [],
   flags: () => [],
   signposts: () => [],

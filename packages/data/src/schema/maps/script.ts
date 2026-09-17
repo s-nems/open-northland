@@ -145,6 +145,18 @@ export const MapAiSeat = z.strictObject({
 });
 export type MapAiSeat = z.infer<typeof MapAiSeat>;
 
+/** One `[misc_tradeagreement]` `tradeagreement <houseId> <give> <n> <take> <m>` row: at the houses
+ *  placed with mission object id `missionId`, a visiting trader hands over `giveAmount` of `giveGood`
+ *  for `takeAmount` of `takeGood`. Goods are `GOOD_TYPE_*` codes, the `GoodType.typeId`s. */
+export const MapTradeAgreement = z.strictObject({
+  missionId: z.number().int(),
+  giveGood: z.number().int().nonnegative(),
+  giveAmount: z.number().int().nonnegative(),
+  takeGood: z.number().int().nonnegative(),
+  takeAmount: z.number().int().nonnegative(),
+});
+export type MapTradeAgreement = z.infer<typeof MapTradeAgreement>;
+
 /** The whole decoded script: `misc` keeps `playermisc` and unrecognised `playerdata` lines lossless,
  *  and `missions` stays in authored order. */
 export const MapScript = z.strictObject({
@@ -170,6 +182,8 @@ export const MapScript = z.strictObject({
   misc: z.array(MapScriptLine).default([]),
   /** The `[misc_humannames]` rows in file order, when the map ships the section. */
   humanNames: z.array(MapHumanName).default([]),
+  /** The `[misc_tradeagreement]` rows in file order, when the map ships the section. */
+  tradeAgreements: z.array(MapTradeAgreement).default([]),
   missions: z.array(MapMission).default([]),
   source: Provenance.optional(),
 });

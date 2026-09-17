@@ -40,6 +40,7 @@ function rightClick(sim: Simulation, settlers: readonly Entity[], chest: Entity)
   const pickable: Pickable = { ref: chest, x: 0, y: 0, kind: 'chest' };
   const targets: UnitTargets = {
     owned: () => [],
+    buildings: () => [],
     enemies: () => [],
     flags: () => [],
     signposts: () => [],

@@ -1,4 +1,4 @@
-import { type MissionRecord, tributePaid } from '../../components/index.js';
+import { goodsTradedWith, type MissionRecord, tributePaid } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import { landscapeView } from '../landscape/view.js';
 import {
@@ -207,6 +207,8 @@ function goalHolds(
       return playerAttackedHolds(pass.world, op);
     case 'PayTribute':
       return tributePaid(pass.world, op.slot);
+    case 'NumberOfGoodsTraded':
+      return goodsTradedWith(pass.world, op.player, op.otherPlayer) >= op.amount;
     default:
       pass.report(index, op.opcode);
       // Unknown is distinct from false: a none-rule must not invert missing implementation into success.

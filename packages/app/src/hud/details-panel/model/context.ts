@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { systems } from '@open-northland/sim';
+import { systems, type TradeOffer, type TraderView } from '@open-northland/sim';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
@@ -39,6 +39,10 @@ export interface UnitPanelModelContext {
   /** The map's own string by id, which names a settler the map or its script named. Absent, or a
    *  missing id, leaves the generated name. */
   readonly mapText?: ((stringId: number) => string | undefined) | undefined;
+  /** The sim's trader read seam (`Simulation.traderView`); absent hides the Handel section. */
+  readonly traderView?: ((entity: number) => TraderView | undefined) | undefined;
+  /** The sim's agreement read seam (`Simulation.tradeOffersAt`); absent lists no offers on a house. */
+  readonly tradeOffersAt?: ((house: number) => readonly TradeOffer[]) | undefined;
 }
 
 export interface Comp {

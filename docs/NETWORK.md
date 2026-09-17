@@ -10,8 +10,8 @@ no game content, runs no simulation, and never interprets a command payload or a
 keeps the server image free of decoded game data.
 
 Map-script integration and multiplayer eligibility are documented in
-[`MISSIONS.md`](formats/MISSIONS.md#multiplayer-integration). Seat commands include tribute payments
-and civilian lessons; all peers must understand their payloads.
+[`MISSIONS.md`](formats/MISSIONS.md#multiplayer-integration). Seat commands include tribute payments,
+trader route orders and civilian lessons; all peers must understand their payloads.
 
 ## Transport
 

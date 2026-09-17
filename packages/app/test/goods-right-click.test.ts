@@ -64,6 +64,7 @@ function rightClick(
   const snapshot = sim.snapshot();
   const targets: UnitTargets = {
     owned: () => [],
+    buildings: () => [],
     enemies: () => [],
     flags: () => [],
     signposts: () => [],

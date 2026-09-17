@@ -57,6 +57,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const chrome = await createUnitChrome(opts, selection, equipPicker, {
     assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', settler: id }),
     assignHome: (id) => pickMode.arm({ kind: 'home', settler: id }),
+    attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', settler: id }),
     selectEntity: (id) => applySelection([id], false),
     ringCommand: (id, targets) =>
       issueRingCommand(id, targets, {

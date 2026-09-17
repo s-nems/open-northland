@@ -10,7 +10,13 @@ import type {
   SpriteSheet,
   WorkAreaRing,
 } from '@open-northland/render';
-import type { EquipPickEntry, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
+import type {
+  EquipPickEntry,
+  PlayerCommand,
+  TradeOffer,
+  TraderView,
+  WorldSnapshot,
+} from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
@@ -58,6 +64,9 @@ export interface UnitControlsOptions {
   /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent leaves the equipment
    *  panel's plus/swap buttons inert. */
   readonly equipPickList?: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
+  /** The sim's trader read seams (`Simulation.traderView` / `tradeOffersAt`); absent hides trade. */
+  readonly traderView?: (entity: number) => TraderView | undefined;
+  readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;

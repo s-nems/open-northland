@@ -67,6 +67,7 @@ export {
   isScoutJob,
   isSeaJob,
   isSoldierJob,
+  isTraderJob,
   jobIgnoresHomeHouse,
   jobNeedsReligion,
   scoutJobType,

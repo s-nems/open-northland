@@ -331,5 +331,6 @@ export const societyContent = {
     },
     { typeId: 5, id: 'carrier_general', name: 'carrier general', jobType: 36, experienceFactor: 50 },
     { typeId: 6, id: 'carrier_24_general', name: 'carrier general', jobType: 24, experienceFactor: 50 },
+    { typeId: 63, id: 'trader_general', name: 'trader general', jobType: 25, experienceFactor: 100 },
   ],
 };

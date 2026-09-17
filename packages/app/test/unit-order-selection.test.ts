@@ -60,6 +60,7 @@ const nodeTile = (node: { hx: number; hy: number }): Tile => ({ col: node.hx, ro
 /** Nothing is pickable under the cursor, so every click resolves to open ground. */
 const targets: UnitTargets = {
   owned: () => [],
+  buildings: () => [],
   enemies: () => [],
   flags: () => [],
   signposts: () => [],

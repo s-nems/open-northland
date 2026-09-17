@@ -62,7 +62,7 @@ through `FogState` like the vision system's own stamps. A scripted map declares 
 with `setMatchParticipants` in script-victory mode: death checks run for even one seat, while only
 script results award victory. The default elimination mode preserves the skirmish rule.
 
-The tribute table is the one player table a seat command reads and writes: `tributes.ts` counts and
+The tribute table is the one player table of this module a seat command reads and writes: `tributes.ts` counts and
 drains the payer's houses through the same stock seams the goods results use, and the command system
 hands `payTribute` to it. The window's read of the table is the `Simulation` probe, never the component.
 

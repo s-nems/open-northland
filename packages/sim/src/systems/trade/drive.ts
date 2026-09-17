@@ -1,0 +1,331 @@
+import { BUILDING_KIND } from '@open-northland/data';
+import {
+  Building,
+  cartAmount,
+  cartEntries,
+  cartLoad,
+  Position,
+  TRADE_CART_SLOTS,
+  TRADE_ROUTE_HOUSES,
+  type TradeAgreement,
+  TradeRoute,
+  type TradeRouteView,
+  type TradeStop,
+} from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
+import { ONE } from '../../core/fixed.js';
+import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
+import type { ContentContext, SystemContext } from '../context.js';
+import { countsAsOwnStock, roomFor, stockOf, typeStoresGood } from '../missions/stock.js';
+import { atomicDuration } from '../readviews/animations.js';
+import { edibleGoodFormOf, isFood } from '../readviews/food.js';
+import { isTraderJob } from '../readviews/jobs.js';
+import { atOrWalk, collectAtomicOf, PILEUP_ATOMIC_ID, startAtomic } from '../settlers/atomics/start.js';
+import type { PlannerContext } from '../settlers/planner/context.js';
+import { interactionCell } from '../settlers/targets/index.js';
+import { mayFetchGoodFrom } from '../stores/index.js';
+import { activeAgreement } from './agreements.js';
+import { sameFoodClass } from './goods.js';
+
+/** What the trader does next at its current stop. */
+type TradeAction =
+  | { readonly kind: 'load'; readonly good: number }
+  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity | null }
+  | { readonly kind: 'next' }
+  | { readonly kind: 'wait' };
+
+const NEXT: TradeAction = { kind: 'next' };
+const WAIT: TradeAction = { kind: 'wait' };
+
+/**
+ * TRADER - a trader with a valid route works it: at each stop it unloads what the stop takes and loads
+ * what the other stop wants, then walks over. Between the player's own houses the import marks decide
+ * what moves; at a foreign house the chosen agreement does, give first, then take. A trader with fewer
+ * than two standing houses, or a foreign stop with no valid agreement, is left to the idle rungs.
+ * Reading of the original's trader task; the cart is intrinsic here (see `TRADE_CART_SLOTS`).
+ */
+export function planTrader(plan: PlannerContext): boolean {
+  const { world, ctx, entity: e } = plan;
+  if (!isTraderJob(ctx.content, plan.jobType)) return false;
+  const route = world.tryGet(e, TradeRoute);
+  if (route === undefined) return false;
+  if (!dropFallenStops(world, e, route)) return false;
+  const live = world.get(e, TradeRoute);
+  if (live.current < 0) world.mut(e, TradeRoute).current = 0;
+  const current = world.get(e, TradeRoute);
+  const stop = current.stops[current.current];
+  const other = current.stops[1 - current.current];
+  if (stop === undefined || other === undefined) return false;
+
+  const action = decide(world, ctx, e, current, stop, other);
+  switch (action.kind) {
+    case 'wait':
+      return false;
+    case 'next': {
+      world.mut(e, TradeRoute).current = 1 - current.current;
+      walkTo(plan, other.house, () => undefined);
+      return true;
+    }
+    case 'load':
+      walkTo(plan, stop.house, () => {
+        const atomicId = collectAtomicOf(world, ctx, stop.house);
+        startAtomic(
+          world,
+          e,
+          atomicId,
+          { kind: 'cartLoad', from: stop.house, goodType: action.good },
+          atomicDuration(ctx.content, plan, atomicId),
+          stop.house,
+        );
+      });
+      return true;
+    case 'unload':
+      walkTo(plan, stop.house, () => {
+        startAtomic(
+          world,
+          e,
+          PILEUP_ATOMIC_ID,
+          { kind: 'cartUnload', store: action.into, goodType: action.good },
+          atomicDuration(ctx.content, plan, PILEUP_ATOMIC_ID),
+          action.into,
+        );
+      });
+      return true;
+  }
+}
+
+function walkTo(plan: PlannerContext, house: Entity, start: () => void): void {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, house, here), start);
+}
+
+/** Drop every stop whose house fell; reports whether a full route is left to work. */
+function dropFallenStops(world: World, e: Entity, route: TradeRouteView): boolean {
+  const standing = route.stops.filter((stop) => isStandingHouse(world, stop.house));
+  if (standing.length !== route.stops.length) {
+    const live = world.mut(e, TradeRoute);
+    live.stops = live.stops.filter((stop) => isStandingHouse(world, stop.house));
+    live.current = -1;
+    live.given = 0;
+    live.received = 0;
+    if (!live.stops.some((stop) => stop.foreign)) live.agreement = -1;
+  }
+  return standing.length === TRADE_ROUTE_HOUSES;
+}
+
+function isStandingHouse(world: World, house: Entity): boolean {
+  if (!world.isAlive(house) || !world.has(house, Position)) return false;
+  const building = world.tryGet(house, Building);
+  return building !== undefined && building.built === ONE;
+}
+
+function decide(
+  world: World,
+  ctx: SystemContext,
+  trader: Entity,
+  route: TradeRouteView,
+  stop: DeepReadonly<TradeStop>,
+  other: DeepReadonly<TradeStop>,
+): TradeAction {
+  if (!stop.foreign && !other.foreign) return decideDomestic(world, ctx, route, stop, other);
+  const agreement = activeAgreement(world, trader, route);
+  if (agreement === undefined) return WAIT;
+  return stop.foreign
+    ? decideExchange(world, ctx, trader, route, stop.house, agreement)
+    : decidePreparation(world, ctx, route, stop.house, agreement);
+}
+
+/**
+ * At the player's own house before a foreign trip: clear the cart of everything but the give good into
+ * the house, then load give goods while the cart has room for the whole exchange and the house has
+ * spare; leave once a batch is aboard. Reading of `an original routine`: the room test keeps
+ * space for the take goods every aboard batch will bring back.
+ */
+function decidePreparation(
+  world: World,
+  ctx: SystemContext,
+  route: TradeRouteView,
+  house: Entity,
+  agreement: DeepReadonly<TradeAgreement>,
+): TradeAction {
+  const stray = cartEntries(route).find(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
+  if (stray !== undefined) return unloadInto(world, ctx, house, stray[0]);
+  const aboard = aboardOfClass(ctx, route, agreement.giveGood);
+  const give = Math.max(1, agreement.giveAmount);
+  const extra = Math.max(0, agreement.takeAmount - agreement.giveAmount);
+  const toCompleteBatch = give - (aboard % give);
+  const roomNeeded = (Math.floor(aboard / give) + 1) * extra + toCompleteBatch;
+  const roomFree = TRADE_CART_SLOTS - cartLoad(route);
+  const stocked = stockedFormAt(world, ctx, house, agreement.giveGood);
+  const foodFromHome =
+    isFood(ctx, agreement.giveGood) && isHome(ctx, world.get(house, Building).buildingType);
+  if (
+    stocked !== undefined &&
+    roomNeeded <= roomFree &&
+    !foodFromHome &&
+    spareOf(world, ctx, house, stocked) >= 1
+  ) {
+    return { kind: 'load', good: stocked };
+  }
+  return aboard >= agreement.giveAmount ? NEXT : WAIT;
+}
+
+/**
+ * At the foreign house: hand the give goods over one by one, then take the agreed goods aboard, then
+ * start over while another batch is aboard; go home when the cart runs out or fills up, or when the
+ * house runs out of the take good mid-batch (what was handed over stays given, as the original's goods
+ * vanish into the house). Approximation: nothing is handed over while the house holds fewer take goods
+ * than one batch pays out, where the original delivers regardless; a trader with only give goods aboard
+ * then waits at the house, one with anything else aboard carries it home first.
+ */
+function decideExchange(
+  world: World,
+  ctx: SystemContext,
+  trader: Entity,
+  route: TradeRouteView,
+  house: Entity,
+  agreement: DeepReadonly<TradeAgreement>,
+): TradeAction {
+  const aboard = aboardOfClass(ctx, route, agreement.giveGood);
+  const stocked = stockedFormAt(world, ctx, house, agreement.takeGood);
+  const onOffer = stocked === undefined ? 0 : stockOf(world, house, stocked);
+  if (route.given < agreement.giveAmount) {
+    if (aboard + route.given < agreement.giveAmount) return NEXT;
+    if (route.given === 0 && onOffer < agreement.takeAmount) {
+      const otherAboard = cartEntries(route).some(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
+      return otherAboard ? NEXT : WAIT;
+    }
+    // The cart holds a dish as its edible, so the unit handed over is whichever aboard good the
+    // agreement's give good matches.
+    const giving = cartEntries(route).find(([good]) => sameFoodClass(ctx, good, agreement.giveGood));
+    const slot = giving === undefined ? undefined : storableFormAt(world, ctx, house, giving[0]);
+    if (giving === undefined || slot === undefined || roomFor(world, ctx, house, slot) <= 0) return NEXT;
+    return { kind: 'unload', good: giving[0], into: house };
+  }
+  if (route.received < agreement.takeAmount) {
+    if (cartLoad(route) >= TRADE_CART_SLOTS) return NEXT;
+    if (stocked === undefined || onOffer <= 0) {
+      resetExchange(world, trader);
+      return NEXT;
+    }
+    return { kind: 'load', good: stocked };
+  }
+  resetExchange(world, trader);
+  return aboard >= agreement.giveAmount
+    ? decideExchange(world, ctx, trader, world.get(trader, TradeRoute), house, agreement)
+    : NEXT;
+}
+
+/** The units aboard that answer for `good`: the good itself, or a dish's edible form of its class. */
+function aboardOfClass(ctx: ContentContext, route: TradeRouteView, good: number): number {
+  let total = 0;
+  for (const [aboard, amount] of cartEntries(route)) if (sameFoodClass(ctx, aboard, good)) total += amount;
+  return total;
+}
+
+function resetExchange(world: World, trader: Entity): void {
+  const live = world.mut(trader, TradeRoute);
+  live.given = 0;
+  live.received = 0;
+}
+
+/**
+ * Between the player's own houses: unload what this stop takes, else load the good the other stop is
+ * shortest of relative to this one. A good moves only where an import mark admits it, or anywhere while
+ * no mark is set on either stop, and food is never taken out of a home (reading). Approximations: the
+ * original ranks candidates by the houses' request counters too, which this build does not keep, so
+ * ties go to the lowest good id; and it keeps "home enhancer" goods out of a home, a good class the
+ * content does not flag.
+ */
+function decideDomestic(
+  world: World,
+  ctx: SystemContext,
+  route: TradeRouteView,
+  stop: DeepReadonly<TradeStop>,
+  other: DeepReadonly<TradeStop>,
+): TradeAction {
+  const unmarked = stop.imports.length === 0 && other.imports.length === 0;
+  const admits = (at: DeepReadonly<TradeStop>, good: number): boolean =>
+    unmarked || at.imports.includes(good) || at.imports.includes(edibleGoodFormOf(ctx.content, good));
+  const hereType = world.get(stop.house, Building).buildingType;
+
+  // Aboard goods go to the stop that is shorter of them (reading of the original's unload score,
+  // `(aboard + other - here) / 2`), so what was just loaded for the other stop stays aboard.
+  for (const [good, aboard] of cartEntries(route)) {
+    if (!admits(stop, good)) continue;
+    const slot = storableFormAt(world, ctx, stop.house, good);
+    if (slot === undefined || roomFor(world, ctx, stop.house, slot) <= 0) continue;
+    const there = storableFormAt(world, ctx, other.house, good);
+    const shortfall =
+      (there === undefined ? 0 : stockOf(world, other.house, there)) - stockOf(world, stop.house, slot);
+    if (Math.floor((aboard + shortfall) / 2) > 0 || there === undefined) {
+      return { kind: 'unload', good, into: stop.house };
+    }
+  }
+
+  if (cartLoad(route) < TRADE_CART_SLOTS) {
+    let best: { good: number; score: number } | undefined;
+    for (const good of ownGoodsOf(ctx, hereType)) {
+      if (!admits(other, good) || (isFood(ctx, good) && isHome(ctx, hereType))) continue;
+      const spare = spareOf(world, ctx, stop.house, good);
+      if (spare <= 0) continue;
+      const carried = edibleGoodFormOf(ctx.content, good);
+      const slot = storableFormAt(world, ctx, other.house, carried);
+      if (slot === undefined || roomFor(world, ctx, other.house, slot) <= 0) continue;
+      const score = Math.floor(
+        (stockOf(world, stop.house, good) - stockOf(world, other.house, slot) - cartAmount(route, carried)) /
+          2,
+      );
+      if (score > 0 && (best === undefined || score > best.score)) best = { good, score };
+    }
+    if (best !== undefined) return { kind: 'load', good: best.good };
+  }
+  return NEXT;
+}
+
+function unloadInto(world: World, ctx: SystemContext, house: Entity, good: number): TradeAction {
+  const slot = storableFormAt(world, ctx, house, good);
+  const into = slot !== undefined && roomFor(world, ctx, house, slot) > 0 ? house : null;
+  return { kind: 'unload', good, into };
+}
+
+function isHome(ctx: ContentContext, buildingType: number): boolean {
+  return contentIndex(ctx.content).buildings.get(buildingType)?.kind === BUILDING_KIND.home;
+}
+
+/** The goods a house type counts as its own stock, ascending: what a trader may take out of it. */
+function ownGoodsOf(ctx: ContentContext, buildingType: number): number[] {
+  const stored = contentIndex(ctx.content).storedGoodsByBuilding.get(buildingType);
+  if (stored === undefined) return [];
+  return [...stored].filter((good) => countsAsOwnStock(ctx, buildingType, good)).sort((a, b) => a - b);
+}
+
+/** The units of `good` a house can give up: its own stock, none of it while its recipe consumes the
+ *  good (the reserve it runs on). Approximation of the original's per-house minimum stock setting. */
+function spareOf(world: World, ctx: SystemContext, house: Entity, good: number): number {
+  const stocked = stockedFormAt(world, ctx, house, good);
+  if (stocked === undefined || !mayFetchGoodFrom(world, ctx, house, stocked)) return 0;
+  return stockOf(world, house, stocked);
+}
+
+/** The good a house answers a request for `good` with out of its own stock: the good itself, else the
+ *  first dish of its edible class the house makes (a bakery gives bread for `food_simple`). */
+function stockedFormAt(world: World, ctx: ContentContext, house: Entity, good: number): number | undefined {
+  const type = world.get(house, Building).buildingType;
+  if (countsAsOwnStock(ctx, type, good)) return good;
+  const index = contentIndex(ctx.content);
+  const stored = index.storedGoodsByBuilding.get(type);
+  if (stored === undefined) return undefined;
+  for (const candidate of [...stored].sort((a, b) => a - b)) {
+    if (countsAsOwnStock(ctx, type, candidate) && sameFoodClass(ctx, candidate, good)) return candidate;
+  }
+  return undefined;
+}
+
+/** The slot a house takes `good` into, on any of its shelves, inputs included; undefined with none. */
+function storableFormAt(world: World, ctx: ContentContext, house: Entity, good: number): number | undefined {
+  const type = world.get(house, Building).buildingType;
+  if (typeStoresGood(ctx, type, good)) return good;
+  const edible = edibleGoodFormOf(ctx.content, good);
+  return edible !== good && typeStoresGood(ctx, type, edible) ? edible : undefined;
+}

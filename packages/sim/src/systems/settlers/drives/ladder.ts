@@ -18,6 +18,7 @@ import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { planTrader } from '../../trade/index.js';
 import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import type { PlannerPass } from '../planner/pass.js';
@@ -175,6 +176,10 @@ function planEconomy(
     planDelivery(plan, load);
     return;
   }
+
+  // A trader works its route above every workplace rung: its houses are its own binding, and it
+  // never operates a craft. With no route to work it falls through to the idle rungs.
+  if (planTrader(plan)) return;
 
   // The field loop sits above the producer rung so a farm that also carries an abstract recipe (real
   // extracted content synthesizes one from `logicproduction`) farms its fields instead of standing

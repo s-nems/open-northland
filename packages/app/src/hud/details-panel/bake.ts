@@ -68,7 +68,11 @@ export function bakePanel(opts: PanelBakeOptions): BakedPanel {
     }
     case 'settler': {
       const draw = mapLayout(view.layout, toDraw);
-      drawSettler(chrome, draw, view.model, ui, hover.action, hover.choiceGood, hover.equipAction, ss);
+      drawSettler(chrome, draw, view.model, ui, hover.action, hover.choiceGood, hover.equipAction, ss, {
+        import: hover.tradeImport,
+        offer: hover.tradeOffer,
+        detach: hover.tradeDetach,
+      });
       break;
     }
     case 'compact':

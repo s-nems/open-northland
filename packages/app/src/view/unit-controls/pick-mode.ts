@@ -11,6 +11,7 @@ import {
   drillPick,
   houseAssignableAt,
   sitePick,
+  tradeHousePick,
 } from './highlights/index.js';
 import type { UnitOrderController } from './orders.js';
 import type { UnitTargets } from './unit-targets.js';
@@ -31,7 +32,7 @@ export type PickMode =
 type ScoutPickKind = 'signpost' | 'explore';
 
 /** The orders that resolve by clicking one of the player's own buildings. */
-export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place';
+export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place' | 'trade-house';
 
 /** The selection-wide orders that resolve against a spot on the ground. */
 type SpotPickKind = 'destination' | 'work-area' | 'attack-move';
@@ -86,6 +87,15 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
     order: (snapshot, settler, building, byType) =>
       sitePick.assignableAt(snapshot, building, settler, byType)
         ? { kind: 'assignBuilder', entity: settler as Entity, site: building as Entity }
+        : null,
+  },
+  // The one building pick that reaches beyond the player's own houses: a trader's exchange happens at
+  // another tribe's house, so every standing house lights up but the ones already on the route.
+  'trade-house': {
+    highlight: (snapshot, settler) => tradeHousePick.highlight(snapshot, settler),
+    order: (snapshot, settler, building) =>
+      tradeHousePick.assignableAt(snapshot, building, settler)
+        ? { kind: 'attachTradeHouse', entity: settler as Entity, house: building as Entity }
         : null,
   },
   'learning-place': {
@@ -191,7 +201,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
 
   const resolveBuilding = (event: MouseEvent, kind: BuildingPickKind, settler: number): boolean => {
     const w = deps.toWorld(event.clientX, event.clientY);
-    const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
+    const candidates = kind === 'trade-house' ? deps.targets.buildings() : deps.targets.owned('building');
+    const building = pickTopAt(candidates, w.x, w.y);
     if (building === null) return false;
     const order = BUILDING_PICKS[kind].order(deps.snapshot(), settler, building, buildingsByType);
     if (order === null) return false;
@@ -241,6 +252,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'home':
       case 'building-site':
       case 'learning-place':
+      case 'trade-house':
         return resolveBuilding(event, mode.kind, mode.settler);
       case 'attack-settler':
         return deps.orders().issueAttackTarget(event, 'settler');

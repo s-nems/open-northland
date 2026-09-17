@@ -31,6 +31,7 @@ export * from './signpost.js';
 export * from './social.js';
 export * from './statistics.js';
 export * from './technology.js';
+export * from './trade.js';
 export * from './training.js';
 export * from './tributes.js';
 export * from './unlocks.js';

@@ -42,6 +42,9 @@ export type UnitTargetKind = 'settler' | 'building';
 export interface UnitTargets {
   /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors. */
   owned(kind?: UnitTargetKind): Pickable[];
+  /** Every standing building drawn this frame, whoever owns it: a trader's route may name another
+   *  tribe's house. */
+  buildings(): Pickable[];
   /** Enemy attack targets - settlers AND buildings of a player the human holds an `enemy` stance
    *  toward. A right-click on one issues an `attackUnit` order (the sim accepts a building target). */
   enemies(): Pickable[];
@@ -121,6 +124,15 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         if (!pickableOwner(ownerOf.get(it.ref))) continue;
         if (livestock.has(it.ref)) continue; // see the livestock note on the memo
         out.push(hitTarget(it, itemKind));
+      }
+      return out;
+    },
+
+    buildings(): Pickable[] {
+      const out: Pickable[] = [];
+      for (const it of deps.drawnItems()) {
+        if (it.kind !== 'building' || !isHitTarget(it)) continue;
+        out.push(hitTarget(it, 'building'));
       }
       return out;
     },

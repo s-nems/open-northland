@@ -1,4 +1,11 @@
-import type { ContentSet, MapAiSeat, MapDiplomacy, MapHumanName, MapScript } from '@open-northland/data';
+import type {
+  ContentSet,
+  MapAiSeat,
+  MapDiplomacy,
+  MapHumanName,
+  MapScript,
+  MapTradeAgreement,
+} from '@open-northland/data';
 import { components, type MissionScript, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
@@ -12,6 +19,8 @@ export interface MapScriptWorld {
   /** The `[AIData]` seat toggles: which computer seats run no strategic modules, or no AI at all. */
   readonly ai?: readonly MapAiSeat[];
   readonly humanNames?: readonly MapHumanName[];
+  /** The map's `tradeagreement` rows, registered before the first tick. */
+  readonly tradeAgreements?: readonly MapTradeAgreement[];
   readonly missions?: MissionScript;
   readonly participants?: readonly number[];
 }
@@ -42,6 +51,7 @@ export function newWorldSim(
   for (const row of diplomacy) {
     sim.enqueueSetup({ kind: 'setDiplomacy', from: row.from, to: row.to, state: row.state });
   }
+  for (const row of script.tradeAgreements ?? []) sim.enqueueSetup({ kind: 'addTradeAgreement', ...row });
   const dropped = diplomacy.filter(
     (r) => !components.isValidPlayer(r.from) || !components.isValidPlayer(r.to),
   ).length;

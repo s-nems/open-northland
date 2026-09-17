@@ -188,6 +188,11 @@ export const plContent = {
       summary:
         'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twoje nastawienie na wrogie, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
     },
+    trade: {
+      title: 'Szlak handlowy',
+      summary:
+        'Neutralny magazyn oferuje cztery żelaza za monetę; kupiec wozi monety z własnego magazynu, przywozi żelazo, a wymienione towary zmieniają nastawienie nacji na przyjazne. Zaznacz kupca, żeby zobaczyć sekcję Handel, a daleki magazyn, żeby zobaczyć umowy.',
+    },
     tribute: {
       title: 'Trybuty',
       summary:

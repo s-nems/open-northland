@@ -100,6 +100,7 @@ export {
   isHunterJob,
   isScoutJob,
   isSoldierJob,
+  isTraderJob,
   scoutJobType,
 } from './readviews/jobs.js';
 export { MILITARY_MODE } from './readviews/stances.js';

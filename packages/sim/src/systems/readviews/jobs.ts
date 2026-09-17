@@ -1,5 +1,5 @@
 import type { ContentSet, JobType } from '@open-northland/data';
-import { isCarrierJobId, isFighterRole, jobRoleOfId } from '../../core/content-index/jobs.js';
+import { isCarrierJobId, isFighterRole, isTraderJobId, jobRoleOfId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 
 /**
@@ -67,6 +67,12 @@ export function jobIgnoresHomeHouse(content: ContentSet, jobType: number | null)
 /** The transport trade, for the same row-holding callers as {@link isFighterJobRow}. */
 export function isCarrierJobRow(job: Pick<JobType, 'id'>): boolean {
   return isCarrierJobId(job.id);
+}
+
+/** The land trader, which runs a trade route instead of a workplace craft. */
+export function isTraderJob(content: ContentSet, jobType: number | null): boolean {
+  const job = jobType === null ? undefined : contentIndex(content).jobs.get(jobType);
+  return job !== undefined && isTraderJobId(job.id);
 }
 
 /** The non-combat explorer that erects signposts. */

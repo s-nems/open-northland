@@ -40,7 +40,7 @@ export interface ConstructionModel {
 }
 
 /** The current holdings of a building's `Stockpile`, as a goodType→amount map. */
-function liveAmounts(stockpile: unknown): Map<number, number> {
+export function liveAmounts(stockpile: unknown): Map<number, number> {
   const live = new Map<number, number>();
   const amounts = (stockpile as { amounts?: unknown } | undefined)?.amounts;
   if (!Array.isArray(amounts)) return live;

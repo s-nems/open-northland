@@ -23,6 +23,12 @@ export interface PanelClickActions {
   readonly onEquipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
   /** Order the worn item in `ref` taken off. */
   readonly onUnequipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
+  /** Enter "add a house to the trade route" pick mode for the selected trader. */
+  readonly onAttachTradeHouse?: (settlerId: number) => void;
+  readonly onDetachTradeHouse?: (settlerId: number, house: number) => void;
+  readonly onSetTradeImport?: (settlerId: number, house: number, goodType: number, on: boolean) => void;
+  /** Trade on the agreement at `agreement` in the map's table; -1 drops the choice. */
+  readonly onSetTradeAgreement?: (settlerId: number, agreement: number) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
   /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product. */
   readonly onSetCraftGoods: (entityId: number, goods: readonly number[]) => void;
@@ -75,6 +81,18 @@ export function applyPanelClick(
       return;
     case 'unassignWorkplace':
       actions.onUnassignWorkplace?.(click.entityId);
+      return;
+    case 'attachTradeHouse':
+      actions.onAttachTradeHouse?.(click.entityId);
+      return;
+    case 'detachTradeHouse':
+      actions.onDetachTradeHouse?.(click.entityId, click.house);
+      return;
+    case 'setTradeImport':
+      actions.onSetTradeImport?.(click.entityId, click.house, click.goodType, click.on);
+      return;
+    case 'setTradeAgreement':
+      actions.onSetTradeAgreement?.(click.entityId, click.agreement);
       return;
     case 'assignHome':
       actions.onAssignHome?.(click.entityId);

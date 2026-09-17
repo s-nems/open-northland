@@ -10,6 +10,7 @@ import {
   equipSlotMetrics,
   layoutEquipRows,
 } from './settler-equipment.js';
+import { layoutTrade, type TradeLayout, tradeBodyHeight } from './settler-trade.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
 type SettlerModel = Extract<UnitPanelModel, { kind: 'settler' }>;
@@ -82,6 +83,8 @@ export interface SettlerLayout {
   /** One rect per `model.bars` entry (same order). */
   readonly bars: readonly Rect[];
   readonly work: SectionRect;
+  /** The Handel section, only for a trader. */
+  readonly trade: TradeLayout | null;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
   readonly workControls: readonly WorkControlRow[];
@@ -137,6 +140,7 @@ export function layoutSettler(
   ];
   const controlsH = controls.length * assignIconSize + (controls.length - 1) * assignRowGap;
   const workBodyH = WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + controlsH;
+  const tradeBodyH = model.trade === null ? 0 : tradeBodyHeight(model.trade, bodyW, s);
   const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
   const { slotsPerLine } = equipSlotMetrics(bodyW, s);
@@ -145,6 +149,7 @@ export function layoutSettler(
   const heights = [generalBodyH, workBodyH, expBodyH, equipBodyH].map(
     (bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h,
   );
+  if (model.trade !== null) heights.push(sectionAt(0, 0, w, tradeBodyH, s).frame.h);
   const gaps = gap * (heights.length - 1);
   const panel = panelRect(heights.reduce((a, b) => a + b, 0) + gaps, screen, s);
 
@@ -214,6 +219,8 @@ export function layoutSettler(
     };
   });
 
+  const trade = model.trade === null ? null : layoutTrade(model.trade, next(tradeBodyH), s);
+
   const experience = next(expBodyH);
   const expRows: Rect[] = Array.from({ length: expRowCount }, (_unused, i) => ({
     x: experience.body.x,
@@ -236,6 +243,7 @@ export function layoutSettler(
     work,
     workRows,
     workControls,
+    trade,
     gatherChoiceHits,
     craftChoiceHits,
     experience,

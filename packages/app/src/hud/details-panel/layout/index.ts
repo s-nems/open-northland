@@ -1,6 +1,7 @@
 import type { Rect } from '../../geometry.js';
 import type { BuildingLayout, ButtonHit } from './building.js';
 import type { SettlerLayout } from './settler.js';
+import { mapTradeLayout } from './settler-trade.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
 
 export {
@@ -28,6 +29,13 @@ export {
   type EquipSlotRef,
   equipActionKey,
 } from './settler-equipment.js';
+export {
+  type TradeImportHit,
+  type TradeLayout,
+  type TradeOfferHit,
+  type TradeStopLayout,
+  tradeButtons,
+} from './settler-trade.js';
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 
 /** The multi-select / generic views: one section window with a single hint row. */
@@ -80,6 +88,8 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       stock: layout.stock ? sec(layout.stock) : null,
       stockTabHits: layout.stockTabHits.map(fn),
       workers: sec(layout.workers),
+      offers: layout.offers ? sec(layout.offers) : null,
+      offerRows: layout.offerRows.map(fn),
     };
   }
   if (layout.kind === 'settler') {
@@ -105,6 +115,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       equipment: sec(layout.equipment),
       equipRows: layout.equipRows.map((r) => ({ label: fn(r.label), slots: r.slots.map(fn) })),
       equipActionHits: layout.equipActionHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
+      trade: layout.trade === null ? null : mapTradeLayout(layout.trade, fn),
     };
   }
   if (layout.kind === 'signpost') {

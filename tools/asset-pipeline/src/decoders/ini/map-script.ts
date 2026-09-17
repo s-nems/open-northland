@@ -12,6 +12,7 @@ import {
   MapScript,
   type MapScriptLine,
 } from '@open-northland/data';
+import { GOOD_TYPE_CODES } from './good-type-codes.js';
 import type { RuleProp, RuleSection } from './grammar.js';
 import { HOUSE_TYPE_CODES } from './house-type-codes.js';
 import { makeSource, type SourceRef } from './ir-fields.js';
@@ -23,7 +24,6 @@ import { codeOf } from './props.js';
  * mixed case (`#PLAYER_TYPE_human`, `#TRIBE_TYPE_HUMAN_viking`).
  */
 const MACRO_CODES: Readonly<Record<string, number>> = {
-  GOOD_TYPE_SPEAR_WOODEN: 39,
   PLAYER_TYPE_NONE: 0,
   PLAYER_TYPE_HUMAN: 1,
   PLAYER_TYPE_AI: 2,
@@ -58,6 +58,7 @@ const MACRO_CODES: Readonly<Record<string, number>> = {
   SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_A_JOB: 5,
   SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_GOOD: 6,
   ...HOUSE_TYPE_CODES,
+  ...GOOD_TYPE_CODES,
 };
 
 const PERMISSION_KINDS: Readonly<Record<string, 'job' | 'house' | 'good'>> = {
@@ -237,6 +238,27 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
   return out;
 }
 
+/** `tradeagreement <houseId> <giveGood> <giveAmount> <takeGood> <takeAmount>`; a row short of five
+ *  resolvable numbers is dropped, as the engine's own reader skips it. */
+function tradeAgreementRow(p: RuleProp): MapScript['tradeAgreements'][number] | undefined {
+  if (p.key !== 'tradeagreement') return undefined;
+  const [missionId, giveGood, giveAmount, takeGood, takeAmount] = p.values.map(code);
+  if (
+    missionId === undefined ||
+    giveGood === undefined ||
+    giveAmount === undefined ||
+    takeGood === undefined ||
+    takeAmount === undefined ||
+    giveGood < 0 ||
+    takeGood < 0 ||
+    giveAmount < 0 ||
+    takeAmount < 0
+  ) {
+    return undefined;
+  }
+  return { missionId, giveGood, giveAmount, takeGood, takeAmount };
+}
+
 /** One `setname <humanId> <stringId>` row, or undefined when either id is malformed. */
 function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined {
   if (p.key !== 'setname') return undefined;
@@ -262,6 +284,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const ai: MapAiSeat[] = [];
   const misc: NonNullable<MapScript['misc']> = [];
   const humanNames: NonNullable<MapScript['humanNames']> = [];
+  const tradeAgreements: NonNullable<MapScript['tradeAgreements']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
   let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
   for (const sec of sections) {
@@ -288,6 +311,11 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       for (const p of sec.props) {
         const row = humanNameRow(p);
         if (row !== undefined) humanNames.push(row);
+      }
+    } else if (name === 'misc_tradeagreement') {
+      for (const p of sec.props) {
+        const row = tradeAgreementRow(p);
+        if (row !== undefined) tradeAgreements.push(row);
       }
     } else if (name === 'playerdata') {
       for (const p of sec.props) {
@@ -325,7 +353,13 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     }
   }
   const playerLines = players.length + diplomacy.length + specialItems.length + misc.length;
-  const scripted = playerLines + missions.length + humanNames.length + permissions.length + ai.length;
+  const scripted =
+    playerLines +
+    missions.length +
+    humanNames.length +
+    permissions.length +
+    ai.length +
+    tradeAgreements.length;
   if (scripted === 0 && multiplayer === undefined) return undefined;
   return MapScript.parse({
     players,
@@ -336,6 +370,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     specialItems,
     misc,
     humanNames,
+    tradeAgreements,
     missions,
     // Provenance names the section the payload actually came from, not a fixed `playerdata`.
     source: makeSource(

@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
-import { declaresNoTrades, isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
+import { declaresNoTrades, isHeroJob, isScoutJob, isSoldierJob, isTraderJob } from '../readviews/index.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
@@ -125,6 +125,16 @@ export function grantProductionExperience(
 export function grantCarryExperience(world: World, ctx: SystemContext, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
   if (s === undefined || s.jobType === null || !isCarrierJob(ctx, s.jobType)) return;
+  const track = generalTrackFor(ctx, s.jobType);
+  if (track === undefined) return;
+  accrueTrack(world, settler, track);
+}
+
+/** The trader's twin of {@link grantCarryExperience}: one landed cart delivery accrues the `trader
+ *  general` track (reading: the original's trader gains job experience on each delivery). */
+export function grantTradeExperience(world: World, ctx: SystemContext, settler: Entity): void {
+  const s = world.tryGet(settler, Settler);
+  if (s === undefined || s.jobType === null || !isTraderJob(ctx.content, s.jobType)) return;
   const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return;
   accrueTrack(world, settler, track);

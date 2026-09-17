@@ -3,6 +3,7 @@ import { isPlainRecord, valueShapeName } from '../plain-value.js';
 import type { AssistantCommand } from './assistant.js';
 import type { Command } from './index.js';
 import type { PlayerPlacementCommand } from './placement.js';
+import type { TradeCommand } from './trade.js';
 import type { TributeCommand } from './tribute.js';
 import type { UnitOrderCommand } from './unit-orders.js';
 
@@ -10,7 +11,12 @@ import type { UnitOrderCommand } from './unit-orders.js';
 export const COMMAND_ENVELOPE_VERSION = 1;
 
 /** The commands a seat may issue for itself; {@link COMMAND_ISSUER} is the full split. */
-export type PlayerCommand = PlayerPlacementCommand | UnitOrderCommand | AssistantCommand | TributeCommand;
+export type PlayerCommand =
+  | PlayerPlacementCommand
+  | UnitOrderCommand
+  | AssistantCommand
+  | TributeCommand
+  | TradeCommand;
 
 /** A command plus the authority it was issued under - the serializable external input the sim accepts. */
 export type CommandEnvelope = SeatEnvelope | TrustedEnvelope;
@@ -64,6 +70,8 @@ export const COMMAND_ISSUER: {
   assignBuilder: 'seat',
   assignHouse: 'seat',
   assignWorker: 'seat',
+  attachTradeHouse: 'seat',
+  addTradeAgreement: 'trusted',
   attackMoveUnit: 'seat',
   attackUnit: 'seat',
   cancelTraining: 'seat',
@@ -74,6 +82,8 @@ export const COMMAND_ISSUER: {
   debugSetNeeds: 'trusted',
   demolish: 'seat',
   demolishSignpost: 'seat',
+  detachTradeHouse: 'seat',
+  clearTradeImports: 'seat',
   dropGood: 'trusted',
   equipGood: 'seat',
   exploreArea: 'seat',
@@ -105,6 +115,8 @@ export const COMMAND_ISSUER: {
   setRegeneration: 'seat',
   setSignpostNavigation: 'trusted',
   setStance: 'seat',
+  setTradeAgreement: 'seat',
+  setTradeImport: 'seat',
   setWorkFlag: 'seat',
   spawnAnimalHerd: 'trusted',
   spawnSettler: 'trusted',

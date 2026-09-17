@@ -11,3 +11,4 @@ export {
   houseAssignableAt,
 } from './house-highlight.js';
 export { drillPick, type OwnBuildingPick, sitePick } from './own-building-picks.js';
+export { tradeHousePick } from './trade-house-pick.js';

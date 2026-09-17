@@ -25,6 +25,11 @@ export type AtomicEffect =
       readonly from: Entity | null;
     }
   | { readonly kind: 'pileup'; readonly store: Entity }
+  /** A trader lifts one unit of `goodType` off `from`'s shelf into its cart. */
+  | { readonly kind: 'cartLoad'; readonly from: Entity; readonly goodType: number }
+  /** A trader sets one unit of `goodType` out of its cart onto `store`'s shelf, or onto the ground at
+   *  its feet with `store` null. */
+  | { readonly kind: 'cartUnload'; readonly store: Entity | null; readonly goodType: number }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
   /** A consumer worker draws one unit of `goodType` from the input-less shared utility `utility` (a well
    *  for water, a hive for honey) onto its back. The utility mints from no inputs, so the draw creates

@@ -17,6 +17,7 @@ function script(over: Partial<MapScript> = {}): MapScript {
     specialItems: [],
     misc: [],
     humanNames: [],
+    tradeAgreements: [],
     missions: [],
     ...over,
   };

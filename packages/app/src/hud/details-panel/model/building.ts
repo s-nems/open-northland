@@ -52,4 +52,6 @@ export interface BuildingPanelModel {
   /** Material cost of the upgrade target tier; empty unless `upgradable`. */
   readonly upgradeBlockedReason?: string | null;
   readonly upgradeCost: readonly UpgradeCostRow[];
+  /** The map's trade agreements this house offers a visiting trader, as text rows; empty for most. */
+  readonly tradeOffers: readonly string[];
 }

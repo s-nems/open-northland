@@ -1,0 +1,75 @@
+import { messages } from '../../../i18n/index.js';
+import type { Rect } from '../../geometry.js';
+import type { Chrome } from '../chrome.js';
+import { type ButtonAction, ROW_TEXT_PAD, type TradeLayout } from '../layout/index.js';
+import type { TradePanelModel } from '../model/index.js';
+
+/** Inset of a good icon inside its round import-mark button, so the pile clears the rim. */
+const IMPORT_ICON_PAD = 3;
+
+/**
+ * Handel: one row per stop (detach button + house name) over that stop's import marks, the attach row
+ * while a stop is free, the foreign house's agreements (the chosen one lit), and the status lines. The
+ * layout is authored; the original configures a trader through its own window.
+ */
+export function drawTradeSection(
+  chrome: Chrome,
+  layout: TradeLayout,
+  model: TradePanelModel,
+  hoverAction: ButtonAction | null,
+  hovered: {
+    readonly import: { readonly house: number; readonly goodType: number } | null;
+    readonly offer: number | null;
+    readonly detach: number | null;
+  },
+  s: number,
+): void {
+  const hud = messages().hud;
+  chrome.window(layout.section.frame);
+  chrome.headline(layout.section.title, hud.trade);
+  const iconPad = Math.round(IMPORT_ICON_PAD * s);
+  const drawIcon = (rect: Rect, goodId: string | undefined, active: boolean): void => {
+    chrome.roundButton(rect, true, active);
+    const face: Rect = {
+      x: rect.x + iconPad,
+      y: rect.y + iconPad,
+      w: rect.w - 2 * iconPad,
+      h: rect.h - 2 * iconPad,
+    };
+    if (goodId !== undefined) chrome.goodIcon(goodId, face);
+    else chrome.glyphAll(face);
+  };
+
+  layout.stops.forEach((stop, i) => {
+    const stopModel = model.stops[i];
+    chrome.textLeftMiddle(stopModel?.label ?? '', stop.label.x, stop.label.y + stop.label.h / 2, 'white');
+    chrome.roundButton(stop.detach.rect, stop.detach.enabled, hovered.detach === stop.house);
+    chrome.glyphHouse(stop.detach.rect, stop.detach.enabled);
+    for (const hit of stop.imports) {
+      const lit = hovered.import?.house === hit.house && hovered.import.goodType === hit.goodType;
+      drawIcon(hit.rect, hit.goodId, hit.selected || lit);
+    }
+  });
+  if (layout.attach !== null) {
+    const { button, label } = layout.attach;
+    chrome.textLeftMiddle(hud.tradeAttachHouse, label.x, label.y + label.h / 2, 'white');
+    chrome.roundButton(button.rect, button.enabled, hoverAction === 'attach-trade-house');
+    chrome.glyphHouse(button.rect, button.enabled);
+  }
+  for (const offer of layout.offers) {
+    const lit = offer.selected || offer.index === hovered.offer;
+    if (lit) chrome.scrim(offer.rect, 0.25);
+    chrome.textLeftMiddle(
+      offer.label,
+      offer.rect.x,
+      offer.rect.y + offer.rect.h / 2,
+      offer.selected ? 'white' : 'dimmed',
+      'body',
+      offer.rect.w,
+    );
+  }
+  layout.statusRows.forEach((row, i) => {
+    const line = model.status[i];
+    if (line !== undefined) chrome.textAt(line, row.x, row.y + ROW_TEXT_PAD * s, 'dimmed');
+  });
+}

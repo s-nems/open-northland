@@ -22,6 +22,7 @@ interface MountedUnitChrome {
 export interface UnitChromeCallbacks {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
+  readonly attachTradeHouse: (id: number) => void;
   readonly selectEntity: (id: number) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   /** The GUI click feedback the ring's and the panel's buttons press with. */
@@ -88,6 +89,15 @@ export async function createUnitChrome(
       onAssignHome: callbacks.assignHome,
       onUnassignWorkplace: (id) => opts.enqueue({ kind: 'unassignWorker', entity: id as Entity }),
       onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
+      onAttachTradeHouse: callbacks.attachTradeHouse,
+      onDetachTradeHouse: (id, house) =>
+        opts.enqueue({ kind: 'detachTradeHouse', entity: id as Entity, house: house as Entity }),
+      onSetTradeImport: (id, house, good, on) =>
+        opts.enqueue({ kind: 'setTradeImport', entity: id as Entity, house: house as Entity, good, on }),
+      onSetTradeAgreement: (id, agreement) =>
+        opts.enqueue({ kind: 'setTradeAgreement', entity: id as Entity, agreement }),
+      ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
+      ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
       onSetGatherGood: (id, goodType) =>
         opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
       onSetCraftGoods: (id, goods) =>

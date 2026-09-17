@@ -229,7 +229,7 @@ trade ledger); the rest no map writes.
 | 39 | `GoodProduceable` | 1, 3, 6 | the good is produceable for the player's tribe | 150 |
 | 40 | `NumberOfHumansDied` | 1, 7 | at least `amount` humans of the player have died | 118 |
 | 41 | `FindAnimals` | 1, 14 | any animal with the id stands on a point explored by the player | 8 |
-| 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player traded at least `amount` goods with the second | 3 \* |
+| 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player's traders have taken at least `amount` goods aboard out of the second player's houses under a trade agreement (reading of the merchant task's tally) | 3 |
 | 43 | `HumanAttachedToWorkHouse` | 1, 4, 7 | at least `amount` humans of the player with the job are attached to a workplace | 17 |
 | 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` wild animals of the species | 0 \* |
 | 45 | `RandomTimeGone` | 35 | a random `[n/2, n)` seconds have passed since activation | 28 |
@@ -568,14 +568,45 @@ A reading of the tribute manager, which the goal `PayTribute` and results 27, 28
 - `PayTribute n` holds when slot `n` is active and paid.
 - This build keeps the table in `components/tributes.ts`, pays it through the `payTribute` seat
   command (`systems/missions/tributes.ts`) and lists it in the diplomacy window, with the same rule
-  and drain order over finished storages then workplaces, each ascending by entity id
-  (approximation: no house type is drained first, since no content role marks the headquarters); the
+  and drain order: the first finished headquarters (the `headquarters` content id), then the other
+  finished storages, then the finished workplaces, each group ascending by entity id; the
   food class is the dish table of `readviews/food.ts`. Two demands a house meets with the same
   stocked good share that stock here, where the original lets each see the full stock, drains what
   it can and leaves the slot unpaid with the goods gone (deviation). The seat command is admitted
   only for the slot's payer, and only while the slot is open, unpaid and payable. The window lists
   all 44 slots where the original's walks 40 (unreachable in the corpus), under a discovered roster
   player, which every corpus receiver is.
+
+## Trade agreements
+
+A reading of the merchant array and the trader task, which the goal `NumberOfGoodsTraded` reads.
+
+- `[misc_tradeagreement]` in `misc.inc` holds `tradeagreement <houseId> <give> <n> <take> <m>` rows:
+  at every house placed with mission object id `houseId`, a visiting trader hands over `n` of the
+  `GOOD_TYPE_*` `give` for `m` of `take`. The loader keeps a row only for a house whose owner is
+  neither a human nor a computer player (the neutral trading nation), one entry per house the id
+  stamps, and stops at 60 entries. The corpus authors 300 rows over 35 maps; a house can offer several.
+- A trader (`jobtypes.ini` 25; `trader_sea` 26 has an empty task and never works) commands a cart
+  vehicle and holds a route of two houses (`AttachTradeHouse` / `DetachTradeHouse`), each with
+  per-good import marks the player toggles, and one chosen agreement. At an own house before a
+  foreign trip it unloads everything but the give good, then loads give goods while the cart keeps
+  room for the take goods every aboard batch brings back and the house has spare above its minimum;
+  at the foreign house it hands one batch over unit by unit, then loads the take goods, then repeats
+  while another batch is aboard. The agreement holds only while the trader's player is `friend`
+  toward the house's owner. Between two own houses a good moves where a mark admits it, or anywhere
+  while no mark is set on either house, toward the house that is shorter of it. Every unit loaded out
+  of the foreign house adds one to the player's tally with the house's owner, which the goal compares.
+- This build registers the rows through the `addTradeAgreement` setup command
+  (`components/trade.ts`), resolves the house by its mission object id at use, gates on a house
+  whose owner is no match participant when a match is set up, and runs the trader through the
+  planner's trade rung (`systems/trade/`). Approximations: the cart is part of the trader, a 15-unit
+  hold (the handcart's `stockslots`) rather than a built vehicle; a house's minimum stock is its
+  recipe inputs; the import-mark ranking by request counters is a plain surplus comparison; nothing
+  is handed over while the house holds fewer take goods than a batch pays out, where the original
+  delivers regardless; a chosen agreement that stops holding is kept and waited on, where the
+  original's merchant drops its choice. The table holds rows and resolves their houses live, so a
+  row several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
+  saved with the game.
 
 ## On-screen info lines
 

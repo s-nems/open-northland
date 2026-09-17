@@ -73,6 +73,9 @@ function hasAuthoredOptions(command: PlaceBuildingCommand): boolean {
  * it. `attackUnit.target` is deliberately not one of these - an attack names someone else's unit.
  */
 function assetTargetOf(command: PlayerCommand): Entity | undefined {
+  // A trade route names the other side's house on purpose: the exchange happens at it.
+  if (command.kind === 'attachTradeHouse' || command.kind === 'detachTradeHouse') return undefined;
+  if (command.kind === 'setTradeImport') return undefined;
   if ('building' in command) return command.building;
   if ('site' in command) return command.site;
   if ('house' in command) return command.house;

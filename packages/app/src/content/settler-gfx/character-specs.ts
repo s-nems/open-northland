@@ -51,6 +51,7 @@ import {
   JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+  JOB_TRADER,
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
 import { WEAPON_GOOD_SLUG_BY_JOB } from '../../game/sandbox/ids/weapons.js';
@@ -130,6 +131,33 @@ export interface CharacterSpec {
   readonly engaged?: { readonly moving?: string; readonly idle?: string };
 }
 
+/** The generic man body's action sequences, shared by every civilian trade it draws. */
+const CIVILIAN_ATOMICS = {
+  [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
+  [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
+  [CLAY_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ },
+  [IRON_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
+  [GOLD_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
+  [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ },
+  [WHEAT_HARVEST_ATOMIC]: { seq: REAP_SEQ },
+  [HERB_HARVEST_ATOMIC]: { seq: REAP_SEQ },
+  [PLANT_ATOMIC]: { seq: SOW_SEQ },
+  [CULTIVATE_ATOMIC]: { seq: WATER_SEQ },
+  [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+  [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
+  [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
+  [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
+  [KISS_ATOMIC]: { seq: 'human_man_generic_kiss' },
+  [KISSED_ATOMIC]: { seq: 'human_man_generic_kiss' },
+  [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
+  [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
+  [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
+  [OPEN_CHEST_ATOMIC]: { seq: PICKUP_SEQ },
+  [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
+  [WELL_DRAW_ATOMIC]: { seq: ['human_man_fountain_push', PICKUP_SEQ], loop: true },
+  [HIVE_DRAW_ATOMIC]: { seq: PICKUP_SEQ, loop: true },
+} as const;
+
 /** Specs for every look, keyed by the id the job tables reference. `satisfies` keeps those keys literal, so
  *  a typo'd spec id in a job table is a compile error rather than a silent fall-to-default. */
 export const CHARACTER_SPECS = {
@@ -144,31 +172,19 @@ export const CHARACTER_SPECS = {
     // The atomics this body authors a sequence for; their frame lists come from the collector/farmer/herb
     // jobs 8, 18 and 29 and the generic job-6 rows. The pick-up bend serves the deposit too, since the body
     // authors no separate put-down.
-    atomics: {
-      [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
-      [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
-      [CLAY_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ },
-      [IRON_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
-      [GOLD_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
-      [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ },
-      [WHEAT_HARVEST_ATOMIC]: { seq: REAP_SEQ },
-      [HERB_HARVEST_ATOMIC]: { seq: REAP_SEQ },
-      [PLANT_ATOMIC]: { seq: SOW_SEQ },
-      [CULTIVATE_ATOMIC]: { seq: WATER_SEQ },
-      [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
-      [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
-      [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
-      [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
-      [KISS_ATOMIC]: { seq: 'human_man_generic_kiss' },
-      [KISSED_ATOMIC]: { seq: 'human_man_generic_kiss' },
-      [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
-      [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
-      [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
-      [OPEN_CHEST_ATOMIC]: { seq: PICKUP_SEQ },
-      [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
-      [WELL_DRAW_ATOMIC]: { seq: ['human_man_fountain_push', PICKUP_SEQ], loop: true },
-      [HIVE_DRAW_ATOMIC]: { seq: PICKUP_SEQ, loop: true },
-    },
+    atomics: CIVILIAN_ATOMICS,
+  },
+  // The trader pulls its cart (`human_man_z00Trader_walk`, the handcart gait the original binds to the
+  // trader job's action 2); everything else is the generic man body. Approximation: the original draws
+  // the plain walk until the trader commands a cart, which here it always does.
+  trader: {
+    gfxJobs: [JOB_TRADER, JOB_CIVILIST],
+    logicJob: JOB_CIVILIST,
+    walkSeq: 'human_man_z00Trader_walk',
+    waitSeq: 'human_man_generic_wait',
+    carryPrefix: 'human_man_generic_walk_',
+    attack: 'human_man_Civilian_Fight_punch',
+    atomics: CIVILIAN_ATOMICS,
   },
   scout: {
     // The hatted scout record (viking `logicjob 27` binds `cr_hum_body_00` + heads 80..83); a tribe
@@ -454,6 +470,7 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
   [JOB_SCOUT]: 'scout',
   [JOB_HUNTER]: 'hunter',
   [JOB_FISHER]: 'fisher',
+  [JOB_TRADER]: 'trader',
   [JOB_SOLDIER_UNARMED]: 'warrior',
   [JOB_SOLDIER_SPEAR_WOODEN]: 'warrior-spear',
   [JOB_SOLDIER_SPEAR]: 'warrior-spear',

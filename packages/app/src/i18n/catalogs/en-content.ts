@@ -187,6 +187,11 @@ export const enContent = {
       summary:
         'First contact under fog: the ally beside you is known at once, a one-way aggressor reveals itself by its blow and turns you hostile, and a tribe never seen stays off the diplomacy window.',
     },
+    trade: {
+      title: 'Trade route',
+      summary:
+        'A neutral warehouse offers four iron for a coin; the trader carts coins over from the home warehouse, brings the iron back, and the goods traded turn the nation friendly. Select the trader for its Handel section, and the far warehouse for its agreements.',
+    },
     tribute: {
       title: 'Tributes',
       summary:

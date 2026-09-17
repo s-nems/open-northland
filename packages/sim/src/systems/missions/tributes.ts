@@ -13,6 +13,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
+import { HEADQUARTERS_BUILDING_ID } from '../readviews/buildings.js';
 import { edibleClassOf, edibleGoodFormOf } from '../readviews/food.js';
 import { countsAsOwnStock, stockOf, takeStock } from './stock.js';
 
@@ -38,24 +39,28 @@ interface PayingHouse {
 const byEntity = (a: PayingHouse, b: PayingHouse): number => a.entity - b.entity;
 
 /**
- * The payer's finished storages, then its finished workplaces, each ascending by id: the houses a
- * tribute is counted over and drained from, in that order. Approximation: the original drains its
- * headquarters type before the other storages.
+ * The payer's finished houses in the order a tribute is counted over and drained from: its first
+ * headquarters, then its other storages, then its workplaces, each group ascending by id (reading of
+ * the original's payment, which takes the headquarters type first, then every warehouse, then every
+ * workplace in array order).
  */
 function payingHouses(world: World, ctx: ContentContext, payer: number): PayingHouse[] {
+  const headquarters: PayingHouse[] = [];
   const storages: PayingHouse[] = [];
   const workplaces: PayingHouse[] = [];
   const buildings = contentIndex(ctx.content).buildings;
   for (const entity of world.query(Building, Stockpile)) {
     const building = world.get(entity, Building);
     if (building.built !== ONE || ownerOf(world, entity) !== payer) continue;
-    const kind = buildings.get(building.buildingType)?.kind;
-    if (kind === BUILDING_KIND.storage) storages.push({ entity, buildingType: building.buildingType });
-    else if (kind === BUILDING_KIND.workplace) {
-      workplaces.push({ entity, buildingType: building.buildingType });
-    }
+    const type = buildings.get(building.buildingType);
+    const house = { entity, buildingType: building.buildingType };
+    if (type?.kind === BUILDING_KIND.storage) {
+      (type.id === HEADQUARTERS_BUILDING_ID ? headquarters : storages).push(house);
+    } else if (type?.kind === BUILDING_KIND.workplace) workplaces.push(house);
   }
-  return storages.sort(byEntity).concat(workplaces.sort(byEntity));
+  const first = headquarters.sort(byEntity).slice(0, 1);
+  const rest = headquarters.slice(1).concat(storages).sort(byEntity);
+  return first.concat(rest, workplaces.sort(byEntity));
 }
 
 /**

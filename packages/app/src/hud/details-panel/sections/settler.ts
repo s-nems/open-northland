@@ -13,6 +13,7 @@ import {
   type WorkControlAction,
 } from '../layout/index.js';
 import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
+import { drawTradeSection } from './settler-trade.js';
 
 /** Key column width of a key/value row. */
 const KV_KEY_W = 82;
@@ -40,9 +41,17 @@ export function drawSettler(
   hoveredGatherGood: number | null | undefined,
   hoveredEquipAction: string | null,
   s: number,
+  hoveredTrade: {
+    import: { house: number; goodType: number } | null;
+    offer: number | null;
+    detach: number | null;
+  },
 ): void {
   drawGeneralSection(chrome, layout, model, s);
   drawWorkSection(chrome, layout, model, ui, hoverAction, hoveredGatherGood, s);
+  if (layout.trade !== null && model.trade !== null) {
+    drawTradeSection(chrome, layout.trade, model.trade, hoverAction, hoveredTrade, s);
+  }
   drawExperienceSection(chrome, layout, model, ui, s);
   drawEquipmentSection(chrome, layout, model, ui, hoveredEquipAction, s);
 }
