@@ -4,6 +4,7 @@ import {
   Building,
   DefenceMode,
   JobAssignment,
+  NoRegeneration,
   Owner,
   Position,
   Settler,
@@ -515,7 +516,7 @@ describe('ai defence - the soldier list', () => {
     return commands.flatMap((c) => (c.kind === 'setRegeneration' && !c.enabled ? [c.entity] : []));
   }
 
-  it('forbids every free fighter its regeneration once, and never a civilian or a posted garrison', () => {
+  it('forbids every fighter its regeneration once, the posted garrison included, and never a civilian', () => {
     const sim = aiSim();
     place(sim, BARRACKS_TYPE, BARRACKS);
     const tower = place(sim, TOWER_TYPE, { x: BARRACKS.x, y: BARRACKS.y + 10 });
@@ -526,9 +527,21 @@ describe('ai defence - the soldier list', () => {
     spawn(sim, 1, { x: BARRACKS.x + 8, y: BARRACKS.y + 2 }, CIVILIST);
 
     const first = run(sim);
-    expect(enlistments(first)).toEqual(band);
+    expect(enlistments(first)).toEqual([...band, archer]);
     apply(sim, first);
     expect(enlistments(run(sim))).toEqual([]);
+  });
+
+  it('writes the flag again over an archer the posting order re-idled', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const tower = place(sim, TOWER_TYPE, { x: BARRACKS.x, y: BARRACKS.y + 10 });
+    const archer = spawn(sim, 1, { x: BARRACKS.x + 6, y: BARRACKS.y + 2 }, BOWMAN)[0];
+    if (archer === undefined) throw new Error('setup: the archer spawn was refused');
+    apply(sim, [{ kind: 'setRegeneration', entity: archer, enabled: false }]);
+    apply(sim, [{ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] }]);
+    expect(sim.world.has(archer, NoRegeneration)).toBe(false);
+    expect(enlistments(run(sim))).toEqual([archer]);
   });
 
   it('enlists with the military module off too - the scripted handler lists them, not the strategic one', () => {

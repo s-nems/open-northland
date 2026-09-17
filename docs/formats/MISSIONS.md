@@ -500,7 +500,7 @@ loader and tick unless marked otherwise:
   computer-type player, handlers or not: a need task that fails (nothing to eat within 40 nodes, no
   bed, no temple, or a cleared regenerate flag) writes the sated level over that need's bar, and no
   message the human raises reaches the player, so a computer seat shows no need icons. This build
-  keeps all four: the list and the refill on the scripted handler's turn (`ai-player/military/defence`,
+  keeps all four: the list (its flag written over a posted garrison again, since this build's posting order lifts it) and the refill on the scripted handler's turn (`ai-player/military/defence`,
   `systems/lifecycle/needs`), the reset in the needs drives and the silence in the HUD, for every seat
   carrying the `AiPlayer` marker, which `AI_Disable` leaves in place with both handlers off.
 - The **strategic handler** (HAI) builds the economy and army. It is enabled for a player-type-AI
