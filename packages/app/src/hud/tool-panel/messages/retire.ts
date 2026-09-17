@@ -42,6 +42,11 @@ function isIdleNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
   return false;
 }
 
+/** Whether the note's subject has left the world; a subjectless note has no one to lose. */
+export function isSubjectGone(m: UserMessage, snapshot: WorldSnapshot): boolean {
+  return m.subject !== null && entityById(snapshot, m.subject.entity) === undefined;
+}
+
 /** Whether a note's reason is gone: its subject left the world, or the sim's `LostWay` marker came off. */
 export function isNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
   if (m.subject === null) return false;

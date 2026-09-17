@@ -23,7 +23,7 @@ import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
 import { galleryMessages, type NoticeGallery } from './gallery.js';
 import type { MessageNaming } from './raise.js';
-import { isNoteOver } from './retire.js';
+import { isNoteOver, isSubjectGone } from './retire.js';
 import { composeMessageText, type MessageText, type ShortLabels } from './text.js';
 import type { UserMessage } from './types.js';
 
@@ -232,7 +232,10 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
             feed.add(raised.pending, snapshot.tick, raised.compose);
           }
         }
-        feed.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
+        // The gallery's notes have no cause in the sim to check against, so they stand until dismissed or
+        // their subject is gone; retiring them would bring each back a sweep later as a new card.
+        if (deps.gallery === undefined) feed.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
+        else feed.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
         previous = snapshot;
       }
       if (feed.version() !== renderedVersion) {

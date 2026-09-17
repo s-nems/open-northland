@@ -68,8 +68,9 @@ export interface MessageFeed {
   removeAll(toHistory: boolean): void;
   /** Dismiss one settler's notes, with no history entry, so a later raise shows again. */
   removeSettler(entity: number): boolean;
-  /** Drop notes past their lifetime and notes `over` reports as ended. */
-  expire(tick: number, over: (m: UserMessage) => boolean): void;
+  /** Drop notes `over` reports as ended and, unless `ageless`, notes past their lifetime (dismissed
+   *  notes then also stay remembered for good). */
+  expire(tick: number, over: (m: UserMessage) => boolean, ageless?: boolean): void;
   /** Every live note, in arrival order. */
   live(): readonly UserMessage[];
   /** The live notes at or above the level, in arrival order. */
@@ -222,8 +223,8 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     },
     removeSettler: (entity) =>
       dropDisplayed((m) => !aboutSettler(m, entity) || isStandingNote(m.type), false),
-    expire: (tick, over) => {
-      const live = (m: UserMessage): boolean => !expired(m, tick) && !over(m);
+    expire: (tick, over, ageless = false) => {
+      const live = (m: UserMessage): boolean => (ageless || !expired(m, tick)) && !over(m);
       dropDisplayed(live, false);
       history.prune(live);
     },

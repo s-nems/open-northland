@@ -20,8 +20,8 @@ import {
 
 /**
  * `?debug=notices`: the seat's own settlers and buildings raise one note of every type, for checking the
- * column against every row without staging each cause in the sim. The rows the feed retires against the
- * sim (the four needs and the missing workplace) stay only while their subject's state confirms them.
+ * column against every row without staging each cause in the sim. The notes stand until dismissed or
+ * their subject leaves the world; the message centre skips the sim checks and the lifetime for them.
  */
 export const NOTICE_GALLERY_DEBUG_FLAG = 'notices';
 
@@ -69,7 +69,7 @@ function isPerson(e: SnapshotEntity): boolean {
  * One raised message per type. Settler rows walk the seat's people in turn, so the cards show different
  * figures; the death and the seat rows stand in for their subject the way the event sources do. The
  * feed's identity check absorbs the repeat raises, so the caller can re-raise on every sweep and a
- * note comes back after its lifetime while a dismissed one stays away.
+ * dismissed note stays away.
  */
 export function galleryMessages(
   snapshot: WorldSnapshot,

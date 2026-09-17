@@ -104,6 +104,20 @@ describe('message feed', () => {
     expect(feed.displayed()).toHaveLength(2);
   });
 
+  it('keeps every note and every dismissal when told to expire agelessly', () => {
+    const feed = createMessageFeed();
+    feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK, TEXT);
+    feed.remove(2, true);
+    feed.expire(TICK + 2 * MESSAGE_LIFETIME_TICKS, () => false, true);
+    expect(feed.live().map((m) => m.id)).toEqual([1]);
+    expect(feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK + 2 * MESSAGE_LIFETIME_TICKS, TEXT)).toBe(
+      'duplicate',
+    );
+    feed.expire(TICK + 2 * MESSAGE_LIFETIME_TICKS, (m) => m.id === 1, true);
+    expect(feed.live()).toEqual([]);
+  });
+
   it('forgets a dismissed message after its lifetime, so it can be raised again', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, TEXT);

@@ -180,7 +180,7 @@ Debug modes:
 - `debug=missions` shows saved mission execution ticks and counts in a collapsible inspector;
 - `debug=notices` raises one notification of every type on the seat's own settlers and buildings once a
   second, so the column shows every row without staging its cause: `?scene=sandbox&debug=notices`. The
-  need and missing-workplace rows retire against the sim, so they show only where their cause holds.
+  notes stand until dismissed or their subject is gone, so the column's order stays put for a review.
 
 Flags combine: `?debug=profile,trace` runs both.
 
