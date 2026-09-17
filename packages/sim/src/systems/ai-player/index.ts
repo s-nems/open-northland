@@ -32,9 +32,9 @@ type AiDecision = (world: World, ctx: SystemContext, player: number) => readonly
 export interface AiPlayerModule {
   readonly id: AiModuleId;
   readonly run: AiDecision;
-  /** What the seat still does with the module switched off. The original's map toggles address only
-   *  its strategic handler; a computer seat's scripted handler runs whatever the toggles say, and the
-   *  part of a module it owns keeps deciding here. */
+  /** What the seat's scripted handler does with the module switched off. The original's `HAI_Disable`
+   *  toggles address only its strategic handler, and the part of a module the scripted one owns keeps
+   *  deciding here until `AI_Disable` stops that handler too. */
   readonly whileDisabled?: AiDecision;
 }
 
@@ -62,7 +62,7 @@ export function runAiPlayerModules(
   ctx: SystemContext,
   modules: readonly AiPlayerModule[],
 ): void {
-  const seats: Array<{ player: number; modules: Record<AiModuleId, boolean> }> = [];
+  const seats: Array<{ player: number; modules: Record<AiModuleId, boolean>; scripted: boolean }> = [];
   for (const e of world.query(AiPlayer)) seats.push(world.get(e, AiPlayer));
   seats.sort((a, b) => a.player - b.player);
   for (const seat of seats) {
@@ -70,7 +70,7 @@ export function runAiPlayerModules(
     // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
     if (isPlayerDead(world, seat.player)) continue;
     for (const module of modules) {
-      const decide = seat.modules[module.id] ? module.run : module.whileDisabled;
+      const decide = seat.modules[module.id] ? module.run : seat.scripted ? module.whileDisabled : undefined;
       if (decide === undefined) continue;
       for (const command of decide(world, ctx, seat.player)) {
         ctx.commands.enqueue(aiCommand(seat.player, command));

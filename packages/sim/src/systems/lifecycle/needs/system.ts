@@ -1,7 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   Age,
-  AiPlayer,
   Health,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
@@ -12,9 +11,9 @@ import {
   type SettlerView,
 } from '../../../components/index.js';
 import { type Fixed, ONE, ZERO } from '../../../core/fixed.js';
-import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { handlerTurn, scriptedSeatOnTurn } from '../../ai-player/cadence.js';
 import type { System, SystemContext } from '../../context.js';
 import { tryDeathSaveDraught } from '../../equipment/index.js';
 import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
@@ -91,28 +90,18 @@ export const needsSystem: System = (world, ctx) => {
 };
 
 /**
- * Ticks between one computer seat's refills. Byte evidence: the original's per-seat scripted AI handler
- * takes a turn every 60 ticks and on every twelfth turn writes a full bar over every food and stamina
- * bar of the seat's humans that has dropped below the critical mark (the the original's
- * `an original routine` and its `an original routine`); that
- * handler runs for a seat of the computer player type only. A bar sits below the critical mark for at
- * most the minute before its seat's turn.
+ * Handler turns between one computer seat's refills. Byte evidence: the original's scripted AI handler
+ * on every twelfth of its turns writes a full bar over every food and stamina bar of the seat's humans
+ * that has dropped below the critical mark (the the original's `an original routine` and
+ * its `an original routine`). A bar sits below the critical mark for at most
+ * the minute before its seat's turn.
  */
-export const AI_NEED_REFILL_TICKS = 60 * TICKS_PER_SECOND;
-
-/** Ticks between the turns of consecutive seats: the handlers' round-robin spreads the 20 seats over
- *  60 ticks, so seat `p` takes its turn on tick `3p` of the minute. */
-const AI_SEAT_TURN_TICKS = 3;
+export const AI_NEED_REFILL_TURNS = 12;
 
 /** The computer seat whose refill lands on `tick`, or null on a tick that is no seat's. */
 function seatRefillingAt(world: World, tick: number): number | null {
-  const turn = tick % AI_NEED_REFILL_TICKS;
-  if (turn % AI_SEAT_TURN_TICKS !== 0) return null;
-  const player = turn / AI_SEAT_TURN_TICKS;
-  for (const e of world.query(AiPlayer)) {
-    if (world.get(e, AiPlayer).player === player) return player;
-  }
-  return null;
+  if (handlerTurn(tick) % AI_NEED_REFILL_TURNS !== 0) return null;
+  return scriptedSeatOnTurn(world, tick);
 }
 
 /** The refill itself: hunger and fatigue only, written over whatever gate would otherwise hold the

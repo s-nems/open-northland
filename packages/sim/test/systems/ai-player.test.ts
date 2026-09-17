@@ -142,6 +142,7 @@ function worldWithSeats(...players: readonly number[]): World {
         military: player !== OTHER_SEAT, // OTHER_SEAT ships one disabled module for the gate test
         roadBuild: true,
       },
+      scripted: true,
     });
   }
   return world;

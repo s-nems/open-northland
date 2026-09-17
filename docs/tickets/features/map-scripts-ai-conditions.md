@@ -17,7 +17,7 @@ by `extractMapScript`. 91 mod maps author the program: 962 `Defend`, 237 `Create
   the lettered fields there still need a reading of the task and soldier-assignment code
   (`an original routine`, `an original routine`,
   `an original routine`, the original) before they are named.
-- Run the program per scripted seat on the handler's turn cadence (`AI_NEED_REFILL_TICKS` and its
+- Run the program per scripted seat on the handler's turn cadence (`scriptedSeatOnTurn` and its
   seat stagger in `systems/lifecycle/needs`): condition slots with the recheck loop, external flags
   from `ai-flags.ts`, `CreateCreatures` through `spawnSettler`, and `Defend`/`Attack` through the
   existing military commands. Report task kinds without an evaluator through an event, as missions do.

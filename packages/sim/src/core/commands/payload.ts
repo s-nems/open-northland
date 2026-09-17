@@ -169,7 +169,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setPlayerPlacementTribes: { required: { player: 'integer', tribes: { arrayOf: 'integer' } } },
   setPlayerAi: {
     required: { player: 'integer', enabled: 'boolean' },
-    optional: { modules: AI_MODULES },
+    optional: { modules: AI_MODULES, scripted: 'boolean' },
   },
   setProfessionProgression: { required: { enabled: 'boolean' } },
   setSignpostNavigation: { required: { enabled: 'boolean' } },

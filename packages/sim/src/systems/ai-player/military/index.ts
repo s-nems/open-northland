@@ -6,6 +6,7 @@ import { ownedBuildings } from '../seat-roster.js';
 import { takeCensus } from './census.js';
 import {
   alarmOrders,
+  enlistOrders,
   raidOnTheSettlement,
   seatRaiders,
   sortieOrders,
@@ -29,14 +30,15 @@ export {
 export { WAVE_GATHER_TICKS } from './plan.js';
 
 /**
- * One decision for the seat's fighting men, home before abroad: the towers take their garrison
- * ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates takes the rest of it, and the
- * campaign gets what neither claimed.
+ * One decision for the seat's fighting men, home before abroad: the free fighters are enlisted, the
+ * towers take their garrison ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates
+ * takes the rest of it, and the campaign gets what neither claimed.
  *
- * The home half runs with the module off too: the original's scripted handler, which the map toggles
- * do not reach, mans the towers and answers an attack (byte evidence: the the original's
- * `an original routine` calling `an original routine` and `an original routine`).
- * The shape and radii of the defence here are approximations.
+ * The home half runs with the module off too: the original's scripted handler, which the `HAI_Disable`
+ * toggles do not reach, lists the soldiers, mans the towers and answers an attack (byte evidence: the
+ * the original's `an original routine` calling `an original routine`,
+ * `an original routine` and `an original routine`). The shape and radii of the defence here are
+ * approximations.
  */
 function runMilitary(
   world: World,
@@ -55,6 +57,7 @@ function runMilitary(
   // A raid benches the campaign: it takes the same band the muster would have gathered.
   const marchable: readonly Entity[] = raid === null ? free : [];
   return [
+    ...enlistOrders(world, ctx, player),
     ...alarmOrders(world, ctx, terrain, owned, raiders),
     ...posts.commands,
     ...(raid === null ? [] : sortieOrders(world, terrain, free, raid)),

@@ -5,6 +5,7 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  NoRegeneration,
   Owner,
   PathFollow,
   PathRequest,
@@ -23,6 +24,7 @@ import {
   CHILD_FEMALE,
   CHILD_MALE,
   NEED_DRAIN_UNITS_PER_TICK,
+  NEED_SATED_THRESHOLD,
   needBar,
   plannerSystem,
   stampResourceFootprintData,
@@ -176,20 +178,40 @@ describe('eatDrive - the planner choosing to eat', () => {
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
-  it('leaves a computer seat settler as hungry as a human one when nothing can feed it', () => {
-    // The computer seat's answer is the needs system's minute refill, not a top-up here.
+  it('settles a computer seat settler at the sated level when nothing can feed it, and a human seat one not at all', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const AI_SEAT = 1;
+    const IDLE_SEAT = 2;
     const HUMAN_SEAT = 0;
     const computer = settlerAt(sim, 0, 0, HUNGRY);
+    const idle = settlerAt(sim, 1, 0, HUNGRY);
     const human = settlerAt(sim, 2, 0, HUNGRY);
     sim.world.add(computer, Owner, { player: AI_SEAT });
+    sim.world.add(idle, Owner, { player: IDLE_SEAT });
     sim.world.add(human, Owner, { player: HUMAN_SEAT });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
-    sim.step(); // the seat flag lands, and the planner finds no food for either
+    // `AI_Disable` leaves the seat a computer player, which is what the failed task reads.
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: IDLE_SEAT, enabled: true, scripted: false });
+    sim.step(); // the seat flags land, and the planner finds no food for anyone
 
-    expect(sim.world.get(computer, Settler).hunger).toBeGreaterThan(HUNGRY);
+    expect(sim.world.get(computer, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.get(idle, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
     expect(sim.world.get(human, Settler).hunger).toBeGreaterThan(HUNGRY);
+  });
+
+  it('settles a computer seat soldier forbidden to regenerate instead of walking it to the larder', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const AI_SEAT = 1;
+    const soldier = settlerAt(sim, 0, 0, HUNGRY);
+    sim.world.add(soldier, Owner, { player: AI_SEAT });
+    sim.world.add(soldier, NoRegeneration, { prohibited: true });
+    const store = storeAt(sim, 3, 0, 2);
+    sim.world.add(store, Owner, { player: AI_SEAT });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.step();
+
+    expect(sim.world.get(soldier, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.has(soldier, MoveGoal)).toBe(false);
   });
 
   it('falls through to work when hungry but no food is reachable', () => {

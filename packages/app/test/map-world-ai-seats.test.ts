@@ -31,8 +31,11 @@ it('seats the strategic AI as the map’s [AIData] toggles say', () => {
   // HAI_Disable: still a computer seat, running no strategic module.
   expect(components.isAiPlayer(world, 2)).toBe(true);
   expect(components.AI_MODULE_IDS.some((id) => components.aiModuleRuns(world, 2, id))).toBe(false);
-  // AI_Disable: not a computer seat at all.
-  expect(components.isAiPlayer(world, 3)).toBe(false);
+  // AI_Disable: still a computer seat (the needs rules read that), running neither handler.
+  expect(components.isAiPlayer(world, 3)).toBe(true);
+  expect(components.aiScriptedHandlerRuns(world, 3)).toBe(false);
+  expect(components.AI_MODULE_IDS.some((id) => components.aiModuleRuns(world, 3, id))).toBe(false);
+  expect(components.aiScriptedHandlerRuns(world, 2)).toBe(true);
   // One module off, the rest on.
   expect(components.aiModuleRuns(world, 4, 'military')).toBe(false);
   expect(components.aiModuleRuns(world, 4, 'houseBuild')).toBe(true);

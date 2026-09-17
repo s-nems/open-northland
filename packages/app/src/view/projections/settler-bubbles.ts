@@ -5,6 +5,7 @@ import {
   childOrderOf,
   isMarrying,
   isSettler,
+  ownedByComputerSeat,
   positionOf,
   type SnapshotEntity,
   settlerNeedsOf,
@@ -13,12 +14,12 @@ import {
 /**
  * Per-settler thought bubbles over the snapshot. The bubble thresholds sit far above the eat and sleep
  * thresholds, so a bubble marks a settler that cannot feed or rest itself rather than one merely due
- * (observed original).
+ * (observed original). A computer seat's settlers float none ({@link ownedByComputerSeat}).
  */
 export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] {
   const out: SettlerBubble[] = [];
   for (const e of actorsOf(snapshot)) {
-    if (!isSettler(e)) continue;
+    if (!isSettler(e) || ownedByComputerSeat(snapshot, e)) continue;
     const kind = bubbleKindOf(e);
     if (kind === undefined) continue;
     const pos = positionOf(e);

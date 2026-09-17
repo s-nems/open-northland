@@ -22,14 +22,19 @@ export function aiModuleEnables(overrides?: Partial<AiModuleEnables>): AiModuleE
 }
 
 /**
- * The per-seat strategic-AI marker, set by the `setPlayerAi` command (original: `PLAYER_TYPE_AI`,
+ * The per-seat computer-player marker, set by the `setPlayerAi` command (original: `PLAYER_TYPE_AI`,
  * `Data/GameSourceIncludes/logicdefines.inc:358`). At most one carrier entity exists per player, and a
- * player with no carrier is not AI-driven.
+ * player with no carrier is a human seat. The original runs two handlers for such a seat: the
+ * strategic one behind `modules`, and the scripted one behind `scripted` (the map's `[AIData]`
+ * program, tower manning, the defence answer and the minute refill of the seat's food and stamina).
+ * `AI_Disable` switches both off yet leaves the seat a computer player, which the needs rules read.
  */
 export const AiPlayer = defineComponent<{
   /** The player slot this brain drives (`[0, MAX_PLAYERS)`). */
   player: number;
   modules: AiModuleEnables;
+  /** Whether the seat's scripted handler runs. */
+  scripted: boolean;
 }>('AiPlayer', 'players');
 
 export interface MusterPlanState {
@@ -58,8 +63,15 @@ export function aiPlayerEntity(world: World, player: number): Entity | null {
   return best;
 }
 
+/** Whether `player` is a computer seat, whatever its handlers are set to. */
 export function isAiPlayer(world: World, player: number): boolean {
   return aiPlayerEntity(world, player) !== null;
+}
+
+/** Whether `player`'s scripted handler runs: a computer seat the map did not `AI_Disable`. */
+export function aiScriptedHandlerRuns(world: World, player: number): boolean {
+  const carrier = aiPlayerEntity(world, player);
+  return carrier !== null && world.get(carrier, AiPlayer).scripted;
 }
 
 /** Whether `player`'s seat runs `module`. A non-AI seat runs none. */

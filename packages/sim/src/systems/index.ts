@@ -1,5 +1,6 @@
 import type { System, SystemContext } from './context.js';
 
+export * from './ai-player/cadence.js';
 export * from './command/index.js';
 export * from './conflict/combat.js';
 export * from './conflict/projectile.js';

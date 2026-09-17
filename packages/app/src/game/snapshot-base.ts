@@ -47,45 +47,28 @@ export function needsRuleEnabled(snapshot: WorldSnapshot): boolean {
   return worldRuleFacts(snapshot).needsEnabled;
 }
 
-/** Keyed by snapshot: a snapshot is a frozen per-frame value, so an entry lives exactly one frame. */
-const RULE_FACTS = new WeakMap<WorldSnapshot, WorldRuleFacts>();
+/**
+ * Whether `e` belongs to a computer seat. Its settlers raise no note and float no bubble: byte evidence,
+ * the owned copy drops every message a human of a computer-type player sends before it reaches the
+ * player (the the original's `an original routine`).
+ */
+export function ownedByComputerSeat(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  const owner = ownerPlayerOf(e);
+  return owner !== undefined && worldRuleFacts(snapshot).aiSeats.has(owner);
+}
 
 interface WorldRuleFacts {
   /** The `ProgressionRules` singleton's toggle; an absent singleton means the sim default (enabled). */
   readonly progressionEnabled: boolean;
   /** The `WorldRules` singleton's needs toggle; an absent singleton means the sim default (enabled). */
   readonly needsEnabled: boolean;
-  /** The player slots driven by the strategic AI (their `AiPlayer` carriers). */
+  /** The computer seats (their `AiPlayer` carriers), whatever their handlers are set to. */
   readonly aiSeats: ReadonlySet<number>;
 }
 
-/** The world-wide facts a HUD surface consults, resolved in one pass over the snapshot. Each rule stays
- *  null until its first carrier decides it, so a later duplicate cannot overwrite the winner. */
+/** The world-wide facts a HUD surface consults, read off the snapshot's one shared walk. */
 function worldRuleFacts(snapshot: WorldSnapshot): WorldRuleFacts {
-  const cached = RULE_FACTS.get(snapshot);
-  if (cached !== undefined) return cached;
-  const aiSeats = new Set<number>();
-  let progressionEnabled: boolean | null = null;
-  let needsEnabled: boolean | null = null;
-  for (const e of snapshot.entities) {
-    const progression = e.components.ProgressionRules as
-      | { professionProgressionEnabled?: unknown }
-      | undefined;
-    if (progression !== undefined && progressionEnabled === null) {
-      progressionEnabled = progression.professionProgressionEnabled !== false;
-    }
-    const needs = e.components.WorldRules as { needsEnabled?: unknown } | undefined;
-    if (needs !== undefined && needsEnabled === null) needsEnabled = needs.needsEnabled !== false;
-    const seat = num((e.components.AiPlayer as { player?: unknown } | undefined)?.player);
-    if (seat !== undefined) aiSeats.add(seat);
-  }
-  const facts: WorldRuleFacts = {
-    progressionEnabled: progressionEnabled ?? true,
-    needsEnabled: needsEnabled ?? true,
-    aiSeats,
-  };
-  RULE_FACTS.set(snapshot, facts);
-  return facts;
+  return indexOf(snapshot).facts;
 }
 
 /** The snapshot serializes `Settler.experience` as sorted `[spec, points]` pairs. Empty for a non-settler
@@ -113,7 +96,46 @@ export function isSignpost(e: SnapshotEntity): boolean {
   return e.components.Signpost !== undefined;
 }
 
-const ACTORS = new WeakMap<WorldSnapshot, readonly SnapshotEntity[]>();
+interface SnapshotIndex {
+  readonly actors: readonly SnapshotEntity[];
+  readonly facts: WorldRuleFacts;
+}
+
+/** Keyed by snapshot: a snapshot is a frozen per-frame value, so an entry lives exactly one frame. */
+const INDEX = new WeakMap<WorldSnapshot, SnapshotIndex>();
+
+/**
+ * The one walk over a snapshot's entities every projection and HUD surface shares: the actors, and
+ * the world-wide rule facts. Each rule stays null until its first carrier decides it, so a later
+ * duplicate cannot overwrite the winner.
+ */
+function indexOf(snapshot: WorldSnapshot): SnapshotIndex {
+  const cached = INDEX.get(snapshot);
+  if (cached !== undefined) return cached;
+  const actors: SnapshotEntity[] = [];
+  const aiSeats = new Set<number>();
+  let progressionEnabled: boolean | null = null;
+  let needsEnabled: boolean | null = null;
+  for (const e of snapshot.entities) {
+    if (isSettler(e) || isBuilding(e)) actors.push(e);
+    const progression = e.components.ProgressionRules as
+      | { professionProgressionEnabled?: unknown }
+      | undefined;
+    if (progression !== undefined && progressionEnabled === null) {
+      progressionEnabled = progression.professionProgressionEnabled !== false;
+    }
+    const needs = e.components.WorldRules as { needsEnabled?: unknown } | undefined;
+    if (needs !== undefined && needsEnabled === null) needsEnabled = needs.needsEnabled !== false;
+    const seat = num((e.components.AiPlayer as { player?: unknown } | undefined)?.player);
+    if (seat !== undefined) aiSeats.add(seat);
+  }
+  const index: SnapshotIndex = {
+    actors,
+    facts: { progressionEnabled: progressionEnabled ?? true, needsEnabled: needsEnabled ?? true, aiSeats },
+  };
+  INDEX.set(snapshot, index);
+  return index;
+}
 
 /**
  * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`. Iterate
@@ -121,11 +143,7 @@ const ACTORS = new WeakMap<WorldSnapshot, readonly SnapshotEntity[]>();
  * would miss everything this filtered out.
  */
 export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
-  const cached = ACTORS.get(snapshot);
-  if (cached !== undefined) return cached;
-  const actors = snapshot.entities.filter((e) => isSettler(e) || isBuilding(e));
-  ACTORS.set(snapshot, actors);
-  return actors;
+  return indexOf(snapshot).actors;
 }
 
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {

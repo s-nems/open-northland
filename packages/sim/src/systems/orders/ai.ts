@@ -13,8 +13,8 @@ import { AI_PUBLISHED_COUNTERS } from '../ai-player/assistant-counters.js';
 import { resetAssistantCounters } from './assistant.js';
 
 /**
- * Attach or detach the strategic AI on a seat through the per-player {@link AiPlayer} carrier. The flag
- * is an ordinary component, so it hashes and replays.
+ * Attach or detach the computer player on a seat through the per-player {@link AiPlayer} carrier. The
+ * flag is an ordinary component, so it hashes and replays.
  *
  * The AI plays through standing world state, so detaching the hand that published it must withdraw it:
  * the assistant counters ({@link AI_PUBLISHED_COUNTERS}) and the alarms its defence raised, which
@@ -33,8 +33,9 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
     return;
   }
   const modules = aiModuleEnables(command.modules);
+  const scripted = command.scripted ?? true;
   if (carrier === null) {
-    world.add(world.create(), AiPlayer, { player: command.player, modules });
+    world.add(world.create(), AiPlayer, { player: command.player, modules, scripted });
     return;
   }
   const previous = world.get(carrier, AiPlayer).modules;
@@ -43,7 +44,9 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
       resetAssistantCounters(world, command.player, entry.kinds);
     }
   }
-  world.mut(carrier, AiPlayer).modules = modules;
+  const seat = world.mut(carrier, AiPlayer);
+  seat.modules = modules;
+  seat.scripted = scripted;
 }
 
 /** Lower every alarm the seat is standing on, a hand-raised one included: the seat that would have called

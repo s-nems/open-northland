@@ -79,6 +79,19 @@ describe('computeSettlerBubbles', () => {
     expect(computeSettlerBubbles(snap).map((b) => [b.id, b.kind])).toEqual([[2, 'hungry']]);
   });
 
+  it('floats nothing over a computer seat’s settler, however far its bars have climbed', () => {
+    const COMPUTER_SEAT = 3;
+    const starving = { jobType: MAN, hunger: ONE, fatigue: ONE, piety: 0 };
+    const snap = snapshotOf([
+      { id: 1, components: { AiPlayer: { player: COMPUTER_SEAT, modules: {}, scripted: true } } },
+      settlerAt(2, MAN, 1, 1, { Settler: starving, Owner: { player: COMPUTER_SEAT } }),
+      settlerAt(3, MAN, 2, 1, { Settler: starving, Owner: { player: 0 } }),
+      settlerAt(4, WOMAN, 3, 1, { ChildOrder: { child: 'male' }, Owner: { player: COMPUTER_SEAT } }),
+    ]);
+
+    expect(computeSettlerBubbles(snap).map((b) => [b.id, b.kind])).toEqual([[3, 'hungry']]);
+  });
+
   it('keeps the bubble trigger above the drive trigger, so acting always comes first', () => {
     expect(systems.NEED_CRITICAL_THRESHOLD).toBeGreaterThan(systems.NEED_DRIVE_THRESHOLD);
   });

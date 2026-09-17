@@ -509,3 +509,34 @@ describe('ai defence - the sortie', () => {
     expect(attackMoves(run(sim)).filter((m) => m.x === at.x && m.y === at.y)).toEqual([]);
   });
 });
+
+describe('ai defence - the soldier list', () => {
+  function enlistments(commands: readonly Command[]): Entity[] {
+    return commands.flatMap((c) => (c.kind === 'setRegeneration' && !c.enabled ? [c.entity] : []));
+  }
+
+  it('forbids every free fighter its regeneration once, and never a civilian or a posted garrison', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const tower = place(sim, TOWER_TYPE, { x: BARRACKS.x, y: BARRACKS.y + 10 });
+    const band = spawn(sim, 2, { x: BARRACKS.x - 2, y: BARRACKS.y + 2 }, SPEARMAN);
+    const archer = spawn(sim, 1, { x: BARRACKS.x + 6, y: BARRACKS.y + 2 }, BOWMAN)[0];
+    if (archer === undefined) throw new Error('setup: the archer spawn was refused');
+    sim.world.add(archer, JobAssignment, { workplace: tower });
+    spawn(sim, 1, { x: BARRACKS.x + 8, y: BARRACKS.y + 2 }, CIVILIST);
+
+    const first = run(sim);
+    expect(enlistments(first)).toEqual(band);
+    apply(sim, first);
+    expect(enlistments(run(sim))).toEqual([]);
+  });
+
+  it('enlists with the military module off too - the scripted handler lists them, not the strategic one', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const band = spawn(sim, 2, { x: BARRACKS.x - 2, y: BARRACKS.y + 2 }, SPEARMAN);
+    const decide = militaryModule.whileDisabled;
+    if (decide === undefined) throw new Error('the military module has no scripted half');
+    expect(enlistments([...decide(sim.world, ctxOf(sim), SEAT)])).toEqual(band);
+  });
+});

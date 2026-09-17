@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { Owner, Settler } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import {
-  AI_NEED_REFILL_TICKS,
+  AI_HANDLER_ROUND_TICKS,
+  AI_NEED_REFILL_TURNS,
   NEED_CRITICAL_THRESHOLD,
   NEED_RESERVE_UNITS,
   needBar,
@@ -12,6 +13,8 @@ import { settlerWithHunger } from './support.js';
 
 const COMPUTER_SEAT = 2;
 const HUMAN_SEAT = 0;
+const IDLE_SEAT = 4;
+const REFILL_TICKS = AI_NEED_REFILL_TURNS * AI_HANDLER_ROUND_TICKS;
 /** The deficit of a bar one reserve unit past the critical mark, the level the original's refill answers. */
 const PAST_CRITICAL = needBar(NEED_RESERVE_UNITS - 999);
 /** The deficit of a bar that stays short of the critical mark through a minute of draining. */
@@ -53,8 +56,19 @@ describe('needsSystem - the computer seat refill', () => {
     sim.step();
     sim.world.mut(computer, Settler).hunger = SHY_OF_CRITICAL;
     sim.world.mut(human, Settler).hunger = PAST_CRITICAL;
-    for (let i = 0; i <= AI_NEED_REFILL_TICKS; i++) sim.step();
+    for (let i = 0; i <= REFILL_TICKS; i++) sim.step();
     expect(sim.world.get(computer, Settler).hunger).toBeGreaterThan(SHY_OF_CRITICAL);
     expect(sim.world.get(human, Settler).hunger).toBeGreaterThan(PAST_CRITICAL);
+  });
+
+  it('skips a computer seat whose scripted handler the map switched off', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.add(e, Owner, { player: IDLE_SEAT });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: IDLE_SEAT, enabled: true, scripted: false });
+    sim.step();
+    sim.world.mut(e, Settler).hunger = PAST_CRITICAL;
+    for (let i = 0; i <= REFILL_TICKS; i++) sim.step();
+    expect(sim.world.get(e, Settler).hunger).toBeGreaterThan(PAST_CRITICAL);
   });
 });

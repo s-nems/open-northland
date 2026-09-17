@@ -19,7 +19,7 @@ const SOLDIER_JOB = 31;
 
 /** Flag `player`'s seat AI-driven, the state the `setPlayerAi` command lands (no tick needed). */
 function makeAiSeat(sim: Simulation, player: number): void {
-  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables() });
+  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables(), scripted: true });
 }
 
 /** Gate {@link SOLDIER_JOB} behind fight XP - the fixture tribe carries no fighter requirement. */

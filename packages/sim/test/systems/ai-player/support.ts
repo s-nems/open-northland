@@ -168,7 +168,7 @@ export function completeSites(sim: Simulation): void {
 
 /** Flag `player`'s seat AI-driven - the state `setPlayerAi` lands, which the garrison hire reads. */
 export function makeAiSeat(sim: Simulation, player: number, modules?: Partial<AiModuleEnables>): void {
-  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables(modules) });
+  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables(modules), scripted: true });
 }
 
 /** Stand the seat's post at a node-centred `position` (see `positionOfNode`), linked as the erect would. */

@@ -491,11 +491,18 @@ loader and tick unless marked otherwise:
 
 - The **scripted handler** runs the authored tasks and conditions below. It is enabled for a seat of
   player type AI only; `AI_Disable <player>` switches it off together with the strategic one. Each
-  seat takes a turn every 60 ticks (seat `p` on tick `3p` of the round), and on every twelfth turn
-  the handler writes a full bar over every food and stamina bar of the seat's humans that has fallen
-  below the critical mark. That refill, not a missing need, is why a computer seat never starves and
-  a human seat can. This build runs the refill for every seat carrying the `AiPlayer` marker
-  (`systems/lifecycle/needs`); needs themselves run for every human as [behaviour bit 0](#human-behaviour-flags) allows.
+  seat takes a turn every 60 ticks (seat `p` on tick `3p` of the round). Every turn it lists the
+  seat's soldiers that man no workhouse, and a soldier joining the list gets the hold stance and its
+  regenerate-in-world flag cleared, so it never walks off to eat or sleep; on every twelfth turn the
+  handler writes a full bar over every food and stamina bar of the seat's humans that has fallen
+  below the critical mark. Needs themselves run for every human as
+  [behaviour bit 0](#human-behaviour-flags) allows, and two rules of the human itself apply to every
+  computer-type player, handlers or not: a need task that fails (nothing to eat within 40 nodes, no
+  bed, no temple, or a cleared regenerate flag) writes the sated level over that need's bar, and no
+  message the human raises reaches the player, so a computer seat shows no need icons. This build
+  keeps all four: the list and the refill on the scripted handler's turn (`ai-player/military/defence`,
+  `systems/lifecycle/needs`), the reset in the needs drives and the silence in the HUD, for every seat
+  carrying the `AiPlayer` marker, which `AI_Disable` leaves in place with both handlers off.
 - The **strategic handler** (HAI) builds the economy and army. It is enabled for a player-type-AI
   seat whose tribe is not one of the two monster tribes; `HAI_Disable <player>` switches it off and
   `HAI_Disable{CollectResources,GuideBuild,HomeExpansion,HouseBuild,HouseUpgrade,Military,RoadBuild}`

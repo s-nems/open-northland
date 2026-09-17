@@ -2,6 +2,7 @@
 // here are approximations.
 
 export { alarmOrders } from './alarm.js';
+export { enlistOrders } from './enlist.js';
 export { TOWER_GARRISON_ARCHERS, towerPostOrders } from './posts.js';
 export { sortieOrders } from './sortie.js';
 export {

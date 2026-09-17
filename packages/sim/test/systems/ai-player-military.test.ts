@@ -171,8 +171,12 @@ function rallyOf(sim: Simulation): { node: NodeId; x: number; y: number } {
   return { node, ...terrain.coordsOf(node) };
 }
 
+/** The campaign's orders: the enlistment every fresh fighter gets first (`ai-player-defence.test.ts`)
+ *  is filtered out, so a case reads the muster alone. */
 function run(sim: Simulation, seed = EAGER_SEED, tick = 0): Command[] {
-  return [...militaryModule.run(sim.world, ctxOf(sim, seed, tick), SEAT)];
+  return [...militaryModule.run(sim.world, ctxOf(sim, seed, tick), SEAT)].filter(
+    (c) => c.kind !== 'setRegeneration',
+  );
 }
 
 /** Every walk the module orders. The recall and the march are both attack-moves - a man crossing contested

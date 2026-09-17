@@ -10,7 +10,7 @@ export {
   needBar,
 } from './scale.js';
 export {
-  AI_NEED_REFILL_TICKS,
+  AI_NEED_REFILL_TURNS,
   carriesNeeds,
   chargeMilitaryPiety,
   HEALING_TICKS_TO_FULL,

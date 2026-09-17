@@ -7,6 +7,7 @@ import type {
 } from '@open-northland/data';
 import type { SessionRules } from '@open-northland/lockstep';
 import {
+  components,
   type Entity,
   FOG_MODE,
   halfCellMapFromCells,
@@ -147,15 +148,15 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
   });
   for (const seat of options.aiSeats) {
     const authored = options.script?.ai?.find((row) => row.player === seat);
-    // `AI_Disable` idles the seat outright; `HAI_Disable*` keeps it a computer seat without the
-    // named strategic modules.
-    if (authored?.disabled) continue;
-    const off = authored?.strategicOff ?? [];
+    // `AI_Disable` stops both handlers yet leaves the seat a computer player; `HAI_Disable*` stops
+    // the named strategic modules alone.
+    const off = authored?.disabled ? components.AI_MODULE_IDS : (authored?.strategicOff ?? []);
     sim.enqueueSetup({
       kind: 'setPlayerAi',
       player: seat,
       enabled: true,
       ...(off.length > 0 ? { modules: Object.fromEntries(off.map((id) => [id, false])) } : {}),
+      ...(authored?.disabled ? { scripted: false } : {}),
     });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
