@@ -95,7 +95,7 @@ export class Simulation {
    */
   readonly terrain?: TerrainGraph;
   /**
-   * The per-player fog-of-war masks; undefined for a mapless sim. Mutable simulated state that combat
+   * The per-vision-group fog-of-war masks; undefined for a mapless sim. Mutable simulated state that combat
    * gates read, so `hashState` mixes its bytes in after the components. Empty while the fog mode is OFF.
    */
   readonly fog?: FogState;

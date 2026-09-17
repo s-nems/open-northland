@@ -25,6 +25,7 @@ import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
+import { teamVisionScene } from './team-vision.js';
 import { technologyScene } from './technology.js';
 import { terrainEditsScene } from './terrain-edits.js';
 import { towerDefenceScene } from './tower-defence.js';
@@ -51,6 +52,7 @@ export const SCENES: readonly SceneDefinition[] = [
   towerDefenceScene,
   attackMoveScene,
   diplomacyScene,
+  teamVisionScene,
   goodsCatalogScene,
   berriesScene,
   chestsScene,

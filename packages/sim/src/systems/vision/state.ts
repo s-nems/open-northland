@@ -147,7 +147,7 @@ export class FogState {
     const joined = new Set<number>();
     for (const player of players) {
       if (!isValidPlayer(player)) continue;
-      for (const member of this.visionGroupMembers(this.visionGroupOf(player))) joined.add(member);
+      for (const member of this.visionGroupMembers(player)) joined.add(member);
     }
     if (joined.size < 2) return;
     const members = [...joined].sort((a, b) => a - b);
@@ -165,10 +165,12 @@ export class FogState {
     return this.groupOf.get(player) ?? player;
   }
 
-  /** The players sharing vision group `group`, ascending; a group nobody joined holds its own player. */
-  visionGroupMembers(group: number): number[] {
+  /** The players sharing `player`'s vision group, ascending; a group nobody joined holds its own
+   *  player. */
+  visionGroupMembers(player: number): number[] {
+    const group = this.visionGroupOf(player);
     const members: number[] = [];
-    for (const [player, key] of this.groupOf) if (key === group) members.push(player);
+    for (const [member, key] of this.groupOf) if (key === group) members.push(member);
     return members.length === 0 ? [group] : members;
   }
 

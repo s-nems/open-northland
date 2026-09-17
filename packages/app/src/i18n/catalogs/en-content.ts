@@ -187,6 +187,11 @@ export const enContent = {
       summary:
         'First contact under fog: the ally beside you is known at once, a one-way aggressor reveals itself by its blow and turns you hostile, and a tribe never seen stays off the diplomacy window.',
     },
+    'team-vision': {
+      title: 'Team vision',
+      summary:
+        "One fog mask for a lobby team: your teammate's soldier far to the east keeps its clearing in your sight and its neighbour on your diplomacy window, while a hermit beyond every eye stays unknown.",
+    },
     trade: {
       title: 'Trade route',
       summary:

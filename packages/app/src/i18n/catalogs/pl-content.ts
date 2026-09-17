@@ -188,6 +188,11 @@ export const plContent = {
       summary:
         'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twoje nastawienie na wrogie, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
     },
+    'team-vision': {
+      title: 'Wspólna widoczność',
+      summary:
+        'Jedna mgła wojny dla drużyny z lobby: wojownik kolegi z drużyny daleko na wschodzie trzyma swoją polanę w Twoim polu widzenia, a jego sąsiada w Twoim oknie dyplomacji, podczas gdy pustelnik poza zasięgiem wszystkich oczu pozostaje nieznany.',
+    },
     trade: {
       title: 'Szlak handlowy',
       summary:

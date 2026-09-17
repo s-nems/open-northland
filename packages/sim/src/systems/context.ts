@@ -26,7 +26,7 @@ export interface SystemContext {
    */
   readonly terrain?: TerrainGraph;
   /**
-   * The per-player fog-of-war masks, a mutable world resource the VisionSystem rebuilds and the combat
+   * The fog-of-war masks, a mutable world resource the VisionSystem rebuilds and the combat
    * gates read. Optional like `terrain`, and present but inert while the fog mode is off.
    */
   readonly fog?: FogState;

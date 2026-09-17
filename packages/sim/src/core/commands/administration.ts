@@ -17,8 +17,8 @@ export type RulesCommand =
     }
   | {
       /**
-       * Set the fog-of-war mode globally (`FogRules`). The VisionSystem rebuilds the per-player masks
-       * the same tick, and switching to `OFF` drops them, resetting exploration history.
+       * Set the fog-of-war mode globally (`FogRules`). The VisionSystem rebuilds the masks the same
+       * tick, and switching to `OFF` drops them, resetting exploration history.
        */
       readonly kind: 'setFogMode';
       /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..2); any other value is
