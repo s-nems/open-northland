@@ -24,7 +24,8 @@ export class SettlerSpritePool {
 
   /** `playerRow` is the body's LUT row; a head layer reads the head row instead. `zIndex` orders the
    *  layer against its container's other children, for a caller whose sprites interleave with art it
-   *  does not own; omit it to keep insertion order. */
+   *  does not own; omit it to keep insertion order. A shadow silhouette is dropped: a HUD figure stands
+   *  on a panel, not on ground, and the world's silhouette pages carry no palette indices. */
   drawLayer(
     key: string,
     layer: ResolvedLayer,
@@ -34,6 +35,7 @@ export class SettlerSpritePool {
     playerRow: number,
     zIndex?: number,
   ): void {
+    if (layer.shadow === true) return;
     const lut = this.sheet?.palette;
     if (lut !== undefined) {
       let spr = this.sprites.get(key);

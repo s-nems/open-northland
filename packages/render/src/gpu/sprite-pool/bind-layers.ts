@@ -146,7 +146,7 @@ export class LayerBinder {
         this.bindPalettedLayer(pe, spriteSlot++, layer, originX, originY, camScale, frame, row);
       } else {
         pe.shadowFlags[spriteSlot] = layer.shadow === true;
-        if (layer.cast === true && shadowStyle !== undefined) {
+        if (layer.cast === true) {
           this.placeShadow(this.plainSlot(pe, spriteSlot++), layer, box, tint, shadowStyle);
         } else {
           this.bindPlainLayer(pe, spriteSlot++, layer, revealTexture, box, tint, enhanceBuilding);

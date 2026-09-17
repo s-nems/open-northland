@@ -186,9 +186,9 @@ unavailable or over budget. The shadow switch also does more than soften: every 
 draws (buildings, trees, tall blocks, animals, characters) is painted at a multiplied alpha in a cool
 tint compiled into the `world` batch shader, and each settler and animal projects its own body frame
 onto the ground under itself, sheared toward the light of the original building silhouettes. The
-projection omits the head overlay, so it is of the body's own height. `shadows=gain:<n>,max:<n>,
-tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for one session; strength
-and tint compile into the shader, so a change needs a reload rather than a live toggle.
+projection omits the head overlay, so it is of the body's own height.
+`shadows=gain:<n>,max:<n>,tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for
+one session; strength and tint compile into the shader, so a change needs a reload, not a live toggle.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
 minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
 the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already

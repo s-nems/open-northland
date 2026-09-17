@@ -1,8 +1,8 @@
 import type { Sprite } from 'pixi.js';
 
 /**
- * How the world draws a shadow silhouette while the soft-shadow enhancement is on. `alphaGain`,
- * `maxAlpha` and `tint` are compiled into the world batch shader; the rest is bind-time geometry.
+ * How the world draws a shadow silhouette while the shadow enhancement is on. `alphaGain`, `maxAlpha`
+ * and `tint` are compiled into the world batch shader; the rest is bind-time geometry.
  */
 export interface ShadowStyle {
   /** Multiplies a silhouette's own coverage. The pipeline bakes `_s` silhouettes at alpha 0x50. */
@@ -14,7 +14,7 @@ export interface ShadowStyle {
   readonly tint: number;
   /** Screen px the cast silhouette moves right per px of caster height. */
   readonly castShear: number;
-  /** Screen px of cast silhouette per px of caster height, measured down the screen. */
+  /** How much of the caster's height the projection keeps: 1 would stand the silhouette back up. */
   readonly castFlatten: number;
   /** Draw the projected cast silhouette of a character or animal body frame. */
   readonly cast: boolean;
@@ -26,8 +26,10 @@ export interface ShadowStyle {
  * Source basis: measured on the decoded `_s.shadow` silhouettes of the bobs whose footprint is small
  * enough that the silhouette is an unambiguous ground projection - `ls_wall` palisade posts, `ls_temp`
  * harbour beacons, `ls_guidepost`, `ls_stonehenge`, `ls_dungeon`. Best silhouette-overlap fit per family
- * lands at 0.35-0.55 px right and 0.18-0.45 px up per px of caster height; the chosen pair is the centre
- * of that cluster, i.e. 32 degrees above the screen horizontal at 0.47x the caster's height.
+ * lands at 0.35-0.55 px right and 0.18-0.45 px up per px of caster height. The chosen pair follows the
+ * two families with the most pole-like frames, `ls_wall` at 0.35 over eight and `ls_temp` at 0.40 over
+ * five, i.e. 32 degrees above the screen horizontal at 0.47x the caster's height; the wider families
+ * rest on one or two frames each.
  *
  * The original is not internally consistent: `ls_statues`, `ls_trees`, `ls_goetter`, `ls_skeletons` and
  * every character body carry an undisplaced ground blob instead, and the largest `ls_houses_*` frames run

@@ -118,7 +118,9 @@ export class WorkerSpriteOverlay {
       // differently-trimmed pixel rect, so normalising the current frame's height would rescale the
       // whole body every step.
       const stanceLayers = resolveLayers(this.sheet, item, INDOOR_POSE_TICK);
-      const stanceBody = stanceLayers?.[0];
+      // The body layer, not the list head: a character resolves its ground silhouettes first, and those
+      // are a fraction of the body's height.
+      const stanceBody = stanceLayers?.find((l) => l.shadow !== true && l.head !== true);
       if (stanceLayers === null || stanceBody === undefined) return null;
       const layers = clock === INDOOR_POSE_TICK ? stanceLayers : resolveLayers(this.sheet, item, clock);
       if (layers === null || layers.length === 0) return null;

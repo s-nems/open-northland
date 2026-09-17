@@ -87,8 +87,6 @@ const SHADOW_MODES = {
   blob: { cast: false, blob: true },
 } as const;
 
-const MAX_TINT = 0xffffff;
-
 /**
  * The `?shadows=` session tuning of the shadow enhancement: `key:value` pairs over
  * `DEFAULT_SHADOW_STYLE`, any subset, unknown or malformed pairs dropped. `gain` and `max` are the
@@ -114,8 +112,8 @@ export function shadowStyleParam(params: URLSearchParams): ShadowStyle | null {
         if (positive && value <= 1) style.maxAlpha = value;
         break;
       case 'tint': {
-        const tint = Number.parseInt(text, 16);
-        if (Number.isInteger(tint) && tint >= 0 && tint <= MAX_TINT) style.tint = tint;
+        // Whole hex digits only, so a typo falls back to the default instead of to a partial parse.
+        if (/^[0-9a-f]{1,6}$/i.test(text)) style.tint = Number.parseInt(text, 16);
         break;
       }
       case 'shear':

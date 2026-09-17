@@ -70,10 +70,13 @@ export const WORLD_ATTRIBUTE_OFFSETS = {
   aFrame: 7 * 4,
 } as const;
 
-/** `aFlags` bits: what the fragment shader must know about the element's texture. Two flags share one
- *  float rather than growing every world vertex by another attribute. */
+/** `aFlags` bits: what the fragment shader must know about the element's texture. They share one float
+ *  rather than growing every world vertex by another attribute. */
 export const WORLD_FLAG_MAGNIFY = 1;
 export const WORLD_FLAG_SHADOW = 2;
+/** The element's page is straight-alpha, so Pixi picks its non-premultiplied blend for this element and
+ *  multiplies the colour by alpha itself. */
+export const WORLD_FLAG_STRAIGHT_ALPHA = 4;
 
 /** The batcher class, its geometry and shaders are defined on first install, not at import, so a
  *  test that mocks `pixi.js` can still load this module. */
@@ -126,7 +129,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   out vec4 vColor;
   out vec2 vUV;
   out float vTextureId;
-  out float vFlags;
+  flat out float vFlags;
   out vec4 vFrame;
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
@@ -168,10 +171,11 @@ function defineWorldBatcher(): WorldBatcherClass {
   const float SHADOW_MAX_ALPHA = ${glslFloat(shadow.maxAlpha)};
   const vec3 SHADOW_TINT = vec3(${channel(16)}, ${channel(8)}, ${channel(0)});`,
       // A silhouette carries coverage only, so the element's own colour contributes nothing but its
-      // alpha; the output stays premultiplied.
+      // alpha. The premultiply is ours except on a straight-alpha page, whose blend does it instead.
       output: /* glsl */ `if (hasFlag(WORLD_FLAG_SHADOW)) {
       float shadowAlpha = min(outColor.a * SHADOW_ALPHA_GAIN, SHADOW_MAX_ALPHA) * vColor.a;
-      finalColor = vec4(SHADOW_TINT * shadowAlpha, shadowAlpha);
+      float shadowPremultiply = hasFlag(WORLD_FLAG_STRAIGHT_ALPHA) ? 1.0 : shadowAlpha;
+      finalColor = vec4(SHADOW_TINT * shadowPremultiply, shadowAlpha);
     } else {
       finalColor = outColor * vColor;
     }`,
@@ -185,14 +189,15 @@ function defineWorldBatcher(): WorldBatcherClass {
   in vec4 vColor;
   in vec2 vUV;
   in float vTextureId;
-  in float vFlags;
+  flat in float vFlags;
   in vec4 vFrame;
   out vec4 finalColor;
   uniform sampler2D uTextures[${maxTextures}];
   // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
   const float WORLD_MAGNIFY = ${mode}.0;
   const float WORLD_FLAG_MAGNIFY = ${WORLD_FLAG_MAGNIFY}.0;
-  const float WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW}.0;${shading.declarations}
+  const float WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW}.0;
+  const float WORLD_FLAG_STRAIGHT_ALPHA = ${WORLD_FLAG_STRAIGHT_ALPHA}.0;${shading.declarations}
   vec2 texSize; // the bound page's size, resolved once per fragment
 
   bool hasFlag(float bit) {
@@ -277,12 +282,13 @@ function defineWorldBatcher(): WorldBatcherClass {
     return shader;
   }
 
-  /** The per-element flags the fragment shader branches on; the shadow lookup is skipped entirely
+  /** The per-element flags the fragment shader branches on; the shadow lookups are skipped entirely
    *  while no shadow shading is compiled in. */
   function elementFlags(texture: DefaultBatchableQuadElement['texture']): number {
     const magnify = isMagnifiedTexture(texture) ? WORLD_FLAG_MAGNIFY : 0;
-    const shadow = worldShadowStyle() !== null && isShadowTexture(texture) ? WORLD_FLAG_SHADOW : 0;
-    return magnify | shadow;
+    if (worldShadowStyle() === null || !isShadowTexture(texture)) return magnify;
+    const straight = texture.source.alphaMode === 'no-premultiply-alpha' ? WORLD_FLAG_STRAIGHT_ALPHA : 0;
+    return magnify | WORLD_FLAG_SHADOW | straight;
   }
 
   /** The frame's UV box, written straight into the vertex stream (no per-element allocation). */

@@ -88,6 +88,53 @@ describe('WorkerSpriteOverlay animation clock', () => {
   });
 });
 
+describe('WorkerSpriteOverlay ground silhouettes', () => {
+  /** A per-job character sheet, the shape the original graphics load as: the body bob has a silhouette
+   *  twin, so the resolver hands the overlay a projected cast and a foot blob ahead of the body. */
+  const BODY_BOB = 3;
+  const SHADOW_X = 1000; // so a drawn blob reads back distinguishably from the body
+  const shadowSource = {} as TextureSource;
+  const CHARACTER_SHEET: SpriteSheet = {
+    ...SHEET,
+    characters: {
+      byJob: {},
+      default: {
+        body: {
+          source: SHEET.source,
+          atlas: { width: 64, height: 20, frames: new Map([frame(BODY_BOB)]) },
+          shadow: {
+            source: shadowSource,
+            atlas: {
+              width: SHADOW_X + 20,
+              height: 8,
+              // Wider and much shorter than the body, as a decoded `_s` foot blob is.
+              frames: new Map([
+                [BODY_BOB, { x: SHADOW_X, y: 0, width: 20, height: 6, offsetX: -10, offsetY: -6 }],
+              ]),
+            },
+          },
+        },
+        binding: { idle: BODY_BOB },
+      },
+    },
+  };
+
+  it('draws the body alone, and sizes the row from it rather than from a silhouette', () => {
+    const stage = new Container();
+    const overlay = new WorkerSpriteOverlay(stubApp(stage), CHARACTER_SHEET, 0);
+
+    overlay.update(snapshotOf([worker(1), STORE], 0), BUILDING, FIELD);
+
+    // Neither the projected cast (the body frame again) nor the foot blob reaches a HUD panel.
+    expect(drawnBobs(stage)).toEqual([BODY_BOB]);
+    const body = (stage.children[0]?.children ?? []).find((c) => c instanceof Sprite && c.visible);
+    if (!(body instanceof Sprite)) throw new Error('the body layer must draw');
+    // The field pads by 4 and fills 0.82 of its inner height with the tallest body.
+    expect(body.height).toBeCloseTo((FIELD.h - 8) * 0.82, 4);
+    overlay.dispose();
+  });
+});
+
 describe('WorkerSpriteOverlay field selection', () => {
   it('falls through an EMPTY resident grouping to the site crew, rather than blanking the field', () => {
     // A home still going up: it houses nobody (no families), but the crew raising it must still show.
