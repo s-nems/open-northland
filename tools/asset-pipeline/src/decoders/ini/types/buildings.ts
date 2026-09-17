@@ -45,8 +45,7 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
  * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
  * `debugname`. `logicbuildonbiopattern` is retained because it directly gates placement, and the engine's
  * per-type collect action, self-filling stock and prayer site are joined here; unrelated graphics and
- * placement extras (`debugcolor`, `logicvehicletype`, other `logicbuildon*`/`logicignore*`) remain outside
- * this slice.
+ * placement extras (`debugcolor`, other `logicbuildon*`) remain outside this slice.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
   const buildings: BuildingType[] = [];
@@ -57,6 +56,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
       throw new Error(`ini: [logichousetype] without a numeric \`logictype\` in ${src.file}`);
     }
     const name = getStr(sec, 'debugname');
+    const vehicleType = getInt(sec, 'logicvehicletype');
     const workers: { jobType: number; count: number }[] = [];
     for (const p of findProps(sec, 'logicworker')) {
       const jobType = Number.parseInt(p.values[0] ?? '', 10);
@@ -84,6 +84,8 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
         refillsOwnStock: SELF_FILLING_LOGIC_TYPES.has(typeId),
         prayerSite: PRAYER_SITE_BY_LOGIC_TYPE[typeId],
         canEnableDefenceMode: getInt(sec, 'logicCanEnableDefenceMode') === 1,
+        ...(vehicleType !== undefined ? { vehicleType } : {}),
+        ignoreContinents: getInt(sec, 'logicignorecontinentsflag') === 1,
         workers,
         stock,
         produces: getIntList(sec, 'logicproduction'),

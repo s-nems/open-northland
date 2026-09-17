@@ -58,14 +58,17 @@ describe('IR integration', () => {
     // The tribe's `jobEnablesVehicle 51 37` edge keys into the vehicle table, so it must define
     // vehicle 37 (reed barge) for the cross-ref to resolve.
     const vehicles = extractVehicles(parseIniSections(VEHICLETYPES_INI), { file: 'vehicletypes.ini' });
-    // The tribe binds jobTypes 50/51/55 and the weapons wield jobTypes 51/53, so the job set must
-    // define them all (cross-ref resolvability - validateCrossReferences checks weapon.jobType too).
+    // The tribe binds jobTypes 50/51/55, the weapons wield jobTypes 51/53 and the barge admits 25 and
+    // its own vehicle job 86, so the job set must define them all (cross-ref resolvability -
+    // validateCrossReferences checks weapon.jobType and vehicle.passengerJobs too).
     const jobs = [
       ...extractJobs(parseIniSections(JOBTYPES_INI), { file: 'jobtypes.ini' }),
+      { typeId: 25, id: 'job_25' },
       { typeId: 50, id: 'job_50' },
       { typeId: 51, id: 'job_51' },
       { typeId: 53, id: 'job_53' },
       { typeId: 55, id: 'job_55' },
+      { typeId: 86, id: 'job_86' },
     ];
     expect(() =>
       parseContentSet(

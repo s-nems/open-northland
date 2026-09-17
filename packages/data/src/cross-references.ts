@@ -32,6 +32,7 @@ const CHECKS: readonly CrossReferenceCheck[] = [
   checkTerrainPatterns,
   checkJobs,
   checkJobExperience,
+  checkVehicles,
 ];
 
 /** The id-sets every `check*` resolves references against, built once from the set. */
@@ -62,23 +63,27 @@ function buildIdSets(set: ContentSet): IdSets {
   };
 }
 
-function checkGoodProduction(set: ContentSet, { goodIds }: IdSets): string[] {
+function checkGoodProduction(set: ContentSet, { goodIds, buildingIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.goods) {
     for (const inp of g.productionInputs) {
       if (!goodIds.has(inp.goodType))
         errors.push(`good "${g.id}" consumes unknown input goodType ${inp.goodType}`);
     }
+    if (g.vehicleHouse !== undefined && !buildingIds.has(g.vehicleHouse))
+      errors.push(`good "${g.id}" opens unknown vehicle house buildingType ${g.vehicleHouse}`);
   }
   return errors;
 }
 
-function checkBuildings(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
+function checkBuildings(set: ContentSet, { goodIds, jobIds, vehicleIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const b of set.buildings) {
     for (const w of b.workers) {
       if (!jobIds.has(w.jobType)) errors.push(`building "${b.id}" references unknown jobType ${w.jobType}`);
     }
+    if (b.vehicleType !== undefined && !vehicleIds.has(b.vehicleType))
+      errors.push(`building "${b.id}" spawns unknown vehicleType ${b.vehicleType}`);
     for (const s of b.stock) {
       if (!goodIds.has(s.goodType))
         errors.push(`building "${b.id}" references unknown goodType ${s.goodType}`);
@@ -309,6 +314,19 @@ function checkJobExperience(set: ContentSet, { goodIds, jobIds }: IdSets): strin
       if (!goodIds.has(goodType))
         errors.push(`jobExperience "${x.id}" references unknown goodType ${goodType}`);
     }
+  }
+  return errors;
+}
+
+// `jobId` is not checked: a synthetic set may carry a vehicle without its `JOB_TYPE_VEHICLE_*` job.
+function checkVehicles(set: ContentSet, { jobIds, vehicleIds }: IdSets): string[] {
+  const errors: string[] = [];
+  for (const v of set.vehicles) {
+    for (const job of v.passengerJobs) {
+      if (!jobIds.has(job)) errors.push(`vehicle "${v.id}" admits unknown passenger jobType ${job}`);
+    }
+    if (v.transformVehicleType !== undefined && !vehicleIds.has(v.transformVehicleType))
+      errors.push(`vehicle "${v.id}" transforms into unknown vehicleType ${v.transformVehicleType}`);
   }
   return errors;
 }

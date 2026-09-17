@@ -22,6 +22,8 @@ import {
   extractJobExperience,
   extractJobs,
   extractLandscape,
+  extractRawFrameAtomics,
+  extractRawFrameGaits,
   extractTribes,
   extractUpgradeTargets,
   extractVehicles,
@@ -58,6 +60,8 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const gfxAtomics = [];
   const gfxWalkAtomics = [];
   const gfxInHousePrograms = [];
+  const rawFrameAtomics = [];
+  const rawFrameGaits = [];
   const buildingBobs = [];
   const constructionLayers = [];
   const buildingOverlays = [];
@@ -89,6 +93,8 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     gfxAtomics.push(...extractGfxAnimAtomics(sections, src));
     gfxWalkAtomics.push(...extractGfxWalkAtomics(sections, src));
     gfxInHousePrograms.push(...extractGfxInHousePrograms(sections, src));
+    rawFrameAtomics.push(...extractRawFrameAtomics(sections));
+    rawFrameGaits.push(...extractRawFrameGaits(sections));
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
@@ -117,6 +123,8 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     gfxAtomics,
     gfxWalkAtomics,
     gfxInHousePrograms,
+    rawFrameAtomics,
+    rawFrameGaits,
     buildingBobs,
     constructionLayers,
     buildingOverlays,

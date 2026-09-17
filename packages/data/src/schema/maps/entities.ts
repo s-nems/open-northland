@@ -64,6 +64,15 @@ export const TerrainEntities = z.strictObject({
             }),
           )
           .optional(),
+        /** The vehicle this settler crews (`attachtovehicle`), by the `setvehicle` half-cell it stands on;
+         *  `inside` when a `moveintovehicle` follows, which boards the settler off the map. */
+        boardVehicleAt: z
+          .strictObject({
+            hx: z.number().int().nonnegative(),
+            hy: z.number().int().nonnegative(),
+            inside: z.boolean(),
+          })
+          .optional(),
       }),
     )
     .default([]),
@@ -82,7 +91,7 @@ export const TerrainEntities = z.strictObject({
       }),
     )
     .default([]),
-  /** `setvehicle` placements: tribe + `[vehicletype]` name. */
+  /** `setvehicle` placements: tribe + `[vehicletype]` name; the verb's optional eighth column is unread. */
   vehicles: z
     .array(
       z.strictObject({

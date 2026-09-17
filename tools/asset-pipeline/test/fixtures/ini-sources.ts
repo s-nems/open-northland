@@ -182,11 +182,37 @@ type 37
 name "reed barge"
 logicsize 2
 stockslots 46
+stockvector 2 4
 passengerslots 17
+vehicleslots 1
 logicpassenger 25
+logicpassenger 7
+logicpassenger 86
+passengervector 2 4
+logiccommander 25
 [vehicletype]
 type 39
 name "siege ram"
+`;
+
+// The real file's `oxcart` pair: the ox-less cart (6) and the ox cart (2) share one `name`, and the
+// ox-less one names the animal it recruits and the type it becomes.
+export const OXCART_PAIR_INI = `[vehicletype]
+type 6
+name "oxcart"
+logicsize 0
+stockslots 30
+passengerslots 0
+logicdragginganimaltribe 10
+logictransformvehicleType 2
+[vehicletype]
+type 2
+name "oxcart"
+logicsize 0
+stockslots 30
+passengerslots 0
+logicpassenger 25
+logicpassenger 24
 `;
 
 // Mirrors DataCnmd/types/houses.ini: a `[logichousetype]` keys its id on `logictype` (not `type`) and

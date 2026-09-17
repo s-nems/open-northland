@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { hasFieldFarmAtomics } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
@@ -12,7 +14,7 @@ import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
 import { HIDDEN_GOODS, SUMMARY_CATEGORIES } from '../../src/hud/summary/model.js';
-import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
+import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
  * Property invariants over the REAL generated IR + its sim-ready merge - the class of break the
@@ -65,19 +67,70 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const id of listed) expect(ids, `summary good '${id}' missing`).toContain(id);
   });
 
-  it('no building stocks or produces a vehicle good (stripVehicleGoods holds on real data)', async () => {
-    // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicles-8-workshop-construction.md);
-    // the strip keys on the goodtype↔vehicletype slug identity, so a slug drift would silently bring
-    // handcarts back as loaves of bread - this pins the regenerated IR.
+  it('every vehicle yard pairs with one vehicle good, and no building stocks or produces one', async () => {
+    // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicles-8-workshop-construction.md):
+    // each `vehicle`-kind house spawns a type the vehicle table carries and is opened by exactly one
+    // good, and the strip keys on that pairing, so a pairing gap would silently bring handcarts back
+    // as loaves of bread - this pins the regenerated IR.
     const { real } = await loadContentUnderTest();
-    const vehicleIds = new Set(real.vehicles.map((v) => v.id));
-    expect(vehicleIds.size).toBeGreaterThan(0); // the real data ships carts/ships/catapult
-    const vehicleGoods = new Set(real.goods.filter((g) => vehicleIds.has(g.id)).map((g) => g.typeId));
+    const vehicleTypes = new Set(real.vehicles.map((v) => v.typeId));
+    const yards = real.buildings.filter((b) => b.kind === 'vehicle');
+    expect(yards.length).toBeGreaterThan(0); // the real data ships cart, ship and catapult yards
+    const goodsByYard = new Map(
+      yards.map((b) => [b.typeId, real.goods.filter((g) => g.vehicleHouse === b.typeId)]),
+    );
+    for (const yard of yards) {
+      expect(
+        yard.vehicleType !== undefined && vehicleTypes.has(yard.vehicleType),
+        `${yard.id} spawns no vehicle`,
+      ).toBe(true);
+      expect(
+        goodsByYard.get(yard.typeId)?.map((g) => g.id),
+        `${yard.id} pairs with one good`,
+      ).toHaveLength(1);
+    }
+    const vehicleGoods = new Set(real.goods.filter((g) => g.vehicleHouse !== undefined).map((g) => g.typeId));
     for (const b of real.buildings) {
       for (const s of b.stock)
         expect(vehicleGoods, `${b.id} stocks a vehicle good`).not.toContain(s.goodType);
       for (const p of b.produces) expect(vehicleGoods, `${b.id} produces a vehicle good`).not.toContain(p);
     }
+  });
+
+  it('the vehicle table has unique slugs and every type its animation job', async () => {
+    const { real } = await loadContentUnderTest();
+    const ids = real.vehicles.map((v) => v.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const jobs = new Set(real.jobs.map((j) => j.typeId));
+    for (const v of real.vehicles) expect(jobs.has(v.jobId), `${v.id} has no job ${v.jobId}`).toBe(true);
+  });
+
+  it('every vehicle graphics frame lands inside its body atlas, and the ships take the player palettes', () => {
+    // The join resolves `[bobseq]`-relative cart records and raw ship records onto one bob-id space;
+    // an off-by-one against the sequence starts would draw a frame of the wrong facing or nothing.
+    const ir = rawIrUnderTest() as ContentIr;
+    const rows = ir.vehicleGraphics ?? [];
+    expect(rows.length).toBeGreaterThan(0);
+    const overruns = new Set<string>();
+    for (const row of rows) {
+      const stem = row.body.slice(row.body.lastIndexOf('/') + 1).replace(/\.bmd$/i, '');
+      const atlasPath = resolve(contentDir(), 'bobs', `${stem}.${row.bodyPalette}.atlas.json`);
+      const atlas = JSON.parse(readFileSync(atlasPath, 'utf8')) as { frames: readonly { bobId: number }[] };
+      const bobIds = new Set(atlas.frames.map((f) => f.bobId));
+      const frames = [
+        ...row.clips.flatMap((c) => c.dirFrames.flat()),
+        ...row.gaits.flatMap((g) => [...g.dirFrames.flat(), ...(g.turnFrames ?? []).flat()]),
+      ];
+      if (frames.some((bobId) => !bobIds.has(bobId))) overruns.add(stem);
+      const isShip = row.playerPalettes !== undefined;
+      expect(isShip, `tribe ${row.tribe} vehicle ${row.vehicleType} palette family`).toBe(
+        row.bodyPalette.startsWith('human_ship'),
+      );
+    }
+    // The viking big ship binds the 32-frame `ve_test_ship.bmd` while its job rows index the 98-frame
+    // `ls_vehicles.bmd` layout, so its loaded hull (bob 66..94) has no frame there. That is the mod's
+    // data; any other overrun is a join fault.
+    expect([...overruns]).toEqual(['ve_test_ship']);
   });
 
   it('every merged felled or mined good is calibrated or reported as a gap - never silently dead', async () => {

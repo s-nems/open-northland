@@ -1,25 +1,41 @@
 import {
+  BUILDING_KIND,
   BuildingType,
   DEFAULT_RECIPE_TICKS,
-  type GoodType,
+  GoodType,
   hasFieldFarmAtomics,
   type TribeType,
-  type VehicleType,
 } from '@open-northland/data';
+import { vehicleHouseByGood } from '../../decoders/ini.js';
 
 /**
- * Strips vehicle goods from every building's `stock` and `produces`, so no workshop stores or crafts a
- * vehicle as a ware: the original builds vehicles on a yard instead. A vehicle good is a `[goodtype]`
- * whose id slug matches a `[logicvehicletype]`'s, the slug both tables share. Runs before the recipe
- * join so no vehicle recipe is materialized.
+ * Stamps `vehicleHouse` onto each good whose `logicdefines.inc` partner is a `vehicle`-kind house in
+ * the set, so the pairing only names a house the set carries. Every other good is returned as is.
+ */
+export function pairVehicleGoods(goods: readonly GoodType[], buildings: readonly BuildingType[]): GoodType[] {
+  const vehicleHouses = new Set(
+    buildings
+      .filter((b) => b.kind === BUILDING_KIND.vehicle && b.vehicleType !== undefined)
+      .map((b) => b.typeId),
+  );
+  const houseByGood = vehicleHouseByGood();
+  return goods.map((g) => {
+    const house = houseByGood.get(g.typeId);
+    if (house === undefined || !vehicleHouses.has(house)) return g;
+    return GoodType.parse({ ...g, vehicleHouse: house });
+  });
+}
+
+/**
+ * Strips vehicle goods (those paired with a vehicle house) from every building's `stock` and
+ * `produces`, so no workshop stores or crafts a vehicle as a ware: the original builds vehicles on a
+ * yard instead. Runs before the recipe join so no vehicle recipe is materialized.
  */
 export function stripVehicleGoods(
   buildings: readonly BuildingType[],
   goods: readonly GoodType[],
-  vehicles: readonly VehicleType[],
 ): BuildingType[] {
-  const vehicleIds = new Set(vehicles.map((v) => v.id));
-  const vehicleGoods = new Set(goods.filter((g) => vehicleIds.has(g.id)).map((g) => g.typeId));
+  const vehicleGoods = new Set(goods.filter((g) => g.vehicleHouse !== undefined).map((g) => g.typeId));
   if (vehicleGoods.size === 0) return [...buildings];
   return buildings.map((b) => {
     const stock = b.stock.filter((s) => !vehicleGoods.has(s.goodType));

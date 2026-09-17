@@ -1,7 +1,11 @@
-import { BuildingType, DEFAULT_RECIPE_TICKS, TribeType, VehicleType } from '@open-northland/data';
+import { BuildingType, DEFAULT_RECIPE_TICKS, GoodType, TribeType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { extractGoods, parseIniSections } from '../src/decoders/ini.js';
-import { fillBuildingRecipes, stripVehicleGoods } from '../src/stages/ir/building-recipes.js';
+import {
+  fillBuildingRecipes,
+  pairVehicleGoods,
+  stripVehicleGoods,
+} from '../src/stages/ir/building-recipes.js';
 import { GOODTYPES_INI } from './fixtures/ini-sources.js';
 
 describe('fillBuildingRecipes', () => {
@@ -158,12 +162,38 @@ describe('fillBuildingRecipes', () => {
   });
 });
 
+describe('pairVehicleGoods', () => {
+  const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
+  // The real ids: the catapult good (63) pairs with the catapult house (46) through the shared
+  // `VEHICLE_CATAPULT` define suffix, the handcart good (59) with house 42.
+  const good = (typeId: number, id: string) => GoodType.parse({ typeId, id });
+  const catapultYard = BuildingType.parse({
+    typeId: 46,
+    id: 'catapult',
+    kind: 'vehicle',
+    vehicleType: 5,
+    source: src,
+  });
+
+  it('stamps the vehicle house onto the good the define pairs with a vehicle house in the set', () => {
+    const goods = [good(5, 'wood'), good(59, 'handcart'), good(63, 'catapult')];
+    const paired = pairVehicleGoods(goods, [catapultYard]);
+    expect(paired.map((g) => g.vehicleHouse)).toEqual([undefined, undefined, 46]);
+    expect(paired[0]).toBe(goods[0]); // an unpaired good keeps its identity
+  });
+
+  it('pairs nothing with a house of another kind, even on a vehicle house id', () => {
+    const workshop = BuildingType.parse({ typeId: 46, id: 'not_a_yard', kind: 'workplace', source: src });
+    const [catapult] = pairVehicleGoods([good(63, 'catapult')], [workshop]);
+    expect(catapult?.vehicleHouse).toBeUndefined();
+  });
+});
+
 describe('stripVehicleGoods', () => {
   const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
   const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
-  // 'guildmark' (27) doubles as a vehicle here - the strip keys on the goodtype↔vehicletype slug
-  // identity, exactly how the real data links handcart/oxcart/ships/catapult.
-  const cartVehicle = VehicleType.parse({ typeId: 1, id: 'guildmark' });
+  // 'guildmark' (27) doubles as a vehicle good here: the strip keys on the `vehicleHouse` pairing.
+  const goodsWithCart = GOODS.map((g) => (g.typeId === 27 ? GoodType.parse({ ...g, vehicleHouse: 42 }) : g));
 
   it('drops a vehicle good from stock and produces, so the recipe join never materializes it', () => {
     const workshop = BuildingType.parse({
@@ -177,14 +207,14 @@ describe('stripVehicleGoods', () => {
       ],
       source: src,
     });
-    const [stripped] = stripVehicleGoods([workshop], GOODS, [cartVehicle]);
+    const [stripped] = stripVehicleGoods([workshop], goodsWithCart);
     expect(stripped?.stock.map((s) => s.goodType)).toEqual([22]);
     expect(stripped?.produces).toEqual([31]);
-    const [filled] = fillBuildingRecipes([stripped ?? workshop], GOODS, []);
+    const [filled] = fillBuildingRecipes([stripped ?? workshop], goodsWithCart, []);
     expect(filled?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType))).toEqual([31]);
   });
 
-  it('leaves buildings untouched when no good shares a vehicle slug', () => {
+  it('leaves buildings untouched when no good is paired with a vehicle house', () => {
     const workshop = BuildingType.parse({
       typeId: 41,
       id: 'plain',
@@ -192,7 +222,7 @@ describe('stripVehicleGoods', () => {
       produces: [31],
       source: src,
     });
-    const [same] = stripVehicleGoods([workshop], GOODS, [VehicleType.parse({ typeId: 2, id: 'sled' })]);
+    const [same] = stripVehicleGoods([workshop], GOODS);
     expect(same).toBe(workshop); // identity preserved - nothing to strip
   });
 });

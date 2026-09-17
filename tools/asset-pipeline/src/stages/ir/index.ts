@@ -4,6 +4,7 @@ import {
   extractAnimalCalls,
   extractHumanVoices,
   extractLandscapeGfx,
+  extractPaletteIndex,
   extractPatterns,
   extractPatternTransitions,
   extractSounds,
@@ -13,7 +14,7 @@ import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { decodeMapTree } from '../maps/index.js';
 import { applyBuildingGraphicsOverlays } from './building-overlays.js';
-import { fillBuildingRecipes, stripVehicleGoods } from './building-recipes.js';
+import { fillBuildingRecipes, pairVehicleGoods, stripVehicleGoods } from './building-recipes.js';
 import { loadCifTable, loadIniTable } from './cif-tables.js';
 import { buildGatheringPipeline } from './gathering-pipeline.js';
 import { correctJobExperience } from './job-experience.js';
@@ -21,6 +22,10 @@ import { loadJobGraphics } from './job-graphics.js';
 import { resolveIniSources } from './sources.js';
 import { extractIniTables } from './tables.js';
 import { buildTerrainPatterns } from './terrain-patterns.js';
+import { buildVehicleGraphics, loadVehicleGraphicsBindings } from './vehicle-graphics.js';
+
+/** The palette `editname` index the vehicle player-colour families are read from. */
+const PALETTES_INI = 'Data/engine2d/inis/palettes/palettes.ini';
 
 export { type IniSource, resolveIniSources } from './sources.js';
 
@@ -42,6 +47,8 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     gfxAtomics,
     gfxWalkAtomics,
     gfxInHousePrograms,
+    rawFrameAtomics,
+    rawFrameGaits,
     buildingBobs,
     constructionLayers,
     buildingOverlays,
@@ -51,6 +58,16 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingGraphicsOverlays,
   } = await extractIniTables(await resolveIniSources(roots));
   const jobGraphics = await loadJobGraphics(roots);
+  const vehicleGraphics = buildVehicleGraphics({
+    bindings: await loadVehicleGraphicsBindings(roots),
+    vehicles,
+    bobSequences,
+    gfxAtomics,
+    gfxWalkAtomics,
+    rawAtomics: rawFrameAtomics,
+    rawGaits: rawFrameGaits,
+    palettes: await loadIniTable(roots, PALETTES_INI, extractPaletteIndex, []),
+  });
   const maps = await decodeMapTree(roots);
   const patternFile = 'Data/engine2d/inis/patterns/pattern.cif';
   const gfxPatterns = await loadCifTable(roots, patternFile, extractPatterns, []);
@@ -85,12 +102,13 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     emptySoundBank(),
   );
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
-  const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
-  const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, goods, tribes);
+  const pairedGoods = pairVehicleGoods(goods, buildingsWithCosts);
+  const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, pairedGoods);
+  const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, pairedGoods, tribes);
   const correctedJobExperience = correctJobExperience(jobExperience, tribes);
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { mod: basename(roots.mod) } },
-    goods,
+    goods: pairedGoods,
     jobs,
     jobExperience: correctedJobExperience,
     buildings: buildingsWithRecipes,
@@ -110,6 +128,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     gfxAtomics,
     gfxWalkAtomics,
     gfxInHousePrograms,
+    vehicleGraphics,
     buildingBobs,
     constructionLayers,
     buildingOverlays,

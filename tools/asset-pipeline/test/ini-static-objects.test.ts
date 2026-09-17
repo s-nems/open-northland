@@ -139,6 +139,57 @@ describe('extractStaticObjects', () => {
     ]);
   });
 
+  // The real crews: a hero attached to a moored ship and boarded, a carrier attached to a cart and left
+  // beside it, and an attach separated from its human by a modifier the decoder drops.
+  it('attaches attachtovehicle to its sethuman and lets a following moveintovehicle board him', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'setvehicle 0 "saracen" "ship small" 480 18 200' },
+      { level: 2, text: 'sethuman 0 "viking" "hero_sword_BJARNI" 478 14 100 6337' },
+      { level: 2, text: 'attachtovehicle 480 18' },
+      { level: 2, text: 'moveintovehicle' },
+      { level: 2, text: 'sethuman 0 "egypt" "carrier" 364 313 0 0' },
+      { level: 2, text: 'setexpierence 28 100' }, // uncaptured, and does not end the block
+      { level: 2, text: 'attachtovehicle 362 312' },
+      { level: 2, text: 'sethuman 0 "egypt" "carrier" 368 317 0 0' },
+      { level: 2, text: 'moveintovehicle' }, // no attach to board through - dropped
+      { level: 2, text: 'attachtovehicle 12' }, // short - dropped
+      { level: 2, text: 'setguide 3 141 51' },
+      { level: 2, text: 'attachtovehicle 364 320' }, // its human is out of scope - dropped
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      {
+        tribe: 'viking',
+        role: 'hero_sword_BJARNI',
+        player: 0,
+        hx: 478,
+        hy: 14,
+        missionId: 100,
+        behaviourFlags: 6337,
+        boardVehicleAt: { hx: 480, hy: 18, inside: true },
+      },
+      {
+        tribe: 'egypt',
+        role: 'carrier',
+        player: 0,
+        hx: 364,
+        hy: 313,
+        boardVehicleAt: { hx: 362, hy: 312, inside: false },
+      },
+      { tribe: 'egypt', role: 'carrier', player: 0, hx: 368, hy: 317 },
+    ]);
+  });
+
+  it('ignores the eighth setvehicle column the corpus sometimes writes', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'setvehicle 0 "viking" "handcart" 362 318 91 0' },
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.vehicles).toEqual([
+      { tribe: 'viking', type: 'handcart', player: 0, hx: 362, hy: 318, missionId: 91 },
+    ]);
+  });
+
   it('drops an attachtohouse with no human, a short one, and one across a placement verb', () => {
     const lines: CifLine[] = [
       { level: 1, text: 'StaticObjects' },

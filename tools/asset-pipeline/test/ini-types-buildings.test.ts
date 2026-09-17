@@ -18,6 +18,7 @@ describe('extractBuildings', () => {
         buildOnBioPattern: false,
         canEnableDefenceMode: true, // logicCanEnableDefenceMode 1
         refillsOwnStock: false,
+        ignoreContinents: false,
         workers: [{ jobType: 51, count: 3 }],
         stock: [
           { goodType: 20, capacity: 90, initial: 0 },
@@ -37,6 +38,7 @@ describe('extractBuildings', () => {
         buildOnBioPattern: false,
         canEnableDefenceMode: false,
         refillsOwnStock: false,
+        ignoreContinents: false,
         workers: [],
         stock: [{ goodType: 20, capacity: 4, initial: 1 }],
         produces: [],
@@ -53,6 +55,7 @@ describe('extractBuildings', () => {
         buildOnBioPattern: true,
         canEnableDefenceMode: false,
         refillsOwnStock: false,
+        ignoreContinents: false,
         workers: [{ jobType: 51, count: 1 }],
         stock: [],
         produces: [22, 20], // logicproduction output good ids, in file order
@@ -70,6 +73,7 @@ describe('extractBuildings', () => {
         collectAtomic: 44, // the engine's well pump for logictype 10, not an .ini key
         canEnableDefenceMode: false,
         refillsOwnStock: true, // the engine refills the well's water every game second, no worker needed
+        ignoreContinents: false,
         workers: [{ jobType: 51, count: 1 }],
         stock: [{ goodType: 20, capacity: 1, initial: 0 }],
         produces: [20],
@@ -87,6 +91,7 @@ describe('extractBuildings', () => {
         collectAtomic: 45, // the engine's hive pick-up for logictype 11
         canEnableDefenceMode: false,
         refillsOwnStock: true,
+        ignoreContinents: false,
         workers: [{ jobType: 51, count: 1 }],
         stock: [{ goodType: 22, capacity: 1, initial: 0 }],
         produces: [22],
@@ -117,6 +122,23 @@ describe('extractBuildings', () => {
       [37, 'temple'],
       [1, 'headquarters'],
       [51, undefined], // the Artemis wonder is a temple by name only
+    ]);
+  });
+
+  it('reads a vehicle yard`s spawned type and its off-continent site flag', () => {
+    // The real ship yards: `logicmaintype 6`, the vehicle they spawn, and the flag that puts the site
+    // on the water beside them. The handcart yard carries no flag.
+    const yards = extractBuildings(
+      parseIniSections(
+        '[logichousetype]\ndebugname "ship_small"\nlogictype 44\nlogicmaintype 6\nlogicworker 24 3\n' +
+          'logicignorecontinentsflag 1\nlogicvehicletype 3\n' +
+          '[logichousetype]\ndebugname "handcart"\nlogictype 42\nlogicmaintype 6\nlogicvehicletype 1\n',
+      ),
+      { file: 'f.ini' },
+    );
+    expect(yards.map((b) => [b.kind, b.vehicleType, b.ignoreContinents])).toEqual([
+      ['vehicle', 3, true],
+      ['vehicle', 1, false],
     ]);
   });
 

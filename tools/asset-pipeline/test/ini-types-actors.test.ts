@@ -7,7 +7,12 @@ import {
   extractWeapons,
   parseIniSections,
 } from '../src/decoders/ini.js';
-import { ATOMICANIMATIONS_INI, VEHICLETYPES_INI, WEAPONTYPES_INI } from './fixtures/ini-sources.js';
+import {
+  ATOMICANIMATIONS_INI,
+  OXCART_PAIR_INI,
+  VEHICLETYPES_INI,
+  WEAPONTYPES_INI,
+} from './fixtures/ini-sources.js';
 
 // Mirrors Data/logic/armortypes.ini (plain `.ini`; the `<CULTURES_CIF_BEGIN>` header line is not a
 // `[section]` so the parser ignores it like vehicletypes/goodtypes): each `[armortype]` carries a
@@ -142,22 +147,30 @@ describe('extractVehicles', () => {
         typeId: 35,
         id: 'mud_sledge',
         name: 'mud sledge',
+        jobId: 84, // `logicdefines.inc`: the vehicle job sits 49 above the type
         stockSlots: 12,
         passengerSlots: 0,
         logicSize: 0,
         // Two repeated `logicgood N` lines -> the cargo allow-list, in file order.
         cargoGoods: [25, 21],
+        passengerJobs: [],
+        vehicleSlots: 0,
         source: src,
       },
       {
         typeId: 37,
         id: 'reed_barge',
         name: 'reed barge',
+        jobId: 86,
         stockSlots: 46,
         passengerSlots: 17,
         logicSize: 2,
         // This fixture's barge section lists no `logicgood` -> empty allow-list (schema default).
         cargoGoods: [],
+        // Repeated `logicpassenger N` lines in file order, a vehicle job id (86) among them.
+        passengerJobs: [25, 7, 86],
+        vehicleSlots: 1,
+        passengerVector: { direction: 2, distance: 4 },
         source: src,
       },
       // No slot/size/logicgood lines -> schema defaults (0 / empty) for all.
@@ -165,13 +178,50 @@ describe('extractVehicles', () => {
         typeId: 39,
         id: 'siege_ram',
         name: 'siege ram',
+        jobId: 88,
         stockSlots: 0,
         passengerSlots: 0,
         logicSize: 0,
         cargoGoods: [],
+        passengerJobs: [],
+        vehicleSlots: 0,
         source: src,
       },
     ]);
+  });
+
+  it('keeps `logiccommander` and `stockvector` out: the original reads neither', () => {
+    const [, barge] = extractVehicles(parseIniSections(VEHICLETYPES_INI), { file: 'vehicletypes.ini' });
+    expect(barge).not.toHaveProperty('commanderJob');
+    expect(barge).not.toHaveProperty('stockVector');
+  });
+
+  it('slugs the ox-less oxcart (type 6) by its define name and reads its animal and transform keys', () => {
+    const [noOx, withOx] = extractVehicles(parseIniSections(OXCART_PAIR_INI), { file: 'vehicletypes.ini' });
+    expect(noOx).toMatchObject({
+      typeId: 6,
+      id: 'cart_no_ox',
+      name: 'oxcart',
+      jobId: 55,
+      passengerJobs: [],
+      draggingAnimalTribe: 10,
+      transformVehicleType: 2,
+    });
+    expect(withOx).toMatchObject({
+      typeId: 2,
+      id: 'oxcart',
+      name: 'oxcart',
+      jobId: 51,
+      passengerJobs: [25, 24],
+    });
+    expect(withOx).not.toHaveProperty('draggingAnimalTribe');
+  });
+
+  it('throws when two records slug alike and no define tells them apart', () => {
+    const twice = '[vehicletype]\ntype 8\nname "raft"\n[vehicletype]\ntype 9\nname "Raft"\n';
+    expect(() => extractVehicles(parseIniSections(twice), { file: 'f.ini' })).toThrow(
+      /repeats the slug "raft"/,
+    );
   });
 
   it('throws on a [vehicletype] missing its numeric `type`', () => {

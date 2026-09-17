@@ -39,6 +39,7 @@ const CARRIER = 36; // fixture job with no allowedAtomics - it can only haul
 const SAWMILL = 2; // workplace: recipe wood->plank
 const VIKING = 1;
 const BOAT = 3; // a ship: passengers => isShipVehicle, allows PLANK only
+const BOAT_JOB = 52; // the ship's `JOB_TYPE_VEHICLE_*` id, unread here
 const HOLD = 1; // the boat's stockSlots - a tiny hold so the capacity cap is observable
 
 /** `testContent()` plus a single boat vehicle that carries PLANK (not WOOD) with a `HOLD`-slot hold. */
@@ -46,7 +47,9 @@ function boatContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
-    vehicles: [{ typeId: BOAT, id: 'ship', stockSlots: HOLD, passengerSlots: 9, cargoGoods: [PLANK] }],
+    vehicles: [
+      { typeId: BOAT, id: 'ship', jobId: BOAT_JOB, stockSlots: HOLD, passengerSlots: 9, cargoGoods: [PLANK] },
+    ],
   });
 }
 

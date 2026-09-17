@@ -123,6 +123,40 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
   );
 
   it(
+    'every authored vehicle names a type the IR carries, and every crew row sits on one of them',
+    async () => {
+      // The corpus: 633 `setvehicle` rows on 57 maps, 23 `attachtovehicle` crews of which 20 board
+      // through `moveintovehicle`. A crew row names its vehicle by the half-cell the `setvehicle`
+      // placed it on, so a coordinate no vehicle stands on would strand the settler.
+      const { real } = await loadContentUnderTest();
+      const known = new Set(real.vehicles.flatMap((v) => [v.id, v.name ?? v.id]));
+      let vehicles = 0;
+      let crews = 0;
+      let boarded = 0;
+      let placedMaps = 0;
+      for (const [file, map] of parsedMaps()) {
+        const placed = map.entities?.vehicles ?? [];
+        if (placed.length > 0) placedMaps++;
+        vehicles += placed.length;
+        const unknown = placed.map((v) => v.type).filter((t) => !known.has(t));
+        expect(unknown, `map ${file} places vehicle types absent from ir.json`).toEqual([]);
+        const spots = new Set(placed.map((v) => `${v.hx},${v.hy}`));
+        for (const human of map.entities?.humans ?? []) {
+          const crew = human.boardVehicleAt;
+          if (crew === undefined) continue;
+          crews++;
+          if (crew.inside) boarded++;
+          expect(spots.has(`${crew.hx},${crew.hy}`), `map ${file} crews a vehicle no setvehicle placed`).toBe(
+            true,
+          );
+        }
+      }
+      expect([placedMaps, vehicles, crews, boarded]).toEqual([57, 633, 23, 20]);
+    },
+    MAP_PARSE_TIMEOUT_MS,
+  );
+
+  it(
     'the chest join finds both chest records, and every map authors a known type on every chest',
     () => {
       // The sim opens a chest empty when its authored type is not in the contents table, so a gap there

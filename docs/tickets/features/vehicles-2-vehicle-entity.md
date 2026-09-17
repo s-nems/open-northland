@@ -1,14 +1,15 @@
 # Model vehicles as one movable entity kind in the simulation
 
 **Area:** sim · **Focus:** `packages/sim/src/components`, `systems/vehicles` · **Priority:** P2
-**Blocked by:** [content](vehicles-1-content-vehicle-types.md)
 
 The only vehicle today is the `placeBoat` hull (`systems/command/placement.ts`): `Position` +
 `Vehicle {vehicleType, tribe}` + an empty `Stockpile`, shaped like a building. It has no hit points,
 crew, cargo budget, task state, mission id or footprint, and a hand-dropped good lands in its hold
 because `dropOrStackGood` does not exclude a `Vehicle`. The trader carries an intrinsic 15-slot
 cart in `TradeRoute.cargo`. Nothing else can create, index or remove a vehicle. Every later vehicle
-ticket needs one entity model; rules in [VEHICLES.md](../../formats/VEHICLES.md).
+ticket needs one entity model; rules in [VEHICLES.md](../../formats/VEHICLES.md), whose type
+table the IR carries as `VehicleType` (`jobId`, `passengerJobs`, `vehicleSlots`,
+`passengerVector`, `draggingAnimalTribe`, `transformVehicleType`).
 
 ## Scope
 

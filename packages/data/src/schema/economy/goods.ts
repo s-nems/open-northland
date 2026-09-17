@@ -142,6 +142,13 @@ export const GoodType = z.strictObject({
   /** Present only on equippable goods (original ids 30-55: shoes, tools, armour, weapons, mead, potions,
    *  amulets); omitted for economy goods. */
   equip: EquipClass.optional(),
+  /**
+   * The `vehicle`-kind house a workshop opens when its product is this good (59 handcart .. 63 catapult
+   * to houses 42..46). Its presence marks a vehicle good: never stocked, built on a yard instead. The
+   * pairing follows the shared `VEHICLE_*` suffix of the `GOOD_TYPE_` and `HOUSE_TYPE_` defines in
+   * `logicdefines.inc`; the engine's own join is not byte-verified.
+   */
+  vehicleHouse: TypeId.optional(),
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;

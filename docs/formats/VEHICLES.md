@@ -3,8 +3,13 @@
 Handcarts, ox carts, ships and catapults are one entity class in the original. This reference
 holds the rules read from `Wonders.x64` (c2re, fully symbolled macOS build) and from the mod's
 readable `.ini` files. Every rule below is byte-verified unless marked *inferred* or *open*.
-Corpus counts come from `CNMod-1.3.2/CnModMaps`. Tickets under `docs/tickets/features/vehicles-*`
-implement this document; Open Northland approximations are named where they are made.
+Corpus counts are over the decoded `content/maps` of `CNMod-1.3.2` (123 maps). Tickets under
+`docs/tickets/features/vehicles-*` implement this document; Open Northland approximations are named
+where they are made. The IR carries the type table as `vehicles` (`VehicleType`, with `jobId`, the
+slug `cart_no_ox` for type 6, `passengerJobs`, `vehicleSlots`, `passengerVector`,
+`draggingAnimalTribe`, `transformVehicleType`), the yards as `vehicle`-kind buildings with
+`vehicleType` and `ignoreContinents`, the good-to-yard pairing as `GoodType.vehicleHouse`, and the
+sprites as `vehicleGraphics`.
 
 ## Type table (`Data/logic/vehicletypes.ini`)
 
@@ -18,7 +23,7 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `stockslots` | One shared unit budget across all goods (15, 30, 50, 200, catapult 0). |
 | `logicgood n` | Storable good ids (1..55). Storage is a byte per allowed good: current, wanted, reserved. Goods 18, 19, 22 alias onto 16 and 20 onto 17 when not listed themselves. |
 | `passengerslots` | Ordinary passenger slots. The commander occupies one extra slot at index `passengerslots`, so real capacity is `passengerslots + 1`. |
-| `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54. Carts: 24, 25. |
+| `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54 (the big ship lists no vehicle). Carts 1 and 2: 24, 25. The ox-less cart (6) lists none, so nobody can attach to it until its ox arrives. |
 | `logiccommander n` | Parsed but no reader found (*inferred* dead). The commander is the first attached human with an allowed job. |
 | `passengervector a b` | Door geometry: direction offset `a` from the facing, distance `b`. `b` is also the ring radius searched around a dock click (ships: 2 4). |
 | `stockvector` | Parsed, no logic reader found (*open*; probably a render-side cargo point). |
@@ -32,8 +37,13 @@ else 1000. Vision: 15 default, ship small 20, ship big 25, catapult 20. Vehicles
 ## Construction
 
 A workshop never stocks a vehicle good (59 handcart .. 63 catapult; `goodtypes.ini` marks them
-`isProducedOnMapFlag 1`, `atomicForProduction 39`). Each vehicle good pairs with a house type 42..46 (`logicmaintype 6`, `logicvehicletype n`, `logicworker 24 3`; the two ship houses
-also carry `logicignorecontinentsflag 1`). The worker producing that good:
+`isProducedOnMapFlag 1`, `atomicForProduction 39`, though `prey` (56) shares that flag shape, so the
+flag alone does not single them out). Each vehicle good pairs with a house type 42..46
+(`logicmaintype 6`, `logicvehicletype n`, `logicworker 24 3`; the two ship houses also carry
+`logicignorecontinentsflag 1`). The pairing in the IR follows the shared `VEHICLE_*` suffix of the
+`GOOD_TYPE_` and `HOUSE_TYPE_` defines in `logicdefines.inc` (*inferred*: the engine's own join is
+not byte-verified; the shipped ids pair 59..63 with 42..46 in order). House 43 (`oxcart`) spawns
+type 6, the ox-less cart. The worker producing that good:
 
 1. reuses an unfinished vehicle site within hex rings `r < 20` of the work centre, otherwise picks a
    build point within `r < 10` (5 and 10 for jobs 18 and 29) where every footprint node has
@@ -149,12 +159,18 @@ landscape on 51 % of footprint nodes and drop all cargo within radius 10.
 
 - `setvehicle <player> "<tribe>" "<type>" <x> <y> <missionId>`: seven columns; an eighth `0` on
   15 corpus rows is never read. The row runs only for an occupied seat (no `player >= 20` bypass),
-  and a dropped row also drops its trailing modifiers. 592 rows in 51 of 123 maps: catapult 364,
-  ship small 128, ox cart 54, handcart 38, ship big 8; 57 rows carry a mission id.
+  and a dropped row also drops its trailing modifiers. 623 rows in 56 of 123 maps: catapult 386,
+  ship small 130, ox cart 58, handcart 41, ship big 8; 52 rows carry a mission id and 53 an
+  `addgoods` run. The type is a `name`, and both ox carts are named `oxcart`: which of types 2 and 6
+  the original picks is *open*; the decoded entity keeps the name and the app's join takes the first
+  record (type 6).
 - `addgoods "<good>" <n>` after `setvehicle`: adds to reserved and current, never to wanted.
 - `attachtovehicle <x> <y>` after `sethuman`: attaches the human to the first vehicle on that node
-  through the normal attach gate (the first one becomes commander); it does not move him.
-- `moveintovehicle`: the human boards the vehicle he was attached to (removed from the map).
+  through the normal attach gate (the first one becomes commander); it does not move him. 13 corpus
+  rows on 4 maps, every one on a `setvehicle` node of its map; decoded as the human's
+  `boardVehicleAt`.
+- `moveintovehicle`: the human boards the vehicle he was attached to (removed from the map). 10
+  corpus rows, all after an `attachtovehicle`; decoded as `boardVehicleAt.inside`.
 
 Results: `SendVehicle` and `DockVehicle` snap the point to the nearest unblocked node with the same
 continent key within radius 9, then queue `e` / `g` like a player click. `AddGoodsToVehicle` adds
@@ -168,8 +184,19 @@ when its flag is set, and stamps a wreck effect. `RemoveVehicles` frees silently
 
 `DataCnmd/types/vehiclestype/jobgraphics.ini`: carts and the catapult draw from
 `CR_Veh_Body_00.bmd` (palettes `goods01`, `oxcart`, `goods_bow`), ships from `LS_vehicles.bmd`
-palette `human_Ship01` with player colour from the ship palette table. Bob sequences:
-`vehicles_bullcart_wait` 0+48, `_walk` 48+96, `_empty_wait` 144+1, `vehicles_catapult_attack`
-145+96, `vehicles_catapult_drive` 241+64, `vehicles_handcart_wait` 305+1. Atomic actions: 2 idle,
-4 ship movement, 81 attack, 84 dock, 8 facings. Ship rows use raw frame indices without
-`gfxbobseqbody`, which is why the IR has no `gfxAtomics` rows for jobs 52 and 53.
+palette `human_Ship01` with player colour from the ship palette table (`palettes.ini`
+`human_Ship01`..`human_Ship10`; player index to member is *inferred* from the numbering). Bob
+sequences: `vehicles_bullcart_wait` 0+48, `_walk` 48+96, `_empty_wait` 144+1,
+`vehicles_catapult_attack` 145+96, `vehicles_catapult_drive` 241+64, `vehicles_handcart_wait`
+305+1. Atomic actions: 2 idle, 4 the ships' second hull, 81 attack, 84 dock (no graphics record),
+8 facings. Ship rows use raw frame indices without `gfxbobseqbody`, which is why the IR has no
+`gfxAtomics` rows for jobs 52 and 53.
+
+The IR's `vehicleGraphics` lane joins the body binding of each `(tribe, vehicleType)` with the
+vehicle job's records, resolved to bob ids of that body: `clips` per action and `gaits` per hauled
+good (ships author `wood` as the loaded hull and carry `turnFrames`). Holes in the shipped data,
+which the renderer needs fallbacks for: Egypt (tribe 7) has no vehicle binding at all; only Viking
+and Frank have a big-ship binding, and the Viking one is the 32-frame `ve_test_ship.bmd` whose rows
+still index the 98-frame `LS_vehicles` layout, so its loaded hull (bobs 66..94) has no frame,
+while the Frank one has hulls but no gait; the ox-less cart has records for Viking and Frank only; the handcart's drive reuses
+`vehicles_bullcart_walk`; Byzantine carts and the Saracen ox cart have a wait but no drive.

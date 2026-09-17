@@ -8,6 +8,7 @@ import type {
   SoundBank,
   TerrainPattern,
   TrianglePatternType,
+  VehicleGraphics,
 } from '@open-northland/data';
 
 /** One decoded `[bobseq]` sequence: a named frame range in its imagelib's bob pool. */
@@ -239,6 +240,8 @@ export interface ContentIr {
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
   /** The `[jobbasegraphics]` join: which bob sets each `(tribe, job)` human composes. */
   readonly jobGraphics?: readonly JobGraphicsRow[];
+  /** The resolved per-`(tribe, vehicleType)` vehicle body, palettes and bob-id frame tables. */
+  readonly vehicleGraphics?: readonly VehicleGraphics[];
   /** The `animaltypes.ini` records, narrowed to tribe membership and to whether the record is a living
    *  creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns; behaviour fields stay
    *  sim-side. */

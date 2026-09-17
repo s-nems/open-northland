@@ -22,6 +22,7 @@ const building = (typeId: number, id: string): ContentBuilding => ({
   buildOnBioPattern: false,
   refillsOwnStock: false,
   canEnableDefenceMode: false,
+  ignoreContinents: false,
   shelterCapacity: 0,
   footprint: FOOTPRINT,
 });

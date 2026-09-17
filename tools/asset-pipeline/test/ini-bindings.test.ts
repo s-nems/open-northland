@@ -11,6 +11,9 @@ import {
   extractJobChangeGraphics,
   extractLandscapeGraphics,
   extractPaletteIndex,
+  extractRawFrameAtomics,
+  extractRawFrameGaits,
+  extractVehicleGraphicsBindings,
   parseIniSections,
 } from '../src/decoders/ini.js';
 
@@ -386,6 +389,109 @@ describe('extractGfxWalkAtomics', () => {
         goodType: 0,
         bodySeq: 'animal_bear_walk',
         source: { file: 'animations.ini', block: 'gfxwalkatomic', layer: 'mod' },
+      },
+    ]);
+  });
+});
+
+describe('extractRawFrameAtomics / extractRawFrameGaits', () => {
+  // The ship rows of the real animations.ini: no `gfxbobseqbody`, so every list is a bob id of the
+  // vehicle body itself, and the walk rows author in-place turns. The sequence-bound cart row and the
+  // in-house program belong to the other extractors.
+  const sections = parseIniSections(
+    [
+      '[gfxanimatomic]',
+      'logictribe 1',
+      'logicjob 52',
+      'logicatomicaction 2',
+      'gfxanimmode 0',
+      'gfxanimframelistdir 0 8 // 8',
+      'gfxanimframelistdir 1 12',
+      '[gfxanimatomic]', // sequence-bound: not a raw row
+      'logictribe 1',
+      'logicjob 50',
+      'logicatomicaction 2',
+      'gfxbobseqbody "vehicles_handcart_wait"',
+      'gfxanimframelistdir 0 0',
+      '[gfxanimatomic]', // an in-house program without a body: not a raw row either
+      'logictribe 1',
+      'logicjob 9',
+      'logicatomicaction 47',
+      'gfxanimmode 2',
+      'gfxinhouseanim 47 1 0 0 100',
+      '[gfxanimatomic]', // no action -> dropped
+      'logictribe 1',
+      'logicjob 52',
+      'gfxanimframelistdir 0 8',
+      '[gfxwalkatomic]',
+      'logictribe 1',
+      'logicjob 52',
+      'logicgoodtype 5',
+      'gfxwalkframelist 0 74',
+      'gfxwalkframelist 1 78',
+      'gfxturnframelist 0 74 75 76 77',
+      'gfxturnframelist 1 78 79 80 81',
+      '[gfxwalkatomic]', // no turns
+      'logictribe 2',
+      'logicjob 53',
+      'logicgoodtype 0',
+      'gfxwalkframelist 0 8',
+      '[gfxwalkatomic]', // sequence-bound: not a raw row
+      'logictribe 1',
+      'logicjob 50',
+      'logicgoodtype 0',
+      'gfxbobseqbody "vehicles_bullcart_walk"',
+      'gfxwalkframelist 0 48 49',
+    ].join('\n'),
+  );
+
+  it('keeps only the body-less records, with their lists verbatim', () => {
+    expect(extractRawFrameAtomics(sections)).toEqual([
+      { tribe: 1, job: 52, action: 2, dirFrames: [[8], [12]] },
+    ]);
+    expect(extractRawFrameGaits(sections)).toEqual([
+      {
+        tribe: 1,
+        job: 52,
+        goodType: 5,
+        dirFrames: [[74], [78]],
+        turnFrames: [
+          [74, 75, 76, 77],
+          [78, 79, 80, 81],
+        ],
+      },
+      { tribe: 2, job: 53, goodType: 0, dirFrames: [[8]] },
+    ]);
+  });
+});
+
+describe('extractVehicleGraphicsBindings', () => {
+  it('reads the (tribe, vehicle) body bindings and skips a record short of a key', () => {
+    const sections = parseIniSections(
+      [
+        '[jobgraphics]',
+        'logictribe 1',
+        'logicvehicle 3',
+        'gfxbobmanagerbody "Data\\Engine2D\\Bin\\Bobs\\LS_vehicles.bmd" "Data\\Engine2D\\Bin\\Bobs\\LS_vehicles_s.bmd"',
+        'gfxpalettebody "human_Ship01"',
+        '[jobgraphics]', // an animal record: no logicvehicle
+        'logictribe 8',
+        'logicjob 49',
+        'gfxbobmanagerbody "Data\\Engine2D\\Bin\\Bobs\\CR_Ani_Body_00.bmd"',
+        'gfxpalettebody "bear01"',
+        '[jobgraphics]', // no palette
+        'logictribe 2',
+        'logicvehicle 5',
+        'gfxbobmanagerbody "Data\\Engine2D\\Bin\\Bobs\\CR_Veh_Body_00.bmd"',
+      ].join('\n'),
+    );
+    expect(extractVehicleGraphicsBindings(sections)).toEqual([
+      {
+        tribeId: 1,
+        vehicleType: 3,
+        bmd: 'data/engine2d/bin/bobs/ls_vehicles.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_vehicles_s.bmd',
+        paletteName: 'human_ship01',
       },
     ]);
   });

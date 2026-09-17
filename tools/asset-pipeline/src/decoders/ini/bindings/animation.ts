@@ -160,3 +160,60 @@ export function extractGfxWalkAtomics(sections: readonly RuleSection[], src: Sou
   }
   return out;
 }
+
+/** A `[gfxanimatomic]` record with no `gfxbobseqbody`: its per-facing lists are bob ids of the job's body
+ *  bob set itself. The ship jobs are the only such records. */
+export interface RawFrameAtomic {
+  readonly tribe: number;
+  readonly job: number;
+  readonly action: number;
+  readonly dirFrames: readonly (readonly number[])[];
+}
+
+/** A `[gfxwalkatomic]` record with no `gfxbobseqbody`, same convention as {@link RawFrameAtomic}. */
+export interface RawFrameGait {
+  readonly tribe: number;
+  readonly job: number;
+  readonly goodType: number;
+  readonly dirFrames: readonly (readonly number[])[];
+  readonly turnFrames?: readonly (readonly number[])[];
+}
+
+function hasBodySeq(sec: RuleSection): boolean {
+  const bodySeq = getStr(sec, 'gfxbobseqbody');
+  return bodySeq !== undefined && bodySeq.trim() !== '';
+}
+
+/** The raw-frame twin of {@link extractGfxAnimAtomics}: the body-less `gfxanimmode 2` records stay
+ *  with the in-house programs, and a record short of a key or frame list is skipped. */
+export function extractRawFrameAtomics(sections: readonly RuleSection[]): RawFrameAtomic[] {
+  const out: RawFrameAtomic[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'gfxanimatomic' || hasBodySeq(sec)) continue;
+    if (getInt(sec, 'gfxanimmode') === GFX_ANIM_MODE_IN_HOUSE) continue;
+    const tribe = getInt(sec, 'logictribe');
+    const job = getInt(sec, 'logicjob');
+    const action = getInt(sec, 'logicatomicaction');
+    const dirFrames = dirIndexedFrameLists(sec, 'gfxanimframelistdir');
+    if (tribe === undefined || job === undefined || action === undefined || dirFrames === undefined) continue;
+    out.push({ tribe, job, action, dirFrames });
+  }
+  return out;
+}
+
+/** The raw-frame twin of {@link extractGfxWalkAtomics}, keeping the `gfxturnframelist` turns. */
+export function extractRawFrameGaits(sections: readonly RuleSection[]): RawFrameGait[] {
+  const out: RawFrameGait[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'gfxwalkatomic' || hasBodySeq(sec)) continue;
+    const tribe = getInt(sec, 'logictribe');
+    const job = getInt(sec, 'logicjob');
+    const goodType = getInt(sec, 'logicgoodtype');
+    const dirFrames = dirIndexedFrameLists(sec, 'gfxwalkframelist');
+    if (tribe === undefined || job === undefined || goodType === undefined || dirFrames === undefined)
+      continue;
+    const turnFrames = dirIndexedFrameLists(sec, 'gfxturnframelist');
+    out.push({ tribe, job, goodType, dirFrames, ...(turnFrames !== undefined ? { turnFrames } : {}) });
+  }
+  return out;
+}

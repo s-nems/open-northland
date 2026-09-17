@@ -25,13 +25,13 @@ const SHIPWRIGHT = 10;
 
 const VIKING_VEHICLES = [
   // ship big (typeId 4) declared first - ungated, always unlocked. passengerSlots > 0 → a ship.
-  { typeId: 4, id: 'ship_big', stockSlots: 200, passengerSlots: 9, logicSize: 2 },
+  { typeId: 4, id: 'ship_big', jobId: 53, stockSlots: 200, passengerSlots: 9, logicSize: 2 },
   // a land cart - never a ship (passengerSlots 0), even though it is a vehicle.
-  { typeId: 2, id: 'oxcart', stockSlots: 30, passengerSlots: 0, logicSize: 0 },
+  { typeId: 2, id: 'oxcart', jobId: 51, stockSlots: 30, passengerSlots: 0, logicSize: 0 },
   // ship small (typeId 3) declared after the big ship - gated behind a shipwright. Proves the sort.
-  { typeId: 3, id: 'ship_small', stockSlots: 50, passengerSlots: 19, logicSize: 2 },
+  { typeId: 3, id: 'ship_small', jobId: 52, stockSlots: 50, passengerSlots: 19, logicSize: 2 },
   // another land cart - never a ship.
-  { typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0, logicSize: 0 },
+  { typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15, passengerSlots: 0, logicSize: 0 },
 ];
 
 /** A content set whose tribe gates the small ship behind a shipwright; the big ship is an ungated start
@@ -123,7 +123,7 @@ describe('tribeShipsUnlocked', () => {
         goods: [{ typeId: 0, id: 'none' }],
         jobs: [{ typeId: 0, id: 'idle' }],
         buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
-        vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0 }],
+        vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15, passengerSlots: 0 }],
       }),
     });
     expect(tribeShipsUnlocked(sim.world, ctxOf(sim), TRIBE)).toEqual([]);

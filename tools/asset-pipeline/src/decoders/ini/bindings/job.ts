@@ -19,6 +19,37 @@ export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPa
   );
 }
 
+/** One `[jobgraphics]` record of `vehiclestype/jobgraphics.ini`: the body bob a tribe draws a vehicle
+ *  type with. Keyed by `logicvehicle`, which the flat binding shape has no slot for. */
+export interface VehicleGraphicsBinding {
+  readonly tribeId: number;
+  readonly vehicleType: number;
+  readonly bmd: string;
+  readonly shadowBmd: string | undefined;
+  readonly paletteName: string;
+}
+
+/** Reads the `[jobgraphics]` records that name a `logictribe` and a `logicvehicle`; a record short of
+ *  either key, a body bob or a palette is skipped. */
+export function extractVehicleGraphicsBindings(sections: readonly RuleSection[]): VehicleGraphicsBinding[] {
+  const out: VehicleGraphicsBinding[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'jobgraphics') continue;
+    const tribeId = getInt(sec, 'logictribe');
+    const vehicleType = getInt(sec, 'logicvehicle');
+    const [binding] = readBmdPaletteBindings(sec, 'gfxbobmanagerbody', 'gfxpalettebody');
+    if (tribeId === undefined || vehicleType === undefined || binding === undefined) continue;
+    out.push({
+      tribeId,
+      vehicleType,
+      bmd: binding.bmd,
+      shadowBmd: binding.shadowBmd,
+      paletteName: binding.paletteName,
+    });
+  }
+  return out;
+}
+
 export interface IndexedBobManager {
   /** The leading int slot index (`gfxbobmanagerbody 0 ...`); head bobs come in numbered variant slots. */
   readonly index: number;

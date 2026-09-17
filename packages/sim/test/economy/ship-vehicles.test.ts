@@ -42,26 +42,44 @@ function vehicleContent(): ContentSet {
       {
         typeId: 4,
         id: 'ship_big',
+        jobId: 53,
         stockSlots: 200,
         passengerSlots: 9,
         logicSize: 2,
         cargoGoods: [16, 17, 1],
       },
       // handcart (typeId 1) - a land cart: no passengers.
-      { typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0, logicSize: 0, cargoGoods: [16, 17] },
+      {
+        typeId: 1,
+        id: 'handcart',
+        jobId: 50,
+        stockSlots: 15,
+        passengerSlots: 0,
+        logicSize: 0,
+        cargoGoods: [16, 17],
+      },
       // ship small (typeId 3) declared after the big ship - proves the sort puts it first.
       {
         typeId: 3,
         id: 'ship_small',
+        jobId: 52,
         stockSlots: 50,
         passengerSlots: 19,
         logicSize: 2,
         cargoGoods: [16, 17, 1],
       },
       // catapult (typeId 5) - a siege engine, NOT a ship: it carries no passengers (logicSize 1) or cargo.
-      { typeId: 5, id: 'catapult', stockSlots: 0, passengerSlots: 0, logicSize: 1 },
+      { typeId: 5, id: 'catapult', jobId: 54, stockSlots: 0, passengerSlots: 0, logicSize: 1 },
       // oxcart (typeId 2) - a land cart: no passengers.
-      { typeId: 2, id: 'oxcart', stockSlots: 30, passengerSlots: 0, logicSize: 0, cargoGoods: [16, 17] },
+      {
+        typeId: 2,
+        id: 'oxcart',
+        jobId: 51,
+        stockSlots: 30,
+        passengerSlots: 0,
+        logicSize: 0,
+        cargoGoods: [16, 17],
+      },
     ],
   });
 }
@@ -95,7 +113,7 @@ describe('shipVehicles', () => {
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
-      vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
+      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15 }],
     });
     expect(shipVehicles(content)).toEqual([]);
   });
@@ -124,7 +142,7 @@ describe('largestShipCapacity', () => {
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
-      vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
+      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15 }],
     });
     expect(largestShipCapacity(cartsOnly)).toBe(0);
   });
@@ -179,7 +197,7 @@ describe('vehicleSizeOf', () => {
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
-      vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
+      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15 }],
     });
     const v = vehicle(content, 'handcart');
     expect(vehicleSizeOf(v)).toBe(0);

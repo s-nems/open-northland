@@ -26,6 +26,9 @@ export interface MapStaticObjects {
     producedGood?: string;
     /** The buildings this human is authored into (`attachtohouse`), in source order. */
     attach?: { hx: number; hy: number; slot: number }[];
+    /** The vehicle this human crews (`attachtovehicle`), by its `setvehicle` half-cell; `inside` once a
+     *  `moveintovehicle` boards him. */
+    boardVehicleAt?: { hx: number; hy: number; inside: boolean };
   }[];
   animals: {
     species: string;
@@ -61,11 +64,13 @@ const EMPTY_COLUMN = 0;
  * sethouse   <player(0-based)> "<GfxHouse EditName>" <level> <1: constant, unknown> <hx> <hy> <missionId>
  * sethuman   <player(0-based)> "<tribe>" "<jobtype role>" <hx> <hy> <missionId> <behaviourFlags>
  * setanimal  <player(20: wild)> "<tribe: the species>" "<animal type>" <hx> <hy> <missionId> <behaviour>
- * setvehicle <player(0-based)> "<tribe>" "<vehicletype>" <hx> <hy> <missionId>
+ * setvehicle <player(0-based)> "<tribe>" "<vehicletype>" <hx> <hy> <missionId> [<0: never read>]
  * setguide   <player(0-based)> <hx> <hy>
  * addgoods   "<goodtype name>" <count>
  * setproducedgood "<goodtype name>"
  * attachtohouse <hx> <hy> <slot>
+ * attachtovehicle <hx> <hy>
+ * moveintovehicle
  * ```
  *
  * `addgoods` stocks the entity placed by the immediately preceding `sethouse` or `setvehicle`. Its
@@ -80,6 +85,10 @@ const EMPTY_COLUMN = 0;
  * `attachtohouse` scopes to its enclosing `sethuman` the same way, and repeats: a human may name both a
  * home and a workplace. Its coordinates are the target `sethouse`'s own anchor half-cell, never an
  * interior one.
+ *
+ * `attachtovehicle` names the `setvehicle` half-cell the enclosing `sethuman` crews, and a later
+ * `moveintovehicle` in the same block boards him; one without an attach has no vehicle and is dropped.
+ * Fifteen corpus `setvehicle` rows carry an eighth `0` column the original never reads.
  */
 export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
@@ -113,6 +122,14 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       if (humanTarget === undefined || hx === undefined || hy === undefined || slot === undefined) continue;
       humanTarget.attach ??= [];
       humanTarget.attach.push({ hx, hy, slot });
+    } else if (p.key === 'attachtovehicle') {
+      const [hxRaw, hyRaw] = p.values;
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      if (humanTarget === undefined || hx === undefined || hy === undefined) continue;
+      humanTarget.boardVehicleAt = { hx, hy, inside: false };
+    } else if (p.key === 'moveintovehicle') {
+      if (humanTarget?.boardVehicleAt !== undefined) humanTarget.boardVehicleAt.inside = true;
     } else if (p.key === 'addgoods') {
       const [name, countRaw] = p.values;
       const count = int(countRaw);

@@ -25,10 +25,10 @@ const SHIP_BIG = 4; // ungated start ship
 const HANDCART = 1; // a cart - never a ship, so never placeable as a boat
 
 const VIKING_VEHICLES = [
-  { typeId: SHIP_BIG, id: 'ship_big', stockSlots: 200, passengerSlots: 9, logicSize: 2 },
-  { typeId: 2, id: 'oxcart', stockSlots: 30, passengerSlots: 0, logicSize: 0 },
-  { typeId: SHIP_SMALL, id: 'ship_small', stockSlots: 50, passengerSlots: 19, logicSize: 2 },
-  { typeId: HANDCART, id: 'handcart', stockSlots: 15, passengerSlots: 0, logicSize: 0 },
+  { typeId: SHIP_BIG, id: 'ship_big', jobId: 53, stockSlots: 200, passengerSlots: 9, logicSize: 2 },
+  { typeId: 2, id: 'oxcart', jobId: 51, stockSlots: 30, passengerSlots: 0, logicSize: 0 },
+  { typeId: SHIP_SMALL, id: 'ship_small', jobId: 52, stockSlots: 50, passengerSlots: 19, logicSize: 2 },
+  { typeId: HANDCART, id: 'handcart', jobId: 50, stockSlots: 15, passengerSlots: 0, logicSize: 0 },
 ];
 
 function shipContent(): ContentSet {

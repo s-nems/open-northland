@@ -4,6 +4,9 @@ export type {
   BmdPaletteBinding,
   JobBaseGraphicsBinding,
   PaletteAlias,
+  RawFrameAtomic,
+  RawFrameGait,
+  VehicleGraphicsBinding,
 } from './ini/bindings/index.js';
 export {
   extractBobSequences,
@@ -15,6 +18,9 @@ export {
   extractJobChangeGraphics,
   extractLandscapeGraphics,
   extractPaletteIndex,
+  extractRawFrameAtomics,
+  extractRawFrameGaits,
+  extractVehicleGraphicsBindings,
   paletteAliasMap,
   type RampAlias,
   rampAliasMap,
@@ -73,3 +79,4 @@ export {
   extractLandscapeGfx,
   extractTrianglePatternTypes,
 } from './ini/types/landscape.js';
+export { vehicleHouseByGood } from './ini/vehicle-type-codes.js';

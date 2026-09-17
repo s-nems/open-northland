@@ -12,10 +12,15 @@ facts in [VEHICLES.md](../../formats/VEHICLES.md#graphics).
 
 - Add `vehicle` to `DrawKind`, classify by the `Vehicle` component, assemble one draw item per
   vehicle with facing, task and load state, and a fog ghost like buildings.
-- Bind sprites from the IR rows of the content ticket: handcart wait, bullcart wait/walk with the
-  oxcart palette for type 2 and the empty wait for type 6, catapult drive/attack, ship idle/move/dock
-  frames with the player palette. Use the trader's existing `human_man_z00Trader_walk` gait only
-  while a trader is attached; a lone trader walks like a carrier.
+- Bind sprites from the IR's `vehicleGraphics` rows (one per tribe and type: body atlas, palette,
+  `clips` per action and `gaits` per hauled good, all as bob ids): handcart wait, bullcart wait/walk
+  with the oxcart palette for type 2 and the empty wait for type 6, catapult drive/attack, ship
+  idle/move/dock frames with the player palette from `playerPalettes` (only the `human_ship01`
+  atlas is baked today). Fall back where the shipped data has holes, listed under
+  [graphics](../../formats/VEHICLES.md#graphics): Egypt has no rows, the Viking big ship's loaded
+  hull has no frames, and several carts have a wait but no drive. Use the trader's existing
+  `human_man_z00Trader_walk` gait only while a trader is attached; a lone trader walks like a
+  carrier.
 - Interpolate position and facing between ticks like settlers; a moving cart shows the loaded
   goods variant when its stock is non-empty (approximation: the original's load variants are
   palette rows, not per-good art).

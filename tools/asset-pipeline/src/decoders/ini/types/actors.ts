@@ -1,7 +1,8 @@
 import { AnimalType, ArmorType, AtomicAnimation, VehicleType, WeaponType } from '@open-northland/data';
 import type { RuleSection } from '../grammar.js';
 import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
-import { findProps, getInt, getIntList, getStr } from '../props.js';
+import { findProps, getInt, getIntList, getIntTuple, getStr } from '../props.js';
+import { VEHICLE_JOB_ID_OFFSET, VEHICLE_SLUG_BY_TYPE } from '../vehicle-type-codes.js';
 
 /** A section without a `name` is unreferenceable by a tribe's `setatomic`, so it throws. */
 export function extractAtomicAnimations(sections: readonly RuleSection[], src: SourceRef): AtomicAnimation[] {
@@ -114,21 +115,43 @@ export function extractArmor(sections: readonly RuleSection[], src: SourceRef): 
   return armor;
 }
 
+/** The arity of `passengervector <direction> <distance>`. */
+const PASSENGER_VECTOR_ARITY = 2;
+
+/**
+ * `logiccommander` and `stockvector` are parsed by the original but read by nothing found, so neither
+ * is extracted. Two records sharing a slug throw: `VEHICLE_SLUG_BY_TYPE` must tell them apart.
+ */
 export function extractVehicles(sections: readonly RuleSection[], src: SourceRef): VehicleType[] {
   const vehicles: VehicleType[] = [];
+  const ids = new Set<string>();
   for (const sec of sections) {
     if (sec.name !== 'vehicletype') continue;
     const typeId = requireTypeId(sec, 'vehicletype', src);
     const name = getStr(sec, 'name');
+    const id = VEHICLE_SLUG_BY_TYPE.get(typeId) ?? (name ? slug(name) : `vehicle_${typeId}`);
+    if (ids.has(id)) throw new Error(`ini: [vehicletype] ${typeId} repeats the slug "${id}" in ${src.file}`);
+    ids.add(id);
+    const passengerVector = getIntTuple(sec, 'passengervector', PASSENGER_VECTOR_ARITY);
+    const draggingAnimalTribe = getInt(sec, 'logicdragginganimaltribe');
+    const transformVehicleType = getInt(sec, 'logictransformvehicleType');
     vehicles.push(
       VehicleType.parse({
         typeId,
-        id: name ? slug(name) : `vehicle_${typeId}`,
+        id,
         name,
+        jobId: typeId + VEHICLE_JOB_ID_OFFSET,
         stockSlots: getInt(sec, 'stockslots'),
         passengerSlots: getInt(sec, 'passengerslots'),
         logicSize: getInt(sec, 'logicsize'),
         cargoGoods: getIntList(sec, 'logicgood'),
+        passengerJobs: getIntList(sec, 'logicpassenger'),
+        vehicleSlots: getInt(sec, 'vehicleslots'),
+        ...(passengerVector !== undefined
+          ? { passengerVector: { direction: passengerVector[0], distance: passengerVector[1] } }
+          : {}),
+        ...(draggingAnimalTribe !== undefined ? { draggingAnimalTribe } : {}),
+        ...(transformVehicleType !== undefined ? { transformVehicleType } : {}),
         source: makeSource(src, 'vehicletype'),
       }),
     );

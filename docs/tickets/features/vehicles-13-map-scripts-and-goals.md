@@ -11,8 +11,10 @@ their vehicle half. Semantics in [VEHICLES.md](../../formats/VEHICLES.md#map-scr
 ## Scope
 
 - World build: `setvehicle` rows for occupied seats only (no `player >= 20` bypass; a dropped row
-  drops its modifiers), `addgoods` into reserved and current, `attachtovehicle` through the attach
-  gate with the first as commander, `moveintovehicle` boarding.
+  drops its modifiers), `addgoods` into reserved and current, the human's decoded `boardVehicleAt`
+  through the attach gate with the first as commander, and `inside` boarding. Decide which `oxcart`
+  record a `setvehicle "oxcart"` spawns: the name join takes type 6 (no ox, admits no crew), yet
+  Blekiny Nurt attaches carriers to its ox carts, which only type 2 admits.
 - Results: `SetVehicle` (with the captain flag: investigate first what it spawns),
   `RemoveVehicles`, `SendVehicle`, `DockVehicle`, `ChangeVehiclesPlayerId`, `AddGoodsToVehicle`,
   `AttachHumanToVehicle`, `DetachHumanFromVehicle`, `ChangeMissionIdOfVehicles`,

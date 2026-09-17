@@ -127,6 +127,12 @@ export const BuildingType = z.strictObject({
   prayerSite: z.enum(PRAYER_SITE).optional(),
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
   canEnableDefenceMode: z.boolean().default(false),
+  /** `logicvehicletype` - the vehicle a finished site of this `vehicle`-kind house spawns. The good whose
+   *  production opens the site is the {@link GoodType.vehicleHouse} pointing back here. */
+  vehicleType: TypeId.optional(),
+  /** `logicignorecontinentsflag` - the site is picked on a continent other than the worker's (the ship
+   *  houses, whose site lands on the water beside the yard). */
+  ignoreContinents: z.boolean().default(false),
   /**
    * How many civilians shelter inside during defence mode, `0` for a type that offers no mode. No readable
    * record carries a garrison size; the original's sizes are overlaid at the app boundary onto the types
