@@ -58,10 +58,15 @@ the blocker. After integration, hand off verified primary `main` and clean up ta
 Asset handoffs follow
 [PIPELINE.md](../../docs/art/PIPELINE.md), including candidate gallery and real-map review.
 
-Report commits, changed behavior, checks and remaining risks. If integration is not already
-authorized, ask for approval of this concrete result; otherwise continue.
+Report commits, changed behavior, checks and remaining risks, then stop and wait. Only the user's
+own message in this conversation, naming this task or branch, authorizes integration. A wakeup or
+loop prompt, a skill checklist, an earlier merge, an agent report, and the user's silence after a
+report authorize nothing. Without that message, end the task here with the task preview link.
 
 ## Integrate and clean up
+
+Before the first step, quote the user's message that authorized this integration in your reply; if
+there is none, this section does not apply.
 
 1. Check `git log --oneline main..<branch>`. If empty, verify the task is already present and clean up.
 2. Fetch the target remote when configured. Update a clean local `main` by fast-forward when possible;
