@@ -15,9 +15,6 @@ Follow the [design and panel workflow](../../design/ingame-menu/README.md) and
 
 ## Scope
 
-- Bundle a display face for window titles: the reference uses Almendra SC (SIL OFL) from Google
-  Fonts; the runtime falls back to the bundled Cinzel. Add the subset and licence beside the other
-  fonts in `packages/app/public/fonts/`, or record Cinzel as the final choice in FOUNDATION.md.
 - Verify focus order, contrast, long labels and the 0.75–1.875 scale range on the real renderer once
   the shell (ticket 02) mounts regions on the plane; the gallery board only proves the primitives.
 - Keep panel contents for their owner tickets. Building thumbnails, counts and the selected-settler

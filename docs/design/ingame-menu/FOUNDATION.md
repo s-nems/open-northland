@@ -56,7 +56,7 @@ labels, so colour is never the only carrier of state.
 
 ## Components and geometry
 
-Alegreya Sans carries information; Almendra SC (Google Fonts, Cinzel fallback) is for short window
+Alegreya Sans carries information; Cinzel, the main menu's display face, is for short window
 titles only. Body copy uses 14 design px, compact metadata 12 px, beam labels 11 px, window titles
 25 px (selection 20 px). Pointer targets are at least 36 px; spacing follows 4 px. The compact notification filters
 are an explicit 26 px exception in this mouse/keyboard study.
