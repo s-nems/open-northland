@@ -290,6 +290,7 @@ export const enGame = {
       tally: '{filter} · {weight}: {count}',
       empty: 'All quiet in the settlement',
       dismiss: 'Dismiss notification',
+      clearAll: 'Dismiss all notifications',
       more: '{count} more',
     },
     extras: {

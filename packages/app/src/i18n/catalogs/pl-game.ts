@@ -278,6 +278,7 @@ export const plGame = {
       tally: '{filter} · {weight}: {count}',
       empty: 'Spokój w osadzie',
       dismiss: 'Usuń powiadomienie',
+      clearAll: 'Usuń wszystkie powiadomienia',
       more: 'jeszcze {count}',
     },
     extras: {

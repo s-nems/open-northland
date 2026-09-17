@@ -600,6 +600,38 @@ button.medallion:hover {
   border-color: currentColor;
   background: #2c2a21;
 }
+/* The bin beside the filters dismisses every shown card, as Shift with a × does. */
+.notice-clear {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin-left: 2px;
+  padding: 0;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #4b4032, #1a1712 75%);
+  box-shadow: inset 0 0 0 2px #ffffff0b;
+  color: var(--bronze);
+  transition: color 0.12s;
+}
+.notice-clear svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.notice-clear:hover,
+.notice-clear:focus-visible {
+  color: var(--bronze-hi);
+  border-color: var(--bronze);
+}
+.notice-clear:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+}
 .priority em {
   position: absolute;
   width: 1px;

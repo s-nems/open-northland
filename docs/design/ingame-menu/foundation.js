@@ -62,6 +62,8 @@ document.addEventListener('click', (event) => {
     press('notices', button.dataset.notices);
   }
   if (button.matches('.notice-dismiss')) dismissNotice(button.closest('.notice'));
+  if (button.matches('.notice-clear'))
+    for (const item of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(item);
   // A card with a target would centre the camera; one without pins its full text instead.
   if (button.matches('.notice-card') && !button.querySelector('.go'))
     pinNoticeFull(button, pinned !== button);
@@ -141,6 +143,8 @@ function applyNoticeFilter() {
   const total = counts[0] + counts[1] + counts[2];
   noticeCount.textContent = `Wiadomości: ${total}`;
   noticeEmpty.hidden = total > 0;
+  notices.querySelector('.notice-clear').disabled =
+    noticeList.querySelector('.notice:not([hidden])') === null;
   if (total === 0) notices.dataset.state = 'empty';
   layoutNotices();
 }

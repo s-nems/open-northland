@@ -773,6 +773,34 @@
   border-color: currentColor;
   background: #2c2a21;
 }
+/* The bin beside the filters dismisses every shown card, as Shift with a × does. */
+.on-hud .on-notices__clear {
+  width: 32px;
+  height: 32px;
+  margin-left: 12px;
+  padding: 0;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #4b4032, #1a1712 75%);
+  box-shadow: inset 0 0 0 2px #ffffff0b;
+  color: var(--bronze);
+  pointer-events: auto;
+  transition: color 0.12s;
+}
+.on-hud .on-notices__clear .on-glyph {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
+}
+.on-hud .on-notices__clear:hover,
+.on-hud .on-notices__clear:focus-visible {
+  color: var(--bronze-hi);
+  border-color: var(--bronze);
+}
+.on-hud .on-notices__clear:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+}
 .on-hud .on-notices__empty {
   margin: 2px 0 0 4px;
   font-size: 12px;

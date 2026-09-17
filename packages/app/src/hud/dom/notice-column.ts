@@ -117,7 +117,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     width: `${NOTICE_COLUMN.width}px`,
     bottom: `${deps.bottomInset}px`,
   });
-  column.innerHTML = `<div class="on-notices__head"><span class="on-sr"></span><div class="on-filters" role="toolbar"></div></div><p class="on-notices__empty" hidden></p><ul class="on-notices__list"></ul><button type="button" class="on-notices__more" hidden><svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg><span></span></button><div class="on-notices__full" role="tooltip" hidden></div>`;
+  column.innerHTML = `<div class="on-notices__head"><span class="on-sr"></span><div class="on-filters" role="toolbar"></div><button type="button" class="on-notices__clear">${GLYPH.bin}</button></div><p class="on-notices__empty" hidden></p><ul class="on-notices__list"></ul><button type="button" class="on-notices__more" hidden><svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg><span></span></button><div class="on-notices__full" role="tooltip" hidden></div>`;
   const part = <T extends Element>(selector: string): T => {
     const found = column.querySelector(selector);
     if (found === null) throw new Error(`notice column: ${selector} missing`);
@@ -130,7 +130,11 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   const more = part<HTMLButtonElement>('.on-notices__more');
   const moreCount = part<HTMLElement>('.on-notices__more span');
   const full = part<HTMLElement>('.on-notices__full');
+  const clear = part<HTMLButtonElement>('.on-notices__clear');
   filters.setAttribute('aria-label', copy.levelLabel);
+  clear.setAttribute('aria-label', copy.clearAll);
+  clear.title = copy.clearAll;
+  clear.addEventListener('click', () => deps.onDismissAll());
   empty.textContent = copy.empty;
   list.setAttribute('aria-label', copy.label);
   const filterNames = [copy.filters.all, copy.filters.notable, copy.filters.important];
@@ -314,6 +318,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       const total = tally.reduce((sum, n) => sum + n, 0);
       count.textContent = formatMessage(copy.count, { count: total });
       empty.hidden = total > 0;
+      clear.disabled = cards.length === 0;
       filterButtons.forEach((button, i) => {
         const filter = filterNames[i] ?? '';
         const label = formatMessage(copy.tally, {
