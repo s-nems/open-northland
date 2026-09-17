@@ -181,7 +181,7 @@ describe('parseSaveGame rng, fog, and command rejection', () => {
     expect(() => parseSaveGame(doc)).toThrow(/masks\[0\]\[1\]: a mask is a non-empty string of FOG_STATE/);
   });
 
-  it('rejects an unknown fog mode and mask players out of order', () => {
+  it('rejects an unknown fog mode and mask groups out of order', () => {
     const doc = populatedDoc();
     const fog = sectionOf(doc, 'fog');
     fog.activeMode = 9;
@@ -191,7 +191,26 @@ describe('parseSaveGame rng, fog, and command rejection', () => {
     const mask = masks[0];
     if (mask === undefined) throw new Error('populated doc must hold a fog mask');
     masks.push([mask[0], mask[1]]);
-    expect(() => parseSaveGame(doc)).toThrow(/masks\[1\]\[0\]: player 0 does not ascend past 0/);
+    expect(() => parseSaveGame(doc)).toThrow(/masks\[1\]\[0\]: group 0 does not ascend past 0/);
+  });
+
+  it('rejects a shared-vision group of one, a player in two groups, and groups out of order', () => {
+    const doc = populatedDoc();
+    const fog = sectionOf(doc, 'fog');
+    fog.sharedVision = [[2]];
+    expect(() => parseSaveGame(doc)).toThrow(/sharedVision\[0\]: expected at least two players/);
+    fog.sharedVision = [
+      [1, 2],
+      [2, 3],
+    ];
+    expect(() => parseSaveGame(doc)).toThrow(/sharedVision\[1\]\[0\]: player 2 shares two groups/);
+    fog.sharedVision = [
+      [4, 5],
+      [1, 2],
+    ];
+    expect(() => parseSaveGame(doc)).toThrow(/sharedVision\[1\]: group 1 does not ascend past 4/);
+    fog.sharedVision = [[1, 2, 16]];
+    expect(() => parseSaveGame(doc)).toThrow(/sharedVision\[0\]\[2\]: player 16 is not a slot/);
   });
 
   it('rejects a malformed pending envelope naming its position', () => {

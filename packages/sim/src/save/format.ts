@@ -8,7 +8,7 @@ export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. A reader accepts
  *  exactly this version and rejects any other, never migrating. */
-export const SAVE_FORMAT_VERSION = 15;
+export const SAVE_FORMAT_VERSION = 16;
 
 /** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
  *  is rejected at export. */
@@ -61,14 +61,18 @@ export interface RngSection {
 }
 
 /**
- * Fog beyond the components: the masks plus the two cadence fields that survive tick boundaries.
- * The may-hold-VISIBLE boxes are derived bookkeeping and stay out.
+ * Fog beyond the components: the shared-vision groups, the masks and the two cadence fields that
+ * survive tick boundaries. The may-hold-VISIBLE boxes are derived bookkeeping and stay out.
  */
 export interface FogSection {
   readonly id: 'fog';
   readonly activeMode: number;
   readonly lastRebuildTick: number;
-  /** `[player, mask]` ascending by player; a mask is one FOG_STATE digit per cell, row-major. */
+  /** Each group of players sharing one mask, its members ascending, ascending by first member; a
+   *  player listed nowhere keeps a mask of its own. */
+  readonly sharedVision: ReadonlyArray<readonly number[]>;
+  /** `[group, mask]` ascending by group, a group being its lowest member; a mask is one FOG_STATE digit
+   *  per cell, row-major. */
   readonly masks: ReadonlyArray<readonly [number, string]>;
 }
 

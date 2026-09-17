@@ -4,7 +4,7 @@ import type { Simulation } from '../../src/index.js';
 import type { HalfCellNode } from '../../src/nav/halfcell.js';
 import type { MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
-import { FOG_STATE } from '../../src/systems/vision/index.js';
+import { FOG_STATE, VISION_CADENCE_TICKS } from '../../src/systems/vision/index.js';
 import {
   FIRST_PASS,
   failedResultsUntil,
@@ -24,7 +24,8 @@ import {
 
 /**
  * The reveal a script grants and the goals that ask whether a player has explored a point. Fog is
- * off by default, where everything reads explored; the REVEAL mode is where a reveal shows.
+ * off by default, where everything reads explored; the REVEAL mode is where a reveal shows, and it
+ * shows as fully as ground an own eye covered.
  */
 
 const OWNER = 0;
@@ -70,35 +71,44 @@ function houseAt(sim: Simulation, owner: number, at: HalfCellNode, missionId: nu
 }
 
 describe('ExploreArea', () => {
-  it('reveals the hexagon around the point for the named player alone', () => {
+  it('reveals the hexagon around the point for the named player alone, as fully as an own eye', () => {
     const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.REVEAL);
     sim.run(FIRST_PASS);
-    expect(cellState(sim, OWNER, POINT)).toBe(FOG_STATE.EXPLORED);
-    expect(cellState(sim, OWNER, ON_RIM)).toBe(FOG_STATE.EXPLORED);
+    expect(cellState(sim, OWNER, POINT)).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, OWNER, ON_RIM)).toBe(FOG_STATE.VISIBLE);
     expect(cellState(sim, OWNER, PAST_RIM)).toBe(FOG_STATE.UNEXPLORED);
     expect(cellState(sim, OWNER, BELOW_RIM)).toBe(FOG_STATE.UNEXPLORED);
     expect(sim.fog?.tryMaskFor(RIVAL)).toBeUndefined();
   });
 
+  it('keeps the reveal in sight across later rebuilds, with no eye of the player near', () => {
+    const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.REVEAL);
+    spawn(sim, { player: OWNER, at: FAR_EAST });
+    sim.run(FIRST_PASS + 2 * VISION_CADENCE_TICKS);
+    expect(cellState(sim, OWNER, POINT)).toBe(FOG_STATE.VISIBLE);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
   it('a zero coordinate or range reveals the whole map', () => {
     const sim = underFog(firingSim([explore(OWNER, POINT, 0)]), FOG_MODE.REVEAL);
     sim.run(FIRST_PASS);
-    expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.EXPLORED);
-    expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.EXPLORED);
+    expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.VISIBLE);
   });
 
   it('a range no lattice distance exceeds reveals the whole map too', () => {
     const sim = underFog(firingSim([explore(OWNER, POINT, 4 * MAP_NODES)]), FOG_MODE.REVEAL);
     sim.run(FIRST_PASS);
-    expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.EXPLORED);
-    expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.EXPLORED);
+    expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.VISIBLE);
+    expect(sim.checkInvariants()).toEqual([]);
   });
 
-  it('never downgrades a cell the player sees', () => {
+  it("reveals for every player sharing the named player's vision", () => {
     const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.REVEAL);
-    spawn(sim, { player: OWNER });
+    sim.enqueueSetup({ kind: 'setSharedVision', players: [OWNER, RIVAL] });
     sim.run(FIRST_PASS);
-    expect(cellState(sim, OWNER, POINT)).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, RIVAL, ON_RIM)).toBe(FOG_STATE.VISIBLE);
   });
 
   it('writes nothing with fog off or in RECON, where the point already reads explored', () => {
@@ -114,7 +124,7 @@ describe('ExploreArea', () => {
   it('carries the reveal through the save round trip', () => {
     const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.REVEAL);
     sim.run(FIRST_PASS);
-    expect(cellState(roundTrip(sim), OWNER, ON_RIM)).toBe(FOG_STATE.EXPLORED);
+    expect(cellState(roundTrip(sim), OWNER, ON_RIM)).toBe(FOG_STATE.VISIBLE);
   });
 
   it('reports a slot the sim keeps no fog for', () => {

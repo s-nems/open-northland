@@ -1,4 +1,4 @@
-import { isFogMode } from '../components/rules.js';
+import { isFogMode, isValidPlayer } from '../components/index.js';
 import { parseCommandEnvelope } from '../core/commands/parse.js';
 import { parseContinuation } from '../core/continuation.js';
 import { asCount, asInteger, asRecord, typeName } from '../core/untrusted.js';
@@ -188,28 +188,58 @@ function parsedFog(raw: Record<string, unknown>, at: string): FogSection {
   if (lastRebuildTick < -1) {
     throw new Error(`${at}.lastRebuildTick: expected -1 (never rebuilt) or a tick, got ${lastRebuildTick}`);
   }
+  const sharedVision = parsedSharedVision(raw.sharedVision, `${at}.sharedVision`);
   const rawMasks = raw.masks;
   if (!Array.isArray(rawMasks)) {
     throw new Error(`${at}.masks: expected an array, got ${typeName(rawMasks)}`);
   }
-  let previousPlayer = -1;
+  let previousGroup = -1;
   const masks = rawMasks.map((entry: unknown, j) => {
     const atMask = `${at}.masks[${j}]`;
     if (!Array.isArray(entry) || entry.length !== 2) {
-      throw new Error(`${atMask}: expected a [player, mask] pair`);
+      throw new Error(`${atMask}: expected a [group, mask] pair`);
     }
-    const player = asCount(entry[0], `${atMask}[0]`);
-    if (player <= previousPlayer) {
-      throw new Error(`${atMask}[0]: player ${player} does not ascend past ${previousPlayer}`);
+    const group = asCount(entry[0], `${atMask}[0]`);
+    if (group <= previousGroup) {
+      throw new Error(`${atMask}[0]: group ${group} does not ascend past ${previousGroup}`);
     }
-    previousPlayer = player;
+    previousGroup = group;
     const digits = entry[1];
     if (typeof digits !== 'string' || !/^[0-2]+$/.test(digits)) {
       throw new Error(`${atMask}[1]: a mask is a non-empty string of FOG_STATE digits`);
     }
-    return [player, digits] as const;
+    return [group, digits] as const;
   });
-  return { id: 'fog', activeMode, lastRebuildTick, masks };
+  return { id: 'fog', activeMode, lastRebuildTick, sharedVision, masks };
+}
+
+/** Groups of at least two valid players, disjoint, each ascending, ascending by first member. */
+function parsedSharedVision(raw: unknown, at: string): ReadonlyArray<readonly number[]> {
+  if (!Array.isArray(raw)) throw new Error(`${at}: expected an array, got ${typeName(raw)}`);
+  const seen = new Set<number>();
+  let previousKey = -1;
+  return raw.map((entry: unknown, j) => {
+    const atGroup = `${at}[${j}]`;
+    if (!Array.isArray(entry) || entry.length < 2) {
+      throw new Error(`${atGroup}: expected at least two players`);
+    }
+    let previous = -1;
+    const members = entry.map((value: unknown, k) => {
+      const player = asCount(value, `${atGroup}[${k}]`);
+      if (!isValidPlayer(player)) throw new Error(`${atGroup}[${k}]: player ${player} is not a slot`);
+      if (player <= previous) {
+        throw new Error(`${atGroup}[${k}]: player ${player} does not ascend past ${previous}`);
+      }
+      if (seen.has(player)) throw new Error(`${atGroup}[${k}]: player ${player} shares two groups`);
+      seen.add(player);
+      previous = player;
+      return player;
+    });
+    const key = members[0] ?? 0;
+    if (key <= previousKey) throw new Error(`${atGroup}: group ${key} does not ascend past ${previousKey}`);
+    previousKey = key;
+    return members;
+  });
 }
 
 function parsedCommands(raw: Record<string, unknown>, at: string, tick: number): CommandsSection {

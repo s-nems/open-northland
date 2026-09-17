@@ -1,4 +1,4 @@
-import { FOG_MODE } from '../../components/index.js';
+import { FOG_MODE, isValidPlayer } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -44,22 +44,28 @@ export function foldCellChange(fold: FogFold, index: number, from: number, to: n
 }
 
 /**
- * The per-player fog masks, a `Simulation`-owned world resource rather than a component: one lazily
- * allocated `W×H` array of {@link FOG_STATE} bytes per player that ever owned a positioned entity.
- * `generation` bumps on every rebuild so render layers re-composite only when the fog changed.
+ * The fog masks, a `Simulation`-owned world resource rather than a component: one lazily allocated
+ * `W×H` array of {@link FOG_STATE} bytes per vision group that ever owned a positioned entity. A
+ * vision group is one player, or the players a `setSharedVision` command joined, keyed by its lowest
+ * member; every player-keyed accessor resolves the player to its group first. `generation` bumps on
+ * every rebuild so render layers re-composite only when the fog changed.
  */
 export class FogState {
   /** Cell-grid dimensions (the half-cell lattice quartered). */
   readonly cellsWide: number;
   readonly cellsHigh: number;
-  /** player → per-cell {@link FOG_STATE} bytes. Iterate through {@link playersWithMasks} for any decision
-   *  or hash; raw Map order is insertion order, so it is history-dependent. */
+  /** vision group → per-cell {@link FOG_STATE} bytes. Iterate through {@link groupsWithMasks} for any
+   *  decision or hash; raw Map order is insertion order, so it is history-dependent. */
   private readonly masks = new Map<number, Uint8Array>();
+  /** player → its vision group, held for every member of a shared group, ascending by player; a player
+   *  without an entry is its own group. Shared vision is an authored rule: the original keeps one
+   *  explored bit per player and its display reads the local player's bit alone. */
+  private groupOf = new Map<number, number>();
   /**
-   * player → the cell box that may still hold VISIBLE bytes, the union of every stamp rect since the last
-   * downgrade. The downgrade pass scans only this box, so rebuild cost follows vision coverage rather than
-   * map area. Derived bookkeeping, never hashed: stamps are the only writer of VISIBLE and each merges its
-   * rect in, so VISIBLE cannot exist outside the box.
+   * vision group → the cell box that may still hold VISIBLE bytes, the union of every stamp and reveal
+   * rect since the last downgrade. The downgrade pass scans only this box, so rebuild cost follows vision
+   * coverage rather than map area. Derived bookkeeping, never hashed: stamps and reveals are the only
+   * writers of VISIBLE and each merges its rect in, so VISIBLE cannot exist outside the box.
    */
   private readonly visibleBounds = new Map<
     number,
@@ -71,8 +77,8 @@ export class FogState {
   activeMode: number = FOG_MODE.OFF;
   /** Tick of the last rebuild, -1 before the first. */
   lastRebuildTick = -1;
-  /** player → mask fold, maintained only while a sync digest is on; the masks are far too large to
-   *  fold from scratch each tick. */
+  /** vision group → mask fold, maintained only while a sync digest is on; the masks are far too large
+   *  to fold from scratch each tick. */
   private folds: Map<number, FogFold> | null = null;
 
   constructor(terrain: TerrainGraph, world: World) {
@@ -89,14 +95,14 @@ export class FogState {
   startFolding(): void {
     if (this.folds !== null) return;
     this.folds = new Map<number, FogFold>();
-    for (const player of this.playersWithMasks()) {
-      const mask = this.masks.get(player);
-      if (mask === undefined) continue; // unreachable - playersWithMasks lists only allocated masks
+    for (const group of this.groupsWithMasks()) {
+      const mask = this.masks.get(group);
+      if (mask === undefined) continue; // unreachable - groupsWithMasks lists only allocated masks
       const fold = { value: 0 };
       for (let i = 0; i < mask.length; i++) {
         foldCellChange(fold, i, FOG_STATE.UNEXPLORED, mask[i] ?? FOG_STATE.UNEXPLORED);
       }
-      this.folds.set(player, fold);
+      this.folds.set(group, fold);
     }
   }
 
@@ -105,71 +111,125 @@ export class FogState {
     this.folds = null;
   }
 
-  /** `player`'s mask fold to update while writing its cells, or null while no digest folds the fog. An
-   *  all-UNEXPLORED mask folds to 0, so a fresh box needs no walk. */
+  /** The fold of `player`'s group mask to update while writing its cells, or null while no digest folds
+   *  the fog. An all-UNEXPLORED mask folds to 0, so a fresh box needs no walk. */
   foldFor(player: number): FogFold | null {
     if (this.folds === null) return null;
-    let fold = this.folds.get(player);
+    const group = this.visionGroupOf(player);
+    let fold = this.folds.get(group);
     if (fold === undefined) {
       fold = { value: 0 };
-      this.folds.set(player, fold);
+      this.folds.set(group, fold);
     }
     return fold;
   }
 
-  /** Mix the fold of every player's mask, ascending, plus the two cadence fields, which {@link hashInto}
-   *  leaves out - the digest is the stricter of the two here. The mask bytes themselves stay out: they
-   *  are what the folds stand in for. */
+  /** Mix the shared-vision table, then the fold of every group's mask, ascending, plus the two cadence
+   *  fields, which {@link hashInto} leaves out - the digest is the stricter of the two here. The mask
+   *  bytes themselves stay out: they are what the folds stand in for. */
   syncFoldInto(mix: (n: number) => void): void {
     mix(this.activeMode);
     mix(this.lastRebuildTick);
-    for (const player of this.playersWithMasks()) {
-      mix(player);
-      mix(this.folds?.get(player)?.value ?? 0);
+    this.hashGroupsInto(mix);
+    for (const group of this.groupsWithMasks()) {
+      mix(group);
+      mix(this.folds?.get(group)?.value ?? 0);
     }
   }
 
-  /** The mask for `player`, allocated (all UNEXPLORED) on first use. */
+  /**
+   * Join `players` into one vision group, together with any group a listed player already belongs to.
+   * An invalid slot is skipped; fewer than two distinct valid players change nothing. Masks already
+   * explored are dropped, so exploration restarts under the new grouping, as a switch to OFF does; the
+   * command is a setup rule, so a live session never pays that.
+   */
+  shareVision(players: readonly number[]): void {
+    const joined = new Set<number>();
+    for (const player of players) {
+      if (!isValidPlayer(player)) continue;
+      for (const member of this.visionGroupMembers(this.visionGroupOf(player))) joined.add(member);
+    }
+    if (joined.size < 2) return;
+    const members = [...joined].sort((a, b) => a - b);
+    const key = members[0] ?? 0;
+    if (members.every((member) => this.groupOf.get(member) === key)) return;
+    const table = new Map(this.groupOf);
+    for (const member of members) table.set(member, key);
+    this.groupOf = new Map([...table].sort(([a], [b]) => a - b));
+    this.reset();
+    this.lastRebuildTick = -1;
+  }
+
+  /** The vision group `player` reads and writes: the lowest member of its shared group, else itself. */
+  visionGroupOf(player: number): number {
+    return this.groupOf.get(player) ?? player;
+  }
+
+  /** The players sharing vision group `group`, ascending; a group nobody joined holds its own player. */
+  visionGroupMembers(group: number): number[] {
+    const members: number[] = [];
+    for (const [player, key] of this.groupOf) if (key === group) members.push(player);
+    return members.length === 0 ? [group] : members;
+  }
+
+  /** Every shared group as its ascending members, ascending by group - the save's `sharedVision` rows. */
+  sharedVisionGroups(): number[][] {
+    const groups = new Map<number, number[]>();
+    for (const [player, key] of this.groupOf) {
+      const members = groups.get(key);
+      if (members === undefined) groups.set(key, [player]);
+      else members.push(player);
+    }
+    return [...groups.values()];
+  }
+
+  /** The mask of `player`'s group, allocated (all UNEXPLORED) on first use. */
   maskFor(player: number): Uint8Array {
-    let mask = this.masks.get(player);
+    const group = this.visionGroupOf(player);
+    let mask = this.masks.get(group);
     if (mask === undefined) {
       mask = new Uint8Array(this.cellsWide * this.cellsHigh);
-      this.masks.set(player, mask);
+      this.masks.set(group, mask);
     }
     return mask;
   }
 
-  /** The mask for `player` if it ever saw anything, else undefined (a maskless player sees nothing). */
+  /** The mask of `player`'s group if it ever saw anything, else undefined (a maskless group sees
+   *  nothing). */
   tryMaskFor(player: number): Uint8Array | undefined {
-    return this.masks.get(player);
+    return this.masks.get(this.visionGroupOf(player));
   }
 
-  /** The players holding a mask, ASCENDING - the canonical iteration order for rebuilds and hashing. */
-  playersWithMasks(): number[] {
+  /** The vision groups holding a mask, ASCENDING - the canonical iteration order for rebuilds and
+   *  hashing. */
+  groupsWithMasks(): number[] {
     return [...this.masks.keys()].sort((a, b) => a - b);
   }
 
-  /** Restore seam: adopt a saved mask verbatim and rebuild the player's may-hold-VISIBLE box from
-   *  its bytes - derived bookkeeping is recomputed, never loaded. */
-  restoreMask(player: number, mask: Uint8Array): void {
+  /** Restore seam: adopt a saved mask verbatim under its vision group and rebuild the group's
+   *  may-hold-VISIBLE box from its bytes - derived bookkeeping is recomputed, never loaded. */
+  restoreMask(group: number, mask: Uint8Array): void {
     const cells = this.cellsWide * this.cellsHigh;
     if (mask.length !== cells) {
-      throw new Error(`fog mask for player ${player} holds ${mask.length} bytes, the grid ${cells} cells`);
+      throw new Error(`fog mask for group ${group} holds ${mask.length} bytes, the grid ${cells} cells`);
     }
-    this.masks.set(player, mask);
-    const fold = this.foldFor(player);
+    const owner = this.visionGroupOf(group);
+    if (owner !== group) throw new Error(`fog mask for group ${group}: that player shares group ${owner}`);
+    this.masks.set(group, mask);
+    const fold = this.foldFor(group);
     if (fold !== null) fold.value = 0;
     for (let r = 0; r < this.cellsHigh; r++) {
       for (let c = 0; c < this.cellsWide; c++) {
         const index = r * this.cellsWide + c;
         const state = mask[index] ?? FOG_STATE.UNEXPLORED;
         if (fold !== null) foldCellChange(fold, index, FOG_STATE.UNEXPLORED, state);
-        if (state === FOG_STATE.VISIBLE) this.mergeVisibleBounds(player, c, c, r, r);
+        if (state === FOG_STATE.VISIBLE) this.mergeVisibleBounds(group, c, c, r, r);
       }
     }
   }
 
-  /** Drop every mask (fog switched OFF): exploration history resets, generation bumps once. */
+  /** Drop every mask (fog switched OFF or the grouping changed): exploration history resets, the
+   *  shared-vision table stays, generation bumps once. */
   reset(): void {
     if (this.masks.size === 0) return;
     this.masks.clear();
@@ -178,11 +238,13 @@ export class FogState {
     this.generation++;
   }
 
-  /** Merge a stamp's touched cell rect into `player`'s may-hold-VISIBLE box (see visibleBounds). */
+  /** Merge a stamp's touched cell rect into the may-hold-VISIBLE box of `player`'s group (see
+   *  visibleBounds). */
   mergeVisibleBounds(player: number, minC: number, maxC: number, minR: number, maxR: number): void {
-    const b = this.visibleBounds.get(player);
+    const group = this.visionGroupOf(player);
+    const b = this.visibleBounds.get(group);
     if (b === undefined) {
-      this.visibleBounds.set(player, { minC, maxC, minR, maxR });
+      this.visibleBounds.set(group, { minC, maxC, minR, maxR });
       return;
     }
     if (minC < b.minC) b.minC = minC;
@@ -192,13 +254,14 @@ export class FogState {
   }
 
   /**
-   * Mark every cell with a node within `range` map points of `point` at least EXPLORED for `player`;
-   * a VISIBLE cell is left alone. Scans the cells of the clamped box and tests a cell's four nodes only
-   * while it is still unexplored; a range no lattice distance exceeds is the whole grid.
+   * Set every cell with a node within `range` map points of `point` VISIBLE for `player`'s group, the
+   * state a REVEAL rebuild never lowers, so a script's reveal shows like ground an own eye covered.
+   * Scans the cells of the clamped box and tests a cell's four nodes only while it is not yet
+   * visible; a range no lattice distance exceeds is the whole grid.
    */
-  exploreArea(player: number, point: HalfCellNode, range: number): void {
+  revealArea(player: number, point: HalfCellNode, range: number): void {
     if (range >= this.cellsWide * 2 + this.cellsHigh * 2) {
-      this.exploreAll(player);
+      this.revealAll(player);
       return;
     }
     const mask = this.maskFor(player);
@@ -211,37 +274,45 @@ export class FogState {
     for (let r = rLo; r <= rHi; r++) {
       for (let c = cLo; c <= cHi; c++) {
         const i = r * this.cellsWide + c;
-        if (mask[i] !== FOG_STATE.UNEXPLORED || !cellWithinRange(point, range, c, r)) continue;
-        mask[i] = FOG_STATE.EXPLORED;
-        if (fold !== null) foldCellChange(fold, i, FOG_STATE.UNEXPLORED, FOG_STATE.EXPLORED);
+        const previous = mask[i] ?? FOG_STATE.UNEXPLORED;
+        if (previous === FOG_STATE.VISIBLE || !cellWithinRange(point, range, c, r)) continue;
+        mask[i] = FOG_STATE.VISIBLE;
+        if (fold !== null) foldCellChange(fold, i, previous, FOG_STATE.VISIBLE);
         changed = true;
       }
     }
-    if (changed) this.generation++;
+    if (changed) {
+      this.mergeVisibleBounds(player, cLo, cHi, rLo, rHi);
+      this.generation++;
+    }
   }
 
-  /** Mark the whole grid at least EXPLORED for `player` (a script's whole-map `ExploreArea`). */
-  exploreAll(player: number): void {
+  /** Set the whole grid VISIBLE for `player`'s group (a script's whole-map `ExploreArea`). */
+  revealAll(player: number): void {
     const mask = this.maskFor(player);
     const fold = this.foldFor(player);
     let changed = false;
     for (let i = 0; i < mask.length; i++) {
-      if (mask[i] !== FOG_STATE.UNEXPLORED) continue;
-      mask[i] = FOG_STATE.EXPLORED;
-      if (fold !== null) foldCellChange(fold, i, FOG_STATE.UNEXPLORED, FOG_STATE.EXPLORED);
+      const previous = mask[i] ?? FOG_STATE.UNEXPLORED;
+      if (previous === FOG_STATE.VISIBLE) continue;
+      mask[i] = FOG_STATE.VISIBLE;
+      if (fold !== null) foldCellChange(fold, i, previous, FOG_STATE.VISIBLE);
       changed = true;
     }
-    if (changed) this.generation++;
+    if (changed) {
+      this.mergeVisibleBounds(player, 0, this.cellsWide - 1, 0, this.cellsHigh - 1);
+      this.generation++;
+    }
   }
 
-  /** Downgrade every VISIBLE byte of `player` to EXPLORED, scanning only the may-hold-VISIBLE box and
-   *  then clearing it. Byte-identical to a full-mask scan. */
-  downgradeVisible(player: number): void {
-    const b = this.visibleBounds.get(player);
+  /** Downgrade every VISIBLE byte of vision group `group` to EXPLORED, scanning only the
+   *  may-hold-VISIBLE box and then clearing it. Byte-identical to a full-mask scan. */
+  downgradeVisible(group: number): void {
+    const b = this.visibleBounds.get(group);
     if (b === undefined) return;
-    const mask = this.masks.get(player);
+    const mask = this.masks.get(group);
     if (mask !== undefined) {
-      const fold = this.foldFor(player);
+      const fold = this.foldFor(group);
       for (let r = b.minR; r <= b.maxR; r++) {
         const base = r * this.cellsWide;
         for (let c = b.minC; c <= b.maxC; c++) {
@@ -251,25 +322,25 @@ export class FogState {
         }
       }
     }
-    this.visibleBounds.delete(player);
+    this.visibleBounds.delete(group);
   }
 
   /**
-   * Verify the may-hold-VISIBLE boxes against the masks: a VISIBLE byte outside its player's box would
+   * Verify the may-hold-VISIBLE boxes against the masks: a VISIBLE byte outside its group's box would
    * silently never downgrade. A `registerCacheVerifier` body, so it runs on checked ticks only, never on
    * the tick path.
    */
   verifyVisibleBounds(): string[] {
     const violations: string[] = [];
-    for (const player of this.playersWithMasks()) {
-      const mask = this.masks.get(player);
+    for (const group of this.groupsWithMasks()) {
+      const mask = this.masks.get(group);
       if (mask === undefined) continue;
-      const b = this.visibleBounds.get(player);
+      const b = this.visibleBounds.get(group);
       for (let r = 0; r < this.cellsHigh; r++) {
         for (let c = 0; c < this.cellsWide; c++) {
           if (mask[r * this.cellsWide + c] !== FOG_STATE.VISIBLE) continue;
           if (b === undefined || c < b.minC || c > b.maxC || r < b.minR || r > b.maxR) {
-            violations.push(`fog: player ${player} VISIBLE cell (${c}, ${r}) outside its bounds box`);
+            violations.push(`fog: group ${group} VISIBLE cell (${c}, ${r}) outside its bounds box`);
           }
         }
       }
@@ -278,26 +349,35 @@ export class FogState {
   }
 
   /**
-   * Mix this state's canonical bytes into a hash, per player ascending: the player id then its raw mask
-   * bytes. A world that never enabled fog holds no masks and contributes nothing, so every pre-fog hash
-   * stays byte-identical.
+   * Mix this state's canonical bytes into a hash: the shared-vision table, then per vision group
+   * ascending the group id and its raw mask bytes. A world that never enabled fog nor shared vision
+   * holds neither and contributes nothing, so every pre-fog hash stays byte-identical.
    */
   hashInto(mix: (n: number) => void): void {
-    for (const player of this.playersWithMasks()) {
-      mix(player);
-      const mask = this.masks.get(player);
-      if (mask === undefined) continue; // unreachable - playersWithMasks lists only allocated masks
+    this.hashGroupsInto(mix);
+    for (const group of this.groupsWithMasks()) {
+      mix(group);
+      const mask = this.masks.get(group);
+      if (mask === undefined) continue; // unreachable - groupsWithMasks lists only allocated masks
       for (let i = 0; i < mask.length; i++) mix(mask[i] ?? 0);
     }
   }
 
-  /** The raw {@link FOG_STATE} of a cell for `player`; out of grid or maskless reads UNEXPLORED. RECON's
-   *  terrain-known-from-the-start is a view mapping in `effectiveFogState`, not raw state. */
+  /** The shared-vision table's canonical bytes: each (player, group) pair ascending by player. */
+  private hashGroupsInto(mix: (n: number) => void): void {
+    for (const [player, group] of this.groupOf) {
+      mix(player);
+      mix(group);
+    }
+  }
+
+  /** The raw {@link FOG_STATE} of a cell for `player`'s group; out of grid or maskless reads UNEXPLORED.
+   *  RECON's terrain-known-from-the-start is a view mapping in `effectiveFogState`, not raw state. */
   stateAt(player: number, cellX: number, cellY: number): number {
     if (cellX < 0 || cellY < 0 || cellX >= this.cellsWide || cellY >= this.cellsHigh) {
       return FOG_STATE.UNEXPLORED;
     }
-    const mask = this.masks.get(player);
+    const mask = this.masks.get(this.visionGroupOf(player));
     return mask === undefined ? FOG_STATE.UNEXPLORED : (mask[cellY * this.cellsWide + cellX] ?? 0);
   }
 }

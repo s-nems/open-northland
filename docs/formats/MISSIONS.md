@@ -280,7 +280,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
 | 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 \* |
 | 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 \* |
-| 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, nothing with fog off, and a house or landscape reveals only what its own eye sees (approximation) | sim | 1412 |
+| 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, set as fully visible as ground an own eye covered, for every player sharing the player's vision; nothing with fog off, and a house or landscape reveals only what its own eye sees (approximation) | sim | 1412 |
 | 17 | `Exit` | | leave the map (restart callback) | app | 70 |
 | 18 | `SetExternalFlag` | 1, 24, 32 | set or clear condition slot `n` (below 100) of the player's AI handler, accepted only when that slot is an external-activate condition of its `ai.inc`; a seat without a handler drops it. Here: kept per player with no reader (see below) | sim | 67 |
 | 19 | `SetDiplomacy` | 1, 2, 25 | set the first player's stance toward the second (one direction only, both slots in use), through any lock on the pair; the original sends a message unless the pair is marked not changeable | sim | 632 |
@@ -480,8 +480,8 @@ Readings unless marked otherwise.
   approximation. See
   [PROGRESSION.md](PROGRESSION.md) for rules, save conversion and remaining fidelity limits.
 - **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15. This build answers
-  from its per-cell fog masks: explored everywhere with fog off, known terrain counting in RECON, and a
-  script reveal writes EXPLORED without downgrading a VISIBLE cell.
+  from its per-cell fog masks: explored everywhere with fog off, known terrain counting in RECON, a
+  script reveal writing VISIBLE, and players sharing vision (a lobby team) reading one mask.
 
 ## AI data
 

@@ -401,6 +401,10 @@
   padding: calc(var(--u) * 12) calc(var(--u) * 10);
 }
 
+.main-menu__lobby-fog-field[data-tip]::after {
+  max-width: 100%;
+}
+
 .main-menu__lobby-option-row {
   display: flex;
   align-items: center;

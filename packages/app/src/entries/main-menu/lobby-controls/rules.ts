@@ -77,11 +77,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     label.className = 'main-menu__lobby-option-label';
     label.textContent = options.fog.label;
     const segments = segControl(
-      fogChoices.map((choice, index) => ({
-        id: String(index),
-        label: choice.label,
-        ...(choice.detail !== undefined ? { title: choice.detail } : {}),
-      })),
+      fogChoices.map((choice, index) => ({ id: String(index), label: choice.label })),
       '',
       (id) => {
         const choice = fogChoices[Number(id)];
@@ -89,8 +85,9 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       },
     );
     segments.root.classList.add('main-menu__lobby-fog');
+    const field = fogTipHost(segments.root, fogChoices);
     return {
-      elements: [label, segments.root],
+      elements: [label, field],
       update(value: number | null, disabled: boolean): void {
         state.update(value, disabled);
         segments.setActive(String(fogChoices.findIndex((choice) => choice.value === value)));
@@ -142,4 +139,27 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       needs.update(rules.needs, disabled);
     },
   };
+}
+
+/** The hovered or focused segment's detail in the shared menu bubble: the segment strip clips its own
+ *  overflow, so the host wraps it. */
+function fogTipHost(segments: HTMLElement, choices: readonly Choice<number | null>[]): HTMLDivElement {
+  const host = document.createElement('div');
+  host.className = 'main-menu__lobby-fog-field main-menu__tip-host';
+  host.append(segments);
+  const buttons = [...segments.querySelectorAll('button')];
+  const show = (event: Event): void => {
+    const index = event.target instanceof HTMLButtonElement ? buttons.indexOf(event.target) : -1;
+    const detail = index === -1 ? undefined : choices[index]?.detail;
+    if (detail === undefined) delete host.dataset.tip;
+    else host.dataset.tip = detail;
+  };
+  const hide = (): void => {
+    delete host.dataset.tip;
+  };
+  host.addEventListener('mouseover', show);
+  host.addEventListener('focusin', show);
+  host.addEventListener('mouseleave', hide);
+  host.addEventListener('focusout', hide);
+  return host;
 }

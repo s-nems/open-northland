@@ -1,7 +1,6 @@
 export interface SegChoice<T extends string> {
   readonly id: T;
   readonly label: string;
-  readonly title?: string;
 }
 
 export interface SegHandle<T extends string> {
@@ -22,7 +21,6 @@ export function segControl<T extends string>(
     button.type = 'button';
     button.className = 'main-menu__seg-btn';
     button.textContent = choice.label;
-    if (choice.title !== undefined) button.title = choice.title;
     button.addEventListener('click', () => onPick(choice.id));
     buttons.set(choice.id, button);
     root.append(button);
@@ -110,7 +108,7 @@ export interface SettingRowOptions {
 
 export function settingRow(label: string, control: HTMLElement, options?: SettingRowOptions): HTMLDivElement {
   const row = document.createElement('div');
-  row.className = 'main-menu__settings-row';
+  row.className = 'main-menu__settings-row main-menu__tip-host';
   const name = document.createElement('span');
   name.className = 'main-menu__settings-label';
   name.textContent = label;

@@ -210,6 +210,95 @@ describe('fog modes - update rules over the per-player mask', () => {
   });
 });
 
+describe('shared vision - players a setSharedVision command joined explore one mask', () => {
+  const P2 = 2;
+  /** P0 west, P1 east, 18 cells apart: neither civilian eye (6 cells) reaches the other's ground. */
+  const WEST = { x: 2, y: 2 } as const;
+  const EAST = { x: 20, y: 2 } as const;
+
+  function sharedSim(mode: FogMode): Simulation {
+    const sim = simOn(mode);
+    sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+    unit(sim, WEST.x, WEST.y, P0);
+    unit(sim, EAST.x, EAST.y, P1);
+    return sim;
+  }
+
+  it('RECON: what one eye sees now, every member sees, and ground it leaves stays known to all', () => {
+    const sim = sharedSim(FOG_MODE.RECON);
+    sim.run(1);
+    expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P2, WEST.x, WEST.y)).toBe(FOG_STATE.UNEXPLORED); // an outsider shares nothing
+    const east = [...sim.world.query(Owner)].find((e) => sim.world.get(e, Owner).player === P1);
+    if (east === undefined) throw new Error('east unit missing');
+    teleport(sim, east, (WEST.x + EAST.x) / 2, EAST.y); // 9 cells from either start, beyond both eyes
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.EXPLORED);
+    expect(rawState(sim, P1, EAST.x, EAST.y)).toBe(FOG_STATE.EXPLORED);
+    expect(sim.fog?.groupsWithMasks()).toEqual([P0]); // one mask, keyed by the lowest member
+  });
+
+  it('REVEAL: ground either member explored stays visible to both', () => {
+    const sim = sharedSim(FOG_MODE.REVEAL);
+    sim.run(1);
+    const west = [...sim.world.query(Owner)].find((e) => sim.world.get(e, Owner).player === P0);
+    if (west === undefined) throw new Error('west unit missing');
+    teleport(sim, west, WEST.x + 8, WEST.y);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.VISIBLE);
+  });
+
+  it('a contact one member makes is a contact of every member', () => {
+    const sim = sharedSim(FOG_MODE.RECON);
+    unit(sim, EAST.x + 1, EAST.y, P2); // inside P1's eye alone
+    sim.run(1);
+    expect(sim.hasMetPlayer(P0, P2)).toBe(true);
+    expect(sim.hasMetPlayer(P1, P2)).toBe(true);
+    expect(sim.hasMetPlayer(P2, P0)).toBe(false); // P2 sees P1 alone
+    expect(sim.hasMetPlayer(P2, P1)).toBe(true);
+  });
+
+  it('joining after exploration drops the masks, so exploration restarts under the new grouping', () => {
+    const sim = simOn(FOG_MODE.REVEAL);
+    const e = unit(sim, WEST.x, WEST.y, P0);
+    sim.run(1);
+    teleport(sim, e, WEST.x + 8, WEST.y);
+    sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+    sim.run(1);
+    expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.UNEXPLORED);
+    expect(rawState(sim, P1, WEST.x + 8, WEST.y)).toBe(FOG_STATE.VISIBLE);
+  });
+
+  it('skips invalid slots and a lone player, and merges an overlapping later group', () => {
+    const sim = simOn(FOG_MODE.REVEAL);
+    sim.enqueueSetup({ kind: 'setSharedVision', players: [P1, 99] });
+    sim.enqueueSetup({ kind: 'setSharedVision', players: [P1, P2] });
+    sim.enqueueSetup({ kind: 'setSharedVision', players: [P2, 5] });
+    sim.run(1);
+    const fog = sim.fog;
+    if (fog === undefined) throw new Error('mapless sim');
+    expect(fog.visionGroupOf(P0)).toBe(P0);
+    expect(fog.visionGroupOf(5)).toBe(P1);
+    expect(fog.visionGroupMembers(P1)).toEqual([P1, P2, 5]);
+    expect(fog.sharedVisionGroups()).toEqual([[P1, P2, 5]]);
+  });
+
+  it('two same-seed runs with shared vision reach the same state hash, unlike an unshared one', () => {
+    const run = (shared: boolean): string => {
+      const sim = simOn(FOG_MODE.RECON);
+      if (shared) sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+      unit(sim, WEST.x, WEST.y, P0);
+      unit(sim, EAST.x, EAST.y, P1);
+      sim.run(VISION_CADENCE_TICKS * 2);
+      return sim.hashState();
+    };
+    expect(run(true)).toBe(run(true));
+    expect(run(true)).not.toBe(run(false));
+  });
+});
+
 describe('first contact - the vision-driven discovery of other players', () => {
   // Geometry: a P0 scout at (2,2) and a P1 civilian 10 cells east at (12,2) - 680 px apart, inside the
   // scout's 884 px (26-node) eye but outside the civilian's 408 px (12-node) one, so only P0 sees P1.

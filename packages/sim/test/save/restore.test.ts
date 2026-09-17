@@ -237,7 +237,22 @@ describe('restoreSimulation rejection', () => {
     const mask = (fog.masks as Array<[number, string]>)[0];
     if (mask === undefined) throw new Error('exported save must hold a fog mask');
     mask[1] = mask[1].slice(1);
-    expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/fog mask for player 0 holds/);
+    expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/fog mask for group 0 holds/);
+  });
+
+  it('rejects a fog mask keyed by a player that shares another group', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 4, y: 4, tribe: VIKING, owner: P0 });
+    sim.run(6);
+    const doc = docOf(sim);
+    const fog = doc.sections.find((s) => s.id === 'fog');
+    if (fog === undefined) throw new Error('exported save must hold a fog section');
+    const mask = (fog.masks as Array<[number, string]>)[0];
+    if (mask === undefined) throw new Error('exported save must hold a fog mask');
+    fog.sharedVision = [[P0, P0 + 1]];
+    mask[0] = P0 + 1;
+    expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/fog mask for group 1: that player shares group 0/);
   });
 
   it('rejects an injected __proto__ key rather than restoring a value nothing can read', () => {

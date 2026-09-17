@@ -506,6 +506,46 @@
   color: rgba(219, 232, 227, 0.25);
 }
 
+/* Styled hover/focus tooltip under a host carrying `data-tip`; the raised host lifts over its
+   siblings so the bubble never hides behind the next control. --tip-delay is the host's hover
+   grace before the bubble fades in. */
+.main-menu__tip-host {
+  --tip-delay: 150ms;
+  position: relative;
+}
+
+.main-menu__tip-host[data-tip]:hover,
+.main-menu__tip-host[data-tip]:focus-within {
+  z-index: 1;
+}
+
+.main-menu__tip-host[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + var(--u) * 8);
+  left: 0;
+  width: max-content;
+  max-width: calc(var(--u) * 700);
+  padding: calc(var(--u) * 12) calc(var(--u) * 18);
+  border: 1px solid rgba(99, 196, 160, 0.35);
+  border-radius: 6px;
+  background: var(--bg-base);
+  font:
+    400 calc(var(--u) * 21) / 1.35 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+.main-menu__tip-host[data-tip]:hover::after,
+.main-menu__tip-host[data-tip]:focus-within::after {
+  opacity: 1;
+  transition-delay: var(--tip-delay);
+}
+
 /* The 66x34 design pill; the knob slides right when on. */
 .main-menu__toggle {
   all: unset;

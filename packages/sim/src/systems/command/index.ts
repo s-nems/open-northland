@@ -222,6 +222,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'setFogMode':
       setFogMode(world, command.mode);
       return;
+    case 'setSharedVision':
+      ctx.fog?.shareVision(command.players);
+      return;
     case 'setDiplomacy':
       setDiplomacyStance(world, command.from, command.to, command.state);
       return;

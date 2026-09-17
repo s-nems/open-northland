@@ -67,7 +67,9 @@ Every change to a room is broadcast to its members as `room { room }`, the whole
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
 - `setSeat { player, mode?, color?, team? }` is the creator's: `mode` only on a vacant seat.
   `team` is an integer from 0 through 15, or null; omitted/null preserves map-authored diplomacy.
-  Explicit teams are carried in the session descriptor, whose trusted setup applies the relations.
+  Explicit teams are carried in the session descriptor, whose trusted setup applies the relations
+  and joins each team's seats into one fog mask (`setSharedVision`), so teammates explore, see and
+  meet as one in every fog mode.
 - `setSettings { settings }` is the creator's. It replaces `{ name, seed, rules, speed, kickedSeatMode? }`
   in full; including `world`, `initialSave` or `mapOrigin` is refused because these are immutable,
   and a replacement that changes nothing produces no room update. A saved room also fixes its seed,

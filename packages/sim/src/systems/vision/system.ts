@@ -54,10 +54,11 @@ const ROW_STEP_PX = 38;
 const NODE_STEP_PX = 34;
 
 /**
- * Rebuild the per-player fog masks on the {@link VISION_CADENCE_TICKS} cadence, and immediately on a mode
+ * Rebuild the per-group fog masks on the {@link VISION_CADENCE_TICKS} cadence, and immediately on a mode
  * change so a `setFogMode` command takes effect the same tick. Runs before the combatSystem in
  * `SYSTEM_ORDER`, so combat gates on this tick's (at worst a cadence-stale) visibility. REVEAL keeps
- * exploration sticky, matching the original's observed behaviour.
+ * exploration sticky, matching the original's observed behaviour. Every eye stamps its owner's vision
+ * group, so players sharing vision explore, see and meet as one.
  */
 export const visionSystem: System = (world, ctx) => {
   const fog = ctx.fog;
@@ -76,16 +77,16 @@ export const visionSystem: System = (world, ctx) => {
   const due = fog.lastRebuildTick === -1 || ctx.tick - fog.lastRebuildTick >= VISION_CADENCE_TICKS;
   if (!modeChanged && !due) return;
 
-  // Downgrade pass (RECON): ground no eye covers falls back to explored. Masks walk in ascending-player
-  // order, the order hashState mixes them in, and each scan covers only that player's may-hold-VISIBLE box.
+  // Downgrade pass (RECON): ground no eye covers falls back to explored. Masks walk in ascending-group
+  // order, the order hashState mixes them in, and each scan covers only that group's may-hold-VISIBLE box.
   if (mode !== FOG_MODE.REVEAL) {
-    for (const player of fog.playersWithMasks()) {
-      fog.downgradeVisible(player);
+    for (const group of fog.groupsWithMasks()) {
+      fog.downgradeVisible(group);
     }
   }
 
   // Stamp pass: writes are idempotent and commutative, so query order needs no canonical sort; each
-  // touched rect feeds the player's may-hold-VISIBLE box for the next downgrade.
+  // touched rect feeds the group's may-hold-VISIBLE box for the next downgrade.
   for (const e of world.query(Owner, Position)) {
     const radius = visionRadiusOf(world, ctx.content, e);
     if (radius === null) continue; // an owned entity that is not an eye (a flag, a pile)
@@ -106,14 +107,16 @@ export const visionSystem: System = (world, ctx) => {
   }
 
   // Contact pass over the settled masks: a viewer meets every owner whose entity stands on a cell the
-  // viewer has explored, in sight now or not (reading: the original tests the viewer's once-set
-  // explored bit under the entity every tick). Any owned entity counts, eye or not. The met bits are
-  // hoisted out of the loop so a saturated world pays per-pair integer tests only; the list is re-read
-  // because a stamp may have allocated a player's first mask.
-  const viewerBits = fog.playersWithMasks().map((viewer) => ({
-    viewer,
-    bits: metContactBits(world, viewer),
-  }));
+  // viewer's group has explored, in sight now or not (reading: the original tests the viewer's once-set
+  // explored bit under the entity every tick). Any owned entity counts, eye or not, and every member of
+  // a group with a mask views through it. The met bits are hoisted out of the loop so a saturated world
+  // pays per-pair integer tests only; the list is re-read because a stamp may have allocated a group's
+  // first mask.
+  const viewerBits = fog
+    .groupsWithMasks()
+    .flatMap((group) =>
+      fog.visionGroupMembers(group).map((viewer) => ({ viewer, bits: metContactBits(world, viewer) })),
+    );
   for (const e of world.query(Owner, Position)) {
     const owner = world.get(e, Owner).player;
     if (!isValidPlayer(owner)) continue; // never meetable - skip before any per-entity work

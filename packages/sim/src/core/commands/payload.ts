@@ -172,6 +172,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     optional: { modules: AI_MODULES, scripted: 'boolean' },
   },
   setProfessionProgression: { required: { enabled: 'boolean' } },
+  setSharedVision: { required: { players: { arrayOf: 'integer' } } },
   setSignpostNavigation: { required: { enabled: 'boolean' } },
   setStance: { required: { entity: 'integer', mode: 'integer' } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },

@@ -52,8 +52,9 @@ export function declareScriptedVerdict(
 }
 
 /** Reveal the hexagon of `range` map points around the point, or the whole map for a zero x, y or
- *  range. Only REVEAL hides terrain that a reveal could show: fog off shows everything and RECON's
- *  terrain is known from the start, so a write there would change the hash and nothing else. */
+ *  range, as fully as ground the player's own eye covered. Only REVEAL hides terrain that a reveal
+ *  could show: fog off shows everything and RECON's terrain is known from the start, so a write there
+ *  would change the hash and nothing else. */
 export function exploreScriptedArea(
   pass: MissionPass,
   mission: number,
@@ -65,8 +66,8 @@ export function exploreScriptedArea(
   }
   const fog = pass.ctx.fog;
   if (fog === undefined || fogMode(pass.world) !== FOG_MODE.REVEAL) return;
-  if (op.point.hx === 0 || op.point.hy === 0 || op.range === 0) fog.exploreAll(op.player);
-  else fog.exploreArea(op.player, op.point, op.range);
+  if (op.point.hx === 0 || op.point.hy === 0 || op.range === 0) fog.revealAll(op.player);
+  else fog.revealArea(op.player, op.point, op.range);
 }
 
 /** Raise or clear one of the player's AI condition slots. */

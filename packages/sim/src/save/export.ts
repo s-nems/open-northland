@@ -53,14 +53,15 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
   if (fog !== undefined) {
     // tryMaskFor, never maskFor: the allocating accessor would grow hashed fog state from an export.
     const masks: Array<readonly [number, string]> = [];
-    for (const player of fog.playersWithMasks()) {
-      const mask = fog.tryMaskFor(player);
-      if (mask !== undefined) masks.push([player, maskDigits(mask)]);
+    for (const group of fog.groupsWithMasks()) {
+      const mask = fog.tryMaskFor(group);
+      if (mask !== undefined) masks.push([group, maskDigits(mask)]);
     }
     sections.push({
       id: 'fog',
       activeMode: fog.activeMode,
       lastRebuildTick: fog.lastRebuildTick,
+      sharedVision: fog.sharedVisionGroups(),
       masks,
     });
   }

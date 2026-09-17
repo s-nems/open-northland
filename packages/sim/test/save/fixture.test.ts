@@ -19,6 +19,7 @@ const FIXTURE_PATH = fileURLToPath(new URL('../fixtures/save.golden', import.met
 
 const VIKING = 1;
 const P0 = 0;
+const P1 = 1;
 const JOB_IDLE = 0;
 const JOB_SCOUT = 27;
 const HQ_BUILDING = 1;
@@ -29,11 +30,12 @@ const MAP_CELLS = 8;
 const FIXTURE_TICKS = 24;
 const FIXTURE_MAP_ID = 'fixture';
 
-/** The world the fixture freezes: every section populated - fog masks from a scout, several
- *  component stores, an advanced rng stream, and one pending envelope. */
+/** The world the fixture freezes: every section populated - a shared-vision pair and its fog mask
+ *  from a scout, several component stores, an advanced rng stream, and one pending envelope. */
 function fixtureSim(): Simulation {
   const sim = new Simulation({ seed: 9, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+  sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: JOB_SCOUT, x: 4, y: 4, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: JOB_IDLE, x: 8, y: 8, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({

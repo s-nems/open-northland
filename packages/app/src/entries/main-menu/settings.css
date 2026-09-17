@@ -73,47 +73,14 @@
   padding: 2px calc(var(--u) * 24) calc(var(--u) * 24) 2px;
 }
 
+/* The bubble host (menu.css) waits long enough that sweeping the pointer down the list does not
+   flash every row's tip. */
 .main-menu__settings-row {
-  position: relative;
+  --tip-delay: 350ms;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: calc(var(--u) * 24);
-}
-
-/* Styled hover/focus tooltip under the row; the raised row lifts over its siblings so the bubble
-   never hides behind the next row's control. */
-.main-menu__settings-row[data-tip]:hover,
-.main-menu__settings-row[data-tip]:focus-within {
-  z-index: 1;
-}
-
-.main-menu__settings-row[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: calc(100% + var(--u) * 8);
-  left: 0;
-  width: max-content;
-  max-width: calc(var(--u) * 700);
-  padding: calc(var(--u) * 12) calc(var(--u) * 18);
-  border: 1px solid rgba(99, 196, 160, 0.35);
-  border-radius: 6px;
-  background: var(--bg-base);
-  font:
-    400 calc(var(--u) * 21) / 1.35 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: var(--text-muted);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease-out;
-}
-
-.main-menu__settings-row[data-tip]:hover::after,
-.main-menu__settings-row[data-tip]:focus-within::after {
-  opacity: 1;
-  /* Long enough that sweeping the pointer across the list does not flash every bubble. */
-  transition-delay: 350ms;
 }
 
 .main-menu__settings-label {

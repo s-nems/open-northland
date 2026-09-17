@@ -27,6 +27,15 @@ export type RulesCommand =
     }
   | {
       /**
+       * Join the players into one vision group (`FogState.shareVision`): they explore, see and meet
+       * through one fog mask, in every mode. A setup rule for a lobby team; masks already explored are
+       * dropped, as a switch to OFF drops them. Ignored by a mapless sim, which keeps no fog.
+       */
+      readonly kind: 'setSharedVision';
+      readonly players: readonly number[];
+    }
+  | {
+      /**
        * Toggle signpost-navigation confinement globally (`SignpostRules`): while enabled, a civilian
        * settler may only work and walk within its local reach plus a reachable signpost group's circles.
        * Default off, a named deviation from the original.

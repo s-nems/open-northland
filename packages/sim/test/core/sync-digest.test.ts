@@ -9,7 +9,7 @@ import {
   type SyncDigest,
   type SyncDomain,
 } from '../../src/index.js';
-import { FOG_STATE } from '../../src/systems/vision/index.js';
+import { FOG_STATE, VISION_CADENCE_TICKS } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -192,10 +192,22 @@ describe('sync digest', () => {
     expect(differingDomains(digestOf(a), digestOf(b))).toEqual(['fog']);
   });
 
+  it('folds the shared-vision table into the fog domain, beyond the mask bytes it keys', () => {
+    const a = watchedWorld();
+    const b = watchedWorld();
+    b.enqueueSetup({ kind: 'setSharedVision', players: [P0, P0 + 1] });
+    // The sharing restarts b's exploration; the next rebuild re-stamps the same bytes under the group.
+    a.run(VISION_CADENCE_TICKS);
+    b.run(VISION_CADENCE_TICKS);
+    expect(b.fog?.tryMaskFor(P0)).toEqual(a.fog?.tryMaskFor(P0));
+
+    expect(differingDomains(digestOf(a), digestOf(b))).toContain('fog');
+  });
+
   it.each([
-    ['an area', (sim: Simulation) => sim.fog?.exploreArea(P0, unseenNode(sim), 1)],
-    ['the whole grid', (sim: Simulation) => sim.fog?.exploreAll(P0)],
-  ])('folds a scripted exploration of %s as the mask bytes it wrote', (_, explore) => {
+    ['an area', (sim: Simulation) => sim.fog?.revealArea(P0, unseenNode(sim), 1)],
+    ['the whole grid', (sim: Simulation) => sim.fog?.revealAll(P0)],
+  ])('folds a scripted reveal of %s as the mask bytes it wrote', (_, explore) => {
     const incremental = watchedWorld();
     const rebuilt = watchedWorld();
     explore(incremental);

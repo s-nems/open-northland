@@ -138,8 +138,9 @@ function restoreFog(sim: Simulation, section: FogSection): void {
   if (fog === undefined) {
     throw new Error('save.sections: a fog section needs a mapped sim');
   }
-  for (const [player, digits] of section.masks) {
-    fog.restoreMask(player, maskBytes(digits, player));
+  for (const group of section.sharedVision) fog.shareVision(group);
+  for (const [group, digits] of section.masks) {
+    fog.restoreMask(group, maskBytes(digits, group));
   }
   fog.activeMode = section.activeMode;
   fog.lastRebuildTick = section.lastRebuildTick;
@@ -149,12 +150,12 @@ const DIGIT_ZERO = '0'.charCodeAt(0);
 const DIGIT_MAX = DIGIT_ZERO + FOG_STATE.VISIBLE;
 
 /** The inverse of export's digit encoding: one byte per FOG_STATE character. */
-function maskBytes(digits: string, player: number): Uint8Array {
+function maskBytes(digits: string, group: number): Uint8Array {
   const mask = new Uint8Array(digits.length);
   for (let i = 0; i < digits.length; i++) {
     const code = digits.charCodeAt(i);
     if (code < DIGIT_ZERO || code > DIGIT_MAX) {
-      throw new Error(`fog mask for player ${player} leaves the FOG_STATE alphabet at cell ${i}`);
+      throw new Error(`fog mask for group ${group} leaves the FOG_STATE alphabet at cell ${i}`);
     }
     mask[i] = code - DIGIT_ZERO;
   }

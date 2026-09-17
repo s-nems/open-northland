@@ -6,7 +6,7 @@ import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
 import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
-import { sessionDiplomacy } from '../../src/game/session-diplomacy.js';
+import { sessionDiplomacy, sessionSharedVision } from '../../src/game/session-teams.js';
 import { type AuthoredJoinRows, mapScriptWorld } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -88,6 +88,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // dresses itself like the browser's.
     assistantSeats: [...humanSeats, ...options.aiSeats],
     diplomacy: sessionDiplomacy({ seats: options.seats ?? [] }, script?.diplomacy ?? []),
+    sharedVision: sessionSharedVision({ seats: options.seats ?? [] }),
     specialItems: script?.specialItems ?? [],
     // The entry declares the match from the same three inputs. Left out, the headless world would run
     // without the match rules the browser plays under.
