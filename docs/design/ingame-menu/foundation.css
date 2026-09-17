@@ -529,7 +529,7 @@ button.medallion:hover {
   top: 18px;
   left: 10px;
   bottom: 230px;
-  width: 184px;
+  width: 180px;
   display: flex;
   flex-direction: column;
 }
@@ -673,18 +673,6 @@ button.medallion:hover {
   color: var(--text);
   transition: background 0.12s;
 }
-.notice-card:before {
-  content: "";
-  position: absolute;
-  inset: 5px 4px 5px 50px;
-  border-top: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
-  border-bottom: 1px solid #0006;
-  pointer-events: none;
-}
-/* Urgent: the hairline takes the seal's wax colour, so the priority reads before the seal is found. */
-.notice.danger .notice-card:before {
-  border-top-color: color-mix(in srgb, var(--wax-danger) 70%, transparent);
-}
 .notice-card:hover {
   background: linear-gradient(
     90deg,
@@ -789,7 +777,7 @@ button.medallion:hover {
   -webkit-line-clamp: 2;
   overflow: hidden;
   padding-right: 20px;
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1.25;
   color: var(--text-hi);
   transition: transform 0.14s;

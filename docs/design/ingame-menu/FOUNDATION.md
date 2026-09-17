@@ -65,7 +65,7 @@ filters are an explicit exception in this mouse/keyboard study.
 - Bottom actions: 56 × 64 px on a 44 px medallion, with persistent labels and a selected marker.
 - Construction: 540 px wide, content-sized rather than filling the screen vertically.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
-- Notifications: 184 px, no opaque background in unused column space.
+- Notifications: 180 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px, touching the bottom-left corner.
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum
@@ -85,7 +85,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | --- | --- | --- |
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | pause / ×1 / ×2 / ×3 segments, menu medallion; counters and clock come with ticket 04 |
-| Notifications | left 10, top 18, width 184, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
+| Notifications | left 10, top 18, width 180, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
@@ -116,7 +116,7 @@ lifetime, dedupe and priority table.
   filtered or not, so the filter only hides (the original drops filtered notes). Levels: all,
   notable and important, important only. The tally cannot pass three digits.
 - Order: important first, then notable, then routine; within a weight the newest first.
-- A card is one event line at 11 px beside a 54 × 56 thumbnail, 52 px tall when the cards fit; the
+- A card is one event line at 10.5 px beside a 54 × 56 thumbnail, 52 px tall when the cards fit; the
   subject (name · trade, the building, seat or paper) is only in the whole message. The event line is
   a short label per message type from the app catalog, capitalised, short enough to fit the card
   without an ellipsis (a good or stance the row is about follows a colon: "Brak: drewno",
@@ -125,7 +125,7 @@ lifetime, dedupe and priority table.
   a translucent backing that shows the map through; an attacked settler, a building, a death, a seat,
   a paper and a subjectless row show a bronze line glyph instead (swords, house, dim skull, banner,
   chest, scroll). The seal on the thumbnail's right edge, the event line and the × share one line,
-  centred in the card's visible part; an urgent card's hairline takes the wax colour.
+  centred in the card's visible part; the card carries no hairline, the seal alone tells the weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
   dismisses one card; Shift with any of them dismisses all. The × stays on every card, so a covered

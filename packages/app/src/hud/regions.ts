@@ -8,7 +8,7 @@ import { navBeamRect, type ScreenSize } from './nav-beam.js';
  * scale. The left column is the notification column or the minimap, whichever reaches further right.
  */
 
-export const NOTICE_COLUMN = { left: 10, top: 18, width: 184 } as const;
+export const NOTICE_COLUMN = { left: 10, top: 18, width: 180 } as const;
 /** Top of the central window region, under the top bar. */
 export const WINDOW_REGION_TOP = 96;
 /** Breathing room between the central region and the regions around it. */
