@@ -18,7 +18,7 @@ zatwierdzona. Wznawiając, kierować się poleceniem użytkownika.
 - Zawartość gry współdzielona tylko do odczytu przez
   `ON_CONTENT_DIR=~/Projects/vikings/open-northland/content`. Główny checkout
   przegenerowuje ją przy zmianie wersji IR; strona „IR version mismatch” oznacza rebase na `main`.
-- Port `5175`. Ostatnio zweryfikowany serwer: npm PID 28777, vite PID 29041 (dane sesji, sprawdzić
+- Port `5175`. Ostatnio zweryfikowany serwer: npm PID 35952, vite PID 36027 (dane sesji, sprawdzić
   tożsamość przed użyciem lub zatrzymaniem). Nie zatrzymywać innych serwerów; `5173` jest główny.
 
 ```bash

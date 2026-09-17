@@ -205,26 +205,20 @@ function defineWorldBatcher(): WorldBatcherClass {
   }`;
   }
 
-  // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, so a live
-  // mode change needs a different Shader; the three modes share one compiled program per page count.
-  const programs = new Map<number, GlProgram>();
+  // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, and a GL
+  // uniform lives in its program, so each mode gets its own compiled program with the mode baked in.
   const shaders = new Map<string, Shader>();
 
   function shaderFor(maxTextures: number, mode: number): Shader {
     const key = `${maxTextures}:${mode}`;
     let shader = shaders.get(key);
     if (shader === undefined) {
-      let program = programs.get(maxTextures);
-      if (program === undefined) {
-        program = new GlProgram({
-          name: 'world-batch',
+      shader = new Shader({
+        glProgram: new GlProgram({
+          name: `world-batch-${mode}`,
           vertex: VERTEX,
           fragment: fragmentSource(maxTextures),
-        });
-        programs.set(maxTextures, program);
-      }
-      shader = new Shader({
-        glProgram: program,
+        }),
         resources: {
           batchSamplers: getBatchSamplersUniformGroup(maxTextures),
           worldMagnify: new UniformGroup({ uWorldMagnify: { value: mode, type: 'f32' } }),
