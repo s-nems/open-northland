@@ -24,8 +24,10 @@ export interface GlyphKit {
   glyphAll(r: Rect): void;
   /** A house: the assign-workplace button's face. */
   glyphHouse(r: Rect, enabled: boolean): void;
-  /** A plus: an empty equip slot's "put an item on" button face. */
+  /** A plus: an empty equip slot's "put an item on" button face, and a hold's "want one more". */
   glyphPlus(r: Rect): void;
+  /** A minus: a hold's "want one less" button face, dimmed while nothing is wanted. */
+  glyphMinus(r: Rect, enabled: boolean): void;
   /** A shield: the defence-mode toggle's face, solid while the alarm is raised and outlined while not. */
   glyphShield(r: Rect, raised: boolean): void;
   /** Two opposing horizontal arrows: a worn equip slot's "swap the item" button face. */
@@ -75,6 +77,14 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     const th = Math.max(1, Math.round(r.w * 0.14));
     g.rect(cx - arm, cy - th / 2, arm * 2, th).fill(GLYPH_LIGHT);
     g.rect(cx - th / 2, cy - arm, th, arm * 2).fill(GLYPH_LIGHT);
+  };
+
+  const glyphMinus = (r: Rect, enabled: boolean): void => {
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const arm = r.w * 0.22;
+    const th = Math.max(1, Math.round(r.w * 0.14));
+    g.rect(cx - arm, cy - th / 2, arm * 2, th).fill(enabled ? GLYPH_LIGHT : GLYPH_DIM);
   };
 
   // Both states draw in the lit tone: the toggle is always pressable, and GLYPH_DIM means unpressable.
@@ -133,5 +143,5 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     g.moveTo(x1, y0).lineTo(x0, y1).stroke({ color: GLYPH_LIGHT, width: th });
   };
 
-  return { glyphAll, glyphHouse, glyphPlus, glyphShield, glyphSwap, glyphCross };
+  return { glyphAll, glyphHouse, glyphPlus, glyphMinus, glyphShield, glyphSwap, glyphCross };
 }

@@ -6,9 +6,11 @@ import {
   layoutPalisade,
   layoutSettler,
   layoutSignpost,
+  layoutVehicle,
   type PalisadeLayout,
   type SettlerLayout,
   type SignpostLayout,
+  type VehicleLayout,
 } from './layout/index.js';
 import type {
   BuildingPanelModel,
@@ -18,6 +20,7 @@ import type {
   SettlerPanelModel,
   SignpostPanelModel,
   UnitPanelModel,
+  VehiclePanelModel,
 } from './model/index.js';
 
 /**
@@ -30,6 +33,7 @@ export type PanelView =
   | { readonly kind: 'settler'; readonly model: SettlerPanelModel; readonly layout: SettlerLayout }
   | { readonly kind: 'signpost'; readonly model: SignpostPanelModel; readonly layout: SignpostLayout }
   | { readonly kind: 'palisade'; readonly model: PalisadePanelModel; readonly layout: PalisadeLayout }
+  | { readonly kind: 'vehicle'; readonly model: VehiclePanelModel; readonly layout: VehicleLayout }
   | {
       readonly kind: 'compact';
       readonly model: MultiSettlerPanelModel | GenericSelectionPanelModel;
@@ -54,6 +58,8 @@ export function panelViewFor(
       return { kind: 'signpost', model, layout: layoutSignpost(screen, s) };
     case 'palisade':
       return { kind: 'palisade', model, layout: layoutPalisade(model, screen, s) };
+    case 'vehicle':
+      return { kind: 'vehicle', model, layout: layoutVehicle(model, screen, s) };
     case 'multi-settler':
     case 'generic':
       return { kind: 'compact', model, layout: layoutCompact(screen, s) };

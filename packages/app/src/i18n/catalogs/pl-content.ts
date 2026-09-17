@@ -139,6 +139,7 @@ export const plContent = {
     ship_small: 'Mały statek',
     ship_big: 'Duży statek',
     catapult: 'Katapulta',
+    cart_no_ox: 'Wóz bez wołu',
     chest: 'Skrzynia',
     anything: 'Dowolny towar',
   },

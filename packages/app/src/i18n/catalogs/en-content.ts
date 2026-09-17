@@ -139,6 +139,8 @@ export const enContent = {
     ship_small: 'Small ship',
     ship_big: 'Large ship',
     catapult: 'Catapult',
+    /** The vehicle type without a good of its own: the ox cart before its ox arrives. */
+    cart_no_ox: 'Ox cart without ox',
     chest: 'Chest',
     anything: 'Anything',
   },

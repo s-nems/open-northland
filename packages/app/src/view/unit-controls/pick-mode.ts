@@ -16,6 +16,7 @@ import {
 } from './highlights/index.js';
 import type { UnitOrderController } from './orders.js';
 import type { UnitTargets } from './unit-targets.js';
+import type { VehicleOrderController } from './vehicle-orders.js';
 
 /**
  * Arming one mode replaces whatever was armed; a click of any kind, Esc, or a selection change resolves
@@ -27,7 +28,10 @@ export type PickMode =
   | { readonly kind: BuildingPickKind; readonly units: readonly number[] }
   | { readonly kind: ScoutPickKind; readonly scout: number }
   | { readonly kind: SpotPickKind; readonly units: readonly number[] }
-  | { readonly kind: StrikePickKind; readonly units: readonly number[] };
+  | { readonly kind: StrikePickKind; readonly units: readonly number[] }
+  | { readonly kind: 'vehicle'; readonly settler: number }
+  | { readonly kind: VehicleSpotPickKind; readonly vehicle: number }
+  | { readonly kind: VehicleTargetPickKind; readonly vehicle: number };
 
 /** The orders one scout resolves by clicking a spot on the map. */
 type ScoutPickKind = 'signpost' | 'explore';
@@ -41,9 +45,20 @@ type SpotPickKind = 'destination' | 'work-area' | 'attack-move';
 /** The selection-wide orders that resolve against the unit or building drawn under the cursor. */
 type StrikePickKind = 'attack-settler' | 'attack-building' | 'attack-animal' | 'attack-vehicle';
 
+/** The vehicle window's orders that resolve against a spot: a drive, a mooring point, a bombardment. */
+export type VehicleSpotPickKind = 'vehicle-destination' | 'vehicle-dock' | 'vehicle-attack-position';
+
+/** The vehicle window's orders that resolve against what is drawn under the cursor: an enemy of one
+ *  kind, or one of the player's own ships to ride in. */
+export type VehicleTargetPickKind =
+  | 'vehicle-attack-settler'
+  | 'vehicle-attack-building'
+  | 'vehicle-attack-vehicle'
+  | 'vehicle-carrier';
+
 /** A mode whose target is a spot, so any surface that names one - the world view or the map overview -
  *  can resolve it. */
-type SpotMode = Extract<PickMode, { readonly kind: SpotPickKind | ScoutPickKind }>;
+type SpotMode = Extract<PickMode, { readonly kind: SpotPickKind | ScoutPickKind | VehicleSpotPickKind }>;
 
 interface BuildingPick {
   readonly highlight: (
@@ -125,29 +140,42 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
 const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly kind: BuildingPickKind }> =>
   Object.hasOwn(BUILDING_PICKS, mode.kind);
 
-const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | ScoutPickKind>([
-  'destination',
-  'work-area',
-  'attack-move',
-  'signpost',
-  'explore',
-]);
-
-const isSpotMode = (mode: PickMode): mode is SpotMode => SPOT_MODES.has(mode.kind);
-
-/** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
-const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | StrikePickKind | ScoutPickKind>(
+const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | ScoutPickKind | VehicleSpotPickKind>(
   [
     'destination',
     'work-area',
     'attack-move',
-    'attack-settler',
-    'attack-building',
-    'attack-animal',
-    'attack-vehicle',
+    'signpost',
     'explore',
+    'vehicle-destination',
+    'vehicle-dock',
+    'vehicle-attack-position',
   ],
 );
+
+const isSpotMode = (mode: PickMode): mode is SpotMode => SPOT_MODES.has(mode.kind);
+
+/** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
+const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<
+  Exclude<PickMode['kind'], BuildingPickKind | 'signpost'>
+>([
+  'destination',
+  'work-area',
+  'attack-move',
+  'attack-settler',
+  'attack-building',
+  'attack-animal',
+  'attack-vehicle',
+  'explore',
+  'vehicle',
+  'vehicle-destination',
+  'vehicle-dock',
+  'vehicle-attack-position',
+  'vehicle-attack-settler',
+  'vehicle-attack-building',
+  'vehicle-attack-vehicle',
+  'vehicle-carrier',
+]);
 
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
@@ -162,6 +190,8 @@ export interface PickModeDeps {
    *  formation spread whether it was armed here or right-clicked. Read at click time: it is built after
    *  this controller. */
   readonly orders: () => UnitOrderController;
+  /** The vehicle orders, read at click time like {@link orders}. */
+  readonly vehicleOrders: () => VehicleOrderController;
   /** Named addition: the original signals an armed mode with prompt text, not a cursor. */
   readonly setArmedCursor: (armed: boolean) => void;
 }
@@ -265,6 +295,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           y: target.row,
         });
         return true;
+      case 'vehicle-destination':
+        return deps.vehicleOrders().issueMoveTo(mode.vehicle, target);
+      case 'vehicle-dock':
+        return deps.vehicleOrders().issueDock(mode.vehicle, target);
+      case 'vehicle-attack-position':
+        return deps.vehicleOrders().issueAttackPosition(mode.vehicle, target);
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled spot pick mode: ${JSON.stringify(unreachable)}`);
@@ -288,6 +324,16 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.orders().issueAttackAnimal(event, mode.units);
       case 'attack-vehicle':
         return deps.orders().issueAttackTarget(event, 'vehicle', mode.units);
+      case 'vehicle':
+        return deps.vehicleOrders().issueAttach(event, mode.settler);
+      case 'vehicle-attack-settler':
+        return deps.vehicleOrders().issueAttackTarget(event, mode.vehicle, 'settler');
+      case 'vehicle-attack-building':
+        return deps.vehicleOrders().issueAttackTarget(event, mode.vehicle, 'building');
+      case 'vehicle-attack-vehicle':
+        return deps.vehicleOrders().issueAttackTarget(event, mode.vehicle, 'vehicle');
+      case 'vehicle-carrier':
+        return deps.vehicleOrders().issueLoadInto(event, mode.vehicle);
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);

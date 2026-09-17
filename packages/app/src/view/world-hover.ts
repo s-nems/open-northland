@@ -2,16 +2,24 @@ import type { ContentSet } from '@open-northland/data';
 import type { Camera, WorldRenderer } from '@open-northland/render';
 import { type ChestKind, entityById, type WorldSnapshot } from '@open-northland/sim';
 import type { UiString } from '../content/gui-gfx.js';
-import { canOpenChest, chestKindOf, isSettler, isWildlife, ownerPlayerOf } from '../game/snapshot.js';
+import {
+  canOpenChest,
+  chestKindOf,
+  isSettler,
+  isWildlife,
+  num,
+  ownerPlayerOf,
+  type SnapshotEntity,
+} from '../game/snapshot.js';
 import type { HoverCard } from '../hud/dom/hover-card.js';
 import type { BuildingHoverModel, HoverCardModel, SettlerHoverModel } from '../hud/hover-card/model.js';
-import { messages } from '../i18n/index.js';
+import { formatMessage, messages } from '../i18n/index.js';
 import { isHitTarget, type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { createTooltip } from './tooltip.js';
 
 /**
- * What the cursor is over in the world: a settler or a building opens a card, a loose good pile or a
- * chest a text chip. Hit targets are filtered from the renderer's already-culled `drawnItems`, so the
+ * What the cursor is over in the world: a settler or a building opens a card, a loose good pile, a chest
+ * or a vehicle a text chip. Hit targets are filtered from the renderer's already-culled `drawnItems`, so the
  * work follows the screen, not the map. Owns the chip element; the details panel's stock-row tooltip
  * must not share it.
  */
@@ -29,13 +37,16 @@ export interface WorldHoverOptions {
   readonly goodLabel: (goodType: number) => string | undefined;
   /** A chest's localized name, per kind. */
   readonly chestLabel: (kind: ChestKind) => string;
+  /** A vehicle type's localized name; the vehicle chip leads with it. */
+  readonly vehicleLabel: (typeId: number) => string | undefined;
   /** The order line after a chest's name: the open order when the selection can open it, else null. */
   readonly chestOrderLine: (snapshot: WorldSnapshot, kind: ChestKind) => string | null;
   /** The card a hovered settler or building opens; its owner creates and disposes it. */
   readonly card: HoverCard;
   readonly buildingModel: (snapshot: WorldSnapshot, entityId: number) => BuildingHoverModel | null;
   readonly settlerModel: (snapshot: WorldSnapshot, entityId: number) => SettlerHoverModel | null;
-  /** Solid-texel refinement of a building's drawn box, so its transparent corner hovers the ground. */
+  /** Solid-texel refinement of a building's or vehicle's drawn box, so its transparent corner hovers the
+   *  ground. */
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
   /** Cursor position in client coords, or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;
@@ -52,6 +63,7 @@ export interface WorldHover {
 type HoverInfo =
   | { readonly kind: 'pile'; readonly goodType: number; readonly amount: number }
   | { readonly kind: 'chest'; readonly chestKind: ChestKind }
+  | { readonly kind: 'vehicle'; readonly line: string }
   | { readonly kind: 'building' }
   | { readonly kind: 'settler' };
 
@@ -60,6 +72,24 @@ type HoverInfo =
 interface HoverTargets {
   readonly people: Pickable[];
   readonly rest: Pickable[];
+}
+
+/** "Type · Player #n · task", the vehicle window's headline and task line in one. */
+function vehicleLine(
+  vehicleLabel: WorldHoverOptions['vehicleLabel'],
+  entity: SnapshotEntity,
+): string | undefined {
+  const vehicle = entity.components.Vehicle as { vehicleType?: unknown; task?: unknown } | undefined;
+  const typeId = num(vehicle?.vehicleType);
+  if (typeId === undefined) return undefined;
+  const hud = messages().hud;
+  const tasks: Readonly<Record<string, string | undefined>> = hud.vehicleTasks;
+  const task = typeof vehicle?.task === 'string' ? tasks[vehicle.task] : undefined;
+  const owner = ownerPlayerOf(entity);
+  const parts = [vehicleLabel(typeId) ?? hud.vehicle];
+  if (owner !== undefined) parts.push(`${hud.player} ${owner}`);
+  if (task !== undefined) parts.push(formatMessage(hud.vehicleTask, { task }));
+  return parts.join(' · ');
 }
 
 export function createWorldHover(opts: WorldHoverOptions): WorldHover {
@@ -125,6 +155,23 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
           box: opts.renderer.entityBounds(it.ref),
         });
         hoverInfo.set(it.ref, { kind: 'chest', chestKind });
+        continue;
+      }
+      if (it.kind === 'vehicle') {
+        const entity = entityById(snap, it.ref);
+        const line = entity === undefined ? undefined : vehicleLine(opts.vehicleLabel, entity);
+        if (line === undefined) continue;
+        hoverTargets.rest.push({
+          ref: it.ref,
+          x: it.x,
+          y: it.y,
+          kind: 'vehicle',
+          box: opts.renderer.entityBounds(it.ref),
+          ...(pixelHitOf !== undefined
+            ? { pixelHit: (wx: number, wy: number) => pixelHitOf(it.ref, wx, wy) }
+            : {}),
+        });
+        hoverInfo.set(it.ref, { kind: 'vehicle', line });
         continue;
       }
       if (it.kind !== 'stockpile' && it.kind !== 'grounddrop') continue;
@@ -198,6 +245,10 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
         const model = restedOn(ref, nowMs) ? modelFor(snap, ref, info.kind) : null;
         if (model === null) opts.card.hide();
         else opts.card.show(p.clientX, p.clientY, model);
+        return;
+      }
+      if (info.kind === 'vehicle') {
+        chip(p.clientX, p.clientY, info.line);
         return;
       }
       if (info.kind === 'chest') {

@@ -124,8 +124,11 @@ function allows(
   const job = settlerJobType(e) ?? null;
   switch (id) {
     case 'goTo':
-    case 'assignVehicle':
       return true;
+    // The sim's attach gate is the vehicle type's own job list, read once a vehicle is picked; here only
+    // a grown settler is offered the order (approximation: the original's ring row is not read).
+    case 'assignVehicle':
+      return isAdult(e);
     case 'eat':
     case 'sleep':
       return !systems.isHeroJob(content, job);

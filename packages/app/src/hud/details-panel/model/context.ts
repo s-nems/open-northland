@@ -11,6 +11,7 @@ export type GoodDef = ContentSet['goods'][number];
 export type JobDef = ContentSet['jobs'][number];
 export type JobExperienceDef = ContentSet['jobExperience'][number];
 export type TribeDef = ContentSet['tribes'][number];
+export type VehicleDef = ContentSet['vehicles'][number];
 
 export interface UnitPanelModelContext {
   /** The seat allowed to issue player-scoped orders from this panel. */
@@ -28,6 +29,8 @@ export interface UnitPanelModelContext {
   readonly jobExperience: readonly JobExperienceDef[];
   /** The content tribes, whose `needforjob` table the upcoming-unlock rows read. */
   readonly tribes: readonly TribeDef[];
+  /** The content vehicle types: the window's title, hold list and order set come from the row. */
+  readonly vehicles: readonly VehicleDef[];
   /** The sim's livestock-workplace classification. Absent = no filtering. */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
   /** The sim's species-good seam: the animal tribe a good is a herd of, null for an ordinary ware whose

@@ -1,4 +1,5 @@
 import type { EquipSlotRef } from './layout/index.js';
+import type { VehicleOrder } from './model/index.js';
 import type { PanelClick } from './pointer-intent.js';
 
 /** The orders a decoded {@link PanelClick} issues. An absent optional handler leaves its button inert. */
@@ -36,6 +37,12 @@ export interface PanelClickActions {
   readonly onSetTradeImport?: (settlerId: number, house: number, goodType: number, on: boolean) => void;
   /** Trade on the agreement at `agreement` in the map's table; -1 drops the choice. */
   readonly onSetTradeAgreement?: (settlerId: number, agreement: number) => void;
+  /** Select the settler or vehicle a crew row names, as a click on it in the world would. */
+  readonly onSelectEntity?: (entityId: number) => void;
+  /** One of the vehicle window's order buttons; the spot and target orders arm a pick mode. */
+  readonly onVehicleOrder?: (vehicleId: number, order: VehicleOrder) => void;
+  /** Ask for `amount` units of `goodType` in the vehicle's hold (`setVehicleWanted`). */
+  readonly onSetVehicleWanted?: (vehicleId: number, goodType: number, amount: number) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
   /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product. */
   readonly onSetCraftGoods: (entityId: number, goods: readonly number[]) => void;
@@ -115,6 +122,15 @@ export function applyPanelClick(
       return;
     case 'unassignHome':
       actions.onUnassignHome?.(click.entityId);
+      return;
+    case 'selectEntity':
+      actions.onSelectEntity?.(click.entityId);
+      return;
+    case 'vehicleOrder':
+      actions.onVehicleOrder?.(click.entityId, click.order);
+      return;
+    case 'setVehicleWanted':
+      actions.onSetVehicleWanted?.(click.entityId, click.goodType, click.amount);
       return;
     default: {
       const unreachable: never = click;

@@ -8,10 +8,25 @@ import {
   hitTradeDetach,
   hitTradeImport,
   hitTradeOffer,
+  hitVehicleCargoStep,
+  hitVehicleCrew,
   nextCraftGoods,
 } from './hit-test.js';
-import { type ButtonAction, type EquipSlotRef, equipActionKey } from './layout/index.js';
+import { type ButtonAction, type EquipSlotRef, equipActionKey, vehicleOrderOf } from './layout/index.js';
+import type { VehicleOrder } from './model/index.js';
 import type { PanelView } from './selection-view.js';
+
+/** The wanted-amount step a plain click makes, and the one a Shift-click makes (the original's `m`). */
+export const WANTED_STEP = 1;
+export const WANTED_BIG_STEP = 10;
+
+/** The keys held on a panel click: Ctrl/Cmd toggles a craft choice, Shift takes the big wanted step. */
+export interface PanelClickModifiers {
+  readonly toggle: boolean;
+  readonly bigStep: boolean;
+}
+
+export const NO_MODIFIERS: PanelClickModifiers = { toggle: false, bigStep: false };
 
 /** One resolved left-click intent: `stockTab` re-bakes the panel and `centerOnEntity` moves the view,
  *  the rest are player orders. */
@@ -48,7 +63,16 @@ export type PanelClick =
       readonly goodType: number;
       readonly on: boolean;
     }
-  | { readonly kind: 'setTradeAgreement'; readonly entityId: number; readonly agreement: number };
+  | { readonly kind: 'setTradeAgreement'; readonly entityId: number; readonly agreement: number }
+  | { readonly kind: 'selectEntity'; readonly entityId: number }
+  | { readonly kind: 'vehicleOrder'; readonly entityId: number; readonly order: VehicleOrder }
+  | {
+      readonly kind: 'setVehicleWanted';
+      readonly entityId: number;
+      readonly goodType: number;
+      /** The new wanted amount; the sim clamps it into the hold's budget. */
+      readonly amount: number;
+    };
 
 /** The intent of the settler choice/equip blocks, which sit above the button column in probe order. */
 const settlerFieldClick = (
@@ -155,10 +179,31 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
         };
       }
       return null;
+    case 'vehicle': {
+      const order = vehicleOrderOf(action);
+      return order === undefined ? null : { kind: 'vehicleOrder', entityId: view.model.entityId, order };
+    }
     case 'empty':
     case 'compact':
       return null;
   }
+};
+
+/** The intent of the vehicle window's crew rows and hold cells, which sit above the button list. */
+const vehicleFieldClick = (
+  view: Extract<PanelView, { kind: 'vehicle' }>,
+  x: number,
+  y: number,
+  bigStep: boolean,
+  activeStockTab: number,
+): PanelClick | null => {
+  const entityId = view.model.entityId;
+  const crew = hitVehicleCrew(view, x, y);
+  if (crew !== undefined) return { kind: 'selectEntity', entityId: crew };
+  const step = hitVehicleCargoStep(view, x, y, activeStockTab);
+  if (step === undefined) return null;
+  const amount = Math.max(0, step.row.wanted + step.step * (bigStep ? WANTED_BIG_STEP : WANTED_STEP));
+  return { kind: 'setVehicleWanted', entityId, goodType: step.row.goodType, amount };
 };
 
 /** What a left-click inside the panel does, or null when it lands on inert chrome or a disabled button. */
@@ -166,12 +211,17 @@ export const panelClickAt = (
   view: PanelView,
   x: number,
   y: number,
-  toggleModifier: boolean,
+  modifiers: PanelClickModifiers,
+  activeStockTab: number,
 ): PanelClick | null => {
   const portrait = hitPortrait(view, x, y);
   if (portrait !== null) return { kind: 'centerOnEntity', entityId: portrait };
   if (view.kind === 'settler') {
-    const field = settlerFieldClick(view, x, y, toggleModifier);
+    const field = settlerFieldClick(view, x, y, modifiers.toggle);
+    if (field !== null) return field;
+  }
+  if (view.kind === 'vehicle') {
+    const field = vehicleFieldClick(view, x, y, modifiers.bigStep, activeStockTab);
     if (field !== null) return field;
   }
   const tab = hitStockTab(view, x, y);
@@ -194,6 +244,10 @@ export interface PanelHover {
   readonly tradeOffer: number | null;
   /** The house whose detach button is hovered. */
   readonly tradeDetach: number | null;
+  /** The hovered wanted step button of a vehicle's hold, by good and direction. */
+  readonly cargoStep: { readonly goodType: number; readonly step: -1 | 1 } | null;
+  /** The hovered crew row's entity. */
+  readonly crewRow: number | null;
 }
 
 export const NO_PANEL_HOVER: PanelHover = {
@@ -203,12 +257,15 @@ export const NO_PANEL_HOVER: PanelHover = {
   tradeImport: null,
   tradeOffer: null,
   tradeDetach: null,
+  cargoStep: null,
+  crewRow: null,
 };
 
-export const panelHoverAt = (view: PanelView, x: number, y: number): PanelHover => {
+export const panelHoverAt = (view: PanelView, x: number, y: number, activeStockTab: number): PanelHover => {
   const gather = hitGatherChoice(view, x, y);
   const equipHit = hitEquipAction(view, x, y);
   const mark = hitTradeImport(view, x, y);
+  const step = hitVehicleCargoStep(view, x, y, activeStockTab);
   return {
     action: hitButton(view, x, y)?.action ?? null,
     choiceGood: gather !== undefined ? gather : hitCraftChoice(view, x, y),
@@ -216,6 +273,8 @@ export const panelHoverAt = (view: PanelView, x: number, y: number): PanelHover 
     tradeImport: mark === undefined ? null : { house: mark.house, goodType: mark.goodType },
     tradeOffer: hitTradeOffer(view, x, y)?.index ?? null,
     tradeDetach: hitTradeDetach(view, x, y) ?? null,
+    cargoStep: step === undefined ? null : { goodType: step.row.goodType, step: step.step },
+    crewRow: hitVehicleCrew(view, x, y) ?? null,
   };
 };
 
@@ -226,4 +285,7 @@ export const sameHover = (a: PanelHover, b: PanelHover): boolean =>
   a.tradeImport?.house === b.tradeImport?.house &&
   a.tradeImport?.goodType === b.tradeImport?.goodType &&
   a.tradeOffer === b.tradeOffer &&
-  a.tradeDetach === b.tradeDetach;
+  a.tradeDetach === b.tradeDetach &&
+  a.cargoStep?.goodType === b.cargoStep?.goodType &&
+  a.cargoStep?.step === b.cargoStep?.step &&
+  a.crewRow === b.crewRow;

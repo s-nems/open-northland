@@ -135,10 +135,12 @@ export class SelectionLayer {
       const pos = readPosition(ent.components);
       if (pos === null) continue;
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
-      const isBuilding = classify(ent.components) === 'building';
+      const kind = classify(ent.components);
+      // A building's and a vehicle's ring fits the drawn sprite; a settler's is the fixed feet ellipse.
+      const fitsSprite = kind === 'building' || kind === 'vehicle';
       const spec =
-        (isBuilding ? frame.drawn?.selectionOf?.(id) : undefined) ??
-        ringSpec(isBuilding, isBuilding ? frame.drawn?.boundsOf(id) : undefined, s.x);
+        (fitsSprite ? frame.drawn?.selectionOf?.(id) : undefined) ??
+        ringSpec(fitsSprite, fitsSprite ? frame.drawn?.boundsOf(id) : undefined, s.x);
       let ring = pool.get(id);
       if (ring === undefined) {
         ring = new Graphics();
@@ -175,10 +177,10 @@ export class SelectionLayer {
   }
 }
 
-/** The ring geometry for a target: a settler's fixed feet ellipse, or a building's ellipse fitted to its
- *  sprite footprint and offset when the sprite isn't centred on the feet. */
-function ringSpec(isBuilding: boolean, bounds: EntityBounds | undefined, feetX: number): RingSpec {
-  if (!isBuilding) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0, cy: 0 };
+/** The ring geometry for a target: a settler's fixed feet ellipse, or a building's or vehicle's ellipse
+ *  fitted to its sprite footprint and offset when the sprite isn't centred on the feet. */
+function ringSpec(fitsSprite: boolean, bounds: EntityBounds | undefined, feetX: number): RingSpec {
+  if (!fitsSprite) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0, cy: 0 };
   if (bounds !== undefined) {
     const rx = Math.max(MIN_BUILDING_RX, (bounds.maxX - bounds.minX) / 2);
     return { rx, ry: rx * ISO_RATIO, cx: (bounds.minX + bounds.maxX) / 2 - feetX, cy: 0 };

@@ -9,7 +9,15 @@ import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
 import { applyPanelClick, type PanelClickActions } from './click-actions.js';
 import { tooltipTextAt } from './hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
-import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
+import {
+  NO_MODIFIERS,
+  NO_PANEL_HOVER,
+  type PanelClickModifiers,
+  type PanelHover,
+  panelClickAt,
+  panelHoverAt,
+  sameHover,
+} from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { createPanelStage } from './stage.js';
@@ -37,7 +45,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   readonly packGoods?: ReadonlyMap<string, Texture>;
   /** Owner slot → team-colour slot for the worker sprites; absent = identity. */
   readonly playerColourOf?: (player: number) => number;
-  /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field. */
+  /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field or a
+   *  crew row of the vehicle window. */
   readonly onSelectEntity?: (entityId: number) => void;
   /** The GUI click every pressed panel button and worker portrait confirms with; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
@@ -57,10 +66,10 @@ export interface UnitPanel {
   portrait(): PortraitBox | null;
   /**
    * Returns true when the point is over the panel, so the caller must not world-pick it; a left press on
-   * an enabled button performs its action. `toggleModifier` (Ctrl/Cmd held) switches a craft-choice click
-   * from replace-selection to toggle.
+   * an enabled button performs its action. The modifiers switch a craft-choice click from replace to
+   * toggle (Ctrl/Cmd) and a wanted-amount step to the big one (Shift).
    */
-  handleMouseDown(clientX: number, clientY: number, button: number, toggleModifier?: boolean): boolean;
+  handleMouseDown(clientX: number, clientY: number, button: number, modifiers?: PanelClickModifiers): boolean;
   state(): UnitPanelState;
   restore(state: UnitPanelState): void;
   dispose(): void;
@@ -145,7 +154,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     clientX: number,
     clientY: number,
     button: number,
-    toggleModifier = false,
+    modifiers: PanelClickModifiers = NO_MODIFIERS,
   ): boolean => {
     if (!claimsPointer(clientX, clientY)) return false;
     if (button !== 0) return true; // over the panel - swallow, but only the left button acts
@@ -157,7 +166,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.onSelectEntity?.(worker);
       return true;
     }
-    const click = panelClickAt(view, x, y, toggleModifier);
+    const click = panelClickAt(view, x, y, modifiers, activeStockTab);
     if (click !== null) {
       opts.onUiCue?.('confirm');
       applyPanelClick(click, opts, selectStockTab);
@@ -189,7 +198,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     lastPointer = { clientX: e.clientX, clientY: e.clientY };
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    setHover(panelHoverAt(view, x, y));
+    setHover(panelHoverAt(view, x, y, activeStockTab));
   };
 
   // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger - hide it.

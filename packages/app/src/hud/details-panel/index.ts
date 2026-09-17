@@ -6,6 +6,8 @@ export type {
   StockRow,
   UnitPanelModel,
   UnitPanelModelContext,
+  VehicleOrder,
+  VehiclePanelModel,
 } from './model/index.js';
 export {
   barTone,

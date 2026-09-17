@@ -327,6 +327,27 @@ drawn).
   (a breeding pair) and taking the nearest; the animal walks over, is consumed, and the cart becomes
   type 2 in place. Missing animal on a goto raises `vehicleNoAnimal`.
 
+Open Northland (`packages/app/src/hud/details-panel/model/vehicle.ts`, `view/unit-controls/vehicle-orders.ts`):
+a vehicle is selected by a click on its drawn sprite (solid pixels), after the door markers, flags,
+settlers and buildings under the same point and before a signpost, and never by a marquee; the
+world tooltip reads "type · player · task". The window stacks Ogólne (owner, task, stance or
+carrier, capacity, hit points), the order buttons, Mieszkańcy (commander first, then passengers and
+carried vehicles, each row selecting what it names, a rider still outside marked) and Magazyn (the
+store window's category tabs over "aboard/wanted" cells with the `m` steps of 1 and 10 with Shift,
+"Wszystkie" listing the lines with anything on them). Labels are the `vehiclewindow` and
+`misclogic` strings where the original has one. Approximations: the section stack, the button grid
+and the tabbed hold are authored, not the original's window; the order set per type (every vehicle
+drives and stops; a ship moors and lands its crew; a siege engine takes the attack orders and the
+three stances; a hold-less vehicle has no unload-goods; the carrier pair follows whether the
+vehicle rides a ship) and the stance buttons' "hold" name come from the command semantics, not a
+button-by-button reading; `n` is the "unload goods" button; the right-click defaults follow the
+original's order (enemy human, own moored ship for a land vehicle, enemy vehicle or house, else go
+to) but the attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's
+attack order silently; a ship's right-click on land is a goto the sim refuses, the mooring order
+being explicit; the ring's "Assign Vehicle" is offered to every grown settler and the type's job list
+decides on the pick. Message ids 0x0f (no raise site, *open*), 0x16 (no vehicle discovery event) and
+0x35 (the draught animal ticket) have no raiser yet.
+
 ## Map scripts
 
 `[StaticObjects]` rows (see [MISSIONS.md](MISSIONS.md) for the loader):

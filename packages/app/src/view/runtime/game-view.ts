@@ -758,6 +758,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       camera: () => cameraCtl.camera(),
       clientToScreen,
       goodLabel,
+      vehicleLabel: (typeId) => vehicleLabel(sim.content, typeId),
       ...chestTooltipLines(sim.content, toolPanel.controller.uiString, viewerPlayer, controls.selectedIds),
       card: hoverCard,
       buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),

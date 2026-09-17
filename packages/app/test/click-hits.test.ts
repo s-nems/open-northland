@@ -25,6 +25,7 @@ const OWNED_BUILDING = 61;
 const FLAG_GATHERER = 70;
 const SIGNPOST = 80;
 const OWNED_WALL = 90;
+const OWNED_VEHICLE = 91;
 
 const DOOR_TILE = { col: 3, row: 5 } as const;
 const DOOR = tileToScreen(DOOR_TILE.col, DOOR_TILE.row);
@@ -54,6 +55,7 @@ const under = (ref: number, kind: NonNullable<Pickable['kind']>): Pickable => ({
 interface Arms {
   readonly badges?: readonly DoorBadge[];
   readonly owned?: readonly Pickable[];
+  readonly vehicles?: readonly Pickable[];
   readonly flags?: readonly Pickable[];
   readonly signposts?: readonly Pickable[];
   readonly observer?: boolean;
@@ -61,7 +63,10 @@ interface Arms {
 }
 
 const targetsOf = (arms: Arms): ClickHitDeps['targets'] => ({
-  owned: (kind) => (arms.owned ?? []).filter((t) => kind === undefined || t.kind === kind),
+  owned: (kind) =>
+    kind === 'vehicle'
+      ? [...(arms.vehicles ?? [])]
+      : (arms.owned ?? []).filter((t) => kind === undefined || t.kind === kind),
   flags: () => [...(arms.flags ?? [])],
   signposts: () => [...(arms.signposts ?? [])],
 });
@@ -84,11 +89,14 @@ const frontOf = (ref: number, kind: NonNullable<Pickable['kind']>): Pickable => 
 const OWNED_ARM = [under(OWNED_UNIT, 'settler')];
 const FLAG_ARM = [under(FLAG_GATHERER, 'settler')];
 const SIGNPOST_ARM = [under(SIGNPOST, 'signpost')];
+const VEHICLE_ARM = [under(OWNED_VEHICLE, 'vehicle')];
 
-/** A sign row, a garrison flag, a unit, a gatherer's drop-off flag and a signpost, all under one pixel. */
+/** A sign row, a garrison flag, a unit, a gatherer's drop-off flag, a vehicle and a signpost, all under
+ *  one pixel. */
 const ALL: Arms = {
   badges: [mannedDoor()],
   owned: OWNED_ARM,
+  vehicles: VEHICLE_ARM,
   flags: FLAG_ARM,
   signposts: SIGNPOST_ARM,
 };
@@ -101,6 +109,7 @@ describe('click hit priority', () => {
     expect(selected({ badges: [flagOnlyDoor()] })).toBe(GARRISON_TOWER);
     expect(selected({ owned: OWNED_ARM })).toBe(OWNED_UNIT);
     expect(selected({ flags: FLAG_ARM })).toBe(FLAG_GATHERER);
+    expect(selected({ vehicles: VEHICLE_ARM })).toBe(OWNED_VEHICLE);
     expect(selected({ signposts: SIGNPOST_ARM })).toBe(SIGNPOST);
   });
 
@@ -169,8 +178,13 @@ describe('click hit priority', () => {
     expect(selected({ owned: [wall], signposts: SIGNPOST_ARM })).toBe(OWNED_WALL);
   });
 
+  it('gives a vehicle the click only once no unit stands on it, so its crew beside it stays clickable', () => {
+    expect(selected({ ...ALL, badges: [], flags: [] })).toBe(OWNED_UNIT);
+    expect(selected({ ...ALL, badges: [], flags: [], owned: [] })).toBe(OWNED_VEHICLE);
+  });
+
   it('resolves a signpost last', () => {
-    expect(selected({ ...ALL, badges: [], flags: [], owned: [] })).toBe(SIGNPOST);
+    expect(selected({ ...ALL, badges: [], flags: [], owned: [], vehicles: [] })).toBe(SIGNPOST);
   });
 
   it('answers bare ground with null', () => {

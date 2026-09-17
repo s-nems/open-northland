@@ -35,6 +35,7 @@ const structureKeyOf = (model: UnitPanelModel): string => {
     case 'settler':
     case 'signpost':
     case 'palisade':
+    case 'vehicle':
       return `${model.kind}:${model.entityId}`;
     case 'empty':
     case 'multi-settler':

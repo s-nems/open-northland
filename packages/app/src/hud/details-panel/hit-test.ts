@@ -8,7 +8,9 @@ import {
   type TradeImportHit,
   type TradeOfferHit,
   tradeButtons,
+  vehicleOrderOf,
 } from './layout/index.js';
+import type { VehicleCargoRow, VehicleOrder } from './model/index.js';
 import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
@@ -32,6 +34,8 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
       return [view.layout.button];
     case 'palisade':
       return view.layout.buttons;
+    case 'vehicle':
+      return view.layout.orderButtons;
     case 'empty':
     case 'compact':
       return [];
@@ -41,11 +45,72 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
 export const hitButton = (view: PanelView, x: number, y: number): ButtonHit | null =>
   panelButtons(view).find((b) => contains(b.rect, x, y)) ?? null;
 
-/** The stock category tab under a canvas point, or null - only building layouts carry a tab strip. */
+/** The stock category tab under a canvas point, or null - a building's store and a vehicle's hold carry
+ *  the tab strip. */
 export const hitStockTab = (view: PanelView, x: number, y: number): number | null => {
-  if (view.kind !== 'building') return null;
-  const i = view.layout.stockTabHits.findIndex((r) => contains(r, x, y));
+  const tabs =
+    view.kind === 'building'
+      ? view.layout.stockTabHits
+      : view.kind === 'vehicle'
+        ? view.layout.cargoTabHits
+        : [];
+  const i = tabs.findIndex((r) => contains(r, x, y));
   return i >= 0 ? i : null;
+};
+
+type VehicleView = Extract<PanelView, { kind: 'vehicle' }>;
+
+/** The hold's rows for the active tab, cell by cell: one source for the section's draw and the hit-tests. */
+export const visibleCargoRows = (view: VehicleView, activeStockTab: number): VehicleCargoRow[] =>
+  visibleStockRows(view.model.cargo, false, activeStockTab).slice(0, view.layout.cargoCells.length);
+
+/** A wanted-amount step button under a canvas point: the good and the direction, or undefined. */
+export interface VehicleCargoStepHit {
+  readonly row: VehicleCargoRow;
+  readonly step: -1 | 1;
+}
+
+export const hitVehicleCargoStep = (
+  view: PanelView,
+  x: number,
+  y: number,
+  activeStockTab: number,
+): VehicleCargoStepHit | undefined => {
+  if (view.kind !== 'vehicle') return undefined;
+  const rows = visibleCargoRows(view, activeStockTab);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const cell = view.layout.cargoCells[i];
+    if (row === undefined || cell === undefined) continue;
+    if (contains(cell.less, x, y)) return { row, step: -1 };
+    if (contains(cell.more, x, y)) return { row, step: 1 };
+  }
+  return undefined;
+};
+
+/** The cargo row whose cell (icon or counts plate) holds a canvas point, or undefined. */
+const hitVehicleCargoRow = (
+  view: VehicleView,
+  x: number,
+  y: number,
+  activeStockTab: number,
+): VehicleCargoRow | undefined => {
+  const rows = visibleCargoRows(view, activeStockTab);
+  const i = view.layout.cargoCells.findIndex((cell) => contains(cell.cell, x, y));
+  return i < 0 ? undefined : rows[i];
+};
+
+/** The crew or carried-vehicle row under a canvas point, as the entity it names, or undefined. */
+export const hitVehicleCrew = (view: PanelView, x: number, y: number): number | undefined => {
+  if (view.kind !== 'vehicle') return undefined;
+  return view.layout.crewRows.find((row) => contains(row.rect, x, y))?.entity;
+};
+
+/** The order button under a canvas point, enabled or not, or undefined. */
+export const hitVehicleOrder = (view: PanelView, x: number, y: number): VehicleOrder | undefined => {
+  if (view.kind !== 'vehicle') return undefined;
+  const hit = view.layout.orderButtons.find((b) => contains(b.rect, x, y));
+  return hit === undefined ? undefined : vehicleOrderOf(hit.action);
 };
 
 export const hitGatherChoice = (view: PanelView, x: number, y: number): number | null | undefined => {
@@ -243,6 +308,70 @@ const equipActionHint = (view: PanelView, x: number, y: number): string | null =
   return lines.join('\n');
 };
 
+/** The vehicle window's tooltips: an order's effect, a hold cell's counts, a step button's direction, and
+ *  the crew rows' select hint. */
+const vehicleHint = (view: PanelView, x: number, y: number, activeStockTab: number): string | null => {
+  if (view.kind !== 'vehicle') return null;
+  const hud = messages().hud;
+  const step = hitVehicleCargoStep(view, x, y, activeStockTab);
+  if (step !== undefined) {
+    return formatMessage(step.step > 0 ? hud.vehicleWantedMore : hud.vehicleWantedLess, {
+      good: step.row.label,
+    });
+  }
+  const cargo = hitVehicleCargoRow(view, x, y, activeStockTab);
+  if (cargo !== undefined) {
+    return formatMessage(hud.vehicleCargoLine, {
+      good: cargo.label,
+      current: cargo.current,
+      wanted: cargo.wanted,
+      reserved: Math.max(0, cargo.reserved - cargo.current),
+    });
+  }
+  if (hitVehicleCrew(view, x, y) !== undefined) return hud.vehicleSelectHint;
+  const order = hitVehicleOrder(view, x, y);
+  if (order === undefined) return null;
+  return vehicleOrderHint(order);
+};
+
+const vehicleOrderHint = (order: VehicleOrder): string | null => {
+  const hud = messages().hud;
+  switch (order) {
+    case 'goTo':
+      return hud.vehicleOrderGoToHint;
+    case 'dock':
+      return hud.vehicleOrderDockHint;
+    case 'unloadPeople':
+      return hud.vehicleOrderUnloadPeopleHint;
+    case 'stop':
+      return hud.vehicleOrderStopHint;
+    case 'attackInhabitants':
+      return hud.vehicleOrderAttackInhabitantsHint;
+    case 'attackBuilding':
+      return hud.vehicleOrderAttackBuildingHint;
+    case 'attackVehicle':
+      return hud.vehicleOrderAttackVehicleHint;
+    case 'attackPosition':
+      return hud.vehicleOrderAttackPositionHint;
+    case 'stanceAttack':
+      return hud.vehicleOrderAttackModeHint;
+    case 'stanceDefence':
+      return hud.vehicleOrderDefenceModeHint;
+    case 'stanceHold':
+      return hud.vehicleOrderHoldModeHint;
+    case 'loadIntoShip':
+      return hud.vehicleOrderLoadIntoShipHint;
+    case 'leaveShip':
+      return null;
+    case 'unloadGoods':
+      return hud.vehicleOrderUnloadGoodsHint;
+    default: {
+      const unreachable: never = order;
+      return unreachable;
+    }
+  }
+};
+
 /** The Upgrade button's cost card ("Upgrade requires:" then one "- Drewno ×5" line per required good),
  *  or null when the building has no upgrade cost. */
 const upgradeButtonHint = (view: PanelView, x: number, y: number): string | null => {
@@ -289,6 +418,7 @@ export const tooltipTextAt = (
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
     defenceToggleHint(view, x, y) ??
-    workControlHint(view, x, y)
+    workControlHint(view, x, y) ??
+    vehicleHint(view, x, y, activeStockTab)
   );
 };

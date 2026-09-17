@@ -24,6 +24,8 @@ import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
+import { issueVehicleOrder } from './vehicle-order-buttons.js';
+import { createVehicleOrderController } from './vehicle-orders.js';
 import { createWorkAreaOverlay } from './work-area.js';
 
 export type { UnitControls, UnitControlsOptions } from './types.js';
@@ -64,6 +66,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     assignHome: (id) => pickMode.arm({ kind: 'home', units: [id] }),
     attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', units: [id] }),
     selectEntity: (id) => applySelection([id], false),
+    vehicleOrder: (vehicle, order) => issueVehicleOrder(vehicle, order, { enqueue: opts.enqueue, pickMode }),
     ringCommand: (id, targets) =>
       issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
         enqueue: opts.enqueue,
@@ -117,6 +120,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     nodeAt,
     enqueue: opts.enqueue,
     orders: () => orders,
+    vehicleOrders: () => vehicleOrders,
     setArmedCursor: (armed) => {
       canvas.style.cursor = armed ? 'crosshair' : '';
     },
@@ -156,6 +160,18 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     cue,
   });
 
+  const vehicleOrders = createVehicleOrderController({
+    selected: selection.ids,
+    targets: unitTargets,
+    snapshot: opts.snapshot,
+    content: opts.content,
+    mapSize: opts.mapSize,
+    ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
+    viewer: opts.viewer,
+    toWorld,
+    enqueue: opts.enqueue,
+  });
+
   const overviewPress = createOverviewOrders({
     pickMode,
     orders: () => orders,
@@ -169,7 +185,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // too, since its own listener consumes left clicks only.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     // The details panel routes its buttons through the same claim, so no panel-owned listener races this one.
-    if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
+    const modifiers = { toggle: e.ctrlKey || e.metaKey, bigStep: e.shiftKey };
+    if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, modifiers)) return;
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     const pick = pickMode.handleMouseDown(e);
     if (pick !== null) {
@@ -187,7 +204,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (marker?.kind === 'settler') {
         applySelection([marker.ref], false);
         cue('confirm');
-      } else if (orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null)) {
+      } else if (
+        orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null) ||
+        vehicleOrders.issueRightClick(e)
+      ) {
         cue('confirm');
       }
       return;

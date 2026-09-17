@@ -22,8 +22,10 @@ export interface ClickHits {
 
 /**
  * The order a click resolves what it landed on: a door marker, then a settler or drop-off flag, then
- * a building, then a palisade segment or gate, then a signpost. Sign rows and garrison flags are small intentional targets that a
- * building's larger sprite would otherwise swallow.
+ * a building, then a palisade segment or gate, then an owned vehicle, then a signpost. Sign rows and garrison
+ * flags are small intentional targets that a building's larger sprite would otherwise swallow. A vehicle
+ * comes after the units and houses: its crew standing beside it, and a house its sprite overlaps, must stay
+ * clickable.
  */
 export function createClickHits(deps: ClickHitDeps): ClickHits {
   /** An enemy building's markers are not selection proxies for the men behind them. */
@@ -61,6 +63,7 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
       unitAt(wx, wy) ??
       pickTopAt(deps.targets.owned('building'), wx, wy) ??
       pickTopAt(deps.targets.owned('palisade'), wx, wy) ??
+      pickTopAt(deps.targets.owned('vehicle'), wx, wy) ??
       pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }

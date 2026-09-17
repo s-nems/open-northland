@@ -129,6 +129,64 @@ export const enGame = {
     demolishPalisade: 'Demolish palisade',
     demolishGate: 'Demolish gate',
     constructionProgress: 'Construction: {percent}%',
+    // The vehicle window: `vehiclewindow` and `misclogic` gui strings where the original has one (ids
+    // in the glosses), the rest authored.
+    vehicle: 'Vehicle', // vehiclewindow 0
+    vehicleOrders: 'Orders',
+    vehiclePeople: 'People', // vehiclewindow 3
+    vehicleCargo: 'Cargo', // vehiclewindow 5
+    vehicleCapacity: 'Capacity: {load}/{slots}', // vehiclewindow 8, 12
+    vehicleTask: 'Task: {task}',
+    vehicleTasks: {
+      none: 'idle',
+      docks: 'mooring',
+      attacks: 'attacking',
+      waitsForHuman: 'waiting for the crew',
+      waitsForAnimal: 'waiting for the draught animal',
+      interrupted: 'stopped',
+      boardsShip: 'boarding the ship',
+    },
+    vehicleStance: 'Stance: {stance}',
+    vehicleStances: { attack: 'attack', defence: 'defence', hold: 'hold position' },
+    vehicleCommander: 'Commander',
+    vehiclePassenger: 'Passenger',
+    vehicleCrewOutside: 'outside',
+    vehicleCrewCount: '{count}/{capacity}',
+    vehicleNoCrew: 'No crew: select a settler and give it the "Assign vehicle" order.',
+    vehicleCarriedVehicle: 'Aboard: {vehicle}',
+    vehicleCarrier: 'On board: {carrier}',
+    vehicleSelectHint: 'Click to select',
+    vehicleOrderGoTo: 'Go to', // misclogic 142
+    vehicleOrderGoToHint: 'Click a spot on the map to drive or sail there.',
+    vehicleOrderDock: 'Moor', // misclogic 144
+    vehicleOrderDockHint: 'Click a shore point; the ship moors beside it.', // misc 29
+    vehicleOrderUnloadPeople: 'Disembark people', // misclogic 143
+    vehicleOrderUnloadPeopleHint: 'Every rider steps out at the door and leaves the crew.',
+    vehicleOrderStop: 'Stop',
+    vehicleOrderStopHint: 'Halt on the node under the vehicle.',
+    vehicleOrderAttackInhabitants: 'Attack inhabitants', // misclogic 145
+    vehicleOrderAttackBuilding: 'Attack building', // misclogic 146
+    vehicleOrderAttackVehicle: 'Attack vehicle', // misclogic 147
+    vehicleOrderAttackPosition: 'Attack position', // misclogic 148
+    vehicleOrderAttackInhabitantsHint: 'Click an enemy settler on the map.',
+    vehicleOrderAttackBuildingHint: 'Click an enemy building on the map.',
+    vehicleOrderAttackVehicleHint: 'Click an enemy vehicle on the map.',
+    vehicleOrderAttackPositionHint: 'Click the spot on the map to bombard.',
+    vehicleOrderAttackMode: 'Attack mode', // misclogic 149
+    vehicleOrderAttackModeHint: 'Scans for targets around wherever it stands and chases them.',
+    vehicleOrderDefenceMode: 'Defence mode', // misclogic 150
+    vehicleOrderDefenceModeHint: 'Guards this spot: chases targets nearby and comes back.',
+    vehicleOrderHoldMode: 'Hold position',
+    vehicleOrderHoldModeHint: 'Never moves: fires only on targets inside its range.',
+    vehicleOrderLoadIntoShip: 'Assign to ship', // vehiclewindow 24
+    vehicleOrderLoadIntoShipHint: 'Click one of your moored ships; the vehicle drives aboard.',
+    vehicleOrderLeaveShip: 'Remove from ship', // vehiclewindow 25
+    vehicleOrderUnloadGoods: 'Unload goods', // vehiclewindow 19
+    vehicleOrderUnloadGoodsHint: 'Asks for nothing, so the carrier takes every good out.', // vehiclewindow 20
+    vehicleWantedLess: 'Decrease amount of {good} (Shift: by 10)', // vehiclewindow 10
+    vehicleWantedMore: 'Increase amount of {good} (Shift: by 10)', // vehiclewindow 11
+    vehicleCargoLine: '{good}: {current} aboard, {wanted} wanted, {reserved} on the way',
+    vehicleCargoNothingWanted: 'Nothing aboard or wanted. Pick a category tab and press + on a good.',
     center: 'Centre',
     help: 'Help',
     statistics: 'Statistics',
@@ -509,8 +567,6 @@ export const enGame = {
     allowRegeneration: 'Allow Regeneration', // 42
     prohibitRegeneration: 'Prohibit Regeneration', // 43
   },
-  /** Tooltip suffix on a ring order the simulation cannot carry out yet. */
-  actionRingPending: 'coming soon',
   // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
   lifeStage: {
     baby_female: 'Baby (girl)',

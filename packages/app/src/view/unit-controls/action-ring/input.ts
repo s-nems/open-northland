@@ -4,7 +4,6 @@ import {
   type ActionOrderId,
   type ActionRingLayout,
   hitTestActionRing,
-  isPendingAction,
 } from '../../../hud/action-ring/index.js';
 import { messages } from '../../../i18n/index.js';
 import type { MenuMode } from './types.js';
@@ -66,7 +65,6 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     const hit = hitTestActionRing(ctx.getLayout(), x, y);
     if (hit === null) return;
     e.stopImmediatePropagation(); // the click is the ring's, never world picking's
-    if (isPendingAction(hit.id)) return; // drawn for fidelity, with no order behind it yet
     ctx.cue('confirm');
     if (hit.id === 'changeProfession') {
       e.preventDefault();
@@ -100,7 +98,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
         .fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
     }
     const label = messages().actionRing[hit.id];
-    tooltip.textContent = isPendingAction(hit.id) ? `${label} (${messages().actionRingPending})` : label;
+    tooltip.textContent = label;
     tooltip.style.left = `${e.clientX + 12}px`;
     tooltip.style.top = `${e.clientY - 22}px`;
     tooltip.style.display = 'block';

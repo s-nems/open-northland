@@ -3,7 +3,12 @@ import { type Entity, entityById, systems, type WorldSnapshot } from '@open-nort
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason, vehicleLabel } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
-import { mountUnitPanel, type UnitPanel, type UnitPanelState } from '../../hud/details-panel/index.js';
+import {
+  mountUnitPanel,
+  type UnitPanel,
+  type UnitPanelState,
+  type VehicleOrder,
+} from '../../hud/details-panel/index.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
@@ -31,6 +36,8 @@ export interface UnitChromeCallbacks {
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
   readonly selectEntity: (id: number) => void;
+  /** One of the vehicle window's order buttons. */
+  readonly vehicleOrder: (vehicle: number, order: VehicleOrder) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   /** The GUI click feedback the ring's and the panel's buttons press with. */
   readonly cue: (cue: UiCue) => void;
@@ -83,6 +90,7 @@ export async function createUnitChrome(
       jobExperience: opts.content.jobExperience,
       tribes: opts.content.tribes,
       ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
+      vehicles: opts.content.vehicles,
       isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
       livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
@@ -116,6 +124,9 @@ export async function createUnitChrome(
         opts.enqueue({ kind: 'setTradeAgreement', entity: id as Entity, agreement }),
       ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
       ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
+      onVehicleOrder: callbacks.vehicleOrder,
+      onSetVehicleWanted: (id, goodType, amount) =>
+        opts.enqueue({ kind: 'setVehicleWanted', vehicle: id as Entity, goodType, amount }),
       onSetGatherGood: (id, goodType) =>
         opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
       onSetCraftGoods: (id, goods) =>

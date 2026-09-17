@@ -14,6 +14,7 @@ import {
   isPalisade,
   isSettler,
   isSignpost,
+  isVehicle,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -54,6 +55,7 @@ import { settlerDisplayName } from './settler-name.js';
 import { unlockProgressRows } from './settler-unlocks.js';
 import { settlerWork } from './settler-work.js';
 import { tradeOfferLabel, tradePanelModel } from './trade.js';
+import { type VehiclePanelModel, vehiclePanelModel } from './vehicle.js';
 
 export { type BarTone, barTone, type PanelBar, remainingPct } from './bars.js';
 export type {
@@ -73,6 +75,15 @@ export type { SettlerPanelModel } from './settler.js';
 export { type EquipGroup, type EquipRow, type EquipSlotModel, equipmentRows } from './settler-equipment.js';
 export type { UnlockProgressRowModel } from './settler-unlocks.js';
 export type { TradeImportModel, TradeOfferModel, TradePanelModel, TradeStopModel } from './trade.js';
+export {
+  VEHICLE_ORDER_STRING,
+  VEHICLEWINDOW,
+  type VehicleCargoRow,
+  type VehicleCrewRow,
+  type VehicleOrder,
+  type VehicleOrderModel,
+  type VehiclePanelModel,
+} from './vehicle.js';
 
 export interface MultiSettlerPanelModel {
   readonly kind: 'multi-settler';
@@ -109,6 +120,7 @@ export type UnitPanelModel =
   | SettlerPanelModel
   | SignpostPanelModel
   | PalisadePanelModel
+  | VehiclePanelModel
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
@@ -134,6 +146,7 @@ export function buildUnitPanelModel(
   const buildingIds: number[] = [];
   const signpostIds: number[] = [];
   const palisadeIds: number[] = [];
+  const vehicleIds: number[] = [];
   for (const id of selected) {
     const e = entityById(snapshot, id);
     if (e === undefined) continue;
@@ -141,6 +154,7 @@ export function buildUnitPanelModel(
     else if (isBuilding(e)) buildingIds.push(e.id);
     else if (isSignpost(e)) signpostIds.push(e.id);
     else if (isPalisade(e)) palisadeIds.push(e.id);
+    else if (isVehicle(e)) vehicleIds.push(e.id);
   }
   settlerIds.sort((a, b) => a - b);
   buildingIds.sort((a, b) => a - b);
@@ -167,10 +181,16 @@ export function buildUnitPanelModel(
       underConstruction: ent.components.UnderConstruction !== undefined,
     };
   }
+  vehicleIds.sort((a, b) => a - b);
 
-  // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank it.
+  // A signpost or a vehicle is a direct-click-only selection (never marquee'd), so units/buildings
+  // always outrank either.
   if (settlerIds.length === 0 && buildingIds.length === 0 && signpostIds.length === 1) {
     return { kind: 'signpost', entityId: signpostIds[0] as number };
+  }
+  if (settlerIds.length === 0 && buildingIds.length === 0 && vehicleIds.length === 1) {
+    const ent = entityById(snapshot, vehicleIds[0] as number);
+    return ent === undefined ? { kind: 'empty' } : vehiclePanelModel(ctx, snapshot, ent);
   }
 
   if (settlerIds.length === 0 && buildingIds.length === 1) {

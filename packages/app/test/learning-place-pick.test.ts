@@ -54,6 +54,9 @@ function harness(under: number): { press: () => void; issued: Command[]; schools
     nodeAt: () => ({ col: 0, row: 0 }),
     enqueue: (command) => issued.push(command),
     orders: () => orders,
+    vehicleOrders: () => {
+      throw new Error('no vehicle order controller in this test');
+    },
     setArmedCursor: () => undefined,
   });
   return {

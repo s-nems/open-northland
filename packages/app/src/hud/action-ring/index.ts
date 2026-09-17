@@ -3,8 +3,6 @@ export {
   type ActionCommand,
   type ActionCommandId,
   type ActionOrderId,
-  isPendingAction,
-  type PendingActionId,
 } from './commands.js';
 export {
   ACTION_ARM_PX,

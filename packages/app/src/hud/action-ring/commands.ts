@@ -39,15 +39,10 @@ export type ActionOrderId =
   | 'defenceMode'
   | 'ignorantMode'
   | 'allowRegeneration'
-  | 'prohibitRegeneration';
+  | 'prohibitRegeneration'
+  | 'assignVehicle';
 
-/** Orders the original offers that the simulation has no mechanic for: drawn where the original draws
- *  them, and inert when clicked. Boarding a vehicle from the ring is all that is left. */
-const PENDING_ACTION_IDS = ['assignVehicle'] as const;
-
-export type PendingActionId = (typeof PENDING_ACTION_IDS)[number];
-
-export type ActionCommandId = ActionOrderId | 'changeProfession' | PendingActionId;
+export type ActionCommandId = ActionOrderId | 'changeProfession';
 
 export interface ActionCommand {
   readonly id: ActionCommandId;
@@ -102,9 +97,3 @@ export const ACTION_COMMANDS: readonly ActionCommand[] = [
   { id: 'allowRegeneration', arm: INNER_LEFT_ARM, icon: 'order_allow_regeneration', multi: true },
   { id: 'prohibitRegeneration', arm: INNER_LEFT_ARM, icon: 'order_prohibit_regeneration', multi: true },
 ];
-
-const PENDING_ACTIONS: ReadonlySet<ActionCommandId> = new Set<ActionCommandId>(PENDING_ACTION_IDS);
-
-export function isPendingAction(id: ActionCommandId): id is PendingActionId {
-  return PENDING_ACTIONS.has(id);
-}

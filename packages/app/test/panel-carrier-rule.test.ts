@@ -20,6 +20,7 @@ const job = (typeId: number, id: string): UnitPanelModelContext['jobs'][number] 
 const ctxWith = (jobs: UnitPanelModelContext['jobs']): UnitPanelModelContext => ({
   buildings: [],
   goods: [],
+  vehicles: [],
   jobs,
   jobExperience: [],
   tribes: [],

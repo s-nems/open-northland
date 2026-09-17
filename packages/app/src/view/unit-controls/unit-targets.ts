@@ -42,13 +42,13 @@ export interface UnitTargetsDeps {
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
 }
 
-/** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). A vehicle is
- *  an attack target only: selecting one is the vehicle window's own path. */
+/** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). */
 export type UnitTargetKind = 'settler' | 'building' | 'palisade' | 'vehicle';
 
 /** The pickable target sets the unit controls hit-test a click against, plus the order-issuing set. */
 export interface UnitTargets {
-  /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors. */
+  /** Owned, pickable targets of `kind` with their world-px feet anchors. Absent, the marquee set:
+   *  settlers and buildings, since a vehicle is a direct-click selection like a signpost. */
   owned(kind?: UnitTargetKind): Pickable[];
   /** Every standing building drawn this frame, whoever owns it: a trader's route may name another
    *  tribe's house. */
@@ -110,13 +110,12 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
   /** The item's kind when it is one a unit-controls click selects or orders, else null. */
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
-    item.kind === 'settler' || item.kind === 'building' || item.kind === 'palisade' ? item.kind : null;
-  /** The kinds a strike may name: the selectable ones plus a vehicle. */
-  const enemyKindOf = (item: DrawItem): UnitTargetKind | null =>
-    item.kind === 'vehicle' ? item.kind : unitKindOf(item);
+    item.kind === 'settler' || item.kind === 'building' || item.kind === 'palisade' || item.kind === 'vehicle'
+      ? item.kind
+      : null;
 
-  /** A building refines to solid pixels, since its sprite box overhangs the footprint. A palisade keeps
-   *  its sprite box: the gaps between its posts are part of the wall a player aims at. */
+  /** A building or vehicle refines to solid pixels, since its sprite box overhangs the footprint. A palisade
+   *  keeps its sprite box: the gaps between its posts are part of the wall a player aims at. */
   const hitTarget = (item: DrawItem, kind: UnitTargetKind): Pickable => {
     const pixelHitOf = deps.pixelHitOf;
     return {
@@ -125,7 +124,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       y: item.y,
       kind,
       box: deps.boundsOf?.(item.ref),
-      ...(kind === 'building' && pixelHitOf !== undefined
+      ...(kind !== 'settler' && pixelHitOf !== undefined
         ? { pixelHit: (wx: number, wy: number) => pixelHitOf(item.ref, wx, wy) }
         : {}),
     };
@@ -137,7 +136,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         const itemKind = unitKindOf(it);
-        if (itemKind === null || (kind !== undefined && itemKind !== kind)) continue;
+        if (itemKind === null) continue;
+        if (kind === undefined ? itemKind === 'vehicle' : itemKind !== kind) continue;
         if (!isHitTarget(it)) continue;
         if (!pickableOwner(ownerOf.get(it.ref))) continue;
         if (livestock.has(it.ref)) continue; // see the livestock note on the memo
@@ -162,7 +162,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const it of deps.drawnItems()) {
         // A unit, a building or a vehicle is an attack target - a warrior can raze an enemy structure
         // or batter a cart.
-        const itemKind = enemyKindOf(it);
+        const itemKind = unitKindOf(it);
         if (itemKind === null) continue;
         // The ghost guard fog-gates the attack set: a remembered structure still draws, but no swing
         // can be ordered at it.

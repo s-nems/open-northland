@@ -176,9 +176,9 @@ describe('allowedActions - one settler', () => {
     );
   });
 
-  it('gives a growing child the walk, the vehicle and the needs alone', () => {
+  it('gives a growing child the walk and the needs alone', () => {
     const snapshot = snapshotOf([settler(1, JOB_CHILD_MALE, { child: true })]);
-    expect(allowed(snapshot, [1])).toEqual(['assignVehicle', 'eat', 'goTo', 'sleep']);
+    expect(allowed(snapshot, [1])).toEqual(['eat', 'goTo', 'sleep']);
   });
 
   it('shows the work area only once the gatherer carries a flag to draw it around', () => {

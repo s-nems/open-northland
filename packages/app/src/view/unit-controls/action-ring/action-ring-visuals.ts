@@ -1,21 +1,12 @@
 import { type Application, type Container, Graphics } from 'pixi.js';
 import { type GuiArt, type GuiSprite, makeGuiSprite } from '../../../content/gui-art.js';
 import { type GuiFrameName, guiFrameIndex } from '../../../content/gui-atlas-map.js';
-import {
-  type ActionCommand,
-  type ActionRingLayout,
-  isPendingAction,
-} from '../../../hud/action-ring/index.js';
+import type { ActionCommand, ActionRingLayout } from '../../../hud/action-ring/index.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../../../hud/icon-texture.js';
 
 /** Disc colours for the flat fallback drawn only when the decoded GUI art is absent. */
 const FALLBACK_FILL = 0x6b4f2a;
 const FALLBACK_RIM = 0x2a1d0e;
-/** A pending order draws dimmed so it reads as inert: a deviation from the original, which draws every
- *  order at full strength. */
-const PENDING_ALPHA = 0.55;
-
-const buttonAlpha = (command: ActionCommand): number => (isPendingAction(command.id) ? PENDING_ALPHA : 1);
 
 interface ButtonVisual {
   readonly command: ActionCommand;
@@ -64,10 +55,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       visuals.push(v);
       visualByCommand.set(command, v);
       const display = fallback ?? icon?.display;
-      if (display !== undefined) {
-        display.alpha = buttonAlpha(command);
-        container.addChild(display);
-      }
+      if (display !== undefined) container.addChild(display);
     }
   } catch (error: unknown) {
     for (const v of visuals) {
@@ -87,7 +75,6 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       const sprite = iconSprite(v.command.icon);
       if (sprite === null) continue;
       const next = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
-      next.display.alpha = buttonAlpha(v.command);
       try {
         container.addChild(next.display);
       } catch (error: unknown) {

@@ -128,6 +128,63 @@ export const plGame = {
     demolishPalisade: 'Wyburz palisadę',
     demolishGate: 'Wyburz bramę',
     constructionProgress: 'Budowa: {percent}%',
+    vehicle: 'Wehikuł', // vehiclewindow 0
+    vehicleOrders: 'Rozkazy',
+    vehiclePeople: 'Mieszkańcy', // vehiclewindow 3
+    vehicleCargo: 'Magazyn', // vehiclewindow 5
+    vehicleCapacity: 'Ładowność: {load}/{slots}', // vehiclewindow 8, 12
+    vehicleTask: 'Zadanie: {task}',
+    vehicleTasks: {
+      none: 'bezczynny',
+      docks: 'cumuje',
+      attacks: 'atakuje',
+      waitsForHuman: 'czeka na załogę',
+      waitsForAnimal: 'czeka na zwierzę pociągowe',
+      interrupted: 'zatrzymany',
+      boardsShip: 'wchodzi na statek',
+    },
+    vehicleStance: 'Tryb: {stance}',
+    vehicleStances: { attack: 'atak', defence: 'obrona', hold: 'utrzymanie pozycji' },
+    vehicleCommander: 'Dowódca',
+    vehiclePassenger: 'Pasażer',
+    vehicleCrewOutside: 'na zewnątrz',
+    vehicleCrewCount: '{count}/{capacity}',
+    vehicleNoCrew: 'Brak załogi: zaznacz osadnika i wydaj rozkaz „Przydziel wehikuł”.',
+    vehicleCarriedVehicle: 'Na pokładzie: {vehicle}',
+    vehicleCarrier: 'Na pokładzie: {carrier}',
+    vehicleSelectHint: 'Kliknij, aby zaznaczyć',
+    vehicleOrderGoTo: 'Idź do', // misclogic 142
+    vehicleOrderGoToHint: 'Kliknij miejsce na mapie, do którego ma pojechać lub popłynąć.',
+    vehicleOrderDock: 'Zacumuj', // misclogic 144
+    vehicleOrderDockHint: 'Kliknij punkt na brzegu; statek zacumuje obok niego.', // misc 29
+    vehicleOrderUnloadPeople: 'Wysadź na ląd ludzi', // misclogic 143
+    vehicleOrderUnloadPeopleHint: 'Każdy pasażer wychodzi przy drzwiach i opuszcza załogę.',
+    vehicleOrderStop: 'Zatrzymaj',
+    vehicleOrderStopHint: 'Zatrzymuje wehikuł na węźle, na którym stoi.',
+    vehicleOrderAttackInhabitants: 'Zaatakuj mieszkańców', // misclogic 145
+    vehicleOrderAttackBuilding: 'Zaatakuj budynek', // misclogic 146
+    vehicleOrderAttackVehicle: 'Zaatakuj wehikuł', // misclogic 147
+    vehicleOrderAttackPosition: 'Zaatakuj pozycję', // misclogic 148
+    vehicleOrderAttackInhabitantsHint: 'Kliknij wrogiego osadnika na mapie.',
+    vehicleOrderAttackBuildingHint: 'Kliknij wrogi budynek na mapie.',
+    vehicleOrderAttackVehicleHint: 'Kliknij wrogi wehikuł na mapie.',
+    vehicleOrderAttackPositionHint: 'Kliknij miejsce na mapie do ostrzału.',
+    vehicleOrderAttackMode: 'Tryb ataku', // misclogic 149
+    vehicleOrderAttackModeHint: 'Szuka celów wokół miejsca, w którym stoi, i ściga je.',
+    vehicleOrderDefenceMode: 'Tryb obrony', // misclogic 150
+    vehicleOrderDefenceModeHint: 'Pilnuje tego miejsca: ściga pobliskie cele i wraca.',
+    vehicleOrderHoldMode: 'Utrzymaj pozycję',
+    vehicleOrderHoldModeHint: 'Nie rusza się: strzela tylko do celów w zasięgu.',
+    vehicleOrderLoadIntoShip: 'Przydziel do statku', // vehiclewindow 24
+    vehicleOrderLoadIntoShipHint: 'Kliknij jeden ze swoich zacumowanych statków; wehikuł wjedzie na pokład.',
+    vehicleOrderLeaveShip: 'Usuń ze statku', // vehiclewindow 25
+    vehicleOrderUnloadGoods: 'Rozładuj towary', // vehiclewindow 19
+    vehicleOrderUnloadGoodsHint: 'Niczego nie żąda, więc tragarz wynosi wszystkie towary.', // vehiclewindow 20
+    vehicleWantedLess: 'Zmniejsz ilość {good} (Shift: o 10)', // vehiclewindow 10
+    vehicleWantedMore: 'Zwiększ ilość {good} (Shift: o 10)', // vehiclewindow 11
+    vehicleCargoLine: '{good}: {current} na pokładzie, {wanted} pożądane, {reserved} w drodze',
+    vehicleCargoNothingWanted:
+      'Nic na pokładzie ani nic pożądanego. Wybierz kategorię i naciśnij + przy towarze.',
     center: 'Wycentruj',
     help: 'Pomoc',
     statistics: 'Statystyki',
@@ -496,7 +553,6 @@ export const plGame = {
     allowRegeneration: 'Zezwól na regenerację', // 42
     prohibitRegeneration: 'Zabroń regeneracji', // 43
   },
-  actionRingPending: 'wkrótce',
   // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
   lifeStage: {
     baby_female: 'Niemowlę (dziewczynka)',

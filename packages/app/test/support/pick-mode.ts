@@ -19,7 +19,7 @@ export const NO_TARGETS: UnitTargets = {
 
 /**
  * A pick-mode controller for the building picks and their highlight: every press names world point
- * (0, 0), and no order controller stands behind the spot and strike modes.
+ * (0, 0), and no order controller stands behind the spot, strike and vehicle modes.
  */
 export function buildingPickController(opts: {
   readonly snapshot: () => WorldSnapshot;
@@ -37,6 +37,9 @@ export function buildingPickController(opts: {
     enqueue: opts.enqueue ?? (() => undefined),
     orders: () => {
       throw new Error('no order controller in this test');
+    },
+    vehicleOrders: () => {
+      throw new Error('no vehicle order controller in this test');
     },
     setArmedCursor: () => undefined,
   });

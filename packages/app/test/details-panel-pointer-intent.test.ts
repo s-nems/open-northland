@@ -17,11 +17,12 @@ import {
   sameHover,
 } from '../src/hud/details-panel/pointer-intent.js';
 import type { PanelView } from '../src/hud/details-panel/selection-view.js';
+import { ALL_STOCK_TAB } from '../src/hud/details-panel/stock-tabs.js';
 import { center, panelModelOf, viewOfKind } from './support/details-panel.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
-const NO_TOGGLE = false;
-const TOGGLE = true;
+const NO_TOGGLE = { toggle: false, bigStep: false } as const;
+const TOGGLE = { toggle: true, bigStep: false } as const;
 const SETTLER_ID = 1;
 
 const gathererSettler: EntitySnapshot = {
@@ -99,7 +100,7 @@ describe('details panel click intents', () => {
     if (choice === undefined) throw new Error('expected a gather choice');
     const p = center(choice.rect);
 
-    expect(panelClickAt(view, p.x, p.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(view, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setGatherGood',
       entityId: SETTLER_ID,
       goodType: choice.goodType,
@@ -113,12 +114,12 @@ describe('details panel click intents', () => {
     const p = center(second.rect);
 
     // Plain click keeps only the clicked product; Ctrl/Cmd toggles it out of the all-mode selection.
-    expect(panelClickAt(view, p.x, p.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(view, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setCraftGoods',
       entityId: SETTLER_ID,
       goods: [GOOD_BREAD],
     });
-    expect(panelClickAt(view, p.x, p.y, TOGGLE)).toEqual({
+    expect(panelClickAt(view, p.x, p.y, TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setCraftGoods',
       entityId: SETTLER_ID,
       goods: [GOOD_PLANK],
@@ -132,13 +133,13 @@ describe('details panel click intents', () => {
     if (swap === undefined || off === undefined) throw new Error('expected the worn slot buttons');
 
     const sp = center(swap.rect);
-    expect(panelClickAt(view, sp.x, sp.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(view, sp.x, sp.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'equipSlot',
       entityId: SETTLER_ID,
       ref: swap.ref,
     });
     const op = center(off.rect);
-    expect(panelClickAt(view, op.x, op.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(view, op.x, op.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'unequipSlot',
       entityId: SETTLER_ID,
       ref: off.ref,
@@ -149,7 +150,7 @@ describe('details panel click intents', () => {
     const view = viewOfKind(panelModelOf(postedSettler), 'settler');
     const intents = view.layout.workControls.map((control) => {
       const p = center(control.button.rect);
-      return [control.action, panelClickAt(view, p.x, p.y, NO_TOGGLE)] as const;
+      return [control.action, panelClickAt(view, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)] as const;
     });
 
     expect(intents).toEqual([
@@ -164,14 +165,14 @@ describe('details panel click intents', () => {
   it('resolves a click on the portrait box into a re-centre on the entity it shows', () => {
     const settler = viewOfKind(panelModelOf(gathererSettler), 'settler');
     const sp = center(settler.layout.preview);
-    expect(panelClickAt(settler, sp.x, sp.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(settler, sp.x, sp.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'centerOnEntity',
       entityId: SETTLER_ID,
     });
 
     const building = viewOfKind(panelModelOf(buildingEntity(4, BUILDING_HEADQUARTERS)), 'building');
     const bp = center(building.layout.preview);
-    expect(panelClickAt(building, bp.x, bp.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(building, bp.x, bp.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'centerOnEntity',
       entityId: 4,
     });
@@ -180,7 +181,7 @@ describe('details panel click intents', () => {
     const button = building.layout.buttons.find((b) => b.action === 'center');
     if (button === undefined || !button.enabled) throw new Error('expected a live center button');
     const cp = center(button.rect);
-    expect(panelClickAt(building, cp.x, cp.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(building, cp.x, cp.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'centerOnEntity',
       entityId: 4,
     });
@@ -192,7 +193,7 @@ describe('details panel click intents', () => {
     if (tab === undefined) throw new Error('expected a stock tab strip');
     const p = center(tab);
 
-    expect(panelClickAt(view, p.x, p.y, NO_TOGGLE)).toEqual({ kind: 'stockTab', tab: 2 });
+    expect(panelClickAt(view, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({ kind: 'stockTab', tab: 2 });
   });
 
   it('resolves the demolish button of a building and of a signpost into their own orders', () => {
@@ -200,11 +201,17 @@ describe('details panel click intents', () => {
     const demolish = building.layout.buttons.find((b) => b.action === 'demolish');
     if (demolish === undefined) throw new Error('expected a demolish button');
     const bp = center(demolish.rect);
-    expect(panelClickAt(building, bp.x, bp.y, NO_TOGGLE)).toEqual({ kind: 'demolish', entityId: 3 });
+    expect(panelClickAt(building, bp.x, bp.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
+      kind: 'demolish',
+      entityId: 3,
+    });
 
     const sign = viewOfKind(panelModelOf(signpost), 'signpost');
     const sp = center(sign.layout.button.rect);
-    expect(panelClickAt(sign, sp.x, sp.y, NO_TOGGLE)).toEqual({ kind: 'demolishSignpost', entityId: 7 });
+    expect(panelClickAt(sign, sp.x, sp.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
+      kind: 'demolishSignpost',
+      entityId: 7,
+    });
   });
 
   it('reports palisade health and routes the gate and demolish controls', () => {
@@ -223,7 +230,7 @@ describe('details panel click intents', () => {
 
     const intents = view.layout.buttons.map((button) => {
       const p = center(button.rect);
-      return panelClickAt(view, p.x, p.y, NO_TOGGLE);
+      return panelClickAt(view, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB);
     });
     expect(intents).toEqual([
       { kind: 'setPalisadeGate', entityId: 8, open: true },
@@ -253,7 +260,7 @@ describe('details panel click intents', () => {
     );
     const unfinishedIntents = unfinished.layout.buttons.map((button) => {
       const p = center(button.rect);
-      return panelClickAt(unfinished, p.x, p.y, NO_TOGGLE);
+      return panelClickAt(unfinished, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB);
     });
     expect(unfinished.layout.buttons.map((button) => button.enabled)).toEqual([false, true]);
     expect(unfinished.layout.progress).not.toBeNull();
@@ -276,7 +283,7 @@ describe('details panel click intents', () => {
     const toggle = down.layout.defenceToggle;
     if (toggle === null) throw new Error('expected a defence toggle on the headquarters');
     const p = center(toggle.rect);
-    expect(panelClickAt(down, p.x, p.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(down, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setDefenceMode',
       entityId: 5,
       enabled: true,
@@ -286,7 +293,7 @@ describe('details panel click intents', () => {
       panelModelOf(buildingEntity(5, BUILDING_HEADQUARTERS, { components: { DefenceMode: {} } })),
       'building',
     );
-    expect(panelClickAt(up, p.x, p.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(up, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setDefenceMode',
       entityId: 5,
       enabled: false,
@@ -298,7 +305,7 @@ describe('details panel click intents', () => {
     const cooking = allowed.layout.homeQualityRows.find((row) => row.effect === 'cooking');
     if (cooking === undefined) throw new Error('expected a crockery policy button');
     const p = center(cooking.button.rect);
-    expect(panelClickAt(allowed, p.x, p.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(allowed, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setHouseholdGoodUse',
       player: 0,
       effect: 'cooking',
@@ -319,7 +326,7 @@ describe('details panel click intents', () => {
       ),
       'building',
     );
-    expect(panelClickAt(forbidden, p.x, p.y, NO_TOGGLE)).toEqual({
+    expect(panelClickAt(forbidden, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({
       kind: 'setHouseholdGoodUse',
       player: 0,
       effect: 'cooking',
@@ -342,7 +349,7 @@ describe('details panel click intents', () => {
     expect(localCooking.button.enabled).toBe(true);
     expect(foreignCooking.button.enabled).toBe(false);
     const p = center(foreignCooking.button.rect);
-    expect(panelClickAt(foreign, p.x, p.y, NO_TOGGLE)).toBeNull();
+    expect(panelClickAt(foreign, p.x, p.y, NO_TOGGLE, ALL_STOCK_TAB)).toBeNull();
   });
 
   it('resolves nothing for a disabled button or a point on inert chrome', () => {
@@ -351,8 +358,10 @@ describe('details panel click intents', () => {
     if (help === undefined || help.enabled) throw new Error('expected an unwired help button');
     const hp = center(help.rect);
 
-    expect(panelClickAt(view, hp.x, hp.y, NO_TOGGLE)).toBeNull();
-    expect(panelClickAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50, NO_TOGGLE)).toBeNull();
+    expect(panelClickAt(view, hp.x, hp.y, NO_TOGGLE, ALL_STOCK_TAB)).toBeNull();
+    expect(
+      panelClickAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50, NO_TOGGLE, ALL_STOCK_TAB),
+    ).toBeNull();
   });
 });
 
@@ -363,12 +372,12 @@ describe('details panel hover state', () => {
     if (off === undefined) throw new Error('expected a take-off button');
     const p = center(off.rect);
 
-    const hover = panelHoverAt(view, p.x, p.y);
+    const hover = panelHoverAt(view, p.x, p.y, ALL_STOCK_TAB);
     expect(hover.equipAction).toBe(`${off.ref.group}:${off.ref.slot}:unequip`);
     expect(hover.action).toBeNull();
     expect(sameHover(hover, NO_PANEL_HOVER)).toBe(false);
 
-    const far = panelHoverAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50);
+    const far = panelHoverAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50, ALL_STOCK_TAB);
     expect(sameHover(far, NO_PANEL_HOVER)).toBe(true);
   });
 
@@ -378,7 +387,7 @@ describe('details panel hover state', () => {
     if (all === undefined) throw new Error('expected the gather-all choice');
     const p = center(all.rect);
 
-    const hover = panelHoverAt(view, p.x, p.y);
+    const hover = panelHoverAt(view, p.x, p.y, ALL_STOCK_TAB);
     expect(hover.choiceGood).toBeNull();
     expect(sameHover(hover, NO_PANEL_HOVER)).toBe(false);
   });
@@ -392,7 +401,7 @@ it('a technology-locked upgrade is visible but cannot submit a command', () => {
   if (button === undefined) throw new Error('Missing upgrade control');
   const at = center(button.rect);
   expect(button.enabled).toBe(false);
-  expect(panelClickAt(locked, at.x, at.y, false)).toBeNull();
+  expect(panelClickAt(locked, at.x, at.y, NO_TOGGLE, ALL_STOCK_TAB)).toBeNull();
   const open = viewOfKind({ ...model, upgradeBlockedReason: null }, 'building');
-  expect(panelClickAt(open, at.x, at.y, false)).toEqual({ kind: 'upgrade', entityId: 1 });
+  expect(panelClickAt(open, at.x, at.y, NO_TOGGLE, ALL_STOCK_TAB)).toEqual({ kind: 'upgrade', entityId: 1 });
 });

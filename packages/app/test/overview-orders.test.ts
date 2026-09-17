@@ -93,6 +93,9 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
     nodeAt: () => ({ col: 0, row: 0 }),
     enqueue: (command) => issued.push(command),
     orders: () => orders,
+    vehicleOrders: () => {
+      throw new Error('no vehicle order controller in this test');
+    },
     setArmedCursor: () => {},
   });
   const press = createOverviewOrders({

@@ -118,6 +118,9 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
     case 'prohibitRegeneration':
       each((entity) => ({ kind: 'setRegeneration', entity, enabled: false }));
       return;
+    case 'assignVehicle':
+      if (single !== undefined) deps.pickMode.arm({ kind: 'vehicle', settler: single });
+      return;
     default: {
       const unreachable: never = id;
       throw new Error(`unhandled action command: ${String(unreachable)}`);
