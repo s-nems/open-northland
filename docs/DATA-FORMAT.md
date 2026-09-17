@@ -185,7 +185,7 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   allocation counter plus the alive list), one `component` section per store in first-registration
   order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the
   whole mulberry32 state), `fog` (present exactly when the header names a map fingerprint: the
-  shared-vision groups, the masks ascending by vision group with one visibility digit per cell, plus
+  shared-vision groups, the masks ascending by vision group with one mask digit per cell, plus
   the rebuild-cadence fields), and `commands` (pending envelopes, the next sequence number, and `continuation`: the
   accepted input still ahead of the saved tick, as `{applyTick, envelope}` pairs with ticks past the
   save's, ascending, same-tick order preserved). A tick applies its pending endogenous and setup

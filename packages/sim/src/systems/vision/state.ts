@@ -3,17 +3,21 @@ import type { World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 
-/** The tri-state visibility values one mask byte holds. Order matters: a higher state shows more, so
- *  "at least explored" is `>= EXPLORED`, and render and minimap key off these exact bytes. */
+/** The tri-state visibility values a read returns. Order matters: a higher state shows more, so
+ *  "at least explored" is `>= EXPLORED`, and render and minimap key off these exact values. */
 export const FOG_STATE = {
   UNEXPLORED: 0,
   EXPLORED: 1,
   VISIBLE: 2,
 } as const;
 
-/** The number of distinct {@link FOG_STATE} values, the stride that keeps one cell's fold contributions
- *  apart from its neighbours'. */
-const FOG_STATE_COUNT = 3;
+/** The fourth mask byte, a cell a script revealed: every read returns it as VISIBLE, and the RECON
+ *  downgrade lowers VISIBLE bytes alone, so the sight lasts. It leaves the masks only as a save digit. */
+export const REVEALED_BYTE = 3;
+
+/** The number of distinct mask byte values, the stride that keeps one cell's fold contributions apart
+ *  from its neighbours'. */
+const MASK_BYTE_COUNT = 4;
 
 /**
  * One player's mask fold: the XOR of every non-UNEXPLORED cell's {@link cellFold}. Boxed so a stamp
@@ -29,7 +33,7 @@ export interface FogFold {
  *  cancel out. */
 function cellFold(index: number, state: number): number {
   if (state === FOG_STATE.UNEXPLORED) return 0;
-  let h = (index * FOG_STATE_COUNT + state) >>> 0;
+  let h = (index * MASK_BYTE_COUNT + state) >>> 0;
   h ^= h >>> 16;
   h = Math.imul(h, 0x7feb352d);
   h ^= h >>> 15;
@@ -45,7 +49,8 @@ export function foldCellChange(fold: FogFold, index: number, from: number, to: n
 
 /**
  * The fog masks, a `Simulation`-owned world resource rather than a component: one lazily allocated
- * `W×H` array of {@link FOG_STATE} bytes per vision group that ever owned a positioned entity. A
+ * `W×H` array of mask bytes ({@link FOG_STATE} or {@link REVEALED_BYTE}) per vision group that ever
+ * owned a positioned entity or received a script's reveal. A
  * vision group is one player, or the players a `setSharedVision` command joined, keyed by its lowest
  * member; every player-keyed accessor resolves the player to its group first. `generation` bumps on
  * every rebuild so render layers re-composite only when the fog changed.
@@ -54,8 +59,8 @@ export class FogState {
   /** Cell-grid dimensions (the half-cell lattice quartered). */
   readonly cellsWide: number;
   readonly cellsHigh: number;
-  /** vision group → per-cell {@link FOG_STATE} bytes. Iterate through {@link groupsWithMasks} for any
-   *  decision or hash; raw Map order is insertion order, so it is history-dependent. */
+  /** vision group → per-cell mask bytes. Iterate through {@link groupsWithMasks} for any decision or
+   *  hash; raw Map order is insertion order, so it is history-dependent. */
   private readonly masks = new Map<number, Uint8Array>();
   /** player → its vision group, held for every member of a shared group, ascending by player; a player
    *  without an entry is its own group. Shared vision is an authored rule: the original keeps one
@@ -256,10 +261,11 @@ export class FogState {
   }
 
   /**
-   * Set every cell with a node within `range` map points of `point` VISIBLE for `player`'s group, the
-   * state a REVEAL rebuild never lowers, so a script's reveal shows like ground an own eye covered.
-   * Scans the cells of the clamped box and tests a cell's four nodes only while it is not yet
-   * visible; a range no lattice distance exceeds is the whole grid.
+   * Mark every cell with a node within `range` map points of `point` {@link REVEALED_BYTE} for
+   * `player`'s group, so a script's reveal shows like ground an own eye covers and outlasts any RECON
+   * downgrade. Scans the cells of the clamped box and tests a cell's four nodes only while it is not
+   * yet revealed; a range no lattice distance exceeds is the whole grid. The may-hold-VISIBLE box stays
+   * untouched: the byte is not VISIBLE, so no downgrade ever needs to find it.
    */
   revealArea(player: number, point: HalfCellNode, range: number): void {
     if (range >= this.cellsWide * 2 + this.cellsHigh * 2) {
@@ -277,34 +283,28 @@ export class FogState {
       for (let c = cLo; c <= cHi; c++) {
         const i = r * this.cellsWide + c;
         const previous = mask[i] ?? FOG_STATE.UNEXPLORED;
-        if (previous === FOG_STATE.VISIBLE || !cellWithinRange(point, range, c, r)) continue;
-        mask[i] = FOG_STATE.VISIBLE;
-        if (fold !== null) foldCellChange(fold, i, previous, FOG_STATE.VISIBLE);
+        if (previous === REVEALED_BYTE || !cellWithinRange(point, range, c, r)) continue;
+        mask[i] = REVEALED_BYTE;
+        if (fold !== null) foldCellChange(fold, i, previous, REVEALED_BYTE);
         changed = true;
       }
     }
-    if (changed) {
-      this.mergeVisibleBounds(player, cLo, cHi, rLo, rHi);
-      this.generation++;
-    }
+    if (changed) this.generation++;
   }
 
-  /** Set the whole grid VISIBLE for `player`'s group (a script's whole-map `ExploreArea`). */
+  /** Mark the whole grid {@link REVEALED_BYTE} for `player`'s group (a script's whole-map `ExploreArea`). */
   revealAll(player: number): void {
     const mask = this.maskFor(player);
     const fold = this.foldFor(player);
     let changed = false;
     for (let i = 0; i < mask.length; i++) {
       const previous = mask[i] ?? FOG_STATE.UNEXPLORED;
-      if (previous === FOG_STATE.VISIBLE) continue;
-      mask[i] = FOG_STATE.VISIBLE;
-      if (fold !== null) foldCellChange(fold, i, previous, FOG_STATE.VISIBLE);
+      if (previous === REVEALED_BYTE) continue;
+      mask[i] = REVEALED_BYTE;
+      if (fold !== null) foldCellChange(fold, i, previous, REVEALED_BYTE);
       changed = true;
     }
-    if (changed) {
-      this.mergeVisibleBounds(player, 0, this.cellsWide - 1, 0, this.cellsHigh - 1);
-      this.generation++;
-    }
+    if (changed) this.generation++;
   }
 
   /** Downgrade every VISIBLE byte of vision group `group` to EXPLORED, scanning only the
@@ -373,14 +373,17 @@ export class FogState {
     }
   }
 
-  /** The raw {@link FOG_STATE} of a cell for `player`'s group; out of grid or maskless reads UNEXPLORED.
-   *  RECON's terrain-known-from-the-start is a view mapping in `effectiveFogState`, not raw state. */
+  /** The raw {@link FOG_STATE} of a cell for `player`'s group, a revealed cell reading VISIBLE; out of
+   *  grid or maskless reads UNEXPLORED. RECON's terrain-known-from-the-start is a view mapping in
+   *  `effectiveFogState`, not raw state. */
   stateAt(player: number, cellX: number, cellY: number): number {
     if (cellX < 0 || cellY < 0 || cellX >= this.cellsWide || cellY >= this.cellsHigh) {
       return FOG_STATE.UNEXPLORED;
     }
     const mask = this.masks.get(this.visionGroupOf(player));
-    return mask === undefined ? FOG_STATE.UNEXPLORED : (mask[cellY * this.cellsWide + cellX] ?? 0);
+    if (mask === undefined) return FOG_STATE.UNEXPLORED;
+    const byte = mask[cellY * this.cellsWide + cellX] ?? FOG_STATE.UNEXPLORED;
+    return byte === REVEALED_BYTE ? FOG_STATE.VISIBLE : byte;
   }
 }
 

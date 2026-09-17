@@ -24,8 +24,8 @@ import {
 
 /**
  * The reveal a script grants and the goals that ask whether a player has explored a point. Fog is
- * off by default, where everything reads explored; the REVEAL mode is where a reveal shows, and it
- * shows as fully as ground an own eye covered.
+ * off by default, where everything reads explored; under REVEAL and RECON a reveal shows as fully as
+ * ground an own eye covers, and keeps showing.
  */
 
 const OWNER = 0;
@@ -111,20 +111,30 @@ describe('ExploreArea', () => {
     expect(cellState(sim, RIVAL, ON_RIM)).toBe(FOG_STATE.VISIBLE);
   });
 
-  it('writes nothing with fog off or in RECON, where the point already reads explored', () => {
-    const off = firingSim([explore(OWNER, POINT, RANGE)]);
-    off.run(FIRST_PASS);
-    expect(off.fog?.tryMaskFor(OWNER)).toBeUndefined();
-
-    const recon = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.RECON);
-    recon.run(FIRST_PASS);
-    expect(recon.fog?.tryMaskFor(OWNER)).toBeUndefined();
+  it('keeps the reveal in sight in RECON, where every later rebuild lowers what no eye covers', () => {
+    const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.RECON);
+    spawn(sim, { player: OWNER, at: FAR_EAST });
+    sim.run(FIRST_PASS + 2 * VISION_CADENCE_TICKS);
+    expect(cellState(sim, OWNER, POINT)).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, OWNER, ON_RIM)).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, OWNER, PAST_RIM)).toBe(FOG_STATE.UNEXPLORED);
+    expect(sim.checkInvariants()).toEqual([]);
   });
 
-  it('carries the reveal through the save round trip', () => {
-    const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), FOG_MODE.REVEAL);
+  it('writes nothing with fog off, where everything shows already', () => {
+    const sim = firingSim([explore(OWNER, POINT, RANGE)]);
     sim.run(FIRST_PASS);
-    expect(cellState(roundTrip(sim), OWNER, ON_RIM)).toBe(FOG_STATE.VISIBLE);
+    expect(sim.fog?.tryMaskFor(OWNER)).toBeUndefined();
+  });
+
+  it('carries the reveal through the save round trip, past the rebuilds that follow', () => {
+    for (const mode of [FOG_MODE.REVEAL, FOG_MODE.RECON]) {
+      const sim = underFog(firingSim([explore(OWNER, POINT, RANGE)]), mode);
+      sim.run(FIRST_PASS);
+      const restored = roundTrip(sim);
+      restored.run(2 * VISION_CADENCE_TICKS);
+      expect(cellState(restored, OWNER, ON_RIM)).toBe(FOG_STATE.VISIBLE);
+    }
   });
 
   it('reports a slot the sim keeps no fog for', () => {

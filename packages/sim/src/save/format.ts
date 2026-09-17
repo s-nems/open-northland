@@ -71,8 +71,8 @@ export interface FogSection {
   /** Each group of players sharing one mask, its members ascending, ascending by first member; a
    *  player listed nowhere keeps a mask of its own. */
   readonly sharedVision: ReadonlyArray<readonly number[]>;
-  /** `[group, mask]` ascending by group, a group being its lowest member; a mask is one FOG_STATE digit
-   *  per cell, row-major. */
+  /** `[group, mask]` ascending by group, a group being its lowest member; a mask is one digit per cell,
+   *  row-major: a FOG_STATE or the script-revealed byte 3. */
   readonly masks: ReadonlyArray<readonly [number, string]>;
 }
 

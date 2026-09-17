@@ -183,6 +183,19 @@ describe('fog modes - update rules over the per-player mask', () => {
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED); // known terrain, no current eye
   });
 
+  it('RECON: a script reveal over ground an eye watched outlasts the eye and every downgrade', () => {
+    const sim = simOn(FOG_MODE.RECON);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1); // the eye's stamp lands first: VISIBLE bytes the reveal then raises
+    sim.fog?.revealArea(P0, { hx: 4, hy: 4 }, 2);
+    teleport(sim, e, 20, 2);
+    sim.run(2 * VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE); // revealed: the downgrade left it
+    expect(rawState(sim, P0, 4, 2)).toBe(FOG_STATE.EXPLORED); // watched once, outside the reveal
+    expect(sim.fogView(P0)?.stateAt(2, 2)).toBe(FOG_STATE.VISIBLE);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
   it('masks are per PLAYER: one player exploring reveals nothing to the other', () => {
     const sim = simOn(FOG_MODE.REVEAL);
     unit(sim, 2, 2, P0);

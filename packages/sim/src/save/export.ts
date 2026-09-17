@@ -151,7 +151,7 @@ function savedValue(value: unknown, path: string, seen: WeakMap<object, string>)
 
 const DIGIT_ZERO = '0'.charCodeAt(0);
 
-/** One FOG_STATE digit per cell, row-major; the tri-state contract keeps every byte single-digit. */
+/** One mask byte per cell as its digit, row-major; the four-value alphabet keeps every byte single-digit. */
 function maskDigits(mask: Uint8Array): string {
   const chars = new Array<string>(mask.length);
   for (let i = 0; i < mask.length; i++) {

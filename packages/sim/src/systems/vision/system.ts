@@ -19,7 +19,7 @@ import type { System } from '../context.js';
 import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
 import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { cellOfNode } from './gates.js';
-import { FOG_STATE, type FogFold, foldCellChange } from './state.js';
+import { FOG_STATE, type FogFold, foldCellChange, REVEALED_BYTE } from './state.js';
 
 /**
  * Ticks between visibility-mask rebuilds. Positions move every tick but the masks refresh on this cadence,
@@ -77,8 +77,9 @@ export const visionSystem: System = (world, ctx) => {
   const due = fog.lastRebuildTick === -1 || ctx.tick - fog.lastRebuildTick >= VISION_CADENCE_TICKS;
   if (!modeChanged && !due) return;
 
-  // Downgrade pass (RECON): ground no eye covers falls back to explored. Masks walk in ascending-group
-  // order, the order hashState mixes them in, and each scan covers only that group's may-hold-VISIBLE box.
+  // Downgrade pass (RECON): ground no eye covers falls back to explored, a script's revealed byte
+  // excepted. Masks walk in ascending-group order, the order hashState mixes them in, and each scan
+  // covers only that group's may-hold-VISIBLE box.
   if (mode !== FOG_MODE.REVEAL) {
     for (const group of fog.groupsWithMasks()) {
       fog.downgradeVisible(group);
@@ -161,7 +162,8 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
  * cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²`, exact integer math clamped to the grid.
  * Approximation: the per-row stagger's ±half-cell wobble is ignored, a fringe on a soft fog edge.
  * Returns the clamped cell rect the stamp touched, or null when it fell fully off-grid. A `fold` is
- * updated for the cells this stamp actually flips.
+ * updated for the cells this stamp actually flips; a cell a script revealed already shows and keeps
+ * its byte.
  */
 export function stampVision(
   mask: Uint8Array,
@@ -190,7 +192,7 @@ export function stampVision(
       if (dxPx * dxPx + dySq > radiusSq) continue;
       const index = base + c;
       const previous = mask[index] ?? FOG_STATE.UNEXPLORED;
-      if (previous === FOG_STATE.VISIBLE) continue;
+      if (previous === FOG_STATE.VISIBLE || previous === REVEALED_BYTE) continue;
       mask[index] = FOG_STATE.VISIBLE;
       if (fold !== null) foldCellChange(fold, index, previous, FOG_STATE.VISIBLE);
     }

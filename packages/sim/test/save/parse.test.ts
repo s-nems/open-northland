@@ -171,14 +171,14 @@ describe('parseSaveGame rng, fog, and command rejection', () => {
     expect(() => parseSaveGame(doc)).toThrow(/state: 4294967296 is outside the 32-bit stream domain/);
   });
 
-  it('rejects a mask with a character outside the FOG_STATE digits', () => {
+  it('rejects a mask with a character outside the mask digits', () => {
     const doc = populatedDoc();
     const fog = sectionOf(doc, 'fog');
     const masks = fog.masks as Array<[number, string]>;
     const mask = masks[0];
     if (mask === undefined) throw new Error('populated doc must hold a fog mask');
     mask[1] = `x${mask[1].slice(1)}`;
-    expect(() => parseSaveGame(doc)).toThrow(/masks\[0\]\[1\]: a mask is a non-empty string of FOG_STATE/);
+    expect(() => parseSaveGame(doc)).toThrow(/masks\[0\]\[1\]: a mask is a non-empty string of fog mask/);
   });
 
   it('rejects an unknown fog mode and mask groups out of order', () => {

@@ -52,9 +52,8 @@ export function declareScriptedVerdict(
 }
 
 /** Reveal the hexagon of `range` map points around the point, or the whole map for a zero x, y or
- *  range, as fully as ground the player's own eye covered. Only REVEAL keeps such a reveal: fog off
- *  shows everything already, and RECON knows the terrain from the start and would downgrade the
- *  revealed sight on its next rebuild. */
+ *  range, as fully as ground the player's own eye covers, for good under REVEAL and RECON alike. Fog
+ *  off shows everything already and holds no mask to write. */
 export function exploreScriptedArea(
   pass: MissionPass,
   mission: number,
@@ -65,7 +64,7 @@ export function exploreScriptedArea(
     return;
   }
   const fog = pass.ctx.fog;
-  if (fog === undefined || fogMode(pass.world) !== FOG_MODE.REVEAL) return;
+  if (fog === undefined || fogMode(pass.world) === FOG_MODE.OFF) return;
   if (op.point.hx === 0 || op.point.hy === 0 || op.range === 0) fog.revealAll(op.player);
   else fog.revealArea(op.player, op.point, op.range);
 }

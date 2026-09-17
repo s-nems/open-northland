@@ -205,8 +205,8 @@ function parsedFog(raw: Record<string, unknown>, at: string): FogSection {
     }
     previousGroup = group;
     const digits = entry[1];
-    if (typeof digits !== 'string' || !/^[0-2]+$/.test(digits)) {
-      throw new Error(`${atMask}[1]: a mask is a non-empty string of FOG_STATE digits`);
+    if (typeof digits !== 'string' || !/^[0-3]+$/.test(digits)) {
+      throw new Error(`${atMask}[1]: a mask is a non-empty string of fog mask digits`);
     }
     return [group, digits] as const;
   });
