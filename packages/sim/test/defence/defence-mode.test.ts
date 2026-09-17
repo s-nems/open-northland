@@ -182,7 +182,7 @@ function stepUntil(sim: Simulation, ticks: number, done: () => boolean): void {
 
 interface Shot {
   readonly source: Entity;
-  readonly target: Entity;
+  readonly target: Entity | null;
   readonly cover: Entity | null;
 }
 

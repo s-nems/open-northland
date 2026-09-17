@@ -48,6 +48,7 @@ describe('save a projectile in flight', () => {
       aimY: aim.y,
       cover: null,
       launchTick: original.tick + 1,
+      impact: null,
     });
     original.step(); // the rest at the bow: the arrow is now a persisted entity mid-flight
 

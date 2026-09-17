@@ -184,7 +184,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
       kind === 'vehicle' &&
       item.task === 'attacks' &&
       vehicleAttackFx !== undefined &&
-      attackSmokeShowing(snapshot.tick)
+      attackSmokeShowing(snapshot.tick, item.attackClipStart)
     ) {
       pushCraftFxItems(items, collected, item, [vehicleAttackFx], screen, tileX, tileY);
     }

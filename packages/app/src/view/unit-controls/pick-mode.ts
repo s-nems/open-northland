@@ -39,7 +39,7 @@ export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learnin
 type SpotPickKind = 'destination' | 'work-area' | 'attack-move';
 
 /** The selection-wide orders that resolve against the unit or building drawn under the cursor. */
-type StrikePickKind = 'attack-settler' | 'attack-building' | 'attack-animal';
+type StrikePickKind = 'attack-settler' | 'attack-building' | 'attack-animal' | 'attack-vehicle';
 
 /** A mode whose target is a spot, so any surface that names one - the world view or the map overview -
  *  can resolve it. */
@@ -144,6 +144,7 @@ const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | St
     'attack-settler',
     'attack-building',
     'attack-animal',
+    'attack-vehicle',
     'explore',
   ],
 );
@@ -285,6 +286,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.orders().issueAttackTarget(event, ['building', 'palisade'], mode.units);
       case 'attack-animal':
         return deps.orders().issueAttackAnimal(event, mode.units);
+      case 'attack-vehicle':
+        return deps.orders().issueAttackTarget(event, 'vehicle', mode.units);
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);

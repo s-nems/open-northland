@@ -247,6 +247,11 @@ export const enContent = {
       summary:
         'Two carts and their carriers: a handcart whose player asked for wood, which its carrier fetches unit by unit from the piles beside it, and an ox cart that starts loaded with stone nobody asked for, so its carrier carries it out to the warehouse. The handcart turns loaded after the first unit, the ox cart empty after the last.',
     },
+    'vehicle-catapult': {
+      title: 'Catapult',
+      summary:
+        'A swordsman boards a catapult and is ordered to batter an enemy hut: the shot clip loops with its smoke, the stones burst on the roof until the hut falls, and the catapult, left in its attack stance, turns on the archer still shooting at its hull.',
+    },
     school: {
       title: 'Learning a profession',
       summary:

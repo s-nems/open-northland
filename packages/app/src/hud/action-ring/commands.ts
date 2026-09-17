@@ -33,6 +33,7 @@ export type ActionOrderId =
   | 'attackInhabitants'
   | 'attackBuilding'
   | 'attackAnimal'
+  | 'attackVehicle'
   | 'attackPosition'
   | 'attackMode'
   | 'defenceMode'
@@ -41,8 +42,8 @@ export type ActionOrderId =
   | 'prohibitRegeneration';
 
 /** Orders the original offers that the simulation has no mechanic for: drawn where the original draws
- *  them, and inert when clicked. The simulation has no vehicles, so its two orders are all that is left. */
-const PENDING_ACTION_IDS = ['assignVehicle', 'attackVehicle'] as const;
+ *  them, and inert when clicked. Boarding a vehicle from the ring is all that is left. */
+const PENDING_ACTION_IDS = ['assignVehicle'] as const;
 
 export type PendingActionId = (typeof PENDING_ACTION_IDS)[number];
 

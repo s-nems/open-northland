@@ -8,6 +8,7 @@ import {
   humansGone,
   humansKilledHolds,
   soldiersDiedHolds,
+  vehiclesGone,
 } from './goals/casualties.js';
 import { chestNearPoint } from './goals/chests.js';
 import { neededMatches } from './goals/count.js';
@@ -137,6 +138,8 @@ function goalHolds(
       return humansGone(pass.world, op.humanId);
     case 'HousesDied':
       return housesGone(pass.world, op.objectId);
+    case 'VehiclesDied':
+      return vehiclesGone(pass.world, op.vehicleId);
     case 'AnimalsDied':
       return animalsGone(pass.world, op.objectId);
     case 'NumberOfHumansDied':

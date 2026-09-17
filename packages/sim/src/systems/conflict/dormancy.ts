@@ -8,6 +8,7 @@ import {
   Owner,
   Position,
   Settler,
+  Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -46,6 +47,14 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
   if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
   if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
   if (hasHunter && hasPrey) return true; // a hunter and huntable prey
+  // A vehicle with a standing attack fights on its own, and an owned one is a body another owner's unit
+  // may batter: its owner joins the set the building tail below reads.
+  for (const v of world.query(Vehicle, Health, Position)) {
+    if (world.get(v, Vehicle).attack !== null) return true;
+    const owner = world.tryGet(v, Owner);
+    if (owner !== undefined && world.get(v, Health).hitpoints > 0) owners.add(owner.player);
+  }
+  if (owners.size >= 2) return true; // a vehicle and a unit of two players, or two players' vehicles
   // A warrior sieging an enemy building is a fight even with no enemy UNIT present: an owned unit plus an
   // attackable building of a different player wakes the system. Reached only when no unit-vs-unit / animal
   // trigger fired above, and skipped entirely when no owned unit exists (buildings ≪ units - a cheap tail).

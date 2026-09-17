@@ -24,6 +24,12 @@ function readVehicleTask(components: Readonly<Record<string, unknown>>): Vehicle
   return typeof task === 'string' && VEHICLE_TASKS.has(task) ? (task as VehicleDrawTask) : undefined;
 }
 
+function readAttackClipStart(components: Readonly<Record<string, unknown>>): number | undefined {
+  const v = components.Vehicle as { attack?: unknown } | undefined;
+  const clipStart = (v?.attack as { clipStart?: unknown } | null | undefined)?.clipStart;
+  return typeof clipStart === 'number' ? clipStart : undefined;
+}
+
 /**
  * The fields a vehicle keeps through the fog: its type and tribe (the binding key), its owner's colour
  * and its heading. `Vehicle.facing` is one of the six map-point directions, whose order matches the
@@ -62,6 +68,8 @@ export function readVehicleFields(
   readVehicleStaticFields(item, components);
   const task = readVehicleTask(components);
   if (task !== undefined) item.task = task;
+  const clipStart = readAttackClipStart(components);
+  if (clipStart !== undefined) item.attackClipStart = clipStart;
   const stock = components.VehicleStock as { lines?: unknown } | undefined;
   if (stock === undefined || !Array.isArray(stock.lines)) return;
   let best: number | undefined;

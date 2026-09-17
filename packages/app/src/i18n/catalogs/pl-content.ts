@@ -247,6 +247,11 @@ export const plContent = {
       summary:
         'Dwa wozy z tragarzami: wózek ręczny, dla którego gracz zamówił drewno, tragarz przynosi je sztuka po sztuce ze stert obok wozu; wóz z wołem zaczyna załadowany kamieniem, którego nikt nie zamówił, więc jego tragarz wynosi go do magazynu. Wózek zmienia się w załadowany po pierwszej sztuce, wóz w pusty po ostatniej.',
     },
+    'vehicle-catapult': {
+      title: 'Katapulta',
+      summary:
+        'Miecznik wsiada do katapulty i dostaje rozkaz ostrzelania wrogiej chaty: klip strzału zapętla się wraz z dymem, kamienie rozbijają się o dach, aż chata upada, a katapulta w postawie ataku odwraca się przeciw łucznikowi, który wciąż strzela w jej kadłub.',
+    },
     school: {
       title: 'Nauka zawodu',
       summary:

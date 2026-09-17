@@ -16,6 +16,7 @@ import {
   Settler,
   Stance,
   SupplyRun,
+  Vehicle,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -66,7 +67,7 @@ export function setStance(
 }
 
 /**
- * Order one owned combatant to attack a specific `target`, which may be an enemy unit or an enemy building.
+ * Order one owned combatant to attack a specific `target`: an enemy unit, building or vehicle.
  * The {@link AttackOrder} focus makes the CombatSystem chase and strike regardless of sight radius; the
  * economy leaves an engaged unit alone, and a need is answered from what it carries or what its post holds
  * rather than by walking off the order. Like a move order it is authoritative and cancels the unit's current
@@ -87,8 +88,15 @@ export function attackUnit(
   const target = command.target;
   if (target === e) return; // a unit can't attack itself
   if (!world.isAlive(target) || !world.has(target, Health) || !world.has(target, Position)) return;
-  // A unit, a besiegeable building or a wall.
-  if (!world.has(target, Settler) && !world.has(target, Building) && !world.has(target, Palisade)) return;
+  // A unit, a besiegeable building, a wall or a vehicle.
+  if (
+    !world.has(target, Settler) &&
+    !world.has(target, Building) &&
+    !world.has(target, Palisade) &&
+    !world.has(target, Vehicle)
+  ) {
+    return;
+  }
 
   // Unlike moveUnit and setJob this still cancels a non-interruptible atomic, a remaining member of that
   // class.

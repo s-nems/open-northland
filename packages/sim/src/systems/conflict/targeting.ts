@@ -10,6 +10,7 @@ import {
   Position,
   Settler,
   type SettlerIdentity,
+  Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -40,9 +41,15 @@ export const SIGHT_RADIUS_NODES = 16;
  *  exists; half a soldier's sight reads as an ambush radius rather than a map-wide hunt. */
 export const ANIMAL_AGGRO_RADIUS_NODES = 8;
 
-/** Whether `t` is a live target this attacker may swing at - a positioned, `Health`-bearing enemy settler
- *  or enemy building for which the {@link mayTarget} hostility relation holds. A building is a target only
- *  for an owned attacker, keyed on the building's `tribe` so the same hostility as a unit target decides. */
+/** A building, wall or vehicle: a hit on one is an impact on a hull, not a body - no blood, no scream. */
+export function isStructureTarget(world: World, t: Entity): boolean {
+  return world.has(t, Building) || world.has(t, Palisade) || world.has(t, Vehicle);
+}
+
+/** Whether `t` is a live target this attacker may swing at - a positioned, `Health`-bearing enemy settler,
+ *  enemy building or enemy vehicle for which the {@link mayTarget} hostility relation holds. A building or
+ *  vehicle is a target only for an owned attacker, keyed on its `tribe` so the same hostility as a unit
+ *  target decides. */
 export function isValidTarget(
   world: World,
   ctx: SystemContext,
@@ -64,6 +71,13 @@ export function isValidTarget(
     // dormancy gate's owned-buildings-only tail.
     if (!world.has(t, Owner)) return false;
     return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, building.tribe);
+  }
+  const vehicle = world.tryGet(t, Vehicle);
+  if (vehicle !== undefined) {
+    // A vehicle is a target on the building's terms: for an owned attacker, and only while someone owns
+    // it; the crew inside is out of reach until the hull breaks.
+    if (!world.has(self, Owner) || !world.has(t, Owner)) return false;
+    return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, vehicle.tribe);
   }
   if (!world.has(t, Settler)) return false;
   // Anyone shooting from inside a building is out of reach, so the attackers must batter the structure to

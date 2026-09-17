@@ -14,6 +14,27 @@ export const VEHICLE_TASKS = [
 ] as const;
 export type VehicleTask = (typeof VEHICLE_TASKS)[number];
 
+/** A siege vehicle's stances, the original's 1 attack / 2 defence / 3 hold; a fresh vehicle holds. */
+export const VEHICLE_STANCES = ['attack', 'defence', 'hold'] as const;
+export type VehicleStance = (typeof VEHICLE_STANCES)[number];
+
+/** What a vehicle's weapon is aimed at: a unit, house or vehicle it tracks, or a map point. */
+export type VehicleAttackTarget =
+  | { readonly kind: 'entity'; readonly entity: Entity }
+  | { readonly kind: 'ground'; readonly hx: number; readonly hy: number };
+
+/**
+ * A vehicle's standing attack: `ordered` is a player's `attackWithVehicle`, kept until the target is
+ * gone; an auto-acquired one is re-judged every scan. `clipStart` is the tick the current attack clip
+ * began, null between clips, so the shot's release and the clip's end are ticks counted from it and
+ * nothing writes the vehicle each tick.
+ */
+export interface VehicleAttack {
+  target: VehicleAttackTarget;
+  ordered: boolean;
+  clipStart: number | null;
+}
+
 /** The six map-point directions a vehicle faces, indexing `nav/halfcell.ts`'s `HEX_DIRECTIONS`.
  *  Approximation: the original's facing count for vehicles is not read; the door offset is a hexagon
  *  direction, so the facing is kept in the same space. */
@@ -50,6 +71,12 @@ export const Vehicle = defineComponent<{
   /** The point an order holds while the vehicle boards its crew, a goto under `waitsForHuman` or a
    *  dock under `docks`; the drive starts once everyone is inside. */
   heldGoal: HalfCellNode | null;
+  stance: VehicleStance;
+  /** The position a holding or defending siege vehicle scans around: where it stood when its stance was
+   *  set or its last goto ended. Approximation: which order writes the original's guard position is
+   *  not read. */
+  guard: HalfCellNode | null;
+  attack: VehicleAttack | null;
 }>('Vehicle', 'movement');
 
 /**

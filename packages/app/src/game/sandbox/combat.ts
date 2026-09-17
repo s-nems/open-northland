@@ -22,7 +22,9 @@ import {
   GOOD_SPEAR_IRON,
   GOOD_SWORD_LONG,
   GOOD_SWORD_SHORT,
+  JOB_VEHICLE_CATAPULT,
   WEAPON_BROADSWORD,
+  WEAPON_CATAPULT,
   WEAPON_FISTS,
   WEAPON_HOUSE_BOW,
   WEAPON_HUNTER_BOW,
@@ -33,6 +35,14 @@ import {
 } from './ids/index.js';
 
 const ARROW_MUNITION = 1;
+const ROCK_MUNITION = 2;
+const CATAPULT_MAIN_TYPE = 7;
+const CATAPULT_SPEED = 3;
+const SIEGE_DAMAGE_TYPE = 2;
+const CATAPULT_MIN_RANGE = 8;
+const CATAPULT_MAX_RANGE = 24;
+/** Extracted `weapons.ini` type 21 columns: bare, wool, leather, chain, plate, vehicle/wood, house. */
+const CATAPULT_DAMAGE = { '0': 8000, '1': 4000, '2': 6000, '3': 2000, '4': 2000, '6': 350, '7': 3625 };
 /** The `logicdefines.inc` `WEAPON_MAIN_TYPE_*` classes the viking rows carry. */
 const UNARMED_MAIN_TYPE = 1;
 const SPEAR_MAIN_TYPE = 2;
@@ -95,13 +105,14 @@ const SHORT_BOW_VS_BUILDING = 140;
 const LONG_BOW_VS_BUILDING = 200;
 
 // Extracted per-material columns (`damagevalue <material> <value>`, materials 1..4 are wool, leather,
-// chain, plate). The iron spear vs long sword chain/plate flip is the source's own data, not a typo.
-const FIST_VS_MATERIALS = { '1': 80, '2': 300, '3': 40, '4': 40 };
-const SPEAR_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 950, '4': 2090 };
-const SWORD_VS_MATERIALS = { '1': 800, '2': 1200, '3': 400, '4': 400 };
-const BROADSWORD_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 2090, '4': 950 };
-const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100 };
-const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360 };
+// chain, plate; 6 is the vehicle column). The iron spear vs long sword chain/plate flip is the source's own
+// data, not a typo.
+const FIST_VS_MATERIALS = { '1': 80, '2': 300, '3': 40, '4': 40, '6': 15 };
+const SPEAR_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 950, '4': 2090, '6': 125 };
+const SWORD_VS_MATERIALS = { '1': 800, '2': 1200, '3': 400, '4': 400, '6': 40 };
+const BROADSWORD_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 2090, '4': 950, '6': 125 };
+const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100, '6': 40 };
+const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360, '6': 125 };
 
 export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, EquipClass> = new Map(
   EQUIP_GOODS.map(({ typeId, id: _id, ...equip }) => [typeId, equip]),
@@ -254,6 +265,22 @@ export function sandboxWeapons() {
       minRange: HOUSE_BOW_MIN_RANGE,
       maxRange: HOUSE_BOW_MAX_RANGE,
       damage: { ...HOUSE_BOW_DAMAGE },
+    },
+    // The catapult's stone, bound to the vehicle's own job and read verbatim from the extracted row
+    // (`weapons.ini` type 21): the far band, the slow flight, the rock munition and the whole column
+    // table, structures included. `damageType` marks the siege weapon.
+    {
+      typeId: WEAPON_CATAPULT,
+      id: 'catapult',
+      tribeType: PRIMARY_TRIBE,
+      jobType: JOB_VEHICLE_CATAPULT,
+      mainType: CATAPULT_MAIN_TYPE,
+      munitionType: ROCK_MUNITION,
+      speed: CATAPULT_SPEED,
+      damageType: SIEGE_DAMAGE_TYPE,
+      minRange: CATAPULT_MIN_RANGE,
+      maxRange: CATAPULT_MAX_RANGE,
+      damage: { ...CATAPULT_DAMAGE },
     },
     // One row per animal tribe, because a jobless animal binds combat through its tribe's first weapon
     // row. Without one an aggressive wolf disengages instead of hunting.

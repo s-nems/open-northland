@@ -67,7 +67,12 @@ export function messagesFromEvents(
       return;
     }
     const person = ownedPerson(target);
-    if (person !== undefined) raiser.settler(USER_MESSAGE_TYPE.humanAttacked, person);
+    if (person !== undefined) {
+      raiser.settler(USER_MESSAGE_TYPE.humanAttacked, person);
+      return;
+    }
+    const vehicle = ownedVehicle(target);
+    if (vehicle !== undefined) raiser.vehicle(USER_MESSAGE_TYPE.vehicleAttacked, vehicle);
   };
   const died = (entity: number, at: PendingMessage['at']): void => {
     // Deaths have no subject left to key on, so the reaped id stands in.

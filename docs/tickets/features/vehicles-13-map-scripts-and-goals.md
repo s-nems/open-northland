@@ -1,7 +1,7 @@
 # Run vehicle placements, results and goals from map scripts
 
 **Area:** sim, app, pipeline · **Focus:** `packages/sim/src/systems/missions`, `packages/app/src/game/world` · **Priority:** P2
-**Blocked by:** [ships and docking](vehicles-10-ships-and-docking.md), [catapult combat](vehicles-11-catapult-combat.md)
+**Blocked by:** [ships and docking](vehicles-10-ships-and-docking.md)
 
 `AuthoredEntities` drops the decoded `setvehicle` placements, every vehicle goal and result is
 unsupported, and `MoveUnitsInArea`, `ChangePlayerPlayerId` and `ChangePlayerIdInArea` silently skip
@@ -23,7 +23,7 @@ their vehicle half. Semantics in [VEHICLES.md](../../formats/VEHICLES.md#map-scr
   `ChangeMissionIdOfVehiclesInRange`, `ChangeMissionIdOfPlayersVehiclesOnContinent`,
   `RemoveVehiclesWithMissionId` (50-vehicle cap, crews only with the flag, wreck effect), and the
   vehicle halves of `MoveUnitsInArea`, `ChangePlayerPlayerId`, `ChangePlayerIdInArea`.
-- Goals (`BuildVehicles` is done): `GoodsInVehicles`, `FindVehicles`, `FindPosByVehicles`, `FindHumansByVehicles`,
+- Goals (`BuildVehicles` and `VehiclesDied` are done): `GoodsInVehicles`, `FindVehicles`, `FindPosByVehicles`, `FindHumansByVehicles`,
   `FindVehiclesByVehicles`, `FindHousesByVehicles`, `IsHumanInVehicle`, `NumberOfVehiclesInArea`,
   `NumberOfGoodsInVehiclesInArea`; `FindPosByPlayersMapMoveable` admits vehicles.
 - Crews, cargo, orders and mission ids survive save/load and sub-mission return.

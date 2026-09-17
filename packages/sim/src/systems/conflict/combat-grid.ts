@@ -162,6 +162,16 @@ export class CombatGrid {
     addThreat(cell, bit, wild);
   }
 
+  /** Append moving body `e` (a vehicle) at each of its nodes for this build. A body is no threat, as a held
+   *  building that cannot fire is none. */
+  admitBody(e: Entity, nodes: readonly NodeId[], bit: number): void {
+    for (const node of nodes) {
+      const x = this.terrain.xOf(node);
+      const y = this.terrain.yOf(node);
+      admit(this.touchForBuild(x, y), e, x, y, bit, null);
+    }
+  }
+
   /** Mark held building `b` as able to fire this build, in the threat tallies of the cells its body spans. */
   admitFiring(b: Entity): void {
     const held = this.buildings.get(b);

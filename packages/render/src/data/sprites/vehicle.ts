@@ -11,11 +11,17 @@ export const VEHICLE_ATTACK_TICKS = 48;
 /** Ticks the shot's smoke lingers: weapon 21's `createsmoke 1` lifetime 20 (`weapons.ini`). */
 export const ATTACK_SMOKE_TICKS = 20;
 
+/** Where in its attack cycle a vehicle is at `tick`: counted from the sim's clip start when the
+ *  snapshot carries one, else from the global cadence for a vehicle merely posed as attacking. */
+export function attackPhase(tick: number, clipStart?: number): number {
+  const elapsed = clipStart === undefined ? tick : tick - clipStart;
+  return ((elapsed % VEHICLE_ATTACK_TICKS) + VEHICLE_ATTACK_TICKS) % VEHICLE_ATTACK_TICKS;
+}
+
 /** Whether the smoke of an attacking catapult shows at `tick`: the tail of every attack cycle.
  *  Approximation: the release frame inside the clip is not read, so the smoke rides the cycle's end. */
-export function attackSmokeShowing(tick: number): boolean {
-  const phase = ((tick % VEHICLE_ATTACK_TICKS) + VEHICLE_ATTACK_TICKS) % VEHICLE_ATTACK_TICKS;
-  return phase >= VEHICLE_ATTACK_TICKS - ATTACK_SMOKE_TICKS;
+export function attackSmokeShowing(tick: number, clipStart?: number): boolean {
+  return attackPhase(tick, clipStart) >= VEHICLE_ATTACK_TICKS - ATTACK_SMOKE_TICKS;
 }
 
 /** The look of `item`'s tribe and type, the fallback tribe's when its own tribe binds none. */
@@ -49,7 +55,7 @@ export function resolveVehicleDraw(
   const facing = item.facing ?? DEFAULT_FACING;
   let bob: number;
   if (item.task === 'attacks' && look.attack !== undefined) {
-    bob = frameOf(look.attack, facing, tick % VEHICLE_ATTACK_TICKS);
+    bob = frameOf(look.attack, facing, attackPhase(tick, item.attackClipStart));
   } else if (item.state === 'moving') {
     bob = frameOf(vehicleMovingRef(look, item), facing, gaitClock);
   } else {

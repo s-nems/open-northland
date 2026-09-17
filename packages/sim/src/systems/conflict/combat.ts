@@ -1,15 +1,23 @@
-import { Health, Position, Settler } from '../../components/index.js';
+import { Health, Position, Settler, Vehicle } from '../../components/index.js';
 import type { System } from '../context.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex, holdPassIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
+import { engageVehicle } from './engage-vehicle.js';
 import { MeleeSlots } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { fireFromShelters } from './shelter-fire.js';
 
 // Re-exported so the public surface keeps its single combat import site; the rest of the folder is internal.
 export { REPATH_CADENCE } from './chase.js';
+export {
+  VEHICLE_ATTACK_CLIP_TICKS,
+  VEHICLE_ATTACK_EVENT_TICK,
+  VEHICLE_DEFENCE_LEASH_NODES,
+  VEHICLE_SCAN_RADIUS_NODES,
+  vehicleWeapon,
+} from './engage-vehicle.js';
 export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
 
@@ -38,8 +46,9 @@ export const combatSystem: System = (world, ctx) => {
   // distance or first-match tie-break lands on the same winner.
   const combatants = world.canonicalQuery(Settler, Health, Position);
   const pass: CombatPass = {
-    // Attackable buildings join the target index but never the seeker loop: a warrior can strike an enemy
-    // building, and a building on alarm fires on its own after the combatants have moved.
+    // Attackable buildings and vehicles join the target index but never the seeker loop: a warrior can
+    // strike an enemy building or cart, and a building on alarm fires on its own after the combatants have
+    // moved; an armed vehicle fights below.
     index: new CombatIndex(world, ctx, terrain, combatants),
     slots: new MeleeSlots(world, ctx, terrain),
     front: new BattleFront(world, ctx),
@@ -47,4 +56,9 @@ export const combatSystem: System = (world, ctx) => {
   holdPassIndex(world, pass.index);
   for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
   fireFromShelters(world, ctx, terrain, pass.index);
+  // The siege vehicles fight after the men, off the same index, so a catapult's scan sees the tick's
+  // settled positions and its aim never depends on where it sits in the vehicle store.
+  for (const v of world.canonicalQuery(Vehicle, Health, Position)) {
+    engageVehicle(world, ctx, terrain, pass, v);
+  }
 };

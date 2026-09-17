@@ -251,29 +251,53 @@ sound 90. No ammunition and no reload counter; cadence is the 48-tick attack cli
 Stances (init 3): 3 hold = scan 8..24 around the guard position, never reposition; 2 defence =
 scan 0..40 around the guard position, abandon the chase beyond 60; 1 attack = scan 0..40 around
 the current position. The command-to-stance mapping is *inferred*. Targeting prefers enemy units in
-buildings, then enemy houses, keeping the nearer of the new and current target; too close backs off,
-in range fires, too far approaches.
+buildings, then enemy houses, keeping the nearer of the new and current target; too close backs off
+to a node inside the band, in range fires, too far drives to a node between `maxRange - 5` and
+`maxRange` of the target on the same continent, else floods a radius-5 disc for a firing spot
+(`CVehicle::l_Military_AttackTask`).
 
-Firing uses the shared delayed weapon-hit path of archers: at clip tick 1 the scatter roll
-`r = rand % 100` against `accuracy = commanderSkill + 10` offsets the impact by up to
-`(r - accuracy) * (dist / 4) / r` per axis when `r >= accuracy`; flight ticks `dist * 8 / speed`;
-the hit list covers humans, animals, houses, vehicles and landscape, including the owner's own
-(`hitself`). Only weapon 21 demolishes landscape of main type 4 (walls): subtype `> 2` transitions
-to the next stage, else the node is cleared.
+Firing (`CVehicle::l_PerformTaskEvent`, atomic event 25 at clip tick 1, commander aboard): the
+scatter roll `r = rand % 100` against `accuracy = commanderSkill + 10`, where the skill is the
+commander's raw weapon-21 (main type 7) experience counter, capped at 10000. When `r > accuracy`
+the impact moves by `spread = (r - accuracy) * (dist / 4) / r`: two more draws give `dx = rand %
+(spread + 1) - spread / 2` and `dy` alike (integer arithmetic, so the offset is biased toward the
+positive side). Flight ticks `dist * 8 / speed` to the scattered point; the impact reveals radius 2
+for the owner. The delayed hit (`CDelayedActionManager::FillHitObjectList`) reads ONE node, the
+landing point: every human and animal standing on it, the vehicle or house whose body covers it,
+and the landscape there, the owner's own included (`hitself`). Humans, animals, houses and vehicles
+take their column; a landscape with a player id (the walls, `playeridallowed 1`) takes
+`damage[7] / 100` steps of its trigger-10 transition (`transition 10 82 2 -1 0`: one valency each)
+and clears when the valency drops below one, so a 100-valency wall falls to three stones (36 steps
+each) or twenty sword blows (`Tool_HitLandscapeOnPoint`; any weapon whose column reaches 100). The
+earlier reading "only weapon 21 demolishes landscape of main type 4" was wrong: byte 2 of the map
+point is the landscape logic type, and type 4 is the tree, which weapon 21 alone fells (valency
+`> 2` runs transition 11, else the node clears; Open Northland does not fell trees, *open*).
 
 Damage to any vehicle: `damage[6] * 200 / (200 - min(armour, 100))`, armour 0, halved for
-player 0 on easy. At 0 hit points the vehicle is removed; carts and catapults scatter ruin
+player 0 on easy. A human striker raises the owner's "vehicle attacked" note (0x34); a vehicle
+striker does not. At 0 hit points the vehicle is removed; carts and catapults scatter ruin
 landscape on 51 % of footprint nodes and drop all cargo within radius 10.
 
 Both effects are gated in `CVehicle::Exit` on two global flags that every script removal sets, so
 a scripted removal draws no ruins, spills nothing and draws no random number; a player leaving the
 game (`Player_LeftGameModifyObjects`) removes his vehicles with ruins but without the cargo spill.
 
-Open Northland: `removeVehicle` (`packages/sim/src/systems/vehicles/remove.ts`) draws the ruin
-nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the renderer's
-decals, since the ruin landscape type is not identified (*open*); the cargo spill walks the shared
-Manhattan spill rings (approximation). The match rule's defeat teardown reuses the leave-game path,
-ruins without cargo (approximation: the original's dead-player teardown is not read).
+Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `ground-impact.ts`): the
+stance, guard position and attack ride on the `Vehicle` component; the guard position is set by
+the stance order and a goto's end (approximation: which order writes the original's is not read).
+Ranges are Manhattan half-cell nodes like every other weapon band (approximation: the original
+measures hexagon distance). The four-step target preference is one nearest search (approximation).
+The stone is a `Projectile` with a ground-burst payload flying at the shared projectile pace, not
+`dist * 8 / speed` (approximation), and the burst treats a house as covering its walls, its
+reserved ring and its anchor (approximation: the original's in-house test area is not read). The
+note is raised for any striker (approximation). `hitself` is not extracted; the burst hits every
+side, which the data's `hitself 1` also says. `removeVehicle` (`systems/vehicles/remove.ts`) draws
+the ruin nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the
+renderer's decals, since the ruin landscape type is not identified (*open*); the cargo spill walks
+the shared Manhattan spill rings (approximation). The match rule's defeat teardown reuses the
+leave-game path, ruins without cargo (approximation: the original's dead-player teardown is not
+read). A struck wall keeps its authored sprite until it clears (*open*: the damaged stages are not
+drawn).
 
 ## Lifecycle
 

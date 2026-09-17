@@ -11,6 +11,7 @@ import {
   VEHICLE_CART_NO_OX,
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
+  VEHICLE_JOB_OFFSET,
   VEHICLE_OXCART,
   VEHICLE_SHIP_BIG,
   VEHICLE_SHIP_SMALL,
@@ -20,9 +21,8 @@ import {
  * The six `vehicletypes.ini` records with their extracted slot, size, door and pool values
  * (docs/formats/VEHICLES.md), keyed on the sandbox's own good and job ids: every good but the sentinel
  * may ride in a hold, and the ships take every adult job while the carts take the two haulers and the
- * catapult the fighters. `jobId` follows `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`) though
- * the sandbox declares no such jobs; it is the animation-table key and the id a ship's passenger list
- * names a carried vehicle by.
+ * catapult the fighters. `jobId` follows `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`); the
+ * sandbox declares only the catapult's, for its weapon row.
  */
 export function buildSandboxVehicles(
   goods: readonly { readonly typeId: number }[],
@@ -91,7 +91,6 @@ export function buildSandboxVehicles(
 }
 
 /** `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`). */
-const VEHICLE_JOB_OFFSET = 49;
 const CART_SIZE = 0;
 const CATAPULT_SIZE = 1;
 const SHIP_SIZE = 2;

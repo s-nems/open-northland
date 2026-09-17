@@ -209,7 +209,7 @@ trade ledger); the rest no map writes.
 | 16 | `FindHousesByHumans` | 10, 14, 9 | any human with id A is within `range` of any house with id B | 0 |
 | 17 | `FindHousesByVehicles` | 12, 14, 9 | vehicle-to-house range test | 0 \* |
 | 18 | `HumansDied` | 10 | no living human carries the id | 326 |
-| 19 | `VehiclesDied` | 12 | no vehicle carries the id | 1 \* |
+| 19 | `VehiclesDied` | 12 | no vehicle carries the id | 1 |
 | 20 | `HousesDied` | 14 | no house carries the id | 41 |
 | 21 | `PlayerDied` | 1 | the player's dead flag is set (see statistics) | 223 |
 | 22 | `FindPosByPlayersMapMoveable` | 1, 16, 17, 9 | any human or vehicle of the player is within `range` of the point | 1135 |

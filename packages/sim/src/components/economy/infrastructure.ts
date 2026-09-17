@@ -102,4 +102,3 @@ export const Upgrading = defineComponent<{
  * sending a repair crew; null when the pool came up short without a blow, as after a script level change.
  */
 export const Damaged = defineComponent<{ lastHitTick: number | null }>('Damaged', 'economy');
-

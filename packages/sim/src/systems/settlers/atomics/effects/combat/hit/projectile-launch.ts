@@ -133,6 +133,7 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     aimY: shot.aim.y,
     cover: shot.cover,
     launchTick: ctx.tick,
+    impact: null,
   });
   ctx.events.emit({
     kind: 'projectileLaunched',

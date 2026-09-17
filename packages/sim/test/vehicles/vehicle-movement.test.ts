@@ -429,6 +429,6 @@ describe('moveVehicle', () => {
     const twin = run().s;
     twin.run(240);
     expect(twin.hashState()).toBe(s.hashState());
-    expect(s.hashState()).toBe('c9abc537');
+    expect(s.hashState()).toBe('f61ae0d9');
   });
 });

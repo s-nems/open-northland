@@ -1,5 +1,5 @@
 import type { Fixed } from '../core/fixed.js';
-import { defineComponent, type Entity } from '../ecs/world.js';
+import { type DeepReadonly, defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 import type { MilitaryMode } from '../systems/readviews/stances.js';
 
@@ -123,8 +123,9 @@ export const AttackOrder = defineComponent<{
  */
 export const Projectile = defineComponent<{
   source: Entity;
-  /** The victim the shot was loosed at; it is struck first when it stands where the shot lands. */
-  target: Entity;
+  /** The victim the shot was loosed at; it is struck first when it stands where the shot lands. Null for a
+   *  siege shot aimed at a map point. */
+  target: Entity | null;
   /** The shooter's player, whose own units and those of its friends and neutrals a shot passes over; null for
    *  an unowned shooter. */
   player: number | null;
@@ -154,4 +155,12 @@ export const Projectile = defineComponent<{
   /** The tick the string was loosed on; the flight rests at the bow through it, so a shot is observable at
    *  its launch point. */
   launchTick: number;
+  /** A siege shot's burst on its landing node, `null` for a shot that strikes one thing where it lands. A
+   *  burst strikes everything there, whatever its side. */
+  impact: ProjectileImpact | null;
 }>('Projectile', 'combat');
+
+export type ProjectileStateView = DeepReadonly<NonNullable<(typeof Projectile)['__value']>>;
+
+/** What a ground-burst shot carries beyond the damage tables every shot holds: nothing yet. */
+export type ProjectileImpact = Record<string, never>;

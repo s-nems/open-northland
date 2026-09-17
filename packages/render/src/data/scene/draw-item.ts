@@ -126,6 +126,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly crew?: boolean;
   /** For a vehicle: its standing task, which picks the attack clip while it `attacks`. */
   readonly task?: VehicleDrawTask;
+  /** For an attacking vehicle: the tick its current clip began (`Vehicle.attack.clipStart`), so the
+   *  drawn shot and its smoke run from the clip's own start rather than a global cadence. */
+  readonly attackClipStart?: number;
   /** For a settler: combat-engaged (`Engagement` present). Orthogonal to {@link state}: the readied
    *  `..._agressive` gait replaces the relaxed economy one, though a bound attack swing still wins
    *  mid-swing. */

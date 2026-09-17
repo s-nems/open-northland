@@ -2,15 +2,19 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Anger,
   diplomacyStance,
+  Health,
   isValidPlayer,
   MAX_PLAYERS,
   Owner,
+  Position,
   Settler,
+  Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isLastResortPrey } from '../readviews/index.js';
+import { vehicleFootprintNodes } from '../footprint/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import {
   type BandScan,
@@ -45,10 +49,10 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
 }
 
 /**
- * The combat tick's target index over every combatant and every building with a Health pool, a felled one
- * included until cleanup reaps it: the coarse cells of the world's {@link CombatGrid}, each holding its
- * early-out tallies and its members. The buildings are the grid's held layer and the combatants are appended
- * per build, so an index answers until the next one is built for the same world. Derived state, never
+ * The combat tick's target index over every combatant, every vehicle and every building with a Health pool,
+ * a felled one included until cleanup reaps it: the coarse cells of the world's {@link CombatGrid}, each holding its
+ * early-out tallies and its members. The buildings are the grid's held layer and the combatants and vehicles
+ * are appended per build, so an index answers until the next one is built for the same world. Derived state, never
  * hashed.
  *
  * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond, cell granularity, and "owned by a
@@ -77,7 +81,8 @@ export class CombatIndex {
   private depth = 0;
 
   /** `combatants` are the seekers and unit targets. Every building holding a Health pool joins too, at every
-   *  wall node, so a search finds it at the distance to its nearest face. */
+   *  wall node, and every vehicle at every node of its disc, so a search finds a body at the distance to its
+   *  nearest face. */
   constructor(
     private readonly world: World,
     ctx: SystemContext,
@@ -102,6 +107,15 @@ export class CombatIndex {
         isHuntablePrey(ctx.content, unowned.tribe) &&
         !isLastResortPrey(ctx.content, unowned.tribe);
       this.grid.admitUnit(e, terrain.xOf(node), terrain.yOf(node), bit, this.wildClassOf(e, unowned), game);
+    }
+    // A vehicle moves, so it joins per build rather than in the held building layer.
+    for (const v of world.query(Vehicle, Health, Position)) {
+      const owner = world.tryGet(v, Owner);
+      this.grid.admitBody(
+        v,
+        vehicleFootprintNodes(world, ctx.content, terrain, v),
+        owner === undefined ? 0 : playerBit(owner.player),
+      );
     }
   }
 

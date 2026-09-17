@@ -97,6 +97,9 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
     case 'attackAnimal':
       deps.pickMode.arm({ kind: 'attack-animal', units: targets });
       return;
+    case 'attackVehicle':
+      deps.pickMode.arm({ kind: 'attack-vehicle', units: targets });
+      return;
     case 'attackPosition':
       deps.pickMode.arm({ kind: 'attack-move', units: targets });
       return;

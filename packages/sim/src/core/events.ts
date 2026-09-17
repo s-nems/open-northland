@@ -253,12 +253,12 @@ export type SimEvent =
   | {
       /**
        * A ranged weapon loosed a projectile at `target` from `at` (`munitionType`: 1 arrow / 2 rock).
-       * `projectile` is the entity now in flight.
+       * `projectile` is the entity now in flight. A siege shot aimed at a map point names no `target`.
        */
       readonly kind: 'projectileLaunched';
       readonly projectile: Entity;
       readonly shooter: Entity;
-      readonly target: Entity;
+      readonly target?: Entity;
       readonly munitionType: number;
       readonly at: HalfCellNode;
     }

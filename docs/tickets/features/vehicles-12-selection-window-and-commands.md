@@ -3,7 +3,7 @@
 **Area:** app · **Focus:** `packages/app/src/view/unit-controls`, `hud/details-panel`, `hud/action-ring` · **Priority:** P2
 
 `click-hits.ts` and `selection-view.ts` know only settlers and buildings; the action ring's
-`assignVehicle` / `attackVehicle` orders are declared inert; of the 13 mapped vehicle message ids
+`assignVehicle` order is declared inert (`attackVehicle` already picks an enemy vehicle); of the 13 mapped vehicle message ids
 the refused-goto and the five crew notes have raisers (`from-events.ts`). The crew orders exist as
 seat commands (`attachToVehicle`, `detachFromVehicle`, `boardVehicle`, `unloadPeople`,
 `loadIntoVehicle`, `leaveCarrier`, `setVehicleWanted`, `clearVehicleWanted`) and only need buttons. The original's window and command set are listed in
@@ -23,7 +23,8 @@ rework restyles it later.
 - Orders: go to (left-click ground), dock (ship on a shore), unload people, attack human / building /
   vehicle / position and the three stances for a catapult, stop; right-click defaults from the
   original (human -> attack human, vehicle -> load into carrier when allowed else attack, house ->
-  attack, else go to). Settler ring orders `assignVehicle` (pick a vehicle) and `attackVehicle`.
+  attack, else go to); the seat commands `setVehicleStance` and `attackWithVehicle` exist. Settler
+  ring order `assignVehicle` (pick a vehicle).
 - HUD messages: raise the remaining mapped ids from the sim events of the vehicle tickets, the way
   `from-events.ts` already raises `vehicleNoCommander` / `vehicleNoPath` with a `vehicle` subject.
 - i18n en/pl for every new string.

@@ -61,6 +61,7 @@ import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
 import {
   attachToVehicle,
+  attackWithVehicle,
   boardVehicle,
   clearVehicleWantedOrder,
   createVehicle,
@@ -71,6 +72,7 @@ import {
   leaveCarrier,
   loadIntoVehicle,
   moveVehicle,
+  setVehicleStance,
   setVehicleWantedOrder,
   stopVehicle,
   unloadPeople,
@@ -197,6 +199,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setStance':
       setStance(world, ctx, command);
+      return;
+    case 'setVehicleStance':
+      setVehicleStance(world, command);
+      return;
+    case 'attackWithVehicle':
+      attackWithVehicle(world, ctx, command);
       return;
     case 'assignWorker':
       assignWorker(world, ctx, command);

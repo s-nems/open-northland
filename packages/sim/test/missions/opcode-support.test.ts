@@ -32,6 +32,7 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   BuildVehicles: { opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 },
   HumansDied: { opcode: 'HumansDied', humanId: 7 },
   HousesDied: { opcode: 'HousesDied', objectId: 7 },
+  VehiclesDied: { opcode: 'VehiclesDied', vehicleId: 7 },
   AnimalsDied: { opcode: 'AnimalsDied', objectId: 7 },
   NumberOfHumansDied: { opcode: 'NumberOfHumansDied', player: 0, amount: 1 },
   SoldiersDied: { opcode: 'SoldiersDied', player: 0, amount: 1 },

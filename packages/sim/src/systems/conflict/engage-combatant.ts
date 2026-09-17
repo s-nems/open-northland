@@ -47,7 +47,7 @@ import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './e
 import { fleeDrive } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
-import { buildingBodyNodes, combatTargetNode } from './target-node.js';
+import { combatTargetNode, targetBodyNodes } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import {
@@ -183,10 +183,7 @@ export function engageCombatant(
   const chaseTarget: ChaseTarget = {
     entity: target,
     node: combatTargetNode(world, ctx, terrain, here, target),
-    body:
-      world.has(target, Building) || world.has(target, Palisade)
-        ? buildingBodyNodes(world, ctx, terrain, target)
-        : null,
+    body: targetBodyNodes(world, ctx, terrain, target),
   };
   const gaveUp = chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
   if (gaveUp) restPreySearch(world, ctx, e, spec);

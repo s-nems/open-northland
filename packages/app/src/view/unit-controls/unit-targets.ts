@@ -42,8 +42,9 @@ export interface UnitTargetsDeps {
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
 }
 
-/** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). */
-export type UnitTargetKind = 'settler' | 'building' | 'palisade';
+/** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). A vehicle is
+ *  an attack target only: selecting one is the vehicle window's own path. */
+export type UnitTargetKind = 'settler' | 'building' | 'palisade' | 'vehicle';
 
 /** The pickable target sets the unit controls hit-test a click against, plus the order-issuing set. */
 export interface UnitTargets {
@@ -52,10 +53,10 @@ export interface UnitTargets {
   /** Every standing building drawn this frame, whoever owns it: a trader's route may name another
    *  tribe's house. */
   buildings(): Pickable[];
-  /** Enemy attack targets - settlers AND buildings of a player the human holds an `enemy` stance
-   *  toward. A right-click on one issues an `attackUnit` order (the sim accepts a building target).
-   *  `neutralWalls` adds the unowned palisades, which only an explicit attack pick strikes: a plain
-   *  right-click beside one walks there. */
+  /** Enemy attack targets - settlers, buildings AND vehicles of a player the human holds an `enemy`
+   *  stance toward. A right-click on one issues an `attackUnit` order (the sim accepts a building or
+   *  vehicle target). `neutralWalls` adds the unowned palisades, which only an explicit attack pick
+   *  strikes: a plain right-click beside one walks there. */
   enemies(opts?: { readonly neutralWalls?: boolean }): Pickable[];
   /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
@@ -107,9 +108,12 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     return seat === null || owner === seat;
   };
 
-  /** The item's kind when it is one a unit-controls click resolves to, else null. */
+  /** The item's kind when it is one a unit-controls click selects or orders, else null. */
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
     item.kind === 'settler' || item.kind === 'building' || item.kind === 'palisade' ? item.kind : null;
+  /** The kinds a strike may name: the selectable ones plus a vehicle. */
+  const enemyKindOf = (item: DrawItem): UnitTargetKind | null =>
+    item.kind === 'vehicle' ? item.kind : unitKindOf(item);
 
   /** A building refines to solid pixels, since its sprite box overhangs the footprint. A palisade keeps
    *  its sprite box: the gaps between its posts are part of the wall a player aims at. */
@@ -156,8 +160,9 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const { ownerOf } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
-        // A unit OR a building is an attack target - a warrior can raze an enemy structure.
-        const itemKind = unitKindOf(it);
+        // A unit, a building or a vehicle is an attack target - a warrior can raze an enemy structure
+        // or batter a cart.
+        const itemKind = enemyKindOf(it);
         if (itemKind === null) continue;
         // The ghost guard fog-gates the attack set: a remembered structure still draws, but no swing
         // can be ordered at it.

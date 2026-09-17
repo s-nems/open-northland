@@ -1,11 +1,11 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, Palisade, Position } from '../../components/index.js';
+import { Building, Palisade, Position, Vehicle } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { interactionNode } from '../footprint/index.js';
+import { interactionNode, vehicleFootprintNodes } from '../footprint/index.js';
 import { manhattan, nearestCell, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import type { WeaponBand } from './melee-slots.js';
@@ -142,11 +142,29 @@ export function combatTargetNode(
   from: NodeId,
   target: Entity,
 ): NodeId {
-  if (world.has(target, Building) || world.has(target, Palisade)) {
-    const nearest = nearestCell(terrain, buildingBodyNodes(world, ctx, terrain, target), from);
+  const body = targetBodyNodes(world, ctx, terrain, target);
+  if (body !== null) {
+    const nearest = nearestCell(terrain, body, from);
     if (nearest !== null) return nearest;
   }
   return entityNode(world, terrain, target);
+}
+
+/**
+ * The nodes a target with a body presents: a building's or a wall's cells, a vehicle's standing disc. Null for
+ * a unit, which is fought on its own node. A vehicle's disc is re-derived per call, since it moves and
+ * is at most the catapult's or ship's few nodes.
+ */
+export function targetBodyNodes(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  target: Entity,
+): readonly NodeId[] | null {
+  if (world.has(target, Building) || world.has(target, Palisade))
+    return buildingBodyNodes(world, ctx, terrain, target);
+  if (world.has(target, Vehicle)) return vehicleFootprintNodes(world, ctx.content, terrain, target);
+  return null;
 }
 
 /**
@@ -175,12 +193,9 @@ export function reachableTargetGate(
   const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
   if (bank < 0) return () => true;
   return (t) => {
-    if (!world.has(t, Building) && !world.has(t, Palisade)) {
-      return firingCellIn(terrain, bank, here, entityNode(world, terrain, t), weapon);
-    }
-    return buildingBodyNodes(world, ctx, terrain, t).some((wall) =>
-      firingCellIn(terrain, bank, here, wall, weapon),
-    );
+    const body = targetBodyNodes(world, ctx, terrain, t);
+    if (body === null) return firingCellIn(terrain, bank, here, entityNode(world, terrain, t), weapon);
+    return body.some((wall) => firingCellIn(terrain, bank, here, wall, weapon));
   };
 }
 

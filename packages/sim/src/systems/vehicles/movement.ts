@@ -283,6 +283,7 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noCommander');
     return false;
   }
+  dropAttack(world, e);
   const goal = snapVehicleTarget(world, ctx, terrain, e, { hx: command.x, hy: command.y });
   if (goal === null || hexDistance(anchor, nodeOf(terrain, goal)) > VEHICLE_WALK_RANGE_NODES) {
     refuseMove(world, ctx, e, 'noPath');
@@ -304,6 +305,14 @@ export function moveVehicle(
   return true;
 }
 
+/** A player's goto or stop supersedes whatever the vehicle was firing at; the stance stays. */
+function dropAttack(world: World, e: Entity): void {
+  if (world.get(e, Vehicle).attack === null) return;
+  const live = world.mut(e, Vehicle);
+  live.attack = null;
+  if (live.task === 'attacks') live.task = 'none';
+}
+
 /** Whether every seated rider, the commander among them, is inside. */
 export function crewInside(state: VehicleStateView): boolean {
   return state.passengers.every((seat) => seat === null || seat.inside);
@@ -315,6 +324,7 @@ export function stopVehicle(world: World, command: Extract<Command, { kind: 'sto
   const e = command.vehicle;
   const state = world.tryGet(e, Vehicle);
   if (state === undefined) return;
+  dropAttack(world, e);
   const drive = world.tryMut(e, VehicleDrive);
   if (drive === undefined && state.heldGoal === null) return;
   if (drive !== undefined) {
@@ -354,6 +364,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     if (next === undefined) {
       world.remove(e, VehicleDrive); // arrived, or stopped on its node
       if (state.task === 'docks') moorVehicle(world, ctx, e);
+      reanchorGuard(world, e);
       continue;
     }
     const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
@@ -388,6 +399,16 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     shoveSettlers(world, ctx, terrain, standing, next, live.route, type.logicSize);
   }
 };
+
+/** A drive's end is the new guard position a holding or defending siege vehicle scans around, unless
+ *  the drive was its own chase, which must not walk the guard along with it. */
+function reanchorGuard(world: World, e: Entity): void {
+  const state = world.get(e, Vehicle);
+  const anchor = vehicleAnchor(world, e);
+  if (anchor === null || state.attack !== null) return;
+  if (state.guard !== null && state.guard.hx === anchor.hx && state.guard.hy === anchor.hy) return;
+  world.mut(e, Vehicle).guard = anchor;
+}
 
 /**
  * Send every settler standing inside the footprint arriving at `entered` to the nearest open node

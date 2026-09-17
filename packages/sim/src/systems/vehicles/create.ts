@@ -72,6 +72,9 @@ export function createVehicle(
     passengers: emptySeats(commanderSlotOf(type.passengerSlots) + 1),
     vehicles: emptySeats(type.vehicleSlots),
     heldGoal: null,
+    stance: 'hold',
+    guard: { hx: anchor.hx, hy: anchor.hy },
+    attack: null,
   });
   world.add(e, Health, { hitpoints: type.hitpoints, max: type.hitpoints });
   world.add(e, VehicleStock, { lines: new Map() });

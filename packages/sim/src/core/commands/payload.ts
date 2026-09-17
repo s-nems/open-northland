@@ -4,6 +4,7 @@ import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import type { NeedKind } from '../../components/needs.js';
 import { PAPER_KINDS } from '../../components/papers.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
+import { VEHICLE_STANCES } from '../../components/vehicle.js';
 import { assertNever } from '../brand.js';
 import { asRecord, typeName } from '../untrusted.js';
 import type { Command } from './index.js';
@@ -45,6 +46,15 @@ const EQUIPMENT: FieldCheck = {
       armor: EQUIP_SLOT,
       misc: { arrayOf: EQUIP_SLOT },
     },
+  },
+};
+
+/** A vehicle's aim: either shape passes the field check; the handler rejects a `kind` whose own
+ *  fields are missing. */
+const VEHICLE_ATTACK_TARGET: FieldCheck = {
+  fields: {
+    required: { kind: { oneOf: ['entity', 'ground'] } },
+    optional: { entity: 'integer', hx: 'integer', hy: 'integer' },
   },
 };
 
@@ -115,6 +125,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   boardVehicle: { required: { entity: 'integer' } },
   detachFromVehicle: { required: { entity: 'integer' } },
   attackUnit: { required: { entity: 'integer', target: 'integer' } },
+  attackWithVehicle: { required: { vehicle: 'integer', target: VEHICLE_ATTACK_TARGET } },
   cancelUpgrade: { required: { building: 'integer' } },
   createVehicle: {
     required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
@@ -215,6 +226,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setSharedVision: { required: { players: { arrayOf: 'integer' } } },
   setSignpostNavigation: { required: { enabled: 'boolean' } },
   setStance: { required: { entity: 'integer', mode: 'integer' } },
+  setVehicleStance: { required: { vehicle: 'integer', stance: { oneOf: VEHICLE_STANCES } } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },
   spawnAnimalHerd: {
     required: { tribe: 'integer', ...NODE },

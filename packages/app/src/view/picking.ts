@@ -23,7 +23,15 @@ export interface Pickable {
   readonly x: number;
   readonly y: number;
   /** The drawable kind, so a click hit-box can be sized per kind when exact bounds aren't available. */
-  readonly kind?: 'settler' | 'building' | 'palisade' | 'resource' | 'signpost' | 'chest' | 'pile';
+  readonly kind?:
+    | 'settler'
+    | 'building'
+    | 'palisade'
+    | 'vehicle'
+    | 'resource'
+    | 'signpost'
+    | 'chest'
+    | 'pile';
   /** A resource or ground-pile target's good. Kept on the hit target so an order uses the exact object
    *  the player clicked instead of looking it up again in a potentially newer simulation snapshot. */
   readonly goodType?: number;
@@ -130,6 +138,8 @@ const PICK_BOX = {
   settler: { halfW: 18, up: 42, down: 12 },
   building: { halfW: 44, up: 104, down: 22 },
   palisade: { halfW: 12, up: 72, down: 8 },
+  // A cart is settler-sized, a ship or catapult wider; the exact sprite bounds normally stand in.
+  vehicle: { halfW: 40, up: 64, down: 16 },
   resource: { halfW: 28, up: 64, down: 12 },
   // The guidepost bob is 22x72 native px; a slim box keeps it clickable without swallowing the ground beside it.
   signpost: { halfW: 14, up: 76, down: 8 },

@@ -24,8 +24,9 @@ import {
 import { entityNode } from '../spatial/nodes.js';
 import { passIndexOf } from './combat-index.js';
 import { projectileStep } from './shot-aim.js';
-import { buildingBodyNodes } from './target-node.js';
-import { mayTarget } from './targeting.js';
+import { resolveGroundImpact } from './ground-impact.js';
+import { targetBodyNodes } from './target-node.js';
+import { isStructureTarget, mayTarget } from './targeting.js';
 import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
@@ -57,7 +58,8 @@ export const projectileSystem: System = (world, ctx) => {
   applyPendingHitReactions(world, pendingReactions);
 };
 
-/** Bring shot `p` down at its aim: the blow lands on whatever it strikes there, or it thuds into the dirt. */
+/** Bring shot `p` down at its aim: the blow lands on whatever it strikes there, a siege shot's on everything
+ *  there, or it thuds into the dirt. */
 function land(
   world: World,
   ctx: SystemContext,
@@ -66,7 +68,15 @@ function land(
   pendingReactions: PendingHitReaction[],
 ): void {
   const at = eventAt(proj.aimX, proj.aimY);
-  const victim = struckVictim(world, ctx, proj);
+  const burst =
+    proj.impact !== null &&
+    ctx.terrain !== undefined &&
+    resolveGroundImpact(world, ctx, ctx.terrain, p, proj, pendingReactions);
+  const victim = proj.impact === null ? struckVictim(world, ctx, proj) : null;
+  if (burst) {
+    world.destroy(p);
+    return;
+  }
   if (victim === null) {
     ctx.events.emit({
       kind: 'projectileMissed',
@@ -96,7 +106,7 @@ function land(
     munitionType: proj.munitionType,
     at,
     ...(hitSoundType !== null ? { soundType: hitSoundType } : {}),
-    ...(world.has(victim, Building) || world.has(victim, Palisade) ? { structure: true } : {}),
+    ...(isStructureTarget(world, victim) ? { structure: true } : {}),
   });
   world.destroy(p);
 }
@@ -111,9 +121,11 @@ function land(
  */
 function struckVictim(world: World, ctx: SystemContext, proj: Flight): Entity | null {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return strikeable(world, proj.target) ? proj.target : null;
+  const target = proj.target;
+  if (terrain === undefined) return target !== null && strikeable(world, target) ? target : null;
   const landing = terrain.nodeAtClamped(nodeHxOfPosition(proj.aimX, proj.aimY), nodeHyOfPosition(proj.aimY));
-  if (strikeable(world, proj.target) && stands(world, ctx, terrain, proj.target, landing)) return proj.target;
+  if (target !== null && strikeable(world, target) && stands(world, ctx, terrain, target, landing))
+    return target;
   const index = passIndexOf(world, ctx.tick);
   if (index === null) return null;
   const x = terrain.xOf(landing);
@@ -150,12 +162,10 @@ function strikeable(world: World, e: Entity): boolean {
   return world.has(e, Position) && !world.has(e, Resting);
 }
 
-/** Whether `e` stands on `node`: its own node, or any node of a building's or a wall's body. */
+/** Whether `e` stands on `node`: its own node, or any node of a building's, a wall's or a vehicle's body. */
 function stands(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity, node: NodeId): boolean {
-  if (world.has(e, Building) || world.has(e, Palisade)) {
-    return buildingBodyNodes(world, ctx, terrain, e).includes(node);
-  }
-  return entityNode(world, terrain, e) === node;
+  const body = targetBodyNodes(world, ctx, terrain, e);
+  return body === null ? entityNode(world, terrain, e) === node : body.includes(node);
 }
 
 /** Step projectile `p` one tick straight toward `(ax, ay)`; true when it began this tick at the aim. The

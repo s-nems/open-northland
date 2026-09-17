@@ -1,5 +1,4 @@
 import {
-  Building,
   Health,
   HOUSE_BEHAVIOUR,
   hasHouseBehaviour,
@@ -17,6 +16,7 @@ import { eventAt } from '../../../../../../core/events.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import { glancesOff } from '../../../../../conflict/weapons.js';
+import { isStructureTarget } from '../../../../../conflict/targeting.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { damageDealtBy, damageTakenBy, woundBearer } from '../../../../../equipment/index.js';
@@ -133,7 +133,7 @@ export function resolveCombatHit(
         at: eventAt(at.x, at.y),
         ...(weaponMainType !== undefined ? { weaponMainType } : {}),
         ...(blow.hitSoundType != null ? { soundType: blow.hitSoundType } : {}),
-        ...(world.has(target, Building) || world.has(target, Palisade) ? { structure: true } : {}),
+        ...(isStructureTarget(world, target) ? { structure: true } : {}),
       });
     }
   }

@@ -39,7 +39,13 @@ import {
 } from '../../../../catalog/jobs.js';
 import { PROFESSIONS } from '../../../../catalog/professions.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
-import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_FARMER_SLOT, rebaseSlotJob } from '../../ids/index.js';
+import {
+  EXTRACTED_GATHERER_TRADES,
+  GATHERERS,
+  JOB_FARMER_SLOT,
+  JOB_VEHICLE_CATAPULT,
+  rebaseSlotJob,
+} from '../../ids/index.js';
 import { BUILDING_WORKER_SLOTS, workerSlotName } from '../../worker-slots.js';
 import type { SandboxContentExtras } from '../types.js';
 
@@ -120,6 +126,9 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
     { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: messages().admin.units.broadsword },
     { typeId: JOB_ARCHER, id: 'soldier_bow', name: messages().admin.units.bow },
     { typeId: JOB_ARCHER_LONG, id: 'soldier_bow_long', name: messages().admin.units.longbow },
+    // Extracted `jobtypes.ini` 54: the catapult's own trade, which its weapon row binds to. Nobody
+    // takes it; it is the vehicle's key.
+    { typeId: JOB_VEHICLE_CATAPULT, id: 'vehicle_catapult', allowedAtomics: [ATTACK_ATOMIC] },
   ]) {
     jobs.set(job.typeId, job);
   }

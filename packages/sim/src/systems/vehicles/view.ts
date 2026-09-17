@@ -3,8 +3,10 @@ import {
   MissionObjectId,
   Owner,
   Vehicle,
+  type VehicleAttackTarget,
   VehicleDrive,
   type VehicleSeat,
+  type VehicleStance,
   VehicleStock,
   type VehicleTask,
   vehicleCommander,
@@ -49,6 +51,9 @@ export interface VehicleView {
    *  renderer's interpolation; null between legs and while standing. */
   readonly leg: { readonly from: HalfCellNode; readonly progress: number } | null;
   readonly commander: Entity | null;
+  readonly stance: VehicleStance;
+  /** What an armed vehicle is aimed at, ordered or auto-acquired; null while it has nothing. */
+  readonly attackTarget: VehicleAttackTarget | null;
   /** Occupied seats in slot order, the commander last. */
   readonly passengers: readonly VehicleSeat[];
   /** Ordinary slots plus the commander's. */
@@ -93,6 +98,8 @@ export function vehicleView(world: World, ctx: ContentContext, e: Entity): Vehic
         ? null
         : { from: { hx: drive.from.hx, hy: drive.from.hy }, progress: drive.progress },
     commander: vehicleCommander(vehicle),
+    stance: vehicle.stance,
+    attackTarget: vehicle.attack === null ? null : { ...vehicle.attack.target },
     passengers: vehiclePassengers(vehicle).map((seat) => ({ entity: seat.entity, inside: seat.inside })),
     passengerCapacity: vehicle.passengers.length,
     vehicles: vehicle.vehicles.flatMap((seat) =>

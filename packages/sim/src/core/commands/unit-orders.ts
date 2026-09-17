@@ -1,5 +1,6 @@
 import type { EquipCategory, HomeQualityEffect } from '@open-northland/data';
 import type { NeedKind } from '../../components/needs.js';
+import type { VehicleAttackTarget, VehicleStance } from '../../components/vehicle.js';
 import type { Entity } from '../../ecs/world.js';
 import type { Command } from './index.js';
 
@@ -64,12 +65,35 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Focus one owned combatant on `target` until the target dies, overriding sight-radius
-       * auto-engagement. Hostility is re-validated each tick by the CombatSystem, not at issue.
+       * Focus one owned combatant on `target`, an enemy unit, building or vehicle, until the target
+       * dies, overriding sight-radius auto-engagement. Hostility is re-validated each tick by the
+       * CombatSystem, not at issue.
        */
       readonly kind: 'attackUnit';
       readonly entity: Entity;
       readonly target: Entity;
+    }
+  | {
+      /**
+       * Set one owned siege vehicle's stance (the original's 1 attack / 2 defence / 3 hold buttons):
+       * `hold` fires only inside its weapon band around where it stands and never moves, `defence`
+       * chases within a leash of that spot, `attack` scans around wherever it is. Setting a stance
+       * re-anchors the guard position on the vehicle's current node.
+       */
+      readonly kind: 'setVehicleStance';
+      readonly vehicle: Entity;
+      readonly stance: VehicleStance;
+    }
+  | {
+      /**
+       * Aim one owned siege vehicle at `target`: an enemy unit, house or vehicle it keeps after (the
+       * original's `h`, `i`, `k`), or a map point it batters (`l`). The vehicle backs off, closes in or
+       * repositions as its weapon band demands and fires once inside it; the order lapses when the
+       * target is gone. Refused with `vehicleMoveRefused` `noCommander` while nobody commands it.
+       */
+      readonly kind: 'attackWithVehicle';
+      readonly vehicle: Entity;
+      readonly target: VehicleAttackTarget;
     }
   | {
       /**

@@ -23,6 +23,7 @@ export const WEAPON_SHORT_BOW = 16;
 export const WEAPON_LONG_BOW = 17;
 export const WEAPON_HUNTER_BOW = 19;
 export const WEAPON_HOUSE_BOW = 20;
+export const WEAPON_CATAPULT = 21;
 
 /**
  * Soldier/hero `jobType` → the good id-slug carried in its `Equipment.weapon` slot. Slugs, not numeric

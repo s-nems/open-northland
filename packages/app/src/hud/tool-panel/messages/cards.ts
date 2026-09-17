@@ -25,6 +25,7 @@ const GLYPH_BY_TYPE: ReadonlyMap<UserMessageType, NoticeGlyph> = new Map<UserMes
   [USER_MESSAGE_TYPE.houseFinished, 'house'],
   [USER_MESSAGE_TYPE.houseUpgraded, 'house'],
   [USER_MESSAGE_TYPE.houseAttacked, 'swords'],
+  [USER_MESSAGE_TYPE.vehicleAttacked, 'swords'],
   [USER_MESSAGE_TYPE.humanDied, 'skull'],
   [USER_MESSAGE_TYPE.playerDied, 'skull'],
   [USER_MESSAGE_TYPE.playerSighted, 'shield'],

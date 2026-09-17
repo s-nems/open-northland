@@ -111,12 +111,12 @@ export const HUNTER_GENERAL_XP_TRACK = {
 export const HUNTER_BOW_BALANCE: {
   readonly minRange: number;
   readonly maxRange: number;
-  /** Per-armor-class damage, each below the short bow's column ({0:500, 1:128, 2:400, 3..4:100, 6:60, 7:100}). */
+  /** Per-armor-class damage, each below the short bow's column ({0:500, 1:128, 2:400, 3..4:100, 6:40, 7:100}). */
   readonly damage: Readonly<Record<string, number>>;
 } = {
   minRange: 3,
   maxRange: 13, // short bow reaches 15
-  damage: { '0': 400, '1': 100, '2': 320, '3': 80, '4': 80, '6': 50, '7': 80 },
+  damage: { '0': 400, '1': 100, '2': 320, '3': 80, '4': 80, '6': 30, '7': 80 },
 };
 
 // Clip timings transcribed verbatim from the extracted `atomicanimations.ini`, for
