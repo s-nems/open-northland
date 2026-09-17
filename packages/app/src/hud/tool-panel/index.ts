@@ -378,6 +378,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
       gallery: opts.noticeGallery,
     });
+    domParts.push(messageCenter);
 
     const infoLines = createInfoLinesOverlay(ctx, infoContainer);
 
@@ -455,7 +456,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         messageCenter.restore(state.messages);
       },
       dispose(): void {
-        messageCenter.dispose();
         infoLines.dispose();
         disposeAll();
       },

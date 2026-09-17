@@ -20,7 +20,7 @@ const THUMB_FEET_INSET_MIN = 2;
 
 /** Where the feet go (canvas px): the usual inset, or lower on a covered card so the figure's middle
  *  meets the middle of the visible strip, stopping at the minimum inset from the bottom edge. */
-function feetLine(
+export function feetLine(
   layers: readonly ResolvedLayer[],
   height: number,
   visible: number,

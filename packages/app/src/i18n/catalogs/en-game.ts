@@ -449,7 +449,6 @@ export const enGame = {
   userMessages: {
     becameSoldier: 'became a soldier',
     learnedProfession: 'learned the {profession} profession',
-    /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
     /** The notification card's one line per type, short enough to fit its width; the `{good}` and `{stance}` templates replace it when the row names one. The full sentence stays in the decoded row. */
     short: {
       taskCompleted: 'Task done',
@@ -532,6 +531,7 @@ export const enGame = {
     shortUnknownHeroDied: 'Unknown hero fell',
     shortBecameSoldier: 'Soldier',
     shortLearnedProfession: 'Trade: {profession}',
+    /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
     rows: {
       '33': 'can now do the following based on experience',
       '34': 'New professions',

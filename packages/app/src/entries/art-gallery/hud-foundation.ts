@@ -4,6 +4,7 @@ import { ACTION_ART_PX, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../
 import { type NoticeCardView, noticeCardMarkup } from '../../hud/dom/notice-column.js';
 import { createHudPlane } from '../../hud/dom/root.js';
 import { WINDOW_ORNAMENTS } from '../../hud/dom/symbols.js';
+import { NOTICE_COLUMN } from '../../hud/regions.js';
 import { MAX_UI_SCALE_BASE, MIN_UI_SCALE, UI_SCALE_FACTOR_MAX } from '../../hud/ui-scale.js';
 import { element } from './controls.js';
 
@@ -74,6 +75,8 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
     fresh: false,
   },
 ];
+const noticeTally = (level: NoticeCardView['level']): number =>
+  SAMPLE_NOTICES.filter((card) => card.level === level).length;
 
 function card(title: string, text: string, cost: string, glyph: string, state = ''): string {
   return `<button type="button" class="on-card" ${state}><span class="on-card__thumb">${glyph}</span><span><strong class="on-card__title">${title}</strong><small class="on-card__text">${text}</small></span><span class="on-card__cost">${cost}</span></button>`;
@@ -101,8 +104,8 @@ function boardMarkup(): string {
   <div class="on-speed" role="toolbar" aria-label="Tempo symulacji"><button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button><button type="button" aria-pressed="true">×1</button><button type="button" aria-pressed="false">×3</button></div>
   <button type="button" class="on-medallion" style="width:${MENU_MEDALLION_PX}px;height:${MENU_MEDALLION_PX}px;margin-left:4px" aria-label="Menu gry">${menuArt(MENU_ART_PX)}</button>
 </div>
-<aside class="on-notices" style="top:18px;left:10px;width:198px;bottom:230px">
-  <div class="on-notices__head"><span class="on-sr">Wiadomości: 6</span><div class="on-filters" role="toolbar" aria-label="Poziom wiadomości"><button type="button" class="on-filter on-filter--low" aria-label="Wszystkie · zwykłe: 1" aria-pressed="true"><span class="on-filter__count">1</span></button><button type="button" class="on-filter on-filter--medium" aria-label="Ważne i pilne · ważne: 1" aria-pressed="false"><span class="on-filter__count">1</span></button><button type="button" class="on-filter on-filter--high" aria-label="Tylko pilne · pilne: 4" aria-pressed="false"><span class="on-filter__count">4</span></button></div></div>
+<aside class="on-notices" style="top:${NOTICE_COLUMN.top}px;left:${NOTICE_COLUMN.left}px;width:${NOTICE_COLUMN.width}px;bottom:230px">
+  <div class="on-notices__head"><span class="on-sr">Wiadomości: ${SAMPLE_NOTICES.length}</span><div class="on-filters" role="toolbar" aria-label="Poziom wiadomości"><button type="button" class="on-filter on-filter--low" aria-label="Wszystkie · zwykłe: ${noticeTally(0)}" aria-pressed="true"><span class="on-filter__count">${noticeTally(0)}</span></button><button type="button" class="on-filter on-filter--medium" aria-label="Ważne i pilne · ważne: ${noticeTally(1)}" aria-pressed="false"><span class="on-filter__count">${noticeTally(1)}</span></button><button type="button" class="on-filter on-filter--high" aria-label="Tylko pilne · pilne: ${noticeTally(2)}" aria-pressed="false"><span class="on-filter__count">${noticeTally(2)}</span></button></div></div>
   <ul class="on-notices__list" aria-label="Powiadomienia">${SAMPLE_NOTICES.map((card) => noticeCardMarkup(card, 'Usuń powiadomienie')).join('')}</ul>
 </aside>
 <section class="on-window on-panel" style="left:50%;top:96px;width:540px;transform:translateX(-50%)" aria-label="Budowanie">

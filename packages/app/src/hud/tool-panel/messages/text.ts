@@ -85,9 +85,6 @@ const EXPERIENCE_GOOD_STRING_ID = 35;
 const EXPERIENCE_HOUSE_STRING_ID = 36;
 /** The placeholder the stock-full row carries for the good's name. */
 const GOOD_PLACEHOLDER = '%s';
-/** Joins a card's subject name and trade label. */
-const SUBJECT_SEPARATOR = ' · ';
-
 const TYPE_NAME_BY_ID: ReadonlyMap<UserMessageType, UserMessageTypeName> = new Map(
   (Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]).map((name) => [USER_MESSAGE_TYPE[name], name]),
 );
@@ -158,8 +155,6 @@ export interface MessageTextDeps {
 
 /** A message as the card shows it and as it reads in full. */
 export interface MessageText {
-  /** The card's first line: the subject's name with its trade label, or null for a subjectless row. */
-  readonly subject: string | null;
   /** The card's event line: a short label that fits the card, never the original's sentence. */
   readonly short: string;
   /** The whole message in the original's wording, for the unfolded card and assistive text. */
@@ -174,12 +169,6 @@ export function composeMessageText(
   const name = userMessageTypeName(type);
   const row = (id: number): string => deps.uiString(MESSAGE_STRINGS_TABLE, id, deps.fallbackRow(id));
   const base = row(MESSAGE_STRING_ID[name]);
-  const subject =
-    parts.subjectName === null
-      ? null
-      : parts.jobLabel === null
-        ? parts.subjectName
-        : `${parts.subjectName}${SUBJECT_SEPARATOR}${parts.jobLabel}`;
   const who =
     parts.subjectName === null
       ? null
@@ -188,23 +177,19 @@ export function composeMessageText(
         : `${parts.subjectName} (${parts.jobLabel})`;
   const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
   const short = shortLabel(name, parts, deps.short);
-  const led = (body: string): MessageText => ({ subject, short, full: lead(body) });
+  const led = (body: string): MessageText => ({ short, full: lead(body) });
 
   if (name === 'humanDied') {
     if (who !== null) return led(base);
     const unknown = row(UNKNOWN_HERO_DIED_STRING_ID);
-    return { subject: null, short: deps.short.unknownHeroDied, full: unknown };
+    return { short: deps.short.unknownHeroDied, full: unknown };
   }
   if (name === 'specialItemFound') {
-    if (parts.detail === undefined) return { subject: null, short, full: base };
-    return { subject: parts.detail, short, full: `${base} - ${parts.detail}` };
+    if (parts.detail === undefined) return { short, full: base };
+    return { short, full: `${base} - ${parts.detail}` };
   }
   if (HOUSE_ROWS.has(name)) {
-    return {
-      subject: parts.subjectName,
-      short,
-      full: parts.subjectName === null ? base : `${parts.subjectName} ${base}`,
-    };
+    return { short, full: parts.subjectName === null ? base : `${parts.subjectName} ${base}` };
   }
   if (name === 'stockFull') {
     return led(
@@ -225,7 +210,7 @@ export function composeMessageText(
       .filter(([, values]) => values.length > 0)
       .map(([label, values]) => `${row(label)}:\n${values.map((value) => `- ${value}`).join('\n')}`)
       .join('\n\n');
-    return { subject, short, full: `${lead(base)}:\n${details}` };
+    return { short, full: `${lead(base)}:\n${details}` };
   }
   if (GOOD_APPENDED.has(name) && parts.goodName !== null) return led(`${base} ${parts.goodName}`);
   if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return led(`${base} ${parts.stanceName}`);

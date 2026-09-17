@@ -1,5 +1,6 @@
 import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { createMessageFeed } from '../src/hud/tool-panel/messages/feed.js';
 import { galleryMessages } from '../src/hud/tool-panel/messages/gallery.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { composeMessageText, type MessageText } from '../src/hud/tool-panel/messages/text.js';
@@ -35,7 +36,7 @@ function snapshot(actors: readonly Actor[]): WorldSnapshot {
   };
 }
 
-const plain = (full: string): MessageText => ({ subject: null, short: full, full });
+const plain = (full: string): MessageText => ({ short: full, full });
 /** Names as the fakes in the sibling tests do, with the real composer behind `text` over synthetic rows,
  *  so every type's composition is exercised without the decoded strings. */
 const naming: MessageNaming = {
@@ -94,7 +95,7 @@ describe('notice gallery', () => {
     );
     expect([...settlers].sort()).toEqual([1, 2]);
     expect(byType.get(USER_MESSAGE_TYPE.goodNotFound)?.compose().full).toContain('good:5');
-    expect(byType.get(USER_MESSAGE_TYPE.specialItemFound)?.compose().subject).toBe('indulgence');
+    expect(byType.get(USER_MESSAGE_TYPE.specialItemFound)?.compose().full).toContain('indulgence');
     expect(byType.get(USER_MESSAGE_TYPE.diplomacyChanged)?.compose().full).toContain('Gracz 1');
     expect(byType.get(USER_MESSAGE_TYPE.diplomacyChanged)?.compose().full).toContain('friend');
     expect(byType.get(USER_MESSAGE_TYPE.houseFinished)?.pending.subject).toEqual({
@@ -106,6 +107,17 @@ describe('notice gallery', () => {
       { kind: 'good', typeId: GOOD },
       { kind: 'house', typeId: HOUSE },
     ]);
+  });
+
+  it('raises the same keys on every sweep, so a second pass adds nothing to the feed', () => {
+    const feed = createMessageFeed();
+    const sweep = (): readonly string[] =>
+      galleryMessages(world, LOCAL, naming, [], { goodType: GOOD }).map((r) =>
+        feed.add(r.pending, world.tick, r.compose),
+      );
+    expect(new Set(sweep())).toEqual(new Set(['accepted']));
+    expect(new Set(sweep())).toEqual(new Set(['duplicate']));
+    expect(feed.live()).toHaveLength(ALL_TYPES.length);
   });
 
   it('keeps only the subjectless rows when the seat has no one and nothing', () => {

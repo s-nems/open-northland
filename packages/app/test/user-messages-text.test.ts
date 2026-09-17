@@ -103,11 +103,7 @@ describe('user message text', () => {
       { subjectName: 'Gracz 2', jobLabel: null, goodName: null, stanceName: 'wrogi' },
       { ...deps, fallbackRow: (id) => `- <${id}>` },
     );
-    expect([sighted.subject, sighted.short, sighted.full]).toEqual([
-      'Gracz 2',
-      'Met: wrogi',
-      'Gracz 2 - <131> wrogi',
-    ]);
+    expect([sighted.short, sighted.full]).toEqual(['Met: wrogi', 'Gracz 2 - <131> wrogi']);
     expect(compose(USER_MESSAGE_TYPE.diplomacyChanged, 'Gracz 2', null, null, 'przyjazny')).toBe(
       'Gracz 2 <132> przyjazny',
     );
@@ -153,7 +149,7 @@ describe('user message text', () => {
       { subjectName: 'Bjorn', jobLabel: 'Budowniczy', goodName: null, stanceName: null },
       deps,
     );
-    expect([settler.subject, settler.short]).toEqual(['Bjorn · Budowniczy', 'short:hungry']);
+    expect([settler.short, settler.full]).toEqual(['short:hungry', 'Bjorn (Budowniczy) row10']);
     const full = composeMessageText(
       USER_MESSAGE_TYPE.stockFull,
       { subjectName: 'Leif', jobLabel: null, goodName: 'Drewno', stanceName: null },
@@ -177,23 +173,19 @@ describe('user message text', () => {
       { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
       deps,
     );
-    expect([house.subject, house.short]).toEqual(['Dom', 'short:houseFinished']);
+    expect([house.short, house.full]).toEqual(['short:houseFinished', 'Dom - row90']);
     const unknown = composeMessageText(
       USER_MESSAGE_TYPE.humanDied,
       { subjectName: null, jobLabel: null, goodName: null, stanceName: null },
       deps,
     );
-    expect([unknown.subject, unknown.short, unknown.full]).toEqual([null, 'short:unknown', 'row121-unknown']);
+    expect([unknown.short, unknown.full]).toEqual(['short:unknown', 'row121-unknown']);
     const paper = composeMessageText(
       USER_MESSAGE_TYPE.specialItemFound,
       { subjectName: null, jobLabel: null, goodName: null, stanceName: null, detail: 'Pozwolenie' },
       deps,
     );
-    expect([paper.subject, paper.short, paper.full]).toEqual([
-      'Pozwolenie',
-      'short:specialItemFound',
-      '<134> - Pozwolenie',
-    ]);
+    expect([paper.short, paper.full]).toEqual(['short:specialItemFound', '<134> - Pozwolenie']);
     const unlocks = composeMessageText(
       USER_MESSAGE_TYPE.experienceUnlocks,
       {

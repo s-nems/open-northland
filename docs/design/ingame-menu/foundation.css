@@ -716,8 +716,10 @@ button.medallion:hover {
     transparent
   );
 }
-/* In a fan the cards are opaque, so nothing shows through the one in front. */
+/* In a fan the cards are opaque, so nothing shows through the one in front, and each casts a shadow on
+   the next, so the strip reads as an edge. */
 .notices.stacked .notice-card {
+  box-shadow: 0 3px 8px #0008;
   background: linear-gradient(
     90deg,
     transparent 0 34px,
@@ -732,10 +734,6 @@ button.medallion:hover {
     var(--fill) 50px,
     color-mix(in srgb, var(--fill) 97%, #000)
   );
-}
-/* Fanned cards keep one event line and cast a shadow on the next, so the strip reads as an edge. */
-.notices.stacked .notice-card {
-  box-shadow: 0 3px 8px #0008;
 }
 .notices.stacked .notice-card b {
   -webkit-line-clamp: 1;

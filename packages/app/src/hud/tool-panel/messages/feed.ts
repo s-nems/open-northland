@@ -42,7 +42,7 @@ export function isStandingNote(type: UserMessageType): boolean {
 export interface MessageFeedState {
   readonly level: MessagePriorityLevel;
   readonly nextId: number;
-  readonly displayed: readonly UserMessage[];
+  readonly live: readonly UserMessage[];
   readonly history: readonly UserMessage[];
 }
 
@@ -81,7 +81,7 @@ export interface MessageFeed {
 }
 
 export function defaultMessageFeedState(): MessageFeedState {
-  return { level: DEFAULT_MESSAGE_LEVEL, nextId: 1, displayed: [], history: [] };
+  return { level: DEFAULT_MESSAGE_LEVEL, nextId: 1, live: [], history: [] };
 }
 
 /** The original's whole-record comparison, minus the stamp fields the feed assigns and minus the
@@ -172,7 +172,7 @@ class MessageList {
 export function createMessageFeed(initial: MessageFeedState = defaultMessageFeedState()): MessageFeed {
   let level = initial.level;
   let nextId = initial.nextId;
-  const displayed = new MessageList(initial.displayed);
+  const live = new MessageList(initial.live);
   const history = new MessageList(initial.history);
   let version = 0;
 
@@ -182,7 +182,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
   };
 
   const dropDisplayed = (keep: (m: UserMessage) => boolean, toHistory: boolean): boolean => {
-    const changed = displayed.prune(keep, toHistory ? remember : undefined);
+    const changed = live.prune(keep, toHistory ? remember : undefined);
     if (changed) version++;
     return changed;
   };
@@ -203,10 +203,10 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     add: (pending, tick, compose): MessageAddOutcome => {
       if (tick <= SETUP_TICKS_MUTED) return 'muted';
       if (history.matches(pending)) return 'duplicate';
-      if (displayed.items.length >= MESSAGE_SLOTS) return 'full';
+      if (live.items.length >= MESSAGE_SLOTS) return 'full';
       const priority = messagePriority(pending.type, pending.jobType);
-      if (displayed.matches(pending)) return 'duplicate';
-      displayed.push({ ...pending, id: nextId, priority, tick, text: compose() });
+      if (live.matches(pending)) return 'duplicate';
+      live.push({ ...pending, id: nextId, priority, tick, text: compose() });
       nextId++;
       version++;
       return 'accepted';
@@ -220,15 +220,15 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       dropDisplayed(live, false);
       history.prune(live);
     },
-    live: () => displayed.items,
-    displayed: () => displayed.items.filter((m) => messagePassesFilter(m.priority, level)),
+    live: () => live.items,
+    displayed: () => live.items.filter((m) => messagePassesFilter(m.priority, level)),
     tally: () => {
       const counts: [number, number, number] = [0, 0, 0];
-      for (const m of displayed.items) counts[m.priority]++;
+      for (const m of live.items) counts[m.priority]++;
       return counts;
     },
-    find: (id) => displayed.items.find((m) => m.id === id),
+    find: (id) => live.items.find((m) => m.id === id),
     version: () => version,
-    state: () => ({ level, nextId, displayed: [...displayed.items], history: [...history.items] }),
+    state: () => ({ level, nextId, live: [...live.items], history: [...history.items] }),
   };
 }

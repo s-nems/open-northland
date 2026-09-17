@@ -19,6 +19,8 @@ const FRESH = 'on-notice--fresh';
 /** The arrival animations whose end retires the fresh state: the seal pulse outlasts the slide. */
 const ARRIVAL_ANIMATION = { card: 'on-notice-in', seal: 'on-seal-pulse' } as const;
 
+/** The level whose seal pulses on arrival; the others only slide their card in. */
+const IMPORTANT_LEVEL: MessagePriorityLevel = 2;
 const SEAL_BY_LEVEL: Readonly<Record<MessagePriorityLevel, string>> = { 0: '', 1: 'warn', 2: 'danger' };
 const FILTER_CLASS_BY_LEVEL: Readonly<Record<MessagePriorityLevel, string>> = {
   0: 'low',
@@ -300,7 +302,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
           cardsById.set(card.id, li);
           if (card.fresh) {
             // Retire the class once the arrival has played, so a later reorder does not replay it.
-            const last = card.level === 2 ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;
+            const last = card.level === IMPORTANT_LEVEL ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;
             const fresh = li;
             fresh.addEventListener('animationend', (event) => {
               if (event.animationName === last) fresh.classList.remove(FRESH);

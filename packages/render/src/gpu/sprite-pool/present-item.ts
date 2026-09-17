@@ -21,7 +21,8 @@ export interface PresentationTrack {
    *  unit shows. */
   lastFacing?: number;
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
-   *  sim's reported progress; `undefined` when nothing is in progress. */
+   *  sim's reported progress; `undefined` when nothing is in progress. Declared present rather than
+   *  optional so the entity's shape never changes when a reveal first appears. */
   reveal: number | undefined;
 }
 

@@ -18,7 +18,7 @@ function note(id: number, priority: MessagePriorityLevel, tick: number): UserMes
     goodType: null,
     technologies: null,
     jobType: null,
-    text: { subject: null, short: '', full: '' },
+    text: { short: '', full: '' },
   };
 }
 

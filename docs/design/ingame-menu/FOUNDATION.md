@@ -127,7 +127,7 @@ lifetime, dedupe and priority table.
   chest, scroll). The seal on the thumbnail's right edge, the event line and the × share one line,
   centred in the card's visible part; the card carries no hairline, the seal alone tells the weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
-  no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
+  no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead. Right click, Delete or the ×
   dismisses one card; Shift with any of them, or the bin button beside the seal filters, dismisses
   every shown card. The × stays on every card, so a covered card closes without parting the fan. Nothing else the player does removes a card: selecting or
   deselecting its subject leaves it (the original clears a human's notes on deselect; dropped as a

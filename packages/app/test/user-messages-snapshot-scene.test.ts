@@ -20,7 +20,7 @@ import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import type { SceneWorld } from '../src/scenes/types.js';
 
-const plain = (full: string): MessageText => ({ subject: null, short: full, full });
+const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),

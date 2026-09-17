@@ -138,7 +138,7 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
           : messages().userMessages.shortLearnedProfession,
         { profession: jobName },
       );
-      return { subject: subjectName, short, full: `${subjectName} ${body}` };
+      return { short, full: `${subjectName} ${body}` };
     },
     text: (type, parts) =>
       composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow, short: shortLabels() }),

@@ -29,7 +29,7 @@ describe('navigation beam', () => {
 describe('central window region', () => {
   it('runs from the wider of the notice column and the minimap to the selection panel, top bar to beam', () => {
     const region = centralRegion(SCREEN, 1);
-    expect(region.x).toBe(minimapPanelWidth(1) + 8); // the minimap (223.5) outreaches the column (208)
+    expect(region.x).toBe(minimapPanelWidth(1) + 8); // the minimap (223.5) outreaches the column (190)
     expect(region.y).toBe(WINDOW_REGION_TOP);
     expect(region.x + region.w).toBe(SCREEN.width - panelSpanFromRight(1) - 8);
     expect(region.y + region.h).toBe(navBeamRect(SCREEN, 1).y - 8);
