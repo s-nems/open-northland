@@ -37,3 +37,4 @@ export * from './trade.js';
 export * from './training.js';
 export * from './tributes.js';
 export * from './unlocks.js';
+export * from './vehicle.js';

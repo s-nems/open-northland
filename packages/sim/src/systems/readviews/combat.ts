@@ -19,6 +19,9 @@ export const ARMOR_MATERIAL = {
   STONE: 5,
   /** A tree/wall target - the weapon's damage-vs-wood column. */
   WOOD: 6,
+  /** A vehicle target reads the same column, `damage[6]`, with an armour of 0 (byte-verified,
+   *  docs/formats/VEHICLES.md). */
+  VEHICLE: 6,
   /** A building target - the weapon's damage-vs-building column. */
   HOUSE: 7,
 } as const;

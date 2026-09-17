@@ -15,7 +15,6 @@ import {
   takePaper,
   UnderConstruction,
   Upgrading,
-  Vehicle,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -31,7 +30,7 @@ import { releaseEmployment } from '../economy/jobs/index.js';
 import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
-import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
+import { buildingEnabled } from '../progression/index.js';
 import { displaceSignpostsFromFootprint } from '../signposts/index.js';
 import { upgradeTierOf } from '../stores/index.js';
 
@@ -222,25 +221,4 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
   building.built = ONE;
   world.remove(command.building, UnderConstruction);
   world.remove(command.building, Upgrading);
-}
-
-/**
- * Place a boat hull - see the command doc. Source basis: the extracted vehicle IR, where the ship/cart
- * split is the `passengerslots` param and the unlock is the `jobEnablesVehicle` edge. The hull is a
- * static placed store here; movement, embark and disembark, and the cargo-load filter are deferred.
- */
-export function placeBoat(
-  world: World,
-  ctx: SystemContext,
-  command: Extract<Command, { kind: 'placeBoat' }>,
-): void {
-  const unlocked = tribeShipsUnlocked(world, ctx, command.tribe, command.owner);
-  if (!unlocked.some((v) => v.typeId === command.vehicleType)) return;
-
-  const e = world.create();
-  world.add(e, Position, positionOfNode(command.x, command.y));
-  world.add(e, Vehicle, { vehicleType: command.vehicleType, tribe: command.tribe });
-  stampOwner(world, e, command.owner);
-  world.add(e, Stockpile, { amounts: new Map<number, number>() });
-  ctx.events.emit({ kind: 'boatPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }

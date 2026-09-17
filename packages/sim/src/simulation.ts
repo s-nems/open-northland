@@ -79,6 +79,7 @@ import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import { type TradeOffer, type TraderView, tradeOffersAt, traderView } from './systems/trade/index.js';
+import { type VehicleView, vehiclesOf, vehicleView } from './systems/vehicles/index.js';
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
 export type { FogView } from './simulation/read-seams.js';
@@ -472,6 +473,16 @@ export class Simulation {
   /** The map agreements a house offers a visiting trader, as detached copies. */
   tradeOffersAt(house: Entity): readonly TradeOffer[] {
     return tradeOffersAt(this.world, house);
+  }
+
+  /** A vehicle's type, crew, hold and standing as a detached copy; undefined for anything else. */
+  vehicleView(vehicle: Entity): VehicleView | undefined {
+    return vehicleView(this.world, { content: this.content }, vehicle);
+  }
+
+  /** Every vehicle `player` owns, ascending by entity id, as detached copies. */
+  vehiclesOf(player: number): readonly VehicleView[] {
+    return vehiclesOf(this.world, { content: this.content }, player);
   }
 
   /** Every mission of the map's script with its live flags, for the mission window's goal list;

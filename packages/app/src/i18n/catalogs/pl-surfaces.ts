@@ -483,7 +483,7 @@ export const plSurfaces = {
     voiceRoles: { scream: 'Krzyk', chatter: 'Gwar', ok: 'Tak', no: 'Nie' },
     children: 'Dzieci',
     actionsCatalog: {
-      boatPlaced: { label: 'Zwodowanie łodzi', trigger: 'gdy powstaje łódź' },
+      vehicleCreated: { label: 'Ukończenie pojazdu', trigger: 'gdy powstaje wóz, statek lub katapulta' },
       goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
       buildingFinished: {
         label: 'Ukończenie budowy',

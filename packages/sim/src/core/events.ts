@@ -24,9 +24,27 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
-      readonly kind: 'boatPlaced';
+      /** A vehicle stands on the map: a yard finished it, a script placed it, or a chest yielded it. */
+      readonly kind: 'vehicleCreated';
       readonly entity: Entity;
+      readonly vehicleType: number;
       readonly at: HalfCellNode;
+    }
+  | {
+      /**
+       * A vehicle left the map: its pool ran out, its seat lost, or a script removed it. Emitted before
+       * the destroy; `ruins` are the footprint nodes the sim drew for the wreck decals, empty for a ship,
+       * which leaves nothing.
+       */
+      readonly kind: 'vehicleDestroyed';
+      readonly entity: Entity;
+      readonly player: number | null;
+      readonly vehicleType: number;
+      readonly tribe: number;
+      /** `script` is the silent removal; the other two are wrecks. */
+      readonly cause: 'destroyed' | 'defeated' | 'script';
+      readonly at?: HalfCellNode;
+      readonly ruins: readonly HalfCellNode[];
     }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | {

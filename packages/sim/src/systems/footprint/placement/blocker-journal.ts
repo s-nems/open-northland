@@ -1,6 +1,7 @@
-import { Building, Position } from '../../../components/index.js';
+import { Building, Position, Vehicle } from '../../../components/index.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
-import { BLOCKER_STORES, type BlockerStore, BUILDING_STORE } from './blockers.js';
+import { vehicleAnchor } from '../vehicle-footprint.js';
+import { BLOCKER_STORES, type BlockerStore, BUILDING_STORE, VEHICLE_STORE } from './blockers.js';
 
 // The shared journal replay behind the incremental blocker caches - ./blocker-grid.ts's dense count grid
 // and ./work-flag/incremental-blocks.ts's sparse refcounted node set. Each supplies what it captures per
@@ -35,10 +36,11 @@ export interface BlockerJournal {
  * plus the `Building` VALUE generation, since the tier swap changes a building's cells in place with no
  * membership bump. That value bump is ambiguous - construction progress moves it every active-site tick -
  * so it is narrowed through the value-write journal to the buildings whose `buildingType` actually
- * changed. A blocker's Position is NOT a guarded input: every spawn site adds it before the blocker
- * component, and a placed blocker never moves, so the cells a capture reads are fixed while the entity
- * holds the component. Each cache's registered `verifyCaches` verifier is the tripwire if any of that
- * stops holding.
+ * changed. The `Vehicle` VALUE generation is guarded the same way: a drive moves the anchor with a
+ * `Vehicle` write and no membership entry, so a bump is narrowed to the vehicles whose anchor moved. Any
+ * other blocker's Position is NOT a guarded input: every spawn site adds it before the blocker component,
+ * and a placed blocker never moves, so the cells a capture reads are fixed while the entity holds the
+ * component. Each cache's registered `verifyCaches` verifier is the tripwire if any of that stops holding.
  */
 export function startBlockerJournal<Captured>(
   world: World,
@@ -52,6 +54,9 @@ export function startBlockerJournal<Captured>(
   const buildingTypes = new Map<Entity, number>();
   world.journalValueWrites(Building);
   let buildingValueGen = world.componentValueGeneration(Building);
+  /** The anchor each held Vehicle capture stood on, as a map key. */
+  const vehicleAnchors = new Map<Entity, string>();
+  let vehicleValueGen = world.componentValueGeneration(Vehicle);
 
   const recordsOf = (store: BlockerStore): Map<Entity, Captured> => {
     let held = records.get(store);
@@ -77,6 +82,11 @@ export function startBlockerJournal<Captured>(
       if (b === undefined) buildingTypes.delete(e);
       else buildingTypes.set(e, b.buildingType);
     }
+    if (store === VEHICLE_STORE) {
+      const anchor = vehicleAnchorKey(world, e);
+      if (anchor === null) vehicleAnchors.delete(e);
+      else vehicleAnchors.set(e, anchor);
+    }
     if (!world.has(e, store.component)) return;
     const captured = ops.capture(world, store, e);
     byEntity.set(e, captured);
@@ -92,6 +102,17 @@ export function startBlockerJournal<Captured>(
       const b = world.tryGet(e, Building);
       if (b === undefined || !world.has(e, Position) || buildingTypes.get(e) === b.buildingType) continue;
       resync(BUILDING_STORE, e);
+    }
+  };
+
+  /** The Vehicle value-bump response: resync only the vehicles whose anchor differs from the held key -
+   *  O(vehicles) compares, zero captures when only a seat or task moved. */
+  const resyncMovedVehicles = (): void => {
+    const candidates = new Set<Entity>(vehicleAnchors.keys()); // held captures that may have left the map
+    for (const e of world.query(Vehicle, Position)) candidates.add(e);
+    for (const e of candidates) {
+      if ((vehicleAnchors.get(e) ?? null) === vehicleAnchorKey(world, e)) continue;
+      resync(VEHICLE_STORE, e);
     }
   };
 
@@ -119,10 +140,23 @@ export function startBlockerJournal<Captured>(
         resyncChangedBuildingTypes();
         buildingValueGen = valueGen;
       }
+      const vehicleGen = world.componentValueGeneration(Vehicle);
+      if (vehicleGen !== vehicleValueGen) {
+        resyncMovedVehicles();
+        vehicleValueGen = vehicleGen;
+      }
       return true;
     },
     fresh: () =>
       world.componentValueGeneration(Building) === buildingValueGen &&
+      world.componentValueGeneration(Vehicle) === vehicleValueGen &&
       BLOCKER_STORES.every((s) => world.componentGeneration(s.component) === (gens.get(s.component) ?? 0)),
   };
+}
+
+/** The anchor a vehicle's capture stands on, as a map key; null for a vehicle off the map or gone. */
+function vehicleAnchorKey(world: World, e: Entity): string | null {
+  if (!world.has(e, Vehicle)) return null;
+  const anchor = vehicleAnchor(world, e);
+  return anchor === null ? null : `${anchor.hx},${anchor.hy}`;
 }

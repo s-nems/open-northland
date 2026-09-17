@@ -6,8 +6,10 @@
 A vehicle's request list in the original is its wanted amounts: carriers serve any vehicle with
 `wanted > reserved`, searching loose goods within radius 40 of the door, then a house, then the
 guide network, and carry one unit to the door; unload flushes one reserved unit at a time
-([VEHICLES.md](../../formats/VEHICLES.md#cargo)). Open Northland has neither the request list nor
-a carrier drive for vehicles.
+([VEHICLES.md](../../formats/VEHICLES.md#cargo)). `VehicleStock` holds the per-good current, wanted
+and reserved bytes and `modifyVehicleStock` (`systems/vehicles/stock.ts`) already applies the
+`Stock_ModifyAmount` clamp, the below-zero refusal, the dish aliasing and wanted-follows-actual;
+Open Northland has neither the seat commands nor a carrier drive for vehicles.
 
 ## Scope
 
@@ -18,8 +20,6 @@ a carrier drive for vehicles.
   deliver at the door node through a `vehicleLoad` effect; `vehicleUnload` takes a reserved unit out
   to the nearest store or the ground. `noVehicleForWork` / `vehicleNoCarrier` messages when a
   vehicle waits and no carrier exists.
-- `Stock_ModifyAmount` semantics: clamp to capacity, refuse below zero, wanted follows actual when
-  not riding a carrier.
 - Mission result `AddGoodsToVehicle` (full amount per matching vehicle, wanted raised) and the
   `[StaticObjects]` `addgoods` path (reserved and current only) on top of the entity's stock.
 

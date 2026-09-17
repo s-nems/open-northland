@@ -374,6 +374,34 @@ export const economyContent = {
       ],
     },
   ],
+  // The three vehicle shapes of `vehicletypes.ini` with their real slot, size and pool values: a cart
+  // (footprint one node, cargo), a ship (disc radius 2, passengers, a door four steps off the bow, one
+  // carried vehicle) and the catapult (radius 1, no cargo). The cart and ship carry wood, plank and
+  // food_simple; bread aliases onto food_simple the way the original's dishes do.
+  vehicles: [
+    {
+      typeId: 1,
+      id: 'handcart',
+      jobId: 50,
+      stockSlots: 15,
+      logicSize: 0,
+      cargoGoods: [1, 2, 3],
+      hitpoints: 1000,
+    },
+    {
+      typeId: 3,
+      id: 'ship_small',
+      jobId: 52,
+      stockSlots: 50,
+      passengerSlots: 19,
+      logicSize: 2,
+      cargoGoods: [1, 2, 3],
+      passengerVector: { direction: 2, distance: 4 },
+      vehicleSlots: 1,
+      hitpoints: 5000,
+    },
+    { typeId: 5, id: 'catapult', jobId: 54, stockSlots: 0, logicSize: 1, hitpoints: 3000 },
+  ],
   landscape: [
     // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag - `land` alone
     // carries it); barren is its walk+build twin that rejects the plough (sand/beach/desert stone).

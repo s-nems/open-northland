@@ -3,7 +3,10 @@
 **Area:** sim · **Focus:** `packages/sim/src/systems/vehicles`, `core/commands` · **Priority:** P2
 **Blocked by:** [land movement](vehicles-4-land-movement.md)
 
-No component holds riders and no command attaches a settler to a vehicle. The rules
+`Vehicle.passengers` holds the slots with the commander last (`seatPassenger` / `unseatPassenger`
+in `packages/sim/src/components/vehicle.ts` fill and promote without the job gate), and a removed
+vehicle already sets its riders down on the door node or drowns them (`systems/vehicles/remove.ts`);
+no command attaches a settler. The rules
 ([VEHICLES.md](../../formats/VEHICLES.md#crew)): attach gate (same player, job in
 `passengerJobs`, commander slot first, then a free ordinary slot, no distance check), eviction from
 the work house, walk to the vehicle, commander promotion on detach, boarding only on the door

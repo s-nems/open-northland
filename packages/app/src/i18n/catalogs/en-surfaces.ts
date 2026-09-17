@@ -484,7 +484,7 @@ export const enSurfaces = {
     voiceRoles: { scream: 'Scream', chatter: 'Chatter', ok: 'Ok', no: 'No' },
     children: 'Children',
     actionsCatalog: {
-      boatPlaced: { label: 'Launch boat', trigger: 'when a boat is created' },
+      vehicleCreated: { label: 'Finish vehicle', trigger: 'when a cart, ship or catapult is created' },
       goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },
       buildingFinished: {
         label: 'Finish construction',

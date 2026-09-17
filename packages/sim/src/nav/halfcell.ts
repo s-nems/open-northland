@@ -191,8 +191,9 @@ export function forEachRingNode(
 
 /** The six map-point directions in turning order; a diagonal lands on the row's parity the way
  *  {@link hexDistance} counts it, so every step is one map point. */
-type HexDirection = 'east' | 'southEast' | 'southWest' | 'west' | 'northWest' | 'northEast';
-const RING_SIDES: readonly HexDirection[] = [
+export type HexDirection = 'east' | 'southEast' | 'southWest' | 'west' | 'northWest' | 'northEast';
+/** The directions in turning order, so a facing index and a direction offset add modulo six. */
+export const HEX_DIRECTIONS: readonly HexDirection[] = [
   'east',
   'southEast',
   'southWest',
@@ -200,9 +201,11 @@ const RING_SIDES: readonly HexDirection[] = [
   'northWest',
   'northEast',
 ];
+const RING_SIDES = HEX_DIRECTIONS;
 const RING_START: HexDirection = 'northWest';
 
-function stepHex(from: HalfCellNode, direction: HexDirection): HalfCellNode {
+/** The map point one step from `from` in `direction`. */
+export function stepHex(from: HalfCellNode, direction: HexDirection): HalfCellNode {
   const { hx, hy } = from;
   switch (direction) {
     case 'east':

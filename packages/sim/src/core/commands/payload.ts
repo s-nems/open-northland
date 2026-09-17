@@ -137,10 +137,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   marry: { required: { entity: 'integer' } },
   moveUnit: { required: { entity: 'integer', ...NODE } },
   openChest: { required: { entity: 'integer', chest: 'integer' } },
-  placeBoat: {
-    required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
-    optional: { owner: 'integer' },
-  },
   placeBuilding: {
     required: { buildingType: 'integer', ...NODE, tribe: 'integer' },
     optional: {
@@ -205,6 +201,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setSignpostNavigation: { required: { enabled: 'boolean' } },
   setStance: { required: { entity: 'integer', mode: 'integer' } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },
+  createVehicle: {
+    required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
+    optional: { owner: 'integer', missionId: 'integer' },
+  },
   spawnAnimalHerd: {
     required: { tribe: 'integer', ...NODE },
     optional: { count: 'integer', missionId: 'integer', owner: 'integer' },

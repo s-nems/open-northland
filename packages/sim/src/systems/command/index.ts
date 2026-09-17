@@ -59,9 +59,10 @@ import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisade
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
+import { createVehicle } from '../vehicles/index.js';
 import { authorizedCommand } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
-import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
+import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
 /**
@@ -98,8 +99,8 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'spawnAnimalHerd':
       spawnAnimalHerd(world, ctx, command);
       return;
-    case 'placeBoat':
-      placeBoat(world, ctx, command);
+    case 'createVehicle':
+      createVehicle(world, ctx, command);
       return;
     case 'placeResource':
       placeResource(world, ctx, command);

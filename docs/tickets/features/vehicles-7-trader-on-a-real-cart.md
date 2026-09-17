@@ -13,7 +13,7 @@ the trade tabs of the vehicle window exist only for carts
 ## Scope
 
 - Delete `cargo` from `TradeRoute`; `cartLoad` / `cartUnload` operate on the attached vehicle's
-  stock; a trader without a commanded cart idles with the `noVehicleForWork` message (the original's
+  `VehicleStock` through `modifyVehicleStock`, the one hold model; a trader without a commanded cart idles with the `noVehicleForWork` message (the original's
   exact idle behaviour is open; name the approximation).
 - `MoveVehicleNearHouse`: before loading at a stop, the trader moves the cart to a node within 5
   steps of the house (search radius 20) and detaches when no node exists.

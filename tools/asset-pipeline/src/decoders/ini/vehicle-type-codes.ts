@@ -13,6 +13,17 @@ export const VEHICLE_TYPE_CODES = {
   VEHICLE_TYPE_CART_NO_OX: 6,
 } as const satisfies Readonly<Record<string, number>>;
 
+/**
+ * The engine's hit-point table indexed by vehicle type (byte-verified, docs/formats/VEHICLES.md): both
+ * ships 5000, the catapult 3000, every cart {@link VEHICLE_HITPOINTS_DEFAULT}.
+ */
+export const VEHICLE_HITPOINTS_DEFAULT = 1000;
+export const VEHICLE_HITPOINTS_BY_TYPE: ReadonlyMap<number, number> = new Map([
+  [VEHICLE_TYPE_CODES.VEHICLE_TYPE_SHIP_SMALL, 5000],
+  [VEHICLE_TYPE_CODES.VEHICLE_TYPE_SHIP_BIG, 5000],
+  [VEHICLE_TYPE_CODES.VEHICLE_TYPE_CATAPULT, 3000],
+]);
+
 /** `logicdefines.inc` places every `JOB_TYPE_VEHICLE_*` at its `VEHICLE_TYPE_*` plus this offset
  *  (`JOB_TYPE_VEHICLE_CART_HAND 50` .. `JOB_TYPE_VEHICLE_CART_NO_OX 55`). */
 export const VEHICLE_JOB_ID_OFFSET = 49;

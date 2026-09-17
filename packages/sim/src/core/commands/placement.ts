@@ -5,7 +5,6 @@ import type { Entity } from '../../ecs/world.js';
  *  half-cell nodes. */
 export type PlacementCommand =
   | PlaceBuildingCommand
-  | PlaceBoatCommand
   | PlaceResourceCommand
   | PlacePalisadeCommand
   | DropGoodCommand
@@ -117,22 +116,6 @@ export type PlayerPlaceBuildingCommand = PlaceBuildingFields & {
 
 /** A `placeBuilding` as the handler receives it, authored options included. */
 export type PlaceBuildingCommand = PlaceBuildingFields & AuthoredPlaceBuildingFields;
-
-/**
- * Place a boat hull of `vehicleType` at (x,y) for `tribe`: a {@link Vehicle} carrying an empty
- * {@link Stockpile} of the ship type's `stockSlots`. Gated by the tribe's ship-unlock tech graph
- * (`tribeShipsUnlocked`), so a cart, a catapult, or a not-yet-unlocked ship is skipped.
- */
-export interface PlaceBoatCommand {
-  readonly kind: 'placeBoat';
-  readonly vehicleType: number;
-  readonly x: number;
-  readonly y: number;
-  readonly tribe: number;
-  /** The player that owns this boat (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). An explicit
-   *  out-of-range value rejects the command; omit it for a neutral hull. Orthogonal to `tribe`. */
-  readonly owner?: number;
-}
 
 /**
  * Place a resource node of `good` at (x,y) through the one mutation seam, so a node dropped while the

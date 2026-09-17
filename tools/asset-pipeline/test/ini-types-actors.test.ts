@@ -155,6 +155,7 @@ describe('extractVehicles', () => {
         cargoGoods: [25, 21],
         passengerJobs: [],
         vehicleSlots: 0,
+        hitpoints: 1000,
         source: src,
       },
       {
@@ -171,6 +172,8 @@ describe('extractVehicles', () => {
         passengerJobs: [25, 7, 86],
         vehicleSlots: 1,
         passengerVector: { direction: 2, distance: 4 },
+        // A synthetic type id the hit-point table does not list takes the carts' pool.
+        hitpoints: 1000,
         source: src,
       },
       // No slot/size/logicgood lines -> schema defaults (0 / empty) for all.
@@ -185,6 +188,7 @@ describe('extractVehicles', () => {
         cargoGoods: [],
         passengerJobs: [],
         vehicleSlots: 0,
+        hitpoints: 1000,
         source: src,
       },
     ]);
@@ -206,6 +210,7 @@ describe('extractVehicles', () => {
       passengerJobs: [],
       draggingAnimalTribe: 10,
       transformVehicleType: 2,
+      hitpoints: 1000,
     });
     expect(withOx).toMatchObject({
       typeId: 2,
@@ -215,6 +220,13 @@ describe('extractVehicles', () => {
       passengerJobs: [25, 24],
     });
     expect(withOx).not.toHaveProperty('draggingAnimalTribe');
+  });
+
+  it('stamps the engine hit-point table by type: ships 5000, the catapult 3000', () => {
+    const ini = '[vehicletype]\ntype 3\nname "ship small"\n[vehicletype]\ntype 5\nname "catapult"\n';
+    const [ship, catapult] = extractVehicles(parseIniSections(ini), { file: 'vehicletypes.ini' });
+    expect(ship?.hitpoints).toBe(5000);
+    expect(catapult?.hitpoints).toBe(3000);
   });
 
   it('throws when two records slug alike and no define tells them apart', () => {

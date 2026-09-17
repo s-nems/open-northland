@@ -20,8 +20,8 @@ needs no port ([VEHICLES.md](../../formats/VEHICLES.md#ships-and-docking)).
   the dock action, set moored. Arrival raises the docked message; no node raises `vehicleNoPath`.
 - The door node of a moored ship is the mooring point; unload people and detach use it. Leaving the
   mooring clears the moored flag.
-- A ship destroyed at sea kills its crew (entity ticket) and a sunk ship's passengers count as
-  dead for goals.
+- A ship destroyed at sea already kills its crew (`removeVehicle`); a sunk ship's passengers must
+  count as dead for goals.
 - Mission results `SendVehicle` and `DockVehicle` reuse the seat commands after the radius-9 snap.
 
 Out of scope: the sea trader (an empty stub in the original), AI use of ships.

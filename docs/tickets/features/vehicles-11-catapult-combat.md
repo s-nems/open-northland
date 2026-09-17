@@ -21,9 +21,10 @@ constant against the catapult but has no launcher that is a vehicle, and no targ
   `dist * 8 / speed`, one delayed hit covering humans, animals, houses, vehicles and landscape,
   including the owner's own (`hitself`); the commander gains experience for weapon 21; only weapon 21
   demolishes landscape of main type 4 (walls: subtype `> 2` steps down, else cleared).
-- Damage to vehicles from any weapon: `damage[6] * 200 / (200 - min(armour, 100))`, armour 0,
-  `vehicleAttacked` message; soldiers can be ordered to attack a vehicle (`attackVehicle` ring order);
-  towers and archers include vehicles in their target scan.
+- Damage to vehicles from any weapon: `targetMaterial` already reads the `damage[6]` column for a
+  `Vehicle` and the cleanup removes it at 0 hit points; add the `vehicleAttacked` message, let
+  soldiers be ordered to attack a vehicle (`attackVehicle` ring order), and include vehicles in the
+  tower and archer target scans.
 - Mission goal `VehiclesDied`.
 
 ## Verify

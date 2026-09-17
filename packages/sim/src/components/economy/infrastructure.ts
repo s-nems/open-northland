@@ -103,10 +103,3 @@ export const Upgrading = defineComponent<{
  */
 export const Damaged = defineComponent<{ lastHitTick: number | null }>('Damaged', 'economy');
 
-/**
- * A placed vehicle hull - a ship put on the map as a movable stockpile rather than a static building. It
- * owns a {@link Stockpile} the way a headquarters does, and carries the same `(type, tribe)` shape a
- * {@link Building} does, so a hull hashes and is queried exactly like one. Only an unlocked ship type is
- * ever stamped, so a `Vehicle` always references a ship its tribe may field.
- */
-export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('Vehicle', 'economy');

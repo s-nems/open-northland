@@ -1,17 +1,19 @@
 # Draw vehicles with the original cart, catapult and ship sprites
 
 **Area:** render, app · **Focus:** `packages/render/src/data/scene`, `packages/app/src/content` · **Priority:** P2
-**Blocked by:** [entity](vehicles-2-vehicle-entity.md)
 
-`DrawKind` has no vehicle member; `snapshot-readers/classify.ts` lets a `Vehicle` entity fall
-through to `stockpile`, so a boat draws as a goods heap. The atlases are already baked
+`DrawKind` has no vehicle member; `snapshot-readers/classify.ts` returns null for a `Vehicle`
+entity (`packages/sim/src/components/vehicle.ts`), so a spawned vehicle draws nothing. The
+atlases are already baked
 (`content/bobs/cr_veh_body_00.*`, `ls_vehicles.human_ship01.*`) but nothing binds them. Graphics
 facts in [VEHICLES.md](../../formats/VEHICLES.md#graphics).
 
 ## Scope
 
 - Add `vehicle` to `DrawKind`, classify by the `Vehicle` component, assemble one draw item per
-  vehicle with facing, task and load state, and a fog ghost like buildings.
+  vehicle with facing, task and load state (`Simulation.vehicleView` carries them), and a fog ghost
+  like buildings. Draw the wreck decals from the `vehicleDestroyed` event's `ruins` nodes the way the
+  skeleton marks follow `settlerDied`.
 - Bind sprites from the IR's `vehicleGraphics` rows (one per tribe and type: body atlas, palette,
   `clips` per action and `gaits` per hauled good, all as bob ids): handcart wait, bullcart wait/walk
   with the oxcart palette for type 2 and the empty wait for type 6, catapult drive/attack, ship
@@ -28,6 +30,6 @@ facts in [VEHICLES.md](../../formats/VEHICLES.md#graphics).
 
 ## Verify
 
-Render snapshot tests for each type and facing; the `?scene=vehicles` acceptance scene from the
-entity ticket shows every type; browser check that no vehicle draws as a heap; render and app
-gates from `docs/TESTING.md`.
+Render snapshot tests for each type and facing; a new `?scene=vehicles` acceptance scene spawning
+every type through `createVehicle`; browser check that every vehicle draws; render and app gates
+from `docs/TESTING.md`.

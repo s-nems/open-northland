@@ -1,0 +1,11 @@
+export { createVehicle } from './create.js';
+export { type VehicleIndex, vehicleIndex } from './registry.js';
+export {
+  removeVehicle,
+  removeVehiclesOf,
+  VEHICLE_CARGO_SPILL_RADIUS,
+  VEHICLE_RUIN_PERCENT,
+  type VehicleRemovalCause,
+} from './remove.js';
+export { modifyVehicleStock, vehicleLineCap, vehicleStockGood } from './stock.js';
+export { type VehicleStockView, type VehicleView, vehiclesOf, vehicleView } from './view.js';

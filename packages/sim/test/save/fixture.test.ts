@@ -26,6 +26,7 @@ const HQ_BUILDING = 1;
 const WOOD_GOOD = 1;
 const SHOES_GOOD = 8;
 const TOOL_GOOD = 11;
+const HANDCART = 1;
 const MAP_CELLS = 8;
 /** A reveal in the far corner, so the mask holds the revealed byte beside the scout's sight. */
 const REVEAL_POINT = { hx: 14, hy: 14 };
@@ -34,7 +35,7 @@ const FIXTURE_TICKS = 24;
 const FIXTURE_MAP_ID = 'fixture';
 
 /** The world the fixture freezes: every section populated - a shared-vision pair and its fog mask
- *  from a scout and a script-style reveal, several component stores, an advanced rng stream, and one
+ *  from a scout and a script-style reveal, several component stores including a vehicle's, an advanced rng stream, and one
  *  pending envelope. */
 function fixtureSim(): Simulation {
   const sim = new Simulation({ seed: 9, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
@@ -53,6 +54,7 @@ function fixtureSim(): Simulation {
   sim.enqueueSetup({ kind: 'dropGood', good: WOOD_GOOD, x: 6, y: 6, amount: 3 });
   sim.enqueueSetup({ kind: 'dropGood', good: SHOES_GOOD, x: 6, y: 8, amount: 1 });
   sim.enqueueSetup({ kind: 'dropGood', good: TOOL_GOOD, x: 6, y: 10, amount: 1 });
+  sim.enqueueSetup({ kind: 'createVehicle', vehicleType: HANDCART, x: 12, y: 4, tribe: VIKING, owner: P0 });
   sim.run(FIXTURE_TICKS);
   sim.fog?.revealArea(P0, REVEAL_POINT, REVEAL_RANGE); // after the setup pass: joining a group drops masks
   const scout = [...sim.world.query(Settler)][0];

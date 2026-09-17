@@ -4,7 +4,6 @@ import {
   Position,
   Stockpile,
   setStockAmount,
-  Vehicle,
 } from '../../../../../components/index.js';
 import type { Fixed } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
@@ -32,13 +31,14 @@ export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: numbe
  * good on that tile up to {@link MAX_GROUND_STACK}. A loose pile carries no {@link GroundDrop} or
  * {@link Building} marker, so it is neither a pickup source nor a delivery sink and simply rests there.
  *
- * The pile to stack onto is the first match in ascending id order, a which-entity-wins pick that must be
- * canonical. A heap of a different good is left alone, so no good is ever overwritten.
+ * The pile to stack onto is the first {@link isYardHeap} in ascending id order, a which-entity-wins pick
+ * that must be canonical; the predicate is shared with {@link stackOntoTile}, so a drop beside a store or
+ * a vehicle starts a ground pile. A heap of a different good is left alone, so no good is ever overwritten.
  */
 export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {
   const at = nodeOfPosition(x, y);
   for (const e of stockpilesAtNode(world, at.hx, at.hy)) {
-    if (world.has(e, GroundDrop) || world.has(e, Building)) continue;
+    if (!isYardHeap(world, e)) continue;
     const stock = world.get(e, Stockpile); // indexed on (Stockpile, Position), so both are present
     const pos = world.get(e, Position);
     if (pos.x !== x || pos.y !== y) continue; // the same node, a different exact Position
@@ -109,7 +109,7 @@ const SPILL_MAX_RADIUS = 32;
 /**
  * Scatter `amount` units of `good` onto the ground around `from`, nearest tile first, skipping unwalkable
  * tiles, tiles holding a different good, and whatever `accept` rejects. Returns how many units reached the
- * ground, short of `amount` only when every tile within the bound is saturated.
+ * ground, short of `amount` only when every tile within `maxRadius` is saturated.
  *
  * Rings expand outward and each ring's tiles are visited in ascending {@link NodeId} order, a canonical
  * which-tile-wins pick.
@@ -121,12 +121,13 @@ export function spillOverRings(
   good: number,
   amount: number,
   accept?: (node: NodeId) => boolean,
+  maxRadius: number = SPILL_MAX_RADIUS,
 ): number {
   let left = amount;
   const { x: cx, y: cy } = terrain.coordsOf(from);
   // Refilled per ring and fully spilled before the next one, so one buffer serves the whole walk.
   const ring: NodeId[] = [];
-  for (let r = 0; r <= SPILL_MAX_RADIUS && left > 0; r++) {
+  for (let r = 0; r <= maxRadius && left > 0; r++) {
     ring.length = 0;
     const offsets = ringOffsetCount(r);
     for (let i = 0; i < offsets; i++) {
@@ -149,12 +150,11 @@ export function spillOverRings(
 /**
  * Destroy a loose ground pile a pickup or a bite just emptied, so a long game does not accrete a dead heap
  * per felled tree or delivered load. A lingering zero heap would mis-render as a flag and read as free but
- * unfillable to the yard scan. A {@link Building} warehouse and a {@link Vehicle} hull are persistent
- * stores and keep their empty stock. Iterating `amounts` is order-independent because the test is a pure
- * "holds nothing" predicate.
+ * unfillable to the yard scan. A {@link Building} warehouse is a persistent store and keeps its empty
+ * stock. Iterating `amounts` is order-independent because the test is a pure "holds nothing" predicate.
  */
 export function reapEmptyLoosePile(world: World, pile: Entity): void {
-  if (world.has(pile, Building) || world.has(pile, Vehicle)) return;
+  if (world.has(pile, Building)) return;
   const stock = world.tryGet(pile, Stockpile);
   if (stock === undefined) return;
   for (const amount of stock.amounts.values()) if (amount > 0) return;

@@ -6,11 +6,14 @@ import {
   Position,
   ResourceFootprint,
   Signpost,
+  Vehicle,
 } from '../../../components/index.js';
 import { landscapePlacementRevision } from '../../../components/landscape.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
+import { hexDisc, vehicleAnchor } from '../vehicle-footprint.js';
 
 // The single definition of what a standing entity blocks, as (cell, channel) pairs. Every placement rule
 // in this folder - building (./building.ts) and work flag (./work-flag/) - is stamped from this ONE store
@@ -20,10 +23,10 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
 /**
  * What a standing entity contributes to a cell - merged across entity KIND within each channel, because
  * every rule treats resource and building the same within one:
- *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
- *    building candidate's RESERVED zone (the "minimum distance from a node/wall"; only a rival's, for a
- *    signpost), a wall's body and any work flag. A door outside the family body is not stamped, so it
- *    stays open ground for a flag.
+ *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells, parked
+ *    vehicle discs. Rejects a building candidate's RESERVED zone (the "minimum distance from a node/wall";
+ *    only a rival's, for a signpost), a wall's body and any work flag. A door outside the family body is
+ *    not stamped, so it stays open ground for a flag.
  *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY, whose walls may not
  *    sit in a resource's build margin; still open ground for a wall and a work flag.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
@@ -106,6 +109,18 @@ function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): voi
   visit(hx, hy, OBSTACLE);
 }
 
+/** One parked vehicle's contribution: its `logicSize` hex disc as OBSTACLE cells, so no house rises over
+ *  it (the original refuses a vehicle site with a parked vehicle inside; a house site is the named
+ *  approximation, since a vehicle's disc is a walk-block like a wall). */
+export function vehicleBlockerCells(world: World, content: ContentSet, e: Entity, visit: BlockerVisit): void {
+  const vehicle = world.tryGet(e, Vehicle);
+  const anchor = vehicleAnchor(world, e);
+  if (vehicle === undefined || anchor === null) return;
+  const type = contentIndex(content).vehicles.get(vehicle.vehicleType);
+  if (type === undefined) return;
+  for (const { hx, hy } of hexDisc(anchor, type.logicSize)) visit(hx, hy, OBSTACLE);
+}
+
 /** One delivery flag's contribution: its cell on the MARKER channel. */
 export function markerBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
@@ -125,6 +140,10 @@ export interface BlockerStore {
  *  incremental stamp has to guard separately from membership. */
 export const BUILDING_STORE: BlockerStore = { component: Building, cells: buildingBlockerCells };
 
+/** Named apart because a vehicle MOVES in place: a drive writes `Vehicle` through `World.mut` with no
+ *  membership entry, so an incremental stamp has to guard its anchor separately from membership. */
+export const VEHICLE_STORE: BlockerStore = { component: Vehicle, cells: vehicleBlockerCells };
+
 /** The standing blockers, markers excluded: a flag MOVES, so its layer is re-derived rather than
  *  journal-replayed. */
 export const BLOCKER_STORES: readonly BlockerStore[] = [
@@ -136,10 +155,11 @@ export const BLOCKER_STORES: readonly BlockerStore[] = [
   BUILDING_STORE,
   { component: Palisade, cells: (world, _content, e, visit) => palisadeBodyCells(world, e, visit) },
   { component: Signpost, cells: (world, _content, e, visit) => signpostBlockerCells(world, e, visit) },
+  VEHICLE_STORE,
 ];
 
 /**
- * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and - under
+ * Enumerate every (cell, channel) the world's standing resources, buildings, signposts, vehicles and - under
  * `'with-markers'` - delivery flags contribute. Consumers filter by channel; a cell may be visited on more
  * than one channel, and every consumer takes set unions or mask writes with no pick, so store-iteration
  * order cannot change any later answer.
@@ -159,18 +179,20 @@ export function eachBlockerCell(
 }
 
 /**
- * A per-world version of the placement-blocker inputs: the `Building`, `Palisade`, `ResourceFootprint` and
- * `Signpost` membership generations, the scripted landscape placement revision, plus the `Building` VALUE
- * generation, since the home tier upgrade swaps `buildingType` in place invisibly to membership. That
- * swap cannot change the cells today (`familyBody` and `reserved` are level-chain unions), so the value
- * term only guards a future per-level footprint. A wall's placement body changes only by a re-add, so its
- * in-place claim and build writes stay out. It moves when those cells can change rather than every tick.
+ * A per-world version of the placement-blocker inputs: the `Building`, `Palisade`, `ResourceFootprint`,
+ * `Signpost` and `Vehicle` membership generations, the scripted landscape placement revision, plus the
+ * `Building` and `Vehicle` VALUE generations, since the home tier upgrade swaps `buildingType` in place
+ * invisibly to membership. That swap cannot change the cells today (`familyBody` and `reserved` are
+ * level-chain unions), so the value term only guards a future per-level footprint. A wall's placement
+ * body changes only by a re-add, so its in-place claim and build writes stay out. It moves when those
+ * cells can change rather than every tick.
  *
  * Exactness rests on buildings and footprinted objects never MOVING once placed, so a stored entity's
- * cells are fixed. Completeness is load-bearing: a memo keyed on this gates a placement, so a missed input
- * is a decision on a stale set. A string, so the monotonic counters compose with no overflow reasoning;
- * never hashed, never a sim decision.
+ * cells are fixed, and on a vehicle moving only through a `World.mut(e, Vehicle)` write. Completeness
+ * is load-bearing: a memo keyed on this gates a placement, so a missed input is a decision on a stale
+ * set. A string, so the monotonic counters compose with no overflow reasoning; never hashed, never a
+ * sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${landscapePlacementRevision(world)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${world.componentGeneration(Vehicle)}.${world.componentValueGeneration(Vehicle)}.${landscapePlacementRevision(world)}`;
 }

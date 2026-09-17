@@ -21,8 +21,28 @@ export interface SettlerEquipment {
   readonly misc?: ReadonlyArray<SettlerEquipmentSlot | null>;
 }
 
-/** Commands that create living settlers or wildlife herds. */
+/**
+ * Put a vehicle of `vehicleType` on the map at half-cell node (x,y) for `tribe`, at full hit points
+ * with an empty hold and no crew. A ship spawns moored when land lies within its door distance. Trusted
+ * only: a yard's finished site, a decoded map's `setvehicle`, a chest reward. A `vehicleType` the
+ * content lacks is skipped.
+ */
+export interface CreateVehicleCommand {
+  readonly kind: 'createVehicle';
+  readonly vehicleType: number;
+  readonly x: number;
+  readonly y: number;
+  readonly tribe: number;
+  /** The owning player (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit for a vehicle nobody
+   *  commands. */
+  readonly owner?: number;
+  /** The {@link MissionObjectId} to stamp; omit or 0 for a vehicle no script addresses. */
+  readonly missionId?: number;
+}
+
+/** Commands that create living settlers, wildlife herds or vehicles. */
 export type SpawnCommand =
+  | CreateVehicleCommand
   | {
       /**
        * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). Every settler, civilians included,

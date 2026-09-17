@@ -84,8 +84,8 @@ describe('buildSoundGalleryModel', () => {
     expect(finished?.clips).toEqual(['jingles/jingles_housebuilt.wav']);
   });
 
-  it('binds boat placement and production to their positional groups', () => {
-    expect(model.actions.find((a) => a.label === 'Zwodowanie łodzi')?.sound).toBe('Hammer Wood');
+  it('binds vehicle completion and production to their positional groups', () => {
+    expect(model.actions.find((a) => a.label === 'Ukończenie pojazdu')?.sound).toBe('Hammer Wood');
     expect(model.actions.find((a) => a.label === 'Produkcja towaru')?.sound).toBe('Carpenter Saw');
   });
 
@@ -140,7 +140,7 @@ describe('buildSoundGalleryModel', () => {
     expect(m.voices).toHaveLength(3);
     expect(m.voices.flatMap((v) => v.groups).every((g) => g.clips.length === 0)).toBe(true);
     // A spatial action whose group is missing resolves to an empty clip list (still shown for auditing).
-    expect(m.actions.find((a) => a.label === 'Zwodowanie łodzi')?.clips).toEqual([]);
+    expect(m.actions.find((a) => a.label === 'Ukończenie pojazdu')?.clips).toEqual([]);
     expect(m.cues).toEqual([]);
   });
 });

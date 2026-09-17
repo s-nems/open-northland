@@ -7,6 +7,7 @@ import {
   Equipment,
   Palisade,
   type SettlerIdentity,
+  Vehicle,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -80,6 +81,7 @@ function withReach(weapon: WeaponType): { minRange: number; maxRange: number; we
  *  wears). */
 export function targetMaterial(world: World, ctx: SystemContext, target: Entity): number {
   if (world.has(target, Building) || world.has(target, Palisade)) return ARMOR_MATERIAL.HOUSE;
+  if (world.has(target, Vehicle)) return ARMOR_MATERIAL.VEHICLE;
   const worn = world.tryGet(target, Equipment)?.armor;
   if (worn != null) return armorMaterialForGood(ctx.content, worn.goodType) ?? ARMOR_MATERIAL.NONE;
   const armor = world.tryGet(target, Armor);

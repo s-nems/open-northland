@@ -21,7 +21,7 @@ export {
   setupCommand,
 } from './envelope.js';
 export type { PlaceBuildingCommand } from './placement.js';
-export type { SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
+export type { CreateVehicleCommand, SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
 export { type GroupMember, type GroupWorker, orderedSettler } from './unit-orders.js';
 
 /**

@@ -149,5 +149,15 @@ export {
 } from './signposts/index.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './spawn/index.js';
 export { isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
+// createVehicle stands a vehicle in pre-tick assembly the way the command does; the stock seam is the
+// one hold model the cargo and trader tickets build on.
+export {
+  createVehicle,
+  modifyVehicleStock,
+  removeVehicle,
+  type VehicleStockView,
+  type VehicleView,
+  vehicleStockGood,
+} from './vehicles/index.js';
 export { cellOfNode } from './vision/gates.js';
 export { SCOUT_VISION_NODES } from './vision/system.js';

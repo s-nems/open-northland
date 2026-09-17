@@ -12,7 +12,6 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { exportedGoodForm } from '../readviews/food.js';
-import { vehicleMayCarry } from '../readviews/vehicles.js';
 import { constructionBillOf } from './construction.js';
 
 /** What a position-less fixture store advertises, so a mapless fixture still accepts deposits. */
@@ -27,8 +26,7 @@ export const MAX_GROUND_STACK = 5;
 
 /**
  * The total per-good ceiling of a store's stockpile, not the room left: callers subtract what is on hand.
- * A boat hull applies its whole-hold `stockSlots` total as a per-good bound (approximation: the cap shared
- * across goods is not modelled).
+ * A vehicle is no `Stockpile` store; its hold is `VehicleStock`, served by the vehicle systems.
  */
 export function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
   const building = world.tryGet(store, Building);
@@ -45,16 +43,10 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     }
     return contentIndex(ctx.content).stockSlotCapacityByBuilding.get(type.typeId)?.get(goodType) ?? 0;
   }
-  const hull = world.tryGet(store, Vehicle);
-  if (hull !== undefined) {
-    const type = contentIndex(ctx.content).vehicles.get(hull.vehicleType);
-    if (type === undefined) return 0;
-    return vehicleMayCarry(type, goodType) ? type.stockSlots : 0;
-  }
   const stock = world.tryGet(store, Stockpile);
   if (stock !== undefined && world.has(store, Position)) {
-    // Deliberately broader than isYardHeap: the ground clamp applies to every building-less, hull-less
-    // pile, including a flag pile or an uncollected trunk that no sink scan would pick.
+    // Deliberately broader than isYardHeap: the ground clamp applies to every building-less pile,
+    // including a flag pile or an uncollected trunk that no sink scan would pick.
     const held = lowestStockedGood(stock);
     if (held !== null && held !== goodType) return 0; // a ground heap never mixes goods
     return MAX_GROUND_STACK;
@@ -94,7 +86,9 @@ export function lowestStockedGood(stock: { amounts: ReadonlyMap<number, number> 
 }
 
 /** Whether `e` is a heap lying on the ground: a positioned stockpile that is neither a building store, a
- *  wall's construction stock nor a boat hull, whatever marker it carries. */
+ *  wall's construction stock nor a vehicle, whatever marker it carries. A vehicle's hold is
+ *  `VehicleStock`, never a `Stockpile`; the exclusion pins that a hand drop beside one can never land in
+ *  it. */
 export function isLoosePile(world: World, e: Entity): boolean {
   return (
     world.has(e, Stockpile) &&

@@ -49,3 +49,11 @@ export {
   unstampResourceFootprint,
 } from './resources.js';
 export { ROUTE_REGION_POCKET_CAP, routeRegions } from './route-regions.js';
+export { vehicleBlockedCells } from './vehicle-blocked-cache.js';
+export {
+  hexDisc,
+  vehicleAnchor,
+  vehicleDoorNode,
+  vehicleDoorPoint,
+  vehicleFootprintNodes,
+} from './vehicle-footprint.js';

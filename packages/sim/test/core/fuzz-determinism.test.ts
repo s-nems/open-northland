@@ -192,6 +192,8 @@ const WOMAN_TYPE = 7;
 const JOB_TYPES = [0, 1, 2, 15, 27, 36, WOMAN_TYPE, INVALID_TYPE] as const;
 /** Herd tribes: bear pack / bee / boar / cow / deer, the hitpoints-0 decorative butterfly (spawns
  *  nothing), plus two non-animals (viking, unknown) - skipped. */
+/** A cart, a ship and an id the fixture lacks. */
+const VEHICLE_TYPES = [1, 3, INVALID_TYPE] as const;
 const HERD_TRIBES = [10, 11, 12, 13, 14, 15, VIKING, INVALID_TYPE] as const;
 /** The viking woodcutter's weapon (test_axe) and leather armor - the combatant-spawn extras. */
 const AXE = 7;
@@ -486,15 +488,16 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(3) === 0 ? { count: pick(rng, [0, 1, 2, -5] as const) } : {}),
       };
     case 3:
-      // The fixture ships no vehicles, so EVERY placeBoat is the skipped-but-logged path - replay
-      // must reproduce the same state through a log full of no-op commands.
+      // A cart, a ship or an unknown type: the accept path stands a vehicle whose hold, crew slots and
+      // pool must hash, save and replay identically; the invalid one is the skipped-but-logged path.
       return {
-        kind: 'placeBoat',
-        vehicleType: pick(rng, [1, INVALID_TYPE]),
+        kind: 'createVehicle',
+        vehicleType: pick(rng, VEHICLE_TYPES),
         x,
         y,
         tribe: VIKING,
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
+        ...(rng.int(3) === 0 ? { missionId: rng.int(4) } : {}),
       };
     case 4:
       // Random target ids hit live buildings, live NON-buildings (settlers, herds - must be

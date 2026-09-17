@@ -9,6 +9,7 @@ import {
   recordHumanDeath,
   Settler,
   Upgrading,
+  Vehicle,
   Wedding,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
@@ -23,6 +24,7 @@ import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js
 import { releaseWallBreaches } from '../palisades/breach.js';
 import { releasePalisadeReservation } from '../palisades/reservation.js';
 import { isSoldierJob } from '../readviews/index.js';
+import { removeVehicle } from '../vehicles/remove.js';
 
 /**
  * Destroy every entity whose {@link Health} pool has been drained to 0 and announce it with a
@@ -38,10 +40,12 @@ export const cleanupSystem: System = (world, ctx) => {
   }
   dead.sort((a, b) => a - b);
   for (const e of dead) {
+    if (!world.isAlive(e)) continue; // a rider a sinking ship took down earlier in this loop
     // A drained building goes through the demolish path, not the settler-death path: it holds no
     // marriage, flag, or starvation state and must not fire a `settlerDied` stinger.
     if (world.has(e, Building)) razeBuilding(world, ctx, e);
     else if (world.has(e, Palisade)) razePalisade(world, ctx, e);
+    else if (world.has(e, Vehicle)) removeVehicle(world, ctx, e, 'destroyed');
     else reap(world, ctx, e);
   }
 };
@@ -89,8 +93,8 @@ export function razePalisade(world: World, ctx: SystemContext, e: Entity): void 
 
 /** Announce a combatant's death, count it against its owner, remove it from the world, and leave its
  *  gear on the ground where it fell. The event is emitted before the destroy so its `Owner` and
- *  `Position` are still readable. */
-function reap(world: World, ctx: SystemContext, e: Entity): void {
+ *  `Position` are still readable. Also the death a sinking ship deals its crew. */
+export function reap(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
   const pos = world.tryGet(e, Position);
   const settler = world.tryGet(e, Settler);

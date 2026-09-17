@@ -7,7 +7,7 @@ Corpus counts are over the decoded `content/maps` of `CNMod-1.3.2` (123 maps). T
 `docs/tickets/features/vehicles-*` implement this document; Open Northland approximations are named
 where they are made. The IR carries the type table as `vehicles` (`VehicleType`, with `jobId`, the
 slug `cart_no_ox` for type 6, `passengerJobs`, `vehicleSlots`, `passengerVector`,
-`draggingAnimalTribe`, `transformVehicleType`), the yards as `vehicle`-kind buildings with
+`draggingAnimalTribe`, `transformVehicleType`, `hitpoints`), the yards as `vehicle`-kind buildings with
 `vehicleType` and `ignoreContinents`, the good-to-yard pairing as `GoodType.vehicleHouse`, and the
 sprites as `vehicleGraphics`.
 
@@ -32,7 +32,8 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `logictransformvehicleType` | Type the vehicle becomes when the animal arrives (6 -> 2). |
 
 Hit points (table indexed by type): ship small 5000, ship big 5000, catapult 3000, everything
-else 1000. Vision: 15 default, ship small 20, ship big 25, catapult 20. Vehicles have no armour.
+else 1000; the pipeline stamps the table onto `VehicleType.hitpoints`. Vision: 15 default, ship
+small 20, ship big 25, catapult 20. Vehicles have no armour.
 
 ## Construction
 
@@ -90,6 +91,11 @@ radius 40 of the door, then a house, then the guide network, and carry one unit 
 Unload (`f`) has the carrier flush one reserved unit at a time out of the vehicle. The vehicle
 window edits wanted by 1 (10 with Shift), clamped to `[0, stockslots]`, and clears all wanted.
 
+Open Northland: `VehicleStock` (`packages/sim/src/components/vehicle.ts`) keeps the three bytes per
+canonical good and `modifyVehicleStock` applies the clamp. The alias goes through the shared
+dish-to-edible seam, which also maps meat and sausage (approximation: the original's table lists
+neither).
+
 ## Movement
 
 One navigation graph. A node is passable for a vehicle when its blocked bit is clear and its
@@ -115,6 +121,11 @@ animation plays and the moored flag is set. No port building is involved. The ba
 onto the door cell only when it is on land. A ship destroyed at sea frees every passenger and any
 carried vehicle; ships leave no wreck and no cargo.
 
+Open Northland: a spawned ship's mooring point is the nearest walkable node in hexagon-ring order
+within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
+six map-point directions (approximation: the vehicle facing space is not read). Which node the
+original stores as the spawn mooring is *open*.
+
 ## Catapult
 
 Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon 21. Weapon 21
@@ -138,6 +149,11 @@ to the next stage, else the node is cleared.
 Damage to any vehicle: `damage[6] * 200 / (200 - min(armour, 100))`, armour 0, halved for
 player 0 on easy. At 0 hit points the vehicle is removed; carts and catapults scatter ruin
 landscape on 51 % of footprint nodes and drop all cargo within radius 10.
+
+Open Northland: `removeVehicle` (`packages/sim/src/systems/vehicles/remove.ts`) draws the ruin
+nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the renderer's
+decals, since the ruin landscape type is not identified (*open*); the cargo spill walks the shared
+Manhattan spill rings (approximation).
 
 ## Lifecycle
 

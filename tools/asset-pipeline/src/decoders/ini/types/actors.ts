@@ -2,7 +2,12 @@ import { AnimalType, ArmorType, AtomicAnimation, VehicleType, WeaponType } from 
 import type { RuleSection } from '../grammar.js';
 import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
 import { findProps, getInt, getIntList, getIntTuple, getStr } from '../props.js';
-import { VEHICLE_JOB_ID_OFFSET, VEHICLE_SLUG_BY_TYPE } from '../vehicle-type-codes.js';
+import {
+  VEHICLE_HITPOINTS_BY_TYPE,
+  VEHICLE_HITPOINTS_DEFAULT,
+  VEHICLE_JOB_ID_OFFSET,
+  VEHICLE_SLUG_BY_TYPE,
+} from '../vehicle-type-codes.js';
 
 /** A section without a `name` is unreferenceable by a tribe's `setatomic`, so it throws. */
 export function extractAtomicAnimations(sections: readonly RuleSection[], src: SourceRef): AtomicAnimation[] {
@@ -152,6 +157,7 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
           : {}),
         ...(draggingAnimalTribe !== undefined ? { draggingAnimalTribe } : {}),
         ...(transformVehicleType !== undefined ? { transformVehicleType } : {}),
+        hitpoints: VEHICLE_HITPOINTS_BY_TYPE.get(typeId) ?? VEHICLE_HITPOINTS_DEFAULT,
         source: makeSource(src, 'vehicletype'),
       }),
     );

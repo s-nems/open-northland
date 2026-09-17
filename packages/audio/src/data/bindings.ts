@@ -67,7 +67,7 @@ export const GROUP_MELEE_SWING = 'Weapon Sword Short';
 export function defaultBindings(): SoundBindings {
   return {
     byEvent: {
-      boatPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
+      vehicleCreated: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
       // Life-event stingers ring only for the local player's own events and only from the visible
       // screen. The defence alarm stays map-wide: it acknowledges the player's own raise-alarm
       // command, wherever the garrison building sits.

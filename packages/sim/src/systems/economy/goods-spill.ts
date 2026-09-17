@@ -24,6 +24,8 @@ export interface SpilledStock {
   readonly y: Fixed;
   /** Canonical ascending-goodType lines, all with `amount > 0`. */
   readonly goods: readonly GoodsLine[];
+  /** How far out the heaps may land, in {@link spillOverRings} rings; omitted for the default extent. */
+  readonly maxRadius?: number;
 }
 
 /** The spill for a tile and a good tally, or null for an empty tally. */
@@ -93,6 +95,6 @@ export function scatterSpilledStock(world: World, ctx: SystemContext, spill: Spi
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const usable = (node: NodeId): boolean => !blocked.has(node) && terrain.componentOf(node) === component;
   for (const line of spill.goods) {
-    spillOverRings(world, terrain, from, line.goodType, line.amount, usable);
+    spillOverRings(world, terrain, from, line.goodType, line.amount, usable, spill.maxRadius);
   }
 }

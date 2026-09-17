@@ -152,7 +152,8 @@ export function buildVehicleGraphics(input: VehicleGraphicsInput): VehicleGraphi
     };
     const clips: VehicleGraphics['clips'] = [];
     for (const row of input.gfxAtomics) {
-      if (row.tribe !== tribe || row.job !== job) continue;
+      // A row without a body sequence carries raw bob ids; the raw-frame rows below own those.
+      if (row.tribe !== tribe || row.job !== job || row.bodySeq === undefined) continue;
       const dirFrames = resolve(row.bodySeq, row.dirFrames);
       if (dirFrames !== undefined) clips.push({ action: row.action, dirFrames });
     }

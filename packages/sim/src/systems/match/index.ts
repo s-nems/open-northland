@@ -16,6 +16,7 @@ import {
 import type { World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { isAdultSettler } from '../family/eligibility.js';
+import { removeVehiclesOf } from '../vehicles/remove.js';
 
 /**
  * Death-check cadence in ticks: the first check lands on the cadence tick past the grace period.
@@ -42,6 +43,8 @@ export const matchSystem: System = (world, ctx) => {
       markPlayerDead(world, player);
       dead |= playerBit(player);
       ctx.events.emit({ kind: 'playerDefeated', player });
+      // A dead seat's vehicles are destroyed, never transferred (reading of the original's teardown).
+      removeVehiclesOf(world, ctx, player);
     }
   }
 

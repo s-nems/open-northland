@@ -644,9 +644,9 @@ describe('authored cue one-shots', () => {
   it("keeps a fogged settler silent while leaving the map's own events fog-agnostic", () => {
     const events: readonly SimEvent[] = [
       { kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_MALE },
-      { kind: 'boatPlaced', entity: entity(7), at: { hx: 11, hy: 10 } },
+      { kind: 'vehicleCreated', entity: entity(7), vehicleType: 1, at: { hx: 11, hy: 10 } },
     ];
     const frame = direct(events, { visibleTile: () => false });
-    expect(frame.oneShots.map((s) => s.key)).toEqual(['boatPlaced:11,10']);
+    expect(frame.oneShots.map((s) => s.key)).toEqual(['vehicleCreated:11,10']);
   });
 });
