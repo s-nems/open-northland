@@ -1,24 +1,35 @@
-# Design and approve the shared in-game UI language
+# Implement the approved shared in-game UI foundation
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
+The visual direction is approved: see the
+[foundation reference and specification](../../design/ingame-menu/FOUNDATION.md) (B · Leśny łupek
+slate with wood, bronze and parchment chrome, tokens, geometry and confirmed imagery). Approval is
+not permission to merge into main.
 
-The approved wireframe establishes navigation, not production artwork or component states. Its CSS and placeholder figures are prototypes, while the current HUD uses original GUI frames.
-
-Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
-against this checkout before starting; the reference document describes an earlier implementation.
+Follow the [design and panel workflow](../../design/ingame-menu/README.md) and
+[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Continue the existing
+`design/ingame-ui` worktree.
 
 ## Scope
 
-- Create a detailed visual proposal for the bottom bar, an open building window, a selection panel, a loose notification and a resource tooltip together on a real-world background.
-- Define palette, type, spacing, dimensions, icon family, panel chrome, tabs, focus, hover, selected, disabled, warning and empty states. Establish a proposed minimum viewport and UI-scale range for user review.
-- Get approval of the concrete style sheet and representative panel before runtime implementation. Save the accepted design and source basis in docs/design/ingame-menu; do not declare the current wireframe final artwork.
-- Implement only the shared visual primitives actually needed by the shell and first panel. Reuse the project's UI/rendering approach after inspecting its seams; do not copy the standalone HTML application into the game.
+- Inspect current UI/rendering seams and implement only the shared visual primitives the shell and
+  first panel need: tokens, panel surface, framed window, medallion button, parchment catalogue
+  surface, wax seal, section title and ledger row. Do not copy the standalone HTML page into the
+  game or regenerate accepted art.
+- Establish production ownership/export for the action-icon atlas and the surface texture; validate
+  used atlas cells at actual size (50 px navigation, 43 px window title, 29 px resources).
+- Bundle the review fonts (Alegreya Sans, Almendra SC or its fallback) with the app instead of
+  Google Fonts; state the licence in the asset record.
+- Verify focus, contrast, long labels and viewport/scale limits in the real renderer. Mockup scale
+  controls and illustrative states are design evidence, not implemented game capabilities.
+- Preserve the dual original/own asset requirement. Original Cultures imagery is local review data
+  only; do not commit decoded assets. Current walk clips are illustrative, not entity-state bindings.
+- Keep panel contents for their owner tickets. Building thumbnails and counts remain placeholders;
+  selected-settler contents are explicitly not a complete specification.
 
 ## Verify
 
-Review normal and enlarged UI scale over light/dark terrain; long Polish and English labels, focus visibility, actual-size icons and generated alpha. Run applicable checks from docs/TESTING.md for any runtime primitives.
-
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
-not proof of runtime behavior. Apply the shared design-review step before implementation.
+Apply docs/TESTING.md to runtime changes. Review normal/enlarged scale over light/dark terrain,
+long Polish/English labels, focus visibility, actual-size icons and alpha. Provide a verified worktree
+preview. Remove this ticket only after the remaining implementation is actually complete.

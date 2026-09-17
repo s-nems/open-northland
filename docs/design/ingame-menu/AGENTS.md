@@ -36,8 +36,9 @@ constraints in the shared specification, not only in conversation. A generated c
 approved merely because it uses the accepted palette.
 
 Keep index.html as an architecture mockup, separate from game code and gameplay verification.
-The current mockup server uses port 5186 and serves docs/design/ingame-menu; verify the live process
-and source rather than assuming it remains running. A runtime game preview must use its own free
+The mockup server is `node docs/design/ingame-menu/serve.mjs 5188 /private/tmp/ingame-foundation`
+(repository files first, local review inputs as fallback); verify the live process and source rather
+than assuming it remains running. A runtime game preview must use its own free
 worktree port and the repository's dev:verify flow; :5173 remains reserved for main.
 Use the primary content directory read-only when needed. Track servers started by the session and
 follow root cleanup policy without stopping another session's preview.

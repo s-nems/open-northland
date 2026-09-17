@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Open Northland — in-game UI foundation</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Almendra+SC&display=swap">
+<link rel="stylesheet" href="foundation.css">
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="i-road" viewBox="0 0 24 24"><path d="M8 22 10 2M16 22 14 2M12 5v3M12 11v3M12 17v3"/></symbol>
+<symbol id="i-wall" viewBox="0 0 24 24"><path d="M3 21V9h3V5h3v4h3V5h3v4h3V5h3v16M3 14h18M8 21v-4h8v4"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h9l4 4v16H6zM15 2v5h4M9 11h7M9 15h7M9 19h4"/></symbol>
+<symbol id="i-house" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M5 10v10h14V10M9 20v-6h6v6"/></symbol>
+<symbol id="i-fishhut" viewBox="0 0 24 24"><path d="M3 11 12 5l9 6M5 10v10h12M9 20v-6h6v6M18 8l3-3M18 5h3v3"/></symbol>
+<symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9h16v12H4zM3 9l2-5h14l2 5M8 13h3v3H8M14 13h3v3h-3M8 18h3v3M14 18h3v3"/></symbol>
+<symbol id="i-forge" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-6h10v6M5 14h14l-2-4H7zM10 10V4h4v6M9 4h6"/></symbol>
+<symbol id="i-corner" viewBox="0 0 30 30"><path d="M3 27V9q0-6 6-6h18" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M8 22V12q0-4 4-4h10" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 6q6-2 8 4t-4 8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="14" r="1.8" fill="currentColor"/></symbol>
+<symbol id="i-knot" viewBox="0 0 64 20"><path d="m4 10 10-7 12 14L38 3l12 14 10-7-10-7-12 14L26 3 14 17Z" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+<symbol id="i-pawns" viewBox="0 0 64 64"><g stroke="#402e1e" stroke-width="1.4"><path d="M9 46 14 29h7l5 17q-8 5-17 0Z"/><circle cx="17.5" cy="22" r="6"/><path d="m38 46 5-17h7l5 17q-8 5-17 0Z"/><circle cx="46.5" cy="22" r="6"/><path d="m20 54 7-22h10l7 22q-12 7-24 0Z"/><circle cx="32" cy="23" r="8"/></g><path d="M28 38 25 50M15 33l-3 10M44 33l-3 10" stroke="#edce94" opacity=".65" stroke-width="2"/></symbol>
+<linearGradient id="pawn-wood"><stop stop-color="#debe83"/><stop offset=".55" stop-color="#a4804d"/><stop offset="1" stop-color="#61482d"/></linearGradient>
+</defs></svg>
+
+<header class="page-head">
+  <div>
+    <div class="eyebrow">Interfejs w grze · zatwierdzony fundament</div>
+    <h1>Drewno, łupek i żywa osada</h1>
+  </div>
+  <p class="lede">Ciemny łupek, drewniane listwy, brąz i pergamin: zatwierdzony język wizualny HUD-u. Osadnicy pochodzą z atlasów gry, animacja jest demonstracyjna, miniatury budynków i liczby są przykładowe.</p>
+</header>
+
+<main class="review">
+<div class="controls" role="toolbar" aria-label="Warianty do przeglądu">
+  <span>Teren</span>
+  <button type="button" data-terrain="day" aria-pressed="true">Jasny</button>
+  <button type="button" data-terrain="night" aria-pressed="false">Ciemny</button>
+  <span>Skala UI</span>
+  <button type="button" data-scale="90" aria-pressed="false">90%</button>
+  <button type="button" data-scale="100" aria-pressed="true">100%</button>
+  <button type="button" data-scale="125" aria-pressed="false">125%</button>
+  <span>Tekst</span>
+  <button type="button" data-lang="pl" aria-pressed="true">PL</button>
+  <button type="button" data-lang="en" aria-pressed="false">EN · długi</button>
+</div>
+
+<section class="viewport" id="viewport" aria-label="Reprezentatywny ekran HUD">
+<div class="world-fallback"></div>
+<img class="world" src="world.png" alt="" onerror="this.hidden=true">
+<div class="hud-root" id="hud">
+
+  <div class="topbar">
+    <div class="summary panel">
+      <button type="button" aria-label="Kobiety: 12"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="11" r="6"/><path d="M16 17v12m-5-5h10"/></svg><b>12</b></button>
+      <button type="button" aria-label="Mężczyźni: 16"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="19" r="6"/><path d="m17.5 14.5 9-9M19 5h8v8"/></svg><b>16</b></button>
+      <button type="button" aria-label="Dzieci: 6"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="8" r="4"/><path d="M16 14v9m-7-8 7 3 7-3m-7 8-5 6m5-6 5 6"/></svg><b>6</b></button>
+      <span class="divider"></span>
+      <button type="button" aria-label="Żywność: 86"><span data-good="bread"></span><b>86</b></button>
+      <div class="resource">
+        <button type="button" id="materials" aria-expanded="false" aria-label="Materiały: 72"><span data-good="wood"></span><b>72</b></button>
+        <div class="resource-tip panel" id="resource-tip" hidden>
+          <h4>Materiały</h4>
+          <p><span>Drewno</span><b>42</b></p>
+          <p><span>Kamień</span><b>18</b></p>
+          <p><span>Glina</span><b>12</b></p>
+          <small>Magazyny Twojego plemienia · cała mapa</small>
+        </div>
+      </div>
+      <button type="button" aria-label="Uzbrojenie"><span data-good="sword_shord"></span></button>
+      <button type="button" aria-label="Wyposażenie"><span data-good="shoes"></span></button>
+      <button type="button" aria-label="Inne"><span data-good="crockery"></span></button>
+    </div>
+    <div class="timebar panel">
+      <time>01:24:08</time>
+      <div class="speed" role="group" aria-label="Tempo symulacji">
+        <button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button>
+        <button type="button" aria-label="Tempo ×1" aria-pressed="true">×1</button>
+        <button type="button" aria-label="Tempo ×3" aria-pressed="false">×3</button>
+      </div>
+      <button type="button" class="menu medallion" aria-label="Menu gry"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+    </div>
+  </div>
+
+  <aside class="notices">
+    <div class="notice-tools">
+      <strong class="notice-count medallion" aria-label="Wiadomości: 8" title="Wiadomości: 8">8</strong>
+      <div class="priority" role="toolbar" aria-label="Poziom wiadomości">
+        <button type="button" class="low" data-priority="Wszystkie" aria-label="Wszystkie wiadomości" title="Wszystkie wiadomości" aria-pressed="false"></button>
+        <button type="button" class="medium" data-priority="Ważne i pilne" aria-label="Ważne i pilne" title="Ważne i pilne" aria-pressed="true"></button>
+        <button type="button" class="high" data-priority="Tylko pilne" aria-label="Tylko pilne" title="Tylko pilne" aria-pressed="false"></button>
+        <em>Ważne i pilne</em>
+      </div>
+    </div>
+    <div class="notice-list">
+      <button type="button" class="notice-card warning"><span data-settler="6"></span><b>Brakuje narzędzi</b><small>Eirik · drwal</small><i class="seal" aria-hidden="true"></i><svg aria-hidden="true" class="go" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+      <button type="button" class="notice-card"><span data-settler="5"></span><b>Budowa ukończona</b><small>Chata rybaka</small><i class="seal" aria-hidden="true"></i><svg aria-hidden="true" class="go" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+      <button type="button" class="notice-card danger"><span data-settler="6"></span><b>Osadnik głoduje</b><small>Leif · budowniczy</small><i class="seal" aria-hidden="true"></i><svg aria-hidden="true" class="go" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+    </div>
+  </aside>
+
+  <div class="minimap">
+    <div class="map-tools" role="toolbar" aria-label="Tryby minimapy">
+      <button type="button" aria-label="Mapa terenu" title="Teren" aria-pressed="true"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 17 6-9 4 6 3-4 5 7Z"/><path d="M3 21h18"/></svg></button>
+      <button type="button" aria-label="Osadnicy" title="Osadnicy" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.2"/><path d="M6 21v-3a6 6 0 0 1 12 0v3"/></svg></button>
+      <button type="button" aria-label="Zasoby" title="Zasoby" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3l8 6-8 12-8-12Z"/><path d="M4 9h16M12 3l-3 6 3 12 3-12Z"/></svg></button>
+      <button type="button" aria-label="Duża mapa" title="Duża mapa"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
+    </div>
+  </div>
+
+  <section class="build panel">
+    <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
+    <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
+    <header class="window-head">
+      <div class="title">
+        <span class="painted" aria-hidden="true" style="--ix:0%;--iy:0%"></span>
+        <div><h2 data-copy="buildTitle">Budowanie</h2><p data-copy="buildSubtitle">Wybierz budynek, następnie wskaż miejsce na mapie</p></div>
+      </div>
+      <button type="button" class="icon-button medallion" aria-label="Zamknij"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="quick">
+      <button type="button"><svg aria-hidden="true" class="icon"><use href="#i-road"/></svg>Droga</button>
+      <button type="button"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Palisada</button>
+      <button type="button"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Brama</button>
+      <button type="button" class="docs"><svg aria-hidden="true" class="icon"><use href="#i-doc"/></svg>Dokumenty · 2</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true">Wszystkie<span class="count">4</span></button>
+      <button type="button" role="tab" aria-selected="false">Praca<span class="count">2</span></button>
+      <button type="button" role="tab" aria-selected="false">Magazyny<span class="count">1</span></button>
+      <button type="button" role="tab" aria-selected="false">Domy<span class="count">0</span></button>
+      <button type="button" role="tab" aria-selected="false">Wojsko<span class="count">1</span></button>
+    </div>
+    <div class="catalog">
+      <p class="catalog-note">Dostępne teraz · 4 budynki</p>
+      <div class="build-grid">
+        <button type="button" class="building-card" aria-pressed="true"><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-house"/></svg></span><span><strong>Chata drwala</strong><small>Produkuje drewno · 1–3 pracowników</small></span><span class="cost"><i>🪵 8</i><i>◆ 4</i></span></button>
+        <button type="button" class="building-card"><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-fishhut"/></svg></span><span><strong>Chata rybaka</strong><small>Łowi ryby przy brzegu</small></span><span class="cost"><i>🪵 6</i><i>◆ 2</i></span></button>
+        <button type="button" class="building-card"><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-store"/></svg></span><span><strong>Magazyn</strong><small>Przechowuje towary plemienia</small></span><span class="cost bad"><i>🪵 12 / 8</i><i>brak 3</i></span></button>
+        <button type="button" class="building-card" disabled><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-forge"/></svg></span><span><strong>Kuźnia</strong><small>Wymaga: Kowal II</small></span><span class="cost"><i>Niedostępne</i></span></button>
+      </div>
+    </div>
+    <div class="placement">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>
+      <span><b data-picked>Chata drwala</b> · wskaż miejsce na mapie</span>
+      <kbd>Esc</kbd>
+    </div>
+  </section>
+
+  <aside class="selection panel">
+    <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
+    <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
+    <header class="window-head">
+      <div><p>ZAZNACZENIE</p><h2>Eirik · Drwal II</h2></div>
+      <button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="selection-body">
+      <div class="portrait">
+        <div class="portrait-box"><span data-settler="6"></span><span class="level" aria-label="Poziom II">II</span></div>
+        <div><strong>Wraca do pracy</strong><div class="status">Zdrowy · najedzony</div><div class="alert">Potrzebuje narzędzi</div></div>
+      </div>
+      <div class="section-title">Samopoczucie</div>
+      <div class="kv"><span>Zdrowie</span><b>72 / 100</b></div>
+      <div class="meter"></div>
+      <div class="kv"><span>Sytość</span><b>64%</b></div>
+      <div class="section-title">Praca i dom</div>
+      <div class="kv"><span>Miejsce pracy</span><b>Chata drwala</b></div>
+      <div class="kv"><span>Dom</span><b>Dom rodzinny</b></div>
+      <div class="orders">
+        <button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>Centruj</button>
+        <button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 6h14M5 12h9M5 18h6M17 15l2 2 4-4"/></svg>Rozkazy</button>
+      </div>
+    </div>
+  </aside>
+
+  <nav class="nav panel" aria-label="Menu gry">
+    <button type="button" aria-pressed="true" title="Buduj · klawisz 1"><kbd class="key" aria-hidden="true">1</kbd><span class="painted" aria-hidden="true" style="--ix:0%;--iy:0%"></span><span data-copy="buildNav">Buduj</span></button>
+    <button type="button" title="Mieszkańcy · klawisz 2"><kbd class="key" aria-hidden="true">2</kbd><svg aria-hidden="true" class="people-token" fill="url(#pawn-wood)"><use href="#i-pawns"/></svg><span data-copy="peopleNav">Mieszkańcy</span></button>
+    <button type="button" title="Asystent · klawisz 3"><kbd class="key" aria-hidden="true">3</kbd><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:0%"></span><span>Asystent</span></button>
+    <button type="button" title="Statystyki · klawisz 4"><kbd class="key" aria-hidden="true">4</kbd><span class="painted" aria-hidden="true" style="--ix:100%;--iy:0%"></span><span>Statystyki</span></button>
+    <button type="button" title="Misja · klawisz 5"><kbd class="key" aria-hidden="true">5</kbd><span class="painted" aria-hidden="true" style="--ix:0%;--iy:33.3333%"></span><span>Misja</span></button>
+    <button type="button" title="Dyplomacja · klawisz 6"><kbd class="key" aria-hidden="true">6</kbd><span class="painted" aria-hidden="true" style="--ix:33.3333%;--iy:33.3333%"></span><span>Dyplomacja</span></button>
+    <button type="button" title="Wiedza · klawisz 7"><kbd class="key" aria-hidden="true">7</kbd><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:33.3333%"></span><span>Wiedza</span></button>
+  </nav>
+</div>
+</section>
+<p class="asset-status" id="asset-status">Podgląd stylu: animacje przykładowe, bez połączenia ze stanem gry. Miniatury budynków pozostają mockiem.</p>
+</main>
+
+<section class="spec">
+  <div class="card">
+    <h2>Paleta i materiały</h2>
+    <div class="swatches">
+      <div class="swatch" style="background:#182521">Cień<br>#182521</div>
+      <div class="swatch" style="background:#273832">Tło ciemne<br>#273832</div>
+      <div class="swatch" style="background:#4d3b28">Drewno<br>#4D3B28</div>
+      <div class="swatch light" style="background:#c9a262">Brąz<br>#C9A262</div>
+      <div class="swatch light" style="background:#d9c9a4">Pergamin<br>#D9C9A4</div>
+      <div class="swatch" style="background:#2b2317">Atrament<br>#2B2317</div>
+      <div class="swatch light" style="background:#f6ecd4">Tekst<br>#F6ECD4</div>
+      <div class="swatch light" style="background:#e3b868">Aktywny<br>#E3B868</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Rytm i rozmiary</h2>
+    <div class="metrics">
+      <div class="metric"><b>4 px</b><small>bazowa siatka</small></div>
+      <div class="metric"><b>36 px</b><small>minimum kontroli</small></div>
+      <div class="metric"><b>50 px</b><small>ikona główna</small></div>
+      <div class="metric"><b>7 px</b><small>rama dużego okna</small></div>
+    </div>
+    <div class="type-row"><small>Nagłówek 25</small><span class="type-title">Budowanie</span></div>
+    <div class="type-row"><small>Treść 14</small><span class="type-body">Przechowuje towary plemienia</span></div>
+    <div class="type-row"><small>Meta 12</small><span class="eyebrow">Dostępne teraz</span></div>
+  </div>
+  <div class="card">
+    <h2>Stany interakcji</h2>
+    <div class="state-lab">
+      <button type="button">Normalny</button>
+      <button type="button" title="Najedź tutaj">Hover</button>
+      <button type="button" class="focus-demo">Focus</button>
+      <button type="button" class="selected">Wybrany</button>
+      <button type="button" disabled>Wyłączony</button>
+      <button type="button" class="warning">Brak surowców</button>
+      <span class="empty">Brak wyników · wyczyść filtry</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Malowane ikony · 44–50 px</h2>
+    <div class="icon-grid">
+      <div><span class="painted" aria-hidden="true" style="--ix:0%;--iy:0%"></span>Buduj</div>
+      <div><svg aria-hidden="true" class="people-token" fill="url(#pawn-wood)"><use href="#i-pawns"/></svg>Ludzie</div>
+      <div><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:0%"></span>Asystent</div>
+      <div><span class="painted" aria-hidden="true" style="--ix:100%;--iy:0%"></span>Dane</div>
+      <div><span class="painted" aria-hidden="true" style="--ix:0%;--iy:33.3333%"></span>Misja</div>
+      <div><span class="painted" aria-hidden="true" style="--ix:33.3333%;--iy:33.3333%"></span>Relacje</div>
+      <div><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:33.3333%"></span>Wiedza</div>
+    </div>
+  </div>
+  <div class="card notes">
+    <h2>Kontrakt</h2>
+    <ul>
+      <li>Minimum: 1280 × 720 przy skali 90%; skala gracza 90–130% co 5% pozostaje propozycją.</li>
+      <li>Okno centralne 540 px, detal 318 px, kolumna wiadomości 198 px, minimapa 270 × 214 px.</li>
+      <li>Alegreya Sans niesie informację; Almendra SC tylko w krótkich tytułach okien.</li>
+      <li>Ciemny łupek pod HUD-em, drewno i brąz na krawędziach, pergamin tam, gdzie gracz czyta katalog.</li>
+      <li>Kolor nigdy nie jest jedynym nośnikiem stanu: pieczęcie mają etykiety, ostrzeżenia mają słowa.</li>
+      <li>Focus zawsze 2 px jasnej barwy z 3 px odsunięcia; reduced-motion wyłącza przejścia i chód.</li>
+      <li>Skróty 1–7, tempo ×3 i pasek wskazania miejsca są propozycjami interakcji, nie możliwościami silnika.</li>
+      <li>Osadnicy, towary i tło mapy pochodzą z lokalnych materiałów przeglądu; nie trafiają do repozytorium.</li>
+    </ul>
+  </div>
+</section>
+<script type="module" src="foundation.js"></script>
+</body>
+</html>

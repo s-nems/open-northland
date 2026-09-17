@@ -6,6 +6,13 @@ placeholder values or gameplay behavior. The functional baseline is
 [Original in-game menu bar](../../ORIGINAL-INGAME-MENU-BAR.md); its current-implementation comparison
 is revision-specific and must be rechecked against code.
 
+Ticket 01's [visual foundation reference](foundation.html) and
+[written specification](FOUNDATION.md) establish the approved visual direction: the B · Leśny łupek
+slate base with wood, bronze and parchment chrome, notification refinements, framed selection preview,
+population symbols and original Cultures character preview. Ticket 01 still needs shared runtime
+primitives and production art exports; approval does not finalize individual panel contents or
+validate runtime behavior. See [resume instructions](FOUNDATION.md#resume-the-local-review).
+
 ## Approved product direction
 
 - Economic RTS for mouse and keyboard. No controller/touch redesign in this scope.
@@ -21,7 +28,10 @@ is revision-specific and must be rechecked against code.
   retain visible navigation. Selecting a construction item exposes the map for placement.
 - Notifications are narrow, separate cards down the **left** edge to the minimap. No enclosing frame
   or background; empty space remains map. A compact count and three-level filter remain above the list.
-  Each subject can retain its own portrait/animation; scrolling must not hide events permanently.
+  Settler subjects show the actual full-body settler and current activity animation, not a separate
+  painted face. Transparent sprites sit over a light translucent backing in notifications and a
+  dedicated framed background in selected-settler details. Scrolling must not
+  hide events permanently; visible-only animation and pause/reduced-motion handling belong to implementation.
 - Above-right: women, men, children across the local player's entire tribe/map, plus Food, Materials,
   Armament, Equipment and Other, all to the left of the clock. Categories reveal per-item quantities
   on hover/focus. The wireframe proposes warehouse inventory; verify and make the final scope explicit.
@@ -32,6 +42,9 @@ is revision-specific and must be rechecked against code.
   links go directly to the appropriate entry.
 - Settings/save/load/restart/quit remain available through the system entry by time controls.
   The minimap keeps its own large-map entry.
+- Resource/population summaries reuse icons or sprites from the active game asset set. The residents
+  navigation icon must not use realistic faces. Construction thumbnails show the actual game buildings,
+  not independently generated substitutes. Placeholders are allowed in the current style review only.
 
 The mockup's fonts, Unicode icons, SVG people, map shapes, stock numbers, recipes and simulated timer
 are illustrative. They are not approved assets, catalog data or reusable game-state code.
@@ -56,6 +69,11 @@ Every player-facing ticket starts with detailed design, even after the shared fo
 5. Verify behavior at the lowest useful layer and in the real game. Compare with the approved shared
    reference and already completed panels. Hand off a verified task preview and name remaining human
    checks. Follow [testing](../../TESTING.md) and [preview verification](../../DEVELOPMENT.md#worktree-previews).
+
+Each implementation ticket removes the legacy panel code, styling, imports and obsolete tests that
+its accepted replacement makes unreachable. Shared legacy pieces remain only while a real unmigrated
+consumer still needs them. Ticket 20 audits residual paths and consistency; it is not the point where
+the old HUD is removed in bulk.
 
 Ticket 01 establishes the shared component/style reference. Keep palette, typography, spacing,
 icon semantics, sizes and states in one authoritative specification/component source; later panels
