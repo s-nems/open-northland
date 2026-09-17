@@ -19,10 +19,10 @@ const SCREEN = { width: 1280, height: 720 };
 
 describe('navigation beam', () => {
   it('is the seven-action beam of the foundation, centred on the bottom edge', () => {
-    expect(NAV_BEAM_W).toBe(392);
-    expect(NAV_BEAM_H).toBe(68);
-    expect(navBeamRect(SCREEN, 1)).toEqual({ x: 444, y: 652, w: 392, h: 68 });
-    expect(navBeamRect(SCREEN, 2)).toEqual({ x: 248, y: 584, w: 784, h: 136 });
+    expect(NAV_BEAM_W).toBe(420);
+    expect(NAV_BEAM_H).toBe(72);
+    expect(navBeamRect(SCREEN, 1)).toEqual({ x: 430, y: 648, w: 420, h: 72 });
+    expect(navBeamRect(SCREEN, 2)).toEqual({ x: 220, y: 576, w: 840, h: 144 });
   });
 });
 
@@ -68,7 +68,7 @@ describe('central window region', () => {
 describe('selection panel and the beam', () => {
   it('stands on the beam only where the beam reaches under its column', () => {
     expect(panelBottomInset(SCREEN, 1)).toBe(0);
-    // Narrower than the 1048 px where the beam's right edge reaches the panel's column.
+    // Narrower than the 1076 px where the beam's right edge reaches the panel's column.
     const narrow = { width: 960, height: 540 };
     expect(panelBottomInset(narrow, 1)).toBe(NAV_BEAM_H);
     expect(panelRect(100, narrow, 1).y).toBe(540 - NAV_BEAM_H - 100 - 6);

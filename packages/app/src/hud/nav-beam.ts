@@ -1,11 +1,11 @@
 import type { Rect } from './geometry.js';
 
 /**
- * The bottom navigation beam's design-px box (FOUNDATION.md): seven 52 × 60 actions with 2 px gaps on
+ * The bottom navigation beam's design-px box (FOUNDATION.md): seven 56 × 64 actions with 2 px gaps on
  * a beam padded 5 / 8 / 3 px. The numbers mirror `.on-beam` and `.on-action` in `dom/foundation.css`.
  */
-const NAV_ACTION_W = 52;
-const NAV_ACTION_H = 60;
+const NAV_ACTION_W = 56;
+const NAV_ACTION_H = 64;
 const NAV_ACTION_GAP = 2;
 const NAV_ENTRIES = 7;
 const NAV_PAD_X = 8;

@@ -822,7 +822,7 @@ button.medallion:hover {
 }
 .hud-root.scaled .selection {
   width: 290px;
-  bottom: 67px;
+  bottom: 71px;
   height: 355px;
 }
 .frame-knot {
@@ -1406,7 +1406,7 @@ button.medallion:hover {
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
   isolation: isolate;
-  background: url(./nordic-surface-v1.png) center top / 420px auto;
+  background: url(./nordic-surface-v1.png) center top / 450px auto;
   box-shadow:
     inset 0 1px var(--bronze),
     inset 0 0 0 1px var(--wood-lo),
@@ -1419,7 +1419,7 @@ button.medallion:hover {
   position: absolute;
   inset: 50% 0 0;
   z-index: -1;
-  background: url(./nordic-surface-v1.png) center bottom / 420px auto no-repeat;
+  background: url(./nordic-surface-v1.png) center bottom / 450px auto no-repeat;
   pointer-events: none;
 }
 .hud-root.scaled .nav {
@@ -1432,8 +1432,8 @@ button.medallion:hover {
 }
 .nav button {
   position: relative;
-  width: 52px;
-  height: 60px;
+  width: 56px;
+  height: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1442,7 +1442,7 @@ button.medallion:hover {
   border-radius: 0;
   background: transparent;
   color: #ddd6c4;
-  font-size: 10px;
+  font-size: 11px;
 }
 .nav button:hover {
   color: #fff;
@@ -1504,8 +1504,8 @@ button.medallion:hover {
 .nav .painted,
 .nav .people-token {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   margin-top: 2px;
   transition: transform 0.12s;
 }
@@ -1515,10 +1515,10 @@ button.medallion:hover {
 .nav button > span:last-child {
   position: relative;
   z-index: 1;
-  max-width: 52px;
+  max-width: 56px;
   margin-top: 3px;
   font:
-    600 10px Alegreya,
+    600 11px Alegreya,
     serif;
   line-height: 1.05;
   letter-spacing: 0.01em;
