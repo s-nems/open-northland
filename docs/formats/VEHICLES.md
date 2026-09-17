@@ -121,17 +121,53 @@ leaves the drive running.
 
 ## Cargo
 
-Wanted amounts are the per-vehicle request list. `Stock_ModifyAmount` clamps to capacity, refuses
-negative stock and, when not riding a carrier, sets wanted to the new actual amount. Carriers
-(job 24) serve a vehicle whose `wanted > reserved` for any good: they search loose goods within
-radius 40 of the door, then a house, then the guide network, and carry one unit to the door.
-Unload (`f`) has the carrier flush one reserved unit at a time out of the vehicle. The vehicle
-window edits wanted by 1 (10 with Shift), clamped to `[0, stockslots]`, and clears all wanted.
+Wanted amounts are the per-vehicle request list. The hold keeps three bytes per allowed good:
+the actual amount, the wanted amount, and the future amount, which is the actual amount plus the
+units carriers have booked to bring (`Stock_ModifyFutureAmount`; a booked unit's arrival raises the
+actual amount and leaves the future one). `Stock_ModifyAmount` clamps to capacity, refuses negative
+stock and, when no carrier is attached (`Passengers_IsCarrierAttached`: any seat, the commander's
+included, held by a job-24 human), sets wanted to the new actual amount. `Stock_SetWantedAmount`
+clamps so the wanted amounts over every good fit `stockslots`. `Stock_IsFull` compares the actual
+sum with the budget, `Stock_IsFullSoon` the future sum.
+
+The carrier is a job-24 human attached to the vehicle and standing outside on the door's continent
+(`l_StartTask_ExecuteJob_Carrier`); a ship serves only while moored. Its loop
+(`l_StartTask_ExecuteJob_Carrier_Vehicle`):
+
+1. While the hold is not full and any good has `wanted > future`, `FindGoodsDemandedForVehicle`
+   collects every such good and searches loose goods and houses within radius 40 of the door
+   (`SearchOverMap` ignoring homes), picking at random among the piles found, else among the
+   houses, else asking the guide network (`CGuideManager::GetMapPositionWithGoodsComplex`, radius
+   40) for the first good it links; nothing found parks the carrier. It fetches one unit. With the
+   unit on its back it books it (`future + 1`) and walks to the door while
+   `future < wanted` and the hold is not full soon; at the door `future <= wanted` and not full
+   puts the unit in, else it is brought away.
+2. Else, for the first good with `wanted < future`, `l_StartTask_ExecuteJob_Carrier_FlushVehicle`
+   unbooks a unit (`future - 1`), walks to the door and lifts one out (`Stock_ModifyAmount(-1)`),
+   then `Flush_Bring` carries it to a consumer near its work centre, else a pile point near itself,
+   else one near the door.
+
+The vehicle window's `m` edits one good's wanted amount (by 1, 10 with Shift) and `n` clears every
+one; both wake idle passengers and raise message 0x3a (`vehicleNoCarrier`) when no carrier is
+attached, the order applying all the same. `f` (`l_StartAtomicUnload`) moves every passenger and
+carried vehicle out; it has no goods half, the goods leave through `n`. `l_ExecuteResult` case 0x28
+(`AddGoodsToVehicle`) books, stows and then sets wanted to the wanted amount read after the stow plus
+the amount, so a vehicle with no carrier ends with `wanted = actual + amount`. No raise site of
+message 0x0f (`noVehicleForWork`) was found in the carrier's vehicle loop (*open*).
 
 Open Northland: `VehicleStock` (`packages/sim/src/components/vehicle.ts`) keeps the three bytes per
-canonical good and `modifyVehicleStock` applies the clamp. The alias goes through the shared
-dish-to-edible seam, which also maps meat and sausage (approximation: the original's table lists
-neither).
+canonical good as `current`, `wanted` and `reserved` (the future amount); `systems/vehicles/stock.ts`
+holds the clamps, `stockVehicleGoods` the booked-and-stowed write of `addgoods` and a loaded spawn,
+and `addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted` and
+`clearVehicleWanted`; `unloadPeople` stays the whole of `f`. The carrier rung
+(`systems/settlers/drives/economy/vehicle-cargo.ts`) runs above the rider rung for an attached carrier
+and its booking rides on the carrier as `CargoRun`, given back when it detaches or dies. The alias
+goes through the shared dish-to-edible seam, which also maps meat and sausage (approximation: the
+original's table lists neither). Further approximations: the nearest source wins where the original
+draws at random, ties by good id; the guide network is the carrier's signpost confinement; a flush
+waits for a unit to be aboard; a lifted-out unit goes where the delivery ladder sends an unbound
+settler's load, the ground at the door when nothing takes it; a house source must hold the hold's
+canonical good, never a dish it would alias to it.
 
 ## Movement
 
@@ -271,8 +307,9 @@ ruins without cargo (approximation: the original's dead-player teardown is not r
 
 Results: `SendVehicle` and `DockVehicle` snap the point to the nearest unblocked node with the same
 continent key within radius 9, then queue `e` / `g` like a player click (Open Northland runs the seat
-handlers directly: the goto's own radius-9 snap, and for a dock the ring search with no prior snap). `AddGoodsToVehicle` adds
-the full amount to every matching vehicle and raises wanted by the same amount.
+handlers directly: the goto's own radius-9 snap, and for a dock the ring search with no prior snap).
+`AddGoodsToVehicle` books and stows the full amount on every matching vehicle and raises wanted as
+"Cargo" describes.
 `AttachHumanToVehicle` resolves the first vehicle with the id and queues the attach command for
 every matching human. `RemoveVehiclesWithMissionId` handles at most 50 vehicles, removes crews only
 when its flag is set, and stamps a wreck effect. `RemoveVehicles` frees silently. `MoveUnitsInArea`,

@@ -26,6 +26,7 @@ import { sendUnit } from '../orders/movement.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
+import { abandonCargoRun } from './cargo.js';
 
 // The crew of docs/formats/VEHICLES.md "Crew": who may attach, where a rider boards and leaves, and what
 // a rider gives up when it joins. The boarding drives live in `boarding.ts`.
@@ -54,7 +55,7 @@ export function refuseCrew(
   world: World,
   ctx: SystemContext,
   vehicle: Entity,
-  reason: 'noRoom' | 'cannotAttach' | 'cannotNearShip' | 'cannotLeave',
+  reason: 'noRoom' | 'cannotAttach' | 'cannotNearShip' | 'cannotLeave' | 'noCarrier',
 ): void {
   ctx.events.emit({
     kind: 'vehicleCrewRefused',
@@ -137,9 +138,10 @@ export function detachFromVehicle(
   return true;
 }
 
-/** Drop `rider`'s seat and marker; the vehicle promotes the next commander. */
+/** Drop `rider`'s seat, marker and any cargo booking; the vehicle promotes the next commander. */
 export function releaseRider(world: World, rider: Entity, vehicle: Entity): void {
   if (world.has(vehicle, Vehicle)) unseatPassenger(world, vehicle, rider);
+  abandonCargoRun(world, rider);
   world.remove(rider, Rider);
 }
 

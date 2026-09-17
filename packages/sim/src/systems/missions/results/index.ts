@@ -7,7 +7,13 @@ import {
   setPlayerBehaviour,
 } from './behaviour.js';
 import { setRandomChest } from './chests.js';
-import { addGoodsToAnyStock, addGoodsToArea, addGoodsToHouses, removeGoodsFromArea } from './goods.js';
+import {
+  addGoodsToAnyStock,
+  addGoodsToArea,
+  addGoodsToHouses,
+  addGoodsToVehicles,
+  removeGoodsFromArea,
+} from './goods.js';
 import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
 import { scriptInfoLine } from './info.js';
@@ -205,6 +211,9 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       return;
     case 'AddGoodsToAnyStock':
       addGoodsToAnyStock(pass, result.player, result.good, result.amount);
+      return;
+    case 'AddGoodsToVehicle':
+      addGoodsToVehicles(pass, result.vehicleId, result.good, result.amount);
       return;
     case 'AddGoodsToMapArea':
       addGoodsToArea(pass, index, result);

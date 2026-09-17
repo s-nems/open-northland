@@ -16,6 +16,7 @@ import { type HalfCellNode, hexagonRing, positionOfNode } from '../../nav/halfce
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { stockVehicleGoods } from './stock.js';
 
 /** The facing a fresh vehicle takes. Approximation: neither `setvehicle` nor a yard authors one. */
 const SPAWN_FACING = 0;
@@ -76,6 +77,7 @@ export function createVehicle(
   world.add(e, VehicleStock, { lines: new Map() });
   stampOwner(world, e, spec.owner);
   stampMissionId(world, e, spec.missionId);
+  for (const entry of spec.goods ?? []) stockVehicleGoods(world, e, ctx.content, entry.good, entry.amount);
   ctx.events.emit({ kind: 'vehicleCreated', entity: e, vehicleType: type.typeId, at: anchor });
   return e;
 }

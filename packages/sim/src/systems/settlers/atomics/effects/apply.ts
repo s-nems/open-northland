@@ -24,10 +24,12 @@ import {
   forageBerry,
   harvestFromNode,
   harvestStrokesPerUnit,
+  loadVehicleHold,
   PICKUP_STROKES_PER_UNIT,
   pickupFromStore,
   pileupIntoStore,
   unequipWornGood,
+  unloadVehicleHold,
 } from './goods/index.js';
 
 type CompletedAtomic = Pick<
@@ -75,6 +77,12 @@ export function applyEffect(
       return;
     case 'cartUnload':
       unloadCart(world, ctx, settler, effect.store, effect.goodType);
+      return;
+    case 'vehicleLoad':
+      if (loadVehicleHold(world, ctx, settler, effect.vehicle)) grantCarryExperience(world, ctx, settler);
+      return;
+    case 'vehicleUnload':
+      unloadVehicleHold(world, ctx, settler, effect.vehicle, effect.goodType);
       return;
     // The meal itself was paid out at the clip's own event frame; the unit leaves the shelf here. The eat
     // clips carry no `interruptable`, so an order parks behind one rather than splitting the two halves.

@@ -9,12 +9,14 @@ const CREW_REFUSAL_MESSAGE = {
   cannotAttach: USER_MESSAGE_TYPE.cannotAttachVehicle,
   cannotNearShip: USER_MESSAGE_TYPE.vehicleCannotNearShip,
   cannotLeave: USER_MESSAGE_TYPE.cannotLeaveVehicle,
+  noCarrier: USER_MESSAGE_TYPE.vehicleNoCarrier,
 } as const;
 
 /** The note each refused vehicle order on a settler raises about it. */
 const RIDER_REFUSAL_MESSAGE = {
   cannotEnter: USER_MESSAGE_TYPE.cannotEnterVehicle,
   cannotLeave: USER_MESSAGE_TYPE.cannotLeaveVehicle,
+  noCarrier: USER_MESSAGE_TYPE.vehicleNoCarrier,
 } as const;
 
 function isPerson(e: SnapshotEntity): boolean {

@@ -16,6 +16,8 @@ import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { reapEmptyLoosePile, stackOntoTile } from '../../settlers/atomics/effects/goods/index.js';
 import { stockpilesAtNode } from '../../spatial/stockpiles.js';
 import { isLoosePile } from '../../stores/index.js';
+import { vehicleIndex } from '../../vehicles/registry.js';
+import { addGoodsToVehicle } from '../../vehicles/stock.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { addStock, countsAsOwnStock, roomFor, takeStock, typeStoresGood } from '../stock.js';
@@ -27,6 +29,14 @@ export function addGoodsToHouses(pass: MissionPass, id: number, good: number, am
   for (const e of missionHouses(world, id)) {
     if (typeStoresGood(ctx, world.get(e, Building).buildingType, good)) addStock(world, e, good, amount);
   }
+}
+
+/** Book, stow and ask for the amount in every vehicle carrying the id that can hold the good; the
+ *  three writes each clamp to the type's budget. */
+export function addGoodsToVehicles(pass: MissionPass, id: number, good: number, amount: number): void {
+  const { world, ctx } = pass;
+  for (const e of vehicleIndex(world).withMissionId(id))
+    addGoodsToVehicle(world, e, ctx.content, good, amount);
 }
 
 /** Fill the player's finished storages in ascending id order, each up to its slot's capacity, until

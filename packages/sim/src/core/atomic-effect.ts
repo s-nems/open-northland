@@ -34,6 +34,13 @@ export type AtomicEffect =
   /** A trader sets one unit of `goodType` out of its cart onto `store`'s shelf, or onto the ground at
    *  its feet with `store` null. */
   | { readonly kind: 'cartUnload'; readonly store: Entity | null; readonly goodType: number }
+  /** A vehicle's carrier sets the unit on its back into `vehicle`'s hold at the door, the unit it booked
+   *  there when it set out (`CargoRun`). A hold that stopped wanting it, or filled up, refuses the unit,
+   *  which stays on the carrier's back with its booking dropped. */
+  | { readonly kind: 'vehicleLoad'; readonly vehicle: Entity }
+  /** A vehicle's carrier lifts one unit of `goodType` out of `vehicle`'s hold onto its back at the door,
+   *  the unit whose booking it dropped when it set out. An emptied line yields nothing. */
+  | { readonly kind: 'vehicleUnload'; readonly vehicle: Entity; readonly goodType: number }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
   | {
       readonly kind: 'eat';

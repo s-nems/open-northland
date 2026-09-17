@@ -1,7 +1,6 @@
 # Put the trader on an attached cart instead of an intrinsic one
 
 **Area:** sim, app · **Focus:** `packages/sim/src/systems/trade`, `packages/app/src/hud/details-panel` · **Priority:** P2
-**Blocked by:** [cargo and carriers](vehicles-6-cargo-and-carriers.md)
 
 `TradeRoute.cargo` gives every trader an invisible 15-slot cart (`TRADE_CART_SLOTS`), so a trader
 can never be separated from it, an ox cart cannot be used, and no cart is ever built. In the

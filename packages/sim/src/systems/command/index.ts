@@ -62,6 +62,7 @@ import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
 import {
   attachToVehicle,
   boardVehicle,
+  clearVehicleWantedOrder,
   createVehicle,
   detachBeforeOrder,
   detachFromVehicle,
@@ -70,6 +71,7 @@ import {
   leaveCarrier,
   loadIntoVehicle,
   moveVehicle,
+  setVehicleWantedOrder,
   stopVehicle,
   unloadPeople,
 } from '../vehicles/index.js';
@@ -171,6 +173,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'unloadPeople':
       unloadPeople(world, ctx, command);
+      return;
+    case 'setVehicleWanted':
+      setVehicleWantedOrder(world, ctx, command);
+      return;
+    case 'clearVehicleWanted':
+      clearVehicleWantedOrder(world, ctx, command);
       return;
     case 'loadIntoVehicle':
       loadIntoVehicle(world, ctx, command);

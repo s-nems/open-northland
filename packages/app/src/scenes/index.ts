@@ -41,6 +41,7 @@ import { tradeScene } from './trade.js';
 import { tributeScene } from './tribute.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
+import { vehicleCargoScene } from './vehicle-cargo.js';
 import { vehicleShipsScene } from './vehicle-ships.js';
 import { vehicleYardScene } from './vehicle-yard.js';
 import { vehiclesScene } from './vehicles.js';
@@ -103,6 +104,7 @@ export const SCENES: readonly SceneDefinition[] = [
   vehiclesScene,
   vehicleYardScene,
   vehicleShipsScene,
+  vehicleCargoScene,
 ];
 
 export function getScene(id: string): SceneDefinition | undefined {

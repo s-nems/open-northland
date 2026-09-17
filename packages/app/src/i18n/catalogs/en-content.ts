@@ -242,6 +242,11 @@ export const enContent = {
       summary:
         'A level-3 joinery whose two joiners are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.',
     },
+    'vehicle-cargo': {
+      title: 'Vehicle cargo',
+      summary:
+        'Two carts and their carriers: a handcart whose player asked for wood, which its carrier fetches unit by unit from the piles beside it, and an ox cart that starts loaded with stone nobody asked for, so its carrier carries it out to the warehouse. The handcart turns loaded after the first unit, the ox cart empty after the last.',
+    },
     school: {
       title: 'Learning a profession',
       summary:

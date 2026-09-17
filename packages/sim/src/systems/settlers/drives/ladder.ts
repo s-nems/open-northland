@@ -42,6 +42,7 @@ import {
   planPorter,
   planProducer,
   planSiteStaff,
+  planVehicleCargo,
   planWorkshopSupplier,
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
@@ -140,8 +141,28 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // still pull the unit away, so a marrying or child-making settler still eats. Engagement is the one
   // member that never gets here, having been answered in place above.
   if (heldOffEconomy(world, e)) return;
-  // A vehicle's crew: the rider walks to its door and steps in when asked, above every errand and trade.
-  if (planRider(world, ctx, terrain, e)) return;
+
+  const plan: PlannerContext = {
+    world,
+    ctx,
+    terrain,
+    entity: e,
+    tribe: settler.tribe,
+    jobType,
+    experience: world.get(e, SettlerProgress).experience,
+    owner: ownerOf(world, e),
+    here,
+    targets: pass.targets,
+    inbound: pass.inbound,
+    limit,
+    gossipCandidates: pass.gossipCandidates,
+  };
+
+  // A vehicle's crew, above every errand and trade: a carrier serves its vehicle's hold; any rider walks
+  // to the door and steps in when asked. A rider holding a load the hold will not take runs the ladder
+  // down to the delivery rung first, so it is not parked at the door with its hands full.
+  if (planVehicleCargo(plan, load)) return;
+  if ((load === undefined || load.amount <= 0) && planRider(world, ctx, terrain, e)) return;
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
   if (planTraining(world, ctx, terrain, e, settler, here, limit)) return;
@@ -175,21 +196,6 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   )
     return;
 
-  const plan: PlannerContext = {
-    world,
-    ctx,
-    terrain,
-    entity: e,
-    tribe: settler.tribe,
-    jobType,
-    experience: world.get(e, SettlerProgress).experience,
-    owner: ownerOf(world, e),
-    here,
-    targets: pass.targets,
-    inbound: pass.inbound,
-    limit,
-    gossipCandidates: pass.gossipCandidates,
-  };
   planEconomy(plan, pass, settler, load, hereNode.hx, hereNode.hy, alert);
 }
 

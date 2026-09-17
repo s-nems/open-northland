@@ -112,6 +112,7 @@ export const SUPPORTED_RESULTS = [
   'SetHouseBehaviourFlag',
   'AddGoodsToHouses',
   'AddGoodsToAnyStock',
+  'AddGoodsToVehicle',
   'AddGoodsToMapArea',
   'RemoveGoodsFromMapArea',
   'AllowJob',

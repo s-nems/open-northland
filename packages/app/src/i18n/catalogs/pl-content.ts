@@ -242,6 +242,11 @@ export const plContent = {
       summary:
         'Stolarnia trzeciego poziomu, której dwaj stolarze mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
     },
+    'vehicle-cargo': {
+      title: 'Ładunek wozów',
+      summary:
+        'Dwa wozy z tragarzami: wózek ręczny, dla którego gracz zamówił drewno, tragarz przynosi je sztuka po sztuce ze stert obok wozu; wóz z wołem zaczyna załadowany kamieniem, którego nikt nie zamówił, więc jego tragarz wynosi go do magazynu. Wózek zmienia się w załadowany po pierwszej sztuce, wóz w pusty po ostatniej.',
+    },
     school: {
       title: 'Nauka zawodu',
       summary:

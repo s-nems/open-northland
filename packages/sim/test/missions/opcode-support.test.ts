@@ -232,6 +232,7 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
   },
   AddGoodsToHouses: { opcode: 'AddGoodsToHouses', objectId: 7, good: 1, amount: 1 },
   AddGoodsToAnyStock: { opcode: 'AddGoodsToAnyStock', player: 0, good: 1, amount: 1 },
+  AddGoodsToVehicle: { opcode: 'AddGoodsToVehicle', vehicleId: 7, good: 1, amount: 1 },
   AddGoodsToMapArea: {
     opcode: 'AddGoodsToMapArea',
     good: 1,

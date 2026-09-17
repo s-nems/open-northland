@@ -7,6 +7,7 @@ export {
   riderSystem,
   vehicleBoardingSystem,
 } from './boarding.js';
+export { abandonCargoRun, clearVehicleWantedOrder, setVehicleWantedOrder } from './cargo.js';
 export { createVehicle } from './create.js';
 export {
   attachToVehicle,
@@ -38,5 +39,17 @@ export {
   VEHICLE_RUIN_PERCENT,
   type VehicleRemovalCause,
 } from './remove.js';
-export { modifyVehicleStock, vehicleLineCap, vehicleStockGood } from './stock.js';
+export {
+  addGoodsToVehicle,
+  clearVehicleWanted,
+  hasCarrierAttached,
+  modifyVehicleReserved,
+  modifyVehicleStock,
+  setVehicleWanted,
+  stockVehicleGoods,
+  vehicleIsFull,
+  vehicleIsFullSoon,
+  vehicleLineCap,
+  vehicleStockGood,
+} from './stock.js';
 export { type VehicleStockView, type VehicleView, vehiclesOf, vehicleView } from './view.js';

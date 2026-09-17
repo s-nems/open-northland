@@ -1,13 +1,12 @@
 # Select vehicles and expose the vehicle window and orders
 
 **Area:** app · **Focus:** `packages/app/src/view/unit-controls`, `hud/details-panel`, `hud/action-ring` · **Priority:** P2
-**Blocked by:** [cargo and carriers](vehicles-6-cargo-and-carriers.md)
 
 `click-hits.ts` and `selection-view.ts` know only settlers and buildings; the action ring's
 `assignVehicle` / `attackVehicle` orders are declared inert; of the 13 mapped vehicle message ids
 the refused-goto and the five crew notes have raisers (`from-events.ts`). The crew orders exist as
 seat commands (`attachToVehicle`, `detachFromVehicle`, `boardVehicle`, `unloadPeople`,
-`loadIntoVehicle`, `leaveCarrier`) and only need buttons. The original's window and command set are listed in
+`loadIntoVehicle`, `leaveCarrier`, `setVehicleWanted`, `clearVehicleWanted`) and only need buttons. The original's window and command set are listed in
 [VEHICLES.md](../../formats/VEHICLES.md#lifecycle). The UI only needs to be usable; the in-game UI
 rework restyles it later.
 
@@ -18,7 +17,8 @@ rework restyles it later.
   `click-hits.ts` needs the kind, not a new hit path.
 - Details panel `vehicle` model, layout and sections: name and task string, hit points, commander
   and passengers (click selects the settler), carried vehicle, cargo rows with wanted `-/+`
-  (10 with Shift) and a clear-all button, unload goods, detach from carrier, and for carts the trade
+  (10 with Shift, `setVehicleWanted`) and a clear-all button (`clearVehicleWanted`, which is also how
+  the goods leave: `f` has no goods half), detach from carrier, and for carts the trade
   tabs of the trader ticket.
 - Orders: go to (left-click ground), dock (ship on a shore), unload people, attack human / building /
   vehicle / position and the three stances for a catapult, stop; right-click defaults from the

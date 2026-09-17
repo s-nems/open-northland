@@ -84,7 +84,12 @@ export const VehicleDrive = defineComponent<{
   increment: number;
 }>('VehicleDrive', 'movement');
 
-/** Storage is a byte per allowed good in the original: current, wanted and reserved units. */
+/**
+ * Storage is a byte per allowed good in the original: `current` units aboard, `wanted` units the player
+ * asks for, and `reserved`, the original's future amount: the units aboard plus the ones carriers have
+ * booked to bring. A booked unit's arrival raises `current` and leaves `reserved` as it is; a carrier
+ * fetches while `wanted > reserved` and flushes while `wanted < reserved`.
+ */
 export interface VehicleStockLine {
   current: number;
   wanted: number;
@@ -102,6 +107,17 @@ export const VehicleStock = defineComponent<{ lines: Map<number, VehicleStockLin
 /** The largest value a stock byte holds. */
 export const VEHICLE_STOCK_BYTE_MAX = 255;
 
+/**
+ * A carrier's booking on its vehicle's hold: `load` means one unit of `goodType` (the hold's canonical
+ * good) is counted in `reserved` for the unit on the carrier's back, `unload` that one unit was taken
+ * off `reserved` for the unit it is about to lift out. Cleared when the atomic at the door applies.
+ */
+export const CargoRun = defineComponent<{
+  vehicle: Entity;
+  goodType: number;
+  direction: 'load' | 'unload';
+}>('CargoRun', 'economy');
+
 /** Canonical ascending-goodType view of a hold, empty lines included. */
 export function vehicleStockEntries(stock: {
   lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>>;
@@ -113,6 +129,24 @@ export function vehicleStockEntries(stock: {
 export function vehicleLoad(stock: { lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>> }): number {
   let total = 0;
   for (const line of stock.lines.values()) total += line.current;
+  return total;
+}
+
+/** Units booked, summed over every good: aboard plus on their way. */
+export function vehicleReservedLoad(stock: {
+  lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>>;
+}): number {
+  let total = 0;
+  for (const line of stock.lines.values()) total += line.reserved;
+  return total;
+}
+
+/** Units asked for, summed over every good. */
+export function vehicleWantedLoad(stock: {
+  lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>>;
+}): number {
+  let total = 0;
+  for (const line of stock.lines.values()) total += line.wanted;
   return total;
 }
 

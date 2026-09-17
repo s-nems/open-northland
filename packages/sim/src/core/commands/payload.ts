@@ -118,7 +118,11 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   cancelUpgrade: { required: { building: 'integer' } },
   createVehicle: {
     required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
-    optional: { owner: 'integer', missionId: 'integer' },
+    optional: {
+      owner: 'integer',
+      missionId: 'integer',
+      goods: { arrayOf: { fields: { required: { good: 'integer', amount: 'integer' } } } },
+    },
   },
   debugCompleteConstruction: { required: { target: 'integer' } },
   debugFillStockpile: { required: { target: 'integer' } },
@@ -235,6 +239,8 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     },
   },
   stopVehicle: { required: { vehicle: 'integer' } },
+  setVehicleWanted: { required: { vehicle: 'integer', goodType: 'integer', amount: 'integer' } },
+  clearVehicleWanted: { required: { vehicle: 'integer' } },
   trainSoldier: { required: { entity: 'integer', house: 'integer' } },
   unassignHouse: { required: { entity: 'integer' } },
   unloadPeople: { required: { vehicle: 'integer' } },

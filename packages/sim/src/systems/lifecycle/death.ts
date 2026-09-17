@@ -20,6 +20,7 @@ import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
 import { releasePalisadeReservation } from '../palisades/reservation.js';
 import { isSoldierJob } from '../readviews/index.js';
+import { abandonCargoRun } from '../vehicles/cargo.js';
 
 // A settler's death and silent removal: a leaf below the cleanup system, so a vehicle sinking its crew
 // and the cleanup reaping a vehicle do not import each other.
@@ -53,6 +54,7 @@ export function removeSettlerSilently(world: World, e: Entity): void {
   releasePalisadeReservation(world, e);
   const rider = world.tryGet(e, Rider);
   if (rider !== undefined && world.has(rider.vehicle, Vehicle)) unseatPassenger(world, rider.vehicle, e);
+  abandonCargoRun(world, e);
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);
   const wasMinor = isMinor(world, e);

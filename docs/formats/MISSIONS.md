@@ -307,7 +307,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 37 | `EnableJob` | 1, 3, 4 | enable the job for the player's tribe | sim | 21 |
 | 38 | `EnableHouse` | 1, 3, 15 | enable the house type and its well, beehive or animal-farm goods; catalog-name bindings | sim | 75 |
 | 39 | `DisableAll` | | deactivate every mission | sim | 83 |
-| 40 | `AddGoodsToVehicle` | 12, 6, 7 | add goods to vehicles with the id that can carry the good | sim | 14 \* |
+| 40 | `AddGoodsToVehicle` | 12, 6, 7 | on every vehicle with the id that can carry the good: book, stow and ask for the amount, each write clamped to the type's budget; with no carrier attached the stow first sets wanted to the new actual amount ([VEHICLES.md](VEHICLES.md#cargo)) | sim | 14 |
 | 41 | `AddGoodsToAnyStock` | 1, 6, 7 | fill the player's warehouses that store the good, spilling to the next until the amount is placed | sim | 29 |
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
 | 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it) | sim | 101 |

@@ -38,6 +38,10 @@ export interface CreateVehicleCommand {
   readonly owner?: number;
   /** The {@link MissionObjectId} to stamp; omit or 0 for a vehicle no script addresses. */
   readonly missionId?: number;
+  /** Authored cargo (a decoded map's `addgoods` after `setvehicle`): each entry is stowed and booked in
+   *  the hold up to the type's budget, and asked for by nobody, so a carrier flushes it out only when a
+   *  player asks for less. */
+  readonly goods?: readonly { readonly good: number; readonly amount: number }[];
 }
 
 /** Commands that create living settlers, wildlife herds or vehicles. */

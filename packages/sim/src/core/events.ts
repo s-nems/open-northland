@@ -71,13 +71,14 @@ export type SimEvent =
        * A crew order on a vehicle was refused: `noRoom` when no slot is free for a rider or a carried
        * vehicle's crew, `cannotAttach` when a carrier will not take the vehicle, `cannotNearShip` when a
        * carried vehicle cannot reach its carrier's door, `cannotLeave` when it may not leave a carrier at
-       * sea. The player's `vehicleNoPassengerRoom`, `cannotAttachVehicle`, `vehicleCannotNearShip` and
-       * `cannotLeaveVehicle` notes about the vehicle.
+       * sea, `noCarrier` when a wanted-amount order finds no carrier attached to serve it (the order
+       * itself still applies). The player's `vehicleNoPassengerRoom`, `cannotAttachVehicle`,
+       * `vehicleCannotNearShip`, `cannotLeaveVehicle` and `vehicleNoCarrier` notes about the vehicle.
        */
       readonly kind: 'vehicleCrewRefused';
       readonly entity: Entity;
       readonly player: number | null;
-      readonly reason: 'noRoom' | 'cannotAttach' | 'cannotNearShip' | 'cannotLeave';
+      readonly reason: 'noRoom' | 'cannotAttach' | 'cannotNearShip' | 'cannotLeave' | 'noCarrier';
     }
   | {
       /**

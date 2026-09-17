@@ -17,4 +17,5 @@ export {
   stackOntoTile,
 } from './piles.js';
 export { pickupFromStore, pileupIntoStore } from './transfer.js';
+export { loadVehicleHold, unloadVehicleHold } from './vehicle-hold.js';
 export { isUsed } from './wear.js';

@@ -10,4 +10,5 @@ export { planGatherer } from './gatherer.js';
 export { planCarrierHaul, planPorter } from './hauling.js';
 export { RepairCrews } from './repair.js';
 export { planSiteStaff } from './site-staff.js';
+export { planVehicleCargo, VEHICLE_CARGO_SEARCH_RADIUS } from './vehicle-cargo.js';
 export { planProducer, planWorkshopSupplier, WorkSeatClaims } from './workshop/index.js';
