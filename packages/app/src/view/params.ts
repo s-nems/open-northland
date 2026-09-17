@@ -1,3 +1,5 @@
+import type { CharacterScaler } from '@open-northland/render';
+
 /**
  * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
  * launch, so no entry re-declares its own parser.
@@ -70,6 +72,12 @@ export function intParam(params: URLSearchParams, name: string, fallback: number
 export function postFxParam(params: URLSearchParams): boolean | null {
   const raw = params.get('postfx');
   return raw === null ? null : raw !== 'off';
+}
+
+/** The `?scaler` diagnostic choice of original-character magnification; `null` when absent or unknown. */
+export function characterScalerParam(params: URLSearchParams): CharacterScaler | null {
+  const raw = params.get('scaler');
+  return raw === 'bilinear' || raw === 'sharp' || raw === 'xbr' ? raw : null;
 }
 
 /**

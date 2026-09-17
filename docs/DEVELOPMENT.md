@@ -187,6 +187,10 @@ Enhanced sampling also removes device-pixel snapping from camera/character place
 minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
 the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already
 mipmapped own terrain keeps its existing sampling. The HUD and simulation coordinates are unchanged.
+Original characters and animals magnify through an edge-directed xBR pass on palette-resolved
+colours, so diagonal outlines become straight cuts instead of stairs or blur; it converges on plain
+bilinear as texels reach pixel size. `scaler=bilinear|sharp|xbr` overrides that choice for one
+session (`sharp` keeps whole texels and anti-aliases only their boundaries).
 At close zoom, original terrain also gets a small opaque-interior contrast boost capped at eight
 8-bit RGB levels before lighting. Finished buildings use isolated native-size frames with mipmaps
 and similarly bounded interior detail; alpha, anchors and picking bounds stay unchanged. The building

@@ -1,6 +1,12 @@
 import { Mesh, type MeshGeometry, type Shader, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import { createPalettedGeometry, createPalettedShader, type PalettedUniforms } from './shader.js';
+import {
+  createPalettedGeometry,
+  createPalettedShader,
+  PALETTED_SAMPLING_MODES,
+  type PalettedSampling,
+  type PalettedUniforms,
+} from './shader.js';
 
 /**
  * GUI transparent-key mode for a {@link PalettedSprite}. `'off'` draws straight; `'magenta'` keys only the
@@ -105,12 +111,20 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     return (this.vars.uniforms.uFlip[0] ?? 0) > 0.5;
   }
 
-  /** Resolve neighbouring palette entries before blending; never interpolate the stored indices. */
-  set smoothSampling(on: boolean) {
-    const next = on ? 1 : 0;
+  /** Palette colours are resolved before any blending; the stored indices are never interpolated. */
+  set sampling(mode: PalettedSampling) {
+    const next = PALETTED_SAMPLING_MODES[mode];
     if (this.vars.uniforms.uSampling[0] === next) return;
     this.vars.uniforms.uSampling[0] = next;
     this.vars.update();
+  }
+  get sampling(): PalettedSampling {
+    const value = this.vars.uniforms.uSampling[0] ?? 0;
+    return (
+      (Object.keys(PALETTED_SAMPLING_MODES) as PalettedSampling[]).find(
+        (mode) => PALETTED_SAMPLING_MODES[mode] === value,
+      ) ?? 'nearest'
+    );
   }
 
   /**

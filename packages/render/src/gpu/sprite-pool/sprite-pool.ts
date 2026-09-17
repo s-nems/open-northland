@@ -19,6 +19,7 @@ import {
   screenDepth,
 } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import type { CharacterScaler } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
@@ -41,6 +42,8 @@ const POOL_REAP_BUDGET = 32;
 
 export interface PoolFrame {
   readonly enhancedSampling?: boolean;
+  /** The original characters' magnification under enhanced sampling; `xbr` when absent. */
+  readonly characterScaler?: CharacterScaler;
   readonly environmentMotion?: boolean;
   readonly snapshot: WorldSnapshot;
   /** The margin-inflated world-space box the camera frames - the sprite cull rectangle. */

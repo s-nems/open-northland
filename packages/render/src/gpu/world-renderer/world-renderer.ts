@@ -20,6 +20,7 @@ import {
   PortraitInsetLayer,
   type SettlerBubbleGfx,
 } from '../overlays/index.js';
+import type { CharacterScaler } from '../paletted-sprite/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
@@ -69,6 +70,7 @@ export class WorldRenderer {
   private readonly mapViews: MapViewLayer;
 
   private readonly viewSmoothing: boolean;
+  private readonly characterScaler: CharacterScaler;
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = {
     enhancedSampling: false,
@@ -79,6 +81,7 @@ export class WorldRenderer {
   constructor(app: Application, opts?: WorldRendererOptions) {
     this.app = app;
     this.viewSmoothing = opts?.viewSmoothing === true;
+    this.characterScaler = opts?.characterScaler ?? 'xbr';
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
     // Own Pixi render group: moving sprites re-write zIndex every frame, and that must re-sort and
@@ -235,6 +238,7 @@ export class WorldRenderer {
       alpha,
       snapResolution,
       enhancedSampling: this.enhancements.enhancedSampling,
+      characterScaler: this.characterScaler,
       environmentMotion: this.enhancements.environmentMotion,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
