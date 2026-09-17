@@ -19,7 +19,6 @@ import type {
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import type { MessageTarget } from '../hud/tool-panel/messages/index.js';
-import type { TooltipSurface } from '../hud/tooltip-surface.js';
 import { currentLocale } from '../i18n/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -84,12 +83,10 @@ export interface GameToolPanelDeps {
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: (missionId: number) => number | null;
   readonly onLargeWindow?: (open: boolean) => void;
-  /** The map's sprite sheet for the note portraits; absent leaves the notes bare. */
+  /** The map's sprite sheet for the cards' settler figures; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
   readonly playerColourOf?: (player: number) => number;
-  /** The cursor chip a hovered note shows its text in. */
-  readonly tooltip?: TooltipSurface;
-  /** A note's Select: centre the view on the target and select it. */
+  /** A pressed card: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
   /** The GUI click feedback for the panel's buttons and held modes; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
@@ -97,7 +94,7 @@ export interface GameToolPanelDeps {
 
 export interface GameToolPanelHandle {
   readonly controller: ToolPanelController;
-  /** True over the strip, an open window, or active placement; asked before any world picking. */
+  /** True over an open window or in active placement; asked before any world picking. */
   claimPointer(clientX: number, clientY: number): boolean;
   /** True over an open pop-up window, so scrolling its list never also zooms the world behind it. */
   claimsWheel(clientX: number, clientY: number): boolean;
@@ -196,7 +193,6 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onLargeWindow !== undefined ? { onLargeWindow: deps.onLargeWindow } : {}),
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-      ...(deps.tooltip !== undefined ? { tooltip: deps.tooltip } : {}),
       ...(deps.onSelectMessageTarget !== undefined
         ? { onSelectMessageTarget: deps.onSelectMessageTarget }
         : {}),

@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
-import { createToolPanelInput, type HeldMode, type NotesInput } from '../src/hud/tool-panel/input.js';
+import { createToolPanelInput, type HeldMode } from '../src/hud/tool-panel/input.js';
 import type { ToolWindows } from '../src/hud/tool-panel/windows.js';
 
 /**
@@ -38,13 +38,6 @@ function heldMode(): HeldMode & { active: boolean } {
   };
   return mode;
 }
-
-const NO_NOTES: NotesInput = {
-  windowClaims: () => false,
-  handleWindowClick: () => false,
-  handleNoteClick: () => false,
-  handleHover: () => undefined,
-};
 
 const CLOSED_WINDOWS = {
   byId: { mission: { isOpen: () => false, close: () => undefined } },
@@ -91,7 +84,6 @@ function mount(keyboardOwned?: () => boolean) {
     canvas,
     toCanvas: (x, y) => ({ x, y }),
     windows: CLOSED_WINDOWS,
-    notes: NO_NOTES,
     held: [held],
     bindings: DEFAULT_KEY_BINDINGS,
     closeWindow: () => {

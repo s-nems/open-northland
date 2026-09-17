@@ -1,11 +1,8 @@
 import type { UiString } from '../../../content/gui-gfx.js';
 import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
 
-/** The ingamegui string table the message texts, window title and buttons read. */
+/** The ingamegui string table the message texts read. */
 export const MESSAGE_STRINGS_TABLE = 'messages';
-export const MESSAGE_WINDOW_TITLE_STRING_ID = 0;
-export const MESSAGE_REMOVE_STRING_ID = 1;
-export const MESSAGE_SELECT_STRING_ID = 2;
 
 /**
  * The `messages` row each type reads. The pairing follows the the original's message-string builder; the
@@ -87,6 +84,10 @@ const EXPERIENCE_GOOD_STRING_ID = 35;
 const EXPERIENCE_HOUSE_STRING_ID = 36;
 /** The placeholder the stock-full row carries for the good's name. */
 const GOOD_PLACEHOLDER = '%s';
+/** Some rows open with a dash that joins them to the subject's name; the card body drops it. */
+const LEADING_DASH = /^-\s*/;
+/** Joins a card's subject name and trade label. */
+const SUBJECT_SEPARATOR = ' · ';
 
 const TYPE_NAME_BY_ID: ReadonlyMap<UserMessageType, UserMessageTypeName> = new Map(
   (Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]).map((name) => [USER_MESSAGE_TYPE[name], name]),
@@ -145,15 +146,30 @@ export interface MessageTextDeps {
   readonly fallbackRow: (id: number) => string;
 }
 
-/** The note's full text, as the tooltip and the window show it. */
+/** A message as the card shows it and as it reads in full. */
+export interface MessageText {
+  /** The card's first line: the subject's name with its trade label, or null for a subjectless row. */
+  readonly subject: string | null;
+  /** The card's event line, without the subject. */
+  readonly body: string;
+  /** The whole message in the original's wording, for the unfolded card and assistive text. */
+  readonly full: string;
+}
+
 export function composeMessageText(
   type: UserMessageType,
   parts: MessageTextParts,
   deps: MessageTextDeps,
-): string {
+): MessageText {
   const name = userMessageTypeName(type);
   const row = (id: number): string => deps.uiString(MESSAGE_STRINGS_TABLE, id, deps.fallbackRow(id));
   const base = row(MESSAGE_STRING_ID[name]);
+  const subject =
+    parts.subjectName === null
+      ? null
+      : parts.jobLabel === null
+        ? parts.subjectName
+        : `${parts.subjectName}${SUBJECT_SEPARATOR}${parts.jobLabel}`;
   const who =
     parts.subjectName === null
       ? null
@@ -161,19 +177,37 @@ export function composeMessageText(
         ? parts.subjectName
         : `${parts.subjectName} (${parts.jobLabel})`;
   const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
+  const led = (body: string): MessageText => ({
+    subject,
+    body: body.replace(LEADING_DASH, ''),
+    full: lead(body),
+  });
 
-  if (name === 'humanDied') return who === null ? row(UNKNOWN_HERO_DIED_STRING_ID) : `${who} ${base}`;
-  if (name === 'specialItemFound') return parts.detail === undefined ? base : `${base} - ${parts.detail}`;
-  if (HOUSE_ROWS.has(name)) return parts.subjectName === null ? base : `${parts.subjectName} ${base}`;
+  if (name === 'humanDied') {
+    if (who !== null) return led(base);
+    const unknown = row(UNKNOWN_HERO_DIED_STRING_ID);
+    return { subject: null, body: unknown, full: unknown };
+  }
+  if (name === 'specialItemFound') {
+    if (parts.detail === undefined) return { subject: null, body: base, full: base };
+    return { subject: parts.detail, body: base, full: `${base} - ${parts.detail}` };
+  }
+  if (HOUSE_ROWS.has(name)) {
+    return {
+      subject: parts.subjectName,
+      body: base.replace(LEADING_DASH, ''),
+      full: parts.subjectName === null ? base : `${parts.subjectName} ${base}`,
+    };
+  }
   if (name === 'stockFull') {
-    return lead(
+    return led(
       parts.goodName === null
         ? row(STOCK_FULL_NO_GOOD_STRING_ID)
         : base.replace(GOOD_PLACEHOLDER, parts.goodName),
     );
   }
-  if (name === 'equipmentNotFound') return lead(`${base} ${row(EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID)}`);
-  if (name === 'backpackFull') return lead(`${base} ${row(BACKPACK_FULL_DETAIL_STRING_ID)}`);
+  if (name === 'equipmentNotFound') return led(`${base} ${row(EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID)}`);
+  if (name === 'backpackFull') return led(`${base} ${row(BACKPACK_FULL_DETAIL_STRING_ID)}`);
   if (name === 'experienceUnlocks' && parts.technologySections !== undefined) {
     const sections = [
       [EXPERIENCE_JOB_STRING_ID, parts.technologySections.jobs],
@@ -184,9 +218,9 @@ export function composeMessageText(
       .filter(([, values]) => values.length > 0)
       .map(([label, values]) => `${row(label)}:\n${values.map((value) => `- ${value}`).join('\n')}`)
       .join('\n\n');
-    return `${lead(base)}:\n${details}`;
+    return { subject, body: base, full: `${lead(base)}:\n${details}` };
   }
-  if (GOOD_APPENDED.has(name) && parts.goodName !== null) return lead(`${base} ${parts.goodName}`);
-  if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return lead(`${base} ${parts.stanceName}`);
-  return lead(base);
+  if (GOOD_APPENDED.has(name) && parts.goodName !== null) return led(`${base} ${parts.goodName}`);
+  if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return led(`${base} ${parts.stanceName}`);
+  return led(base);
 }

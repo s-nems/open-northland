@@ -10,6 +10,7 @@ import {
   MESSAGE_SLOTS,
   SIMILAR_MESSAGE_RANGE_CELLS,
 } from '../src/hud/tool-panel/messages/feed.js';
+import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import {
   type MessageSubject,
   type PendingMessage,
@@ -18,7 +19,7 @@ import {
 } from '../src/hud/tool-panel/messages/types.js';
 
 const TICK = 100;
-const TEXT = (): string => 'x';
+const TEXT = (): MessageText => ({ subject: null, body: 'x', full: 'x' });
 
 function pending(
   type: UserMessageType,
@@ -124,12 +125,13 @@ describe('message feed', () => {
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK + 1, TEXT)).toBe('accepted');
   });
 
-  it('filters arrivals below the level and drops displayed notes when the level rises', () => {
+  it('hides the notes below the level but keeps and counts them, whatever the level does next', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.wasBorn), TICK, TEXT); // routine
     feed.add(pending(USER_MESSAGE_TYPE.houseFinished, { kind: 'building', entity: 3 }), TICK, TEXT); // notable
     feed.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK, TEXT); // important
     expect(feed.displayed()).toHaveLength(3);
+    expect(feed.tally()).toEqual([1, 1, 1]);
     const before = feed.version();
     expect(feed.cycleLevel()).toBe(1);
     expect(feed.version()).toBeGreaterThan(before);
@@ -137,23 +139,28 @@ describe('message feed', () => {
       USER_MESSAGE_TYPE.houseFinished,
       USER_MESSAGE_TYPE.humanDied,
     ]);
-    expect(feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK + 1, TEXT)).toBe('filtered');
+    // An arrival under the bar is kept for the tally, not shown.
+    expect(feed.add(pending(USER_MESSAGE_TYPE.hungry), TICK + 1, TEXT)).toBe('accepted');
+    expect(feed.displayed()).toHaveLength(2);
+    expect(feed.live()).toHaveLength(4);
+    expect(feed.tally()).toEqual([2, 1, 1]);
     expect(feed.cycleLevel()).toBe(2);
     expect(feed.displayed().map((m) => m.type)).toEqual([USER_MESSAGE_TYPE.humanDied]);
     expect(feed.cycleLevel()).toBe(0);
-    // Lowering the bar does not resurrect what the higher bar dropped.
-    expect(feed.displayed().map((m) => m.type)).toEqual([USER_MESSAGE_TYPE.humanDied]);
+    expect(feed.displayed()).toHaveLength(4);
   });
 
   it('applies the collector rule through the pending job', () => {
     const feed = createMessageFeed();
     feed.setLevel(1);
-    expect(
-      feed.add(pending(USER_MESSAGE_TYPE.goodNotFound, undefined, { jobType: JOB_BUILDER }), TICK, TEXT),
-    ).toBe('filtered');
-    expect(
-      feed.add(pending(USER_MESSAGE_TYPE.goodNotFound, undefined, { jobType: JOB_COLLECTOR }), TICK, TEXT),
-    ).toBe('accepted');
+    feed.add(pending(USER_MESSAGE_TYPE.goodNotFound, undefined, { jobType: JOB_BUILDER }), TICK, TEXT);
+    feed.add(
+      pending(USER_MESSAGE_TYPE.goodNotFound, { kind: 'settler', entity: 8 }, { jobType: JOB_COLLECTOR }),
+      TICK,
+      TEXT,
+    );
+    expect(feed.live().map((m) => m.priority)).toEqual([0, 1]);
+    expect(feed.displayed().map((m) => m.priority)).toEqual([1]);
   });
 
   it('rejects arrivals once every slot is taken', () => {
@@ -195,13 +202,20 @@ describe('message feed', () => {
     expect(feed.add(lost, TICK + MESSAGE_LIFETIME_TICKS, TEXT)).toBe('accepted');
   });
 
-  it('Shift-dismiss clears the strip into history', () => {
+  it('Shift-dismiss clears the shown notes into history and leaves the ones under the level', () => {
     const feed = createMessageFeed();
     feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 1 }), TICK, TEXT);
     feed.add(pending(USER_MESSAGE_TYPE.wasBorn, { kind: 'settler', entity: 2 }), TICK, TEXT);
+    feed.add(pending(USER_MESSAGE_TYPE.humanDied, null), TICK, TEXT);
+    feed.setLevel(2);
     feed.removeAll(true);
     expect(feed.displayed()).toHaveLength(0);
-    expect(feed.state().history).toHaveLength(2);
+    expect(feed.live().map((m) => m.type)).toEqual([USER_MESSAGE_TYPE.wasBorn, USER_MESSAGE_TYPE.wasBorn]);
+    expect(feed.state().history).toHaveLength(1);
+    feed.setLevel(0);
+    feed.removeAll(true);
+    expect(feed.live()).toHaveLength(0);
+    expect(feed.state().history).toHaveLength(3);
   });
 
   it("dismisses one settler's event notes, not its standing one nor anyone else's, and lets them come straight back", () => {
@@ -246,15 +260,15 @@ describe('message feed', () => {
   it('composes the text only for an accepted message', () => {
     const feed = createMessageFeed();
     let composed = 0;
-    const compose = (): string => {
+    const compose = (): MessageText => {
       composed++;
-      return 'text';
+      return { subject: null, body: 'text', full: 'text' };
     };
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), 0, compose)).toBe('muted');
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, compose)).toBe('accepted');
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, compose)).toBe('duplicate');
     expect(composed).toBe(1);
-    expect(feed.displayed()[0]?.text).toBe('text');
+    expect(feed.displayed()[0]?.text.full).toBe('text');
   });
 
   it('round-trips through its state, keeping the level and the id counter', () => {

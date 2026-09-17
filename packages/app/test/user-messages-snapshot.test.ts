@@ -6,6 +6,7 @@ import {
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
+import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 
 const LOCAL = 0;
@@ -97,15 +98,16 @@ function snapshot(tick: number, actors: readonly Actor[], needsEnabled = true): 
 
 const FLAG = 92;
 
+const plain = (full: string): MessageText => ({ subject: null, body: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
-  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
+  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
   building: () => 'Dom',
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
+  text: (type, parts) => plain(`${parts.subjectName ?? '?'}:${type}`),
 };
 
 /** One sweep flattened to `[type, subject entity]` pairs. */
@@ -228,7 +230,7 @@ describe('user messages read off the snapshot', () => {
     const source = createSnapshotMessageSource(LOCAL);
     const actors: Actor[] = [{ id: 1, hunger: ONE }];
     const first = source.sweep(snapshot(100, actors), naming);
-    expect(first.map((r) => r.compose())).toEqual([
+    expect(first.map((r) => r.compose().full)).toEqual([
       `S1:${USER_MESSAGE_TYPE.hungry}`,
       `S1:${USER_MESSAGE_TYPE.starving}`,
     ]);

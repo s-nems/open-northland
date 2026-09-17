@@ -84,7 +84,7 @@ function note(
     jobType: null,
     priority: 2,
     tick: RAISED,
-    text: 'x',
+    text: { subject: null, body: 'x', full: 'x' },
   };
 }
 

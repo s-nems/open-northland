@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { JOB_BUILDER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
-import { GUI_FRAME } from '../src/content/gui-atlas-map.js';
 import {
   cycleMessageLevel,
   DEFAULT_MESSAGE_LEVEL,
-  MESSAGE_LEVEL_FACE,
   messagePassesFilter,
   messagePriority,
 } from '../src/hud/tool-panel/messages/priority.js';
@@ -102,17 +100,5 @@ describe('user message priority (byte evidence the original 0x4b29fc / the origi
     expect(cycleMessageLevel(0)).toBe(1);
     expect(cycleMessageLevel(1)).toBe(2);
     expect(cycleMessageLevel(2)).toBe(0);
-  });
-
-  it('loses one envelope seal per level and names the matching tooltip row', () => {
-    expect(MESSAGE_LEVEL_FACE[0]).toEqual({ gfx: GUI_FRAME.message_priority_button, tooltipStringId: 14 });
-    expect(MESSAGE_LEVEL_FACE[1]).toEqual({
-      gfx: GUI_FRAME.message_priority_button_important,
-      tooltipStringId: 15,
-    });
-    expect(MESSAGE_LEVEL_FACE[2]).toEqual({
-      gfx: GUI_FRAME.message_priority_button_only_important,
-      tooltipStringId: 16,
-    });
   });
 });

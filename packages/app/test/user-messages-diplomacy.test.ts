@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { createDiplomacyMessageSource, type MetSeat } from '../src/hud/tool-panel/messages/from-diplomacy.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
+import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 
 const ALLY = 1;
 const RIVAL = 2;
 
+const plain = (full: string): MessageText => ({ subject: null, body: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
-  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
+  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
   building: () => 'Dom',
   player: (player) => `Gracz ${player}`,
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  text: (type, parts) => `${parts.subjectName ?? '?'}:${type}:${parts.stanceName ?? ''}`,
+  text: (type, parts) => plain(`${parts.subjectName ?? '?'}:${type}:${parts.stanceName ?? ''}`),
 };
 
 describe('user messages about the other seats', () => {
@@ -43,7 +45,7 @@ describe('user messages about the other seats', () => {
     const source = createDiplomacyMessageSource(() => seats);
     source.poll(naming);
     seats = [{ player: RIVAL, towardYou: 'enemy' }];
-    expect(source.poll(naming).map((r) => r.compose())).toEqual([
+    expect(source.poll(naming).map((r) => r.compose().full)).toEqual([
       `Gracz ${RIVAL}:${USER_MESSAGE_TYPE.playerSighted}:enemy`,
     ]);
   });

@@ -1,5 +1,4 @@
 import { JOB_COLLECTOR } from '../../../catalog/jobs.js';
-import { GUI_FRAME } from '../../../content/gui-atlas-map.js';
 import {
   MESSAGE_PRIORITY_LEVELS,
   type MessagePriorityLevel,
@@ -95,16 +94,3 @@ export function cycleMessageLevel(level: MessagePriorityLevel): MessagePriorityL
   if (next === undefined) throw new Error('message-priority: level cycle index out of range');
   return next;
 }
-
-export interface MessageLevelFace {
-  /** The envelope glyph: three seals at level 0, two at 1, one at 2. */
-  readonly gfx: number;
-  /** The button's tooltip in the ingamegui `main` table. */
-  readonly tooltipStringId: number;
-}
-
-export const MESSAGE_LEVEL_FACE: Readonly<Record<MessagePriorityLevel, MessageLevelFace>> = {
-  0: { gfx: GUI_FRAME.message_priority_button, tooltipStringId: 14 },
-  1: { gfx: GUI_FRAME.message_priority_button_important, tooltipStringId: 15 },
-  2: { gfx: GUI_FRAME.message_priority_button_only_important, tooltipStringId: 16 },
-};

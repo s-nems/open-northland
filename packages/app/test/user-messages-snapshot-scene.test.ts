@@ -15,19 +15,21 @@ import {
   type SnapshotMessageSource,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
+import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import type { SceneWorld } from '../src/scenes/types.js';
 
+const plain = (full: string): MessageText => ({ subject: null, body: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
-  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
+  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
   building: () => 'Dom',
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  text: (type) => String(type),
+  text: (type) => plain(String(type)),
 };
 
 /** A staffed warehouse with nothing on the ground to haul: its carriers have no work from the first tick. */

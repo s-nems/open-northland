@@ -12,6 +12,16 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M5 6h14M5 12h9M5 18h6M17 15l2 2 4-4"/></svg>',
   house:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M5 10v10h14V10M9 20v-6h6v6"/></svg>',
+  swords:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4l11 11M20 4 9 15M15 15l3 3M9 15l-3 3M17 13l4 4-2 2-4-4M7 13l-4 4 2 2 4-4"/></svg>',
+  skull:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7c0 2.6 1.3 4.2 3 5.4V19h8v-3.6c1.7-1.2 3-2.8 3-5.4a7 7 0 0 0-7-7Z"/><circle cx="9.5" cy="10.5" r="1.4"/><circle cx="14.5" cy="10.5" r="1.4"/><path d="M10 19v2M14 19v2M12 13l-1 2h2Z"/></svg>',
+  banner:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 3v18M6 4h12l-3 4.5 3 4.5H6M4 21h4"/></svg>',
+  scroll:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 4h12v13a3 3 0 0 1-3 3H5a2 2 0 0 1-2-2v-1h12M6 4a2 2 0 0 0-2 2v9M9 8h6M9 12h6"/></svg>',
+  chest:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 10a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v9H3zM3 12h18M12 12v4M10 14h4"/></svg>',
   forge:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-6h10v6M5 14h14l-2-4H7zM10 10V4h4v6M9 4h6"/></svg>',
   woman:

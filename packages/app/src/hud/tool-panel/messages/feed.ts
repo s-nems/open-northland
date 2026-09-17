@@ -4,6 +4,7 @@ import {
   messagePassesFilter,
   messagePriority,
 } from './priority.js';
+import type { MessageText } from './text.js';
 import {
   type MessagePriorityLevel,
   type PendingMessage,
@@ -45,24 +46,35 @@ export interface MessageFeedState {
   readonly history: readonly UserMessage[];
 }
 
-export type MessageAddOutcome = 'accepted' | 'muted' | 'duplicate' | 'full' | 'filtered';
+export type MessageAddOutcome = 'accepted' | 'muted' | 'duplicate' | 'full';
 
-/** The message manager: what the strip shows, what it remembers, and the player's filter level. */
+/** How many live notes carry each priority, indexed by level. */
+export type MessageTally = readonly [routine: number, notable: number, important: number];
+
+/**
+ * The message manager: the notes it keeps, what it remembers, and the player's filter level. The level
+ * only hides: a note below the bar stays live and counted, and raising the bar back shows it again.
+ * Departs from the original, which drops filtered arrivals and the displayed notes under a raised bar.
+ */
 export interface MessageFeed {
   level(): MessagePriorityLevel;
-  /** Lowering the bar shows only messages raised from now on; raising it drops the notes below it. */
   setLevel(level: MessagePriorityLevel): void;
   cycleLevel(): MessagePriorityLevel;
   /** `compose` runs only for an accepted message, so a flood of repeats costs no text. */
-  add(pending: PendingMessage, tick: number, compose: () => string): MessageAddOutcome;
+  add(pending: PendingMessage, tick: number, compose: () => MessageText): MessageAddOutcome;
   /** Dismiss one note; `toHistory` keeps its repeat away for the lifetime. */
   remove(id: number, toHistory: boolean): boolean;
+  /** Dismiss every note the level shows; the ones hidden under it were never seen, so they stay. */
   removeAll(toHistory: boolean): void;
   /** Dismiss one settler's notes, with no history entry, so a later raise shows again. */
   removeSettler(entity: number): boolean;
   /** Drop notes past their lifetime and notes `over` reports as ended. */
   expire(tick: number, over: (m: UserMessage) => boolean): void;
+  /** Every live note, in arrival order. */
+  live(): readonly UserMessage[];
+  /** The live notes at or above the level, in arrival order. */
   displayed(): readonly UserMessage[];
+  tally(): MessageTally;
   find(id: number): UserMessage | undefined;
   /** Bumps on every change to the displayed list or the level, so a renderer keys its rebuild on it. */
   version(): number;
@@ -184,7 +196,6 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     if (next === level) return;
     level = next;
     version++;
-    dropDisplayed((m) => messagePassesFilter(m.priority, level), false);
   };
 
   return {
@@ -199,7 +210,6 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       if (history.matches(pending)) return 'duplicate';
       if (displayed.items.length >= MESSAGE_SLOTS) return 'full';
       const priority = messagePriority(pending.type, pending.jobType);
-      if (!messagePassesFilter(priority, level)) return 'filtered';
       if (displayed.matches(pending)) return 'duplicate';
       displayed.push({ ...pending, id: nextId, priority, tick, text: compose() });
       nextId++;
@@ -208,7 +218,7 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
     },
     remove: (id, toHistory) => dropDisplayed((m) => m.id !== id, toHistory),
     removeAll: (toHistory) => {
-      dropDisplayed(() => false, toHistory);
+      dropDisplayed((m) => !messagePassesFilter(m.priority, level), toHistory);
     },
     removeSettler: (entity) =>
       dropDisplayed((m) => !aboutSettler(m, entity) || isStandingNote(m.type), false),
@@ -217,7 +227,13 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       dropDisplayed(live, false);
       history.prune(live);
     },
-    displayed: () => displayed.items,
+    live: () => displayed.items,
+    displayed: () => displayed.items.filter((m) => messagePassesFilter(m.priority, level)),
+    tally: () => {
+      const counts: [number, number, number] = [0, 0, 0];
+      for (const m of displayed.items) counts[m.priority]++;
+      return counts;
+    },
     find: (id) => displayed.items.find((m) => m.id === id),
     version: () => version,
     state: () => ({ level, nextId, displayed: [...displayed.items], history: [...history.items] }),

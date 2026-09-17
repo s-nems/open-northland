@@ -42,23 +42,23 @@ it.each([
   }));
   vi.spyOn(tooltips, 'createTooltip').mockImplementation(() => {
     const release = acquire('tooltip');
+    return { show() {}, hide() {}, destroy: release };
+  });
+  // The DOM plane mounts before the tool panel; the node environment has no document for it. Its
+  // cleanup is the one that runs after the failed mount, so it is the one that may throw here.
+  vi.spyOn(hudDom, 'mountHudDomRoot').mockImplementation(() => {
+    const release = acquire('hud dom');
     return {
-      show() {},
-      hide() {},
-      destroy() {
+      element: {} as HTMLElement,
+      setUiScale: () => Promise.resolve(),
+      currentScale: () => 1,
+      claims: () => false,
+      dispose() {
         release();
-        if (cleanupThrows) throw new Error('tooltip cleanup failed');
+        if (cleanupThrows) throw new Error('hud dom cleanup failed');
       },
     };
   });
-  // The DOM plane mounts before the tool panel; the node environment has no document for it.
-  vi.spyOn(hudDom, 'mountHudDomRoot').mockImplementation(() => ({
-    element: {} as HTMLElement,
-    setUiScale: () => Promise.resolve(),
-    currentScale: () => 1,
-    claims: () => false,
-    dispose: acquire('hud dom'),
-  }));
   const failure = new Error('tool-panel asset failed');
   vi.spyOn(toolPanel, 'mountGameToolPanel').mockRejectedValue(failure);
 

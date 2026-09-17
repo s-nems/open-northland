@@ -46,8 +46,8 @@ labels, so colour is never the only carrier of state.
   pause / ×1 / ×3 control and the menu medallion. Categories reveal a parchment breakdown on
   hover/focus with dotted leaders.
 - Notifications are frameless cards down the left edge with the settler on a translucent backing, a
-  wax seal in the bottom-right corner for priority and a go-to chevron on hover. The count and three
-  seal filters sit above the list.
+  wax seal on the thumbnail's corner for priority and a go-to chevron on hover. Three seal filters
+  above the list carry the tally of each weight.
 - Selection details use ledger rows with dotted leaders, small-caps section titles with rules,
   quarter ticks on meters and icon buttons for orders.
 - The placement bar under the catalogue is an interaction proposal for the construction ticket. The
@@ -58,8 +58,8 @@ labels, so colour is never the only carrier of state.
 
 Alegreya Sans carries information; Cinzel, the main menu's display face, is for short window
 titles only. Body copy uses 14 design px, compact metadata 12 px, beam labels 11 px, window titles
-25 px (selection 20 px). Pointer targets are at least 36 px; spacing follows 4 px. The compact notification filters
-are an explicit 26 px exception in this mouse/keyboard study.
+25 px (selection 20 px). Pointer targets are at least 36 px; spacing follows 4 px. The 32 px notification
+filters are an explicit exception in this mouse/keyboard study.
 
 - Main action art: 36 px; resource art: 29 px; gallery art: 44 px.
 - Bottom actions: 56 × 64 px on a 44 px medallion, with persistent labels and a selected marker.
@@ -85,7 +85,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | --- | --- | --- |
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | pause / ×1 / ×2 / ×3 segments, menu medallion; counters and clock come with ticket 04 |
-| Notifications | left 10, top 18, width 198, ends above the minimap | count medallion and three seal filters; the legacy note row stays along the top edge until ticket 03 |
+| Notifications | left 10, top 18, width 198, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
@@ -106,6 +106,33 @@ Rules the shell enforces:
   select independently, with the details panel in its own corner.
 - A legacy window that cannot fit above the beam shortens its list or lifts toward the top bar; a
   window wider than the region centres on the screen and yields to the minimap as before.
+
+### Notifications
+
+The column (ticket 03) is the DOM message centre over a Pixi figure layer; the runtime feed keeps the
+original's 200 slots, lifetime, dedupe and priority table.
+
+- The three seals are filter and tally in one: each shows how many live notes carry its weight,
+  filtered or not, so the filter only hides (the original drops filtered notes). Levels: all,
+  notable and important, important only. The tally cannot pass three digits.
+- Order: important first, then notable, then routine; within a weight the newest first.
+- A card is the subject line (name · trade, or the building, seat or paper) over the event line, at
+  11/12 px. The thumbnail is the live settler drawn as on the map with its current activity, over a
+  translucent slate backing; an attacked settler, a building, a death, a seat, a paper and a
+  subjectless row show a bronze line glyph instead (swords, house, dim skull, banner, chest, scroll).
+  The seal sits on the thumbnail's bottom-right corner; an urgent card's hairline takes the wax colour.
+- Left click or Enter centres the camera on the target and selects it, without a window. A card with
+  no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
+  dismisses one card; Shift with any of them dismisses all.
+- Text past three lines never grows the card: the whole message unfolds in a box to the right of the
+  column on hover or focus, and a press pins it when the card has no target.
+- When the cards do not fit above the minimap they fan: each slides under the one before it by one
+  uniform overlap, weightier cards in front, leaving the event line and the seal visible. Hovering or
+  focusing a card parts its neighbours to show it whole. Below a 32 px strip per card the fan stops,
+  the list scrolls, the bottom fades and a "jeszcze N" badge counts the cards past the edge.
+- A fresh card slides in and an urgent fresh seal pulses three times. Figures animate only on cards
+  inside the list's visible area; a paused game holds their frame, reduced motion holds the standing
+  pose and drops the slide and the pulse.
 
 ## Confirmed imagery
 

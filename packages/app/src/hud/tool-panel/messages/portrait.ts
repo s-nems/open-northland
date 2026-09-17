@@ -6,30 +6,43 @@ import {
   settlerPaletteLutRow,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { Application, Container } from 'pixi.js';
+import { type Application, Container, Graphics } from 'pixi.js';
+import type { Rect } from '../../geometry.js';
 import { SettlerSpritePool } from '../../settler-sprite-pool.js';
 
-/** The standing pose: the idle sequence's first frame, so a note never animates. */
-const STILL_POSE_TICK = 0;
-/** The settler's feet on the note, in design px from its top-left corner (approximation: the original
- *  symbols). */
-export const PORTRAIT_FEET_X = 0x1b;
-export const PORTRAIT_FEET_Y = 0x33;
+/** The standing pose: the idle sequence's first frame, for a frozen figure. */
+export const STILL_POSE_TICK = 0;
+/** The thumbnail backing under a figure: the card's slate, translucent over the map and solid where
+ *  fanned cards cover each other. */
+const BACKING_COLOUR = 0x182521;
+const BACKING_ALPHA = 0.53;
+const BACKING_ALPHA_OPAQUE = 0.96;
+const BACKING_RADIUS = 8;
+/** Stacking slots per thumbnail: its backing, then the figure's layers above it. */
+const THUMB_Z_SLOTS = 2;
 
+/** One card's thumbnail as the column places it, in canvas px. */
 export interface NotePortraitEntry {
   readonly entity: number;
-  /** Feet anchor in screen px. */
+  /** The thumbnail box, already cut to the list's visible area. */
+  readonly box: Rect;
+  /** The figure's feet anchor and the map-px multiplier it draws at. */
   readonly feetX: number;
   readonly feetY: number;
-  /** Stacking order of this note's body among the strip's children. */
-  readonly zIndex: number;
+  readonly zoom: number;
+  /** True when a fanned card behind this one must not show through the backing. */
+  readonly opaque: boolean;
 }
 
 /**
- * The settlers drawn standing on their notes, as on the map but frozen and without terrain. Without a
- * sprite sheet it draws nothing and the notes still work.
+ * The settlers drawn on their cards' thumbnails, as on the map but without terrain: this Pixi layer
+ * sits under the DOM cards, which leave their thumbnail boxes clear. Without a sprite sheet it draws
+ * nothing and the cards still work.
  */
 export class NotePortraits {
+  private readonly root = new Container();
+  private readonly mask = new Graphics();
+  private readonly backings: Graphics[] = [];
   private readonly pool: SettlerSpritePool;
 
   constructor(
@@ -38,31 +51,58 @@ export class NotePortraits {
     parent: Container,
     private readonly playerColourOf?: (player: number) => number,
   ) {
-    this.pool = new SettlerSpritePool(app, sheet, parent);
+    this.root.sortableChildren = true;
+    this.root.mask = this.mask;
+    this.root.addChild(this.mask);
+    parent.addChild(this.root);
+    this.pool = new SettlerSpritePool(app, sheet, this.root);
   }
 
-  /** `scale` is the design-px multiplier the note art is drawn at; bodies keep their native size in it. */
-  render(snapshot: WorldSnapshot, entries: readonly NotePortraitEntry[], scale: number): void {
+  /** `entries` come in paint order, the card in front last; `clock` is the animation tick, or null to
+   *  hold every figure on its standing frame. */
+  render(snapshot: WorldSnapshot, entries: readonly NotePortraitEntry[], clock: number | null): void {
     this.pool.begin();
-    if (this.sheet === undefined || entries.length === 0) {
+    this.mask.clear();
+    for (const backing of this.backings) backing.visible = false;
+    if (entries.length === 0) {
       this.pool.hideRest();
       return;
     }
-    const scene = buildSpriteScene(snapshot, {
-      playerColourOf: this.playerColourOf,
-      keepIndoorSettlers: true,
-      onlyRefs: new Set(entries.map((e) => e.entity)),
-    });
+    const scene =
+      this.sheet === undefined
+        ? []
+        : buildSpriteScene(snapshot, {
+            playerColourOf: this.playerColourOf,
+            keepIndoorSettlers: true,
+            onlyRefs: new Set(entries.map((e) => e.entity)),
+          });
     const items = new Map<number, DrawItem>();
     for (const it of scene) if (it.kind === 'settler') items.set(it.ref, it);
     entries.forEach((entry, i) => {
+      const { box } = entry;
+      this.mask.roundRect(box.x, box.y, box.w, box.h, BACKING_RADIUS).fill(0xffffff);
+      const backing = this.backing(i);
+      backing.clear();
+      backing.roundRect(box.x, box.y, box.w, box.h, BACKING_RADIUS).fill(BACKING_COLOUR);
+      backing.alpha = entry.opaque ? BACKING_ALPHA_OPAQUE : BACKING_ALPHA;
+      backing.zIndex = i * THUMB_Z_SLOTS;
+      backing.visible = true;
       const item = items.get(entry.entity);
-      if (item === undefined) return;
-      const layers = resolveLayers(this.sheet, item, STILL_POSE_TICK);
+      if (item === undefined || this.sheet === undefined) return;
+      const tick = clock === null || item.frozen === true ? STILL_POSE_TICK : clock;
+      const layers = resolveLayers(this.sheet, item, tick);
       if (layers === null) return;
       const row = settlerPaletteLutRow(this.sheet, item);
       for (const [li, layer] of layers.entries()) {
-        this.pool.drawLayer(`${i}:${li}`, layer, entry.feetX, entry.feetY, scale, row, entry.zIndex);
+        this.pool.drawLayer(
+          `${i}:${li}`,
+          layer,
+          entry.feetX,
+          entry.feetY,
+          entry.zoom,
+          row,
+          i * THUMB_Z_SLOTS + 1,
+        );
       }
     });
     this.pool.hideRest();
@@ -70,5 +110,16 @@ export class NotePortraits {
 
   dispose(): void {
     this.pool.dispose();
+    this.root.destroy({ children: true });
+  }
+
+  private backing(i: number): Graphics {
+    let backing = this.backings[i];
+    if (backing === undefined) {
+      backing = new Graphics();
+      this.backings[i] = backing;
+      this.root.addChild(backing);
+    }
+    return backing;
   }
 }

@@ -1,6 +1,6 @@
 import { type DiplomacyState, nodeOfPosition, type Paper, type WorldSnapshot } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
-import type { MessageTextParts } from './text.js';
+import type { MessageText, MessageTextParts } from './text.js';
 import type { MessageSubject, PendingMessage, UserMessageType } from './types.js';
 
 /** How a source names what it saw; the strings and catalogs stay outside the sources. */
@@ -19,14 +19,14 @@ export interface MessageNaming {
   paper(paper: Paper): string;
   technology(kind: 'job' | 'good' | 'house', typeId: number): string;
   /** Localized completion wording for barracks enlistment and school education. */
-  training(course: 'barracks' | 'school', subjectName: string, jobName: string): string;
-  text(type: UserMessageType, parts: MessageTextParts): string;
+  training(course: 'barracks' | 'school', subjectName: string, jobName: string): MessageText;
+  text(type: UserMessageType, parts: MessageTextParts): MessageText;
 }
 
 /** A raised message with its text deferred, so a repeat the feed rejects never names anyone. */
 export interface RaisedMessage {
   readonly pending: PendingMessage;
-  readonly compose: () => string;
+  readonly compose: () => MessageText;
 }
 
 function nodeOf(e: SnapshotEntity): PendingMessage['at'] {
@@ -103,7 +103,7 @@ export class MessageRaiser {
   }
 
   /** A message the caller keys itself, for one without a live subject to key on. */
-  raise(key: string, pending: PendingMessage, compose: () => string): void {
+  raise(key: string, pending: PendingMessage, compose: () => MessageText): void {
     if (this.seen.has(key)) return;
     this.seen.add(key);
     this.out.push({ pending, compose });

@@ -1,36 +1,47 @@
 import type { SpriteSheet } from '@open-northland/render';
-import type { HalfCellNode, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import {
+  type HalfCellNode,
+  type Paper,
+  type SimEvent,
+  TICKS_PER_SECOND,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import type { Application, Container } from 'pixi.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
-import type { GuiArt } from '../../../content/gui-art.js';
 import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
-import type { TooltipSurface } from '../../tooltip-surface.js';
+import { createNoticeColumn, type NoticeCardView, type NoticeThumbnail } from '../../dom/notice-column.js';
+import type { Rect } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
+import { noticeThumb, orderNotes } from './cards.js';
 import { createDeselectionDismisser, type UnitSelectionView } from './deselection.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource } from './from-snapshot.js';
-import { hitTestNotes } from './layout.js';
+import { type NotePortraitEntry, NotePortraits } from './portrait.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver } from './retire.js';
-import { createMessageStrip } from './strip.js';
-import { composeMessageText } from './text.js';
-import type { MessagePriorityLevel, UserMessage } from './types.js';
-import { createMessageWindow } from './window.js';
+import { composeMessageText, type MessageText } from './text.js';
+import type { UserMessage } from './types.js';
 
 export type { UnitSelectionView } from './deselection.js';
 export type { MessageFeedState } from './feed.js';
-export { MESSAGE_LEVEL_FACE } from './priority.js';
 
 /** The `miscwindow` row heading an unnamed seat, ahead of its slot number. */
 const PLAYER_STRING_ID = 361;
+/** A note this young slides in as it arrives; an older one (a restored feed) simply stands. */
+const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
+/** The thumbnail's design-px height, the figure's map-px multiplier at that height, and how far above
+ *  the box's bottom edge its feet stand (design px). */
+const THUMB_H = 72;
+const THUMB_ZOOM = 1.05;
+const THUMB_FEET_INSET = 10;
 
-/** Where a note's Select centres the view: the subject while it lives, else the spot it was raised at. */
+/** Where a note's press centres the view: the subject while it lives, else the spot it was raised at. */
 export interface MessageTarget {
   readonly entity: number | null;
   readonly at: HalfCellNode | null;
@@ -39,9 +50,14 @@ export interface MessageTarget {
 export interface MessageCenterDeps {
   readonly ctx: PanelContext;
   readonly app: Application;
-  readonly art: GuiArt | null;
-  readonly notesContainer: Container;
-  readonly windowContainer: Container;
+  /** The DOM plane the column mounts on. */
+  readonly plane: HTMLElement;
+  /** Design px the column keeps clear above the plane's bottom edge, for the minimap. */
+  readonly bottomInset: number;
+  /** The Pixi layer under the plane that the cards' settler figures draw on. */
+  readonly portraitContainer: Container;
+  /** A client (CSS px) point as a canvas (screen px) point, for placing those figures. */
+  readonly toCanvas: (clientX: number, clientY: number) => { readonly x: number; readonly y: number };
   readonly sheet?: SpriteSheet | undefined;
   readonly playerColourOf?: ((player: number) => number) | undefined;
   /** Only this seat's messages become notes. */
@@ -55,39 +71,20 @@ export interface MessageCenterDeps {
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
   readonly metSeats: () => readonly MetSeat[];
-  readonly tooltip?: TooltipSurface | undefined;
   readonly onSelect: (target: MessageTarget) => void;
   readonly initial?: MessageFeedState | undefined;
 }
 
-/** The message centre: the feed, its notes along the top edge, and the window a note opens. */
+/** The message centre: the feed and the notification column that shows it. */
 export interface MessageCenter {
   /** Per frame: raise this frame's events and a due snapshot sweep as notes, retire the stale ones,
-   *  redraw. */
+   *  redraw what changed and place the figures. */
   present(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
-  level(): MessagePriorityLevel;
-  setLevel(level: MessagePriorityLevel): void;
-  /** How many notes the feed shows at the current level. */
-  count(): number;
-  /** True over the open window or a note. */
-  claims(x: number, y: number): boolean;
-  /** The open window's own claim; it draws above the tool pop-ups, so it takes a press before them. */
-  windowClaims(x: number, y: number): boolean;
-  handleWindowClick(x: number, y: number, button: number): boolean;
-  /** Left on a note opens it, right dismisses it (Shift: all of them); true when consumed. The caller
-   *  offers a press only where no pop-up covers the note. */
-  handleNoteClick(x: number, y: number, button: number, shift: boolean): boolean;
-  /** Tooltip for the note or the priority button under the pointer; `covered` means a pop-up is over
-   *  the point, which hides it. */
-  handleHover(x: number, y: number, clientX: number, clientY: number, covered: boolean): void;
   state(): MessageFeedState;
   /** Adopt another mount's feed, so a HUD rescale keeps the notes and the level. */
   restore(state: MessageFeedState): void;
   dispose(): void;
 }
-
-const LEFT_BUTTON = 0;
-const RIGHT_BUTTON = 2;
 
 /** The catalog's stand-in for a decoded `messages` row, keyed by the row id. */
 function fallbackRow(id: number): string {
@@ -126,14 +123,29 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     paper: deps.paperLabel,
     technology: deps.technologyLabel,
-    training: (course, subjectName, jobName) =>
-      formatMessage(
+    training: (course, subjectName, jobName): MessageText => {
+      const body = formatMessage(
         course === 'barracks'
           ? messages().userMessages.becameSoldier
           : messages().userMessages.learnedProfession,
-        { name: subjectName, profession: jobName },
-      ),
+        { profession: jobName },
+      );
+      return { subject: subjectName, body, full: `${subjectName} ${body}` };
+    },
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
+  };
+}
+
+function cardOf(m: UserMessage, tick: number): NoticeCardView {
+  return {
+    id: m.id,
+    level: m.priority,
+    subject: m.text.subject,
+    body: m.text.body,
+    full: m.text.full,
+    thumb: noticeThumb(m.type, m.subject),
+    canGo: m.subject !== null || m.at !== null,
+    fresh: tick - m.tick < FRESH_NOTE_TICKS,
   };
 }
 
@@ -144,31 +156,50 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const naming = makeNaming(deps);
   const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
   const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
-  const strip = createMessageStrip({
-    ctx,
-    app: deps.app,
-    art: deps.art,
-    container: deps.notesContainer,
-    sheet: deps.sheet,
-    playerColourOf: deps.playerColourOf,
-  });
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
-  const messageWindow = createMessageWindow({
-    ctx,
-    container: deps.windowContainer,
-    onRemove: (id) => feed.remove(id, true),
-    onSelect: (id) => {
+  const column = createNoticeColumn({
+    plane: deps.plane,
+    bottomInset: deps.bottomInset,
+    onLevel: (level) => {
+      ctx.cue('confirm');
+      feed.setLevel(level);
+    },
+    onGo: (id) => {
       const m = feed.find(id);
-      if (m !== undefined) select(m);
+      if (m === undefined) return;
+      ctx.cue('confirm');
+      select(m);
+    },
+    onDismiss: (id) => {
+      ctx.cue('confirm');
+      feed.remove(id, true);
+    },
+    onDismissAll: () => {
+      ctx.cue('confirm');
+      feed.removeAll(true);
     },
   });
+  const portraits = new NotePortraits(deps.app, deps.sheet, deps.portraitContainer, deps.playerColourOf);
   let previous: WorldSnapshot | null = null;
+  let renderedVersion = -1;
 
-  const noteAt = (x: number, y: number): UserMessage | undefined => {
-    const slots = strip.slots();
-    const i = hitTestNotes(slots, x, y);
-    const slot = i === null ? undefined : slots[i];
-    return slot === undefined ? undefined : feed.find(slot.id);
+  const canvasRect = (r: Rect): Rect => {
+    const a = deps.toCanvas(r.x, r.y);
+    const b = deps.toCanvas(r.x + r.w, r.y + r.h);
+    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+  };
+  const entryOf = (thumb: NoticeThumbnail): NotePortraitEntry => {
+    const box = canvasRect(thumb.box);
+    const px = box.h / THUMB_H;
+    return {
+      entity: thumb.entity,
+      box: canvasRect(thumb.visible),
+      feetX: box.x + box.w / 2,
+      feetY: box.y + box.h - THUMB_FEET_INSET * px,
+      zoom: THUMB_ZOOM * px,
+      opaque: thumb.opaque,
+    };
   };
 
   return {
@@ -190,51 +221,30 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
         feed.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
         previous = snapshot;
       }
-      strip.render(feed.displayed(), snapshot, feed.version());
-      const open = messageWindow.current();
-      if (open !== null && feed.find(open) === undefined) messageWindow.close();
-      else messageWindow.refresh();
-    },
-    level: () => feed.level(),
-    setLevel: (level) => feed.setLevel(level),
-    count: () => feed.displayed().length,
-    claims: (x, y) => messageWindow.claims(x, y) || noteAt(x, y) !== undefined,
-    windowClaims: (x, y) => messageWindow.claims(x, y),
-    handleWindowClick: (x, y, button): boolean => {
-      if (!messageWindow.claims(x, y)) return false;
-      // Either button stays inside the window; only the left one presses its plates.
-      return button === LEFT_BUTTON ? messageWindow.handleClick(x, y) : true;
-    },
-    handleNoteClick: (x, y, button, shift): boolean => {
-      const m = noteAt(x, y);
-      if (m === undefined) return false;
-      if (button === RIGHT_BUTTON) {
-        ctx.cue('confirm');
-        if (shift) feed.removeAll(true);
-        else feed.remove(m.id, true);
-        deps.tooltip?.hide();
-        return true;
+      if (feed.version() !== renderedVersion) {
+        renderedVersion = feed.version();
+        column.render(
+          orderNotes(feed.displayed()).map((m) => cardOf(m, snapshot.tick)),
+          feed.tally(),
+          feed.level(),
+        );
       }
-      if (button !== LEFT_BUTTON) return false;
-      ctx.cue('confirm');
-      messageWindow.open(m);
-      return true;
-    },
-    handleHover: (x, y, clientX, clientY, covered): void => {
-      if (deps.tooltip === undefined) return;
-      const m = covered ? undefined : noteAt(x, y);
-      if (m !== undefined) deps.tooltip.show(clientX, clientY, m.text);
-      else deps.tooltip.hide();
+      // The figures follow the cards every frame: a hover slides a card, a scroll moves them all. A
+      // paused sim holds the tick, so the figures hold their frame with it.
+      portraits.render(
+        snapshot,
+        column.thumbnails().map(entryOf),
+        reducedMotion.matches ? null : snapshot.tick,
+      );
     },
     state: () => feed.state(),
     restore: (state): void => {
-      messageWindow.close();
       feed = createMessageFeed(state);
-      strip.invalidate();
+      renderedVersion = -1;
     },
     dispose: (): void => {
-      deps.tooltip?.hide();
-      strip.dispose();
+      portraits.dispose();
+      column.dispose();
     },
   };
 }

@@ -11,6 +11,7 @@ import { USER_MESSAGE_TYPE, type UserMessageTypeName } from '../src/hud/tool-pan
 /** Synthetic stand-ins for the `messages` rows the composer reads; the shapes matter, not the words. */
 const ROWS: Readonly<Record<number, string>> = {
   10: 'row10',
+  61: '- row61',
   27: 'row27 %s tail',
   28: 'row28',
   33: 'może teraz wykonywać następujące prace',
@@ -49,7 +50,7 @@ const compose = (
       ...(technologySections !== undefined ? { technologySections } : {}),
     },
     deps,
-  );
+  ).full;
 
 describe('user message text', () => {
   it('maps every type to a messages row', () => {
@@ -86,6 +87,16 @@ describe('user message text', () => {
     expect(compose(USER_MESSAGE_TYPE.playerSighted, 'Gracz 2', null, null, 'wrogi')).toBe(
       'Gracz 2 <131> wrogi',
     );
+    const sighted = composeMessageText(
+      USER_MESSAGE_TYPE.playerSighted,
+      { subjectName: 'Gracz 2', jobLabel: null, goodName: null, stanceName: 'wrogi' },
+      { ...deps, fallbackRow: (id) => `- <${id}>` },
+    );
+    expect([sighted.subject, sighted.body, sighted.full]).toEqual([
+      'Gracz 2',
+      '<131> wrogi',
+      'Gracz 2 - <131> wrogi',
+    ]);
     expect(compose(USER_MESSAGE_TYPE.diplomacyChanged, 'Gracz 2', null, null, 'przyjazny')).toBe(
       'Gracz 2 <132> przyjazny',
     );
@@ -120,7 +131,53 @@ describe('user message text', () => {
         USER_MESSAGE_TYPE.houseUpgraded,
         { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
         bare,
-      ),
+      ).full,
     ).toBe('Dom <91>');
+  });
+
+  it('splits a card into the subject line and the event line', () => {
+    const settler = composeMessageText(
+      USER_MESSAGE_TYPE.hungry,
+      { subjectName: 'Bjorn', jobLabel: 'Budowniczy', goodName: null, stanceName: null },
+      deps,
+    );
+    expect([settler.subject, settler.body]).toEqual(['Bjorn · Budowniczy', 'row10']);
+    const attacked = composeMessageText(
+      USER_MESSAGE_TYPE.humanAttacked,
+      { subjectName: 'Bjorn', jobLabel: null, goodName: null, stanceName: null },
+      deps,
+    );
+    expect([attacked.body, attacked.full]).toEqual(['row61', 'Bjorn - row61']);
+    const house = composeMessageText(
+      USER_MESSAGE_TYPE.houseFinished,
+      { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
+      deps,
+    );
+    expect([house.subject, house.body]).toEqual(['Dom', 'row90']);
+    const unknown = composeMessageText(
+      USER_MESSAGE_TYPE.humanDied,
+      { subjectName: null, jobLabel: null, goodName: null, stanceName: null },
+      deps,
+    );
+    expect([unknown.subject, unknown.body]).toEqual([null, 'row121-unknown']);
+    const paper = composeMessageText(
+      USER_MESSAGE_TYPE.specialItemFound,
+      { subjectName: null, jobLabel: null, goodName: null, stanceName: null, detail: 'Pozwolenie' },
+      deps,
+    );
+    expect([paper.subject, paper.body, paper.full]).toEqual(['Pozwolenie', '<134>', '<134> - Pozwolenie']);
+    const unlocks = composeMessageText(
+      USER_MESSAGE_TYPE.experienceUnlocks,
+      {
+        subjectName: 'Bjorn',
+        jobLabel: null,
+        goodName: null,
+        stanceName: null,
+        technologySections: { jobs: [], goods: [], houses: ['Młyn'] },
+      },
+      deps,
+    );
+    expect(unlocks.body).toBe('może teraz wykonywać następujące prace');
+    expect(unlocks.full).toBe('Bjorn może teraz wykonywać następujące prace:\nNowe budynki:\n- Młyn');
   });
 });

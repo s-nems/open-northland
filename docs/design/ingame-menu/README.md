@@ -118,7 +118,6 @@ only diagnostics.
 | Ticket | Outcome |
 | --- | --- |
 | [01-visual-foundation](../../tickets/app/ingame-ui-01-visual-foundation.md) | Design and approve the shared in-game UI language |
-| [03-notifications](../../tickets/app/ingame-ui-03-notifications.md) | Build the narrow frameless notification column |
 | [04-summary-and-clock](../../tickets/app/ingame-ui-04-summary-and-clock.md) | Add tribe counters, grouped resources and simulation time |
 | [05-construction](../../tickets/app/ingame-ui-05-construction.md) | Design and implement the direct construction window |
 | [06-documents](../../tickets/app/ingame-ui-06-documents.md) | Integrate permits and other documents into construction |

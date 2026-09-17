@@ -2,6 +2,7 @@ import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-north
 import { describe, expect, it } from 'vitest';
 import { messagesFromEvents } from '../src/hud/tool-panel/messages/from-events.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
+import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 
 const LOCAL = 0;
@@ -36,6 +37,7 @@ function snapshot(tick: number, actors: readonly Actor[]): WorldSnapshot {
   };
 }
 
+const plain = (full: string): MessageText => ({ subject: null, body: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
@@ -43,18 +45,23 @@ const naming: MessageNaming = {
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
   technology: (kind, typeId) => `${kind}:${typeId}`,
-  training: (course, subjectName, jobName) => `${course}:${subjectName}:${jobName}`,
+  training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),
   text: (type, parts) =>
-    `${parts.subjectName ?? '?'}:${type}${
-      parts.technologySections === undefined
-        ? ''
-        : `:${parts.technologySections.jobs.join(',')}|${parts.technologySections.goods.join(',')}|${parts.technologySections.houses.join(',')}`
-    }`,
+    plain(
+      `${parts.subjectName ?? '?'}:${type}${
+        parts.technologySections === undefined
+          ? ''
+          : `:${parts.technologySections.jobs.join(',')}|${parts.technologySections.goods.join(',')}|${parts.technologySections.houses.join(',')}`
+      }`,
+    ),
 };
 
 /** Raised messages flattened for assertions: the identity fields plus the composed text. */
 const run = (events: SimEvent[], snap: WorldSnapshot, previous: WorldSnapshot | null = null) =>
-  messagesFromEvents(events, snap, previous, LOCAL, naming).map((r) => ({ ...r.pending, text: r.compose() }));
+  messagesFromEvents(events, snap, previous, LOCAL, naming).map((r) => ({
+    ...r.pending,
+    text: r.compose().full,
+  }));
 
 describe('user messages from sim events', () => {
   it("raises finished and upgraded buildings the seat owns, and no one else's", () => {
@@ -137,7 +144,7 @@ describe('user messages from sim events', () => {
     let composed = 0;
     const counting: MessageNaming = {
       ...naming,
-      text: (type, parts) => `${composed++}:${parts.subjectName}:${type}`,
+      text: (type, parts) => plain(`${composed++}:${parts.subjectName}:${type}`),
     };
     const raised = messagesFromEvents(
       [
@@ -159,7 +166,7 @@ describe('user messages from sim events', () => {
     );
     expect(raised).toHaveLength(1);
     expect(composed).toBe(0);
-    expect(raised[0]?.compose()).toBe(`0:S1:${USER_MESSAGE_TYPE.humanAttacked}`);
+    expect(raised[0]?.compose().full).toBe(`0:S1:${USER_MESSAGE_TYPE.humanAttacked}`);
   });
 
   it("announces the seat's own child reaching adulthood", () => {
@@ -245,7 +252,7 @@ describe('user messages from sim events', () => {
     ]);
     const trainedNaming: MessageNaming = {
       ...naming,
-      text: (type, parts) => `${parts.subjectName ?? '?'}:${type}:${parts.goodName ?? '-'}`,
+      text: (type, parts) => plain(`${parts.subjectName ?? '?'}:${type}:${parts.goodName ?? '-'}`),
     };
     const raised = messagesFromEvents(
       [
@@ -259,7 +266,7 @@ describe('user messages from sim events', () => {
       LOCAL,
       trainedNaming,
     );
-    expect(raised.map((r) => ({ ...r.pending, text: r.compose() }))).toEqual([
+    expect(raised.map((r) => ({ ...r.pending, text: r.compose().full }))).toEqual([
       {
         type: USER_MESSAGE_TYPE.canDoNewJob,
         subject: { kind: 'settler', entity: e(1) },

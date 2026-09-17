@@ -345,9 +345,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // reach them through these slots.
     let selectEntity: ((id: number) => void) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
-    // Its own chip: the pile and stock-row tooltips hide whenever the pointer is over the HUD.
-    const noteTooltip = createTooltip();
-    cleanup.push(() => noteTooltip.destroy());
     let missionWindowOpen = false;
     // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
     const hudDom = mountHudDomRoot(uiscale);
@@ -397,7 +394,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-      tooltip: noteTooltip,
       onSelectMessageTarget: (target) => {
         const at = messageTargetAnchor(sim.snapshot(), target, deps.elevation);
         if (at !== null) jumpToWorld(at.x, at.y);

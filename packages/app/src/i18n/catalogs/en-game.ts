@@ -267,19 +267,30 @@ export const enGame = {
       speed: 'Speed ×{factor}',
       menu: 'Game menu',
       close: 'Close',
-      messages: 'Messages',
-      messagesCount: 'Messages: {count}',
-      messageLevelLabel: 'Message level',
-      messageLevels: {
-        all: 'All messages',
-        notable: 'Notable and important',
-        important: 'Important only',
-      },
       pending: 'In preparation',
       residentsPending:
         'The residents list is being built. Select a settler on the map to see their details in the corner panel.',
       knowledgePending:
         'Knowledge (production and development, encyclopedia, how to play) is being built. Building requirements still show in the construction window.',
+    },
+    notices: {
+      label: 'Notifications',
+      count: 'Messages: {count}',
+      levelLabel: 'Message level',
+      filters: {
+        all: 'All',
+        notable: 'Notable and important',
+        important: 'Important only',
+      },
+      weights: {
+        routine: 'routine',
+        notable: 'notable',
+        important: 'important',
+      },
+      tally: '{filter} · {weight}: {count}',
+      empty: 'All quiet in the settlement',
+      dismiss: 'Dismiss notification',
+      more: '{count} more',
     },
     extras: {
       title: 'Extras window',
@@ -435,12 +446,8 @@ export const enGame = {
     armorClasses: ['None', 'Class 1', 'Class 2', 'Class 3', 'Class 4'],
   },
   userMessages: {
-    title: 'Notice',
-    remove: 'Dismiss notice',
-    select: 'Go to',
-    becameSoldier: '{name} became a soldier',
-    learnedProfession: '{name} learned the {profession} profession',
-    /** The priority button's hover text per filter level; the `main` table rows 14-16 stand in front. */
+    becameSoldier: 'became a soldier',
+    learnedProfession: 'learned the {profession} profession',
     /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
     rows: {
       '33': 'can now do the following based on experience',

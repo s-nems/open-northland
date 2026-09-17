@@ -1,6 +1,7 @@
 import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
 import foundationCss from '../../hud/dom/foundation.css?inline';
 import { ACTION_ART_PX, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
+import { type NoticeCardView, noticeCardMarkup } from '../../hud/dom/notice-column.js';
 import { createHudPlane } from '../../hud/dom/root.js';
 import { WINDOW_ORNAMENTS } from '../../hud/dom/symbols.js';
 import { MAX_UI_SCALE_BASE, MIN_UI_SCALE, UI_SCALE_FACTOR_MAX } from '../../hud/ui-scale.js';
@@ -22,6 +23,61 @@ const ACTIONS: readonly (readonly [icon: string | null, label: string])[] = [
   ['mission', 'Misja'],
   ['diplomacy', 'Dyplomacja'],
   ['knowledge', 'Wiedza'],
+];
+
+/** The column's states on one board: a settler card (its figure is the Pixi layer's, so the box stays
+ *  bare here), a gone subject, a long subjectless row, and the two lower weights. */
+const SAMPLE_NOTICES: readonly NoticeCardView[] = [
+  {
+    id: 1,
+    level: 2,
+    subject: 'Leif · budowniczy',
+    body: 'umiera z głodu',
+    full: 'Leif (budowniczy) umiera z głodu',
+    thumb: { kind: 'settler', entity: 1 },
+    canGo: true,
+    fresh: false,
+  },
+  {
+    id: 2,
+    level: 2,
+    subject: 'Sigrun · zbieraczka',
+    body: 'już nie z nami',
+    full: 'Sigrun (zbieraczka) już nie z nami',
+    thumb: { kind: 'glyph', glyph: 'skull', dim: true },
+    canGo: true,
+    fresh: false,
+  },
+  {
+    id: 3,
+    level: 2,
+    subject: 'Plemię Ragnara',
+    body: 'pierwszy kontakt, nastawienie neutralne',
+    full: 'Plemię Ragnara pierwszy kontakt, nastawienie neutralne',
+    thumb: { kind: 'glyph', glyph: 'banner', dim: false },
+    canGo: false,
+    fresh: false,
+  },
+  {
+    id: 4,
+    level: 1,
+    subject: 'Eirik · drwal',
+    body: 'brakuje materiału budowlanego',
+    full: 'Eirik (drwal) brakuje materiału budowlanego',
+    thumb: { kind: 'settler', entity: 2 },
+    canGo: true,
+    fresh: false,
+  },
+  {
+    id: 5,
+    level: 0,
+    subject: 'Chata rybaka',
+    body: 'budowa zakończona',
+    full: 'Chata rybaka - budowa zakończona',
+    thumb: { kind: 'glyph', glyph: 'house', dim: false },
+    canGo: true,
+    fresh: false,
+  },
 ];
 
 function card(title: string, text: string, cost: string, glyph: string, state = ''): string {
@@ -50,14 +106,9 @@ function boardMarkup(): string {
   <div class="on-speed" role="toolbar" aria-label="Tempo symulacji"><button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button><button type="button" aria-pressed="true">×1</button><button type="button" aria-pressed="false">×3</button></div>
   <button type="button" class="on-medallion" style="width:${MENU_MEDALLION_PX}px;height:${MENU_MEDALLION_PX}px;margin-left:4px" aria-label="Menu gry">${menuArt(MENU_ART_PX)}</button>
 </div>
-<aside style="position:absolute;top:18px;left:10px;width:198px">
-  <div style="display:flex;align-items:center;gap:10px;padding:0 0 10px 2px">
-    <strong class="on-counter on-medallion"><span class="on-sr">Wiadomości: </span>8</strong>
-    <div class="on-filters" role="toolbar" aria-label="Poziom wiadomości"><button type="button" class="on-filter on-filter--low" aria-label="Wszystkie" aria-pressed="false"></button><button type="button" class="on-filter on-filter--medium" aria-label="Ważne i pilne" aria-pressed="true"></button><button type="button" class="on-filter on-filter--high" aria-label="Tylko pilne" aria-pressed="false"></button></div>
-  </div>
-  <button type="button" class="on-notice"><span class="on-notice__preview"></span><b class="on-notice__title">Brakuje narzędzi</b><small class="on-notice__text">Eirik · drwal</small><i class="on-seal on-seal--warn" aria-hidden="true"></i>${GLYPH.go}</button>
-  <button type="button" class="on-notice"><span class="on-notice__preview"></span><b class="on-notice__title">Budowa ukończona</b><small class="on-notice__text">Chata rybaka</small><i class="on-seal" aria-hidden="true"></i>${GLYPH.go}</button>
-  <button type="button" class="on-notice"><span class="on-notice__preview"></span><b class="on-notice__title">Osadnik głoduje</b><small class="on-notice__text">Leif · budowniczy</small><i class="on-seal on-seal--danger" aria-hidden="true"></i>${GLYPH.go}</button>
+<aside class="on-notices" style="top:18px;left:10px;width:198px;bottom:230px">
+  <div class="on-notices__head"><span class="on-sr">Wiadomości: 6</span><div class="on-filters" role="toolbar" aria-label="Poziom wiadomości"><button type="button" class="on-filter on-filter--low" aria-label="Wszystkie · zwykłe: 1" aria-pressed="true"><span class="on-filter__count">1</span></button><button type="button" class="on-filter on-filter--medium" aria-label="Ważne i pilne · ważne: 1" aria-pressed="false"><span class="on-filter__count">1</span></button><button type="button" class="on-filter on-filter--high" aria-label="Tylko pilne · pilne: 4" aria-pressed="false"><span class="on-filter__count">4</span></button></div></div>
+  <ul class="on-notices__list" aria-label="Powiadomienia">${SAMPLE_NOTICES.map((card) => noticeCardMarkup(card, 'Usuń powiadomienie')).join('')}</ul>
 </aside>
 <section class="on-window on-panel" style="left:50%;top:96px;width:540px;transform:translateX(-50%)" aria-label="Budowanie">
   ${WINDOW_ORNAMENTS}

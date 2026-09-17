@@ -19,11 +19,10 @@ import type { MissionBrief } from '../../game/mission-brief.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
-import { createHudNoticeHeader } from '../dom/notice-header.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
-import type { TooltipSurface } from '../tooltip-surface.js';
+import { FRAME_NATIVE, MINIMAP_ART_SCALE } from '../minimap/model.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
@@ -50,11 +49,13 @@ import { createToolWindows, type ToolWindowsState } from './windows.js';
 
 /** Painted-icon size in a window head (design px). */
 const TITLE_ART_PX = 43;
+/** Design px between the notification column's foot and the minimap's top edge. */
+const NOTICE_MINIMAP_GAP = 16;
 
 export interface ToolPanelOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** The DOM plane the beam, the system bar, the notice header and the pending windows mount on. */
+  /** The DOM plane the beam, the system bar, the notification column and the pending windows mount on. */
   readonly plane: HTMLElement;
   /** The resolved HUD scale; the pinned internal geometry is multiplied by this. May be fractional. */
   readonly uiscale: number;
@@ -112,13 +113,11 @@ export interface ToolPanelOptions {
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
-  /** The map's sprite sheet, which draws a settler standing on its note; absent leaves the note bare. */
+  /** The map's sprite sheet, which draws a settler on its card; absent leaves the thumbnail bare. */
   readonly sheet?: SpriteSheet;
-  /** Owner slot to team-colour slot for those portraits; absent means identity. */
+  /** Owner slot to team-colour slot for those figures; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
-  /** The cursor chip a hovered note shows its text in; absent means no tooltip. */
-  readonly tooltip?: TooltipSurface;
-  /** A note's Select: centre the view on the target and select it. */
+  /** A pressed card: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
   /** The GUI click feedback: every pressed button confirms, a cancelled hold fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
@@ -132,7 +131,7 @@ export interface ToolPanelController {
   openMission(page?: number): void;
   /** The on-screen info lines a map script writes for the seat, top to bottom. */
   setInfoLines(lines: readonly string[]): void;
-  /** True when a client point should be claimed by the HUD (over an open window, a note, or in placement). */
+  /** True when a client point should be claimed by the HUD (over an open window or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
    *  `claimsPointer` this excludes active placement. */
@@ -146,7 +145,8 @@ export interface ToolPanelController {
   update(hudFor: () => HudLayout): void;
   /** The world views an open briefing's pictures paint this frame; read after {@link update}. */
   mapViews(): readonly MapViewFrame[];
-  /** Per-frame hook for the note strip: this frame's unfiltered sim events and the snapshot after them. */
+  /** Per-frame hook for the notification column: this frame's unfiltered sim events and the snapshot
+   *  after them. */
   presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
@@ -227,10 +227,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   root.zIndex = 1000;
   app.stage.addChild(root);
   const infoContainer = new Container();
-  const notesContainer = new Container();
+  const portraitContainer = new Container();
   const windowContainer = new Container();
   const bannerContainer = new Container();
-  root.addChild(infoContainer, notesContainer, windowContainer, bannerContainer);
+  root.addChild(infoContainer, portraitContainer, windowContainer, bannerContainer);
 
   const domParts: { dispose(): void }[] = [];
   let input: ToolPanelInput | null = null;
@@ -356,12 +356,18 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     domParts.push(systemBar);
     systemBar.setSpeed(speed.state());
 
+    const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
+      clientToCanvas(opts.screenScale(canvas), clientX, clientY);
+
     const messageCenter = createMessageCenter({
       ctx,
       app,
-      art,
-      notesContainer,
-      windowContainer,
+      plane,
+      // The minimap's frame scales with the HUD like the plane does, so its design-px height is the
+      // native frame at the art scale.
+      bottomInset: FRAME_NATIVE.h * MINIMAP_ART_SCALE + NOTICE_MINIMAP_GAP,
+      portraitContainer,
+      toCanvas,
       sheet: opts.sheet,
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
@@ -371,19 +377,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.diplomacyRows,
-      tooltip: opts.tooltip,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
     });
-    const noticeHeader = createHudNoticeHeader(plane, (level) => {
-      ctx.cue('confirm');
-      messageCenter.setLevel(level);
-    });
-    domParts.push(noticeHeader);
 
     const infoLines = createInfoLinesOverlay(ctx, infoContainer);
-
-    const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
-      clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
     // Esc closes the open window and hands focus back to its beam entry.
     const closeWindow = (): boolean => {
@@ -398,7 +395,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       canvas,
       toCanvas,
       windows,
-      notes: messageCenter,
       held,
       bindings: opts.bindings,
       closeWindow,
@@ -413,13 +409,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
     const claimsPointer = (clientX: number, clientY: number): boolean => {
       const { x, y } = toCanvas(clientX, clientY);
-      if (windows.claims(x, y) || messageCenter.claims(x, y)) return true;
+      if (windows.claims(x, y)) return true;
       return held.some((mode) => mode.isActive());
     };
 
     const claimsWheel = (clientX: number, clientY: number): boolean => {
       const { x, y } = toCanvas(clientX, clientY);
-      return windows.claims(x, y) || messageCenter.claims(x, y);
+      return windows.claims(x, y);
     };
 
     return {
@@ -437,7 +433,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         windows.refresh(hudFor);
         const open = windows.openId();
         nav.setActive(open === null ? null : navEntryForWindow(open));
-        noticeHeader.set(messageCenter.count(), messageCenter.level());
         infoLines.refresh();
         for (const mode of held) mode.placeBanner();
       },

@@ -706,106 +706,29 @@
 .on-hud .on-seal--danger {
   background-color: var(--wax-danger);
 }
-.on-hud .on-notice {
-  position: relative;
-  pointer-events: auto;
-  width: 100%;
-  min-height: 76px;
-  margin-bottom: 7px;
-  padding: 9px 12px 9px 70px;
-  text-align: left;
-  border: 0;
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    transparent 0 50px,
-    color-mix(in srgb, var(--deep) 94%, transparent) 66px,
-    color-mix(in srgb, var(--deep) 82%, transparent) 88%,
-    transparent
-  );
-  color: var(--text);
-  transition:
-    transform 0.12s,
-    background 0.12s;
-}
-.on-hud .on-notice::before {
-  content: "";
+/* The column: frameless, so the map shows between the cards; only its controls take the pointer. */
+.on-hud .on-notices {
   position: absolute;
-  inset: 5px 4px 5px 64px;
-  border-top: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
-  border-bottom: 1px solid #0006;
-  pointer-events: none;
+  display: flex;
+  flex-direction: column;
 }
-.on-hud .on-notice:hover {
-  transform: translateX(3px);
-  background: linear-gradient(
-    90deg,
-    transparent 0 50px,
-    color-mix(in srgb, var(--fill) 96%, transparent) 66px,
-    color-mix(in srgb, var(--fill) 84%, transparent) 88%,
-    transparent
-  );
-}
-.on-hud .on-notice__preview {
-  position: absolute;
-  left: -7px;
-  bottom: 0;
-  width: 80px;
-  height: 80px;
-  pointer-events: none;
-  border-radius: 8px;
-  border: 1px solid #c9a26233;
-  background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
-}
-.on-hud .on-notice__title {
-  display: block;
-  font-size: 13px;
-  color: var(--text-hi);
-}
-.on-hud .on-notice__text {
-  display: block;
-  margin-top: 3px;
-  padding-right: 18px;
-  font-size: 12px;
-  color: #ddd5c1;
-}
-.on-hud .on-notice > .on-seal {
-  position: absolute;
-  right: 7px;
-  bottom: 7px;
-  z-index: 1;
-}
-.on-hud .on-notice__go {
-  position: absolute;
-  right: 6px;
-  top: 8px;
-  width: 14px;
-  height: 14px;
-  color: var(--bronze);
-  opacity: 0;
-  transition: opacity 0.12s;
-  stroke-width: 2.2;
-}
-.on-hud .on-notice:hover .on-notice__go,
-.on-hud .on-notice:focus-visible .on-notice__go {
-  opacity: 1;
-}
-.on-hud .on-counter {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  font: 700 13px var(--font-body);
-  font-variant-numeric: tabular-nums;
+.on-hud .on-notices__head {
+  display: flex;
+  align-items: center;
+  padding: 0 0 4px 6px;
+  text-shadow: 0 1px 4px #000;
 }
 .on-hud .on-filters {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
+  pointer-events: auto;
 }
+/* A seal filter is also the tally of its weight, so it is larger than a card's seal. */
 .on-hud .on-filter {
   position: relative;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--bronze-lo);
   border-radius: 50%;
@@ -815,14 +738,25 @@
 .on-hud .on-filter::after {
   content: "";
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 24px;
+  height: 24px;
   margin: auto;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), currentColor;
   box-shadow:
     inset 0 -2px 3px #0006,
     0 1px 2px #000a;
+}
+.on-hud .on-filter__count {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  font: 700 11px / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-hi);
+  text-shadow: 0 1px 1px #000d;
 }
 .on-hud .on-filter--low {
   color: var(--wax-ok);
@@ -839,15 +773,295 @@
   border-color: currentColor;
   background: #2c2a21;
 }
-.on-hud .on-filter[aria-pressed="true"]::before {
-  content: "✓";
+.on-hud .on-notices__empty {
+  margin: 2px 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-shadow: 0 1px 4px #000;
+}
+.on-hud .on-notices__list {
+  --overlap: 0px;
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0;
+  /* Room for the 2 px focus ring at 3 px offset inside the scroll clip. */
+  padding: 6px 8px 8px 6px;
+  list-style: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bronze-lo) transparent;
+  pointer-events: auto;
+}
+.on-hud .on-notices--overflowing .on-notices__list {
+  mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
+}
+.on-hud .on-notice {
+  position: relative;
+  z-index: var(--z);
+  margin-bottom: 7px;
+  transition: margin-top 0.14s;
+}
+.on-hud .on-notice:hover,
+.on-hud .on-notice:focus-within {
+  z-index: 100;
+}
+/* Fanned: each card slides under the one before it; the hovered card and its neighbours part. */
+.on-hud .on-notice + .on-notice {
+  margin-top: calc(-1 * var(--overlap));
+}
+.on-hud .on-notice + .on-notice:hover,
+.on-hud .on-notice + .on-notice:focus-within,
+.on-hud .on-notice:hover + .on-notice,
+.on-hud .on-notice:focus-within + .on-notice {
+  margin-top: 0;
+}
+/* The slate starts right of the thumbnail box, which the Pixi figure layer under the plane fills. */
+.on-hud .on-notice__card {
+  position: relative;
+  width: 100%;
+  min-height: 68px;
+  padding: 8px 12px 8px 66px;
+  text-align: left;
+  border: 0;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    transparent 0 60px,
+    color-mix(in srgb, var(--deep) 94%, transparent) 64px,
+    color-mix(in srgb, var(--deep) 82%, transparent) 88%,
+    transparent
+  );
+  color: var(--text);
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.on-hud .on-notice__card::before {
+  content: "";
   position: absolute;
-  inset: 0;
+  inset: 5px 4px 5px 60px;
+  border-top: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
+  border-bottom: 1px solid #0006;
+  pointer-events: none;
+}
+/* Urgent: the hairline takes the seal's wax colour, so the priority reads before the seal is found. */
+.on-hud .on-notice--danger .on-notice__card::before {
+  border-top-color: color-mix(in srgb, var(--wax-danger) 70%, transparent);
+}
+.on-hud .on-notice__card:hover {
+  transform: translateX(3px);
+  background: linear-gradient(
+    90deg,
+    transparent 0 60px,
+    color-mix(in srgb, var(--fill) 96%, transparent) 64px,
+    color-mix(in srgb, var(--fill) 84%, transparent) 88%,
+    transparent
+  );
+}
+.on-hud .on-notices--stacked .on-notice__card {
+  background: linear-gradient(
+    90deg,
+    transparent 0 60px,
+    var(--deep) 64px,
+    color-mix(in srgb, var(--deep) 97%, #000)
+  );
+  box-shadow: 0 3px 8px #0008;
+}
+.on-hud .on-notices--stacked .on-notice__card:hover {
+  background: linear-gradient(
+    90deg,
+    transparent 0 60px,
+    var(--fill) 64px,
+    color-mix(in srgb, var(--fill) 97%, #000)
+  );
+}
+/* Arrival: a short slide in; an urgent seal pulses three times, then rests. */
+.on-hud .on-notice--fresh .on-notice__card {
+  animation: on-notice-in 0.18s ease-out;
+}
+@keyframes on-notice-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+@keyframes on-seal-pulse {
+  from {
+    box-shadow:
+      0 0 0 1.5px #0d100d,
+      0 0 0 0 #a8412fcc,
+      inset 0 -2px 3px #0006;
+  }
+  to {
+    box-shadow:
+      0 0 0 1.5px #0d100d,
+      0 0 0 10px transparent,
+      inset 0 -2px 3px #0006;
+  }
+}
+.on-hud .on-notice__preview {
+  position: absolute;
+  left: -4px;
+  bottom: 0;
+  width: 64px;
+  height: 72px;
+  pointer-events: none;
+  border-radius: 8px;
+  border: 1px solid #c9a26233;
+}
+.on-hud .on-notice__preview--glyph {
   display: grid;
   place-items: center;
-  color: #211d17;
-  font-size: 13px;
+  color: var(--bronze);
+  background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
+}
+.on-hud .on-notice__preview--glyph .on-glyph {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.6;
+}
+.on-hud .on-notices--stacked .on-notice__preview--glyph {
+  background-color: #182521f4;
+}
+.on-hud .on-notice__preview--dim {
+  color: var(--muted);
+  background: radial-gradient(ellipse at 50% 65%, #ffffff10, transparent 75%), #10171588;
+}
+.on-hud .on-notice__subject {
+  display: block;
+  padding-right: 12px;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #ddd5c1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .on-notice__subject[hidden] {
+  display: none;
+}
+.on-hud .on-notice__event {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin-top: 2px;
+  padding-right: 12px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--text-hi);
+}
+.on-hud .on-notices--stacked .on-notice:not(:hover, :focus-within) .on-notice__event {
+  -webkit-line-clamp: 1;
+}
+/* The seal sits on the thumbnail's bottom-right corner. */
+.on-hud .on-notice__card > .on-seal {
+  position: absolute;
+  left: 52px;
+  bottom: -2px;
   z-index: 1;
+}
+.on-hud .on-notice--fresh.on-notice--danger .on-seal {
+  animation: on-seal-pulse 1.1s ease-out 3;
+}
+.on-hud .on-notice__go {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  color: var(--bronze);
+  opacity: 0;
+  transition: opacity 0.12s;
+  stroke-width: 2.2;
+}
+.on-hud .on-notice__card:hover .on-notice__go,
+.on-hud .on-notice__card:focus-visible .on-notice__go {
+  opacity: 1;
+}
+.on-hud .on-notice__dismiss {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #0009;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.on-hud .on-notice__dismiss .on-glyph {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.4;
+}
+.on-hud .on-notice:hover .on-notice__dismiss,
+.on-hud .on-notice:focus-within .on-notice__dismiss {
+  opacity: 1;
+}
+.on-hud .on-notice__dismiss:hover,
+.on-hud .on-notice__dismiss:focus-visible {
+  color: var(--text-hi);
+  background: #000d;
+}
+/* Cards past the list's edge: a pill that scrolls a screen further. */
+.on-hud .on-notices__more {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--deep) 94%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 6px #000a;
+  pointer-events: auto;
+}
+.on-hud .on-notices__more[hidden] {
+  display: none;
+}
+.on-hud .on-notices__more .on-glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--bronze);
+  stroke-width: 2.2;
+}
+/* A long card unfolds beside the column, never into it. */
+.on-hud .on-notices__full {
+  position: absolute;
+  left: calc(100% + 6px);
+  z-index: 200;
+  width: 250px;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--deep) 96%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-line;
+  box-shadow: 0 6px 18px #000b;
+}
+.on-hud .on-notices__full::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 14px;
+  border: 5px solid transparent;
+  border-right-color: var(--bronze-lo);
+  border-left: 0;
 }
 
 /* ---------- bars: counters, clock, speed ---------- */
@@ -1160,5 +1374,9 @@
 @media (prefers-reduced-motion: reduce) {
   .on-hud * {
     transition: none;
+  }
+  .on-hud .on-notice__card,
+  .on-hud .on-seal {
+    animation: none;
   }
 }

@@ -1,4 +1,5 @@
 import type { HalfCellNode } from '@open-northland/sim';
+import type { MessageText } from './text.js';
 
 /**
  * The original's `TToUserMessage` ids (`ingameguimessages.cif` rows 15-134 spell out each one). The
@@ -114,5 +115,5 @@ export interface UserMessage extends PendingMessage {
   readonly priority: MessagePriorityLevel;
   /** The sim tick the feed accepted it on; lifetime and history expiry count from here. */
   readonly tick: number;
-  readonly text: string;
+  readonly text: MessageText;
 }

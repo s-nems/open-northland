@@ -255,19 +255,30 @@ export const plGame = {
       speed: 'Tempo ×{factor}',
       menu: 'Menu gry',
       close: 'Zamknij',
-      messages: 'Wiadomości',
-      messagesCount: 'Wiadomości: {count}',
-      messageLevelLabel: 'Poziom wiadomości',
-      messageLevels: {
-        all: 'Wszystkie wiadomości',
-        notable: 'Ważne i pilne',
-        important: 'Tylko pilne',
-      },
       pending: 'W przygotowaniu',
       residentsPending:
         'Lista mieszkańców powstaje. Zaznacz osadnika na mapie, aby zobaczyć jego szczegóły w panelu w rogu.',
       knowledgePending:
         'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. Wymagania budynków nadal widać w oknie budowy.',
+    },
+    notices: {
+      label: 'Powiadomienia',
+      count: 'Wiadomości: {count}',
+      levelLabel: 'Poziom wiadomości',
+      filters: {
+        all: 'Wszystkie',
+        notable: 'Ważne i pilne',
+        important: 'Tylko pilne',
+      },
+      weights: {
+        routine: 'zwykłe',
+        notable: 'ważne',
+        important: 'pilne',
+      },
+      tally: '{filter} · {weight}: {count}',
+      empty: 'Spokój w osadzie',
+      dismiss: 'Usuń powiadomienie',
+      more: 'jeszcze {count}',
     },
     extras: {
       title: 'Okno dodatków',
@@ -422,11 +433,8 @@ export const plGame = {
     armorClasses: ['Brak', 'Klasa 1', 'Klasa 2', 'Klasa 3', 'Klasa 4'],
   },
   userMessages: {
-    title: 'Komunikat',
-    remove: 'Usuń komunikat',
-    select: 'Pokaż',
-    becameSoldier: '{name} został żołnierzem',
-    learnedProfession: '{name} nauczył się zawodu: {profession}',
+    becameSoldier: 'został żołnierzem',
+    learnedProfession: 'nauczył się zawodu: {profession}',
     rows: {
       '33': 'w odniesieniu do swojego doświadczenia może teraz wykonywać następujące prace',
       '34': 'Nowe zawody',
