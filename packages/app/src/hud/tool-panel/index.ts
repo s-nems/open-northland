@@ -17,7 +17,7 @@ import {
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import { messages, professionLabel } from '../../i18n/index.js';
-import { paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
+import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
 import { createHudNoticeHeader } from '../dom/notice-header.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
@@ -48,8 +48,7 @@ import { createPlacementController } from './placement.js';
 import { createSpeedControl } from './speed-control.js';
 import { createToolWindows, type ToolWindowsState } from './windows.js';
 
-/** Painted-icon sizes on a beam action and in a window head (design px). */
-const ACTION_ART_PX = 50;
+/** Painted-icon size in a window head (design px). */
 const TITLE_ART_PX = 43;
 
 export interface ToolPanelOptions {

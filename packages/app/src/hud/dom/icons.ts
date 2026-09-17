@@ -22,6 +22,9 @@ export const GLYPH = {
 } as const;
 
 /** The residents token: stylized wooden figures, never faces (FOUNDATION.md). */
+/** Painted-icon size on a beam action (design px); mirrors `.on-action__art` in foundation.css. */
+export const ACTION_ART_PX = 26;
+
 export const RESIDENTS_TOKEN =
   '<svg aria-hidden="true" class="on-token on-action__art" fill="url(#on-pawn-wood)"><use href="#on-pawns"/></svg>';
 

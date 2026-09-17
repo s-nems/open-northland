@@ -1014,18 +1014,18 @@
 /* ---------- navigation beam and medallion actions ---------- */
 .on-hud .on-beam {
   display: flex;
-  gap: 3px;
-  padding: 8px 12px 4px;
+  gap: 2px;
+  padding: 4px 6px 2px;
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
   isolation: isolate;
   background-image: var(--on-surface);
   background-position: center top;
-  background-size: 620px auto;
+  background-size: 340px auto;
   box-shadow:
     inset 0 1px var(--bronze),
     inset 0 0 0 1px var(--wood-lo),
-    0 -6px 20px #0009;
+    0 -4px 12px #0009;
   overflow: visible;
 }
 /* The surface's carved rails: its top rail fills the upper half, its bottom rail the lower half. */
@@ -1034,18 +1034,18 @@
   position: absolute;
   inset: 50% 0 0;
   z-index: -1;
-  background: var(--on-surface) center bottom / 620px auto no-repeat;
+  background: var(--on-surface) center bottom / 340px auto no-repeat;
   pointer-events: none;
 }
 .on-hud .on-beam::before {
-  inset: 3px 3px 0;
+  inset: 2px 2px 0;
   border: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
   border-bottom: 0;
 }
 .on-hud .on-action {
   position: relative;
-  width: 76px;
-  height: 90px;
+  width: 42px;
+  height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1054,7 +1054,7 @@
   border-radius: 0;
   background: transparent;
   color: #ddd6c4;
-  font-size: 11px;
+  font-size: 8px;
 }
 .on-hud .on-action:hover {
   color: #fff;
@@ -1069,7 +1069,7 @@
 .on-hud .on-action::before {
   content: "";
   position: absolute;
-  inset: 4px 8px 26px;
+  inset: 3px 5px 13px;
   border-radius: 50%;
   border: 2px solid var(--bronze-lo);
   background:
@@ -1110,25 +1110,25 @@
   content: "";
   position: absolute;
   bottom: 0;
-  border: 5px solid transparent;
+  border: 3px solid transparent;
   border-bottom-color: var(--bronze-hi);
 }
 .on-hud .on-action__art {
   position: relative;
-  width: 50px;
-  height: 50px;
-  margin-top: 4px;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
   transition: transform 0.12s;
 }
 .on-hud .on-action:hover .on-action__art {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 .on-hud .on-action__label {
   position: relative;
   z-index: 1;
-  max-width: 76px;
-  margin-top: 6px;
-  font: 600 11.5px var(--font-body);
+  max-width: 42px;
+  margin-top: 3px;
+  font: 600 8px var(--font-body);
   line-height: 1.05;
   letter-spacing: 0.01em;
   color: #e6d9bb;
@@ -1139,15 +1139,15 @@
 }
 .on-hud .on-action .on-key {
   position: absolute;
-  right: 6px;
-  top: 4px;
-  width: 16px;
-  height: 16px;
+  right: 3px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
   padding: 0;
   border: 1px solid var(--bronze-lo);
   border-bottom-width: 1px;
   background: var(--deep);
-  font-size: 9px;
+  font-size: 7px;
   z-index: 2;
   opacity: 0.75;
 }

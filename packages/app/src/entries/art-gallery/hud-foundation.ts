@@ -1,6 +1,6 @@
 import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
 import foundationCss from '../../hud/dom/foundation.css?inline';
-import { GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
+import { ACTION_ART_PX, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
 import { createHudPlane } from '../../hud/dom/root.js';
 import { WINDOW_ORNAMENTS } from '../../hud/dom/symbols.js';
 import { MAX_UI_SCALE_BASE, MIN_UI_SCALE, UI_SCALE_FACTOR_MAX } from '../../hud/ui-scale.js';
@@ -9,7 +9,6 @@ import { element } from './controls.js';
 /** The board's design-px frame: the minimum supported viewport at 90% (FOUNDATION.md). */
 const BOARD_WIDTH = 1280;
 const BOARD_HEIGHT = 720;
-const ACTION_ART_PX = 50;
 const TITLE_ART_PX = 43;
 const MENU_MEDALLION_PX = 40;
 const MENU_ART_PX = 34;
