@@ -1,4 +1,5 @@
 import { aiDefenceScene } from './ai-defence.js';
+import { alchemyScene } from './alchemy.js';
 import { armorScene } from './armor.js';
 import { attackMoveScene } from './attack-move.js';
 import { barracksScene } from './barracks.js';
@@ -54,6 +55,7 @@ export const SCENES: readonly SceneDefinition[] = [
   berriesScene,
   chestsScene,
   chainScene,
+  alchemyScene,
   warehouseScene,
   constructionScene,
   farmConstructionScene,

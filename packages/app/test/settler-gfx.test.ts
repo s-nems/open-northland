@@ -9,7 +9,7 @@ import {
   WELL_DRAW_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../src/catalog/atomics.js';
-import { JOB_SOLDIER_UNARMED } from '../src/catalog/jobs.js';
+import { JOB_CIVILIST, JOB_DRUID, JOB_SCOUT, JOB_SOLDIER_UNARMED } from '../src/catalog/jobs.js';
 import {
   ADULT_CHARACTER_BY_JOB,
   buildHumanBindings,
@@ -561,6 +561,18 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
       37: { seq: 'human_man_fisher_work_fishing' },
       38: { seq: 'human_man_fisher_work_fishing' },
     });
+  });
+
+  it('maps the scout and the druid onto their own head records, degrading to the civilist', () => {
+    // Both are head-only variants of the civilian body (`logicjob 27` heads 80..83, `logicjob 30` heads
+    // 90..93), so a tribe authoring neither record draws its civilist for them.
+    for (const [job, specId] of [
+      [JOB_SCOUT, 'scout'],
+      [JOB_DRUID, 'druid'],
+    ] as const) {
+      expect(ADULT_CHARACTER_BY_JOB[job]).toBe(specId);
+      expect(CHARACTER_SPECS[specId].gfxJobs).toEqual([job, JOB_CIVILIST]);
+    }
   });
 
   it('binds each mutable warrior look to its authored pickup gesture, the chest bend included', () => {

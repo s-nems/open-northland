@@ -23,6 +23,8 @@ export const GOOD_PLANK = SYNTHETIC_GOOD_BASE;
 export const GOOD_WATER = 101;
 export const GOOD_WHEAT = 104;
 export const GOOD_FLOUR = 111;
+export const GOOD_HERB = 113;
+export const GOOD_HOLY_OIL = 115;
 export const GOOD_BREAD = 119;
 /** The `food_` slug prefix is what the sim's `isFood` recognizes as edible. */
 export const GOOD_FOOD_SIMPLE = 116;
@@ -49,7 +51,11 @@ export const GOOD_SWORD_SHORT = 141;
 export const GOOD_SWORD_LONG = 142;
 export const GOOD_MEAD = 143;
 export const GOOD_POTION_FOOD_SMALL = 144;
+export const GOOD_POTION_FOOD_BIG = 145;
 export const GOOD_POTION_STAMINA_SMALL = 146;
+export const GOOD_POTION_STAMINA_BIG = 147;
+export const GOOD_POTION_HEAL_SMALL = 148;
+export const GOOD_POTION_HEAL_BIG = 149;
 export const GOOD_AMULET_STRENGTH = 152;
 
 /** The classification only; the good itself, with its name and icon, lives once in the global catalog. */
@@ -137,7 +143,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     restorePct: { hunger: POTION_RESTORE_PCT },
   },
   {
-    typeId: 145,
+    typeId: GOOD_POTION_FOOD_BIG,
     id: 'potion_food_big',
     category: 'misc',
     wears: true,
@@ -153,7 +159,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     restorePct: { fatigue: POTION_RESTORE_PCT },
   },
   {
-    typeId: 147,
+    typeId: GOOD_POTION_STAMINA_BIG,
     id: 'potion_stamina_big',
     category: 'misc',
     wears: true,
@@ -161,7 +167,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     restorePct: { fatigue: POTION_RESTORE_PCT },
   },
   {
-    typeId: 148,
+    typeId: GOOD_POTION_HEAL_SMALL,
     id: 'potion_heal_small',
     category: 'misc',
     wears: true,
@@ -169,7 +175,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     restorePct: { healthMax: POTION_RESTORE_PCT },
   },
   {
-    typeId: 149,
+    typeId: GOOD_POTION_HEAL_BIG,
     id: 'potion_heal_big',
     category: 'misc',
     wears: true,

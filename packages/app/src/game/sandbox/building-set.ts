@@ -9,6 +9,8 @@ import type { SandboxContentExtras } from './content/types.js';
 import {
   BUILDING_ANIMAL_FARM,
   BUILDING_BAKERY,
+  BUILDING_DRUID_HUT,
+  BUILDING_DRUID_HUT_01,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
@@ -26,6 +28,8 @@ import {
   GOOD_FOOD_EXTRA,
   GOOD_FOOD_SIMPLE,
   GOOD_GOLD,
+  GOOD_HERB,
+  GOOD_HOLY_OIL,
   GOOD_IRON,
   GOOD_LEATHER,
   GOOD_MEAD,
@@ -33,6 +37,12 @@ import {
   GOOD_MUD,
   GOOD_MUSHROOM,
   GOOD_PLANK,
+  GOOD_POTION_FOOD_BIG,
+  GOOD_POTION_FOOD_SMALL,
+  GOOD_POTION_HEAL_BIG,
+  GOOD_POTION_HEAL_SMALL,
+  GOOD_POTION_STAMINA_BIG,
+  GOOD_POTION_STAMINA_SMALL,
   GOOD_SHEEP,
   GOOD_STONE,
   GOOD_WATER,
@@ -59,6 +69,11 @@ const BAKERY_BREAD_CAPACITY = 20;
 const ANIMAL_FARM_INPUT_CAPACITY = 10;
 const ANIMAL_FARM_TOKEN_CAPACITY = 20;
 const ANIMAL_FARM_OUTPUT_CAPACITY = 30;
+// Extracted `logicstock` on "work druid 00"/"01": mushrooms and the level-2 potion ingredients in, oil and
+// potions out.
+const DRUID_INPUT_CAPACITY = 10;
+const DRUID_HUT_OIL_CAPACITY = 15;
+const DRUID_HUT_01_OUTPUT_CAPACITY = 25;
 
 export interface StockSlot {
   readonly goodType: number;
@@ -128,6 +143,38 @@ export interface SandboxBuildingRow {
 
 /** Extracted `logicstock 16 25` / `43 25` on both tower tiers. */
 const TOWER_LARDER_CAPACITY = 25;
+
+type SandboxRecipe = NonNullable<SandboxBuildingRow['recipes']>[number];
+
+function holyOilRecipe(): SandboxRecipe {
+  return {
+    inputs: [{ goodType: GOOD_MUSHROOM, amount: 1 }],
+    outputs: [{ goodType: GOOD_HOLY_OIL, amount: 1 }],
+    ticks: DEFAULT_RECIPE_TICKS,
+  };
+}
+
+/** The level-2 hut's bottles, each with how many of every ingredient it costs: a small bottle one, a big
+ *  bottle two. */
+const POTIONS: readonly (readonly [ingredientAmount: number, goodType: number])[] = [
+  [1, GOOD_POTION_FOOD_SMALL],
+  [2, GOOD_POTION_FOOD_BIG],
+  [1, GOOD_POTION_STAMINA_SMALL],
+  [2, GOOD_POTION_STAMINA_BIG],
+  [1, GOOD_POTION_HEAL_SMALL],
+  [2, GOOD_POTION_HEAL_BIG],
+];
+
+function potionRecipe(goodType: number, ingredientAmount: number): SandboxRecipe {
+  return {
+    inputs: [GOOD_WATER, GOOD_MUSHROOM, GOOD_HERB, GOOD_COIN].map((input) => ({
+      goodType: input,
+      amount: ingredientAmount,
+    })),
+    outputs: [{ goodType, amount: 1 }],
+    ticks: DEFAULT_RECIPE_TICKS,
+  };
+}
 
 /** A `workers` entry here replaces the extracted `BUILDING_WORKER_SLOTS` default. */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
@@ -232,6 +279,31 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       },
       { inputs: [], outputs: [{ goodType: GOOD_MEAT, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS },
     ],
+  },
+  // Extracted shape ("work druid 00"): `logicproduction 15`, oil from a mushroom (`goodtypes.ini` holy_oil
+  // `productionInputGoods 14`).
+  [BUILDING_DRUID_HUT]: {
+    stock: [
+      { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_HOLY_OIL, capacity: DRUID_HUT_OIL_CAPACITY, initial: 0 },
+    ],
+    produces: [GOOD_HOLY_OIL],
+    recipes: [holyOilRecipe()],
+  },
+  // Extracted shape ("work druid 01"): the oil recipe plus the six potions, each brewed from water,
+  // mushroom, herb and coin - one of each for a small bottle, two of each for a big one
+  // (`productionInputGoods 1 14 13 8` / `1 1 14 14 13 13 8 8`).
+  [BUILDING_DRUID_HUT_01]: {
+    stock: [
+      { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_HOLY_OIL, capacity: DRUID_HUT_01_OUTPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_WATER, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_HERB, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_COIN, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      ...POTIONS.map(([, goodType]) => ({ goodType, capacity: DRUID_HUT_01_OUTPUT_CAPACITY, initial: 0 })),
+    ],
+    produces: [GOOD_HOLY_OIL, ...POTIONS.map(([, goodType]) => goodType)],
+    recipes: [holyOilRecipe(), ...POTIONS.map(([amount, goodType]) => potionRecipe(goodType, amount))],
   },
   [BUILDING_WAREHOUSE_00]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[0]) },
   [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },

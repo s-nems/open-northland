@@ -258,6 +258,11 @@ export const enContent = {
       title: 'Production chain',
       summary: 'Farm, mill, bakery and well in one loop: wheat → flour → bread, fed by water.',
     },
+    alchemy: {
+      title: "Alchemist's huts",
+      summary:
+        'A druid brews holy oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and coin in the large one.',
+    },
     warehouse: {
       title: 'Warehouse logistics',
       summary: 'Carriers collect loose goods until each warehouse capacity is reached.',

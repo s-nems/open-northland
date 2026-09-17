@@ -258,6 +258,11 @@ export const plContent = {
       title: 'Łańcuch produkcji',
       summary: 'Farma, młyn, piekarnia i studnia w jednej pętli: pszenica → mąka → chleb, zasilane wodą.',
     },
+    alchemy: {
+      title: 'Chaty alchemika',
+      summary:
+        'Druid warzy święty olej z grzybów w małej chacie, a dwóch druidów mikstury z wody, grzybów, ziół i monet w dużej.',
+    },
     warehouse: {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',

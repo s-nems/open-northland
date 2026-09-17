@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   JOB_ARCHER,
   JOB_CIVILIST,
+  JOB_DRUID,
   JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_UNARMED,
 } from '../src/catalog/jobs.js';
@@ -31,6 +32,12 @@ const ir: ContentIr = {
       headPalette: 'test_human_00',
     }),
     row(VIKING, JOB_SOLDIER_UNARMED, 'cr_hum_body_05'),
+    // The druid record: the civilian body under the capped heads.
+    row(VIKING, JOB_DRUID, 'cr_hum_body_00', {
+      heads: [`${BOBS}/cr_hum_head_90.bmd`, `${BOBS}/cr_hum_head_91.bmd`],
+      bodyPalette: 'test_human_00',
+      headPalette: 'test_human_00',
+    }),
     row(FRANK, JOB_CIVILIST, 'cr_hum_body_30', {
       // The source repeats a head slot per variant; the join keeps one entry per distinct look.
       heads: [`${BOBS}/cr_hum_head_30.bmd`, `${BOBS}/cr_hum_head_31.bmd`, `${BOBS}/cr_hum_head_30.bmd`],
@@ -53,6 +60,20 @@ describe('tribeLooks', () => {
     expect(frank.get('warrior-spear')?.map((l) => l.bodyBmd)).toEqual(['cr_hum_body_52', 'cr_hum_body_32']);
     // No frank record for the archer class (`logicjob 40`), so it draws the plain soldier body.
     expect(frank.get('warrior-shortbow')?.map((l) => l.bodyBmd)).toEqual(['cr_hum_body_32']);
+  });
+
+  it('composes the druid from its own head record, then the civilist behind it', () => {
+    const viking = tribeLooks(ir, VIKING).get('druid');
+    expect(viking?.map((l) => l.headBmds)).toEqual([
+      ['cr_hum_head_90', 'cr_hum_head_91'],
+      ['cr_hum_head_00', 'cr_hum_head_01'],
+    ]);
+    // A tribe with no druid record has only its civilist in the chain, so its druids read as civilians.
+    expect(
+      tribeLooks(ir, FRANK)
+        .get('druid')
+        ?.map((l) => l.headBmds),
+    ).toEqual([['cr_hum_head_30', 'cr_hum_head_31']]);
   });
 
   it('deduplicates the repeated head slots and carries each record palette', () => {
