@@ -57,12 +57,12 @@ labels, so colour is never the only carrier of state.
 ## Components and geometry
 
 Alegreya Sans carries information; Almendra SC (Google Fonts, Cinzel fallback) is for short window
-titles only. Body copy uses 14 design px, compact metadata 12 px, beam labels 8 px, window titles
+titles only. Body copy uses 14 design px, compact metadata 12 px, beam labels 10 px, window titles
 25 px (selection 20 px). Pointer targets are at least 36 px; spacing follows 4 px. The compact notification filters
 are an explicit 26 px exception in this mouse/keyboard study.
 
-- Main action art: 26 px; resource art: 29 px; gallery art: 44 px.
-- Bottom actions: 42 × 48 px on a 32 px medallion, with persistent labels and a selected marker.
+- Main action art: 32 px; resource art: 29 px; gallery art: 44 px.
+- Bottom actions: 52 × 60 px on a 40 px medallion, with persistent labels and a selected marker.
 - Construction: 540 px wide, content-sized rather than filling the screen vertically.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
 - Notifications: 198 px, no opaque background in unused column space.
@@ -83,11 +83,11 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 
 | Region | Placement | Content today |
 | --- | --- | --- |
-| Navigation beam | bottom centre, 318 × 54, seven 42 × 48 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
+| Navigation beam | bottom centre, 392 × 68, seven 52 × 60 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | pause / ×1 / ×2 / ×3 segments, menu medallion; counters and clock come with ticket 04 |
 | Notifications | left 10, top 18, width 198, ends above the minimap | count medallion and three seal filters; the legacy note row stays along the top edge until ticket 03 |
 | Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
-| Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 974 design px) |
+| Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1048 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
 
 Rules the shell enforces:

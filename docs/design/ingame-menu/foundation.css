@@ -822,7 +822,7 @@ button.medallion:hover {
 }
 .hud-root.scaled .selection {
   width: 290px;
-  bottom: 53px;
+  bottom: 67px;
   height: 355px;
 }
 .frame-knot {
@@ -1402,11 +1402,11 @@ button.medallion:hover {
   transform: translateX(-50%);
   display: flex;
   gap: 2px;
-  padding: 4px 6px 2px;
+  padding: 5px 8px 3px;
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
   isolation: isolate;
-  background: url(./nordic-surface-v1.png) center top / 340px auto;
+  background: url(./nordic-surface-v1.png) center top / 420px auto;
   box-shadow:
     inset 0 1px var(--bronze),
     inset 0 0 0 1px var(--wood-lo),
@@ -1419,7 +1419,7 @@ button.medallion:hover {
   position: absolute;
   inset: 50% 0 0;
   z-index: -1;
-  background: url(./nordic-surface-v1.png) center bottom / 340px auto no-repeat;
+  background: url(./nordic-surface-v1.png) center bottom / 420px auto no-repeat;
   pointer-events: none;
 }
 .hud-root.scaled .nav {
@@ -1432,8 +1432,8 @@ button.medallion:hover {
 }
 .nav button {
   position: relative;
-  width: 42px;
-  height: 48px;
+  width: 52px;
+  height: 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1442,7 +1442,7 @@ button.medallion:hover {
   border-radius: 0;
   background: transparent;
   color: #ddd6c4;
-  font-size: 8px;
+  font-size: 10px;
 }
 .nav button:hover {
   color: #fff;
@@ -1457,7 +1457,7 @@ button.medallion:hover {
 .nav button:before {
   content: "";
   position: absolute;
-  inset: 3px 5px 13px;
+  inset: 3px 6px 17px;
   border-radius: 50%;
   border: 2px solid var(--bronze-lo);
   background:
@@ -1498,14 +1498,14 @@ button.medallion:hover {
   content: "";
   position: absolute;
   bottom: 0;
-  border: 3px solid transparent;
+  border: 4px solid transparent;
   border-bottom-color: var(--bronze-hi);
 }
 .nav .painted,
 .nav .people-token {
   position: relative;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   margin-top: 2px;
   transition: transform 0.12s;
 }
@@ -1515,10 +1515,10 @@ button.medallion:hover {
 .nav button > span:last-child {
   position: relative;
   z-index: 1;
-  max-width: 42px;
+  max-width: 52px;
   margin-top: 3px;
   font:
-    600 8px Alegreya,
+    600 10px Alegreya,
     serif;
   line-height: 1.05;
   letter-spacing: 0.01em;
@@ -1532,16 +1532,16 @@ button.medallion:hover {
   display: grid;
   place-items: center;
   position: absolute;
-  right: 3px;
-  top: 2px;
-  width: 12px;
-  height: 12px;
+  right: 4px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
   border: 1px solid var(--bronze-lo);
   border-radius: 3px;
   background: var(--deep);
   color: #cdbf9d;
   font:
-    700 7px / 1 Alegreya,
+    700 8px / 1 Alegreya,
     serif;
   z-index: 2;
   opacity: 0.75;
