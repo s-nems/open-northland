@@ -6,8 +6,8 @@ The visual direction is approved: see the
 [foundation reference and specification](../../design/ingame-menu/FOUNDATION.md). The runtime
 foundation exists as a DOM plane over the Pixi canvas: `packages/app/src/hud/dom/` (tokens and
 primitives in `foundation.css`, the scaled plane in `root.ts`, shared SVG symbols), the `ui/foundation`
-art package with its `ui` recipe kind, and the gallery board at `?art=gallery&tab=hud`. Approval is
-not permission to merge into main.
+art package with its `ui` recipe kind (published), and the gallery board at `?art=gallery&tab=hud`.
+Approval is not permission to merge into main.
 
 Follow the [design and panel workflow](../../design/ingame-menu/README.md) and
 [shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Continue the existing
@@ -15,10 +15,6 @@ Follow the [design and panel workflow](../../design/ingame-menu/README.md) and
 
 ## Scope
 
-- Publish the chrome pack: a human reviews the `ui/foundation` candidate (`npm run art -- review
-  ui/foundation`) and records the approval, then `npm run art -- publish ui/foundation`. Until then
-  the plane runs with flat fallback surfaces and empty icon slots, and the preview needs
-  `ART_CANDIDATE`.
 - Bundle a display face for window titles: the reference uses Almendra SC (SIL OFL) from Google
   Fonts; the runtime falls back to the bundled Cinzel. Add the subset and licence beside the other
   fonts in `packages/app/public/fonts/`, or record Cinzel as the final choice in FOUNDATION.md.
