@@ -647,6 +647,18 @@ button.medallion:hover {
   --covered: var(--overlap);
   margin-top: calc(-1 * var(--overlap));
 }
+/* A dismissal closes the gap at once. The card that becomes first takes its place and shows its
+   covered part at once too, instead of sliding down and unfolding while the rest jump. */
+.notice:first-child {
+  transition: none;
+}
+.notice:first-child .seal,
+.notice:first-child .notice-card b {
+  transition: none;
+}
+.notice:first-child .notice-dismiss {
+  transition: opacity 0.12s;
+}
 /* The covered part is clipped away rather than layered, so a glyph box never shows through the card
    in front. The other edges leave room for the focus ring and the fan shadow. */
 .notices.stacked .notice {

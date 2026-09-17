@@ -113,17 +113,24 @@ const CARD_GAP = 7;
 const LEVEL_OF_FILTER = { Wszystkie: 0, 'Ważne i pilne': 1, 'Tylko pilne': 2 };
 const LEVEL_NAMES = ['zwykłe', 'ważne', 'pilne'];
 let filterLevel = 0;
+noticeList.querySelectorAll('.notice').forEach((item, i) => {
+  item.dataset.order = i;
+});
 function noticeLevel(item) {
   return item.classList.contains('danger') ? 2 : item.classList.contains('warning') ? 1 : 0;
 }
-/* The filter hides cards; the seals still count every live card of their weight. */
+/* The filter hides cards; the seals still count every live card of their weight. Hidden cards trail
+   the list in their page order, so the shown ones are siblings the way the app's column has them. */
 function applyNoticeFilter() {
   const counts = [0, 0, 0];
-  for (const item of noticeList.querySelectorAll('.notice')) {
+  const items = [...noticeList.querySelectorAll('.notice')].sort((a, b) => a.dataset.order - b.dataset.order);
+  for (const item of items) {
     const live = item.dataset.live === '1';
     if (live) counts[noticeLevel(item)]++;
     item.hidden = !(live && noticeLevel(item) >= filterLevel);
   }
+  for (const item of items) if (!item.hidden) noticeList.append(item);
+  for (const item of items) if (item.hidden) noticeList.append(item);
   for (const button of notices.querySelectorAll('.priority button')) {
     const level = Number(button.dataset.level);
     button.querySelector('[data-level-count]').textContent = counts[level];
