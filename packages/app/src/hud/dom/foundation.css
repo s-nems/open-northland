@@ -775,6 +775,8 @@
 }
 /* The bin beside the filters dismisses every shown card, as Shift with a × does. */
 .on-hud .on-notices__clear {
+  display: grid;
+  place-items: center;
   width: 32px;
   height: 32px;
   margin-left: 12px;

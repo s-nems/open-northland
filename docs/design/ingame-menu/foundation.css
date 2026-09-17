@@ -602,6 +602,8 @@ button.medallion:hover {
 }
 /* The bin beside the filters dismisses every shown card, as Shift with a × does. */
 .notice-clear {
+  display: grid;
+  place-items: center;
   width: 32px;
   height: 32px;
   min-height: 32px;
