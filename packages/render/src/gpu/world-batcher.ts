@@ -173,12 +173,21 @@ function defineWorldBatcher(): WorldBatcherClass {
   void main(void) {
     vec4 outColor;
     if (vMagnify > 0.5 && uWorldMagnify > 0.5) {
-      vec2 p = vUV * vec2(textureSizeOf());
+      vec2 size = vec2(textureSizeOf());
+      vec2 p = vUV * size;
       float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
       if (texelsPerPixel < 1.0) {
         outColor = uWorldMagnify > 1.5 ? magnifyXbr(p, texelsPerPixel) : magnifySharp(p, texelsPerPixel);
       } else {
-        outColor = sampleTexture(vUV);
+        // Minified: a 2x2 footprint over the sampler's own filter reduces sparkle, clamped to the frame.
+        // Not a mipmap substitute at extreme zoom-out: sampling cost is deliberately bounded.
+        vec2 footprint = max(fwidth(vUV) - 1.0 / size, vec2(0.0)) * 0.25;
+        vec2 low = vFrame.xy + 0.5 / size;
+        vec2 high = vFrame.zw - 0.5 / size;
+        outColor = 0.25 * (sampleTexture(clamp(vUV - footprint, low, high))
+                         + sampleTexture(clamp(vUV + vec2(footprint.x, -footprint.y), low, high))
+                         + sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
+                         + sampleTexture(clamp(vUV + footprint, low, high)));
       }
     } else {
       outColor = sampleTexture(vUV);
