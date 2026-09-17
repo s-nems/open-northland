@@ -177,7 +177,10 @@ Debug modes:
 - `debug=perf` adds browser performance marks;
 - `debug=trace` records a trace that can be exported for offline profiling;
 - `debug=profile` accumulates per-system sim cost for the whole session;
-- `debug=missions` shows saved mission execution ticks and counts in a collapsible inspector.
+- `debug=missions` shows saved mission execution ticks and counts in a collapsible inspector;
+- `debug=notices` raises one notification of every type on the seat's own settlers and buildings once a
+  second, so the column shows every row without staging its cause: `?scene=sandbox&debug=notices`. The
+  need and missing-workplace rows retire against the sim, so they show only where their cause holds.
 
 Flags combine: `?debug=profile,trace` runs both.
 

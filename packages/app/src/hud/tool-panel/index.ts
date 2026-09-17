@@ -37,6 +37,7 @@ import {
   createMessageCenter,
   type MessageFeedState,
   type MessageTarget,
+  type NoticeGallery,
   type UnitSelectionView,
 } from './messages/index.js';
 import type { MissionHumanLookup } from './mission/index.js';
@@ -119,6 +120,8 @@ export interface ToolPanelOptions {
   readonly playerColourOf?: (player: number) => number;
   /** A pressed card: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
+  /** Set, the notification column shows one note of every type (`?debug=notices`). */
+  readonly noticeGallery?: NoticeGallery;
   /** The GUI click feedback: every pressed button confirms, a cancelled hold fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
 }
@@ -378,6 +381,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.diplomacyRows,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
+      gallery: opts.noticeGallery,
     });
 
     const infoLines = createInfoLinesOverlay(ctx, infoContainer);

@@ -39,6 +39,7 @@ import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
+import { NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
@@ -399,6 +400,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (at !== null) jumpToWorld(at.x, at.y);
         if (target.entity !== null) selectEntity?.(target.entity);
       },
+      ...(hasDebugFlag(params, NOTICE_GALLERY_DEBUG_FLAG)
+        ? { noticeGallery: { goodType: goodLabelByType.keys().next().value ?? null } }
+        : {}),
       onUiCue: uiCue,
     });
 

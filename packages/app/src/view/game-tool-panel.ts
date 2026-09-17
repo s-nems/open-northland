@@ -18,7 +18,7 @@ import type {
 } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
-import type { MessageTarget } from '../hud/tool-panel/messages/index.js';
+import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import { currentLocale } from '../i18n/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -88,6 +88,8 @@ export interface GameToolPanelDeps {
   readonly playerColourOf?: (player: number) => number;
   /** A pressed card: centre the view on the target and select it. */
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
+  /** Set, the notification column shows one note of every type (`?debug=notices`). */
+  readonly noticeGallery?: NoticeGallery;
   /** The GUI click feedback for the panel's buttons and held modes; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
 }
@@ -196,6 +198,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onSelectMessageTarget !== undefined
         ? { onSelectMessageTarget: deps.onSelectMessageTarget }
         : {}),
+      ...(deps.noticeGallery !== undefined ? { noticeGallery: deps.noticeGallery } : {}),
       ...(deps.onUiCue !== undefined ? { onUiCue: deps.onUiCue } : {}),
     });
 

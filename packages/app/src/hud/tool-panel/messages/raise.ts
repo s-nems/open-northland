@@ -29,7 +29,7 @@ export interface RaisedMessage {
   readonly compose: () => MessageText;
 }
 
-function nodeOf(e: SnapshotEntity): PendingMessage['at'] {
+export function nodeOf(e: SnapshotEntity): PendingMessage['at'] {
   const pos = positionOf(e);
   return pos === undefined ? null : nodeOfPosition(pos.x, pos.y);
 }

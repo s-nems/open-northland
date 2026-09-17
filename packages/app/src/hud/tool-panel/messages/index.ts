@@ -21,7 +21,8 @@ import { createDeselectionDismisser, type UnitSelectionView } from './deselectio
 import { createMessageFeed, type MessageFeedState } from './feed.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
-import { createSnapshotMessageSource } from './from-snapshot.js';
+import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
+import { galleryMessages, type NoticeGallery } from './gallery.js';
 import { type NotePortraitEntry, NotePortraits } from './portrait.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver } from './retire.js';
@@ -30,6 +31,7 @@ import type { UserMessage } from './types.js';
 
 export type { UnitSelectionView } from './deselection.js';
 export type { MessageFeedState } from './feed.js';
+export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 
 /** The `miscwindow` row heading an unnamed seat, ahead of its slot number. */
 const PLAYER_STRING_ID = 361;
@@ -73,6 +75,8 @@ export interface MessageCenterDeps {
   readonly metSeats: () => readonly MetSeat[];
   readonly onSelect: (target: MessageTarget) => void;
   readonly initial?: MessageFeedState | undefined;
+  /** Set, raises one note of every type on the seat's own actors once a sweep (the `notices` debug flag). */
+  readonly gallery?: NoticeGallery | undefined;
 }
 
 /** The message centre: the feed and the notification column that shows it. */
@@ -183,6 +187,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const portraits = new NotePortraits(deps.app, deps.sheet, deps.portraitContainer, deps.playerColourOf);
   let previous: WorldSnapshot | null = null;
   let renderedVersion = -1;
+  let lastGalleryTick: number | null = null;
+  const galleryDue = (tick: number): boolean => {
+    if (lastGalleryTick !== null && tick - lastGalleryTick < SNAPSHOT_SWEEP_INTERVAL_TICKS) return false;
+    lastGalleryTick = tick;
+    return true;
+  };
 
   const canvasRect = (r: Rect): Rect => {
     const a = deps.toCanvas(r.x, r.y);
@@ -217,6 +227,17 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
         }
         for (const raised of diplomacySource.poll(naming)) {
           feed.add(raised.pending, snapshot.tick, raised.compose);
+        }
+        if (deps.gallery !== undefined && galleryDue(snapshot.tick)) {
+          for (const raised of galleryMessages(
+            snapshot,
+            deps.localPlayer,
+            naming,
+            deps.metSeats(),
+            deps.gallery,
+          )) {
+            feed.add(raised.pending, snapshot.tick, raised.compose);
+          }
         }
         feed.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
         previous = snapshot;

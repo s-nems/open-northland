@@ -133,6 +133,7 @@ original's 200 slots, lifetime, dedupe and priority table.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures animate only on cards
   inside the list's visible area; a paused game holds their frame, reduced motion holds the standing
   pose and drops the slide and the pulse.
+- Every row at once, for a check of the column: `?scene=sandbox&debug=notices` (DEVELOPMENT.md).
 
 ## Confirmed imagery
 

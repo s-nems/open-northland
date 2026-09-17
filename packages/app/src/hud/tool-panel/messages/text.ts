@@ -100,7 +100,7 @@ export function userMessageTypeName(type: UserMessageType): UserMessageTypeName 
 }
 
 /** The rows whose text ends in the good it is about. */
-const GOOD_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
+export const GOOD_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
   'goodNotFound',
   'waitingForGood',
   'canProduceNewGood',
