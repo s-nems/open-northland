@@ -1,11 +1,4 @@
-import {
-  type BuildingType,
-  type ContentSet,
-  footprintCellDx,
-  type GoodType,
-  type JobType,
-  type TribeType,
-} from '@open-northland/data';
+import type { BuildingType, ContentSet, GoodType, JobType, TribeType } from '@open-northland/data';
 import {
   cellAnchorNode,
   checkInvariants,
@@ -19,6 +12,7 @@ import {
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_BARREN, TERRAIN_OPEN } from '../../src/catalog/terrain.js';
+import { doorNode } from '../../src/view/projections/building-points.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
@@ -107,11 +101,7 @@ function buildScenario(
   const { worker, workplace, tribe } = resolveActors(content, goodId);
   const sim = new Simulation({ seed: SEED, content, map: flatMap(MAP_CELLS, terrain) });
   const anchor = cellAnchorNode(FARM_AT.x, FARM_AT.y);
-  const door = workplace.footprint?.door;
-  const doorNode =
-    door === undefined
-      ? anchor
-      : { hx: anchor.hx + footprintCellDx(anchor.hy, door), hy: anchor.hy + door.dy };
+  const door = doorNode(workplace.footprint, anchor);
   const workplaceEntity = sim.world.create();
   sim.world.add(workplaceEntity, Position, positionOfNode(anchor.hx, anchor.hy));
   sim.world.add(workplaceEntity, Building, {
@@ -122,7 +112,7 @@ function buildScenario(
   });
   sim.world.add(workplaceEntity, Stockpile, { amounts: new Map() });
   const workerEntity = sim.world.create();
-  sim.world.add(workerEntity, Position, positionOfNode(doorNode.hx, doorNode.hy));
+  sim.world.add(workerEntity, Position, positionOfNode(door.hx, door.hy));
   addPerson(sim.world, workerEntity, {
     tribe: tribe.typeId,
     jobType: worker.typeId,
