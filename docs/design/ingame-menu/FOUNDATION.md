@@ -198,7 +198,7 @@ Local-only review inputs in `/private/tmp/ingame-foundation` (never add these to
 - `review-characters/ir.json`: copy of the primary checkout's generated `content/ir.json`.
 - `review-characters/`: original `content/bobs/cr_hum_{body_00,head_00,body_10,head_10}.test_human_00`
   PNG/atlas.json pairs. The preview reads tribe 1 jobs 6 and 5, compositing body/head with authored offsets.
-- `review-goods/manifest.json`: `content/goods/manifest.json`; bread, wood, sword, shoes and crockery
+- `review-goods/manifest.json`: `content/goods/manifest.json`; bread, wood, sword, shoes, crockery and food
   `ls_goods.goods_*` PNG/atlas.json pairs from `content/bobs/`.
 
 If the temporary directory is lost, restore these from the primary checkout's generated content,

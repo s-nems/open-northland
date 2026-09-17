@@ -262,6 +262,9 @@ const UNLOADED = 0;
 const SOUTH_EAST = 3;
 const REVIEW_FPS = 12;
 const CANVAS = 192;
+/* A good icon's target side (canvas px) as the square root of its drawn area, and the cell's inset. */
+const GOOD_ICON_MASS = 150;
+const GOOD_ICON_MARGIN = 6;
 const characters = new Map();
 async function character(job) {
   if (!characters.has(job))
@@ -388,7 +391,12 @@ async function mountGoods() {
       image.src = `${base}.png`;
       await image.decode();
       const canvas = canvasFor(slot, 'game-good');
-      const scale = 160 / Math.max(rect.width, rect.height);
+      // Frames differ in shape (a thin sword, a round loaf), so the sprite is sized by its area, not
+      // its longest side, and every good on the bar carries about the same visual mass.
+      const scale = Math.min(
+        GOOD_ICON_MASS / Math.sqrt(rect.width * rect.height),
+        (CANVAS - GOOD_ICON_MARGIN) / Math.max(rect.width, rect.height),
+      );
       canvas
         .getContext('2d')
         .drawImage(

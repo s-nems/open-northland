@@ -334,15 +334,11 @@ button.medallion:hover {
   top: 0;
   right: 0;
   display: flex;
-  align-items: stretch;
-  gap: 0;
-  z-index: 30;
-}
-.summary,
-.timebar {
-  display: flex;
   align-items: center;
+  gap: 4px;
+  z-index: 30;
   padding: 9px 8px;
+  border-radius: 0 0 0 5px;
   background:
     linear-gradient(
       180deg,
@@ -356,14 +352,10 @@ button.medallion:hover {
     inset 0 0 0 4px var(--wood),
     0 6px 14px #0007;
 }
-.summary {
-  border-right: 0;
-  border-radius: 0 0 0 5px;
-  padding-right: 4px;
-}
+.summary,
 .timebar {
-  border-radius: 0 0 5px 0;
-  padding-left: 4px;
+  display: flex;
+  align-items: center;
 }
 .summary button {
   display: flex;
@@ -435,6 +427,11 @@ button.medallion:hover {
 .resource-tip[hidden] {
   display: none;
 }
+/* Counters near the screen's right edge hang their breakdown to the left instead. */
+.resource.flip .resource-tip {
+  left: auto;
+  right: 0;
+}
 .resource-tip::before {
   content: "";
   position: absolute;
@@ -472,12 +469,12 @@ button.medallion:hover {
   transform: translateY(-3px);
 }
 .resource-tip.wide {
-  width: 330px;
+  width: 420px;
 }
 .resource-tip .columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 16px;
+  column-gap: 18px;
 }
 .resource-tip p.sub {
   margin-top: -2px;
@@ -492,27 +489,8 @@ button.medallion:hover {
   font-weight: 700;
 }
 /* A known good with nothing on hand stays listed, so its absence reads as data, not as a gap. */
-.resource-tip p.zero,
-.summary b.zero {
+.resource-tip p.zero {
   color: var(--ink-muted);
-}
-.summary b.zero {
-  color: #b9b09a;
-}
-.resource-tip p.empty {
-  display: block;
-  margin: 4px 0 2px;
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--ink-muted);
-}
-.resource-tip small {
-  display: block;
-  border-top: 1px solid #8d754966;
-  padding-top: 8px;
-  margin-top: 9px;
-  color: var(--ink-muted);
-  font-size: 11px;
 }
 .timebar time {
   font:
