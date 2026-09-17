@@ -23,6 +23,7 @@ export { dockVehicle } from './dock.js';
 export {
   facingOfStep,
   moveVehicle,
+  sendVehicleTo,
   snapVehicleTarget,
   stopVehicle,
   VEHICLE_TARGET_SNAP_RADIUS,

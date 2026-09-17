@@ -306,24 +306,38 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  if (!crewInside(state)) {
-    // The route is judged now as well as when the crew is in, so an order nobody could drive is refused
-    // at once instead of after the boarding (approximation: the original's pathfinder runs after
-    // `l_Passengers_MoveIn`; the trader's move near a house relies on the early refusal to detach).
-    if (vehicleRouteTo(world, ctx, terrain, e, goal) === null) {
-      refuseMove(world, ctx, e, 'noPath');
+  return sendVehicleTo(world, ctx, terrain, e, goal);
+}
+
+/**
+ * Drive `vehicle` to `goal`, a snapped node, or hold the goal under `waitsForHuman` while the crew is
+ * outside. The route is judged now in either case, so an order nobody could drive is refused with
+ * `vehicleNoPath` at once instead of after the boarding (approximation: the original's pathfinder runs
+ * after `l_Passengers_MoveIn`). The trader's move near a house takes this seam past the goto's walk-range
+ * gate. Returns whether a drive or a held goal now stands.
+ */
+export function sendVehicleTo(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  goal: NodeId,
+): boolean {
+  if (!crewInside(world.get(vehicle, Vehicle))) {
+    if (vehicleRouteTo(world, ctx, terrain, vehicle, goal) === null) {
+      refuseMove(world, ctx, vehicle, 'noPath');
       return false;
     }
-    const live = world.mut(e, Vehicle);
+    const live = world.mut(vehicle, Vehicle);
     live.heldGoal = nodeOf(terrain, goal);
     live.task = 'waitsForHuman';
     return true;
   }
-  if (!startVehicleDrive(world, ctx, terrain, e, goal)) {
-    refuseMove(world, ctx, e, 'noPath');
+  if (!startVehicleDrive(world, ctx, terrain, vehicle, goal)) {
+    refuseMove(world, ctx, vehicle, 'noPath');
     return false;
   }
-  const live = world.mut(e, Vehicle);
+  const live = world.mut(vehicle, Vehicle);
   live.task = 'none';
   live.mooring = null; // a goto overrides a dock under way; the ship stays at sea on arrival
   return true;

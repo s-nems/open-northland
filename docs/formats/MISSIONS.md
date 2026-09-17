@@ -680,8 +680,11 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   the HUD reads as `noVehicleForWork`. Approximations: the load and unload clips at the house move
   the unit straight between the shelf and the hold, where the original carries each unit to the
   cart's door; the trader's hold write keeps the wanted amount on the actual one whatever crew is
-  attached (`tradeVehicleStock`, see VEHICLES.md "Cargo"); a cart that cannot be driven near a stop
-  is let go of without the original's detach note; a house's minimum stock is its
+  attached (`tradeVehicleStock`, see VEHICLES.md "Cargo"); a stop with no standable node within the
+  working distance lets the cart go without the original's detach note, while a stop the cart has no
+  route to parks the trader by its cart for the failed-goal memo's span before it tries again; the
+  cart's move ignores the goto's 60-node walk range (whether the original's pathfinder budget caps the
+  distance is not read); a house's minimum stock is its
   recipe inputs; the import-mark ranking by request counters is a plain surplus comparison; nothing
   is handed over while the house holds fewer take goods than a batch pays out, where the original
   delivers regardless; a chosen agreement that stops holding is kept and waited on, where the

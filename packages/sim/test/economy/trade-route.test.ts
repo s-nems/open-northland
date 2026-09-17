@@ -26,7 +26,7 @@ import {
 import { hexDistance } from '../../src/nav/halfcell.js';
 import { interactionNode, vehicleAnchor } from '../../src/systems/footprint/index.js';
 import { TRADE_CART_HOUSE_DISTANCE } from '../../src/systems/trade/index.js';
-import { createVehicle } from '../../src/systems/vehicles/index.js';
+import { createVehicle, VEHICLE_WALK_RANGE_NODES } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -230,6 +230,22 @@ describe('a trader between its own houses', () => {
     expect(stockOf(sim, far, WOOD)).toBeGreaterThan(0);
     const cart = sim.world.get(trader, Rider).vehicle;
     expect(sim.world.get(cart, Vehicle).heldGoal).toBeNull();
+  });
+
+  it('drives the cart to a stop beyond the goto walk range and works it', () => {
+    const wide = 2 * VEHICLE_WALK_RANGE_NODES;
+    const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(wide, MAP_H) });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, wide - 2, HUMAN, [[WOOD, 0]]);
+    const trader = traderAt(sim, NEAR_X);
+    attach(sim, trader, near);
+    attach(sim, trader, far);
+
+    sim.run(3 * RUN_TICKS);
+
+    expect(sim.world.has(trader, Rider)).toBe(true);
+    expect(stockOf(sim, far, WOOD)).toBeGreaterThan(0);
   });
 
   it('lets go of a cart that cannot be driven near the next stop', () => {

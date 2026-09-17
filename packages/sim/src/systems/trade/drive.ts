@@ -22,9 +22,10 @@ import { isTraderJob } from '../readviews/jobs.js';
 import { atOrWalk, collectAtomicOf, PILEUP_ATOMIC_ID, startAtomic } from '../settlers/atomics/start.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { interactionCell } from '../settlers/targets/index.js';
+import { isUnreachableGoal, noteUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { mayFetchGoodFrom } from '../stores/index.js';
 import { releaseRider } from '../vehicles/crew.js';
-import { moveVehicle, nodeOf, snapVehicleTarget } from '../vehicles/movement.js';
+import { nodeOf, sendVehicleTo, snapVehicleTarget } from '../vehicles/movement.js';
 import { activeAgreement } from './agreements.js';
 import { type CartHold, cartHoldOf, type TradeCart, tradeCartOf } from './cart.js';
 import { sameFoodClass } from './goods.js';
@@ -80,8 +81,10 @@ export function planTrader(plan: PlannerContext): boolean {
     case 'wait':
       return false;
     case 'next': {
+      if (!cartNearHouse(world, ctx, cart, other.house) && !driveCartTo(plan, cart, other.house))
+        return false;
       world.mut(e, TradeRoute).current = 1 - current.current;
-      return cartNearHouse(world, ctx, cart, other.house) || driveCartTo(plan, cart, other.house);
+      return true;
     }
     case 'load':
       if (!cartNearHouse(world, ctx, cart, stop.house)) return driveCartTo(plan, cart, stop.house);
@@ -134,26 +137,32 @@ function cartNearHouse(world: World, ctx: SystemContext, cart: TradeCart, house:
  * `l_Trader_MoveVehicleNearHouse`: order the cart to the first node in ring order around the house's
  * door, out to {@link TRADE_CART_SEARCH_RADIUS}, that the cart may stand on and that is no house's door,
  * as a goto the cart holds until the trader boards. When no such node lies within the working distance
- * of the door, or the cart cannot drive there, the trader lets go of the cart and stays on foot. True
- * when the order stands. Approximation: the original detaches through the detach command with its own
- * note; here the trader's idle-without-a-cart state is what the player sees.
+ * of the door the trader lets go of the cart and stays on foot (approximation: the original detaches
+ * through the detach command with its own note; here the trader's idle-without-a-cart state is what the
+ * player sees). A node the cart has no route to keeps the trader seated: the door goes into its
+ * failed-goal memo and the search waits the memo out (the original re-aims the vehicle behind its
+ * `vehicleNoPath` note and the trader keeps trying). The order runs past the goto's walk-range gate
+ * (approximation: whether the original's `Pathfinder_Start(goal, 60)` caps the distance is not read).
+ * True when the order stands.
  */
 function driveCartTo(plan: PlannerContext, cart: TradeCart, house: Entity): boolean {
   const { world, ctx, terrain, entity: e } = plan;
   const door = houseDoor(world, ctx, house);
   if (door === null) return false;
+  const doorNode = terrain.nodeAtClamped(door.hx, door.hy);
+  if (isUnreachableGoal(unreachableGoals(world, ctx, e), doorNode)) return false;
   const doors = buildingDoorNodes(world, ctx, terrain);
   const goal = snapVehicleTarget(world, ctx, terrain, cart.vehicle, door, {
     radius: TRADE_CART_SEARCH_RADIUS,
     exclude: (node) => doors.has(node),
   });
   const point = goal === null ? null : nodeOf(terrain, goal);
-  if (
-    point === null ||
-    hexDistance(point, door) > TRADE_CART_HOUSE_DISTANCE ||
-    !moveVehicle(world, ctx, { kind: 'moveVehicle', vehicle: cart.vehicle, x: point.hx, y: point.hy })
-  ) {
+  if (goal === null || point === null || hexDistance(point, door) > TRADE_CART_HOUSE_DISTANCE) {
     releaseRider(world, e, cart.vehicle);
+    return false;
+  }
+  if (!sendVehicleTo(world, ctx, terrain, cart.vehicle, goal)) {
+    noteUnreachableGoal(world, ctx, e, doorNode);
     return false;
   }
   return true;
