@@ -85,6 +85,7 @@ export {
   type SnapshotDiff,
 } from './inspect/snapshot-diff.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
+export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,

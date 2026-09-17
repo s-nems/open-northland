@@ -143,6 +143,24 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Drive one owned vehicle to (x,y), the original's `e` order: the target snaps to the nearest node
+       * the vehicle may stand on within `VEHICLE_TARGET_SNAP_RADIUS`, on the vehicle's own continent and
+       * within its walk range. Refused with a `vehicleMoveRefused` event while nobody commands it or
+       * when nothing leads there.
+       */
+      readonly kind: 'moveVehicle';
+      readonly vehicle: Entity;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
+      /** Stop one owned vehicle's drive on the node it is crossing, the original's `p` order; its task
+       *  then reads `interrupted` until the next order. */
+      readonly kind: 'stopVehicle';
+      readonly vehicle: Entity;
+    }
+  | {
+      /**
        * Send one owned scout to explore around (x,y): it walks to unexplored ground within
        * `EXPLORE_RADIUS_NODES` of that centre, one point at a time, until nothing there is left unseen.
        */

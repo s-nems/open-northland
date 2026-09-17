@@ -1,7 +1,6 @@
 # Attach, detach and board crews on vehicles
 
 **Area:** sim · **Focus:** `packages/sim/src/systems/vehicles`, `core/commands` · **Priority:** P2
-**Blocked by:** [land movement](vehicles-4-land-movement.md)
 
 `Vehicle.passengers` holds the slots with the commander last (`seatPassenger` / `unseatPassenger`
 in `packages/sim/src/components/vehicle.ts` fill and promote without the job gate), and a removed

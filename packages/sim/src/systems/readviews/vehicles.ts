@@ -9,6 +9,14 @@ export function isShipVehicle(vehicle: VehicleType): boolean {
   return vehicle.passengerSlots > 0;
 }
 
+/**
+ * A siege engine: the land vehicle with no hold, which is the catapult. The original keys the catapult's
+ * doubled move period on its type id; the hold-less row is the same vehicle read from the data.
+ */
+export function isSiegeVehicle(vehicle: VehicleType): boolean {
+  return !isShipVehicle(vehicle) && vehicle.stockSlots === 0;
+}
+
 /** Sorted ascending by `typeId`, so enumeration does not depend on declaration order. */
 export function shipVehicles(content: ContentSet): VehicleType[] {
   return content.vehicles.filter(isShipVehicle).sort((a, b) => a.typeId - b.typeId);

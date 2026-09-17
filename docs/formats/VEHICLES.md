@@ -101,14 +101,26 @@ neither).
 
 One navigation graph. A node is passable for a vehicle when its blocked bit is clear and its
 free-size class (3 bits per node; how the original computes it is *open*) is `>= logicsize`.
-A goto (`e`) also requires the target's continent id to equal the vehicle's, which keeps ships on
-their sea and carts on their landmass (continent type 1 is land). Path budget 60 nodes. Humans
-inside the footprint are shoved away. Move speed per node `max(3, (g*2 + 4) << catapult)` with
-`g` the ground speed class, ticks per node `(speed + 9999) / speed`; the catapult is the only
-vehicle with the doubling. `p` stops (task 5 "interrupted") and returns to the current node.
+A goto (`e`) needs a commander (`l_Error_NoCommander`) and silently ignores a target whose continent
+id differs from the vehicle's or whose size class is below `logicsize`, which keeps ships on their
+sea and carts on their landmass (continent type 1 is land). The walk starts with
+`Pathfinder_Start(goal, 60, ...)`, the vehicle twin of the humans' 50/63 walk range; a failed
+search raises message 0x32 and re-aims the vehicle at its current node. Humans inside the
+footprint are shoved away on every node reached (`l_SendAwayRadial`). Per node the move period is
+`max(3, (g*2 + 4) << catapult)` ticks with `g` the 4-bit ground speed class stored beside the size
+class in the node record (`CVehicle::WalkSpeed_Update`); each tick adds `(period + 9999) / period`
+to a per-node counter that completes at 10000, and the map position moves at 5000. The catapult is
+the only vehicle with the doubling; a turn costs 2 ticks per hexagon direction. `p` stops (task 5
+"interrupted") and returns to the current node.
 
-Open Northland approximation: the free-size class is the largest hex-disc radius of passable
-same-continent nodes around the node, capped at 7.
+Open Northland: the free-size class is the largest hex-disc radius of passable same-continent
+nodes around the node, capped at 7 (`nav/clearance.ts`); `g` reads 0 everywhere until the map's
+roughness lane is imported (`TerrainGraph.groundSpeedClass`); the walk range is a hexagon distance
+gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of being
+ignored; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces the
+hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
+routed around, the shove happens on entering a node only and sends a settler outside the discs of
+the whole remaining route.
 
 ## Ships and docking
 

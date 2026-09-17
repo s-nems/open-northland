@@ -16,7 +16,8 @@ their vehicle half. Semantics in [VEHICLES.md](../../formats/VEHICLES.md#map-scr
   record a `setvehicle "oxcart"` spawns: the name join takes type 6 (no ox, admits no crew), yet
   Blekiny Nurt attaches carriers to its ox carts, which only type 2 admits.
 - Results: `SetVehicle` (with the captain flag: investigate first what it spawns),
-  `RemoveVehicles`, `SendVehicle`, `DockVehicle`, `ChangeVehiclesPlayerId`, `AddGoodsToVehicle`,
+  `RemoveVehicles`, `SendVehicle` (the `moveVehicle` order after `snapVehicleTarget`, both in
+  `systems/vehicles/movement.ts`), `DockVehicle`, `ChangeVehiclesPlayerId`, `AddGoodsToVehicle`,
   `AttachHumanToVehicle`, `DetachHumanFromVehicle`, `ChangeMissionIdOfVehicles`,
   `ChangeMissionIdOfVehiclesInRange`, `ChangeMissionIdOfPlayersVehiclesOnContinent`,
   `RemoveVehiclesWithMissionId` (50-vehicle cap, crews only with the flag, wreck effect), and the

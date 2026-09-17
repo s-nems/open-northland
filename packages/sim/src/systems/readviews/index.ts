@@ -124,4 +124,4 @@ export {
   slayAtomicOfSpecies,
   stayPointRangeOf,
 } from './tribes/index.js';
-export { isShipVehicle, largestShipCapacity, shipVehicles } from './vehicles.js';
+export { isShipVehicle, isSiegeVehicle, largestShipCapacity, shipVehicles } from './vehicles.js';

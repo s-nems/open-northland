@@ -1,4 +1,15 @@
 export { createVehicle } from './create.js';
+export {
+  facingOfStep,
+  moveVehicle,
+  snapVehicleTarget,
+  stopVehicle,
+  VEHICLE_TARGET_SNAP_RADIUS,
+  VEHICLE_WALK_RANGE_NODES,
+  vehicleMovementSystem,
+  vehicleMovePeriod,
+  vehicleProgressPerTick,
+} from './movement.js';
 export { type VehicleIndex, vehicleIndex } from './registry.js';
 export {
   removeVehicle,

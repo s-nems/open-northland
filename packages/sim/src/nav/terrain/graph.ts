@@ -5,6 +5,9 @@ import type { LandscapeMapInput } from './landscapes.js';
 import type { NodeId } from './node-id.js';
 import { StepBuffer } from './step-buffer.js';
 
+/** The ground speed class every node reads until the map's roughness lane is imported. */
+const FLAT_GROUND_SPEED_CLASS = 0;
+
 /**
  * The roughness every node of a map without an `lmpr` lane reads: the owned corpus's `land` value
  * (`trianglepatterntypes` land = 2, the ground most of a map is). A decoded map always carries its lane;
@@ -77,6 +80,17 @@ export class TerrainGraph extends TerrainEdges {
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);
+  }
+
+  /**
+   * The ground speed class `g` a vehicle's move period reads at a node, the original's 4-bit per-node
+   * field beside the free-size class (docs/formats/VEHICLES.md "Movement"). Approximation: its readable
+   * source is the map's `lmpr` roughness lane ({@link roughnessAt}), but the roughness-to-class mapping
+   * is unverified, so every node reads the flat class; the seam keeps that mapping to one method.
+   */
+  groundSpeedClass(node: NodeId): number {
+    this.checkedSlot(this.components, node);
+    return FLAT_GROUND_SPEED_CLASS;
   }
 
   /** Flood-fill the static components over the pathfinder's own edge set, so the diagonal flank-seam

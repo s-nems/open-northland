@@ -3,6 +3,7 @@ import {
   MissionObjectId,
   Owner,
   Vehicle,
+  VehicleDrive,
   type VehicleSeat,
   VehicleStock,
   type VehicleTask,
@@ -42,6 +43,11 @@ export interface VehicleView {
   readonly carrier: Entity | null;
   readonly at: HalfCellNode | null;
   readonly door: HalfCellNode | null;
+  /** The node the drive is headed to; null while the vehicle stands. */
+  readonly goal: HalfCellNode | null;
+  /** The leg under way: the node it left and the progress toward `at` out of `NODE_PROGRESS_FULL`, the
+   *  renderer's interpolation; null between legs and while standing. */
+  readonly leg: { readonly from: HalfCellNode; readonly progress: number } | null;
   readonly commander: Entity | null;
   /** Occupied seats in slot order, the commander last. */
   readonly passengers: readonly VehicleSeat[];
@@ -64,6 +70,7 @@ export function vehicleView(world: World, ctx: ContentContext, e: Entity): Vehic
   const health = world.tryGet(e, Health);
   const stock = world.tryGet(e, VehicleStock);
   const lines = stock === undefined ? [] : vehicleStockEntries(stock);
+  const drive = world.tryGet(e, VehicleDrive);
   return {
     entity: e,
     vehicleType: vehicle.vehicleType,
@@ -80,6 +87,11 @@ export function vehicleView(world: World, ctx: ContentContext, e: Entity): Vehic
     carrier: vehicle.carrier,
     at: anchor,
     door: type !== undefined && anchor !== null ? vehicleDoorPoint(vehicle, type, anchor) : null,
+    goal: drive === undefined ? null : { hx: drive.goal.hx, hy: drive.goal.hy },
+    leg:
+      drive === undefined || drive.from === null
+        ? null
+        : { from: { hx: drive.from.hx, hy: drive.from.hy }, progress: drive.progress },
     commander: vehicleCommander(vehicle),
     passengers: vehiclePassengers(vehicle).map((seat) => ({ entity: seat.entity, inside: seat.inside })),
     passengerCapacity: vehicle.passengers.length,

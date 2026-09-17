@@ -59,7 +59,7 @@ import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisade
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
-import { createVehicle } from '../vehicles/index.js';
+import { createVehicle, moveVehicle, stopVehicle } from '../vehicles/index.js';
 import { authorizedCommand } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
@@ -134,6 +134,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'moveUnit':
       moveUnit(world, ctx, command);
+      return;
+    case 'moveVehicle':
+      moveVehicle(world, ctx, command);
+      return;
+    case 'stopVehicle':
+      stopVehicle(world, command);
       return;
     case 'attackMoveUnit':
       attackMoveUnit(world, ctx, command);

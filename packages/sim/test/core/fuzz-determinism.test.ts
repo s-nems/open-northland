@@ -354,7 +354,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(57);
+  const roll = rng.int(59);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -849,6 +849,14 @@ function nextCommand(rng: Rng): Command {
     case 56:
       // A gate cut into the preamble run's centre, or refused anywhere else and for a non-gate row.
       return { kind: 'convertPalisadeGate', palisade: wallTarget(rng), gfxIndex: pick(rng, PALISADE_ROWS) };
+    case 57:
+      // A vehicle goto at a random id: the stream's carts and ships (refused - nobody commands them,
+      // the note must hash and replay like any event), non-vehicle and dead ids (skipped), and both
+      // envelope branches of the vehicle ownership gate.
+      return { kind: 'moveVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    case 58:
+      // The stop twin: no drive stands in this stream, so every roll is the no-drive skip.
+      return { kind: 'stopVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

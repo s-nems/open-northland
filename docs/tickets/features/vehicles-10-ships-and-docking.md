@@ -11,9 +11,11 @@ needs no port ([VEHICLES.md](../../formats/VEHICLES.md#ships-and-docking)).
 ## Scope
 
 - Water edges: nodes whose continent is a water body become passable for movers with a water
-  traversal class; the free-size class from the movement ticket applies on water, so a ship keeps
-  two nodes of clearance from the shore. Land and water continents share the continent key used by
-  the goto and snap rules.
+  traversal class; the free-size class field (`nav/clearance.ts`, memoized per world in
+  `systems/footprint/vehicle-clearance.ts`) applies on water, so a ship keeps two nodes of
+  clearance from the shore. Land and water continents share the continent key the goto and
+  `snapVehicleTarget` compare (`systems/vehicles/movement.ts`, today the anchor's static land
+  component, which refuses a ship at sea).
 - `dockVehicle {vehicle, x, y}` (`g`): commander required; a moored ship boards everyone first;
   find a node on the ship's continent within the ring of radius `passengerVector[1]` around the
   point with clearance `>= logicSize`, move there with task `docks`, store the mooring point, play

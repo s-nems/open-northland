@@ -140,6 +140,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
   marry: { required: { entity: 'integer' } },
   moveUnit: { required: { entity: 'integer', ...NODE } },
+  moveVehicle: { required: { vehicle: 'integer', ...NODE } },
   openChest: { required: { entity: 'integer', chest: 'integer' } },
   placeBuilding: {
     required: { buildingType: 'integer', ...NODE, tribe: 'integer' },
@@ -227,6 +228,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
       workplace: { fields: { required: NODE } },
     },
   },
+  stopVehicle: { required: { vehicle: 'integer' } },
   trainSoldier: { required: { entity: 'integer', house: 'integer' } },
   unassignHouse: { required: { entity: 'integer' } },
   unassignWorker: { required: { entity: 'integer' } },

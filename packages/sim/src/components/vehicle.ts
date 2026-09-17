@@ -50,6 +50,23 @@ export const Vehicle = defineComponent<{
 export type VehicleState = NonNullable<(typeof Vehicle)['__value']>;
 export type VehicleStateView = DeepReadonly<VehicleState>;
 
+/** A node crossing is complete at this much progress: the original's per-node counter reaches 10000. */
+export const NODE_PROGRESS_FULL = 10000;
+
+/**
+ * A vehicle's drive to `goal`, the movement twin of a settler's `PathFollow`. `route` holds the nodes
+ * still to enter, the next first; `Position` already stands on the node of the current leg, and `from`
+ * is the node that leg left (null between legs), so the renderer interpolates from it to `Position` by
+ * `progress / NODE_PROGRESS_FULL`. `increment` is the progress a tick adds, fixed when the leg starts.
+ */
+export const VehicleDrive = defineComponent<{
+  goal: HalfCellNode;
+  route: HalfCellNode[];
+  from: HalfCellNode | null;
+  progress: number;
+  increment: number;
+}>('VehicleDrive', 'movement');
+
 /** Storage is a byte per allowed good in the original: current, wanted and reserved units. */
 export interface VehicleStockLine {
   current: number;

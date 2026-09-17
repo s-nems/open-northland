@@ -91,7 +91,7 @@ export function nodesAdjacent(a: HalfCellNode, b: HalfCellNode): boolean {
 
 /** Even-row-frame offsets of a node's six lattice neighbours: E, W and the four in the adjacent rows,
  *  which the odd-row parity shift (`footprintCellDx`) places for an odd-row node. */
-const HEX_NEIGHBOUR_CELLS: readonly FootprintCell[] = [
+export const HEX_NEIGHBOUR_OFFSETS: readonly FootprintCell[] = [
   { dx: 1, dy: 0 },
   { dx: -1, dy: 0 },
   { dx: -1, dy: -1 },
@@ -103,7 +103,7 @@ const HEX_NEIGHBOUR_CELLS: readonly FootprintCell[] = [
 /** The six nearest lattice nodes of `(hx, hy)`, a landscape point's ring under the half-node stagger of
  *  odd rows (docs/formats/MAPDAT.md); unclamped, and not the pathfinder's 8-step relation. */
 export function hexNeighboursOf(hx: number, hy: number): HalfCellNode[] {
-  return HEX_NEIGHBOUR_CELLS.map((c) => ({ hx: hx + footprintCellDx(hy, c), hy: hy + c.dy }));
+  return HEX_NEIGHBOUR_OFFSETS.map((c) => ({ hx: hx + footprintCellDx(hy, c), hy: hy + c.dy }));
 }
 
 /**

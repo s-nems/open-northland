@@ -155,6 +155,7 @@ export {
   createVehicle,
   modifyVehicleStock,
   removeVehicle,
+  snapVehicleTarget,
   type VehicleStockView,
   type VehicleView,
   vehicleStockGood,

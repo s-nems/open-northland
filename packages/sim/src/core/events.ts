@@ -46,6 +46,17 @@ export type SimEvent =
       readonly at?: HalfCellNode;
       readonly ruins: readonly HalfCellNode[];
     }
+  | {
+      /**
+       * A vehicle's owner ordered it somewhere it cannot go: `noCommander` while nobody commands it,
+       * `noPath` for a target off its continent, out of its walk range, or unreachable. The player's
+       * `vehicleNoCommander` / `vehicleNoPath` notes.
+       */
+      readonly kind: 'vehicleMoveRefused';
+      readonly entity: Entity;
+      readonly player: number | null;
+      readonly reason: 'noCommander' | 'noPath';
+    }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | {
       /**

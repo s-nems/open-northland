@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, Settler } from '../../src/components/index.js';
+import { FOG_MODE, Settler, seatPassenger, Vehicle, VehicleDrive } from '../../src/components/index.js';
 import {
   exportSaveGame,
   parseSaveGame,
@@ -61,6 +61,13 @@ function fixtureSim(): Simulation {
   if (scout === undefined) throw new Error('save fixture scout missing');
   sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'boots', slot: 0, goodType: SHOES_GOOD });
   sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'tool', slot: 0, goodType: TOOL_GOOD });
+  // The idle settler commands the cart (seated directly, the way the crew's boarding will leave it) and
+  // the goto starts a drive, so the frozen world holds a leg under way.
+  const [cart] = sim.world.query(Vehicle);
+  const idle = [...sim.world.query(Settler)][1];
+  if (cart === undefined || idle === undefined) throw new Error('save fixture cart or idle settler missing');
+  if (!seatPassenger(sim.world, cart, idle)) throw new Error('save fixture commander seat taken');
+  sim.enqueueSetup({ kind: 'moveVehicle', vehicle: cart, x: 20, y: 4 });
   sim.step(); // freeze one active equip order with the second intent queued behind it
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;
@@ -68,7 +75,9 @@ function fixtureSim(): Simulation {
 
 describe('committed save fixture', () => {
   it('is reproduced byte for byte by exporting the fixture world', () => {
-    const bytes = serializeSaveGame(exportSaveGame(fixtureSim(), { mapId: FIXTURE_MAP_ID }));
+    const sim = fixtureSim();
+    expect([...sim.world.query(VehicleDrive)]).toHaveLength(1); // the layout covers a drive under way
+    const bytes = serializeSaveGame(exportSaveGame(sim, { mapId: FIXTURE_MAP_ID }));
     if (process.env.UPDATE_SAVE_FIXTURE === '1') writeFileSync(FIXTURE_PATH, `${bytes}\n`);
     expect(readFileSync(FIXTURE_PATH, 'utf8')).toBe(`${bytes}\n`);
   });

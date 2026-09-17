@@ -31,6 +31,7 @@ export function authorizedCommand(
   const command = envelope.command;
   if (!seatMayIssue(world, envelope.player, command, terrain)) return undefined;
   const commanded = (e: Entity): boolean => seatCommandsUnit(world, envelope, e);
+  if ('vehicle' in command && !commanded(command.vehicle)) return undefined;
   if ('entity' in command) return commanded(command.entity) ? command : undefined;
   if ('members' in command) return keepMembers(command, commanded);
   return command;

@@ -42,6 +42,7 @@ import { technologySystem } from './progression/discoveries.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
+import { vehicleMovementSystem } from './vehicles/index.js';
 import { visionSystem } from './vision/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
@@ -87,6 +88,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'planner', system: plannerSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },
+  // After the settlers' step, so a shoved settler's goal routes on the next pathfinding pass with the
+  // vehicle's footprint already standing where it landed.
+  { name: 'vehicleMovement', system: vehicleMovementSystem },
   { name: 'separation', system: separationSystem },
   // After the walk settles, so a scout's claim uses this tick's final nodes; the herd then re-anchors
   // before the summon walks a slaughter candidate to the door, and a calf grows up before the breeder
