@@ -44,6 +44,31 @@ describe('interpretSegment', () => {
     expect(segmentEndFrames).toEqual([4 * HALF_SECOND_FRAMES]);
   });
 
+  it('releases a note that rings across the pass boundary instead of holding it forever', () => {
+    // A note struck three quarters into the measure with a half-note duration ends a quarter into
+    // the next pass. Its off would otherwise be dropped with the queue at the segment end.
+    const bytes = segment(INFINITE, MEASURE_TICKS, [
+      tempoTrack([{ time: 0, bpm: 120 }]),
+      patternTrack(120, 1, [
+        {
+          guidSeed: 1,
+          playMode: CHORD_SCALE_MODE,
+          variations: 0b1,
+          logicalPartId: 2,
+          notes: [{ gridStart: 12, variation: 1, duration: 1536, musicValue: 0x3000, velocity: 100 }],
+        },
+      ]),
+      bandTrack([
+        { time: 0, instruments: [{ patch: 0, pChannel: 2, pan: 63, volume: 127, file: 'test.dls' }] },
+      ]),
+    ]);
+    const { events } = interpretSegment(bytes, { ...OPTIONS, renderSeconds: 3 });
+    expect(events).toEqual([
+      { e: 'on', t: 3 * HALF_SECOND_FRAMES, id: 1, note: 36, vel: 100 },
+      { e: 'off', t: 5 * HALF_SECOND_FRAMES, id: 1, note: 36 },
+    ]);
+  });
+
   it('keeps GM-preset instruments silent and off the instance list', () => {
     const bytes = segment(INFINITE, MEASURE_TICKS, [
       tempoTrack([{ time: 0, bpm: 120 }]),

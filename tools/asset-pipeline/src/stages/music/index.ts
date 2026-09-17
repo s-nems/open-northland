@@ -48,7 +48,7 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * master gain) changes rendered bytes: the source fingerprint cannot see a code change, so a stored
  * manifest with another version marks every ogg stale.
  */
-const RENDER_VERSION = 15;
+const RENDER_VERSION = 16;
 /** Synthesized headroom over the two rendered passes, in whole seconds; trimmed away at encode. */
 const RENDER_TAIL_S = 1;
 /**

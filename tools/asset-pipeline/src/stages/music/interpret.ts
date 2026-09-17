@@ -2,8 +2,10 @@
  * DirectMusic performance interpreter: schedules a segment's tracks as timed messages and runs
  * the render clock to produce the instrument event stream the synthesizer replays. Scheduling
  * order, priority-queue tie behavior, and the uint32/double clock arithmetic follow the MIT
- * libdmusic player, proven by event parity against it over the owned corpus. One named deviation:
- * tempo changes apply at their authored times instead of that player's collapse to time zero.
+ * libdmusic player, proven by event parity against it over the owned corpus. Two named deviations:
+ * tempo changes apply at their authored times instead of that player's collapse to time zero, and
+ * a note sounding across a pass boundary keeps its release (below), whose extra clock stop can move
+ * the later stamps of that pass by the stop's rounding (under two ticks over the corpus).
  */
 
 import { DMUS_PPQ } from '../../decoders/sgt.js';
@@ -75,6 +77,8 @@ type Message =
       readonly channelAlt: number;
     }
   | { readonly kind: 'segmentEnd'; readonly time: number };
+
+type NoteOff = Extract<Message, { kind: 'noteOff' }>;
 
 /** Band setup precedes chords, which precede notes carrying the same timestamp. */
 function priority(message: Message): number {
@@ -329,17 +333,36 @@ interface PerformanceState {
   /** Performance channel to instance id; undefined marks a silent GM-preset player. */
   readonly channels: Map<number, number | undefined>;
   queue: LibcxxPriorityQueue<Message>;
+  /** Note-offs carried over a pass boundary, earliest first. They stay out of the queue so the pass's
+   *  own tie order is untouched; a release due no later than the queue's head executes first. */
+  readonly carried: NoteOff[];
   readonly events: TimedEvent[];
   readonly segmentEndFrames: number[];
 }
 
-/** Rebuilds the queue for one segment pass: initial tempo first, then every prepared message. */
+/**
+ * Rebuilds the queue for one segment pass: initial tempo first, then every prepared message. The
+ * releases of notes still sounding are carried over: DirectMusic ties a note's off to the note
+ * itself, so a note struck near a pass end rings out under the next pass. The reference player
+ * drops the whole pending queue instead, which leaves such notes sounding for the rest of the render.
+ */
 function enqueueSegment(state: PerformanceState, prepared: PreparedSegment): void {
+  carryPendingReleases(state);
   state.queue = new LibcxxPriorityQueue(messageLess);
   state.queue.push({ kind: 'tempo', time: state.musicTime, tempo: prepared.initialTempo });
   for (const message of prepared.messages) {
     state.queue.push({ ...message, time: (message.time + state.musicTime) >>> 0 });
   }
+}
+
+/** Empties the queue into {@link PerformanceState.carried}, keeping only the note-offs; their times
+ *  are already absolute. */
+function carryPendingReleases(state: PerformanceState): void {
+  for (let next = state.queue.top(); next !== undefined; next = state.queue.top()) {
+    state.queue.pop();
+    if (next.kind === 'noteOff') state.carried.push(next);
+  }
+  state.carried.sort((a, b) => a.time - b.time);
 }
 
 function execute(state: PerformanceState, prepared: PreparedSegment, message: Message): void {
@@ -408,8 +431,10 @@ function renderAudio(
   let pulsesPerSample = (DMUS_PPQ * (state.tempo / 60)) / (sampleRate * audioChannels);
   let offset = 0;
   while (offset < count) {
-    const next = state.queue.top();
-    if (next === undefined) break;
+    const head = state.queue.top();
+    if (head === undefined) break;
+    const release = state.carried[0];
+    const next = release !== undefined && release.time <= head.time ? release : head;
     pulsesPerSample = (DMUS_PPQ * (state.tempo / 60)) / (sampleRate * audioChannels);
     let ticks = next.time < state.musicTime ? 0 : next.time - state.musicTime;
     // Advancing time at a non-positive tempo would pop every later message at zero samples and
@@ -425,8 +450,13 @@ function renderAudio(
     if (state.channels.size > 0) state.frames += Math.floor(samples / audioChannels);
     offset += samples;
     state.musicTime = (state.musicTime + ticks) >>> 0;
-    state.queue.pop();
-    execute(state, prepared, next);
+    if (next === release) {
+      state.carried.shift();
+      executeChannelMessage(state, release);
+    } else {
+      state.queue.pop();
+      execute(state, prepared, next);
+    }
   }
   const remaining = count - offset;
   if (remaining > 0) {
@@ -444,6 +474,7 @@ export function interpretSegment(bytes: Uint8Array, options: InterpretOptions): 
     frames: 0,
     channels: new Map(),
     queue: new LibcxxPriorityQueue(messageLess),
+    carried: [],
     events: [],
     segmentEndFrames: [],
   };
