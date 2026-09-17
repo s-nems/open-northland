@@ -323,7 +323,7 @@ The table describes `main` at revision `13662beab` (2026-09-16).
 | Message priority | Cycles three levels and changes its icon | The main action matches; note lifetime and gestures still need comparison | Low |
 
 The current action matrix is in
-[`packages/app/src/hud/tool-panel/button-effects.ts`](../packages/app/src/hud/tool-panel/button-effects.ts),
+[`packages/app/src/hud/tool-panel/nav-effects.ts`](../packages/app/src/hud/tool-panel/nav-effects.ts),
 and the menu-bar geometry is in
 [`packages/app/src/hud/tool-panel/layout.ts`](../packages/app/src/hud/tool-panel/layout.ts).
 

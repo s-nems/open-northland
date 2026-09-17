@@ -29,7 +29,14 @@ export function createHudNoticeHeader(
     width: `${NOTICE_COLUMN.width}px`,
   });
   const head = document.createElement('div');
-  Object.assign(head.style, { display: 'flex', alignItems: 'center', gap: '10px', padding: '0 0 10px 2px' });
+  Object.assign(head.style, {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '0 0 10px 2px',
+    // The column itself stays map: only the head's controls take the pointer.
+    pointerEvents: 'auto',
+  });
   const counter = document.createElement('strong');
   counter.className = 'on-counter on-medallion';
   const counterLabel = document.createElement('span');
