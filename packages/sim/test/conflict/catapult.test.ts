@@ -16,13 +16,17 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
+  exportSaveGame,
   fx,
   halfCellMapFromCells,
   ONE,
+  parseSaveGame,
   playerCommand,
   positionOfNode,
+  restoreSimulation,
   type SimEvent,
   Simulation,
+  serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
 import { VEHICLE_ATTACK_CLIP_TICKS, VEHICLE_ATTACK_EVENT_TICK } from '../../src/systems/conflict/combat.js';
@@ -280,6 +284,98 @@ describe('catapult stances and scans', () => {
     // The scan acquires on tick 1 and the clip starts there; its event tick is one later.
     expect(launchTicks[0]).toBe(1 + VEHICLE_ATTACK_EVENT_TICK);
     expect((launchTicks[1] ?? 0) - (launchTicks[0] ?? 0)).toBe(VEHICLE_ATTACK_CLIP_TICKS);
+  });
+});
+
+describe('the clip and its target', () => {
+  it('lets a clip end unfired when its mark leaves the map before the event tick', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const mark = fighterAt(s, 22, 8, P2);
+    s.world.mut(mark, Stance).mode = MILITARY_MODE.IGNORE;
+    s.run(1); // the scan acquires the mark and the clip starts
+    expect(s.world.get(catapult, Vehicle).attack?.clipStart).toBe(1);
+    s.world.destroy(mark);
+    const launches = collect(s, 3, ['projectileLaunched']);
+    expect(launches).toEqual([]);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+    expect(s.world.get(catapult, Vehicle).task).toBe('none');
+  });
+
+  it('a goto supersedes the attack, and a crew stepping out lets the target go', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).attack).not.toBeNull();
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, x: 6, y: 4 }));
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+    s.enqueue(playerCommand(P1, { kind: 'stopVehicle', vehicle: catapult }));
+    s.run(40);
+    expect(s.world.get(catapult, Vehicle).attack).not.toBeNull(); // re-acquired once idle
+    s.enqueue(playerCommand(P1, { kind: 'unloadPeople', vehicle: catapult }));
+    s.run(2);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+  });
+
+  it('refuses an attack order on an uncommanded catapult with the no-commander note', () => {
+    const s = sim(grass(40, 10));
+    const catapult = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 6,
+      y: 8,
+      tribe: VIKING,
+      owner: P1,
+    });
+    if (catapult === null) throw new Error('catapult');
+    order(s, catapult, P1, houseAt(s, 22, 8, P2));
+    const refused = collect(s, 1, ['vehicleMoveRefused']);
+    expect(refused.map((ev) => (ev.kind === 'vehicleMoveRefused' ? ev.reason : ''))).toEqual(['noCommander']);
+  });
+
+  it('in the defence stance, chases within the leash and keeps its target while the drive runs', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 8, 8, P1);
+    const house = houseAt(s, 12, 8, P2, TOUGH_HOUSE); // inside the near reach: the defence backs off
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'defence' }));
+    s.run(3);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+    // The drive's ticks keep the held target as it is: nothing rewrites the attack while it runs.
+    const held = s.world.get(catapult, Vehicle).attack;
+    s.run(8);
+    expect(s.world.get(catapult, Vehicle).attack).toBe(held);
+    const hits = collect(s, 400, ['projectileHit']);
+    expect(hits.some((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
+    expect(s.world.get(catapult, Vehicle).guard).toEqual({ hx: 8, hy: 8 });
+  });
+
+  it('survives a save round trip with a live attack, a worn wall and a stone in flight', () => {
+    const wall = { hx: 22, hy: 8 };
+    const run = (): Simulation => {
+      const s = sim(grass(40, 10, true), 5);
+      s.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL_TYPE, x: wall.hx, y: wall.hy, tribe: VIKING, owner: P2 });
+      s.step();
+      const catapult = catapultAt(s, 6, 8, P1, 0);
+      s.enqueue(
+        playerCommand(P1, {
+          kind: 'attackWithVehicle',
+          vehicle: catapult,
+          target: { kind: 'ground', ...wall },
+        }),
+      );
+      s.run(VEHICLE_ATTACK_CLIP_TICKS + 2); // one stone landed, the next just loosed
+      return s;
+    };
+    const s = run();
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(s)))), {
+      content: siegeContent(),
+      map: grass(40, 10, true),
+    });
+    expect(restored.hashState()).toBe(s.hashState());
+    s.run(100);
+    restored.run(100);
+    expect(restored.hashState()).toBe(s.hashState());
   });
 });
 

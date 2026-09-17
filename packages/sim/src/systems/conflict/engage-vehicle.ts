@@ -78,8 +78,10 @@ export function engageVehicle(
   if (world.get(e, Health).hitpoints <= 0) return;
   const weapon = vehicleWeapon(ctx, state);
   if (weapon === null) return;
+  // Carried, uncrewed or with its crew still outside: nothing is aimed, so a held target is let go
+  // rather than keeping the combat pass awake for a vehicle that cannot fire.
   if (state.carrier !== null || !crewInside(state) || vehicleCommander(state) === null) {
-    endClip(world, e, state);
+    dropTarget(world, e);
     return;
   }
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
@@ -90,9 +92,14 @@ export function engageVehicle(
 
   if (state.attack !== null && state.attack.clipStart !== null) {
     const elapsed = ctx.tick - state.attack.clipStart;
-    if (elapsed === VEHICLE_ATTACK_EVENT_TICK) fire(world, ctx, terrain, e, state, weapon.weapon, here);
-    if (elapsed < VEHICLE_ATTACK_CLIP_TICKS) return;
-    endClip(world, e, state); // the clip is over; the target is judged again below, this tick
+    // A mark reaped or taken off the map since the clip began is not shot at: the clip ends and the
+    // target is judged again below (the original checks the target's validity before the roll).
+    if (!targetStands(world, ctx, e, identity, state.attack.target)) endClip(world, e, state);
+    else {
+      if (elapsed === VEHICLE_ATTACK_EVENT_TICK) fire(world, ctx, terrain, e, state, weapon.weapon, here);
+      if (elapsed < VEHICLE_ATTACK_CLIP_TICKS) return;
+      endClip(world, e, state); // the clip is over; the target is judged again below, this tick
+    }
   }
 
   const held = world.get(e, Vehicle).attack;
@@ -111,13 +118,19 @@ export function engageVehicle(
     dropTarget(world, e);
     return;
   }
-  if (held === null || held.target !== target || held.ordered !== ordered) {
+  if (held === null || !sameTarget(held.target, target) || held.ordered !== ordered) {
     world.mut(e, Vehicle).attack = { target, ordered, clipStart: null };
   }
   actOnTarget(world, ctx, terrain, e, weapon, here, target);
 }
 
-/** Whether a held target still stands and may be fought: a map point always does. */
+function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {
+  if (a.kind === 'entity') return b.kind === 'entity' && a.entity === b.entity;
+  return b.kind === 'ground' && a.hx === b.hx && a.hy === b.hy;
+}
+
+/** Whether a held target still stands and may be fought: a map point always does. An entity must
+ *  still be positioned, which `isValidTarget` checks too, so a reaped or boarded mark reads gone. */
 function targetStands(
   world: World,
   ctx: SystemContext,
@@ -161,7 +174,9 @@ function scanForTarget(
   const found = pass.index.nearest(x, y, minDist, maxDist, accept, owner?.player ?? null);
   if (found === null) return held;
   if (held !== null && held.kind === 'entity') {
-    const heldDist = manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, held.entity));
+    if (held.entity === found.entity) return held;
+    // Both measured from the scan centre, the metric the find carries.
+    const heldDist = manhattan(terrain, centre, combatTargetNode(world, ctx, terrain, centre, held.entity));
     if (heldDist <= found.distance) return held;
   }
   return { kind: 'entity', entity: found.entity };
@@ -363,16 +378,21 @@ function endClip(world: World, e: Entity, state: VehicleStateView): void {
   if (live.task === 'attacks') live.task = 'none';
 }
 
-/** Forget the target: the vehicle stands where it is, in its stance, and scans again next pass. */
+/** Forget the target: the vehicle stands where it is, in its stance, and scans again next pass. A
+ *  vehicle with no target is left alone, its task included (a scene may pose one as attacking). */
 function dropTarget(world: World, e: Entity): void {
-  const state = world.get(e, Vehicle);
-  if (state.attack === null && state.task !== 'attacks') return;
+  if (world.get(e, Vehicle).attack === null) return;
   const live = world.mut(e, Vehicle);
   live.attack = null;
   if (live.task === 'attacks') live.task = 'none';
 }
 
-/** The attack a fresh player order stands for. */
+/** The attack a fresh player order stands for; the target is rebuilt by kind, so a wire payload's
+ *  stray fields never reach the state. */
 export function orderedAttack(target: VehicleAttackTarget): VehicleAttack {
-  return { target: { ...target }, ordered: true, clipStart: null };
+  const own: VehicleAttackTarget =
+    target.kind === 'entity'
+      ? { kind: 'entity', entity: target.entity }
+      : { kind: 'ground', hx: target.hx, hy: target.hy };
+  return { target: own, ordered: true, clipStart: null };
 }

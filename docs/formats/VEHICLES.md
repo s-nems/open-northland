@@ -268,7 +268,8 @@ and the landscape there, the owner's own included (`hitself`). Humans, animals, 
 take their column; a landscape with a player id (the walls, `playeridallowed 1`) takes
 `damage[7] / 100` steps of its trigger-10 transition (`transition 10 82 2 -1 0`: one valency each)
 and clears when the valency drops below one, so a 100-valency wall falls to three stones (36 steps
-each) or twenty sword blows (`Tool_HitLandscapeOnPoint`; any weapon whose column reaches 100). The
+each) or twenty hero-sword blows (`Tool_HitLandscapeOnPoint`; any weapon whose column reaches 100,
+a short sword's 225 being two steps). The
 earlier reading "only weapon 21 demolishes landscape of main type 4" was wrong: byte 2 of the map
 point is the landscape logic type, and type 4 is the tree, which weapon 21 alone fells (valency
 `> 2` runs transition 11, else the node clears; Open Northland does not fell trees, *open*).
@@ -289,8 +290,11 @@ Ranges are Manhattan half-cell nodes like every other weapon band (approximation
 measures hexagon distance). The four-step target preference is one nearest search (approximation).
 The stone is a `Projectile` with a ground-burst payload flying at the shared projectile pace, not
 `dist * 8 / speed` (approximation), and the burst treats a house as covering its walls, its
-reserved ring and its anchor (approximation: the original's in-house test area is not read). The
-note is raised for any striker (approximation). `hitself` is not extracted; the burst hits every
+reserved ring and its anchor (approximation: the original's in-house test area is not read), and it
+strikes a garrison standing on its tower's node (*open*: whether the original's hidden-human skip
+covers a posted archer is not read). Only the burst wears a wall; a melee blow lands on nothing
+there (*open*). The note is raised for any striker (approximation). An unreachable target is dropped
+and re-acquired each pass, with no give-up cooldown (approximation). `hitself` is not extracted; the burst hits every
 side, which the data's `hitself 1` also says. `removeVehicle` (`systems/vehicles/remove.ts`) draws
 the ruin nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the
 renderer's decals, since the ruin landscape type is not identified (*open*); the cargo spill walks
