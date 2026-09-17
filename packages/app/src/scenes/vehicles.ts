@@ -124,7 +124,11 @@ function build(sim: Simulation): void {
   spawnRow(sim, FRANK_ROW, FRANK_TRIBE, RIVAL_PLAYER);
   const wood = goodBySlug(sim, 'wood');
   const [handcart, , oxcart, catapult] = vikings;
-  if (oxcart !== undefined) systems.stockVehicleGoods(sim.world, oxcart, sim.content, wood, LOADED_WOOD);
+  if (oxcart !== undefined) {
+    // Loaded but asked for by nobody, the `n` order's state, so the hold reads "aboard 8, wanted 0".
+    systems.stockVehicleGoods(sim.world, oxcart, sim.content, wood, LOADED_WOOD);
+    sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'clearVehicleWanted', vehicle: oxcart }));
+  }
   if (catapult !== undefined) sim.world.mut(catapult, Vehicle).task = 'attacks';
   const wreck = spawnVehicleDirect(sim, VEHICLE_CATAPULT, WRECK_AT.x, WRECK_AT.y);
   sim.enqueueAt(adminCommand({ kind: 'debugKill', target: wreck }), WRECK_TICK, WRECK_SEQUENCE);

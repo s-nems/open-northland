@@ -47,7 +47,8 @@ function catalogKey(name: string): string {
  * Role, species and building names go through {@link normalizeRoleKey} because they are freehand
  * editor fields; tribe and good names go through {@link catalogKey}. Each table keeps the first row
  * a key resolves to, because the shipped catalog repeats slugs (two `oxcart` vehicle records) and
- * repeats one edit name across a building's levels.
+ * repeats one edit name across a building's levels; the vehicle table is the exception, keyed in type-id
+ * order the way the original resolves a name.
  */
 export interface ContentJoins {
   /** A `sethouse` name and level, the only join that is level-specific. */
@@ -88,7 +89,11 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
     if (slug !== undefined && !buildingByName.has(slug)) buildingByName.set(slug, b.typeId);
   }
   const jobByName = byNormalizedName(rows.jobs ?? []);
-  const vehicleByName = byNormalizedName(rows.vehicles ?? []);
+  // Two records share the `oxcart` name; the original's name lookup walks the type ids in order, so
+  // the ox cart (2) wins over the ox-less cart (6), whatever order the table lists them in.
+  const vehicleByName = byNormalizedName(
+    [...(rows.vehicles ?? [])].sort((a, b) => (a.typeId ?? 0) - (b.typeId ?? 0)),
+  );
   const tribeByName = new Map<string, number>();
   for (const t of rows.tribes ?? []) {
     if (t.id === undefined || t.typeId === undefined) continue;

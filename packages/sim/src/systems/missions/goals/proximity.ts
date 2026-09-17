@@ -1,9 +1,18 @@
-import { Building, ownerOf, Person, Position, Settler, Signpost } from '../../../components/index.js';
+import {
+  Building,
+  isValidPlayer,
+  ownerOf,
+  Person,
+  Position,
+  Settler,
+  Signpost,
+} from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { ContentContext } from '../../context.js';
 import { isHeroJob, isSoldierJob } from '../../readviews/index.js';
+import { vehicleIndex } from '../../vehicles/registry.js';
 import { groupsWithinRange } from '../nearby.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
@@ -27,8 +36,8 @@ export function humansNearPoint(
   return missionHumans(world, op.humanId).some((e) => withinRange(world, e, op.point, op.range));
 }
 
-/** Any human of the player stands within `range` of the point. The original also admits a vehicle,
- *  which this build does not simulate. */
+/** Any human of the player stands within `range` of the point; the vehicle half of the goal lives with
+ *  the vehicle goals. */
 export function playerNearPoint(
   world: World,
   op: Extract<MissionGoalOp, { opcode: 'FindPosByPlayersMapMoveable' }>,
@@ -66,19 +75,21 @@ export function humansNearHouses(
   return groupsWithinRange(world, missionHumans(world, op.humanId), houses, op.range);
 }
 
-/** Any human with the id has a human of the player within `range` of it. The metric is symmetric,
- *  so the few marked humans are indexed and the population walked once, allocating nothing for it. */
+/** Any human with the id has a human or vehicle of the player within `range` of it. The metric is
+ *  symmetric, so the few marked humans are indexed and the population walked once, allocating nothing
+ *  for it. */
 export function playerNearHumans(
   world: World,
   op: Extract<MissionGoalOp, { opcode: 'FindHumansByPlayersMM' }>,
 ): boolean {
   const marked = missionHumans(world, op.humanId);
   if (marked.length === 0) return false;
-  return groupsWithinRange(world, playerHumans(world, op.player), marked, op.range);
+  return groupsWithinRange(world, playerMoveables(world, op.player), marked, op.range);
 }
 
-function* playerHumans(world: World, player: number): Generator<Entity> {
+function* playerMoveables(world: World, player: number): Generator<Entity> {
   for (const e of world.query(Person, Position)) if (ownedBy(world, e, player)) yield e;
+  if (isValidPlayer(player)) yield* vehicleIndex(world).ownedBy(player);
 }
 
 /** At least `amount` non-hero soldiers of the player stand within `range` of the point. */

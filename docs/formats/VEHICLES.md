@@ -24,7 +24,7 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `logicgood n` | Storable good ids (1..55). Storage is a byte per allowed good: current, wanted, reserved. Goods 18, 19, 22 alias onto 16 and 20 onto 17 when not listed themselves. |
 | `passengerslots` | Ordinary passenger slots. The commander occupies one extra slot at index `passengerslots`, so real capacity is `passengerslots + 1`. |
 | `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54 (the big ship lists no vehicle). Carts 1 and 2: 24, 25. The ox-less cart (6) lists none, so nobody can attach to it until its ox arrives. |
-| `logiccommander n` | Parsed but no reader found (*inferred* dead). The commander is the first attached human with an allowed job. |
+| `logiccommander n` | The trade the `SetVehicle` result spawns as captain (`l_ExecuteResult` case 2); no other reader. The commander seat itself goes to the first attached human with an allowed job. Not in the IR yet (`docs/tickets/pipeline/vehicle-commander-lane.md`). |
 | `passengervector a b` | Door geometry: direction offset `a` from the facing, distance `b`. `b` is also the ring radius searched around a dock click (ships: 2 4). |
 | `stockvector` | Parsed, no logic reader found (*open*; probably a render-side cargo point). |
 | `vehicleslots` | Carried-vehicle slots: small ship 1, big ship 0. |
@@ -89,7 +89,9 @@ heaps any surplus delivered past the bill. The chest catapult takes the opener's
   human is put on the door cell. Several ordinary human commands force a detach first.
 - Board (0x28, "moves inside"): succeeds only when the human stands on the door point. Aboard, the
   human is removed from the map (`IsInVehicle`). Leaving happens on the door cell, which for a
-  moored ship is its mooring point on the shore.
+  moored ship is its mooring point on the shore. `VehicleMisc_Enter` is the step itself:
+  `Passengers_MoveIn_h`, detach from the map, targets reset, `IsInVehicle` set; the loader and the
+  `SetVehicle` captain call it with no door check.
 - Boarding drive: for every slot the vehicle sends 0x28 to a passenger on the door's continent and
   0x27 to one on another continent (stragglers are dropped, not awaited). A passenger with a
   pending need blocks boarding. Task 3 "waits for human" while anyone is outside.
@@ -110,7 +112,10 @@ hitpoint step aboard is not read). `attachToVehicle` walks the rider to the door
 unconfined walk order; the rider rung of the drive ladder (`systems/vehicles/boarding.ts`) keeps it
 by the door and steps it in once the vehicle asks. A goto with anyone outside holds its goal under
 `waitsForHuman` and starts once the crew is inside, the way `DoUpdateAI` runs `l_Passengers_MoveIn`
-ahead of a target. `loadIntoVehicle` is `q` and `s` in one order. Named approximations: the job and
+ahead of a target. `loadIntoVehicle` is `q` and `s` in one order. An attack order given while the crew is still outside
+waits under `waitsForHuman` like a goto's goal and the combat pass takes it up once everyone is in
+(approximation: the original's `DoUpdateAI` runs `l_Passengers_MoveIn` ahead of any target, which is
+read for the goto only). Named approximations: the job and
 owner refusals of attach raise `cannotEnterVehicle` and a full vehicle `vehicleNoPassengerRoom`; a
 refused load raises `cannotAttachVehicle`, which the original never raises; a rider refused off a
 ship at sea raises `cannotLeaveVehicle`; a rider boards from the door node or, where a footprint
@@ -163,8 +168,9 @@ agreements".
 
 Open Northland: `VehicleStock` (`packages/sim/src/components/vehicle.ts`) keeps the three bytes per
 canonical good as `current`, `wanted` and `reserved` (the future amount); `systems/vehicles/stock.ts`
-holds the clamps, `stockVehicleGoods` the booked-and-stowed write of `addgoods` and a loaded spawn,
-and `addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted` and
+holds the clamps, `stockVehicleGoods` the booked-and-stowed write of `addgoods` and a loaded spawn
+(wanted follows actual while no carrier is attached, as `Stock_ModifyAmount` does), and
+`addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted` and
 `clearVehicleWanted`; `unloadPeople` is the passenger half of `f` (the carried-vehicle half is not
 mirrored, *open*). The carrier rung
 (`systems/settlers/drives/economy/vehicle-cargo.ts`) runs above the rider rung for an attached carrier
@@ -353,29 +359,74 @@ decides on the pick. Message ids 0x0f (no raise site, *open*), 0x16 (no vehicle 
 `[StaticObjects]` rows (see [MISSIONS.md](MISSIONS.md) for the loader):
 
 - `setvehicle <player> "<tribe>" "<type>" <x> <y> <missionId>`: seven columns; an eighth `0` on
-  15 corpus rows is never read. The row runs only for an occupied seat (no `player >= 20` bypass),
-  and a dropped row also drops its trailing modifiers. 623 rows in 56 of 123 maps: catapult 386,
-  ship small 130, ox cart 58, handcart 41, ship big 8; 52 rows carry a mission id and 53 an
-  `addgoods` run. The type is a `name`, and both ox carts are named `oxcart`: which of types 2 and 6
-  the original picks is *open*; the decoded entity keeps the name and the app's join takes the first
-  record (type 6).
-- `addgoods "<good>" <n>` after `setvehicle`: adds to reserved and current, never to wanted.
-- `attachtovehicle <x> <y>` after `sethuman`: attaches the human to the first vehicle on that node
-  through the normal attach gate (the first one becomes commander); it does not move him. 13 corpus
-  rows on 4 maps, every one on a `setvehicle` node of its map; decoded as the human's
+  15 corpus rows is never read. The row runs only for an occupied seat (`IsPlayerInGame`, the same
+  gate as `sethuman` and `sethouse`, with no `player >= 20` bypass), and a dropped row also drops
+  its trailing modifiers. 623 rows in 56 of 123 maps: catapult 386, ship small 130, ox cart 58,
+  handcart 41, ship big 8; 52 rows carry a mission id and 53 an `addgoods` run. The type is a
+  `name` resolved by `Logic_EntryPoint_GetVehicleType`, which compares the seven records in type-id
+  order (the loader stores each `[vehicletype]` block at `mStaticVars[type]`), so `oxcart` is the ox
+  cart (2), never the ox-less cart (6); a name nothing matches is type 0 and places nothing.
+- `addgoods "<good>" <n>` after `setvehicle`: `Stock_ModifyFutureAmount(+n)` then
+  `Stock_ModifyAmount(+n)`, and the latter sets the good's wanted amount to the new actual one while
+  no carrier is attached, which at load is always: the cargo is booked, stowed and asked for, so a
+  carrier seated by a later row neither fetches nor flushes it.
+- `attachtovehicle <x> <y>` after `sethuman`: `Passengers_AttachHuman` on the first vehicle on that
+  node, through the normal attach gate (the first one becomes commander); it does not move him. 13
+  corpus rows on 4 maps, every one on a `setvehicle` node of its map; decoded as the human's
   `boardVehicleAt`.
-- `moveintovehicle`: the human boards the vehicle he was attached to (removed from the map). 10
-  corpus rows, all after an `attachtovehicle`; decoded as `boardVehicleAt.inside`.
+- `moveintovehicle`: `VehicleMisc_Enter`, the human boards the vehicle he was attached to wherever he
+  stands (removed from the map). 10 corpus rows, all after an `attachtovehicle`; decoded as
+  `boardVehicleAt.inside`.
 
-Results: `SendVehicle` and `DockVehicle` snap the point to the nearest unblocked node with the same
+Open Northland (`packages/app/src/game/world/authored-placements.ts`, `systems/spawn/attach.ts`):
+a `setvehicle` row becomes a `createVehicle` before any human, its cargo through `stockVehicleGoods`
+(booked, stowed and wanted, as above); the name join takes the lowest type id sharing the name. A
+crewman's `boardVehicleAt` rides on its `spawnSettler` as `vehicle` and goes through `attachToVehicle`
+at the spawn, which also walks him to the door where the original leaves him standing until the
+vehicle asks (approximation); `inside` boards him at once through `boardRider`.
+
+Results (`l_ExecuteResult`): `SetVehicle` is `Logic_EntryPoint_Add_Vehicle` for the player, tribe,
+type and id; with the captain flag set it also adds a human of the type's `logiccommander` job
+(`vehicletypes.ini`: 25 trader for the carts, 24 carrier for the ships, 31 for the catapult) at the
+vehicle's `Door_GetEntryPoint`, same player and tribe, mission id the vehicle's, behaviour 0, then runs
+`DoExecuteUserCommand_AttachVehicle` and `VehicleMisc_Enter`, freeing the human when either refuses.
+`SendVehicle` and `DockVehicle` snap the point to the nearest unblocked node with the same
 continent key within radius 9, then queue `e` / `g` like a player click (Open Northland runs the seat
 handlers directly: the goto's own radius-9 snap, and for a dock the ring search with no prior snap).
 `AddGoodsToVehicle` books and stows the full amount on every matching vehicle and raises wanted as
-"Cargo" describes.
-`AttachHumanToVehicle` resolves the first vehicle with the id and queues the attach command for
-every matching human. `RemoveVehiclesWithMissionId` handles at most 50 vehicles, removes crews only
-when its flag is set, and stamps a wreck effect. `RemoveVehicles` frees silently. `MoveUnitsInArea`,
-`ChangePlayerPlayerId` and `ChangePlayerIdInArea` include vehicles.
+"Cargo" describes. `AttachHumanToVehicle` resolves the first vehicle with the id and queues the
+attach command (0x26) for every matching human that `Passengers_CanHumanBeAttached` admits;
+`DetachHumanFromVehicle` queues 0x27 for every matching human. `RemoveVehicles` frees every vehicle
+with the id under the script flags (no ruins, no spill). `RemoveVehiclesWithMissionId` collects at
+most 50 vehicles with the id, frees every seated human and the commander first when its flag is set,
+stages presentation callback 37 on the point and its two hexagon rings, and frees the vehicle.
+`ChangeVehiclesPlayerId` is `CVehicle::ChangePlayerId`, which re-attaches the vehicle to the map
+under the new player and explores around it; nobody aboard changes hands. `ChangeMissionIdOfVehicles`
+renumbers every vehicle carrying the first id; `ChangeMissionIdOfVehiclesInRange` stamps the player's
+vehicles within the range; `ChangeMissionIdOfPlayersVehiclesOnContinent` stamps the player's vehicles
+not riding a carrier whose position, or for a moored ship its door entry point, carries the point's
+continent byte. `MoveUnitsInArea` also collects up to 20 of the player's vehicles in the area that
+ride no carrier, moves each to the destination, orders it there with `e`, explores around it and
+stages callback 37 on both points. `ChangePlayerPlayerId` and `ChangePlayerIdInArea` include vehicles.
+
+Goals (`l_CheckGoal`): `GoodsInVehicles` sums `Stock_GetAmountOfGoods` over the vehicles with the id
+and compares inside the loop; `FindVehicles` reads the explored bit of any such vehicle's position;
+`FindPosByVehicles`, `FindHumansByVehicles`, `FindVehiclesByVehicles` and `FindHousesByVehicles`
+measure hexagon distance from the vehicle's position; `IsHumanInVehicle` holds when every human with
+the id has `IsInVehicle` set and its vehicle carries the vehicle id; `FindPosByPlayersMapMoveable`
+and `FindHumansByPlayersMM` run a vehicle iterator after the human one; `NumberOfVehiclesInArea` and
+`NumberOfGoodsInVehiclesInArea` (`Tool_CountGoodsInVehicles`) compare after the walk, so 0 holds.
+
+Open Northland (`systems/missions/results/vehicles.ts`, `goals/vehicles.ts`): every result goes
+through `createVehicle`, `removeVehicle` with cause `script`, `attachToVehicle`, `detachFromVehicle`,
+`spawnSettler` and the owner and id stamps. Named approximations: the captain's trade is the type's
+first `logicpassenger` entry, since the IR carries no `logiccommander` lane (right for the carts and
+the catapult, a civilian at a ship's helm); `AttachHumanToVehicle` stops at a full vehicle; a
+teleported vehicle lands on the first node in hexagon-ring order within radius 9 that its walk-block
+admits and is not already claimed by the same line, with its drive, held goal, mooring and guard reset
+and no goto issued; callback 37 is not identified and not mirrored (*open*); `IsHumanInVehicle` reads
+the `Rider` aboard state. Vehicle goals and results were verified on the 2022 macOS build; the 2001
+executable is not checked for them.
 
 ## Graphics
 

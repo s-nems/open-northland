@@ -5,7 +5,10 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { bindEmployment, openWorkerJobFromList } from '../economy/jobs/index.js';
 import { isAdultSettler, moveFamilyInto } from '../family/index.js';
+import { vehicleAnchor } from '../footprint/index.js';
 import { isOrderableSettler, isTradeAssignable } from '../orders/guards.js';
+import { attachToVehicle, boardRider } from '../vehicles/crew.js';
+import { vehicleIndex } from '../vehicles/registry.js';
 
 type SpawnSettlerCommand = Extract<Command, { kind: 'spawnSettler' }>;
 
@@ -76,4 +79,34 @@ function buildingAtAnchor(world: World, x: number, y: number): Entity | null {
     if (found === null || b < found) found = b;
   }
   return found;
+}
+
+/**
+ * Seat a spawning settler on the vehicle standing on its authored anchor - a decoded map's
+ * `attachtovehicle`, which the loader resolves to the first vehicle on that node and runs through
+ * `Passengers_AttachHuman`, so the job and room gates apply and the first crewman commands. A following
+ * `moveintovehicle` (`inside`) boards it at once through `VehicleMisc_Enter`, wherever it was spawned.
+ * A node with no vehicle, or a refused attach, leaves the settler where it spawned (the loader's own
+ * silence; the refusal note still goes out).
+ */
+export function attachAuthoredVehicle(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  command: SpawnSettlerCommand,
+): void {
+  if (command.vehicle == null) return;
+  const vehicle = vehicleAtAnchor(world, command.vehicle.x, command.vehicle.y);
+  if (vehicle === null) return;
+  if (!attachToVehicle(world, ctx, { kind: 'attachToVehicle', entity: e, vehicle })) return;
+  if (command.vehicle.inside) boardRider(world, e, vehicle);
+}
+
+/** The vehicle whose anchor node is (`x`,`y`), lowest entity id first; the index is already ascending. */
+function vehicleAtAnchor(world: World, x: number, y: number): Entity | null {
+  for (const v of vehicleIndex(world).all) {
+    const anchor = vehicleAnchor(world, v);
+    if (anchor !== null && anchor.hx === x && anchor.hy === y) return v;
+  }
+  return null;
 }

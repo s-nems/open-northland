@@ -98,8 +98,8 @@ export function newWorldSim(
  * forced because both callers place fixture state that loads as-is, exactly as the original loads a
  * scenario map; the tech and collision gates govern the player's interactive placements instead.
  *
- * The list holds every building before any human, which is what lets a settler's authored home and
- * workplace resolve to a standing building as it spawns.
+ * The list holds every building and vehicle before any human, which is what lets a settler's authored
+ * home, workplace and seat resolve to something standing as it spawns.
  */
 export function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   const terrain = sim.terrain;
@@ -120,6 +120,19 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         y: p.y,
         count: 1,
         ...(p.owner !== undefined ? { owner: p.owner } : {}),
+        ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),
+      });
+      continue;
+    }
+    if (p.kind === 'vehicle') {
+      sim.enqueueSetup({
+        kind: 'createVehicle',
+        vehicleType: p.typeId,
+        x: p.x,
+        y: p.y,
+        tribe: p.tribe,
+        owner: p.owner,
+        ...(p.goods !== undefined ? { goods: p.goods } : {}),
         ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),
       });
       continue;
@@ -153,6 +166,7 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         ...(p.nameStringId !== undefined ? { nameStringId: p.nameStringId } : {}),
         ...(p.home !== undefined ? { home: p.home } : {}),
         ...(p.workplace !== undefined ? { workplace: p.workplace } : {}),
+        ...(p.vehicle !== undefined ? { vehicle: p.vehicle } : {}),
         ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),
         ...(p.behaviourFlags !== undefined ? { behaviourFlags: p.behaviourFlags } : {}),
       });

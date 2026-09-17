@@ -16,7 +16,7 @@ import type {
 } from '../../src/systems/missions/index.js';
 import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
-import { LOAD_PASS, PASS_TICKS } from './support.js';
+import { LOAD_PASS, PASS_TICKS, POINT } from './support.js';
 
 /**
  * The mission engine: its evaluation cadence, the `successfullif` verdicts, the deactivate-then-execute
@@ -325,17 +325,25 @@ describe('RandomTimeGone', () => {
   });
 });
 
+/** A goal no evaluator runs and no corpus map writes. */
+const UNKNOWN_GOAL: MissionGoalOp = {
+  opcode: 'BuildHouseOnContinent',
+  player: 0,
+  point: POINT,
+  houseType: 1,
+};
+
 describe('an opcode this build cannot run', () => {
   it('reports it once per mission and treats the goal as not held', () => {
     const sim = missionSim([
       mission({
-        goals: [{ opcode: 'FindVehicles', player: 0, vehicleId: 7 }],
+        goals: [UNKNOWN_GOAL],
         results: [{ opcode: 'Exit' }],
       }),
     ]);
     sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
-      { kind: 'missionUnsupported', mission: 0, opcode: 'FindVehicles' },
+      { kind: 'missionUnsupported', mission: 0, opcode: UNKNOWN_GOAL.opcode },
     ]);
     expect(records(sim)[0]?.active).toBe(true);
     sim.run(PASS_TICKS);
@@ -346,19 +354,19 @@ describe('an opcode this build cannot run', () => {
     const sim = missionSim([
       mission({
         goals: [TRUE_GOAL],
-        results: [{ opcode: 'RemoveVehicles', vehicleId: 1 }, { opcode: 'Exit' }],
+        results: [{ opcode: 'AllowMap', campaignId: 0, mapId: 1 }, { opcode: 'Exit' }],
       }),
     ]);
     sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
-      { kind: 'missionUnsupported', mission: 0, opcode: 'RemoveVehicles' },
+      { kind: 'missionUnsupported', mission: 0, opcode: 'AllowMap' },
     ]);
     expect(eventsOfKind(sim, 'missionExit')).toHaveLength(1);
   });
 });
 
 describe('unavailable goal verdicts', () => {
-  const unknown: MissionGoalOp = { opcode: 'FindVehicles', player: 0, vehicleId: 7 };
+  const unknown = UNKNOWN_GOAL;
   const falseGoal: MissionGoalOp = { opcode: 'IfMissionIsActive', missionIndex: 999 };
 
   it.each([

@@ -38,7 +38,7 @@ import {
   mayChangeEquipment,
   settlerHitpoints,
 } from '../readviews/index.js';
-import { attachAuthoredBuildings } from './attach.js';
+import { attachAuthoredBuildings, attachAuthoredVehicle } from './attach.js';
 
 /**
  * The data of a settler to create: the `spawnSettler` command payload minus its `kind`, so a scene's direct
@@ -46,7 +46,10 @@ import { attachAuthoredBuildings } from './attach.js';
  * coords, like every sim command. The authored attachment anchors are absent because binding a settler to
  * a standing building is the runtime seam's work, not entity assembly.
  */
-export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind' | 'home' | 'workplace'>;
+export type SettlerSpec = Omit<
+  Extract<Command, { kind: 'spawnSettler' }>,
+  'kind' | 'home' | 'workplace' | 'vehicle'
+>;
 
 /**
  * The hitpoint pool a settler carries before its tribe's adult pool applies: every baby and child, and an
@@ -179,6 +182,9 @@ export function spawnSettler(
   // Building-employed collectors instead bank their harvest into the building they are posted to.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
   stampGatherGood(world, ctx, e, command);
+  // After the flag: the attach order sets a carried load down and gives the workplace up, so a crewman
+  // spawns exactly as a settler ordered aboard from a post would.
+  attachAuthoredVehicle(world, ctx, e, command);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 

@@ -248,6 +248,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
       gatherGood: 'integer',
       home: { fields: { required: NODE } },
       workplace: { fields: { required: NODE } },
+      vehicle: { fields: { required: { ...NODE, inside: 'boolean' } } },
     },
   },
   stopVehicle: { required: { vehicle: 'integer' } },

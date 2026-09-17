@@ -62,6 +62,17 @@ import {
 } from './standing.js';
 import { grantUnlock } from './tech.js';
 import { scriptTribute } from './tributes.js';
+import {
+  attachScriptedHumans,
+  detachScriptedHumans,
+  handVehiclesToPlayer,
+  removeScriptedVehicles,
+  removeScriptedVehiclesWithCrews,
+  renumberScriptedVehicles,
+  spawnScriptedVehicle,
+  stampVehiclesInRange,
+  stampVehiclesOnContinent,
+} from './vehicles.js';
 import { setScriptedWallGate } from './wall-gates.js';
 
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
@@ -124,6 +135,33 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       return;
     case 'SetAnimal':
       spawnScriptedAnimal(pass, result);
+      return;
+    case 'SetVehicle':
+      spawnScriptedVehicle(pass, index, result);
+      return;
+    case 'RemoveVehicles':
+      removeScriptedVehicles(pass, result.vehicleId);
+      return;
+    case 'RemoveVehiclesWithMissionId':
+      removeScriptedVehiclesWithCrews(pass, result.vehicleId, result.flag);
+      return;
+    case 'ChangeVehiclesPlayerId':
+      handVehiclesToPlayer(pass, result.vehicleId, result.player);
+      return;
+    case 'AttachHumanToVehicle':
+      attachScriptedHumans(pass, result.humanId, result.vehicleId);
+      return;
+    case 'DetachHumanFromVehicle':
+      detachScriptedHumans(pass, result.humanId);
+      return;
+    case 'ChangeMissionIdOfVehicles':
+      renumberScriptedVehicles(pass, result.vehicleId, result.index);
+      return;
+    case 'ChangeMissionIdOfVehiclesInRange':
+      stampVehiclesInRange(pass, result.player, result.vehicleId, result.point, result.range);
+      return;
+    case 'ChangeMissionIdOfPlayersVehiclesOnContinent':
+      stampVehiclesOnContinent(pass, result.player, result.point, result.vehicleId);
       return;
     case 'SetRandomChestOnPosition':
     case 'SetRandomChestOnRandomPos':

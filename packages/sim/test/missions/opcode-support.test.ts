@@ -113,6 +113,30 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   PlayerAttackedByPlayer: { opcode: 'PlayerAttackedByPlayer', otherPlayer: 1, player: 0 },
   NumberOfGoodsTraded: { opcode: 'NumberOfGoodsTraded', player: 0, otherPlayer: 1, amount: 1 },
   PayTribute: { opcode: 'PayTribute', slot: 0 },
+  FindVehicles: { opcode: 'FindVehicles', player: 0, vehicleId: 7 },
+  FindPosByVehicles: { opcode: 'FindPosByVehicles', vehicleId: 7, point: POINT, range: 3 },
+  FindHumansByVehicles: { opcode: 'FindHumansByVehicles', vehicleId: 7, humanId: 8, range: 3 },
+  FindVehiclesByVehicles: { opcode: 'FindVehiclesByVehicles', vehicleId: 7, otherVehicleId: 8, range: 3 },
+  FindHousesByVehicles: { opcode: 'FindHousesByVehicles', vehicleId: 7, objectId: 8, range: 3 },
+  IsHumanInVehicle: { opcode: 'IsHumanInVehicle', humanId: 7, vehicleId: 8 },
+  GoodsInVehicles: { opcode: 'GoodsInVehicles', vehicleId: 7, good: 1, amount: 1 },
+  NumberOfVehiclesInArea: {
+    opcode: 'NumberOfVehiclesInArea',
+    player: 0,
+    vehicleType: 1,
+    amount: 1,
+    point: POINT,
+    range: 3,
+  },
+  NumberOfGoodsInVehiclesInArea: {
+    opcode: 'NumberOfGoodsInVehiclesInArea',
+    player: 0,
+    vehicleType: 1,
+    good: 1,
+    amount: 1,
+    point: POINT,
+    range: 3,
+  },
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
@@ -333,6 +357,34 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
     range: 3,
     extra: 0,
   },
+  SetVehicle: {
+    opcode: 'SetVehicle',
+    player: 0,
+    tribe: 1,
+    vehicleType: 1,
+    point: POINT,
+    vehicleId: 7,
+    withCaptain: true,
+  },
+  RemoveVehicles: { opcode: 'RemoveVehicles', vehicleId: 7 },
+  RemoveVehiclesWithMissionId: { opcode: 'RemoveVehiclesWithMissionId', vehicleId: 7, flag: true },
+  ChangeVehiclesPlayerId: { opcode: 'ChangeVehiclesPlayerId', vehicleId: 7, player: 1 },
+  AttachHumanToVehicle: { opcode: 'AttachHumanToVehicle', humanId: 7, vehicleId: 8 },
+  DetachHumanFromVehicle: { opcode: 'DetachHumanFromVehicle', humanId: 7 },
+  ChangeMissionIdOfVehicles: { opcode: 'ChangeMissionIdOfVehicles', vehicleId: 7, index: 8 },
+  ChangeMissionIdOfVehiclesInRange: {
+    opcode: 'ChangeMissionIdOfVehiclesInRange',
+    player: 0,
+    vehicleId: 7,
+    point: POINT,
+    range: 3,
+  },
+  ChangeMissionIdOfPlayersVehiclesOnContinent: {
+    opcode: 'ChangeMissionIdOfPlayersVehiclesOnContinent',
+    player: 0,
+    point: POINT,
+    vehicleId: 7,
+  },
 };
 
 function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): string[] {
@@ -360,9 +412,9 @@ describe('the published opcode support lists', () => {
   });
 
   it('reports an opcode outside the lists, so the lists are the whole of it', () => {
-    expect(reportedOpcodes([{ opcode: 'FindVehicles', player: 0, vehicleId: 7 }], [])).toEqual([
-      'FindVehicles',
-    ]);
-    expect(reportedOpcodes([], [{ opcode: 'RemoveVehicles', vehicleId: 1 }])).toEqual(['RemoveVehicles']);
+    expect(
+      reportedOpcodes([{ opcode: 'BuildHouseOnContinent', player: 0, point: POINT, houseType: 1 }], []),
+    ).toEqual(['BuildHouseOnContinent']);
+    expect(reportedOpcodes([], [{ opcode: 'AllowMap', campaignId: 0, mapId: 1 }])).toEqual(['AllowMap']);
   });
 });

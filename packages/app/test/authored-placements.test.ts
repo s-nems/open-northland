@@ -301,4 +301,89 @@ describe('resolveAuthoredPlacements', () => {
     expect(placements).toEqual([{ kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 }]);
     expect(droppedAttachments).toBe(2);
   });
+
+  it('places setvehicle rows for occupied seats with their cargo, and routes a crew seat by the placed anchor', () => {
+    const rows: AuthoredJoinRows = {
+      ...AUTHORED_ROWS,
+      // The shipped table lists the ox-less cart (6) before the ox cart (2) under one name; the join
+      // takes the lower id, the way the original's name lookup walks its type array.
+      vehicles: [
+        { typeId: 6, id: 'cart_no_ox', name: 'oxcart' },
+        { typeId: 2, id: 'oxcart', name: 'oxcart' },
+        { typeId: 1, id: 'handcart', name: 'handcart' },
+      ],
+    };
+    const entities = {
+      buildings: [],
+      humans: [
+        // Seated on the placed cart, outside; the second boards it.
+        {
+          tribe: 'viking',
+          role: 'builder',
+          player: 0,
+          hx: 3,
+          hy: 5,
+          boardVehicleAt: { hx: 8, hy: 4, inside: false },
+        },
+        {
+          tribe: 'viking',
+          role: 'builder',
+          player: 0,
+          hx: 3,
+          hy: 6,
+          boardVehicleAt: { hx: 8, hy: 4, inside: true },
+        },
+        // Naming the dropped row's anchor: the seat is lost, the settler stays.
+        {
+          tribe: 'viking',
+          role: 'builder',
+          player: 0,
+          hx: 3,
+          hy: 7,
+          boardVehicleAt: { hx: 2, hy: 2, inside: false },
+        },
+      ],
+      animals: [],
+      vehicles: [
+        {
+          tribe: 'viking',
+          type: 'oxcart',
+          player: 0,
+          hx: 8,
+          hy: 4,
+          missionId: 92,
+          goods: [
+            { name: 'wheat', count: 10 },
+            { name: 'mystery_good', count: 3 },
+          ],
+        },
+        // An unoccupied seat: the row and its cargo are dropped (no wild bypass for a vehicle).
+        { tribe: 'viking', type: 'handcart', player: 20, hx: 2, hy: 2, goods: [{ name: 'wheat', count: 1 }] },
+        { tribe: 'viking', type: 'chariot', player: 0, hx: 4, hy: 4 }, // no such type
+      ],
+    };
+    const { placements, skipped, droppedGoods, droppedAttachments } = resolveAuthoredPlacements(
+      entities,
+      rows,
+      authoredMap(),
+    );
+    expect(placements).toEqual([
+      {
+        kind: 'vehicle',
+        typeId: 2,
+        tribe: 1,
+        x: 8,
+        y: 4,
+        owner: 0,
+        goods: [{ good: 4, amount: 10 }],
+        missionId: 92,
+      },
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0, vehicle: { x: 8, y: 4, inside: false } },
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 6, owner: 0, vehicle: { x: 8, y: 4, inside: true } },
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 7, owner: 0 },
+    ]);
+    expect(skipped).toBe(2);
+    expect(droppedGoods).toBe(2);
+    expect(droppedAttachments).toBe(1);
+  });
 });

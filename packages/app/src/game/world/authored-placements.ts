@@ -11,7 +11,7 @@ export type AuthoredEntities = Pick<
   NonNullable<TerrainMapFile['entities']>,
   'buildings' | 'humans' | 'animals'
 > &
-  Partial<Pick<NonNullable<TerrainMapFile['entities']>, 'guides'>>;
+  Partial<Pick<NonNullable<TerrainMapFile['entities']>, 'guides' | 'vehicles'>>;
 
 /** One resolved authored placement, ready to enqueue. */
 export type AuthoredPlacement =
@@ -42,12 +42,28 @@ export type AuthoredPlacement =
       home?: { x: number; y: number };
       /** The authored workplace (`attachtohouse` naming any other building), as its anchor half-cell. */
       workplace?: { x: number; y: number };
+      /** The authored seat (`attachtovehicle`, plus `moveintovehicle` as `inside`), as the anchor
+       *  half-cell of a placed `setvehicle`; a row naming no placed vehicle is dropped and counted. */
+      vehicle?: { x: number; y: number; inside: boolean };
       /** The `sethuman` mission object id, the handle the map's script addresses this settler by. */
       missionId?: number;
       /** The `sethuman` behaviour mask, carried verbatim; no system reads the bits yet. */
       behaviourFlags?: number;
       /** The map's `[misc_humannames]` name for this settler, as a string id in the map's own table. */
       nameStringId?: number;
+    }
+  | {
+      /** A `setvehicle` row: the type by its `[vehicletype]` name, for an occupied seat only. */
+      kind: 'vehicle';
+      typeId: number;
+      tribe: number;
+      x: number;
+      y: number;
+      owner: number;
+      /** Authored cargo (`addgoods`), good names resolved to good typeIds. */
+      goods?: { good: number; amount: number }[];
+      /** The `setvehicle` mission object id. */
+      missionId?: number;
     }
   | {
       /** One `setanimal` record spawns one creature at its authored half-cell, never a whole
@@ -64,11 +80,13 @@ export type AuthoredPlacement =
 
 /**
  * Resolve a map's authored `entities` (names and half-cells, verbatim from `map.cif` `StaticObjects`)
- * into sim placements, joining by name against the IR rows. `sethouse` and `sethuman` player columns are
- * already 0-based, so they land on sim owners verbatim, and half-cells pass through verbatim because the
- * sim grid is the same `2W×2H` lattice the records address. Unresolvable, decorative, or out-of-bounds
- * records are dropped and counted, animals on their own counter. Only the first resolved building
- * at an anchor is imported; overlapping source rows must not create a second owner at that point.
+ * into sim placements, joining by name against the IR rows. `sethouse`, `sethuman` and `setvehicle`
+ * player columns are already 0-based, so they land on sim owners verbatim, and half-cells pass through
+ * verbatim because the sim grid is the same `2W×2H` lattice the records address. Unresolvable,
+ * decorative, or out-of-bounds records are dropped and counted, animals on their own counter. Only the
+ * first resolved building at an anchor is imported; overlapping source rows must not create a second
+ * owner at that point. The list holds every building, then every vehicle, before any human, so a
+ * settler's authored home, workplace and seat resolve to something standing as it spawns.
  *
  * An `attachtohouse` is routed by the kind of the building standing on its anchor, not by its `slot`
  * column. An approximation: reading `slot` itself as the role (1 home, 2 workplace) fits 172 of the 180
@@ -134,6 +152,42 @@ export function resolveAuthoredPlacements(
     const kind = joins.buildingKind(hit.typeId);
     if (kind !== undefined) kindByAnchor.set(key, kind);
   }
+  // A `setvehicle` runs for an occupied seat only: the loader gates it on `IsPlayerInGame` with no wild
+  // bypass, so a row naming an out-of-range player is dropped with its cargo (byte-verified loader).
+  // Placed anchors are what an `attachtovehicle` resolves through.
+  const vehicleAnchors = new Set<string>();
+  for (const v of entities.vehicles ?? []) {
+    const typeId = joins.vehicleType(v.type);
+    const tribe = joins.tribe(v.tribe);
+    if (typeId === undefined || tribe === undefined || !inBounds(v.hx, v.hy)) {
+      skipped++;
+      continue;
+    }
+    if (!components.isValidPlayer(v.player)) {
+      skipped++;
+      droppedGoods += v.goods?.length ?? 0;
+      continue;
+    }
+    const goods = (v.goods ?? []).flatMap((g) => {
+      const good = joins.good(g.name);
+      if (good === undefined) {
+        droppedGoods++;
+        return [];
+      }
+      return [{ good, amount: g.count }];
+    });
+    placements.push({
+      kind: 'vehicle',
+      typeId,
+      tribe,
+      x: v.hx,
+      y: v.hy,
+      owner: v.player,
+      ...(goods.length > 0 ? { goods } : {}),
+      ...(v.missionId !== undefined ? { missionId: v.missionId } : {}),
+    });
+    vehicleAnchors.add(anchorKey(v.hx, v.hy));
+  }
   // A `setname` names the first human carrying its id, and a name is spent once given. No corpus map
   // repeats an id; the first row wins here (approximation).
   const nameByHumanId = new Map<number, number>();
@@ -163,6 +217,12 @@ export function resolveAuthoredPlacements(
       if (kind === BUILDING_KIND.home) home ??= { x: a.hx, y: a.hy };
       else workplace ??= { x: a.hx, y: a.hy };
     }
+    let vehicle: { x: number; y: number; inside: boolean } | undefined;
+    if (h.boardVehicleAt !== undefined) {
+      if (vehicleAnchors.has(anchorKey(h.boardVehicleAt.hx, h.boardVehicleAt.hy))) {
+        vehicle = { x: h.boardVehicleAt.hx, y: h.boardVehicleAt.hy, inside: h.boardVehicleAt.inside };
+      } else droppedAttachments++;
+    }
     placements.push({
       kind: 'human',
       jobType,
@@ -173,6 +233,7 @@ export function resolveAuthoredPlacements(
       ...(gatherGood !== undefined ? { gatherGood } : {}),
       ...(home !== undefined ? { home } : {}),
       ...(workplace !== undefined ? { workplace } : {}),
+      ...(vehicle !== undefined ? { vehicle } : {}),
       ...(h.missionId !== undefined ? { missionId: h.missionId } : {}),
       ...(h.behaviourFlags !== undefined ? { behaviourFlags: h.behaviourFlags } : {}),
       ...(nameStringId !== undefined ? { nameStringId } : {}),

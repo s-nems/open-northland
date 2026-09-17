@@ -442,3 +442,63 @@ describe('carried vehicles', () => {
     expect(riderRefusals(s)).toEqual([`${civilist}:cannotEnter:${P0}`]);
   });
 });
+
+describe('an authored seat', () => {
+  it('seats a spawned settler on the vehicle standing on its anchor, the first as commander, aboard when inside', () => {
+    const s = sim();
+    const ship = spawn(s, SHIP_SMALL, 22, 8);
+    const mooring = s.world.get(ship, Vehicle).mooring;
+    if (mooring === null) throw new Error('the ship should spawn moored');
+    for (const inside of [true, false]) {
+      s.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: SCOUT,
+        x: 2,
+        y: 6,
+        tribe: VIKING,
+        owner: P0,
+        vehicle: { x: 22, y: 8, inside },
+      });
+    }
+    s.step();
+    const [first, second] = [...s.world.query(Settler)];
+    if (first === undefined || second === undefined) throw new Error('two settlers expected');
+    expect(vehicleCommander(s.world.get(ship, Vehicle))).toBe(first);
+    expect(seatOf(s, ship, first)).toEqual({ entity: first, inside: true });
+    expect(s.world.has(first, Position)).toBe(false);
+    expect(seatOf(s, ship, second)).toEqual({ entity: second, inside: false });
+    expect(s.world.get(second, Rider)).toEqual({ vehicle: ship, boarding: false });
+    expect(nodeOf(s, second)).not.toBeNull(); // walking to the door from where it spawned
+  });
+
+  it('leaves a settler where it spawned when no vehicle stands on the anchor or the gate refuses it', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    s.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SCOUT,
+      x: 2,
+      y: 6,
+      tribe: VIKING,
+      owner: P0,
+      vehicle: { x: 5, y: 5, inside: true },
+    });
+    s.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CIVILIST,
+      x: 2,
+      y: 8,
+      tribe: VIKING,
+      owner: P0,
+      vehicle: { x: 12, y: 6, inside: true },
+    });
+    s.step();
+    const settlers = [...s.world.query(Settler)];
+    expect(settlers).toHaveLength(2);
+    for (const e of settlers) {
+      expect(s.world.has(e, Rider)).toBe(false);
+      expect(s.world.has(e, Position)).toBe(true);
+    }
+    expect(vehiclePassengers(s.world.get(cart, Vehicle))).toHaveLength(0);
+  });
+});

@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 import { orderedAttack, vehicleWeapon } from '../conflict/engage-vehicle.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
-import { refuseMove } from './movement.js';
+import { crewInside, refuseMove } from './movement.js';
 
 // The player's siege orders on a vehicle: its stance and what it fires at. The combat pass acts on
 // both (`conflict/engage-vehicle.ts`).
@@ -30,9 +30,10 @@ export function setVehicleStance(
 
 /**
  * The attack order: an armed, commanded vehicle takes the target and the combat pass closes on it or
- * fires. Refused with `vehicleMoveRefused` `noCommander` while nobody commands the vehicle; an
- * unarmed vehicle, a target that is not a unit, house or vehicle, or a map point off the map orders
- * nothing.
+ * fires. A crew still outside is boarded first: the order waits under `waitsForHuman`, the twin of the
+ * goto's held goal, and the combat pass takes it up once everyone is inside. Refused with
+ * `vehicleMoveRefused` `noCommander` while nobody commands the vehicle; an unarmed vehicle, a target
+ * that is not a unit, house or vehicle, or a map point off the map orders nothing.
  */
 export function attackWithVehicle(
   world: World,
@@ -61,5 +62,8 @@ export function attackWithVehicle(
   }
   const live = world.mut(e, Vehicle);
   live.attack = orderedAttack(target);
-  if (live.task === 'attacks') live.task = 'none';
+  if (!crewInside(state)) {
+    live.heldGoal = null; // the attack supersedes a goto held for the same boarding
+    live.task = 'waitsForHuman';
+  } else if (live.task === 'attacks') live.task = 'none';
 }

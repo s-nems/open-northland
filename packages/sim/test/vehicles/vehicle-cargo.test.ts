@@ -22,7 +22,12 @@ import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { MISSION_EVALUATION_TICKS } from '../../src/systems/missions/system.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
-import { setVehicleWanted, stockVehicleGoods, tradeVehicleStock } from '../../src/systems/vehicles/stock.js';
+import {
+  clearVehicleWanted,
+  setVehicleWanted,
+  stockVehicleGoods,
+  tradeVehicleStock,
+} from '../../src/systems/vehicles/stock.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -245,6 +250,9 @@ describe('the carrier rung', () => {
   it('flushes a hold booked past its wanted amount into the nearest store, a unit a trip', () => {
     const s = sim();
     const cart = spawnCart(s, CART_AT, [{ good: WOOD, amount: 3 }]);
+    // A loaded spawn asks for its cargo the way the loader's stow does; the `n` order makes it surplus.
+    expect(line(s, cart, WOOD)).toEqual({ current: 3, wanted: 3, reserved: 3 });
+    clearVehicleWanted(s.world, cart);
     expect(line(s, cart, WOOD)).toEqual({ current: 3, wanted: 0, reserved: 3 });
     const hq = placeHq(s, SOURCE_AT);
     attachCarrier(s, cart);
@@ -256,6 +264,7 @@ describe('the carrier rung', () => {
   it('sets a flushed unit on the ground at the door when nothing stores it', () => {
     const s = sim();
     const cart = spawnCart(s, CART_AT, [{ good: WOOD, amount: 1 }]);
+    clearVehicleWanted(s.world, cart);
     attachCarrier(s, cart);
     s.run(TRIP_TICKS);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
@@ -407,16 +416,16 @@ describe("the trader's own write", () => {
 });
 
 describe('the script paths', () => {
-  it('addgoods stows and books the amount under the budget and asks for none of it', () => {
+  it('addgoods stows and books the amount under the budget and, with no carrier seated, asks for it', () => {
     const s = sim();
     const cart = spawnCart(s, CART_AT, [
       { good: BREAD, amount: 4 },
       { good: WOOD, amount: 20 },
     ]);
-    expect(line(s, cart, FOOD_SIMPLE)).toEqual({ current: 4, wanted: 0, reserved: 4 });
+    expect(line(s, cart, FOOD_SIMPLE)).toEqual({ current: 4, wanted: 4, reserved: 4 });
     expect(line(s, cart, WOOD)).toEqual({
       current: HANDCART_SLOTS - 4,
-      wanted: 0,
+      wanted: HANDCART_SLOTS - 4,
       reserved: HANDCART_SLOTS - 4,
     });
     expect(stockVehicleGoods(s.world, cart, s.content, WOOD, 1)).toBe(0);

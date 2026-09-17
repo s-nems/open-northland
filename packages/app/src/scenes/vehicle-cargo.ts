@@ -82,7 +82,9 @@ function build(sim: Simulation): void {
     }),
   );
   const oxcart = crewedCart(sim, VEHICLE_OXCART, OXCART);
+  // A loaded spawn asks for its cargo; the unload-goods order (`n`) is what turns it into surplus.
   systems.stockVehicleGoods(sim.world, oxcart, sim.content, stone, LOADED_STONE);
+  sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'clearVehicleWanted', vehicle: oxcart }));
 }
 
 function cartOfType(sim: Simulation, type: number): ReturnType<Simulation['vehiclesOf']>[number] | undefined {

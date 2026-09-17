@@ -79,9 +79,10 @@ export function engageVehicle(
   const weapon = vehicleWeapon(ctx, state);
   if (weapon === null) return;
   // Carried, uncrewed or with its crew still outside: nothing is aimed, so a held target is let go
-  // rather than keeping the combat pass awake for a vehicle that cannot fire.
+  // rather than keeping the combat pass awake for a vehicle that cannot fire. An ordered attack that
+  // waits on its boarding is the one exception: the boarding pass hands it back once the crew is in.
   if (state.carrier !== null || !crewInside(state) || vehicleCommander(state) === null) {
-    dropTarget(world, e);
+    if (!(state.task === 'waitsForHuman' && state.attack?.ordered === true)) dropTarget(world, e);
     return;
   }
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);

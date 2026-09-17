@@ -39,8 +39,8 @@ export interface CreateVehicleCommand {
   /** The {@link MissionObjectId} to stamp; omit or 0 for a vehicle no script addresses. */
   readonly missionId?: number;
   /** Authored cargo (a decoded map's `addgoods` after `setvehicle`): each entry is stowed and booked in
-   *  the hold up to the type's budget, and asked for by nobody, so a carrier flushes it out only when a
-   *  player asks for less. */
+   *  the hold up to the type's budget and, with no carrier seated yet, asked for in the same amount, so
+   *  a carrier attached later leaves it aboard until a player asks for less. */
   readonly goods?: readonly { readonly good: number; readonly amount: number }[];
 }
 
@@ -100,6 +100,10 @@ export type SpawnCommand =
        *  `attachtohouse`). Only its own trade's slot is taken, so a full or unrelated building leaves it
        *  unposted rather than demoting it to a hauler. */
       readonly workplace?: { readonly x: number; readonly y: number };
+      /** The half-cell anchor of the vehicle this settler crews as it spawns (a decoded map's
+       *  `attachtovehicle`), through the attach gate: the first attached becomes the commander. With
+       *  `inside` (a following `moveintovehicle`) it boards at once, off the map. Omit for no seat. */
+      readonly vehicle?: { readonly x: number; readonly y: number; readonly inside: boolean };
       /** The {@link MissionObjectId} to stamp; omit for a settler no mission addresses. */
       readonly missionId?: number;
       /** The `sethuman` behaviour mask, stamped as a {@link MissionBehaviour}; omit (or 0) for none. */

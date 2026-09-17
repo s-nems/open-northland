@@ -202,7 +202,10 @@ export function clearVehicleWanted(world: World, vehicle: Entity): void {
 /**
  * Put `amount` units of `goodType` aboard that nobody is bringing, booked and stowed at once (a map's
  * `addgoods` and the loaded spawn of a scene): `current` rises by the units the budget takes and
- * `reserved` by as many as the booking budget still has; `wanted` stays. Returns the units stowed.
+ * `reserved` by as many as the booking budget still has. The loader's `Stock_ModifyAmount` then sets the
+ * good's wanted amount to the new actual one while no carrier is attached, which at a spawn is always,
+ * so the cargo is also asked for and a carrier seated later neither fetches nor flushes it. Returns the
+ * units stowed.
  */
 export function stockVehicleGoods(
   world: World,
@@ -219,6 +222,7 @@ export function stockVehicleGoods(
   const line = lineOf(world.mut(vehicle, VehicleStock), hold.good);
   line.current += moved;
   line.reserved += booked;
+  if (!hasCarrierAttached(world, content, vehicle)) line.wanted = line.current;
   return moved;
 }
 

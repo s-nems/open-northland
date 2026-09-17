@@ -55,6 +55,15 @@ export const SUPPORTED_GOALS = [
   'PlayerAttackedByPlayer',
   'PayTribute',
   'NumberOfGoodsTraded',
+  'FindVehicles',
+  'FindPosByVehicles',
+  'FindHumansByVehicles',
+  'FindVehiclesByVehicles',
+  'FindHousesByVehicles',
+  'IsHumanInVehicle',
+  'GoodsInVehicles',
+  'NumberOfVehiclesInArea',
+  'NumberOfGoodsInVehiclesInArea',
 ] as const satisfies readonly MissionGoalOp['opcode'][];
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
@@ -149,4 +158,13 @@ export const SUPPORTED_RESULTS = [
   'InfoCountHumenInArea',
   'InfoCountSoldiersInArea',
   'InfoCountAnimalsInArea',
+  'SetVehicle',
+  'RemoveVehicles',
+  'RemoveVehiclesWithMissionId',
+  'ChangeVehiclesPlayerId',
+  'AttachHumanToVehicle',
+  'DetachHumanFromVehicle',
+  'ChangeMissionIdOfVehicles',
+  'ChangeMissionIdOfVehiclesInRange',
+  'ChangeMissionIdOfPlayersVehiclesOnContinent',
 ] as const satisfies readonly MissionResultOp['opcode'][];

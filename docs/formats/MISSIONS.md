@@ -185,8 +185,8 @@ goals, the near-point goals and the death tallies compare once after counting, s
 
 A `\*` after the Uses count marks a goal this build does not evaluate: its answer is unknown, so the
 mission fires only when its known goals decide the rule either way ("Execution model"). The tickets
-under `docs/tickets/features/` carry the ones the corpus uses (vehicles, chests, wall gates, the
-trade ledger); the rest no map writes.
+under `docs/tickets/features/` carry the ones the corpus uses (the wall gates); the rest no map
+writes.
 
 | # | Goal | Parameters | Holds when | Uses |
 | --- | --- | --- | --- | --- |
@@ -194,20 +194,20 @@ trade ledger); the rest no map writes.
 | 1 | `BuildVehicles` | 1, 5, 7, 12 | the player owns at least `amount` vehicles of the type; every match gets object id `arg4` | 2 |
 | 2 | `BuildHumans` | 1, 4, 7, 10 | the player has at least `amount` humans with the job; every match gets object id `arg4` (0 clears the id it carried) unless `arg4` is 12345 | 21 |
 | 3 | `BuildHouses` | 1, 15, 7, 14 | the player owns at least `amount` finished houses of the type; every match gets object id `arg4`, 0 and 12345 included | 165 |
-| 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total | 3 \* |
+| 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total, read under the hold's alias | 3 |
 | 5 | `GoodsInHouses` | 14, 6, 7 | houses with the id hold at least `amount` of the good in total | 10 |
 | 6 | `GoodsGlobal` | 1, 6, 7 | the player's houses hold at least `amount` of the good as their own stock: everything a storage or a home shelves, of a workplace only what it makes, never its inputs | 11 |
 | 7 | `FindPos` | 1, 16, 17 | the map point has been explored by the player (player 16 or more: always) | 23 |
 | 8 | `FindHumans` | 1, 10 | any human with the id stands on a point explored by the player | 0 |
-| 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 \* |
+| 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 |
 | 10 | `FindHouses` | 1, 14 | as above for houses | 0 |
 | 11 | `FindPosByHumans` | 10, 16, 17, 9 | any human with the id is within `range` of the point | 589 |
-| 12 | `FindPosByVehicles` | 12, 16, 17, 9 | as above for vehicles | 46 \* |
+| 12 | `FindPosByVehicles` | 12, 16, 17, 9 | as above for vehicles | 46 |
 | 13 | `FindHumansByHumans` | 10, 11, 9 | any human with id A is within `range` of any human with id B | 20 |
-| 14 | `FindHumansByVehicles` | 12, 10, 9 | any vehicle with id A is within `range` of any human with id B | 0 \* |
-| 15 | `FindVehiclesByVehicles` | 12, 13, 9 | vehicle-to-vehicle range test | 0 \* |
+| 14 | `FindHumansByVehicles` | 12, 10, 9 | any vehicle with id A is within `range` of any human with id B | 0 |
+| 15 | `FindVehiclesByVehicles` | 12, 13, 9 | vehicle-to-vehicle range test | 0 |
 | 16 | `FindHousesByHumans` | 10, 14, 9 | any human with id A is within `range` of any house with id B | 0 |
-| 17 | `FindHousesByVehicles` | 12, 14, 9 | vehicle-to-house range test | 0 \* |
+| 17 | `FindHousesByVehicles` | 12, 14, 9 | vehicle-to-house range test | 0 |
 | 18 | `HumansDied` | 10 | no living human carries the id | 326 |
 | 19 | `VehiclesDied` | 12 | no vehicle carries the id | 1 |
 | 20 | `HousesDied` | 14 | no house carries the id | 41 |
@@ -223,7 +223,7 @@ trade ledger); the rest no map writes.
 | 30 | `PayTribute` | 28 | the tribute slot is open and paid: fresh from `CreateTribute` with nothing demanded, or paid by its owner (reading) | 702 |
 | 31 | `Population` | 1, 7 | the player has at least `amount` humans of any age | 71 |
 | 32 | `PlayerSeen` | 1, 2 | the first player has seen the second | 140 |
-| 33 | `IsHumanInVehicle` | 10, 12 | every human with the id sits in a vehicle with the vehicle id | 0 \* |
+| 33 | `IsHumanInVehicle` | 10, 12 | every human with the id is aboard a vehicle with the vehicle id; nobody with the id holds | 0 |
 | 34 | `FindHumansByPlayersMM` | 10, 1, 9 | any human with the id has a human or vehicle of the player within `range` | 14 |
 | 35 | `SoldiersDied` | 1, 7 | at least `amount` soldiers of the player have died | 15 |
 | 36 | `AnimalsDied` | 14 | no animal carries the id | 10 |
@@ -247,10 +247,10 @@ trade ledger); the rest no map writes.
 | 54 | `NumberOfGoodsInArea` | 1, 6, 7, 16, 17, 9 | goods on the ground plus the own stock (as `GoodsGlobal`) of the player's finished houses within `range` reach `amount` | 113 |
 | 55 | `NumberOfHousesInArea` | 1, 15, 7, 16, 17, 9 | the player has at least `amount` finished houses of the type within `range` | 33 |
 | 56 | `NumberOfGoodsInHousesInArea` | 1, 6, 7, 16, 17, 9 | the own stock of the player's finished houses within `range` reaches `amount` | 8 |
-| 57 | `NumberOfVehiclesInArea` | 1, 5, 7, 16, 17, 9 | the player has at least `amount` vehicles of the type within `range` | 4 \* |
+| 57 | `NumberOfVehiclesInArea` | 1, 5, 7, 16, 17, 9 | the player has at least `amount` vehicles of the type within `range`; 0 holds | 4 |
 | 58 | `NumberOfAnimalsInArea` | 1, 3, 7, 16, 17, 9 | the player has at least `amount` animals of the species within `range` | 11 |
 | 59 | `CheckHumanJob` | 10, 4 | any human with the id has the job | 10 |
-| 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount` | 0 \* |
+| 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount`; 0 holds | 0 |
 | 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point is marked as holding a landscape, which a good lying there or a large landscape covering the point also satisfies. Here: a live landscape placement anchored on the point, when the map provides the mutable landscape catalog (approximation) | 0 |
 | 62 | `IsLandscapePlayer10ConstructionSignOnPoint` | 16, 17 | the point carries the `player10 construction sign` landscape | 0 \* |
 
@@ -269,11 +269,11 @@ reports `missionUnsupported` once; the same tickets carry them.
 | --- | --- | --- | --- | --- | --- |
 | 0 | `None` | | nothing | | 306 |
 | 1 | `SetHuman` | 1, 3, 4, 16, 17, 10, 29 | spawn one human at the point with the id and behaviour flags | sim | 2067 |
-| 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle; with the captain flag also spawn its commander at the door and board it | sim | 154 \* |
+| 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle with the id; with the captain flag also spawn its commander of the type's `logiccommander` trade at the door, carrying the vehicle's id, attach and board it, and take the human back when either is refused. Here: the type's first `logicpassenger` trade stands in for `logiccommander`, which the IR does not carry (approximation, see [VEHICLES.md](VEHICLES.md#map-scripts)) | sim | 154 |
 | 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished when the built flag is set and as a construction site when it is 0, with the id; warns when no spot exists | sim | 30 |
 | 4 | `SetLandscape` | 16, 17, 18, 8, 32 | replace the landscape at the point using the named graphic; size and final-flag limitations below | both | 760 |
 | 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver) | sim | 96 |
-| 6 | `RemoveVehicles` | 12 | remove every vehicle with the id | sim | 16 \* |
+| 6 | `RemoveVehicles` | 12 | remove every vehicle with the id, no wreck and no spill; a crew steps onto a door on land | sim | 16 |
 | 7 | `RemoveHouses` | 14 | remove every house with the id | sim | 3 |
 | 8 | `RemoveLandscape` | 16, 17 | remove the live landscape at the point and its sprite | both | 446 |
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
@@ -301,7 +301,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 31 | `AddGoodsToHouses` | 14, 6, 7 | add the amount to every house with the id that has a slot for the good; the write is not capped at the slot | sim | 459 |
 | 32 | `StartSubMission` | 31, 22 | after the pass: resolve campaign/map pair, freeze and embed parent save, load a separate world | both | 46 |
 | 33 | `EndSubMission` | | after the pass: validate and restore the embedded parent world | both | 42 |
-| 34 | `ChangeVehiclesPlayerId` | 12, 1 | hand vehicles with the id to the player | sim | 28 \* |
+| 34 | `ChangeVehiclesPlayerId` | 12, 1 | hand vehicles with the id to the player; the crews keep their owner and their seats | sim | 28 |
 | 35 | `ChangeHousesPlayerId` | 14, 1 | hand houses with the id to the player | sim | 28 |
 | 36 | `SetImportHumanFlag` | 10, 32 | set or clear behaviour bit 7 on humans with the id | sim | 8 |
 | 37 | `EnableJob` | 1, 3, 4 | enable the job for the player's tribe | sim | 21 |
@@ -337,7 +337,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 67 | `ChangeMissionIdOfPlayer` | 1, 10 | give every human of the player the id | sim | 1 |
 | 68 | `SetVertexColor` | 16, 17, 9, 7 | save a palette index on terrain nodes within `range` and update the display | both | 413 |
 | 69 | `RemoveLandscapesInArea` | 16, 17, 9 | remove live landscape placements and their sprites strictly closer than `range` to the point (a range of 0 or 1 clears the point alone); the group removals below include the ring at `range` | both | 11 |
-| 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and the vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range` | sim | 346 |
+| 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and up to 20 vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range`; a vehicle riding a carrier stays. Here: each vehicle lands on the first ring node its walk-block admits, its drive dropped (approximation: the original stacks them and orders each to the point) | sim | 346 |
 | 71 | `SetHouseExtensionLevel` | 14, 7 | rebuild up to 10 houses with the id at the new level in place | sim | 1 |
 | 72 | `InfoClear` | 1, 36 | clear the player's info line `index` (0 to 4); player 20 or -1 clears every player's | sim | 202 |
 | 73 | `InfoShowString` | 1, 36, 27 | show the string on the line; its `%d` prints a zero (reading) | sim | 112 |
@@ -356,17 +356,17 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 86 | `SetHumanX` | 1, 3, 4, 16, 17, 10, 29, 7 | `SetHuman` repeated `count` times | sim | 1371 |
 | 87 | `RemoveHPsOfHousesInAreaX` | 1, 16, 17, 9, 7, 14 | as 81, skipping houses with the id | sim | 0 |
 | 88 | `SetHouseOverlayState` | 14, 37, 32 | toggle a landscape overlay on houses with the id | app | 0 \* |
-| 89 | `AttachHumanToVehicle` | 10, 12 | order humans with the id to board the first vehicle with the vehicle id when allowed | sim | 77 \* |
-| 90 | `DetachHumanFromVehicle` | 10 | order humans with the id to leave their vehicle | sim | 74 \* |
+| 89 | `AttachHumanToVehicle` | 10, 12 | the seat's attach order for every human with the id that the attach gate admits (same owner, allowed trade, free slot), on the first vehicle with the vehicle id | sim | 77 |
+| 90 | `DetachHumanFromVehicle` | 10 | the seat's detach order for every rider with the id | sim | 74 |
 | 91 | `SetHouseBuildForbiddenArea` | 16, 17, 9, 32 | forbid or allow building within `range` | sim | 150 |
 | 92 | `MoveHuman` | 10, 16, 17 | teleport up to 20 humans with the id to the point, then let them settle with a walk order; explores around the destination | sim | 166 |
 | 93 | `SetHouseBehaviourFlag` | 14, 36, 32 | set or clear bit `index` on houses with the id | sim | 113 |
-| 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 \* |
-| 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 \* |
+| 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 |
+| 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove up to 50 vehicles with the id, and their crews first when the flag is set; the presentation callback the original stages around each is not mirrored (open) | sim | 0 |
 | 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | both | 0 |
 | 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on land nodes within `range` (nodes whose cell is not painted water on both triangles, the same mask ships sail by) and update the display | both | 17 |
-| 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 \* |
-| 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 \* |
+| 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles standing on the continent of the point the id, a moored ship judged by its mooring point | sim | 0 |
+| 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 |
 | 100 | `SetRandomChestOnPosition` | 7, 16, 17 | choose a reward from the category mask and drop a wooden chest at the nearest free point on the same landmass, searching through radius 9 | sim | 41 |
 | 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, starting `range` steps north-west of it and turning east, south-east, south-west, west, north-west, north-east with `range` steps a side, and on every `index`th step of each side (the count restarts per side; a range or index of 0 reads as 1) place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points and the marker overlay, which borrows the GUI marker's first bob (approximation) | both | 0 |
 | 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | both | 7 |

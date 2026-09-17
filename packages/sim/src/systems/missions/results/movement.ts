@@ -12,6 +12,7 @@ import { moveVehicle } from '../../vehicles/movement.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHumans, missionVehicles, ownedBy, withinRange } from '../targets.js';
+import { teleportVehiclesInArea } from './vehicles.js';
 
 /** How many humans one teleport line may carry, whatever it addresses (reading: the original fills a
  *  20-entry buffer and stops). */
@@ -58,9 +59,10 @@ export function teleportScriptedHumans(pass: MissionPass, id: number, point: Hal
 }
 
 /**
- * Teleport up to {@link TELEPORT_CAP} of the player's free humans from around one point to another.
- * The line is inert unless the destination lies farther than `range` from the source, which is what
- * keeps a repeating mission from shuffling the same crowd on the spot (reading).
+ * Teleport up to {@link TELEPORT_CAP} of the player's free humans, and its vehicles standing in the area,
+ * from around one point to another. The line is inert unless the destination lies farther than `range`
+ * from the source, which is what keeps a repeating mission from shuffling the same crowd on the spot
+ * (reading).
  */
 export function moveUnitsInArea(
   pass: MissionPass,
@@ -71,8 +73,8 @@ export function moveUnitsInArea(
   if (hexDistance(op.point, destination) <= op.range || !landable(pass, destination)) return;
   const { world } = pass;
   const claimed = new Set<NodeId>();
-  // The original skips a human a vehicle carries; with no vehicles here, standing inside a building
-  // is the nearest thing to a human this line cannot pick up.
+  // A human a vehicle carries has no position and is never seen here, as the original skips it;
+  // standing inside a building is treated the same way.
   const crowd = world
     .canonicalQuery(Person, Position)
     .filter(
@@ -80,6 +82,7 @@ export function moveUnitsInArea(
         !world.has(e, Resting) && ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range),
     );
   for (const e of crowd.slice(0, TELEPORT_CAP)) teleportAndSettle(pass, e, destination, claimed);
+  teleportVehiclesInArea(pass, op.player, op.point, op.range, destination);
 }
 
 /**

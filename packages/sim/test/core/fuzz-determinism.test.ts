@@ -9,6 +9,7 @@ import {
   type Paper,
   Settler,
   Sheltering,
+  VEHICLE_STANCES,
 } from '../../src/components/index.js';
 import { COMMAND_ISSUER } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -354,7 +355,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(59);
+  const roll = rng.int(67);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -857,6 +858,54 @@ function nextCommand(rng: Rng): Command {
     case 58:
       // The stop twin: no drive stands in this stream, so every roll is the no-drive skip.
       return { kind: 'stopVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 59:
+      // An attach at two random ids: a crew-trade settler on a cart or ship (seated, walking to the
+      // door, boarding on the next goto), a trade the type refuses, another owner's vehicle, and the
+      // wrong-kind and dead ids; every refusal note must hash and replay like the seat itself.
+      return {
+        kind: 'attachToVehicle',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
+    case 60:
+      // The detach twin at a random id: a seated rider steps off on the door, the rest are skips.
+      return { kind: 'detachFromVehicle', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 61:
+      // Unload people at a random id: a crewed vehicle empties, an empty one and a non-vehicle skip.
+      return { kind: 'unloadPeople', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 62:
+      // A dock order at a random id and tile: the ships (no commander, or a held point while the crew
+      // boards), the carts (not a ship), and every skip; the ring search must replay exactly.
+      return { kind: 'dockVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    case 63:
+      // A wanted amount on a random id: the hold's clamp, the no-carrier note, an uncarriable good.
+      return {
+        kind: 'setVehicleWanted',
+        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        goodType: pick(rng, [RESOURCE_GOOD, FOOD_GOOD, INVALID_TYPE]),
+        amount: rng.int(20) - 2, // a negative ask hits the floor at 0
+      };
+    case 64:
+      // The clear-all twin.
+      return { kind: 'clearVehicleWanted', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 65:
+      // A stance on a random id: the guard position moves under a cart as well as a siege engine.
+      return {
+        kind: 'setVehicleStance',
+        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        stance: pick(rng, VEHICLE_STANCES),
+      };
+    case 66:
+      // An attack order on a random id at a random unit or tile: no armed vehicle stands in this
+      // stream, so every roll is the unarmed skip, past the target checks that must still replay.
+      return {
+        kind: 'attackWithVehicle',
+        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        target:
+          rng.int(2) === 0
+            ? { kind: 'entity', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity }
+            : { kind: 'ground', hx: x, hy: y },
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

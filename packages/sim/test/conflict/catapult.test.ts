@@ -319,6 +319,35 @@ describe('the clip and its target', () => {
     expect(s.world.get(catapult, Vehicle).attack).toBeNull();
   });
 
+  it('holds an attack ordered while the commander still walks to the door, and fires once it is in', () => {
+    const s = sim(grass(40, 10));
+    const catapult = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 6,
+      y: 8,
+      tribe: VIKING,
+      owner: P1,
+    });
+    if (catapult === null) throw new Error('catapult');
+    const commander = fighterAt(s, 2, 8, P1);
+    s.world.mut(commander, Stance).mode = MILITARY_MODE.IGNORE;
+    s.world.mut(commander, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.CATAPULT, MASTER_SKILL);
+    s.enqueue(playerCommand(P1, { kind: 'attachToVehicle', entity: commander, vehicle: catapult }));
+    s.run(1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    order(s, catapult, P1, house);
+    s.run(1);
+    // Seated but outside: the order waits on the boarding instead of being dropped by the combat pass.
+    expect(s.world.get(catapult, Vehicle).task).toBe('waitsForHuman');
+    expect(s.world.get(catapult, Vehicle).attack).toMatchObject({
+      ordered: true,
+      target: { kind: 'entity', entity: house },
+    });
+    const launches = collect(s, SHOT_TICKS * 2, ['projectileLaunched']);
+    expect(launches.length).toBeGreaterThan(0);
+    expect(s.world.get(catapult, Vehicle).attack).toMatchObject({ ordered: true });
+  });
+
   it('refuses an attack order on an uncommanded catapult with the no-commander note', () => {
     const s = sim(grass(40, 10));
     const catapult = createVehicle(s.world, ctxOf(s), {

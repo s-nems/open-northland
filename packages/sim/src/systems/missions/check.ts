@@ -55,6 +55,18 @@ import {
   playerDiedHolds,
   playerSeenHolds,
 } from './goals/standing.js';
+import {
+  goodsInVehiclesHolds,
+  goodsInVehiclesInAreaHolds,
+  humansInVehicleHolds,
+  playerVehicleNearPoint,
+  vehiclesExploredHolds,
+  vehiclesInAreaHolds,
+  vehiclesNearHouses,
+  vehiclesNearHumans,
+  vehiclesNearPoint,
+  vehiclesNearVehicles,
+} from './goals/vehicles.js';
 import type { MissionPass } from './pass.js';
 import { setMissionActive } from './pass.js';
 import { executeResult } from './results/index.js';
@@ -163,7 +175,27 @@ function goalHolds(
     case 'FindPosByHumans':
       return humansNearPoint(pass.world, op);
     case 'FindPosByPlayersMapMoveable':
-      return playerNearPoint(pass.world, op);
+      return (
+        playerNearPoint(pass.world, op) || playerVehicleNearPoint(pass.world, op.player, op.point, op.range)
+      );
+    case 'FindVehicles':
+      return vehiclesExploredHolds(pass, op);
+    case 'FindPosByVehicles':
+      return vehiclesNearPoint(pass.world, op);
+    case 'FindHumansByVehicles':
+      return vehiclesNearHumans(pass.world, op);
+    case 'FindVehiclesByVehicles':
+      return vehiclesNearVehicles(pass.world, op);
+    case 'FindHousesByVehicles':
+      return vehiclesNearHouses(pass.world, op);
+    case 'IsHumanInVehicle':
+      return humansInVehicleHolds(pass.world, op.humanId, op.vehicleId);
+    case 'GoodsInVehicles':
+      return goodsInVehiclesHolds(pass, op.vehicleId, op.good, op.amount);
+    case 'NumberOfVehiclesInArea':
+      return vehiclesInAreaHolds(pass.world, op);
+    case 'NumberOfGoodsInVehiclesInArea':
+      return goodsInVehiclesInAreaHolds(pass, op);
     case 'FindHumansByHumans':
       return humansNearHumans(pass.world, op);
     case 'FindHumansByPlayersMM':
