@@ -540,7 +540,7 @@ button.medallion:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 0 10px 2px;
+  padding: 0 0 4px 6px;
   text-shadow: 0 1px 4px #000;
 }
 .notice-count {
@@ -612,18 +612,40 @@ button.medallion:hover {
   overflow: hidden;
   clip-path: inset(50%);
 }
+.notice-empty {
+  margin: 2px 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-shadow: 0 1px 4px #000;
+}
+.notices[data-state="empty"] .notice-count {
+  opacity: 0.6;
+}
 .notice-list {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  /* Room for the 2 px focus ring at 3 px offset inside the scroll clip. */
+  padding: 6px 8px 8px 6px;
+  list-style: none;
   overflow: auto;
-  padding: 2px 8px 8px 0;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
+}
+.notices.overflowing .notice-list {
+  mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
+}
+.notice {
+  position: relative;
+  margin-bottom: 7px;
 }
 .notice-card {
   position: relative;
   width: 100%;
   min-height: 76px;
-  margin-bottom: 7px;
-  padding: 9px 12px 9px 70px;
+  padding: 9px 12px 9px 72px;
   text-align: left;
   border: 0;
   border-radius: 4px;
@@ -642,10 +664,14 @@ button.medallion:hover {
 .notice-card:before {
   content: "";
   position: absolute;
-  inset: 5px 4px 5px 64px;
+  inset: 5px 4px 5px 66px;
   border-top: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
   border-bottom: 1px solid #0006;
   pointer-events: none;
+}
+/* Urgent: the hairline takes the seal's wax colour, so the priority reads before the seal is found. */
+.notice.danger .notice-card:before {
+  border-top-color: color-mix(in srgb, var(--wax-danger) 70%, transparent);
 }
 .notice-card:hover {
   transform: translateX(3px);
@@ -657,28 +683,106 @@ button.medallion:hover {
     transparent
   );
 }
+/* Arrival: a short slide in; an urgent seal pulses three times, then rests. */
+.notice.fresh .notice-card {
+  animation: notice-in 0.18s ease-out;
+}
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+@keyframes seal-pulse {
+  from {
+    box-shadow:
+      0 0 0 1.5px #0d100d,
+      0 0 0 0 #a8412fcc,
+      inset 0 -2px 3px #0006;
+  }
+  to {
+    box-shadow:
+      0 0 0 1.5px #0d100d,
+      0 0 0 10px transparent,
+      inset 0 -2px 3px #0006;
+  }
+}
 .notice-card > .settler-preview {
   position: absolute;
-  left: -7px;
+  left: -4px;
   bottom: 0;
-  width: 80px;
+  width: 70px;
   height: 80px;
+  object-fit: cover;
   pointer-events: none;
   border-radius: 8px;
   border: 1px solid #c9a26233;
   background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
 }
+/* A subject with no body to show: a building, a lost settler, a seat, a found item. */
+.settler-preview.glyph {
+  display: grid;
+  place-items: center;
+  color: var(--bronze);
+}
+.settler-preview.glyph svg {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.settler-preview.glyph.dim {
+  color: var(--muted);
+  background: radial-gradient(ellipse at 50% 65%, #ffffff10, transparent 75%), #10171588;
+}
+.notice.gone .notice-card small {
+  color: var(--muted);
+}
 .notice-card b {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  padding-right: 12px;
   font-size: 13px;
+  line-height: 1.2;
   color: var(--text-hi);
 }
 .notice-card small {
   display: block;
   margin-top: 3px;
-  padding-right: 18px;
+  padding-right: 12px;
+  overflow: hidden;
   font-size: 12px;
+  line-height: 1.25;
   color: #ddd5c1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* A long text (unlock lists) unfolds on the card instead of opening a window. */
+.notice.expand .notice-card small {
+  padding-right: 22px;
+}
+.notice.expand .notice-card:after {
+  content: "";
+  position: absolute;
+  right: 9px;
+  bottom: 28px;
+  width: 7px;
+  height: 7px;
+  border: solid var(--bronze);
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg);
+  transition: transform 0.12s;
+}
+.notice.expand .notice-card[aria-expanded="true"]:after {
+  transform: rotate(225deg);
+}
+.notice.expand .notice-card[aria-expanded="true"] small {
+  white-space: normal;
 }
 .seal {
   position: absolute;
@@ -694,18 +798,22 @@ button.medallion:hover {
     inset 0 -2px 3px #0006;
   z-index: 1;
 }
-.notice-card.warning .seal {
+.notice.warning .seal {
   background-color: var(--wax-warn);
 }
-.notice-card.danger .seal {
+.notice.danger .seal {
   background-color: var(--wax-danger);
+}
+.notice.fresh.danger .seal {
+  animation: seal-pulse 1.1s ease-out 3;
 }
 .go {
   position: absolute;
   right: 6px;
-  top: 8px;
+  top: 50%;
   width: 14px;
   height: 14px;
+  margin-top: -7px;
   color: var(--bronze);
   opacity: 0;
   transition: opacity 0.12s;
@@ -718,6 +826,67 @@ button.medallion:hover {
 .notice-card:hover .go,
 .notice-card:focus-visible .go {
   opacity: 1;
+}
+.notice-dismiss {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #0009;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.notice-dismiss svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.notice:hover .notice-dismiss,
+.notice:focus-within .notice-dismiss {
+  opacity: 1;
+}
+.notice-dismiss:hover,
+.notice-dismiss:focus-visible {
+  color: var(--text-hi);
+  background: #000d;
+}
+/* How many cards sit below the fold; a press scrolls one screen of them up. */
+.notice-more {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--deep) 94%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 6px #000a;
+}
+.notice-more[hidden] {
+  display: none;
+}
+.notice-more svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--bronze);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ---------- minimap ---------- */
@@ -1726,7 +1895,9 @@ button.medallion:hover {
   * {
     transition: none;
   }
-  .settler-preview {
+  .settler-preview,
+  .notice-card,
+  .seal {
     animation: none;
   }
 }

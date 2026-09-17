@@ -56,13 +56,19 @@ document.addEventListener('click', (event) => {
     document.documentElement.lang = button.dataset.lang;
     press('lang', button.dataset.lang);
   }
-  if (button.dataset.priority) {
-    press('priority', button.dataset.priority);
-    document.querySelector('.priority em').textContent = button.dataset.priority;
+  if (button.dataset.priority) showNotices(notices.dataset.state, button.dataset.priority);
+  if (button.dataset.notices) {
+    showNotices(button.dataset.notices, button.dataset.notices === 'urgent' ? 'Tylko pilne' : 'Wszystkie');
+    press('notices', button.dataset.notices);
   }
+  if (button.matches('.notice-dismiss')) dismissNotice(button.closest('.notice'));
+  if (button.matches('.notice-card[aria-expanded]'))
+    button.setAttribute('aria-expanded', String(button.getAttribute('aria-expanded') !== 'true'));
+  if (button === noticeMore) noticeList.scrollBy({ top: noticeList.clientHeight - 40, behavior: 'smooth' });
   if (button.closest('.speed')) {
     for (const item of button.closest('.speed').querySelectorAll('button'))
       item.setAttribute('aria-pressed', String(item === button));
+    paused = button.getAttribute('aria-label') === 'Pauza';
   }
   if (button === materials) showResource(resourceTip.hidden);
   if (button.matches('.build .icon-button')) showBuild(false);
@@ -80,11 +86,69 @@ resource.addEventListener('focusout', (event) => {
   if (!resource.contains(event.relatedTarget)) showResource(false);
 });
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Delete' && event.target.closest('.notice')) {
+    if (event.shiftKey) for (const item of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(item);
+    else dismissNotice(event.target.closest('.notice'));
+    return;
+  }
   if (event.key !== 'Escape') return;
   showResource(false);
   showBuild(false);
   buildNav.focus();
 });
+
+// Notifications: review states, the priority filter, dismissal and the below-the-fold badge.
+const notices = document.querySelector('.notices');
+const noticeList = notices.querySelector('.notice-list');
+const noticeMore = notices.querySelector('.notice-more');
+const noticeEmpty = notices.querySelector('.notice-empty');
+const noticeCount = notices.querySelector('.notice-count');
+const LEVEL_OF_FILTER = { Wszystkie: 0, 'Ważne i pilne': 1, 'Tylko pilne': 2 };
+function noticeLevel(item) {
+  return item.classList.contains('danger') ? 2 : item.classList.contains('warning') ? 1 : 0;
+}
+function refreshNoticeCount() {
+  const shown = noticeList.querySelectorAll('.notice:not([hidden])').length;
+  noticeCount.querySelector('[data-count]').textContent = shown;
+  noticeCount.title = `Wiadomości: ${shown}`;
+  noticeEmpty.hidden = shown > 0;
+  notices.dataset.state = shown === 0 ? 'empty' : notices.dataset.state;
+  updateNoticeMore();
+}
+function showNotices(state, filter) {
+  notices.dataset.state = state;
+  press('priority', filter);
+  notices.querySelector('.priority em').textContent = filter;
+  const level = LEVEL_OF_FILTER[filter];
+  for (const item of noticeList.querySelectorAll('.notice')) {
+    const inState = state === 'overflow' || (state !== 'empty' && !item.classList.contains('more'));
+    item.hidden = !(inState && noticeLevel(item) >= level);
+  }
+  noticeList.scrollTop = 0;
+  refreshNoticeCount();
+}
+function dismissNotice(item) {
+  item.hidden = true;
+  refreshNoticeCount();
+}
+function updateNoticeMore() {
+  const fold = noticeList.scrollTop + noticeList.clientHeight;
+  let below = 0;
+  for (const item of noticeList.querySelectorAll('.notice:not([hidden])')) if (item.offsetTop + 24 > fold) below++;
+  noticeMore.hidden = below === 0;
+  noticeMore.querySelector('[data-more]').textContent = below;
+  notices.classList.toggle('overflowing', noticeList.scrollHeight > noticeList.clientHeight + 1);
+}
+noticeList.addEventListener('scroll', updateNoticeMore);
+noticeList.addEventListener('contextmenu', (event) => {
+  const item = event.target.closest('.notice');
+  if (!item) return;
+  event.preventDefault();
+  if (event.shiftKey) for (const each of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(each);
+  else dismissNotice(item);
+});
+new ResizeObserver(updateNoticeMore).observe(noticeList);
+showNotices('mixed', 'Wszystkie');
 
 // Original decoded art is local review evidence, never a repository asset.
 const characterRoot = new URL('/review-characters/', location.href);
@@ -132,6 +196,15 @@ async function character(job) {
 }
 const animations = [];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let paused = false;
+// Only a preview on screen paints; a card scrolled under the fold or hidden costs nothing.
+const visible = new WeakSet();
+const watcher = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (entry.isIntersecting) visible.add(entry.target);
+    else visible.delete(entry.target);
+  }
+});
 function canvasFor(element, kind) {
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS;
@@ -169,7 +242,8 @@ async function mountCharacter(slot) {
     }
   };
   paint(0);
-  animations.push(paint);
+  watcher.observe(canvas);
+  animations.push({ canvas, paint });
 }
 async function mountGoods() {
   const response = await fetch('/review-goods/manifest.json');
@@ -209,8 +283,14 @@ Promise.allSettled(pending).then((results) => {
   if (failures)
     status.textContent += ` Nie załadowano ${failures} podglądów; uruchom lokalny serwer makiety z materiałami przeglądu.`;
 });
+// The clock stops with the pause, so a settler holds its current frame instead of walking on.
+let clock = 0;
+let last = 0;
 function animate(time) {
-  if (!document.hidden) for (const paint of animations) paint(time);
+  if (!paused) clock += time - last;
+  last = time;
+  if (!document.hidden && !paused)
+    for (const { canvas, paint } of animations) if (visible.has(canvas)) paint(clock);
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
