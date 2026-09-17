@@ -121,7 +121,7 @@ export class WorldRenderer {
   setGraphicsEnhancements(next: WorldEnhancements): void {
     this.enhancements = { ...next };
     this.textureCache.setSoftShadows(next.softShadows);
-    setPixelArtMagnification(next.enhancedSampling ? this.pixelArtScaler : 'bilinear');
+    setPixelArtMagnification(next.enhancedSampling ? this.pixelArtScaler : 'off');
     this.terrain.setEnhancedSampling(next.enhancedSampling);
     this.terrain.setEnvironmentMotion(next.environmentMotion);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);

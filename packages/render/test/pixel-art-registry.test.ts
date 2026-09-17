@@ -9,7 +9,7 @@ import {
 } from '../src/gpu/pixel-art-registry.js';
 
 // The mode is module-global and the worker shares modules across files.
-afterEach(() => setPixelArtMagnification('bilinear'));
+afterEach(() => setPixelArtMagnification('off'));
 
 describe('pixel-art registry', () => {
   it('magnifies only textures minted from a marked page', () => {
@@ -32,13 +32,15 @@ describe('pixel-art registry', () => {
     other.destroy();
   });
 
-  it('maps each scaler onto the shader mode, with the sampler filter at 0', () => {
+  it('maps off and each scaler onto the compiled shader mode', () => {
     expect(pixelArtMagnifyMode()).toBe(0);
     setPixelArtMagnification('xbr');
-    expect(pixelArtMagnifyMode()).toBe(2);
+    expect(pixelArtMagnifyMode()).toBe(3);
     setPixelArtMagnification('sharp');
-    expect(pixelArtMagnifyMode()).toBe(1);
+    expect(pixelArtMagnifyMode()).toBe(2);
     setPixelArtMagnification('bilinear');
+    expect(pixelArtMagnifyMode()).toBe(1);
+    setPixelArtMagnification('off');
     expect(pixelArtMagnifyMode()).toBe(0);
   });
 });

@@ -191,10 +191,10 @@ Original pixel art magnifies through an edge-directed xBR pass, so diagonal outl
 cuts instead of stairs or blur; it converges on plain bilinear as texels reach pixel size. Characters
 and animals get it in the paletted shader on palette-resolved colours; buildings, trees, goods and
 other frames the world's texture cache mints from nearest-loaded atlas pages get it through the `world`
-batcher the world sprites opt into, which also averages a frame-clamped 2x2 footprint below texel size.
-HUD icons, own art, ground and flat decor batches sample as before. `scaler=bilinear|sharp|xbr`
-overrides the magnification for one session: `bilinear` is the sampler's own filter, `sharp` keeps whole
-texels and anti-aliases only their boundaries.
+batcher the world sprites opt into, which also averages a frame-clamped 2x2 footprint below texel size
+while the switch is on. HUD icons, own art, ground and flat decor batches sample as before.
+`scaler=bilinear|sharp|xbr` overrides the magnification for one session: `bilinear` keeps the sampler's
+own filter plus that minification, `sharp` keeps whole texels and anti-aliases only their boundaries.
 At close zoom, original terrain magnifies with a tile-bounded Catmull-Rom bicubic filter instead of the
 sampler's bilinear. Finished buildings use isolated native-size frames with mipmaps
 and similarly bounded interior detail; alpha, anchors and picking bounds stay unchanged. The building

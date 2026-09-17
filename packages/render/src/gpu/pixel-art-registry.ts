@@ -3,7 +3,9 @@ import type { Texture, TextureSource } from 'pixi.js';
 /** How original pixel art magnifies under enhanced sampling; `bilinear` is the sampler's own filter. */
 export type PixelArtScaler = 'bilinear' | 'sharp' | 'xbr';
 export const DEFAULT_PIXEL_ART_SCALER: PixelArtScaler = 'xbr';
-const SCALER_MODES: Readonly<Record<PixelArtScaler, number>> = { bilinear: 0, sharp: 1, xbr: 2 };
+/** `off` is enhanced sampling disabled: world sprites sample exactly as Pixi's default batcher. */
+export type WorldMagnification = PixelArtScaler | 'off';
+const MAGNIFY_MODES: Readonly<Record<WorldMagnification, number>> = { off: 0, bilinear: 1, sharp: 2, xbr: 3 };
 
 /**
  * Atlas pages loaded as authored pixel art, and the textures the world's caches mint from them. A
@@ -27,11 +29,11 @@ export function isMagnifiedTexture(texture: Texture): boolean {
   return magnifiedTextures.has(texture);
 }
 
-/** The mode as the batch shader reads it; one value for every renderer on the page. */
-let magnifyMode = SCALER_MODES.bilinear;
+/** The mode the batch shader is compiled for; one value for every renderer on the page. */
+let magnifyMode = MAGNIFY_MODES.off;
 
-export function setPixelArtMagnification(scaler: PixelArtScaler): void {
-  magnifyMode = SCALER_MODES[scaler];
+export function setPixelArtMagnification(mode: WorldMagnification): void {
+  magnifyMode = MAGNIFY_MODES[mode];
 }
 
 export function pixelArtMagnifyMode(): number {

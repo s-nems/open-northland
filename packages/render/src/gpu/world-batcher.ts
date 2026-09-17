@@ -11,7 +11,6 @@ import {
   GlProgram,
   getBatchSamplersUniformGroup,
   Shader,
-  UniformGroup,
   type ViewContainer,
 } from 'pixi.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from './pixel-art-magnify.js';
@@ -20,28 +19,34 @@ import { isMagnifiedTexture, pixelArtMagnifyMode } from './pixel-art-registry.js
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
 
+/** Renames each batchable record Pixi stores on a world sprite; shared by every wrapped sprite. */
+const renameBatcher: ProxyHandler<object> = {
+  set(target, key, value: unknown) {
+    if (typeof value === 'object' && value !== null && 'batcherName' in value) {
+      (value as { batcherName: string }).batcherName = WORLD_BATCHER;
+    }
+    return Reflect.set(target, key, value);
+  },
+};
+
+function renamed<D extends object>(data: D): D {
+  return new Proxy(data, renameBatcher as ProxyHandler<D>);
+}
+
 /**
  * Route a sprite's batches through the world batcher. Pixi mints the sprite's batchable record lazily
- * per renderer into `_gpuData`, always named `default`; the wrapper renames each record as it lands
- * and survives Pixi replacing the whole map on `unload()`.
+ * per renderer into `_gpuData`, always named `default`; the proxy renames each record as it lands
+ * and is reinstalled when Pixi replaces the whole map on `unload()`.
  */
 export function worldBatched<T extends ViewContainer>(sprite: T): T {
-  const wrap = (data: T['_gpuData']): T['_gpuData'] =>
-    new Proxy(data, {
-      set(target, key, value: unknown) {
-        if (typeof value === 'object' && value !== null && 'batcherName' in value) {
-          (value as { batcherName: string }).batcherName = WORLD_BATCHER;
-        }
-        return Reflect.set(target, key, value);
-      },
-    });
-  let data = wrap(sprite._gpuData);
+  let data = renamed(sprite._gpuData);
   Object.defineProperty(sprite, '_gpuData', {
     configurable: true,
     enumerable: true,
     get: () => data,
-    set: (next: T['_gpuData']) => {
-      data = wrap(next);
+    set: (next: T['_gpuData'] | null) => {
+      // Pixi only ever assigns a fresh map; a null would be a teardown, left as a no-op.
+      if (next !== null) data = renamed(next);
     },
   });
   return sprite;
@@ -61,10 +66,7 @@ export const WORLD_ATTRIBUTE_OFFSETS = {
 
 /** The batcher class, its geometry and shaders are defined on first install, not at import, so a
  *  test that mocks `pixi.js` can still load this module. */
-export interface WorldBatcherLike extends Batcher {
-  readonly geometry: Geometry;
-}
-type WorldBatcherClass = new (options: BatcherOptions) => WorldBatcherLike;
+type WorldBatcherClass = new (options: BatcherOptions) => Batcher;
 let worldBatcherClass: WorldBatcherClass | undefined;
 
 function defineWorldBatcher(): WorldBatcherClass {
@@ -142,7 +144,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     return lines.join('\n');
   }
 
-  function fragmentSource(maxTextures: number): string {
+  function fragmentSource(maxTextures: number, mode: number): string {
     return /* glsl */ `#version 300 es
   precision highp float;
   in vec4 vColor;
@@ -152,7 +154,8 @@ function defineWorldBatcher(): WorldBatcherClass {
   in vec4 vFrame;
   out vec4 finalColor;
   uniform sampler2D uTextures[${maxTextures}];
-  uniform float uWorldMagnify; // 0 sampler filter / 1 sharp / 2 xbr
+  // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
+  const float WORLD_MAGNIFY = ${mode}.0;
   vec2 texSize; // the bound page's size, resolved once per fragment
 
   vec4 sampleTexture(vec2 uv) {
@@ -184,11 +187,11 @@ function defineWorldBatcher(): WorldBatcherClass {
     float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
     vec2 uvFootprint = fwidth(vUV);
     vec4 outColor;
-    if (vMagnify < 0.5) {
+    if (vMagnify < 0.5 || WORLD_MAGNIFY < 0.5) {
       outColor = sampleTexture(vUV);
     } else if (texelsPerPixel < 1.0) {
-      outColor = uWorldMagnify > 1.5 ? magnifyXbr(p, texelsPerPixel)
-               : uWorldMagnify > 0.5 ? magnifySharp(p, texelsPerPixel)
+      outColor = WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel)
+               : WORLD_MAGNIFY > 1.5 ? magnifySharp(p, texelsPerPixel)
                : sampleTexture(vUV);
     } else {
       // Minified: a 2x2 footprint over the sampler's own filter reduces sparkle, clamped to the frame.
@@ -205,8 +208,8 @@ function defineWorldBatcher(): WorldBatcherClass {
   }`;
   }
 
-  // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, and a GL
-  // uniform lives in its program, so each mode gets its own compiled program with the mode baked in.
+  // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, so the mode
+  // is a compile-time constant instead: one program per mode, shared by every batcher on the page.
   const shaders = new Map<string, Shader>();
 
   function shaderFor(maxTextures: number, mode: number): Shader {
@@ -217,12 +220,9 @@ function defineWorldBatcher(): WorldBatcherClass {
         glProgram: new GlProgram({
           name: `world-batch-${mode}`,
           vertex: VERTEX,
-          fragment: fragmentSource(maxTextures),
+          fragment: fragmentSource(maxTextures, mode),
         }),
-        resources: {
-          batchSamplers: getBatchSamplersUniformGroup(maxTextures),
-          worldMagnify: new UniformGroup({ uWorldMagnify: { value: mode, type: 'f32' } }),
-        },
+        resources: { batchSamplers: getBatchSamplersUniformGroup(maxTextures) },
       });
       shaders.set(key, shader);
     }
@@ -241,7 +241,7 @@ function defineWorldBatcher(): WorldBatcherClass {
 
   /** Pixi's default batcher plus two vertex attributes: whether the element's texture is registered
    *  for magnification, and its frame's UV box. */
-  class WorldBatcher extends Batcher implements WorldBatcherLike {
+  class WorldBatcher extends Batcher {
     static extension = { type: [ExtensionType.Batcher], name: WORLD_BATCHER } as const;
 
     override geometry = new WorldBatchGeometry();
@@ -295,20 +295,26 @@ function defineWorldBatcher(): WorldBatcherClass {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
       const magnify = isMagnifiedTexture(texture) ? 1 : 0;
       writeFrame(texture);
-      // Corners in Pixi's quad order: top-left, top-right, bottom-right, bottom-left.
-      for (let k = 0; k < 4; k++) {
-        const x = k === 0 || k === 3 ? minX : maxX;
-        const y = k < 2 ? minY : maxY;
+      const write = (x: number, y: number, u: number, v: number): void => {
         float32View[index++] = a * x + c * y + tx;
         float32View[index++] = d * y + b * x + ty;
-        float32View[index++] = k === 0 ? uvs.x0 : k === 1 ? uvs.x1 : k === 2 ? uvs.x2 : uvs.x3;
-        float32View[index++] = k === 0 ? uvs.y0 : k === 1 ? uvs.y1 : k === 2 ? uvs.y2 : uvs.y3;
+        float32View[index++] = u;
+        float32View[index++] = v;
         uint32View[index++] = argb;
         uint32View[index++] = textureIdAndRound;
         float32View[index++] = magnify;
         float32View.set(frame, index);
         index += 4;
-      }
+      };
+      write(minX, minY, uvs.x0, uvs.y0);
+      write(maxX, minY, uvs.x1, uvs.y1);
+      write(maxX, maxY, uvs.x2, uvs.y2);
+      write(minX, maxY, uvs.x3, uvs.y3);
+    }
+
+    /** The shaders are shared across batchers and outlive any one of them. */
+    override destroy(): void {
+      super.destroy();
     }
   }
 
@@ -318,7 +324,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     get(this: WorldBatcher) {
       return shaderFor(this.maxTextures, pixelArtMagnifyMode());
     },
-    set() {},
+    set() {}, // Pixi's base class never assigns it; the mode owns the choice
   });
 
   return WorldBatcher;

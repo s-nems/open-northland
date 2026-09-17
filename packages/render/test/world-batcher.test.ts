@@ -19,6 +19,9 @@ describe('worldBatched', () => {
     sprite._gpuData[2] = later;
     expect(later.batcherName).toBe('world');
     expect(sprite._gpuData[1]).toBeUndefined();
+    // Pixi's GC hash clears a slot with null; the rename must not touch it.
+    sprite._gpuData[2] = null as unknown as BatchableSprite;
+    expect(sprite._gpuData[2]).toBeNull();
     sprite.destroy();
   });
 });
