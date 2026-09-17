@@ -192,7 +192,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         : frameEvents.filter((ev) => !('at' in ev) || fogGates.seesNode(ev.at.hx, ev.at.hy));
     // Before the renderer's render: the panel's screen-space sprites carry the canvas resolution in
     // their shader.
-    toolPanel.controller.update(() => hudFor(snap));
+    toolPanel.controller.update(() => hudFor(snap), hudModelFor(snap));
     // An open briefing's map pictures, painted over the window during `renderer.update`.
     renderer.setMapViews(toolPanel.controller.mapViews());
     // Unfiltered: the notes are the seat's own affairs, and its own settler in the fog still starves.

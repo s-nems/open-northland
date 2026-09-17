@@ -13,10 +13,16 @@ function settler(
   player: number,
   jobType: number | null,
   tribe = VIKING,
+  female = false,
 ): WorldSnapshot['entities'][number] {
   return {
     id,
-    components: { Settler: { tribe, jobType }, Person: { person: true }, Owner: { player } },
+    components: {
+      Settler: { tribe, jobType },
+      Person: { person: true },
+      Owner: { player },
+      ...(female ? { Female: {} } : {}),
+    },
   };
 }
 
@@ -85,7 +91,7 @@ describe('buildHud', () => {
     // marker, as it is in the sim.
     const hud = buildHud(snapshotOf([settler(1, 0, 5), creature(2, 0), creature(3, 0)]), 0);
     expect(hud.population).toBe(1);
-    expect(hud.jobs).toEqual([{ jobType: 5, count: 1 }]);
+    expect(hud.jobs).toEqual([{ jobType: 5, count: 1, female: 0 }]);
   });
 
   it('leaves a neutral entity out: an unowned store belongs to no seat', () => {
@@ -99,9 +105,9 @@ describe('buildHud', () => {
       0,
     );
     expect(hud.jobs).toEqual([
-      { jobType: IDLE_JOB, count: 1 }, // -1 sorts first
-      { jobType: 1, count: 1 },
-      { jobType: 5, count: 2 },
+      { jobType: IDLE_JOB, count: 1, female: 0 }, // -1 sorts first
+      { jobType: 1, count: 1, female: 0 },
+      { jobType: 5, count: 2, female: 0 },
     ]);
   });
 
@@ -109,8 +115,26 @@ describe('buildHud', () => {
     // The fold must be nullish (`??`), not `||`: a jobType of 0 is a real id.
     const hud = buildHud(snapshotOf([settler(1, 0, 0), settler(2, 0, null)]), 0);
     expect(hud.jobs).toEqual([
-      { jobType: IDLE_JOB, count: 1 },
-      { jobType: 0, count: 1 },
+      { jobType: IDLE_JOB, count: 1, female: 0 },
+      { jobType: 0, count: 1, female: 0 },
+    ]);
+  });
+
+  it('tallies the Female marker inside each job bucket, for the player only', () => {
+    const hud = buildHud(
+      snapshotOf([
+        settler(1, 0, 5, VIKING, true),
+        settler(2, 0, 7, VIKING, true), // a woman in a trade
+        settler(3, 0, 7),
+        settler(4, 0, 1, VIKING, true), // a baby girl
+        settler(5, 1, 5, VIKING, true), // another seat
+      ]),
+      0,
+    );
+    expect(hud.jobs).toEqual([
+      { jobType: 1, count: 1, female: 1 },
+      { jobType: 5, count: 1, female: 1 },
+      { jobType: 7, count: 2, female: 1 },
     ]);
   });
 

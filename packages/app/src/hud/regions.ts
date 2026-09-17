@@ -9,6 +9,9 @@ import { navBeamRect, type ScreenSize } from './nav-beam.js';
  */
 
 export const NOTICE_COLUMN = { left: 10, top: 18, width: 180 } as const;
+/** The top-right bar's height: the `.on-panel` 1 px border and the `.on-bar` 9 px padding around its
+ *  tallest child, the 40 px menu medallion. */
+export const TOP_BAR_HEIGHT = 60;
 /** Top of the central window region, under the top bar. */
 export const WINDOW_REGION_TOP = 96;
 /** Breathing room between the central region and the regions around it. */

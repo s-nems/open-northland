@@ -13,6 +13,41 @@ const images = import.meta.glob<string>('../../assets/own/goods/*/*.png', {
   query: '?url',
   import: 'default',
 });
+/** The frame after the five pile states: the good's single-item HUD icon. */
+const OWN_GOOD_ICON_FRAME = 5;
+
+/** A good's icon as a DOM surface draws it: the sheet URL and the icon's rect on it. */
+export interface GoodIconSource {
+  readonly url: string;
+  readonly sheet: { readonly width: number; readonly height: number };
+  readonly rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+}
+
+let ownIconSources: ReadonlyMap<string, GoodIconSource> | undefined;
+
+/** The icon of an own good by string id, or `undefined` when the project has no art for it yet. */
+export function ownGoodIconSource(goodId: string): GoodIconSource | undefined {
+  ownIconSources ??= new Map(
+    Object.entries(manifests).flatMap(([path, raw]): [string, GoodIconSource][] => {
+      const m = ownGoodManifest.parse(raw);
+      const url = images[path.replace('runtime.json', m.image)];
+      const frame = m.frames[OWN_GOOD_ICON_FRAME];
+      if (url === undefined || frame === undefined) return [];
+      return [
+        [
+          m.id,
+          {
+            url,
+            sheet: { width: m.width, height: m.height },
+            rect: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
+          },
+        ],
+      ];
+    }),
+  );
+  return ownIconSources.get(goodId);
+}
+
 export interface LoadedOwnGood {
   readonly manifest: OwnGoodManifest;
   readonly layer: SpriteLayer;
@@ -58,7 +93,7 @@ export function ownGoodIcons(sheet: SpriteSheet | undefined): ReadonlyMap<string
   for (const raw of Object.values(manifests)) {
     const m = ownGoodManifest.parse(raw);
     const layer = sheet.families?.[`own-good-${m.id}`];
-    const frame = layer?.atlas.frames.get(5);
+    const frame = layer?.atlas.frames.get(OWN_GOOD_ICON_FRAME);
     if (layer && frame)
       icons.set(
         m.id,

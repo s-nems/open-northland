@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
-import type { HudLayout, MapViewFrame, SpriteSheet } from '@open-northland/render';
+import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-northland/render';
 import type { DiplomacyState, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { professionDefForJob } from '../../catalog/professions.js';
@@ -65,6 +65,8 @@ export interface ToolPanelOptions {
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   /** A good's localized name, for the paper that permits producing it. */
   readonly goodLabel: (typeId: number) => string | undefined;
+  /** The content set's goods, so the summary can name a stock entry by its stable string id. */
+  readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
@@ -142,9 +144,9 @@ export interface ToolPanelController {
   placementType(): number | null;
   /** The paper paying for the active placement, or null for normal construction. */
   placementPaper(): Paper | null;
-  /** Per-frame hook; the HUD layout arrives as an accessor so a closed window never runs its
-   *  `buildHud` scan. */
-  update(hudFor: () => HudLayout): void;
+  /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
+   *  so a closed window never lays it out. */
+  update(hudFor: () => HudLayout, model: HudModel): void;
   /** The world views an open briefing's pictures paint this frame; read after {@link update}. */
   mapViews(): readonly MapViewFrame[];
   /** Per-frame hook for the notification column: this frame's unfiltered sim events and the snapshot
@@ -340,7 +342,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onSpeedChange: opts.onSpeedChange,
       onShow: (control) => systemBar.setSpeed(control),
     });
+    const goodIdByType = new Map(opts.goods.map((g) => [g.typeId, g.id]));
+    const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const systemBar = createHudSystemBar(plane, {
+      summary: {
+        goodIdOf: (goodType) => goodIdByType.get(goodType),
+        goodLabel: (goodId) => {
+          const typeId = goodTypeById.get(goodId);
+          return (typeId === undefined ? undefined : opts.goodLabel(typeId)) ?? goodId;
+        },
+      },
       onPauseToggle: () => {
         ctx.cue('confirm');
         speed.togglePause();
@@ -429,7 +440,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       claimsWheel,
       placementType: () => placement.activeType(),
       placementPaper: () => placement.activePaper(),
-      update(hudFor): void {
+      update(hudFor, model): void {
+        systemBar.update(model);
         windows.refresh(hudFor);
         const open = windows.openId();
         nav.setActive(open === null ? null : navEntryForWindow(open));

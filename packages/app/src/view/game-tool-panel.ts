@@ -49,6 +49,8 @@ export interface GameToolPanelDeps {
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   /** A good's localized name, for a produce permit's label. */
   readonly goodLabel: (typeId: number) => string | undefined;
+  /** The content set's goods, for the summary bar's per-good rows. */
+  readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -166,6 +168,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       buildings: deps.buildings,
       technologyLabel: deps.technologyLabel,
       goodLabel: deps.goodLabel,
+      goods: deps.goods,
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,

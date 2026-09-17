@@ -1100,10 +1100,11 @@
   border-left: 0;
 }
 
-/* ---------- bars: counters, clock, speed ---------- */
+/* ---------- the top-right bar: counters, breakdowns, clock, speed ---------- */
 .on-hud .on-bar {
   display: flex;
   align-items: center;
+  gap: 4px;
   padding: 9px 8px;
   background-image:
     linear-gradient(
@@ -1124,14 +1125,17 @@
     inset 0 0 0 4px var(--wood),
     0 6px 14px #0007;
 }
-.on-hud .on-bar--left {
-  border-right: 0;
-  border-radius: 0 0 0 5px;
-  padding-right: 4px;
-}
 .on-hud .on-bar--right {
-  border-radius: 0 0 5px 0;
-  padding-left: 4px;
+  border-radius: 0 0 0 5px;
+}
+.on-hud .on-summary {
+  display: flex;
+  align-items: center;
+}
+.on-hud .on-resource {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 .on-hud .on-bar__count {
   display: flex;
@@ -1156,18 +1160,17 @@
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 2px #000;
 }
-.on-hud .on-bar__count .on-glyph {
+.on-hud .on-bar__count .on-figure {
   width: 25px;
   height: 29px;
-  stroke-width: 2.4;
   color: #e2d5b6;
   filter: drop-shadow(0 1px 1px #000c);
 }
-.on-hud .on-bar__divider {
-  width: 2px;
-  align-self: stretch;
-  margin: 6px 5px;
-  background: linear-gradient(#0000, var(--bronze-lo), #0000);
+/* A good's icon: a crop of its sheet, sized by area in good-art.ts so every good carries the same mass. */
+.on-hud .on-good {
+  display: block;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 1px #000c);
 }
 .on-hud .on-clock {
   font: 600 15px / 1 var(--font-body);
@@ -1208,9 +1211,11 @@
   background: #c9a26222;
   color: var(--text-hi);
 }
+/* The breakdown hangs under its own counters, left-aligned so it never overhangs the bar's left edge;
+   the invisible bridge above it keeps the hover alive across the bar's frame. */
 .on-hud .on-tip {
   position: absolute;
-  right: 0;
+  left: 0;
   top: 46px;
   width: 235px;
   padding: 13px 14px;
@@ -1225,6 +1230,28 @@
 }
 .on-hud .on-tip[hidden] {
   display: none;
+}
+/* Counters near the screen's right edge hang their breakdown to the left instead. */
+.on-hud .on-resource--flip .on-tip {
+  left: auto;
+  right: 0;
+}
+.on-hud .on-tip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+}
+/* Two columns of the content's real names ("Mała Mikstura Wytrzymałości") without a wrapped row. */
+.on-hud .on-tip--wide {
+  width: 480px;
+}
+.on-hud .on-tip__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
 }
 .on-hud .on-tip__title {
   margin: 0 0 8px;
@@ -1252,13 +1279,21 @@
   border-bottom: 1px dotted #8d7549aa;
   transform: translateY(-3px);
 }
-.on-hud .on-tip__foot {
-  display: block;
-  border-top: 1px solid #8d754966;
-  padding-top: 8px;
-  margin-top: 9px;
+.on-hud .on-tip__row--sub {
+  margin-top: -2px;
+  padding-left: 12px;
+  font-size: 12px;
   color: var(--ink-muted);
-  font-size: 11px;
+}
+.on-hud .on-tip__row--total {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #8d754966;
+  font-weight: 700;
+}
+/* A known good with nothing on hand stays listed, so its absence reads as data, not as a gap. */
+.on-hud .on-tip__row--zero {
+  color: var(--ink-muted);
 }
 
 /* ---------- navigation beam and medallion actions ---------- */

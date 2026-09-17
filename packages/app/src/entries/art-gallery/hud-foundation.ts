@@ -1,6 +1,7 @@
 import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
 import foundationCss from '../../hud/dom/foundation.css?inline';
-import { ACTION_ART_PX, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
+import { GOOD_ICON_BOX_PX } from '../../hud/dom/good-art.js';
+import { ACTION_ART_PX, FIGURE, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
 import { type NoticeCardView, noticeCardMarkup } from '../../hud/dom/notice-column.js';
 import { createHudPlane } from '../../hud/dom/root.js';
 import { WINDOW_ORNAMENTS } from '../../hud/dom/symbols.js';
@@ -15,6 +16,17 @@ const TITLE_ART_PX = 43;
 const MENU_MEDALLION_PX = 40;
 const MENU_ART_PX = 34;
 const SCALE_STEP = 0.05;
+
+/** The five stock counters, Materiały with its breakdown open, the last three hanging their tip to
+ *  the left as the runtime does; the icon boxes stay bare on the board. */
+const SAMPLE_CATEGORIES: readonly (readonly [label: string, count: number, open: boolean, flip: boolean])[] =
+  [
+    ['Żywność', 53, false, false],
+    ['Materiały', 60, true, false],
+    ['Uzbrojenie', 2, false, true],
+    ['Wyposażenie', 0, false, true],
+    ['Inne', 13, false, true],
+  ];
 
 const ACTIONS: readonly (readonly [icon: string | null, label: string])[] = [
   ['build', 'Buduj'],
@@ -91,17 +103,24 @@ function boardMarkup(): string {
       }</span><span class="on-action__label">${label}</span></button>`,
   ).join('');
   return `
-<div class="on-bar on-bar--left on-panel" style="position:absolute;top:0;right:246px;display:flex;z-index:30">
-  <button type="button" class="on-bar__count" aria-label="Kobiety: 12">${GLYPH.woman}<b>12</b></button>
-  <button type="button" class="on-bar__count" aria-label="Mężczyźni: 16">${GLYPH.man}<b>16</b></button>
-  <button type="button" class="on-bar__count" aria-label="Dzieci: 6">${GLYPH.child}<b>6</b></button>
-  <span class="on-bar__divider"></span>
-  <button type="button" class="on-bar__count" aria-label="Materiały: 72" aria-expanded="true"><b>72</b></button>
-  <div class="on-tip" role="tooltip"><h4 class="on-tip__title">Materiały</h4><p class="on-tip__row"><span>Drewno</span><b>42</b></p><p class="on-tip__row"><span>Kamień</span><b>18</b></p><small class="on-tip__foot">Magazyny Twojego plemienia · cała mapa</small></div>
-</div>
-<div class="on-bar on-bar--right on-panel" style="position:absolute;top:0;right:0;display:flex;z-index:30">
-  <time class="on-clock">01:24:08</time>
-  <div class="on-speed" role="toolbar" aria-label="Tempo symulacji"><button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button><button type="button" aria-pressed="true">×1</button><button type="button" aria-pressed="false">×3</button></div>
+<div class="on-bar on-bar--right on-panel" style="position:absolute;top:0;right:0;z-index:30">
+  <div class="on-summary" role="group" aria-label="Osada">
+    <div class="on-resource">
+      <button type="button" class="on-bar__count" aria-label="Kobiety: 12" aria-expanded="false">${FIGURE.woman}<b>12</b></button>
+      <button type="button" class="on-bar__count" aria-label="Mężczyźni: 16" aria-expanded="false">${FIGURE.man}<b>16</b></button>
+      <button type="button" class="on-bar__count" aria-label="Dzieci: 6" aria-expanded="false">${FIGURE.child}<b>6</b></button>
+    </div>
+    ${SAMPLE_CATEGORIES.map(
+      ([name, count, open, flip]) =>
+        `<div class="on-resource${flip ? ' on-resource--flip' : ''}"><button type="button" class="on-bar__count" aria-label="${name}: ${count}" aria-expanded="${open}"><span class="on-good" aria-hidden="true" style="width:${GOOD_ICON_BOX_PX}px;height:${GOOD_ICON_BOX_PX}px"></span><b>${count}</b></button>${
+          open
+            ? `<div class="on-tip on-tip--wide" role="tooltip"><h4 class="on-tip__title">${name}</h4><div class="on-tip__columns"><div><p class="on-tip__row"><span>Drewno</span><b>42</b></p><p class="on-tip__row"><span>Kamień</span><b>18</b></p><p class="on-tip__row on-tip__row--zero"><span>Żelazo</span><b>0</b></p></div><div><p class="on-tip__row on-tip__row--zero"><span>Cegła</span><b>0</b></p><p class="on-tip__row on-tip__row--zero"><span>Dachówka</span><b>0</b></p></div></div></div>`
+            : ''
+        }</div>`,
+    ).join('')}
+  </div>
+  <time class="on-clock" role="timer" aria-label="Czas gry">1:24:08</time>
+  <div class="on-speed" role="toolbar" aria-label="Tempo symulacji"><button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button><button type="button" aria-pressed="true">×1</button><button type="button" aria-pressed="false">×2</button><button type="button" aria-pressed="false">×3</button></div>
   <button type="button" class="on-medallion" style="width:${MENU_MEDALLION_PX}px;height:${MENU_MEDALLION_PX}px;margin-left:4px" aria-label="Menu gry">${menuArt(MENU_ART_PX)}</button>
 </div>
 <aside class="on-notices" style="top:${NOTICE_COLUMN.top}px;left:${NOTICE_COLUMN.left}px;width:${NOTICE_COLUMN.width}px;bottom:230px">

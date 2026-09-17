@@ -1,20 +1,27 @@
+import type { HudModel } from '@open-northland/render';
 import { formatMessage, messages } from '../../i18n/index.js';
+import { formatSimClock } from '../summary/model.js';
 import { GAME_SPEED_STATES, type GameSpeedControl, type RunningGameSpeed } from '../tool-panel/game-speed.js';
 import { menuArt } from './icons.js';
+import { createHudSummary, type HudSummaryDeps } from './summary.js';
 
 const MENU_MEDALLION_PX = 40;
 const MENU_ART_PX = 34;
 
 export interface HudSystemBarDeps {
+  readonly summary: HudSummaryDeps;
   readonly onPauseToggle: () => void;
   readonly onSpeed: (running: RunningGameSpeed) => void;
   readonly onMenu: () => void;
 }
 
-/** The top-right bar: the pause and running-speed segments and the game-menu medallion. */
+/** The top-right bar, one panel: the summary counters, the sim clock, the pause and running-speed
+ *  segments and the game-menu medallion. */
 export interface HudSystemBar {
   /** Show the control as it stands; never pushes to the loop. */
   setSpeed(control: GameSpeedControl): void;
+  /** Show the tick's figures and clock; the same model twice costs nothing. */
+  update(model: HudModel): void;
   dispose(): void;
 }
 
@@ -25,6 +32,14 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   const bar = document.createElement('div');
   bar.className = 'on-bar on-bar--right on-panel';
   Object.assign(bar.style, { position: 'absolute', top: '0', right: '0' });
+
+  const summary = createHudSummary(deps.summary);
+
+  const clock = document.createElement('time');
+  clock.className = 'on-clock';
+  clock.setAttribute('role', 'timer');
+  const clockCopy = messages().hud.summary;
+  let shownTick = Number.NaN;
 
   const speed = document.createElement('div');
   speed.className = 'on-speed';
@@ -62,7 +77,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   menu.innerHTML = menuArt(MENU_ART_PX);
   menu.addEventListener('click', deps.onMenu);
 
-  bar.append(speed, menu);
+  bar.append(summary.element, clock, speed, menu);
   plane.append(bar);
   return {
     setSpeed: (control) => {
@@ -71,6 +86,21 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
         button.setAttribute('aria-pressed', String(!control.paused && control.running === state));
       }
     },
-    dispose: () => bar.remove(),
+    update: (model) => {
+      summary.update(model);
+      if (model.tick !== shownTick) {
+        shownTick = model.tick;
+        const text = formatSimClock(model.tick);
+        clock.textContent = text;
+        clock.setAttribute(
+          'aria-label',
+          formatMessage(clockCopy.count, { name: clockCopy.clock, count: text }),
+        );
+      }
+    },
+    dispose: () => {
+      summary.dispose();
+      bar.remove();
+    },
   };
 }

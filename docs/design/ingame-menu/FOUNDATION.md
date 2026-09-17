@@ -84,7 +84,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | Region | Placement | Content today |
 | --- | --- | --- |
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
-| System bar | top right, flush with both edges | pause / ×1 / ×2 / ×3 segments, menu medallion; counters and clock come with ticket 04 |
+| System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 180, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
@@ -106,6 +106,38 @@ Rules the shell enforces:
   select independently, with the details panel in its own corner.
 - A legacy window that cannot fit above the beam shortens its list or lifts toward the top bar; a
   window wider than the region centres on the screen and yields to the minimap as before.
+
+### Summary bar
+
+The top-right bar (ticket 04) is one panel: the counters, the clock, the speed segments and the menu
+medallion, with no divider frame between them.
+
+- Residents are the seat's whole population across the map, by `Owner.player` (never by tribe: a seat
+  fields several): women and men are the grown
+  people with and without the sim's `Female` marker, children are everyone in a born stage (babies
+  included, and the babies also named in the breakdown). The three are disjoint and sum to the total.
+- Stock scope is every store the seat owns: warehouses, homes and workplaces alike, a workplace's
+  inputs counted like its products (the `buildHud` projection the statistics window already shows).
+  A deliberate divergence from the original's counting, which takes a workplace's product slots and
+  skips its input slots (the reading behind the sim's `countsAsOwnStock`).
+- Five categories with fixed rows (`hud/summary/model.ts`, keyed by good string id): Żywność (wheat,
+  flour, food, candy, mead), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
+  tile, stone block, marble, holy oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,
+  wooden and iron tools, crockery, furniture), Inne (coin, herbs, six potions | six amulets). A listed
+  good with nothing on hand stays listed as a muted zero; a stocked good outside every list is
+  appended to Inne, so nothing on hand goes unreported. Row names are the content's localized good
+  names, never a second copy in the catalogs.
+- A category's icon is its representative good (food, wood, short sword, shoes, strength amulet): the
+  project's own art when it exists, else the original's recoloured pile frame, sized by area
+  (`good-art.ts`) so a thin sword and a round loaf carry the same visual mass in the 29 px box.
+- A breakdown opens on hover or focus of its counters, one at a time, stays while the pointer moves
+  into it (a 12 px invisible bridge spans the bar's frame), closes on leave, blur or Esc; a press
+  toggles it. The first three hang left-aligned under their counters, the last three right-aligned so
+  none overhangs the screen edge. A single-column tip is 235 px wide, a two-column one 480 px.
+- The clock is elapsed simulation time from the session tick, `h:mm:ss` with the hour always shown so
+  the bar never re-flows. It runs at the picked speed, stops with the pause and reads back after a
+  save or a load.
+- A map script's info lines print under the bar, which owns the corner.
 
 ### Notifications
 

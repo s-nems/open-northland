@@ -1,16 +1,18 @@
 import { Container } from 'pixi.js';
+import { TOP_BAR_HEIGHT } from '../regions.js';
 import type { TextRun } from '../text-run.js';
 import type { PanelContext } from './context.js';
 
 /**
- * The on-screen info lines a map script writes for the player: up to five, right-aligned against
- * the top-right corner, stacked at the original's line pitch. A reading of the original's static
- * window, which prints each line white over a dark outline; the outline is not drawn here.
+ * The on-screen info lines a map script writes for the player: up to five, right-aligned under the
+ * top-right bar, stacked at the original's line pitch. A reading of the original's static window,
+ * which prints each line white over a dark outline; the outline is not drawn here.
  */
 
-/** Inset (design px) from the right screen edge, and the first line's top. */
+/** Inset (design px) from the right screen edge, and the first line's top: under the summary bar,
+ *  which owns the corner itself. */
 const RIGHT_INSET = 8;
-const TOP_INSET = 4;
+const TOP_INSET = TOP_BAR_HEIGHT + 4;
 /** Line pitch (design px) for a script line; the original's multiplayer goal lines sit tighter. */
 const LINE_PITCH = 12;
 /** The HUD's body size; the original prints these in its 10 px GUI font (approximation). */

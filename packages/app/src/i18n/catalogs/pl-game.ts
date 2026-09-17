@@ -261,6 +261,24 @@ export const plGame = {
       knowledgePending:
         'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. Wymagania budynków nadal widać w oknie budowy.',
     },
+    summary: {
+      label: 'Osada',
+      count: '{name}: {count}',
+      residents: 'Mieszkańcy',
+      women: 'Kobiety',
+      men: 'Mężczyźni',
+      children: 'Dzieci',
+      babies: 'w tym niemowlęta',
+      total: 'Razem',
+      categories: {
+        food: 'Żywność',
+        materials: 'Materiały',
+        armament: 'Uzbrojenie',
+        equipment: 'Wyposażenie',
+        other: 'Inne',
+      },
+      clock: 'Czas gry',
+    },
     notices: {
       label: 'Powiadomienia',
       count: 'Wiadomości: {count}',

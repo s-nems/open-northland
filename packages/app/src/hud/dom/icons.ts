@@ -25,17 +25,21 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 10a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v9H3zM3 12h18M12 12v4M10 14h4"/></svg>',
   forge:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-6h10v6M5 14h14l-2-4H7zM10 10V4h4v6M9 4h6"/></svg>',
-  woman:
-    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 32 32"><circle cx="16" cy="11" r="6"/><path d="M16 17v12m-5-5h10"/></svg>',
-  man: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 32 32"><circle cx="13" cy="19" r="6"/><path d="m17.5 14.5 9-9M19 5h8v8"/></svg>',
-  child:
-    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 32 32"><circle cx="16" cy="8" r="4"/><path d="M16 14v9m-7-8 7 3 7-3m-7 8-5 6m5-6 5 6"/></svg>',
 } as const;
 
-/** The residents token: stylized wooden figures, never faces (FOUNDATION.md). */
+/** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */
+export const FIGURE = {
+  woman:
+    '<svg aria-hidden="true" class="on-figure" viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="5.5" r="3.6"/><path d="M12.5 10.5h7l4.5 12.5H8z"/><rect x="12" y="23" width="3.2" height="8" rx="1"/><rect x="16.8" y="23" width="3.2" height="8" rx="1"/></svg>',
+  man: '<svg aria-hidden="true" class="on-figure" viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="5.5" r="3.6"/><rect x="9.5" y="10.5" width="13" height="11.5" rx="3"/><rect x="10.5" y="22" width="4.4" height="9" rx="1"/><rect x="17.1" y="22" width="4.4" height="9" rx="1"/></svg>',
+  child:
+    '<svg aria-hidden="true" class="on-figure" viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="9.5" r="3.3"/><rect x="11.5" y="14" width="9" height="8.5" rx="2.5"/><rect x="12.3" y="22.5" width="3.2" height="8.5" rx="1"/><rect x="16.5" y="22.5" width="3.2" height="8.5" rx="1"/></svg>',
+} as const;
+
 /** Painted-icon size on a beam action (design px); mirrors `.on-action__art` in foundation.css. */
 export const ACTION_ART_PX = 36;
 
+/** The residents token: stylized wooden figures, never faces (FOUNDATION.md). */
 export const RESIDENTS_TOKEN =
   '<svg aria-hidden="true" class="on-token on-action__art" fill="url(#on-pawn-wood)"><use href="#on-pawns"/></svg>';
 

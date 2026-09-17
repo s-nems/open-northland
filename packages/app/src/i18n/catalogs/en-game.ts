@@ -273,6 +273,24 @@ export const enGame = {
       knowledgePending:
         'Knowledge (production and development, encyclopedia, how to play) is being built. Building requirements still show in the construction window.',
     },
+    summary: {
+      label: 'Settlement',
+      count: '{name}: {count}',
+      residents: 'Residents',
+      women: 'Women',
+      men: 'Men',
+      children: 'Children',
+      babies: 'of them infants',
+      total: 'Total',
+      categories: {
+        food: 'Food',
+        materials: 'Materials',
+        armament: 'Armament',
+        equipment: 'Equipment',
+        other: 'Other',
+      },
+      clock: 'Game time',
+    },
     notices: {
       label: 'Notifications',
       count: 'Messages: {count}',

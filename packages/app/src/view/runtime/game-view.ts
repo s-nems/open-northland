@@ -373,6 +373,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       })),
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
+      goods: sim.content.goods,
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),

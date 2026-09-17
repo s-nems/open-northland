@@ -468,8 +468,9 @@ button.medallion:hover {
   border-bottom: 1px dotted #8d7549aa;
   transform: translateY(-3px);
 }
+/* Two columns of the content's real names ("Mała Mikstura Wytrzymałości") without a wrapped row. */
 .resource-tip.wide {
-  width: 420px;
+  width: 480px;
 }
 .resource-tip .columns {
   display: grid;

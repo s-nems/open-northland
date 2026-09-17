@@ -14,6 +14,9 @@ export interface JobCount {
    *  non-working baby/child age classes, which the consumer partitions. */
   readonly jobType: number;
   readonly count: number;
+  /** How many of `count` carry the sim's `Female` marker, so a consumer can split adults into women
+   *  and men without a second scan. */
+  readonly female: number;
 }
 
 export interface StockCount {
@@ -49,7 +52,7 @@ function jobTypeOf(components: Readonly<Record<string, unknown>>): number {
  */
 export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   let population = 0;
-  const jobCounts = new Map<number, number>();
+  const jobCounts = new Map<number, { count: number; female: number }>();
   const stockTotals = new Map<number, number>();
 
   for (const entity of snapshot.entities) {
@@ -61,7 +64,10 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
     if ('Person' in components) {
       population++;
       const jobType = jobTypeOf(components);
-      jobCounts.set(jobType, (jobCounts.get(jobType) ?? 0) + 1);
+      const tally = jobCounts.get(jobType) ?? { count: 0, female: 0 };
+      tally.count++;
+      if ('Female' in components) tally.female++;
+      jobCounts.set(jobType, tally);
     }
 
     if ('Building' in components) {
@@ -73,7 +79,7 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
 
   // Sort explicitly: these maps are filled in entity-iteration order, not by key.
   const jobs: JobCount[] = [...jobCounts.entries()]
-    .map(([jobType, count]) => ({ jobType, count }))
+    .map(([jobType, { count, female }]) => ({ jobType, count, female }))
     .sort((a, b) => a.jobType - b.jobType);
   const stocks: StockCount[] = [...stockTotals.entries()]
     .filter(([, amount]) => amount !== 0)
