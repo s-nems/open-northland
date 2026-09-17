@@ -18,8 +18,9 @@ rework restyles it later.
 - Details panel `vehicle` model, layout and sections: name and task string, hit points, commander
   and passengers (click selects the settler), carried vehicle, cargo rows with wanted `-/+`
   (10 with Shift, `setVehicleWanted`) and a clear-all button (`clearVehicleWanted`, which is also how
-  the goods leave: `f` has no goods half), detach from carrier, and for carts the trade
-  tabs of the trader ticket.
+  the goods leave: `f` has no goods half), detach from carrier, and for carts the trade tabs
+  (select trade house, select trader, detach trader) over the existing trade commands; the trader's
+  own Handel section already names the commanded cart and its load (`TraderView.cart`).
 - Orders: go to (left-click ground), dock (ship on a shore), unload people, attack human / building /
   vehicle / position and the three stances for a catapult, stop; right-click defaults from the
   original (human -> attack human, vehicle -> load into carrier when allowed else attack, house ->

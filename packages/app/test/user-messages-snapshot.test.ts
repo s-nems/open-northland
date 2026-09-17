@@ -36,6 +36,9 @@ interface Actor {
   readonly jobless?: boolean;
   /** The sim's `LostWay` marker. */
   readonly lost?: boolean;
+  /** A trader's route with this many houses, and whether it rides a vehicle. */
+  readonly tradeStops?: number;
+  readonly rider?: boolean;
 }
 
 function doingComponents(doing: Doing): Record<string, unknown> {
@@ -84,6 +87,10 @@ function components(a: Actor): Record<string, unknown> {
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
     ...(a.workFlag === undefined ? {} : { WorkFlag: { flag: a.workFlag } }),
     ...(a.lost === true ? { LostWay: { cutOff: false } } : {}),
+    ...(a.tradeStops === undefined
+      ? {}
+      : { TradeRoute: { stops: Array.from({ length: a.tradeStops }, (_, house) => ({ house })) } }),
+    ...(a.rider === true ? { Rider: { vehicle: 50, boarding: false } } : {}),
     ...doingComponents(a.doing ?? 'nothing'),
   };
 }
@@ -319,6 +326,19 @@ describe('user messages read off the snapshot', () => {
         [USER_MESSAGE_TYPE.workplaceNotFound, 1],
         [USER_MESSAGE_TYPE.nothingToDo, 3],
       ]);
+    });
+
+    it('reports a trader with a full route and no cart, never one with a cart or a short route', () => {
+      const source = createSnapshotMessageSource(LOCAL);
+      const actors: Actor[] = [
+        { id: 1, tradeStops: 2 },
+        { id: 2, tradeStops: 2, rider: true },
+        { id: 3, tradeStops: 1 },
+      ];
+      const out = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE }, (_, i) =>
+        sweep(source, snapshot((i + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS, actors)),
+      );
+      expect(out.flat()).toEqual([[USER_MESSAGE_TYPE.noVehicleForWork, 1]]);
     });
 
     it('starts the idle run over when a post is taken, so a new hire is not reported on arrival', () => {

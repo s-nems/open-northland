@@ -1,4 +1,4 @@
-import { entityById, type TradeOffer, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, type TradeOffer, type TraderView, type WorldSnapshot } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { liveAmounts } from './building-materials.js';
@@ -26,7 +26,7 @@ export interface TradeOfferModel {
 }
 
 /** The Handel section of a trader: its route's stops with their import marks, the agreements the
- *  foreign stop offers, and what the cart and the running exchange hold. */
+ *  foreign stop offers, the cart it commands with its load, and the running exchange. */
 export interface TradePanelModel {
   readonly stops: readonly TradeStopModel[];
   readonly offers: readonly TradeOfferModel[];
@@ -104,6 +104,18 @@ function houseLabel(
     : title;
 }
 
+/** "Handcart: 3 wood" for the cart the trader commands, or the line saying it has none. */
+function cartLine(ctx: UnitPanelModelContext, view: TraderView): string {
+  const hud = messages().hud;
+  if (view.cart === null) return hud.tradeNoCart;
+  const cargo =
+    view.cargo.length === 0
+      ? hud.tradeCartEmpty
+      : view.cargo.map((line) => `${line.amount} ${goodLabel(ctx, line.good)}`).join(', ');
+  const vehicle = ctx.vehicleLabel?.(view.cart.vehicleType) ?? hud.tradeCart;
+  return formatMessage(hud.tradeCartLoad, { vehicle, cargo });
+}
+
 /** The Handel model of one settler, or null for anything that is no trader. */
 export function tradePanelModel(
   ctx: UnitPanelModelContext,
@@ -127,11 +139,7 @@ export function tradePanelModel(
     label: tradeOfferLabel(ctx, offer),
     selected: offer.index === view.agreement,
   }));
-  const cargo =
-    view.cargo.length === 0
-      ? hud.tradeCartEmpty
-      : view.cargo.map((line) => `${line.amount} ${goodLabel(ctx, line.good)}`).join(', ');
-  const status: string[] = [formatMessage(hud.tradeCart, { cargo })];
+  const status: string[] = [cartLine(ctx, view)];
   if (view.stops.length < 2) status.push(hud.tradeNoRoute);
   else if (foreign !== undefined) {
     const chosen = foreign.offers.find((offer) => offer.index === view.agreement);

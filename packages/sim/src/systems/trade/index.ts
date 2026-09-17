@@ -2,8 +2,9 @@
 // agreements, and the tally the `NumberOfGoodsTraded` goal reads.
 
 export { activeAgreement, agreementsAt, type HouseAgreement, isTradingHouse } from './agreements.js';
-export { loadCart, unloadCart } from './cart.js';
+export { cartHoldOf, loadCart, type TradeCart, tradeCartOf, unloadCart } from './cart.js';
 export { applyTradeCommand, registerTradeAgreement } from './commands.js';
-export { planTrader } from './drive.js';
+export { traderDisembarkSystem } from './disembark.js';
+export { planTrader, TRADE_CART_HOUSE_DISTANCE, TRADE_CART_SEARCH_RADIUS } from './drive.js';
 export { sameFoodClass } from './goods.js';
 export { type TradeOffer, type TraderView, type TradeStopView, tradeOffersAt, traderView } from './view.js';

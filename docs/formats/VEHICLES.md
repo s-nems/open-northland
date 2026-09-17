@@ -152,8 +152,14 @@ one; both wake idle passengers and raise message 0x3a (`vehicleNoCarrier`) when 
 attached, the order applying all the same. `f` (`l_StartAtomicUnload`) moves every passenger and
 carried vehicle out; it has no goods half, the goods leave through `n`. `l_ExecuteResult` case 0x28
 (`AddGoodsToVehicle`) books, stows and then sets wanted to the wanted amount read after the stow plus
-the amount, so a vehicle with no carrier ends with `wanted = actual + amount`. No raise site of
-message 0x0f (`noVehicleForWork`) was found in the carrier's vehicle loop (*open*).
+the amount, so a vehicle with no carrier ends with `wanted = actual + amount`. Message 0x0f
+(`noVehicleForWork`) is the trader's: `l_StartTask_ExecuteJob_Trader` idles with reason 0xe when the
+human is not the commander of an attached vehicle (the idle reasons map onto message ids one higher;
+0xf is `noTradeAgreement` for an agreement that stopped holding). The trader loads its cart itself:
+`Stock_ModifyFutureAmount(+1)` as it sets out for the door with a unit and `Stock_ModifyAmount(+1)`
+there, the reverse for a unit it takes out (`l_Trader_GetNextGoodFromVehicle`), so with no carrier
+attached wanted follows actual; `l_Trader_MoveVehicleNearHouse` is described in MISSIONS.md "Trade
+agreements".
 
 Open Northland: `VehicleStock` (`packages/sim/src/components/vehicle.ts`) keeps the three bytes per
 canonical good as `current`, `wanted` and `reserved` (the future amount); `systems/vehicles/stock.ts`
@@ -170,7 +176,10 @@ implies; the guide network is the carrier's signpost confinement; a lifted-out u
 delivery ladder sends an unbound settler's load, the ground at the door when nothing takes it; a
 house source must hold the hold's canonical good, never a dish it would alias to it; a carrier whose
 walk to a source or store fails takes the planner's stranded recovery and keeps its seat, where only
-a failed walk to the door drops it.
+a failed walk to the door drops it. The trader's own write is `tradeVehicleStock`: booked and stowed
+in one step, and the wanted amount set to the actual one whether or not a carrier is attached
+(approximation: the original's rule holds only without a carrier, so a carrier seated beside the
+trader would flush the trade cargo as surplus; here it finds nothing to fetch or flush).
 
 ## Movement
 
@@ -196,7 +205,8 @@ The free-size class is the largest hex-disc radius of open same-continent nodes 
 capped at 7, one field for land and water (`nav/clearance.ts`); `g` reads 0 everywhere until the
 map's roughness lane is imported (`TerrainGraph.groundSpeedClass`); the walk range is a hexagon
 distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of
-being ignored; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces
+being ignored; a goto held for a crew still outside is refused at once when no route exists at order
+time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces
 the hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
 routed around, the shove happens on entering a node only and sends a settler outside the discs of
 the whole remaining route. A real map's water is the cells whose two ground triangles are both

@@ -42,6 +42,7 @@ import { technologySystem } from './progression/discoveries.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
+import { traderDisembarkSystem } from './trade/index.js';
 import { riderSystem, vehicleBoardingSystem, vehicleMovementSystem } from './vehicles/index.js';
 import { visionSystem } from './vision/index.js';
 
@@ -89,6 +90,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // ladder's rider rung answers it the same tick; a rider without a seat is released first.
   { name: 'rider', system: riderSystem },
   { name: 'vehicleBoarding', system: vehicleBoardingSystem },
+  // After the boarding pass, which starts a held drive the tick its crew is in, so a trader whose cart
+  // stopped steps out before the planner works the stop.
+  { name: 'traderDisembark', system: traderDisembarkSystem },
   { name: 'planner', system: plannerSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },

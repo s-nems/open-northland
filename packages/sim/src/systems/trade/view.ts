@@ -1,8 +1,9 @@
-import { cartEntries, ownerOf, Settler, tradeRouteOf } from '../../components/index.js';
+import { ownerOf, Settler, tradeRouteOf } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import { activeAgreement, agreementsAt, type HouseAgreement } from './agreements.js';
+import { cartHoldOf, tradeCartOf } from './cart.js';
 
 /** One agreement as a window lists it. */
 export interface TradeOffer {
@@ -32,6 +33,9 @@ export interface TraderView {
   readonly agreementHolds: boolean;
   readonly given: number;
   readonly received: number;
+  /** The cart the trader commands, or null while it is on foot. */
+  readonly cart: { readonly entity: Entity; readonly vehicleType: number } | null;
+  /** The goods aboard that cart, ascending by good; empty without one. */
   readonly cargo: readonly { readonly good: number; readonly amount: number }[];
 }
 
@@ -54,9 +58,22 @@ export function tradeOffersAt(world: World, house: Entity): TradeOffer[] {
 export function traderView(world: World, ctx: ContentContext, trader: Entity): TraderView | undefined {
   const settler = world.tryGet(trader, Settler);
   if (settler === undefined || !isTraderJob(ctx.content, settler.jobType)) return undefined;
+  const cart = tradeCartOf(world, ctx, trader);
+  const cartView = cart === null ? null : { entity: cart.vehicle, vehicleType: cart.type.typeId };
+  const cargo =
+    cart === null ? [] : cartHoldOf(world, ctx, cart).entries.map(([good, amount]) => ({ good, amount }));
   const route = tradeRouteOf(world, trader);
   if (route === undefined) {
-    return { stops: [], current: -1, agreement: -1, agreementHolds: false, given: 0, received: 0, cargo: [] };
+    return {
+      stops: [],
+      current: -1,
+      agreement: -1,
+      agreementHolds: false,
+      given: 0,
+      received: 0,
+      cart: cartView,
+      cargo,
+    };
   }
   const player = ownerOf(world, trader);
   return {
@@ -71,6 +88,7 @@ export function traderView(world: World, ctx: ContentContext, trader: Entity): T
     agreementHolds: activeAgreement(world, trader, route) !== undefined,
     given: route.given,
     received: route.received,
-    cargo: cartEntries(route).map(([good, amount]) => ({ good, amount })),
+    cart: cartView,
+    cargo,
   };
 }

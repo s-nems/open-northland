@@ -6,8 +6,11 @@ import {
   MissionObjectId,
   Owner,
   Position,
+  Rider,
   Stockpile,
   TradeRoute,
+  Vehicle,
+  VehicleStock,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -20,19 +23,27 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
+import { hexDistance } from '../../src/nav/halfcell.js';
+import { interactionNode, vehicleAnchor } from '../../src/systems/footprint/index.js';
+import { TRADE_CART_HOUSE_DISTANCE } from '../../src/systems/trade/index.js';
+import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
-import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { ctxOf } from '../fixtures/context.js';
+import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
 
 /**
- * The land trader plies a two-house route with its cart: between the player's own houses it moves the
- * surplus of one to the other; at another player's house it trades on the map's agreement, handing the
- * give goods over first and loading the take goods after, and the ledger counts what it brought back.
+ * The land trader plies a two-house route with the handcart it commands: it moves the cart to within
+ * five steps of each house, between the player's own houses moves the surplus of one to the other in
+ * the cart's hold, and at another player's house trades on the map's agreement, handing the give goods
+ * over first and loading the take goods after, while the ledger counts what it brought back. A trader
+ * without a cart stands idle, and one whose cart cannot reach a stop lets go of it.
  */
 
 const VIKING = 1;
 const HUMAN = 0;
 const NEIGHBOUR = 1;
 const TRADER = 25;
+const HANDCART = 1;
 const WOOD = 1;
 const PLANK = 2;
 /** The fixture's edible, and the dish that becomes it once carried (`bread` -> `food_simple`). */
@@ -63,7 +74,8 @@ function houseAt(
   return e;
 }
 
-function traderAt(sim: Simulation, x: number): Entity {
+/** A trader on foot at cell `x`, row 1. */
+function traderOnFoot(sim: Simulation, x: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(1) });
   addPerson(sim.world, e, {
@@ -78,12 +90,45 @@ function traderAt(sim: Simulation, x: number): Entity {
   return e;
 }
 
+/** A handcart standing at cell `x`, row 0, the trader's row being 1. */
+function cartAt(sim: Simulation, x: number): Entity {
+  const node = { hx: 2 * x, hy: 0 };
+  const cart = createVehicle(sim.world, ctxOf(sim), {
+    vehicleType: HANDCART,
+    x: node.hx,
+    y: node.hy,
+    tribe: VIKING,
+    owner: HUMAN,
+  });
+  if (cart === null) throw new Error('handcart not in the fixture');
+  return cart;
+}
+
+/** A trader at `x` that is ordered onto a handcart standing beside it, the commander seat being free. */
+function traderAt(sim: Simulation, x: number): Entity {
+  const trader = traderOnFoot(sim, x);
+  const cart = cartAt(sim, x);
+  sim.enqueue(playerCommand(HUMAN, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
+  return trader;
+}
+
 function stockOf(sim: Simulation, house: Entity, good: number): number {
   return sim.world.get(house, Stockpile).amounts.get(good) ?? 0;
 }
 
+/** The units of `good` aboard the trader's cart, 0 without one. */
 function cartOf(sim: Simulation, trader: Entity, good: number): number {
-  return sim.world.tryGet(trader, TradeRoute)?.cargo.get(good) ?? 0;
+  const vehicle = sim.world.tryGet(trader, Rider)?.vehicle;
+  if (vehicle === undefined) return 0;
+  return sim.world.get(vehicle, VehicleStock).lines.get(good)?.current ?? 0;
+}
+
+function cartDistanceTo(sim: Simulation, trader: Entity, house: Entity): number {
+  const vehicle = sim.world.get(trader, Rider).vehicle;
+  const anchor = vehicleAnchor(sim.world, vehicle);
+  const door = interactionNode(sim.world, ctxOf(sim), house);
+  if (anchor === null || door === null) throw new Error('cart or house off the map');
+  return hexDistance(anchor, { hx: door.x, hy: door.y });
 }
 
 function newSim(): Simulation {
@@ -144,6 +189,69 @@ describe('a trader between its own houses', () => {
 
     expect(stockOf(sim, near, WOOD)).toBe(10);
     expect(sim.world.get(trader, TradeRoute).stops).toHaveLength(1);
+  });
+
+  it('stands idle on foot with a full route but no cart to command', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderOnFoot(sim, NEAR_X);
+    attach(sim, trader, near);
+    attach(sim, trader, far);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, near, WOOD)).toBe(10);
+    expect(stockOf(sim, far, WOOD)).toBe(0);
+    expect(sim.traderView(trader)?.cart).toBeNull();
+    expect(sim.world.has(trader, Position)).toBe(true);
+  });
+
+  it('moves the cart to within five steps of each stop and rides inside between them', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, 0]]);
+    const trader = traderAt(sim, NEAR_X);
+    attach(sim, trader, near);
+    attach(sim, trader, far);
+
+    let rodeInside = false;
+    let workedFar = false;
+    for (let tick = 0; tick < RUN_TICKS; tick++) {
+      sim.step();
+      if (!sim.world.has(trader, Position)) rodeInside = true;
+      if (sim.world.has(trader, Position) && cartDistanceTo(sim, trader, far) <= TRADE_CART_HOUSE_DISTANCE) {
+        workedFar = true;
+      }
+    }
+
+    expect(rodeInside).toBe(true);
+    expect(workedFar).toBe(true);
+    expect(stockOf(sim, far, WOOD)).toBeGreaterThan(0);
+    const cart = sim.world.get(trader, Rider).vehicle;
+    expect(sim.world.get(cart, Vehicle).heldGoal).toBeNull();
+  });
+
+  it('lets go of a cart that cannot be driven near the next stop', () => {
+    // A water column cuts the far house off from the cart's landmass: no move point near it exists.
+    const sim = new Simulation({
+      seed: 3,
+      content: testContent(),
+      map: waterColumnMap(MAP_W, MAP_H, NEAR_X + 2),
+    });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, 0]]);
+    const trader = traderAt(sim, NEAR_X);
+    attach(sim, trader, near);
+    attach(sim, trader, far);
+
+    sim.run(RUN_TICKS);
+
+    expect(sim.world.has(trader, Rider)).toBe(false);
+    expect(sim.world.has(trader, Position)).toBe(true);
+    expect(sim.traderView(trader)?.cart).toBeNull();
+    expect(stockOf(sim, far, WOOD)).toBe(0);
   });
 });
 

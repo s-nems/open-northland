@@ -162,7 +162,12 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // to the door and steps in when asked. A rider holding a load the hold will not take runs the ladder
   // down to the delivery rung first, so it is not parked at the door with its hands full.
   if (planVehicleCargo(plan, load)) return;
-  if ((load === undefined || load.amount <= 0) && planRider(world, ctx, terrain, e)) return;
+  if (load === undefined || load.amount <= 0) {
+    // A trader commanding a cart works its route from here, above the rider rung that would otherwise
+    // keep it at the door; the rung yields while the cart is under way, and the rider rung boards it.
+    if (planTrader(plan)) return;
+    if (planRider(world, ctx, terrain, e)) return;
+  }
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
   if (planTraining(world, ctx, terrain, e, settler, here, limit)) return;
@@ -219,10 +224,6 @@ function planEconomy(
     planDelivery(plan, pass.spacing, load);
     return;
   }
-
-  // A trader works its route above every workplace rung: its houses are its own binding, and it
-  // never operates a craft. With no route to work it falls through to the idle rungs.
-  if (planTrader(plan)) return;
 
   // The field loop sits above the producer rung so a farm that also carries an abstract recipe (real
   // extracted content synthesizes one from `logicproduction`) farms its fields instead of standing

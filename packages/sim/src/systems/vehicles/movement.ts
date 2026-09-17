@@ -137,9 +137,9 @@ export function vehicleWalkBlocks(
 
 /**
  * Snap a clicked target to the node the vehicle may stand on: the target itself, else the first node in
- * hexagon-ring order out to {@link VEHICLE_TARGET_SNAP_RADIUS} that is on the map, open under the
- * vehicle's walk-block and on the vehicle's continent. Null when nothing qualifies. Shared by the goto
- * order and the map script's `SendVehicle`.
+ * hexagon-ring order out to `radius` ({@link VEHICLE_TARGET_SNAP_RADIUS} by default) that is on the map,
+ * open under the vehicle's walk-block, on the vehicle's continent and not `exclude`d. Null when nothing
+ * qualifies. Shared by the goto order, the map script's `SendVehicle` and the trader's move near a house.
  */
 export function snapVehicleTarget(
   world: World,
@@ -147,6 +147,7 @@ export function snapVehicleTarget(
   terrain: TerrainGraph,
   vehicle: Entity,
   target: HalfCellNode,
+  options: { readonly radius?: number; readonly exclude?: (node: NodeId) => boolean } = {},
 ): NodeId | null {
   const state = world.tryGet(vehicle, Vehicle);
   const anchor = vehicleAnchor(world, vehicle);
@@ -156,11 +157,14 @@ export function snapVehicleTarget(
   const continent = continentOf(terrain, terrain.nodeAt(anchor.hx, anchor.hy));
   if (continent < 0) return null;
   const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
-  for (let r = 0; r <= VEHICLE_TARGET_SNAP_RADIUS; r++) {
+  const radius = options.radius ?? VEHICLE_TARGET_SNAP_RADIUS;
+  for (let r = 0; r <= radius; r++) {
     for (const { point } of hexagonRing(target, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const node = terrain.nodeAt(point.hx, point.hy);
-      if (continentOf(terrain, node) === continent && !blocked.has(node)) return node;
+      if (continentOf(terrain, node) !== continent || blocked.has(node)) continue;
+      if (options.exclude?.(node) === true) continue;
+      return node;
     }
   }
   return null;
@@ -192,15 +196,9 @@ export function startVehicleDrive(
   vehicle: Entity,
   goal: NodeId,
 ): boolean {
+  const route = vehicleRouteTo(world, ctx, terrain, vehicle, goal);
+  if (route === null) return false;
   const state = world.get(vehicle, Vehicle);
-  const anchor = vehicleAnchor(world, vehicle);
-  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
-  if (anchor === null || type === undefined) return false;
-  const start = terrain.nodeAtClamped(anchor.hx, anchor.hy);
-  const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
-  const path = findPath(terrain, start, goal, blocked, undefined, vehicleTraversal(type));
-  if (path === null) return false;
-  const route = path.slice(1).map((node) => nodeOf(terrain, node));
   if (state.moored || state.heldGoal !== null) {
     // Casting off: a walk that starts clears the moored flag (`l_StartAtomicWalk`), and a goal held for
     // boarding is consumed by the drive that replaces it.
@@ -223,6 +221,25 @@ export function startVehicleDrive(
     drive.route = route;
   }
   return true;
+}
+
+/** The nodes a drive from the vehicle's anchor to `goal` would enter, the first next, over the vehicle's
+ *  walk-block; null when no route exists. */
+export function vehicleRouteTo(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  goal: NodeId,
+): HalfCellNode[] | null {
+  const state = world.get(vehicle, Vehicle);
+  const anchor = vehicleAnchor(world, vehicle);
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (anchor === null || type === undefined) return null;
+  const start = terrain.nodeAtClamped(anchor.hx, anchor.hy);
+  const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
+  const path = findPath(terrain, start, goal, blocked, undefined, vehicleTraversal(type));
+  return path === null ? null : path.slice(1).map((node) => nodeOf(terrain, node));
 }
 
 export function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
@@ -290,6 +307,13 @@ export function moveVehicle(
     return false;
   }
   if (!crewInside(state)) {
+    // The route is judged now as well as when the crew is in, so an order nobody could drive is refused
+    // at once instead of after the boarding (approximation: the original's pathfinder runs after
+    // `l_Passengers_MoveIn`; the trader's move near a house relies on the early refusal to detach).
+    if (vehicleRouteTo(world, ctx, terrain, e, goal) === null) {
+      refuseMove(world, ctx, e, 'noPath');
+      return false;
+    }
     const live = world.mut(e, Vehicle);
     live.heldGoal = nodeOf(terrain, goal);
     live.task = 'waitsForHuman';

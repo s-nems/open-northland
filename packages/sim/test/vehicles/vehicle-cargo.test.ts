@@ -22,7 +22,7 @@ import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { MISSION_EVALUATION_TICKS } from '../../src/systems/missions/system.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
-import { setVehicleWanted, stockVehicleGoods } from '../../src/systems/vehicles/stock.js';
+import { setVehicleWanted, stockVehicleGoods, tradeVehicleStock } from '../../src/systems/vehicles/stock.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -377,6 +377,32 @@ describe('the carrier rung', () => {
       return s;
     };
     expect(build().hashState()).toBe(build().hashState());
+  });
+});
+
+describe("the trader's own write", () => {
+  it('books and stows in one step and keeps wanted on the actual amount, so an attached carrier idles', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const carrier = attachCarrier(s, cart);
+    dropPile(s, WOOD, SOURCE_AT, 5);
+    placeHq(s, { hx: 30, hy: 20 });
+    expect(tradeVehicleStock(s.world, cart, s.content, BREAD, 3)).toBe(3);
+    expect(line(s, cart, FOOD_SIMPLE)).toEqual({ current: 3, wanted: 3, reserved: 3 });
+    expect(tradeVehicleStock(s.world, cart, s.content, WOOD, HANDCART_SLOTS)).toBe(HANDCART_SLOTS - 3);
+    expect(tradeVehicleStock(s.world, cart, s.content, WOOD, -1)).toBe(-1);
+    expect(line(s, cart, WOOD)).toEqual({
+      current: HANDCART_SLOTS - 4,
+      wanted: HANDCART_SLOTS - 4,
+      reserved: HANDCART_SLOTS - 4,
+    });
+    expect(tradeVehicleStock(s.world, cart, s.content, STONE, 1)).toBe(0);
+    expect(tradeVehicleStock(s.world, cart, s.content, PLANK, -1)).toBe(0);
+    s.run(3 * TRIP_TICKS);
+    expect(line(s, cart, WOOD).current).toBe(HANDCART_SLOTS - 4);
+    expect(line(s, cart, FOOD_SIMPLE).current).toBe(3);
+    expect(s.world.has(carrier, CargoRun)).toBe(false);
+    expect(pileAmount(s, WOOD)).toBe(5);
   });
 });
 

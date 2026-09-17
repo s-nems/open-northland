@@ -137,6 +137,39 @@ export function modifyVehicleReserved(
 }
 
 /**
+ * A commander's own load or unload of `delta` units of `goodType`, the trader's write at a stop: the
+ * units are booked and stowed in one step and the good's wanted amount follows the actual one whatever
+ * crew is attached. Returns the units moved. Named approximation: the original's trader books a unit
+ * (`Stock_ModifyFutureAmount`) on its walk to the door and stows it there with `Stock_ModifyAmount`,
+ * whose wanted-follows-actual rule holds only while no carrier is attached, so a carrier seated beside
+ * the trader would flush the trade cargo as surplus; keeping wanted on the actual amount forestalls that.
+ */
+export function tradeVehicleStock(
+  world: World,
+  vehicle: Entity,
+  content: ContentSet,
+  goodType: number,
+  delta: number,
+): number {
+  const hold = holdOf(world, vehicle, content, goodType);
+  if (hold === null) return 0;
+  const have = hold.stock.lines.get(hold.good)?.current ?? 0;
+  if (have + delta < 0) return 0;
+  const room = vehicleLineCap(hold.type) - vehicleLoad(hold.stock);
+  const moved = delta > 0 ? Math.min(delta, Math.max(0, room)) : delta;
+  if (moved === 0) return 0;
+  const bookingRoom = vehicleLineCap(hold.type) - vehicleReservedLoad(hold.stock);
+  const line = lineOf(world.mut(vehicle, VehicleStock), hold.good);
+  line.current = have + moved;
+  line.reserved = Math.max(
+    0,
+    line.reserved + (moved > 0 ? Math.min(moved, Math.max(0, bookingRoom)) : moved),
+  );
+  line.wanted = line.current;
+  return moved;
+}
+
+/**
  * Ask for `amount` units of `goodType` (`Stock_SetWantedAmount`): clamped below at 0 and above so the
  * wanted amounts over every good stay within the budget. Returns false for an uncarriable good.
  */

@@ -385,7 +385,7 @@ describe('dockVehicle', () => {
     expect(anchorOf(s, ship)).toEqual(here);
   });
 
-  it('keeps a moored ship at its mooring when a held goto finds no route', () => {
+  it('refuses a goto with no route at once, before the crew boards, the ship staying moored', () => {
     const s = sim(7, undefined, islandMap({ bar: true }));
     const ship = spawn(s, SHIP_SMALL, WEST_SHORE_X + 3, 6);
     const mooring = s.world.get(ship, Vehicle).mooring;
@@ -396,19 +396,14 @@ describe('dockVehicle', () => {
     // The south basin: the same water body, past a gap no ship's clearance admits.
     s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: ship, x: 24, y: 26 }));
     s.step();
-    expect(s.world.get(ship, Vehicle).task).toBe('waitsForHuman');
-    let refused = 0;
-    for (let t = 0; t < SAIL_TICKS; t++) {
-      s.step();
-      refused += refusals(s).length;
-    }
-    expect(refused).toBe(1);
+    expect(refusals(s)).toEqual([`${ship}:noPath`]);
     const state = s.world.get(ship, Vehicle);
     expect(state.task).toBe('none');
     expect(state.heldGoal).toBeNull();
     expect(state.moored).toBe(true);
     expect(state.mooring).toEqual(mooring);
-    expect(s.world.has(scout, Position)).toBe(false); // aboard, and may step off at the mooring
+    s.run(SAIL_TICKS);
+    expect(s.world.has(scout, Position)).toBe(true); // never asked aboard
   });
 
   it('refuses a shore beyond the walk range', () => {

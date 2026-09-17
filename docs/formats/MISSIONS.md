@@ -664,11 +664,24 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   toward the house's owner. Between two own houses a good moves where a mark admits it, or anywhere
   while no mark is set on either house, toward the house that is shorter of it. Every unit loaded out
   of the foreign house adds one to the player's tally with the house's owner, which the goal compares.
+- The trader works from the cart it commands (`l_StartTask_ExecuteJob_Trader` needs the human
+  attached as the vehicle's commander, else it idles with the `noVehicleForWork` reason):
+  `l_Trader_MoveVehicleNearHouse` queues a goto on the cart to a move point found within radius 20 of
+  the house whenever the cart stands more than 5 hexagon steps from the house's work point, and
+  detaches the trader when no point exists; the goods ride in the cart's hold, booked and stowed one
+  unit at a time as the trader carries them between the house and the cart's door.
 - This build registers the rows through the `addTradeAgreement` setup command
   (`components/trade.ts`), resolves the house by its mission object id at use, gates on a house
   whose owner is no match participant when a match is set up, and runs the trader through the
-  planner's trade rung (`systems/trade/`). Approximations: the cart is part of the trader, a 15-unit
-  hold (the handcart's `stockslots`) rather than a built vehicle; a house's minimum stock is its
+  planner's trade rung (`systems/trade/`), which sits above the rider rung: the trader moves its cart
+  to within `TRADE_CART_HOUSE_DISTANCE` of each stop (`snapVehicleTarget` over
+  `TRADE_CART_SEARCH_RADIUS`, no house door), rides inside while it drives, steps out when it stops
+  (`traderDisembarkSystem`) and works the stop on foot; a trader on foot with no cart idles, which
+  the HUD reads as `noVehicleForWork`. Approximations: the load and unload clips at the house move
+  the unit straight between the shelf and the hold, where the original carries each unit to the
+  cart's door; the trader's hold write keeps the wanted amount on the actual one whatever crew is
+  attached (`tradeVehicleStock`, see VEHICLES.md "Cargo"); a cart that cannot be driven near a stop
+  is let go of without the original's detach note; a house's minimum stock is its
   recipe inputs; the import-mark ranking by request counters is a plain surplus comparison; nothing
   is handed over while the house holds fewer take goods than a batch pays out, where the original
   delivers regardless; a chosen agreement that stops holding is kept and waited on, where the

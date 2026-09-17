@@ -8,11 +8,6 @@ export const TRADE_ROUTE_HOUSES = 2;
 /** The most agreements one map registers (reading: the merchant array holds 60). */
 export const TRADE_AGREEMENT_LIMIT = 60;
 
-/** The cart's hold in units, summed over every good (reading: the handcart's `stockslots 15`).
- *  Approximation: the original's cart is a separately built vehicle the trader commands; here every
- *  trader pulls one, so the hold is a property of the trade. */
-export const TRADE_CART_SLOTS = 15;
-
 /** One stop of a trader's route. */
 export interface TradeStop {
   readonly house: Entity;
@@ -23,10 +18,11 @@ export interface TradeStop {
 }
 
 /**
- * A trader's route and cart: the two houses it plies between, the stop it is at, the agreement it
- * trades on at a foreign stop, and how far the current exchange has come. `given`/`received` count
- * the units of the agreement's goods handed over and taken at the foreign house since the last
- * completed exchange (reading of the merchant counters).
+ * A trader's route: the two houses it plies between, the stop it is at, the agreement it trades on at
+ * a foreign stop, and how far the current exchange has come. `given`/`received` count the units of the
+ * agreement's goods handed over and taken at the foreign house since the last completed exchange
+ * (reading of the merchant counters). The goods ride in the hold of the cart the trader commands
+ * (`VehicleStock`), never on the route itself.
  */
 export const TradeRoute = defineComponent<{
   stops: TradeStop[];
@@ -36,33 +32,16 @@ export const TradeRoute = defineComponent<{
   agreement: number;
   given: number;
   received: number;
-  /** The cart's hold: goodType -> units. Never iterate for a game decision; use {@link cartEntries}. */
-  cargo: Map<number, number>;
 }>('TradeRoute', 'settlers');
 
 export type TradeRouteState = NonNullable<(typeof TradeRoute)['__value']>;
 export type TradeRouteView = DeepReadonly<TradeRouteState>;
 
-/** Canonical ascending-goodType view of a cart's hold. */
-export function cartEntries(route: { cargo: ReadonlyMap<number, number> }): Array<[number, number]> {
-  return [...route.cargo.entries()].filter(([, n]) => n > 0).sort((a, b) => a[0] - b[0]);
-}
-
-export function cartLoad(route: { cargo: ReadonlyMap<number, number> }): number {
-  let total = 0;
-  for (const n of route.cargo.values()) total += n;
-  return total;
-}
-
-export function cartAmount(route: { cargo: ReadonlyMap<number, number> }, good: number): number {
-  return route.cargo.get(good) ?? 0;
-}
-
 export function tradeRouteOf(world: World, e: Entity): TradeRouteView | undefined {
   return world.tryGet(e, TradeRoute);
 }
 
-/** Ensure the trader carries a route record; a fresh one has no stops and an empty cart. */
+/** Ensure the trader carries a route record; a fresh one has no stops. */
 export function ensureTradeRoute(world: World, e: Entity): void {
   if (world.has(e, TradeRoute)) return;
   world.add(e, TradeRoute, {
@@ -71,7 +50,6 @@ export function ensureTradeRoute(world: World, e: Entity): void {
     agreement: -1,
     given: 0,
     received: 0,
-    cargo: new Map(),
   });
 }
 

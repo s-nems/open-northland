@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { type Entity, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
-import { technologyReason } from '../../game/technology.js';
+import { technologyReason, vehicleLabel } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { mountUnitPanel, type UnitPanel, type UnitPanelState } from '../../hud/details-panel/index.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
@@ -86,6 +86,7 @@ export async function createUnitChrome(
       isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
       livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
+      vehicleLabel: (typeId) => vehicleLabel(opts.content, typeId),
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
       ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),

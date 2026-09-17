@@ -42,6 +42,8 @@ export interface UnitPanelModelContext {
   /** The sim's battle-alert read seam (`Simulation.standsTo`): whether a unit is holding its ground
    *  because fighting is going on around it. Absent leaves such a unit reading as idle. */
   readonly standsTo?: ((entity: number) => boolean) | undefined;
+  /** A vehicle type's name, for the cart a trader commands; absent names it the generic cart. */
+  readonly vehicleLabel?: ((typeId: number) => string | undefined) | undefined;
   /** The sim's trader read seam (`Simulation.traderView`); absent hides the Handel section. */
   readonly traderView?: ((entity: number) => TraderView | undefined) | undefined;
   /** The sim's agreement read seam (`Simulation.tradeOffersAt`); absent lists no offers on a house. */

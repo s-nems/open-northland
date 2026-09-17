@@ -1,6 +1,7 @@
 import { isIndoorSettler } from '@open-northland/render/data';
 import {
   type AtomicEffect,
+  components,
   entityById,
   ONE,
   systems,
@@ -197,8 +198,22 @@ function lostItsWorkplace(e: SnapshotEntity, everEmployed: boolean): boolean {
   return everEmployed && workplaceOf(e) === undefined && workFlagOf(e) === undefined;
 }
 
+/**
+ * A trader with a full route and no vehicle to command it from: the original's trader task idles with
+ * reason 0xe there, the `noVehicleForWork` note (`l_StartTask_ExecuteJob_Trader`); this sim leaves the
+ * trader on foot and the sweep reads the state off the route and the missing `Rider` marker.
+ */
+function lacksTradeCart(e: SnapshotEntity): boolean {
+  const route = e.components.TradeRoute as { stops?: unknown } | undefined;
+  return (
+    Array.isArray(route?.stops) &&
+    route.stops.length >= components.TRADE_ROUTE_HOUSES &&
+    e.components.Rider === undefined
+  );
+}
+
 /** The note an idle adult earns: with a post to work at it has nothing to do, having lost one it has
- *  nowhere to go. */
+ *  nowhere to go, and a trader without a cart cannot work its route. */
 function raiseIdleNote(
   raiser: MessageRaiser,
   snapshot: WorldSnapshot,
@@ -215,6 +230,7 @@ function raiseIdleNote(
   if (streaks.advance(e.id, occupation, atPost) < IDLE_SWEEPS_BEFORE_MESSAGE) return;
   if (hasWorkplaceToWorkAt(snapshot, e)) raiser.settler(USER_MESSAGE_TYPE.nothingToDo, e);
   else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
+  else if (lacksTradeCart(e)) raiser.settler(USER_MESSAGE_TYPE.noVehicleForWork, e);
 }
 
 /**

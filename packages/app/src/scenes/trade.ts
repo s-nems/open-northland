@@ -16,14 +16,17 @@ import {
   GOOD_IRON,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
+  spawnVehicleDirect,
+  VEHICLE_HANDCART,
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
  * The land trader and a map's trade agreement: a neutral tribe's warehouse offers iron for coins, the
- * player's trader plies its cart between the home warehouse and that house, and the goods
- * it brings back count toward the script's `NumberOfGoodsTraded` goal, which turns the neighbour
- * friendly. The browser view pairs this with the Handel section of the selected trader.
+ * player's trader takes command of a handcart and plies it between the home warehouse and that house,
+ * and the goods it brings back count toward the script's `NumberOfGoodsTraded` goal, which turns the
+ * neighbour friendly. The browser view pairs this with the Handel section of the selected trader, which
+ * names the cart and its load.
  */
 
 const MAP_W = 24;
@@ -35,6 +38,8 @@ const TRADER_NATION = 1;
 const HOME_AT = { x: 5, y: 5 } as const;
 const POST_AT = { x: 17, y: 5 } as const;
 const TRADER_AT = { x: 6, y: 8 } as const;
+/** The handcart the trader commands, a cell beside the trader. */
+const CART_AT = { x: 7, y: 8 } as const;
 
 /** The mission object id the agreement names, the `sethouse` column a map would author. */
 const POST_MISSION_ID = 900;
@@ -79,6 +84,7 @@ function build(sim: Simulation): void {
   setStockAmount(sim.world, post, GOOD_IRON, IRON_STOCKED);
   stampMissionId(sim.world, post, POST_MISSION_ID);
   const trader = spawnSettlerDirect(sim, JOB_TRADER, TRADER_AT.x, TRADER_AT.y, HUMAN_PLAYER);
+  const cart = spawnVehicleDirect(sim, VEHICLE_HANDCART, CART_AT.x, CART_AT.y);
 
   sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN_PLAYER, to: TRADER_NATION, state: 'friend' });
   sim.enqueueSetup({ kind: 'setDiplomacy', from: TRADER_NATION, to: HUMAN_PLAYER, state: 'neutral' });
@@ -90,6 +96,7 @@ function build(sim: Simulation): void {
     takeGood: GOOD_IRON,
     takeAmount: IRON_PER_BATCH,
   });
+  sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachTradeHouse', entity: trader, house: home }));
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachTradeHouse', entity: trader, house: post }));
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
@@ -124,11 +131,15 @@ export const tradeScene: SceneDefinition = {
   initialZoom: 0.8,
   checks: [
     {
-      label: 'the trader trades on the agreement the neutral warehouse offers',
+      label: 'the trader commands the handcart and trades on the agreement the neutral warehouse offers',
       predicate: (sim) => {
         const trader = sceneTrader(sim);
         const view = trader === undefined ? undefined : sim.traderView(trader);
-        return view?.agreementHolds === true && view.stops.length === 2;
+        return (
+          view?.agreementHolds === true &&
+          view.stops.length === 2 &&
+          view.cart?.vehicleType === VEHICLE_HANDCART
+        );
       },
     },
     {

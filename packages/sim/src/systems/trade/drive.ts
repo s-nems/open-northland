@@ -1,21 +1,20 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
-  cartAmount,
-  cartEntries,
-  cartLoad,
   Position,
-  TRADE_CART_SLOTS,
   TRADE_ROUTE_HOUSES,
   type TradeAgreement,
   TradeRoute,
   type TradeRouteView,
   type TradeStop,
+  VehicleDrive,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
+import { type HalfCellNode, hexDistance } from '../../nav/halfcell.js';
 import type { ContentContext, SystemContext } from '../context.js';
+import { buildingDoorNodes, interactionNode, vehicleAnchor } from '../footprint/index.js';
 import { countsAsOwnStock, roomFor, stockOf, typeStoresGood } from '../missions/stock.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { edibleGoodFormOf, isFood } from '../readviews/food.js';
@@ -24,8 +23,19 @@ import { atOrWalk, collectAtomicOf, PILEUP_ATOMIC_ID, startAtomic } from '../set
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { mayFetchGoodFrom } from '../stores/index.js';
+import { releaseRider } from '../vehicles/crew.js';
+import { moveVehicle, nodeOf, snapVehicleTarget } from '../vehicles/movement.js';
 import { activeAgreement } from './agreements.js';
+import { type CartHold, cartHoldOf, type TradeCart, tradeCartOf } from './cart.js';
 import { sameFoodClass } from './goods.js';
+
+/** How close to the stop's door the cart must stand before the trader works the stop, in map-point
+ *  steps (`l_Trader_MoveVehicleNearHouse`: `VE_HexagonDirection_GetDistance` over 5 moves the cart). */
+export const TRADE_CART_HOUSE_DISTANCE = 5;
+
+/** How far around the door the cart's move point is looked for, in hexagon rings
+ *  (`Tool_Vehicle_GetNextMovePointNearPosition` with radius 0x14). */
+export const TRADE_CART_SEARCH_RADIUS = 20;
 
 /** What the trader does next at its current stop. */
 type TradeAction =
@@ -38,11 +48,16 @@ const NEXT: TradeAction = { kind: 'next' };
 const WAIT: TradeAction = { kind: 'wait' };
 
 /**
- * TRADER - a trader with a valid route works it: at each stop it unloads what the stop takes and loads
- * what the other stop wants, then walks over. Between the player's own houses the import marks decide
- * what moves; at a foreign house the chosen agreement does, give first, then take. A trader with fewer
- * than two standing houses, or a foreign stop with no valid agreement, is left to the idle rungs.
- * Reading of the original's trader task; the cart is intrinsic here (see `TRADE_CART_SLOTS`).
+ * TRADER - a trader commanding a cart with a valid route works it: it moves the cart to within
+ * {@link TRADE_CART_HOUSE_DISTANCE} of each stop, then at the stop unloads what the stop takes and loads
+ * what the other stop wants, and moves the cart over. Between the player's own houses the import marks
+ * decide what moves; at a foreign house the chosen agreement does, give first, then take. A trader with
+ * fewer than two standing houses, or a foreign stop with no valid agreement, is left to the rider rung;
+ * one with no cart to command idles on foot (the HUD's `noVehicleForWork` note reads that state). While
+ * the cart is under way or holds a goal for its crew the rider rung boards the trader, and the cart's
+ * arrival sets it down again (`traderDisembarkSystem`). Reading of `l_StartTask_ExecuteJob_Trader`.
+ * Approximation: the original's trader carries every unit between the house and the cart's door on its
+ * back; here the load and unload clips at the house move the unit straight into and out of the hold.
  */
 export function planTrader(plan: PlannerContext): boolean {
   const { world, ctx, entity: e } = plan;
@@ -50,6 +65,8 @@ export function planTrader(plan: PlannerContext): boolean {
   const route = world.tryGet(e, TradeRoute);
   if (route === undefined) return false;
   if (!dropFallenStops(world, e, route)) return false;
+  const cart = tradeCartOf(world, ctx, e);
+  if (cart === null || cartUnderWay(world, cart)) return false;
   const live = world.get(e, TradeRoute);
   if (live.current < 0) world.mut(e, TradeRoute).current = 0;
   const current = world.get(e, TradeRoute);
@@ -57,16 +74,17 @@ export function planTrader(plan: PlannerContext): boolean {
   const other = current.stops[1 - current.current];
   if (stop === undefined || other === undefined) return false;
 
-  const action = decide(world, ctx, e, current, stop, other);
+  const hold = cartHoldOf(world, ctx, cart);
+  const action = decide(world, ctx, e, current, hold, stop, other);
   switch (action.kind) {
     case 'wait':
       return false;
     case 'next': {
       world.mut(e, TradeRoute).current = 1 - current.current;
-      walkTo(plan, other.house, () => undefined);
-      return true;
+      return cartNearHouse(world, ctx, cart, other.house) || driveCartTo(plan, cart, other.house);
     }
     case 'load':
+      if (!cartNearHouse(world, ctx, cart, stop.house)) return driveCartTo(plan, cart, stop.house);
       walkTo(plan, stop.house, () => {
         const atomicId = collectAtomicOf(world, ctx, stop.house);
         startAtomic(
@@ -80,6 +98,7 @@ export function planTrader(plan: PlannerContext): boolean {
       });
       return true;
     case 'unload':
+      if (!cartNearHouse(world, ctx, cart, stop.house)) return driveCartTo(plan, cart, stop.house);
       walkTo(plan, stop.house, () => {
         startAtomic(
           world,
@@ -92,6 +111,52 @@ export function planTrader(plan: PlannerContext): boolean {
       });
       return true;
   }
+}
+
+/** Whether the cart drives or holds a goal until its crew is in: the trader rides along, not works. */
+function cartUnderWay(world: World, cart: TradeCart): boolean {
+  return world.has(cart.vehicle, VehicleDrive) || cart.state.heldGoal !== null;
+}
+
+function houseDoor(world: World, ctx: SystemContext, house: Entity): HalfCellNode | null {
+  const door = interactionNode(world, ctx, house);
+  return door === null ? null : { hx: door.x, hy: door.y };
+}
+
+/** Whether the cart stands within {@link TRADE_CART_HOUSE_DISTANCE} steps of the house's door. */
+function cartNearHouse(world: World, ctx: SystemContext, cart: TradeCart, house: Entity): boolean {
+  const anchor = vehicleAnchor(world, cart.vehicle);
+  const door = houseDoor(world, ctx, house);
+  return anchor !== null && door !== null && hexDistance(anchor, door) <= TRADE_CART_HOUSE_DISTANCE;
+}
+
+/**
+ * `l_Trader_MoveVehicleNearHouse`: order the cart to the first node in ring order around the house's
+ * door, out to {@link TRADE_CART_SEARCH_RADIUS}, that the cart may stand on and that is no house's door,
+ * as a goto the cart holds until the trader boards. When no such node lies within the working distance
+ * of the door, or the cart cannot drive there, the trader lets go of the cart and stays on foot. True
+ * when the order stands. Approximation: the original detaches through the detach command with its own
+ * note; here the trader's idle-without-a-cart state is what the player sees.
+ */
+function driveCartTo(plan: PlannerContext, cart: TradeCart, house: Entity): boolean {
+  const { world, ctx, terrain, entity: e } = plan;
+  const door = houseDoor(world, ctx, house);
+  if (door === null) return false;
+  const doors = buildingDoorNodes(world, ctx, terrain);
+  const goal = snapVehicleTarget(world, ctx, terrain, cart.vehicle, door, {
+    radius: TRADE_CART_SEARCH_RADIUS,
+    exclude: (node) => doors.has(node),
+  });
+  const point = goal === null ? null : nodeOf(terrain, goal);
+  if (
+    point === null ||
+    hexDistance(point, door) > TRADE_CART_HOUSE_DISTANCE ||
+    !moveVehicle(world, ctx, { kind: 'moveVehicle', vehicle: cart.vehicle, x: point.hx, y: point.hy })
+  ) {
+    releaseRider(world, e, cart.vehicle);
+    return false;
+  }
+  return true;
 }
 
 function walkTo(plan: PlannerContext, house: Entity, start: () => void): void {
@@ -124,15 +189,16 @@ function decide(
   ctx: SystemContext,
   trader: Entity,
   route: TradeRouteView,
+  hold: CartHold,
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): TradeAction {
-  if (!stop.foreign && !other.foreign) return decideDomestic(world, ctx, route, stop, other);
+  if (!stop.foreign && !other.foreign) return decideDomestic(world, ctx, hold, stop, other);
   const agreement = activeAgreement(world, trader, route);
   if (agreement === undefined) return WAIT;
   return stop.foreign
-    ? decideExchange(world, ctx, trader, route, stop.house, agreement)
-    : decidePreparation(world, ctx, route, stop.house, agreement);
+    ? decideExchange(world, ctx, trader, route, hold, stop.house, agreement)
+    : decidePreparation(world, ctx, hold, stop.house, agreement);
 }
 
 /**
@@ -144,24 +210,24 @@ function decide(
 function decidePreparation(
   world: World,
   ctx: SystemContext,
-  route: TradeRouteView,
+  hold: CartHold,
   house: Entity,
   agreement: DeepReadonly<TradeAgreement>,
 ): TradeAction {
-  const stray = cartEntries(route).find(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
+  const stray = hold.entries.find(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
   if (stray !== undefined) return unloadInto(world, ctx, house, stray[0]);
-  const aboard = aboardOfClass(ctx, route, agreement.giveGood);
+  const aboard = aboardOfClass(ctx, hold, agreement.giveGood);
   const give = Math.max(1, agreement.giveAmount);
   const extra = Math.max(0, agreement.takeAmount - agreement.giveAmount);
   const toCompleteBatch = give - (aboard % give);
   const roomNeeded = (Math.floor(aboard / give) + 1) * extra + toCompleteBatch;
-  const roomFree = TRADE_CART_SLOTS - cartLoad(route);
   const stocked = stockedFormAt(world, ctx, house, agreement.giveGood);
   const foodFromHome =
     isFood(ctx, agreement.giveGood) && isHome(ctx, world.get(house, Building).buildingType);
   if (
     stocked !== undefined &&
-    roomNeeded <= roomFree &&
+    hold.carries(stocked) &&
+    roomNeeded <= hold.room &&
     !foodFromHome &&
     spareOf(world, ctx, house, stocked) >= 1
   ) {
@@ -183,28 +249,29 @@ function decideExchange(
   ctx: SystemContext,
   trader: Entity,
   route: TradeRouteView,
+  hold: CartHold,
   house: Entity,
   agreement: DeepReadonly<TradeAgreement>,
 ): TradeAction {
-  const aboard = aboardOfClass(ctx, route, agreement.giveGood);
+  const aboard = aboardOfClass(ctx, hold, agreement.giveGood);
   const stocked = stockedFormAt(world, ctx, house, agreement.takeGood);
   const onOffer = stocked === undefined ? 0 : stockOf(world, house, stocked);
   if (route.given < agreement.giveAmount) {
     if (aboard + route.given < agreement.giveAmount) return NEXT;
     if (route.given === 0 && onOffer < agreement.takeAmount) {
-      const otherAboard = cartEntries(route).some(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
+      const otherAboard = hold.entries.some(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
       return otherAboard ? NEXT : WAIT;
     }
     // The cart holds a dish as its edible, so the unit handed over is whichever aboard good the
     // agreement's give good matches.
-    const giving = cartEntries(route).find(([good]) => sameFoodClass(ctx, good, agreement.giveGood));
+    const giving = hold.entries.find(([good]) => sameFoodClass(ctx, good, agreement.giveGood));
     const slot = giving === undefined ? undefined : storableFormAt(world, ctx, house, giving[0]);
     if (giving === undefined || slot === undefined || roomFor(world, ctx, house, slot) <= 0) return NEXT;
     return { kind: 'unload', good: giving[0], into: house };
   }
   if (route.received < agreement.takeAmount) {
-    if (cartLoad(route) >= TRADE_CART_SLOTS) return NEXT;
-    if (stocked === undefined || onOffer <= 0) {
+    if (hold.room <= 0) return NEXT;
+    if (stocked === undefined || !hold.carries(stocked) || onOffer <= 0) {
       resetExchange(world, trader);
       return NEXT;
     }
@@ -212,14 +279,14 @@ function decideExchange(
   }
   resetExchange(world, trader);
   return aboard >= agreement.giveAmount
-    ? decideExchange(world, ctx, trader, world.get(trader, TradeRoute), house, agreement)
+    ? decideExchange(world, ctx, trader, world.get(trader, TradeRoute), hold, house, agreement)
     : NEXT;
 }
 
 /** The units aboard that answer for `good`: the good itself, or a dish's edible form of its class. */
-function aboardOfClass(ctx: ContentContext, route: TradeRouteView, good: number): number {
+function aboardOfClass(ctx: ContentContext, hold: CartHold, good: number): number {
   let total = 0;
-  for (const [aboard, amount] of cartEntries(route)) if (sameFoodClass(ctx, aboard, good)) total += amount;
+  for (const [aboard, amount] of hold.entries) if (sameFoodClass(ctx, aboard, good)) total += amount;
   return total;
 }
 
@@ -240,7 +307,7 @@ function resetExchange(world: World, trader: Entity): void {
 function decideDomestic(
   world: World,
   ctx: SystemContext,
-  route: TradeRouteView,
+  hold: CartHold,
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): TradeAction {
@@ -251,7 +318,7 @@ function decideDomestic(
 
   // Aboard goods go to the stop that is shorter of them (reading of the original's unload score,
   // `(aboard + other - here) / 2`), so what was just loaded for the other stop stays aboard.
-  for (const [good, aboard] of cartEntries(route)) {
+  for (const [good, aboard] of hold.entries) {
     if (!admits(stop, good)) continue;
     const slot = storableFormAt(world, ctx, stop.house, good);
     if (slot === undefined || roomFor(world, ctx, stop.house, slot) <= 0) continue;
@@ -263,18 +330,18 @@ function decideDomestic(
     }
   }
 
-  if (cartLoad(route) < TRADE_CART_SLOTS) {
+  if (hold.room > 0) {
     let best: { good: number; score: number } | undefined;
     for (const good of ownGoodsOf(ctx, hereType)) {
       if (!admits(other, good) || (isFood(ctx, good) && isHome(ctx, hereType))) continue;
       const spare = spareOf(world, ctx, stop.house, good);
       if (spare <= 0) continue;
       const carried = edibleGoodFormOf(ctx.content, good);
+      if (!hold.carries(carried)) continue;
       const slot = storableFormAt(world, ctx, other.house, carried);
       if (slot === undefined || roomFor(world, ctx, other.house, slot) <= 0) continue;
       const score = Math.floor(
-        (stockOf(world, stop.house, good) - stockOf(world, other.house, slot) - cartAmount(route, carried)) /
-          2,
+        (stockOf(world, stop.house, good) - stockOf(world, other.house, slot) - hold.amount(carried)) / 2,
       );
       if (score > 0 && (best === undefined || score > best.score)) best = { good, score };
     }
