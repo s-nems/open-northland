@@ -76,6 +76,7 @@ export {
   cellOfAnchorNode,
   cellOfNode,
   type HalfCellNode,
+  hexDistanceBetween,
   hexNeighboursOf,
   nodeOfPosition,
   positionOfNode,

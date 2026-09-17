@@ -1,4 +1,5 @@
 import { aiPlayerSystem } from './ai-player/index.js';
+import { aiProgramSystem } from './ai-program/index.js';
 import { assistantSystem } from './assistant/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
@@ -114,4 +115,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // Last, after cleanup, so its decisions read the settled world with no reaped-this-tick targets; its
   // enqueued commands apply on next tick's command pass.
   { name: 'aiPlayer', system: aiPlayerSystem },
+  // After the strategic decision, on the scripted handlers' own round: its one-shots spawn and its
+  // orders enqueue like the strategic AI's.
+  { name: 'aiProgram', system: aiProgramSystem },
 ];

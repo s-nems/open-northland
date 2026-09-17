@@ -231,11 +231,157 @@ playerfixcolors 1
           'military',
           'roadBuild',
         ],
+        conditions: [],
+        tasks: [
+          { kind: 'defend', priority: 10, condition: 100000, x: 215, y: 270, range: 40, min: 5, max: 10 },
+        ],
       },
-      { player: 2, disabled: true, strategicOff: [] },
-      { player: 3, disabled: false, strategicOff: ['military', 'roadBuild'] },
+      { player: 2, disabled: true, strategicOff: [], conditions: [], tasks: [] },
+      { player: 3, disabled: false, strategicOff: ['military', 'roadBuild'], conditions: [], tasks: [] },
     ]);
     expect(script?.misc).toEqual([]);
+  });
+
+  it('types the scripted handler’s program the way the loader reads each line', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'AIData' },
+      { level: 2, text: 'AI_UnitLimit 6 10' },
+      { level: 2, text: 'AI_MaxUnitLimit 6 0' },
+      { level: 2, text: 'AI_SoldiersDefaultPosition 6 245 247 70' },
+      { level: 2, text: 'AI_SetCondition_True 6 0' },
+      { level: 2, text: 'AI_SetCondition_OnTime 6 1 2' },
+      { level: 2, text: 'AI_SetCondition_OnConditions 6 4 0 1 0 2 3' },
+      { level: 2, text: 'AI_SetCondition_OnConditionChangeDelayed 6 5 1 4 1 30' },
+      { level: 2, text: 'AI_SetCondition_OnDiplomacyChange 6 6 0 0 6 3' },
+      { level: 2, text: 'AI_SetCondition_OnCreatureInRange 7 0 0 245 247 70 20 1 1' },
+      { level: 2, text: 'AI_SetCondition_OnHouseInRange 6 7 0 250 243 10 6 0 39 1' },
+      { level: 2, text: 'AI_SetCondition_OnPlayerSeen 6 8 1 6 0' },
+      { level: 2, text: 'AI_SetCondition_OnPlayerDead 6 9 0' },
+      { level: 2, text: 'AI_SetCondition_OnNumberOfSoldiers 6 10 0 140 6' },
+      { level: 2, text: 'AI_SetCondition_OnExternal 6 2 1' },
+      { level: 2, text: 'AI_SetCondition_OnTimer 6 11 100 50 25' },
+      { level: 2, text: 'AI_MainTask_Attack 7 100 3 407 263 120 0 0 289 254 1' },
+      { level: 2, text: 'AI_MainTask_CreateCreatures 6 100 4 2 35 250 243 0 1 0' },
+      // The loose maps sometimes drop the trailing `once`; the loader reads a missing int as 0.
+      { level: 2, text: 'AI_MainTask_CreateCreatures 1 100 30 2 41 65 169 0 1' },
+      { level: 2, text: 'AI_MainTask_ChangeDiplomacy 6 5 100000 0 3' },
+      { level: 2, text: 'AI_MainTask_SelfDestroyPlayer 6 12' },
+      // A slot past the table, and a negative range: both dropped, as the loader refuses the first
+      // and the schema the second.
+      { level: 2, text: 'AI_SetCondition_OnExternal 6 100 1' },
+      { level: 2, text: 'AI_MainTask_Defend 6 10 100000 1 1 -5 0 0' },
+    ];
+    const script = extractMapScript(cifLinesToSections(lines), { file: 'x/map.cif' });
+    expect(script?.ai).toEqual([
+      {
+        player: 6,
+        disabled: false,
+        strategicOff: [],
+        unitLimit: 10,
+        maxUnitLimit: 0,
+        defaultPosition: { x: 245, y: 247, range: 70 },
+        conditions: [
+          { kind: 'true', slot: 0 },
+          { kind: 'onTime', slot: 1, ticks: 1440 },
+          { kind: 'onConditions', slot: 4, sticky: false, mode: 1, slots: [0, 2, 3] },
+          {
+            kind: 'onConditionChangeDelayed',
+            slot: 5,
+            sticky: true,
+            source: 4,
+            onActivation: true,
+            delayTicks: 360,
+          },
+          { kind: 'onDiplomacyChange', slot: 6, sticky: false, from: 0, to: 6, state: 3 },
+          {
+            kind: 'onHouseInRange',
+            slot: 7,
+            sticky: false,
+            x: 250,
+            y: 243,
+            range: 10,
+            player: 6,
+            enemiesOnly: false,
+            houseType: 39,
+            finishedOnly: true,
+          },
+          { kind: 'onPlayerSeen', slot: 8, sticky: true, seer: 6, seen: 0 },
+          { kind: 'onPlayerDead', slot: 9, player: 0 },
+          { kind: 'onNumberOfSoldiers', slot: 10, sticky: false, count: 140, player: 6 },
+          { kind: 'onExternal', slot: 2, raised: true },
+          { kind: 'onTimer', slot: 11, delayTicks: 100, activeTicks: 50, inactiveTicks: 25 },
+        ],
+        tasks: [
+          {
+            kind: 'createCreatures',
+            priority: 100,
+            condition: 4,
+            tribe: 2,
+            job: 35,
+            x: 250,
+            y: 243,
+            missionId: 0,
+            count: 1,
+            once: false,
+          },
+          { kind: 'changeDiplomacy', priority: 5, condition: 100000, player: 0, state: 3 },
+          { kind: 'selfDestroyPlayer', condition: 12 },
+        ],
+      },
+      {
+        player: 7,
+        disabled: false,
+        strategicOff: [],
+        conditions: [
+          {
+            kind: 'onCreatureInRange',
+            slot: 0,
+            sticky: false,
+            x: 245,
+            y: 247,
+            range: 70,
+            player: 20,
+            enemiesOnly: true,
+            soldiersOnly: true,
+          },
+        ],
+        tasks: [
+          {
+            kind: 'attack',
+            priority: 100,
+            condition: 3,
+            x: 407,
+            y: 263,
+            range: 120,
+            min: 0,
+            max: 0,
+            rallyX: 289,
+            rallyY: 254,
+            stance: 1,
+          },
+        ],
+      },
+      {
+        player: 1,
+        disabled: false,
+        strategicOff: [],
+        conditions: [],
+        tasks: [
+          {
+            kind: 'createCreatures',
+            priority: 100,
+            condition: 30,
+            tribe: 2,
+            job: 41,
+            x: 65,
+            y: 169,
+            missionId: 0,
+            count: 1,
+            once: false,
+          },
+        ],
+      },
+    ]);
   });
 
   it('types the [multiplayer] table in the packed numeric skin (a lobby-openable ai slot)', () => {

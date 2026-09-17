@@ -130,11 +130,153 @@ export const MapAiModule = z.enum([
 ]);
 export type MapAiModule = z.infer<typeof MapAiModule>;
 
+/** How many condition slots a seat's program may declare: the loader refuses a slot at or past this. */
+export const MAP_AI_CONDITION_SLOTS = 100;
+
+const mapPoint = z.number().int();
+const slot = z.number().int().nonnegative().lt(MAP_AI_CONDITION_SLOTS);
+/** A condition slot reference on a task or an `OnConditions` line: a slot, or one of the loader's
+ *  two fixed answers (100000 always, 100001 never); anything else never holds. */
+const conditionRef = z.number().int().nonnegative();
+
 /**
- * One player's `[AIData]` toggles (`docs/formats/MISSIONS.md`, AI data): `AI_Disable` stops both of
- * the seat's AI handlers, `HAI_Disable` only the strategic modules. The corpus authors only those two
- * blanket forms; the indexed `HAI_DisableHouseBuild <player> <n>` and `HAI_DisableHouseUpgrade
- * <player> <n>` lines are not read.
+ * One `AI_SetCondition_*` line of a seat's `[AIData]` program (`docs/formats/MISSIONS.md`, AI data).
+ * A `sticky` condition stays active once it has held; `ticks` fields are the loader's converted
+ * values (minutes times 720, seconds times 12). A `player` of 20 on a range condition means any player.
+ */
+export const MapAiCondition = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('true'), slot }),
+  z.strictObject({ kind: z.literal('onTime'), slot, ticks: z.number().int().nonnegative() }),
+  z.strictObject({
+    kind: z.literal('onConditions'),
+    slot,
+    sticky: z.boolean(),
+    /** The combinator: 1 all of, 2 any of, 3 not the one, 4 either of two; another value never holds. */
+    mode: z.number().int(),
+    slots: z.array(conditionRef).max(10),
+  }),
+  z.strictObject({
+    kind: z.literal('onConditionChangeDelayed'),
+    slot,
+    sticky: z.boolean(),
+    source: slot,
+    /** Which change of `source` the delay counts from: its activation, or its deactivation. */
+    onActivation: z.boolean(),
+    delayTicks: z.number().int().nonnegative(),
+  }),
+  z.strictObject({
+    kind: z.literal('onDiplomacyChange'),
+    slot,
+    sticky: z.boolean(),
+    from: z.number().int(),
+    to: z.number().int(),
+    state: z.number().int(),
+  }),
+  z.strictObject({
+    kind: z.literal('onCreatureInRange'),
+    slot,
+    sticky: z.boolean(),
+    x: mapPoint,
+    y: mapPoint,
+    range: z.number().int().nonnegative(),
+    player: z.number().int(),
+    enemiesOnly: z.boolean(),
+    soldiersOnly: z.boolean(),
+  }),
+  z.strictObject({
+    kind: z.literal('onHouseInRange'),
+    slot,
+    sticky: z.boolean(),
+    x: mapPoint,
+    y: mapPoint,
+    range: z.number().int().nonnegative(),
+    player: z.number().int(),
+    enemiesOnly: z.boolean(),
+    /** The engine house type the house must be, or 0 for any. */
+    houseType: z.number().int(),
+    finishedOnly: z.boolean(),
+  }),
+  z.strictObject({
+    kind: z.literal('onPlayerSeen'),
+    slot,
+    sticky: z.boolean(),
+    seer: z.number().int(),
+    seen: z.number().int(),
+  }),
+  z.strictObject({ kind: z.literal('onPlayerDead'), slot, player: z.number().int() }),
+  z.strictObject({
+    kind: z.literal('onNumberOfSoldiers'),
+    slot,
+    sticky: z.boolean(),
+    count: z.number().int(),
+    player: z.number().int(),
+  }),
+  z.strictObject({ kind: z.literal('onExternal'), slot, raised: z.boolean() }),
+  z.strictObject({
+    kind: z.literal('onTimer'),
+    slot,
+    delayTicks: z.number().int(),
+    activeTicks: z.number().int(),
+    inactiveTicks: z.number().int(),
+  }),
+]);
+export type MapAiCondition = z.infer<typeof MapAiCondition>;
+
+const soldierTask = {
+  priority: z.number().int(),
+  condition: conditionRef,
+  x: mapPoint,
+  y: mapPoint,
+  range: z.number().int().nonnegative(),
+  /** The soldiers the task takes: at least `min` or none, at most `max` (0 for no cap). */
+  min: z.number().int().nonnegative(),
+  max: z.number().int().nonnegative(),
+};
+
+/**
+ * One `AI_MainTask_*` line of a seat's `[AIData]` program (`docs/formats/MISSIONS.md`, AI data).
+ * `condition` is the slot that switches the task on. `AI_MainTask_BuildHouse` names its house by
+ * an engine string the corpus never writes, and is not extracted.
+ */
+export const MapAiTask = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('defend'), ...soldierTask }),
+  z.strictObject({
+    kind: z.literal('attack'),
+    ...soldierTask,
+    /** Where a scattered band regroups before it goes in again. */
+    rallyX: mapPoint,
+    rallyY: mapPoint,
+    /** The `MILITARY_MODE_*` stance the attackers are given. */
+    stance: z.number().int(),
+  }),
+  z.strictObject({
+    kind: z.literal('createCreatures'),
+    priority: z.number().int(),
+    condition: conditionRef,
+    tribe: z.number().int(),
+    job: z.number().int(),
+    x: mapPoint,
+    y: mapPoint,
+    missionId: z.number().int(),
+    count: z.number().int().nonnegative(),
+    once: z.boolean(),
+  }),
+  z.strictObject({
+    kind: z.literal('changeDiplomacy'),
+    priority: z.number().int(),
+    condition: conditionRef,
+    player: z.number().int(),
+    state: z.number().int(),
+  }),
+  z.strictObject({ kind: z.literal('selfDestroyPlayer'), condition: conditionRef }),
+]);
+export type MapAiTask = z.infer<typeof MapAiTask>;
+
+/**
+ * One player's `[AIData]` (`docs/formats/MISSIONS.md`, AI data): the seat toggles (`AI_Disable` stops
+ * both of the seat's AI handlers, `HAI_Disable` only the strategic modules; the corpus authors only
+ * those two blanket forms, and the indexed `HAI_DisableHouseBuild <player> <n>` and
+ * `HAI_DisableHouseUpgrade <player> <n>` lines are not read) and the scripted handler's program.
  */
 export const MapAiSeat = z.strictObject({
   player: z.number().int().nonnegative(),
@@ -142,6 +284,16 @@ export const MapAiSeat = z.strictObject({
   disabled: z.boolean(),
   /** The strategic modules the map stops; every one after a blanket `HAI_Disable`. */
   strategicOff: z.array(MapAiModule),
+  /** `AI_UnitLimit`: the population the scripted handler breeds towards. */
+  unitLimit: z.number().int().optional(),
+  /** `AI_MaxUnitLimit`: the population it stops breeding at; 0 for no cap. */
+  maxUnitLimit: z.number().int().optional(),
+  /** `AI_SoldiersDefaultPosition`: where the seat's soldiers stand when no task takes them. */
+  defaultPosition: z
+    .strictObject({ x: mapPoint, y: mapPoint, range: z.number().int().nonnegative() })
+    .optional(),
+  conditions: z.array(MapAiCondition).default([]),
+  tasks: z.array(MapAiTask).default([]),
 });
 export type MapAiSeat = z.infer<typeof MapAiSeat>;
 

@@ -9,6 +9,8 @@ export {
   DEFAULT_BUILD_ORDER,
   TOWER_CONTENT_IDS,
 } from './ai-player/build-order/index.js';
+// The scripted handlers' round, so a real-content probe can step to a seat's turn.
+export { AI_HANDLER_ROUND_TICKS } from './ai-player/cadence.js';
 // Exported so an acceptance scene can pin the garrison the AI seat walls in.
 export { TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
 export {

@@ -199,10 +199,12 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
     return { sim: restoreSimulation(save, { content: base.content, map: base.terrain }), kind: 'demo' };
   }
   const authored = authoredWorldContent(terrain, options);
+  const ai = options.script?.ai;
   const sim = restoreSimulation(save, {
     content: authored ?? resolveWorldContent(terrain, options.content),
     map: terrain,
     ...(options.script?.missions !== undefined ? { missions: options.script.missions } : {}),
+    ...(ai !== undefined && ai.length > 0 ? { aiScript: ai } : {}),
   });
   return { sim, kind: authored !== null ? 'authored' : 'bare' };
 }

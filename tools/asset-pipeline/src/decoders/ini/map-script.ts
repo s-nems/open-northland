@@ -7,8 +7,10 @@
 import {
   MAP_PLAYER_COLOR_COUNT,
   MAP_SPECIAL_ITEM_KIND_COUNT,
+  MapAiCondition,
   MapAiModule,
   type MapAiSeat,
+  MapAiTask,
   MapScript,
   type MapScriptLine,
 } from '@open-northland/data';
@@ -178,26 +180,212 @@ const HAI_MODULE_KEYWORDS: Readonly<Record<string, MapAiModule>> = {
   hai_disableroadbuild: 'roadBuild',
 };
 
+/** Ticks per authored minute and per authored second: the loader's own conversions of `OnTime` and
+ *  `OnConditionChangeDelayed` arguments (byte evidence: `an original routine`). */
+const TICKS_PER_MINUTE = 720;
+const TICKS_PER_SECOND = 12;
+
+/** The ints after the player of one `[AIData]` line, the way the loader reads them: each in turn, a
+ *  macro through the code table, and a missing or malformed one as 0. */
+class AiLineReader {
+  private next = 1;
+  constructor(private readonly values: readonly string[]) {}
+  int(): number {
+    return code(this.values[this.next++]) ?? 0;
+  }
+  bool(): boolean {
+    return this.int() !== 0;
+  }
+  /** Every remaining int, up to `limit`. */
+  rest(limit: number): number[] {
+    const out: number[] = [];
+    while (this.next < this.values.length && out.length < limit) out.push(this.int());
+    return out;
+  }
+}
+
+/** The `AI_SetCondition_*` keywords, lower-cased, each reading its line the way the loader does. */
+const AI_CONDITION_LINES: Readonly<Record<string, (slot: number, r: AiLineReader) => MapAiCondition>> = {
+  ai_setcondition_true: (slot) => ({ kind: 'true', slot }),
+  ai_setcondition_ontime: (slot, r) => ({ kind: 'onTime', slot, ticks: r.int() * TICKS_PER_MINUTE }),
+  ai_setcondition_onconditions: (slot, r) => {
+    const sticky = r.bool();
+    return { kind: 'onConditions', slot, sticky, mode: r.int(), slots: r.rest(10) };
+  },
+  ai_setcondition_onconditionchangedelayed: (slot, r) => {
+    const sticky = r.bool();
+    const source = r.int();
+    const onActivation = r.bool();
+    return {
+      kind: 'onConditionChangeDelayed',
+      slot,
+      sticky,
+      source,
+      onActivation,
+      delayTicks: r.int() * TICKS_PER_SECOND,
+    };
+  },
+  ai_setcondition_ondiplomacychange: (slot, r) => {
+    const sticky = r.bool();
+    const from = r.int();
+    const to = r.int();
+    return { kind: 'onDiplomacyChange', slot, sticky, from, to, state: r.int() };
+  },
+  ai_setcondition_oncreatureinrange: (slot, r) => {
+    const sticky = r.bool();
+    const x = r.int();
+    const y = r.int();
+    const range = r.int();
+    const player = r.int();
+    const enemiesOnly = r.bool();
+    return {
+      kind: 'onCreatureInRange',
+      slot,
+      sticky,
+      x,
+      y,
+      range,
+      player,
+      enemiesOnly,
+      soldiersOnly: r.bool(),
+    };
+  },
+  ai_setcondition_onhouseinrange: (slot, r) => {
+    const sticky = r.bool();
+    const x = r.int();
+    const y = r.int();
+    const range = r.int();
+    const player = r.int();
+    const enemiesOnly = r.bool();
+    const houseType = r.int();
+    return {
+      kind: 'onHouseInRange',
+      slot,
+      sticky,
+      x,
+      y,
+      range,
+      player,
+      enemiesOnly,
+      houseType,
+      finishedOnly: r.bool(),
+    };
+  },
+  ai_setcondition_onplayerseen: (slot, r) => {
+    const sticky = r.bool();
+    const seer = r.int();
+    return { kind: 'onPlayerSeen', slot, sticky, seer, seen: r.int() };
+  },
+  ai_setcondition_onplayerdead: (slot, r) => ({ kind: 'onPlayerDead', slot, player: r.int() }),
+  ai_setcondition_onnumberofsoldiers: (slot, r) => {
+    const sticky = r.bool();
+    const count = r.int();
+    return { kind: 'onNumberOfSoldiers', slot, sticky, count, player: r.int() };
+  },
+  ai_setcondition_onexternal: (slot, r) => ({ kind: 'onExternal', slot, raised: r.bool() }),
+  ai_setcondition_ontimer: (slot, r) => {
+    const delayTicks = r.int();
+    const activeTicks = r.int();
+    return { kind: 'onTimer', slot, delayTicks, activeTicks, inactiveTicks: r.int() };
+  },
+};
+
+/** The `AI_MainTask_*` keywords, lower-cased, each reading its line the way the loader does. */
+const AI_TASK_LINES: Readonly<Record<string, (r: AiLineReader) => MapAiTask>> = {
+  ai_maintask_defend: (r) => {
+    const priority = r.int();
+    const condition = r.int();
+    const x = r.int();
+    const y = r.int();
+    const range = r.int();
+    const min = r.int();
+    return { kind: 'defend', priority, condition, x, y, range, min, max: r.int() };
+  },
+  ai_maintask_attack: (r) => {
+    const priority = r.int();
+    const condition = r.int();
+    const x = r.int();
+    const y = r.int();
+    const range = r.int();
+    const min = r.int();
+    const max = r.int();
+    const rallyX = r.int();
+    const rallyY = r.int();
+    return { kind: 'attack', priority, condition, x, y, range, min, max, rallyX, rallyY, stance: r.int() };
+  },
+  ai_maintask_createcreatures: (r) => {
+    const priority = r.int();
+    const condition = r.int();
+    const tribe = r.int();
+    const job = r.int();
+    const x = r.int();
+    const y = r.int();
+    const missionId = r.int();
+    const count = r.int();
+    return {
+      kind: 'createCreatures',
+      priority,
+      condition,
+      tribe,
+      job,
+      x,
+      y,
+      missionId,
+      count,
+      once: r.bool(),
+    };
+  },
+  ai_maintask_changediplomacy: (r) => {
+    const priority = r.int();
+    const condition = r.int();
+    const player = r.int();
+    return { kind: 'changeDiplomacy', priority, condition, player, state: r.int() };
+  },
+  ai_maintask_selfdestroyplayer: (r) => ({ kind: 'selfDestroyPlayer', condition: r.int() }),
+};
+
 /**
- * Folds the seat toggles of one `[AIData]` section into `out`, one row per player, keyed
- * case-insensitively like the engine's token table. The authored task and condition program
- * (`AI_MainTask_*`, `AI_SetCondition_*`) is not extracted.
+ * Folds one `[AIData]` section into `out`, one row per player, keyed case-insensitively like the
+ * engine's token table: the seat toggles, the unit limits, the soldiers' default position and the
+ * scripted handler's condition and task program.
  */
 function aiSection(sec: RuleSection, out: MapAiSeat[]): void {
   for (const p of sec.props) {
     const key = p.key.toLowerCase();
     const player = int(p.values[0]);
     if (player === undefined || player < 0) continue;
+    const seat = (): MapAiSeat => {
+      let row = out.find((r) => r.player === player);
+      if (row === undefined) {
+        row = { player, disabled: false, strategicOff: [], conditions: [], tasks: [] };
+        out.push(row);
+      }
+      return row;
+    };
+    const reader = new AiLineReader(p.values);
     const module = HAI_MODULE_KEYWORDS[key];
-    if (key !== 'ai_disable' && key !== 'hai_disable' && module === undefined) continue;
-    let row = out.find((seat) => seat.player === player);
-    if (row === undefined) {
-      row = { player, disabled: false, strategicOff: [] };
-      out.push(row);
+    const condition = AI_CONDITION_LINES[key];
+    const task = AI_TASK_LINES[key];
+    if (key === 'ai_disable') seat().disabled = true;
+    else if (key === 'hai_disable' || module !== undefined) {
+      const row = seat();
+      const off = key === 'hai_disable' ? MapAiModule.options : [module as MapAiModule];
+      for (const id of off) if (!row.strategicOff.includes(id)) row.strategicOff.push(id);
+    } else if (key === 'ai_unitlimit') seat().unitLimit = reader.int();
+    else if (key === 'ai_maxunitlimit') seat().maxUnitLimit = reader.int();
+    else if (key === 'ai_soldiersdefaultposition') {
+      const x = reader.int();
+      const y = reader.int();
+      seat().defaultPosition = { x, y, range: reader.int() };
+    } else if (condition !== undefined) {
+      // A row the schema refuses (a negative slot, range or count) is dropped here, where the loader
+      // would read the value unsigned, rather than failing the whole sidecar at the final parse.
+      const row = MapAiCondition.safeParse(condition(reader.int(), reader));
+      if (row.success) seat().conditions.push(row.data);
+    } else if (task !== undefined) {
+      const row = MapAiTask.safeParse(task(reader));
+      if (row.success) seat().tasks.push(row.data);
     }
-    if (key === 'ai_disable') row.disabled = true;
-    const off = key === 'hai_disable' ? MapAiModule.options : module === undefined ? [] : [module];
-    for (const id of off) if (!row.strategicOff.includes(id)) row.strategicOff.push(id);
   }
 }
 

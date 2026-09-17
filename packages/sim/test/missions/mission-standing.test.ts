@@ -1,6 +1,6 @@
+import { MAP_AI_CONDITION_SLOTS } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
-  AI_CONDITION_SLOTS,
   AiExternalFlags,
   aiExternalFlagRaised,
   diplomacyLocked,
@@ -363,7 +363,7 @@ describe('SetExternalFlag', () => {
   });
 
   it('drops a slot past the ai.inc limit', () => {
-    const sim = firingSim([flag(AI_CONDITION_SLOTS, true)]);
+    const sim = firingSim([flag(MAP_AI_CONDITION_SLOTS, true)]);
     sim.run(FIRST_PASS);
     expect(sim.world.lowestEntityWith(AiExternalFlags)).toBeNull();
   });

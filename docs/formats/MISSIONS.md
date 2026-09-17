@@ -451,8 +451,8 @@ Readings unless marked otherwise.
   build keeps it in `components/relations.ts`, with no seat command yet that would have to respect it.
 - **External flags**: up to 100 condition slots on a seat's AI handler; a slot takes a script's flag
   only when its `ai.inc` condition is the external-activate kind (see [AI data](#ai-data)). This build
-  keeps the raised slots per player (`components/ai-flags.ts`) for the day that condition layer is
-  modelled; nothing reads them.
+  keeps the raised slots per player (`components/ai-flags.ts`), whatever the slot's kind, and the
+  scripted handler's `OnExternal` slots read them.
 - **Allowed and enabled tables**: per player and tribe: 56 job, 66 good and 55 house-type slots,
   one byte each in an allowed table and an enabled table (produceable for goods). Allowed is the
   map's permission: the per-human update that opens a trade, a good or a house type for a settler
@@ -511,39 +511,72 @@ loader and tick unless marked otherwise:
   (`MapAiSeat` in the script sidecar); the corpus authors only `HAI_Disable` (339 lines) and
   `AI_Disable` (115). The monster-tribe rule is not applied.
 
-The rest of the section is the authored program, which this build does not run. Corpus counts are
-over the 121 mod maps that carry the section (91 author a program; `//` comment lines occur).
-Positions are map points. Where a field is called a player by its use, the corpus also writes 20,
-one past the last seat, seemingly for any player:
+The rest of the section is the scripted handler's program, extracted as typed rows (`MapAiSeat` in
+the script sidecar) and run by `systems/ai-program` for a computer seat whose strategic military
+module is off (approximation: the original runs both handlers side by side; this build's campaign
+and the program would order the same men against each other). Corpus counts are over the 121 mod
+maps that carry the section (91 author a program; `//` comment lines occur). Positions are map
+points; a range test holds strictly inside the range. Where a field is a player, 20 means any
+player. Readings of the loader (`an original routine`), the condition pass
+(`an original routine`, `Condition_RecheckAll`, `an original routine`), the
+task pass (`MainTask_RecheckAll`, `an original routine`) and the soldier passes
+(`an original routine`, `an original routine`,
+`an original routine`, `an original routine`), the original:
 
 | Line | Uses | Parameters after `<player>` |
 | --- | --- | --- |
-| `AI_UnitLimit`, `AI_MaxUnitLimit` | 280, 39 | `<n>` |
-| `AI_SoldiersDefaultPosition` | 248 | `<x> <y> <range>` |
-| `AI_MainTask_Defend` | 962 | `<priority> <condition> <x> <y> <a> <b> <c>` (the corpus authors `40 5 10` or `40 2 3`) |
-| `AI_MainTask_Attack` | 41 | `<priority> <condition> <x> <y> <a> <b> <c> <x2> <y2> <d>` |
-| `AI_MainTask_CreateCreatures` | 237 | `<priority> <condition> <tribe> <job> <x> <y> <a> <count> <once>`: `count` humans of `tribe`/`job` at the point with behaviour mask 0, on every task recheck that finds the condition active, once only with `once` |
-| `AI_MainTask_BuildHouse`, `ChangeDiplomacy`, `SelfDestroyPlayer` | 0 | one-shot tasks; `SelfDestroyPlayer` frees every human of the seat |
+| `AI_UnitLimit`, `AI_MaxUnitLimit` | 280, 39 | `<n>`: the population the handler breeds towards, and the one it stops at (0 for none). Read by its women pass, which this build does not run; extracted as `unitLimit` and `maxUnitLimit` |
+| `AI_SoldiersDefaultPosition` | 248 | `<x> <y> <range>`: where the men no task takes stand; without one, the seat's centre with range 15 |
+| `AI_MainTask_Defend` | 962 | `<priority> <condition> <x> <y> <range> <min> <max>` |
+| `AI_MainTask_Attack` | 41 | `<priority> <condition> <x> <y> <range> <min> <max> <rallyX> <rallyY> <stance>` |
+| `AI_MainTask_CreateCreatures` | 237 | `<priority> <condition> <tribe> <job> <x> <y> <missionId> <count> <once>`: `count` humans of `tribe`/`job` at the point with behaviour mask 0, on every task recheck that finds the condition active, once only with `once` |
+| `AI_MainTask_ChangeDiplomacy` | 0 | `<priority> <condition> <player> <state>` (1 friend, 2 neutral, 3 enemy), once |
+| `AI_MainTask_SelfDestroyPlayer` | 0 | `<condition>`: frees every human of the seat, once, at priority 1 |
+| `AI_MainTask_BuildHouse` | 0 | `<priority> <condition> <houseType name> <n> <x> <y> <n>`, not extracted |
 | `AI_MainTask_ClearTributes`, `BuildMilestone`, `AI_AddTribute`, `AI_SetTributeHireling` | 0 | in the token table, but the loader reads none of them |
 | `AI_SetCondition_True` | 22 | `<slot>` |
 | `AI_SetCondition_OnTime` | 1 | `<slot> <minutes>` (stored as `720 * minutes` ticks) |
-| `AI_SetCondition_OnConditions` | 232 | `<slot> <flag> <mode> <slot>...` up to ten slots; the corpus uses mode 1 over several slots and mode 3 over one (all-of and not, by their use; the combinator table is unread) |
-| `AI_SetCondition_OnConditionChangeDelayed` | 1 | `<slot> <flag> <slot> <bool> <seconds>` (stored as `12 * seconds` ticks) |
-| `AI_SetCondition_OnDiplomacyChange` | 0 | `<slot> <flag> <a> <b> <c>` |
-| `AI_SetCondition_OnCreatureInRange` | 59 | `<slot> <flag> <x> <y> <range> <player> <bool> <bool>` (player by use) |
-| `AI_SetCondition_OnHouseInRange` | 314 | `<slot> <flag> <x> <y> <range> <player> <bool> <houseType> <bool>` (player by use) |
-| `AI_SetCondition_OnPlayerSeen` | 0 | `<slot> <flag> <player> <player>` |
-| `AI_SetCondition_OnPlayerDead` | 0 | `<slot> <player>` |
-| `AI_SetCondition_OnNumberOfSoldiers` | 143 | `<slot> <flag> <n> <player>` (player by use) |
-| `AI_SetCondition_OnExternal` | 36 | `<slot> <bool>`: the slot `SetExternalFlag` writes |
-| `AI_SetCondition_OnTimer` | 13 | `<slot> <a> <b> <c>` |
+| `AI_SetCondition_OnConditions` | 232 | `<slot> <flag> <mode> <slot>...` up to ten slots; mode 1 all of, 2 any of, 3 not the first, 4 either of the first two; any other mode never judges |
+| `AI_SetCondition_OnConditionChangeDelayed` | 1 | `<slot> <flag> <slot> <bool> <seconds>` (stored as `12 * seconds` ticks): holds that long after the named slot's activation (`bool` set) or deactivation, never before one |
+| `AI_SetCondition_OnDiplomacyChange` | 0 | `<slot> <flag> <from> <to> <state>` |
+| `AI_SetCondition_OnCreatureInRange` | 59 | `<slot> <flag> <x> <y> <range> <player> <enemiesOnly> <soldiersOnly>`: a human, owned animal or vehicle of `player` (never the seat's own unless it names itself) inside the range |
+| `AI_SetCondition_OnHouseInRange` | 314 | `<slot> <flag> <x> <y> <range> <player> <enemiesOnly> <houseType> <finishedOnly>`: a house of `player` (any but the seat's own for 20), of `houseType` unless 0 |
+| `AI_SetCondition_OnPlayerSeen` | 0 | `<slot> <flag> <seer> <seen>`: the seer has met the seen |
+| `AI_SetCondition_OnPlayerDead` | 0 | `<slot> <player>`: no human left, judged only after tick 720 |
+| `AI_SetCondition_OnNumberOfSoldiers` | 143 | `<slot> <flag> <n> <player>`: the player's soldiers reach `n` |
+| `AI_SetCondition_OnExternal` | 36 | `<slot> <bool>`: the slot `SetExternalFlag` writes, starting as `bool` |
+| `AI_SetCondition_OnTimer` | 13 | `<slot> <delay> <on> <off>` in ticks: off for `delay` after the load, then on for `on` and off for `off` in turn |
+
+The `<flag>` makes a slot sticky: once it has held it stays held. `True`, `OnTime` and
+`OnPlayerDead` are always sticky, `OnExternal` and `OnTimer` never. A slot is judged on every turn
+of the handler, the two range scans on every tenth, and a turn repeats the pass while a slot
+changed, ten passes at most. The first declaration of a slot wins; a slot at or past 100 is
+refused.
 
 Tasks are rechecked on the handler's first turn and on every turn a condition changed. A task
-whose condition slot is active gets its priority (slot 100000 is always active, 100001 never, and
-a slot at or past 100 or left unset is never); the one-shot kinds run in the recheck and the others
-are sorted by priority for the soldier and vehicle assignment. Conditions are rechecked on every
-turn at a per-kind period. The lettered fields and unnamed booleans above are read by the loader,
-but their meaning is not established.
+whose condition slot holds gets its priority (slot 100000 always holds, 100001 never, and a slot at
+or past 100 or left unset never); the one-shot kinds run in the recheck, and the Defend and Attack
+tasks go to the soldier assignment. A seat that authored no task at all defends its centre (its
+first storage building, else the mean of what it owns) with range 40 and no bounds.
+
+The handler lists the seat's soldiers and heroes that man no workhouse. On every second turn it
+hands them out: the active Defend and Attack tasks become groups (Attack tasks on one point pool
+into a group that sums their priority and bounds and averages their rally points), sorted by
+priority. A first pass serves the Attack groups and the Defend groups bounded on both sides: each
+takes its priority's share of the men still free, at most its `max`, or none when that is under
+its `min`; a second pass serves the rest from their share of the pooled priority. A group takes the
+nearest men, preferring the ones already on it, then the armed and armoured; a hero never takes an
+Attack. A man keeps his task until the task's condition drops; the men no task takes hold the
+default position. On every turn the handler then orders them: a Defend post's man walks back when
+farther than half the range (and more than 10) from the post and guards there; an Attack band's
+man goes for the enemy house on the target, else to within half the range of it, unless the band
+is regrouping, when he gathers within the group's regroup range of the rally point. A band
+regroups when fewer than a third of it (half, while regrouping) stands within the range of the
+target and fewer than that stand within three times its size (twice, while regrouping) of its
+foremost man; the regroup range is a third of the band. This build issues those walks as
+attack-moves and sets the guard stance on arrival (the original sets it on assignment and anchors
+it at the post); the men a raid draws out (`ai-player/military/defence`) return to their post when
+the raid ends.
 
 ## Tributes
 

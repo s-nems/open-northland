@@ -1,4 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
+import type { AiProgramScript } from '../components/ai-program.js';
 import type { CommandQueue } from '../core/command-queue.js';
 import type { EventBuffer } from '../core/events.js';
 import type { Rng } from '../core/rng.js';
@@ -32,6 +33,8 @@ export interface SystemContext {
   /** The map's mission script. Absent for a world that runs none, which is every world whose builder
    *  wires none. */
   readonly missions?: MissionScript;
+  /** The map's `[AIData]` rows, one per seat that authored any. Absent like `missions`. */
+  readonly aiScript?: AiProgramScript;
 }
 
 /**

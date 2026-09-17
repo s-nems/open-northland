@@ -20,6 +20,7 @@ export {
   THREAT_STAND_DOWN_MARGIN_NODES,
   TOWER_GARRISON_ARCHERS,
   threatWatchNodes,
+  towerPostOrders,
 } from './defence/index.js';
 export {
   ASSAULT_RING_RADIUS_NODES,

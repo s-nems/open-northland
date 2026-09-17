@@ -18,9 +18,15 @@ it('seats the strategic AI as the map’s [AIData] toggles say', () => {
     needs: null,
     script: {
       ai: [
-        { player: 2, disabled: false, strategicOff: [...components.AI_MODULE_IDS] },
-        { player: 3, disabled: true, strategicOff: [] },
-        { player: 4, disabled: false, strategicOff: ['military'] },
+        {
+          player: 2,
+          disabled: false,
+          strategicOff: [...components.AI_MODULE_IDS],
+          conditions: [],
+          tasks: [],
+        },
+        { player: 3, disabled: true, strategicOff: [], conditions: [], tasks: [] },
+        { player: 4, disabled: false, strategicOff: ['military'], conditions: [], tasks: [] },
       ],
     },
   });

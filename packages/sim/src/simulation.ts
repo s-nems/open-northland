@@ -1,4 +1,5 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
+import type { AiProgramScript } from './components/ai-program.js';
 import {
   ASSISTANT_COUNTER_KINDS,
   AssistantCounters,
@@ -71,6 +72,8 @@ export interface SimOptions {
   map?: TerrainMap;
   /** The map's decoded mission script. Omitted for a world that runs no script. */
   missions?: MissionScript;
+  /** The map's `[AIData]` rows. Omitted for a world whose map authored none. */
+  aiScript?: AiProgramScript;
 }
 
 /** Wraps one system invocation for timing; observational only. */
@@ -99,6 +102,9 @@ export class Simulation {
   /** The map's mission script, the MissionSystem's content input; undefined for a world that runs
    *  none. An immutable input like `content`, so `hashState` does not mix it in. */
   readonly missions?: MissionScript;
+  /** The map's `[AIData]` rows, the AI program system's content input; an immutable input like
+   *  `missions`. */
+  readonly aiScript?: AiProgramScript;
   private readonly map?: TerrainMap;
   private mapFingerprintMemo?: string;
   /** Null until {@link setSyncDigest} turns the digest on; while set it is the world's mutation sink. */
@@ -123,6 +129,7 @@ export class Simulation {
     this.seed = opts.seed;
     this.content = opts.content;
     if (opts.missions !== undefined) this.missions = opts.missions;
+    if (opts.aiScript !== undefined) this.aiScript = opts.aiScript;
     if (opts.map !== undefined) {
       this.map = opts.map;
       this.terrain = buildTerrainGraph(opts.content, opts.map);
@@ -206,6 +213,7 @@ export class Simulation {
       ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
       ...(this.fog !== undefined ? { fog: this.fog } : {}),
       ...(this.missions !== undefined ? { missions: this.missions } : {}),
+      ...(this.aiScript !== undefined ? { aiScript: this.aiScript } : {}),
     };
     const instrument = this.instrument;
     for (const { name, system } of SYSTEM_ORDER) {
@@ -463,6 +471,7 @@ export interface SimInputs {
   readonly seed: number;
   readonly map?: TerrainMap | undefined;
   readonly missions?: MissionScript | undefined;
+  readonly aiScript?: AiProgramScript | undefined;
 }
 
 /**
@@ -470,11 +479,12 @@ export interface SimInputs {
  * `exactOptionalPropertyTypes` the key must be omitted, since Simulation builds its terrain graph iff the
  * key is present.
  */
-export function simFor({ content, seed, map, missions }: SimInputs): Simulation {
+export function simFor({ content, seed, map, missions, aiScript }: SimInputs): Simulation {
   return new Simulation({
     seed,
     content,
     ...(map !== undefined ? { map } : {}),
     ...(missions !== undefined ? { missions } : {}),
+    ...(aiScript !== undefined ? { aiScript } : {}),
   });
 }

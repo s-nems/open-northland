@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { missionRecords, missionStateExists } from '../components/index.js';
+import { AiProgram, type AiProgramScript, missionRecords, missionStateExists } from '../components/index.js';
 import { assertNever } from '../core/brand.js';
 import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import { componentByName } from '../ecs/component.js';
@@ -18,6 +18,8 @@ export interface RestoreOptions {
   /** The map's mission script; required iff the save carries mission records, and it must be the
    *  script the run was saved on. */
   missions?: MissionScript;
+  /** The map's `[AIData]` rows, on the same terms for a save that carries a seat's program state. */
+  aiScript?: AiProgramScript;
 }
 
 /**
@@ -45,6 +47,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
     content: opts.content,
     ...(opts.map !== undefined ? { map: opts.map } : {}),
     ...(opts.missions !== undefined ? { missions: opts.missions } : {}),
+    ...(opts.aiScript !== undefined ? { aiScript: opts.aiScript } : {}),
   });
   const fingerprint = sim.mapFingerprint ?? null;
   if (fingerprint !== header.mapFingerprint) {
@@ -75,6 +78,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
   }
   sim.restoreTick(header.tick);
   assertMissionScriptMatches(sim, opts.missions);
+  assertAiScriptMatches(sim, opts.aiScript);
   // Structural validation cannot see that a saved reference points at a settler with no marriage or a
   // building nobody owns. The core invariants can, and a save that fails them would otherwise throw
   // on every tick of a world the player already believes they loaded.
@@ -98,6 +102,22 @@ function assertMissionScriptMatches(sim: Simulation, missions: MissionScript | u
     throw new Error(
       `save.sections: the save carries ${saved} mission records, the restore target's script has ${wired}`,
     );
+  }
+}
+
+/** A seat's program records are positional over its rows like the mission records, so each saved
+ *  program must find its seat's rows, with as many conditions and at least as many tasks. */
+function assertAiScriptMatches(sim: Simulation, aiScript: AiProgramScript | undefined): void {
+  for (const e of sim.world.query(AiProgram)) {
+    const program = sim.world.get(e, AiProgram);
+    const rows = aiScript?.find((row) => row.player === program.player);
+    const slots = rows === undefined ? 0 : Math.max(0, ...rows.conditions.map((c) => c.slot + 1));
+    const tasks = (rows?.tasks.length ?? 0) + (program.defaultDefend !== null ? 1 : 0);
+    if (program.conditions.length !== slots || program.tasks.length > tasks) {
+      throw new Error(
+        `save.sections: seat ${program.player}'s AI program does not fit the restore target's [AIData] rows`,
+      );
+    }
   }
 }
 

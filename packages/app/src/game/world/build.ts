@@ -16,7 +16,8 @@ export interface MapScriptWorld {
   readonly victory?: 'script' | 'elimination';
   readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
-  /** The `[AIData]` seat toggles: which computer seats run no strategic modules, or no AI at all. */
+  /** The `[AIData]` rows: the seat toggles the builder applies, and the scripted handlers' programs the
+   *  simulation runs. */
   readonly ai?: readonly MapAiSeat[];
   readonly humanNames?: readonly MapHumanName[];
   /** The map's `tradeagreement` rows, registered before the first tick. */
@@ -42,6 +43,7 @@ export function newWorldSim(
     content,
     map,
     ...(script.missions !== undefined ? { missions: script.missions } : {}),
+    ...(script.ai !== undefined && script.ai.length > 0 ? { aiScript: script.ai } : {}),
   });
   if (map.fishSwarms !== undefined && sim.terrain !== undefined) {
     systems.addFishSwarms(sim.world, sim.terrain, map.fishSwarms);
