@@ -1,7 +1,6 @@
 import type { DiplomacyState } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { messages } from '../../../i18n/index.js';
-import { WIN_PAD } from '../../chrome.js';
 import { contains } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
 import {
@@ -53,11 +52,6 @@ export interface DiplomacyWindow extends ToolWindow {
 export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindow {
   const { ctx } = deps;
   const { scale } = ctx;
-  const origin = {
-    x: ctx.layout.width + WIN_PAD * scale,
-    y: ctx.layout.buttons.find((b) => b.id === 'diplomacy')?.placed.y ?? ctx.layout.strip.y,
-  };
-
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0); // behind the shell's frame Graphics
@@ -124,6 +118,16 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     key = rebuildKey(rows, selected);
     const selectedRow = rows.find((r) => r.player === selected);
     const cards = body.measureCards(selectedRow?.tributes ?? []);
+    const measured = layoutDiplomacyWindow({
+      originX: 0,
+      originY: 0,
+      scale,
+      players: rows.map((r) => r.player),
+      selected,
+      tributes: cards.map((c) => c.spec),
+    });
+    const screen = ctx.screen();
+    const origin = ctx.layout.windowOrigin(screen, measured.window.w);
     const raw = layoutDiplomacyWindow({
       originX: origin.x,
       originY: origin.y,
@@ -133,7 +137,8 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       declarable: selectedRow?.canDeclare === true ? selectedRow.yourStance : null,
       tributes: cards.map((c) => c.spec),
     });
-    const built = fitDiplomacyWindow(raw, ctx.screen(), ctx.overlayReserve?.() ?? null, scroll);
+    const reserve = ctx.layout.bottomReserve(screen, raw.window, ctx.overlayReserve?.() ?? null);
+    const built = fitDiplomacyWindow(raw, screen, reserve, scroll);
     scroll = built.scroll;
     layout = built;
 

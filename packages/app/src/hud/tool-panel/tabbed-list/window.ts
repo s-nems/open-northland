@@ -1,9 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import { createTooltip, type Tooltip } from '../../../view/tooltip.js';
-import { WIN_PAD } from '../../chrome.js';
 import { contains } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
-import type { ToolButtonId } from '../layout.js';
 import { clearFills, ROW_H, standardWindowWidth, type WindowLayers } from '../window-family/index.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
 import { paintHover, paintWindow } from './chrome.js';
@@ -29,8 +27,6 @@ const MIN_LIST_ROWS = 3;
 export interface TabbedListSource<Id, Item extends TabbedListItem> {
   /** The headline text, resolved at rebuild time so a language change is picked up. */
   title(): string;
-  /** The strip button the window drops from. */
-  readonly anchor: ToolButtonId;
   tabs(): readonly TabbedListTab<Id>[];
   /** Tabs per grid row. */
   readonly tabColumns: number;
@@ -77,12 +73,14 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
 ): TabbedListWindow<Id> {
   const { ctx, source } = deps;
   const { scale } = ctx;
-  // Right of the strip, dropping from the button that opens it, which clears the top-left debug overlay.
-  const origin = {
-    x: ctx.layout.width + WIN_PAD * scale,
-    y: ctx.layout.buttons.find((b) => b.id === source.anchor)?.placed.y ?? ctx.layout.strip.y,
+  // Centred in the region between the side regions, read live because a resize moves it.
+  const width = standardWindowWidth(scale);
+  const origin = (): { readonly x: number; readonly y: number } =>
+    ctx.layout.windowOrigin(ctx.screen(), width);
+  const originKey = (): string => {
+    const at = origin();
+    return `${at.x},${at.y}`;
   };
-  const windowRight = origin.x + standardWindowWidth(scale);
 
   // The tab set is fixed per source, so the chrome above the list is a constant.
   const chromeH = chromeAboveList(source.tabs().length, source.tabColumns);
@@ -102,8 +100,10 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   // The last canvas cursor point, so a scroll, tab change or resize re-resolves which card a stationary
   // cursor is over.
   let lastPointer: { x: number; y: number } | null = null;
-  // The viewport row count the current layout was built for; a resize that changes it triggers a reflow.
+  // The viewport row count and origin the current layout was built for; a resize that changes either
+  // triggers a reflow.
   let builtRows = 0;
+  let builtOrigin = '';
 
   const shell = createWindowShell(deps.container);
   const back = new Container();
@@ -118,18 +118,21 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     runs: shell.runs,
   };
 
-  /** The lowest screen y the list should reach: the screen foot, raised to the top of the bottom-corner
-   *  overlay when this window's x-span crosses it. */
+  /** The lowest screen y the list should reach: the screen foot, raised to the top of the beam or
+   *  the bottom-corner overlay when this window's x-span crosses it. */
   const listFloor = (): number => {
-    const screenH = ctx.screen().height;
-    const reserve = ctx.overlayReserve?.() ?? null;
-    if (reserve === null || origin.x >= reserve.x + reserve.w || windowRight <= reserve.x) return screenH;
-    return Math.min(screenH, reserve.y);
+    const screen = ctx.screen();
+    const reserve = ctx.layout.bottomReserve(
+      screen,
+      { x: origin().x, w: width },
+      ctx.overlayReserve?.() ?? null,
+    );
+    return reserve === null ? screen.height : Math.min(screen.height, reserve.y);
   };
 
   /** The viewport height in rows, from the live floor (bounded to a tidy compact panel). */
   const listRows = (): number => {
-    const avail = listFloor() - origin.y - (chromeH + LIST_BOTTOM_MARGIN) * scale;
+    const avail = listFloor() - origin().y - (chromeH + LIST_BOTTOM_MARGIN) * scale;
     return Math.max(MIN_LIST_ROWS, Math.min(MAX_LIST_ROWS, Math.floor(avail / (ROW_H * scale))));
   };
 
@@ -160,9 +163,11 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     shell.clear();
     clearFills(back);
     builtRows = listRows();
+    builtOrigin = originKey();
+    const at = origin();
     layout = layoutTabbedList({
-      originX: origin.x,
-      originY: origin.y,
+      originX: at.x,
+      originY: at.y,
       scale,
       tabs: source.tabs(),
       tabColumns: source.tabColumns,
@@ -268,7 +273,8 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     clearHover,
     refresh: (): void => {
       if (!shell.isOpen() || layout === null) return;
-      if (listRows() !== builtRows || permissions() !== permissionKey) rebuild();
+      if (listRows() !== builtRows || originKey() !== builtOrigin || permissions() !== permissionKey)
+        rebuild();
     },
     state: () => ({ selected, scrollTop }),
     restore: (state): void => {

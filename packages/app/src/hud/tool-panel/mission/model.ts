@@ -114,24 +114,27 @@ export interface ScreenSize {
 
 /**
  * The window's scale: the height-derived HUD base without the player's factor, so the sheet keeps the
- * screen share it had on the original's largest mode, shrunk further only when the screen cannot hold it.
+ * screen share it had on the original's largest mode, shrunk further only when `area` (the screen
+ * part the sheet may cover) cannot hold it.
  */
-export function missionWindowScale(screen: ScreenSize): number {
+export function missionWindowScale(screen: ScreenSize, area: ScreenSize = screen): number {
   const margin = 2 * SCREEN_MARGIN;
-  const fit = Math.min(
-    (screen.width - margin) / MISSION_WINDOW_W,
-    (screen.height - margin) / MISSION_WINDOW_H,
-  );
+  const fit = Math.min((area.width - margin) / MISSION_WINDOW_W, (area.height - margin) / MISSION_WINDOW_H);
   return Math.max(Number.EPSILON, Math.min(uiScaleFor(screen.height), fit));
 }
 
-export function layoutMissionWindow(screen: ScreenSize, sheet: SheetFrame | null): MissionWindowLayout {
-  const scale = missionWindowScale(screen);
+/** The sheet centred in `area`, the screen part above the navigation beam; `screen` sets the scale. */
+export function layoutMissionWindow(
+  screen: ScreenSize,
+  sheet: SheetFrame | null,
+  area: ScreenSize = screen,
+): MissionWindowLayout {
+  const scale = missionWindowScale(screen, area);
   const px = (v: number): number => Math.round(v * scale);
   const w = px(MISSION_WINDOW_W);
   const h = px(MISSION_WINDOW_H);
-  const x = Math.round((screen.width - w) / 2);
-  const y = Math.round((screen.height - h) / 2);
+  const x = Math.round((area.width - w) / 2);
+  const y = Math.round((area.height - h) / 2);
   const at = (dx: number, dy: number, dw: number, dh: number): Rect => ({
     x: x + px(dx),
     y: y + px(dy),

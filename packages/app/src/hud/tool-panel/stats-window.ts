@@ -3,15 +3,12 @@ import type { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
 import { drawWindowPanel, WIN_LINE_H, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { Rect } from '../geometry.js';
+import { liftedTop } from '../regions.js';
 import type { PanelContext } from './context.js';
 import { createWindowShell, type ToolWindow } from './window-shell.js';
 
 /** Stats window width (design px). */
 const STATS_WIDTH = 150;
-/** Horizontal gap between the strip and the window (design px). */
-const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
-/** Vertical drop below the strip top (design px). */
-const STATS_OFFSET_Y = 15;
 /** Title text inset (design px). */
 const TITLE_INSET_Y = 2;
 /** Index of `layoutHud`'s volatile tick row, excluded from the change key. */
@@ -36,13 +33,20 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   let key = '';
   let rect: Rect | null = null;
 
-  const origin = (): { x: number; y: number } => ({
-    x: ctx.layout.width + STATS_GAP_X * scale,
-    y: ctx.layout.strip.y + STATS_OFFSET_Y * scale,
-  });
+  /** Centred in the window region; a sheet taller than the region lifts so its foot clears the beam. */
+  const origin = (h: number): { x: number; y: number } => {
+    const screen = ctx.screen();
+    const at = ctx.layout.windowOrigin(screen, STATS_WIDTH * scale);
+    return { x: at.x, y: liftedTop(at.y, h, ctx.layout.windowFloor(screen), 0) };
+  };
+  const screenKey = (): string => {
+    const { width, height } = ctx.screen();
+    return `${width}x${height}`;
+  };
 
   const place = (): void => {
-    const { x: ox, y: oy } = origin();
+    if (rect === null) return;
+    const { x: ox, y: oy } = rect;
     const { width: rw, height: rh } = ctx.screen();
     const pad = WIN_PAD * scale;
     const runs = shell.runs;
@@ -55,9 +59,9 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
 
   const rebuild = (rows: readonly string[]): void => {
     shell.clear();
-    const { x: ox, y: oy } = origin();
     const w = STATS_WIDTH * scale;
     const h = (WIN_TITLE_H + rows.length * WIN_LINE_H + WIN_PAD) * scale;
+    const { x: ox, y: oy } = origin(h);
     rect = { x: ox, y: oy, w, h };
     drawWindowPanel(shell.graphics, rect, scale);
     const title = ctx.makeText(ctx.uiString('miscwindow', 180, messages().hud.statistics), 'white');
@@ -96,7 +100,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
       if (!shell.isOpen()) return;
       const hud = hudFor();
       // The tick advances every frame, so keying on it would rebuild every glyph mesh each frame.
-      let next = '';
+      let next = `${screenKey()}|`;
       for (let i = TICK_ROW + 1; i < hud.rows.length; i++) {
         next += `${hud.rows[i]?.text}|`;
       }

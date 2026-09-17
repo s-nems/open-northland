@@ -2,8 +2,6 @@
 
 **Area:** app, audio · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `hud/tool-panel/mission/` already contains briefing/history surfaces; the old menu path forces pause although the checked original path did not establish that behavior.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

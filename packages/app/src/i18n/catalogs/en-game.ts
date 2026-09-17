@@ -252,6 +252,36 @@ export const enGame = {
       armor: 'Armor',
       misc: 'Equipment',
     },
+    shell: {
+      navLabel: 'Game menu',
+      nav: {
+        build: 'Build',
+        residents: 'Residents',
+        assistant: 'Assistant',
+        statistics: 'Statistics',
+        mission: 'Mission',
+        diplomacy: 'Diplomacy',
+        knowledge: 'Knowledge',
+      },
+      speedLabel: 'Simulation speed',
+      pause: 'Pause',
+      speed: 'Speed ×{factor}',
+      menu: 'Game menu',
+      close: 'Close',
+      messages: 'Messages',
+      messagesCount: 'Messages: {count}',
+      messageLevelLabel: 'Message level',
+      messageLevels: {
+        all: 'All messages',
+        notable: 'Notable and important',
+        important: 'Important only',
+      },
+      pending: 'In preparation',
+      residentsPending:
+        'The residents list is being built. Select a settler on the map to see their details in the corner panel.',
+      knowledgePending:
+        'Knowledge (production and development, encyclopedia, how to play) is being built. Building requirements still show in the construction window.',
+    },
     extras: {
       title: 'Extras window',
       assistantTab: 'Assistant',

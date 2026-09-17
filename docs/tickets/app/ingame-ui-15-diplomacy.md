@@ -2,8 +2,6 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `hud/tool-panel/diplomacy/` shows relations/tribute but the reference identifies missing attitude changes and nation-map presentation.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

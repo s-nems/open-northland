@@ -7,7 +7,6 @@ import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
-import { contains } from '../../geometry.js';
 import type { TooltipSurface } from '../../tooltip-surface.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
@@ -17,7 +16,6 @@ import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js'
 import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource } from './from-snapshot.js';
 import { hitTestNotes } from './layout.js';
-import { MESSAGE_LEVEL_FACE } from './priority.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver } from './retire.js';
 import { createMessageStrip } from './strip.js';
@@ -28,9 +26,6 @@ import { createMessageWindow } from './window.js';
 export type { UnitSelectionView } from './deselection.js';
 export type { MessageFeedState } from './feed.js';
 export { MESSAGE_LEVEL_FACE } from './priority.js';
-
-/** The ingamegui table the priority button's tooltip rows live in. */
-const LEVEL_TOOLTIP_TABLE = 'main';
 
 /** The `miscwindow` row heading an unnamed seat, ahead of its slot number. */
 const PLAYER_STRING_ID = 361;
@@ -71,7 +66,9 @@ export interface MessageCenter {
    *  redraw. */
   present(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
   level(): MessagePriorityLevel;
-  cycleLevel(): MessagePriorityLevel;
+  setLevel(level: MessagePriorityLevel): void;
+  /** How many notes the feed shows at the current level. */
+  count(): number;
   /** True over the open window or a note. */
   claims(x: number, y: number): boolean;
   /** The open window's own claim; it draws above the tool pop-ups, so it takes a press before them. */
@@ -96,11 +93,6 @@ const RIGHT_BUTTON = 2;
 function fallbackRow(id: number): string {
   const rows: Readonly<Record<string, string | undefined>> = messages().userMessages.rows;
   return rows[String(id)] ?? '';
-}
-
-function fallbackLevelTooltip(level: MessagePriorityLevel): string {
-  const labels: Readonly<Record<string, string | undefined>> = messages().userMessages.levelTooltips;
-  return labels[String(level)] ?? '';
 }
 
 function makeNaming(deps: MessageCenterDeps): MessageNaming {
@@ -170,7 +162,6 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       if (m !== undefined) select(m);
     },
   });
-  const priorityButton = ctx.layout.buttons.find((b) => b.id === 'message_priority')?.placed ?? null;
   let previous: WorldSnapshot | null = null;
 
   const noteAt = (x: number, y: number): UserMessage | undefined => {
@@ -179,13 +170,6 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     const slot = i === null ? undefined : slots[i];
     return slot === undefined ? undefined : feed.find(slot.id);
   };
-
-  const levelTooltip = (): string =>
-    ctx.uiString(
-      LEVEL_TOOLTIP_TABLE,
-      MESSAGE_LEVEL_FACE[feed.level()].tooltipStringId,
-      fallbackLevelTooltip(feed.level()),
-    );
 
   return {
     present: (snapshot, events, selection): void => {
@@ -212,7 +196,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       else messageWindow.refresh();
     },
     level: () => feed.level(),
-    cycleLevel: () => feed.cycleLevel(),
+    setLevel: (level) => feed.setLevel(level),
+    count: () => feed.displayed().length,
     claims: (x, y) => messageWindow.claims(x, y) || noteAt(x, y) !== undefined,
     windowClaims: (x, y) => messageWindow.claims(x, y),
     handleWindowClick: (x, y, button): boolean => {
@@ -239,9 +224,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       if (deps.tooltip === undefined) return;
       const m = covered ? undefined : noteAt(x, y);
       if (m !== undefined) deps.tooltip.show(clientX, clientY, m.text);
-      else if (!covered && priorityButton !== null && contains(priorityButton, x, y)) {
-        deps.tooltip.show(clientX, clientY, levelTooltip());
-      } else deps.tooltip.hide();
+      else deps.tooltip.hide();
     },
     state: () => feed.state(),
     restore: (state): void => {

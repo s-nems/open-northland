@@ -2,8 +2,6 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `button-effects.ts` has no population action in this checkout. The original subjects list provides essential selection and need filters; the existing unposted-settler-roster ticket overlaps one subset.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

@@ -1,8 +1,9 @@
 import type { Paper } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import { CLOSE_X_COLOR, drawBevel, WIN_PAD } from '../chrome.js';
+import { CLOSE_X_COLOR, drawBevel } from '../chrome.js';
 import type { Rect } from '../geometry.js';
+import { liftedTop } from '../regions.js';
 import type { PanelContext } from './context.js';
 import type { AssistantCounterFace, AssistantCounterId, AssistantGrantId } from './extras-menu.js';
 import {
@@ -113,10 +114,13 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     graphics: shell.graphics,
     runs: shell.runs,
   };
-  const origin = {
-    x: ctx.layout.width + WIN_PAD * scale,
-    y: ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y,
+  // The window cannot shrink, so a foot that would cross the beam lifts the whole window instead.
+  const place = (width: number, height: number): { readonly x: number; readonly y: number } => {
+    const screen = ctx.screen();
+    const at = ctx.layout.windowOrigin(screen, width);
+    return { x: at.x, y: liftedTop(at.y, height, ctx.layout.windowFloor(screen), 0) };
   };
+  let screenKey = '';
 
   let tab: ExtrasTab = 'assistant';
   let state: AssistantState = defaultAssistantState();
@@ -157,7 +161,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const rebuild = (): void => {
     shell.clear();
     clearFills(back);
-    menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state, papers });
+    const measured = layoutExtrasMenu({ originX: 0, originY: 0, scale, tab, state, papers });
+    const at = place(measured.window.w, measured.window.h);
+    const screen = ctx.screen();
+    screenKey = `${screen.width}x${screen.height}`;
+    menuLayout = layoutExtrasMenu({ originX: at.x, originY: at.y, scale, tab, state, papers });
     const layout = menuLayout;
 
     paintTitledTabWindow(
@@ -291,6 +299,8 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     },
     refresh: (): void => {
       if (!shell.isOpen()) return;
+      const screen = ctx.screen();
+      if (`${screen.width}x${screen.height}` !== screenKey) rebuild();
       const livePapers = readPapers();
       if (livePapers !== papers) {
         papers = livePapers;

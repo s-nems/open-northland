@@ -240,6 +240,36 @@ export const plGame = {
       armor: 'Zbroja',
       misc: 'Ekwipunek',
     },
+    shell: {
+      navLabel: 'Menu gry',
+      nav: {
+        build: 'Buduj',
+        residents: 'Mieszkańcy',
+        assistant: 'Asystent',
+        statistics: 'Statystyki',
+        mission: 'Misja',
+        diplomacy: 'Dyplomacja',
+        knowledge: 'Wiedza',
+      },
+      speedLabel: 'Tempo symulacji',
+      pause: 'Pauza',
+      speed: 'Tempo ×{factor}',
+      menu: 'Menu gry',
+      close: 'Zamknij',
+      messages: 'Wiadomości',
+      messagesCount: 'Wiadomości: {count}',
+      messageLevelLabel: 'Poziom wiadomości',
+      messageLevels: {
+        all: 'Wszystkie wiadomości',
+        notable: 'Ważne i pilne',
+        important: 'Tylko pilne',
+      },
+      pending: 'W przygotowaniu',
+      residentsPending:
+        'Lista mieszkańców powstaje. Zaznacz osadnika na mapie, aby zobaczyć jego szczegóły w panelu w rogu.',
+      knowledgePending:
+        'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. Wymagania budynków nadal widać w oknie budowy.',
+    },
     extras: {
       title: 'Okno dodatków',
       assistantTab: 'Asystent',

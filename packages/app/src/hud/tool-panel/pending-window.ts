@@ -1,0 +1,58 @@
+import { createHudWindow, type HudWindow } from '../dom/window.js';
+import { centralWindowOrigin } from '../regions.js';
+import type { ToolWindow } from './window-shell.js';
+
+/** Width of a pending note window, design px: the central window width of the reference. */
+const PENDING_WINDOW_W = 540;
+
+export interface PendingWindowSpec {
+  readonly title: string;
+  readonly art: string;
+  readonly kicker: string;
+  readonly text: string;
+  readonly closeLabel: string;
+}
+
+/** A central window on the DOM plane whose contents are still owned by a later ticket: the framed
+ *  head with the entry's icon and a note saying so. It takes part in the window registry like a
+ *  legacy pop-up, but the plane routes its own pointer input, so it claims no canvas point. */
+export interface PendingWindow extends ToolWindow {
+  /** Re-place against the plane's design-px size; call once per frame. */
+  place(): void;
+  onClose(listener: () => void): void;
+  dispose(): void;
+}
+
+export function createPendingWindow(plane: HTMLElement, spec: PendingWindowSpec): PendingWindow {
+  const window: HudWindow = createHudWindow(plane, {
+    title: spec.title,
+    kicker: spec.kicker,
+    art: spec.art,
+    closeLabel: spec.closeLabel,
+    width: PENDING_WINDOW_W,
+  });
+  const note = document.createElement('p');
+  note.className = 'on-window__subtitle';
+  note.style.fontSize = '14px';
+  note.textContent = spec.text;
+  window.body.append(note);
+  let placed = '';
+  return {
+    isOpen: window.isOpen,
+    toggle: () => (window.isOpen() ? window.close() : window.open()),
+    close: window.close,
+    claims: () => false,
+    handleClick: () => false,
+    place: () => {
+      // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
+      const size = { width: plane.clientWidth, height: plane.clientHeight };
+      const origin = centralWindowOrigin(size, 1, PENDING_WINDOW_W);
+      const key = `${origin.x},${origin.y}`;
+      if (key === placed) return;
+      placed = key;
+      window.place(origin.x, origin.y);
+    },
+    onClose: window.onClose,
+    dispose: window.dispose,
+  };
+}

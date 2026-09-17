@@ -1,14 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, MapViewFrame, SpriteSheet } from '@open-northland/render';
-import type {
-  Command,
-  DiplomacyState,
-  Paper,
-  PlayerCommand,
-  SimEvent,
-  WorldSnapshot,
-} from '@open-northland/sim';
+import type { DiplomacyState, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
@@ -23,48 +16,55 @@ import {
 } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
-import { professionLabel } from '../../i18n/index.js';
+import { messages, professionLabel } from '../../i18n/index.js';
+import { paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
+import { createHudNav, type HudNavEntry } from '../dom/nav.js';
+import { createHudNoticeHeader } from '../dom/notice-header.js';
+import { createHudSystemBar } from '../dom/system-bar.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
 import type { TooltipSurface } from '../tooltip-surface.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
-import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import type { DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam, ExtrasPapersSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
-import { createGoodsDropController } from './goods-drop.js';
-import type { MenuGoodEntry } from './goods-menu.js';
 import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
-import { buildToolPanelLayout, pointOverToolPanel, type ToolButtonId } from './layout.js';
+import { buildToolPanelLayout } from './layout.js';
 import {
   createMessageCenter,
-  MESSAGE_LEVEL_FACE,
   type MessageFeedState,
   type MessageTarget,
   type UnitSelectionView,
 } from './messages/index.js';
 import type { MissionHumanLookup } from './mission/index.js';
+import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
 import { paperLabel } from './paper-label.js';
+import { createPendingWindow } from './pending-window.js';
 import { createPlacementController } from './placement.js';
-import { createSpeedButton } from './speed-button.js';
-import { createStripSurface, type StripSurface } from './strip-surface.js';
+import { createSpeedControl } from './speed-control.js';
 import { createToolWindows, type ToolWindowsState } from './windows.js';
+
+/** Painted-icon sizes on a beam action and in a window head (design px). */
+const ACTION_ART_PX = 50;
+const TITLE_ART_PX = 43;
 
 export interface ToolPanelOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
+  /** The DOM plane the beam, the system bar, the notice header and the pending windows mount on. */
+  readonly plane: HTMLElement;
   /** The resolved HUD scale; the pinned internal geometry is multiplied by this. May be fractional. */
   readonly uiscale: number;
   /** The buildings the build menu lists. */
   readonly buildings: readonly MenuBuildingEntry[];
-  /** The goods the drop palette lists. */
-  readonly goods: readonly MenuGoodEntry[];
   /** Localized name of a profession, good, or building announced by a discovery note. */
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
+  /** A good's localized name, for the paper that permits producing it. */
+  readonly goodLabel: (typeId: number) => string | undefined;
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
@@ -75,9 +75,6 @@ export interface ToolPanelOptions {
   readonly owner: number;
   /** Submit a seat command into the sim. */
   readonly enqueue: (command: PlayerCommand) => void;
-  /** The goods palette's seam. Dropping a loose pile materializes goods from nothing, so it is a
-   *  trusted world edit the HUD hands every seat, not an order a seat is entitled to issue. */
-  readonly enqueueAdmin: (command: Command) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
@@ -109,7 +106,7 @@ export interface ToolPanelOptions {
   /** The mission window's brief for a briefing page, or the map's fallback text with null. */
   readonly missionBrief?: (page: number | null) => MissionBrief | null;
   readonly missionBriefingHistory?: () => readonly number[];
-  /** The briefing page the mission window opens on from the strip; null before any replayable one. */
+  /** The briefing page the mission window opens on from the beam; null before any replayable one. */
   readonly missionReplayPage?: () => number | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
@@ -134,10 +131,10 @@ export interface ToolPanelController {
   openMission(page?: number): void;
   /** The on-screen info lines a map script writes for the seat, top to bottom. */
   setInfoLines(lines: readonly string[]): void;
-  /** True when a client point should be claimed by the HUD (over the strip, an open window, or in placement). */
+  /** True when a client point should be claimed by the HUD (over an open window, a note, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
-   *  `claimsPointer` this excludes the strip and active placement. */
+   *  `claimsPointer` this excludes active placement. */
   claimsWheel(clientX: number, clientY: number): boolean;
   /** The building typeId currently being placed, or null when not in build mode. */
   placementType(): number | null;
@@ -162,7 +159,6 @@ export interface ToolPanelState {
   readonly windows: ToolWindowsState;
   readonly placementType: number | null;
   readonly placementPaper: Paper | null;
-  readonly goodType: number | null;
   readonly messages: MessageFeedState;
 }
 
@@ -205,41 +201,44 @@ function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
   return assets;
 }
 
-/** Mount the tool panel onto the app stage; async because it loads the optional decoded GUI art and font. */
+/** The beam's seven entries: painted icons from the ui pack, the wooden token for the residents. */
+function navEntries(): readonly HudNavEntry<NavEntryId>[] {
+  const labels = messages().hud.shell.nav;
+  return NAV_ENTRY_IDS.map((id) => ({
+    id,
+    label: labels[id],
+    art: id === 'residents' ? RESIDENTS_TOKEN : paintedIcon(id, ACTION_ART_PX),
+  }));
+}
+
+/** Mount the tool panel: the legacy pop-ups on the app stage and the shell regions on the DOM plane.
+ *  Async because it loads the optional decoded GUI art and font. */
 export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelController> {
-  const { app, canvas, enqueue } = opts;
+  const { app, canvas, enqueue, plane } = opts;
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
   const { art, strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
-  const labelByGood = new Map(opts.goods.map((g) => [g.goodType, g.label]));
 
   const root = new Container();
   root.zIndex = 1000;
   app.stage.addChild(root);
-  const stripContainer = new Container();
   const infoContainer = new Container();
   const notesContainer = new Container();
-  const hoverContainer = new Container();
   const windowContainer = new Container();
   const bannerContainer = new Container();
-  root.addChild(
-    stripContainer,
-    infoContainer,
-    notesContainer,
-    windowContainer,
-    hoverContainer,
-    bannerContainer,
-  );
+  root.addChild(infoContainer, notesContainer, windowContainer, bannerContainer);
 
-  let stripSurface: StripSurface | null = null;
+  const domParts: { dispose(): void }[] = [];
   let input: ToolPanelInput | null = null;
+  const disposeAll = (): void => {
+    input?.dispose();
+    for (const part of domParts.splice(0).reverse()) part.dispose();
+    root.destroy({ children: true });
+  };
   try {
-    stripSurface = createStripSurface({ app, container: stripContainer, layout, art });
-    const mountedStrip = stripSurface;
-
     const uiString = uiStringLookup(strings);
     const contextAt = (at: number): PanelContext => ({
       layout,
@@ -268,7 +267,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           const def = professionDefForJob(typeId);
           return def === undefined ? undefined : professionLabel(def.key);
         },
-        goodLabel: (typeId) => labelByGood.get(typeId),
+        goodLabel: opts.goodLabel,
       });
     const placement = createPlacementController({
       ctx,
@@ -280,21 +279,30 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       tribe: opts.tribe,
       owner: opts.owner,
     });
-    const goodsDrop = createGoodsDropController({
-      ctx,
-      container: bannerContainer,
-      labelByGood,
-      enqueue: opts.enqueueAdmin,
-      screenToTile: opts.screenToTile,
-    });
     const heldPaper = createHeldPaperController(ctx, bannerContainer);
-    const held: readonly HeldMode[] = [placement, goodsDrop, heldPaper];
+    const held: readonly HeldMode[] = [placement, heldPaper];
+    const cancelHeld = (): void => {
+      for (const mode of held) mode.cancel();
+    };
 
+    // Closing a window returns keyboard focus to the beam entry that owns it.
+    let focusOwner: ((id: NavEntryId) => void) | null = null;
+    const shellCopy = messages().hud.shell;
     const windows = createToolWindows({
       ctx,
       container: windowContainer,
+      pendingWindow: (id) => {
+        const window = createPendingWindow(plane, {
+          title: shellCopy.nav[id],
+          art: id === 'residents' ? RESIDENTS_TOKEN : paintedIcon(id, TITLE_ART_PX),
+          kicker: shellCopy.pending,
+          text: id === 'residents' ? shellCopy.residentsPending : shellCopy.knowledgePending,
+          closeLabel: shellCopy.close,
+        });
+        window.onClose(() => focusOwner?.(navEntryForWindow(id)));
+        return window;
+      },
       buildings: opts.buildings,
-      goods: opts.goods,
       grants: opts.grants,
       counters: opts.counters,
       papers: opts.papers,
@@ -315,19 +323,37 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.onLargeWindow?.(open);
       },
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
-      onPickGood: (goodType) => goodsDrop.enter(goodType),
     });
+    domParts.push(windows);
 
-    const speedButton = createSpeedButton({
-      ctx,
-      app,
-      scale,
-      stripContainer,
-      art,
-      bake: stripSurface,
-      speedBtnRect: layout.buttons.find((b) => b.id === 'speed')?.placed,
-      onSpeedChange: opts.onSpeedChange,
+    const surfaces = { windows: windows.byId, cancelHeld };
+    const nav = createHudNav(plane, shellCopy.navLabel, navEntries(), (id) => {
+      ctx.cue('confirm');
+      applyNavEntry(surfaces, id);
     });
+    domParts.push(nav);
+    focusOwner = (id) => nav.focus(id);
+
+    const speed = createSpeedControl({
+      onSpeedChange: opts.onSpeedChange,
+      onShow: (control) => systemBar.setSpeed(control),
+    });
+    const systemBar = createHudSystemBar(plane, {
+      onPauseToggle: () => {
+        ctx.cue('confirm');
+        speed.togglePause();
+      },
+      onSpeed: (running) => {
+        ctx.cue('confirm');
+        speed.setRunning(running);
+      },
+      onMenu: () => {
+        ctx.cue('confirm');
+        opts.onSystemMenu?.();
+      },
+    });
+    domParts.push(systemBar);
+    systemBar.setSpeed(speed.state());
 
     const messageCenter = createMessageCenter({
       ctx,
@@ -347,57 +373,47 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       tooltip: opts.tooltip,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
     });
-    // The envelope loses a seal per level, re-framed inside the strip bake like the speed glyph.
-    const syncPriorityGlyph = (): void =>
-      mountedStrip.reframe('message_priority', MESSAGE_LEVEL_FACE[messageCenter.level()].gfx);
+    const noticeHeader = createHudNoticeHeader(plane, (level) => {
+      ctx.cue('confirm');
+      messageCenter.setLevel(level);
+    });
+    domParts.push(noticeHeader);
 
-    const surfaces: ToolButtonSurfaces = {
-      windows: windows.byId,
-      cancelHeld: () => {
-        for (const mode of held) mode.cancel();
-      },
-      cycleSpeed: () => speedButton.cycle(),
-      openSystemMenu: () => opts.onSystemMenu?.(),
-      cycleMessagePriority: () => {
-        messageCenter.cycleLevel();
-        syncPriorityGlyph();
-      },
-    };
-
-    const activateButton = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
     const infoLines = createInfoLinesOverlay(ctx, infoContainer);
 
     const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
       clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
+    // Esc closes the open window and hands focus back to its beam entry.
+    const closeWindow = (): boolean => {
+      const open = windows.openId();
+      if (open === null) return false;
+      windows.byId[open].close();
+      nav.focus(navEntryForWindow(open));
+      return true;
+    };
+
     input = createToolPanelInput({
       canvas,
-      container: hoverContainer,
-      layout,
       toCanvas,
       windows,
       notes: messageCenter,
       held,
       bindings: opts.bindings,
-      activateButton,
-      togglePause: () => speedButton.togglePause(),
+      closeWindow,
+      togglePause: () => speed.togglePause(),
       cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => {
         const { x, y } = toCanvas(clientX, clientY);
         return !windows.mission.claims(x, y) && opts.deferToOverlay?.(clientX, clientY) === true;
       },
     });
-    const mountedInput = input;
 
     const claimsPointer = (clientX: number, clientY: number): boolean => {
       const { x, y } = toCanvas(clientX, clientY);
-      if (pointOverToolPanel(layout, x, y)) return true;
       if (windows.claims(x, y) || messageCenter.claims(x, y)) return true;
       return held.some((mode) => mode.isActive());
     };
-
-    speedButton.syncGlyph();
-    syncPriorityGlyph();
 
     const claimsWheel = (clientX: number, clientY: number): boolean => {
       const { x, y } = toCanvas(clientX, clientY);
@@ -407,9 +423,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     return {
       uiString: ctx.uiString,
       openMission: (page) => {
-        if (page !== undefined)
-          applyToolButtonEffect(surfaces, 'mission', () => windows.mission.showPage(page));
-        else if (!windows.mission.isOpen()) activateButton('mission');
+        if (page !== undefined) applyNavEntry(surfaces, 'mission', () => windows.mission.showPage(page));
+        else if (!windows.mission.isOpen()) applyNavEntry(surfaces, 'mission');
       },
       setInfoLines: (lines) => infoLines.set(lines),
       claimsPointer,
@@ -417,48 +432,40 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       placementType: () => placement.activeType(),
       placementPaper: () => placement.activePaper(),
       update(hudFor): void {
-        if (mountedStrip.syncResolution()) {
-          speedButton.syncGlyph();
-          syncPriorityGlyph();
-        }
         windows.refresh(hudFor);
+        const open = windows.openId();
+        nav.setActive(open === null ? null : navEntryForWindow(open));
+        noticeHeader.set(messageCenter.count(), messageCenter.level());
         infoLines.refresh();
         for (const mode of held) mode.placeBanner();
       },
       mapViews: () => windows.mission.mapViews(),
       presentMessages: (snapshot, events, selection) => messageCenter.present(snapshot, events, selection),
       state: () => ({
-        speed: speedButton.state(),
+        speed: speed.state(),
         windows: windows.state(),
         placementType: placement.activeType(),
         placementPaper: placement.activePaper(),
-        goodType: goodsDrop.activeGood(),
         messages: messageCenter.state(),
       }),
       syncSpeed(control): void {
-        speedButton.restore(control);
+        speed.restore(control);
       },
       restore(state): void {
-        speedButton.restore(state.speed);
+        speed.restore(state.speed);
         windows.restore(state.windows);
         if (state.placementType !== null)
           placement.enter(state.placementType, state.placementPaper ?? undefined);
-        if (state.goodType !== null) goodsDrop.enter(state.goodType);
         messageCenter.restore(state.messages);
-        syncPriorityGlyph();
       },
       dispose(): void {
-        mountedInput.dispose();
         messageCenter.dispose();
         infoLines.dispose();
-        root.destroy({ children: true });
-        mountedStrip.dispose();
+        disposeAll();
       },
     };
   } catch (error: unknown) {
-    input?.dispose();
-    root.destroy({ children: true });
-    stripSurface?.dispose();
+    disposeAll();
     throw error;
   }
 }

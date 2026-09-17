@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
-import { goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
 import {
   hitTestTabbedList,
   layoutTabbedList,
@@ -10,9 +9,8 @@ import {
 import { MIN_UI_SCALE } from '../src/hud/ui-scale.js';
 
 /**
- * The shared tabbed-list window model - the one layout + hit-test the build menu and the goods drop
- * palette are both built from. The last block is the regression that motivated sharing it: the two
- * windows must resolve `?uiscale=` identically, so the strip reads as one scale.
+ * The shared tabbed-list window model - the one layout + hit-test every tabbed pop-up is built from.
+ * The last block pins that a fractional `?uiscale=` survives into the layout.
  */
 
 interface Item {
@@ -126,7 +124,6 @@ describe('tabbed-list layout', () => {
 
 describe('tabbed-list scale', () => {
   const BUILDINGS: readonly MenuBuildingEntry[] = [{ typeId: 1, label: 'Headquarters', kind: 'storage' }];
-  const GOODS: readonly MenuGoodEntry[] = [{ goodType: 3, id: 'wood', label: 'Drewno' }];
 
   /** Lay a source out the way its window controller does, at one scale. */
   function layoutOf<Id, Item extends { readonly label: string }>(
@@ -144,30 +141,13 @@ describe('tabbed-list scale', () => {
     });
   }
 
-  // The drift that motivated the shared model: the build menu resolved `?uiscale=` fractionally while
-  // the goods palette floored it, so at a fractional 1.4 the two windows drew at 1.4× and 1× side by side.
-  it('resolves a fractional uiscale identically for the build menu and the goods palette', () => {
+  it('keeps a fractional uiscale in the layout', () => {
     for (const scale of [1, FRACTIONAL_SCALE, 2]) {
-      const build = layoutOf(buildingTabbedList(BUILDINGS), scale);
-      const goods = layoutOf(goodsTabbedList(GOODS), scale);
-      expect(goods.scale).toBe(build.scale);
-      expect(goods.scale).toBe(scale); // the fraction survives - this is what the goods palette floored
-      expect(goods.window.w).toBe(build.window.w);
-      expect(goods.titleRect.h).toBe(build.titleRect.h);
-      expect(goods.closeRect.w).toBe(build.closeRect.w);
-      expect(goods.rows[0]?.rect.h).toBe(build.rows[0]?.rect.h);
-      expect(goods.tabs[0]?.rect.h).toBe(build.tabs[0]?.rect.h);
+      expect(layoutOf(buildingTabbedList(BUILDINGS), scale).scale).toBe(scale);
     }
-  });
-
-  it("wraps the palette's eight categories into two rows of the shared window width", () => {
-    const goods = layoutOf(goodsTabbedList(GOODS), FRACTIONAL_SCALE);
-    expect(goods.tabs).toHaveLength(8);
-    expect(new Set(goods.tabs.map((t) => t.rect.y)).size).toBe(2);
   });
 
   it('never draws below the shared legibility floor', () => {
     expect(layoutOf(buildingTabbedList(BUILDINGS), 0.5).scale).toBe(MIN_UI_SCALE);
-    expect(layoutOf(goodsTabbedList(GOODS), 0.5).scale).toBe(MIN_UI_SCALE);
   });
 });

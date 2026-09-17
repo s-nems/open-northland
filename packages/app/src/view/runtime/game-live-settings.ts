@@ -3,6 +3,7 @@ import { diag } from '../../diag/index.js';
 import { panelSpanFromRight } from '../../hud/details-panel/layout/shared.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { minimapPanelWidth } from '../../hud/minimap/model.js';
+import { NAV_BEAM_H } from '../../hud/nav-beam.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { defaultLocale, localeParam } from '../../i18n/index.js';
 import { assetSetFor } from '../asset-settings.js';
@@ -18,7 +19,7 @@ import { createGameViewportCoordinator } from './game-viewport.js';
 const PERF_HUD_GAP = 8;
 
 /** The debug readout's span along the bottom edge: from just right of the minimap window to just left of
- *  where the details panel stands. */
+ *  where the details panel stands, above the navigation beam. */
 export function perfCornerForUiScale(scale: number): {
   readonly left: number;
   readonly right: number;
@@ -27,7 +28,7 @@ export function perfCornerForUiScale(scale: number): {
   return {
     left: minimapPanelWidth(scale) + PERF_HUD_GAP,
     right: panelSpanFromRight(scale) + PERF_HUD_GAP,
-    bottom: PERF_HUD_GAP,
+    bottom: NAV_BEAM_H * scale + PERF_HUD_GAP,
   };
 }
 

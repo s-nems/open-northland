@@ -9,7 +9,7 @@ const BANNER_WIDTH = 260;
 const BANNER_OFFSET_Y = 2;
 const BANNER_TEXT_INSET_Y = 3;
 
-/** The window-chrome strip beside the tool panel showing the held item and its click/cancel hint. */
+/** The window-chrome strip at the head of the central region showing the held item and its click/cancel hint. */
 export interface HeldItemBanner {
   /** `text` is the fully formatted hint. */
   show(text: string): void;
@@ -24,33 +24,38 @@ export function createHeldItemBanner(ctx: PanelContext, container: Container): H
   container.addChild(graphics);
   let run: TextRun | null = null;
 
-  // The banner sits WIN_PAD right of the tool panel; the text is inset another WIN_PAD inside it.
-  const textX = (): number => ctx.layout.width + 2 * WIN_PAD * scale;
-  const textY = (): number => (BANNER_OFFSET_Y + BANNER_TEXT_INSET_Y) * scale;
+  // The banner stands where a central window would open; the text is inset WIN_PAD inside it.
+  const bannerRect = (): { x: number; y: number; w: number; h: number } => {
+    const w = BANNER_WIDTH * scale;
+    const at = ctx.layout.windowOrigin(ctx.screen(), w);
+    return { x: at.x, y: at.y + BANNER_OFFSET_Y * scale, w, h: (WIN_TITLE_H + WIN_PAD) * scale };
+  };
+  let drawn = '';
+  const draw = (): void => {
+    const rect = bannerRect();
+    const key = `${rect.x},${rect.y}`;
+    if (key === drawn) return;
+    drawn = key;
+    graphics.clear();
+    drawWindowPanel(graphics, rect, scale);
+    const { width: rw, height: rh } = ctx.screen();
+    run?.place(rect.x + WIN_PAD * scale, rect.y + BANNER_TEXT_INSET_Y * scale, scale, rw, rh);
+  };
 
   return {
     show: (text): void => {
-      graphics.clear();
       run?.destroy();
-      const rect = {
-        x: ctx.layout.width + WIN_PAD * scale,
-        y: BANNER_OFFSET_Y * scale,
-        w: BANNER_WIDTH * scale,
-        h: (WIN_TITLE_H + WIN_PAD) * scale,
-      };
-      drawWindowPanel(graphics, rect, scale);
       run = ctx.makeText(text, 'white');
       container.addChild(run.container);
-      const { width: rw, height: rh } = ctx.screen();
-      run.place(textX(), textY(), scale, rw, rh);
+      drawn = '';
+      draw();
     },
     place: (): void => {
-      if (run === null) return;
-      const { width: rw, height: rh } = ctx.screen();
-      run.place(textX(), textY(), scale, rw, rh);
+      if (run !== null) draw();
     },
     clear: (): void => {
       graphics.clear();
+      drawn = '';
       run?.destroy();
       run = null;
     },

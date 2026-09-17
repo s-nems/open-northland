@@ -2,8 +2,6 @@
 
 **Area:** app, data · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `hud/tool-panel/building-menu.ts` currently exposes only part of the construction scope recorded in ORIGINAL-INGAME-MENU-BAR.md.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

@@ -2,8 +2,6 @@
 
 **Area:** app, desktop · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `view/system-menu.ts` and `view/save-panels/` own settings/save flow separately from the old toolbar; their visual language must match the redesigned game HUD.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

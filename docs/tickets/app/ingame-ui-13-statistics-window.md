@@ -2,7 +2,7 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md), [12-statistics-data](ingame-ui-12-statistics-data.md)
+**Blocked by:** [12-statistics-data](ingame-ui-12-statistics-data.md)
 
 The diagnostic stats popup cannot answer the player's economic questions. Ticket 12 supplies the real series contract and initial reviewed view definitions.
 

@@ -1,5 +1,6 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
+import { navBeamRect } from '../../nav-beam.js';
 
 // The panel-wide metrics and section/panel rect builders every kind's layout is measured from, so the
 // height a section reserves and the rows it draws cannot drift apart. Metrics are design px, multiplied
@@ -48,12 +49,19 @@ export function panelSpanFromRight(s: number): number {
   return Math.round(PANEL_W * s) + Math.round(PANEL_MARGIN * s);
 }
 
+/** The beam's height when it reaches under the panel's column, so the panel stands on the beam instead
+ *  of under it; zero on a screen wide enough for both. */
+export function panelBottomInset(screen: { width: number; height: number }, s: number): number {
+  const beam = navBeamRect(screen, s);
+  return beam.x + beam.w > screen.width - panelSpanFromRight(s) ? beam.h : 0;
+}
+
 export function panelRect(totalH: number, screen: { width: number; height: number }, s: number): Rect {
   const w = Math.round(PANEL_W * s);
   const margin = Math.round(PANEL_MARGIN * s);
   return {
     x: Math.max(margin, screen.width - w - margin),
-    y: Math.max(margin, screen.height - totalH - margin),
+    y: Math.max(margin, screen.height - panelBottomInset(screen, s) - totalH - margin),
     w,
     h: totalH,
   };

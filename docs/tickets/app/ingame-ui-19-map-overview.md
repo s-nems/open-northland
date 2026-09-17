@@ -2,8 +2,6 @@
 
 **Area:** app, render · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `hud/minimap/` owns the lower-left map; the reference requires a separate large overview entry and object filters. The wireframe map is decorative, not this implementation.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

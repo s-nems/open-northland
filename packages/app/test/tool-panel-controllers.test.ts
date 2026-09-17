@@ -3,9 +3,9 @@ import { type HudLayout, terrainWorldBounds } from '@open-northland/render';
 import type { Command, Paper } from '@open-northland/sim';
 import { Container, Graphics, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { WIN_PAD } from '../src/hud/chrome.js';
 import type { Rect } from '../src/hud/geometry.js';
 import { minimapLayout } from '../src/hud/minimap/model.js';
+import { navBeamRect } from '../src/hud/nav-beam.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
@@ -22,9 +22,8 @@ import {
   type ExtrasCountersSeam,
   type ExtrasGrantsSeam,
 } from '../src/hud/tool-panel/extras-window.js';
-import { goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
 import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
-import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
+import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import {
@@ -32,11 +31,13 @@ import {
   layoutTabbedList,
   type TabbedListSource,
 } from '../src/hud/tool-panel/tabbed-list/index.js';
+import { standardWindowWidth } from '../src/hud/tool-panel/window-family/index.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { messages } from '../src/i18n/index.js';
+import { stubPendingWindow } from './support/pending-window-stub.js';
 
 /**
- * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / goods / stats / placement) over a stubbed
+ * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / stats / placement) over a stubbed
  * {@link PanelContext} - the seams the package split opened up. These pin the input-routing contracts
  * the mount relies on (claim regions, close-on-pick, close-on-inside) and the stats change-key guard
  * (a tick-only change must NOT rebuild the glyph runs - the per-frame perf contract).
@@ -85,21 +86,25 @@ const BUILDINGS: readonly MenuBuildingEntry[] = [
   { typeId: 23, label: 'Joinery', kind: 'workplace' },
 ];
 
-/** The stats window's placement, which `stats-window.ts` keeps private: past the menu column, dropped
- *  below the strip top (design px). */
+/** The stats window's width, which `stats-window.ts` keeps private (design px). */
 const STATS_WIDTH = 150;
-const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
-const STATS_OFFSET_Y = 15;
 
-/** The extras window's origin and scale, as its controller derives them from the panel layout. */
+/** Where a pop-up `width` screen px wide opens: centred in the window region the layout resolves for
+ *  the stub screen (the shared origin rule of every controller). */
+function windowOrigin(ctx: PanelContext, width: number): { x: number; y: number } {
+  return ctx.layout.windowOrigin(ctx.screen(), width);
+}
+
+/** The stats window's origin; its content-sized sheet is far shorter than the region, so no lift. */
+const statsOrigin = (ctx: PanelContext): { x: number; y: number } =>
+  windowOrigin(ctx, STATS_WIDTH * ctx.scale);
+
+/** The extras window's origin and scale, as its controller derives them: measured, then centred. */
 function extrasGeometry(ctx: PanelContext) {
-  const extrasY = ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y;
-  return {
-    originX: ctx.layout.width + WIN_PAD * ctx.scale,
-    originY: extrasY,
-    scale: ctx.scale,
-    state: defaultAssistantState(),
-  };
+  const state = defaultAssistantState();
+  const measured = layoutExtrasMenu({ originX: 0, originY: 0, scale: ctx.scale, tab: 'assistant', state });
+  const origin = windowOrigin(ctx, measured.window.w);
+  return { originX: origin.x, originY: origin.y, scale: ctx.scale, state };
 }
 
 function centreXY(r: { x: number; y: number; w: number; h: number }): [number, number] {
@@ -111,21 +116,17 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
-/** The y a pop-up drops from: its own strip button (the shared window's anchor rule). */
-function anchorY(ctx: PanelContext, anchor: ToolButtonId): number {
-  return ctx.layout.buttons.find((b) => b.id === anchor)?.placed.y ?? ctx.layout.strip.y;
-}
-
 /** The same layout the shared tabbed-list controller computes internally (same origin formula + inputs):
- *  to the right of the strip, dropping from the button that opens it. These fixtures are shorter than the
+ *  the family's standard width centred in the window region. These fixtures are shorter than the
  *  stub screen's viewport, so the controller's row cap does not bind. */
 function expectedListLayout<Id, Item extends { readonly label: string }>(
   ctx: PanelContext,
   source: TabbedListSource<Id, Item>,
 ) {
+  const origin = windowOrigin(ctx, standardWindowWidth(ctx.scale));
   return layoutTabbedList({
-    originX: ctx.layout.width + WIN_PAD * ctx.scale,
-    originY: anchorY(ctx, source.anchor),
+    originX: origin.x,
+    originY: origin.y,
     scale: ctx.scale,
     tabs: source.tabs(),
     tabColumns: source.tabColumns,
@@ -146,10 +147,8 @@ const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => 
 
 /** A canvas point inside the build menu's first list row (past the headline + tab band). */
 function firstRowPoint(ctx: PanelContext): { x: number; y: number } {
-  return {
-    x: ctx.layout.width + WIN_PAD * ctx.scale + 20,
-    y: anchorY(ctx, 'buildings') + 45 * ctx.scale,
-  };
+  const origin = windowOrigin(ctx, standardWindowWidth(ctx.scale));
+  return { x: origin.x + 20, y: origin.y + 45 * ctx.scale };
 }
 
 /** Build the shared tabbed-list window the panel mounts for the build menu. */
@@ -294,144 +293,77 @@ describe('tabbed-list window controller (build menu)', () => {
   });
 });
 
-describe('tabbed-list window bound by a bottom-corner overlay', () => {
-  /** A bottom-left overlay reaching high enough to bite at the stub scale - the minimap's framed window
-   *  is the real one. Its x-span covers the pop-up column (`origin.x` = strip width + WIN_PAD = 56). */
-  const OVERLAY: Rect = { x: 0, y: 260, w: 224, h: SCREEN.height - 260 };
-
+describe('tabbed-list window bound by the beam and the bottom-corner overlay', () => {
   /** The lowest canvas y the open window still claims, probed down its own column: the controller keeps
    *  its layout private, and `claims` is the seam the panel routes presses through anyway. */
-  function claimedBottom(menu: { claims(x: number, y: number): boolean }, x: number): number {
+  function claimedBottom(
+    menu: { claims(x: number, y: number): boolean },
+    x: number,
+    screenH: number,
+  ): number {
     let last = -1;
-    for (let y = 0; y < SCREEN.height; y++) {
+    for (let y = 0; y < screenH; y++) {
       if (menu.claims(x, y)) last = y;
     }
     return last;
   }
 
-  const columnX = (ctx: PanelContext): number => ctx.layout.width + WIN_PAD * ctx.scale + 1;
+  const columnX = (ctx: PanelContext): number => windowOrigin(ctx, standardWindowWidth(ctx.scale)).x + 1;
 
-  it('shortens the list so no row is left under the overlay', () => {
-    const unbounded = stubContext().ctx;
-    const bounded = stubContext(() => OVERLAY).ctx;
-    const free = menuWindow(unbounded, MANY, () => undefined);
+  it('shortens the list so no row is left under the navigation beam', () => {
+    const { ctx } = stubContext();
+    const menu = menuWindow(ctx, MANY, () => undefined);
+    menu.toggle();
+    const beam = navBeamRect(SCREEN, ctx.scale);
+    const bottom = claimedBottom(menu, columnX(ctx), SCREEN.height);
+    expect(bottom).toBeGreaterThan(0);
+    expect(bottom).toBeLessThan(beam.y);
+  });
+
+  it('yields to the minimap where a window wider than the region crosses it', () => {
+    // A screen so narrow the standard window centres over the bottom-left overlay.
+    const screen = { width: 640, height: 600 };
+    const overlay: Rect = { x: 0, y: 260, w: 224, h: screen.height - 260 };
+    const free: PanelContext = { ...stubContext().ctx, screen: () => screen };
+    const bounded: PanelContext = { ...stubContext(() => overlay).ctx, screen: () => screen };
+    const wide = menuWindow(free, MANY, () => undefined);
     const clipped = menuWindow(bounded, MANY, () => undefined);
-    free.toggle();
+    wide.toggle();
     clipped.toggle();
-
-    // Without the reserve the same list reaches into the overlay - the bug this bounds.
-    expect(claimedBottom(free, columnX(unbounded))).toBeGreaterThanOrEqual(OVERLAY.y);
-    expect(claimedBottom(clipped, columnX(bounded))).toBeLessThan(OVERLAY.y);
+    expect(windowOrigin(free, standardWindowWidth(1)).x).toBeLessThan(overlay.x + overlay.w);
+    expect(claimedBottom(wide, columnX(free), screen.height)).toBeGreaterThanOrEqual(overlay.y);
+    expect(claimedBottom(clipped, columnX(free), screen.height)).toBeLessThan(overlay.y);
   });
 
-  it('keeps the full screen-foot height when the overlay is clear of the window x-span', () => {
-    const unbounded = stubContext().ctx;
-    // Right edge exactly at the window's left edge: rects are half-open, so this is no overlap.
-    const narrow: Rect = { ...OVERLAY, w: unbounded.layout.width + WIN_PAD * unbounded.scale };
-    const beside = stubContext(() => narrow).ctx;
-    const free = menuWindow(unbounded, MANY, () => undefined);
-    const other = menuWindow(beside, MANY, () => undefined);
-    free.toggle();
-    other.toggle();
-
-    expect(claimedBottom(other, columnX(beside))).toBe(claimedBottom(free, columnX(unbounded)));
-  });
-
-  it('clears the real minimap window across the reachable and pinned uiscales', () => {
+  it('clears the beam and the real minimap window across the reachable and pinned uiscales', () => {
     // The shipped bottom-left overlay, not a fixture: the wired reserve is exactly this rect.
     const bounds = terrainWorldBounds(200, 200);
     for (const uiscale of [1, 1.25, 1.4, 1.75, 2]) {
       const screen = { width: 1400, height: 900 };
       const panel = minimapLayout(bounds, screen.height, uiscale).panel;
       const layout = buildToolPanelLayout(uiscale);
-      const ctx: PanelContext = { ...stubContext().ctx, layout, scale: layout.scale };
-      const menu = menuWindow({ ...ctx, screen: () => screen, overlayReserve: () => panel }, MANY, () => {});
+      const ctx: PanelContext = { ...stubContext().ctx, layout, scale: layout.scale, screen: () => screen };
+      const menu = menuWindow({ ...ctx, overlayReserve: () => panel }, MANY, () => {});
       menu.toggle();
-      const x = layout.width + WIN_PAD * layout.scale + 1;
-      let lowest = -1;
-      for (let y = 0; y < screen.height; y++) {
-        if (menu.claims(x, y)) lowest = y;
-      }
-      expect({ uiscale, covered: lowest >= panel.y }).toEqual({ uiscale, covered: false });
+      const x = columnX(ctx);
+      const lowest = claimedBottom(menu, x, screen.height);
+      const beam = navBeamRect(screen, layout.scale);
+      const floor = Math.min(beam.y, x < panel.x + panel.w ? panel.y : screen.height);
+      expect({ uiscale, covered: lowest >= floor }).toEqual({ uiscale, covered: false });
     }
   });
 
-  it('re-fits on refresh when the overlay moves', () => {
-    let overlay: Rect | null = OVERLAY;
-    const { ctx } = stubContext(() => overlay);
-    const menu = menuWindow(ctx, MANY, () => undefined);
+  it('re-fits on refresh when the screen changes', () => {
+    // Short enough that the beam, not the row cap, bounds the list.
+    let screen = { width: SCREEN.width, height: 420 };
+    const live: PanelContext = { ...stubContext().ctx, screen: () => screen };
+    const menu = menuWindow(live, MANY, () => undefined);
     menu.toggle();
-    const clipped = claimedBottom(menu, columnX(ctx));
+    const before = claimedBottom(menu, columnX(live), 2000);
 
-    overlay = null; // the overlay went away - the next frame must grow the list back
+    screen = { width: SCREEN.width, height: SCREEN.height + 300 }; // a taller screen lowers the beam
     menu.refresh();
-    expect(claimedBottom(menu, columnX(ctx))).toBeGreaterThan(clipped);
-  });
-});
-
-describe('tabbed-list window controller (goods palette)', () => {
-  // Both sit in the default 'Surowce' tab (category 2, see good-categories.ts), so they list on open.
-  const GOODS: readonly MenuGoodEntry[] = [
-    { goodType: 10, id: 'wood', label: 'Drewno' },
-    { goodType: 11, id: 'stone', label: 'Kamień' },
-  ];
-
-  /** The same layout the controller builds internally - dropping from the palette's own strip button. */
-  const expectedLayout = (ctx: PanelContext) => expectedListLayout(ctx, goodsTabbedList(GOODS));
-
-  const goodsWindow = (ctx: PanelContext, onPick: (goodType: number) => void) =>
-    createTabbedListWindow({
-      ctx,
-      container: new Container(),
-      source: goodsTabbedList(GOODS),
-      onPick: (g) => onPick(g.goodType),
-    });
-
-  it('opens on toggle, claims the window rect, and closes on the close box', () => {
-    const { ctx } = stubContext();
-    const goods = goodsWindow(ctx, () => undefined);
-    const geo = expectedLayout(ctx);
-
-    expect(goods.isOpen()).toBe(false);
-    expect(goods.claims(geo.window.x + 1, geo.window.y + 1)).toBe(false); // closed → no claim
-
-    goods.toggle();
-    expect(goods.isOpen()).toBe(true);
-    expect(goods.claims(geo.window.x + 1, geo.window.y + 1)).toBe(true);
-    expect(goods.claims(geo.window.x - 1, geo.window.y - 1)).toBe(false); // outside the window
-
-    const close = centreOf(geo.closeRect);
-    expect(goods.handleClick(close.x, close.y)).toBe(true);
-    expect(goods.isOpen()).toBe(false);
-  });
-
-  it('closes itself BEFORE handing a picked good to onPick', () => {
-    const { ctx } = stubContext();
-    const picks: Array<{ goodType: number; openAtPick: boolean }> = [];
-    const goods = goodsWindow(ctx, (goodType) => picks.push({ goodType, openAtPick: goods.isOpen() }));
-    goods.toggle();
-    const row = centreOf(expectedLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-
-    expect(goods.handleClick(row.x, row.y)).toBe(true);
-    expect(picks).toEqual([{ goodType: 10, openAtPick: false }]);
-  });
-
-  it('does not consume clicks outside the open window', () => {
-    const { ctx } = stubContext();
-    const goods = goodsWindow(ctx, () => undefined);
-    goods.toggle();
-    expect(goods.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
-    expect(goods.isOpen()).toBe(true);
-  });
-
-  it('drops from the help button that opens it, not from the strip top', () => {
-    const { ctx } = stubContext();
-    const goods = goodsWindow(ctx, () => undefined);
-    goods.toggle();
-    const x = ctx.layout.width + WIN_PAD * ctx.scale + 1;
-    expect(goods.claims(x, anchorY(ctx, 'help') + 1)).toBe(true);
-    // Where the palette used to open: above its button, so nothing of it may reach up there.
-    expect(goods.claims(x, ctx.layout.strip.y + 1)).toBe(false);
+    expect(claimedBottom(menu, columnX(live), 2000)).toBeGreaterThan(before);
   });
 });
 
@@ -480,8 +412,8 @@ describe('stats window controller', () => {
     stats.refresh(() => hud(1, 5));
 
     // The drawn rect's origin mirrors the controller's own formula; probe just inside it.
-    const x = ctx.layout.width + STATS_GAP_X * ctx.scale + 1;
-    const y = ctx.layout.strip.y + STATS_OFFSET_Y * ctx.scale + 1;
+    const x = statsOrigin(ctx).x + 1;
+    const y = statsOrigin(ctx).y + 1;
     expect(stats.claims(x, y)).toBe(true);
     expect(stats.handleClick(x, y)).toBe(true);
     expect(stats.isOpen()).toBe(false);
@@ -517,7 +449,7 @@ describe('tool windows registry', () => {
   };
   /** `windows.ts`'s mount order: each pop-up's child index in the panel's window container, which is the
    *  order they draw in. */
-  const MOUNT_INDEX = { menu: 0, goods: 1, extras: 2, stats: 3, diplomacy: 4, mission: 5 } as const;
+  const MOUNT_INDEX = { menu: 0, extras: 1, stats: 2, diplomacy: 3, mission: 4 } as const;
 
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx: base } = stubContext();
@@ -537,7 +469,7 @@ describe('tool windows registry', () => {
       ctx,
       container,
       buildings,
-      goods: [{ goodType: 10, id: 'wood', label: 'Drewno' }],
+      pendingWindow: stubPendingWindow,
       grants: GRANTS,
       counters: stubCountersSeam().seam,
       papers: NO_PAPERS,
@@ -550,7 +482,6 @@ describe('tool windows registry', () => {
       missionReplayPage: () => null,
       history: null,
       onPickBuilding: (typeId) => picks.push(typeId),
-      onPickGood: () => undefined,
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,
     });
@@ -592,7 +523,7 @@ describe('tool windows registry', () => {
       ctx: base,
       container: new Container(),
       buildings,
-      goods: [],
+      pendingWindow: stubPendingWindow,
       grants: GRANTS,
       counters: stubCountersSeam().seam,
       papers: { read: () => papers },
@@ -605,7 +536,6 @@ describe('tool windows registry', () => {
       missionReplayPage: () => null,
       history: null,
       onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
-      onPickGood: () => undefined,
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,
     });
@@ -699,7 +629,7 @@ describe('tool windows registry', () => {
     // Statistics draws after (over) the build menu and its column overlaps the menu's list: a point
     // inside the statistics panel and inside the menu's first building row.
     const row = expectedMenuLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-    const shared = { x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1, y: row.y + 1 };
+    const shared = { x: statsOrigin(ctx).x + 1, y: row.y + 1 };
     expect(windows.byId.menu.claims(shared.x, shared.y)).toBe(true);
     expect(windows.byId.stats.claims(shared.x, shared.y)).toBe(true);
 
@@ -716,7 +646,7 @@ describe('tool windows registry', () => {
     windows.refresh(() => TALL_HUD);
 
     const row = expectedMenuLayout(ctx, MANY).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-    const covered = { x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1, y: row.y + 1 };
+    const covered = { x: statsOrigin(ctx).x + 1, y: row.y + 1 };
     expect(windows.byId.stats.claims(covered.x, covered.y)).toBe(true);
 
     expect(windows.handleWheel(covered.x, covered.y, 120)).toBe(true); // statistics owns the wheel there
@@ -739,7 +669,7 @@ describe('tool windows registry', () => {
 
     // The same row, but under the statistics window: highlighting it would promise a pick the press
     // no longer makes.
-    windows.handleHover(ctx.layout.width + STATS_GAP_X * ctx.scale + 1, row.y + 1);
+    windows.handleHover(statsOrigin(ctx).x + 1, row.y + 1);
     expect(hasRowHighlight(container)).toBe(false);
   });
 
@@ -765,8 +695,8 @@ describe('tool windows registry', () => {
   it('consumes the wheel over any open pop-up, list or not', () => {
     const { ctx, windows } = mountWindows();
     const overStats = {
-      x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1,
-      y: ctx.layout.strip.y + STATS_OFFSET_Y * ctx.scale + 1,
+      x: statsOrigin(ctx).x + 1,
+      y: statsOrigin(ctx).y + 1,
     };
     expect(windows.handleWheel(overStats.x, overStats.y, 120)).toBe(false); // closed → the camera zooms
 
@@ -953,17 +883,9 @@ describe('extras window controller', () => {
     };
   }
 
-  /** The same layout the controller builds internally (same origin formula + default state):
-   *  right of the strip, dropping from the extras (chest) button. */
+  /** The same layout the controller builds internally (same origin formula + default state). */
   function expectedLayout(ctx: PanelContext) {
-    const extrasY = ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y;
-    return layoutExtrasMenu({
-      originX: ctx.layout.width + WIN_PAD * ctx.scale,
-      originY: extrasY,
-      scale: ctx.scale,
-      tab: 'assistant',
-      state: defaultAssistantState(),
-    });
+    return layoutExtrasMenu({ ...extrasGeometry(ctx), tab: 'assistant' });
   }
 
   it('opens on toggle, claims the window rect, and closes on the close box', () => {

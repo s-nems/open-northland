@@ -2,8 +2,6 @@
 
 **Area:** app, data · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `button-effects.ts` maps Help to an administrative item-spawning palette. The accepted replacement is one Knowledge window, not two menu buttons.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

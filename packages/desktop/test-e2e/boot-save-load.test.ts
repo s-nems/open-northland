@@ -5,7 +5,6 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron, type ElectronApplication } from 'playwright';
 import { test } from 'vitest';
-import { buildToolPanelLayout } from '../../app/src/hud/tool-panel/layout.js';
 import { resolveShellRoots } from '../src/paths.js';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -83,10 +82,7 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
       game.setPaused(true);
       return { tick: game.sim.tick, hash: game.sim.hashState() };
     });
-    const menuButton = buildToolPanelLayout(1).buttons.find((button) => button.id === 'options');
-    assert.ok(menuButton);
-    const { x, y, w, h } = menuButton.placed;
-    await page.locator('#game').click({ position: { x: x + w / 2, y: y + h / 2 } });
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Save game', exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill(SAVE_NAME);
     await page.getByRole('button', { name: 'Save', exact: true }).click();

@@ -109,7 +109,7 @@ not authorize replacement world buildings or characters.
 ## Implementation order
 
 Work one panel/ticket at a time in the shared checkout; see [session instructions](AGENTS.md).
-Start with 01 and 02, then 03–07 to establish the basic play loop. Continue with details, automation,
+The shell is in place; finish 01, then 03–07 to establish the basic play loop. Continue with details, automation,
 statistics, mission, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
 prerequisites; numbering is the suggested review order, not permission for parallel sessions to edit
 shared files. Ticket 12 separates statistics data from chart rendering because the current popup is
@@ -118,7 +118,6 @@ only diagnostics.
 | Ticket | Outcome |
 | --- | --- |
 | [01-visual-foundation](../../tickets/app/ingame-ui-01-visual-foundation.md) | Design and approve the shared in-game UI language |
-| [02-hud-shell](../../tickets/app/ingame-ui-02-hud-shell.md) | Implement the approved HUD regions and direct navigation |
 | [03-notifications](../../tickets/app/ingame-ui-03-notifications.md) | Build the narrow frameless notification column |
 | [04-summary-and-clock](../../tickets/app/ingame-ui-04-summary-and-clock.md) | Add tribe counters, grouped resources and simulation time |
 | [05-construction](../../tickets/app/ingame-ui-05-construction.md) | Design and implement the direct construction window |

@@ -11,6 +11,9 @@ export interface HudPlane {
   /** `HudScaleTarget` seam shared with the Pixi HUD parts. */
   setUiScale(scale: number): Promise<void>;
   currentScale(): number;
+  /** True when a region of the plane is under this client point, so the camera's edge pan and the
+   *  world hover yield the way they do for the Pixi HUD. */
+  claims(clientX: number, clientY: number): boolean;
 }
 
 export interface HudDomRoot extends HudPlane {
@@ -43,6 +46,11 @@ export function createHudPlane(initialScale: number): HudPlane {
       return Promise.resolve();
     },
     currentScale: () => scale,
+    claims: (clientX, clientY) => {
+      // The plane itself never takes pointer events, so a hit inside it is one of its regions.
+      const hit = document.elementFromPoint(clientX, clientY);
+      return hit !== null && hit !== element && element.contains(hit);
+    },
   };
 }
 

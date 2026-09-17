@@ -2,7 +2,7 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md), [08-settler-details](ingame-ui-08-settler-details.md)
+**Blocked by:** [08-settler-details](ingame-ui-08-settler-details.md)
 
 `hud/details-panel/sections/building/` has distinct stock, production, worker, defence and construction views whose functions need a coherent replacement.
 

@@ -165,7 +165,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     clear();
     const screen = deps.ctx.screen();
     screenKey = `${screen.width}x${screen.height}`;
-    const built = layoutMissionWindow(screen, sheet);
+    // Centred above the navigation beam; text runs still take the full screen for their resolution.
+    const built = layoutMissionWindow(screen, sheet, deps.ctx.layout.sheetArea(screen));
     layout = built;
     const ctx = deps.ctx.atScale(built.scale);
     const layers: WindowLayers = {

@@ -1,7 +1,6 @@
 import type { DiplomacyState } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { WIN_PAD } from '../src/hud/chrome.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import {
@@ -81,11 +80,19 @@ function expectedLayout(
   tributes: readonly TributeCardSpec[] = [],
   declarable: DiplomacyState | null = null,
 ): DiplomacyWindowLayout {
-  const anchor = ctx.layout.buttons.find((b) => b.id === 'diplomacy');
-  if (anchor === undefined) throw new Error('no diplomacy button in the strip');
+  // The controller measures at the origin, then centres the measured width in the window region.
+  const measured = layoutDiplomacyWindow({
+    originX: 0,
+    originY: 0,
+    scale: ctx.scale,
+    players,
+    selected,
+    tributes,
+  });
+  const origin = ctx.layout.windowOrigin(ctx.screen(), measured.window.w);
   return layoutDiplomacyWindow({
-    originX: ctx.layout.width + WIN_PAD * ctx.scale,
-    originY: anchor.placed.y,
+    originX: origin.x,
+    originY: origin.y,
     scale: ctx.scale,
     players,
     selected,
@@ -414,16 +421,17 @@ it('allows scrolling to and paying a tribute beyond the initial viewport', () =>
     onPayTribute: (slot) => paid.push(slot),
   });
   window.toggle();
-  for (let i = 0; i < 40; i++) window.handleWheel(200, 300, 100);
-  const raw = layoutDiplomacyWindow({
-    originX: ctx.layout.width + WIN_PAD * ctx.scale,
-    originY: 151,
-    scale: 1,
-    players: [1],
-    selected: 1,
-    tributes: Array.from({ length: 20 }, (_, slot) => ({ slot, payable: true, descriptionH: 0, lines: 1 })),
-  });
-  const last = fitDiplomacyWindow(raw, SCREEN, null, Infinity).tributes.at(-1);
+  const tributes = Array.from({ length: 20 }, (_, slot) => ({
+    slot,
+    payable: true,
+    descriptionH: 0,
+    lines: 1,
+  }));
+  const raw = expectedLayout(ctx, [1], 1, tributes);
+  const reserve = ctx.layout.bottomReserve(SCREEN, raw.window, null);
+  const inside = { x: raw.window.x + raw.window.w / 2, y: raw.window.y + 100 };
+  for (let i = 0; i < 40; i++) window.handleWheel(inside.x, inside.y, 100);
+  const last = fitDiplomacyWindow(raw, SCREEN, reserve, Infinity).tributes.at(-1);
   expect(last).toBeDefined();
   if (last === undefined) return;
   window.handleClick(last.pay.x + last.pay.w / 2, last.pay.y + last.pay.h / 2);

@@ -2,8 +2,6 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 `hud/tool-panel/extras-window.ts`, `extras-menu.ts`, and `view/assistant-counters.ts` expose Assistant inside the old Extras window with approximate layout.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

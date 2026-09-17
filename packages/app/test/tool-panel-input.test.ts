@@ -1,15 +1,12 @@
 import type { UiCue } from '@open-northland/audio';
-import { Container } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
 import { createToolPanelInput, type HeldMode, type NotesInput } from '../src/hud/tool-panel/input.js';
-import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
 import type { ToolWindows } from '../src/hud/tool-panel/windows.js';
 
 /**
- * The tool panel's canvas input over a fake canvas and window: which press plays which GUI click. A
- * strip button confirms; a right-click or Esc that calls a held mode off fails; a strip button that
- * drops a held mode as a side effect plays only its own confirm.
+ * The tool panel's canvas and key input over a fake canvas and window: which press plays which GUI
+ * click, and the Escape ladder (a held mode, then the open central window, then nothing).
  */
 
 /** A press the handler reads like a MouseEvent: client point, button, modifiers. */
@@ -74,50 +71,46 @@ afterEach(() => {
 
 function mount() {
   const canvas = new EventTarget() as unknown as HTMLCanvasElement;
-  const layout = buildToolPanelLayout(1);
   const cues: UiCue[] = [];
-  const pressed: ToolButtonId[] = [];
   const held = heldMode();
   const arm = (): void => {
     held.active = true;
   };
+  let windowOpen = false;
+  const closed: number[] = [];
   const input = createToolPanelInput({
     canvas,
-    container: new Container(),
-    layout,
     toCanvas: (x, y) => ({ x, y }),
     windows: CLOSED_WINDOWS,
     notes: NO_NOTES,
     held: [held],
     bindings: DEFAULT_KEY_BINDINGS,
-    // The buildings button drops a held mode before opening its menu, as `cancelsHeld` does.
-    activateButton: (id) => {
-      pressed.push(id);
-      if (id === 'buildings') held.cancel();
+    closeWindow: () => {
+      if (!windowOpen) return false;
+      windowOpen = false;
+      closed.push(1);
+      return true;
     },
     togglePause: () => undefined,
     cue: (cue) => {
       cues.push(cue);
     },
   });
-  const button = (id: ToolButtonId): { x: number; y: number } => {
-    const rect = layout.buttons.find((b) => b.id === id)?.placed;
-    if (rect === undefined) throw new Error(`no ${id} button`);
-    return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+  return {
+    canvas,
+    input,
+    cues,
+    held,
+    arm,
+    openWindow: (): void => {
+      windowOpen = true;
+    },
+    closed,
+    windowTarget,
   };
-  return { canvas, input, cues, pressed, held, arm, button, windowTarget };
 }
 
 describe('tool panel input clicks', () => {
-  it('confirms a strip button press', () => {
-    const { canvas, input, cues, pressed, button } = mount();
-    const at = button('statistics');
-    canvas.dispatchEvent(press(at.x, at.y));
-    expect(pressed).toEqual(['statistics']);
-    expect(cues).toEqual(['confirm']);
-    input.dispose();
-  });
-
   it('fails a right-click that calls a held mode off, and stays silent with nothing held', () => {
     const { canvas, input, cues, held, arm } = mount();
     canvas.dispatchEvent(press(400, 300, 2));
@@ -129,23 +122,52 @@ describe('tool panel input clicks', () => {
     input.dispose();
   });
 
-  it('fails Esc only while something is held', () => {
-    const { input, cues, arm, windowTarget } = mount();
-    windowTarget.dispatchEvent(key('Escape'));
+  it('lets a plain left press through to the world when nothing claims it', () => {
+    const { canvas, input, cues } = mount();
+    const event = press(400, 300);
+    canvas.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
     expect(cues).toEqual([]);
+    input.dispose();
+  });
+});
+
+describe('tool panel Escape ladder', () => {
+  it('cancels a held mode first, then closes the open window, then leaves the press alone', () => {
+    const { input, cues, held, arm, openWindow, closed, windowTarget } = mount();
     arm();
-    windowTarget.dispatchEvent(key('Escape'));
+    openWindow();
+
+    const first = key('Escape');
+    windowTarget.dispatchEvent(first);
+    expect(held.isActive()).toBe(false);
+    expect(closed).toEqual([]);
+    expect(cues).toEqual(['fail']);
+    expect(first.defaultPrevented).toBe(true);
+
+    const second = key('Escape');
+    windowTarget.dispatchEvent(second);
+    expect(closed).toEqual([1]);
+    expect(second.defaultPrevented).toBe(true);
+
+    const third = key('Escape');
+    windowTarget.dispatchEvent(third);
+    expect(third.defaultPrevented).toBe(false); // nothing left for the shell: the unit controls' turn
     expect(cues).toEqual(['fail']);
     input.dispose();
   });
 
-  it('plays only the confirm for a strip button that drops a held mode', () => {
-    const { canvas, input, cues, held, arm, button } = mount();
-    arm();
-    const at = button('buildings');
-    canvas.dispatchEvent(press(at.x, at.y));
-    expect(held.isActive()).toBe(false);
-    expect(cues).toEqual(['confirm']);
+  it('stops a consumed Escape before the listeners registered after it', () => {
+    const { input, openWindow, windowTarget } = mount();
+    let reached = 0;
+    windowTarget.addEventListener('keydown', () => {
+      reached++;
+    });
+    openWindow();
+    windowTarget.dispatchEvent(key('Escape'));
+    expect(reached).toBe(0);
+    windowTarget.dispatchEvent(key('Escape'));
+    expect(reached).toBe(1);
     input.dispose();
   });
 });

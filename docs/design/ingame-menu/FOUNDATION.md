@@ -50,8 +50,9 @@ labels, so colour is never the only carrier of state.
   seal filters sit above the list.
 - Selection details use ledger rows with dotted leaders, small-caps section titles with rules,
   quarter ticks on meters and icon buttons for orders.
-- Hotkeys 1–7, the ×3 speed segment and the placement bar under the catalogue are interaction
-  proposals, not runtime capabilities.
+- The placement bar under the catalogue is an interaction proposal for the construction ticket. The
+  digit badges on the beam are dropped: digits 1-9 and 0 are the control-group keys, so the runtime
+  beam carries no digit hotkeys.
 
 ## Components and geometry
 
@@ -74,6 +75,37 @@ The preview offers 90/100/125%, light/dark terrain and selected long English lab
 Hover lifts action art and medallions slightly; selection adds the lit rim and marker. Disabled
 catalogue entries keep readable requirements with faded art. Reduced-motion suppresses transitions
 and the walk loop. Escape/close hides construction; Buduj restores it.
+
+## HUD shell
+
+The runtime shell (ticket 02) places the regions on the DOM plane in design px and keeps the legacy
+Pixi panels behind the new navigation until their owner tickets replace them.
+
+| Region | Placement | Content today |
+| --- | --- | --- |
+| Navigation beam | bottom centre, 574 × 102, seven 76 × 90 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
+| System bar | top right, flush with both edges | pause / ×1 / ×2 / ×3 segments, menu medallion; counters and clock come with ticket 04 |
+| Notifications | left 10, top 18, width 198, ends above the minimap | count medallion and three seal filters; the legacy note row stays along the top edge until ticket 03 |
+| Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
+| Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1230 design px) |
+| Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
+
+Rules the shell enforces:
+
+- One central window at a time. A beam entry closes the other window and toggles its own; the same
+  entry pressed again closes it. Buduj, Asystent and Misja drop a held placement or paper first;
+  Statystyki, Dyplomacja, Mieszkańcy and Wiedza leave a running placement alone.
+- Esc steps back one level per press: a held placement or paper, then the open central window, then
+  the unit controls' own ladder (job list, armed order, selection). The shell handles Esc before the
+  other listeners and stops it once it consumed the press.
+- Closing with Esc or the close medallion returns keyboard focus to the beam entry that owns the
+  window. Only the mission sheet and the system menu hold the simulation paused; other windows never
+  touch the pause.
+- A wheel over a DOM region never reaches the camera, and the edge pan pauses while the pointer is
+  over one. Presses on a region never reach the map; presses on the map keep the window open and
+  select independently, with the details panel in its own corner.
+- A legacy window that cannot fit above the beam shortens its list or lifts toward the top bar; a
+  window wider than the region centres on the screen and yields to the minimap as before.
 
 ## Confirmed imagery
 

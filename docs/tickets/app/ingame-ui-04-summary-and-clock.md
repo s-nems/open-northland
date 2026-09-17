@@ -2,8 +2,6 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [02-hud-shell](ingame-ui-02-hud-shell.md)
-
 The approved top-right summary is not wired to gameplay; values in index.html are examples. Population ownership, resource counting and clock semantics must come from real session data.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

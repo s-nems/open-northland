@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
-import type { Command, DiplomacyState, Paper, PlayerCommand } from '@open-northland/sim';
+import type { DiplomacyState, Paper, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
@@ -17,7 +17,6 @@ import type {
   ExtrasPapersSeam,
 } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
-import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import type { MessageTarget } from '../hud/tool-panel/messages/index.js';
 import type { TooltipSurface } from '../hud/tooltip-surface.js';
@@ -33,13 +32,13 @@ import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 export interface GameToolPanelDeps {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
+  /** The DOM HUD plane the shell regions mount on. */
+  readonly plane: HTMLElement;
   /** Shared with the unit controls; may be fractional. */
   readonly uiscale: number;
   readonly camera: () => Camera;
   /** A closure, so it follows a scene restart. */
   readonly enqueue: (command: PlayerCommand) => void;
-  /** The goods palette's sandbox world-edit seam; a closure, so it follows a scene restart. */
-  readonly enqueueAdmin: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
@@ -47,9 +46,10 @@ export interface GameToolPanelDeps {
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
   readonly elevation?: ElevationField;
   readonly buildings: readonly MenuBuildingEntry[];
-  readonly goods: readonly MenuGoodEntry[];
   /** Localized name of a profession, good, or building announced by a discovery note. */
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
+  /** A good's localized name, for a produce permit's label. */
+  readonly goodLabel: (typeId: number) => string | undefined;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -138,13 +138,11 @@ export function menuEntriesFromContent(
   });
 }
 
-/** The content set's goods in its own order, minus the `none` sentinel, which is not a droppable ware. */
-export function menuGoodsFromContent(content: {
+/** The content set's goods by type, labelled with their authored name; the `none` sentinel is no good. */
+export function goodLabelsFromContent(content: {
   goods: readonly { typeId: number; id: string; name?: string | undefined }[];
-}): MenuGoodEntry[] {
-  return content.goods
-    .filter((g) => g.id !== 'none')
-    .map((g) => ({ goodType: g.typeId, id: g.id, label: g.name ?? g.id }));
+}): ReadonlyMap<number, string> {
+  return new Map(content.goods.filter((g) => g.id !== 'none').map((g) => [g.typeId, g.name ?? g.id]));
 }
 
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
@@ -162,16 +160,16 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     mountToolPanel({
       app: deps.app,
       canvas: deps.canvas,
+      plane: deps.plane,
       uiscale,
       buildings: deps.buildings,
-      goods: deps.goods,
       technologyLabel: deps.technologyLabel,
+      goodLabel: deps.goodLabel,
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,
       owner: deps.owner,
       enqueue: deps.enqueue,
-      enqueueAdmin: deps.enqueueAdmin,
       grants: deps.grants,
       counters: deps.counters,
       papers: deps.papers,

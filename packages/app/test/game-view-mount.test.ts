@@ -3,6 +3,7 @@ import { Simulation } from '@open-northland/sim';
 import { afterEach, expect, it, vi } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { currentDiagGameSession, setDiagGameSession } from '../src/diag/session.js';
+import * as hudDom from '../src/hud/dom/root.js';
 import * as toolPanel from '../src/view/game-tool-panel.js';
 import * as perfOverlay from '../src/view/perf-overlay.js';
 import * as presentation from '../src/view/runtime/game-presentation.js';
@@ -50,6 +51,14 @@ it.each([
       },
     };
   });
+  // The DOM plane mounts before the tool panel; the node environment has no document for it.
+  vi.spyOn(hudDom, 'mountHudDomRoot').mockImplementation(() => ({
+    element: {} as HTMLElement,
+    setUiScale: () => Promise.resolve(),
+    currentScale: () => 1,
+    claims: () => false,
+    dispose: acquire('hud dom'),
+  }));
   const failure = new Error('tool-panel asset failed');
   vi.spyOn(toolPanel, 'mountGameToolPanel').mockRejectedValue(failure);
 

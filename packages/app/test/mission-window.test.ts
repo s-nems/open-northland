@@ -106,7 +106,7 @@ function mount(
     onOpenChange: (open) => opened.push(open),
     now,
   });
-  const layout = layoutMissionWindow(SCREEN, null);
+  const layout = layoutMissionWindow(SCREEN, null, buildToolPanelLayout(1).sheetArea(SCREEN));
   return { window, made, placedY, opened, asked, layout, cues };
 }
 
@@ -373,7 +373,7 @@ describe('createMissionWindow', () => {
       brief: () => brief,
       history: BOOK,
     });
-    const layout = layoutMissionWindow(SCREEN, null);
+    const layout = layoutMissionWindow(SCREEN, null, buildToolPanelLayout(1).sheetArea(SCREEN));
     window.toggle();
     const goalsTab = layout.tabs.find((t) => t.tab === 'goals');
     if (goalsTab === undefined) throw new Error('no goals tab');

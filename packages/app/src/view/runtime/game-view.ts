@@ -47,8 +47,8 @@ import type { CameraController } from '../camera/index.js';
 import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera/index.js';
 import {
   applyGameSpeed,
+  goodLabelsFromContent,
   menuEntriesFromContent,
-  menuGoodsFromContent,
   mountGameToolPanel,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
@@ -312,8 +312,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       if (settler !== undefined) soundDriver?.respond(settler);
     };
 
-    const menuGoods = menuGoodsFromContent(sim.content);
-    const goodLabelByType = new Map(menuGoods.map((g) => [g.goodType, g.label]));
+    const goodLabelByType = goodLabelsFromContent(sim.content);
     const { diplomacyView, buildReason } = createTickMemoViews(sim, seatTribeOf);
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
@@ -350,15 +349,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const noteTooltip = createTooltip();
     cleanup.push(() => noteTooltip.destroy());
     let missionWindowOpen = false;
+    // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
+    const hudDom = mountHudDomRoot(uiscale);
+    cleanup.push(() => hudDom.dispose());
     const toolPanel = await mountGameToolPanel({
       app,
       canvas,
+      plane: hudDom.element,
       uiscale,
       camera: () => cameraCtl.camera(),
       enqueue: issueCommand,
-      enqueueAdmin: (command) => {
-        if (!readOnly) issueTrusted(command);
-      },
       grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
       counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
       papers: { read: () => sim.papers(localPlayer) },
@@ -373,8 +373,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...entry,
         disabledReason: () => buildReason(localPlayer, entry.typeId),
       })),
-      goods: sharedClock ? [] : menuGoods,
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
+      goodLabel: (typeId) => goodLabelByType.get(typeId),
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
@@ -470,12 +470,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       toScreenPx: clientToScreen,
     });
 
-    // Open windows and the minimap claim against both camera gestures. The tool-panel strip deliberately
-    // does not, so edge-pan and wheel zoom keep working over it.
+    // Open windows, the minimap and the DOM regions claim against both camera gestures.
     const mountedMinimap = minimap;
     cleanup.push(() => mountedMinimap.dispose());
     const hudClaims = (clientX: number, clientY: number): boolean =>
-      toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY);
+      toolPanel.claimsWheel(clientX, clientY) ||
+      mountedMinimap.claimsPointer(clientX, clientY) ||
+      hudDom.claims(clientX, clientY);
     cameraCtl.setPointerGuard(hudClaims);
     cameraCtl.setEdgeGuard(hudClaims);
 
@@ -617,10 +618,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
 
     cleanup.push(() => worldTooltip.destroy());
-
-    // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
-    const hudDom = mountHudDomRoot(uiscale);
-    cleanup.push(() => hudDom.dispose());
 
     const liveSettings = createLiveGameSettings({
       screen: app.screen,

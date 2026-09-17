@@ -14,7 +14,6 @@ import {
   type ExtrasGrantsSeam,
   type ExtrasPapersSeam,
 } from './extras-window.js';
-import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import type { HeldPaperController } from './held-paper.js';
 import {
   createMissionWindow,
@@ -22,6 +21,7 @@ import {
   type MissionWindow,
   type MissionWindowState,
 } from './mission/index.js';
+import type { PendingWindow } from './pending-window.js';
 import { createStatsWindow } from './stats-window.js';
 import {
   createTabbedListWindow,
@@ -30,10 +30,13 @@ import {
 } from './tabbed-list/index.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
-/** The pop-ups in mount order, which is their draw order. */
-const MOUNT_ORDER = ['menu', 'goods', 'extras', 'stats', 'diplomacy', 'mission'] as const;
+/** The central windows in mount order, which is the legacy pop-ups' draw order. */
+const MOUNT_ORDER = ['menu', 'extras', 'stats', 'diplomacy', 'residents', 'knowledge', 'mission'] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
+
+/** The central windows whose contents a later ticket owns; the registry shows a pending note for them. */
+export type PendingWindowId = Extract<ToolWindowId, 'residents' | 'knowledge'>;
 
 interface ToolWindowEntry {
   readonly window: ToolWindow;
@@ -44,8 +47,9 @@ export interface ToolWindowsDeps {
   readonly ctx: PanelContext;
   /** Every pop-up mounts its own container under this one; child order is draw order. */
   readonly container: Container;
+  /** The pending note window for an entry without contents yet, mounted on the DOM plane. */
+  readonly pendingWindow: (id: PendingWindowId) => PendingWindow;
   readonly buildings: readonly MenuBuildingEntry[];
-  readonly goods: readonly MenuGoodEntry[];
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
   readonly papers: ExtrasPapersSeam;
@@ -61,25 +65,26 @@ export interface ToolWindowsDeps {
   /** The mission window's brief for a briefing page, or for the map's fallback text with null. */
   readonly missionBrief: (page: number | null) => MissionBrief | null;
   readonly missionBriefingHistory: () => readonly number[];
-  /** The briefing page the mission window opens on from the strip; null before any replayable one. */
+  /** The briefing page the mission window opens on from the beam; null before any replayable one. */
   readonly missionReplayPage: () => number | null;
   /** The mission window's history book; null shows the tab empty. */
   readonly history: HypertextBook | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
-  /** The place-any paper a plans-tab click hands to the build menu. */
+  /** The place-any paper a papers-tab click hands to the build menu. */
   readonly heldPaper: HeldPaperController;
   /** A building was picked for placement; `paper` is the paper the placement spends, when one is held. */
   readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
-  readonly onPickGood: (goodType: number) => void;
 }
 
 export interface ToolWindows {
-  /** Each pop-up by id, as the strip buttons toggle them. */
+  /** Each window by id, as the beam entries toggle them. */
   readonly byId: Readonly<Record<ToolWindowId, ToolWindow>>;
   /** The mission window itself, for the page a script opens it on. */
   readonly mission: MissionWindow;
+  /** The open central window, or null; the beam lights its entry. */
+  openId(): ToolWindowId | null;
   claims(x: number, y: number): boolean;
   /** Offer a click to the top-drawn open pop-up over the point; true when it consumed it. */
   handleClick(x: number, y: number, mods?: ClickModifiers): boolean;
@@ -90,12 +95,12 @@ export interface ToolWindows {
   refresh(hudFor: () => HudLayout): void;
   state(): ToolWindowsState;
   restore(state: ToolWindowsState): void;
+  dispose(): void;
 }
 
 export interface ToolWindowsState {
   readonly openIds: readonly ToolWindowId[];
   readonly buildings: TabbedListWindowState<BuildingCategory>;
-  readonly goods: TabbedListWindowState<number>;
   readonly extras: ExtrasTab;
   readonly diplomacy: number | null;
   /** The paper the build menu holds for its next pick, restored with its banner. */
@@ -121,12 +126,6 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       if (paper === null) deps.onPickBuilding(b.typeId);
       else deps.onPickBuilding(b.typeId, paper);
     },
-  });
-  const goods = createTabbedListWindow({
-    ctx,
-    container,
-    source: goodsTabbedList(deps.goods),
-    onPick: (g) => deps.onPickGood(g.goodType),
   });
   const extras = createExtrasWindow({
     ctx,
@@ -154,6 +153,8 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     onPayTribute: deps.onPayTribute,
     onDeclareDiplomacy: deps.onDeclareDiplomacy,
   });
+  const residents = deps.pendingWindow('residents');
+  const knowledge = deps.pendingWindow('knowledge');
   const mission = createMissionWindow({
     ctx,
     container,
@@ -167,14 +168,15 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   });
 
   /** The pop-ups that own a scrollable, hoverable list. */
-  const lists: readonly TabbedListWindow<BuildingCategory | number>[] = [menu, goods];
+  const lists: readonly TabbedListWindow<BuildingCategory>[] = [menu];
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
     menu: { window: menu, perFrame: () => menu.refresh() },
-    goods: { window: goods, perFrame: () => goods.refresh() },
     extras: { window: extras, perFrame: () => extras.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
+    residents: { window: residents, perFrame: () => residents.place() },
+    knowledge: { window: knowledge, perFrame: () => knowledge.place() },
     mission: { window: mission, perFrame: () => mission.refresh() },
   };
   const mounted = MOUNT_ORDER.map((id) => entries[id]);
@@ -185,8 +187,9 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     probed.find((e) => e.window.claims(x, y))?.window ?? null;
 
   return {
-    byId: { menu, goods, extras, stats, diplomacy, mission },
+    byId: { menu, extras, stats, diplomacy, residents, knowledge, mission },
     mission,
+    openId: () => MOUNT_ORDER.find((id) => entries[id].window.isOpen()) ?? null,
     claims: (x, y) => topAt(x, y) !== null,
     handleClick: (x, y, mods): boolean => topAt(x, y)?.handleClick(x, y, mods) ?? false,
     handleWheel: (x, y, deltaY): boolean => {
@@ -215,7 +218,6 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     state: () => ({
       openIds: MOUNT_ORDER.filter((id) => entries[id].window.isOpen()),
       buildings: menu.state(),
-      goods: goods.state(),
       extras: extras.state(),
       diplomacy: diplomacy.state(),
       heldPaper: heldPaper.held(),
@@ -223,7 +225,6 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     }),
     restore: (state): void => {
       menu.restore(state.buildings);
-      goods.restore(state.goods);
       extras.restore(state.extras);
       diplomacy.restore(state.diplomacy);
       if (state.heldPaper === null) heldPaper.cancel();
@@ -234,6 +235,10 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
         const window = entries[id].window;
         if (open.has(id) !== window.isOpen()) window.toggle();
       }
+    },
+    dispose: (): void => {
+      residents.dispose();
+      knowledge.dispose();
     },
   };
 }

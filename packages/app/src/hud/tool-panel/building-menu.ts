@@ -61,7 +61,6 @@ export function buildingTabbedList(
     // The decoded `miscwindow` id 0 is the original's internal name "Zbuduj Okno", so a clean Polish
     // build-menu title is shown instead.
     title: () => messages().hud.build,
-    anchor: 'buildings',
     tabColumns: BUILDING_CATEGORIES.length,
     tabs: () =>
       BUILDING_CATEGORIES.map((c) => ({
