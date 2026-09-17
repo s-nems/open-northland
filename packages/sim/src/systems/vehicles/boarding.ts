@@ -124,10 +124,13 @@ export function planRider(world: World, ctx: SystemContext, terrain: TerrainGrap
 
 /**
  * Keep riders consistent with their seats: a rider whose vehicle is gone or whose seat was taken away is
- * released, and one that cannot find a way to the door is dropped where it stands with a lost note.
- * Before the planner, so the ladder's rider rung only sees riders that still belong somewhere.
+ * released, and one that cannot find a way to the door is dropped where it stands with a lost note. A
+ * carrier's failed walk to a cargo source or store is not a lost door: it takes the planner's ordinary
+ * stranded recovery and keeps its seat. Before the planner, so the ladder's rider rung only sees riders
+ * that still belong somewhere.
  */
 export const riderSystem: System = (world, ctx) => {
+  const terrain = ctx.terrain;
   for (const e of canonicalById(world.query(Rider))) {
     const rider = world.get(e, Rider);
     const state = world.tryGet(rider.vehicle, Vehicle);
@@ -140,11 +143,12 @@ export const riderSystem: System = (world, ctx) => {
       world.remove(e, Rider);
       continue;
     }
-    if (world.has(e, Position) && world.tryGet(e, PathRequest)?.failed === true) {
-      markLostWay(world, ctx, e);
-      clearNavState(world, e);
-      releaseRider(world, e, rider.vehicle);
-    }
+    const request = world.tryGet(e, PathRequest);
+    if (request?.failed !== true || !world.has(e, Position) || terrain === undefined) continue;
+    if (request.goal !== boardingNode(world, ctx, terrain, rider.vehicle)) continue;
+    markLostWay(world, ctx, e);
+    clearNavState(world, e);
+    releaseRider(world, e, rider.vehicle);
   }
 };
 

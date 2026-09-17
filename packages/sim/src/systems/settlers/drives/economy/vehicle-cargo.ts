@@ -46,42 +46,54 @@ const CARGO_UNIT = 1;
 
 /**
  * VEHICLE CARGO - a carrier attached to a cart or moored ship serves its hold (docs/formats/VEHICLES.md
- * "Cargo"): while a good's wanted amount exceeds its booking it fetches a unit, loose goods within
- * {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door first, then a house within it, then whatever its signpost
- * area reaches; with a unit on its back it books it and sets it into the hold at the door; while a good's
- * booking exceeds its wanted amount it lifts a unit out. A rider the vehicle asked aboard, one standing on
- * another continent than the door, and a load the hold will not take fall through to the other rungs.
- *
- * Named approximations: the original picks at random among the sources it found, here the nearest wins
- * (ties by good id); the guide network is the carrier's signpost confinement; a lifted-out unit goes
- * wherever the delivery ladder sends an unbound settler's load, the ground at the door when nothing takes
- * it; a house source holds the hold's canonical good, never a dish it would alias; a flush waits for a
- * unit to be aboard, where the original walks over and finds none.
+ * "Cargo", which also names the approximations): while a good's wanted amount exceeds its booking it
+ * fetches a unit, loose goods within {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door first, then a house
+ * within it, then whatever its signpost area reaches, every source on the door's continent; with a unit
+ * on its back it books it and sets it into the hold at the door; while a good's booking exceeds its
+ * wanted amount it walks the booking down a unit a trip, lifting a unit out when one is aboard. A rider
+ * the vehicle asked aboard, one standing on another continent than the door, and a load the hold will
+ * not take fall through to the other rungs, any booking they hold given back first.
  */
 export function planVehicleCargo(
   plan: PlannerContext,
   load: { goodType: number; amount: number } | undefined,
 ): boolean {
-  const { world, ctx, terrain, entity: e, here } = plan;
+  const { world, entity: e } = plan;
   const rider = world.tryGet(e, Rider);
-  if (rider === undefined || rider.boarding || !isCarrierJob(ctx, plan.jobType)) return false;
+  if (rider === undefined) return false;
   const vehicle = rider.vehicle;
-  const state = world.tryGet(vehicle, Vehicle);
-  const stock = world.tryGet(vehicle, VehicleStock);
-  if (state === undefined || stock === undefined || isShipAtSea(ctx, state)) return false;
-  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
-  if (type === undefined) return false;
-  const door = boardingNode(world, ctx, terrain, vehicle);
-  if (door === null || terrain.componentOf(door) !== terrain.componentOf(here)) return false;
-
   const loaded = load !== undefined && load.amount > 0;
-  // A booking that no longer matches the carrier's hands or vehicle is spent before deciding afresh.
+  // A booking that no longer matches the carrier's hands or vehicle, or that the rung will not finish
+  // this turn, is given back before anything else decides for the rider.
   const run = world.tryGet(e, CargoRun);
   if (run !== undefined && (run.vehicle !== vehicle || (run.direction === 'load') !== loaded)) {
     abandonCargoRun(world, e);
   }
-  if (loaded) return bringLoad(plan, vehicle, type, door, load);
-  return fetchShortfall(plan, vehicle, type, door) || flushSurplus(plan, vehicle, door);
+  const served = servedHold(plan, rider.boarding, vehicle);
+  if (served === null) {
+    abandonCargoRun(world, e);
+    return false;
+  }
+  if (loaded) return bringLoad(plan, vehicle, served.type, served.door, load);
+  return fetchShortfall(plan, vehicle, served.type, served.door) || flushSurplus(plan, vehicle, served.door);
+}
+
+/** The hold this carrier serves right now: its type and boarding node, or null while the vehicle asks
+ *  the rider aboard, lies at sea, has no door, or stands on another continent than the carrier. */
+function servedHold(
+  plan: PlannerContext,
+  boarding: boolean,
+  vehicle: Entity,
+): { readonly type: VehicleType; readonly door: NodeId } | null {
+  const { world, ctx, terrain, here } = plan;
+  if (boarding || !isCarrierJob(ctx, plan.jobType)) return null;
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || !world.has(vehicle, VehicleStock) || isShipAtSea(ctx, state)) return null;
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type === undefined) return null;
+  const door = boardingNode(world, ctx, terrain, vehicle);
+  if (door === null || terrain.componentOf(door) !== terrain.componentOf(here)) return null;
+  return { type, door };
 }
 
 /** The carrier holds a unit: set it into the hold under its booking, booking it first when the hold
@@ -118,7 +130,7 @@ function bringLoad(
   return true;
 }
 
-/** A good's line and the unit budget it is judged against. */
+/** One `vehicleStockEntries` pair: the canonical good and its line. */
 type HoldLine = readonly [number, DeepReadonly<VehicleStockLine>];
 
 /** The goods the hold asks more of than it has booked, ascending by good. */
@@ -131,7 +143,7 @@ function shortfallGoods(stock: DeepReadonly<{ lines: Map<number, VehicleStockLin
 /**
  * Fetch one unit of a good the hold is short of, from the nearest source the three-phase search finds.
  * Nothing is booked yet: the booking is made when the unit is on the carrier's back, as the original's
- * carrier does, so two carriers may fetch for one slot and the second brings its unit elsewhere.
+ * carrier does.
  */
 function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType, door: NodeId): boolean {
   const { world, ctx, entity: e, here } = plan;
@@ -166,12 +178,16 @@ function nearestCargoSource(
   const avoid = unreachableGoalVeto(world, ctx, e);
   const gate = plan.limit ?? undefined;
   const onSide = sameSideAs(world, plan.owner);
+  // The original's search is a pathfinder flood from the door, so only the door's continent yields.
+  const continent = terrain.componentOf(door);
+  const reachable = (e2: Entity): boolean =>
+    terrain.componentOf(interactionCell(world, ctx, terrain, e2, door)) === continent;
   const nearDoor = (e2: Entity): boolean =>
     manhattan(terrain, door, interactionCell(world, ctx, terrain, e2, door)) <= VEHICLE_CARGO_SEARCH_RADIUS;
   const phases: ReadonlyArray<{ origin: NodeId; accept: (e2: Entity) => boolean }> = [
-    { origin: door, accept: (e2) => isLoosePile(world, e2) && nearDoor(e2) },
-    { origin: door, accept: (e2) => world.has(e2, Building) && nearDoor(e2) },
-    { origin: here, accept: () => true },
+    { origin: door, accept: (e2) => isLoosePile(world, e2) && reachable(e2) && nearDoor(e2) },
+    { origin: door, accept: (e2) => world.has(e2, Building) && reachable(e2) && nearDoor(e2) },
+    { origin: here, accept: reachable },
   ];
   for (const phase of phases) {
     let best: (CargoSource & { readonly distance: number }) | null = null;
@@ -188,16 +204,15 @@ function nearestCargoSource(
   return null;
 }
 
-/** Lift one unit of the first good the hold has booked beyond its wanted amount, dropping the booking as
- *  the carrier sets out (`l_StartTask_ExecuteJob_Carrier_FlushVehicle`). */
+/** Walk the first good booked beyond its wanted amount down by a unit: the booking drops as the carrier
+ *  sets out (`l_StartTask_ExecuteJob_Carrier_FlushVehicle`) and the door lifts a unit out when one is
+ *  aboard, so a stale booking heals a trip at a time even with nothing to carry. */
 function flushSurplus(plan: PlannerContext, vehicle: Entity, door: NodeId): boolean {
   const { world, ctx, entity: e, here } = plan;
   const stock = world.get(vehicle, VehicleStock);
   let run = world.tryGet(e, CargoRun);
   if (run === undefined) {
-    const surplus = vehicleStockEntries(stock).find(
-      ([, line]: HoldLine) => line.wanted < line.reserved && line.current > 0,
-    );
+    const surplus = vehicleStockEntries(stock).find(([, line]: HoldLine) => line.wanted < line.reserved);
     if (surplus === undefined) return false;
     const goodType = surplus[0];
     if (modifyVehicleReserved(world, vehicle, ctx.content, goodType, -CARGO_UNIT) !== -CARGO_UNIT)

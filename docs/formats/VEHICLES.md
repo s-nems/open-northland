@@ -159,15 +159,18 @@ Open Northland: `VehicleStock` (`packages/sim/src/components/vehicle.ts`) keeps 
 canonical good as `current`, `wanted` and `reserved` (the future amount); `systems/vehicles/stock.ts`
 holds the clamps, `stockVehicleGoods` the booked-and-stowed write of `addgoods` and a loaded spawn,
 and `addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted` and
-`clearVehicleWanted`; `unloadPeople` stays the whole of `f`. The carrier rung
+`clearVehicleWanted`; `unloadPeople` is the passenger half of `f` (the carried-vehicle half is not
+mirrored, *open*). The carrier rung
 (`systems/settlers/drives/economy/vehicle-cargo.ts`) runs above the rider rung for an attached carrier
 and its booking rides on the carrier as `CargoRun`, given back when it detaches or dies. The alias
 goes through the shared dish-to-edible seam, which also maps meat and sausage (approximation: the
 original's table lists neither). Further approximations: the nearest source wins where the original
-draws at random, ties by good id; the guide network is the carrier's signpost confinement; a flush
-waits for a unit to be aboard; a lifted-out unit goes where the delivery ladder sends an unbound
-settler's load, the ground at the door when nothing takes it; a house source must hold the hold's
-canonical good, never a dish it would alias to it.
+draws at random, ties by good id, every source on the door's continent as the original's flood
+implies; the guide network is the carrier's signpost confinement; a lifted-out unit goes where the
+delivery ladder sends an unbound settler's load, the ground at the door when nothing takes it; a
+house source must hold the hold's canonical good, never a dish it would alias to it; a carrier whose
+walk to a source or store fails takes the planner's stranded recovery and keeps its seat, where only
+a failed walk to the door drops it.
 
 ## Movement
 

@@ -10,10 +10,10 @@ import {
   vehicleReservedLoad,
   vehicleWantedLoad,
 } from '../../components/index.js';
-import { isCarrierJobId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
+import { isCarrierJobRow } from '../readviews/jobs.js';
 
 /** A hold as the world hands it out: read-only lines. */
 type HoldView = { lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>> };
@@ -57,7 +57,7 @@ export function hasCarrierAttached(world: World, content: ContentSet, vehicle: E
     const jobType = world.tryGet(seat.entity, Settler)?.jobType;
     if (jobType === undefined || jobType === null) return false;
     const job = jobs.get(jobType);
-    return job !== undefined && isCarrierJobId(job.id);
+    return job !== undefined && isCarrierJobRow(job);
   });
 }
 
@@ -168,8 +168,8 @@ export function clearVehicleWanted(world: World, vehicle: Entity): void {
 
 /**
  * Put `amount` units of `goodType` aboard that nobody is bringing, booked and stowed at once (a map's
- * `addgoods` and the loaded spawn of a scene): `reserved` and `current` rise by the units the budget
- * takes; `wanted` stays. Returns the units stowed.
+ * `addgoods` and the loaded spawn of a scene): `current` rises by the units the budget takes and
+ * `reserved` by as many as the booking budget still has; `wanted` stays. Returns the units stowed.
  */
 export function stockVehicleGoods(
   world: World,
@@ -182,9 +182,10 @@ export function stockVehicleGoods(
   if (hold === null || amount <= 0) return 0;
   const moved = Math.min(amount, Math.max(0, vehicleLineCap(hold.type) - vehicleLoad(hold.stock)));
   if (moved === 0) return 0;
+  const booked = Math.min(moved, Math.max(0, vehicleLineCap(hold.type) - vehicleReservedLoad(hold.stock)));
   const line = lineOf(world.mut(vehicle, VehicleStock), hold.good);
   line.current += moved;
-  line.reserved = Math.min(line.reserved + moved, VEHICLE_STOCK_BYTE_MAX);
+  line.reserved += booked;
   return moved;
 }
 

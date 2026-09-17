@@ -25,7 +25,7 @@ import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { setVehicleWanted, stockVehicleGoods } from '../../src/systems/vehicles/stock.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassNodeMap } from '../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 
 /**
  * The cargo of docs/formats/VEHICLES.md "Cargo": the wanted-amount orders and their clamps, the attached
@@ -276,6 +276,69 @@ describe('the carrier rung', () => {
     expect(s.world.has(carrier, CargoRun)).toBe(false);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 1, reserved: 0 });
     expect(s.world.get(carrier, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
+  });
+
+  it('ignores a source across the water and keeps its seat, the hold waiting unbooked', () => {
+    const s = new Simulation({
+      seed: 3,
+      content: testContent(),
+      // Cells: a 120 x 60 node map split by water at node column 40, the pile on the far bank.
+      map: waterColumnMap(MAP_NODES / 2, MAP_NODES / 4, 20),
+    });
+    s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const cart = spawnCart(s);
+    const carrier = attachCarrier(s, cart);
+    dropPile(s, WOOD, { hx: 100, hy: 20 }, 3);
+    want(s, cart, WOOD, 1);
+    s.run(TRIP_TICKS);
+    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false });
+    expect(s.events.current().some((ev) => ev.kind === 'settlerLost')).toBe(false);
+    expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 1, reserved: 0 });
+    expect(pileAmount(s, WOOD)).toBe(3);
+  });
+
+  it('drops the booking at the door when the request was cleared meanwhile and places the unit elsewhere', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const carrier = attachCarrier(s, cart);
+    const hq = placeHq(s, { hx: 20, hy: 26 });
+    dropPile(s, WOOD, SOURCE_AT, 1);
+    want(s, cart, WOOD, 1);
+    for (let tick = 0; tick < TRIP_TICKS && !s.world.has(carrier, CargoRun); tick++) s.step();
+    expect(line(s, cart, WOOD).reserved).toBe(1);
+    s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: cart }));
+    s.step();
+    s.run(TRIP_TICKS * 3);
+    expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(s.world.has(carrier, CargoRun)).toBe(false);
+    expect(s.world.has(carrier, Carrying)).toBe(false);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
+    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false });
+  });
+
+  it('walks a stale booking down a trip at a time with nothing aboard', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    attachCarrier(s, cart);
+    s.world.mut(cart, VehicleStock).lines.set(WOOD, { current: 0, wanted: 0, reserved: 2 });
+    s.run(TRIP_TICKS);
+    expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(pileAmount(s, WOOD)).toBe(0);
+  });
+
+  it('lets a rider of another trade holding a load deliver it before it stands at the door', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const hq = placeHq(s, SOURCE_AT);
+    const scout = spawnSettler(s, 30, 20, SCOUT);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
+    s.step();
+    s.world.add(scout, Carrying, { goodType: WOOD, amount: 1 });
+    s.run(TRIP_TICKS * 2);
+    expect(s.world.has(scout, Carrying)).toBe(false);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
+    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false });
+    expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
   });
 
   it('survives a save with a booking in flight and finishes the trip after the restore', () => {
