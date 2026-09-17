@@ -19,10 +19,10 @@ import {
   screenDepth,
 } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
-import type { CharacterScaler } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
+import type { PixelArtScaler } from '../world-batcher.js';
 import { LayerBinder } from './bind-layers.js';
 import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
@@ -42,8 +42,8 @@ const POOL_REAP_BUDGET = 32;
 
 export interface PoolFrame {
   readonly enhancedSampling?: boolean;
-  /** The original characters' magnification under enhanced sampling; `xbr` when absent. */
-  readonly characterScaler?: CharacterScaler;
+  /** How original pixel art magnifies under enhanced sampling; `xbr` when absent. */
+  readonly pixelArtScaler?: PixelArtScaler;
   readonly environmentMotion?: boolean;
   readonly snapshot: WorldSnapshot;
   /** The margin-inflated world-space box the camera frames - the sprite cull rectangle. */

@@ -1,4 +1,5 @@
 import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
+import { markPixelArtSource } from './world-batcher.js';
 
 /**
  * The shared one-time GPU options. WebGL preference and antialias-off cut cross-machine pixel variance.
@@ -138,5 +139,7 @@ export async function loadAtlasSource(
       : ((await Assets.load(url)) as Texture);
   if (alpha === 'straight') texture.source.alphaMode = 'no-premultiply-alpha';
   texture.source.scaleMode = scaleMode;
+  // A nearest-loaded page is authored pixel art and may magnify edge-aware; ground pages stay linear.
+  if (scaleMode === 'nearest') markPixelArtSource(texture.source);
   return texture.source;
 }

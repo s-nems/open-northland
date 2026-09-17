@@ -1,4 +1,5 @@
 import { MeshGeometry, Shader, type TextureSource } from 'pixi.js';
+import { PIXEL_ART_MAGNIFY_GLSL } from '../pixel-art-magnify.js';
 
 const VERTEX = `#version 300 es
 in vec2 aPosition; // native bob pixels (already offset by the frame's draw origin)
@@ -62,81 +63,11 @@ vec4 resolvedTexel(ivec2 pixel) {
   return vec4(textureLod(uLut, lutUV, 0.0).rgb * t.a, t.a);
 }
 
-// Blend of the texel at base with its right/down neighbours by weights f; weight 0 is base's centre.
-vec4 resolvedBlend(ivec2 base, vec2 f) {
-  return mix(mix(resolvedTexel(base), resolvedTexel(base + ivec2(1, 0)), f.x),
-             mix(resolvedTexel(base + ivec2(0, 1)), resolvedTexel(base + ivec2(1, 1)), f.x), f.y);
-}
+#define MAGNIFY_FETCH(px) resolvedTexel(px)
+${PIXEL_ART_MAGNIFY_GLSL}
 
 vec4 resolvedBilinear(vec2 uv) {
-  vec2 p = uv * vec2(textureSize(uTexture, 0)) - 0.5;
-  return resolvedBlend(ivec2(floor(p)), fract(p));
-}
-
-// Nearest inside a texel, one screen pixel of blend across each texel boundary: crisp pixels that
-// no longer shimmer under subpixel placement. texelsPerPixel is the screen-pixel footprint.
-vec4 resolvedSharp(vec2 p, float texelsPerPixel) {
-  vec2 q = p - 0.5;
-  vec2 f = clamp((fract(q) - 0.5) / max(texelsPerPixel, 0.0001) + 0.5, 0.0, 1.0);
-  return resolvedBlend(ivec2(floor(q)), f);
-}
-
-// Luma-weighted RGB plus alpha on premultiplied texels, so a silhouette against transparency is a
-// strong edge and a shading band a weak one.
-float colourDistance(vec4 a, vec4 b) {
-  vec4 d = abs(a - b);
-  return dot(d.rgb, vec3(0.299, 0.587, 0.114)) + d.a;
-}
-
-const float DISTINCT = 1.0 / 255.0; // two texels "differ" once any channel moves a level
-
-// Edge-directed magnification after the published xBR rule set (Hyllian's 2011 algorithm; an
-// approximation, not an original-engine mechanism): a diagonal edge through a texel's corner is
-// redrawn as a straight cut at 45, ~27 or ~63 degrees, filled with the neighbour that continues
-// the edge. Only the corner nearest the fragment is judged; s mirrors that corner onto one
-// orientation so the 3x3 core plus its two outer taps read the same way for all four corners.
-vec4 resolvedXbr(vec2 p, float texelsPerPixel) {
-  ivec2 centre = ivec2(floor(p));
-  vec2 fp = fract(p);
-  ivec2 s = ivec2(fp.x >= 0.5 ? 1 : -1, fp.y >= 0.5 ? 1 : -1);
-  vec2 local = abs(fp - 0.5); // 0 at the texel centre, 0.5 at the judged corner
-  #define TAP(dx, dy) resolvedTexel(centre + ivec2(dx, dy) * s)
-  vec4 e = TAP(0, 0);
-  vec4 f = TAP(1, 0);
-  vec4 h = TAP(0, 1);
-  vec4 i = TAP(1, 1);
-  vec4 b = TAP(0, -1);
-  vec4 c = TAP(1, -1);
-  vec4 d = TAP(-1, 0);
-  vec4 g = TAP(-1, 1);
-  vec4 f4 = TAP(2, 0);
-  vec4 i4 = TAP(2, 1);
-  vec4 h5 = TAP(0, 2);
-  vec4 i5 = TAP(1, 2);
-  #undef TAP
-  vec4 base = resolvedSharp(p, texelsPerPixel);
-  float ef = colourDistance(e, f);
-  float eh = colourDistance(e, h);
-  if (ef < DISTINCT || eh < DISTINCT) return base;
-  // The corner is an edge when the diagonal e-i is a stronger contrast than the diagonal f-h.
-  float along = colourDistance(e, c) + colourDistance(e, g) + colourDistance(i, h5)
-              + colourDistance(i, f4) + 4.0 * colourDistance(h, f);
-  float across = colourDistance(h, d) + colourDistance(h, i5) + colourDistance(f, i4)
-               + colourDistance(f, b) + 4.0 * colourDistance(e, i);
-  if (along >= across) return base;
-  float fg = colourDistance(f, g);
-  float hc = colourDistance(h, c);
-  // Cut lines in corner-local texel units: u + v = 0.5 (45 deg), and the two shallower slopes
-  // used when the edge continues past g or c. Each blends over one screen pixel.
-  float aa = 0.5 * texelsPerPixel;
-  float cut = smoothstep(0.5 - aa * 1.4142, 0.5 + aa * 1.4142, local.x + local.y);
-  if (2.0 * fg <= hc && colourDistance(e, g) >= DISTINCT && colourDistance(d, g) >= DISTINCT) {
-    cut = max(cut, smoothstep(0.25 - aa * 1.118, 0.25 + aa * 1.118, local.y + 0.5 * local.x));
-  }
-  if (fg >= 2.0 * hc && colourDistance(e, c) >= DISTINCT && colourDistance(b, c) >= DISTINCT) {
-    cut = max(cut, smoothstep(0.25 - aa * 1.118, 0.25 + aa * 1.118, local.x + 0.5 * local.y));
-  }
-  return mix(base, ef <= eh ? f : h, cut);
+  return magnifyBilinear(uv * vec2(textureSize(uTexture, 0)));
 }
 
 void main(void) {
@@ -150,7 +81,7 @@ void main(void) {
     float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
     if (texelsPerPixel < 1.0 && uSampling.x > 1.5) {
       // Magnified: the mode's own edge treatment. Both converge on bilinear as texels reach pixel size.
-      finalColor = uSampling.x > 2.5 ? resolvedXbr(p, texelsPerPixel) : resolvedSharp(p, texelsPerPixel);
+      finalColor = uSampling.x > 2.5 ? magnifyXbr(p, texelsPerPixel) : magnifySharp(p, texelsPerPixel);
       return;
     }
     vec2 footprint = max(fwidth(vUV) - 1.0 / size, vec2(0.0)) * 0.25;
@@ -205,8 +136,6 @@ void main(void) {
  * anti-aliases only their boundaries; `xbr` additionally redraws diagonal edges as straight cuts.
  */
 export type PalettedSampling = 'nearest' | 'bilinear' | 'sharp' | 'xbr';
-/** The magnification an original character gets under enhanced sampling. */
-export type CharacterScaler = Exclude<PalettedSampling, 'nearest'>;
 export const PALETTED_SAMPLING_MODES: Readonly<Record<PalettedSampling, number>> = {
   nearest: 0,
   bilinear: 1,

@@ -20,12 +20,12 @@ import {
   PortraitInsetLayer,
   type SettlerBubbleGfx,
 } from '../overlays/index.js';
-import type { CharacterScaler } from '../paletted-sprite/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
+import { installWorldBatcher, type PixelArtScaler, setPixelArtMagnification } from '../world-batcher.js';
 import {
   type BuildingHighlightItem,
   type CombatBonesGfx,
@@ -70,7 +70,7 @@ export class WorldRenderer {
   private readonly mapViews: MapViewLayer;
 
   private readonly viewSmoothing: boolean;
-  private readonly characterScaler: CharacterScaler;
+  private readonly pixelArtScaler: PixelArtScaler;
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = {
     enhancedSampling: false,
@@ -79,9 +79,10 @@ export class WorldRenderer {
   };
 
   constructor(app: Application, opts?: WorldRendererOptions) {
+    installWorldBatcher(); // before the sprite layer's render group builds its first batch
     this.app = app;
     this.viewSmoothing = opts?.viewSmoothing === true;
-    this.characterScaler = opts?.characterScaler ?? 'xbr';
+    this.pixelArtScaler = opts?.pixelArtScaler ?? 'xbr';
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
     // Own Pixi render group: moving sprites re-write zIndex every frame, and that must re-sort and
@@ -115,6 +116,7 @@ export class WorldRenderer {
   setGraphicsEnhancements(next: WorldEnhancements): void {
     this.enhancements = { ...next };
     this.textureCache.setSoftShadows(next.softShadows);
+    setPixelArtMagnification(next.enhancedSampling ? this.pixelArtScaler : 'bilinear');
     this.terrain.setEnhancedSampling(next.enhancedSampling);
     this.terrain.setEnvironmentMotion(next.environmentMotion);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);
@@ -238,7 +240,7 @@ export class WorldRenderer {
       alpha,
       snapResolution,
       enhancedSampling: this.enhancements.enhancedSampling,
-      characterScaler: this.characterScaler,
+      pixelArtScaler: this.pixelArtScaler,
       environmentMotion: this.enhancements.environmentMotion,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),

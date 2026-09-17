@@ -4,6 +4,7 @@ import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { BuildingTextureCache } from './building-texture-cache.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
+import { isPixelArtSource, markPixelArtSource } from './world-batcher.js';
 
 /**
  * Threshold quantisation step for the per-pixel reveal bakes: the eased reveal walks 0-255 thresholds in
@@ -156,14 +157,14 @@ export class TextureCache {
     }
     const canvas = bakeRevealCanvas(source, frame, times, q);
     if (canvas === null) return null;
+    const baked = new CanvasSource({
+      resource: canvas,
+      scaleMode: source.scaleMode,
+      autoGenerateMipmaps: source.autoGenerateMipmaps,
+    });
+    if (isPixelArtSource(source)) markPixelArtSource(baked);
     const bake: RevealBake = {
-      texture: new Texture({
-        source: new CanvasSource({
-          resource: canvas,
-          scaleMode: source.scaleMode,
-          autoGenerateMipmaps: source.autoGenerateMipmaps,
-        }),
-      }),
+      texture: new Texture({ source: baked }),
       stamp: frameStamp,
     };
     byThreshold.set(q, bake);

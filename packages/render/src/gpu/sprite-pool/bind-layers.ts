@@ -20,7 +20,7 @@ import type { PoolFrame } from './sprite-pool.js';
 
 export type BindFrame = Pick<
   PoolFrame,
-  'camera' | 'screenW' | 'screenH' | 'highlight' | 'snapResolution' | 'enhancedSampling' | 'characterScaler'
+  'camera' | 'screenW' | 'screenH' | 'highlight' | 'snapResolution' | 'enhancedSampling' | 'pixelArtScaler'
 >;
 
 /** Assign-mode candidate-building tints, pale so they wash over the building art rather than
@@ -196,7 +196,7 @@ export class LayerBinder {
       frame.screenH,
     );
     spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh
-    spr.sampling = frame.enhancedSampling === true ? (frame.characterScaler ?? 'xbr') : 'nearest';
+    spr.sampling = frame.enhancedSampling === true ? (frame.pixelArtScaler ?? 'xbr') : 'nearest';
     spr.player = lutRow;
     spr.visible = true;
   }

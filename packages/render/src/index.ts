@@ -148,7 +148,6 @@ export {
   type WorkAreaRing,
 } from './gpu/overlays/index.js';
 export {
-  type CharacterScaler,
   type GuiColorKey,
   type PalettedSampling,
   PalettedSprite,
@@ -193,6 +192,7 @@ export type {
   TransitionPattern,
 } from './gpu/terrain-textures.js';
 export { TextureCache } from './gpu/texture-cache.js';
+export { markPixelArtSource, type PixelArtScaler } from './gpu/world-batcher.js';
 export {
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,

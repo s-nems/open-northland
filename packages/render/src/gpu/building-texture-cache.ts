@@ -1,6 +1,7 @@
 import { CanvasSource, Rectangle, Texture, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
+import { isPixelArtSource, markPixelArtSource } from './world-batcher.js';
 
 const PADDING = 2;
 const MAX_GPU_BYTES = 32 * 1024 * 1024;
@@ -117,12 +118,14 @@ export class BuildingTextureCache {
       const image = ctx.getImageData(0, 0, width, height);
       sharpenBuildingInterior(image.data, width, height);
       ctx.putImageData(image, 0, 0);
+      const baked = new CanvasSource({
+        resource: ctx.canvas,
+        scaleMode: 'linear',
+        autoGenerateMipmaps: true,
+      });
+      if (isPixelArtSource(source)) markPixelArtSource(baked);
       const texture = new Texture({
-        source: new CanvasSource({
-          resource: ctx.canvas,
-          scaleMode: 'linear',
-          autoGenerateMipmaps: true,
-        }),
+        source: baked,
         // Keep the drawn extent and pixel-picking coordinates identical to the original frame.
         frame: new Rectangle(PADDING, PADDING, frame.width, frame.height),
       });

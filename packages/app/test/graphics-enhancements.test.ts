@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { graphicsEnhancementsFor } from '../src/view/graphics-enhancements.js';
-import { characterScalerParam } from '../src/view/params.js';
+import { pixelArtScalerParam } from '../src/view/params.js';
 import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
 
 describe('graphics experiment choices', () => {
@@ -28,10 +28,10 @@ describe('graphics experiment choices', () => {
     });
   });
 
-  it('reads the character scaler A/B choice only from a known value', () => {
-    expect(characterScalerParam(new URLSearchParams('scaler=sharp'))).toBe('sharp');
-    expect(characterScalerParam(new URLSearchParams('scaler=xbr'))).toBe('xbr');
-    expect(characterScalerParam(new URLSearchParams('scaler=nearest'))).toBeNull();
-    expect(characterScalerParam(new URLSearchParams())).toBeNull();
+  it('reads the pixel-art scaler A/B choice only from a known value', () => {
+    expect(pixelArtScalerParam(new URLSearchParams('scaler=sharp'))).toBe('sharp');
+    expect(pixelArtScalerParam(new URLSearchParams('scaler=xbr'))).toBe('xbr');
+    expect(pixelArtScalerParam(new URLSearchParams('scaler=nearest'))).toBeNull();
+    expect(pixelArtScalerParam(new URLSearchParams())).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import type { CharacterScaler } from '@open-northland/render';
+import type { PixelArtScaler } from '@open-northland/render';
 
 /**
  * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
@@ -74,8 +74,8 @@ export function postFxParam(params: URLSearchParams): boolean | null {
   return raw === null ? null : raw !== 'off';
 }
 
-/** The `?scaler` diagnostic choice of original-character magnification; `null` when absent or unknown. */
-export function characterScalerParam(params: URLSearchParams): CharacterScaler | null {
+/** The `?scaler` diagnostic choice of original pixel-art magnification; `null` when absent or unknown. */
+export function pixelArtScalerParam(params: URLSearchParams): PixelArtScaler | null {
   const raw = params.get('scaler');
   return raw === 'bilinear' || raw === 'sharp' || raw === 'xbr' ? raw : null;
 }

@@ -10,6 +10,7 @@ import { pixelHit } from '../src/gpu/sprite-pool/pick.js';
 import { createPooled } from '../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../src/gpu/sprite-pool/resolved-layer.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
+import { isPixelArtSource, markPixelArtSource } from '../src/gpu/world-batcher.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -182,6 +183,22 @@ describe('building frame cache', () => {
     page.destroy();
     ownedPage.destroy();
     suppliedMips.destroy();
+  });
+
+  it('carries the pixel-art mark from the atlas page onto its bake, and only then', () => {
+    mockCanvas();
+    const cache = new TextureCache();
+    const plain = new TextureSource({ width: 64, height: 64 });
+    const pixelArt = new TextureSource({ width: 64, height: 64 });
+    markPixelArtSource(pixelArt);
+    const plainBake = cache.getBuilding(plain, FRAME);
+    const pixelArtBake = cache.getBuilding(pixelArt, { ...FRAME });
+    expect(plainBake.source).not.toBe(plain);
+    expect(isPixelArtSource(plainBake.source)).toBe(false);
+    expect(isPixelArtSource(pixelArtBake.source)).toBe(true);
+    cache.clear();
+    plain.destroy();
+    pixelArt.destroy();
   });
 
   it('caps GPU storage including the mip chain without evicting textures retained by sprites', () => {

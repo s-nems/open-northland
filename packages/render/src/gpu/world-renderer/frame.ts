@@ -10,8 +10,8 @@ import type {
   SettlerBubble,
   WorkAreaRing,
 } from '../overlays/index.js';
-import type { CharacterScaler } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
+import type { PixelArtScaler } from '../world-batcher.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
 export interface BuildingHighlightItem {
@@ -28,7 +28,7 @@ export interface WorldEnhancements {
 export interface WorldRendererOptions {
   readonly enhancements?: WorldEnhancements;
   /** Diagnostic A/B choice for the experiment; `xbr` when absent. */
-  readonly characterScaler?: CharacterScaler | undefined;
+  readonly pixelArtScaler?: PixelArtScaler | undefined;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**
