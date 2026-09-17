@@ -170,7 +170,7 @@ describe('exportSaveGame sections', () => {
     expect(firstMask?.[0]).toBe(P0);
     expect(firstMask?.[1]).toHaveLength(fog.cellsWide * fog.cellsHigh);
     expect(firstMask?.[1]).toContain(String(FOG_STATE.VISIBLE));
-    expect(firstMask?.[1]).toMatch(/^[0-2]+$/);
+    expect(firstMask?.[1]).toMatch(/^[0-3]+$/);
   });
 
   it('exports pending envelopes and the sequence position', () => {

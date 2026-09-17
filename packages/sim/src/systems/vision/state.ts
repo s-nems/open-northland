@@ -11,13 +11,14 @@ export const FOG_STATE = {
   VISIBLE: 2,
 } as const;
 
-/** The fourth mask byte, a cell a script revealed: every read returns it as VISIBLE, and the RECON
- *  downgrade lowers VISIBLE bytes alone, so the sight lasts. It leaves the masks only as a save digit. */
+/** The fourth mask byte, a cell a script revealed: {@link FogState.stateAt} returns it as VISIBLE, and
+ *  the RECON downgrade lowers VISIBLE bytes alone, so the sight lasts. Raw mask readers (the stamp, the
+ *  save digits, the hash) see the byte itself. */
 export const REVEALED_BYTE = 3;
 
 /** The number of distinct mask byte values, the stride that keeps one cell's fold contributions apart
  *  from its neighbours'. */
-const MASK_BYTE_COUNT = 4;
+const MASK_BYTE_COUNT = REVEALED_BYTE + 1;
 
 /**
  * One player's mask fold: the XOR of every non-UNEXPLORED cell's {@link cellFold}. Boxed so a stamp
@@ -67,10 +68,11 @@ export class FogState {
    *  explored bit per player and its display reads the local player's bit alone. */
   private groupOf = new Map<number, number>();
   /**
-   * vision group → the cell box that may still hold VISIBLE bytes, the union of every stamp and reveal
-   * rect since the last downgrade. The downgrade pass scans only this box, so rebuild cost follows vision
-   * coverage rather than map area. Derived bookkeeping, never hashed: stamps and reveals are the only
-   * writers of VISIBLE and each merges its rect in, so VISIBLE cannot exist outside the box.
+   * vision group → the cell box that may still hold VISIBLE bytes, the union of every stamp rect and
+   * restored VISIBLE cell since the last downgrade. The downgrade pass scans only this box, so rebuild
+   * cost follows vision coverage rather than map area. Derived bookkeeping, never hashed: the stamp and
+   * the restore are the only writers of VISIBLE and each merges its cells in, and nothing lowers a
+   * revealed byte to VISIBLE, so VISIBLE cannot exist outside the box.
    */
   private readonly visibleBounds = new Map<
     number,

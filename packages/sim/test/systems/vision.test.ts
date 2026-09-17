@@ -168,7 +168,7 @@ describe('fog modes - update rules over the per-player mask', () => {
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE); // old ground STAYS visible (sticky)
   });
 
-  it('RECON: the raw mask stays tri-state but the view reads unexplored ground as explored', () => {
+  it('RECON: the raw mask records what an eye saw but the view reads unexplored ground as explored', () => {
     const sim = simOn(FOG_MODE.RECON);
     const e = unit(sim, 2, 2, P0);
     sim.run(1);

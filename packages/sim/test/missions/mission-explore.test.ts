@@ -96,6 +96,15 @@ describe('ExploreArea', () => {
     expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.VISIBLE);
   });
 
+  it('a whole-map reveal stays in sight in RECON as well', () => {
+    const sim = underFog(firingSim([explore(OWNER, POINT, 0)]), FOG_MODE.RECON);
+    spawn(sim, { player: OWNER, at: FAR_EAST });
+    sim.run(FIRST_PASS + 2 * VISION_CADENCE_TICKS);
+    expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.VISIBLE);
+    expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.VISIBLE);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
   it('a range no lattice distance exceeds reveals the whole map too', () => {
     const sim = underFog(firingSim([explore(OWNER, POINT, 4 * MAP_NODES)]), FOG_MODE.REVEAL);
     sim.run(FIRST_PASS);
