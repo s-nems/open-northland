@@ -2,8 +2,8 @@ import { TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { AtlasFrame, BuildTimeSheet } from '../src/data/sprites/index.js';
 import * as drawable from '../src/gpu/drawable-resource.js';
+import { isMagnifiedTexture, markPixelArtSource } from '../src/gpu/pixel-art-registry.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
-import { isPixelArtSource, markPixelArtSource } from '../src/gpu/world-batcher.js';
 
 const SOURCE = new TextureSource({ width: 64, height: 64 });
 const FRAME: AtlasFrame = { x: 10, y: 20, width: 30, height: 40, offsetX: 0, offsetY: 0 };
@@ -84,7 +84,7 @@ describe('TextureCache.revealed', () => {
       markPixelArtSource(source);
       const revealed = cache.revealed(source, FRAME, TIMES, 128, 1);
       expect(revealed?.source.scaleMode).toBe('linear');
-      expect(revealed !== null && isPixelArtSource(revealed.source)).toBe(true);
+      expect(revealed !== null && isMagnifiedTexture(revealed)).toBe(true);
       source.scaleMode = 'nearest';
       expect(cache.revealed(source, FRAME, TIMES, 128, 2)).toBe(revealed);
       expect(revealed?.source.scaleMode).toBe('nearest');

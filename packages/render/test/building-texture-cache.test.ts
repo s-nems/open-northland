@@ -4,13 +4,13 @@ import type { DrawItem } from '../src/data/scene/index.js';
 import type { AtlasFrame } from '../src/data/sprites/index.js';
 import { sharpenBuildingInterior } from '../src/gpu/building-texture-cache.js';
 import * as drawable from '../src/gpu/drawable-resource.js';
+import { isMagnifiedTexture, markPixelArtSource } from '../src/gpu/pixel-art-registry.js';
 import * as alphaMask from '../src/gpu/sprite-pool/alpha-mask.js';
 import { LayerBinder } from '../src/gpu/sprite-pool/bind-layers.js';
 import { pixelHit } from '../src/gpu/sprite-pool/pick.js';
 import { createPooled } from '../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../src/gpu/sprite-pool/resolved-layer.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
-import { isPixelArtSource, markPixelArtSource } from '../src/gpu/world-batcher.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -185,7 +185,7 @@ describe('building frame cache', () => {
     suppliedMips.destroy();
   });
 
-  it('carries the pixel-art mark from the atlas page onto its bake, and only then', () => {
+  it('registers textures minted from a pixel-art page for magnification, bakes included', () => {
     mockCanvas();
     const cache = new TextureCache();
     const plain = new TextureSource({ width: 64, height: 64 });
@@ -194,8 +194,10 @@ describe('building frame cache', () => {
     const plainBake = cache.getBuilding(plain, FRAME);
     const pixelArtBake = cache.getBuilding(pixelArt, { ...FRAME });
     expect(plainBake.source).not.toBe(plain);
-    expect(isPixelArtSource(plainBake.source)).toBe(false);
-    expect(isPixelArtSource(pixelArtBake.source)).toBe(true);
+    expect(isMagnifiedTexture(plainBake)).toBe(false);
+    expect(isMagnifiedTexture(pixelArtBake)).toBe(true);
+    expect(isMagnifiedTexture(cache.get(pixelArt, FRAME))).toBe(true);
+    expect(isMagnifiedTexture(cache.get(plain, { ...FRAME }))).toBe(false); // the cache keys by frame object
     cache.clear();
     plain.destroy();
     pixelArt.destroy();

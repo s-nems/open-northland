@@ -10,8 +10,8 @@ import type {
   SettlerBubble,
   WorkAreaRing,
 } from '../overlays/index.js';
+import type { PixelArtScaler } from '../pixel-art-registry.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
-import type { PixelArtScaler } from '../world-batcher.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
 export interface BuildingHighlightItem {

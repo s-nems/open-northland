@@ -19,10 +19,10 @@ import {
   screenDepth,
 } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import type { PixelArtScaler } from '../pixel-art-registry.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
-import type { PixelArtScaler } from '../world-batcher.js';
 import { LayerBinder } from './bind-layers.js';
 import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';

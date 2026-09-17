@@ -12,41 +12,47 @@ import {
   getBatchSamplersUniformGroup,
   Shader,
   type Texture,
-  type TextureSource,
   UniformGroup,
+  type ViewContainer,
 } from 'pixi.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from './pixel-art-magnify.js';
 
-/** How registered pixel-art pages magnify under enhanced sampling; `bilinear` is the sampler's own filter. */
-export type PixelArtScaler = 'bilinear' | 'sharp' | 'xbr';
-const SCALER_MODES: Readonly<Record<PixelArtScaler, number>> = { bilinear: 0, sharp: 1, xbr: 2 };
-
-/** Atlas pages whose frames are authored pixel art and may be magnified edge-aware. */
-const pixelArtSources = new WeakSet<TextureSource>();
-
-export function markPixelArtSource(source: TextureSource): void {
-  pixelArtSources.add(source);
-}
-
-export function isPixelArtSource(source: TextureSource): boolean {
-  return pixelArtSources.has(source);
-}
+import { isMagnifiedTexture, onPixelArtMagnifyMode, pixelArtMagnifyMode } from './pixel-art-registry.js';
 
 /** One shared uniform: every renderer on the page magnifies the same way. Created on first shader
  *  use so importing this module touches no GPU object. */
-let magnifyMode = 0;
 let magnifyUniforms: UniformGroup | undefined;
 
 function magnifyGroup(): UniformGroup {
-  magnifyUniforms ??= new UniformGroup({ uWorldMagnify: { value: magnifyMode, type: 'f32' } });
+  if (magnifyUniforms === undefined) {
+    const group = new UniformGroup({ uWorldMagnify: { value: pixelArtMagnifyMode(), type: 'f32' } });
+    onPixelArtMagnifyMode((mode) => {
+      if (group.uniforms.uWorldMagnify === mode) return;
+      group.uniforms.uWorldMagnify = mode;
+      group.update();
+    });
+    magnifyUniforms = group;
+  }
   return magnifyUniforms;
 }
 
-export function setPixelArtMagnification(scaler: PixelArtScaler): void {
-  magnifyMode = SCALER_MODES[scaler];
-  if (magnifyUniforms === undefined || magnifyUniforms.uniforms.uWorldMagnify === magnifyMode) return;
-  magnifyUniforms.uniforms.uWorldMagnify = magnifyMode;
-  magnifyUniforms.update();
+/** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
+const WORLD_BATCHER = 'world';
+
+/**
+ * Route a sprite's batches through the world batcher. Pixi mints the sprite's batchable record lazily
+ * per renderer into `_gpuData`, always named `default`; the proxy renames each record as it lands.
+ */
+export function worldBatched<T extends ViewContainer>(sprite: T): T {
+  sprite._gpuData = new Proxy(sprite._gpuData, {
+    set(target, key, value: unknown) {
+      if (typeof value === 'object' && value !== null && 'batcherName' in value) {
+        (value as { batcherName: string }).batcherName = WORLD_BATCHER;
+      }
+      return Reflect.set(target, key, value);
+    },
+  });
+  return sprite;
 }
 
 /** x, y, u, v, colour, textureIdAndRound (Pixi's six) + magnify flag + the frame's UV box. */
@@ -57,9 +63,9 @@ type WorldBatcherClass = new (options: BatcherOptions) => Batcher;
 let worldBatcherClass: WorldBatcherClass | undefined;
 
 /**
- * Pixi's default batcher with two extra vertex attributes: whether the element's page is registered
- * pixel art, and its frame's UV box. It is defined on first install, not at import, so a test that
- * mocks `pixi.js` can still load this module.
+ * Pixi's default batcher plus two vertex attributes: whether the element's texture is registered for
+ * magnification, and its frame's UV box. Defined on first install, not at import, so a test that mocks
+ * `pixi.js` can still load this module.
  */
 function defineWorldBatcher(): WorldBatcherClass {
   class WorldBatchGeometry extends Geometry {
@@ -210,7 +216,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   }
 
   class WorldBatcher extends Batcher {
-    static extension = { type: [ExtensionType.Batcher], name: 'default' } as const;
+    static extension = { type: [ExtensionType.Batcher], name: WORLD_BATCHER } as const;
 
     override geometry = new WorldBatchGeometry();
     override shader: WorldBatchShader;
@@ -234,7 +240,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
       const argb = element.color;
-      const magnify = pixelArtSources.has(element.texture.source) ? 1 : 0;
+      const magnify = isMagnifiedTexture(element.texture) ? 1 : 0;
       const frame = frameBox(element.texture);
       const end = element.attributeOffset + element.attributeSize;
       for (let i = element.attributeOffset; i < end; i++) {
@@ -268,7 +274,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       const uvs = texture.uvs;
       const argb = element.color;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
-      const magnify = pixelArtSources.has(texture.source) ? 1 : 0;
+      const magnify = isMagnifiedTexture(texture) ? 1 : 0;
       const frame = frameBox(texture);
       const corners: readonly (readonly [number, number, number, number])[] = [
         [minX, minY, uvs.x0, uvs.y0],
@@ -301,8 +307,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   return WorldBatcher;
 }
 
-/** Register as Pixi's `default` batcher, so every batch built afterwards takes this path; anything
- *  not marked samples exactly as before. Call before the world's render group builds its first batch. */
+/** Register the `world` batcher; call before the first world sprite is batched. Idempotent. */
 export function installWorldBatcher(): void {
   worldBatcherClass ??= defineWorldBatcher();
   extensions.add(worldBatcherClass);

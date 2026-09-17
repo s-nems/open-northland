@@ -1,5 +1,5 @@
 import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
-import { markPixelArtSource } from './world-batcher.js';
+import { markPixelArtSource } from './pixel-art-registry.js';
 
 /**
  * The shared one-time GPU options. WebGL preference and antialias-off cut cross-machine pixel variance.

@@ -1,7 +1,7 @@
 import { CanvasSource, Rectangle, Texture, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
-import { isPixelArtSource, markPixelArtSource } from './world-batcher.js';
+import { markMagnifiedTexture } from './pixel-art-registry.js';
 
 const PADDING = 2;
 const MAX_GPU_BYTES = 32 * 1024 * 1024;
@@ -123,12 +123,12 @@ export class BuildingTextureCache {
         scaleMode: 'linear',
         autoGenerateMipmaps: true,
       });
-      if (isPixelArtSource(source)) markPixelArtSource(baked);
       const texture = new Texture({
         source: baked,
         // Keep the drawn extent and pixel-picking coordinates identical to the original frame.
         frame: new Rectangle(PADDING, PADDING, frame.width, frame.height),
       });
+      markMagnifiedTexture(texture, source);
       this.textures.set(frame, texture);
       this.gpuBytes += bytes;
       return texture;

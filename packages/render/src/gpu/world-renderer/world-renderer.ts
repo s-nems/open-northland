@@ -20,12 +20,13 @@ import {
   PortraitInsetLayer,
   type SettlerBubbleGfx,
 } from '../overlays/index.js';
+import { type PixelArtScaler, setPixelArtMagnification } from '../pixel-art-registry.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
-import { installWorldBatcher, type PixelArtScaler, setPixelArtMagnification } from '../world-batcher.js';
+import { installWorldBatcher } from '../world-batcher.js';
 import {
   type BuildingHighlightItem,
   type CombatBonesGfx,

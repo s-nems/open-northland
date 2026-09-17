@@ -3,8 +3,8 @@ import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { BuildingTextureCache } from './building-texture-cache.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
+import { markMagnifiedTexture } from './pixel-art-registry.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
-import { isPixelArtSource, markPixelArtSource } from './world-batcher.js';
 
 /**
  * Threshold quantisation step for the per-pixel reveal bakes: the eased reveal walks 0-255 thresholds in
@@ -70,6 +70,7 @@ export class TextureCache {
         source,
         frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
       });
+      markMagnifiedTexture(tex);
       this.cache.set(frame, tex);
       this.pages.add(source);
     }
@@ -101,6 +102,7 @@ export class TextureCache {
         source,
         frame: new Rectangle(frame.x, frame.y + top, frame.width, frame.height - top),
       });
+      markMagnifiedTexture(tex);
       byTop.set(top, tex);
       this.pages.add(source);
     }
@@ -124,6 +126,7 @@ export class TextureCache {
         source,
         frame: new Rectangle(frame.x, frame.y, frame.width, frame.height - bottom),
       });
+      markMagnifiedTexture(tex);
       byBottom.set(bottom, tex);
       this.pages.add(source);
     }
@@ -162,11 +165,11 @@ export class TextureCache {
       scaleMode: source.scaleMode,
       autoGenerateMipmaps: source.autoGenerateMipmaps,
     });
-    if (isPixelArtSource(source)) markPixelArtSource(baked);
     const bake: RevealBake = {
       texture: new Texture({ source: baked }),
       stamp: frameStamp,
     };
+    markMagnifiedTexture(bake.texture, source);
     byThreshold.set(q, bake);
     if (byThreshold.size > REVEAL_BAKES_PER_ATLAS_FRAME) {
       for (const [key, old] of byThreshold) {

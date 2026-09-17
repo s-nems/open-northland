@@ -190,11 +190,11 @@ mipmapped own terrain keeps its existing sampling. The HUD and simulation coordi
 Original pixel art magnifies through an edge-directed xBR pass, so diagonal outlines become straight
 cuts instead of stairs or blur; it converges on plain bilinear as texels reach pixel size. Characters
 and animals get it in the paletted shader on palette-resolved colours; buildings, trees, goods and
-other nearest-loaded atlas pages get it through the world batch shader, which replaces Pixi's default
-batcher and leaves unmarked pages (HUD, own art, ground) sampling as before. `scaler=bilinear|sharp|xbr`
+other frames the world's texture cache mints from nearest-loaded atlas pages get it through the `world`
+batcher the world sprites opt into; HUD icons, own art and ground sample as before. `scaler=bilinear|sharp|xbr`
 overrides that choice for one session (`sharp` keeps whole texels and anti-aliases only their boundaries).
-At close zoom, original terrain also gets a small opaque-interior contrast boost capped at eight
-8-bit RGB levels before lighting. Finished buildings use isolated native-size frames with mipmaps
+At close zoom, original terrain magnifies with a tile-bounded Catmull-Rom bicubic filter instead of the
+sampler's bilinear. Finished buildings use isolated native-size frames with mipmaps
 and similarly bounded interior detail; alpha, anchors and picking bounds stay unchanged. The building
 cache caps its full mip chains at 32 MiB GPU plus CPU canvas copies, falling back when unavailable,
 oversized or full. Construction, upgrades, shadows and already-mipmapped art bypass building detail.

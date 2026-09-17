@@ -17,7 +17,7 @@ const matrixBlock = `
   uniform mat3 uTransformMatrix;
 `;
 
-// Original terrain gets bounded close-up detail and four-tap minification, not a full mipmap substitute.
+// Original terrain gets bicubic magnification and four-tap minification, not a full mipmap substitute.
 // Existing mipmapped materials retain their hardware filtering.
 const TERRAIN_SAMPLE = `
   in vec4 vSampleBounds;
@@ -33,22 +33,31 @@ const TERRAIN_SAMPLE = `
     vec2 centre = (vSampleBounds.xy + vSampleBounds.zw) * 0.5;
     vec2 low = min(vSampleBounds.xy + 0.5 / size, centre);
     vec2 high = max(vSampleBounds.zw - 0.5 / size, centre);
-    if (footprint <= 1.0) {
-      vec4 texel = textureLod(uTexture, vUV, 0.0);
-      // Artistic detail boost, fading out before minification. Never sharpen alpha or across a
-      // translucent transition edge, and cap the RGB change at eight 8-bit levels before lighting.
-      float amount = 0.2 * (1.0 - smoothstep(0.5, 1.0, footprint));
-      if (amount <= 0.0 || texel.a < 0.999) return texel;
-      vec2 stepX = vec2(1.0 / size.x, 0.0);
-      vec2 stepY = vec2(0.0, 1.0 / size.y);
-      vec4 left = textureLod(uTexture, clamp(vUV - stepX, low, high), 0.0);
-      vec4 right = textureLod(uTexture, clamp(vUV + stepX, low, high), 0.0);
-      vec4 top = textureLod(uTexture, clamp(vUV - stepY, low, high), 0.0);
-      vec4 bottom = textureLod(uTexture, clamp(vUV + stepY, low, high), 0.0);
-      if (min(min(left.a, right.a), min(top.a, bottom.a)) < 0.999) return texel;
-      vec3 detail = texel.rgb - 0.25 * (left.rgb + right.rgb + top.rgb + bottom.rgb);
-      vec3 correction = clamp(detail * amount, vec3(-8.0 / 255.0), vec3(8.0 / 255.0));
-      return vec4(clamp(texel.rgb + correction, vec3(0.0), vec3(texel.a)), texel.a);
+    if (footprint < 1.0) {
+      // Catmull-Rom bicubic magnification (a published reconstruction filter): sharper than the
+      // sampler's bilinear without haloing, bounded to the tile so a neighbour never bleeds in.
+      // Overshoot is clamped to the premultiplied range. Fades into bilinear as texels reach pixel size.
+      vec2 p = vUV * size - 0.5;
+      vec2 f = fract(p);
+      vec2 base = (floor(p) + 0.5) / size;
+      vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+      vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+      vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+      vec2 w3 = f * f * (-0.5 + 0.5 * f);
+      vec4 sum = vec4(0.0);
+      for (int j = -1; j <= 2; j++) {
+        float wy = j == -1 ? w0.y : j == 0 ? w1.y : j == 1 ? w2.y : w3.y;
+        vec4 row = vec4(0.0);
+        for (int i = -1; i <= 2; i++) {
+          float wx = i == -1 ? w0.x : i == 0 ? w1.x : i == 1 ? w2.x : w3.x;
+          vec2 uv = clamp(base + vec2(float(i), float(j)) / size, low, high);
+          row += wx * textureLod(uTexture, uv, 0.0);
+        }
+        sum += wy * row;
+      }
+      vec4 bicubic = clamp(sum, vec4(0.0), vec4(1.0));
+      bicubic.rgb = min(bicubic.rgb, vec3(bicubic.a));
+      return mix(bicubic, texture(uTexture, vUV), smoothstep(0.5, 1.0, footprint));
     }
     // Bound the footprint at strong minification: the four taps cannot represent arbitrarily many texels.
     float radius = 0.25 * min(1.0, 4.0 / footprint);

@@ -152,6 +152,7 @@ export {
   type PalettedSampling,
   PalettedSprite,
 } from './gpu/paletted-sprite/index.js';
+export { markPixelArtSource, type PixelArtScaler } from './gpu/pixel-art-registry.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
 export {
   createPresentationTrack,
@@ -192,7 +193,6 @@ export type {
   TransitionPattern,
 } from './gpu/terrain-textures.js';
 export { TextureCache } from './gpu/texture-cache.js';
-export { markPixelArtSource, type PixelArtScaler } from './gpu/world-batcher.js';
 export {
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,

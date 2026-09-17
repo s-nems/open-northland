@@ -7,6 +7,7 @@ import { PalettedSprite } from '../paletted-sprite/index.js';
 import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
+import { worldBatched } from '../world-batcher.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
 import {
@@ -212,7 +213,7 @@ export class LayerBinder {
   ): void {
     let spr = pe.sprites[i];
     if (spr === undefined) {
-      spr = new Sprite();
+      spr = worldBatched(new Sprite());
       pe.sprites[i] = spr;
       pe.container.addChild(spr);
     }

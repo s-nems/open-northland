@@ -12,6 +12,7 @@ import { SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear, vegetationShear } from '../vegetation-sway.js';
+import { worldBatched } from '../world-batcher.js';
 import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
@@ -148,7 +149,7 @@ export class TallObjectLayer {
   private mint(po: PooledObject): Sprite {
     const obj = po.obj;
     const depth = depthKey(obj.x, obj.depthY ?? obj.y);
-    const sprite = new Sprite();
+    const sprite = worldBatched(new Sprite());
     sprite.scale.set(obj.scale);
     sprite.zIndex = depth;
     po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
@@ -156,7 +157,7 @@ export class TallObjectLayer {
     if (obj.shadow !== undefined) {
       // The cast shadow, sorted just under its caster. Its pixels are pre-baked black, which the fog
       // and shading tints multiply to black anyway, so it never re-tints.
-      po.shadowSprite = new Sprite();
+      po.shadowSprite = worldBatched(new Sprite());
       po.shadowSprite.scale.set(obj.scale);
       po.shadowSprite.zIndex = depth - SHADOW_DEPTH_EPS;
     }
