@@ -63,7 +63,7 @@ export const recipeSchema = z
   .object({
     version: z.literal(1),
     id: assetId,
-    kind: z.enum(['building', 'props', 'terrain', 'character', 'goods']),
+    kind: z.enum(['building', 'props', 'terrain', 'character', 'goods', 'ui']),
     sourceBasis: z.string().min(1),
     outputs: z.array(output).default([]),
     atlas: atlasRecipe.optional(),

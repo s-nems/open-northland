@@ -34,11 +34,6 @@ const reviewedBinaryAssets = new Set([
   // as favicon/app icon; docs/images/logo.webp gives the README a stable logo path.
   'packages/desktop/build/icon.icns',
   'packages/desktop/build/icon.png',
-  // In-game UI foundation studies generated with the built-in image tool (no original-game input):
-  // the 4x4 action-icon concept atlas (prompt and hash in generation-v3.json) and the carved
-  // wood/leather surface texture.
-  'docs/design/ingame-menu/nordic-icons-v3.png',
-  'docs/design/ingame-menu/nordic-surface-v1.png',
 ]);
 
 const reviewRequiredExtensions = new Set([

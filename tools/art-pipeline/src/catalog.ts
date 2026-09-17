@@ -23,6 +23,7 @@ export async function loadAsset(root: string, id: string) {
     terrain: 'terrain/',
     character: 'characters/',
     goods: 'goods/',
+    ui: 'ui/',
   }[recipe.kind];
   if (recipe.outputs.some((o) => !o.path.startsWith(prefix))) throw new Error('Output outside asset kind');
   return { recipe, path, directory: dirname(path) };

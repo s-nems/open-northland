@@ -75,9 +75,10 @@ its accepted replacement makes unreachable. Shared legacy pieces remain only whi
 consumer still needs them. Ticket 20 audits residual paths and consistency; it is not the point where
 the old HUD is removed in bulk.
 
-Ticket 01 establishes the shared component/style reference. Keep palette, typography, spacing,
-icon semantics, sizes and states in one authoritative specification/component source; later panels
-reuse it. A new common pattern must update that source and be checked against existing consumers.
+Ticket 01 establishes the shared component/style reference: [FOUNDATION.md](FOUNDATION.md) with
+the reference page, and at runtime `packages/app/src/hud/dom/foundation.css` shown on the gallery
+board (`?art=gallery&tab=hud`). Keep palette, typography, spacing, icon semantics, sizes and states in
+that one source; later panels reuse it. A new common pattern must update that source and be checked against existing consumers.
 Do not grow one unrelated UI implementation per session. No universal UI framework is required.
 
 ## Original assets and generation

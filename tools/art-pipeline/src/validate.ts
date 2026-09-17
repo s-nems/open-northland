@@ -9,6 +9,7 @@ import {
   ownCharacterSelection,
   ownGoodManifest,
   ownPropManifest,
+  ownUiManifest,
 } from '@open-northland/art-contracts';
 import sharp from 'sharp';
 import { json, listFiles } from './files.js';
@@ -23,6 +24,16 @@ export async function validateDelivery(directory: string, complete = false) {
   const claim = (set: Set<string>, key: string) => {
     if (set.has(key)) throw new Error(`Duplicate binding: ${key}`);
     set.add(key);
+  };
+  // `stats()` reads the input image, so a region is materialised first; otherwise an empty cell
+  // inherits the whole image's alpha maximum and the emptiness checks below never fire.
+  const regionEmpty = async (
+    file: string,
+    region: { left: number; top: number; width: number; height: number },
+  ): Promise<boolean> => {
+    const cell = await sharp(join(directory, file)).extract(region).toBuffer();
+    const stats = await sharp(cell).ensureAlpha().stats();
+    return stats.channels[3]?.max === 0;
   };
   const inspect = async (file: string, width: number, height: number, transparent: boolean) => {
     if (!available.has(file)) throw new Error(`Missing image: ${file}`);
@@ -61,16 +72,13 @@ export async function validateDelivery(directory: string, complete = false) {
         const sheet = `${folder}/${m.overlay.sprite}`;
         await inspect(sheet, frameWidth * columns, frameHeight * Math.ceil(frames / columns), true);
         for (const index of new Set([m.overlay.idle, ...m.overlay.working])) {
-          const stats = await sharp(join(directory, sheet))
-            .extract({
-              left: (index % columns) * frameWidth,
-              top: Math.floor(index / columns) * frameHeight,
-              width: frameWidth,
-              height: frameHeight,
-            })
-            .ensureAlpha()
-            .stats();
-          if (stats.channels[3]?.max === 0) throw new Error(`Empty overlay frame: ${m.layer}:${index}`);
+          const empty = await regionEmpty(sheet, {
+            left: (index % columns) * frameWidth,
+            top: Math.floor(index / columns) * frameHeight,
+            width: frameWidth,
+            height: frameHeight,
+          });
+          if (empty) throw new Error(`Empty overlay frame: ${m.layer}:${index}`);
         }
       }
       for (const [i, s] of (m.construction ?? []).entries()) {
@@ -91,11 +99,28 @@ export async function validateDelivery(directory: string, complete = false) {
       if (folder !== `goods/${m.id}`) throw new Error('Good folder and id disagree');
       await inspect(`${folder}/${m.image}`, m.width, m.height, true);
       for (const [index, frame] of m.frames.entries()) {
-        const stats = await sharp(join(directory, folder, m.image))
-          .extract({ left: frame.x, top: frame.y, width: frame.width, height: frame.height })
-          .ensureAlpha()
-          .stats();
-        if (stats.channels[3]?.max === 0) throw new Error(`Empty good frame: ${m.id}:${index}`);
+        const empty = await regionEmpty(`${folder}/${m.image}`, {
+          left: frame.x,
+          top: frame.y,
+          width: frame.width,
+          height: frame.height,
+        });
+        if (empty) throw new Error(`Empty good frame: ${m.id}:${index}`);
+      }
+    } else if (file.startsWith('ui/')) {
+      const m = ownUiManifest.parse(raw);
+      claim(identities, `ui:${m.id}`);
+      if (folder !== `ui/${m.id}`) throw new Error('UI pack folder and id disagree');
+      await inspect(`${folder}/${m.surface.file}`, m.surface.width, m.surface.height, false);
+      await inspect(`${folder}/${m.icons.file}`, m.icons.width, m.icons.height, true);
+      for (const [index, name] of m.icons.names.entries()) {
+        const empty = await regionEmpty(`${folder}/${m.icons.file}`, {
+          left: (index % m.icons.columns) * m.icons.cell,
+          top: Math.floor(index / m.icons.columns) * m.icons.cell,
+          width: m.icons.cell,
+          height: m.icons.cell,
+        });
+        if (empty) throw new Error(`Empty icon cell: ${m.id}:${name}`);
       }
     } else if (file.startsWith('characters/')) {
       const m = ownCharacterManifest.parse(raw);

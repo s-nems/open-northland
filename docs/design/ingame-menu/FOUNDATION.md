@@ -92,17 +92,15 @@ and the walk loop. Escape/close hides construction; Buduj restores it.
 
 ## Original art and remaining work
 
-The built-in imagegen tool generated [nordic-icons-v3.png](nordic-icons-v3.png), retained byte-for-byte;
-the [generation record](generation-v3.json) preserves the exact prompt, source hash, tool and export.
-CSS samples the 4 × 4 atlas without cropping or background removal; output has genuine alpha although
-the prompt requested a solid background. The portrait and workbench cells are unused and are not
-candidates for future portrait implementation. `nordic-surface-v1.png` is an earlier built-in material
-study (dark Nordic carved wood, worn leather, muted moss/brass, no text or objects).
+The painted action icons and the surface texture are the `ui/foundation` art package
+([recipe](../../art/ui/foundation/asset.json), [package notes](../../art/ui/foundation/README.md)):
+the 4 × 4 concept atlas `nordic-icons-v3.png` with its generation record, and the carved wood/leather
+material study `nordic-surface-v1.png`. The reference page samples the masters directly; the runtime
+uses the package's delivered atlas and texture. The portrait and workbench cells are unused and are
+not candidates for future portrait implementation.
 
-No original game UI art is copied. Before runtime integration, give accepted menu art its own
-ownership/export route and validate per-cell edges at actual size. Ticket 01 remains open for shared
-runtime primitives and production art exports. Panel contents and illustrative counts are not
-production specifications.
+No original game UI art is copied. Ticket 01 remains open for shared runtime primitives. Panel
+contents and illustrative counts are not production specifications.
 
 ## Resume the local review
 

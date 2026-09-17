@@ -2,12 +2,16 @@ import { dismissBootProgress } from '../../view/boot-progress.js';
 import { galleryBuildingTribes } from './building-geometry.js';
 import { type GalleryEntry, galleryEntries, loadGalleryCatalog } from './catalog.js';
 import { button, element, galleryControls } from './controls.js';
+import { renderHudFoundation } from './hud-foundation.js';
 import { galleryMapDestination } from './locations.js';
 import { createGalleryPreview } from './preview.js';
 import { gallerySelection, tabOf } from './selection.js';
 import { GALLERY_COMPARISON_LIMIT, type GalleryTab, galleryQuery, readGalleryState } from './state.js';
 import { thumbnail } from './thumbnail.js';
 import './gallery.css';
+
+/** The board opens at the neutral scale; the tab's slider covers the shipped range. */
+const HUD_FOUNDATION_SCALE = 1;
 
 async function deliveryLabel(): Promise<string> {
   if (!import.meta.env.DEV) return 'Published assets';
@@ -47,6 +51,7 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
     ['buildings', 'Buildings'],
     ['terrain', 'Terrain & tilesets'],
     ['goods', 'Goods & icons'],
+    ['hud', 'HUD foundation'],
   ];
   const body = element('div');
   body.className = 'body';
@@ -157,6 +162,16 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
       tabButton.setAttribute('aria-pressed', String(state.tab === tab));
       nav.append(tabButton);
     }
+    body.classList.toggle('body--wide', state.tab === 'hud');
+    if (state.tab === 'hud') {
+      aside.hidden = true;
+      renderHudFoundation(main, HUD_FOUNDATION_SCALE);
+      status.textContent = 'HUD foundation primitives; drag the scale to check the shipped range.';
+      save();
+      return;
+    }
+    aside.hidden = false;
+    if (!main.contains(viewport)) main.replaceChildren(detail, viewport, status);
     const { selected, compared, missing } = gallerySelection(entries, state);
     detail.replaceChildren();
     if (!selected) {

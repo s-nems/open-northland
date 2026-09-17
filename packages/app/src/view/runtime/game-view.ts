@@ -35,6 +35,7 @@ import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyLabel } from '../../game/technology.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
@@ -617,6 +618,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     cleanup.push(() => worldTooltip.destroy());
 
+    // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
+    const hudDom = mountHudDomRoot(uiscale);
+    cleanup.push(() => hudDom.dispose());
+
     const liveSettings = createLiveGameSettings({
       screen: app.screen,
       initialViewport: deps.initialViewport,
@@ -627,6 +632,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       toolPanel,
       minimap: mountedMinimap,
       controls,
+      hudDom,
       perf,
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,

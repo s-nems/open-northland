@@ -78,6 +78,10 @@
   min-height: 0;
   flex: 1;
 }
+/* The HUD foundation tab has no asset list, so the board takes the whole row. */
+.art-gallery .body--wide {
+  grid-template-columns: minmax(0, 1fr);
+}
 .art-gallery aside {
   overflow: auto;
   padding: 16px;

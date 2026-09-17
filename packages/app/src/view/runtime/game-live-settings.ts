@@ -11,7 +11,7 @@ import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import { type MenuSettings, patchStoredSettings } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
-import { createGameHudScaleCoordinator } from './game-hud-scale.js';
+import { createGameHudScaleCoordinator, type HudScaleTarget } from './game-hud-scale.js';
 import { createGameSettingsRuntime, type GameSettingsRuntime, gameSoundEnabled } from './game-settings.js';
 import { createGameViewportCoordinator } from './game-viewport.js';
 
@@ -41,6 +41,8 @@ export interface LiveGameSettingsDeps {
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
   readonly controls: UnitControls;
+  /** The DOM HUD plane, scaled with the Pixi parts. */
+  readonly hudDom: HudScaleTarget;
   readonly perf: PerfOverlayHandle;
   readonly sound: SoundDriver | null;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
@@ -59,7 +61,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     deps.pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, deps.stored.uiScaleFactor);
   const hudScale = createGameHudScaleCoordinator({
     initialScale: initialUiScale,
-    targets: [deps.toolPanel, deps.minimap, deps.controls],
+    targets: [deps.toolPanel, deps.minimap, deps.controls, deps.hudDom],
     placePerf: (scale) => {
       const corner = perfCornerForUiScale(scale);
       deps.perf.place(corner.left, corner.right, corner.bottom);

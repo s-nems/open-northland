@@ -1,4 +1,5 @@
-// Local mockup server: repository files first, then the local-only review inputs (never committed).
+// Local mockup server: repository files and the ui/foundation art sources first, then the local-only
+// review inputs (never committed).
 // Usage: node docs/design/ingame-menu/serve.mjs [port] [local-review-dir]
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -8,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 const REPO_DIR = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.argv[2] ?? 5188);
 const localDir = process.argv[3] ?? '/private/tmp/ingame-foundation';
-const roots = [REPO_DIR, localDir];
+const ART_SOURCE_DIR = join(REPO_DIR, '../../art/ui/foundation/source');
+const roots = [REPO_DIR, ART_SOURCE_DIR, localDir];
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
