@@ -154,6 +154,7 @@ export {
 } from './gpu/paletted-sprite/index.js';
 export type { PixelArtScaler } from './gpu/pixel-art-registry.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
+export { DEFAULT_SHADOW_STYLE, type ShadowStyle } from './gpu/shadow-style.js';
 export {
   createPresentationTrack,
   type EntityBounds,

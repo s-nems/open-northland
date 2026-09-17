@@ -2,13 +2,19 @@ import { Container, Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
-import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
+import { type BindFrame, LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
 import type { PlayerColourLut } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
-import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
+import {
+  DEFAULT_SHADOW_STYLE,
+  type DrawItem,
+  type ShadowStyle,
+  type SpriteAtlas,
+  type SpriteSheet,
+} from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
@@ -36,7 +42,7 @@ const sheet: SpriteSheet = {
   characters: { byJob: {}, default: { body: { source, atlas }, binding: { idle: BODY_BOB } } },
 };
 
-function poolFrame(snapshot: ReturnType<typeof snapshotOf>): PoolFrame {
+function poolFrame(snapshot: ReturnType<typeof snapshotOf>, shadowStyle?: ShadowStyle): PoolFrame {
   return {
     snapshot,
     viewport: VIEW_ALL,
@@ -46,6 +52,7 @@ function poolFrame(snapshot: ReturnType<typeof snapshotOf>): PoolFrame {
     screenH: 600,
     elevation: FLAT,
     alpha: 1,
+    shadowStyle,
   };
 }
 
@@ -101,6 +108,20 @@ describe('SpritePool - a plain character shadow draws under the body without mov
     expect(bounds.maxX - bounds.minX).toBe(16); // the body frame's width, not the silhouette's
     expect(bounds.maxY - bounds.minY).toBe(32);
   });
+
+  it('adds the projected cast under both, out of the pixel picker and off the box', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), shadowed);
+
+    pool.reconcile(poolFrame(snapshotOf([entity(1, 0, 0, { Settler: { tribe: 0 } })]), DEFAULT_SHADOW_STYLE));
+
+    const container = layer.children[0] as Container;
+    expect(container.children.filter((c) => c.visible).length).toBe(3);
+    const bounds = pool.boundsOf(1);
+    if (bounds === undefined) throw new Error('a drawn settler must stamp bounds');
+    expect(bounds.maxX - bounds.minX).toBe(16); // still the body rect: both silhouettes are exempt
+    expect(bounds.maxY - bounds.minY).toBe(32);
+  });
 });
 
 describe('LayerBinder - a paletted character binds its silhouette on a plain sprite of its own', () => {
@@ -121,8 +142,18 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     boundsExempt: true,
     shadow: true,
   };
+  const bodySource = new TextureSource({ width: 64, height: 64 });
+  /** The projected twin of the drawn body frame, which the character resolver puts under the blob. */
+  const castLayer: ResolvedLayer = {
+    source: bodySource,
+    frame: { x: 0, y: 0, width: 16, height: 32, offsetX: -8, offsetY: -32 },
+    scale: 1,
+    boundsExempt: true,
+    shadow: true,
+    cast: true,
+  };
   const item: DrawItem = { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe: 0 };
-  const bindFrame = { camera: CAMERA, screenW: 800, screenH: 600 };
+  const bindFrame: BindFrame = { camera: CAMERA, screenW: 800, screenH: 600 };
   const paletted = () => {
     const pe = createPooled('settler', lut);
     if (!pe.paletted) throw new Error('a LUT must create the paletted variant');
@@ -138,10 +169,10 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
 
     binder.bind(pe, item, [shadowLayer], bindFrame, 1);
 
-    expect(pe.shadow?.visible).toBe(true);
-    expect(pe.container.children[0]).toBe(pe.shadow);
+    expect(pe.shadows[0]?.visible).toBe(true);
+    expect(pe.container.children[0]).toBe(pe.shadows[0]);
     expect(pe.sprites.length).toBe(0); // the silhouette never consumes a mesh slot
-    expect(pe.shadow?.texture.source).toBe(shadowSource);
+    expect(pe.shadows[0]?.texture.source).toBe(shadowSource);
     expect(pe.boundsFrame).toBe(-1); // bounds-exempt and alone, so nothing is pickable
     expect(pe.container.children[1]).toBe(earlier);
   });
@@ -150,11 +181,11 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
     const pe = paletted();
     binder.bind(pe, item, [shadowLayer], bindFrame, 1);
-    const spr = pe.shadow;
+    const spr = pe.shadows[0];
 
     binder.bind(pe, item, [], bindFrame, 2);
 
-    expect(pe.shadow).toBe(spr); // retained, not re-minted
+    expect(pe.shadows[0]).toBe(spr); // retained, not re-minted
     expect(spr?.visible).toBe(false);
   });
 
@@ -165,8 +196,33 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
 
     binder.bind(pe, item, null, bindFrame, 2);
 
-    expect(pe.shadow?.visible).toBe(false);
+    expect(pe.shadows[0]?.visible).toBe(false);
     expect(pe.placeholder?.visible).toBe(true);
+  });
+
+  it('draws the cast under the blob, both ahead of the meshes, only with a style to project by', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+    const layers = [castLayer, shadowLayer];
+
+    binder.bind(pe, item, layers, bindFrame, 1);
+    expect(pe.shadows.length).toBe(1); // no style: the cast never reaches a sprite
+    expect(pe.shadows[0]?.texture.source).toBe(shadowSource);
+
+    binder.bind(pe, item, layers, { ...bindFrame, shadowStyle: DEFAULT_SHADOW_STYLE }, 2);
+    expect(pe.shadows.map((s) => s.texture.source)).toEqual([bodySource, shadowSource]);
+    expect(pe.container.children.slice(0, 2)).toEqual([pe.shadows[0], pe.shadows[1]]);
+  });
+
+  it('hides the authored blob in cast-only mode and keeps the projection', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+    const castOnly = { ...DEFAULT_SHADOW_STYLE, blob: false };
+
+    binder.bind(pe, item, [castLayer, shadowLayer], { ...bindFrame, shadowStyle: castOnly }, 1);
+
+    expect(pe.shadows.length).toBe(1);
+    expect(pe.shadows[0]?.texture.source).toBe(bodySource);
   });
 });
 

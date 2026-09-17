@@ -3,7 +3,7 @@ import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { BuildingTextureCache } from './building-texture-cache.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
-import { markMagnifiedTexture } from './pixel-art-registry.js';
+import { markMagnifiedTexture, markShadowTexture } from './pixel-art-registry.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
 
 /**
@@ -36,6 +36,8 @@ export class TextureCache {
   private useSoftShadows = false;
   private shadowVersion = 0;
   private readonly cache = new Map<AtlasFrame, Texture>();
+  /** Cast-silhouette views of body frames, kept out of {@link cache} so the same frame can draw both. */
+  private readonly casts = new Map<AtlasFrame, Texture>();
   private readonly pages = new Set<TextureSource>();
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
    *  frame→texture cache above stays a clean 1:1. */
@@ -55,8 +57,32 @@ export class TextureCache {
     this.shadowVersion++;
   }
 
+  /** A frame of a silhouette (`_s`) atlas. That page serves nothing else, so the returned view is marked
+   *  for the batch shader's shadow shading whichever branch produced it. */
   getShadow(source: TextureSource, frame: AtlasFrame): Texture {
-    return (this.useSoftShadows ? this.softShadows.get(source, frame) : null) ?? this.get(source, frame);
+    const texture =
+      (this.useSoftShadows ? this.softShadows.get(source, frame) : null) ?? this.get(source, frame);
+    markShadowTexture(texture);
+    return texture;
+  }
+
+  /**
+   * A second view of a body frame, for drawing that frame as its own cast silhouette. It is kept apart
+   * from {@link get}'s view so the batch shader can shade one and not the other, and out of
+   * {@link pageSources} so casting from an indexed character sheet cannot hand its page to the
+   * linear-sampling flip. Sub-rect views share the page, so this costs no texture memory.
+   */
+  castSilhouette(source: TextureSource, frame: AtlasFrame): Texture {
+    let tex = this.casts.get(frame);
+    if (tex === undefined) {
+      tex = new Texture({
+        source,
+        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+      });
+      markShadowTexture(tex);
+      this.casts.set(frame, tex);
+    }
+    return tex;
   }
 
   getBuilding(source: TextureSource, frame: AtlasFrame): Texture {
@@ -191,6 +217,8 @@ export class TextureCache {
     this.softShadows.clear();
     for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();
+    for (const tex of this.casts.values()) tex.destroy();
+    this.casts.clear();
     for (const byTop of this.cropCache.values()) {
       for (const tex of byTop.values()) tex.destroy();
     }

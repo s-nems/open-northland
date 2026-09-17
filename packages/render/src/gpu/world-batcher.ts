@@ -14,7 +14,13 @@ import {
   type ViewContainer,
 } from 'pixi.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from './pixel-art-magnify.js';
-import { isMagnifiedTexture, pixelArtMagnifyMode } from './pixel-art-registry.js';
+import {
+  isMagnifiedTexture,
+  isShadowTexture,
+  pixelArtMagnifyMode,
+  worldShadowStyle,
+} from './pixel-art-registry.js';
+import type { ShadowStyle } from './shadow-style.js';
 
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
@@ -52,7 +58,7 @@ export function worldBatched<T extends ViewContainer>(sprite: T): T {
   return sprite;
 }
 
-/** Vertex layout: Pixi's six (x, y, u, v, colour, textureIdAndRound) + magnify flag + frame UV box. */
+/** Vertex layout: Pixi's six (x, y, u, v, colour, textureIdAndRound) + element flags + frame UV box. */
 export const WORLD_VERTEX_SIZE = 11;
 const STRIDE = WORLD_VERTEX_SIZE * 4;
 export const WORLD_ATTRIBUTE_OFFSETS = {
@@ -60,9 +66,14 @@ export const WORLD_ATTRIBUTE_OFFSETS = {
   aUV: 2 * 4,
   aColor: 4 * 4,
   aTextureIdAndRound: 5 * 4,
-  aMagnify: 6 * 4,
+  aFlags: 6 * 4,
   aFrame: 7 * 4,
 } as const;
+
+/** `aFlags` bits: what the fragment shader must know about the element's texture. Two flags share one
+ *  float rather than growing every world vertex by another attribute. */
+export const WORLD_FLAG_MAGNIFY = 1;
+export const WORLD_FLAG_SHADOW = 2;
 
 /** The batcher class, its geometry and shaders are defined on first install, not at import, so a
  *  test that mocks `pixi.js` can still load this module. */
@@ -96,7 +107,7 @@ function defineWorldBatcher(): WorldBatcherClass {
             stride: STRIDE,
             offset: o.aTextureIdAndRound,
           },
-          aMagnify: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aMagnify },
+          aFlags: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aFlags },
           aFrame: { buffer: attributeBuffer, format: 'float32x4', stride: STRIDE, offset: o.aFrame },
         },
         indexBuffer,
@@ -110,12 +121,12 @@ function defineWorldBatcher(): WorldBatcherClass {
   in vec2 aUV;
   in vec4 aColor;
   in vec2 aTextureIdAndRound;
-  in float aMagnify;
+  in float aFlags;
   in vec4 aFrame;
   out vec4 vColor;
   out vec2 vUV;
   out float vTextureId;
-  out float vMagnify;
+  out float vFlags;
   out vec4 vFrame;
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
@@ -126,7 +137,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     vColor = vec4(aColor.rgb * aColor.a, aColor.a) * uWorldColorAlpha;
     vUV = aUV;
     vTextureId = aTextureIdAndRound.y;
-    vMagnify = aMagnify;
+    vFlags = aFlags;
     vFrame = aFrame;
     gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     if (aTextureIdAndRound.x == 1.0) {
@@ -144,19 +155,49 @@ function defineWorldBatcher(): WorldBatcherClass {
     return lines.join('\n');
   }
 
-  function fragmentSource(maxTextures: number, mode: number): string {
+  /** A GLSL float literal: a whole number still needs its decimal point. */
+  const glslFloat = (value: number): string => value.toFixed(6);
+
+  /** Replaces a silhouette's own pure black with the style's colour, at its gained coverage. */
+  function shadowShadingGlsl(shadow: ShadowStyle | null): { declarations: string; output: string } {
+    if (shadow === null) return { declarations: '', output: 'finalColor = outColor * vColor;' };
+    const channel = (shift: number): string => glslFloat(((shadow.tint >> shift) & 0xff) / 0xff);
+    return {
+      declarations: /* glsl */ `
+  const float SHADOW_ALPHA_GAIN = ${glslFloat(shadow.alphaGain)};
+  const float SHADOW_MAX_ALPHA = ${glslFloat(shadow.maxAlpha)};
+  const vec3 SHADOW_TINT = vec3(${channel(16)}, ${channel(8)}, ${channel(0)});`,
+      // A silhouette carries coverage only, so the element's own colour contributes nothing but its
+      // alpha; the output stays premultiplied.
+      output: /* glsl */ `if (hasFlag(WORLD_FLAG_SHADOW)) {
+      float shadowAlpha = min(outColor.a * SHADOW_ALPHA_GAIN, SHADOW_MAX_ALPHA) * vColor.a;
+      finalColor = vec4(SHADOW_TINT * shadowAlpha, shadowAlpha);
+    } else {
+      finalColor = outColor * vColor;
+    }`,
+    };
+  }
+
+  function fragmentSource(maxTextures: number, mode: number, shadow: ShadowStyle | null): string {
+    const shading = shadowShadingGlsl(shadow);
     return /* glsl */ `#version 300 es
   precision highp float;
   in vec4 vColor;
   in vec2 vUV;
   in float vTextureId;
-  in float vMagnify;
+  in float vFlags;
   in vec4 vFrame;
   out vec4 finalColor;
   uniform sampler2D uTextures[${maxTextures}];
   // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
   const float WORLD_MAGNIFY = ${mode}.0;
+  const float WORLD_FLAG_MAGNIFY = ${WORLD_FLAG_MAGNIFY}.0;
+  const float WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW}.0;${shading.declarations}
   vec2 texSize; // the bound page's size, resolved once per fragment
+
+  bool hasFlag(float bit) {
+    return mod(floor(vFlags / bit), 2.0) >= 0.5;
+  }
 
   vec4 sampleTexture(vec2 uv) {
   ${textureChain(maxTextures, (i) => `return texture(uTextures[${i}], uv);`)}
@@ -187,7 +228,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
     vec2 uvFootprint = fwidth(vUV);
     vec4 outColor;
-    if (vMagnify < 0.5 || WORLD_MAGNIFY < 0.5) {
+    if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) {
       outColor = sampleTexture(vUV);
     } else if (texelsPerPixel < 1.0) {
       outColor = WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel)
@@ -204,29 +245,44 @@ function defineWorldBatcher(): WorldBatcherClass {
                        + sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
                        + sampleTexture(clamp(vUV + footprint, low, high)));
     }
-    finalColor = outColor * vColor;
+    ${shading.output}
   }`;
   }
 
-  // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, so the mode
-  // is a compile-time constant instead: one program per mode, shared by every batcher on the page.
+  // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, so the
+  // magnification mode and the shadow shading are compile-time constants instead: one program per
+  // combination, shared by every batcher on the page. The shadow values come from a session-fixed
+  // setting, so the map holds one or two programs in practice.
   const shaders = new Map<string, Shader>();
 
-  function shaderFor(maxTextures: number, mode: number): Shader {
-    const key = `${maxTextures}:${mode}`;
+  function shadowKey(shadow: ShadowStyle | null): string {
+    return shadow === null ? 'off' : `${shadow.alphaGain}/${shadow.maxAlpha}/${shadow.tint.toString(16)}`;
+  }
+
+  function shaderFor(maxTextures: number, mode: number, shadow: ShadowStyle | null): Shader {
+    const shading = shadowKey(shadow);
+    const key = `${maxTextures}:${mode}:${shading}`;
     let shader = shaders.get(key);
     if (shader === undefined) {
       shader = new Shader({
         glProgram: new GlProgram({
-          name: `world-batch-${mode}`,
+          name: `world-batch-${mode}-${shading}`,
           vertex: VERTEX,
-          fragment: fragmentSource(maxTextures, mode),
+          fragment: fragmentSource(maxTextures, mode, shadow),
         }),
         resources: { batchSamplers: getBatchSamplersUniformGroup(maxTextures) },
       });
       shaders.set(key, shader);
     }
     return shader;
+  }
+
+  /** The per-element flags the fragment shader branches on; the shadow lookup is skipped entirely
+   *  while no shadow shading is compiled in. */
+  function elementFlags(texture: DefaultBatchableQuadElement['texture']): number {
+    const magnify = isMagnifiedTexture(texture) ? WORLD_FLAG_MAGNIFY : 0;
+    const shadow = worldShadowStyle() !== null && isShadowTexture(texture) ? WORLD_FLAG_SHADOW : 0;
+    return magnify | shadow;
   }
 
   /** The frame's UV box, written straight into the vertex stream (no per-element allocation). */
@@ -261,7 +317,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
       const argb = element.color;
-      const magnify = isMagnifiedTexture(element.texture) ? 1 : 0;
+      const flags = elementFlags(element.texture);
       writeFrame(element.texture);
       const end = element.attributeOffset + element.attributeSize;
       for (let i = element.attributeOffset; i < end; i++) {
@@ -274,7 +330,7 @@ function defineWorldBatcher(): WorldBatcherClass {
         float32View[index++] = uvs[i2 + 1] ?? 0;
         uint32View[index++] = argb;
         uint32View[index++] = textureIdAndRound;
-        float32View[index++] = magnify;
+        float32View[index++] = flags;
         float32View.set(frame, index);
         index += 4;
       }
@@ -293,7 +349,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       const uvs = texture.uvs;
       const argb = element.color;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
-      const magnify = isMagnifiedTexture(texture) ? 1 : 0;
+      const flags = elementFlags(texture);
       writeFrame(texture);
       const write = (x: number, y: number, u: number, v: number): void => {
         float32View[index++] = a * x + c * y + tx;
@@ -302,7 +358,7 @@ function defineWorldBatcher(): WorldBatcherClass {
         float32View[index++] = v;
         uint32View[index++] = argb;
         uint32View[index++] = textureIdAndRound;
-        float32View[index++] = magnify;
+        float32View[index++] = flags;
         float32View.set(frame, index);
         index += 4;
       };
@@ -322,7 +378,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   // setting change takes effect on the next frame. Pixi's base class never assigns the property.
   Object.defineProperty(WorldBatcher.prototype, 'shader', {
     get(this: WorldBatcher) {
-      return shaderFor(this.maxTextures, pixelArtMagnifyMode());
+      return shaderFor(this.maxTextures, pixelArtMagnifyMode(), worldShadowStyle());
     },
     set() {}, // Pixi's base class never assigns it; the mode owns the choice
   });

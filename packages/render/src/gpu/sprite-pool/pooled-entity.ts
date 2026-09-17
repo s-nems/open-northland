@@ -44,9 +44,9 @@ interface PooledEntityBase extends PresentationTrack {
 export interface PalettedPooledEntity extends PooledEntityBase {
   readonly paletted: true;
   readonly sprites: PalettedSprite[];
-  /** This character's cast shadow, kept apart from the meshes: a silhouette atlas holds no palette
-   *  indices, so it draws as a plain sprite under them. Built on the first frame that resolves one. */
-  shadow?: Sprite;
+  /** This character's shadow silhouettes in resolved order, kept apart from the meshes: a silhouette
+   *  draws palette-less, as a plain sprite under them. Grown as frames resolve them. */
+  readonly shadows: Sprite[];
   readonly palette: PlayerColourLut;
 }
 
@@ -76,5 +76,5 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
   };
   return palette === undefined
     ? { ...base, paletted: false, sprites: [], shadowFlags: [] }
-    : { ...base, paletted: true, sprites: [], palette };
+    : { ...base, paletted: true, sprites: [], shadows: [], palette };
 }

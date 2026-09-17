@@ -157,8 +157,9 @@ export const enSurfaces = {
       enhancedSampling: 'Experiment: texture quality',
       enhancedSamplingTip:
         'Edge-aware magnification of the original graphics, smooth camera movement and terrain detail. Applies immediately.',
-      softShadows: 'Experiment: soft shadows',
-      softShadowsTip: 'Gently softens shadow edges. Applies immediately.',
+      softShadows: 'Experiment: shadows',
+      softShadowsTip:
+        'Softens, deepens and cools every shadow, and casts one from each settler and animal. Applies immediately.',
       environmentMotion: 'Experiment: smoother motion',
       environmentMotionTip:
         'Interpolates settlers, animals and fish; enriches water and smooths the breeze. Does not add frames to original animations.',

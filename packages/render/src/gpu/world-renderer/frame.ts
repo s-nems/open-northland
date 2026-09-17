@@ -11,6 +11,7 @@ import type {
   WorkAreaRing,
 } from '../overlays/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
+import type { ShadowStyle } from '../shadow-style.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
@@ -29,6 +30,8 @@ export interface WorldRendererOptions {
   readonly enhancements?: WorldEnhancements;
   /** Diagnostic A/B choice for the experiment; `DEFAULT_PIXEL_ART_SCALER` when absent. */
   readonly pixelArtScaler?: PixelArtScaler | undefined;
+  /** Diagnostic A/B tuning of the shadow enhancement; `DEFAULT_SHADOW_STYLE` when absent. */
+  readonly shadowStyle?: ShadowStyle | undefined;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**

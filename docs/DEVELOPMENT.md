@@ -172,7 +172,7 @@ not carried across menu/game switches. The menu's settings screen covers the pla
 so direct query parameters are mainly for reproducible diagnostics.
 
 The graphics-polish experiment adds three live Graphics switches: texture quality (including
-palette-resolved original characters), soft shadows, and smoother motion. They default on in
+palette-resolved original characters), shadows, and smoother motion. They default on in
 this experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
 `polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of these
 switches saves the effective set and clears the URL override. Use the same map, camera and zoom for
@@ -182,7 +182,13 @@ retain their authored images and durations: a fractional clock does not invent a
 Own-art motion interpolation remains enabled according to its authored binding when the switch is off.
 Projectiles, damage smoke, fades and building collapse already use interpolated presentation clocks.
 Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back to original shadows when
-unavailable or over budget.
+unavailable or over budget. The shadow switch also does more than soften: every silhouette the world
+draws (buildings, trees, tall blocks, animals, characters) is painted at a multiplied alpha in a cool
+tint compiled into the `world` batch shader, and each settler and animal projects its own body frame
+onto the ground under itself, sheared toward the light of the original building silhouettes. The
+projection omits the head overlay, so it is of the body's own height. `shadows=gain:<n>,max:<n>,
+tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for one session; strength
+and tint compile into the shader, so a change needs a reload rather than a live toggle.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
 minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
 the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already

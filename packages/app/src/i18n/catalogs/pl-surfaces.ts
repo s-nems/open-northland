@@ -154,8 +154,9 @@ export const plSurfaces = {
       enhancedSampling: 'Eksperyment: jakość tekstur',
       enhancedSamplingTip:
         'Wygładza krawędzie oryginalnej grafiki przy powiększeniu, ruch kamery i detal terenu. Działa od razu.',
-      softShadows: 'Eksperyment: miękkie cienie',
-      softShadowsTip: 'Delikatnie zmiękcza krawędzie cieni. Działa od razu.',
+      softShadows: 'Eksperyment: cienie',
+      softShadowsTip:
+        'Zmiękcza, pogłębia i chłodzi wszystkie cienie oraz dorzuca rzucany cień osadnikom i zwierzętom. Działa od razu.',
       environmentMotion: 'Eksperyment: płynniejszy ruch',
       environmentMotionTip:
         'Interpoluje ruch osadników, zwierząt i ryb; urozmaica wodę i wygładza wiatr. Nie dodaje klatek do oryginalnych animacji.',

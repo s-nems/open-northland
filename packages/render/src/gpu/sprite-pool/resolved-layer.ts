@@ -32,6 +32,12 @@ export interface ResolvedLayer {
    * test, since clicking the darkened ground beside a caster must not select it.
    */
   readonly shadow?: true;
+  /**
+   * A {@link shadow} layer drawn from the caster's own body frame rather than an authored silhouette
+   * atlas: the binder projects it onto the ground instead of printing it upright. Drawn only while the
+   * shadow enhancement is on, so the frame's art never reaches the screen unprojected.
+   */
+  readonly cast?: true;
   /** A settler's head overlay, which the paletted path reads through the LUT's head row. */
   readonly head?: true;
 }

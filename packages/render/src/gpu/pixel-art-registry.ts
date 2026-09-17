@@ -1,4 +1,5 @@
 import type { Texture, TextureSource } from 'pixi.js';
+import type { ShadowStyle } from './shadow-style.js';
 
 /** How original pixel art magnifies under enhanced sampling; `bilinear` is the sampler's own filter. */
 export type PixelArtScaler = 'bilinear' | 'sharp' | 'xbr';
@@ -38,4 +39,31 @@ export function setPixelArtMagnification(mode: WorldMagnification): void {
 
 export function pixelArtMagnifyMode(): number {
   return magnifyMode;
+}
+
+/**
+ * Textures the world batch shader shades as shadow silhouettes: it keeps only their coverage and paints
+ * them in the style's own colour and depth. A silhouette atlas page serves nothing else, so its frame
+ * views mark straight through; a body frame drawn as a cast silhouette needs a texture view of its own,
+ * since the body itself draws from the same page.
+ */
+const shadowTextures = new WeakSet<Texture>();
+
+export function markShadowTexture(texture: Texture): void {
+  shadowTextures.add(texture);
+}
+
+export function isShadowTexture(texture: Texture): boolean {
+  return shadowTextures.has(texture);
+}
+
+/** The shadow shading the batch shader is compiled for, or `null` while the enhancement is off. */
+let shadowStyle: ShadowStyle | null = null;
+
+export function setWorldShadowStyle(style: ShadowStyle | null): void {
+  shadowStyle = style;
+}
+
+export function worldShadowStyle(): ShadowStyle | null {
+  return shadowStyle;
 }

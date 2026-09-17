@@ -5,6 +5,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
+import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
 import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
@@ -22,7 +23,14 @@ import type { PoolFrame } from './sprite-pool.js';
 
 export type BindFrame = Pick<
   PoolFrame,
-  'camera' | 'screenW' | 'screenH' | 'highlight' | 'snapResolution' | 'enhancedSampling' | 'pixelArtScaler'
+  | 'camera'
+  | 'screenW'
+  | 'screenH'
+  | 'highlight'
+  | 'snapResolution'
+  | 'enhancedSampling'
+  | 'pixelArtScaler'
+  | 'shadowStyle'
 >;
 
 /** Assign-mode candidate-building tints, pale so they wash over the building art rather than
@@ -98,13 +106,21 @@ export class LayerBinder {
       item.upgradePct === undefined &&
       displayReveal === undefined;
     let hasSelection = false;
-    // A paletted character's cast shadow binds onto a plain sprite of its own, so `spriteSlot` counts
-    // only what `pe.sprites` holds.
+    // A paletted character's silhouettes bind onto plain sprites of their own, so `spriteSlot` counts
+    // only what `pe.sprites` holds and `shadowSlot` what `pe.shadows` does.
     let spriteSlot = 0;
-    let drewShadow = false;
+    let shadowSlot = 0;
+    // A character has two shadow candidates - the projected cast and the authored `_s` foot blob - and
+    // the shadow enhancement owns both. A building's authored silhouette is its only shadow, so it draws
+    // whatever the enhancement says.
+    const shadowStyle = frame.shadowStyle;
+    const keepBlob = item.kind !== 'settler' || shadowStyle === undefined || shadowStyle.blob;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
+      // A cast layer holds unprojected body art, so it draws only with a style to project it by.
+      if (layer.cast === true && shadowStyle?.cast !== true) continue;
+      if (layer.shadow === true && layer.cast !== true && !keepBlob) continue;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own
       // [fromPct,toPct] window, reaches its baked TimeMask threshold (the original's
       // PrintBob_UsingTimeMask construction blit). `null` - no time data or no bake - crops instead.
@@ -124,14 +140,17 @@ export class LayerBinder {
       const box = this.drawBox;
       layerDrawBox(box, layer, displayReveal, revealTexture !== null);
       if (pe.paletted && layer.shadow === true) {
-        this.bindShadowSprite(pe, layer, box, tint);
-        drewShadow = true;
+        this.bindShadowSprite(pe, shadowSlot++, layer, box, tint, shadowStyle);
       } else if (pe.paletted) {
         const row = layerLutRow(pe.palette, layer, playerRow);
         this.bindPalettedLayer(pe, spriteSlot++, layer, originX, originY, camScale, frame, row);
       } else {
         pe.shadowFlags[spriteSlot] = layer.shadow === true;
-        this.bindPlainLayer(pe, spriteSlot++, layer, revealTexture, box, tint, enhanceBuilding);
+        if (layer.cast === true && shadowStyle !== undefined) {
+          this.placeShadow(this.plainSlot(pe, spriteSlot++), layer, box, tint, shadowStyle);
+        } else {
+          this.bindPlainLayer(pe, spriteSlot++, layer, revealTexture, box, tint, enhanceBuilding);
+        }
       }
       if (layer.boundsExempt === true) continue;
       const selection = layer.frame.selectionEllipse;
@@ -161,7 +180,10 @@ export class LayerBinder {
       if (s !== undefined) s.visible = false;
     }
     if (pe.paletted) {
-      if (!drewShadow && pe.shadow !== undefined) pe.shadow.visible = false;
+      for (let i = shadowSlot; i < pe.shadows.length; i++) {
+        const s = pe.shadows[i];
+        if (s !== undefined) s.visible = false;
+      }
     } else {
       pe.shadowFlags.length = spriteSlot;
     }
@@ -180,27 +202,59 @@ export class LayerBinder {
   }
 
   /**
-   * A paletted character's cast shadow - one silhouette, the twin frame of the drawn body bob. The
-   * silhouette atlas carries no palette indices, so it draws as a plain batched sprite - which is also
-   * what puts it on the soft-shadow bake - first in child order so it paints under the meshes. It rides
-   * the container transform like every other plain layer, so it follows the interpolated feet anchor the
-   * meshes place themselves from.
+   * One of a paletted character's shadow silhouettes. A silhouette carries no palette indices, so it
+   * draws as a plain batched sprite - which is also what puts it on the soft-shadow bake - ahead of the
+   * meshes in child order so it paints under them. It rides the container transform like every other
+   * plain layer, so it follows the interpolated feet anchor the meshes place themselves from.
    */
   private bindShadowSprite(
     pe: PalettedPooledEntity,
+    slot: number,
     layer: ResolvedLayer,
     box: LayerDrawBox,
     tint: number,
+    style: ShadowStyle | undefined,
   ): void {
-    let spr = pe.shadow;
+    let spr = pe.shadows[slot];
     if (spr === undefined) {
       spr = worldBatched(new Sprite());
-      pe.shadow = spr;
-      pe.container.addChildAt(spr, 0);
+      pe.shadows[slot] = spr;
+      // Slots fill in order, so the slot index is this sprite's place among the silhouettes and keeps
+      // every one of them ahead of the meshes.
+      pe.container.addChildAt(spr, slot);
     }
-    spr.texture = this.textures.getShadow(layer.source, layer.frame);
-    spr.position.set(box.ox, box.drawnOy);
-    spr.scale.set(layer.scale);
+    this.placeShadow(spr, layer, box, tint, style);
+  }
+
+  /** A plain layer's pooled sprite, minted on the first frame that reaches this slot. */
+  private plainSlot(pe: PlainPooledEntity, i: number): Sprite {
+    let spr = pe.sprites[i];
+    if (spr === undefined) {
+      spr = worldBatched(new Sprite());
+      pe.sprites[i] = spr;
+      pe.container.addChild(spr);
+    }
+    return spr;
+  }
+
+  /** An authored silhouette prints upright at its own anchor; a cast layer projects its body frame onto
+   *  the ground instead. */
+  private placeShadow(
+    spr: Sprite,
+    layer: ResolvedLayer,
+    box: LayerDrawBox,
+    tint: number,
+    style: ShadowStyle | undefined,
+  ): void {
+    if (layer.cast === true && style !== undefined) {
+      spr.texture = this.textures.castSilhouette(layer.source, layer.frame);
+      setCastShadowTransform(spr, layer.scale, style, box.ox, box.drawnOy);
+    } else {
+      spr.texture = this.textures.getShadow(layer.source, layer.frame);
+      spr.skew.set(0, 0);
+      spr.scale.set(layer.scale);
+      spr.position.set(box.ox, box.drawnOy);
+    }
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;
   }
@@ -250,12 +304,7 @@ export class LayerBinder {
     tint: number,
     enhanceBuilding: boolean,
   ): void {
-    let spr = pe.sprites[i];
-    if (spr === undefined) {
-      spr = worldBatched(new Sprite());
-      pe.sprites[i] = spr;
-      pe.container.addChild(spr);
-    }
+    const spr = this.plainSlot(pe, i);
     if (revealTexture === null && box.hiddenTop >= layer.frame.height) {
       // Nothing revealed yet: draw nothing, but bounds still stamp so the flat site stays clickable
       // over its plot.
@@ -283,7 +332,9 @@ export class LayerBinder {
    *  its fixed body box. */
   private showPlaceholder(pe: PooledEntity, item: DrawItem, frame: BindFrame, frameId: number): void {
     for (const s of pe.sprites) s.visible = false;
-    if (pe.paletted && pe.shadow !== undefined) pe.shadow.visible = false;
+    if (pe.paletted) {
+      for (const s of pe.shadows) s.visible = false;
+    }
     if (pe.placeholder === undefined) {
       pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
       if (pe.kind === 'projectile') pe.placeholder.position.y = -PROJECTILE_FLIGHT_HEIGHT;

@@ -134,39 +134,54 @@ describe('resolveLayers - a human character casts its body twin silhouette', () 
     },
   });
   const settler: DrawItem = { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, state: 'idle' };
+  /** `[bob, from the silhouette twin, shadow, cast, boundsExempt]` per resolved layer. */
   const readLayers = (bob: number, heads?: readonly SpriteLayer[]) =>
     (resolveLayers(sheetAt(bob, heads), settler, 0) ?? []).map((l) => [
       l.frame.x,
       l.source === shadowSource,
       l.shadow ?? false,
+      l.cast ?? false,
       l.boundsExempt ?? false,
     ]);
 
-  it('prepends the same-id silhouette under the body, bounds-exempt and unpickable', () => {
+  it('puts the projected body frame under the silhouette, both bounds-exempt and unpickable', () => {
     expect(readLayers(WALK_BOB)).toEqual([
-      [WALK_BOB, true, true, true],
-      [WALK_BOB, false, false, false],
+      [WALK_BOB, false, true, true, true],
+      [WALK_BOB, true, true, false, true],
+      [WALK_BOB, false, false, false, false],
     ]);
   });
 
   it('shadows a cart-pulling gait from the same twin (the vehicle bobs of the body set)', () => {
     expect(readLayers(CART_BOB)).toEqual([
-      [CART_BOB, true, true, true],
-      [CART_BOB, false, false, false],
+      [CART_BOB, false, true, true, true],
+      [CART_BOB, true, true, false, true],
+      [CART_BOB, false, false, false, false],
     ]);
   });
 
-  it('draws the body alone for a bob the twin holds no silhouette for', () => {
-    expect(readLayers(UNSHADOWED_BOB)).toEqual([[UNSHADOWED_BOB, false, false, false]]);
+  it('still projects a cast for a bob the twin holds no silhouette for', () => {
+    expect(readLayers(UNSHADOWED_BOB)).toEqual([
+      [UNSHADOWED_BOB, false, true, true, true],
+      [UNSHADOWED_BOB, false, false, false, false],
+    ]);
   });
 
-  it('keeps the head overlay above the body, with the silhouette still at the bottom', () => {
+  it('keeps the head overlay above the body, with both silhouettes still at the bottom', () => {
     const head: SpriteLayer = { source: headSource, atlas: bodyAtlas };
     const layers = resolveLayers(sheetAt(WALK_BOB, [head]), settler, 0) ?? [];
-    expect(layers.map((l) => [l.source === shadowSource, l.source === bodySource, l.head ?? false])).toEqual([
-      [true, false, false],
-      [false, true, false],
-      [false, false, true],
+    expect(
+      layers.map((l) => [
+        l.source === shadowSource,
+        l.source === bodySource,
+        l.cast ?? false,
+        l.head ?? false,
+      ]),
+    ).toEqual([
+      [false, true, true, false],
+      [true, false, false, false],
+      [false, true, false, false],
+      [false, false, false, true],
     ]);
   });
 });
@@ -207,6 +222,7 @@ describe('resolveLayers - wildlife species resolution', () => {
     expect(
       layers.map((l) => [l.frame.x, l.source === shadowSource, l.shadow ?? false, l.atlasW ?? null]),
     ).toEqual([
+      [ANIMAL_BOB, false, true, null],
       [ANIMAL_BOB, true, true, null],
       [ANIMAL_BOB, false, false, null],
     ]);
@@ -218,8 +234,9 @@ describe('resolveLayers - wildlife species resolution', () => {
 
   it('keeps a human tribe on the character path, atlas size riding for the paletted mesh', () => {
     const layers = resolveLayers(sheet, settler(HUMAN_TRIBE), 0) ?? [];
-    expect(layers.map((l) => [l.frame.x, l.source === humanSource, l.atlasW])).toEqual([
-      [HUMAN_BOB, true, 64],
+    expect(layers.map((l) => [l.frame.x, l.source === humanSource, l.cast ?? false, l.atlasW])).toEqual([
+      [HUMAN_BOB, true, true, undefined],
+      [HUMAN_BOB, true, false, 64],
     ]);
   });
 
@@ -238,6 +255,7 @@ describe('resolveLayers - wildlife species resolution', () => {
     };
     const layers = resolveLayers(withHead, settler(HUMAN_TRIBE), 0) ?? [];
     expect(layers.map((l) => [l.source === headSource, l.head ?? false])).toEqual([
+      [false, false],
       [false, false],
       [true, true],
     ]);
@@ -275,14 +293,18 @@ describe('resolveLayers - the per-tribe civilization looks', () => {
     ...(tribe !== undefined ? { tribe } : {}),
   });
 
+  /** The body bob each table resolves to; the leading cast layer repeats that same frame. */
+  const bodyBob = (tribe?: number) =>
+    (resolveLayers(sheet, settler(tribe), 0) ?? []).filter((l) => l.cast !== true).map((l) => l.frame.x);
+
   it('draws a settler from its own civilization table', () => {
-    expect(resolveLayers(sheet, settler(FRANK), 0)?.map((l) => l.frame.x)).toEqual([FRANK_BOB]);
-    expect(resolveLayers(sheet, settler(VIKING), 0)?.map((l) => l.frame.x)).toEqual([VIKING_BOB]);
+    expect(bodyBob(FRANK)).toEqual([FRANK_BOB]);
+    expect(bodyBob(VIKING)).toEqual([VIKING_BOB]);
   });
 
   it('falls back to the base table for a tribe whose looks were never loaded', () => {
-    expect(resolveLayers(sheet, settler(EGYPT), 0)?.map((l) => l.frame.x)).toEqual([VIKING_BOB]);
-    expect(resolveLayers(sheet, settler(), 0)?.map((l) => l.frame.x)).toEqual([VIKING_BOB]);
+    expect(bodyBob(EGYPT)).toEqual([VIKING_BOB]);
+    expect(bodyBob()).toEqual([VIKING_BOB]);
   });
 });
 

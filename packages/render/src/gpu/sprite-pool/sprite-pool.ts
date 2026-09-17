@@ -20,6 +20,7 @@ import {
 } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
+import type { ShadowStyle } from '../shadow-style.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
@@ -45,6 +46,9 @@ export interface PoolFrame {
   /** How original pixel art magnifies under enhanced sampling; the registry default when absent. */
   readonly pixelArtScaler?: PixelArtScaler;
   readonly environmentMotion?: boolean;
+  /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
+   *  character's projected cast layer off the screen. */
+  readonly shadowStyle?: ShadowStyle | undefined;
   readonly snapshot: WorldSnapshot;
   /** The margin-inflated world-space box the camera frames - the sprite cull rectangle. */
   readonly viewport: Viewport;

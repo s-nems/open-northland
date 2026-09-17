@@ -1,9 +1,21 @@
+import type { TextureSource } from 'pixi.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import { lookupFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
+import { type AtlasFrame, lookupFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
 import { DEFAULT_FACING, movingFrameRef } from '../../data/sprites/settler.js';
 import type { SettlerCharacter, SettlerCharacterSet } from '../sprite-sheet.js';
 import { shadowLayerFor } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
+
+/**
+ * The body frame again, for the binder to project onto the ground under the character. An indexed sheet
+ * carries the palette index in red and coverage in alpha, and a species sheet is plain RGB; either way
+ * only the coverage reaches a silhouette, so both cast from the frame as it is. The head overlay is left
+ * out: two overlapping semi-transparent silhouettes would darken where they meet, so the projection is of
+ * the body's own height (named approximation).
+ */
+function castLayerFor(source: TextureSource, frame: AtlasFrame, scale: number): ResolvedLayer {
+  return { source, frame, scale, boundsExempt: true, shadow: true, cast: true };
+}
 
 /** Appearance variants use stable entity ids; optional head layers may use a separate motion binding. */
 export function resolveCharacterLayers(
@@ -22,7 +34,10 @@ export function resolveCharacterLayers(
     if (frame === null) return null;
     const body: ResolvedLayer = { source: animal.body.source, frame, scale: 1 };
     const shadow = shadowLayerFor(animal.body, bob, 1);
-    return shadow === null ? [body] : [shadow, body];
+    const layers: ResolvedLayer[] = [castLayerFor(animal.body.source, frame, 1)];
+    if (shadow !== null) layers.push(shadow);
+    layers.push(body);
+    return layers;
   }
   const char = characterForItem(characters, item);
   if (char === undefined) return [];
@@ -32,6 +47,7 @@ export function resolveCharacterLayers(
   const layers: ResolvedLayer[] = [];
   const bodyFrame = lookupFrame(body.atlas, bob);
   if (bodyFrame !== null) {
+    layers.push(castLayerFor(body.source, bodyFrame, scale));
     const shadow = shadowLayerFor(body, bob, scale);
     if (shadow !== null) layers.push(shadow);
     layers.push({
