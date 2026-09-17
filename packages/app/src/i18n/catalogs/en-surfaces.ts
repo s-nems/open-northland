@@ -156,7 +156,7 @@ export const enSurfaces = {
       postFxTip: 'A vignette and warm colour grade layered over the world.',
       enhancedSampling: 'Experiment: texture quality',
       enhancedSamplingTip:
-        'Smooths the image and camera movement and enhances terrain and finished-building detail. Applies immediately.',
+        'Edge-aware magnification of the original graphics, smooth camera movement and terrain detail. Applies immediately.',
       softShadows: 'Experiment: soft shadows',
       softShadowsTip: 'Gently softens shadow edges. Applies immediately.',
       environmentMotion: 'Experiment: smoother motion',

@@ -153,7 +153,7 @@ export const plSurfaces = {
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       enhancedSampling: 'Eksperyment: jakość tekstur',
       enhancedSamplingTip:
-        'Wygładza obraz i ruch kamery oraz poprawia detal terenu i gotowych budynków. Działa od razu.',
+        'Wygładza krawędzie oryginalnej grafiki przy powiększeniu, ruch kamery i detal terenu. Działa od razu.',
       softShadows: 'Eksperyment: miękkie cienie',
       softShadowsTip: 'Delikatnie zmiękcza krawędzie cieni. Działa od razu.',
       environmentMotion: 'Eksperyment: płynniejszy ruch',
