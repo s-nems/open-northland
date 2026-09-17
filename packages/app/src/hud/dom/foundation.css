@@ -691,8 +691,8 @@
 /* ---------- seals, notices ---------- */
 .on-hud .on-seal {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), var(--wax-ok);
   box-shadow:
@@ -797,11 +797,15 @@
 .on-hud .on-notices--overflowing .on-notices__list {
   mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
 }
+/* `--covered`: how much of the card's top the card before it lies over. */
 .on-hud .on-notice {
+  --covered: 0px;
   position: relative;
   z-index: var(--z);
   margin-bottom: 7px;
-  transition: margin-top 0.14s;
+  transition:
+    margin-top 0.14s,
+    clip-path 0.14s;
 }
 .on-hud .on-notice:hover,
 .on-hud .on-notice:focus-within {
@@ -809,17 +813,28 @@
 }
 /* Fanned: each card slides under the one before it; the hovered card and its neighbours part. */
 .on-hud .on-notice + .on-notice {
+  --covered: var(--overlap);
   margin-top: calc(-1 * var(--overlap));
 }
 .on-hud .on-notice + .on-notice:hover,
 .on-hud .on-notice + .on-notice:focus-within,
 .on-hud .on-notice:hover + .on-notice,
 .on-hud .on-notice:focus-within + .on-notice {
+  --covered: 0px;
   margin-top: 0;
+}
+/* The covered part is clipped away rather than layered, so the DOM glyph boxes and the Pixi figures
+   under the plane agree on which card is in front. The other edges leave room for the focus ring
+   (2 px at 3 px offset) and the fan shadow (3 px drop, 8 px blur). */
+.on-hud .on-notices--stacked .on-notice {
+  clip-path: inset(calc(var(--covered) - 6px) -6px -12px -6px);
 }
 /* The slate starts right of the thumbnail box, which the Pixi figure layer under the plane fills. */
 .on-hud .on-notice__card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
   min-height: 68px;
   padding: 8px 12px 8px 66px;
@@ -956,12 +971,28 @@
 .on-hud .on-notices--stacked .on-notice:not(:hover, :focus-within) .on-notice__event {
   -webkit-line-clamp: 1;
 }
-/* The seal sits on the thumbnail's bottom-right corner. */
+/* A covered card keeps its event line in the strip, level with the seal; its subject line lies under
+   the card before, where its descenders would peek out of the clip. */
+.on-hud .on-notices--stacked
+  .on-notice:not(:hover, :focus-within)
+  + .on-notice:not(:hover, :focus-within)
+  .on-notice__card {
+  justify-content: flex-end;
+}
+.on-hud
+  .on-notices--stacked
+  .on-notice:not(:hover, :focus-within)
+  + .on-notice:not(:hover, :focus-within)
+  .on-notice__subject {
+  visibility: hidden;
+}
+/* The seal sits on the thumbnail's top-right corner, at the top of the visible strip when fanned. */
 .on-hud .on-notice__card > .on-seal {
   position: absolute;
-  left: 52px;
-  bottom: -2px;
+  left: 53px;
+  top: calc(var(--covered) + 2px);
   z-index: 1;
+  transition: top 0.14s;
 }
 .on-hud .on-notice--fresh.on-notice--danger .on-seal {
   animation: on-seal-pulse 1.1s ease-out 3;

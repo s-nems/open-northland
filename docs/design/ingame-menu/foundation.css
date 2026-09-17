@@ -630,29 +630,44 @@ button.medallion:hover {
 .notices.overflowing .notice-list {
   mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
 }
+/* `--covered`: how much of the card's top the card before it lies over. */
 .notice {
+  --covered: 0px;
   position: relative;
   z-index: var(--z);
   margin-bottom: 7px;
-  transition: margin-top 0.14s;
+  transition:
+    margin-top 0.14s,
+    clip-path 0.14s;
 }
 .notice:hover,
 .notice:focus-within {
   z-index: 100;
 }
 /* Cards that do not fit fan downwards: an earlier (weightier) card lies over the top of the next,
-   leaving the event line and the seal of every card visible. Hover pushes the neighbours apart. */
+   leaving the event line of every card visible with its seal at the strip's top. Hover pushes the
+   neighbours apart. */
 .notice + .notice {
+  --covered: var(--overlap);
   margin-top: calc(-1 * var(--overlap));
 }
 .notice + .notice:hover,
 .notice + .notice:focus-within,
 .notice:hover + .notice,
 .notice:focus-within + .notice {
+  --covered: 0px;
   margin-top: 0;
+}
+/* The covered part is clipped away rather than layered, so a glyph box never shows through the card
+   in front. The other edges leave room for the focus ring and the fan shadow. */
+.notices.stacked .notice {
+  clip-path: inset(calc(var(--covered) - 6px) -6px -12px -6px);
 }
 .notice-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
   min-height: 68px;
   padding: 8px 12px 8px 66px;
@@ -720,6 +735,14 @@ button.medallion:hover {
 }
 .notices.stacked .notice:not(:hover, :focus-within) .notice-card b {
   -webkit-line-clamp: 1;
+}
+/* A covered card keeps its event line in the strip, level with the seal; its subject line lies under
+   the card before, where its descenders would peek out of the clip. */
+.notices.stacked .notice:not(:hover, :focus-within) + .notice:not(:hover, :focus-within) .notice-card {
+  justify-content: flex-end;
+}
+.notices.stacked .notice:not(:hover, :focus-within) + .notice:not(:hover, :focus-within) .notice-card small {
+  visibility: hidden;
 }
 /* Arrival: a short slide in; an urgent seal pulses three times, then rests. */
 .notice.fresh .notice-card {
@@ -801,13 +824,14 @@ button.medallion:hover {
   line-height: 1.25;
   color: var(--text-hi);
 }
-/* The seal sits on the thumbnail's bottom-right corner. */
+/* The seal sits on the thumbnail's top-right corner, at the top of the visible strip when fanned. */
 .seal {
   position: absolute;
-  left: 52px;
-  bottom: -2px;
-  width: 15px;
-  height: 15px;
+  left: 53px;
+  top: calc(var(--covered) + 2px);
+  width: 12px;
+  height: 12px;
+  transition: top 0.14s;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), var(--wax-ok);
   box-shadow:

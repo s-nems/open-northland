@@ -120,15 +120,16 @@ original's 200 slots, lifetime, dedupe and priority table.
   11/12 px. The thumbnail is the live settler drawn as on the map with its current activity, over a
   translucent slate backing; an attacked settler, a building, a death, a seat, a paper and a
   subjectless row show a bronze line glyph instead (swords, house, dim skull, banner, chest, scroll).
-  The seal sits on the thumbnail's bottom-right corner; an urgent card's hairline takes the wax colour.
+  The seal sits on the thumbnail's top-right corner; an urgent card's hairline takes the wax colour.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
   dismisses one card; Shift with any of them dismisses all.
 - Text past three lines never grows the card: the whole message unfolds in a box to the right of the
   column on hover or focus, and a press pins it when the card has no target.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
-  uniform overlap, weightier cards in front, leaving the event line and the seal visible. Hovering or
-  focusing a card parts its neighbours to show it whole. Below a 32 px strip per card the fan stops,
+  uniform overlap, weightier cards in front, leaving the event line visible with the seal at the top
+  of the strip. The covered part of a card is clipped, never drawn over the card in front. Hovering
+  or focusing a card parts its neighbours to show it whole. Below a 32 px strip per card the fan stops,
   the list scrolls, the bottom fades and a "jeszcze N" badge counts the cards past the edge.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures animate only on cards
   inside the list's visible area; a paused game holds their frame, reduced motion holds the standing
