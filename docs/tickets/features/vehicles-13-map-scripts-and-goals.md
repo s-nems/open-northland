@@ -1,7 +1,6 @@
 # Run vehicle placements, results and goals from map scripts
 
 **Area:** sim, app, pipeline · **Focus:** `packages/sim/src/systems/missions`, `packages/app/src/game/world` · **Priority:** P2
-**Blocked by:** [ships and docking](vehicles-10-ships-and-docking.md)
 
 `AuthoredEntities` drops the decoded `setvehicle` placements, every vehicle goal and result is
 unsupported, and `MoveUnitsInArea`, `ChangePlayerPlayerId` and `ChangePlayerIdInArea` silently skip
