@@ -73,11 +73,16 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
           Settler: { tribe: 0 },
           CurrentAtomic: { effect: { kind: 'pickup', from: 12, goodType: 1, amount: 1 } },
         }),
+        // pumps the completed well: its collect action plays outside, on the doorstep
+        entity(5, 2, 2, {
+          Settler: { tribe: 0 },
+          CurrentAtomic: { atomicId: 44, effect: { kind: 'pickup', from: 10, goodType: 1, amount: 1 } },
+        }),
       ]),
     );
     const drawnSettlers = scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref);
-    expect(drawnSettlers.sort()).toEqual([3, 4]);
-    expect(liveOf(scene, [1, 2, 3, 4, 10, 11, 12])).toEqual([1, 2, 3, 4, 10, 11, 12]);
+    expect(drawnSettlers.sort()).toEqual([3, 4, 5]);
+    expect(liveOf(scene, [1, 2, 3, 4, 5, 10, 11, 12])).toEqual([1, 2, 3, 4, 5, 10, 11, 12]);
   });
 
   it('hides a settler RESTING inside its workplace (waiting between chores), keeping it live', () => {

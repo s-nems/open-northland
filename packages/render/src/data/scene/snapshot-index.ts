@@ -25,6 +25,12 @@ const BUILD_HOUSE_ATOMIC_ID = 39;
 /** The original's dedicated well-pump and hive-pickup actions. */
 const UTILITY_DRAW_ATOMIC_IDS = [44, 45] as const;
 
+/**
+ * A goods exchange the settler performs outside the store: the well is pumped and the hive lifted from
+ * the doorstep, so these stay in view while the generic pick-up at a house steps inside.
+ */
+const OUTDOOR_EXCHANGE_ATOMIC_IDS: ReadonlySet<number> = new Set(UTILITY_DRAW_ATOMIC_IDS);
+
 /** The per-good harvest atomic ids (`goodtypes.ini` `atomicForHarvesting`). */
 const HARVEST_ATOMIC_IDS = {
   wood: 24,
@@ -86,8 +92,8 @@ export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> 
 
 /**
  * Whether the scene hides this settler inside a building: a `Resting` marker in its workplace, or a
- * goods exchange against an enterable store. Shared so an overlay does not hang over an empty doorway
- * the scene drew nobody in.
+ * goods exchange against an enterable store played as the generic pick-up rather than the store's own
+ * outdoor action. Shared so an overlay does not hang over an empty doorway the scene drew nobody in.
  */
 export function isIndoorSettler(
   snapshot: WorldSnapshot,
@@ -95,7 +101,9 @@ export function isIndoorSettler(
 ): boolean {
   if ('Resting' in components) return true;
   const store = readStoreExchangeRef(components);
-  return store !== null && enterableStoresOf(snapshot).has(store);
+  if (store === null || !enterableStoresOf(snapshot).has(store)) return false;
+  const acting = readActingAtomic(components);
+  return acting === null || !OUTDOOR_EXCHANGE_ATOMIC_IDS.has(acting);
 }
 
 /**
