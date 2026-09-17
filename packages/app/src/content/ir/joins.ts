@@ -252,46 +252,105 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
   return (tribe, job, action) => byTribe.get(tribe)?.get(`${canonicalJobType(job)}/${action}`);
 }
 
-/** The clips one tribe's own records name for a job: which bobseq that civilization's `(tribe, job)`
- *  walks, waits and strikes with. */
-export interface TribeJobSeqs {
-  readonly walk?: string;
-  readonly wait?: string;
-  readonly attack?: string;
+/** One `[gfxanimatomic]` record as a clip candidate: the body bobseq it names and its own frame lists. */
+export interface TribeClip {
+  readonly seq: string;
+  readonly program: GfxAtomicProgram;
 }
 
 /**
- * One `(tribe, job)`'s own clip names, from the records that civilization authors: the unloaded
- * `[gfxwalkatomic]` gait, the `[gfxanimatomic]` base wait (the `gfxanimmode 1` record where there is one)
- * and the attack swing. The tribes disagree on which clip a job plays - the egyptian unarmed soldier is
- * authored on the spear clips, the saracen longbowman on the shortbow's - so a look that cannot draw the
- * transcribed viking clip takes the answer its own tribe gives.
+ * The clips one tribe's own records name for a job, each slot listing the candidates nearest job first:
+ * which bobseq that civilization walks, waits and strikes with, and the records every other action
+ * plays. The consumer takes the first its body draws.
  */
-export function tribeJobSeqs(ir: ContentIr | null, tribe: number, job: number): TribeJobSeqs {
-  let walk: string | undefined;
-  for (const row of ir?.gfxWalkAtomics ?? []) {
-    if (row.tribe === tribe && row.job === job && row.goodType === UNLOADED_GOOD_TYPE) {
-      walk = row.bodySeq;
-      break;
+export interface TribeJobSeqs {
+  readonly walk: readonly string[];
+  readonly wait: readonly string[];
+  readonly attack: readonly string[];
+  /** Action → the remaining `[gfxanimatomic]` records (no wait, attack or indoor sub-clip). */
+  readonly atomics: ReadonlyMap<number, readonly TribeClip[]>;
+}
+
+/**
+ * The jobs a `(tribe, job)` clip lookup falls through, in order: each of `jobs`, then its `jobtypes.ini`
+ * `baseJob` chain (hero → soldier class → unarmed soldier → civilist). That is the parent walk the
+ * original's bob update takes when a job authors no record of its own (byte evidence:
+ * `an original routine`, the original an original address). A repeated job stops the walk.
+ */
+function clipLookupChain(ir: ContentIr | null, jobs: readonly number[]): number[] {
+  const baseOf = new Map<number, number>();
+  for (const job of ir?.jobs ?? []) {
+    if (job.typeId !== undefined && job.baseJob !== undefined) baseOf.set(job.typeId, job.baseJob);
+  }
+  const chain: number[] = [];
+  for (const start of jobs) {
+    for (
+      let job: number | undefined = start;
+      job !== undefined && !chain.includes(job);
+      job = baseOf.get(job)
+    ) {
+      chain.push(job);
     }
   }
-  let wait: string | undefined;
-  let waitIsBase = false;
-  let attack: string | undefined;
-  for (const row of ir?.gfxAtomics ?? []) {
-    if (row.tribe !== tribe || row.job !== job) continue;
-    if (row.action === ATTACK_ATOMIC) attack ??= row.bodySeq;
-    if (!WAIT_ACTIONS.has(row.action)) continue;
-    if (wait === undefined || (!waitIsBase && row.mode === GFX_ANIM_MODE_LOOP)) {
-      wait = row.bodySeq;
-      waitIsBase = row.mode === GFX_ANIM_MODE_LOOP;
-    }
-  }
-  return {
-    ...(walk !== undefined ? { walk } : {}),
-    ...(wait !== undefined ? { wait } : {}),
-    ...(attack !== undefined ? { attack } : {}),
+  return chain;
+}
+
+/**
+ * The clip names one tribe's own records give a job, from the records that civilization authors: the
+ * unloaded `[gfxwalkatomic]` gait, the `[gfxanimatomic]` base wait (the `gfxanimmode 1` record where
+ * there is one), the attack swing and the other actions' records. Every slot lists the answer of each job
+ * on the lookup chain of `jobs` in turn, so a job that authors no record of its own inherits its base
+ * job's, the way the original resolves a hero to its soldier class. The tribes disagree on which clip a
+ * job plays - the egyptian unarmed soldier is authored on the spear clips, the saracen longbowman on the
+ * shortbow's - so a look that cannot draw the transcribed viking clip takes the answer its own tribe gives.
+ *
+ * Approximation: where a job authors several records for one action, the original rolls among them at
+ * each play (`an original routine`, the original an original address); here they
+ * stay in file order and the consumer plays the first its body draws.
+ */
+export function tribeJobSeqs(ir: ContentIr | null, tribe: number, jobs: readonly number[]): TribeJobSeqs {
+  const walk: string[] = [];
+  const wait: string[] = [];
+  const attack: string[] = [];
+  const atomics = new Map<number, TribeClip[]>();
+  const push = (list: string[], seq: string): void => {
+    if (!list.includes(seq)) list.push(seq);
   };
+  for (const job of clipLookupChain(ir, jobs)) {
+    for (const row of ir?.gfxWalkAtomics ?? []) {
+      if (row.tribe === tribe && row.job === job && row.goodType === UNLOADED_GOOD_TYPE) {
+        push(walk, row.bodySeq);
+        break;
+      }
+    }
+    let jobWait: string | undefined;
+    let waitIsBase = false;
+    let jobAttack: string | undefined;
+    for (const row of ir?.gfxAtomics ?? []) {
+      if (row.tribe !== tribe || row.job !== job || row.subId !== undefined) continue;
+      if (row.action === ATTACK_ATOMIC) {
+        jobAttack ??= row.bodySeq;
+      } else if (WAIT_ACTIONS.has(row.action)) {
+        if (jobWait === undefined || (!waitIsBase && row.mode === GFX_ANIM_MODE_LOOP)) {
+          jobWait = row.bodySeq;
+          waitIsBase = row.mode === GFX_ANIM_MODE_LOOP;
+        }
+      } else {
+        let clips = atomics.get(row.action);
+        if (clips === undefined) {
+          clips = [];
+          atomics.set(row.action, clips);
+        }
+        clips.push({
+          seq: row.bodySeq,
+          program: { dirFrames: row.dirFrames, ...(row.mode !== undefined ? { mode: row.mode } : {}) },
+        });
+      }
+    }
+    if (jobWait !== undefined) push(wait, jobWait);
+    if (jobAttack !== undefined) push(attack, jobAttack);
+  }
+  return { walk, wait, attack, atomics };
 }
 
 /** One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins). */

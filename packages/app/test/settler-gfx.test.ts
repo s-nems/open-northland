@@ -348,6 +348,51 @@ describe('characterBinding', () => {
     ).toEqual({ start: 300, frameLists: [[0, 1, 2]], loop: true });
   });
 
+  it('binds the atomics the tribe authors for the job, behind the transcribed clips', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 100, length: 8 }],
+      ['sword_pick_up', { name: 'sword_pick_up', start: 200, length: 16 }],
+      ['empty_pick_up', { name: 'empty_pick_up', start: 300, length: 16 }],
+      ['sword_eat', { name: 'sword_eat', start: 400, length: 9 }],
+    ]);
+    const spec = {
+      gfxJobs: [34],
+      waitSeq: 'wait',
+      atomics: { 10: { seq: 'sword_eat' }, 22: { seq: 'sword_pick_up' } },
+    } as const;
+    // The tribe-wide `(action, seq)` table carries another job's list for the shared pick-up clip.
+    const programsByAction = new Map([
+      [22, new Map([['empty_pick_up', { dirFrames: [[0, 1, 2, 2]], mode: 0 }]])],
+    ]);
+    const tribeSeqs = {
+      walk: [],
+      wait: [],
+      attack: [],
+      atomics: new Map([
+        [10, [{ seq: 'empty_eat', program: { dirFrames: [[0, 1]] } }]],
+        [22, [{ seq: 'empty_pick_up', program: { dirFrames: [[0, 1, 2]] } }]],
+        [
+          91,
+          [
+            { seq: 'sword_walk', program: { dirFrames: [[91]] } },
+            { seq: 'empty_pick_up', program: { dirFrames: [[0, 1, 2]] } },
+          ],
+        ],
+      ]),
+    };
+    expect(characterBinding(spec, seqs, [], { programsByAction, tribeSeqs })?.byAtomic).toEqual({
+      // The transcribed strip stays ahead of a tribe clip this body does not draw.
+      10: { start: 400, dirs: 1, stride: 9 },
+      // A program-backed tribe record beats a transcribed strip the source authors no frame list for, and
+      // plays its own frame lists, not the tribe-wide table's.
+      22: { start: 300, frameLists: [[0, 1, 2]] },
+      // An action the spec leaves unnamed binds through the tribe's records, the first drawn one.
+      91: { start: 300, frameLists: [[0, 1, 2]] },
+    });
+    // Without the tribe's rows the spec-less action is simply absent.
+    expect(characterBinding(spec, seqs, [], { programsByAction })?.byAtomic?.[91]).toBeUndefined();
+  });
+
   it('idles on the wait seq gfxAtomics program (looped) instead of cycling the raw wait strip', () => {
     const seqs = new Map([
       ['wait', { name: 'wait', start: 1931, length: 57 }],

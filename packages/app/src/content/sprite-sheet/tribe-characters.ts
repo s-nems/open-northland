@@ -139,13 +139,11 @@ export function tribeCharacters(
       if (layers === undefined || seqByName === undefined) continue;
       const binding = characterBinding(spec, seqByName, goods, {
         ...(spec.logicJob !== undefined ? { carrySeqBySlug: carryWalkSeqs(ir, tribe, spec.logicJob) } : {}),
-        // Two sources of own-clip names, the spec's own job first: a class whose body the tribe does not
-        // author still gets the motion it authors for that class (the saracen bowman's shortbow swing on
-        // the plain soldier body), and the degraded record's job fills what that job leaves unnamed.
-        tribeSeqs: {
-          ...tribeJobSeqs(ir, tribe, look.job),
-          ...(spec.logicJob !== undefined ? tribeJobSeqs(ir, tribe, spec.logicJob) : {}),
-        },
+        // Own-clip names keyed by the settler's job, as the original looks them up, never by the record
+        // that drew the body: the spec's own job first, so a class whose body the tribe does not author
+        // still gets the motion it authors for that class (the saracen bowman's shortbow swing on the
+        // plain soldier body), then the classes it degrades through.
+        tribeSeqs: tribeJobSeqs(ir, tribe, spec.gfxJobs),
         programsByAction,
         waitBySeq,
         walkLists,

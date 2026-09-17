@@ -6,8 +6,9 @@
 atomic's animation as "the settler's own `setatomic` row, else the tribe's civilist row". The engine's
 rule is a per-job parent chain: `jobtypes.ini` `baseatomics` is 6 only for the civilian trades, 31 for
 armed soldiers, 33-41 for the hero bodies, and **48 (`adult_animal`) for wildlife**. The IR already
-carries it as `JobType.baseJob`, and `@open-northland/data` already walks it (`resolveJobAtomics`,
-covered by `packages/app/test/content/job-atomics.test.ts`).
+carries it as `JobType.baseJob`, `@open-northland/data` already walks it (`resolveJobAtomics`,
+covered by `packages/app/test/content/job-atomics.test.ts`), and the render-side clip join walks it too
+(`tribeJobSeqs` in `packages/app/src/content/ir/joins.ts`).
 
 Byte evidence (owned macOS `the original`, `an original routine`): the tribe table is
 read for `(tribe, job, atomic)`; on a miss the job record's base job is loaded, its allow flag for the

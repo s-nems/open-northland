@@ -220,7 +220,8 @@ export interface ContentIr {
     kind?: string;
     footprint?: BuildingFootprint;
   }[];
-  readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
+  /** `baseJob` is the `jobtypes.ini` parent a job's animation lookups fall back through. */
+  readonly jobs?: readonly { typeId?: number; id?: string; name?: string; baseJob?: number }[];
   /** The `vehicletype` rows, narrowed to the join keys a mission script names a vehicle by. */
   readonly vehicles?: readonly { typeId?: number; id?: string; name?: string }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */

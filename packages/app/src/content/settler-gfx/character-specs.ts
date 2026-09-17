@@ -77,7 +77,8 @@ export interface CharacterSpec {
   /**
    * The `[jobbasegraphics]` `logicjob`s whose record draws this look, best first: a tribe authors no
    * record for every soldier class, so the chain ends at the class this look degrades to. A tribe with
-   * no record in the chain has no such look and its jobs draw the base tribe's.
+   * no record in the chain has no such look and its jobs draw the base tribe's. The same jobs, each with
+   * its `baseJob` chain, key the tribe's own clip rows.
    */
   readonly gfxJobs: readonly number[];
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
@@ -93,9 +94,11 @@ export interface CharacterSpec {
    *  `[gfxwalkatomic]` lane, when the body has any. */
   readonly carryPrefix?: string;
   /**
-   * Atomic id → its action sequence on this body (the `setatomic` join). `phaseStart` tunes only the strip
-   * fallback, `ticksPerFrame` applies to that and to the authored frame lists, and `loop` repeats a gesture
-   * whose sim action intentionally outlasts one authored playthrough.
+   * Atomic id → its action sequence on this body (the `setatomic` join), the viking transcription. An
+   * action left unnamed still binds through the tribe's own `[gfxanimatomic]` rows for the look's job
+   * chain. `phaseStart` tunes only the strip fallback, `ticksPerFrame` applies to that and to the authored
+   * frame lists, and `loop` repeats a gesture whose sim action intentionally outlasts one authored
+   * playthrough.
    */
   readonly atomics?: Readonly<
     Record<
@@ -398,8 +401,11 @@ export const CHARACTER_SPECS = {
       idle: 'human_man_Warrior_Longbow_wait_agressive',
     },
   },
-  // Hero bodies carry their arms in the authored bob set. Their exact walk, wait and attack sequence
-  // names come from this tribe's animation rows; the soldier entry is only a missing-body fallback.
+  // Hero bodies carry their arms in the authored bob set. Every clip name comes from this tribe's rows for
+  // the hero's job or, where it authors none, its soldier class down the `baseJob` chain; the soldier
+  // entries are the bodies a tribe without a hero record falls back to and the classes its clips resolve
+  // through. The dedicated hero bodies draw just their walk, wait and attack, so the source binds their
+  // chest opening to one held walk frame, and the frank heroine's Santa body to nothing.
   'hero-unarmed': {
     gfxJobs: [JOB_HERO_UNARMED, JOB_SOLDIER_UNARMED],
     logicJob: JOB_HERO_UNARMED,

@@ -5,7 +5,14 @@ import {
   type TextureSource,
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { JOB_CIVILIST, JOB_HERO_SWORD, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../src/catalog/jobs.js';
+import { OPEN_CHEST_ATOMIC } from '../src/catalog/atomics.js';
+import {
+  JOB_CIVILIST,
+  JOB_HERO_SWORD,
+  JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
+} from '../src/catalog/jobs.js';
 import type { BobSeqRow, ContentIr, JobGraphicsRow } from '../src/content/ir/rows.js';
 import { tribeLooks } from '../src/content/settler-gfx/index.js';
 import type { LoadedLook, ResolvedLook } from '../src/content/sprite-sheet/character-looks.js';
@@ -112,6 +119,42 @@ describe('tribeCharacters', () => {
 
     expect(table?.byJob[JOB_HERO_SWORD]?.body).toBe(uniqueBody);
     expect(table?.fixedByJob?.[JOB_HERO_SWORD]?.body).toBe(uniqueBody);
+  });
+
+  it('resolves a hero that authors no action rows through its baseJob chain, on its own body', () => {
+    const inputs = inputsFor(VIKING, ['cr_hum_body_00', 'cr_hum_body_05', 'cr_hum_body_60']);
+    const sequencesByBody = new Map(inputs.sequencesByBody);
+    sequencesByBody.set('cr_hum_body_60', seqs(['hero_walk', 'hero_wait', 'civilist_pick_up']));
+    // The chest bend sits on the civilist, which the hero's `gfxJobs` never name: only the
+    // `baseJob` chain 44 -> 34 -> 31 -> 6 reaches it, and the hero's own body draws that clip.
+    const jobs = [
+      { typeId: JOB_HERO_SWORD, baseJob: JOB_SOLDIER_SWORD },
+      { typeId: JOB_SOLDIER_SWORD, baseJob: JOB_SOLDIER_UNARMED },
+      { typeId: JOB_SOLDIER_UNARMED, baseJob: JOB_CIVILIST },
+      { typeId: JOB_CIVILIST },
+    ];
+    const chainIr: ContentIr = {
+      ...ir,
+      jobs,
+      gfxWalkAtomics: [{ tribe: VIKING, job: JOB_HERO_SWORD, goodType: 0, bodySeq: 'hero_walk' }],
+      gfxAtomics: [
+        { tribe: VIKING, job: JOB_HERO_SWORD, action: 2, bodySeq: 'hero_wait', mode: 1, dirFrames: [[0]] },
+        {
+          tribe: VIKING,
+          job: JOB_CIVILIST,
+          action: OPEN_CHEST_ATOMIC,
+          bodySeq: 'civilist_pick_up',
+          dirFrames: [[0, 1]],
+        },
+      ],
+    };
+    const chest = (content: ContentIr) =>
+      tribeCharacters(content, [], VIKING, { ...inputs, sequencesByBody })?.byJob[JOB_HERO_SWORD]?.binding
+        .byAtomic?.[OPEN_CHEST_ATOMIC];
+    expect(chest(chainIr)).toEqual({ start: 16, frameLists: [[0, 1]] });
+    // Cut the chain below the unarmed soldier and the civilist's record is out of reach.
+    const cut = jobs.map((job) => (job.typeId === JOB_SOLDIER_UNARMED ? { typeId: job.typeId } : job));
+    expect(chest({ ...chainIr, jobs: cut })).toBeUndefined();
   });
 
   it('fills a job the tribe authors no record for from the base table', () => {

@@ -8,7 +8,7 @@ import {
   subClipKey,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeJobSeqs } from '../ir/joins.js';
+import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeClip, type TribeJobSeqs } from '../ir/joins.js';
 import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';
 import type { CharacterSpec } from './character-specs.js';
 import { eightDirAnim, frameListsByFacing, type GoodRef, singleDirAnim } from './seq-anim.js';
@@ -34,18 +34,17 @@ export interface CharacterGfx {
   readonly bodyAtlas?: SpriteAtlas;
 }
 
-/** The transcribed clip when this body draws it, else the one this tribe's own records name. Approximation:
- *  the viking transcription wins because it separates the relaxed gait from the aggressive one, which a
- *  single `[gfxwalkatomic]` row cannot, so a tribe whose own record names a different clip for a body that
- *  draws both keeps the transcribed one (the saracen sword and spear looks). */
+/** The transcribed clip when this body draws it, else the first this tribe's own records name that it
+ *  draws. Approximation: the viking transcription wins because it separates the relaxed gait from the
+ *  aggressive one, which a single `[gfxwalkatomic]` row cannot, so a tribe whose own record names a
+ *  different clip for a body that draws both keeps the transcribed one (the saracen sword and spear looks). */
 function pickSeq(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   transcribed: string | undefined,
-  authored: string | undefined,
+  authored: readonly string[] = [],
 ): string | undefined {
   if (transcribed !== undefined && seqByName.has(transcribed)) return transcribed;
-  if (authored !== undefined && seqByName.has(authored)) return authored;
-  return transcribed;
+  return authored.find((seq) => seqByName.has(seq)) ?? transcribed;
 }
 
 /**
@@ -156,25 +155,38 @@ export function characterBinding(
     (walk !== undefined ? { ...walk, frames: 1 } : null);
   if (idle === null) return null;
 
+  // Every action the spec transcribes or the tribe's own records name for the job. The transcribed clips
+  // lead, as for the gaits, and the tribe's own records are the last candidates: they name what the
+  // civilization's body actually plays where the transcription is a viking clip that body lacks, and they
+  // are the only source for a look, such as a hero, whose spec transcribes no atomics. A transcribed clip
+  // reads its frame lists from the tribe-wide `(action, seq)` table; a tribe record carries its own.
   const byAtomic: Record<number, SpriteFrameRef> = {};
-  for (const [atomicId, action] of Object.entries(spec.atomics ?? {})) {
-    const seqs = typeof action.seq === 'string' ? [action.seq] : action.seq;
-    const authored = programsByAction?.get(Number(atomicId));
-    const playable = seqs.find((name) => {
-      const row = seqByName.get(name);
-      return row !== undefined && drawsProgram(authored?.get(name), row, bodyAtlas);
+  const ownAtomics = tribeSeqs?.atomics ?? new Map<number, readonly TribeClip[]>();
+  const atomicIds = new Set([...Object.keys(spec.atomics ?? {}).map(Number), ...ownAtomics.keys()]);
+  for (const atomicId of atomicIds) {
+    const action = spec.atomics?.[atomicId];
+    const transcribed =
+      action === undefined ? [] : typeof action.seq === 'string' ? [action.seq] : action.seq;
+    const authored = programsByAction?.get(atomicId);
+    const candidates: { readonly seq: string; readonly program: GfxAtomicProgram | undefined }[] = [
+      ...transcribed.map((seq) => ({ seq, program: authored?.get(seq) })),
+      ...(ownAtomics.get(atomicId) ?? []).filter((clip) => !transcribed.includes(clip.seq)),
+    ];
+    const playable = candidates.find((clip) => {
+      const row = seqByName.get(clip.seq);
+      return row !== undefined && drawsProgram(clip.program, row, bodyAtlas);
     });
-    const seq = playable ?? seqs.find((name) => seqByName.has(name));
-    if (seq === undefined) continue;
-    const row = seqByName.get(seq);
+    const clip = playable ?? candidates.find((c) => seqByName.has(c.seq));
+    if (clip === undefined) continue;
+    const row = seqByName.get(clip.seq);
     if (row === undefined || row.length <= 0) continue;
-    const program = authored?.get(seq);
+    const program = clip.program;
     if (drawsProgram(program, row, bodyAtlas)) {
-      byAtomic[Number(atomicId)] = {
+      byAtomic[atomicId] = {
         start: row.start,
         frameLists: frameListsByFacing(program.dirFrames),
-        ...(program.mode === GFX_ANIM_MODE_LOOP || action.loop === true ? { loop: true } : {}),
-        ...(action.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
+        ...(program.mode === GFX_ANIM_MODE_LOOP || action?.loop === true ? { loop: true } : {}),
+        ...(action?.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
       };
       continue;
     }
@@ -184,11 +196,11 @@ export function characterBinding(
       row.length % DIRS === 0
         ? { start: row.start, dirs: DIRS, stride: row.length / DIRS }
         : { start: row.start, dirs: 1, stride: row.length };
-    byAtomic[Number(atomicId)] = {
+    byAtomic[atomicId] = {
       ...anim,
-      ...(action.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
-      ...(action.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
-      ...(action.loop === true ? { loop: true } : {}),
+      ...(action?.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
+      ...(action?.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
+      ...(action?.loop === true ? { loop: true } : {}),
     };
   }
 
