@@ -52,9 +52,9 @@ export function declareScriptedVerdict(
 }
 
 /** Reveal the hexagon of `range` map points around the point, or the whole map for a zero x, y or
- *  range, as fully as ground the player's own eye covered. Only REVEAL hides terrain that a reveal
- *  could show: fog off shows everything and RECON's terrain is known from the start, so a write there
- *  would change the hash and nothing else. */
+ *  range, as fully as ground the player's own eye covered. Only REVEAL keeps such a reveal: fog off
+ *  shows everything already, and RECON knows the terrain from the start and would downgrade the
+ *  revealed sight on its next rebuild. */
 export function exploreScriptedArea(
   pass: MissionPass,
   mission: number,
