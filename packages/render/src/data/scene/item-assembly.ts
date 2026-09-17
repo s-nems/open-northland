@@ -56,9 +56,7 @@ export function assembleItem(
       if (vehicleCrewOf(build.snapshot).has(entity.id)) item.crew = true;
       break;
     case 'vehicle':
-      // Its `state` came with the pose: a vehicle in transit reads `moving` off the same path
-      // components a settler does.
-      readVehicleFields(item, components);
+      readVehicleFields(item, components); // its `state` came with the pose
       break;
     case 'building':
       assignBuildingFields(item, components);

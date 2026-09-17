@@ -4,8 +4,8 @@
 **Blocked by:** [cargo and carriers](vehicles-6-cargo-and-carriers.md)
 
 `click-hits.ts` and `selection-view.ts` know only settlers and buildings; the action ring's
-`assignVehicle` / `attackVehicle` orders are declared inert; 13 vehicle message ids are mapped
-with no raiser surfaced. The original's window and command set are listed in
+`assignVehicle` / `attackVehicle` orders are declared inert; of the 13 mapped vehicle message ids
+only the two refused-goto notes have a raiser. The original's window and command set are listed in
 [VEHICLES.md](../../formats/VEHICLES.md#lifecycle). The UI only needs to be usable; the in-game UI
 rework restyles it later.
 
@@ -22,7 +22,8 @@ rework restyles it later.
   vehicle / position and the three stances for a catapult, stop; right-click defaults from the
   original (human -> attack human, vehicle -> load into carrier when allowed else attack, house ->
   attack, else go to). Settler ring orders `assignVehicle` (pick a vehicle) and `attackVehicle`.
-- HUD messages: raise the mapped ids from the sim events of the vehicle tickets.
+- HUD messages: raise the remaining mapped ids from the sim events of the vehicle tickets, the way
+  `from-events.ts` already raises `vehicleNoCommander` / `vehicleNoPath` with a `vehicle` subject.
 - i18n en/pl for every new string.
 
 ## Verify

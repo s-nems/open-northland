@@ -68,6 +68,8 @@ export interface MessageCenterDeps {
   readonly viewer: ViewerSeat;
   /** A building type's menu label, which names a building in its note. */
   readonly buildingLabel: (typeId: number) => string | undefined;
+  /** A vehicle type's name, which leads its refused-order notes. */
+  readonly vehicleLabel: (typeId: number) => string | undefined;
   /** A paper's display name, for the note about finding one. */
   readonly paperLabel: (paper: Paper) => string;
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
@@ -131,6 +133,10 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
     building: (e) => {
       const typeId = num((e.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
       return typeId === undefined ? null : (deps.buildingLabel(typeId) ?? null);
+    },
+    vehicle: (e) => {
+      const typeId = num((e.components.Vehicle as { vehicleType?: unknown } | undefined)?.vehicleType);
+      return typeId === undefined ? null : (deps.vehicleLabel(typeId) ?? null);
     },
     // An authored roster name, else the numbered fallback the diplomacy window renders: many maps leave
     // a slot unnamed, and a note about a nameless seat would lose its subject entirely.

@@ -13,7 +13,7 @@ import { assembleItem, type SceneBuild } from './item-assembly.js';
 import { palisadeLayoutOf } from './palisade-connections.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
-import { classify, readPosition } from './snapshot-readers/index.js';
+import { classify, readPosition, vehicleDrawTile } from './snapshot-readers/index.js';
 import type { SpriteSpatialIndex } from './spatial-index.js';
 
 /** Whether a ref is alive (drawable) this frame. A `ReadonlySet` satisfies it; the index-backed build
@@ -142,8 +142,10 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     const hiddenIndoors = indoorSettler && keepIndoorSettlers !== true;
     const craft = hiddenIndoors ? craftAnchorOf(components, posByRef) : undefined;
     if (hiddenIndoors && craft === undefined && !isPortrait) return;
-    const tileX = craft?.tileX ?? pos.x / ONE;
-    const tileY = craft?.tileY ?? pos.y / ONE;
+    // A driving vehicle draws part-way along its leg; everything else stands on its Position.
+    const drawn = kind === 'vehicle' ? vehicleDrawTile(components, pos) : undefined;
+    const tileX = craft?.tileX ?? drawn?.x ?? pos.x / ONE;
+    const tileY = craft?.tileY ?? drawn?.y ?? pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
     // Culls on the drawn anchor; the caller pre-inflates the box to cover a tall sprite's extent, so a
     // building straddling the edge still draws.

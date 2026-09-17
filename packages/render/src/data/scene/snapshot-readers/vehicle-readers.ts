@@ -1,7 +1,11 @@
+import { components as simComponents, ONE, positionOfNode } from '@open-northland/sim';
+import { clamp01, lerp } from '../../math.js';
 import { readNumField } from '../../snapshot/index.js';
 import { gfxDirToFacing } from '../../sprites/settler.js';
 import type { MutableDrawItem, StaticDrawFields, VehicleDrawTask } from '../draw-item.js';
 import { readOwnerPlayer } from './unit-readers.js';
+
+const { NODE_PROGRESS_FULL } = simComponents;
 
 /** The `Vehicle.task` names, transcribed so the reader narrows an unknown string to a task or drops it. */
 const VEHICLE_TASKS: ReadonlySet<string> = new Set<VehicleDrawTask>([
@@ -72,6 +76,33 @@ export function readVehicleFields(
   if (best === undefined) return;
   item.carrying = true;
   item.carryGood = best;
+}
+
+/** Whether the vehicle is driving: it carries a `VehicleDrive`, between legs as well as on one. */
+export function readVehicleDriving(components: Readonly<Record<string, unknown>>): boolean {
+  return 'VehicleDrive' in components;
+}
+
+/**
+ * The tile a driving vehicle draws at. The sim moves the anchor onto a leg's node as the leg starts and
+ * counts `progress` toward `NODE_PROGRESS_FULL` on it, so the drawn tile slides from `from`, the node
+ * the leg left, to the anchor by that fraction; between legs and while standing it is the anchor. Lerped
+ * in Position space, the same line a walking settler's steps follow.
+ */
+export function vehicleDrawTile(
+  components: Readonly<Record<string, unknown>>,
+  pos: { readonly x: number; readonly y: number },
+): { x: number; y: number } {
+  const tileX = pos.x / ONE;
+  const tileY = pos.y / ONE;
+  const drive = components.VehicleDrive as { from?: unknown; progress?: unknown } | undefined;
+  const from = drive?.from as { hx?: unknown; hy?: unknown } | null | undefined;
+  if (from === null || from === undefined) return { x: tileX, y: tileY }; // between legs, or standing
+  if (typeof from.hx !== 'number' || typeof from.hy !== 'number') return { x: tileX, y: tileY };
+  const progress = typeof drive?.progress === 'number' ? drive.progress : 0;
+  const t = clamp01(progress / NODE_PROGRESS_FULL);
+  const left = positionOfNode(from.hx, from.hy);
+  return { x: lerp(left.x / ONE, tileX, t), y: lerp(left.y / ONE, tileY, t) };
 }
 
 /** The entity ids seated in this vehicle's crew, aboard or still walking to it, or none for a

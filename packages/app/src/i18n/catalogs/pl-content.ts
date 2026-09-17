@@ -230,7 +230,7 @@ export const plContent = {
     vehicles: {
       title: 'Pojazdy',
       summary:
-        'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek i szczątki wozu rozbitego w pierwszej turze.',
+        'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek, szczątki wozu rozbitego w pierwszej turze oraz wóz z wołem i katapulta z załogą jadące na wschód dolnymi rzędami, katapulta o połowę wolniej.',
     },
     school: {
       title: 'Nauka zawodu',

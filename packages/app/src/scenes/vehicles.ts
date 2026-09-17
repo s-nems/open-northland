@@ -8,7 +8,7 @@ import {
   type Simulation,
   systems,
 } from '@open-northland/sim';
-import { JOB_TRADER } from '../catalog/jobs.js';
+import { JOB_CARRIER, JOB_SOLDIER, JOB_TRADER } from '../catalog/jobs.js';
 import { TERRAIN_IMPASSABLE, TERRAIN_OPEN } from '../catalog/terrain.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
@@ -26,12 +26,13 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * Every vehicle type standing on a shore for two tribes, turned to a few facings, one cart loaded, the
- * catapult mid-attack, and one catapult wrecked a second in so its ruin decals show. The browser view
- * is the check that each type draws its own sprite (docs/formats/VEHICLES.md "Graphics").
+ * catapult mid-attack, one catapult wrecked a second in so its ruin decals show, and a crewed ox cart
+ * and catapult ordered across the bottom rows so a drive slides node to node at each type's pace. The
+ * browser view is the check that each type draws its own sprite (docs/formats/VEHICLES.md "Graphics").
  */
 
 const MAP_W = 26;
-const MAP_H = 14;
+const MAP_H = 18;
 /** Columns from here east are open water, where the ships lie within their door distance of the shore. */
 const SHORE_X = 17;
 
@@ -83,6 +84,18 @@ const WRECK_SEQUENCE = 1_000_000;
 /** The trader who crews the viking handcart and walks off with it, pulling the cart gait. */
 const TRADER_AT = { x: 3, y: 4 } as const;
 const TRADER_GOAL = { x: 12, y: 6 } as const;
+/** The drivers: an ox cart and a catapult, each with a commander seated, ordered east along their own
+ *  row a few ticks in. The catapult crosses a node in twice the cart's period, so it trails. */
+const DRIVE_ORDER_TICK = 6;
+interface Drive {
+  readonly from: { readonly x: number; readonly y: number };
+  readonly to: { readonly x: number; readonly y: number };
+}
+const CART_DRIVE: Drive = { from: { x: 2, y: 12 }, to: { x: 14, y: 12 } };
+const CATAPULT_DRIVE: Drive = { from: { x: 2, y: 15 }, to: { x: 12, y: 15 } };
+/** The commander stands one cell behind its vehicle, off the footprint the first leg enters. */
+const COMMANDER_OFFSET_X = -1;
+const DRIVER_COUNT = 2;
 
 function shoreTerrain(): CellTerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H);
@@ -109,6 +122,36 @@ function build(sim: Simulation): void {
   if (handcart !== undefined) seatPassenger(sim.world, handcart, trader);
   const goal = cellAnchorNode(TRADER_GOAL.x, TRADER_GOAL.y);
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'moveUnit', entity: trader, x: goal.hx, y: goal.hy }));
+  spawnDriver(sim, VEHICLE_OXCART, JOB_CARRIER, CART_DRIVE, WRECK_SEQUENCE + 1);
+  spawnDriver(sim, VEHICLE_CATAPULT, JOB_SOLDIER, CATAPULT_DRIVE, WRECK_SEQUENCE + 2);
+}
+
+/** A crewed vehicle at `drive.from`, facing east, ordered to `drive.to` on {@link DRIVE_ORDER_TICK}. */
+function spawnDriver(
+  sim: Simulation,
+  type: number,
+  commanderJob: number,
+  drive: Drive,
+  sequence: number,
+): void {
+  const vehicle = spawnVehicleDirect(sim, type, drive.from.x, drive.from.y, { facing: FACING_EAST });
+  const commander = spawnSettlerDirect(sim, commanderJob, drive.from.x + COMMANDER_OFFSET_X, drive.from.y);
+  seatPassenger(sim.world, vehicle, commander);
+  const goal = cellAnchorNode(drive.to.x, drive.to.y);
+  sim.enqueueAt(
+    playerCommand(HUMAN_PLAYER, { kind: 'moveVehicle', vehicle, x: goal.hx, y: goal.hy }),
+    DRIVE_ORDER_TICK,
+    sequence,
+  );
+}
+
+/** How far east of its spawn the driver of `type` stands, in half-cell columns: the one vehicle of that
+ *  type the local player has on the drive's row, which a straight eastward route never leaves. */
+function drivenColumns(sim: Simulation, type: number, drive: Drive): number {
+  const start = cellAnchorNode(drive.from.x, drive.from.y);
+  const driver = sim.vehiclesOf(HUMAN_PLAYER).find((v) => v.vehicleType === type && v.at?.hy === start.hy);
+  const at = driver?.at;
+  return at === undefined || at === null ? 0 : at.hx - start.hx;
 }
 
 function vehicleCount(sim: Simulation): number {
@@ -127,7 +170,7 @@ export const vehiclesScene: SceneDefinition = {
   checks: [
     {
       label: 'every spawned vehicle but the wreck still stands, one per type and tribe',
-      predicate: (sim) => vehicleCount(sim) === VIKING_ROW.length + FRANK_ROW.length,
+      predicate: (sim) => vehicleCount(sim) === VIKING_ROW.length + FRANK_ROW.length + DRIVER_COUNT,
     },
     {
       label: 'the loaded ox cart keeps its wood and the catapult its attack task',
@@ -137,6 +180,14 @@ export const vehiclesScene: SceneDefinition = {
           views.some((v) => v.vehicleType === VEHICLE_OXCART && v.load === LOADED_WOOD) &&
           views.some((v) => v.vehicleType === VEHICLE_CATAPULT && v.task === 'attacks')
         );
+      },
+    },
+    {
+      label: 'the ordered ox cart and catapult both drove east, the catapult at half the pace',
+      predicate: (sim) => {
+        const cart = drivenColumns(sim, VEHICLE_OXCART, CART_DRIVE);
+        const catapult = drivenColumns(sim, VEHICLE_CATAPULT, CATAPULT_DRIVE);
+        return catapult > 0 && cart > catapult;
       },
     },
     {

@@ -42,6 +42,7 @@ const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: 'drwal' }),
   building: () => 'Dom',
+  vehicle: () => 'Wóz',
   player: (player) => `Gracz ${player}`,
   stance: (state) => state,
   paper: (paper) => paper.kind,

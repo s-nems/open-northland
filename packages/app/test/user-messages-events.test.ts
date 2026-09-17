@@ -13,7 +13,7 @@ const e = (id: number): Entity => id as Entity;
 interface Actor {
   readonly id: number;
   readonly player: number;
-  readonly kind: 'person' | 'animal' | 'building';
+  readonly kind: 'person' | 'animal' | 'building' | 'vehicle';
   readonly col?: number;
 }
 
@@ -30,7 +30,9 @@ function snapshot(tick: number, actors: readonly Actor[]): WorldSnapshot {
           Position: { x: (a.col ?? 3) * ONE, y: 2 * ONE },
           ...(a.kind === 'building'
             ? { Building: { buildingType: 12, tribe: 1, built: ONE, level: 0 } }
-            : { Settler: { tribe: 1, jobType: 7 } }),
+            : a.kind === 'vehicle'
+              ? { Vehicle: { vehicleType: 2, tribe: 1, task: 'none', passengers: [null] } }
+              : { Settler: { tribe: 1, jobType: 7 } }),
           ...(a.kind === 'person' ? { Person: { person: true } } : {}),
         },
       })),
@@ -41,6 +43,7 @@ const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
+  vehicle: () => 'Wóz',
   player: () => 'Gracz',
   stance: (state) => state,
   paper: (paper) => `${paper.kind}:${paper.param}`,
@@ -375,6 +378,36 @@ describe('user messages from sim events', () => {
       [USER_MESSAGE_TYPE.specialItemFound, { hx: 30, hy: 4 }, `?:${USER_MESSAGE_TYPE.specialItemFound}`],
     ]);
     expect(out.map((m) => m.about)).toEqual([70, 71]);
+  });
+
+  it("notes this seat's refused vehicle orders by reason, keyed on and centred at the vehicle", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'vehicle', col: 5 },
+      { id: 2, player: ENEMY, kind: 'vehicle' },
+    ]);
+    const out = run(
+      [
+        { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noCommander' },
+        { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noPath' },
+        { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noPath' },
+        { kind: 'vehicleMoveRefused', entity: e(2), player: ENEMY, reason: 'noPath' },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject, m.at, m.text])).toEqual([
+      [
+        USER_MESSAGE_TYPE.vehicleNoCommander,
+        { kind: 'vehicle', entity: e(1) },
+        { hx: 10, hy: 4 },
+        `Wóz:${USER_MESSAGE_TYPE.vehicleNoCommander}`,
+      ],
+      [
+        USER_MESSAGE_TYPE.vehicleNoPath,
+        { kind: 'vehicle', entity: e(1) },
+        { hx: 10, hy: 4 },
+        `Wóz:${USER_MESSAGE_TYPE.vehicleNoPath}`,
+      ],
+    ]);
   });
 
   it('ignores events with no message in the original, a birth among them', () => {

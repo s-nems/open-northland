@@ -230,7 +230,7 @@ export const enContent = {
     vehicles: {
       title: 'Vehicles',
       summary:
-        'Every cart, ship and catapult of two civilizations standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a trader pulling its handcart away, and the debris of a cart wrecked on the first tick.',
+        'Every cart, ship and catapult of two civilizations standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a trader pulling its handcart away, the debris of a cart wrecked on the first tick, and a crewed ox cart and catapult driving east along the bottom rows, the catapult at half the pace.',
     },
     school: {
       title: 'Learning a profession',

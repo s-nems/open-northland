@@ -17,6 +17,7 @@ import {
   readJobType,
   readSettlerTribe,
   readSpriteState,
+  readVehicleDriving,
 } from './snapshot-readers/index.js';
 
 export interface SettlerPose {
@@ -49,10 +50,14 @@ export function settlerPose(
   return { state: readSpriteState(components), actingAtomic, targetFacing };
 }
 
-/** A vehicle's drawn pose: in transit or standing, read off the same path components as a settler. Its
+/** A vehicle's drawn pose: driving or standing, read off its own drive rather than a settler's path. Its
  *  attack is a standing task rather than an atomic, so the binding reads it from the item's `task`. */
 export function vehiclePose(components: Readonly<Record<string, unknown>>): SettlerPose {
-  return { state: readSpriteState(components), actingAtomic: null, targetFacing: undefined };
+  return {
+    state: readVehicleDriving(components) ? 'moving' : 'idle',
+    actingAtomic: null,
+    targetFacing: undefined,
+  };
 }
 
 /** A worker at its craft: the house tile its drawn anchor and depth come from, and the clip clock and

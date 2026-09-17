@@ -76,6 +76,7 @@ export interface GameToolPanelDeps {
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   /** The pack the map draws with, or null for the original's art, so the HUD's good icons match it. */
   readonly pack: PresentationPack | null;
+  readonly vehicleLabel: (typeId: number) => string | undefined;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -228,6 +229,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       goodLabel: deps.goodLabel,
       goods: deps.goods,
       pack: deps.pack,
+      vehicleLabel: deps.vehicleLabel,
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,

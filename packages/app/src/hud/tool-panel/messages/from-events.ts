@@ -1,5 +1,5 @@
 import { entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
-import { isBuilding, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import { isBuilding, isVehicle, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
 
@@ -40,6 +40,10 @@ export function messagesFromEvents(
   const ownedBuilding = (id: number): SnapshotEntity | undefined => {
     const e = entityById(snapshot, id);
     return e !== undefined && isBuilding(e) && ownedBy(e, localPlayer) ? e : undefined;
+  };
+  const ownedVehicle = (id: number): SnapshotEntity | undefined => {
+    const e = entityById(snapshot, id);
+    return e !== undefined && isVehicle(e) && ownedBy(e, localPlayer) ? e : undefined;
   };
   const attacked = (target: number): void => {
     const building = ownedBuilding(target);
@@ -217,6 +221,17 @@ export function messagesFromEvents(
           );
         }
         break;
+      case 'vehicleMoveRefused': {
+        const e = ownedVehicle(ev.entity);
+        if (e === undefined) break;
+        raiser.vehicle(
+          ev.reason === 'noCommander'
+            ? USER_MESSAGE_TYPE.vehicleNoCommander
+            : USER_MESSAGE_TYPE.vehicleNoPath,
+          e,
+        );
+        break;
+      }
       case 'combatHit':
       case 'projectileHit':
         attacked(ev.target);

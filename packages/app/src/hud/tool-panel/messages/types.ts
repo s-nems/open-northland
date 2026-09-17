@@ -85,7 +85,8 @@ export const MESSAGE_PRIORITY_LEVELS: readonly MessagePriorityLevel[] = [0, 1, 2
 /** What a message is about; the subject's name prefixes the text and its liveness bounds the message. */
 export type MessageSubject =
   | { readonly kind: 'settler'; readonly entity: number }
-  | { readonly kind: 'building'; readonly entity: number };
+  | { readonly kind: 'building'; readonly entity: number }
+  | { readonly kind: 'vehicle'; readonly entity: number };
 
 export interface MessageTechnology {
   readonly kind: 'job' | 'good' | 'house';

@@ -101,6 +101,9 @@ export function settlersIn(snapshot: WorldSnapshot, ids: readonly number[]): Sna
 export function isBuilding(e: SnapshotEntity): boolean {
   return e.components.Building !== undefined;
 }
+export function isVehicle(e: SnapshotEntity): boolean {
+  return e.components.Vehicle !== undefined;
+}
 export function isSignpost(e: SnapshotEntity): boolean {
   return e.components.Signpost !== undefined;
 }

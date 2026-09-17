@@ -103,6 +103,8 @@ export interface ToolPanelOptions {
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   /** The pack the map draws with, or null for the original's art; DOM good icons follow it. */
   readonly pack: PresentationPack | null;
+  /** Localized name of a vehicle type, which leads its refused-order notes. */
+  readonly vehicleLabel: (typeId: number) => string | undefined;
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
@@ -530,6 +532,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       buildingLabel: (typeId) => labelByType.get(typeId),
       paperLabel: nameOfPaper,
       technologyLabel: opts.technologyLabel,
+      vehicleLabel: opts.vehicleLabel,
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       metSeats: opts.diplomacyRows,

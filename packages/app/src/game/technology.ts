@@ -25,6 +25,17 @@ export function technologyReason(
   return `${messages().hud.technologyRequires} ${[...jobs, ...goods].join(', ')}`;
 }
 
+/** A vehicle type's name: every vehicle is also a good of the same id, whose catalog entry names it. */
+export function vehicleLabel(
+  content: { readonly vehicles: Readonly<ContentSet['vehicles']> },
+  typeId: number,
+): string | undefined {
+  const row = content.vehicles.find((r) => r.typeId === typeId);
+  if (row === undefined) return undefined;
+  const labels: Readonly<Record<string, string>> = messages().goods;
+  return labels[row.id] ?? row.name;
+}
+
 export function technologyLabel(
   content: { readonly [K in 'buildings' | 'jobs' | 'goods']: Readonly<ContentSet[K]> },
   kind: 'job' | 'good' | 'house',

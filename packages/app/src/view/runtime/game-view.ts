@@ -38,7 +38,7 @@ import { mapStartFocus } from '../../game/map-start.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
-import { technologyLabel } from '../../game/technology.js';
+import { technologyLabel, vehicleLabel } from '../../game/technology.js';
 import {
   fixedViewerSeat,
   overseerViewerSeat,
@@ -477,6 +477,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       goods: sim.content.goods,
       pack,
+      vehicleLabel: (typeId) => vehicleLabel(sim.content, typeId),
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),

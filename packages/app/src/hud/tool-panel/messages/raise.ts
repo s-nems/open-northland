@@ -11,6 +11,8 @@ export interface MessageNaming {
     snapshot: WorldSnapshot,
   ): { readonly name: string; readonly jobLabel: string | null };
   building(e: SnapshotEntity): string | null;
+  /** A vehicle's type name, or null for a type the catalog does not know. */
+  vehicle(e: SnapshotEntity): string | null;
   /** A seat's name, for the messages whose subject is a player rather than an entity. */
   player(player: number): string;
   /** A diplomatic stance in the player's language, for the rows that report one. */
@@ -95,6 +97,21 @@ export class MessageRaiser {
       () =>
         this.naming.text(type, {
           subjectName: this.naming.building(e),
+          jobLabel: null,
+          goodName: null,
+          stanceName: null,
+        }),
+    );
+  }
+
+  vehicle(type: UserMessageType, e: SnapshotEntity): void {
+    const subject: MessageSubject = { kind: 'vehicle', entity: e.id };
+    this.raise(
+      `${type}|vehicle:${e.id}`,
+      { type, subject, at: nodeOf(e), about: null, goodType: null, technologies: null, jobType: null },
+      () =>
+        this.naming.text(type, {
+          subjectName: this.naming.vehicle(e),
           jobLabel: null,
           goodName: null,
           stanceName: null,
