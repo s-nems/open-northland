@@ -126,10 +126,11 @@ Rules the shell enforces:
 
 The painted action icons and the surface texture are the `ui/foundation` art package
 ([recipe](../../art/ui/foundation/asset.json), [package notes](../../art/ui/foundation/README.md)):
-the 4 × 4 concept atlas `nordic-icons-v3.png` with its generation record, and the carved wood/leather
-material study `nordic-surface-v1.png`. The reference page samples the masters directly; the runtime
-uses the package's delivered atlas and texture. The portrait and workbench cells are unused and are
-not candidates for future portrait implementation.
+the 4 × 2 atlas `nordic-icons-v4.png` of simple single-object icons, the game-menu sheet
+`nordic-menu-v1.png` (its oak door is the menu medallion) and the carved wood/leather material study
+`nordic-surface-v1.png`, each with its generation record. The reference page samples the masters
+directly; the runtime uses the package's delivered atlas and texture. The atlas's pawn and door cells and
+the sheet's other candidates are unused.
 
 No original game UI art is copied. Ticket 01 remains open for shared runtime primitives. Panel
 contents and illustrative counts are not production specifications.

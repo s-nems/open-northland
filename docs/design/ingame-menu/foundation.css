@@ -257,9 +257,10 @@ select:focus-visible {
   flex-shrink: 0;
   width: 48px;
   height: 48px;
-  background-image: url(./nordic-icons-v3.png);
-  background-size: 400% 400%;
-  background-position: var(--ix, 0%) var(--iy, 0%);
+  background-image: url(./nordic-icons-v4.png);
+  /* 4 x 2 cells of 384 x 512; a square 384 px window sits at 11.5% / 88% of the scrollable height. */
+  background-size: 400% 266.667%;
+  background-position: var(--ix, 0%) var(--iy, 11.5%);
   background-repeat: no-repeat;
   filter: drop-shadow(0 2px 2px #0008);
 }
