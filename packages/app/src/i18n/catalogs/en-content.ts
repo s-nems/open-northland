@@ -232,6 +232,11 @@ export const enContent = {
       summary:
         'Every cart, ship and catapult of two civilizations standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a trader pulling its handcart away, the debris of a cart wrecked on the first tick, and a crewed ox cart and catapult driving east along the bottom rows, the catapult at half the pace.',
     },
+    'vehicle-ships': {
+      title: 'A ship across the strait',
+      summary:
+        'A small ship lies moored at the west shore. Three soldiers attach to it and are ordered to dock at the east shore: the ship waits until everyone is aboard, casts off, sails the strait, moors on the far side and unloads the party on the clicked point.',
+    },
     'vehicle-yard': {
       title: 'Vehicle yard',
       summary:

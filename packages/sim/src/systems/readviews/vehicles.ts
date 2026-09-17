@@ -1,5 +1,6 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
+import type { Traversal } from '../../nav/terrain/index.js';
 
 /**
  * A ship or boat rather than a land cart or siege engine, keyed on `vehicletypes.ini` `passengerslots`
@@ -8,6 +9,11 @@ import { contentIndex } from '../../core/content-index.js';
  */
 export function isShipVehicle(vehicle: VehicleType): boolean {
   return vehicle.passengerSlots > 0;
+}
+
+/** The ground a vehicle moves over: ships sail the water bodies, every other vehicle drives the land. */
+export function vehicleTraversal(vehicle: VehicleType): Traversal {
+  return isShipVehicle(vehicle) ? 'water' : 'land';
 }
 
 /**

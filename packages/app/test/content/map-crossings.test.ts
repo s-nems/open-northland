@@ -70,7 +70,7 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('real-m
         const y = crossing.hy + dy;
         if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) return null;
         const node = graph.nodeAt(x, y);
-        return graph.componentOf(node) >= 0 ? node : null;
+        return graph.isWalkable(node) ? node : null;
       };
       /** The first walkable node past one end of the deck, scanning outwards across its width. */
       const bank = (from: number, step: number): NodeId | null => {

@@ -154,6 +154,19 @@ export type UnitOrderCommand =
       readonly y: number;
     }
   | {
+      /**
+       * Dock one owned ship at the shore point (x,y), the original's `g` order: the ship boards its crew
+       * first, sails to a node of its own water body on the hexagon ring of its door distance around
+       * the point, and lies moored there with the point as its door. Refused with a
+       * `vehicleMoveRefused` event while nobody commands it or when no ring node takes it; ignored for
+       * a vehicle that is not a ship.
+       */
+      readonly kind: 'dockVehicle';
+      readonly vehicle: Entity;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
       /** Stop one owned vehicle's drive on the node it is crossing, the original's `p` order; its task
        *  then reads `interrupted` until the next order. */
       readonly kind: 'stopVehicle';

@@ -9,6 +9,7 @@ import {
   Position,
   Production,
   Settler,
+  SettlerProgress,
   SiteAssignment,
   Stockpile,
   UnderConstruction,
@@ -205,7 +206,6 @@ function carpenterAt(s: Simulation, x: number, y: number, workplace: Entity, own
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   s.world.add(e, JobAssignment, { workplace });
   s.world.add(e, Owner, { player: owner });
@@ -396,7 +396,7 @@ describe('building the vehicle', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s, [PLANK, HANDCART_GOOD]);
     s.world.mut(shop, Stockpile).amounts.set(WOOD, 5);
-    s.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP); // planks are earned
+    s.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP); // planks are earned
     s.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 4, y: 4, tribe: VIKING, owner: P0 }); // and unlocked
     let ticks = 0;
     let plankStarted = false;

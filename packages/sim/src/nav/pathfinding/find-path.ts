@@ -10,7 +10,7 @@
  */
 import { fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
-import { latticeDistanceTo, type NodeId, type TerrainGraph } from '../terrain/index.js';
+import { latticeDistanceTo, type NodeId, type TerrainGraph, type Traversal } from '../terrain/index.js';
 import { siftDown, siftUp } from './heap.js';
 import { MAX_QUERY_GENERATION, type NodeRecord, type SearchScratch, scratchFor } from './scratch.js';
 
@@ -64,9 +64,9 @@ export const GOAL_EXHAUST_MAX_EXPLORED = 32768;
 export const RACE_SLICE_EXPLORED = 256;
 
 /**
- * Find the lowest-cost walkable path from `start` to `goal` on the half-cell graph, inclusive of
- * both endpoints. Returns `null` when no route exists or either endpoint is unwalkable.
- * `start === goal` yields the single-node path `[start]` (when walkable).
+ * Find the lowest-cost path from `start` to `goal` on the half-cell graph for a mover of `traversal`
+ * (land unless told otherwise), inclusive of both endpoints. Returns `null` when no route exists or
+ * either endpoint is closed to the mover. `start === goal` yields the single-node path `[start]`.
  *
  * `blocked` is the dynamic walk-block overlay applied on top of static terrain walkability: a blocked node
  * is never entered, the goal included, but a blocked start is exempt so an entity standing where a
@@ -80,15 +80,24 @@ export function findPath(
   goal: NodeId,
   blocked?: BlockOverlay,
   stats?: SearchStats,
+  traversal: Traversal = 'land',
 ): NodeId[] | null {
-  if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
+  if (!graph.traversable(start, traversal) || !graph.traversable(goal, traversal)) return null;
   // Already-there wins over the overlay, consistent with the blocked-start exemption.
   if (start === goal) return [start];
   if (blocked?.has(goal)) return null;
   // `blocked` only removes edges, so endpoints in different static components are provably unreachable.
   // Sharing a component proves nothing, since the overlay may still wall the goal off.
   if (graph.componentOf(start) !== graph.componentOf(goal)) return null;
-  const forward = new ResumableSearch(scratchFor(graph, 'forward'), graph, start, goal, blocked, stats);
+  const forward = new ResumableSearch(
+    scratchFor(graph, 'forward'),
+    graph,
+    start,
+    goal,
+    blocked,
+    stats,
+    traversal,
+  );
   // Without an overlay a shared static component means reachable, so the search can never flood.
   if (blocked === undefined || blocked.size === 0) return pathOf(forward.advance(UNCAPPED));
   // The reverse probe re-admits a blocked start as its target: forward, the walker may leave that node but
@@ -97,7 +106,15 @@ export function findPath(
   const probeBlocked: BlockOverlay = blocked.has(start)
     ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
     : blocked;
-  const reverse = new ResumableSearch(scratchFor(graph, 'reverse'), graph, goal, start, probeBlocked, stats);
+  const reverse = new ResumableSearch(
+    scratchFor(graph, 'reverse'),
+    graph,
+    goal,
+    start,
+    probeBlocked,
+    stats,
+    traversal,
+  );
   const probe = reverse.advance(POCKET_PROBE_MAX_EXPLORED);
   if (probe === 'unreachable') return null;
   // Reaching the start only proves reachability: reverse costs are asymmetric, so the forward search still
@@ -122,7 +139,7 @@ export function findPath(
 }
 
 /**
- * One capped forward A* with no pocket probe: `'unreachable'` is exact, `'aborted'` means the cap ran out
+ * One capped forward A* for a land walker, with no pocket probe: `'unreachable'` is exact, `'aborted'` means the cap ran out
  * first. For short searches that fall back to {@link findPath} on anything but a route.
  */
 export function findPathWithin(
@@ -136,9 +153,15 @@ export function findPathWithin(
   if (!graph.isWalkable(start) || !graph.isWalkable(goal) || blocked.has(goal)) return 'unreachable';
   if (start === goal) return [start];
   if (graph.componentOf(start) !== graph.componentOf(goal)) return 'unreachable';
-  return new ResumableSearch(scratchFor(graph, 'forward'), graph, start, goal, blocked, stats).advance(
-    maxExplored,
-  );
+  return new ResumableSearch(
+    scratchFor(graph, 'forward'),
+    graph,
+    start,
+    goal,
+    blocked,
+    stats,
+    'land',
+  ).advance(maxExplored);
 }
 
 const UNCAPPED = Number.POSITIVE_INFINITY;
@@ -172,6 +195,7 @@ class ResumableSearch {
     private readonly goal: NodeId,
     private readonly blocked: BlockOverlay | undefined,
     private readonly stats: SearchStats | undefined,
+    private readonly traversal: Traversal,
   ) {
     if (scratch.query >= MAX_QUERY_GENERATION) {
       scratch.stamps.fill(0);
@@ -202,7 +226,7 @@ class ResumableSearch {
 
   /** Settle until a verdict, or return `'aborted'` once this search has settled `maxExplored` in total. */
   advance(maxExplored: number): NodeId[] | 'unreachable' | 'aborted' {
-    const { graph, goal, blocked, stats, query } = this;
+    const { graph, goal, blocked, stats, query, traversal } = this;
     const { records, stamps, heap, steps } = this.scratch;
     if (this.scratch.query !== query)
       throw new Error('a newer search on this scratch overwrote a paused one');
@@ -225,7 +249,7 @@ class ResumableSearch {
         siftDown(heap, 0, betterRecord);
       }
 
-      graph.stepsInto(current.node, blocked, steps);
+      graph.stepsInto(current.node, blocked, steps, traversal);
       for (let i = 0; i < steps.length; i++) {
         const { node: next, cost } = steps.at(i);
         const tentativeG = fx.add(current.g, cost);

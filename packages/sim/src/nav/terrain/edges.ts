@@ -13,7 +13,7 @@ import { fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../world-metric.js';
 
-import { TerrainLattice } from './lattice.js';
+import { TerrainLattice, type Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
 import { type Step, StepBuffer } from './step-buffer.js';
 
@@ -98,40 +98,46 @@ export abstract class TerrainEdges extends TerrainLattice {
   }
 
   /** {@link steps} emitted into a caller-owned buffer, which is reset first. */
-  stepsInto(node: NodeId, blocked: BlockOverlay | undefined, out: StepBuffer): void {
+  stepsInto(
+    node: NodeId,
+    blocked: BlockOverlay | undefined,
+    out: StepBuffer,
+    traversal: Traversal = 'land',
+  ): void {
     const x = this.xOf(node);
     const y = this.yOf(node);
     out.reset();
     for (const [dx, dy] of COLUMN_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!this.passable(nx, ny, blocked)) continue;
+      if (!this.passable(nx, ny, blocked, traversal)) continue;
       const c = this.idAt(nx, ny);
       out.push(c, fx.mul(this.walkCostAt(c), HALF_COLUMN));
     }
     for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!this.passable(nx, ny, blocked)) continue;
+      if (!this.passable(nx, ny, blocked, traversal)) continue;
       const fy = y + dy / 2;
       // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
-      if (!this.passable(x, fy, blocked) && !this.passable(nx, fy, blocked)) continue;
+      if (!this.passable(x, fy, blocked, traversal) && !this.passable(nx, fy, blocked, traversal)) continue;
       const c = this.idAt(nx, ny);
       out.push(c, fx.mul(this.walkCostAt(c), DIAGONAL_STEP));
     }
     for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!this.passable(nx, ny, blocked)) continue;
+      if (!this.passable(nx, ny, blocked, traversal)) continue;
       const c = this.idAt(nx, ny);
       out.push(c, fx.mul(this.walkCostAt(c), HALF_ROW));
     }
   }
 
-  /** Whether `(nx, ny)` is in bounds, walkable, and not masked by the dynamic `blocked` overlay. */
-  private passable(nx: number, ny: number, blocked?: BlockOverlay): boolean {
+  /** Whether `(nx, ny)` is in bounds, open to `traversal`, and not masked by the dynamic `blocked`
+   *  overlay. */
+  private passable(nx: number, ny: number, blocked: BlockOverlay | undefined, traversal: Traversal): boolean {
     if (!this.inBounds(nx, ny)) return false;
     const c = this.idAt(nx, ny);
-    return this.walkableAt(c) && !(blocked?.has(c) ?? false);
+    return (traversal === 'land' ? this.walkableAt(c) : this.isWater(c)) && !(blocked?.has(c) ?? false);
   }
 }

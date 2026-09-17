@@ -12,8 +12,9 @@ import { buildingBlockedCells } from './building-blocked-cache.js';
 import { buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
-// The per-world free-size classes vehicles route by, over the ground walk-block (buildings, resources,
-// landscapes; never vehicles, which the mover judges against each other at step time). The classes are
+// The per-world free-size classes vehicles route by, on land and on water, over the ground walk-block
+// (buildings, resources, landscapes; never vehicles, which the mover judges against each other at step
+// time). The classes are
 // kept current by replaying the two footprinted stores' membership journals: a placed or razed blocker
 // re-derives the classes around its own cells, so the update cost is local to the change. Derived state,
 // never hashed.
@@ -50,7 +51,7 @@ export function groundBlockOverlay(world: World, ctx: SystemContext, terrain: Te
 
 function probeOf(world: World, ctx: SystemContext, terrain: TerrainGraph): ClearanceProbe {
   const blocked = groundBlockOverlay(world, ctx, terrain);
-  return (node) => terrain.isWalkable(node) && !blocked.has(node);
+  return (node) => (terrain.isWalkable(node) || terrain.isWater(node)) && !blocked.has(node);
 }
 
 /** Every cell whose walk-block membership `e` can decide: a building's body plus its door (the door
@@ -137,8 +138,8 @@ function catchUp(world: World, ctx: SystemContext, memo: ClearanceMemo): boolean
 }
 
 /**
- * The current free-size classes over the ground walk-block. The returned field is the live memo:
- * read it within a decision and never across a blocker change.
+ * The current free-size classes over the ground walk-block, land and water alike. The returned field
+ * is the live memo: read it within a decision and never across a blocker change.
  */
 export function vehicleClearance(world: World, ctx: SystemContext, terrain: TerrainGraph): ClearanceField {
   const held = memoByWorld.get(world);

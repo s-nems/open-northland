@@ -142,34 +142,5 @@ export function buildScriptLandscapeTerrain(map: TerrainMapFile, ir: ContentIr):
       });
     });
   }
-  const landVertices = landVertexMask(map, ir);
-  return {
-    ...terrain,
-    landscapes: { types, placements },
-    ...(landVertices === undefined ? {} : { landVertices }),
-  };
-}
-
-/** Approximation: both source triangles must be known dry land before their 2×2 nodes receive land-only tint. */
-function landVertexMask(map: TerrainMapFile, ir: ContentIr): boolean[] | undefined {
-  if (map.ground === undefined) return undefined;
-  const waterByType = new Map((ir.trianglePatternTypes ?? []).map((t) => [t.type, t.isWater]));
-  const typeByName = new Map((ir.gfxPatterns ?? []).map((p) => [p.editName, p.logicType]));
-  const dry = map.ground.patterns.map((name) => {
-    const type = typeByName.get(name);
-    return type !== undefined && waterByType.get(type) === false;
-  });
-  const width = map.width * 2;
-  const mask = new Array<boolean>(width * map.height * 2).fill(false);
-  for (let y = 0; y < map.height; y++) {
-    for (let x = 0; x < map.width; x++) {
-      const cell = y * map.width + x;
-      const a = map.ground.a[cell];
-      const b = map.ground.b[cell];
-      if (a === undefined || b === undefined || !dry[a] || !dry[b]) continue;
-      for (let dy = 0; dy < 2; dy++)
-        for (let dx = 0; dx < 2; dx++) mask[(2 * y + dy) * width + 2 * x + dx] = true;
-    }
-  }
-  return mask;
+  return { ...terrain, landscapes: { types, placements } };
 }

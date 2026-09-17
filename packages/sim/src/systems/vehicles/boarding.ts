@@ -5,6 +5,7 @@ import {
   Rider,
   Vehicle,
   VehicleDrive,
+  vehicleCommander,
   vehiclePassengers,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -30,6 +31,7 @@ import {
   releaseRider,
   setDownRider,
 } from './crew.js';
+import { startDock } from './dock.js';
 import { refuseMove, startVehicleDrive } from './movement.js';
 
 // The boarding drives of docs/formats/VEHICLES.md "Crew" and "Ships and docking": a vehicle that needs its
@@ -248,16 +250,34 @@ function resumeHeldGoal(world: World, ctx: SystemContext, terrain: TerrainGraph,
   const goal = live.heldGoal;
   live.heldGoal = null;
   live.task = 'none';
+  live.mooring = null;
   if (goal === null) return;
   const node = terrain.nodeAtClamped(goal.hx, goal.hy);
   if (!startVehicleDrive(world, ctx, terrain, vehicle, node)) refuseMove(world, ctx, vehicle, 'noPath');
 }
 
+/** A dock point held for boarding: the ship casts off toward it once the crew is inside, unless its
+ *  commander left meanwhile, in which case the order lapses with the no-commander note. */
+function resumeHeldDock(world: World, ctx: SystemContext, terrain: TerrainGraph, vehicle: Entity): void {
+  const state = world.get(vehicle, Vehicle);
+  const point = state.heldGoal;
+  if (point === null) return;
+  if (vehicleCommander(state) === null) {
+    const live = world.mut(vehicle, Vehicle);
+    live.heldGoal = null;
+    live.task = 'none';
+    refuseMove(world, ctx, vehicle, 'noCommander');
+    return;
+  }
+  startDock(world, ctx, terrain, vehicle, { hx: point.hx, hy: point.hy });
+}
+
 /**
  * Drive the vehicles that wait on their crew or board a ship. `waitsForHuman` ends, and any held goto
- * starts, once every rider is inside. `boardsShip` boards the vehicle's own crew first, then drives to
- * the carrier's door node and rides inside on arrival; a carrier that cannot take it any more, or a door
- * it cannot reach, drops the load with the player's note.
+ * starts, once every rider is inside; a dock point held under `docks` starts its sail the same way.
+ * `boardsShip` boards the vehicle's own crew first, then drives to the carrier's door node and rides
+ * inside on arrival; a carrier that cannot take it any more, or a door it cannot reach, drops the load
+ * with the player's note.
  */
 export const vehicleBoardingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -266,6 +286,10 @@ export const vehicleBoardingSystem: System = (world, ctx) => {
     const state = world.get(e, Vehicle);
     if (state.task === 'waitsForHuman') {
       if (boardCrew(world, ctx, e)) resumeHeldGoal(world, ctx, terrain, e);
+      continue;
+    }
+    if (state.task === 'docks' && state.heldGoal !== null) {
+      if (boardCrew(world, ctx, e)) resumeHeldDock(world, ctx, terrain, e);
       continue;
     }
     if (state.task !== 'boardsShip') continue;

@@ -6,6 +6,7 @@ import {
   ownerOf,
   Person,
   Position,
+  Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
@@ -30,6 +31,10 @@ export function isMissionAnimal(world: World, e: Entity): boolean {
   return isWildlife(world, e);
 }
 
+export function isMissionVehicle(world: World, e: Entity): boolean {
+  return world.has(e, Vehicle);
+}
+
 /** The entities stamped with mission object `id`, ascending by entity id and narrowed to one kind.
  *  Each answers a fresh array, so a caller may remove or re-stamp what it got back. */
 export function missionHumans(world: World, id: number): Entity[] {
@@ -42,6 +47,10 @@ export function missionHouses(world: World, id: number): Entity[] {
 
 export function missionAnimals(world: World, id: number): Entity[] {
   return missionObjects(world, id).filter((e) => isMissionAnimal(world, e));
+}
+
+export function missionVehicles(world: World, id: number): Entity[] {
+  return missionObjects(world, id).filter((e) => isMissionVehicle(world, e));
 }
 
 /** Everything `player` owns within `range` map points of `point`, ascending by entity id. */

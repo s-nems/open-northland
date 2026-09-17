@@ -2,11 +2,15 @@ import { cellOfNode } from '../halfcell.js';
 import { TerrainEdges } from './edges.js';
 import type { LandscapeProps } from './landscape-props.js';
 import type { LandscapeMapInput } from './landscapes.js';
+import type { Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
 import { StepBuffer } from './step-buffer.js';
 
 /** The ground speed class every node reads until the map's roughness lane is imported. */
 const FLAT_GROUND_SPEED_CLASS = 0;
+
+/** The two mover classes in the order their continents are labelled. */
+const TRAVERSALS: readonly Traversal[] = ['land', 'water'];
 
 /**
  * The roughness every node of a map without an `lmpr` lane reads: the owned corpus's `land` value
@@ -31,12 +35,14 @@ export class TerrainGraph extends TerrainEdges {
     typeIds: Int32Array,
     props: ReadonlyMap<number, LandscapeProps>,
     readonly landscapes?: LandscapeMapInput,
-    readonly landVertices?: readonly boolean[],
+    landVertices?: readonly boolean[],
+    /** The original `lmco` continent id per node, the authored key fish swarms are matched on; the
+     *  movers compare {@link componentOf} instead. */
     readonly waterContinents?: readonly number[],
     roughness?: readonly number[],
     readonly elevation?: readonly number[],
   ) {
-    super(width, height, typeIds, props);
+    super(width, height, typeIds, props, landVertices);
     if (waterContinents !== undefined && waterContinents.length !== this.nodeCount) {
       throw new Error(`water continent lane has ${waterContinents.length} nodes, expected ${this.nodeCount}`);
     }
@@ -73,10 +79,12 @@ export class TerrainGraph extends TerrainEdges {
   }
 
   /**
-   * The static-connectivity label of a node: nodes reachable over static terrain share a label,
-   * unwalkable nodes are -1. A walk-block overlay only removes edges, so two differently labelled nodes
-   * are provably unreachable under any overlay. Labels are assigned by ascending seed id at build time,
-   * making them a pure function of the terrain.
+   * The static-connectivity label of a node, the continent key land and water share: nodes reachable
+   * over static terrain by one mover class share a label, land labels come first and water labels
+   * after them, and a node no class enters (a rock face, a tree trunk, the border) is -1. A walk-block
+   * overlay only removes edges, so two differently labelled nodes are provably unreachable under any
+   * overlay. Labels are assigned by ascending seed id at build time, making them a pure function of
+   * the terrain.
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);
@@ -94,30 +102,32 @@ export class TerrainGraph extends TerrainEdges {
   }
 
   /** Flood-fill the static components over the pathfinder's own edge set, so the diagonal flank-seam
-   *  rule has one owner. Edges are symmetric within the walkable set, so the BFS labelling is
-   *  well-defined. Runs from the constructor, so an override of {@link stepsInto} would see a
-   *  subclass's own fields still uninitialised. */
+   *  rule has one owner: the land components first, then the water bodies. Edges are symmetric within
+   *  one class's node set, so the BFS labelling is well-defined. Runs from the constructor, so an
+   *  override of {@link stepsInto} would see a subclass's own fields still uninitialised. */
   private computeComponents(): Int32Array {
     const components = new Int32Array(this.nodeCount).fill(-1);
     const queue: NodeId[] = [];
     const edges = new StepBuffer();
     let nextLabel = 0;
-    for (let seed = 0; seed < this.nodeCount; seed++) {
-      if (components[seed] !== -1 || !this.isWalkable(seed as NodeId)) continue;
-      const label = nextLabel;
-      nextLabel += 1;
-      components[seed] = label;
-      queue.length = 0;
-      queue.push(seed as NodeId);
-      // The array iterator re-reads `length` each step, so `queue` is a live BFS queue: nodes pushed
-      // while walking it are visited in turn.
-      for (const cur of queue) {
-        this.stepsInto(cur, undefined, edges);
-        for (let i = 0; i < edges.length; i++) {
-          const { node } = edges.at(i);
-          if (components[node] === -1) {
-            components[node] = label;
-            queue.push(node);
+    for (const traversal of TRAVERSALS) {
+      for (let seed = 0; seed < this.nodeCount; seed++) {
+        if (components[seed] !== -1 || !this.traversable(seed as NodeId, traversal)) continue;
+        const label = nextLabel;
+        nextLabel += 1;
+        components[seed] = label;
+        queue.length = 0;
+        queue.push(seed as NodeId);
+        // The array iterator re-reads `length` each step, so `queue` is a live BFS queue: nodes pushed
+        // while walking it are visited in turn.
+        for (const cur of queue) {
+          this.stepsInto(cur, undefined, edges, traversal);
+          for (let i = 0; i < edges.length; i++) {
+            const { node } = edges.at(i);
+            if (components[node] === -1) {
+              components[node] = label;
+              queue.push(node);
+            }
           }
         }
       }

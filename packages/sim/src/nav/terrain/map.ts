@@ -11,7 +11,8 @@ import type { LandscapeMapInput } from './landscapes.js';
 export interface TerrainMap {
   readonly resolution: 'half-cell';
   readonly landscapes?: LandscapeMapInput;
-  /** Ground vertex land mask, row-major on the half-cell grid. */
+  /** Ground vertex land mask, row-major on the half-cell grid; unwalkable nodes off it are the water
+   *  ships sail. Omitted, every unwalkable node is water. */
   readonly landVertices?: readonly boolean[];
   /** Original `lmco` connectivity id at each half-cell node. */
   readonly waterContinents?: readonly number[];

@@ -71,9 +71,8 @@ builder's, the yard's bill is fetched through the ordinary site-supply rungs, an
 never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
 cursor (the original's scheduling is not decoded); the work point is the house door for both hammering
 and the ship site's shore test, so "a water continent bordering the worker's continent" reduces to the
-door lying on the worker's land component; a ship site's water clearance is computed on the spot as
-"`logicsize` rings of one water continent around every body node" because the land free-size field
-stops at the shore; a parked vehicle counts as reason 9 only when it stands on the house body, since a
+door lying on the worker's land component; a ship site needs the water side of the shared free-size field to admit
+`logicsize` at every body node, all on one water body; a parked vehicle counts as reason 9 only when it stands on the house body, since a
 vehicle is also a placement obstacle for the reserved margin; a failed search parks the worker for the
 failed-goal memo's span before it looks again; the finished site leaves without a collapse event and
 heaps any surplus delivered past the bill. The chest catapult takes the opener's tribe.
@@ -150,34 +149,58 @@ to a per-node counter that completes at 10000, and the map position moves at 500
 the only vehicle with the doubling; a turn costs 2 ticks per hexagon direction. `p` stops (task 5
 "interrupted") and returns to the current node.
 
-Open Northland: the free-size class is the largest hex-disc radius of passable same-continent
-nodes around the node, capped at 7 (`nav/clearance.ts`); `g` reads 0 everywhere until the map's
-roughness lane is imported (`TerrainGraph.groundSpeedClass`); the walk range is a hexagon distance
-gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of being
-ignored; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces the
-hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
+Open Northland: one `TerrainGraph` carries both mover classes (`Traversal`, `nav/terrain`): a
+settler, cart or catapult walks the land nodes, a ship sails the water nodes (unwalkable ground no
+land vertex claims), and the static component labels land and water bodies in one key space, land
+first, so the goto's continent test and the dock ring search compare the same key on either side.
+The free-size class is the largest hex-disc radius of open same-continent nodes around the node,
+capped at 7, one field for land and water (`nav/clearance.ts`); `g` reads 0 everywhere until the
+map's roughness lane is imported (`TerrainGraph.groundSpeedClass`); the walk range is a hexagon
+distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of
+being ignored; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces
+the hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
 routed around, the shove happens on entering a node only and sends a settler outside the discs of
-the whole remaining route.
+the whole remaining route. A real map's water is the cells whose two ground triangles are both
+`isWater` pattern types (approximation of the per-node rule; an unknown or border pattern counts as
+land, so a ship never sails onto the map edge).
 
 ## Ships and docking
 
 Ships never attack. A ship spawns moored when a land continent borders it within
-`passengervector[1]` steps, otherwise with no mooring point. Dock (`g`) on a land point: needs a
-commander; a moored ship boards everyone first; then scans the hex ring of radius
-`passengervector[1]` around the point for a node on the ship's continent with clearance
-`>= logicsize`, walks there, stores the mooring point and task 1 "docks"; on arrival the dock
-animation plays and the moored flag is set. No port building is involved. The bas-c label
-`IsShipAtSea` is inverted: it is the moored flag. Unload people (`f` on a ship) empties the crew
-onto the door cell only when it is on land. When a vehicle leaves the map with its door on land,
-riders who are aboard are put on the door cell and riders still walking to it are only detached
-where they stand (`Passengers_MoveOut_h`), and a carried vehicle is set down on the door cell
-(`Passengers_MoveOut_v`); with the door at sea the crew dies and a carried vehicle is removed with
-the ship. Ships leave no wreck and no cargo.
+`passengervector[1]` steps, otherwise with no mooring point. Dock (`g`) on a land point
+(`DoExecuteUserCommand_Dock`): needs a commander; a moored ship runs `l_Passengers_MoveIn` first
+and the order waits while anyone is outside; then it scans the hex ring of exactly radius
+`passengervector[1]` around the point, starting `passengervector[1]` steps north-west and turning
+through the six directions, for a non-border node whose continent byte equals the ship's own and
+whose size class is `>= logicsize`, and starts the walk (`l_StartAtomicWalk` with range 60) to the
+first that takes it; the walk sets task 1 "docks" and stores the *clicked point* as the mooring
+point. A ring node that is the ship's own position ends the order with nothing set. When no ring
+node takes the walk, a ship with its commander inside raises 0x32; without one it stores the point
+and plays the dock clip in place. Every node reached clears the moored flag
+(`DoNewMapPositionReached`), and so does every walk start; on the last node of a dock walk the dock
+clip (atomic 84) plays, and when it ends `CurrentTask_DoPerform` clears the task and sets the
+moored flag. A goto arrival with no commander inside re-moors the ship when a land continent borders
+the ring (`l_GetLandContinentIdFromBorder`); with the commander inside it stays at sea. No message is
+raised on arrival. No port building is involved. The bas-c label `IsShipAtSea` is inverted: it is
+the moored flag. Unload people (`f` on a ship) empties the crew onto the door cell only when it is on
+land. When a vehicle leaves the map with its door on land, riders who are aboard are put on the door
+cell and riders still walking to it are only detached where they stand (`Passengers_MoveOut_h`), and
+a carried vehicle is set down on the door cell (`Passengers_MoveOut_v`); with the door at sea the
+crew dies and a carried vehicle is removed with the ship. Ships leave no wreck and no cargo.
 
 Open Northland: a spawned ship's mooring point is the nearest walkable node in hexagon-ring order
 within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
 six map-point directions (approximation: the vehicle facing space is not read). Which node the
-original stores as the spawn mooring is *open*.
+original stores as the spawn mooring is *open*. `dockVehicle` (`systems/vehicles/dock.ts`) holds the
+point under the `docks` task while the crew boards, the twin of the goto's `waitsForHuman` hold; a
+ring node is open when the ship's walk-block admits it, which adds other vehicles' cells to the size
+class test; a ship already on a ring node moors in place (approximation: the original ends the order
+with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
+ship moors on the arrival tick with a `vehicleDocked` event, since the dock clip has no graphics
+record and its length is not read; a goto clears the pending mooring point and never re-moors on
+arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock
+walk that loses its route drops the mooring point behind the `vehicleNoPath` note. A sunk ship's
+crew is reaped like any death, so the owner's casualty tallies count it.
 
 ## Catapult
 
@@ -247,7 +270,8 @@ ruins without cargo (approximation: the original's dead-player teardown is not r
   corpus rows, all after an `attachtovehicle`; decoded as `boardVehicleAt.inside`.
 
 Results: `SendVehicle` and `DockVehicle` snap the point to the nearest unblocked node with the same
-continent key within radius 9, then queue `e` / `g` like a player click. `AddGoodsToVehicle` adds
+continent key within radius 9, then queue `e` / `g` like a player click (Open Northland runs the seat
+handlers directly: the goto's own radius-9 snap, and for a dock the ring search with no prior snap). `AddGoodsToVehicle` adds
 the full amount to every matching vehicle and raises wanted by the same amount.
 `AttachHumanToVehicle` resolves the first vehicle with the id and queues the attach command for
 every matching human. `RemoveVehiclesWithMissionId` handles at most 50 vehicles, removes crews only

@@ -47,10 +47,19 @@ export type SimEvent =
       readonly ruins: readonly HalfCellNode[];
     }
   | {
+      /** A ship reached the shore it was ordered to dock at and lies moored there, its door on the
+       *  mooring point `at`. */
+      readonly kind: 'vehicleDocked';
+      readonly entity: Entity;
+      readonly player: number | null;
+      readonly at: HalfCellNode;
+    }
+  | {
       /**
        * A vehicle's owner ordered it somewhere it cannot go: `noCommander` while nobody commands it,
-       * `noPath` for a target off its continent, out of its walk range, or unreachable. The player's
-       * `vehicleNoCommander` / `vehicleNoPath` notes.
+       * `noPath` for a target off its continent, out of its walk range, or unreachable, and for a
+       * dock point whose ring holds no node the ship may lie at. The player's `vehicleNoCommander` /
+       * `vehicleNoPath` notes.
        */
       readonly kind: 'vehicleMoveRefused';
       readonly entity: Entity;

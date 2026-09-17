@@ -37,7 +37,8 @@ export const Vehicle = defineComponent<{
   tribe: number;
   task: VehicleTask;
   facing: number;
-  /** A ship lying at a shore; its door is then `mooring`, the shore node it docked at. */
+  /** A ship lying at a shore; its door is then `mooring`, the shore point it docked at. A ship under
+   *  the `docks` task carries the point it sails toward here before it moors. */
   moored: boolean;
   mooring: HalfCellNode | null;
   /** An ox cart whose animal has arrived. */
@@ -46,7 +47,8 @@ export const Vehicle = defineComponent<{
   carrier: Entity | null;
   passengers: (VehicleSeat | null)[];
   vehicles: (VehicleSeat | null)[];
-  /** A goto the vehicle holds while it boards its crew; the drive starts once everyone is inside. */
+  /** The point an order holds while the vehicle boards its crew, a goto under `waitsForHuman` or a
+   *  dock under `docks`; the drive starts once everyone is inside. */
   heldGoal: HalfCellNode | null;
 }>('Vehicle', 'movement');
 

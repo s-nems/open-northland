@@ -355,10 +355,10 @@ describe('the counting goals that tag what they counted', () => {
     // Another player's cart, and this player's catapult, are not this player's carts.
     createVehicle(sim.world, ctxOf(sim), { vehicleType: HANDCART, tribe: VIKING, owner: 3, x: 4, y: 4 });
     createVehicle(sim.world, ctxOf(sim), { vehicleType: CATAPULT, tribe: VIKING, owner: 2, x: 8, y: 8 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     createVehicle(sim.world, ctxOf(sim), { vehicleType: HANDCART, tribe: VIKING, owner: 2, x: 12, y: 4 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, 44)).toHaveLength(1);
   });

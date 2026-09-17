@@ -22,6 +22,13 @@ function flagsOf(p: LandscapeProps): number {
   return (p.walkable ? WALKABLE : 0) | (p.buildable ? BUILDABLE : 0) | (p.plantable ? PLANTABLE : 0);
 }
 
+/**
+ * The ground a mover crosses: settlers, carts and catapults walk the land, ships sail the water. One
+ * graph serves both, the original's single navigation map whose continents come in a land and a water
+ * kind (docs/formats/VEHICLES.md "Movement"); the class picks which nodes an edge may enter.
+ */
+export type Traversal = 'land' | 'water';
+
 export abstract class TerrainLattice {
   readonly width: number;
   readonly height: number;
@@ -37,6 +44,8 @@ export abstract class TerrainLattice {
     height: number,
     typeIds: Int32Array,
     props: ReadonlyMap<number, LandscapeProps>,
+    /** Ground vertex land mask, row-major; absent, every unwalkable node reads as water. */
+    readonly landVertices?: readonly boolean[],
   ) {
     if (width <= 0 || height <= 0) throw new Error(`terrain dimensions must be positive: ${width}x${height}`);
     if (typeIds.length !== width * height) {
@@ -110,6 +119,18 @@ export abstract class TerrainLattice {
   /** True if a unit may stand on / walk through this node. */
   isWalkable(node: NodeId): boolean {
     return (this.checkedSlot(this.flags, node) & WALKABLE) !== 0;
+  }
+
+  /** Open water: ground no unit walks and no land vertex claims, so a rock face or a tree trunk on land
+   *  stays land. A ship sails where this holds. */
+  isWater(node: NodeId): boolean {
+    return !this.isWalkable(node) && this.landVertices?.[node] !== true;
+  }
+
+  /** Whether a mover of `traversal` may stand on this node: {@link isWalkable} on land, {@link isWater}
+   *  at sea. */
+  traversable(node: NodeId, traversal: Traversal): boolean {
+    return traversal === 'land' ? this.isWalkable(node) : this.isWater(node);
   }
 
   /** Whether a building's reserved zone may cover this node. Placement only; navigation reads

@@ -232,6 +232,11 @@ export const plContent = {
       summary:
         'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek, szczątki wozu rozbitego w pierwszej turze oraz wóz z wołem i katapulta z załogą jadące na wschód dolnymi rzędami, katapulta o połowę wolniej.',
     },
+    'vehicle-ships': {
+      title: 'Statek przez cieśninę',
+      summary:
+        'Mała łódź cumuje przy zachodnim brzegu. Trzech wojowników wsiada na nią i dostaje rozkaz przybicia do wschodniego brzegu: łódź czeka, aż wszyscy będą na pokładzie, odbija, przepływa cieśninę, cumuje po drugiej stronie i wysadza oddział na wskazanym punkcie.',
+    },
     'vehicle-yard': {
       title: 'Warsztat wozów',
       summary:

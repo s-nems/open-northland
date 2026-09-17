@@ -92,6 +92,7 @@ export const COMMAND_ISSUER: {
   demolishSignpost: 'seat',
   detachFromVehicle: 'seat',
   detachTradeHouse: 'seat',
+  dockVehicle: 'seat',
   clearTradeImports: 'seat',
   createVehicle: 'trusted',
   dropGood: 'trusted',

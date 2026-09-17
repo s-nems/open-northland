@@ -12,7 +12,14 @@ import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
 import { scriptInfoLine } from './info.js';
 import { editScriptedLandscape } from './landscape.js';
-import { moveUnitsInArea, sendScriptedHumans, stopPlayerHumans, teleportScriptedHumans } from './movement.js';
+import {
+  dockScriptedVehicles,
+  moveUnitsInArea,
+  sendScriptedHumans,
+  sendScriptedVehicles,
+  stopPlayerHumans,
+  teleportScriptedHumans,
+} from './movement.js';
 import { stampHumansInRange, stampPlayerHumans } from './object-id.js';
 import {
   handAnimalsToPlayer,
@@ -151,6 +158,12 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       return;
     case 'SendHuman':
       sendScriptedHumans(pass, result.humanId, result.point);
+      return;
+    case 'SendVehicle':
+      sendScriptedVehicles(pass, result.vehicleId, result.point);
+      return;
+    case 'DockVehicle':
+      dockScriptedVehicles(pass, result.vehicleId, result.point);
       return;
     case 'MoveHuman':
       teleportScriptedHumans(pass, result.humanId, result.point);

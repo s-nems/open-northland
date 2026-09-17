@@ -9,7 +9,7 @@ import type { SystemContext } from '../../context.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { ANCHOR_ONLY, translatedCells } from '../geometry.js';
 import { vehicleClearance } from '../vehicle-clearance.js';
-import { hexDisc, vehicleFootprintNodes } from '../vehicle-footprint.js';
+import { vehicleFootprintNodes } from '../vehicle-footprint.js';
 import { canPlaceBuilding } from './building.js';
 
 // Where a workshop's worker raises the hidden site of a vehicle house (docs/formats/VEHICLES.md
@@ -69,31 +69,6 @@ function parkedVehicleNodes(world: World, ctx: SystemContext, terrain: TerrainGr
   return nodes;
 }
 
-/** A node of open water: static ground no unit walks and no land vertex claims. */
-function isWater(terrain: TerrainGraph, node: NodeId): boolean {
-  return !terrain.isWalkable(node) && terrain.landVertices?.[node] !== true;
-}
-
-/**
- * Whether every map point within `size` hexagon steps of `(hx, hy)` is water of `continent`: the
- * water-side twin of the land free-size class (`nav/clearance.ts`), computed on the spot because the
- * clearance field spans land only. Approximation: the original reads one class field for both.
- */
-function waterClearanceAdmits(
-  terrain: TerrainGraph,
-  hx: number,
-  hy: number,
-  size: number,
-  continent: number,
-): boolean {
-  for (const point of hexDisc({ hx, hy }, size)) {
-    if (!terrain.inBounds(point.hx, point.hy)) return false;
-    const node = terrain.nodeAt(point.hx, point.hy);
-    if (!isWater(terrain, node) || terrain.waterContinents?.[node] !== continent) return false;
-  }
-  return true;
-}
-
 /** The half-cell nodes of `house`'s walk-block body at anchor `(hx, hy)`, or the bare anchor for a
  *  footprint-less type; null when any lies off the map. */
 function bodyNodes(terrain: TerrainGraph, house: BuildingType, hx: number, hy: number): NodeId[] | null {
@@ -145,13 +120,15 @@ function landObjection(
 }
 
 /**
- * Why a ship house may not go at `(hx, hy)`: its body must lie on one water continent, every body node
- * with `logicSize` of water around it, its work point on the worker's shore, and no ship parked there.
- * The shore rule is what "a water continent bordering the worker's continent" reduces to when the work
- * point is a footprint cell (approximation: the original's continent-adjacency test is not read).
+ * Why a ship house may not go at `(hx, hy)`: its body must lie on one water body, every body node with
+ * the free-size class the vehicle needs (the water side of the one clearance field), its work point on
+ * the worker's shore, and no ship parked there. The shore rule is what "a water continent bordering
+ * the worker's continent" reduces to when the work point is a footprint cell (approximation: the
+ * original's continent-adjacency test is not read).
  */
 function waterObjection(
   world: World,
+  ctx: SystemContext,
   terrain: TerrainGraph,
   house: BuildingType,
   vehicle: VehicleType,
@@ -160,20 +137,17 @@ function waterObjection(
   hx: number,
   hy: number,
 ): Objection {
-  if (terrain.waterContinents === undefined) return 'blocked';
   const body = bodyNodes(terrain, house, hx, hy);
   if (body === null) return 'blocked';
   for (const node of body) if (parked.has(node)) return 'occupied';
   const anchor = terrain.nodeAt(hx, hy);
-  if (!isWater(terrain, anchor)) return 'blocked';
-  const continent = terrain.waterContinents[anchor];
-  if (continent === undefined) return 'blocked';
+  if (!terrain.isWater(anchor)) return 'blocked';
+  const continent = terrain.componentOf(anchor);
   const forbidden = landscapeEditState(world).forbidden;
+  const clearance = vehicleClearance(world, ctx, terrain);
   for (const node of body) {
-    if (forbidden.has(node)) return 'blocked';
-    if (!waterClearanceAdmits(terrain, terrain.xOf(node), terrain.yOf(node), vehicle.logicSize, continent)) {
-      return 'blocked';
-    }
+    if (forbidden.has(node) || terrain.componentOf(node) !== continent) return 'blocked';
+    if (clearance.classOf(node) < vehicle.logicSize) return 'blocked';
   }
   const point = workPoint(terrain, house, hx, hy);
   if (point === null || terrain.componentOf(point) !== workerContinent) return 'blocked';
@@ -204,7 +178,7 @@ export function findVehicleSite(
     for (const { point } of hexagonRing(centre, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const objection = house.ignoreContinents
-        ? waterObjection(world, terrain, house, vehicle, workerContinent, parked, point.hx, point.hy)
+        ? waterObjection(world, ctx, terrain, house, vehicle, workerContinent, parked, point.hx, point.hy)
         : landObjection(world, ctx, terrain, house, vehicle, workerContinent, parked, point.hx, point.hy);
       if (objection === 'none') return { kind: 'site', node: point };
       if (objection === 'occupied') occupied = true;

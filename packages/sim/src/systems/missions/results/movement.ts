@@ -7,9 +7,11 @@ import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sendUnit } from '../../orders/movement.js';
 import { stepOut } from '../../settlers/indoors.js';
+import { dockVehicle } from '../../vehicles/dock.js';
+import { moveVehicle } from '../../vehicles/movement.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
-import { missionHumans, ownedBy, withinRange } from '../targets.js';
+import { missionHumans, missionVehicles, ownedBy, withinRange } from '../targets.js';
 
 /** How many humans one teleport line may carry, whatever it addresses (reading: the original fills a
  *  20-entry buffer and stops). */
@@ -26,6 +28,24 @@ function landable(pass: MissionPass, point: HalfCellNode): boolean {
  *  unit can stand on, so a script may aim at a blocked spot and still be obeyed. */
 export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCellNode): void {
   for (const e of missionHumans(pass.world, id)) walkTo(pass.world, pass.ctx, e, point);
+}
+
+/** Order every vehicle with the id to drive to the point: the seat's goto, which snaps the point to
+ *  the vehicle's continent within its snap radius and refuses like a player's click would. */
+export function sendScriptedVehicles(pass: MissionPass, id: number, point: HalfCellNode): void {
+  const { world, ctx } = pass;
+  for (const vehicle of missionVehicles(world, id)) {
+    moveVehicle(world, ctx, { kind: 'moveVehicle', vehicle, x: point.hx, y: point.hy });
+  }
+}
+
+/** Order every ship with the id to dock at the shore point: the seat's dock order, whose ring search
+ *  is the snap (approximation: the original snaps the point within radius 9 first). */
+export function dockScriptedVehicles(pass: MissionPass, id: number, point: HalfCellNode): void {
+  const { world, ctx } = pass;
+  for (const vehicle of missionVehicles(world, id)) {
+    dockVehicle(world, ctx, { kind: 'dockVehicle', vehicle, x: point.hx, y: point.hy });
+  }
 }
 
 /** Teleport up to {@link TELEPORT_CAP} humans with the id to the point and let them settle there. */

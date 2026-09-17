@@ -291,8 +291,8 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 21 | `ChangeHumanPlayerId` | 10, 1 | hand every human with the id to the player (detached from houses) | sim | 266 |
 | 22 | `ChangePlayerPlayerId` | 1, 2 | hand every vehicle, house, human, animal, and guide of the first player to the second | sim | 68 |
 | 23 | `SendHuman` | 10, 16, 17 | order every human with the id to walk to the nearest unblocked point; the walk is queued outright, so the signpost confinement a player's order obeys does not apply | sim | 521 |
-| 24 | `SendVehicle` | 12, 16, 17 | order vehicles with the id to move there | sim | 49 \* |
-| 25 | `DockVehicle` | 12, 16, 17 | order vehicles with the id to dock there | sim | 30 \* |
+| 24 | `SendVehicle` | 12, 16, 17 | order every vehicle with the id to drive there: the seat's goto, snapped within radius 9 on the vehicle's continent and refused like a click | sim | 49 |
+| 25 | `DockVehicle` | 12, 16, 17 | order every ship with the id to dock at the shore point: the seat's dock order, whose door-distance ring search stands in for the original's radius-9 snap (approximation) | sim | 30 |
 | 26 | `PlaySound` | 26, 16, 17 | play the sound effect at the point; the id is an `ATOMIC_ANIMATION_EVENT_SOUND_FX_TYPE_*` value (`logicdefines.inc`), the sound bank's `logicSoundType` (reading of the corpus's 56, 58, 60 against the bank). Here: the `missionSound` event, played by the audio director like an animation's cue | app | 498 |
 | 27 | `CreateTribute` | 28, 1, 2, 27 | open tribute slot `n` from the first player to the second with the description string, over whatever the slot held; starts paid and empty (reading) | sim | 995 |
 | 28 | `AddTributeGoods` | 28, 6, 7 | add to the slot's demand for the good or append a new one, up to 5 kinds, and mark the slot unpaid; skipped on a closed slot (reading) | sim | 1135 |

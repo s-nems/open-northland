@@ -97,6 +97,8 @@ export const SUPPORTED_RESULTS = [
   'ChangeMissionIdOfHumanInRange',
   'ChangeHumanObjectIdInArea',
   'SendHuman',
+  'SendVehicle',
+  'DockVehicle',
   'MoveHuman',
   'MoveUnitsInArea',
   'StopHumanByPlayerId',

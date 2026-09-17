@@ -18,6 +18,7 @@ export {
   passengerJobAllowed,
   unloadPeople,
 } from './crew.js';
+export { dockVehicle } from './dock.js';
 export {
   facingOfStep,
   moveVehicle,

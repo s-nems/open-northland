@@ -190,6 +190,8 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
     range: 4,
   },
   SendHuman: { opcode: 'SendHuman', humanId: 7, point: POINT },
+  SendVehicle: { opcode: 'SendVehicle', vehicleId: 7, point: POINT },
+  DockVehicle: { opcode: 'DockVehicle', vehicleId: 7, point: POINT },
   MoveHuman: { opcode: 'MoveHuman', humanId: 7, point: POINT },
   MoveUnitsInArea: {
     opcode: 'MoveUnitsInArea',

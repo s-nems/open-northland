@@ -9,7 +9,8 @@ import type { NodeId, TerrainGraph } from './terrain/index.js';
  */
 export const MAX_CLEARANCE_CLASS = 7;
 
-/** Whether a node counts as open ground for the clearance: static walkable and not walk-blocked. */
+/** Whether a node counts as open ground for the clearance: land a settler walks or water a ship sails,
+ *  neither walk-blocked. Land and water never share a component, so each side hems the other. */
 export type ClearanceProbe = (node: NodeId) => boolean;
 
 /** The class of a node no open node hemmed in within the cap, and of a node that is not open itself. */
@@ -24,7 +25,8 @@ const SCAN_DISC_NODES = 1 + 3 * SCAN_RADIUS * (SCAN_RADIUS + 1);
  * Per-node free-size classes over a terrain graph: a node's class is the largest hexagon-disc radius
  * around it whose every map point is in bounds, open (`probe`) and in the node's own static
  * component, capped at {@link MAX_CLEARANCE_CLASS}. A vehicle of `logicSize` s may enter a node
- * whose class is at least s. A node that is not open reads 0.
+ * whose class is at least s; one field serves carts on land and ships at sea, since a water node's
+ * disc holds only water of its own body. A node that is not open reads 0.
  *
  * Computed as a multi-source breadth-first distance over the six map-point neighbours: an open node
  * with a hemming neighbour (off the map, not open, or of another component) is at distance 0, and the

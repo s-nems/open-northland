@@ -25,6 +25,10 @@ import { forEachPlacement } from './map-placements.js';
  * The raw per-cell `typeIds` lane is not consulted: it is the object lane collapsed per cell (its dominant
  * value, 1 = "void", is plain ground), so the object join is the authoritative, area-accurate source.
  *
+ * The ground also yields the land vertex mask: a cell whose two triangles are both `isWater` rows is
+ * sea, everything else is land, so an impassable rock face or the border stays land and only the sea
+ * is water to a ship (`TerrainGraph.isWater`) and to a land-only vertex tint.
+ *
  * Missing lanes degrade, so a map with neither ground nor objects comes back all-open.
  */
 
@@ -37,6 +41,7 @@ export interface CollisionIrView {
   readonly trianglePatternTypes?:
     | readonly {
         readonly type: number;
+        readonly isWater?: boolean | undefined;
         readonly humanCanWalkOn?: boolean | undefined;
         readonly houseCanBeBuildOn?: boolean | undefined;
         readonly bioCanPlantOn?: boolean | undefined;
@@ -167,14 +172,41 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
     });
   }
 
+  const landVertices = landVertexMask(map, ir);
   return {
     resolution: 'half-cell',
     width: nodeW,
     height: nodeH,
     typeIds,
     ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
+    ...(landVertices === undefined ? {} : { landVertices }),
     ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
     ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
     ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),
   };
+}
+
+/** Approximation of the original's per-node land test at cell resolution: both source triangles must
+ *  be known water for the cell's 2x2 nodes to be sea. Undefined without a ground lane. */
+function landVertexMask(map: TerrainMapFile, ir: CollisionIrView): boolean[] | undefined {
+  if (map.ground === undefined) return undefined;
+  const waterByType = new Map((ir.trianglePatternTypes ?? []).map((t) => [t.type, t.isWater === true]));
+  const typeByName = new Map((ir.gfxPatterns ?? []).map((p) => [p.editName, p.logicType]));
+  const wet = map.ground.patterns.map((name) => {
+    const type = typeByName.get(name);
+    return type !== undefined && waterByType.get(type) === true;
+  });
+  const width = map.width * 2;
+  const mask = new Array<boolean>(width * map.height * 2).fill(true);
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) {
+      const cell = y * map.width + x;
+      const a = map.ground.a[cell];
+      const b = map.ground.b[cell];
+      if (a === undefined || b === undefined || !wet[a] || !wet[b]) continue;
+      for (let dy = 0; dy < 2; dy++)
+        for (let dx = 0; dx < 2; dx++) mask[(2 * y + dy) * width + 2 * x + dx] = false;
+    }
+  }
+  return mask;
 }

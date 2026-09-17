@@ -65,6 +65,7 @@ import {
   createVehicle,
   detachBeforeOrder,
   detachFromVehicle,
+  dockVehicle,
   forcesDetach,
   leaveCarrier,
   loadIntoVehicle,
@@ -152,6 +153,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'moveVehicle':
       moveVehicle(world, ctx, command);
+      return;
+    case 'dockVehicle':
+      dockVehicle(world, ctx, command);
       return;
     case 'stopVehicle':
       stopVehicle(world, command);

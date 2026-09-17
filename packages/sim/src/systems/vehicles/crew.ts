@@ -215,7 +215,8 @@ export function boardVehicle(
   if (!rider.boarding) world.mut(e, Rider).boarding = true;
 }
 
-/** The unload-people order - see the command doc. Every rider, aboard or on its way, is freed. */
+/** The unload-people order - see the command doc. Every rider, aboard or on its way, is freed, and an
+ *  order held for their boarding lapses with them. */
 export function unloadPeople(
   world: World,
   ctx: SystemContext,
@@ -233,7 +234,7 @@ export function unloadPeople(
   }
   const live = world.mut(vehicle, Vehicle);
   live.heldGoal = null;
-  if (live.task === 'waitsForHuman') live.task = 'none';
+  if (live.task === 'waitsForHuman' || live.task === 'docks') live.task = 'none';
 }
 
 /**

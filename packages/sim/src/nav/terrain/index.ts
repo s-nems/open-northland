@@ -7,6 +7,7 @@ export type {
   ScriptLandscapePlacement,
   ScriptLandscapeType,
 } from './landscapes.js';
+export type { Traversal } from './lattice.js';
 export * from './lattice-distance.js';
 export * from './map.js';
 export type { NodeId } from './node-id.js';

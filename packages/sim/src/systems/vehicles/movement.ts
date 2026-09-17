@@ -30,15 +30,17 @@ import {
 } from '../footprint/index.js';
 import { groundBlockOverlay, vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { redirectRoute } from '../movement/nav-state.js';
-import { isSiegeVehicle } from '../readviews/vehicles.js';
+import { isSiegeVehicle, vehicleTraversal } from '../readviews/vehicles.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { endChat } from '../social/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
-// The land mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
-// target off the vehicle's continent or walk range, the route runs over the shared graph through nodes
-// whose free-size class admits the vehicle's `logicSize`, each node takes the ground's move period, the
-// footprint travels with the anchor and shoves the settlers it lands on.
+// The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
+// target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
+// on water by the vehicle's traversal class, through nodes whose free-size class admits the vehicle's
+// `logicSize`, each node takes the ground's move period, the footprint travels with the anchor and
+// shoves the settlers it lands on. A ship that starts a drive leaves its mooring; one on a dock drive
+// moors again where it arrives (`dock.ts`).
 
 /** The walk range of a vehicle goto in map-point steps from where it stands (`Pathfinder_Start(goal, 60)`,
  *  the vehicle twin of the humans' 50/63). */
@@ -104,7 +106,8 @@ export function facingOfStep(from: HalfCellNode, to: HalfCellNode): number {
   return best;
 }
 
-/** The continent key a land vehicle's goto compares: the anchor's static component. -1 off land. */
+/** The continent key a vehicle's goto compares: the anchor's static component, a land or a water
+ *  label alike. -1 on a node no mover enters. */
 function continentOf(terrain: TerrainGraph, node: NodeId): number {
   return terrain.componentOf(node);
 }
@@ -114,7 +117,7 @@ function continentOf(terrain: TerrainGraph, node: NodeId): number {
  * vehicle's `logicSize`, and every other vehicle's standing cells. Its own cells are exempt so a
  * catapult can step through its own ring.
  */
-function vehicleWalkBlocks(
+export function vehicleWalkBlocks(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -194,9 +197,17 @@ export function startVehicleDrive(
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (anchor === null || type === undefined) return false;
   const start = terrain.nodeAtClamped(anchor.hx, anchor.hy);
-  const path = findPath(terrain, start, goal, vehicleWalkBlocks(world, ctx, terrain, vehicle, type));
+  const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
+  const path = findPath(terrain, start, goal, blocked, undefined, vehicleTraversal(type));
   if (path === null) return false;
   const route = path.slice(1).map((node) => nodeOf(terrain, node));
+  if (state.moored || state.heldGoal !== null) {
+    // Casting off: a walk that starts clears the moored flag (`l_StartAtomicWalk`), and a goal held for
+    // boarding is consumed by the drive that replaces it.
+    const live = world.mut(vehicle, Vehicle);
+    live.moored = false;
+    live.heldGoal = null;
+  }
   const drive = world.tryMut(vehicle, VehicleDrive);
   if (drive === undefined) {
     world.add(vehicle, VehicleDrive, {
@@ -214,9 +225,38 @@ export function startVehicleDrive(
   return true;
 }
 
-function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
+export function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
   const { x, y } = terrain.coordsOf(node);
   return { hx: x, hy: y };
+}
+
+/**
+ * A ship arriving on its dock drive lies moored where it stopped, its door on the stored mooring point
+ * (`CurrentTask_DoPerform` sets the flag when the dock clip ends; approximation: the clip has no
+ * graphics record here, so the ship moors on the arrival tick).
+ */
+export function moorVehicle(world: World, ctx: SystemContext, vehicle: Entity): void {
+  const live = world.mut(vehicle, Vehicle);
+  live.task = 'none';
+  if (live.mooring === null) return;
+  live.moored = true;
+  ctx.events.emit({
+    kind: 'vehicleDocked',
+    entity: vehicle,
+    player: world.tryGet(vehicle, Owner)?.player ?? null,
+    at: { hx: live.mooring.hx, hy: live.mooring.hy },
+  });
+}
+
+/** A dock drive that lost its way forgets the shore it aimed at, the way the original's task 1 falls
+ *  back to idle behind its `vehicleNoPath` note. */
+export function abandonDock(world: World, vehicle: Entity): void {
+  const state = world.get(vehicle, Vehicle);
+  if (state.task !== 'docks') return;
+  const live = world.mut(vehicle, Vehicle);
+  live.task = 'none';
+  live.heldGoal = null;
+  if (!live.moored) live.mooring = null;
 }
 
 /**
@@ -258,17 +298,19 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  if (state.task !== 'none') world.mut(e, Vehicle).task = 'none';
+  const live = world.mut(e, Vehicle);
+  live.task = 'none';
+  live.mooring = null; // a goto overrides a dock under way; the ship stays at sea on arrival
   return true;
 }
 
 /** Whether every seated rider, the commander among them, is inside. */
-function crewInside(state: VehicleStateView): boolean {
+export function crewInside(state: VehicleStateView): boolean {
   return state.passengers.every((seat) => seat === null || seat.inside);
 }
 
-/** The stop order (`p`): the drive ends on the node it is crossing, a goto held for boarding is
- *  dropped, and the task reads `interrupted`. */
+/** The stop order (`p`): the drive ends on the node it is crossing, a goto or dock held for boarding
+ *  is dropped, a dock under way forgets its shore, and the task reads `interrupted`. */
 export function stopVehicle(world: World, command: Extract<Command, { kind: 'stopVehicle' }>): void {
   const e = command.vehicle;
   const state = world.tryGet(e, Vehicle);
@@ -282,6 +324,7 @@ export function stopVehicle(world: World, command: Extract<Command, { kind: 'sto
   const live = world.mut(e, Vehicle);
   live.heldGoal = null;
   live.task = 'interrupted';
+  if (!live.moored) live.mooring = null;
 }
 
 /**
@@ -307,11 +350,12 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       continue;
     }
     const next = drive.route[0];
+    const state = world.get(e, Vehicle);
     if (next === undefined) {
       world.remove(e, VehicleDrive); // arrived, or stopped on its node
+      if (state.task === 'docks') moorVehicle(world, ctx, e);
       continue;
     }
-    const state = world.get(e, Vehicle);
     const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
     const anchor = vehicleAnchor(world, e);
     if (type === undefined || anchor === null) {
@@ -324,6 +368,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       if (!startVehicleDrive(world, ctx, terrain, e, goal)) {
         world.remove(e, VehicleDrive);
         refuseMove(world, ctx, e, 'noPath');
+        abandonDock(world, e);
       }
       continue; // the fresh route's first leg starts next tick
     }
