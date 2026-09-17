@@ -187,8 +187,9 @@ export function chase(
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   // Only a cell in the chaser's own static walk component can be walked to, so the far bank is never asked
   // for. Bridges and boats are not yet walkable, so two banks really are separate; a chaser on an unwalkable
-  // node (`-1`, truncated onto it mid-stride) is unlabelled and admits every cell.
-  const bank = terrain.componentOf(here);
+  // node (truncated onto it mid-stride) has no bank and admits every cell. Water nodes carry a label of
+  // their own since ships sail them, so the walkability test is what says "no bank", not the label.
+  const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
   const onOurBank = (cell: NodeId): boolean => bank < 0 || terrain.componentOf(cell) === bank;
 
   let dest: NodeId | null;

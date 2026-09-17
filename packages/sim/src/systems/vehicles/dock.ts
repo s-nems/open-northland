@@ -1,14 +1,21 @@
 import type { VehicleType } from '@open-northland/data';
-import { Vehicle, vehicleCommander } from '../../components/index.js';
+import { Vehicle, VehicleDrive, vehicleCommander } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexagonRing } from '../../nav/halfcell.js';
+import { type HalfCellNode, hexagonRing, hexDistance } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import { crewInside, moorVehicle, refuseMove, startVehicleDrive, vehicleWalkBlocks } from './movement.js';
+import {
+  crewInside,
+  moorVehicle,
+  refuseMove,
+  startVehicleDrive,
+  VEHICLE_WALK_RANGE_NODES,
+  vehicleWalkBlocks,
+} from './movement.js';
 
 // The dock order of docs/formats/VEHICLES.md "Ships and docking": a commanded ship boards its crew,
 // scans the hexagon ring of its door distance around the clicked shore point for a node of its own
@@ -17,9 +24,9 @@ import { crewInside, moorVehicle, refuseMove, startVehicleDrive, vehicleWalkBloc
 
 /**
  * The nodes a ship may dock at for `point`, in the original's ring order: the map points at exactly
- * the door distance from the point that lie on the ship's own continent and are open under its
- * walk-block, which is the free-size class test plus the other vehicles' cells. The ship's own node
- * qualifies as an in-place mooring.
+ * the door distance from the point that lie on the ship's own continent, within its walk range, and
+ * are open under its walk-block, which is the free-size class test plus the other vehicles' cells.
+ * The ship's own node qualifies as an in-place mooring.
  */
 function dockCandidates(
   world: World,
@@ -38,6 +45,7 @@ function dockCandidates(
   const out: NodeId[] = [];
   for (const { point: ring } of hexagonRing(point, vector.distance)) {
     if (!terrain.inBounds(ring.hx, ring.hy)) continue;
+    if (hexDistance(anchor, ring) > VEHICLE_WALK_RANGE_NODES) continue;
     const node = terrain.nodeAt(ring.hx, ring.hy);
     if (terrain.componentOf(node) === continent && !blocked.has(node)) out.push(node);
   }
@@ -64,6 +72,7 @@ export function startDock(
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
   for (const node of dockCandidates(world, ctx, terrain, vehicle, type, anchor, point)) {
     if (node !== here && !startVehicleDrive(world, ctx, terrain, vehicle, node)) continue;
+    if (node === here) world.remove(vehicle, VehicleDrive); // a goto under way ends here, moored
     const live = world.mut(vehicle, Vehicle);
     live.task = 'docks';
     live.heldGoal = null;

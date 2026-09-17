@@ -112,10 +112,7 @@ function fishAtWaterEdge(
   for (const water of hexNeighboursOf(shoreX, shoreY)) {
     if (!terrain.inBounds(water.hx, water.hy)) continue;
     const waterNode = terrain.nodeAt(water.hx, water.hy);
-    const isWater =
-      !terrain.isWalkable(waterNode) &&
-      (terrain.landVertices === undefined || terrain.landVertices[waterNode] !== true);
-    if (!isWater) continue;
+    if (!terrain.isWater(waterNode)) continue;
     const continent = terrain.waterContinents?.[waterNode];
     for (const entity of fishSwarmsNearNode(world, water.hx, water.hy, FISH_SHORE_SEARCH_RADIUS - 1)) {
       const swarm = world.get(entity, FishSwarm);

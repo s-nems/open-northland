@@ -53,6 +53,9 @@ export abstract class TerrainLattice {
         `terrain grid has ${typeIds.length} nodes, expected ${width * height} (${width}x${height})`,
       );
     }
+    if (landVertices !== undefined && landVertices.length !== width * height) {
+      throw new Error(`land vertex mask has ${landVertices.length} nodes, expected ${width * height}`);
+    }
     this.width = width;
     this.height = height;
     this.typeIds = typeIds;

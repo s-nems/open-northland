@@ -250,10 +250,13 @@ function resumeHeldGoal(world: World, ctx: SystemContext, terrain: TerrainGraph,
   const goal = live.heldGoal;
   live.heldGoal = null;
   live.task = 'none';
-  live.mooring = null;
   if (goal === null) return;
   const node = terrain.nodeAtClamped(goal.hx, goal.hy);
-  if (!startVehicleDrive(world, ctx, terrain, vehicle, node)) refuseMove(world, ctx, vehicle, 'noPath');
+  if (!startVehicleDrive(world, ctx, terrain, vehicle, node)) {
+    refuseMove(world, ctx, vehicle, 'noPath'); // still moored where it lay, its door on the old mooring
+    return;
+  }
+  world.mut(vehicle, Vehicle).mooring = null;
 }
 
 /** A dock point held for boarding: the ship casts off toward it once the crew is inside, unless its

@@ -158,8 +158,8 @@ export function combatTargetNode(
  * cell the block overlay covers still admits here, and a candidate the overlay seals off is given up by the
  * chase.
  *
- * A seeker on an unlabelled node (unwalkable, truncated onto it mid-stride) admits everything, as the chase
- * does. The ring walk is the melee case alone - a candidate inside the seeker's own band answers in O(1), so
+ * A seeker on an unwalkable node (truncated onto it mid-stride) admits everything, as the chase does; the
+ * node's own label is not consulted there, since water nodes carry one for the ships. The ring walk is the melee case alone - a candidate inside the seeker's own band answers in O(1), so
  * a garrison, a shelter and every bow seeker skip it.
  *
  * Nothing readable records how the original filtered candidates, so refusing one here is an approximation
@@ -172,7 +172,7 @@ export function reachableTargetGate(
   here: NodeId,
   weapon: WeaponBand,
 ): (t: Entity) => boolean {
-  const bank = terrain.componentOf(here);
+  const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
   if (bank < 0) return () => true;
   return (t) => {
     if (!world.has(t, Building) && !world.has(t, Palisade)) {

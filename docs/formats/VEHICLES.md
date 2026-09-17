@@ -194,8 +194,8 @@ six map-point directions (approximation: the vehicle facing space is not read). 
 original stores as the spawn mooring is *open*. `dockVehicle` (`systems/vehicles/dock.ts`) holds the
 point under the `docks` task while the crew boards, the twin of the goto's `waitsForHuman` hold; a
 ring node is open when the ship's walk-block admits it, which adds other vehicles' cells to the size
-class test; a ship already on a ring node moors in place (approximation: the original ends the order
-with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
+class test, and lies within the ship's walk range; a ship already on a ring node moors in place and
+drops any drive under way (approximation: the original ends the order with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
 ship moors on the arrival tick with a `vehicleDocked` event, since the dock clip has no graphics
 record and its length is not read; a goto clears the pending mooring point and never re-moors on
 arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock

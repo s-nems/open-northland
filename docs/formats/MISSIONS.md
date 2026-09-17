@@ -364,7 +364,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 \* |
 | 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 \* |
 | 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | both | 0 |
-| 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on confirmed land nodes within `range` and update the display | both | 17 |
+| 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on land nodes within `range` (nodes whose cell is not painted water on both triangles, the same mask ships sail by) and update the display | both | 17 |
 | 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 \* |
 | 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 \* |
 | 100 | `SetRandomChestOnPosition` | 7, 16, 17 | choose a reward from the category mask and drop a wooden chest at the nearest free point on the same landmass, searching through radius 9 | sim | 41 |

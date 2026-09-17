@@ -25,11 +25,17 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { stepHex } from '../../src/nav/halfcell.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
 import { vehicleDoorNode } from '../../src/systems/footprint/index.js';
 import { vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
 import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
-import { boardRider, createVehicle, removeVehicle } from '../../src/systems/vehicles/index.js';
+import {
+  boardRider,
+  createVehicle,
+  removeVehicle,
+  VEHICLE_WALK_RANGE_NODES,
+} from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
@@ -62,20 +68,31 @@ const MID_ROW = 16;
 /** Long enough for a scout's walk to the mooring and the ship's crossing. */
 const SAIL_TICKS = 400;
 
-/** Two islands with a strait between them, at cell resolution. */
-function islandMap(): TerrainMap {
-  const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
-  for (let row = 0; row < MAP_H; row++) {
-    for (let col = STRAIT_FROM; col < STRAIT_TO; col++) typeIds[row * MAP_W + col] = WATER;
+/** A land bar across the strait with a one-cell gap: the two basins stay one water body, but the gap's
+ *  clearance shuts a ship out of the far one. */
+const BAR_ROW = 8;
+const GAP_COL = 12;
+/** Tall enough for a shore beyond the ship's walk range. */
+const TALL_MAP_H = 40;
+
+/** Two islands with a strait between them, at cell resolution; optionally taller or barred. */
+function islandMap(opts: { readonly height?: number; readonly bar?: boolean } = {}): TerrainMap {
+  const height = opts.height ?? MAP_H;
+  const typeIds = new Array<number>(MAP_W * height).fill(GRASS);
+  for (let row = 0; row < height; row++) {
+    for (let col = STRAIT_FROM; col < STRAIT_TO; col++) {
+      const barred = opts.bar === true && row === BAR_ROW && col !== GAP_COL;
+      typeIds[row * MAP_W + col] = barred ? GRASS : WATER;
+    }
   }
-  return halfCellMapFromCells({ width: MAP_W, height: MAP_H, typeIds });
+  return halfCellMapFromCells({ width: MAP_W, height, typeIds });
 }
 
-function sim(seed = 7, missions?: MissionScript): Simulation {
+function sim(seed = 7, missions?: MissionScript, map: TerrainMap = islandMap()): Simulation {
   const s = new Simulation({
     seed,
     content: testContent(),
-    map: islandMap(),
+    map,
     ...(missions === undefined ? {} : { missions }),
   });
   s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -346,6 +363,75 @@ describe('dockVehicle', () => {
       .flatMap((ev) => (ev.kind === 'riderRefused' ? [`${ev.entity}:${ev.reason}`] : []));
     expect(refusedRiders).toEqual([`${rider}:cannotLeave`]);
     expect(s.world.has(rider, Position)).toBe(false);
+  });
+
+  it('moors in place when the ship already lies on the ring, ending any drive under way', () => {
+    const s = sim();
+    const { ship } = crewedShip(s, 20, MID_ROW);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: ship, x: 24, y: 6 }));
+    s.step();
+    expect(s.world.has(ship, VehicleDrive)).toBe(true);
+    const here = anchorOf(s, ship);
+    // Four steps south-east of the anchor: the ring's first candidate is the anchor itself.
+    let point = here;
+    for (let i = 0; i < DOOR_DISTANCE; i++) point = stepHex(point, 'southEast');
+    dock(s, ship, point.hx, point.hy);
+    s.step();
+    const state = s.world.get(ship, Vehicle);
+    expect(s.world.has(ship, VehicleDrive)).toBe(false);
+    expect(state.moored).toBe(true);
+    expect(state.mooring).toEqual(point);
+    s.run(20);
+    expect(anchorOf(s, ship)).toEqual(here);
+  });
+
+  it('keeps a moored ship at its mooring when a held goto finds no route', () => {
+    const s = sim(7, undefined, islandMap({ bar: true }));
+    const ship = spawn(s, SHIP_SMALL, WEST_SHORE_X + 3, 6);
+    const mooring = s.world.get(ship, Vehicle).mooring;
+    if (mooring === null) throw new Error('the ship spawned unmoored');
+    const scout = spawnSettler(s, 4, 6);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: ship }));
+    s.step();
+    // The south basin: the same water body, past a gap no ship's clearance admits.
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: ship, x: 24, y: 26 }));
+    s.step();
+    expect(s.world.get(ship, Vehicle).task).toBe('waitsForHuman');
+    let refused = 0;
+    for (let t = 0; t < SAIL_TICKS; t++) {
+      s.step();
+      refused += refusals(s).length;
+    }
+    expect(refused).toBe(1);
+    const state = s.world.get(ship, Vehicle);
+    expect(state.task).toBe('none');
+    expect(state.heldGoal).toBeNull();
+    expect(state.moored).toBe(true);
+    expect(state.mooring).toEqual(mooring);
+    expect(s.world.has(scout, Position)).toBe(false); // aboard, and may step off at the mooring
+  });
+
+  it('refuses a shore beyond the walk range', () => {
+    const s = sim(7, undefined, islandMap({ height: TALL_MAP_H }));
+    const { ship } = crewedShip(s, 20, 2);
+    const far = { hx: EAST_SHORE_X + 1, hy: 2 * TALL_MAP_H - 2 };
+    expect(distanceTo(anchorOf(s, ship), far)).toBeGreaterThan(VEHICLE_WALK_RANGE_NODES);
+    dock(s, ship, far.hx, far.hy);
+    s.step();
+    expect(refusals(s)).toEqual([`${ship}:noPath`]);
+  });
+
+  it('forgets the shore when stopped on the way to it', () => {
+    const s = sim();
+    const { ship } = crewedShip(s, 20, MID_ROW);
+    dock(s, ship, EAST_SHORE_X + 1, MID_ROW);
+    s.run(3);
+    s.enqueue(playerCommand(P0, { kind: 'stopVehicle', vehicle: ship }));
+    s.step();
+    const state = s.world.get(ship, Vehicle);
+    expect(state.task).toBe('interrupted');
+    expect(state.mooring).toBeNull();
+    expect(state.moored).toBe(false);
   });
 
   it("drowns the crew of a ship lost at sea and counts them among the owner's dead", () => {
