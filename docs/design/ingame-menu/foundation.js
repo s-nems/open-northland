@@ -62,8 +62,9 @@ document.addEventListener('click', (event) => {
     press('notices', button.dataset.notices);
   }
   if (button.matches('.notice-dismiss')) dismissNotice(button.closest('.notice'));
-  // A card with a target would centre the camera; a long one without pins its full text instead.
-  if (button.matches('.long .notice-card')) pinNoticeFull(button, pinned !== button);
+  // A card with a target would centre the camera; one without pins its full text instead.
+  if (button.matches('.notice-card') && !button.querySelector('.go'))
+    pinNoticeFull(button, pinned !== button);
   if (button === noticeMore) noticeList.scrollBy({ top: noticeList.clientHeight - 40, behavior: 'smooth' });
   if (button.closest('.speed')) {
     for (const item of button.closest('.speed').querySelectorAll('button'))
@@ -189,22 +190,22 @@ function pinNoticeFull(card, pin) {
   pinned = pin ? card : null;
   if (pin) showNoticeFull(card);
   else noticeFull.hidden = true;
-  for (const each of noticeList.querySelectorAll('.long .notice-card'))
+  for (const each of noticeList.querySelectorAll('.notice-card'))
     each.setAttribute('aria-expanded', String(each === pinned));
 }
 noticeList.addEventListener('mouseover', (event) => {
-  const card = event.target.closest('.long .notice-card');
+  const card = event.target.closest('.notice-card');
   if (card && pinned === null) showNoticeFull(card);
 });
 noticeList.addEventListener('mouseout', (event) => {
-  if (event.target.closest('.long .notice-card')) hideNoticeFull();
+  if (event.target.closest('.notice-card')) hideNoticeFull();
 });
 noticeList.addEventListener('focusin', (event) => {
-  const card = event.target.closest('.long .notice-card');
+  const card = event.target.closest('.notice-card');
   if (card && pinned === null) showNoticeFull(card);
 });
 noticeList.addEventListener('focusout', (event) => {
-  if (event.target.closest('.long .notice-card')) hideNoticeFull();
+  if (event.target.closest('.notice-card')) hideNoticeFull();
 });
 function updateNoticeMore() {
   const fold = noticeList.scrollTop + noticeList.clientHeight;
@@ -227,8 +228,7 @@ noticeList.addEventListener('contextmenu', (event) => {
   else dismissNotice(item);
 });
 new ResizeObserver(layoutNotices).observe(noticeList);
-for (const card of noticeList.querySelectorAll('.long .notice-card'))
-  card.setAttribute('aria-expanded', 'false');
+for (const card of noticeList.querySelectorAll('.notice-card')) card.setAttribute('aria-expanded', 'false');
 showNotices('mixed', 'Wszystkie');
 
 // Original decoded art is local review evidence, never a repository asset.

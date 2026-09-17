@@ -4,6 +4,7 @@ import {
   composeMessageText,
   MESSAGE_STRING_ID,
   type MessageTextDeps,
+  type ShortLabels,
   userMessageTypeName,
 } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE, type UserMessageTypeName } from '../src/hud/tool-panel/messages/types.js';
@@ -30,7 +31,17 @@ const ROWS: Readonly<Record<number, string>> = {
 };
 
 const decoded: UiString = (table, id, fallback) => (table === 'messages' ? (ROWS[id] ?? fallback) : fallback);
-const deps: MessageTextDeps = { uiString: decoded, fallbackRow: (id) => `<${id}>` };
+/** Synthetic card lines: each type's own name, and templates for the rows that name a good or a stance. */
+const SHORT: ShortLabels = {
+  byType: Object.fromEntries(Object.keys(USER_MESSAGE_TYPE).map((name) => [name, `short:${name}`])) as Record<
+    UserMessageTypeName,
+    string
+  >,
+  withGood: { stockFull: 'Full: {good}' },
+  withStance: { playerSighted: 'Met: {stance}' },
+  unknownHeroDied: 'short:unknown',
+};
+const deps: MessageTextDeps = { uiString: decoded, fallbackRow: (id) => `<${id}>`, short: SHORT };
 
 const compose = (
   type: (typeof USER_MESSAGE_TYPE)[UserMessageTypeName],
@@ -92,9 +103,9 @@ describe('user message text', () => {
       { subjectName: 'Gracz 2', jobLabel: null, goodName: null, stanceName: 'wrogi' },
       { ...deps, fallbackRow: (id) => `- <${id}>` },
     );
-    expect([sighted.subject, sighted.body, sighted.full]).toEqual([
+    expect([sighted.subject, sighted.short, sighted.full]).toEqual([
       'Gracz 2',
-      '<131> wrogi',
+      'Met: wrogi',
       'Gracz 2 - <131> wrogi',
     ]);
     expect(compose(USER_MESSAGE_TYPE.diplomacyChanged, 'Gracz 2', null, null, 'przyjazny')).toBe(
@@ -125,6 +136,7 @@ describe('user message text', () => {
     const bare: MessageTextDeps = {
       uiString: (_t, _i, fallback) => fallback,
       fallbackRow: (id) => `<${id}>`,
+      short: SHORT,
     };
     expect(
       composeMessageText(
@@ -135,37 +147,53 @@ describe('user message text', () => {
     ).toBe('Dom <91>');
   });
 
-  it('splits a card into the subject line and the event line', () => {
+  it('puts the catalog label on the card, with the good it is about, never the row', () => {
     const settler = composeMessageText(
       USER_MESSAGE_TYPE.hungry,
       { subjectName: 'Bjorn', jobLabel: 'Budowniczy', goodName: null, stanceName: null },
       deps,
     );
-    expect([settler.subject, settler.body]).toEqual(['Bjorn · Budowniczy', 'row10']);
+    expect([settler.subject, settler.short]).toEqual(['Bjorn · Budowniczy', 'short:hungry']);
+    const full = composeMessageText(
+      USER_MESSAGE_TYPE.stockFull,
+      { subjectName: 'Leif', jobLabel: null, goodName: 'Drewno', stanceName: null },
+      deps,
+    );
+    expect(full.short).toBe('Full: Drewno');
+    const fullOfNothing = composeMessageText(
+      USER_MESSAGE_TYPE.stockFull,
+      { subjectName: 'Leif', jobLabel: null, goodName: null, stanceName: null },
+      deps,
+    );
+    expect(fullOfNothing.short).toBe('short:stockFull');
     const attacked = composeMessageText(
       USER_MESSAGE_TYPE.humanAttacked,
       { subjectName: 'Bjorn', jobLabel: null, goodName: null, stanceName: null },
       deps,
     );
-    expect([attacked.body, attacked.full]).toEqual(['row61', 'Bjorn - row61']);
+    expect([attacked.short, attacked.full]).toEqual(['short:humanAttacked', 'Bjorn - row61']);
     const house = composeMessageText(
       USER_MESSAGE_TYPE.houseFinished,
       { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
       deps,
     );
-    expect([house.subject, house.body]).toEqual(['Dom', 'row90']);
+    expect([house.subject, house.short]).toEqual(['Dom', 'short:houseFinished']);
     const unknown = composeMessageText(
       USER_MESSAGE_TYPE.humanDied,
       { subjectName: null, jobLabel: null, goodName: null, stanceName: null },
       deps,
     );
-    expect([unknown.subject, unknown.body]).toEqual([null, 'row121-unknown']);
+    expect([unknown.subject, unknown.short, unknown.full]).toEqual([null, 'short:unknown', 'row121-unknown']);
     const paper = composeMessageText(
       USER_MESSAGE_TYPE.specialItemFound,
       { subjectName: null, jobLabel: null, goodName: null, stanceName: null, detail: 'Pozwolenie' },
       deps,
     );
-    expect([paper.subject, paper.body, paper.full]).toEqual(['Pozwolenie', '<134>', '<134> - Pozwolenie']);
+    expect([paper.subject, paper.short, paper.full]).toEqual([
+      'Pozwolenie',
+      'short:specialItemFound',
+      '<134> - Pozwolenie',
+    ]);
     const unlocks = composeMessageText(
       USER_MESSAGE_TYPE.experienceUnlocks,
       {
@@ -177,7 +205,7 @@ describe('user message text', () => {
       },
       deps,
     );
-    expect(unlocks.body).toBe('może teraz wykonywać następujące prace');
+    expect(unlocks.short).toBe('short:experienceUnlocks');
     expect(unlocks.full).toBe('Bjorn może teraz wykonywać następujące prace:\nNowe budynki:\n- Młyn');
   });
 });

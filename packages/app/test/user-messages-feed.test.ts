@@ -19,7 +19,7 @@ import {
 } from '../src/hud/tool-panel/messages/types.js';
 
 const TICK = 100;
-const TEXT = (): MessageText => ({ subject: null, body: 'x', full: 'x' });
+const TEXT = (): MessageText => ({ subject: null, short: 'x', full: 'x' });
 
 function pending(
   type: UserMessageType,
@@ -262,7 +262,7 @@ describe('message feed', () => {
     let composed = 0;
     const compose = (): MessageText => {
       composed++;
-      return { subject: null, body: 'text', full: 'text' };
+      return { subject: null, short: 'text', full: 'text' };
     };
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), 0, compose)).toBe('muted');
     expect(feed.add(pending(USER_MESSAGE_TYPE.humanAttacked), TICK, compose)).toBe('accepted');

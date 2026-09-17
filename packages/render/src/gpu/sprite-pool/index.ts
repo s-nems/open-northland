@@ -3,6 +3,7 @@ export { type MotionTrack, trackMotion } from './motion.js';
 export type { DamagedBuilding, DrawnGeometry } from './pick.js';
 export { type PlaceholderBounds, placeholderBounds } from './placeholder.js';
 export type { EntityBounds } from './pooled-entity.js';
+export { createPresentationTrack, type PresentationTrack, presentItem } from './present-item.js';
 export { reconcileSprites } from './reconcile.js';
 export { resolveLayers } from './resolve-layers.js';
 export type { ResolvedLayer } from './resolved-layer.js';

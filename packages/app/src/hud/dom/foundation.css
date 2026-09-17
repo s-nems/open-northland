@@ -829,7 +829,7 @@
 .on-hud .on-notices--stacked .on-notice {
   clip-path: inset(calc(var(--covered) - 6px) -6px -12px -6px);
 }
-/* The slate starts right of the thumbnail box, which the Pixi figure layer under the plane fills. */
+/* The slate starts right of the thumbnail box, whose translucent backing shows the map through. */
 .on-hud .on-notice__card {
   position: relative;
   display: flex;
@@ -925,20 +925,21 @@
   pointer-events: none;
   border-radius: 8px;
   border: 1px solid #c9a26233;
+  background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
+}
+/* The figure is painted into the card's own canvas, so it scrolls, slides and clips with the card. */
+.on-hud .on-notice__preview--settler {
+  display: block;
 }
 .on-hud .on-notice__preview--glyph {
   display: grid;
   place-items: center;
   color: var(--bronze);
-  background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
 }
 .on-hud .on-notice__preview--glyph .on-glyph {
   width: 32px;
   height: 32px;
   stroke-width: 1.6;
-}
-.on-hud .on-notices--stacked .on-notice__preview--glyph {
-  background-color: #182521f4;
 }
 .on-hud .on-notice__preview--dim {
   color: var(--muted);
@@ -960,11 +961,11 @@
 .on-hud .on-notice__event {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   margin-top: 2px;
   padding-right: 12px;
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.25;
   color: var(--text-hi);
 }
@@ -1069,7 +1070,7 @@
   color: var(--bronze);
   stroke-width: 2.2;
 }
-/* A long card unfolds beside the column, never into it. */
+/* The whole message unfolds beside the column, never into it. */
 .on-hud .on-notices__full {
   position: absolute;
   left: calc(100% + 6px);

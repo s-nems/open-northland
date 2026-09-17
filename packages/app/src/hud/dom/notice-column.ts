@@ -1,7 +1,7 @@
 import { formatMessage, messages } from '../../i18n/index.js';
-import type { Rect } from '../geometry.js';
 import { NOTICE_COLUMN } from '../regions.js';
 import { fanOverlap, type NoticeGlyph, type NoticeThumb } from '../tool-panel/messages/cards.js';
+import type { NoticeFigureBox, NoticeFigureSlot } from '../tool-panel/messages/figures.js';
 import type { MessagePriorityLevel } from '../tool-panel/messages/types.js';
 import { GLYPH } from './icons.js';
 
@@ -15,7 +15,6 @@ const FOLD_TOLERANCE = 6;
 const MORE_SCROLL_KEEP = 40;
 const STACKED = 'on-notices--stacked';
 const OVERFLOWING = 'on-notices--overflowing';
-const LONG = 'on-notice--long';
 const FRESH = 'on-notice--fresh';
 /** The arrival animations whose end retires the fresh state: the seal pulse outlasts the slide. */
 const ARRIVAL_ANIMATION = { card: 'on-notice-in', seal: 'on-seal-pulse' } as const;
@@ -33,7 +32,9 @@ export interface NoticeCardView {
   readonly id: number;
   readonly level: MessagePriorityLevel;
   readonly subject: string | null;
-  readonly body: string;
+  /** The event line, short enough to fit the card. */
+  readonly short: string;
+  /** The whole message, shown beside the column on hover or focus. */
   readonly full: string;
   readonly thumb: NoticeThumb;
   /** True when the card has a place to send the view to. */
@@ -52,25 +53,19 @@ export interface NoticeColumnDeps {
   readonly onDismissAll: () => void;
 }
 
-/** A visible settler thumbnail, in client px. */
-export interface NoticeThumbnail {
-  readonly id: number;
-  readonly entity: number;
-  /** The whole thumbnail box, where the figure stands. */
-  readonly box: Rect;
-  /** The part of it inside the list's visible area. */
-  readonly visible: Rect;
-  /** True while the cards are fanned, so the backing must hide the card behind. */
-  readonly opaque: boolean;
+/** The figure canvases inside the list's visible area and their shared size on screen. */
+export interface NoticeFigureSlots {
+  readonly slots: readonly NoticeFigureSlot[];
+  readonly box: NoticeFigureBox;
 }
 
 /** The notification column: the seal filters with their tallies, the fanning card list, the "more"
- *  badge and the unfolded text beside a long card. */
+ *  badge and the whole message beside the hovered card. */
 export interface NoticeColumn {
   /** Rebuild for `cards` in column order; call only when the feed changed. */
   render(cards: readonly NoticeCardView[], tally: readonly number[], level: MessagePriorityLevel): void;
-  /** The settler thumbnails on screen this frame, back to front, for the figure layer under the cards. */
-  thumbnails(): readonly NoticeThumbnail[];
+  /** The settler figures to paint this frame: only the cards on screen cost a draw. */
+  figures(): NoticeFigureSlots;
   dispose(): void;
 }
 
@@ -85,7 +80,9 @@ const NOTICE_GLYPH: Readonly<Record<NoticeGlyph, string>> = {
 };
 
 function previewMarkup(thumb: NoticeThumb): string {
-  if (thumb.kind === 'settler') return '<span class="on-notice__preview on-notice__preview--settler"></span>';
+  if (thumb.kind === 'settler') {
+    return '<canvas class="on-notice__preview on-notice__preview--settler" aria-hidden="true"></canvas>';
+  }
   return `<span class="on-notice__preview on-notice__preview--glyph${thumb.dim ? ' on-notice__preview--dim' : ''}" aria-hidden="true">${NOTICE_GLYPH[thumb.glyph]}</span>`;
 }
 
@@ -105,24 +102,13 @@ export function noticeCardMarkup(card: NoticeCardView, dismissLabel: string): st
     throw new Error('notice column: card markup incomplete');
   }
   button.setAttribute('aria-label', card.full);
+  // A card with no target is a disclosure: a press pins its whole message.
+  if (!card.canGo) button.setAttribute('aria-expanded', 'false');
   subject.textContent = card.subject ?? '';
   subject.toggleAttribute('hidden', card.subject === null);
-  event.textContent = card.body;
+  event.textContent = card.short;
   dismiss.setAttribute('aria-label', dismissLabel);
   return li.outerHTML;
-}
-
-function intersect(a: Rect, b: Rect): Rect | null {
-  const x = Math.max(a.x, b.x);
-  const y = Math.max(a.y, b.y);
-  const w = Math.min(a.x + a.w, b.x + b.w) - x;
-  const h = Math.min(a.y + a.h, b.y + b.h) - y;
-  return w <= 0 || h <= 0 ? null : { x, y, w, h };
-}
-
-function rectOf(element: Element): Rect {
-  const r = element.getBoundingClientRect();
-  return { x: r.left, y: r.top, w: r.width, h: r.height };
 }
 
 export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
@@ -187,14 +173,6 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     column.classList.toggle(OVERFLOWING, list.scrollHeight > list.clientHeight + 1);
   };
 
-  /** A card whose event line overflows its clamp unfolds beside the column; measured once, unfanned. */
-  const measureLong = (li: HTMLLIElement): void => {
-    if (li.dataset.measured === '1') return;
-    li.dataset.measured = '1';
-    const event = li.querySelector('.on-notice__event');
-    if (event instanceof HTMLElement && event.scrollHeight > event.clientHeight + 1) li.classList.add(LONG);
-  };
-
   /** Fan the cards so they all fit: one uniform overlap, weightier cards in front. Fanned cards keep
    *  one event line, so the heights are measured again once the fan is on. */
   const layout = (): void => {
@@ -206,7 +184,6 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     const room =
       column.clientHeight - list.offsetTop - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
     column.classList.remove(STACKED);
-    for (const li of shown) measureLong(li);
     const heights = (): number[] => shown.map((li) => li.offsetHeight);
     let overlap = fanOverlap(heights(), room, CARD_GAP, MIN_CARD_STRIP);
     if (overlap > 0) {
@@ -231,12 +208,14 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     if (li === null) full.hidden = true;
     else showFull(li);
     for (const each of items()) {
-      each.querySelector('.on-notice__card')?.setAttribute('aria-expanded', String(each === pinned));
+      const face = each.querySelector('.on-notice__card');
+      if (face?.hasAttribute('aria-expanded')) face.setAttribute('aria-expanded', String(each === pinned));
     }
   };
-  const longCardOf = (target: EventTarget | null): HTMLLIElement | null => {
+  /** The card whose face `target` is on: the dismiss button is outside it. */
+  const faceOf = (target: EventTarget | null): HTMLLIElement | null => {
     const li = itemOf(target);
-    if (li === null || !li.classList.contains(LONG)) return null;
+    if (li === null) return null;
     return target instanceof Element && target.closest('.on-notice__card') !== null ? li : null;
   };
 
@@ -251,7 +230,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     if (event.target.closest('.on-notice__card') === null) return;
     const view = viewsById.get(idOf(li));
     if (view?.canGo === true) deps.onGo(view.id);
-    else if (li.classList.contains(LONG)) pinFull(pinned === li ? null : li);
+    else pinFull(pinned === li ? null : li);
   });
   list.addEventListener('contextmenu', (event) => {
     const li = itemOf(event.target);
@@ -274,11 +253,11 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     }
   });
   const onEnter = (event: Event): void => {
-    const li = longCardOf(event.target);
+    const li = faceOf(event.target);
     if (li !== null && pinned === null) showFull(li);
   };
   const onLeave = (event: Event): void => {
-    if (longCardOf(event.target) !== null) hideFull();
+    if (faceOf(event.target) !== null) hideFull();
   };
   list.addEventListener('mouseover', onEnter);
   list.addEventListener('mouseout', onLeave);
@@ -355,28 +334,27 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       });
       layout();
     },
-    thumbnails: (): NoticeThumbnail[] => {
-      const clip = rectOf(list);
-      const opaque = column.classList.contains(STACKED);
+    figures: (): NoticeFigureSlots => {
       const top = list.scrollTop;
       const bottom = top + list.clientHeight;
-      const out: NoticeThumbnail[] = [];
-      const raised: NoticeThumbnail[] = [];
-      for (const li of items().reverse()) {
-        // Cards past the fold cost no rect read.
+      const slots: NoticeFigureSlot[] = [];
+      let box: NoticeFigureBox = { width: 0, height: 0, pixelScale: 0 };
+      for (const li of items()) {
         if (li.offsetTop + li.offsetHeight <= top || li.offsetTop >= bottom) continue;
-        const preview = li.querySelector('.on-notice__preview--settler');
-        if (preview === null) continue;
-        const box = rectOf(preview);
-        const visible = intersect(box, clip);
-        if (visible === null) continue;
-        const entry = { id: idOf(li), entity: Number(li.dataset.entity), box, visible, opaque };
-        // A hovered or focused card stands over its neighbours, so its figure paints last.
-        if (li.matches(':hover, :focus-within')) raised.push(entry);
-        else out.push(entry);
+        const canvas = li.querySelector('.on-notice__preview--settler');
+        if (!(canvas instanceof HTMLCanvasElement)) continue;
+        // One rect read serves every card: the plane's scale is theirs. The bitmap fills the content
+        // box inside the thumbnail's border.
+        if (box.pixelScale === 0) {
+          box = {
+            width: canvas.clientWidth,
+            height: canvas.clientHeight,
+            pixelScale: (canvas.getBoundingClientRect().width / canvas.offsetWidth) * devicePixelRatio,
+          };
+        }
+        slots.push({ entity: Number(li.dataset.entity), canvas });
       }
-      out.push(...raised);
-      return out;
+      return { slots, box };
     },
     dispose: (): void => {
       resize.disconnect();

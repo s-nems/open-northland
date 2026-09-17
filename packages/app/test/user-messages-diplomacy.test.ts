@@ -7,7 +7,7 @@ import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 const ALLY = 1;
 const RIVAL = 2;
 
-const plain = (full: string): MessageText => ({ subject: null, body: full, full });
+const plain = (full: string): MessageText => ({ subject: null, short: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),

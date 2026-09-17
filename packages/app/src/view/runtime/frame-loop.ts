@@ -196,7 +196,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // An open briefing's map pictures, painted over the window during `renderer.update`.
     renderer.setMapViews(toolPanel.controller.mapViews());
     // Unfiltered: the notes are the seat's own affairs, and its own settler in the fog still starves.
-    toolPanel.controller.presentMessages(snap, frameEvents, controls);
+    toolPanel.controller.presentMessages(snap, frameEvents, controls, renderAlpha);
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
     mountedMinimap.update(snap, fogView);

@@ -150,7 +150,12 @@ export interface ToolPanelController {
   mapViews(): readonly MapViewFrame[];
   /** Per-frame hook for the notification column: this frame's unfiltered sim events and the snapshot
    *  after them. */
-  presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
+  presentMessages(
+    snapshot: WorldSnapshot,
+    events: readonly SimEvent[],
+    selection: UnitSelectionView,
+    alpha: number,
+  ): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
   /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
@@ -230,10 +235,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   root.zIndex = 1000;
   app.stage.addChild(root);
   const infoContainer = new Container();
-  const portraitContainer = new Container();
   const windowContainer = new Container();
   const bannerContainer = new Container();
-  root.addChild(infoContainer, portraitContainer, windowContainer, bannerContainer);
+  root.addChild(infoContainer, windowContainer, bannerContainer);
 
   const domParts: { dispose(): void }[] = [];
   let input: ToolPanelInput | null = null;
@@ -364,13 +368,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
     const messageCenter = createMessageCenter({
       ctx,
-      app,
       plane,
       // The minimap's frame scales with the HUD like the plane does, so its design-px height is the
       // native frame at the art scale.
       bottomInset: FRAME_NATIVE.h * MINIMAP_ART_SCALE + NOTICE_MINIMAP_GAP,
-      portraitContainer,
-      toCanvas,
       sheet: opts.sheet,
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
@@ -441,7 +442,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         for (const mode of held) mode.placeBanner();
       },
       mapViews: () => windows.mission.mapViews(),
-      presentMessages: (snapshot, events, selection) => messageCenter.present(snapshot, events, selection),
+      presentMessages: (snapshot, events, selection, alpha) =>
+        messageCenter.present(snapshot, events, selection, alpha),
       state: () => ({
         speed: speed.state(),
         windows: windows.state(),

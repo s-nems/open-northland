@@ -6,27 +6,25 @@ import {
   TICKS_PER_SECOND,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import type { Application, Container } from 'pixi.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
-import { createNoticeColumn, type NoticeCardView, type NoticeThumbnail } from '../../dom/notice-column.js';
-import type { Rect } from '../../geometry.js';
+import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
 import { noticeThumb, orderNotes } from './cards.js';
 import { createDeselectionDismisser, type UnitSelectionView } from './deselection.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
+import { NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
 import { galleryMessages, type NoticeGallery } from './gallery.js';
-import { type NotePortraitEntry, NotePortraits } from './portrait.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver } from './retire.js';
-import { composeMessageText, type MessageText } from './text.js';
+import { composeMessageText, type MessageText, type ShortLabels } from './text.js';
 import type { UserMessage } from './types.js';
 
 export type { UnitSelectionView } from './deselection.js';
@@ -37,11 +35,6 @@ export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 const PLAYER_STRING_ID = 361;
 /** A note this young slides in as it arrives; an older one (a restored feed) simply stands. */
 const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
-/** The thumbnail's design-px height, the figure's map-px multiplier at that height, and how far above
- *  the box's bottom edge its feet stand (design px). */
-const THUMB_H = 72;
-const THUMB_ZOOM = 1.05;
-const THUMB_FEET_INSET = 10;
 
 /** Where a note's press centres the view: the subject while it lives, else the spot it was raised at. */
 export interface MessageTarget {
@@ -51,15 +44,11 @@ export interface MessageTarget {
 
 export interface MessageCenterDeps {
   readonly ctx: PanelContext;
-  readonly app: Application;
   /** The DOM plane the column mounts on. */
   readonly plane: HTMLElement;
   /** Design px the column keeps clear above the plane's bottom edge, for the minimap. */
   readonly bottomInset: number;
-  /** The Pixi layer under the plane that the cards' settler figures draw on. */
-  readonly portraitContainer: Container;
-  /** A client (CSS px) point as a canvas (screen px) point, for placing those figures. */
-  readonly toCanvas: (clientX: number, clientY: number) => { readonly x: number; readonly y: number };
+  /** The sheet the cards' settler figures draw from; absent, the thumbnails stay clear. */
   readonly sheet?: SpriteSheet | undefined;
   readonly playerColourOf?: ((player: number) => number) | undefined;
   /** Only this seat's messages become notes. */
@@ -82,8 +71,14 @@ export interface MessageCenterDeps {
 /** The message centre: the feed and the notification column that shows it. */
 export interface MessageCenter {
   /** Per frame: raise this frame's events and a due snapshot sweep as notes, retire the stale ones,
-   *  redraw what changed and place the figures. */
-  present(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
+   *  redraw what changed and paint the figures; `alpha` is the frame's inter-tick fraction, as the map
+   *  draws with. */
+  present(
+    snapshot: WorldSnapshot,
+    events: readonly SimEvent[],
+    selection: UnitSelectionView,
+    alpha: number,
+  ): void;
   state(): MessageFeedState;
   /** Adopt another mount's feed, so a HUD rescale keeps the notes and the level. */
   restore(state: MessageFeedState): void;
@@ -94,6 +89,16 @@ export interface MessageCenter {
 function fallbackRow(id: number): string {
   const rows: Readonly<Record<string, string | undefined>> = messages().userMessages.rows;
   return rows[String(id)] ?? '';
+}
+
+function shortLabels(): ShortLabels {
+  const copy = messages().userMessages;
+  return {
+    byType: copy.short,
+    withGood: copy.shortWithGood,
+    withStance: copy.shortWithStance,
+    unknownHeroDied: copy.shortUnknownHeroDied,
+  };
 }
 
 function makeNaming(deps: MessageCenterDeps): MessageNaming {
@@ -134,9 +139,16 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
           : messages().userMessages.learnedProfession,
         { profession: jobName },
       );
-      return { subject: subjectName, body, full: `${subjectName} ${body}` };
+      const short = formatMessage(
+        course === 'barracks'
+          ? messages().userMessages.shortBecameSoldier
+          : messages().userMessages.shortLearnedProfession,
+        { profession: jobName },
+      );
+      return { subject: subjectName, short, full: `${subjectName} ${body}` };
     },
-    text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
+    text: (type, parts) =>
+      composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow, short: shortLabels() }),
   };
 }
 
@@ -145,7 +157,7 @@ function cardOf(m: UserMessage, tick: number): NoticeCardView {
     id: m.id,
     level: m.priority,
     subject: m.text.subject,
-    body: m.text.body,
+    short: m.text.short,
     full: m.text.full,
     thumb: noticeThumb(m.type, m.subject),
     canGo: m.subject !== null || m.at !== null,
@@ -160,7 +172,6 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const naming = makeNaming(deps);
   const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
   const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
   const column = createNoticeColumn({
     plane: deps.plane,
@@ -184,7 +195,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       feed.removeAll(true);
     },
   });
-  const portraits = new NotePortraits(deps.app, deps.sheet, deps.portraitContainer, deps.playerColourOf);
+  const figures = new NoticeFigures(deps.sheet, deps.playerColourOf);
   let previous: WorldSnapshot | null = null;
   let renderedVersion = -1;
   let lastGalleryTick: number | null = null;
@@ -194,26 +205,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     return true;
   };
 
-  const canvasRect = (r: Rect): Rect => {
-    const a = deps.toCanvas(r.x, r.y);
-    const b = deps.toCanvas(r.x + r.w, r.y + r.h);
-    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
-  };
-  const entryOf = (thumb: NoticeThumbnail): NotePortraitEntry => {
-    const box = canvasRect(thumb.box);
-    const px = box.h / THUMB_H;
-    return {
-      entity: thumb.entity,
-      box: canvasRect(thumb.visible),
-      feetX: box.x + box.w / 2,
-      feetY: box.y + box.h - THUMB_FEET_INSET * px,
-      zoom: THUMB_ZOOM * px,
-      opaque: thumb.opaque,
-    };
-  };
-
   return {
-    present: (snapshot, events, selection): void => {
+    present: (snapshot, events, selection, alpha): void => {
       dismissDeselected(selection);
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
@@ -250,13 +243,10 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
           feed.level(),
         );
       }
-      // The figures follow the cards every frame: a hover slides a card, a scroll moves them all. A
-      // paused sim holds the tick, so the figures hold their frame with it.
-      portraits.render(
-        snapshot,
-        column.thumbnails().map(entryOf),
-        reducedMotion.matches ? null : snapshot.tick,
-      );
+      // The figures are painted into their cards every frame, so they move as the map's settlers do and
+      // stay part of the card. A paused sim holds the tick, so they hold their frame with it.
+      const { slots, box } = column.figures();
+      figures.render(snapshot, slots, box, snapshot.tick, alpha);
     },
     state: () => feed.state(),
     restore: (state): void => {
@@ -264,7 +254,6 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       renderedVersion = -1;
     },
     dispose: (): void => {
-      portraits.dispose();
       column.dispose();
     },
   };

@@ -4,6 +4,7 @@ import { galleryMessages } from '../src/hud/tool-panel/messages/gallery.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { composeMessageText, type MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
+import { en } from '../src/i18n/en.js';
 
 const LOCAL = 0;
 const ENEMY = 1;
@@ -34,7 +35,7 @@ function snapshot(actors: readonly Actor[]): WorldSnapshot {
   };
 }
 
-const plain = (full: string): MessageText => ({ subject: null, body: full, full });
+const plain = (full: string): MessageText => ({ subject: null, short: full, full });
 /** Names as the fakes in the sibling tests do, with the real composer behind `text` over synthetic rows,
  *  so every type's composition is exercised without the decoded strings. */
 const naming: MessageNaming = {
@@ -49,6 +50,12 @@ const naming: MessageNaming = {
     composeMessageText(type, parts, {
       uiString: (_table, _id, fallback) => fallback,
       fallbackRow: (id) => `row${id}`,
+      short: {
+        byType: en.userMessages.short,
+        withGood: en.userMessages.shortWithGood,
+        withStance: en.userMessages.shortWithStance,
+        unknownHeroDied: en.userMessages.shortUnknownHeroDied,
+      },
     }),
 };
 
@@ -69,7 +76,7 @@ describe('notice gallery', () => {
     for (const raised of out) {
       const text = raised.compose();
       expect(text.full, `type ${raised.pending.type}`).not.toBe('');
-      expect(text.body, `type ${raised.pending.type}`).not.toBe('');
+      expect(text.short, `type ${raised.pending.type}`).not.toBe('');
       expect(raised.pending.subject?.entity, `type ${raised.pending.type}`).not.toBe(3);
     }
   });

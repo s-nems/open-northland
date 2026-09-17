@@ -99,6 +99,7 @@ export {
   texturePageKey,
   type WorldBounds,
 } from './data/terrain/index.js';
+export { type DrawableResource, isDrawableResource, readable2dContext } from './gpu/drawable-resource.js';
 export {
   AnimationGallery,
   clipDirs,
@@ -148,9 +149,17 @@ export {
 } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
-export { type EntityBounds, type ResolvedLayer, resolveLayers } from './gpu/sprite-pool/index.js';
+export {
+  createPresentationTrack,
+  type EntityBounds,
+  type PresentationTrack,
+  presentItem,
+  type ResolvedLayer,
+  resolveLayers,
+} from './gpu/sprite-pool/index.js';
 export {
   layerLutRow,
+  type PlayerColourLut,
   paletteLutRow,
   type SettlerCharacter,
   type SettlerCharacterSet,

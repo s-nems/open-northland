@@ -3,8 +3,7 @@ import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PlayerColourLut } from '../sprite-sheet.js';
-import type { AtomicPoseTrack } from './atomic-pose.js';
-import { type MotionTrack, snapDistanceForKind } from './motion.js';
+import { createPresentationTrack, type PresentationTrack } from './present-item.js';
 
 /** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
 export interface EntityBounds {
@@ -26,9 +25,8 @@ interface MutableBounds {
  * anchor holding its atlas layer sprites and a lazily-built placeholder {@link Graphics}. Per frame only
  * positions, textures and visibility change - nothing is re-allocated.
  */
-interface PooledEntityBase {
+interface PooledEntityBase extends PresentationTrack {
   readonly container: Container;
-  readonly kind: SpriteKind;
   /** Parallel to {@link PooledEntity.sprites}: whether that layer is a cast shadow this frame. */
   readonly shadowFlags: boolean[];
   placeholder?: Graphics;
@@ -41,16 +39,7 @@ interface PooledEntityBase {
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
-  /** Last real facing (0..7) this settler drew with, reused across the one-tick heading gap a re-pathing
-   *  unit shows. */
-  lastFacing?: number;
-  /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
-   *  sim's reported progress; `undefined` when nothing is in progress. Declared present rather than
-   *  optional so the entity's shape never changes when a reveal first appears. */
-  reveal: number | undefined;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
-  readonly motion: MotionTrack;
-  readonly atomicPose: AtomicPoseTrack;
 }
 
 /** A settler drawing team-coloured {@link PalettedSprite} meshes through its own LUT. */
@@ -72,33 +61,15 @@ export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
  *  paletted (team-coloured mesh) variant. */
 export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefined): PooledEntity {
   const base = {
+    ...createPresentationTrack(kind),
     container: new Container(),
-    kind,
     shadowFlags: [],
     attached: false,
     lastSeen: -1,
     viewSeen: -1,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
-    reveal: undefined,
     selectionEllipse: undefined,
-    atomicPose: { tick: -1, item: undefined },
-    motion: {
-      tick: -1,
-      x: 0,
-      y: 0,
-      prevX: 0,
-      prevY: 0,
-      drawX: 0,
-      drawY: 0,
-      rotation: 0,
-      prevRotation: 0,
-      drawRotation: 0,
-      gaitPhase: 0,
-      prevGaitPhase: 0,
-      stillTicks: 0,
-      snapDistance: snapDistanceForKind(kind),
-    },
   };
   return palette === undefined
     ? { ...base, paletted: false, sprites: [] }

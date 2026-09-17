@@ -1,4 +1,5 @@
 import type { UiString } from '../../../content/gui-gfx.js';
+import { formatMessage } from '../../../i18n/index.js';
 import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
 
 /** The ingamegui string table the message texts read. */
@@ -84,8 +85,6 @@ const EXPERIENCE_GOOD_STRING_ID = 35;
 const EXPERIENCE_HOUSE_STRING_ID = 36;
 /** The placeholder the stock-full row carries for the good's name. */
 const GOOD_PLACEHOLDER = '%s';
-/** Some rows open with a dash that joins them to the subject's name; the card body drops it. */
-const LEADING_DASH = /^-\s*/;
 /** Joins a card's subject name and trade label. */
 const SUBJECT_SEPARATOR = ' · ';
 
@@ -140,18 +139,29 @@ export interface MessageTextParts {
   readonly detail?: string;
 }
 
+/** The card lines, from the app catalog: one per type, and `{good}` / `{stance}` templates for the rows
+ *  whose card names what they are about. */
+export interface ShortLabels {
+  readonly byType: Readonly<Record<UserMessageTypeName, string>>;
+  readonly withGood: Readonly<Partial<Record<UserMessageTypeName, string>>>;
+  readonly withStance: Readonly<Partial<Record<UserMessageTypeName, string>>>;
+  /** The death of a hero the seat cannot name. */
+  readonly unknownHeroDied: string;
+}
+
 export interface MessageTextDeps {
   readonly uiString: UiString;
   /** The app catalog's stand-in for a `messages` row when the decoded strings are absent. */
   readonly fallbackRow: (id: number) => string;
+  readonly short: ShortLabels;
 }
 
 /** A message as the card shows it and as it reads in full. */
 export interface MessageText {
   /** The card's first line: the subject's name with its trade label, or null for a subjectless row. */
   readonly subject: string | null;
-  /** The card's event line, without the subject. */
-  readonly body: string;
+  /** The card's event line: a short label that fits the card, never the original's sentence. */
+  readonly short: string;
   /** The whole message in the original's wording, for the unfolded card and assistive text. */
   readonly full: string;
 }
@@ -177,25 +187,22 @@ export function composeMessageText(
         ? parts.subjectName
         : `${parts.subjectName} (${parts.jobLabel})`;
   const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
-  const led = (body: string): MessageText => ({
-    subject,
-    body: body.replace(LEADING_DASH, ''),
-    full: lead(body),
-  });
+  const short = shortLabel(name, parts, deps.short);
+  const led = (body: string): MessageText => ({ subject, short, full: lead(body) });
 
   if (name === 'humanDied') {
     if (who !== null) return led(base);
     const unknown = row(UNKNOWN_HERO_DIED_STRING_ID);
-    return { subject: null, body: unknown, full: unknown };
+    return { subject: null, short: deps.short.unknownHeroDied, full: unknown };
   }
   if (name === 'specialItemFound') {
-    if (parts.detail === undefined) return { subject: null, body: base, full: base };
-    return { subject: parts.detail, body: base, full: `${base} - ${parts.detail}` };
+    if (parts.detail === undefined) return { subject: null, short, full: base };
+    return { subject: parts.detail, short, full: `${base} - ${parts.detail}` };
   }
   if (HOUSE_ROWS.has(name)) {
     return {
       subject: parts.subjectName,
-      body: base.replace(LEADING_DASH, ''),
+      short,
       full: parts.subjectName === null ? base : `${parts.subjectName} ${base}`,
     };
   }
@@ -218,9 +225,21 @@ export function composeMessageText(
       .filter(([, values]) => values.length > 0)
       .map(([label, values]) => `${row(label)}:\n${values.map((value) => `- ${value}`).join('\n')}`)
       .join('\n\n');
-    return { subject, body: base, full: `${lead(base)}:\n${details}` };
+    return { subject, short, full: `${lead(base)}:\n${details}` };
   }
   if (GOOD_APPENDED.has(name) && parts.goodName !== null) return led(`${base} ${parts.goodName}`);
   if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return led(`${base} ${parts.stanceName}`);
   return led(base);
+}
+
+/** The card's line: the type's label, or its template with the good or stance the row is about. */
+function shortLabel(name: UserMessageTypeName, parts: MessageTextParts, labels: ShortLabels): string {
+  const withGood = labels.withGood[name];
+  if (withGood !== undefined && parts.goodName !== null)
+    return formatMessage(withGood, { good: parts.goodName });
+  const withStance = labels.withStance[name];
+  if (withStance !== undefined && parts.stanceName !== null) {
+    return formatMessage(withStance, { stance: parts.stanceName });
+  }
+  return labels.byType[name];
 }

@@ -98,7 +98,7 @@ function snapshot(tick: number, actors: readonly Actor[], needsEnabled = true): 
 
 const FLAG = 92;
 
-const plain = (full: string): MessageText => ({ subject: null, body: full, full });
+const plain = (full: string): MessageText => ({ subject: null, short: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   training: (course, subjectName, jobName) => plain(`${course}:${subjectName}:${jobName}`),

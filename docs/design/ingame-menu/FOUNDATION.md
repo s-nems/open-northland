@@ -109,31 +109,35 @@ Rules the shell enforces:
 
 ### Notifications
 
-The column (ticket 03) is the DOM message centre over a Pixi figure layer; the runtime feed keeps the
-original's 200 slots, lifetime, dedupe and priority table.
+The column (ticket 03) is the DOM message centre; the runtime feed keeps the original's 200 slots,
+lifetime, dedupe and priority table.
 
 - The three seals are filter and tally in one: each shows how many live notes carry its weight,
   filtered or not, so the filter only hides (the original drops filtered notes). Levels: all,
   notable and important, important only. The tally cannot pass three digits.
 - Order: important first, then notable, then routine; within a weight the newest first.
 - A card is the subject line (name · trade, or the building, seat or paper) over the event line, at
-  11/12 px. The thumbnail is the live settler drawn as on the map with its current activity, over a
-  translucent slate backing; an attacked settler, a building, a death, a seat, a paper and a
-  subjectless row show a bronze line glyph instead (swords, house, dim skull, banner, chest, scroll).
-  The seal sits on the thumbnail's top-right corner; an urgent card's hairline takes the wax colour.
+  11/11.5 px. The event line is a short label per message type from the app catalog, capitalised,
+  short enough to fit the card without an ellipsis (a good or stance the row is about follows a
+  colon: "Brak: drewno", "Kontakt: wrogi"); the original's sentence is never on the card. The
+  thumbnail is the live settler painted into the card's own canvas, as on the map with its current
+  activity, motion and pace, over a translucent backing that shows the map through; an attacked
+  settler, a building, a death, a seat, a paper and a subjectless row show a bronze line glyph instead
+  (swords, house, dim skull, banner, chest, scroll). The seal sits on the thumbnail's top-right corner;
+  an urgent card's hairline takes the wax colour.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron and no press. Right click, Delete or the ×
   dismisses one card; Shift with any of them dismisses all.
-- Text past three lines never grows the card: the whole message unfolds in a box to the right of the
-  column on hover or focus, and a press pins it when the card has no target.
+- The whole message in the original's wording unfolds in a box to the right of the column on hover
+  or focus of any card, and a press pins it when the card has no target.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
   uniform overlap, weightier cards in front, leaving the event line visible with the seal at the top
   of the strip. The covered part of a card is clipped, never drawn over the card in front. Hovering
   or focusing a card parts its neighbours to show it whole. Below a 32 px strip per card the fan stops,
   the list scrolls, the bottom fades and a "jeszcze N" badge counts the cards past the edge.
-- A fresh card slides in and an urgent fresh seal pulses three times. Figures animate only on cards
-  inside the list's visible area; a paused game holds their frame, reduced motion holds the standing
-  pose and drops the slide and the pulse.
+- A fresh card slides in and an urgent fresh seal pulses three times. Figures are painted only on
+  cards inside the list's visible area; a paused game holds their frame. Reduced motion drops the
+  slide and the pulse, never the figure's activity, which is game content like the map.
 - Every row at once, for a check of the column: `?scene=sandbox&debug=notices` (DEVELOPMENT.md).
 
 ## Confirmed imagery
