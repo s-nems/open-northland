@@ -1,4 +1,4 @@
-import { components, type Entity, playerCommand, type Simulation } from '@open-northland/sim';
+import { components, type Entity, playerCommand, type Simulation, SUCCESSFUL_IF } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_ARCHER, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
@@ -40,6 +40,8 @@ const ATTACK_ORDER_TICK = 40;
 /** Claims a position no session transport hands out for that tick. */
 const ORDER_SEQUENCE = 1_000_000;
 const RUN_TICKS = 700;
+/** Between the catapult and the hut, so the browser opens on the whole exchange. */
+const CAMERA_AT = { hx: 20, hy: 19 } as const;
 
 const { Health, Owner, Vehicle } = components;
 
@@ -77,6 +79,17 @@ export const vehicleCatapultScene: SceneDefinition = {
   seed: 23,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
+  missions: {
+    missions: [
+      {
+        active: true,
+        visible: false,
+        successfullIf: SUCCESSFUL_IF.all,
+        goals: [],
+        results: [{ opcode: 'SetCameraPosition', point: CAMERA_AT }],
+      },
+    ],
+  },
   runTicks: RUN_TICKS,
   initialZoom: 1,
   checks: [
