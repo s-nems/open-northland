@@ -4,11 +4,13 @@ import {
   Building,
   DefenceMode,
   JobAssignment,
+  MISSION_BEHAVIOUR,
   NoRegeneration,
   Owner,
   Position,
   Settler,
   setDiplomacyStance,
+  stampMissionBehaviour,
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -530,6 +532,15 @@ describe('ai defence - the soldier list', () => {
     expect(enlistments(first)).toEqual([...band, archer]);
     apply(sim, first);
     expect(enlistments(run(sim))).toEqual([]);
+  });
+
+  it('never lists a fighter the map put beyond the player’s control', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const [free, fixed] = spawn(sim, 2, { x: BARRACKS.x - 2, y: BARRACKS.y + 2 }, SPEARMAN);
+    if (fixed === undefined) throw new Error('setup: the spawn was refused');
+    stampMissionBehaviour(sim.world, fixed, MISSION_BEHAVIOUR.NOT_CONTROLLABLE);
+    expect(enlistments(run(sim))).toEqual([free]);
   });
 
   it('writes the flag again over an archer the posting order re-idled', () => {

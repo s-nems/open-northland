@@ -396,7 +396,7 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 | 2 | 4 | passive: a soldier does not retaliate when hit, a civilian does not flee |
 | 3 | 8 | invulnerable: a hit-point event that would take life off is refused while healing still lands; animals ignore the human |
 | 4 | 16 | user messages about the human are suppressed |
-| 5 | 32 | not player-controllable: no command set, ignored by send-to; the AI treats such humans as its own |
+| 5 | 32 | not player-controllable: no command set, ignored by send-to; the scripted AI handler never lists it as a soldier |
 | 6 | 64 | cannot change job |
 | 7 | 128 | import marker (drawn on the human) |
 | 9 | 512 | walks at half speed |
@@ -492,17 +492,19 @@ loader and tick unless marked otherwise:
 - The **scripted handler** runs the authored tasks and conditions below. It is enabled for a seat of
   player type AI only; `AI_Disable <player>` switches it off together with the strategic one. Each
   seat takes a turn every 60 ticks (seat `p` on tick `3p` of the round). Every turn it lists the
-  seat's soldiers that man no workhouse, and a soldier joining the list gets the hold stance and its
-  regenerate-in-world flag cleared, so it never walks off to eat or sleep; on every twelfth turn the
-  handler writes a full bar over every food and stamina bar of the seat's humans that has fallen
-  below the critical mark. Needs themselves run for every human as
+  seat's soldiers that man no workhouse and carry no [behaviour bit 5](#human-behaviour-flags), and
+  a soldier joining the list gets the hold stance and its regenerate-in-world flag cleared, so it
+  never starts a need task and never walks off to eat or sleep; on every twelfth turn the handler
+  writes a full bar over every food and stamina bar of the seat's humans that has fallen below the
+  critical mark, which is all that feeds a listed man. Needs themselves run for every human as
   [behaviour bit 0](#human-behaviour-flags) allows, and two rules of the human itself apply to every
   computer-type player, handlers or not: a need task that fails (nothing to eat within 40 nodes, no
-  bed, no temple, or a cleared regenerate flag) writes the sated level over that need's bar, and no
-  message the human raises reaches the player, so a computer seat shows no need icons. This build
-  keeps all four: the list (its flag written over a posted garrison again, since this build's posting order lifts it) and the refill on the scripted handler's turn (`ai-player/military/defence`,
-  `systems/lifecycle/needs`), the reset in the needs drives and the silence in the HUD, for every seat
-  carrying the `AiPlayer` marker, which `AI_Disable` leaves in place with both handlers off.
+  bed, no temple) writes the sated level over that need's bar, and no message the human raises
+  reaches the player, so a computer seat shows no need icons. This build keeps all four: the list
+  (its flag written over a posted garrison again, since this build's posting order lifts it) and the
+  refill on the scripted handler's turn (`ai-player/military/defence`, `systems/lifecycle/needs`),
+  the reset in the needs drives and the silence in the HUD, for every seat carrying the `AiPlayer`
+  marker, which `AI_Disable` leaves in place with both handlers off.
 - The **strategic handler** (HAI) builds the economy and army. It is enabled for a player-type-AI
   seat whose tribe is not one of the two monster tribes; `HAI_Disable <player>` switches it off and
   `HAI_Disable{CollectResources,GuideBuild,HomeExpansion,HouseBuild,HouseUpgrade,Military,RoadBuild}`
@@ -526,7 +528,7 @@ task pass (`MainTask_RecheckAll`, `an original routine`) and the soldier passes
 | Line | Uses | Parameters after `<player>` |
 | --- | --- | --- |
 | `AI_UnitLimit`, `AI_MaxUnitLimit` | 280, 39 | `<n>`: the population the handler breeds towards, and the one it stops at (0 for none). Read by its women pass, which this build does not run; extracted as `unitLimit` and `maxUnitLimit` |
-| `AI_SoldiersDefaultPosition` | 248 | `<x> <y> <range>`: where the men no task takes stand; without one, the seat's centre with range 15 |
+| `AI_SoldiersDefaultPosition` | 248 | `<x> <y> <range>`: where the men no task takes stand; without one, or with one in the border band or on water, the seat's centre with range 15 |
 | `AI_MainTask_Defend` | 962 | `<priority> <condition> <x> <y> <range> <min> <max>` |
 | `AI_MainTask_Attack` | 41 | `<priority> <condition> <x> <y> <range> <min> <max> <rallyX> <rallyY> <stance>` |
 | `AI_MainTask_CreateCreatures` | 237 | `<priority> <condition> <tribe> <job> <x> <y> <missionId> <count> <once>`: `count` humans of `tribe`/`job` at the point with behaviour mask 0, on every task recheck that finds the condition active, once only with `once` |
@@ -559,24 +561,27 @@ or past 100 or left unset never); the one-shot kinds run in the recheck, and the
 tasks go to the soldier assignment. A seat that authored no task at all defends its centre (its
 first storage building, else the mean of what it owns) with range 40 and no bounds.
 
-The handler lists the seat's soldiers and heroes that man no workhouse. On every second turn it
-hands them out: the active Defend and Attack tasks become groups (Attack tasks on one point pool
-into a group that sums their priority and bounds and averages their rally points), sorted by
-priority. A first pass serves the Attack groups and the Defend groups bounded on both sides: each
-takes its priority's share of the men still free, at most its `max`, or none when that is under
-its `min`; a second pass serves the rest from their share of the pooled priority. A group takes the
-nearest men, preferring the ones already on it, then the armed and armoured; a hero never takes an
-Attack. A man keeps his task until the task's condition drops; the men no task takes hold the
-default position. On every turn the handler then orders them: a Defend post's man walks back when
-farther than half the range (and more than 10) from the post and guards there; an Attack band's
-man goes for the enemy house on the target, else to within half the range of it, unless the band
-is regrouping, when he gathers within the group's regroup range of the rally point. A band
-regroups when fewer than a third of it (half, while regrouping) stands within the range of the
-target and fewer than that stand within three times its size (twice, while regrouping) of its
-foremost man; the regroup range is a third of the band. This build issues those walks as
-attack-moves and sets the guard stance on arrival (the original sets it on assignment and anchors
-it at the post); the men a raid draws out (`ai-player/military/defence`) return to their post when
-the raid ends.
+The handler lists the seat's soldiers and heroes that man no workhouse and carry no behaviour bit
+5. On every second turn it hands them out: the active Defend and Attack tasks become groups (Attack
+tasks on one point pool into a group that sums their priority and bounds and averages their rally
+points), sorted by priority. A first pass serves the Attack groups and the Defend groups bounded on
+both sides: each takes its priority's share of the men still free, at most its `max`, or none when
+that is under its `min`; a second pass serves the rest from their share of the pooled priority. A
+group takes the nearest men, preferring the ones already on it, then the armed and armoured; a hero
+never takes an Attack. A man keeps his task until the task's condition drops; the men no task takes
+hold the default position. On every turn the handler then orders them: a Defend post's man walks
+back when farther than half the range (and more than 10) from the post and guards there; an Attack
+band's man goes for the enemy house on the target, else to within half the range of it, unless the
+band is regrouping, when he gathers within the group's regroup range of the rally point. A band is
+the men the group took that pass; it regroups when fewer than a third of it (half, while
+regrouping) stands within the range of the target and fewer than that stand within three times its
+size (twice, while regrouping) of its foremost man, and a task recheck starts every band attacking
+again; the regroup range is a third of the band. This build issues those walks as attack-moves and
+sets the guard stance on arrival (the original sets it on assignment and anchors it at the post).
+The seat's raid defence (`ai-player/military/defence`) orders the same men out at a raider and the
+program orders them back once they stand idle, so a raider sitting out of reach in the watch band
+has a posted man pace between the two until it leaves (approximation: the original runs no raid
+defence beside the program).
 
 ## Tributes
 

@@ -186,7 +186,9 @@ const TICKS_PER_MINUTE = 720;
 const TICKS_PER_SECOND = 12;
 
 /** The ints after the player of one `[AIData]` line, the way the loader reads them: each in turn, a
- *  macro through the code table, and a missing or malformed one as 0. */
+ *  macro through the code table, and a missing one as 0. Approximation: a token that is neither reads
+ *  as 0, where the loader takes the first digits it finds in it; the corpus has one such token, on a
+ *  slot no task reads. */
 class AiLineReader {
   private next = 1;
   constructor(private readonly values: readonly string[]) {}
@@ -461,7 +463,7 @@ function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined 
  * rows typed, and one mission per repeated `MissionData` section in authored order. Section names match
  * case-insensitively (the corpus carries both `[AIData]` and `[aidata]`), and a duplicate `player`
  * slot keeps its first row. Returns undefined when no section yields anything, and the caller then
- * emits no script sidecar. Of `aidata` only the seat toggles are read.
+ * emits no script sidecar.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {
   const permissions: NonNullable<MapScript['permissions']> = [];

@@ -119,10 +119,11 @@ export interface TaskGroup {
 }
 
 export function activeGroups(defs: readonly MapAiTask[], records: readonly AiTaskRecord[]): TaskGroup[] {
-  const active: Array<{ index: number; priority: number }> = [];
+  const active: Array<{ index: number; priority: number; def: SoldierTask }> = [];
   defs.forEach((def, index) => {
     const priority = records[index]?.priority ?? 0;
-    if (priority !== 0 && (def.kind === 'defend' || def.kind === 'attack')) active.push({ index, priority });
+    if (priority !== 0 && (def.kind === 'defend' || def.kind === 'attack'))
+      active.push({ index, priority, def });
   });
   // Highest priority first; the sort is stable, so equal priorities keep script order.
   active.sort((a, b) => b.priority - a.priority);
@@ -138,8 +139,7 @@ export function activeGroups(defs: readonly MapAiTask[], records: readonly AiTas
     max: number;
     rally: { hx: number; hy: number } | null;
   }> = [];
-  for (const { index, priority } of active) {
-    const def = defs[index] as SoldierTask;
+  for (const { index, priority, def } of active) {
     const joined =
       def.kind === 'attack'
         ? groups.find(

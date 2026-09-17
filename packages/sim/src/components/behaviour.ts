@@ -21,7 +21,7 @@ export const MISSION_BEHAVIOUR = {
   /** Acquires no target of its own and never flees. */
   PASSIVE: 1 << 2,
   INVULNERABLE: 1 << 3,
-  /** Beyond the player's orders; its own seat's AI still commands it. */
+  /** Beyond the player's orders, and never a scripted AI handler's soldier. */
   NOT_CONTROLLABLE: 1 << 5,
   JOB_LOCKED: 1 << 6,
   /** The import marker `SetImportHumanFlag` writes; drawn on the human, no rule reads it. */

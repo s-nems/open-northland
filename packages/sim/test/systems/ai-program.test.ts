@@ -6,6 +6,7 @@ import {
   aiProgramEntity,
   Building,
   diplomacyStance,
+  MISSION_BEHAVIOUR,
   Owner,
   Person,
   Position,
@@ -13,6 +14,7 @@ import {
   Stance,
   setAiExternalFlag,
   setDiplomacyStance,
+  stampMissionBehaviour,
 } from '../../src/components/index.js';
 import type { DeepReadonly, Entity } from '../../src/ecs/world.js';
 import {
@@ -118,6 +120,21 @@ describe('ai program - a Defend post', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
+  it('leaves a man the map put beyond the player’s control where he stands, off the list', () => {
+    const sim = simWith([
+      seatRow({
+        tasks: [{ kind: 'defend', priority: 10, condition: CONDITION_ALWAYS, ...POST, min: 0, max: 0 }],
+      }),
+    ]);
+    const [listed, fixed] = spawn(sim, 2, SPAWN);
+    if (listed === undefined || fixed === undefined) throw new Error('setup: the spawn was refused');
+    stampMissionBehaviour(sim.world, fixed, MISSION_BEHAVIOUR.NOT_CONTROLLABLE);
+    sim.run(TWO_TURNS + WALK_TICKS);
+    expect(programOf(sim).soldiers.map((s) => s.entity)).toEqual([listed]);
+    const at = pointOf(sim, fixed);
+    expect(hexDistanceBetween(at.hx, at.hy, SPAWN.x, SPAWN.y)).toBeLessThan(4);
+  });
+
   it('holds a post only while its condition holds, and lets the men go when it stops', () => {
     const FLAG = 2;
     const sim = simWith([
@@ -215,6 +232,40 @@ describe('ai program - the seat’s own defaults', () => {
     }
   });
 
+  it('keeps an authored default position on the map, and takes the centre for one in the border band', () => {
+    const CENTRE = { x: 60, y: 60 };
+    const authored = simWith([seatRow({ defaultPosition: { x: 40, y: 44, range: 30 } })]);
+    place(authored, HQ_TYPE, CENTRE);
+    spawn(authored, 1, SPAWN);
+    authored.run(TWO_TURNS);
+    expect(programOf(authored).defaultPosition).toEqual({ hx: 40, hy: 44, range: 30 });
+
+    const offMap = simWith([seatRow({ defaultPosition: { x: 0, y: 0, range: 9000 } })]);
+    const hq = place(offMap, HQ_TYPE, CENTRE);
+    spawn(offMap, 1, SPAWN);
+    offMap.run(TWO_TURNS);
+    expect(programOf(offMap).defaultPosition).toEqual({ ...pointOf(offMap, hq), range: 15 });
+  });
+
+  it('runs nothing for a seat the map AI_Disabled, though its soldiers stay a computer seat’s', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: grassNodeMap(MAP, MAP),
+      aiScript: [seatRow({ disabled: true })],
+    });
+    sim.enqueueSetup({
+      kind: 'setPlayerAi',
+      player: SEAT,
+      enabled: true,
+      scripted: false,
+      modules: { military: false },
+    });
+    spawn(sim, 1, SPAWN);
+    sim.run(TWO_TURNS);
+    expect(aiProgramEntity(sim.world, SEAT)).toBeNull();
+  });
+
   it('runs nothing for a seat whose strategic military is on, and nothing for a human seat', () => {
     const sim = new Simulation({
       seed: 1,
@@ -257,11 +308,24 @@ describe('ai program - one-shots and saves', () => {
     });
     expect(restored.hashState()).toBe(sim.hashState());
     expect(programOf(restored).tasks).toEqual([{ done: true, priority: 0 }]);
-    expect(() =>
-      restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
-        content: sim.content,
-        map: grassNodeMap(MAP, MAP),
+    const restoredWith = (rows: Partial<MapAiSeat> | null): (() => Simulation) => {
+      return () =>
+        restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+          content: sim.content,
+          map: grassNodeMap(MAP, MAP),
+          ...(rows === null ? {} : { aiScript: [seatRow(rows)] }),
+        });
+    };
+    // No script, a script with another slot count, and one with fewer tasks all fit the records badly.
+    expect(restoredWith(null)).toThrow(/AI program/);
+    expect(
+      restoredWith({
+        conditions: [{ kind: 'onTime', slot: 1, ticks: AI_HANDLER_ROUND_TICKS }],
+        tasks: [{ kind: 'changeDiplomacy', priority: 5, condition: 1, player: FOE, state: 3 }],
       }),
+    ).toThrow(/AI program/);
+    expect(
+      restoredWith({ conditions: [{ kind: 'onTime', slot: 0, ticks: AI_HANDLER_ROUND_TICKS }], tasks: [] }),
     ).toThrow(/AI program/);
   });
 });

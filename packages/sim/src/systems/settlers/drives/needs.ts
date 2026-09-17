@@ -38,7 +38,7 @@ import { eatAtPost, sleepAtPost } from './tower-post.js';
 // The needs drives: the highest-priority rungs of the planner ladder. Eat outranks sleep outranks pray,
 // and an unsatisfiable need falls through to normal work rather than freezing the settler. Every rung
 // fires at the one shared NEED_DRIVE_THRESHOLD, the level a settler leaves its work at. On a computer
-// seat a rung that fails writes the sated level over its bar instead (`settleUnservedNeedForAi`).
+// seat a seek that fails writes the sated level over its bar instead (`settleUnservedNeedForAi`).
 
 /**
  * Whether any needs rung would fire, so a caller can skip `planNeeds`'s target and limit setup for a sated
@@ -103,7 +103,7 @@ export function answerNeedInPlace(
       return true;
     }
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
-    settleUnservedNeedForAi(world, e, 'hunger');
+    if (seek) settleUnservedNeedForAi(world, e, 'hunger');
   }
   if (pressing(settler.fatigue, ordered, 'fatigue')) {
     const draught = draughtSlotFor(world, ctx, e, 'fatigue');
@@ -111,8 +111,9 @@ export function answerNeedInPlace(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    if (maySeek(world, e, ordered, 'fatigue') && sleepAtPost(world, ctx, e, settler)) return true;
-    settleUnservedNeedForAi(world, e, 'fatigue');
+    const seek = maySeek(world, e, ordered, 'fatigue');
+    if (seek && sleepAtPost(world, ctx, e, settler)) return true;
+    if (seek) settleUnservedNeedForAi(world, e, 'fatigue');
   }
   return false;
 }
@@ -190,7 +191,7 @@ export function planNeeds(
     }
     // Hungry with no reachable food, or forbidden to look: a human seat's settler falls through to
     // work while hunger climbs to ONE and the starvation bite drains the pool until food appears.
-    settleUnservedNeedForAi(world, e, 'hunger');
+    if (seek) settleUnservedNeedForAi(world, e, 'hunger');
   }
 
   if (pressing(settler.fatigue, ordered, 'fatigue')) {
@@ -216,7 +217,6 @@ export function planNeeds(
       );
       return true;
     }
-    settleUnservedNeedForAi(world, e, 'fatigue');
   }
 
   // A trade that does not pray has no prayer rung of its own; a player's order gives it one.
@@ -254,11 +254,12 @@ export function planNeeds(
 }
 
 /**
- * A computer seat's answer to a need its settler cannot serve - nothing to eat in reach, no bed, no
- * temple, or a seek the seat forbade: the bar goes back to the level a served need sits at instead of
+ * A computer seat's answer to a need its settler went looking to serve and could not - nothing to eat
+ * in reach, no bed, no temple: the bar goes back to the level a served need sits at instead of
  * pinning. Byte evidence: the owned copy's failed need task writes the sated level over the failed
  * need's bar when the human's player is of the computer type, where a human player's settler gets the
- * warning message instead (the the original's `an original routine`).
+ * warning message instead (the the original's `an original routine`). A seek the seat
+ * forbade starts no task there, so that bar falls to the seat's refill (`lifecycle/needs`).
  */
 function settleUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'fatigue' | 'piety'): void {
   if (world.get(e, Settler)[need] <= NEED_SATED_THRESHOLD) return;

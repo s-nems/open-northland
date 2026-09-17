@@ -68,12 +68,6 @@ export function isAiPlayer(world: World, player: number): boolean {
   return aiPlayerEntity(world, player) !== null;
 }
 
-/** Whether `player`'s scripted handler runs: a computer seat the map did not `AI_Disable`. */
-export function aiScriptedHandlerRuns(world: World, player: number): boolean {
-  const carrier = aiPlayerEntity(world, player);
-  return carrier !== null && world.get(carrier, AiPlayer).scripted;
-}
-
 /** Whether `player`'s seat runs `module`. A non-AI seat runs none. */
 export function aiModuleRuns(world: World, player: number, module: AiModuleId): boolean {
   const carrier = aiPlayerEntity(world, player);

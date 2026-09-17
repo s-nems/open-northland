@@ -49,6 +49,8 @@ export const aiProgramSystem: System = (world, ctx) => {
   if (changed || turn === 0 || program.tasks.length !== defs.length) {
     while (program.tasks.length < defs.length) program.tasks.push(freshTaskRecord());
     recheckTasks(world, ctx, seat, defs, program.tasks, program.conditions);
+    // A recheck rebuilds the Attack bands in their attacking state.
+    program.groups = [];
   }
   const groups = activeGroups(defs, program.tasks);
   // The towers' claim on the free archers, judged as the seat's defence will judge it.
@@ -76,9 +78,10 @@ export const aiProgramSystem: System = (world, ctx) => {
   for (const command of commands) ctx.commands.enqueue(aiCommand(seat, command));
 };
 
-/** The map's border band in map points, where the handler refuses a default position or a task of its
- *  own making: the outermost two macro cells (reading of `an original routine`, whose one-point
- *  parity nudge is left out). */
+/** The map's border band in map points, where the handler refuses a default position: the outermost
+ *  two macro cells (reading of `an original routine`, whose one-point parity nudge is left
+ *  out). The original refuses a Defend, Attack or CreateCreatures point there too, which this build
+ *  leaves out: no authored task of the corpus sits in the band. */
 const BORDER_POINTS = 4;
 
 function isBorderPoint(terrain: TerrainGraph, hx: number, hy: number): boolean {
@@ -97,9 +100,11 @@ const CENTRE_DEFEND_PRIORITY = 10;
 const CENTRE_DEFEND_RANGE = 40;
 
 /**
- * The seat's first turn: the authored default position or one at the seat's centre, and a Defend of
- * the centre when the script authored no task at all, both only when the centre is not on the map's
- * border. The external flags a script declares raised start raised.
+ * The seat's first turn: the authored default position, or one at the seat's centre when the map
+ * authored none or put it in the border band, and a Defend of the centre when the script authored no
+ * task at all, both only when the centre is not on the map's border. The external flags a script
+ * declares raised start raised. Approximation: the original also refuses an authored position on
+ * water (continent type 0), which this build does not judge.
  */
 function startProgram(
   world: World,
@@ -112,7 +117,7 @@ function startProgram(
   const usable = centre !== null && !isBorderPoint(terrain, centre.hx, centre.hy);
   const authored = script?.defaultPosition;
   const defaultPosition: AiDefaultPosition | null =
-    authored !== undefined
+    authored !== undefined && !isBorderPoint(terrain, authored.x, authored.y)
       ? { hx: authored.x, hy: authored.y, range: authored.range }
       : usable
         ? { ...centre, range: CENTRE_DEFAULT_RANGE }

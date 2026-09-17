@@ -8,7 +8,9 @@ import {
   Building,
   diplomacyStance,
   Engagement,
+  hasMissionBehaviour,
   JobAssignment,
+  MISSION_BEHAVIOUR,
   Owner,
   Position,
   Settler,
@@ -24,7 +26,7 @@ import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { isTravelling } from '../movement/nav-state.js';
 import { isFighterJob, isHeroJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
-import type { SoldierTask, TaskGroup } from './tasks.js';
+import type { TaskGroup } from './tasks.js';
 
 // The soldiers of one seat's program: the readings of the the original's
 // `an original routine`, `an original routine`,
@@ -42,11 +44,12 @@ const DEFEND_SLACK = 10;
 const DEFEND_STANCE = MILITARY_MODE.DEFEND;
 
 /**
- * Keep the list to the seat's fighters and heroes that man no workhouse, dropping the men who left
- * and listing the new ones, ascending by entity id, up to the list's size. A listed man's task and
- * default-position marks survive the walk. `wanted` are the men the seat's towers are about to
- * post, left out so the program's first walk cannot carry them past the wall (the original attaches
- * the towers before it lists, on every turn).
+ * Keep the list to the seat's fighters and heroes that man no workhouse and stand within the
+ * player's control (`MISSIONS.md`, behaviour bit 5), dropping the men who left and listing the new
+ * ones, ascending by entity id, up to the list's size. A listed man's task and default-position
+ * marks survive the walk. `wanted` are the men the seat's towers are about to post, left out so the
+ * program's first walk cannot carry them past the wall (the original attaches the towers before it
+ * lists, on every turn).
  */
 export function updateSoldierList(
   world: World,
@@ -72,6 +75,7 @@ function qualifies(world: World, ctx: SystemContext, seat: number, e: Entity): b
   if (settler === undefined || settler.jobType === null || world.tryGet(e, Owner)?.player !== seat)
     return false;
   if (!isFighterJob(ctx.content, settler.jobType) && !isHeroJob(ctx.content, settler.jobType)) return false;
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE)) return false;
   return !world.has(e, JobAssignment) && world.has(e, Position);
 }
 
@@ -173,14 +177,15 @@ export function assignSoldiers(
     if (filled.length === 0) break;
     for (const share of filled) {
       share.served = true;
-      commands.push(...takeSoldiers(world, ctx, defs, share, records, claimed));
-      formOrAttack(world, defs, share.group, records, attackGroups);
+      const taken = takeSoldiers(world, ctx, defs, share, records, claimed);
+      commands.push(...taken.commands);
+      formOrAttack(world, share.group, taken.band, attackGroups);
     }
   }
 
   // Pass two: the rest, when their share of the whole priority pool fills their cap to at least their
   // min (an uncapped group only with no min), sized off their share among themselves of the men the
-  // first pass left, and never more than are still free.
+  // first pass left, and never more than the group may still take.
   const pooled = shares.reduce((sum, s) => sum + s.group.priority, 0);
   const rest = shares.filter((s) => {
     if (s.served) return false;
@@ -193,12 +198,12 @@ export function assignSoldiers(
     let want = roundedShare(share.group.priority, left, total);
     if (share.group.max !== 0) want = Math.min(want, share.group.max);
     if (want < share.group.min) continue;
-    const free = records.filter((r) => !claimed.has(r.entity)).length;
-    share.want = Math.min(want, free);
+    share.want = Math.min(want, eligible(world, ctx, share.group, records, claimed).length);
     if (share.want < share.group.min) continue;
     share.served = true;
-    commands.push(...takeSoldiers(world, ctx, defs, share, records, claimed));
-    formOrAttack(world, defs, share.group, records, attackGroups);
+    const taken = takeSoldiers(world, ctx, defs, share, records, claimed);
+    commands.push(...taken.commands);
+    formOrAttack(world, share.group, taken.band, attackGroups);
   }
 
   // The men no task took hold the default position, unless already fighting; the guard stance is
@@ -217,9 +222,24 @@ function roundedShare(priority: number, left: number, total: number): number {
   return Math.floor((2 * priority * left + total) / (2 * total));
 }
 
-/** The `want` free men nearest the group's point join it: a man already on the task is preferred by
- *  the rank penalty, a hero never takes an Attack task, and only a man switched onto the task gets a
- *  fresh stance order. */
+/** The listed men a group may still take: the unclaimed, and for an Attack group no hero. */
+function eligible(
+  world: World,
+  ctx: SystemContext,
+  group: TaskGroup,
+  records: readonly AiSoldierRecord[],
+  claimed: ReadonlySet<Entity>,
+): AiSoldierRecord[] {
+  return records.filter(
+    (r) =>
+      !claimed.has(r.entity) &&
+      !(group.kind === 'attack' && isHeroJob(ctx.content, world.get(r.entity, Settler).jobType)),
+  );
+}
+
+/** The `want` eligible men nearest the group's point join it, and come back as the band it took this
+ *  pass: a man already on the task is preferred by the rank penalty, and only a man switched onto the
+ *  task gets a fresh stance order. */
 function takeSoldiers(
   world: World,
   ctx: SystemContext,
@@ -227,17 +247,14 @@ function takeSoldiers(
   share: GroupShare,
   records: AiSoldierRecord[],
   claimed: Set<Entity>,
-): PlayerCommand[] {
+): { commands: PlayerCommand[]; band: AiSoldierRecord[] } {
   const { group } = share;
   const lead = group.tasks[0];
   const leadDef = lead === undefined ? undefined : defs[lead];
   if (lead === undefined || leadDef === undefined || (leadDef.kind !== 'defend' && leadDef.kind !== 'attack'))
-    return [];
+    return { commands: [], band: [] };
   const ranked: Array<{ record: AiSoldierRecord; rank: number }> = [];
-  for (const record of records) {
-    if (claimed.has(record.entity)) continue;
-    const settler = world.get(record.entity, Settler);
-    if (group.kind === 'attack' && isHeroJob(ctx.content, settler.jobType)) continue;
+  for (const record of eligible(world, ctx, group, records, claimed)) {
     const at = pointOf(world, record.entity);
     let rank = hexDistanceBetween(at.hx, at.hy, group.hx, group.hy);
     if (groupOf(defs, [group], record) === null) rank += RANK_PENALTY;
@@ -248,8 +265,10 @@ function takeSoldiers(
   // Ascending rank; the list is ascending by entity id already, and the sort is stable.
   ranked.sort((a, b) => a.rank - b.rank);
   const commands: PlayerCommand[] = [];
+  const band: AiSoldierRecord[] = [];
   for (const { record } of ranked.slice(0, share.want)) {
     claimed.add(record.entity);
+    band.push(record);
     if (groupOf(defs, [group], record) === null) {
       record.task = lead;
       const stance = leadDef.kind === 'attack' ? leadDef.stance : DEFEND_STANCE;
@@ -257,7 +276,7 @@ function takeSoldiers(
     }
     record.onDefault = false;
   }
-  return commands;
+  return { commands, band };
 }
 
 /** A stance order, unless the man already holds that stance or the script named no real one. The
@@ -269,15 +288,14 @@ function stanceOrder(world: World, e: Entity, mode: number): PlayerCommand[] {
 }
 
 /**
- * Judge an Attack group's band: enough of it at the target keeps the attack on; a band too scattered
- * around its foremost man falls back to regroup at the rally point, tightly, before it goes in again.
- * The thresholds are stricter while regrouping.
+ * Judge the band an Attack group took this pass: enough of it at the target keeps the attack on; a
+ * band too scattered around its foremost man falls back to regroup at the rally point, tightly,
+ * before it goes in again. The thresholds are stricter while regrouping.
  */
 function formOrAttack(
   world: World,
-  defs: readonly MapAiTask[],
   group: TaskGroup,
-  records: readonly AiSoldierRecord[],
+  band: readonly AiSoldierRecord[],
   attackGroups: AiAttackGroupRecord[],
 ): void {
   if (group.kind !== 'attack' || group.rally === null) return;
@@ -289,7 +307,6 @@ function formOrAttack(
     attackGroups.push(state);
     attackGroups.sort((a, b) => a.task - b.task);
   }
-  const band = records.filter((r) => groupOf(defs, [group], r) !== null);
   const n = band.length;
   const near = state.regrouping ? Math.floor(n / 2) : Math.floor(n / 3);
   const spread = state.regrouping ? 2 * n : 3 * n;
@@ -428,5 +445,3 @@ function pointOf(world: World, e: Entity): HalfCellNode {
   const at = world.get(e, Position);
   return nodeOfPosition(at.x, at.y);
 }
-
-export type { SoldierTask };

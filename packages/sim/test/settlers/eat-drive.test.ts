@@ -199,7 +199,8 @@ describe('eatDrive - the planner choosing to eat', () => {
     expect(sim.world.get(human, Settler).hunger).toBeGreaterThan(HUNGRY);
   });
 
-  it('settles a computer seat soldier forbidden to regenerate instead of walking it to the larder', () => {
+  it('leaves a computer seat soldier forbidden to regenerate hungry where he stands, for the seat’s refill', () => {
+    // A forbidden seek starts no need task in the original, so nothing fails and nothing is settled.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const AI_SEAT = 1;
     const soldier = settlerAt(sim, 0, 0, HUNGRY);
@@ -210,7 +211,7 @@ describe('eatDrive - the planner choosing to eat', () => {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.step();
 
-    expect(sim.world.get(soldier, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.get(soldier, Settler).hunger).toBeGreaterThan(HUNGRY);
     expect(sim.world.has(soldier, MoveGoal)).toBe(false);
   });
 
