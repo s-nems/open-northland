@@ -1,7 +1,6 @@
 # Harness an ox to a cart that needs one
 
 **Area:** sim · **Focus:** `packages/sim/src/systems/vehicles`, `systems/animals` · **Priority:** P3
-**Blocked by:** [crew and boarding](vehicles-5-crew-and-boarding.md)
 
 Type 6 (`cart_no_ox`) is what a joinery builds; it has no passenger slots and cannot move until an
 animal of tribe 10 is harnessed, after which it becomes type 2 in place

@@ -31,7 +31,10 @@ export function authorizedCommand(
   const command = envelope.command;
   if (!seatMayIssue(world, envelope.player, command, terrain)) return undefined;
   const commanded = (e: Entity): boolean => seatCommandsUnit(world, envelope, e);
+  // A crew and a hold are a player's own, never an ally's: the ordered vehicle and the carrier it is
+  // loaded into must both be the seat's.
   if ('vehicle' in command && !commanded(command.vehicle)) return undefined;
+  if ('carrier' in command && !commanded(command.carrier)) return undefined;
   if ('entity' in command) return commanded(command.entity) ? command : undefined;
   if ('members' in command) return keepMembers(command, commanded);
   return command;

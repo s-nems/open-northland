@@ -1,7 +1,6 @@
 # Load and unload vehicle cargo through wanted amounts and carriers
 
 **Area:** sim · **Focus:** `packages/sim/src/systems/vehicles`, `settlers/drives` · **Priority:** P2
-**Blocked by:** [crew and boarding](vehicles-5-crew-and-boarding.md)
 
 A vehicle's request list in the original is its wanted amounts: carriers serve any vehicle with
 `wanted > reserved`, searching loose goods within radius 40 of the door, then a house, then the
@@ -9,7 +8,9 @@ guide network, and carry one unit to the door; unload flushes one reserved unit 
 ([VEHICLES.md](../../formats/VEHICLES.md#cargo)). `VehicleStock` holds the per-good current, wanted
 and reserved bytes and `modifyVehicleStock` (`systems/vehicles/stock.ts`) already applies the
 `Stock_ModifyAmount` clamp, the below-zero refusal, the dish aliasing and wanted-follows-actual;
-Open Northland has neither the seat commands nor a carrier drive for vehicles.
+Open Northland has neither the cargo seat commands nor a carrier drive for vehicles. The crew seat
+commands exist (`systems/vehicles/crew.ts`, `boarding.ts`): `unloadPeople` is the people half of
+`f`; the goods half is this ticket's `unloadVehicle`.
 
 ## Scope
 

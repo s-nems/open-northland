@@ -8,7 +8,7 @@ import {
   type Simulation,
   systems,
 } from '@open-northland/sim';
-import { JOB_CARRIER, JOB_SOLDIER, JOB_TRADER } from '../catalog/jobs.js';
+import { JOB_CARRIER, JOB_SOLDIER, JOB_SOLDIER_SWORD, JOB_TRADER } from '../catalog/jobs.js';
 import { TERRAIN_IMPASSABLE, TERRAIN_OPEN } from '../catalog/terrain.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
@@ -26,9 +26,11 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * Every vehicle type standing on a shore for two tribes, turned to a few facings, one cart loaded, the
- * catapult mid-attack, one catapult wrecked a second in so its ruin decals show, and a crewed ox cart
- * and catapult ordered across the bottom rows so a drive slides node to node at each type's pace. The
- * browser view is the check that each type draws its own sprite (docs/formats/VEHICLES.md "Graphics").
+ * catapult mid-attack, one catapult wrecked a second in so its ruin decals show, a trader who attaches
+ * to the viking handcart and drives it off once aboard, a war party boarding the viking small ship at
+ * its mooring, and a crewed ox cart and catapult ordered across the bottom rows so a drive slides node
+ * to node at each type's pace once each commander has boarded. The browser view is the check that each
+ * type draws its own sprite (docs/formats/VEHICLES.md "Graphics") and that a boarded crew leaves the map.
  */
 
 const MAP_W = 26;
@@ -40,7 +42,7 @@ const SHORE_X = 17;
 const FRANK_TRIBE = 2;
 const RIVAL_PLAYER = 1;
 
-const { Vehicle, seatPassenger } = components;
+const { Vehicle } = components;
 
 /** The six map-point facings, `nav/halfcell.ts` `HEX_DIRECTIONS` order: E, SE, SW, W, NW, NE. */
 const FACING_EAST = 0;
@@ -81,11 +83,19 @@ const WRECK_AT = { x: 6, y: 6 } as const;
 const WRECK_TICK = 12;
 /** Claims a position no session transport hands out for that tick. */
 const WRECK_SEQUENCE = 1_000_000;
-/** The trader who crews the viking handcart and walks off with it, pulling the cart gait. */
+/** The trader who crews the viking handcart: attached at once, the cart's goto holds until it boards. */
 const TRADER_AT = { x: 3, y: 4 } as const;
 const TRADER_GOAL = { x: 12, y: 6 } as const;
-/** The drivers: an ox cart and a catapult, each with a commander seated, ordered east along their own
- *  row a few ticks in. The catapult crosses a node in twice the cart's period, so it trails. */
+/** The war party that boards the viking small ship: a swordsman and two recruits spawned a few nodes
+ *  from its mooring on the shore, attached and asked aboard (the sandbox declares no hero trade). */
+const PARTY_AT: readonly { readonly job: number; readonly x: number; readonly y: number }[] = [
+  { job: JOB_SOLDIER_SWORD, x: 15, y: 2 },
+  { job: JOB_SOLDIER, x: 15, y: 3 },
+  { job: JOB_SOLDIER, x: 16, y: 1 },
+];
+/** The drivers: an ox cart and a catapult, each with a commander attached beside it, ordered east along
+ *  their own row a few ticks in; the goto holds until the commander is inside. The catapult crosses a
+ *  node in twice the cart's period, so it trails. */
 const DRIVE_ORDER_TICK = 6;
 interface Drive {
   readonly from: { readonly x: number; readonly y: number };
@@ -119,14 +129,27 @@ function build(sim: Simulation): void {
   const wreck = spawnVehicleDirect(sim, VEHICLE_CATAPULT, WRECK_AT.x, WRECK_AT.y);
   sim.enqueueAt(adminCommand({ kind: 'debugKill', target: wreck }), WRECK_TICK, WRECK_SEQUENCE);
   const trader = spawnSettlerDirect(sim, JOB_TRADER, TRADER_AT.x, TRADER_AT.y, HUMAN_PLAYER);
-  if (handcart !== undefined) seatPassenger(sim.world, handcart, trader);
-  const goal = cellAnchorNode(TRADER_GOAL.x, TRADER_GOAL.y);
-  sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'moveUnit', entity: trader, x: goal.hx, y: goal.hy }));
+  if (handcart !== undefined) {
+    sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: trader, vehicle: handcart }));
+    const goal = cellAnchorNode(TRADER_GOAL.x, TRADER_GOAL.y);
+    sim.enqueue(
+      playerCommand(HUMAN_PLAYER, { kind: 'moveVehicle', vehicle: handcart, x: goal.hx, y: goal.hy }),
+    );
+  }
+  const ship = vikings.find((e) => sim.world.get(e, Vehicle).vehicleType === VEHICLE_SHIP_SMALL);
+  if (ship !== undefined) {
+    for (const member of PARTY_AT) {
+      const entity = spawnSettlerDirect(sim, member.job, member.x, member.y, HUMAN_PLAYER);
+      sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity, vehicle: ship }));
+      sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'boardVehicle', entity }));
+    }
+  }
   spawnDriver(sim, VEHICLE_OXCART, JOB_CARRIER, CART_DRIVE, WRECK_SEQUENCE + 1);
   spawnDriver(sim, VEHICLE_CATAPULT, JOB_SOLDIER, CATAPULT_DRIVE, WRECK_SEQUENCE + 2);
 }
 
-/** A crewed vehicle at `drive.from`, facing east, ordered to `drive.to` on {@link DRIVE_ORDER_TICK}. */
+/** A vehicle at `drive.from`, facing east, its commander attached beside it and ordered to `drive.to`
+ *  on {@link DRIVE_ORDER_TICK}. */
 function spawnDriver(
   sim: Simulation,
   type: number,
@@ -136,13 +159,19 @@ function spawnDriver(
 ): void {
   const vehicle = spawnVehicleDirect(sim, type, drive.from.x, drive.from.y, { facing: FACING_EAST });
   const commander = spawnSettlerDirect(sim, commanderJob, drive.from.x + COMMANDER_OFFSET_X, drive.from.y);
-  seatPassenger(sim.world, vehicle, commander);
+  sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: commander, vehicle }));
   const goal = cellAnchorNode(drive.to.x, drive.to.y);
   sim.enqueueAt(
     playerCommand(HUMAN_PLAYER, { kind: 'moveVehicle', vehicle, x: goal.hx, y: goal.hy }),
     DRIVE_ORDER_TICK,
     sequence,
   );
+}
+
+/** Whether every rider of the local player's one vehicle of `type` is inside it. */
+function crewAboard(sim: Simulation, type: number): boolean {
+  const views = sim.vehiclesOf(HUMAN_PLAYER).filter((v) => v.vehicleType === type);
+  return views.some((v) => v.passengers.length > 0 && v.passengers.every((seat) => seat.inside));
 }
 
 /** How far east of its spawn the driver of `type` stands, in half-cell columns: the one vehicle of that
@@ -165,7 +194,7 @@ export const vehiclesScene: SceneDefinition = {
   seed: 11,
   terrain: shoreTerrain(),
   build,
-  runTicks: 60,
+  runTicks: 160,
   initialZoom: 0.9,
   checks: [
     {
@@ -193,6 +222,30 @@ export const vehiclesScene: SceneDefinition = {
     {
       label: 'the ships spawned moored to the shore',
       predicate: (sim) => sim.vehiclesOf(HUMAN_PLAYER).filter((v) => v.moored).length === 2,
+    },
+    {
+      label: 'the trader boarded the handcart and drove it off, leaving the map',
+      predicate: (sim) => {
+        const cart = sim.vehiclesOf(HUMAN_PLAYER).find((v) => v.vehicleType === VEHICLE_HANDCART);
+        const rider = cart?.passengers[0];
+        return (
+          crewAboard(sim, VEHICLE_HANDCART) &&
+          rider !== undefined &&
+          !sim.world.has(rider.entity, components.Position) &&
+          cart?.at?.hx !== cellAnchorNode(VIKING_ROW[0]?.x ?? 0, 0).hx
+        );
+      },
+    },
+    {
+      label: 'the war party is aboard the small ship',
+      predicate: (sim) => {
+        const ship = sim.vehiclesOf(HUMAN_PLAYER).find((v) => v.vehicleType === VEHICLE_SHIP_SMALL);
+        return (
+          ship !== undefined &&
+          ship.passengers.length === PARTY_AT.length &&
+          crewAboard(sim, VEHICLE_SHIP_SMALL)
+        );
+      },
     },
   ],
 };

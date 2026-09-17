@@ -23,7 +23,8 @@ import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { planTrader } from '../../trade/index.js';
-import { anotherSystemOwns } from '../action-owner.js';
+import { planRider } from '../../vehicles/boarding.js';
+import { heldOffEconomy } from '../action-owner.js';
 import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import { idleReplanPeriodTicks } from '../planner/idle-replan.js';
@@ -138,7 +139,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // Ownership gate, below the needs drives on purpose: hunger, fatigue and piety are soft overrides that
   // still pull the unit away, so a marrying or child-making settler still eats. Engagement is the one
   // member that never gets here, having been answered in place above.
-  if (anotherSystemOwns(world, e)) return;
+  if (heldOffEconomy(world, e)) return;
+  // A vehicle's crew: the rider walks to its door and steps in when asked, above every errand and trade.
+  if (planRider(world, ctx, terrain, e)) return;
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
   if (planTraining(world, ctx, terrain, e, settler, here, limit)) return;

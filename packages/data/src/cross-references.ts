@@ -318,12 +318,16 @@ function checkJobExperience(set: ContentSet, { goodIds, jobIds }: IdSets): strin
   return errors;
 }
 
-// `jobId` is not checked: a synthetic set may carry a vehicle without its `JOB_TYPE_VEHICLE_*` job.
+// `jobId` is not checked: a synthetic set may carry a vehicle without its `JOB_TYPE_VEHICLE_*` job. A
+// passenger list may still name such an id, which is how a ship admits the vehicles it carries.
 function checkVehicles(set: ContentSet, { jobIds, vehicleIds }: IdSets): string[] {
   const errors: string[] = [];
+  const vehicleJobIds = new Set(set.vehicles.map((v) => v.jobId));
   for (const v of set.vehicles) {
     for (const job of v.passengerJobs) {
-      if (!jobIds.has(job)) errors.push(`vehicle "${v.id}" admits unknown passenger jobType ${job}`);
+      if (!jobIds.has(job) && !vehicleJobIds.has(job)) {
+        errors.push(`vehicle "${v.id}" admits unknown passenger jobType ${job}`);
+      }
     }
     if (v.transformVehicleType !== undefined && !vehicleIds.has(v.transformVehicleType))
       errors.push(`vehicle "${v.id}" transforms into unknown vehicleType ${v.transformVehicleType}`);

@@ -12,13 +12,15 @@ their vehicle half. Semantics in [VEHICLES.md](../../formats/VEHICLES.md#map-scr
 
 - World build: `setvehicle` rows for occupied seats only (no `player >= 20` bypass; a dropped row
   drops its modifiers), `addgoods` into reserved and current, the human's decoded `boardVehicleAt`
-  through the attach gate with the first as commander, and `inside` boarding. Decide which `oxcart`
+  through the attach gate with the first as commander (`attachToVehicle` in
+  `systems/vehicles/crew.ts`), and `inside` boarding through `boardRider`, which takes the rider off
+  the map (`Rider` without `Position`). Decide which `oxcart`
   record a `setvehicle "oxcart"` spawns: the name join takes type 6 (no ox, admits no crew), yet
   Blekiny Nurt attaches carriers to its ox carts, which only type 2 admits.
 - Results: `SetVehicle` (with the captain flag: investigate first what it spawns),
   `RemoveVehicles`, `SendVehicle` (the `moveVehicle` order after `snapVehicleTarget`, both in
   `systems/vehicles/movement.ts`), `DockVehicle`, `ChangeVehiclesPlayerId`, `AddGoodsToVehicle`,
-  `AttachHumanToVehicle`, `DetachHumanFromVehicle`, `ChangeMissionIdOfVehicles`,
+  `AttachHumanToVehicle`, `DetachHumanFromVehicle` (the seat commands' handlers), `ChangeMissionIdOfVehicles`,
   `ChangeMissionIdOfVehiclesInRange`, `ChangeMissionIdOfPlayersVehiclesOnContinent`,
   `RemoveVehiclesWithMissionId` (50-vehicle cap, crews only with the flag, wreck effect), and the
   vehicle halves of `MoveUnitsInArea`, `ChangePlayerPlayerId`, `ChangePlayerIdInArea`.

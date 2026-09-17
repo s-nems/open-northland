@@ -19,9 +19,13 @@ the trade tabs of the vehicle window exist only for carts
   steps of the house (search radius 20) and detaches when no node exists.
 - The trader's walk clip already follows the seat: the renderer plays the cart gait for a settler a
   vehicle's `passengers` names and the carrier's walk otherwise, and the cart draws its own sprite.
+  A rider inside has no `Position` and is not drawn (`Rider`, `boardRider` in
+  `systems/vehicles/crew.ts`); the trader commands the cart from inside, so the cart's goto
+  (`moveVehicle`, held under `waitsForHuman` until the crew boards) is what moves the pair.
 - Details panel: the Handel section shows the attached cart with its load; the vehicle window's
   trade tabs (select trade house, select trader, detach trader) map to the existing trade commands.
-- Update `?scene=trade` to spawn a handcart and attach the trader; update the trade section of
+- Update `?scene=trade` to spawn a handcart and attach the trader through `attachToVehicle`
+  (`?scene=vehicles` already does that for its trader); update the trade section of
   MISSIONS.md and delete the intrinsic-cart approximation note. Save format bump.
 
 ## Verify

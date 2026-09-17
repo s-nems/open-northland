@@ -3,6 +3,20 @@ import { isBuilding, isVehicle, ownerPlayerOf, type SnapshotEntity } from '../..
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
 
+/** The note each refused crew order on a vehicle raises about it. */
+const CREW_REFUSAL_MESSAGE = {
+  noRoom: USER_MESSAGE_TYPE.vehicleNoPassengerRoom,
+  cannotAttach: USER_MESSAGE_TYPE.cannotAttachVehicle,
+  cannotNearShip: USER_MESSAGE_TYPE.vehicleCannotNearShip,
+  cannotLeave: USER_MESSAGE_TYPE.cannotLeaveVehicle,
+} as const;
+
+/** The note each refused vehicle order on a settler raises about it. */
+const RIDER_REFUSAL_MESSAGE = {
+  cannotEnter: USER_MESSAGE_TYPE.cannotEnterVehicle,
+  cannotLeave: USER_MESSAGE_TYPE.cannotLeaveVehicle,
+} as const;
+
 function isPerson(e: SnapshotEntity): boolean {
   return e.components.Person !== undefined;
 }
@@ -230,6 +244,16 @@ export function messagesFromEvents(
             : USER_MESSAGE_TYPE.vehicleNoPath,
           e,
         );
+        break;
+      }
+      case 'vehicleCrewRefused': {
+        const e = ownedVehicle(ev.entity);
+        if (e !== undefined) raiser.vehicle(CREW_REFUSAL_MESSAGE[ev.reason], e);
+        break;
+      }
+      case 'riderRefused': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(RIDER_REFUSAL_MESSAGE[ev.reason], e);
         break;
       }
       case 'combatHit':

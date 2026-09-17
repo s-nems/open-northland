@@ -161,6 +161,58 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Attach one owned settler to one owned `vehicle` as its crew (the original's human command 0x26):
+       * the commander slot first, then a free ordinary slot, with no distance check. Refused with a
+       * `riderRefused` event when the type's `passengerJobs` exclude the settler's trade and with
+       * `vehicleCrewRefused` when every slot is taken. The settler leaves its workplace, drops its fight
+       * and walks to the vehicle's door; attaching to another vehicle detaches first.
+       */
+      readonly kind: 'attachToVehicle';
+      readonly entity: Entity;
+      readonly vehicle: Entity;
+    }
+  | {
+      /**
+       * Free one owned settler from its vehicle (0x27): a rider aboard steps onto the door node, one still
+       * walking is released where it stands, and a departing commander promotes the first ordinary
+       * passenger. Refused with `riderRefused` aboard a ship that is not moored.
+       */
+      readonly kind: 'detachFromVehicle';
+      readonly entity: Entity;
+    }
+  | {
+      /** Ask one owned attached settler to step inside its vehicle (0x28): it boards on reaching the
+       *  door node. Refused with `riderRefused` for a ship lying at sea. */
+      readonly kind: 'boardVehicle';
+      readonly entity: Entity;
+    }
+  | {
+      /** Put one owned vehicle's whole crew onto its door node and free them (the original's `f` on a
+       *  ship). Ignored while the door is at sea. */
+      readonly kind: 'unloadPeople';
+      readonly vehicle: Entity;
+    }
+  | {
+      /**
+       * Load one owned cart or catapult into one owned ship `carrier` (the original's `q` then `s`): the
+       * vehicle boards its own crew, drives to the carrier's door and rides inside. Refused with
+       * `vehicleCrewRefused` when the carrier's `passengerJobs` exclude the vehicle's job, its vehicle
+       * slots are full, its passenger room cannot take the crew, it lies at sea, or the door is off the
+       * vehicle's continent.
+       */
+      readonly kind: 'loadIntoVehicle';
+      readonly vehicle: Entity;
+      readonly carrier: Entity;
+    }
+  | {
+      /** Take one owned vehicle off its carrier (`r`): a vehicle riding inside is set down on the
+       *  carrier's door node, one still on its way is merely released. Refused with `vehicleCrewRefused`
+       *  inside a ship that is not moored. */
+      readonly kind: 'leaveCarrier';
+      readonly vehicle: Entity;
+    }
+  | {
+      /**
        * Send one owned scout to explore around (x,y): it walks to unexplored ground within
        * `EXPLORE_RADIUS_NODES` of that centre, one point at a time, until nothing there is left unseen.
        */

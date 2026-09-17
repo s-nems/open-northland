@@ -9,6 +9,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
+import { boardRider } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -61,12 +62,13 @@ function fixtureSim(): Simulation {
   if (scout === undefined) throw new Error('save fixture scout missing');
   sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'boots', slot: 0, goodType: SHOES_GOOD });
   sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'tool', slot: 0, goodType: TOOL_GOOD });
-  // The idle settler commands the cart (seated directly, the way the crew's boarding will leave it) and
-  // the goto starts a drive, so the frozen world holds a leg under way.
+  // The idle settler commands the cart from inside (seated and boarded directly, the way the boarding
+  // drive leaves it), so the frozen world holds a rider off the map and, after the goto, a leg under way.
   const [cart] = sim.world.query(Vehicle);
   const idle = [...sim.world.query(Settler)][1];
   if (cart === undefined || idle === undefined) throw new Error('save fixture cart or idle settler missing');
   if (!seatPassenger(sim.world, cart, idle)) throw new Error('save fixture commander seat taken');
+  boardRider(sim.world, idle, cart);
   sim.enqueueSetup({ kind: 'moveVehicle', vehicle: cart, x: 20, y: 4 });
   sim.step(); // freeze one active equip order with the second intent queued behind it
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });

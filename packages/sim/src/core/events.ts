@@ -57,6 +57,30 @@ export type SimEvent =
       readonly player: number | null;
       readonly reason: 'noCommander' | 'noPath';
     }
+  | {
+      /**
+       * A crew order on a vehicle was refused: `noRoom` when no slot is free for a rider or a carried
+       * vehicle's crew, `cannotAttach` when a carrier will not take the vehicle, `cannotNearShip` when a
+       * carried vehicle cannot reach its carrier's door, `cannotLeave` when it may not leave a carrier at
+       * sea. The player's `vehicleNoPassengerRoom`, `cannotAttachVehicle`, `vehicleCannotNearShip` and
+       * `cannotLeaveVehicle` notes about the vehicle.
+       */
+      readonly kind: 'vehicleCrewRefused';
+      readonly entity: Entity;
+      readonly player: number | null;
+      readonly reason: 'noRoom' | 'cannotAttach' | 'cannotNearShip' | 'cannotLeave';
+    }
+  | {
+      /**
+       * A settler's vehicle order was refused: `cannotEnter` when the vehicle will not take it or it is
+       * asked aboard a ship lying at sea, `cannotLeave` when it may not step off a ship at sea. The
+       * player's `cannotEnterVehicle` / `cannotLeaveVehicle` notes about the settler.
+       */
+      readonly kind: 'riderRefused';
+      readonly entity: Entity;
+      readonly player: number | null;
+      readonly reason: 'cannotEnter' | 'cannotLeave';
+    }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | {
       /**

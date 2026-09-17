@@ -1,7 +1,6 @@
 # Sail ships on water and dock them on a shore
 
 **Area:** sim · **Focus:** `packages/sim/src/nav`, `systems/vehicles` · **Priority:** P2
-**Blocked by:** [crew and boarding](vehicles-5-crew-and-boarding.md)
 
 `TerrainGraph` is land-only; `waterContinents` labels water nodes for fishing but no edge set
 crosses water. Ships use the same graph in the original with clearance `>= 2` and continent
@@ -16,12 +15,15 @@ needs no port ([VEHICLES.md](../../formats/VEHICLES.md#ships-and-docking)).
   clearance from the shore. Land and water continents share the continent key the goto and
   `snapVehicleTarget` compare (`systems/vehicles/movement.ts`, today the anchor's static land
   component, which refuses a ship at sea).
-- `dockVehicle {vehicle, x, y}` (`g`): commander required; a moored ship boards everyone first;
+- `dockVehicle {vehicle, x, y}` (`g`): commander required; a moored ship boards everyone first
+  (`boardCrew` in `systems/vehicles/boarding.ts` is that pass; `moveVehicle` shows how a goal is
+  held under `waitsForHuman` until it returns true);
   find a node on the ship's continent within the ring of radius `passengerVector[1]` around the
   point with clearance `>= logicSize`, move there with task `docks`, store the mooring point, play
   the dock action, set moored. Arrival raises the docked message; no node raises `vehicleNoPath`.
-- The door node of a moored ship is the mooring point; unload people and detach use it. Leaving the
-  mooring clears the moored flag.
+- The door node of a moored ship is the mooring point; unload people and detach already use it
+  (`landingOf` in `crew.ts`). Leaving the mooring clears the moored flag, which turns the crew's
+  `detachFromVehicle` and a carried vehicle's `leaveCarrier` into `cannotLeave` refusals.
 - A ship destroyed at sea already kills its crew (`removeVehicle`); a sunk ship's passengers must
   count as dead for goals.
 - Mission results `SendVehicle` and `DockVehicle` reuse the seat commands after the radius-9 snap.

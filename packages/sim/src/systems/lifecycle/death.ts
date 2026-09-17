@@ -3,8 +3,11 @@ import {
   Marriage,
   Owner,
   Position,
+  Rider,
   recordHumanDeath,
   Settler,
+  unseatPassenger,
+  Vehicle,
   Wedding,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
@@ -48,6 +51,8 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
 export function removeSettlerSilently(world: World, e: Entity): void {
   removeWorkFlag(world, e); // a work flag has no owner once its gatherer is gone
   releasePalisadeReservation(world, e);
+  const rider = world.tryGet(e, Rider);
+  if (rider !== undefined && world.has(rider.vehicle, Vehicle)) unseatPassenger(world, rider.vehicle, e);
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);
   const wasMinor = isMinor(world, e);

@@ -1,0 +1,273 @@
+import type { VehicleType } from '@open-northland/data';
+import {
+  AttackOrder,
+  Engagement,
+  HuntFocus,
+  ownerOf,
+  Position,
+  Rider,
+  Settler,
+  seatPassenger,
+  setSeatInside,
+  unseatPassenger,
+  Vehicle,
+  vehiclePassengers,
+} from '../../components/index.js';
+import type { Command } from '../../core/commands/index.js';
+import { contentIndex } from '../../core/content-index.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
+import type { SystemContext } from '../context.js';
+import { releaseEmployment } from '../economy/jobs/binding.js';
+import { vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
+import { clearNavState } from '../movement/nav-state.js';
+import { isOrderableSettler } from '../orders/guards.js';
+import { sendUnit } from '../orders/movement.js';
+import { isShipVehicle } from '../readviews/vehicles.js';
+import { releaseTowerPost } from '../settlers/drives/tower-post.js';
+import { stepOut } from '../settlers/indoors.js';
+
+// The crew of docs/formats/VEHICLES.md "Crew": who may attach, where a rider boards and leaves, and what
+// a rider gives up when it joins. The boarding drives live in `boarding.ts`.
+
+/** Whether the type's `logicpassenger` list admits `jobType`; a jobless settler never rides. */
+export function passengerJobAllowed(type: VehicleType, jobType: number | null): boolean {
+  return jobType !== null && type.passengerJobs.includes(jobType);
+}
+
+/** Whether `vehicle` is a ship lying at sea: its riders may neither step in nor out. */
+export function isShipAtSea(ctx: SystemContext, vehicle: { vehicleType: number; moored: boolean }): boolean {
+  const type = contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
+  return type !== undefined && isShipVehicle(type) && !vehicle.moored;
+}
+
+export function refuseRider(
+  world: World,
+  ctx: SystemContext,
+  rider: Entity,
+  reason: 'cannotEnter' | 'cannotLeave',
+): void {
+  ctx.events.emit({ kind: 'riderRefused', entity: rider, player: ownerOf(world, rider) ?? null, reason });
+}
+
+export function refuseCrew(
+  world: World,
+  ctx: SystemContext,
+  vehicle: Entity,
+  reason: 'noRoom' | 'cannotAttach' | 'cannotNearShip' | 'cannotLeave',
+): void {
+  ctx.events.emit({
+    kind: 'vehicleCrewRefused',
+    entity: vehicle,
+    player: ownerOf(world, vehicle) ?? null,
+    reason,
+  });
+}
+
+/**
+ * The attach order - see the command doc. The rider gives up its workplace, its post and its fight
+ * (`DoExecuteUserCommand_AttachVehicle` detaches the work house and resets the attack targets) and
+ * walks to the door through the unconfined walk order, which also sets a carried load down first.
+ */
+export function attachToVehicle(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'attachToVehicle' }>,
+): boolean {
+  const e = command.entity;
+  const vehicle = command.vehicle;
+  if (!isOrderableSettler(world, e)) return false;
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || ownerOf(world, vehicle) !== ownerOf(world, e)) return false;
+  const current = world.tryGet(e, Rider);
+  if (current?.vehicle === vehicle) return true;
+  if (current !== undefined && !detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e })) {
+    return false;
+  }
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type === undefined || !passengerJobAllowed(type, world.get(e, Settler).jobType)) {
+    refuseRider(world, ctx, e, 'cannotEnter');
+    return false;
+  }
+  if (!seatPassenger(world, vehicle, e)) {
+    refuseCrew(world, ctx, vehicle, 'noRoom');
+    return false;
+  }
+  releaseTowerPost(world, ctx, e);
+  releaseEmployment(world, ctx, e);
+  stepOut(world, e);
+  world.remove(e, Engagement);
+  world.remove(e, AttackOrder);
+  world.remove(e, HuntFocus);
+  world.add(e, Rider, { vehicle, boarding: false });
+  const door = vehicleDoorNode(world, ctx.content, vehicle);
+  // The walk order snaps a blocked door (a cart's anchor) to the node beside it, as the rider rung does.
+  if (door !== null && world.has(e, Position)) sendUnit(world, ctx, e, door.hx, door.hy);
+  return true;
+}
+
+/**
+ * The detach order - see the command doc. Returns whether the settler is now free of any vehicle. A
+ * rider inside a ship at sea stays aboard with `cannotLeave` (approximation: the original refuses this
+ * silently); a rider of a vehicle riding a carrier steps out onto the carrier's door.
+ */
+export function detachFromVehicle(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'detachFromVehicle' }>,
+): boolean {
+  const e = command.entity;
+  const rider = world.tryGet(e, Rider);
+  if (rider === undefined) return true;
+  const vehicle = rider.vehicle;
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined) {
+    world.remove(e, Rider);
+    return true;
+  }
+  if (!world.has(e, Position)) {
+    const landing = landingOf(world, ctx, vehicle);
+    if (landing === null) {
+      refuseRider(world, ctx, e, 'cannotLeave');
+      return false;
+    }
+    setDownRider(world, e, landing);
+  }
+  releaseRider(world, e, vehicle);
+  return true;
+}
+
+/** Drop `rider`'s seat and marker; the vehicle promotes the next commander. */
+export function releaseRider(world: World, rider: Entity, vehicle: Entity): void {
+  if (world.has(vehicle, Vehicle)) unseatPassenger(world, vehicle, rider);
+  world.remove(rider, Rider);
+}
+
+/**
+ * Where a rider stepping out of `vehicle` lands: the door node, or the carrier's door while the vehicle
+ * rides inside a ship. Null for a ship at sea, whose riders stay aboard.
+ */
+export function landingOf(world: World, ctx: SystemContext, vehicle: Entity): HalfCellNode | null {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined) return null;
+  if (state.carrier !== null && vehicleAnchor(world, vehicle) === null)
+    return landingOf(world, ctx, state.carrier);
+  if (isShipAtSea(ctx, state)) return null;
+  return vehicleDoorNode(world, ctx.content, vehicle);
+}
+
+/** Stand `e` on `point`, restoring the Position that boarding gave up. */
+export function placeOnNode(world: World, e: Entity, point: HalfCellNode): void {
+  const at = positionOfNode(point.hx, point.hy);
+  const pos = world.tryMut(e, Position);
+  if (pos === undefined) world.add(e, Position, at);
+  else {
+    pos.x = at.x;
+    pos.y = at.y;
+  }
+}
+
+/** Put a rider back on the map at `point`, its seat now outside. */
+export function setDownRider(world: World, rider: Entity, point: HalfCellNode): void {
+  placeOnNode(world, rider, point);
+  const seat = world.tryGet(rider, Rider);
+  if (seat !== undefined && world.has(seat.vehicle, Vehicle))
+    setSeatInside(world, seat.vehicle, rider, false);
+}
+
+/**
+ * Step an attached rider standing on the door inside: it leaves the map (`VehicleMisc_Enter` detaches
+ * the human from the map and resets its targets). Authored scenes seat a crew this way before tick zero.
+ */
+export function boardRider(world: World, rider: Entity, vehicle: Entity): void {
+  if (!setSeatInside(world, vehicle, rider, true)) return;
+  clearNavState(world, rider);
+  world.remove(rider, Engagement);
+  world.remove(rider, AttackOrder);
+  world.remove(rider, HuntFocus);
+  world.remove(rider, Position);
+  const seat = world.tryMut(rider, Rider);
+  if (seat === undefined) world.add(rider, Rider, { vehicle, boarding: false });
+  else {
+    seat.vehicle = vehicle;
+    seat.boarding = false;
+  }
+}
+
+/**
+ * The board order - see the command doc: the rider steps in when it reaches the door, which the ladder's
+ * rider rung does. A ship at sea has no door to step in at.
+ */
+export function boardVehicle(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'boardVehicle' }>,
+): void {
+  const e = command.entity;
+  const rider = world.tryGet(e, Rider);
+  if (rider === undefined || !world.has(e, Position)) return;
+  const state = world.tryGet(rider.vehicle, Vehicle);
+  if (state === undefined) return;
+  if (isShipAtSea(ctx, state)) {
+    refuseRider(world, ctx, e, 'cannotEnter');
+    return;
+  }
+  if (!rider.boarding) world.mut(e, Rider).boarding = true;
+}
+
+/** The unload-people order - see the command doc. Every rider, aboard or on its way, is freed. */
+export function unloadPeople(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'unloadPeople' }>,
+): void {
+  const vehicle = command.vehicle;
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined) return;
+  const landing = landingOf(world, ctx, vehicle);
+  if (landing === null) return;
+  for (const seat of vehiclePassengers(state)) {
+    if (!world.isAlive(seat.entity)) continue;
+    if (seat.inside) setDownRider(world, seat.entity, landing);
+    releaseRider(world, seat.entity, vehicle);
+  }
+  const live = world.mut(vehicle, Vehicle);
+  live.heldGoal = null;
+  if (live.task === 'waitsForHuman') live.task = 'none';
+}
+
+/**
+ * Detach `e` ahead of an ordinary order that takes it elsewhere - the original's forced detach before a
+ * work, walk, attack or home command. False when the rider may not leave, in which case the order is
+ * dropped (`riderRefused` already told the player).
+ */
+export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (!world.has(e, Rider)) return true;
+  return detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });
+}
+
+/** The player commands that take a settler away from its vehicle first. Approximation: the original's
+ *  list is read from its human command handlers' `DoExecuteUserCommand_DetachVehicle` calls, not
+ *  exhaustively. */
+export function forcesDetach(command: Command): command is Command & { entity: Entity } {
+  switch (command.kind) {
+    case 'moveUnit':
+    case 'attackMoveUnit':
+    case 'attackUnit':
+    case 'assignWorker':
+    case 'setJob':
+    case 'assignBuilder':
+    case 'assignHouse':
+    case 'trainSoldier':
+    case 'learn':
+    case 'exploreArea':
+    case 'placeSignpost':
+    case 'openChest':
+    case 'marry':
+    case 'orderNeed':
+    case 'equipGood':
+      return true;
+    default:
+      return false;
+  }
+}

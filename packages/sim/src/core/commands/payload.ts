@@ -110,7 +110,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
       },
     },
   },
+  attachToVehicle: { required: { entity: 'integer', vehicle: 'integer' } },
   attackMoveUnit: { required: { entity: 'integer', ...NODE } },
+  boardVehicle: { required: { entity: 'integer' } },
+  detachFromVehicle: { required: { entity: 'integer' } },
   attackUnit: { required: { entity: 'integer', target: 'integer' } },
   cancelUpgrade: { required: { building: 'integer' } },
   createVehicle: {
@@ -137,6 +140,8 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     },
     optional: { skipReturn: 'boolean' },
   },
+  leaveCarrier: { required: { vehicle: 'integer' } },
+  loadIntoVehicle: { required: { vehicle: 'integer', carrier: 'integer' } },
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
   marry: { required: { entity: 'integer' } },
   moveUnit: { required: { entity: 'integer', ...NODE } },
@@ -231,6 +236,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   stopVehicle: { required: { vehicle: 'integer' } },
   trainSoldier: { required: { entity: 'integer', house: 'integer' } },
   unassignHouse: { required: { entity: 'integer' } },
+  unloadPeople: { required: { vehicle: 'integer' } },
   unassignWorker: { required: { entity: 'integer' } },
   unequipGood: {
     required: { entity: 'integer', group: { oneOf: EQUIP_CATEGORIES }, slot: 'integer' },

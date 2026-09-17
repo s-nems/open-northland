@@ -2,7 +2,6 @@ import {
   carriedVehicles,
   type GoodsLine,
   Owner,
-  Position,
   Vehicle,
   VehicleStock,
   vehiclePassengers,
@@ -13,9 +12,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { type SpilledStock, scatterSpilledStock } from '../economy/goods-spill.js';
-import { vehicleAnchor, vehicleDoorPoint, vehicleFootprintNodes } from '../footprint/index.js';
+import { vehicleAnchor, vehicleFootprintNodes } from '../footprint/index.js';
 import { reap } from '../lifecycle/death.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { releaseCarried } from './boarding.js';
+import { landingOf, placeOnNode, releaseRider, setDownRider } from './crew.js';
 import { vehicleIndex } from './registry.js';
 
 /** How far a wrecked cart's or catapult's cargo scatters, in spill rings (byte-verified radius 10;
@@ -43,19 +44,26 @@ export function removeVehicle(world: World, ctx: SystemContext, e: Entity, cause
   if (vehicle === undefined) return;
   const type = contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
   const anchor = vehicleAnchor(world, e);
-  const door = type !== undefined && anchor !== null ? vehicleDoorPoint(vehicle, type, anchor) : null;
+  const door = landingOf(world, ctx, e);
   const landing = door !== null && isLand(ctx, door) ? door : null;
 
   for (const seat of carriedVehicles(vehicle)) {
     if (!world.isAlive(seat.entity)) continue;
     if (landing === null) removeVehicle(world, ctx, seat.entity, cause);
-    else setDownVehicle(world, seat.entity, landing);
+    else {
+      if (seat.inside) placeOnNode(world, seat.entity, landing);
+      releaseCarried(world, e, seat.entity);
+    }
   }
   for (const seat of vehiclePassengers(vehicle)) {
     if (!world.isAlive(seat.entity)) continue;
     if (landing === null) reap(world, ctx, seat.entity);
-    else if (seat.inside) setDown(world, seat.entity, landing);
+    else {
+      if (seat.inside) setDownRider(world, seat.entity, landing);
+      releaseRider(world, seat.entity, e);
+    }
   }
+  if (vehicle.carrier !== null) releaseCarried(world, vehicle.carrier, e);
 
   const wrecks = cause !== 'script' && type !== undefined && !isShipVehicle(type);
   const spill = wrecks && cause === 'destroyed' ? cargoSpillOf(world, e, anchor) : null;
@@ -88,24 +96,6 @@ function isLand(ctx: SystemContext, point: HalfCellNode): boolean {
   const terrain = ctx.terrain;
   if (terrain === undefined) return true; // a mapless sim has no sea to drown in
   return terrain.inBounds(point.hx, point.hy) && terrain.isWalkable(terrain.nodeAt(point.hx, point.hy));
-}
-
-/** Put a freed rider on the map at `point`, restoring the Position a boarded rider gave up. */
-function setDown(world: World, rider: Entity, point: HalfCellNode): void {
-  const at = positionOfNode(point.hx, point.hy);
-  const pos = world.tryMut(rider, Position);
-  if (pos === undefined) world.add(rider, Position, at);
-  else {
-    pos.x = at.x;
-    pos.y = at.y;
-  }
-}
-
-/** Put a carried vehicle back on the map at `point`, off its carrier. */
-function setDownVehicle(world: World, carried: Entity, point: HalfCellNode): void {
-  setDown(world, carried, point);
-  const live = world.tryMut(carried, Vehicle);
-  if (live !== undefined) live.carrier = null;
 }
 
 function cargoSpillOf(world: World, e: Entity, anchor: HalfCellNode | null): SpilledStock | null {

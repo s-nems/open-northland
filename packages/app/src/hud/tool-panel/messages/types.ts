@@ -5,8 +5,9 @@ import type { MessageText } from './text.js';
  * The original's message ids (`ingameguimessages.cif` rows 15-134 spell out each one). The
  * id is the key of the original's priority table and of the string-id map, so it is pinned here.
  *
- * The original never raises seven of them: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`,
- * `cannotAttachVehicle`, and the two `gaveBirth` ids. Nothing here raises them either.
+ * The original never raises six of them: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`, and
+ * the two `gaveBirth` ids. Nothing here raises them either. It never raises `cannotAttachVehicle`
+ * either, which here stands in for the silently refused load of a vehicle into a ship (approximation).
  */
 export const USER_MESSAGE_TYPE = {
   taskCompleted: 0x01,

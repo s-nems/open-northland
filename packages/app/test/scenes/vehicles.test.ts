@@ -8,6 +8,8 @@ sceneAcceptance(vehiclesScene, import.meta.url);
 
 /** Past the scene's scheduled kill tick. */
 const WRECK_CHECK_TICKS = 20;
+/** Long enough for every commander's short walk to its door and the step inside. */
+const BOARDING_TICKS = 40;
 
 /** The wreck decals ride the `vehicleDestroyed` event's ruin nodes, which the cleanup emits the tick the
  *  scheduled kill lands. */
@@ -23,19 +25,19 @@ it('the scheduled kill wrecks the catapult with ruin nodes for the decals', () =
   expect(wrecks[0]?.ruins.length).toBeGreaterThan(0);
 });
 
-/** The trader seated in the handcart keeps its seat, the seam the crew gait reads, and the two ordered
- *  drivers keep theirs, so the drive orders are never refused. */
-it('the trader crews the viking handcart and the two drivers keep their commanders', () => {
+/** The trader, the ship's party and the two drivers all attach on the first tick: four crewed vehicles. */
+it('the trader, the party and the two drivers take their commander seats', () => {
   const sim = createSceneSim(vehiclesScene);
   sim.run(1);
   const crewed = [...sim.world.query(components.Vehicle)].filter(
     (e) => components.vehicleCommander(sim.world.get(e, components.Vehicle)) !== null,
   );
-  expect(crewed).toHaveLength(3);
+  expect(crewed).toHaveLength(4);
 });
 
-/** The drive orders land and are accepted: no refusal is raised while both drives run. */
-it('the ordered ox cart and catapult drive without a refusal', () => {
+/** The drive orders land and are accepted: no refusal is raised, the three ordered vehicles wait for
+ *  their commanders to board and then drive. */
+it('the ordered vehicles board their commanders and drive without a refusal', () => {
   const sim = createSceneSim(vehiclesScene);
   const refused: string[] = [];
   for (let i = 0; i < WRECK_CHECK_TICKS; i++) {
@@ -43,6 +45,11 @@ it('the ordered ox cart and catapult drive without a refusal', () => {
     for (const ev of sim.events.current()) if (ev.kind === 'vehicleMoveRefused') refused.push(ev.reason);
   }
   expect(refused).toEqual([]);
+  const waiting = [...sim.world.query(components.Vehicle)].filter(
+    (e) => sim.world.get(e, components.Vehicle).task === 'waitsForHuman',
+  );
   const driving = [...sim.world.query(components.VehicleDrive)];
-  expect(driving).toHaveLength(2);
+  expect(waiting.length + driving.length).toBe(3);
+  sim.run(BOARDING_TICKS);
+  expect([...sim.world.query(components.VehicleDrive)]).toHaveLength(3);
 });

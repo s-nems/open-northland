@@ -81,7 +81,30 @@ opener. Map scripts and `SetVehicle` are the other spawn sources.
   0x27 to one on another continent (stragglers are dropped, not awaited). A passenger with a
   pending need blocks boarding. Task 3 "waits for human" while anyone is outside.
 - Carried vehicles: a small ship takes one cart or catapult (`q` load into carrier, `s` move
-  inside, `r` leave). The carried vehicle's crew transfers to the carrier.
+  inside, `r` leave). `Passengers_CanVehicleMoveIn`: the carrier is a moored ship with a slot for
+  it, the vehicle stands on the continent of the carrier's door, and the vehicle's crew count fits
+  the carrier's free passenger room; the crew stays seated in the carried vehicle. The vehicle's
+  task 6 boards its own crew first, drives to the carrier's door and enters there; a failed
+  `CanVehicleMoveIn` raises 0x36 and a missing entry point 0x38, each followed by a detach.
+- Messages: the human's attach refusal and detach refusal raise their own ids; the human's
+  move-inside task raises 0x2b when its vehicle is a ship that is not moored; a carried vehicle
+  that fails to detach raises 0x39. A human detaching from a ship at sea is refused silently.
+
+Open Northland: `Rider` (`packages/sim/src/components/vehicle.ts`) marks an attached settler and the
+seat's `inside` says whether it is aboard; a rider aboard has no `Position`, which is what keeps it
+out of every map query, and its needs and hitpoints stand still (approximation: the original's
+hitpoint step aboard is not read). `attachToVehicle` walks the rider to the door through the
+unconfined walk order; the rider rung of the drive ladder (`systems/vehicles/boarding.ts`) keeps it
+by the door and steps it in once the vehicle asks. A goto with anyone outside holds its goal under
+`waitsForHuman` and starts once the crew is inside, the way `DoUpdateAI` runs `l_Passengers_MoveIn`
+ahead of a target. `loadIntoVehicle` is `q` and `s` in one order. Named approximations: the job and
+owner refusals of attach raise `cannotEnterVehicle` and a full vehicle `vehicleNoPassengerRoom`; a
+refused load raises `cannotAttachVehicle`, which the original never raises; a rider refused off a
+ship at sea raises `cannotLeaveVehicle`; a rider boards from the door node or, where a footprint
+covers it, the nearest open node beside it; a rider whose walk to the door fails is dropped with a
+lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
+drill, marriage, need, equipment, explore, signpost and chest orders; a commander detaching mid-drive
+leaves the drive running.
 
 ## Cargo
 

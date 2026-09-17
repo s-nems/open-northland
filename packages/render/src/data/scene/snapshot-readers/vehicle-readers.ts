@@ -1,4 +1,4 @@
-import { components as simComponents, ONE, positionOfNode } from '@open-northland/sim';
+import { ONE, positionOfNode, components as simComponents } from '@open-northland/sim';
 import { clamp01, lerp } from '../../math.js';
 import { readNumField } from '../../snapshot/index.js';
 import { gfxDirToFacing } from '../../sprites/settler.js';

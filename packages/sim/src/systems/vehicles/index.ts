@@ -1,4 +1,23 @@
+export {
+  boardCrew,
+  leaveCarrier,
+  loadIntoVehicle,
+  planRider,
+  releaseCarried,
+  riderSystem,
+  vehicleBoardingSystem,
+} from './boarding.js';
 export { createVehicle } from './create.js';
+export {
+  attachToVehicle,
+  boardRider,
+  boardVehicle,
+  detachBeforeOrder,
+  detachFromVehicle,
+  forcesDetach,
+  passengerJobAllowed,
+  unloadPeople,
+} from './crew.js';
 export {
   facingOfStep,
   moveVehicle,

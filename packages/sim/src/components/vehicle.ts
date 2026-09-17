@@ -1,5 +1,6 @@
 import { type DeepReadonly, defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { HalfCellNode } from '../nav/halfcell.js';
+import { Position } from './movement.js';
 
 /** The tasks the original's vehicle window shows, in its numbering 0..6. */
 export const VEHICLE_TASKS = [
@@ -45,7 +46,21 @@ export const Vehicle = defineComponent<{
   carrier: Entity | null;
   passengers: (VehicleSeat | null)[];
   vehicles: (VehicleSeat | null)[];
+  /** A goto the vehicle holds while it boards its crew; the drive starts once everyone is inside. */
+  heldGoal: HalfCellNode | null;
 }>('Vehicle', 'movement');
+
+/**
+ * A settler attached to a vehicle, from the attach order until it is detached. The seat it holds says
+ * whether it is inside; `boarding` is the vehicle's request to step in, which the rider answers on the
+ * door node. An aboard rider has no `Position`: it stands nowhere on the map until it is set down.
+ */
+export const Rider = defineComponent<{ vehicle: Entity; boarding: boolean }>('Rider', 'movement');
+
+/** Whether `e` is attached to a vehicle and inside it: off the map, owned by its seat. */
+export function isAboardVehicle(world: World, e: Entity): boolean {
+  return world.has(e, Rider) && !world.has(e, Position);
+}
 
 export type VehicleState = NonNullable<(typeof Vehicle)['__value']>;
 export type VehicleStateView = DeepReadonly<VehicleState>;
@@ -131,6 +146,17 @@ export function seatPassenger(world: World, vehicle: Entity, rider: Entity): boo
   if (slot < 0) slot = current.passengers.findIndex((seat, i) => i !== commander && seat === null);
   if (slot < 0) return false;
   world.mut(vehicle, Vehicle).passengers[slot] = { entity: rider, inside: false };
+  return true;
+}
+
+/** Mark `rider`'s seat inside or outside; false when the rider holds no seat. */
+export function setSeatInside(world: World, vehicle: Entity, rider: Entity, inside: boolean): boolean {
+  const slot = world
+    .get(vehicle, Vehicle)
+    .passengers.findIndex((seat) => seat !== null && seat.entity === rider);
+  if (slot < 0) return false;
+  const seat = world.mut(vehicle, Vehicle).passengers[slot];
+  if (seat !== null && seat !== undefined) seat.inside = inside;
   return true;
 }
 

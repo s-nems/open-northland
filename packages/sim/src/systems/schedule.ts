@@ -42,7 +42,7 @@ import { technologySystem } from './progression/discoveries.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
-import { vehicleMovementSystem } from './vehicles/index.js';
+import { riderSystem, vehicleBoardingSystem, vehicleMovementSystem } from './vehicles/index.js';
 import { visionSystem } from './vision/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
@@ -85,6 +85,10 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // Before the planner for the same reason as family: its walks route this tick and its Chat fence is
   // fresh for the planner.
   { name: 'gossip', system: gossipSystem },
+  // Before the planner: a vehicle that waits on its crew asks the riders in on this pass, and the
+  // ladder's rider rung answers it the same tick; a rider without a seat is released first.
+  { name: 'rider', system: riderSystem },
+  { name: 'vehicleBoarding', system: vehicleBoardingSystem },
   { name: 'planner', system: plannerSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },

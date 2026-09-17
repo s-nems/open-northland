@@ -59,7 +59,19 @@ import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisade
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
-import { createVehicle, moveVehicle, stopVehicle } from '../vehicles/index.js';
+import {
+  attachToVehicle,
+  boardVehicle,
+  createVehicle,
+  detachBeforeOrder,
+  detachFromVehicle,
+  forcesDetach,
+  leaveCarrier,
+  loadIntoVehicle,
+  moveVehicle,
+  stopVehicle,
+  unloadPeople,
+} from '../vehicles/index.js';
 import { authorizedCommand } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
@@ -89,6 +101,9 @@ function wakeAddressed(world: World, command: Command): void {
 }
 
 function applyCommand(world: World, ctx: SystemContext, command: Command): void {
+  // A settler crewing a vehicle is taken off it before an order sends it elsewhere; one that may not
+  // leave (aboard a ship at sea) keeps its seat and the order is dropped.
+  if (forcesDetach(command) && !detachBeforeOrder(world, ctx, command.entity)) return;
   switch (command.kind) {
     case 'placeBuilding':
       placeBuilding(world, ctx, command);
@@ -140,6 +155,24 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'stopVehicle':
       stopVehicle(world, command);
+      return;
+    case 'attachToVehicle':
+      attachToVehicle(world, ctx, command);
+      return;
+    case 'detachFromVehicle':
+      detachFromVehicle(world, ctx, command);
+      return;
+    case 'boardVehicle':
+      boardVehicle(world, ctx, command);
+      return;
+    case 'unloadPeople':
+      unloadPeople(world, ctx, command);
+      return;
+    case 'loadIntoVehicle':
+      loadIntoVehicle(world, ctx, command);
+      return;
+    case 'leaveCarrier':
+      leaveCarrier(world, ctx, command);
       return;
     case 'attackMoveUnit':
       attackMoveUnit(world, ctx, command);

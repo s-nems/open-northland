@@ -5,7 +5,9 @@
 
 `click-hits.ts` and `selection-view.ts` know only settlers and buildings; the action ring's
 `assignVehicle` / `attackVehicle` orders are declared inert; of the 13 mapped vehicle message ids
-only the two refused-goto notes have a raiser. The original's window and command set are listed in
+the refused-goto and the five crew notes have raisers (`from-events.ts`). The crew orders exist as
+seat commands (`attachToVehicle`, `detachFromVehicle`, `boardVehicle`, `unloadPeople`,
+`loadIntoVehicle`, `leaveCarrier`) and only need buttons. The original's window and command set are listed in
 [VEHICLES.md](../../formats/VEHICLES.md#lifecycle). The UI only needs to be usable; the in-game UI
 rework restyles it later.
 

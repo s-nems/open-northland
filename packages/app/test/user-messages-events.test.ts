@@ -410,6 +410,34 @@ describe('user messages from sim events', () => {
     ]);
   });
 
+  it("notes this seat's refused crew orders about the vehicle and the refused rider orders about the settler", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'vehicle', col: 5 },
+      { id: 2, player: LOCAL, kind: 'person' },
+      { id: 3, player: ENEMY, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'vehicleCrewRefused', entity: e(1), player: LOCAL, reason: 'noRoom' },
+        { kind: 'vehicleCrewRefused', entity: e(1), player: LOCAL, reason: 'cannotAttach' },
+        { kind: 'vehicleCrewRefused', entity: e(1), player: LOCAL, reason: 'cannotNearShip' },
+        { kind: 'vehicleCrewRefused', entity: e(1), player: LOCAL, reason: 'cannotLeave' },
+        { kind: 'riderRefused', entity: e(2), player: LOCAL, reason: 'cannotEnter' },
+        { kind: 'riderRefused', entity: e(2), player: LOCAL, reason: 'cannotLeave' },
+        { kind: 'riderRefused', entity: e(3), player: ENEMY, reason: 'cannotLeave' },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject])).toEqual([
+      [USER_MESSAGE_TYPE.vehicleNoPassengerRoom, { kind: 'vehicle', entity: e(1) }],
+      [USER_MESSAGE_TYPE.cannotAttachVehicle, { kind: 'vehicle', entity: e(1) }],
+      [USER_MESSAGE_TYPE.vehicleCannotNearShip, { kind: 'vehicle', entity: e(1) }],
+      [USER_MESSAGE_TYPE.cannotLeaveVehicle, { kind: 'vehicle', entity: e(1) }],
+      [USER_MESSAGE_TYPE.cannotEnterVehicle, { kind: 'settler', entity: e(2) }],
+      [USER_MESSAGE_TYPE.cannotLeaveVehicle, { kind: 'settler', entity: e(2) }],
+    ]);
+  });
+
   it('ignores events with no message in the original, a birth among them', () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'building' },

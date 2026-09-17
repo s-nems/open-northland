@@ -1,7 +1,6 @@
 # Fire catapults through the shared weapon-hit path and let vehicles take damage
 
 **Area:** sim · **Focus:** `packages/sim/src/systems/conflict`, `systems/vehicles` · **Priority:** P2
-**Blocked by:** [crew and boarding](vehicles-5-crew-and-boarding.md)
 
 The catapult is a vehicle with one soldier or hero as commander firing weapon 21 through the same
 delayed-hit path as archers; ships never attack but any vehicle can be hit

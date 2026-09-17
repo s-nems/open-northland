@@ -3,6 +3,7 @@ import {
   Age,
   Health,
   hasMissionBehaviour,
+  isAboardVehicle,
   MISSION_BEHAVIOUR,
   needsEnabled,
   ownerOf,
@@ -107,6 +108,7 @@ export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   const refilling = seatRefillingAt(world, ctx.tick);
   for (const e of world.query(Person)) {
+    if (isAboardVehicle(world, e)) continue; // frozen aboard, hitpoints included (approximation)
     if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
     const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);

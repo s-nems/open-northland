@@ -9,6 +9,7 @@ import {
   VEHICLE_FACINGS,
   Vehicle,
   VehicleDrive,
+  type VehicleStateView,
   vehicleCommander,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -162,7 +163,12 @@ export function snapVehicleTarget(
   return null;
 }
 
-function refuse(world: World, ctx: SystemContext, vehicle: Entity, reason: 'noCommander' | 'noPath'): void {
+export function refuseMove(
+  world: World,
+  ctx: SystemContext,
+  vehicle: Entity,
+  reason: 'noCommander' | 'noPath',
+): void {
   ctx.events.emit({
     kind: 'vehicleMoveRefused',
     entity: vehicle,
@@ -176,7 +182,7 @@ function refuse(world: World, ctx: SystemContext, vehicle: Entity, reason: 'noCo
  * the vehicle's walk-block and the drive starts its first leg on the next movement pass. False when no
  * route exists. A drive already under way is replaced.
  */
-function startDrive(
+export function startVehicleDrive(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -216,8 +222,11 @@ function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
 /**
  * The goto order (`e`): refused with `vehicleNoCommander` while nobody commands the vehicle and with
  * `vehicleNoPath` when the target snaps to nothing on the vehicle's continent, lies beyond the walk
- * range, or has no route. Approximation: the original ignores an off-continent target silently and
- * raises `vehicleNoPath` only from its pathfinder. Returns whether a drive now stands.
+ * range, or has no route. A crew still outside is boarded first: the goal is held under the
+ * `waitsForHuman` task and the drive starts once everyone is inside (`CVehicle::DoUpdateAI` runs
+ * `l_Passengers_MoveIn` ahead of any target). Approximation: the original ignores an off-continent
+ * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a
+ * held goal now stands.
  */
 export function moveVehicle(
   world: World,
@@ -231,30 +240,48 @@ export function moveVehicle(
   const anchor = vehicleAnchor(world, e);
   if (state === undefined || anchor === null || state.carrier !== null) return false;
   if (vehicleCommander(state) === null) {
-    refuse(world, ctx, e, 'noCommander');
+    refuseMove(world, ctx, e, 'noCommander');
     return false;
   }
   const goal = snapVehicleTarget(world, ctx, terrain, e, { hx: command.x, hy: command.y });
   if (goal === null || hexDistance(anchor, nodeOf(terrain, goal)) > VEHICLE_WALK_RANGE_NODES) {
-    refuse(world, ctx, e, 'noPath');
+    refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  if (!startDrive(world, ctx, terrain, e, goal)) {
-    refuse(world, ctx, e, 'noPath');
+  if (!crewInside(state)) {
+    const live = world.mut(e, Vehicle);
+    live.heldGoal = nodeOf(terrain, goal);
+    live.task = 'waitsForHuman';
+    return true;
+  }
+  if (!startVehicleDrive(world, ctx, terrain, e, goal)) {
+    refuseMove(world, ctx, e, 'noPath');
     return false;
   }
   if (state.task !== 'none') world.mut(e, Vehicle).task = 'none';
   return true;
 }
 
-/** The stop order (`p`): the drive ends on the node it is crossing and the task reads `interrupted`. */
+/** Whether every seated rider, the commander among them, is inside. */
+function crewInside(state: VehicleStateView): boolean {
+  return state.passengers.every((seat) => seat === null || seat.inside);
+}
+
+/** The stop order (`p`): the drive ends on the node it is crossing, a goto held for boarding is
+ *  dropped, and the task reads `interrupted`. */
 export function stopVehicle(world: World, command: Extract<Command, { kind: 'stopVehicle' }>): void {
   const e = command.vehicle;
+  const state = world.tryGet(e, Vehicle);
+  if (state === undefined) return;
   const drive = world.tryMut(e, VehicleDrive);
-  if (drive === undefined) return;
-  drive.route.length = 0;
-  if (drive.from === null) world.remove(e, VehicleDrive);
-  world.mut(e, Vehicle).task = 'interrupted';
+  if (drive === undefined && state.heldGoal === null) return;
+  if (drive !== undefined) {
+    drive.route.length = 0;
+    if (drive.from === null) world.remove(e, VehicleDrive);
+  }
+  const live = world.mut(e, Vehicle);
+  live.heldGoal = null;
+  live.task = 'interrupted';
 }
 
 /**
@@ -294,9 +321,9 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     const nextNode = terrain.nodeAtClamped(next.hx, next.hy);
     if (vehicleWalkBlocks(world, ctx, terrain, e, type).has(nextNode)) {
       const goal = terrain.nodeAtClamped(drive.goal.hx, drive.goal.hy);
-      if (!startDrive(world, ctx, terrain, e, goal)) {
+      if (!startVehicleDrive(world, ctx, terrain, e, goal)) {
         world.remove(e, VehicleDrive);
-        refuse(world, ctx, e, 'noPath');
+        refuseMove(world, ctx, e, 'noPath');
       }
       continue; // the fresh route's first leg starts next tick
     }

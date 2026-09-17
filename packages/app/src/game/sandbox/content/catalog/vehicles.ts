@@ -21,8 +21,8 @@ import {
  * (docs/formats/VEHICLES.md), keyed on the sandbox's own good and job ids: every good but the sentinel
  * may ride in a hold, and the ships take every adult job while the carts take the two haulers and the
  * catapult the fighters. `jobId` follows `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`) though
- * the sandbox declares no such jobs; it is only the animation-table key. `jobId` follows `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`) though
- * the sandbox declares no such jobs; it is only the animation-table key.
+ * the sandbox declares no such jobs; it is the animation-table key and the id a ship's passenger list
+ * names a carried vehicle by.
  */
 export function buildSandboxVehicles(
   goods: readonly { readonly typeId: number }[],
@@ -60,8 +60,8 @@ export function buildSandboxVehicles(
       passengerSlots,
       logicSize: SHIP_SIZE,
       cargoGoods,
-      // The original's small ship also admits the cart jobs it carries; the sandbox has no vehicle jobs.
-      passengerJobs: adults,
+      // The ship rows also admit the vehicle jobs they carry, which is how a cart is loaded aboard.
+      passengerJobs: [...adults, jobOf(VEHICLE_HANDCART), jobOf(VEHICLE_OXCART), jobOf(VEHICLE_CATAPULT)],
       vehicleSlots,
       passengerVector: SHIP_DOOR,
       hitpoints: SHIP_HITPOINTS,
