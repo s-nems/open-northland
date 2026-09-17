@@ -189,9 +189,10 @@ name "siege ram"
 
 // Mirrors DataCnmd/types/houses.ini: a `[logichousetype]` keys its id on `logictype` (not `type`) and
 // its name on `debugname`. A storage warden hall (maintype 1), a home with `logichomesize`
-// (maintype 2), and a workplace with workers + `logicproduction` outputs (maintype 3). Stock/worker/
-// production ids here reference goods 20/22 and job 51, which the IR-integration test defines so the
-// cross-refs resolve.
+// (maintype 2), a workplace with workers + `logicproduction` outputs (maintype 3), and the well and
+// hive on their real logictypes 10 and 11, the engine's collect-action keys. Stock/worker/production
+// ids here reference goods 20/22 and job 51, which the IR-integration test defines so the cross-refs
+// resolve.
 export const HOUSES_INI = `[logichousetype]
 debugname "wardenhall"
 logictype 30
@@ -225,6 +226,15 @@ logicmaintype 3
 logicworker 51 1
 logicstock 20 1 0
 logicproduction 20
+logicbuildonbiopattern 1
+
+[logichousetype]
+debugname "work hive 00"
+logictype 11
+logicmaintype 3
+logicworker 51 1
+logicstock 22 1 0
+logicproduction 22
 logicbuildonbiopattern 1
 `;
 

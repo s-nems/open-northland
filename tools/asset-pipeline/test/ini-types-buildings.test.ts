@@ -74,6 +74,22 @@ describe('extractBuildings', () => {
         shelterCapacity: 0,
         source: src,
       },
+      {
+        typeId: 11,
+        id: 'work_hive_00',
+        kind: 'workplace',
+        homeSize: 0,
+        buildOnBioPattern: true,
+        collectAtomic: 45, // the engine's hive pick-up for logictype 11
+        canEnableDefenceMode: false,
+        workers: [{ jobType: 51, count: 1 }],
+        stock: [{ goodType: 22, capacity: 1, initial: 0 }],
+        produces: [22],
+        recipes: [],
+        construction: [],
+        shelterCapacity: 0,
+        source: src,
+      },
     ]);
   });
 

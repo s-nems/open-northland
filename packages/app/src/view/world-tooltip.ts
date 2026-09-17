@@ -22,8 +22,7 @@ export interface WorldTooltipOptions {
   readonly goodLabel: (goodType: number) => string | undefined;
   /** A chest's localized name, per kind. */
   readonly chestLabel: (kind: ChestKind) => string;
-  /** The order line under a chest's name: the open order when the selection can open it, the reason
-   *  when it cannot, null with nothing selected. */
+  /** The order line after a chest's name: the open order when the selection can open it, else null. */
   readonly chestOrderLine: (snapshot: WorldSnapshot, kind: ChestKind) => string | null;
   /** Cursor position in client coords, or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;

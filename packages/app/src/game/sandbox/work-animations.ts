@@ -26,6 +26,11 @@ export const FARMER_WATER_LENGTH = 29;
 export const STORE_PICKUP_ANIMATION = 'viking_pickup';
 export const STORE_PILEUP_ANIMATION = 'viking_pileup';
 export const STORE_EXCHANGE_LENGTH = 20;
+// The well pump and the hive pick-up a lift off those shelves plays (`setatomic 6 44/45`), both
+// `length 50` in the same file.
+export const WELL_DRAW_ANIMATION = 'viking_civilist_produce_water';
+export const HIVE_DRAW_ANIMATION = 'viking_civilist_produce_honey';
+export const UTILITY_DRAW_LENGTH = 50;
 // The gossip talk/listen clocks - EXTRACTED from the mod's `atomicanimations12/atomicanimations.ini`:
 // civilist talk/listen 247, woman talk/listen 100. Each clip restores the company bar in five
 // channel-3 pulses (`event <at> 3 <delta>`) at the frames below; the talker's pulses are +800 each

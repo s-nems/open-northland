@@ -14,11 +14,8 @@ const HOUSE_KIND_BY_MAIN_TYPE: Readonly<Record<number, BuildingKind>> = {
   7: BUILDING_KIND.wonder,
 };
 
-/**
- * The house-specific collect action by `logictype`, engine behavior with no `.ini` key: the original's
- * carrier collect plays the well pump at type 10 and the hive pick-up at type 11, the generic pick-up
- * elsewhere (`an original routine`, byte-verified).
- */
+/** The engine's per-`logictype` collect action joined into `BuildingType.collectAtomic`, which owns the
+ *  evidence: the well pump at type 10, the hive pick-up at type 11. */
 const COLLECT_ATOMIC_BY_LOGIC_TYPE: Readonly<Record<number, number>> = {
   10: 44,
   11: 45,

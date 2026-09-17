@@ -163,8 +163,8 @@ function routeToInputSource(
 /**
  * Stand on the workplace's door and step inside; that door presence is what drives the production gate.
  * An operator that arrives takes the next indoor seat's craft clip, which is what the render draws it
- * performing. Without `seats` - an idle shop, or a bound carrier that merely keeps the presence gate fed -
- * it waits inside with nothing to show.
+ * performing. Without `seats` - an idle shop, or an unowned fixture's carrier - it waits inside with
+ * nothing to show.
  */
 function holdInsideWorkplace(plan: PlannerContext, workplace: Entity, seats?: WorkSeats): void {
   const { world, ctx, terrain, entity, here } = plan;
@@ -179,8 +179,8 @@ function holdInsideWorkplace(plan: PlannerContext, workplace: Entity, seats?: Wo
  * Loiter beside the workplace door rather than on it, so a bound worker with nothing to do neither runs
  * the craft nor hides indoors, and may strike up an idle chat with a nearby idler. One that drives the
  * craft by its presence (the well's or hive's carrier) stands on the door in view, where the operator
- * gate counts it and the next unit is lifted from; the original's carrier likewise waits at the house it
- * collects from. Unowned fixtures keep the wait-inside behaviour so their state hashes stay byte-identical.
+ * gate counts it and the next unit is lifted from. Unowned fixtures keep the wait-inside behaviour so
+ * their state hashes stay byte-identical.
  */
 function loiterByDoor(
   plan: PlannerContext,

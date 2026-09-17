@@ -57,8 +57,8 @@ function utilityContent(): ContentSet {
             }
           : b,
       ),
-      // The well: a carrier-only slot and an INPUT-LESS water recipe - unstaffed-by-design; a consumer
-      // draws its own by running the recipe in place.
+      // The well: a carrier-only slot (its operator, when posted) and an INPUT-LESS water recipe; a
+      // consumer short of water draws its own by running the recipe in place.
       {
         typeId: WELL,
         id: 'work_well_00',

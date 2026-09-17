@@ -8,6 +8,7 @@ import {
   EAT_ATOMIC,
   EXERCISE_ATOMIC,
   HARVEST_CADAVER_ATOMIC,
+  HIVE_DRAW_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
   LISTEN_ATOMIC,
@@ -17,6 +18,7 @@ import {
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   TALK_ATOMIC,
+  WELL_DRAW_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
 import {
@@ -54,8 +56,10 @@ import {
   FARMER_REAP_ANIMATION,
   FARMER_SOW_ANIMATION,
   FARMER_WATER_ANIMATION,
+  HIVE_DRAW_ANIMATION,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
+  WELL_DRAW_ANIMATION,
   WOMAN_LISTEN_ANIMATION,
   WOMAN_TALK_ANIMATION,
 } from '../../work-animations.js';
@@ -135,6 +139,10 @@ export function buildSandboxTribes(
       { jobType: JOB_SOLDIER_UNARMED, atomicId: SLEEP_ATOMIC, animation: SOLDIER_SLEEP_ANIMATION },
       // The original's `setatomic 6 89` row; any other trade sent to train falls back to the civilist.
       { jobType: JOB_CIVILIST, atomicId: EXERCISE_ATOMIC, animation: CIVILIST_EXERCISE_ANIMATION },
+      // The well and hive shelf actions (`setatomic 6 44/45`); every trade lifting there falls back to
+      // the civilist.
+      { jobType: JOB_CIVILIST, atomicId: WELL_DRAW_ATOMIC, animation: WELL_DRAW_ANIMATION },
+      { jobType: JOB_CIVILIST, atomicId: HIVE_DRAW_ATOMIC, animation: HIVE_DRAW_ANIMATION },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
       { jobType: JOB_SCOUT, atomicId: BUILD_GUIDE_ATOMIC, animation: BUILD_GUIDE_ANIMATION },
