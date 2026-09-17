@@ -813,18 +813,6 @@
   --covered: var(--overlap);
   margin-top: calc(-1 * var(--overlap));
 }
-/* A dismissal closes the gap at once. The card that becomes first takes its place and shows its
-   covered part at once too, instead of sliding down and unfolding while the rest jump. */
-.on-hud .on-notice:first-child {
-  transition: none;
-}
-.on-hud .on-notice:first-child .on-seal,
-.on-hud .on-notice:first-child .on-notice__event {
-  transition: none;
-}
-.on-hud .on-notice:first-child .on-notice__dismiss {
-  transition: opacity 0.12s;
-}
 /* The covered part is clipped away rather than layered, so the DOM glyph boxes and the Pixi figures
    under the plane agree on which card is in front. The other edges leave room for the focus ring
    (2 px at 3 px offset) and the fan shadow (3 px drop, 8 px blur). */
@@ -1015,6 +1003,18 @@
 .on-hud .on-notice__dismiss:focus-visible {
   color: var(--text-hi);
   background: #000d;
+}
+/* A dismissal closes the gap at once. The card that becomes first takes its place and shows its
+   covered part at once too, instead of sliding down and unfolding while the rest jump. */
+.on-hud .on-notice:first-child {
+  transition: none;
+}
+.on-hud .on-notice:first-child .on-seal,
+.on-hud .on-notice:first-child .on-notice__event {
+  transition: none;
+}
+.on-hud .on-notice:first-child .on-notice__dismiss {
+  transition: opacity 0.12s;
 }
 /* Cards past the list's edge: a pill that scrolls a screen further. */
 .on-hud .on-notices__more {
