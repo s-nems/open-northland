@@ -2,6 +2,7 @@ import { clamp } from '../../math.js';
 import { ONE } from '../../projection/index.js';
 import { readNumField } from '../../snapshot/index.js';
 import type { StaticDrawFields } from '../draw-item.js';
+import { readStockpile } from './stockpile-readers.js';
 
 function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Building', 'buildingType');
@@ -138,7 +139,16 @@ export function readChestGfxIndex(components: Readonly<Record<string, unknown>>)
   return readNumField(components, 'Chest', 'gfxIndex') ?? readNumField(components, 'OpenedChest', 'gfxIndex');
 }
 
-const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex', 'tribe'] as const;
+const STATIC_DRAW_KEYS = [
+  'typeId',
+  'builtPct',
+  'goodType',
+  'fill',
+  'level',
+  'levels',
+  'gfxIndex',
+  'tribe',
+] as const;
 // A key missing from STATIC_DRAW_KEYS makes _UncopiedKey non-never and fails to compile here, so a new
 // StaticDrawFields entry cannot be silently dropped by the hand copy below.
 type _UncopiedKey = Exclude<keyof StaticDrawFields, (typeof STATIC_DRAW_KEYS)[number]>;
@@ -155,13 +165,14 @@ export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFie
 }
 
 /**
- * Assign the {@link StaticDrawFields} a building / resource / stump draws by onto `target` in place - no
- * intermediate object, so the per-frame scene build allocates nothing - omitting absent facts. The one
- * place that choice lives, so the live scene build and the fog-ghost capture cannot drift apart.
+ * Assign the {@link StaticDrawFields} a building / resource / stump / chest / goods heap draws by onto
+ * `target` in place - no intermediate object, so the per-frame scene build allocates nothing - omitting
+ * absent facts. The one place that choice lives, so the live scene build and the fog-ghost capture
+ * cannot drift apart.
  */
 export function assignStaticFields(
   target: StaticDrawFields,
-  kind: 'building' | 'resource' | 'stump' | 'chest',
+  kind: 'building' | 'resource' | 'stump' | 'chest' | 'stockpile',
   components: Readonly<Record<string, unknown>>,
 ): void {
   switch (kind) {
@@ -194,6 +205,12 @@ export function assignStaticFields(
     case 'chest': {
       const gfxIndex = readChestGfxIndex(components);
       if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
+      return;
+    }
+    case 'stockpile': {
+      const { goodType, fill } = readStockpile(components);
+      if (goodType !== undefined) target.goodType = goodType;
+      if (fill !== undefined) target.fill = fill;
       return;
     }
     default: {

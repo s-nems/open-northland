@@ -1,4 +1,5 @@
 export {
+  equipFetchLimitFor,
   type NavigationLimit,
   navigationLimitFor,
   networkLimitAt,

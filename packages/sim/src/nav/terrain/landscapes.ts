@@ -33,6 +33,10 @@ export interface ScriptLandscapeType {
   readonly bushGfxIndex?: number;
   /** A placed record backed by the interactive chest entity rather than the static landscape layer. */
   readonly chest?: { readonly kind: 'wooden' | 'magical'; readonly gfxIndex: number };
+  /** A good's ground form (`goodtypes.ini` `landscapetype`): a placement is a loose heap of the good
+   *  holding its level in units, drawn from the goods sheet rather than the static landscape layer. The
+   *  slug resolves against the world's content when the heap is laid. */
+  readonly good?: { readonly goodId: string };
 }
 
 export interface ScriptLandscapePlacement {

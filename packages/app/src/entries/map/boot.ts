@@ -97,8 +97,9 @@ export interface AssembledMapWorld {
   readonly tribes: WorldTribes;
   readonly staticObjects: LoadedObjects | undefined;
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
-  /** Empty on a restore, whose chests come out of the save. */
-  readonly chestPlacements: readonly number[];
+  /** The chest and ground-goods placements the sim draws from tick zero; empty on a restore, whose
+   *  entities come out of the save. */
+  readonly pooledPlacements: readonly number[];
 }
 
 /** Assemble the map's world up to a sim standing at a tick boundary; null when the boot halted. */
@@ -201,7 +202,7 @@ export async function assembleMapWorld(
     };
     let sim: Simulation;
     let harvestablePlacements: readonly (readonly [Entity, number])[] = [];
-    let chestPlacements: readonly number[] = [];
+    let pooledPlacements: readonly number[] = [];
     if (stagedSave !== null) {
       try {
         sim = restoreMapWorld(worldOptions, stagedSave).sim;
@@ -220,7 +221,7 @@ export async function assembleMapWorld(
       });
       sim = world.sim;
       harvestablePlacements = world.harvestablePlacements;
-      chestPlacements = world.chestPlacements;
+      pooledPlacements = world.pooledPlacements;
     }
     setDiagGameSession({
       entry: 'map',
@@ -254,7 +255,7 @@ export async function assembleMapWorld(
       tribes,
       staticObjects,
       harvestablePlacements,
-      chestPlacements,
+      pooledPlacements,
     };
   } finally {
     if (!assembled) app.destroy(false, { children: true });

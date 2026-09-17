@@ -1,11 +1,18 @@
 import { ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState, writeLandscapeEdits } from '../../components/landscape.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../nav/halfcell.js';
-import type { LandscapeRemovalGroup, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type {
+  LandscapeRemovalGroup,
+  NodeId,
+  ScriptLandscapeType,
+  TerrainGraph,
+} from '../../nav/terrain/index.js';
 import { createChest } from '../chests/index.js';
 import type { SystemContext } from '../context.js';
 import { createBerryBush } from '../economy/berries.js';
+import { createGroundGoods } from '../economy/ground-goods.js';
 import {
   createResourceNode,
   stampResourceFootprintData,
@@ -59,6 +66,48 @@ function firstFreeId(terrain: TerrainGraph): number {
   return id;
 }
 
+/**
+ * The live entity standing in for a scripted placement of `type`: a chest, a goods heap or a resource
+ * node, each created before the old object is removed so a rejected replacement leaves the world as it
+ * was. `undefined` for a decor type; null when the type cannot be placed - a resource with no footprint
+ * or a good the world's content lacks.
+ */
+function createPlacementBacking(
+  world: World,
+  ctx: SystemContext,
+  type: ScriptLandscapeType,
+  point: HalfCellNode,
+  level: number,
+  landscapeId: number,
+): Entity | null | undefined {
+  const at = { x: point.hx, y: point.hy, landscapeId };
+  if (type.chest !== undefined) {
+    return createChest(world, ctx.content, { ...type.chest, contents: level, ...at });
+  }
+  if (type.good !== undefined) {
+    const goodType = contentIndex(ctx.content).goodTypeBySlug.get(type.good.goodId);
+    if (goodType === undefined) return null;
+    return createGroundGoods(world, { goodType, amount: level, ...at });
+  }
+  if (type.resource === undefined) return undefined;
+  const deposit = type.resource.deposit;
+  const initial = deposit?.initial ?? type.resource.remaining;
+  const remaining =
+    deposit !== undefined && deposit.levels > 0
+      ? Math.min(initial, Math.max(1, Math.floor((initial * level) / deposit.levels)))
+      : type.resource.remaining;
+  const resource = createResourceNode(world, ctx.content, { ...type.resource, remaining, ...at });
+  if (resource === null) return null;
+  const footprint = world.get(resource, ResourceFootprint);
+  stampResourceFootprintData(world, resource, {
+    walk: type.walk.map((cell) => ({ ...cell })),
+    build: type.build.map((cell) => ({ ...cell })),
+    work: footprint.work.map((cell) => ({ ...cell })),
+    ...(footprint.sourceGfxIndex !== undefined ? { sourceGfxIndex: footprint.sourceGfxIndex } : {}),
+  });
+  return resource;
+}
+
 export function setLandscape(
   world: World,
   ctx: SystemContext,
@@ -72,41 +121,8 @@ export function setLandscape(
   if (type === undefined) return false;
   const state = landscapeEditState(world);
   const id = Math.max(state.nextId, firstFreeId(terrain));
-  const deposit = type.resource?.deposit;
-  const initial = deposit?.initial ?? type.resource?.remaining ?? 0;
-  const remaining =
-    deposit !== undefined && deposit.levels > 0
-      ? Math.min(initial, Math.max(1, Math.floor((initial * level) / deposit.levels)))
-      : type.resource?.remaining;
-  // Validate the replacement's resource before removing the existing object.
-  const resource =
-    type.chest !== undefined
-      ? createChest(world, ctx.content, {
-          ...type.chest,
-          contents: level,
-          x: point.hx,
-          y: point.hy,
-          landscapeId: id,
-        })
-      : type.resource === undefined
-        ? undefined
-        : createResourceNode(world, ctx.content, {
-            ...type.resource,
-            ...(remaining !== undefined ? { remaining } : {}),
-            x: point.hx,
-            y: point.hy,
-            landscapeId: id,
-          });
+  const resource = createPlacementBacking(world, ctx, type, point, level, id);
   if (resource === null) return false;
-  if (resource !== undefined && type.chest === undefined) {
-    const footprint = world.get(resource, ResourceFootprint);
-    stampResourceFootprintData(world, resource, {
-      walk: type.walk.map((cell) => ({ ...cell })),
-      build: type.build.map((cell) => ({ ...cell })),
-      work: footprint.work.map((cell) => ({ ...cell })),
-      ...(footprint.sourceGfxIndex !== undefined ? { sourceGfxIndex: footprint.sourceGfxIndex } : {}),
-    });
-  }
   removeLandscapes(world, terrain, point, 0, undefined, (entity) =>
     ctx.events.emit({ kind: 'missionLandscapeResourceRemoved', entity }),
   );

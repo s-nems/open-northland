@@ -460,6 +460,28 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.tryGet(settler, Equipment)?.boots ?? null).toBeNull();
   });
 
+  it('an unconfined fighter fetches only inside the network at his feet, and stays put otherwise', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(64, 6) });
+    setNeedsEnabled(sim.world, false);
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const fighter = ownedSettler(sim, 40, 3);
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
+    const far = pileAt(sim, 2, 3, SWORD, 1); // 76 nodes away, no post to catch: not his to fetch
+    const start = sim.world.get(fighter, Position).x;
+
+    sim.enqueueSetup(equip(fighter, SWORD, 'weapon'));
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.tryGet(fighter, Equipment)?.weapon ?? null).toBeNull();
+    expect(sim.world.get(fighter, Position).x).toBe(start);
+    expect(sim.world.get(far, Stockpile).amounts.get(SWORD)).toBe(1);
+
+    pileAt(sim, 30, 3, SWORD, 1);
+    sim.enqueueSetup(equip(fighter, SWORD, 'weapon'));
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.get(fighter, Equipment).weapon?.goodType).toBe(SWORD);
+  });
+
   it('fetches straight off the shelf of the workshop that makes the good', () => {
     // A producer's FINISHED shelf is a fetch source like any other - the brewery case, where a
     // settler need not wait for a carrier to walk the bottle to a warehouse first. (The input-side
@@ -846,6 +868,18 @@ describe('equipPickList - the pick-menu read view', () => {
     expect(sim.equipPickList(civilian, 'tool')).toEqual([{ goodType: TOOL_WOODEN, available: 2 }]);
     expect(sim.equipPickList(fighter, 'tool')).toEqual([]);
     expect(sim.equipPickList(fighter, 'boots')).toEqual([{ goodType: SHOES, available: 1 }]);
+  });
+
+  it('bounds an unconfined fighter to the network at his feet, as the errand and the grant do', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(64, 6) });
+    setNeedsEnabled(sim.world, false);
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const fighter = ownedSettler(sim, 40, 3);
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
+    pileAt(sim, 2, 3, SWORD, 1); // 76 nodes away: beyond the walk range around him, no post to catch
+    pileAt(sim, 30, 3, SWORD, 2);
+    expect(sim.equipPickList(fighter, 'weapon')).toEqual([{ goodType: SWORD, available: 2 }]);
   });
 
   it('offers a civilian no weapon or armor rows', () => {

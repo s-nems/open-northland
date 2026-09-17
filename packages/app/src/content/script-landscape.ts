@@ -9,6 +9,7 @@ import { forEachPlacement } from './map-placements.js';
 import {
   BUSH_WITH_FRUITS_LOGIC_TYPE,
   chestKindByLogicType,
+  groundGoodByObjectName,
   harvestGoodByObjectName,
 } from './map-resources.js';
 
@@ -40,6 +41,7 @@ const REMOVAL_NAMES: Readonly<Record<LandscapeRemovalGroup, readonly string[]>> 
 
 export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
   const harvestByName = harvestGoodByObjectName(ir);
+  const groundGoodByName = groundGoodByObjectName(ir);
   const chestKindByType = chestKindByLogicType(ir);
   const gatherers = new Map(GATHERERS.map((g) => [g.id, g]));
   return (ir.landscapeGfx ?? []).map((g) => {
@@ -50,6 +52,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
     const ref = g.editName === undefined ? undefined : harvestByName.get(g.editName);
     const gatherer = ref === undefined ? undefined : gatherers.get(ref.goodId);
     const chestKind = chestKindByType.get(g.logicType);
+    const goodId = g.editName === undefined ? undefined : groundGoodByName.get(g.editName);
     let resource: ScriptLandscapeType['resource'];
     if (gatherer !== undefined && ref !== undefined) {
       const {
@@ -72,6 +75,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
       ...(resource === undefined ? {} : { resource }),
       ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),
       ...(chestKind === undefined ? {} : { chest: { kind: chestKind, gfxIndex: g.index } }),
+      ...(goodId === undefined ? {} : { good: { goodId } }),
     };
   });
 }
@@ -100,7 +104,10 @@ export function buildScriptLandscapeTerrain(map: TerrainMapFile, ir: ContentIr):
         hx,
         hy,
         level: objects.levels?.[id] ?? 1,
-        ...(type?.resource !== undefined || type?.bushGfxIndex !== undefined || type?.chest !== undefined
+        ...(type?.resource !== undefined ||
+        type?.bushGfxIndex !== undefined ||
+        type?.chest !== undefined ||
+        type?.good !== undefined
           ? { resourceBacked: true }
           : {}),
       });

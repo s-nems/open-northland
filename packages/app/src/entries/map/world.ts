@@ -24,6 +24,7 @@ import {
   resolveWorldContent,
   spawnMapBerryBushes,
   spawnMapChests,
+  spawnMapGroundGoods,
   spawnMapResources,
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
@@ -81,7 +82,8 @@ export interface MapWorld {
   /** Each spawned harvestable's placement ordinal in the map's object list: the join back to the static
    *  layer's sprite for that placement. */
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
-  readonly chestPlacements: readonly number[];
+  /** The chest and ground-goods placements, whose entities the sim draws from tick zero. */
+  readonly pooledPlacements: readonly number[];
 }
 
 /** Placements are queued commands: one tick drains them, so the start-camera focus sees entities a
@@ -94,9 +96,9 @@ export function buildMapWorld(options: MapWorldOptions): MapWorld {
   const { sim, kind } = runWorld(options, terrain);
   setupPlacementTribes(sim, options.playerRoster);
   applySessionRules(sim, options);
-  const { harvestablePlacements, chestPlacements } = spawnHarvestables(sim, options);
+  const { harvestablePlacements, pooledPlacements } = spawnHarvestables(sim, options);
   sim.step();
-  return { sim, kind, harvestablePlacements, chestPlacements };
+  return { sim, kind, harvestablePlacements, pooledPlacements };
 }
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
@@ -208,15 +210,16 @@ function authoredWorldContent(terrain: TerrainMap, options: RestoreWorldOptions)
 function spawnHarvestables(
   sim: Simulation,
   options: MapWorldOptions,
-): Pick<MapWorld, 'harvestablePlacements' | 'chestPlacements'> {
+): Pick<MapWorld, 'harvestablePlacements' | 'pooledPlacements'> {
   const { map, ir } = options;
-  if (map?.objects === undefined || ir === null) return { harvestablePlacements: [], chestPlacements: [] };
+  if (map?.objects === undefined || ir === null) return { harvestablePlacements: [], pooledPlacements: [] };
   const resources = spawnMapResources(sim, map.objects, ir);
   const chests = spawnMapChests(sim, map.objects, ir);
+  const goods = spawnMapGroundGoods(sim, map.objects, ir);
   const bushes =
     options.berryBushes === false ? [] : [...spawnMapBerryBushes(sim, map.objects, ir).placementByEntity];
   return {
     harvestablePlacements: [...resources.placementByEntity, ...bushes],
-    chestPlacements: [...chests.placementByEntity.values()],
+    pooledPlacements: [...chests.placementByEntity.values(), ...goods.placementByEntity.values()],
   };
 }

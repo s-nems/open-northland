@@ -1,9 +1,10 @@
 import type { UiCue } from '@open-northland/audio';
-import { type ContentSet, lastByTypeId } from '@open-northland/data';
+import { type ContentSet, type EquipCategory, lastByTypeId } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
 import {
   type Command,
   type Entity,
+  type EquipPickEntry,
   entityById,
   nodeOfPosition,
   type PlayerCommand,
@@ -25,12 +26,16 @@ import {
   settlerJobType,
 } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
+import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import { openSchoolDialog } from './school-dialog.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'] | undefined;
+  /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent, a click on a goods heap
+   *  is a walk. */
+  readonly equipPickList?: ((entity: number, group: EquipCategory) => readonly EquipPickEntry[]) | undefined;
   readonly selected: () => ReadonlySet<number>;
   readonly targets: UnitTargets;
   readonly snapshot: () => WorldSnapshot;
@@ -71,9 +76,22 @@ export interface UnitOrderController {
 
 type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
 
+/** Whether the snapshot settler's fixed `group` slot already holds `goodType`, worn or not. */
+function wearsGood(
+  components: Readonly<Record<string, unknown>>,
+  group: Exclude<EquipCategory, 'misc'>,
+  goodType: number,
+): boolean {
+  const equipment = components.Equipment as
+    | Partial<Record<Exclude<EquipCategory, 'misc'>, { readonly goodType?: unknown } | null>>
+    | undefined;
+  return equipment?.[group]?.goodType === goodType;
+}
+
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
   let closeSchool: (() => void) | undefined;
   const buildingsByType = lastByTypeId(deps.content.buildings);
+  const goodsByType = lastByTypeId(deps.content.goods);
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const occupied = new Set<string>();
@@ -124,6 +142,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     // A chest nobody selected may open is walked to like any ground.
     const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
     if (chest !== null && openChest(commanded, chest)) return true;
+    const goods = deps.targets.goods();
+    const pile = pickTopAt(goods, world.x, world.y);
+    const pileGood = pile === null ? undefined : goods.find((target) => target.ref === pile)?.goodType;
+    if (pileGood !== undefined && wearFromGround(commanded, pileGood)) return true;
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
       const snapshot = deps.snapshot();
@@ -210,6 +232,33 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       sent = true;
     }
     return sent;
+  };
+
+  /**
+   * Send every commanded settler that may wear the clicked good to put it on; true when anyone was sent.
+   * The original's default click on a good lying on the ground (`UserControl_GetDefaultInteractionCommand`
+   * over a landscape of a good's `landscapetype`): each selected human who can equip the good now and does
+   * not already wear that item type gets the equip order by good type, so the sim fetches its nearest
+   * reachable unit rather than this exact heap. A misc good (mead, potions, amulets) skips the worn
+   * check, as its slots stack. The gate is the sim's pick list, the same read the equip window shows.
+   */
+  const wearFromGround = (commanded: readonly FormationUnit[], goodType: number): boolean => {
+    const pickList = deps.equipPickList;
+    const group = goodsByType.get(goodType)?.equip?.category;
+    if (pickList === undefined || group === undefined) return false;
+    const snapshot = deps.snapshot();
+    const wearers = commanded
+      .map((unit) => unit.ref)
+      .filter((ref) => {
+        const self = entityById(snapshot, ref);
+        if (self === undefined || (group !== 'misc' && wearsGood(self.components, group, goodType))) {
+          return false;
+        }
+        return pickList(ref, group).some((row) => row.goodType === goodType);
+      });
+    const commands = selectionEquipCommands(snapshot, wearers, { goodType, group });
+    for (const command of commands) deps.enqueue(command);
+    return commands.length > 0;
   };
 
   const strike = (commanded: readonly FormationUnit[], enemy: number): boolean => {

@@ -83,6 +83,40 @@ describe('FogGhostStore', () => {
     expect(next.map((g) => g.ref).sort()).toEqual([2, 3, 5]);
   });
 
+  it('remembers a goods heap at its last-seen fill, but never a delivery flag or an emptied pile', () => {
+    const heap = (fill: number) => entity(6, 17, 4, { Stockpile: { amounts: [[30, fill]] } });
+    const flag = entity(7, 19, 4, { Stockpile: { amounts: [] }, DeliveryFlag: {} });
+    const empty = entity(8, 21, 4, { Stockpile: { amounts: [[30, 0]] } });
+    const cells = new Map([
+      ['17,4', FOG_STATE.VISIBLE],
+      ['19,4', FOG_STATE.VISIBLE],
+      ['21,4', FOG_STATE.VISIBLE],
+    ]);
+    const store = new FogGhostStore();
+    store.update(snapshotOf([heap(3), flag, empty]), viewOf(cells, 1));
+    const fogged = store.update(
+      snapshotOf([heap(1), flag, empty]),
+      viewOf(
+        new Map([
+          ['17,4', FOG_STATE.EXPLORED],
+          ['19,4', FOG_STATE.EXPLORED],
+          ['21,4', FOG_STATE.EXPLORED],
+        ]),
+        2,
+      ),
+    );
+    expect(fogged).toEqual([{ ref: 6, kind: 'stockpile', tileX: 17, tileY: 4, goodType: 30, fill: 3 }]);
+    // The memory draws the heap the viewer last saw, not the one the sim holds now.
+    const scene = collectSpriteScene(snapshotOf([]), { ghosts: fogged });
+    expect(scene.items[0]).toMatchObject({ ref: 6, kind: 'stockpile', ghost: true, goodType: 30, fill: 3 });
+    // RECON seeds a map's heaps like its chests.
+    const seeded = new FogGhostStore().update(
+      snapshotOf([heap(2), flag]),
+      viewOf(new Map(), 1, FOG_MODE.RECON),
+    );
+    expect(seeded.map((g) => g.ref)).toEqual([6]);
+  });
+
   it('draws an opened chest by its inert open graphics record', () => {
     const chest = entity(5, 15, 4, { OpenedChest: { gfxIndex: 846 } });
     const scene = collectSpriteScene(snapshotOf([chest]));

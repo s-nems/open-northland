@@ -5,6 +5,7 @@ import {
   type MapResourceSpawn,
   mapBerryBushSpawns,
   mapChestSpawns,
+  mapGroundGoodsSpawns,
   mapResourceSpawns,
   simResourceObjectNames,
 } from '../../content/map-resources.js';
@@ -128,6 +129,10 @@ export function harvestablePlacementOrdinals(
   }
   for (const bush of mapBerryBushSpawns(objects, ir)) out.push(bush.placement);
   for (const chest of mapChestSpawns(objects, ir)) out.push(chest.placement);
+  const goodBySlug = new Map(content.goods.map((good) => [good.id, good.typeId]));
+  for (const goods of mapGroundGoodsSpawns(objects, ir)) {
+    if (goodBySlug.has(goods.goodId)) out.push(goods.placement);
+  }
   return out;
 }
 
@@ -152,6 +157,48 @@ export function spawnMapBerryBushes(
     });
     placementByEntity.set(e, placement);
     spawned++;
+  }
+  return { spawned, placementByEntity };
+}
+
+/**
+ * Direct scene assembly, valid pre-tick-0 only, in native placement order so ids mint deterministically.
+ * A goods object is a loose heap of the good, so a settler can be sent to wear or haul it exactly like a
+ * dropped one; the join retires the static sprite the goods sheet now draws over. A good the world's
+ * content lacks lays no heap and is counted; every non-void good of the real content is present, so only
+ * a catalog fallback reaches that branch (on a scripted map, `scriptLandscapeTypes` would still have
+ * marked the placement resource-backed).
+ */
+export function spawnMapGroundGoods(
+  sim: Simulation,
+  objects: TerrainObjects,
+  ir: ContentIr,
+): MapResourceSpawnResult {
+  let spawned = 0;
+  let unknown = 0;
+  const placementByEntity = new Map<Entity, number>();
+  const goodBySlug = new Map(sim.content.goods.map((good) => [good.id, good.typeId]));
+  for (const { goodId, hx, hy, amount, placement } of mapGroundGoodsSpawns(objects, ir)) {
+    const goodType = goodBySlug.get(goodId);
+    if (goodType === undefined) {
+      unknown++;
+      continue;
+    }
+    const e = systems.createGroundGoods(sim.world, {
+      goodType,
+      amount,
+      x: hx,
+      y: hy,
+      ...(sim.terrain?.landscapes !== undefined ? { landscapeId: placement } : {}),
+    });
+    placementByEntity.set(e, placement);
+    spawned++;
+  }
+  if (unknown > 0) {
+    diag.warn(
+      'content',
+      `spawnMapGroundGoods: ${unknown} goods placements name a good outside the world's content - no heap laid`,
+    );
   }
   return { spawned, placementByEntity };
 }

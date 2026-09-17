@@ -64,6 +64,7 @@ const targets: UnitTargets = {
   flags: () => [],
   signposts: () => [],
   chests: () => [],
+  goods: () => [],
   resources: () => [],
   wildlife: () => [],
   ownedSettlersIn: (refs) =>

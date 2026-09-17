@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LandscapeResource, Resource } from '../../src/components/index.js';
+import { LandscapeResource, Resource, ResourceFootprint, Stockpile } from '../../src/components/index.js';
 import { landscapeEditState } from '../../src/components/landscape.js';
 import { exportSaveGame, findPath, parseSaveGame, restoreSimulation, Simulation } from '../../src/index.js';
 import { dynamicBlockOverlay, placementProbe, routeRegions } from '../../src/systems/footprint/index.js';
@@ -217,6 +217,33 @@ describe('script landscape state and blockers', () => {
     expect(sim.world.isAlive(resource)).toBe(false);
     expect(sim.landscapeEdits().added).toEqual([]);
     expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrainOf(sim)).size).toBe(0);
+  });
+
+  it('lays a goods heap of the requested level for a good landscape and removes it as a resource', () => {
+    const source = map();
+    const shoes = { typeId: 3, walk: [], build: [], groups: [], good: { goodId: 'tool_wooden' } };
+    const unknown = { typeId: 4, walk: [], build: [], groups: [], good: { goodId: 'unobtainium' } };
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { ...source, landscapes: { types: [WALL, shoes, unknown], placements: [] } },
+    });
+    const toolWooden = sim.content.goods.find((good) => good.id === 'tool_wooden')?.typeId;
+    if (toolWooden === undefined) throw new Error('fixture good');
+    expect(setLandscape(sim.world, ctxOf(sim), POINT, 3, 3)).toBe(true);
+    const [heap] = [...sim.world.query(Stockpile, LandscapeResource)];
+    if (heap === undefined) throw new Error('heap laid');
+    expect([...sim.world.get(heap, Stockpile).amounts]).toEqual([[toolWooden, 3]]);
+    expect(sim.world.has(heap, ResourceFootprint)).toBe(false);
+    expect(sim.landscapeEdits().added).toEqual([
+      { id: 0, typeId: 3, ...POINT, level: 3, resourceBacked: true },
+    ]);
+    // The heap owns the placement: reaping it after the last pickup retires the placement with it.
+    sim.world.destroy(heap);
+    expect(sim.landscapeEdits().added).toEqual([]);
+    // A good the world's content lacks cannot be laid, and leaves the world as it was.
+    expect(setLandscape(sim.world, ctxOf(sim), POINT, 4, 1)).toBe(false);
+    expect([...sim.world.query(Stockpile)]).toEqual([]);
   });
 
   it('evaluates landscape presence after a preceding mission removes the object', () => {

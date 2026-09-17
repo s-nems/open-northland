@@ -61,6 +61,8 @@ export interface JobGraphicsRow {
 export interface IrGoodRow {
   readonly typeId: number;
   readonly id: string;
+  /** `landscapetype` - the `[landscapetype]` a unit of this good is when it lies on the ground. */
+  readonly landscapeType?: number;
 }
 
 /** One `[GfxHouse]` `LogicType`→`GfxBobId` row. */
@@ -166,12 +168,15 @@ export interface GatheringPipelineRow {
   readonly store?: GatheringStageRow;
 }
 
-/** One `[landscapetype]` row, narrowed to its typeId and logic name. */
+/** One `[landscapetype]` row, narrowed to its typeId, logic name and layer. */
 export interface LandscapeTypeRow {
   readonly typeId?: number;
   /** The `landscapetypes.ini` slug, the join key a rule names a landscape by. */
   readonly id?: string;
   readonly name?: string;
+  /** `allowedoneverything` - the void type alone carries it; goods that never lie on the ground (livestock,
+   *  vehicles, the chest) name it as their landscape. */
+  readonly allowedOnEverything?: boolean;
 }
 
 /**

@@ -203,6 +203,61 @@ export function mapChestSpawns(objects: TerrainObjects, ir: ContentIr): MapChest
 }
 
 /**
+ * The `goodId` each ground-goods object `EditName` lays down, through the good's `landscapeType` and the
+ * `landscapeGfx` records of that logic type. Source basis: in the original a good on the ground is a
+ * landscape object of the good's own `landscapetype`, the form the map editor places and a settler's
+ * drop leaves. Goods naming the void type (livestock, vehicles, the chest) never lie on the ground and
+ * are skipped, so every decor object of the void type stays decor. Degrades to empty on an older
+ * `ir.json` without the goods' `landscapeType`.
+ */
+export function groundGoodByObjectName(ir: ContentIr): ReadonlyMap<string, string> {
+  const voidTypes = new Set<number>();
+  for (const row of ir.landscape ?? []) {
+    if (row.typeId !== undefined && row.allowedOnEverything === true) voidTypes.add(row.typeId);
+  }
+  const goodByLogicType = new Map<number, string>();
+  for (const good of ir.goods ?? []) {
+    if (good.landscapeType === undefined || voidTypes.has(good.landscapeType)) continue;
+    if (!goodByLogicType.has(good.landscapeType)) goodByLogicType.set(good.landscapeType, good.id);
+  }
+  const out = new Map<string, string>();
+  for (const g of ir.landscapeGfx ?? []) {
+    const goodId = goodByLogicType.get(g.logicType);
+    if (g.editName !== undefined && goodId !== undefined) out.set(g.editName, goodId);
+  }
+  return out;
+}
+
+/** One ground heap a decoded map defines: the good and its unit count at half-cell `(hx, hy)`, plus the
+ *  placement ordinal. */
+export interface MapGroundGoodsSpawn {
+  readonly goodId: string;
+  readonly hx: number;
+  readonly hy: number;
+  /** The placement's `objects.levels` (`lmlv`) entry, the pile's unit count; a map without the lane lays
+   *  single units. */
+  readonly amount: number;
+  readonly placement: number;
+}
+
+/**
+ * The ground heaps a decoded map's placed goods objects define. Deterministic: one pass over
+ * `map.objects.placements` in native row-major order, so the caller mints entity ids in a fixed order.
+ */
+export function mapGroundGoodsSpawns(objects: TerrainObjects, ir: ContentIr): MapGroundGoodsSpawn[] {
+  const byName = groundGoodByObjectName(ir);
+  const { types, placements } = objects;
+  const out: MapGroundGoodsSpawn[] = [];
+  forEachPlacement(placements, (hx, hy, typeIndex, placement) => {
+    const name = types[typeIndex];
+    const goodId = name !== undefined ? byName.get(name) : undefined;
+    if (goodId === undefined) return;
+    out.push({ goodId, hx, hy, amount: objects.levels?.[placement] ?? 1, placement });
+  });
+  return out;
+}
+
+/**
  * The object `EditName`s whose placements become sim entities carrying their own footprint - resource
  * nodes and chests. The static collision join must skip these: their blocking lives in the sim's dynamic
  * resource-footprint overlay, stamped at spawn and unstamped when the node is felled, depleted or opened.

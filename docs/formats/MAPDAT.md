@@ -64,7 +64,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `lmhe` | cell | elevation |
 | `embr` | cell | terrain brightness |
 | `lmlt` | half-cell | collapsed to cell landscape logic ids |
-| `lmlv` | half-cell | landscape valency: each placement's growth level; a chest placement's entry is its chest-contents type instead |
+| `lmlv` | half-cell | landscape valency: each placement's growth level; a chest placement's entry is its chest-contents type instead, and a goods placement's (an object of a good's `landscapetype`) is its unit count, 1 to 5 across the owned corpus |
 | `empa`, `empb` | cell triangles | final ground-pattern ids |
 | `emla` | half-cell | placed landscape-object ids |
 | `emt1` to `emt4` | cell | transition overlay ids and variants |

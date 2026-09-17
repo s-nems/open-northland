@@ -52,6 +52,9 @@ export interface UnitTargets {
   /** The closed chests on screen - the "open chest" click's targets. A chest is nobody's, so every seat
    *  may send a settler to it. */
   chests(): Pickable[];
+  /** The loose goods heaps on screen, each with its good - the "put it on" click's targets. A heap is
+   *  nobody's either. An empty delivery flag names no good and is not one. */
+  goods(): Pickable[];
   /** Visible resource nodes that a selected gatherer may use as its resource-filter target. */
   resources(): Pickable[];
   /**
@@ -185,6 +188,23 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const it of deps.drawnItems()) {
         if (it.kind !== 'chest' || !isHitTarget(it)) continue;
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
+      }
+      return out;
+    },
+
+    goods(): Pickable[] {
+      const out: Pickable[] = [];
+      for (const it of deps.drawnItems()) {
+        if ((it.kind !== 'stockpile' && it.kind !== 'grounddrop') || !isHitTarget(it)) continue;
+        if (it.goodType === undefined) continue;
+        out.push({
+          ref: it.ref,
+          x: it.x,
+          y: it.y,
+          kind: 'pile',
+          goodType: it.goodType,
+          box: deps.boundsOf?.(it.ref),
+        });
       }
       return out;
     },

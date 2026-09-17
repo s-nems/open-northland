@@ -130,6 +130,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   const orders = createUnitOrderController({
     technologyStatus: opts.technologyStatus,
+    equipPickList: opts.equipPickList,
     selected: selection.ids,
     targets: unitTargets,
     snapshot: opts.snapshot,

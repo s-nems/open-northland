@@ -23,9 +23,9 @@ export interface Pickable {
   readonly x: number;
   readonly y: number;
   /** The drawable kind, so a click hit-box can be sized per kind when exact bounds aren't available. */
-  readonly kind?: 'settler' | 'building' | 'resource' | 'signpost' | 'chest';
-  /** A resource target's good. Kept on the hit target so an order uses the exact object the player
-   *  clicked instead of looking it up again in a potentially newer simulation snapshot. */
+  readonly kind?: 'settler' | 'building' | 'resource' | 'signpost' | 'chest' | 'pile';
+  /** A resource or ground-pile target's good. Kept on the hit target so an order uses the exact object
+   *  the player clicked instead of looking it up again in a potentially newer simulation snapshot. */
   readonly goodType?: number;
   /** Exact rendered sprite bounds in world px; absent off-screen or without a renderer, which falls back
    *  to the kind box. */
@@ -134,6 +134,8 @@ const PICK_BOX = {
   signpost: { halfW: 14, up: 76, down: 8 },
   // The magical chest bob is 78x53 native px, the wooden one smaller; the larger sizes the box.
   chest: { halfW: 39, up: 53, down: 10 },
+  // A goods heap is a low, wide bob; the exact sprite bounds normally stand in for this box.
+  pile: { halfW: 18, up: 26, down: 8 },
 } as const;
 
 function hits(t: Pickable, wx: number, wy: number): boolean {

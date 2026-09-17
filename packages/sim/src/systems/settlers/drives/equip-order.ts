@@ -44,9 +44,10 @@ interface EquipErrand {
 
 const EXCLUDE_PRODUCERS = false;
 
-/** A recruit's arming errand shops inside the settlement network at his feet: a soldier carries no
- *  confinement of his own, and the store is re-picked every tick, so without this he would re-target
- *  across the map the moment his store ran dry. Every other errand keeps its settler's own limit. */
+/** An errand shops inside its settler's own confinement, or, for a job with none (a soldier) and for a
+ *  recruit being armed, inside the settlement network at his feet - the original's
+ *  `FindEquipment_Complex_Nearby` bound. The store is re-picked every tick, so without a gate an
+ *  unconfined settler would re-target across the map the moment his store ran dry. */
 function errandGate(
   world: World,
   terrain: TerrainGraph,
@@ -54,7 +55,8 @@ function errandGate(
   here: NodeId,
   limit: NavigationLimit | null,
 ): NavigationLimit | undefined {
-  const owner = world.has(e, AssistantRecruit) ? ownerOf(world, e) : undefined;
+  if (limit !== null && !world.has(e, AssistantRecruit)) return limit;
+  const owner = ownerOf(world, e);
   if (owner === undefined) return limit ?? undefined;
   return networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ?? undefined;
 }

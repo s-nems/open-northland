@@ -44,6 +44,7 @@ function rightClick(sim: Simulation, settlers: readonly Entity[], chest: Entity)
     flags: () => [],
     signposts: () => [],
     chests: () => [pickable],
+    goods: () => [],
     resources: () => [],
     wildlife: () => [],
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),

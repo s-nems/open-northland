@@ -31,6 +31,9 @@ export interface StaticDrawFields {
   /** A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds. Omitted for a
    *  delivery flag and an empty pile, which draw the flag rather than a heap. */
   goodType?: number;
+  /** For a stockpile pile: units of {@link goodType} held, which grows the drawn heap with its
+   *  contents. */
+  fill?: number;
   /** A mined deposit's or crop's visual fill level in `[1, levels]`, stepping down from `levels` as it
    *  empties. Omitted for a plain node, which draws its full-state frame. */
   level?: number;
@@ -58,9 +61,6 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly y: number;
   /** Composed sort key: the anchor's depth plus the per-kind paint bias. */
   readonly depth: number;
-  /** For a stockpile pile: units of {@link goodType} held, which grows the drawn heap with its
-   *  contents. */
-  readonly fill?: number;
   /** For a fish swarm: how many independently moving fish the renderer emits (1..30). */
   readonly swarmCount?: number;
   /** For a stockpile: a designated delivery flag rather than a loose pile - a marker holding no

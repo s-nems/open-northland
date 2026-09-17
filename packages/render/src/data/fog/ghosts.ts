@@ -5,13 +5,14 @@ import { assignStaticFields, classify, readPosition } from '../scene/snapshot-re
 import { fogCellOfTile } from './mask.js';
 
 /**
- * The viewer's remembered statics: a building, resource node, stump or chest that was once seen keeps
- * drawing on explored ground, frozen at its last-seen state until the player re-sees the cell.
- * Render-side and per local viewer only - the sim reads its own masks, so determinism is untouched.
- * Authored approximation: the original's reveal mode never un-sees ground, so it has no ghosts.
+ * The viewer's remembered statics: a building, resource node, stump, chest or goods heap that was once
+ * seen keeps drawing on explored ground, frozen at its last-seen state until the player re-sees the
+ * cell. Render-side and per local viewer only - the sim reads its own masks, so determinism is
+ * untouched. Authored approximation: the original's reveal mode never un-sees ground, so it has no
+ * ghosts.
  */
 
-type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump' | 'chest'>;
+type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump' | 'chest' | 'stockpile'>;
 
 /** One remembered static, frozen at its last sighting. Tile coords are floats in tile units. */
 export type FogGhost = Readonly<StaticDrawFields> & {
@@ -22,9 +23,13 @@ export type FogGhost = Readonly<StaticDrawFields> & {
 };
 
 function isGhostKind(kind: SpriteKind | null): kind is FogGhostKind {
-  return kind === 'building' || kind === 'resource' || kind === 'stump' || kind === 'chest';
+  return (
+    kind === 'building' || kind === 'resource' || kind === 'stump' || kind === 'chest' || kind === 'stockpile'
+  );
 }
 
+/** A `stockpile` memory is a heap of goods; a delivery flag or an emptied pile names no good and is
+ *  no static to remember. */
 function capture(
   id: number,
   kind: FogGhostKind,
@@ -36,6 +41,7 @@ function capture(
     -readonly [K in keyof FogGhost]: FogGhost[K];
   } = { ref: id, kind, tileX: pos.x / ONE, tileY: pos.y / ONE };
   assignStaticFields(ghost, kind, components);
+  if (kind === 'stockpile' && ghost.goodType === undefined) return null;
   return ghost;
 }
 
@@ -87,8 +93,9 @@ export class FogGhostStore {
       if (view.stateAt(cx, cy) === FOG_STATE.VISIBLE) this.records.delete(ref);
     }
 
-    // Taking effect, RECON seeds every natural resource and map chest wherever it stands; buildings
-    // stay intel the player has to see for himself.
+    // Taking effect, RECON seeds every natural resource, map chest and goods heap wherever it stands, as
+    // the known-terrain view shows the map's placed objects; buildings stay intel the player has to see
+    // for himself.
     for (const entity of snapshot.entities) {
       if (staticRefs?.has(entity.id)) continue;
       const kind = classify(entity.components);

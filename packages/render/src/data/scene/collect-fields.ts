@@ -28,7 +28,6 @@ import {
   readProjectileOrigin,
   readProjectileTarget,
   readSettlerTribe,
-  readStockpile,
   readUpgradePct,
 } from './snapshot-readers/index.js';
 
@@ -107,9 +106,7 @@ export function assignStockpileFields(
   components: Readonly<Record<string, unknown>>,
   isFlag: boolean,
 ): void {
-  const { goodType, fill } = readStockpile(components);
-  if (goodType !== undefined) item.goodType = goodType;
-  if (fill !== undefined) item.fill = fill;
+  assignStaticFields(item, 'stockpile', components);
   if (isFlag) item.isFlag = true;
 }
 

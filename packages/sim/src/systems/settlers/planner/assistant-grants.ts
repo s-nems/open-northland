@@ -20,7 +20,7 @@ import type { World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE } from '../../readviews/index.js';
-import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
+import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
 import { nearestStoreHolding } from '../targets/index.js';
@@ -107,7 +107,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       const underway = tally.byGood.get(spec.goodType) ?? 0;
       stock ??= collectGrantedStock(pass, grants);
       if (underway >= (stock.get(owner)?.get(spec.goodType) ?? 0)) continue;
-      if (limit === undefined) limit = navigationLimitFor(world, ctx.content, terrain, e);
+      if (limit === undefined) limit = equipFetchLimitFor(world, ctx.content, terrain, e);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
       const here = terrain.nodeAtClamped(n.hx, n.hy);
