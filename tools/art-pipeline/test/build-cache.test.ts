@@ -1,12 +1,13 @@
 import { mkdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { chromium } from 'playwright';
+import { type Browser, chromium } from 'playwright';
 import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 import { buildAsset } from '../src/build.js';
 import * as cache from '../src/build-cache.js';
 import { candidate } from '../src/candidate.js';
 import { json, writeJson } from '../src/files.js';
+import * as raster from '../src/raster.js';
 import * as validation from '../src/validate.js';
 import { fixture } from './delivery-fixture.js';
 
@@ -52,8 +53,22 @@ describe('art build freshness', () => {
         f.recipe.outputs[1],
       ],
     });
+    // `npm test` runs without an installed Chromium: the first build renders through a stub.
+    const launch = vi
+      .spyOn(chromium, 'launch')
+      .mockResolvedValueOnce({ version: () => 'stub', close: async () => {} } as Browser);
+    vi.spyOn(raster, 'renderRaster').mockResolvedValueOnce([
+      {
+        path: 'buildings/home/home.png',
+        png: (await readFile(join(f.source, 'home.png'))).toString('base64'),
+        frames: [],
+        crops: [[0, 0, 4, 4]],
+        alpha: { zero: 15, partial: 0, opaque: 1 },
+        draws: [],
+      },
+    ]);
     await buildAsset(f.root, f.id);
-    const launch = vi.spyOn(chromium, 'launch').mockRejectedValue(new Error('Must not start'));
+    launch.mockClear().mockRejectedValue(new Error('Must not start'));
     expect((await buildAsset(f.root, f.id)).execution.status).toBe('skipped');
     expect(launch).not.toHaveBeenCalled();
     await expect(buildAsset(f.root, f.id, { force: true })).rejects.toThrow('Must not start');
