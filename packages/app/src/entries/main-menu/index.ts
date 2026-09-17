@@ -115,7 +115,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   root.append(content);
   document.body.append(root);
   void startBackdropRotation(sceneLayer, scope.signal);
-  startMenuMusic(scope.signal);
+  const sound = startMenuMusic(scope.signal);
   const fullscreenPrompt = mountFullscreenPrompt(root, params, scope.signal);
   let disposeScreen = (): void => undefined;
 
@@ -159,7 +159,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     if (next === 'main') return mainScreen(show);
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
     if (next === 'multiplayer') {
-      const mounted = networkScreen(show, launch, params);
+      const mounted = networkScreen(show, launch, params, sound);
       disposeScreen = mounted.dispose;
       return mounted.element;
     }

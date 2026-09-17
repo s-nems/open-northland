@@ -1,8 +1,19 @@
 /**
- * Sound-bank extraction: static groups, ambients, and jingles with their SFX path/param lists.
+ * Sound-bank extraction: the `soundfx.cif` static groups, ambients and jingles with their SFX
+ * path/param lists, and the creature voice tables that name those groups.
  */
-import { SoundAmbient, SoundBank, SoundJingle, SoundStaticGroup } from '@open-northland/data';
+import {
+  AnimalCall,
+  HumanVoices,
+  SoundAmbient,
+  SoundBank,
+  SoundJingle,
+  SoundStaticGroup,
+  VOICE_CLASSES,
+  type VoiceClass,
+} from '@open-northland/data';
 import type { RuleProp, RuleSection } from './grammar.js';
+import { getInt, getStr } from './props.js';
 
 /** The Cultures sounds root every `SFX` path resolves under, forward-slashed + lower-cased. */
 const SOUNDS_ROOT = 'data/engine2d/bin/sounds/';
@@ -68,7 +79,10 @@ function soundGroupNames(sec: RuleSection, key: string): string[] {
  * keyed on `PatternGroup`/`LandscapeGroup`, and `SoundFXJingle` life-event stingers keyed on
  * `MusicType`. Unrecognised sections contribute nothing.
  */
-export function extractSounds(sections: readonly RuleSection[]): SoundBank {
+export function extractSounds(
+  sections: readonly RuleSection[],
+  voices: Pick<SoundBank, 'humanVoices' | 'animalCalls'> = { humanVoices: [], animalCalls: [] },
+): SoundBank {
   const staticGroups: SoundStaticGroup[] = [];
   const ambient: SoundAmbient[] = [];
   const jingles: SoundJingle[] = [];
@@ -104,5 +118,85 @@ export function extractSounds(sections: readonly RuleSection[]): SoundBank {
         break;
     }
   }
-  return SoundBank.parse({ staticGroups, ambient, jingles });
+  return SoundBank.parse({ staticGroups, ambient, jingles, ...voices });
+}
+
+/** The `humans/sounds.cif` class index (`0` child, `1` female, `2` male) as its name, or undefined for
+ *  an index the file's vocabulary does not have. */
+function voiceClassAt(value: string | undefined): VoiceClass | undefined {
+  const index = Number.parseInt(value ?? '', 10);
+  return Number.isNaN(index) ? undefined : VOICE_CLASSES[index];
+}
+
+/** The `respond <class> <0|1> "<group>"` answer types: the `0` pool answers "ok", the `1` pool "no". */
+const RESPOND_OK = 0;
+const RESPOND_NO = 1;
+
+/**
+ * Extracts the decoded `humans/sounds.cif` `[sounds]` blocks into one {@link HumanVoices} row per
+ * `(logictribe, class)` that names at least one group: `scream <class> "<group>"`, `generic <class>
+ * "<group>"` and the repeated `respond <class> <0|1> "<group>"` answer pools. A block without a
+ * `logictribe` belongs to tribe 0, as in the engine's reader.
+ */
+export function extractHumanVoices(sections: readonly RuleSection[]): HumanVoices[] {
+  const rows = new Map<string, HumanVoices>();
+  const rowFor = (tribe: number, voiceClass: VoiceClass): HumanVoices => {
+    const key = `${tribe}:${voiceClass}`;
+    let row = rows.get(key);
+    if (row === undefined) {
+      row = { tribe, voiceClass, respondOk: [], respondNo: [] };
+      rows.set(key, row);
+    }
+    return row;
+  };
+  for (const sec of sections) {
+    if (sec.name.toLowerCase() !== 'sounds') continue;
+    const tribe = getInt(sec, 'logictribe') ?? 0;
+    for (const p of sec.props) {
+      const voiceClass = voiceClassAt(p.values[0]);
+      if (voiceClass === undefined) continue;
+      switch (p.key.toLowerCase()) {
+        case 'scream': {
+          const group = p.values[1];
+          if (group !== undefined) rowFor(tribe, voiceClass).scream = group;
+          break;
+        }
+        case 'generic': {
+          const group = p.values[1];
+          if (group !== undefined) rowFor(tribe, voiceClass).generic = group;
+          break;
+        }
+        case 'respond': {
+          const answer = Number.parseInt(p.values[1] ?? '', 10);
+          const group = p.values[2];
+          if (group === undefined) break;
+          if (answer === RESPOND_OK) rowFor(tribe, voiceClass).respondOk.push(group);
+          else if (answer === RESPOND_NO) rowFor(tribe, voiceClass).respondNo.push(group);
+          break;
+        }
+      }
+    }
+  }
+  return [...rows.values()].map((row) => HumanVoices.parse(row));
+}
+
+/** Extracts the `animals/sounds.ini` `[sounds]` blocks into {@link AnimalCall} rows; a block missing its
+ *  tribe or group contributes nothing. */
+export function extractAnimalCalls(sections: readonly RuleSection[]): AnimalCall[] {
+  const calls: AnimalCall[] = [];
+  for (const sec of sections) {
+    if (sec.name.toLowerCase() !== 'sounds') continue;
+    const tribe = getInt(sec, 'logictribetype');
+    const group = getStr(sec, 'enginesoundgroup');
+    if (tribe === undefined || group === undefined) continue;
+    calls.push(
+      AnimalCall.parse({
+        tribe,
+        minCount: getInt(sec, 'mincount') ?? 0,
+        probability: getInt(sec, 'probability') ?? 0,
+        group,
+      }),
+    );
+  }
+  return calls;
 }

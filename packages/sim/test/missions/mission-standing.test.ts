@@ -281,8 +281,7 @@ describe('PlayerAttackedByPlayer', () => {
       ctxOf(sim),
       stamped(sim, ATTACKER_ID),
       stamped(sim, VICTIM_ID),
-      damage,
-      undefined,
+      { damage },
       [],
       'melee',
     );
@@ -331,8 +330,7 @@ describe('PlayerAttackedByPlayer', () => {
       ctxOf(sim),
       stamped(sim, HERD_ID),
       stamped(sim, VICTIM_ID),
-      A_BLOW,
-      undefined,
+      { damage: A_BLOW },
       [],
       'melee',
     );

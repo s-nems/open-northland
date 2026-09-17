@@ -2,6 +2,8 @@ import {
   MUSIC_STOP_FADE_S,
   type MusicManifest,
   type MusicTrack,
+  type UiCue,
+  uiCueShot,
   WebAudioEngine,
 } from '@open-northland/audio';
 import { loadMusicManifest } from '../../content/music.js';
@@ -34,15 +36,21 @@ export function menuMusicTracks(
     .filter((track): track is MusicTrack => track !== undefined);
 }
 
+/** The menu's sound beyond its music: the hardwired cues a menu screen fires, such as the lobby's
+ *  incoming-chat ring. */
+export interface MenuSound {
+  cue(cue: UiCue): void;
+}
+
 /**
- * The menu's soundtrack: its own music-only engine playing the curated tracks one at a time in a
- * shuffled order, following the audio settings live because the screen that changes them is in this
- * menu. A checkout without rendered music stays silent. `signal` fades the music out and releases the
- * context on handover to a game.
+ * The menu's soundtrack: its own engine playing the curated tracks one at a time in a shuffled order,
+ * following the audio settings live because the screen that changes them is in this menu. A checkout
+ * without rendered music stays silent. `signal` fades the music out and releases the context on
+ * handover to a game. The returned handle fires the menu's own cues through the same engine.
  */
-export function startMenuMusic(signal: AbortSignal): void {
+export function startMenuMusic(signal: AbortSignal): MenuSound {
   const settings = menuSettings();
-  const engine = new WebAudioEngine({ musicVolume: settings.musicVolume });
+  const engine = new WebAudioEngine({ musicVolume: settings.musicVolume, sfxVolume: settings.soundVolume });
   engine.setEnabled(settings.soundEnabled);
   void loadMusicManifest().then((manifest) => {
     if (signal.aborted) return;
@@ -53,10 +61,12 @@ export function startMenuMusic(signal: AbortSignal): void {
   onSettingsChange((next) => {
     engine.setEnabled(next.soundEnabled);
     engine.setMusicVolume(next.musicVolume);
+    engine.setSfxVolume(next.soundVolume);
   }, signal);
 
   signal.addEventListener('abort', () => {
     engine.setMusic(null); // the fade covers the load screen the launched entry puts up
     window.setTimeout(() => engine.close(), MUSIC_STOP_FADE_S * 1000);
   });
+  return { cue: (cue) => engine.fire([uiCueShot(cue)]) };
 }

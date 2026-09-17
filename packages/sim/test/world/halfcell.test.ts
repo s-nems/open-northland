@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cellAnchorNode,
   cellOfAnchorNode,
+  cellOfNode,
   fx,
   nodeOfPosition,
   ONE,
@@ -39,6 +40,28 @@ describe('cellOfAnchorNode', () => {
         expect(cellOfAnchorNode(hx, hy)).toEqual({ cx, cy });
       }
     }
+  });
+});
+
+describe('cellOfNode', () => {
+  it('agrees with cellOfAnchorNode on every centre node', () => {
+    for (let cy = 0; cy < 8; cy++) {
+      for (let cx = 0; cx < 8; cx++) {
+        const { hx, hy } = cellAnchorNode(cx, cy);
+        expect(cellOfNode(hx, hy)).toEqual({ cx, cy });
+      }
+    }
+  });
+
+  it('settles a between-row node the original`s way: right below an even cell row, straight below an odd one', () => {
+    // hy % 4 == 1: the row under an even cell row nudges one node right before halving.
+    expect(cellOfNode(3, 1)).toEqual({ cx: 2, cy: 0 });
+    expect(cellOfNode(2, 1)).toEqual({ cx: 1, cy: 0 });
+    // hy % 4 == 3: the row under an odd cell row halves as is.
+    expect(cellOfNode(2, 3)).toEqual({ cx: 1, cy: 1 });
+    expect(cellOfNode(3, 3)).toEqual({ cx: 1, cy: 1 });
+    // hy % 4 == 2: an odd cell row's own anchor row nudges one left, so its off-centre node stays in the row's cell.
+    expect(cellOfNode(4, 2)).toEqual({ cx: 1, cy: 1 });
   });
 });
 

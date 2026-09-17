@@ -42,6 +42,7 @@ describe('combatSystem - armor material column (the target armor material join)'
       kind: 'attack',
       target: enemy,
       damage: 50, // test_axe damage["0"]
+      hitSoundType: 82, // test_axe hitSounds["0"], the same material column as the damage
       maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
@@ -58,6 +59,7 @@ describe('combatSystem - armor material column (the target armor material join)'
       kind: 'attack',
       target: enemy,
       damage: 60, // test_axe damage["1"], the material-1 column, NOT 60 - 10 (armor selects, doesn't mitigate)
+      hitSoundType: 83, // test_axe hitSounds["1"]: leather rings differently from bare skin
       maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
@@ -71,7 +73,8 @@ describe('combatSystem - armor material column (the target armor material join)'
     combatSystem(sim.world, ctxOf(sim));
 
     // test_axe lists no `damage["2"]`, so the column is 0 - the swing connects but does this material no
-    // harm (a class with no `[armortype]` record selects its own column rather than crashing).
+    // harm (a class with no `[armortype]` record selects its own column rather than crashing). It lists
+    // no `hitSounds["2"]` either, so the blow lands silently.
     expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
       kind: 'attack',
       target: enemy,
@@ -116,6 +119,7 @@ describe('combatSystem - worn-armor override (the Equipment.armor slot)', () => 
       kind: 'attack',
       target: enemy,
       damage: 60, // test_axe damage["1"], the worn good's material column
+      hitSoundType: 83,
       maxRange: 2,
     });
   });
@@ -133,6 +137,7 @@ describe('combatSystem - worn-armor override (the Equipment.armor slot)', () => 
       kind: 'attack',
       target: enemy,
       damage: 60, // the worn good's column, not the stamped tier's
+      hitSoundType: 83,
       maxRange: 2,
     });
   });
@@ -151,6 +156,7 @@ describe('combatSystem - worn-armor override (the Equipment.armor slot)', () => 
       kind: 'attack',
       target: enemy,
       damage: 50, // test_axe damage["0"]
+      hitSoundType: 82,
       maxRange: 2,
     });
   });
@@ -168,6 +174,7 @@ describe('combatSystem - worn-armor override (the Equipment.armor slot)', () => 
       kind: 'attack',
       target: enemy,
       damage: 60, // the stamped tier still selects material 1
+      hitSoundType: 83,
       maxRange: 2,
     });
   });
@@ -189,6 +196,7 @@ describe('combatSystem - worn-weapon override (the equip seed)', () => {
       kind: 'attack',
       target: enemy,
       damage: 50, // test_axe damage["0"]
+      hitSoundType: 82, // test_axe hitSounds["0"], the same material column as the damage
       maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
@@ -206,6 +214,7 @@ describe('combatSystem - worn-weapon override (the equip seed)', () => {
       kind: 'attack',
       target: enemy,
       damage: 70, // test_spear damage["0"]
+      hitSoundType: 77, // test_spear hitSounds["0"]
       maxRange: 17, // test_spear's long melee reach, carried for the hit-frame re-check
     });
   });

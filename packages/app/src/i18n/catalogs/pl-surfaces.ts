@@ -411,6 +411,10 @@ export const plSurfaces = {
     positional: 'dźwięk pozycyjny',
     nonPositional: 'dżingiel bez pozycji',
     screenGatedJingle: 'dżingiel, tylko na ekranie',
+    hardwiredCue: 'stały dźwięk, bez pozycji',
+    animalCalls: 'Odgłosy zwierząt',
+    tribeNumber: 'Plemię {tribe}',
+    voiceRoles: { scream: 'Krzyk', chatter: 'Gwar', ok: 'Tak', no: 'Nie' },
     children: 'Dzieci',
     actionsCatalog: {
       buildingPlaced: { label: 'Postawienie budynku', trigger: 'gdy gracz stawia nowy budynek' },

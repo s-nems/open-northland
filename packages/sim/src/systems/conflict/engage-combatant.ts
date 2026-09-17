@@ -44,7 +44,7 @@ import type { CombatPass } from './pass.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
-import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
+import { attackerWeapon, hitSoundVsMaterial, startAttack, targetMaterial } from './weapons.js';
 
 /** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
 type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
@@ -321,13 +321,18 @@ function swingAt(
   // keeps an owned unit engaged instead of re-tasked. Stamping a swinging unowned civ would only perturb
   // its hash.
   if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
-  // Fight experience with this weapon class raises the swing's damage (up to +50% at combat mastery).
-  const damage = withFightDamageBonus(
-    weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target)),
-    attacker.experience,
-    weapon.weapon.mainType,
-  );
-  startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
+  // The victim's armor material selects both the damage column and the impact sound. Fight experience
+  // with this weapon class raises the swing's damage (up to +50% at combat mastery).
+  const material = targetMaterial(world, ctx, target);
+  const blow = {
+    damage: withFightDamageBonus(
+      weaponDamageVsMaterial(weapon.weapon, material),
+      attacker.experience,
+      weapon.weapon.mainType,
+    ),
+    hitSoundType: hitSoundVsMaterial(weapon.weapon, material),
+  };
+  startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
 }
 
 /** Who never walks toward a target out of reach: anyone shooting from inside a building, and an unowned

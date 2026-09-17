@@ -1,4 +1,11 @@
-import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
+import type {
+  AnimalCall,
+  GfxPattern,
+  HumanVoices,
+  SoundBank,
+  TerrainPattern,
+  VoiceClass,
+} from '@open-northland/data';
 
 /**
  * The lookup-shaped view of a decoded {@link SoundBank} the director reads each frame, built once at
@@ -18,6 +25,14 @@ export interface SoundIndex {
   readonly ambientLoopByName: ReadonlyMap<string, string>;
   /** Landscape `typeId` → the ambient bed names its on-screen tiles activate. */
   readonly ambientByTerrainType: ReadonlyMap<number, readonly string[]>;
+  /** Landscape `typeId` → its representative pattern's `trianglepatterntypes` logic type, the column a
+   *  weapon's `soundtype_NoHit` thud table is keyed by. Coarse like the ambient join: `terrainPatterns`
+   *  classes each typeId as water, land or mountain, so the finer ground columns never come up. */
+  readonly groundLogicTypeByTerrainType: ReadonlyMap<number, number>;
+  /** Settler tribe → voice class → the groups that tribe's settlers of that class speak with. */
+  readonly humanVoices: ReadonlyMap<number, ReadonlyMap<VoiceClass, HumanVoices>>;
+  /** Animal tribe → its unprompted call and the roll that gates it. */
+  readonly animalCalls: ReadonlyMap<number, AnimalCall>;
 }
 
 /**
@@ -90,12 +105,27 @@ export function buildSoundIndex(
   }
 
   const ambientByTerrainType = new Map<number, readonly string[]>();
+  const groundLogicTypeByTerrainType = new Map<number, number>();
   for (const tp of terrainPatterns) {
+    if (!groundLogicTypeByTerrainType.has(tp.typeId))
+      groundLogicTypeByTerrainType.set(tp.typeId, tp.logicType);
     const groups = groupsByPatternId.get(tp.patternId) ?? [];
     const beds = new Set<string>();
     for (const g of groups) for (const bed of bedsByPatternGroup.get(g) ?? []) beds.add(bed);
     if (beds.size > 0) ambientByTerrainType.set(tp.typeId, [...beds]);
   }
+
+  const humanVoices = new Map<number, Map<VoiceClass, HumanVoices>>();
+  for (const row of sounds.humanVoices) {
+    let byClass = humanVoices.get(row.tribe);
+    if (byClass === undefined) {
+      byClass = new Map<VoiceClass, HumanVoices>();
+      humanVoices.set(row.tribe, byClass);
+    }
+    byClass.set(row.voiceClass, row);
+  }
+  const animalCalls = new Map<number, AnimalCall>();
+  for (const call of sounds.animalCalls) animalCalls.set(call.tribe, call);
 
   return {
     groupsByName,
@@ -103,5 +133,8 @@ export function buildSoundIndex(
     jinglesByMusicType,
     ambientLoopByName,
     ambientByTerrainType,
+    groundLogicTypeByTerrainType,
+    humanVoices,
+    animalCalls,
   };
 }

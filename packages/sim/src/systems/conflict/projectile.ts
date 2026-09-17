@@ -66,16 +66,8 @@ function advanceProjectile(
   if (restsAtBow) return;
 
   if (flightStep(world, p, targetPos.x, targetPos.y, proj.speed)) {
-    resolveCombatHit(
-      world,
-      ctx,
-      proj.source,
-      proj.target,
-      proj.damage,
-      proj.weaponMainType ?? undefined,
-      pendingStaggers,
-      'projectile', // ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`
-    );
+    // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
+    resolveCombatHit(world, ctx, proj.source, proj.target, proj, pendingStaggers, 'projectile');
     ctx.events.emit({
       kind: 'projectileHit',
       projectile: p,
@@ -83,6 +75,7 @@ function advanceProjectile(
       target: proj.target,
       munitionType: proj.munitionType,
       at: eventAt(targetPos.x, targetPos.y),
+      ...(proj.hitSoundType !== null ? { soundType: proj.hitSoundType } : {}),
       ...(world.has(proj.target, Building) ? { structure: true } : {}),
     });
     world.destroy(p);
@@ -103,7 +96,7 @@ function flyToDirt(
   world: World,
   ctx: SystemContext,
   p: Entity,
-  proj: { source: Entity; munitionType: number; speed: number },
+  proj: { source: Entity; munitionType: number; speed: number; missSounds: Readonly<Record<string, number>> },
   aim: { x: Fixed; y: Fixed },
 ): void {
   if (!flightStep(world, p, aim.x, aim.y, proj.speed)) return;
@@ -113,6 +106,7 @@ function flyToDirt(
     shooter: proj.source,
     munitionType: proj.munitionType,
     at: eventAt(aim.x, aim.y),
+    missSounds: proj.missSounds,
   });
   world.destroy(p);
 }

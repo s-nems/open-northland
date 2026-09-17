@@ -58,16 +58,15 @@ export function resolveAttackHit(
   ) {
     return;
   }
-  resolveCombatHit(
-    world,
-    ctx,
-    attacker,
-    effect.target,
-    effect.damage,
-    effect.weaponMainType,
-    pendingStaggers,
-    'melee',
-  );
+  resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingStaggers, 'melee');
+}
+
+/** The blow a melee swing or a landing projectile delivers: its resolved damage, the striker's weapon
+ *  class for the fight-experience bucket, and the impact sound the weapon lists for the victim's material. */
+export interface LandingBlow {
+  readonly damage: number;
+  readonly weaponMainType?: number | null;
+  readonly hitSoundType?: number | null;
 }
 
 /**
@@ -99,22 +98,23 @@ function meleeTargetOutOfReach(
 
 /**
  * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
- * the two cannot drift. `damage` is the pre-resolved `weapon.damagevalue[targetMaterial]` column value, so
- * no content lookup happens here. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end
- * of the tick. A dead attacker is tolerated, since a dead archer's arrow still lands.
+ * the two cannot drift. `blow.damage` is the pre-resolved `weapon.damagevalue[targetMaterial]` column
+ * value, so no content lookup happens here. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse
+ * at the end of the tick. A dead attacker is tolerated, since a dead archer's arrow still lands.
  */
 export function resolveCombatHit(
   world: World,
   ctx: SystemContext,
   attacker: Entity,
   target: Entity,
-  damage: number,
-  weaponMainType: number | undefined,
+  blow: LandingBlow,
   pendingStaggers: PendingStagger[],
   source: 'melee' | 'projectile',
 ): void {
   const health = world.tryMut(target, Health);
   if (health === undefined) return; // gone or a non-combatant: the blow struck nothing
+  const { damage } = blow;
+  const weaponMainType = blow.weaponMainType ?? undefined;
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect
   // fully absorbed by armor still cues, since the blade touched.
   if (source === 'melee') {
@@ -126,6 +126,7 @@ export function resolveCombatHit(
         target,
         at: eventAt(at.x, at.y),
         ...(weaponMainType !== undefined ? { weaponMainType } : {}),
+        ...(blow.hitSoundType != null ? { soundType: blow.hitSoundType } : {}),
         ...(world.has(target, Building) ? { structure: true } : {}),
       });
     }

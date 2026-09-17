@@ -1,4 +1,4 @@
-import type { EventSound, SoundBindings } from './types.js';
+import type { SoundBindings } from './types.js';
 
 /**
  * The Cultures event→sound map: which sim event triggers which sound group. The original drives these
@@ -55,45 +55,10 @@ export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 /** A house coming down (LogicSoundType 42), razed in combat or torn down by its owner. */
 export const GROUP_HOUSE_CRASH = 'House Crash';
 
-// --- Combat impact SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set decoded from
-//     `soundfx.cif`). ---
 /** Melee swing swoosh. The melee weapons share one swing wav set in the bank (`Weapon Sword Short` /
- *  `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`), so one group covers them all. */
+ *  `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`), so one group covers them all. A
+ *  blow's impact needs no binding: the weapon's `soundtype_Hit` table names it on the hit event. */
 export const GROUP_MELEE_SWING = 'Weapon Sword Short';
-/** Fist impact - a bare-handed civilian brawl connecting (LogicSoundType 93). */
-export const GROUP_FIST_HIT = 'Weapon Fist Hit';
-/** Spear thrust connecting (LogicSoundType 68). */
-export const GROUP_SPEAR_HIT = 'Weapon Spear Hit';
-/** Sword blow connecting - the short-sword impact, the generic melee-thunk fallback too (LogicSoundType 82). */
-export const GROUP_SWORD_HIT = 'Weapon Sword Short Hit';
-/** Arrow impact - the shot landing its blow (LogicSoundType 77). */
-export const GROUP_ARROW_HIT = 'Weapon Bow Hit';
-
-/**
- * The three melee weapon-classes (`weaponMainType`) with a distinct impact SFX in the
- * {@link defaultBindings} `byCombatWeapon` map. Saber/axe (4/5) and unclassified weapons have no entry
- * and fall through to the {@link GROUP_SWORD_HIT} generic melee thunk (`byEvent.combatHit`) - the mod
- * ships no dedicated saber/axe impact group. Ranged classes (bow 6 / catapult 7) never emit a
- * `combatHit` (their hit is the arrow/rock `projectileHit`).
- */
-const WEAPON_MAIN_TYPE_FIST = 1;
-const WEAPON_MAIN_TYPE_SPEAR = 2;
-const WEAPON_MAIN_TYPE_SWORD = 3;
-
-/** A settler's voice class - the axis the `?sounds` gallery groups the voice pools by. */
-export type VoiceClass = 'male' | 'female' | 'child';
-
-/**
- * The viking voice pools, keyed by sex/age - `SoundFXStatic` group names from `soundfx.cif` (the mod's
- * `humans/sounds.cif` binds these same groups per tribe/sex). In play, a voice comes from the talk clip's
- * authored `atomicSound` cue, which names its group by `logicSoundType` id (the SocialTalk pair 61/62);
- * this table remains the gallery's audition listing of all the pools.
- */
-export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>> = {
-  male: ['Generic Viking Male', 'Talk Viking Male', 'SocialTalk Male'],
-  female: ['Generic Viking Female', 'Talk Viking Female', 'SocialTalk Female'],
-  child: ['Generic Viking Children'],
-};
 
 /**
  * Build the default {@link SoundBindings} - the sounds this package picks, for the happenings that are not
@@ -114,6 +79,12 @@ export function defaultBindings(): SoundBindings {
         screenGated: true,
       },
       settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH, localPlayerOnly: true, screenGated: true },
+      settlersMarried: {
+        kind: 'jingle',
+        musicType: JINGLE_MARRIAGE,
+        localPlayerOnly: true,
+        screenGated: true,
+      },
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
       chestOpened: { kind: 'jingle', musicType: JINGLE_OPEN_CHEST, localPlayerOnly: true },
@@ -127,14 +98,10 @@ export function defaultBindings(): SoundBindings {
       // No release entry: `projectileLaunched` fires whether or not the clip sounds, so binding it would
       // double the bowstring the 19 cued ranged clips author. The three that author none (the hero bows)
       // loose silently, since the ranged path resolves before the `combatSwing` fallback.
-      combatHit: { kind: 'spatial', group: GROUP_SWORD_HIT },
-      projectileHit: { kind: 'spatial', group: GROUP_ARROW_HIT },
+      // A map script's briefing and earthquake ring the engine's hardwired wavs, centred at full gain.
+      missionCutscene: { kind: 'cue', cue: 'briefing' },
+      missionEarthquake: { kind: 'cue', cue: 'earthquake' },
     },
-    byCombatWeapon: new Map<number, EventSound>([
-      [WEAPON_MAIN_TYPE_FIST, { kind: 'spatial', group: GROUP_FIST_HIT }],
-      [WEAPON_MAIN_TYPE_SPEAR, { kind: 'spatial', group: GROUP_SPEAR_HIT }],
-      [WEAPON_MAIN_TYPE_SWORD, { kind: 'spatial', group: GROUP_SWORD_HIT }],
-    ]),
     byChestKind: {
       wooden: { kind: 'spatial', group: GROUP_OPEN_WOODEN_CHEST },
       magical: { kind: 'spatial', group: GROUP_OPEN_MAGICAL_CHEST },

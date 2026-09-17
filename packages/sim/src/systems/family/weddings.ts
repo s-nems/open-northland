@@ -1,4 +1,12 @@
-import { Marriage, Position, Residence, Settler, Sheltering, Wedding } from '../../components/index.js';
+import {
+  Marriage,
+  ownerOf,
+  Position,
+  Residence,
+  Settler,
+  Sheltering,
+  Wedding,
+} from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
@@ -78,7 +86,13 @@ function drivePair(
     world.add(b, Marriage, { spouse: a, child: null });
     coHouseNewlyweds(world, a, b);
     const p = world.get(a, Position);
-    ctx.events.emit({ kind: 'settlersMarried', a, b, at: eventAt(p.x, p.y) });
+    ctx.events.emit({
+      kind: 'settlersMarried',
+      a,
+      b,
+      player: ownerOf(world, a) ?? null,
+      at: eventAt(p.x, p.y),
+    });
     return;
   }
   if (busyA || busyB) return; // let a running action finish first

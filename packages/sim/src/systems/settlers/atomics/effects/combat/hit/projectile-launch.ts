@@ -39,6 +39,8 @@ export function launchProjectile(
     target: effect.target,
     damage: effect.damage,
     weaponMainType: effect.weaponMainType ?? null,
+    hitSoundType: effect.hitSoundType ?? null,
+    missSounds: { ...effect.projectile.missSounds }, // the shot owns its copy, as the swing owns its own
     munitionType: effect.projectile.munitionType,
     speed: effect.projectile.speed,
     // The render's ballistic-arc origin, frozen at release and never read in flight.

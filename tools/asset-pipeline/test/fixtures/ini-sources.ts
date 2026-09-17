@@ -155,6 +155,8 @@ munitiontype 3
 speed 6
 damagetype 4
 damagevalue 0 2100
+soundtype_NoHit 1 78
+soundtype_NoHit 2 79
 jobtype 53
 `;
 

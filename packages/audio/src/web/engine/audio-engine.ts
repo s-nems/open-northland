@@ -123,6 +123,9 @@ export class WebAudioEngine {
   private enabled = true;
   /** one-shot key → last play time (audio clock seconds) for cooldown debounce. */
   private readonly lastPlayed = new Map<string, number>();
+  /** wav file → the audio-clock second an exclusive play of it ends (Infinity while its buffer is still
+   *  loading), so a voice or a body blow never stacks on a copy of itself still sounding. */
+  private readonly soundingUntil = new Map<string, number>();
 
   constructor(options: AudioEngineOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_SOUNDS_BASE_URL;
@@ -294,8 +297,21 @@ export class WebAudioEngine {
     if (shot.files.length === 0) return;
     // Randomness lives here (impure), not in the pure director.
     const file = pickRandom(shot.files, this.random);
+    const exclusive = shot.exclusive !== undefined;
+    if (exclusive) {
+      // A group-exclusive shot yields to any line of its pool still sounding; a wav-exclusive one to the
+      // very wav it picked.
+      const held = shot.exclusive === 'group' ? shot.files : [file];
+      if (held.some((f) => (this.soundingUntil.get(f) ?? 0) > now)) return;
+      this.soundingUntil.set(file, Number.POSITIVE_INFINITY); // reserved until the buffer says how long
+      pruneExpired(this.soundingUntil, COOLDOWN_PRUNE_SIZE, now, 0);
+    }
     void samples.get(file).then((buffer) => {
-      if (buffer === null || !this.canPlay() || this.sfxBus === null) return;
+      if (buffer === null || !this.canPlay() || this.sfxBus === null) {
+        if (exclusive) this.soundingUntil.delete(file);
+        return;
+      }
+      if (exclusive) this.soundingUntil.set(file, ctx.currentTime + buffer.duration);
       // The duck follows the shots that actually ring: a missing or undecodable wav dims nothing.
       if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
       const source = ctx.createBufferSource();

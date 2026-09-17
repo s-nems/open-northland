@@ -120,7 +120,14 @@ describe('combatSystem - hunter strike on catchable prey (animaltypes.ini catcha
     const atomic = sim.world.get(hunter, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     expect(atomic.duration).toBe(4); // hunter setatomic 81 -> viking_hunter_attack length 4
-    expect(atomic.effect).toEqual({ kind: 'attack', target: cow, damage: 70, maxRange: 17 }); // test_spear damage["0"]
+    // test_spear damage["0"] and hitSounds["0"]
+    expect(atomic.effect).toEqual({
+      kind: 'attack',
+      target: cow,
+      damage: 70,
+      hitSoundType: 77,
+      maxRange: 17,
+    });
   });
 
   it('a hunter CANNOT fire its bow on prey closer than minRange (an adjacent cow is too near)', () => {

@@ -8,6 +8,7 @@ import { relayIdentity } from '../../relay/identity.js';
 import { DEFAULT_RELAY_URL } from '../lobby/relay-default.js';
 import { pluralForm } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
+import type { MenuSound } from '../music.js';
 import { screenHead } from '../screen-head.js';
 import { roomAssets } from './assets.js';
 import { createPanel } from './create.js';
@@ -21,6 +22,7 @@ export function networkScreen(
   open: (screen: MenuScreen) => void,
   launch: LaunchEntry,
   params: URLSearchParams,
+  sound: MenuSound,
 ) {
   const copy = messages().network;
   const element = node('section', 'main-menu__screen network-menu');
@@ -249,6 +251,9 @@ export function networkScreen(
         break;
       case 'chat':
         room?.observeChat(message.from, message.text);
+        // Another player's line rings, as the original lobby does; our own echo stays silent (a choice:
+        // the original's handler does not separate the two).
+        if (message.from !== current.client.nick) sound.cue('chat');
         break;
       case 'rejected':
         room?.rejected(message.of);

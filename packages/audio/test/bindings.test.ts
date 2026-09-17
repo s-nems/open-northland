@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { defaultBindings, VIKING_VOICE_POOLS } from '../src/index.js';
+import { defaultBindings } from '../src/index.js';
 
 /**
- * The event→sound bindings: the "which sound answers which happening" layer, plus the voice-pool
- * listing the `?sounds` gallery auditions (in play a voice resolves by `logicSoundType` id from the
- * clip's authored `atomicSound` cue, not from these pools).
+ * The event→sound bindings: the "which sound answers which happening" layer. A settler's voice never
+ * binds here - it resolves from the creature voice tables by tribe and class, or by `logicSoundType` id
+ * from a clip's authored `atomicSound` cue.
  */
-
-describe('VIKING_VOICE_POOLS', () => {
-  it('gives every voice class a non-empty, sex-appropriate pool', () => {
-    for (const cls of ['male', 'female', 'child'] as const) {
-      expect(VIKING_VOICE_POOLS[cls].length).toBeGreaterThan(0);
-    }
-    // The male and female pools are disjoint - no cross-sex group leaks into the other.
-    const male = new Set(VIKING_VOICE_POOLS.male);
-    expect(VIKING_VOICE_POOLS.female.some((g) => male.has(g))).toBe(false);
-  });
-});
 
 describe('defaultBindings', () => {
   it('binds life events to jingles and production to spatial groups', () => {
@@ -44,7 +33,7 @@ describe('defaultBindings', () => {
 
   it('marks every life-event jingle own-player-only and screen-gated', () => {
     const b = defaultBindings();
-    for (const kind of ['buildingFinished', 'settlerBorn', 'settlerDied'] as const) {
+    for (const kind of ['buildingFinished', 'settlerBorn', 'settlersMarried', 'settlerDied'] as const) {
       const jingle = b.byEvent[kind];
       expect(jingle?.kind).toBe('jingle');
       expect(jingle?.kind === 'jingle' && jingle.localPlayerOnly).toBe(true);
@@ -57,19 +46,23 @@ describe('defaultBindings', () => {
     expect(alarm).toEqual({ kind: 'jingle', musicType: 24, localPlayerOnly: true });
   });
 
-  it('binds the impacts, plus the swing the attack clip does not sound itself', () => {
+  it('binds the swing the attack clip does not sound itself, and leaves the impacts to the weapon data', () => {
     const b = defaultBindings();
-    expect(b.byEvent.combatHit).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });
-    expect(b.byEvent.projectileHit).toEqual({ kind: 'spatial', group: 'Weapon Bow Hit' });
     // The generic swoosh covers a body whose clip authors none - a hero, or a beast. The sim withholds
     // `combatSwing` from a cued clip, so this never doubles a per-weapon cue.
     expect(b.byEvent.combatSwing).toEqual({ kind: 'spatial', group: 'Weapon Sword Short' });
     // No release entry: `projectileLaunched` fires whether or not the clip sounds, and every ranged clip
-    // in the data authors its own bowstring.
+    // in the data authors its own bowstring. No impact entries either: a hit or a miss names its group by
+    // the `logicSoundType` id the weapon's `soundtype_Hit` / `soundtype_NoHit` tables put on the event.
     expect(b.byEvent.projectileLaunched).toBeUndefined();
-    // Per-weapon melee impacts: fist / spear / sword (mainType 1 / 2 / 3).
-    expect(b.byCombatWeapon?.get(1)).toEqual({ kind: 'spatial', group: 'Weapon Fist Hit' });
-    expect(b.byCombatWeapon?.get(2)).toEqual({ kind: 'spatial', group: 'Weapon Spear Hit' });
-    expect(b.byCombatWeapon?.get(3)).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });
+    expect(b.byEvent.combatHit).toBeUndefined();
+    expect(b.byEvent.projectileHit).toBeUndefined();
+    expect(b.byEvent.projectileMissed).toBeUndefined();
+  });
+
+  it("rings a script's briefing and earthquake through the hardwired cues", () => {
+    const b = defaultBindings();
+    expect(b.byEvent.missionCutscene).toEqual({ kind: 'cue', cue: 'briefing' });
+    expect(b.byEvent.missionEarthquake).toEqual({ kind: 'cue', cue: 'earthquake' });
   });
 });

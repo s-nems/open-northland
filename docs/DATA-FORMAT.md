@@ -136,8 +136,10 @@ Graphics decoders turn palette-indexed source frames into atlases and manifests.
 Several of them are keyed by tribe as well as by type: each civilization skins the same building and
 job ids with its own bob sets. The simulation does not load sprite data.
 
-The sound bank follows the same boundary. The IR describes available groups and bindings, while the
-audio package decides what to play and owns browser playback.
+The sound bank follows the same boundary. The IR describes available groups and bindings - the
+`soundfx.cif` groups, beds and jingles, the creature voice tables (`humans/sounds.cif` per tribe and
+class, `animals/sounds.ini` per animal tribe) and each weapon's `soundtype_Hit` / `soundtype_NoHit`
+group ids - while the audio package decides what to play and owns browser playback.
 
 ## Changing the format
 

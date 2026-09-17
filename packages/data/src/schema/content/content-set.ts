@@ -4,7 +4,7 @@ import { ArmorType, WeaponType } from '../actors/equipment.js';
 import { HuntPrey } from '../actors/hunting.js';
 import { AtomicAnimation, TribeType } from '../actors/tribes.js';
 import { VehicleType } from '../actors/vehicles.js';
-import { SoundBank } from '../audio/sound.js';
+import { EMPTY_SOUND_BANK, SoundBank } from '../audio/sound.js';
 import { BuildingType } from '../economy/buildings.js';
 import { GoodType } from '../economy/goods.js';
 import { HumanJobExperienceType, JobType } from '../economy/jobs.js';
@@ -86,7 +86,7 @@ export const ContentSet = z.strictObject({
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),
-  /** Decoded `soundfx.cif` sound bank; the pure sim ignores it. */
-  sounds: SoundBank.default({ staticGroups: [], ambient: [], jingles: [] }),
+  /** Decoded sound bank and creature voice tables; the pure sim ignores them. */
+  sounds: SoundBank.default(EMPTY_SOUND_BANK),
 });
 export type ContentSet = z.infer<typeof ContentSet>;

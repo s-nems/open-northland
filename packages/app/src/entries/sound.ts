@@ -1,11 +1,5 @@
-import {
-  defaultBindings,
-  type EventSound,
-  type SoundBindings,
-  VIKING_VOICE_POOLS,
-  type VoiceClass,
-} from '@open-northland/audio';
-import type { SoundBank } from '@open-northland/data';
+import { defaultBindings, type EventSound, type SoundBindings, UI_CUE_FILES } from '@open-northland/audio';
+import type { HumanVoices, SoundBank, VoiceClass } from '@open-northland/data';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir/load.js';
 import { formatMessage, messages } from '../i18n/index.js';
@@ -30,16 +24,19 @@ export interface ActionRow {
   readonly label: string;
   /** Localized description of when it fires. */
   readonly trigger: string;
-  /** The bound sound's handle (the `SoundFXStatic` group name, or the jingle name). */
+  /** The bound sound's handle (the `SoundFXStatic` group name, the jingle name, or a hardwired wav). */
   readonly sound: string;
-  /** Spatial (positioned in the world) vs jingle (life-event stinger). */
+  /** Spatial (positioned in the world), jingle (life-event stinger) or cue (a hardwired centred wav). */
   readonly kind: EventSound['kind'];
-  /** Whether a jingle rings only while its event's position is on screen; always false for spatial. */
+  /** Whether a jingle rings only while its event's position is on screen; false for the other kinds. */
   readonly screenGated: boolean;
   readonly clips: readonly string[];
 }
 
+/** One tribe's voice for one class, as `humans/sounds.cif` binds it: its scream, its idle chatter and
+ *  the "ok" answers a settler of that class picks its lifelong voice from. */
 export interface VoiceClassView {
+  readonly tribe: number;
   readonly cls: VoiceClass;
   readonly label: string;
   readonly groups: readonly ClipList[];
@@ -53,9 +50,18 @@ export interface SoundGalleryModel {
    *  from a cue and omitted. */
   readonly cues: readonly ClipList[];
   readonly voices: readonly VoiceClassView[];
+  /** Each animal tribe's unprompted call (`animals/sounds.ini`). */
+  readonly animalCalls: readonly ClipList[];
   readonly jingles: readonly ClipList[];
   readonly ambient: readonly ClipList[];
 }
+
+/** Names the gallery prints for a tribe id, from the content's tribe and animal tables; a tribe the
+ *  tables do not name prints its number. */
+export type TribeLabel = (tribe: number) => string | undefined;
+
+/** The gallery's class order: the grown voices first. */
+const VOICE_CLASS_ORDER: readonly VoiceClass[] = ['male', 'female', 'child'];
 
 /** An action's binding key - one of the `byEvent` sim-event kinds. */
 type ActionKind =
@@ -96,6 +102,9 @@ function resolveSound(
       clips: groupClips(sounds, sound.group),
     };
   }
+  if (sound.kind === 'cue') {
+    return { sound: sound.cue, kind: 'cue', screenGated: false, clips: [UI_CUE_FILES[sound.cue]] };
+  }
   const j = sounds.jingles.find((x) => x.musicType === sound.musicType);
   return {
     sound: j?.name && j.name.length > 0 ? j.name : `MusicType ${sound.musicType}`,
@@ -105,8 +114,32 @@ function resolveSound(
   };
 }
 
+function voiceClassLabel(cls: VoiceClass): string {
+  const copy = messages().soundGallery;
+  if (cls === 'male') return copy.voicesCatalog.male;
+  return cls === 'female' ? copy.voicesCatalog.female : copy.children;
+}
+
+/** The groups one voice row plays, each prefixed with its role so the listener knows what they hear. */
+function voiceGroups(voices: HumanVoices, sounds: SoundBank): ClipList[] {
+  const roles = messages().soundGallery.voiceRoles;
+  const groups: ClipList[] = [];
+  const add = (role: string, name: string): void => {
+    groups.push({ group: `${role}: ${name}`, clips: groupClips(sounds, name) });
+  };
+  if (voices.scream !== undefined) add(roles.scream, voices.scream);
+  if (voices.generic !== undefined) add(roles.chatter, voices.generic);
+  for (const name of voices.respondOk) add(roles.ok, name);
+  for (const name of voices.respondNo) add(roles.no, name);
+  return groups;
+}
+
 /** Pure, with no DOM or Audio, so the "which sound answers which happening" join is unit-tested. */
-export function buildSoundGalleryModel(sounds: SoundBank, bindings: SoundBindings): SoundGalleryModel {
+export function buildSoundGalleryModel(
+  sounds: SoundBank,
+  bindings: SoundBindings,
+  tribeLabel: TribeLabel = () => undefined,
+): SoundGalleryModel {
   const actions: ActionRow[] = [];
   for (const ev of ACTION_EVENTS) {
     const resolved = resolveSound(bindings.byEvent[ev.kind], sounds);
@@ -115,15 +148,24 @@ export function buildSoundGalleryModel(sounds: SoundBank, bindings: SoundBinding
     actions.push({ label: copy.label, trigger: copy.trigger, ...resolved });
   }
 
-  const voices: VoiceClassView[] = (['male', 'female', 'child'] as const).map((cls) => ({
-    cls,
-    label:
-      cls === 'male'
-        ? messages().soundGallery.voicesCatalog.male
-        : cls === 'female'
-          ? messages().soundGallery.voicesCatalog.female
-          : messages().soundGallery.children,
-    groups: VIKING_VOICE_POOLS[cls].map((name) => ({ group: name, clips: groupClips(sounds, name) })),
+  const tribeName = (tribe: number): string =>
+    tribeLabel(tribe) ?? formatMessage(messages().soundGallery.tribeNumber, { tribe });
+  const voices: VoiceClassView[] = [...sounds.humanVoices]
+    .sort(
+      (a, b) =>
+        a.tribe - b.tribe ||
+        VOICE_CLASS_ORDER.indexOf(a.voiceClass) - VOICE_CLASS_ORDER.indexOf(b.voiceClass),
+    )
+    .map((row) => ({
+      tribe: row.tribe,
+      cls: row.voiceClass,
+      label: `${tribeName(row.tribe)} · ${voiceClassLabel(row.voiceClass)}`,
+      groups: voiceGroups(row, sounds),
+    }));
+
+  const animalCalls: ClipList[] = sounds.animalCalls.map((call) => ({
+    group: `${tribeName(call.tribe)}: ${call.group}`,
+    clips: groupClips(sounds, call.group),
   }));
 
   const jingles: ClipList[] = sounds.jingles.map((j) => ({
@@ -142,7 +184,7 @@ export function buildSoundGalleryModel(sounds: SoundBank, bindings: SoundBinding
     cues.push({ group: g.name, clips: g.sfx.map((s) => s.file), soundType: g.logicSoundType });
   }
 
-  return { actions, cues, voices, jingles, ambient };
+  return { actions, cues, voices, animalCalls, jingles, ambient };
 }
 
 // ─── DOM render (browser-only) ───────────────────────────────────────────────────────────────────────
@@ -226,12 +268,15 @@ function actionRow(a: ActionRow): HTMLElement {
   const row = el('div', ROW_STYLE);
   const head = el('div', 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap');
   head.append(el('span', 'font-weight:700', a.label));
+  const copy = messages().soundGallery;
   const badge =
     a.kind === 'spatial'
-      ? messages().soundGallery.positional
-      : a.screenGated
-        ? messages().soundGallery.screenGatedJingle
-        : messages().soundGallery.nonPositional;
+      ? copy.positional
+      : a.kind === 'cue'
+        ? copy.hardwiredCue
+        : a.screenGated
+          ? copy.screenGatedJingle
+          : copy.nonPositional;
   head.append(el('span', 'opacity:0.6;font-size:12px', `→ ${a.sound}  ·  ${badge}`));
   row.append(head);
   row.append(el('div', 'opacity:0.7;font-size:12px;margin-top:2px', a.trigger));
@@ -257,12 +302,19 @@ export async function renderSoundGallery(
 ): Promise<void> {
   const ir = await loadIr();
   const sounds = ir?.sounds;
-  if (!hasSoundContent(sounds)) {
+  if (ir === null || !hasSoundContent(sounds)) {
     mountFullPageMessage(messages().soundGallery.missingTitle, messages().soundGallery.missingDetail);
     return;
   }
 
-  const model = buildSoundGalleryModel(sounds, defaultBindings());
+  // The tribe table names people and animal species alike; the first record naming a tribe wins.
+  const namedTribes = new Map<number, string>();
+  for (const tribe of ir.tribes ?? []) {
+    if (tribe.typeId !== undefined && tribe.name !== undefined && !namedTribes.has(tribe.typeId)) {
+      namedTribes.set(tribe.typeId, tribe.name);
+    }
+  }
+  const model = buildSoundGalleryModel(sounds, defaultBindings(), (tribe) => namedTribes.get(tribe));
 
   const root = el('div', ROOT_STYLE);
   const inner = el('div', INNER_STYLE);
@@ -279,6 +331,7 @@ export async function renderSoundGallery(
     for (const g of v.groups) voiceRows.push(groupRow(g));
   }
   inner.append(pageSection(messages().soundGallery.voices, voiceRows));
+  inner.append(pageSection(messages().soundGallery.animalCalls, model.animalCalls.map(groupRow)));
   inner.append(pageSection(messages().soundGallery.jingles, model.jingles.map(groupRow)));
   inner.append(pageSection(messages().soundGallery.ambient, model.ambient.map(groupRow)));
 

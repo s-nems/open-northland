@@ -1,5 +1,5 @@
 import { defaultBindings } from '@open-northland/audio';
-import type { SoundBank } from '@open-northland/data';
+import { EMPTY_SOUND_BANK, type SoundBank } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { buildSoundGalleryModel } from '../src/entries/sound.js';
 
@@ -20,12 +20,11 @@ const bank: SoundBank = {
     { name: 'Hammer Wood', sfx: [f('static/hammer01.wav'), f('static/hammer02.wav')] },
     { name: 'Carpenter Saw', sfx: [f('static/carpenter_saw01.wav')] },
     { name: 'Generic Viking Male', sfx: [f('generic/m1.wav')] },
-    { name: 'Talk Viking Male', sfx: [f('humantalk/talk_m01.wav')] },
-    { name: 'SocialTalk Male', sfx: [f('humantalk/social_m01.wav')] },
-    { name: 'Generic Viking Female', sfx: [f('generic/f1.wav')] },
-    { name: 'Talk Viking Female', sfx: [f('humantalk/talk_f01.wav')] },
-    { name: 'SocialTalk Female', sfx: [f('humantalk/social_f01.wav')] },
+    { name: 'Man Get Hit', sfx: [f('static/hit m 01.wav')] },
+    { name: 'Viking male ok 01', sfx: [f('humantalk/m1ok01.wav')] },
+    { name: 'Viking male no 01', sfx: [f('humantalk/m1no01.wav')] },
     { name: 'Generic Viking Children', sfx: [f('generic/c1.wav')] },
+    { name: 'Bear Sounds', sfx: [f('generic/bear1.wav')] },
   ],
   ambient: [
     {
@@ -40,7 +39,24 @@ const bank: SoundBank = {
     { name: 'Birth', musicType: 23, sfx: [f('jingles/jingles_birth.wav')] },
     { name: 'Death', musicType: 25, sfx: [f('jingles/jingles_death.wav')] },
   ],
+  humanVoices: [
+    { tribe: 1, voiceClass: 'child', generic: 'Generic Viking Children', respondOk: [], respondNo: [] },
+    {
+      tribe: 1,
+      voiceClass: 'male',
+      scream: 'Man Get Hit',
+      generic: 'Generic Viking Male',
+      respondOk: ['Viking male ok 01'],
+      respondNo: ['Viking male no 01'],
+    },
+    { tribe: 2, voiceClass: 'male', scream: 'Man Get Hit', respondOk: [], respondNo: [] },
+  ],
+  animalCalls: [{ tribe: 8, minCount: 1, probability: 10, group: 'Bear Sounds' }],
 };
+
+/** The tribe names a real IR supplies: vikings and bears named, the franks left to their number. */
+const tribeLabel = (tribe: number): string | undefined =>
+  tribe === 1 ? 'Wikingowie' : tribe === 8 ? 'niedźwiedź' : undefined;
 
 /** A one-clip SoundSfx (params default to empty - the gallery reads only the file). */
 function f(file: string): { file: string; params: number[] } {
@@ -48,7 +64,7 @@ function f(file: string): { file: string; params: number[] } {
 }
 
 describe('buildSoundGalleryModel', () => {
-  const model = buildSoundGalleryModel(bank, defaultBindings());
+  const model = buildSoundGalleryModel(bank, defaultBindings(), tribeLabel);
 
   it('lists every cue group with the logicSoundType id an animation names it by', () => {
     // A settler's work sounds are not bound here - the animation names them - so the gallery auditions
@@ -73,21 +89,25 @@ describe('buildSoundGalleryModel', () => {
     expect(model.actions.find((a) => a.label === 'Produkcja towaru')?.sound).toBe('Carpenter Saw');
   });
 
-  it('splits voices by sex/age with resolved clips', () => {
-    const byCls = new Map(model.voices.map((v) => [v.cls, v]));
-    expect(byCls.get('male')?.groups.map((g) => g.group)).toEqual([
-      'Generic Viking Male',
-      'Talk Viking Male',
-      'SocialTalk Male',
+  it('lists each tribe`s voices by class, grown first, with every role the data binds', () => {
+    expect(model.voices.map((v) => v.label)).toEqual([
+      'Wikingowie · Mężczyźni',
+      'Wikingowie · Dzieci',
+      'Plemię 2 · Mężczyźni',
     ]);
-    expect(byCls.get('female')?.groups.map((g) => g.group)).toEqual([
-      'Generic Viking Female',
-      'Talk Viking Female',
-      'SocialTalk Female',
+    expect(model.voices[0]?.groups.map((g) => g.group)).toEqual([
+      'Krzyk: Man Get Hit',
+      'Gwar: Generic Viking Male',
+      'Tak: Viking male ok 01',
+      'Nie: Viking male no 01',
     ]);
-    expect(byCls.get('child')?.groups.map((g) => g.group)).toEqual(['Generic Viking Children']);
+    expect(model.voices[1]?.groups.map((g) => g.group)).toEqual(['Gwar: Generic Viking Children']);
     // Every listed voice group resolved to at least one clip from the bank (no dangling names).
     for (const v of model.voices) for (const g of v.groups) expect(g.clips.length).toBeGreaterThan(0);
+  });
+
+  it('lists the animal calls by species', () => {
+    expect(model.animalCalls).toEqual([{ group: 'niedźwiedź: Bear Sounds', clips: ['generic/bear1.wav'] }]);
   });
 
   it('lists every jingle and ambient bed', () => {
@@ -104,9 +124,10 @@ describe('buildSoundGalleryModel', () => {
   });
 
   it('shows a group missing from the bank with an empty clip list, not a crash', () => {
-    const bare: SoundBank = { staticGroups: [], ambient: [], jingles: [] };
+    const bare: SoundBank = { ...EMPTY_SOUND_BANK, humanVoices: bank.humanVoices };
     const m = buildSoundGalleryModel(bare, defaultBindings());
-    // Voice groups still listed (the pools are static), each with no clips since the bank is empty.
+    // Voice rows still listed from their table, each with no clips since the bank has no groups.
+    expect(m.voices).toHaveLength(3);
     expect(m.voices.flatMap((v) => v.groups).every((g) => g.clips.length === 0)).toBe(true);
     // A spatial action whose group is missing resolves to an empty clip list (still shown for auditing).
     expect(m.actions.find((a) => a.label === 'Zwodowanie łodzi')?.clips).toEqual([]);

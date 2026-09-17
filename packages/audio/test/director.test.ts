@@ -25,12 +25,38 @@ const bank: SoundBank = {
     { name: 'Open Wooden Chest', sfx: [{ file: 'static/woodenchest.wav', params: [80] }] },
     { name: 'Open Magical Chest', sfx: [{ file: 'static/magicalchest.wav', params: [80] }] },
     { name: 'Woodcutter Axe', logicSoundType: 9, sfx: [{ file: 'static/axe01.wav', params: [80] }] },
-    // Combat impact groups (the weapon-specific melee hits + the bow shot/arrow-hit).
-    { name: 'Weapon Sword Short Hit', sfx: [{ file: 'static/swordhit01.wav', params: [80] }] },
-    { name: 'Weapon Spear Hit', sfx: [{ file: 'static/spearhit01.wav', params: [80] }] },
+    // Combat impact groups, named by id like every cue group: the weapon's `soundtype_Hit` / `_NoHit`
+    // tables carry the id onto the hit and miss events.
+    {
+      name: 'Weapon Sword Short Hit',
+      logicSoundType: 82,
+      sfx: [{ file: 'static/swordhit01.wav', params: [80] }],
+    },
+    {
+      name: 'Weapon Sword Short Hit House',
+      logicSoundType: 84,
+      sfx: [{ file: 'static/swordhouse01.wav', params: [80] }],
+    },
     { name: 'Weapon Bow Long', logicSoundType: 75, sfx: [{ file: 'static/bow01.wav', params: [80] }] },
-    { name: 'Weapon Bow Hit', sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
+    { name: 'Weapon Bow Hit', logicSoundType: 77, sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
+    {
+      name: 'Weapon Bow Hit Dirt',
+      logicSoundType: 79,
+      sfx: [{ file: 'static/arrowdirt01.wav', params: [80] }],
+    },
+    {
+      name: 'Weapon Bow Hit Water',
+      logicSoundType: 78,
+      sfx: [{ file: 'static/arrowwater01.wav', params: [80] }],
+    },
     { name: 'House Crash', sfx: [{ file: 'static/housecrash01.wav', params: [80] }] },
+    // The viking voices `humans/sounds.cif` names below.
+    { name: 'Man Get Hit', sfx: [{ file: 'static/hit m 01.wav', params: [80] }] },
+    { name: 'Woman Get Hit', sfx: [{ file: 'static/hit f 01.wav', params: [80] }] },
+    { name: 'Generic Viking Male', sfx: [{ file: 'generic/m 01.wav', params: [40] }] },
+    { name: 'Viking male ok 01', sfx: [{ file: 'humantalk/m1ok01.wav', params: [80] }] },
+    { name: 'Viking male ok 02', sfx: [{ file: 'humantalk/m2ok01.wav', params: [80] }] },
+    { name: 'Bear Sounds', sfx: [{ file: 'generic/animals_bear01.wav', params: [80] }] },
     // The chat voice pair - like every cue group, resolved by its logicSoundType id.
     { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
     {
@@ -53,10 +79,26 @@ const bank: SoundBank = {
     { name: '', musicType: 25, sfx: [{ file: 'jingles/jingles_death.wav', params: [] }] },
     { name: '', musicType: 24, sfx: [{ file: 'jingles/jingles_civildefense.wav', params: [] }] },
     { name: '', musicType: 30, sfx: [{ file: 'jingles/jingles_openchest.wav', params: [] }] },
+    { name: '', musicType: 22, sfx: [{ file: 'jingles/jingles_marriage.wav', params: [] }] },
   ],
+  humanVoices: [
+    {
+      tribe: 1,
+      voiceClass: 'male',
+      scream: 'Man Get Hit',
+      generic: 'Generic Viking Male',
+      respondOk: ['Viking male ok 01', 'Viking male ok 02'],
+      respondNo: [],
+    },
+    { tribe: 1, voiceClass: 'female', scream: 'Woman Get Hit', respondOk: [], respondNo: [] },
+  ],
+  animalCalls: [{ tribe: 8, minCount: 1, probability: 10, group: 'Bear Sounds' }],
 };
 const gfxPatterns = [{ id: 5, editGroups: ['meadow green'] }] as unknown as GfxPattern[];
-const terrainPatterns = [{ typeId: 1, patternId: 5 }] as unknown as TerrainPattern[];
+const terrainPatterns = [
+  { typeId: 1, patternId: 5, logicType: 2 }, // land
+  { typeId: 3, patternId: 8, logicType: 1 }, // water
+] as unknown as TerrainPattern[];
 
 /** `logicSoundType` ids the fixture bank carries: the woodcutter's axe and the male chat voice. */
 const SOUND_AXE = 9;
@@ -77,16 +119,29 @@ const camera: Camera = {
   scale: 1,
 };
 
-/** A snapshot at tile (5,5): a settler (id 3) and a building (id 7), both owned by player 0, plus an
- *  unowned wild animal (id 9). */
+/** A snapshot at tile (5,5): a viking man (id 3) and a building (id 7), both owned by player 0, an
+ *  unowned wild bear (id 9), and a viking woman (id 12) of player 1. */
 function snapshotAt(events: readonly SimEvent[] = []): WorldSnapshot {
   const at = { x: 5 * ONE, y: 5 * ONE };
   return {
     tick: 1,
     entities: [
-      { id: 3, components: { Position: at, Settler: {}, Owner: { player: 0 } } },
+      {
+        id: 3,
+        components: { Position: at, Settler: { tribe: 1 }, Person: { person: true }, Owner: { player: 0 } },
+      },
       { id: 7, components: { Position: at, Building: { buildingType: 2 }, Owner: { player: 0 } } },
-      { id: 9, components: { Position: at, Settler: {} } },
+      { id: 9, components: { Position: at, Settler: { tribe: 8 } } },
+      {
+        id: 12,
+        components: {
+          Position: at,
+          Settler: { tribe: 1 },
+          Person: { person: true },
+          Female: { female: true },
+          Owner: { player: 1 },
+        },
+      },
     ],
     events,
   };
@@ -229,29 +284,45 @@ describe('directAudio combat SFX', () => {
   // Half-cell node (11,10) projects to the centred tile (5,5), so the emitter is on-screen and centred.
   const at = { hx: 11, hy: 10 };
 
-  it('fires the weapon-specific melee impact for a combatHit', () => {
-    const sword = direct([
-      { kind: 'combatHit', attacker: entity(3), target: entity(4), weaponMainType: 3, at },
+  it('plays the impact the weapon listed for the victim, by id, and the struck man screams', () => {
+    const frame = direct([
+      { kind: 'combatHit', attacker: entity(12), target: entity(3), weaponMainType: 3, soundType: 82, at },
     ]);
-    expect(sword.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
-    expect(sword.oneShots[0]?.key).toBe('combatHit:11,10');
-    const spear = direct([
-      { kind: 'combatHit', attacker: entity(3), target: entity(4), weaponMainType: 2, at },
-    ]);
-    expect(spear.oneShots[0]?.files).toEqual(['static/spearhit01.wav']);
+    expect(frame.oneShots.map((s) => s.files)).toEqual([['static/swordhit01.wav'], ['static/hit m 01.wav']]);
+    // Both are self-exclusive: a body blow and a scream never stack on a copy still sounding.
+    expect(frame.oneShots.map((s) => s.exclusive)).toEqual(['wav', 'wav']);
+    expect(frame.oneShots[0]?.key).toBe('combatHit:82:11,10');
+    expect(frame.oneShots[1]?.key).toBe('scream:11,10');
   });
 
-  it('falls back to the generic melee thunk when the weapon class has no entry / is absent', () => {
-    // An axe (5) has no dedicated group → the byEvent.combatHit sword-hit fallback; likewise no weaponMainType.
-    const axe = direct([
-      { kind: 'combatHit', attacker: entity(3), target: entity(4), weaponMainType: 5, at },
-    ]);
-    expect(axe.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
-    const bare = direct([{ kind: 'combatHit', attacker: entity(3), target: entity(4), at }]);
-    expect(bare.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
+  it('screams in the struck woman`s voice, and never for a body without one', () => {
+    const woman = direct([{ kind: 'combatHit', attacker: entity(3), target: entity(12), at }]);
+    expect(woman.oneShots.map((s) => s.files)).toEqual([['static/hit f 01.wav']]);
+    // A bear (no voice row for its tribe) and a stranger (not in the snapshot) scream nothing.
+    expect(direct([{ kind: 'combatHit', attacker: entity(3), target: entity(9), at }]).oneShots).toHaveLength(
+      0,
+    );
+    expect(direct([{ kind: 'combatHit', attacker: entity(3), target: entity(4), at }]).oneShots).toHaveLength(
+      0,
+    );
   });
 
-  it('leaves the bow release to the clip cue and fires only the arrow thunk on hit', () => {
+  it('lands a blow on a house with the house impact alone, layering freely, and no scream', () => {
+    const frame = direct([
+      { kind: 'combatHit', attacker: entity(3), target: entity(7), soundType: 84, structure: true, at },
+    ]);
+    expect(frame.oneShots.map((s) => s.files)).toEqual([['static/swordhouse01.wav']]);
+    expect(frame.oneShots[0]?.exclusive).toBeUndefined();
+  });
+
+  it('stays silent for a blow whose weapon lists no impact for that material', () => {
+    const frame = direct([
+      { kind: 'combatHit', attacker: entity(3), target: entity(7), structure: true, at },
+    ]);
+    expect(frame.oneShots).toHaveLength(0);
+  });
+
+  it('leaves the bow release to the clip cue, thuds the arrow on hit and in the dirt on a miss', () => {
     const loose = direct([
       {
         kind: 'projectileLaunched',
@@ -267,13 +338,66 @@ describe('directAudio combat SFX', () => {
       {
         kind: 'projectileHit',
         projectile: entity(9),
-        shooter: entity(3),
-        target: entity(4),
+        shooter: entity(12),
+        target: entity(3),
         munitionType: 1,
+        soundType: 77,
         at,
       },
     ]);
-    expect(hit.oneShots[0]?.files).toEqual(['static/arrowhit01.wav']);
+    expect(hit.oneShots.map((s) => s.files)).toEqual([['static/arrowhit01.wav'], ['static/hit m 01.wav']]);
+  });
+
+  it('thuds a missed shot by the ground under its landing node, off the landscape grid', () => {
+    // A 10x10 grid of land (typeId 1) with a water row (typeId 3) at row 5; node (11,10) lands in cell
+    // (5,5), node (11,8) in cell (5,4). The bow's table: 1 water → 78 splash, 2 land → 79 dirt.
+    const typeIds = new Array<number>(100).fill(1);
+    for (let col = 0; col < 10; col++) typeIds[5 * 10 + col] = 3;
+    const terrain = { width: 10, height: 10, typeIds };
+    const missSounds = { '1': 78, '2': 79 };
+    const shot = (where: { hx: number; hy: number }): SimEvent => ({
+      kind: 'projectileMissed',
+      projectile: entity(9),
+      shooter: entity(3),
+      munitionType: 1,
+      missSounds,
+      at: where,
+    });
+    const water = direct([shot(at)], { terrain });
+    expect(water.oneShots.map((s) => s.files)).toEqual([['static/arrowwater01.wav']]);
+    expect(water.oneShots[0]?.exclusive).toBeUndefined(); // ground thuds layer, as the original's flag says
+    const land = direct([shot({ hx: 11, hy: 8 })], { terrain });
+    expect(land.oneShots.map((s) => s.files)).toEqual([['static/arrowdirt01.wav']]);
+    // Between-row nodes settle the original's way: node (10,9), under the even cell row 4, nudges right
+    // into cell (5,4) on land; node (10,11), under the odd row 5, halves straight into cell (5,5) on water.
+    expect(direct([shot({ hx: 10, hy: 9 })], { terrain }).oneShots[0]?.files).toEqual([
+      'static/arrowdirt01.wav',
+    ]);
+    expect(direct([shot({ hx: 10, hy: 11 })], { terrain }).oneShots[0]?.files).toEqual([
+      'static/arrowwater01.wav',
+    ]);
+    // No grid (a scene's synthetic ground), or a weapon with no table: the shot lands silently.
+    expect(direct([shot(at)]).oneShots).toHaveLength(0);
+    const mute: SimEvent = {
+      kind: 'projectileMissed',
+      projectile: entity(9),
+      shooter: entity(3),
+      munitionType: 1,
+      missSounds: {},
+      at,
+    };
+    expect(direct([mute], { terrain }).oneShots).toHaveLength(0);
+  });
+
+  it("rings a script's briefing and earthquake as centred full-gain cues", () => {
+    const frame = direct([
+      { kind: 'missionCutscene', mission: 1, page: 0, replay: false },
+      { kind: 'missionEarthquake', seconds: 3 },
+    ]);
+    expect(frame.oneShots).toEqual([
+      { files: ['gui/briefing_popup.wav'], gain: 1, pan: 0, key: 'ui:briefing' },
+      { files: ['misc/earthquak.wav'], gain: 1, pan: 0, key: 'ui:earthquake' },
+    ]);
   });
 });
 
@@ -410,6 +534,22 @@ describe('directAudio screen-gated jingles', () => {
       localPlayer: LOCAL,
     });
     expect(gone.oneShots).toHaveLength(0);
+  });
+
+  it("rings the marriage jingle for the local player's own on-screen wedding only", () => {
+    const at = { hx: 11, hy: 10 };
+    const wedding = (player: number | null, where = at): SimEvent => ({
+      kind: 'settlersMarried',
+      a: entity(3),
+      b: entity(12),
+      player,
+      at: where,
+    });
+    const ours = direct([wedding(LOCAL)], { localPlayer: LOCAL });
+    expect(ours.oneShots.map((s) => s.files)).toEqual([['jingles/jingles_marriage.wav']]);
+    expect(direct([wedding(1)], { localPlayer: LOCAL }).oneShots).toHaveLength(0);
+    expect(direct([wedding(null)], { localPlayer: LOCAL }).oneShots).toHaveLength(0);
+    expect(direct([wedding(LOCAL, { hx: 400, hy: 400 })], { localPlayer: LOCAL }).oneShots).toHaveLength(0);
   });
 
   it('keeps the defence alarm ringing map-wide, off screen included', () => {

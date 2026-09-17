@@ -123,6 +123,12 @@ export const Projectile = defineComponent<{
   damage: number;
   /** Keys the fight-XP bucket; `null` grants no fight XP. */
   weaponMainType: number | null;
+  /** The group id the landing blow plays (`soundtype_Hit[targetMaterial]`), `null` for a silent landing. */
+  hitSoundType: number | null;
+  /** The weapon's `soundtype_NoHit` table by ground logic type: what a shot that strikes nothing plays
+   *  where it comes down. Carried whole and handed on with the miss event, because the sim navigates
+   *  terrain classes and never sees the landscape under the landing node. */
+  missSounds: Readonly<Record<string, number>>;
   munitionType: number;
   /** The extracted `WeaponType.speed`, stored raw because its unit is unreadable. */
   speed: number;

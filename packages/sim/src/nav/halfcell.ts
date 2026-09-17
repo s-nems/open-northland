@@ -69,6 +69,20 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
 }
 
 /**
+ * The cell any lattice node `(hx, hy)` belongs to, the original's own node-to-cell rule (byte evidence:
+ * `the original`, `an original routine(SMapMigPoint const&, bool)`): the row halves, and the
+ * column halves after a nudge that depends on the node row's place in the four-row cycle - one right on
+ * the between row below an even cell row, one left on an odd cell row's anchor row, none otherwise. On a
+ * centre node it agrees with {@link cellOfAnchorNode}; between centres it decides the tie the way the
+ * original did, which is what a ground lookup under a landing node needs.
+ */
+export function cellOfNode(hx: number, hy: number): { readonly cx: number; readonly cy: number } {
+  const phase = hy & 3;
+  const nudge = phase === 1 ? 1 : phase === 2 ? -1 : 0;
+  return { cx: (hx + nudge) >> 1, cy: hy >> 1 };
+}
+
+/**
  * Whether two nodes are the same or neighbouring lattice points (Chebyshev distance at most 1).
  * Observation: a paired interaction in the original leaves no free node between the two participants.
  */

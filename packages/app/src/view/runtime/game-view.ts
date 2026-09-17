@@ -12,6 +12,7 @@ import {
   adminCommand,
   type Command,
   type Entity,
+  orderedSettler,
   type PlayerCommand,
   playerCommand,
   type SaveGame,
@@ -301,6 +302,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const issueCommand = (command: PlayerCommand): void => {
       if (readOnly) return;
       driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
+      // The ordered settler answers at once, as in the original, whatever the sim then makes of the order.
+      const settler = orderedSettler(command);
+      if (settler !== undefined) soundDriver?.respond(settler);
     };
 
     const menuGoods = menuGoodsFromContent(sim.content);

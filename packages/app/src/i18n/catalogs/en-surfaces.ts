@@ -413,6 +413,10 @@ export const enSurfaces = {
     positional: 'positional sound',
     nonPositional: 'non-positional jingle',
     screenGatedJingle: 'jingle, on-screen only',
+    hardwiredCue: 'hardwired cue, centred',
+    animalCalls: 'Animal calls',
+    tribeNumber: 'Tribe {tribe}',
+    voiceRoles: { scream: 'Scream', chatter: 'Chatter', ok: 'Ok', no: 'No' },
     children: 'Children',
     actionsCatalog: {
       buildingPlaced: { label: 'Place building', trigger: 'when a player places a new building' },

@@ -92,6 +92,8 @@ describe('extractWeapons', () => {
         minRange: 1,
         maxRange: 1,
         damage: { '0': 360, '1': 70 },
+        hitSounds: { '0': 88 },
+        missSounds: {},
         jobType: 51,
         // `goodtype 0` is the natural-weapon sentinel -> no `goodType` field (undefined dropped by toEqual).
         // A melee claw fires nothing -> no `munitionType` field either (undefined dropped by toEqual).
@@ -112,6 +114,8 @@ describe('extractWeapons', () => {
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2100 },
+        hitSounds: {},
+        missSounds: { '1': 78, '2': 79 },
         jobType: 53,
         goodType: 22, // a real good - the good that IS this weapon
         source: src,

@@ -13,6 +13,7 @@ import {
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
 import { type UiCue, uiCueShot } from '../data/ui-cues.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
+import type { RandomFn } from './platform.js';
 
 /** One frame's world state, handed to {@link SoundDriver.update} once per rendered frame. */
 export interface SoundFrameInput {
@@ -34,6 +35,9 @@ export interface SoundFrameInput {
    *  map has handed over its music, since the head-count behind it is an O(entities) read. Omit → the
    *  calm variant, which only a fight then moves. */
   readonly standingOf?: (snapshot: WorldSnapshot) => MusicStanding;
+  /** The entity ids of the settlers and animals the renderer drew this frame, read only on a frame that
+   *  advanced a game tick: the idle chatter and animal calls roll over them. Omit → no unprompted voices. */
+  readonly drawnCreatures?: () => Iterable<number>;
 }
 
 /** The music a map authored: its `musictype` and what the pipeline rendered for it. */
@@ -58,8 +62,13 @@ export interface SoundDriverOptions extends AudioEngineOptions {}
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
+  private readonly random: RandomFn;
   private musicMap: MusicMap | null = null;
   private mood: MusicMoodState = CALM_MOOD;
+  /** Settlers ordered since the last frame, answered with their voices on that frame. */
+  private responses: number[] = [];
+  /** The sim tick the last frame stood at, so a frame knows how many ticks to roll the chatter for. */
+  private lastTick: number | null = null;
 
   constructor(
     private readonly index: SoundIndex,
@@ -67,6 +76,7 @@ export class SoundDriver {
     options: SoundDriverOptions = {},
   ) {
     this.engine = new WebAudioEngine(options);
+    this.random = options.random ?? Math.random;
   }
 
   close(): void {
@@ -111,8 +121,18 @@ export class SoundDriver {
     this.engine.fire([uiCueShot(cue)]);
   }
 
+  /** A settler the player just ordered answers "ok" in its own voice on the next frame, which knows
+   *  where it stands and what it sounds like. */
+  respond(settler: number): void {
+    this.responses.push(settler);
+  }
+
   /** Decide + play one frame of audio from the current world state. */
   update(input: SoundFrameInput): void {
+    const responses = this.responses;
+    this.responses = [];
+    const ticks = this.lastTick === null ? 0 : Math.max(0, input.snapshot.tick - this.lastTick);
+    this.lastTick = input.snapshot.tick;
     // Suspended (no gesture yet) or muted: the engine would drop the frame unheard, so don't pay the
     // director decision work at all.
     if (!this.engine.audible) return;
@@ -125,6 +145,10 @@ export class SoundDriver {
       canvasH: input.canvasH,
       index: this.index,
       bindings: this.bindings,
+      responses,
+      ...(input.drawnCreatures !== undefined
+        ? { chatter: { drawn: input.drawnCreatures, ticks, random: this.random } }
+        : {}),
       ...(input.terrain !== undefined ? { terrain: input.terrain } : {}),
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),

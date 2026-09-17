@@ -82,6 +82,18 @@ export const WeaponType = z.strictObject({
    *  armor {@link ClassId} in string form, since JSON object keys are strings on disk. Values are whole
    *  hit-points. */
   damage: z.record(z.string(), z.number().int()).default({}),
+  /**
+   * `soundtype_Hit[targetMaterial] -> LogicSoundType`: the sound-bank group id a landed blow plays,
+   * keyed like {@link damage} by the victim's armor material (a house is column 7, a vehicle 6). A
+   * material with no entry lands silently.
+   */
+  hitSounds: z.record(z.string(), z.number().int()).default({}),
+  /**
+   * `soundtype_NoHit[groundLogicType] -> LogicSoundType`: the group id a shot that struck nothing plays
+   * where it lands, keyed by the ground's `trianglepatterntypes` logic type (1 water, 2 land, ...).
+   * Only ranged rows carry it. A ground type with no entry lands silently.
+   */
+  missSounds: z.record(z.string(), z.number().int()).default({}),
   jobType: TypeId.optional(),
   /** `goodtype` - the good that is this weapon; resolves into the good table. Source `goodtype 0` is the
    *  natural-weapon sentinel (a fist or claw, backed by no craftable good) and is captured as

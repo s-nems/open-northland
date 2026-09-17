@@ -85,6 +85,42 @@ describe('WebAudioEngine one-shots', () => {
     expect(ctx.sources).toHaveLength(2);
   });
 
+  it('holds a wav-exclusive shot while its own wav still sounds, and lets a plain one layer', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    // The fake decodes a 4-byte buffer as a 4-second wav.
+    engine.apply({ oneShots: [shot({ key: 'voice:a', exclusive: 'wav' })], ambient: [] });
+    await flush();
+    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01; // past the key cooldown, inside the wav
+    engine.apply({ oneShots: [shot({ key: 'voice:b', exclusive: 'wav' })], ambient: [] }); // same wav, other key
+    await flush();
+    expect(ctx.sources).toHaveLength(1); // that line is still sounding: skipped
+    engine.apply({ oneShots: [shot({ key: 'thud:1' })], ambient: [] }); // not exclusive: layers over it
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+    ctx.currentTime += 4; // the line has ended
+    engine.apply({ oneShots: [shot({ key: 'voice:c', exclusive: 'wav' })], ambient: [] });
+    await flush();
+    expect(ctx.sources).toHaveLength(3);
+  });
+
+  it('holds a group-exclusive shot while any wav of its pool still sounds', async () => {
+    // Random 0 picks the first wav; the second ask picks a different one, and a wav-exclusive shot would
+    // let it through, while an order's answer waits for the whole pool.
+    let pick = 0;
+    const { engine, ctx } = makeEngine({ random: () => pick });
+    await engine.resume();
+    const pool = ['voice/ok1.wav', 'voice/ok2.wav'];
+    engine.apply({ oneShots: [shot({ files: pool, key: 'respond:a', exclusive: 'group' })], ambient: [] });
+    await flush();
+    pick = 0.99;
+    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01;
+    engine.apply({ oneShots: [shot({ files: pool, key: 'respond:b', exclusive: 'group' })], ambient: [] });
+    engine.apply({ oneShots: [shot({ files: pool, key: 'scream:b', exclusive: 'wav' })], ambient: [] });
+    await flush();
+    expect(ctx.sources).toHaveLength(2); // the pool held the answer; the other wav was free for the scream
+  });
+
   it('memoises a failed load and never re-fetches the missing wav', async () => {
     const { engine, ctx, fetched } = makeEngine({ failFetch: true });
     await engine.resume();

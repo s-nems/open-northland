@@ -95,6 +95,8 @@ describe('hunter aim - the missed arrow', () => {
       target: deer,
       damage: 70,
       weaponMainType: null,
+      hitSoundType: null,
+      missSounds: { '1': 78, '2': 79 }, // the bow's `soundtype_NoHit` thuds: 1 water, 2 land
       munitionType: 1,
       speed: 8,
       originX: positionOfNode(10, 10).x,
@@ -108,18 +110,19 @@ describe('hunter aim - the missed arrow', () => {
     sim.step();
     expect(sim.world.get(shot, Position).x).toBe(positionOfNode(10, 10).x);
 
-    let sawMissed = false;
+    let missed: { missSounds: Readonly<Record<string, number>> } | undefined;
     let sawHit = false;
     for (let i = 0; i < 10 && [...sim.world.query(Projectile)].length > 0; i++) {
       sim.step();
       for (const ev of sim.snapshot().events) {
-        if (ev.kind === 'projectileMissed') sawMissed = true;
+        if (ev.kind === 'projectileMissed') missed = ev;
         if (ev.kind === 'projectileHit') sawHit = true;
       }
     }
 
     expect([...sim.world.query(Projectile)]).toHaveLength(0); // the arrow landed and was reaped
-    expect(sawMissed).toBe(true); // ... announcing the dirt thud
+    // ... announcing the landing with the bow's per-ground thud table for the audio layer to pick from.
+    expect(missed?.missSounds).toEqual({ '1': 78, '2': 79 });
     expect(sawHit).toBe(false); // ... never the impact
     // The deer stands ON the aim point, yet a missed arrow deals nothing - no drain, no provocation.
     expect(sim.world.get(deer, Health).hitpoints).toBe(1000);

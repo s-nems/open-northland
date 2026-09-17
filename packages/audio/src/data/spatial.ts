@@ -60,6 +60,20 @@ export function computeSpatialAtNode(
   return spatialiseScreenPoint(halfCellToScreen(hx, hy), camera, canvasW, canvasH);
 }
 
+/**
+ * The stereo pan alone of world tile `(col, row)`: its screen-side position, clamped to the sides for a
+ * point off screen, with no cull and no attenuation. A voice answering the player's order pans this way
+ * (byte evidence, `the original` `Tool_Sound_PlaySoundOrientedOnDisplay` without its positioned flag: the
+ * pan is clamped to the edges, the volume is left whole and no screen or fog test is made).
+ */
+export function computePan(col: number, row: number, camera: Camera, canvasW: number): number {
+  const s = tileToScreen(col, row);
+  const scale = camera.scale ?? 1;
+  const sx = s.x * scale + camera.offsetX;
+  const halfW = canvasW / 2;
+  return halfW === 0 ? 0 : clamp((sx - halfW) / halfW, -1, 1) * MAX_PAN;
+}
+
 /** The shared cull/attenuate/pan half: a pre-camera screen point in, `Spatial` (or `null`) out. */
 function spatialiseScreenPoint(
   s: { x: number; y: number },

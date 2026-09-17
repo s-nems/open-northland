@@ -65,7 +65,15 @@ describe('the death tallies', () => {
     spawn(sim, { player: 2, missionId: 1 });
     spawn(sim, { player: 3, missionId: 2, at: { hx: POINT.hx + 1, hy: POINT.hy } });
     sim.run(2);
-    resolveCombatHit(sim.world, ctxOf(sim), stamped(sim, 2), stamped(sim, 1), 100000, undefined, [], 'melee');
+    resolveCombatHit(
+      sim.world,
+      ctxOf(sim),
+      stamped(sim, 2),
+      stamped(sim, 1),
+      { damage: 100000 },
+      [],
+      'melee',
+    );
     expect(playerTally(sim.world, 3).humansKilled).toBe(1);
     expect(playerTally(sim.world, 2).humansKilled).toBe(0);
     sim.step();
@@ -84,7 +92,15 @@ describe('the death tallies', () => {
       missionId: 5,
     });
     sim.run(2);
-    resolveCombatHit(sim.world, ctxOf(sim), stamped(sim, 1), stamped(sim, 5), 100000, undefined, [], 'melee');
+    resolveCombatHit(
+      sim.world,
+      ctxOf(sim),
+      stamped(sim, 1),
+      stamped(sim, 5),
+      { damage: 100000 },
+      [],
+      'melee',
+    );
     sim.step();
     expect(playerTally(sim.world, 2)).toEqual(NO_TALLY);
   });
@@ -124,7 +140,15 @@ describe('the goals that read a tally', () => {
     spawn(sim, { player: 3, missionId: 2, at: { hx: POINT.hx + 1, hy: POINT.hy } });
     sim.run(FIRST_PASS);
     expect(holds(sim)).toBe(false);
-    resolveCombatHit(sim.world, ctxOf(sim), stamped(sim, 2), stamped(sim, 1), 100000, undefined, [], 'melee');
+    resolveCombatHit(
+      sim.world,
+      ctxOf(sim),
+      stamped(sim, 2),
+      stamped(sim, 1),
+      { damage: 100000 },
+      [],
+      'melee',
+    );
     sim.run(FIRST_PASS);
     expect(holds(sim)).toBe(true);
   });

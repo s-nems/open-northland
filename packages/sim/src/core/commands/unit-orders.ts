@@ -1,6 +1,7 @@
 import type { EquipCategory } from '@open-northland/data';
 import type { NeedKind } from '../../components/needs.js';
 import type { Entity } from '../../ecs/world.js';
+import type { Command } from './index.js';
 
 /** The sexes a `makeChild` order may ask for. */
 export const CHILD_SEXES = ['female', 'male'] as const;
@@ -270,3 +271,13 @@ export type UnitOrderCommand =
       readonly building: Entity;
       readonly enabled: boolean;
     };
+
+/**
+ * The settler a player's order addresses, or undefined for a command aimed at a building, the map or
+ * the seat itself. `entity` is the unit-order vocabulary's addressee field alone (an order's other party
+ * rides as `chest`, `target`, `house`...), so its presence is the test - the original's `AddHumanCommand`
+ * family, which the client answers with the settler's voice.
+ */
+export function orderedSettler(command: Command): Entity | undefined {
+  return 'entity' in command ? command.entity : undefined;
+}

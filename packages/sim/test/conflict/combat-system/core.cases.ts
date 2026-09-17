@@ -27,7 +27,14 @@ describe('combatSystem - target selection + issuing the attack atomic', () => {
     const atomic = sim.world.get(attacker, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     expect(atomic.duration).toBe(4); // resolved via viking setatomic 81 -> viking_attack length 4
-    expect(atomic.effect).toEqual({ kind: 'attack', target: enemy, damage: 50, maxRange: 2 }); // damage["0"], unarmored; melee reach carried for the hit-frame re-check
+    // damage["0"] and hitSounds["0"], unarmored; melee reach carried for the hit-frame re-check
+    expect(atomic.effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 50,
+      hitSoundType: 82,
+      maxRange: 2,
+    });
     expect(atomic.targetEntity).toBe(enemy);
   });
 

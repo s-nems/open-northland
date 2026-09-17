@@ -44,7 +44,7 @@ export { extractMusicType } from './ini/map-music.js';
 export { extractMapScript } from './ini/map-script.js';
 export { extractMapTypes, type MapTypeHeader } from './ini/map-type.js';
 export { extractMapInfo } from './ini/maps.js';
-export { extractSounds } from './ini/sounds.js';
+export { extractAnimalCalls, extractHumanVoices, extractSounds } from './ini/sounds.js';
 export { extractStaticObjects, type MapStaticObjects } from './ini/static-objects.js';
 export {
   decodeCifStringTable,

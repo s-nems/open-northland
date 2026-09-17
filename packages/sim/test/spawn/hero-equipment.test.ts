@@ -32,6 +32,8 @@ describe('createSettler hero equipment', () => {
           minRange: 1,
           maxRange: 2,
           damage: { '0': 90 },
+          hitSounds: {},
+          missSounds: {},
         },
       ],
       armor: [

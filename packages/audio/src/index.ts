@@ -9,15 +9,18 @@
 // constants (JINGLE_*, GROUP_*) are intentionally not re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
-export { defaultBindings, VIKING_VOICE_POOLS, type VoiceClass } from './data/bindings.js';
+export { defaultBindings } from './data/bindings.js';
 export {
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_GAIN,
   AMBIENT_MAX_SAMPLES,
+  ANIMAL_ROLL_RANGE,
   directAudio,
+  GENERIC_ROLL_RANGE,
   HOUSE_CRASH_MIN_BUILT,
   JINGLE_GAIN,
   MAX_AMBIENT_BEDS,
+  MAX_CHATTER_TICKS_PER_FRAME,
   SFX_GAIN,
 } from './data/director/index.js';
 export {
@@ -40,6 +43,7 @@ export {
 } from './data/music/index.js';
 export {
   CULL_MARGIN_PX,
+  computePan,
   computeSpatial,
   EDGE_GAIN,
   MAX_PAN,
@@ -50,6 +54,7 @@ export type {
   AmbientLoop,
   AudioFrame,
   AudioTerrain,
+  ChatterInput,
   DirectorInput,
   EventSound,
   OneShot,

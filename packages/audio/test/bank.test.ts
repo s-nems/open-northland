@@ -30,6 +30,12 @@ const bank: SoundBank = {
     },
   ],
   jingles: [{ name: '', musicType: 26, sfx: [{ file: 'jingles/jingles_housebuilt.wav', params: [] }] }],
+  humanVoices: [
+    { tribe: 1, voiceClass: 'male', scream: 'Man Get Hit', respondOk: ['Viking male ok 01'], respondNo: [] },
+    { tribe: 1, voiceClass: 'female', generic: 'Generic Viking Female', respondOk: [], respondNo: [] },
+    { tribe: 5, voiceClass: 'male', scream: 'Weresnake Get Hit', respondOk: [], respondNo: [] },
+  ],
+  animalCalls: [{ tribe: 8, minCount: 1, probability: 10, group: 'Bear Sounds' }],
 };
 
 const gfxPatterns = [
@@ -77,5 +83,14 @@ describe('buildSoundIndex', () => {
     const bare = buildSoundIndex(bank, [], []);
     expect(bare.ambientByTerrainType.size).toBe(0);
     expect(bare.groupsByName.get('hammer wood')).toBeDefined(); // event layers still work
+  });
+
+  it('keys the creature voice tables by tribe and class', () => {
+    expect(index.humanVoices.get(1)?.get('male')?.scream).toBe('Man Get Hit');
+    expect(index.humanVoices.get(1)?.get('female')?.generic).toBe('Generic Viking Female');
+    expect(index.humanVoices.get(1)?.get('child')).toBeUndefined(); // a class the tribe leaves silent
+    expect(index.humanVoices.get(5)?.get('male')?.scream).toBe('Weresnake Get Hit');
+    expect(index.animalCalls.get(8)?.group).toBe('Bear Sounds');
+    expect(index.animalCalls.get(9)).toBeUndefined();
   });
 });

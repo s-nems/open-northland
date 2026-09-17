@@ -1,6 +1,7 @@
 import type { Camera } from '@open-northland/render/data';
 import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from './bank.js';
+import type { UiCue } from './ui-cues.js';
 
 /**
  * The audio package's pure vocabulary - the data the {@link import('./director/index.js').directAudio}
@@ -20,6 +21,12 @@ export interface OneShot {
   /** Milliseconds the music should stay ducked under this shot - set on a jingle, from its
    *  per-`MusicType` hold ({@link import('./bindings.js').JINGLE_DUCK_HOLD_MS}). */
   readonly duckMusicMs?: number;
+  /**
+   * The original's "is this wave running" guard. `wav`: skip while the wav this shot picked is still
+   * sounding, as a positioned voice, call or body blow does. `group`: skip while any wav of `files` still
+   * sounds, as an order's answer does. A shot without it (a house hit, a thud) layers freely.
+   */
+  readonly exclusive?: 'wav' | 'group';
 }
 
 /**
@@ -46,10 +53,11 @@ export interface AudioFrame {
  * that plays positioned at the event's world location (viewport-culled + attenuated + panned). A
  * `jingle` binding names a `MusicType` that plays as a life-event stinger (full gain, centred);
  * `screenGated` anchors the stinger to the event's world position so it rings only from the visible
- * screen.
+ * screen. A `cue` binding plays one of the engine's hardwired wavs centred at full gain, as the GUI does.
  */
 export type EventSound =
   | { readonly kind: 'spatial'; readonly group: string }
+  | { readonly kind: 'cue'; readonly cue: UiCue }
   | {
       readonly kind: 'jingle';
       readonly musicType: number;
@@ -80,13 +88,6 @@ export interface SoundBindings {
   /** The original plays a kind-specific positioned lid sound in addition to the common open-chest
    *  jingle. Optional so synthetic/custom banks can leave chest opening silent. */
   readonly byChestKind?: Readonly<Record<ChestKind, EventSound>>;
-  /**
-   * A melee `combatHit`'s weapon-specific impact sound, keyed by the striker's `weaponMainType`
-   * (1 fist / 2 spear / 3 sword / 4 saber / 5 axe - `WEAPON_MAIN_TYPE_*`). A class with no entry (or a
-   * hit that carries none) falls back to `byEvent.combatHit`. Optional - omit for no weapon-specific
-   * impacts.
-   */
-  readonly byCombatWeapon?: ReadonlyMap<number, EventSound>;
 }
 
 /** The row-major landscape grid the ambient layer samples (the terrain the snapshot is positioned over). */
@@ -94,6 +95,19 @@ export interface AudioTerrain {
   readonly width: number;
   readonly height: number;
   readonly typeIds: readonly number[];
+}
+
+/**
+ * The unprompted creature voices' per-frame input: what the render drew and how many game ticks the
+ * frame advanced, since the original rolls each once per game tick over the humans and animals it drew.
+ */
+export interface ChatterInput {
+  /** The entity ids of the settlers and animals drawn this frame - the original's "seen" counters. */
+  readonly drawn: () => Iterable<number>;
+  /** Game ticks the sim advanced since the last frame; 0 on a paused or sub-tick frame rolls nothing. */
+  readonly ticks: number;
+  /** The [0,1) roll source - the pure layer's only randomness, injected per the package contract. */
+  readonly random: () => number;
 }
 
 /**
@@ -109,6 +123,10 @@ export interface DirectorInput {
   readonly terrain?: AudioTerrain;
   readonly index: SoundIndex;
   readonly bindings: SoundBindings;
+  /** Settlers the player ordered since the last frame, each to answer with its own "ok" voice. */
+  readonly responses?: readonly number[];
+  /** The idle chatter and animal calls' roll; omit for none (a gallery, a test of the event path). */
+  readonly chatter?: ChatterInput;
   /**
    * The player slot whose life-events are "ours" - gates an {@link EventSound.localPlayerOnly} jingle
    * to this player's own events. Omit → such a jingle never plays; a jingle without the flag is

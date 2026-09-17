@@ -80,8 +80,24 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
   return armorMaterialForClass(ctx.content, armor.armorClass);
 }
 
-/** Start an `attack` {@link CurrentAtomic} on `attacker` against `target`, carrying the pre-resolved column
- *  `damage`. `duration` is the attack animation's length via the attacker's `setatomic` binding, and the
+/** What one landed blow of a weapon does to a target of one armor material: the resolved damage column
+ *  and the `soundtype_Hit` group id it plays, `undefined` when the weapon lists none for that material. */
+export interface Blow {
+  readonly damage: number;
+  readonly hitSoundType: number | undefined;
+}
+
+/** The sound-bank group id `weapon` plays landing on a target of armor `material`, or undefined when its
+ *  `soundtype_Hit` table has no entry there (the original then plays nothing). */
+export function hitSoundVsMaterial(
+  weapon: Pick<WeaponType, 'hitSounds'>,
+  material: number,
+): number | undefined {
+  return weapon.hitSounds[String(material)];
+}
+
+/** Start an `attack` {@link CurrentAtomic} on `attacker` against `target`, carrying the pre-resolved
+ *  `blow`. `duration` is the attack animation's length via the attacker's `setatomic` binding, and the
  *  swing repeats at that cadence; `hitAt` is the animation's attack-event frame, so the blow lands
  *  mid-animation. */
 export function startAttack(
@@ -90,7 +106,7 @@ export function startAttack(
   attacker: SettlerIdentity,
   e: Entity,
   target: Entity,
-  damage: number,
+  blow: Blow,
   weapon: WeaponType,
 ): void {
   const animation = boundAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID);
@@ -104,7 +120,8 @@ export function startAttack(
     weapon.speed !== undefined &&
     weapon.speed > 0 &&
     weapon.munitionType !== undefined
-      ? { munitionType: weapon.munitionType, speed: weapon.speed }
+      ? // Copied: saved state may not alias the content row another swing carries too.
+        { munitionType: weapon.munitionType, speed: weapon.speed, missSounds: { ...weapon.missSounds } }
       : undefined;
   world.add(e, CurrentAtomic, {
     atomicId: ATTACK_ATOMIC_ID,
@@ -114,10 +131,12 @@ export function startAttack(
     effect: {
       kind: 'attack',
       target,
-      damage,
-      // The fallback-to-completion, no-XP, and melee-hit paths are a field's absence, not a sentinel.
+      damage: blow.damage,
+      // The fallback-to-completion, no-XP, silent-hit and melee-hit paths are a field's absence, not a
+      // sentinel.
       ...(hitAt !== undefined ? { hitAt } : {}),
       ...(weapon.mainType !== undefined ? { weaponMainType: weapon.mainType } : {}),
+      ...(blow.hitSoundType !== undefined ? { hitSoundType: blow.hitSoundType } : {}),
       // A melee swing carries the weapon's reach so the executor can whiff at the hit frame if the target
       // stepped out - through the same `withReach` clamp the engage band used, so the two cannot desync.
       ...(projectile === undefined ? { maxRange: withReach(weapon).maxRange } : { projectile }),

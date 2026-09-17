@@ -18,6 +18,7 @@ export {
   COMMAND_ENVELOPE_VERSION,
   type Command,
   type CommandEnvelope,
+  orderedSettler,
   ownedEnvelope,
   type PlayerCommand,
   playerCommand,
@@ -73,6 +74,7 @@ export type { BlockOverlay } from './nav/block-overlay.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,
+  cellOfNode,
   type HalfCellNode,
   hexNeighboursOf,
   nodeOfPosition,

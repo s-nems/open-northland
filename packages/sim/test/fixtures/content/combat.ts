@@ -5,6 +5,7 @@ export const combatContent = {
   // column, nothing is subtracted). Only a Health-bearing settler ever fights, so this is inert in the
   // golden slice.
   weapons: [
+    // `hitSounds` mirrors the real `soundtype_Hit` shape: one impact group id per armor material.
     {
       typeId: 7,
       id: 'test_axe',
@@ -13,6 +14,7 @@ export const combatContent = {
       minRange: 1,
       maxRange: 2,
       damage: { '0': 50, '1': 60 },
+      hitSounds: { '0': 82, '1': 83 },
     },
     // A weapon for the animal tribe (tribe 9, job 1) so an animal combatant CAN resolve a weapon -
     // this is what makes the combat-system test of the animal-exclusion meaningful: the animal is
@@ -56,6 +58,7 @@ export const combatContent = {
     // A RANGED weapon (a bow): `minRange 3, maxRange 17` mirrors the real `hunter_bow`
     // (`minimumrange 3`/`maximumrange 17` in `DataCnmd/types/weapons.ini`) - it CANNOT fire on a target
     // closer than 3 cells, the case the CombatSystem's minRange band enforces.
+    // `missSounds` mirrors `soundtype_NoHit`: the thud per ground logic type (1 water, 2 land).
     {
       typeId: 11,
       id: 'test_spear',
@@ -64,6 +67,8 @@ export const combatContent = {
       minRange: 3,
       maxRange: 17,
       damage: { '0': 70 },
+      hitSounds: { '0': 77 },
+      missSounds: { '1': 78, '2': 79 },
     },
     // A weapon for the CATCHABLE-and-PROVOKABLE deer (tribe 14, keyed by tribe alone) - so once a
     // hunter's strike PROVOKES it (`getAngry` → an `Anger` timer) it can fight back. damage 20 vs an

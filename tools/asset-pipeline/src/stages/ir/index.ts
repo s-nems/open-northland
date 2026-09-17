@@ -1,6 +1,8 @@
 import { basename } from 'node:path';
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, EMPTY_SOUND_BANK, IR_VERSION, parseContentSet } from '@open-northland/data';
 import {
+  extractAnimalCalls,
+  extractHumanVoices,
   extractLandscapeGfx,
   extractPatterns,
   extractPatternTransitions,
@@ -12,7 +14,7 @@ import { writeJsonFile } from '../content-tree.js';
 import { decodeMapTree } from '../maps/index.js';
 import { applyBuildingGraphicsOverlays } from './building-overlays.js';
 import { fillBuildingRecipes, stripVehicleGoods } from './building-recipes.js';
-import { loadCifTable } from './cif-tables.js';
+import { loadCifTable, loadIniTable } from './cif-tables.js';
 import { buildGatheringPipeline } from './gathering-pipeline.js';
 import { loadJobGraphics } from './job-graphics.js';
 import { resolveIniSources } from './sources.js';
@@ -61,12 +63,25 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   const landscapeFile = 'Data/engine2d/inis/landscapes/landscapes.cif';
   const landscapeGfx = await loadCifTable(roots, landscapeFile, extractLandscapeGfx, []);
   const gatheringPipeline = buildGatheringPipeline(goods, landscapeGfx);
+  const humanVoices = await loadCifTable(
+    roots,
+    'Data/engine2d/inis/humans/sounds.cif',
+    extractHumanVoices,
+    [],
+  );
+  const animalCalls = await loadIniTable(
+    roots,
+    'Data/engine2d/inis/animals/sounds.ini',
+    extractAnimalCalls,
+    [],
+  );
   const soundFile = 'Data/engine2d/inis/soundfx/soundfx.cif';
-  const sounds = await loadCifTable(roots, soundFile, extractSounds, {
-    staticGroups: [],
-    ambient: [],
-    jingles: [],
-  });
+  const sounds = await loadCifTable(
+    roots,
+    soundFile,
+    (sections) => extractSounds(sections, { humanVoices, animalCalls }),
+    EMPTY_SOUND_BANK,
+  );
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
   const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, goods);

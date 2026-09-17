@@ -60,12 +60,20 @@ export type AtomicEffect =
       readonly hitAt?: number;
       /** `WeaponType.mainType`, which keys the fight-experience bucket; omitting it accrues no fight XP. */
       readonly weaponMainType?: number;
+      /** The sound-bank group id the landed blow plays (`weapon.soundtype_Hit[targetMaterial]`); absent,
+       *  the blow lands silently, as when the weapon lists no entry for that material. */
+      readonly hitSoundType?: number;
       /** The melee weapon's reach in half-cell nodes, re-checked at the hit frame: a target that stepped
        *  beyond it during the swing takes no damage. Absent means no reach check. */
       readonly maxRange?: number;
       /** Present for a ranged swing: at `hitAt` a projectile of this ammunition class and travel speed
-       *  flies at `target` instead of the blow landing in place, dealing the same `damage` on contact. */
-      readonly projectile?: { readonly munitionType: number; readonly speed: number };
+       *  flies at `target` instead of the blow landing in place, dealing the same `damage` on contact. A
+       *  shot that strikes nothing thuds by the ground's logic type through `missSounds`. */
+      readonly projectile?: {
+        readonly munitionType: number;
+        readonly speed: number;
+        readonly missSounds: Readonly<Record<string, number>>;
+      };
     }
   /** A builder's construction swing at `site`: advances the site's builder-work `labor` by one strike's
    *  quantum (`+ONE / (totalConstructionUnits · strikesPerUnit)`), clamped at ONE. No goods move here;

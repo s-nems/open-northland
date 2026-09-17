@@ -21,9 +21,31 @@ describe.runIf(hasRealIr())('decoded sound bank', () => {
     expect(missing).toEqual([]);
   });
 
-  it('carries the GUI click wavs the engine hardwires outside the bank', () => {
+  it('carries the wavs the engine hardwires outside the bank: the clicks, the chat ring, the briefing and the quake', () => {
     for (const file of Object.values(UI_CUE_FILES)) {
       expect(existsSync(resolve(contentDir(), SOUNDS_DIR, file)), file).toBe(true);
     }
+  });
+
+  it('names creature voices and weapon impacts the bank resolves', async () => {
+    const { real } = await loadContentUnderTest();
+    const groups = new Set(real.sounds.staticGroups.map((g) => g.name.toLowerCase()));
+    const ids = new Set(real.sounds.staticGroups.map((g) => g.logicSoundType));
+    expect(real.sounds.humanVoices.length).toBeGreaterThan(0);
+    expect(real.sounds.animalCalls.length).toBeGreaterThan(0);
+    const voiceGroups = real.sounds.humanVoices.flatMap((v) => [
+      ...(v.scream === undefined ? [] : [v.scream]),
+      ...(v.generic === undefined ? [] : [v.generic]),
+      ...v.respondOk,
+      ...v.respondNo,
+    ]);
+    const calls = real.sounds.animalCalls.map((c) => c.group);
+    expect([...voiceGroups, ...calls].filter((name) => !groups.has(name.toLowerCase()))).toEqual([]);
+    const weaponIds = real.weapons.flatMap((w) => [
+      ...Object.values(w.hitSounds),
+      ...Object.values(w.missSounds),
+    ]);
+    expect(weaponIds.length).toBeGreaterThan(0);
+    expect(weaponIds.filter((id) => !ids.has(id))).toEqual([]);
   });
 });

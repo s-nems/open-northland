@@ -194,11 +194,11 @@ describe('the bits the sim reads', () => {
     const shielded = only(sim, OWNER);
     const attacker = only(sim, OWNER + 1);
     const before = sim.world.get(shielded, Health).hitpoints;
-    resolveCombatHit(sim.world, ctxOf(sim), attacker, shielded, 25, undefined, [], 'melee');
+    resolveCombatHit(sim.world, ctxOf(sim), attacker, shielded, { damage: 25 }, [], 'melee');
     expect(sim.world.get(shielded, Health).hitpoints).toBe(before);
 
     const exposed = sim.world.get(attacker, Health).hitpoints;
-    resolveCombatHit(sim.world, ctxOf(sim), shielded, attacker, 25, undefined, [], 'melee');
+    resolveCombatHit(sim.world, ctxOf(sim), shielded, attacker, { damage: 25 }, [], 'melee');
     expect(sim.world.get(attacker, Health).hitpoints).toBe(exposed - 25);
   });
 

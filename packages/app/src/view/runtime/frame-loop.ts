@@ -1,6 +1,6 @@
 import type { MusicStanding } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
-import type { HudLayout, HudModel } from '@open-northland/render';
+import type { DrawItem, HudLayout, HudModel } from '@open-northland/render';
 import type { Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
@@ -73,6 +73,13 @@ export interface FrameLoopDeps {
   readonly pointer: () => { clientX: number; clientY: number } | null;
   /** Reconcile Pixi's live screen size before camera and HUD work. */
   readonly syncViewport: (nowMs: number) => void;
+}
+
+/** The entity ids of the settlers and animals in a culled draw list - both draw as the `settler` kind. */
+function drawnCreatureIds(items: readonly DrawItem[]): number[] {
+  const ids: number[] = [];
+  for (const item of items) if (item.kind === 'settler') ids.push(item.ref);
+  return ids;
 }
 
 /**
@@ -270,6 +277,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         visibleTile: fogGates.visibleTile,
         // Which mood variant of the map's music plays: our head-count and how we stand with the roster.
         standingOf: musicStanding,
+        // The idle chatter and animal calls roll over what the renderer just drew, the original's "seen"
+        // counters; read only on a frame that advanced a tick.
+        drawnCreatures: () => drawnCreatureIds(renderer.drawnItems()),
       });
     }
     const cpuMs = performance.now() - cpu0;

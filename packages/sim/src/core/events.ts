@@ -66,12 +66,14 @@ export type SimEvent =
     }
   | {
       /**
-       * Two settlers became spouses this tick. `at` is the kiss node, for the marriage jingle
-       * (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`, `logicdefines.inc`).
+       * Two settlers became spouses this tick. `at` is the kiss node and `player` the couple's owner
+       * (`null` for an unowned pair), for the marriage jingle (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`,
+       * `logicdefines.inc`), which rings for the owner alone.
        */
       readonly kind: 'settlersMarried';
       readonly a: Entity;
       readonly b: Entity;
+      readonly player: number | null;
       readonly at: HalfCellNode;
     }
   | {
@@ -128,12 +130,15 @@ export type SimEvent =
        * A melee blow connected this tick; a swing that struck air emits nothing. `at` is the victim's
        * node, `weaponMainType` the striker's weapon class (1 fist / 2 spear / 3 sword / 4 saber / 5 axe,
        * `WEAPON_MAIN_TYPE_*`) or `undefined` when the weapon lists no class, and `structure` marks a blow
-       * that landed on a building rather than a body.
+       * that landed on a building rather than a body. `soundType` is the sound bank's `logicSoundType`
+       * of the impact the weapon lists for the victim's armor material (`soundtype_Hit`); a weapon listing
+       * none lands silently.
        */
       readonly kind: 'combatHit';
       readonly attacker: Entity;
       readonly target: Entity;
       readonly weaponMainType?: number;
+      readonly soundType?: number;
       readonly structure?: boolean;
       readonly at: HalfCellNode;
     }
@@ -181,27 +186,31 @@ export type SimEvent =
   | {
       /**
        * A projectile reached `target` at `at` and dealt its damage; the projectile entity is destroyed
-       * the same tick. `structure` marks a shot that struck a building rather than a body. A projectile
-       * whose target died mid-flight expires silently.
+       * the same tick. `structure` marks a shot that struck a building rather than a body, and
+       * `soundType` names the impact as on `combatHit`. A projectile whose target died mid-flight expires
+       * silently.
        */
       readonly kind: 'projectileHit';
       readonly projectile: Entity;
       readonly shooter: Entity;
       readonly target: Entity;
       readonly munitionType: number;
+      readonly soundType?: number;
       readonly structure?: boolean;
       readonly at: HalfCellNode;
     }
   | {
       /**
        * A shot reached its frozen aim point `at` without striking anything and is destroyed the same
-       * tick. The no-hit cue hook (`weapons.ini` carries per-terrain `soundtype_NoHit` tables); a silent
-       * expiry, when the target died mid-flight, announces nothing.
+       * tick. `missSounds` is the weapon's `soundtype_NoHit` table, the thud's `logicSoundType` per
+       * ground logic type (1 water, 2 land, ...); the consumer picks the ground's entry, since the sim
+       * navigates terrain classes and never sees the landscape under a node. Empty for a weapon listing none.
        */
       readonly kind: 'projectileMissed';
       readonly projectile: Entity;
       readonly shooter: Entity;
       readonly munitionType: number;
+      readonly missSounds: Readonly<Record<string, number>>;
       readonly at: HalfCellNode;
     }
   | {

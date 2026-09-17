@@ -27,7 +27,7 @@ describe('eventNode', () => {
   });
 
   it.each<[string, SimEvent]>([
-    ['settlersMarried', { kind: 'settlersMarried', a: e(1), b: e(2), at: { hx: 3, hy: 4 } }],
+    ['settlersMarried', { kind: 'settlersMarried', a: e(1), b: e(2), player: 0, at: { hx: 3, hy: 4 } }],
     ['resourceMined', { kind: 'resourceMined', node: e(1), goodType: 2, at: { hx: 5, hy: 6 } }],
     ['berryForaged', { kind: 'berryForaged', bush: e(1), at: { hx: 7, hy: 8 } }],
   ])('locates %s by its node - none of these carries an `entity` to fall back on', (_kind, ev) => {

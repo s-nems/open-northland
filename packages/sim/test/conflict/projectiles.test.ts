@@ -32,6 +32,7 @@ const BOW_MAX = 20; // maximumrange
 const BOW_LEN = 12; // the draw animation's length
 const RELEASE_FRAME = 6; // the ATTACK event frame (the arrow is loosed here, mid-draw)
 const BOW_DAMAGE = 30; // damage vs an unarmored (class-0) target
+const BOW_HIT_SOUND = 77; // `soundtype_Hit 0`: the arrow's impact group id on a bare target
 const TARGET_HP = 1000; // high enough that one 30-dmg hit leaves the target alive (Health stays present)
 
 /** Tiles a `BOW_SPEED` projectile advances per tick - the calibration mapping applied to `speed`. With
@@ -64,6 +65,7 @@ function content(): ContentSet {
         minRange: BOW_MIN,
         maxRange: BOW_MAX,
         damage: { '0': BOW_DAMAGE },
+        hitSounds: { '0': BOW_HIT_SOUND },
       },
     ],
     tribes: [
@@ -206,16 +208,17 @@ describe('projectiles - homing flight + on-contact damage', () => {
 
     // Fly it until the blow lands (the target loses health), capturing the impact event and tick.
     let hitTick = -1;
-    let sawHitEvent = false;
+    let hitEvent: { soundType?: number } | undefined;
     for (let i = 0; i < 30 && sim.world.get(target, Health).hitpoints === TARGET_HP; i++) {
       sim.step();
-      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileHit')) sawHitEvent = true;
+      hitEvent ??= sim.snapshot().events.find((ev) => ev.kind === 'projectileHit');
       if (sim.world.get(target, Health).hitpoints < TARGET_HP) hitTick = sim.tick;
     }
 
     expect(hitTick).toBeGreaterThan(launchTick + 1); // the arrow spent several ticks in flight - not instant
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // step-1 column damage landed
-    expect(sawHitEvent).toBe(true); // a projectileHit was announced for render/audio
+    // A projectileHit was announced for render/audio, carrying the impact the bow lists for a bare target.
+    expect(hitEvent?.soundType).toBe(BOW_HIT_SOUND);
     expect(projectiles(sim)).toHaveLength(0); // the spent arrow was destroyed on impact
   });
 });

@@ -26,13 +26,20 @@ function attack(
   target: Entity,
   damage: number,
   weaponMainType?: number,
+  hitSoundType?: number,
 ): void {
   sim.world.add(attacker, CurrentAtomic, {
     atomicId: 81,
     elapsed: 0,
     progress: fx.fromInt(0),
     duration: 1,
-    effect: { kind: 'attack', target, damage, ...(weaponMainType !== undefined ? { weaponMainType } : {}) },
+    effect: {
+      kind: 'attack',
+      target,
+      damage,
+      ...(weaponMainType !== undefined ? { weaponMainType } : {}),
+      ...(hitSoundType !== undefined ? { hitSoundType } : {}),
+    },
     targetEntity: target,
     targetTile: null,
   });
@@ -57,6 +64,27 @@ describe('combatHit - a landed melee blow', () => {
       weaponMainType: 3,
       at: eventAt(fx.fromInt(7), fx.fromInt(5)),
     });
+  });
+
+  it('carries the weapon`s impact sound id when the swing resolved one, and none when it did not', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create();
+    sim.world.add(target, Position, { x: fx.fromInt(7), y: fx.fromInt(5) });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    attack(sim, attacker, target, 100, 3, 82); // the sword's `soundtype_Hit` for the victim's material
+    sim.step();
+    expect(sim.snapshot().events.filter((ev) => ev.kind === 'combatHit')[0]).toMatchObject({ soundType: 82 });
+
+    const silent = new Simulation({ seed: 1, content: testContent() });
+    const fist = silent.world.create();
+    const victim = silent.world.create();
+    silent.world.add(victim, Position, { x: fx.fromInt(7), y: fx.fromInt(5) });
+    silent.world.add(victim, Health, { hitpoints: 500, max: 500 });
+    attack(silent, fist, victim, 100); // a weapon listing no impact for this material lands silently
+    silent.step();
+    const hit = silent.snapshot().events.find((ev) => ev.kind === 'combatHit');
+    expect(hit !== undefined && 'soundType' in hit).toBe(false);
   });
 
   it('emits NO combatHit when the swing strikes air (target has no Health - a miss)', () => {

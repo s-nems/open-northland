@@ -45,19 +45,25 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
   return animations;
 }
 
+/** A `<key> <index> <value>` table (`damagevalue 2 300`) as an index-keyed record; a malformed line is
+ *  skipped. */
+function indexedInts(sec: RuleSection, key: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of findProps(sec, key)) {
+    const index = Number.parseInt(p.values[0] ?? '', 10);
+    const value = Number.parseInt(p.values[1] ?? '', 10);
+    if (Number.isNaN(index) || Number.isNaN(value)) continue;
+    out[String(index)] = value;
+  }
+  return out;
+}
+
 export function extractWeapons(sections: readonly RuleSection[], src: SourceRef): WeaponType[] {
   const weapons: WeaponType[] = [];
   for (const sec of sections) {
     if (sec.name !== 'weapontype') continue;
     const typeId = requireTypeId(sec, 'weapontype', src);
     const name = getStr(sec, 'name');
-    const damage: Record<string, number> = {};
-    for (const p of findProps(sec, 'damagevalue')) {
-      const armorClass = Number.parseInt(p.values[0] ?? '', 10);
-      const value = Number.parseInt(p.values[1] ?? '', 10);
-      if (Number.isNaN(armorClass) || Number.isNaN(value)) continue;
-      damage[String(armorClass)] = value;
-    }
     const goodTypeRaw = getInt(sec, 'goodtype');
     weapons.push(
       WeaponType.parse({
@@ -72,7 +78,9 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         damageType: getInt(sec, 'damagetype'),
         minRange: getInt(sec, 'minimumrange'),
         maxRange: getInt(sec, 'maximumrange'),
-        damage,
+        damage: indexedInts(sec, 'damagevalue'),
+        hitSounds: indexedInts(sec, 'soundtype_Hit'),
+        missSounds: indexedInts(sec, 'soundtype_NoHit'),
         jobType: getInt(sec, 'jobtype'),
         goodType: goodTypeRaw === 0 ? undefined : goodTypeRaw,
         source: makeSource(src, 'weapontype'),

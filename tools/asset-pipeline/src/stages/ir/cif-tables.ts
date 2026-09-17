@@ -1,5 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { cifBytesToSections, type RuleSection, type SourceRef } from '../../decoders/ini.js';
+import {
+  cifBytesToSections,
+  iniBytesToSections,
+  type RuleSection,
+  type SourceRef,
+} from '../../decoders/ini.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
@@ -13,8 +18,27 @@ export async function loadCifTable<T>(
   extract: (sections: RuleSection[], src: SourceRef) => T,
   fallback: T,
 ): Promise<T> {
+  return loadRuleTable(roots, relFile, cifBytesToSections, extract, fallback);
+}
+
+/** {@link loadCifTable} for a table the mod ships as readable `.ini` text instead. */
+export async function loadIniTable<T>(
+  roots: SourceRoots,
+  relFile: string,
+  extract: (sections: RuleSection[], src: SourceRef) => T,
+  fallback: T,
+): Promise<T> {
+  return loadRuleTable(roots, relFile, iniBytesToSections, extract, fallback);
+}
+
+async function loadRuleTable<T>(
+  roots: SourceRoots,
+  relFile: string,
+  toSections: (bytes: Uint8Array) => RuleSection[],
+  extract: (sections: RuleSection[], src: SourceRef) => T,
+  fallback: T,
+): Promise<T> {
   const path = await resolveSourceFile(roots, relFile);
   if (path === undefined) return fallback;
-  const sections = cifBytesToSections(await readFile(path));
-  return extract(sections, { file: relFile, layer: 'base' });
+  return extract(toSections(await readFile(path)), { file: relFile, layer: 'base' });
 }

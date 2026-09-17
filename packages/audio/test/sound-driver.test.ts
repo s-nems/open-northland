@@ -1,3 +1,4 @@
+import type { HumanVoices, VoiceClass } from '@open-northland/data';
 import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -14,15 +15,27 @@ import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
 /** The SocialTalk pair's `logicSoundType` ids (`soundfx.cif`) - what a talk clip's voice cue names. */
 const SOCIALTALK_MALE = 61;
 
+const VIKING_MAN: HumanVoices = {
+  tribe: 1,
+  voiceClass: 'male',
+  generic: 'Generic Viking Male',
+  respondOk: ['Viking male ok 01'],
+  respondNo: [],
+};
 const index: SoundIndex = {
   groupsByName: new Map([
     ['hammer wood', ['static/hammer01.wav']],
     ['socialtalk male', ['voice/male_social.wav']],
+    ['viking male ok 01', ['humantalk/m1ok01.wav']],
+    ['generic viking male', ['generic/m 01.wav']],
   ]),
   groupsByLogicSoundType: new Map([[SOCIALTALK_MALE, ['voice/male_social.wav']]]),
   jinglesByMusicType: new Map([[26, ['jingles/jingles_housebuilt.wav']]]),
   ambientLoopByName: new Map([['Meadow Green', 'ambient/meadow1.wav']]),
   ambientByTerrainType: new Map([[1, ['Meadow Green']]]),
+  groundLogicTypeByTerrainType: new Map(),
+  humanVoices: new Map([[1, new Map<VoiceClass, HumanVoices>([['male', VIKING_MAN]])]]),
+  animalCalls: new Map(),
 };
 
 const CANVAS_W = 800;
@@ -38,7 +51,15 @@ const camera: Camera = {
 const snapshot: WorldSnapshot = {
   tick: 1,
   entities: [
-    { id: 3, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 0 } } },
+    {
+      id: 3,
+      components: {
+        Position: { x: 5 * ONE, y: 5 * ONE },
+        Settler: { tribe: 1, jobType: 0 },
+        Person: { person: true },
+        Owner: { player: 0 },
+      },
+    },
     { id: 7, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Building: {} } },
   ],
   events: [],
@@ -128,6 +149,39 @@ describe('SoundDriver', () => {
     driver.update({ ...baseInput, events, visibleTile: () => false });
     await flush();
     expect(fetched).toHaveLength(0);
+  });
+
+  it('answers an ordered settler on the next frame, in its own voice', async () => {
+    const { driver, fetched } = makeDriver();
+    await driver.resume();
+    driver.respond(3);
+    driver.respond(99); // gone from the snapshot: nothing to answer with
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(fetched).toEqual(['/sounds/humantalk/m1ok01.wav']);
+    // Answered once: the next frame carries no pending order.
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(fetched).toHaveLength(1);
+  });
+
+  it('rolls the idle chatter over the drawn creatures once per game tick the frame advanced', async () => {
+    const { driver, fetched } = makeDriver(); // random 0: every roll wins
+    await driver.resume();
+    const drawnCreatures = () => [3];
+    driver.update({ ...baseInput, events: [], localPlayer: 0, drawnCreatures }); // the first frame sets the clock
+    driver.update({ ...baseInput, events: [], localPlayer: 0, drawnCreatures }); // same tick: no roll
+    await flush();
+    expect(fetched).toHaveLength(0);
+    driver.update({
+      ...baseInput,
+      snapshot: { ...snapshot, tick: 2 },
+      events: [],
+      localPlayer: 0,
+      drawnCreatures,
+    });
+    await flush();
+    expect(fetched).toEqual(['/sounds/generic/m 01.wav']);
   });
 
   it('plays the map music, then hands over to its Danger variant once we are struck', async () => {
