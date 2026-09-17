@@ -185,9 +185,9 @@ export function planNeeds(
       );
       return true;
     }
-    // Hungry with no reachable food: fall through to work while hunger stays clamped at ONE and the
-    // starvation bite drains the pool until food appears.
-    topUpUnservedNeedForAi(world, e, 'hunger');
+    // Hungry with no reachable food: fall through to work while hunger climbs to ONE and the
+    // starvation bite drains the pool until food appears - or, on a computer seat, until the needs
+    // system's minute refill answers the bar.
   }
 
   if (pressing(settler.fatigue, ordered, 'fatigue')) {
@@ -243,20 +243,21 @@ export function planNeeds(
       return true;
     }
     // No temple reachable: fall through to work with piety pinned at ONE.
-    topUpUnservedNeedForAi(world, e, 'piety');
+    topUpUnservedPietyForAi(world, e);
   }
 
   return false;
 }
 
 /**
- * A computer seat's answer to a need its settlement cannot serve: the bar goes back to the level a served
- * need sits at instead of pinning, so a walled-off larder cannot starve a whole AI settlement. A human
- * player's settlers take the consequences instead. Approximation: no readable source states the rule.
+ * A computer seat's answer to a prayer its settlement cannot serve: the bar goes back to the level a
+ * served need sits at instead of pinning. A human player's settlers take the consequences instead.
+ * Approximation: no readable source states the rule; the original's minute refill (the needs system)
+ * covers food and stamina only.
  */
-function topUpUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'piety'): void {
-  if (world.get(e, Settler)[need] <= NEED_SATED_THRESHOLD) return;
+function topUpUnservedPietyForAi(world: World, e: Entity): void {
+  if (world.get(e, Settler).piety <= NEED_SATED_THRESHOLD) return;
   const player = ownerOf(world, e);
   if (player === undefined || !isAiPlayer(world, player)) return;
-  world.mut(e, Settler)[need] = NEED_SATED_THRESHOLD;
+  world.mut(e, Settler).piety = NEED_SATED_THRESHOLD;
 }

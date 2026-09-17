@@ -1,21 +1,30 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   Age,
+  AiPlayer,
   Health,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   needsEnabled,
+  ownerOf,
   Person,
   Settler,
   type SettlerView,
 } from '../../../components/index.js';
-import { type Fixed, ONE } from '../../../core/fixed.js';
+import { type Fixed, ONE, ZERO } from '../../../core/fixed.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { System, SystemContext } from '../../context.js';
 import { tryDeathSaveDraught } from '../../equipment/index.js';
 import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
-import { applyNeedUnits, NEED_DRAIN_UNITS_PER_TICK, NEED_RESERVE_UNITS, needBar } from './scale.js';
+import {
+  applyNeedUnits,
+  NEED_CRITICAL_THRESHOLD,
+  NEED_DRAIN_UNITS_PER_TICK,
+  NEED_RESERVE_UNITS,
+  needBar,
+} from './scale.js';
 
 /** The spread of a settler's starting deficit, half a bar, so a map opens with varied satisfaction instead
  *  of everyone identically full. Authored: per-settler starting needs are below the readable data. */
@@ -73,11 +82,51 @@ function poolStepAt(max: number, span: number, tick: number): number {
  */
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
+  const refilling = seatRefillingAt(world, ctx.tick);
   for (const e of world.query(Person)) {
+    if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, e);
     const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);
   }
 };
+
+/**
+ * Ticks between one computer seat's refills. Byte evidence: the original's per-seat AI handler takes a
+ * turn every 60 ticks and on every twelfth turn writes a full bar over every food and stamina bar of
+ * the seat's humans that has dropped below the critical mark (the the original's
+ * `an original routine` and its `an original routine`). The
+ * handler runs for a seat of the computer player type only, so a human seat's settlers can starve
+ * where a computer's never do; a bar sits below the drive mark for at most the minute before its turn.
+ */
+export const AI_NEED_REFILL_TICKS = 60 * TICKS_PER_SECOND;
+
+/** Ticks between the turns of consecutive seats: the handlers' round-robin spreads the 20 seats over
+ *  60 ticks, so seat `p` takes its turn on tick `3p` of the minute. */
+const AI_SEAT_TURN_TICKS = 3;
+
+/** The computer seat whose refill lands on `tick`, or null on a tick that is no seat's. */
+function seatRefillingAt(world: World, tick: number): number | null {
+  const turn = tick % AI_NEED_REFILL_TICKS;
+  if (turn % AI_SEAT_TURN_TICKS !== 0) return null;
+  const player = turn / AI_SEAT_TURN_TICKS;
+  for (const e of world.query(AiPlayer)) {
+    if (world.get(e, AiPlayer).player === player) return player;
+  }
+  return null;
+}
+
+/** The refill itself: hunger and fatigue only, written over whatever gate would otherwise hold the
+ *  bar, as the original writes the fields directly. Company and piety are left to fall. */
+function refillCriticalNeeds(world: World, e: Entity): void {
+  const settler = world.tryGet(e, Settler);
+  if (settler === undefined) return;
+  const hungry = settler.hunger > NEED_CRITICAL_THRESHOLD;
+  const tired = settler.fatigue > NEED_CRITICAL_THRESHOLD;
+  if (!hungry && !tired) return;
+  const s = world.mut(e, Settler);
+  if (hungry) s.hunger = ZERO;
+  if (tired) s.fatigue = ZERO;
+}
 
 /** Whether `e`'s bars move at all - the one gate the drain and the clip events share. */
 export function carriesNeeds(world: World, content: ContentSet, e: Entity): boolean {
