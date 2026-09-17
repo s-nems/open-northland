@@ -131,11 +131,10 @@ export const MapAiModule = z.enum([
 export type MapAiModule = z.infer<typeof MapAiModule>;
 
 /**
- * One player's `[AIData]` toggles. The engine runs two handlers per computer seat: the scripted one
- * (authored tasks and conditions, and the minute refill of its humans' food and stamina) and the
- * strategic one behind the modules. `AI_Disable` stops both, `HAI_Disable` only the strategic modules.
- * The corpus authors only those two blanket forms; the indexed `HAI_DisableHouseBuild <player> <n>`
- * and `HAI_DisableHouseUpgrade <player> <n>` lines are not read.
+ * One player's `[AIData]` toggles (`docs/formats/MISSIONS.md`, AI data): `AI_Disable` stops both of
+ * the seat's AI handlers, `HAI_Disable` only the strategic modules. The corpus authors only those two
+ * blanket forms; the indexed `HAI_DisableHouseBuild <player> <n>` and `HAI_DisableHouseUpgrade
+ * <player> <n>` lines are not read.
  */
 export const MapAiSeat = z.strictObject({
   player: z.number().int().nonnegative(),

@@ -33,11 +33,10 @@ export { WAVE_GATHER_TICKS } from './plan.js';
  * ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates takes the rest of it, and the
  * campaign gets what neither claimed.
  *
- * The home half runs with the module off too. The original's `HAI_DisableMilitary` reaches only its
- * strategic handler; the scripted handler every computer seat runs mans the towers and answers an
- * attack on its own (byte evidence: the the original's `an original routine` calling
- * `an original routine` and `an original routine`). The shape and radii of the defence here are
- * approximations.
+ * The home half runs with the module off too: the original's scripted handler, which the map toggles
+ * do not reach, mans the towers and answers an attack (byte evidence: the the original's
+ * `an original routine` calling `an original routine` and `an original routine`).
+ * The shape and radii of the defence here are approximations.
  */
 function runMilitary(
   world: World,

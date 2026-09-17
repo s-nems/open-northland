@@ -340,7 +340,13 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     // Provenance names the section the payload actually came from, not a fixed `playerdata`.
     source: makeSource(
       src,
-      playerLines > 0 ? 'playerdata' : missions.length > 0 ? 'MissionData' : 'multiplayer',
+      playerLines > 0
+        ? 'playerdata'
+        : missions.length > 0
+          ? 'MissionData'
+          : ai.length > 0
+            ? 'AIData'
+            : 'multiplayer',
     ),
   });
 }

@@ -91,12 +91,12 @@ export const needsSystem: System = (world, ctx) => {
 };
 
 /**
- * Ticks between one computer seat's refills. Byte evidence: the original's per-seat AI handler takes a
- * turn every 60 ticks and on every twelfth turn writes a full bar over every food and stamina bar of
- * the seat's humans that has dropped below the critical mark (the the original's
- * `an original routine` and its `an original routine`). The
- * handler runs for a seat of the computer player type only, so a human seat's settlers can starve
- * where a computer's never do; a bar sits below the drive mark for at most the minute before its turn.
+ * Ticks between one computer seat's refills. Byte evidence: the original's per-seat scripted AI handler
+ * takes a turn every 60 ticks and on every twelfth turn writes a full bar over every food and stamina
+ * bar of the seat's humans that has dropped below the critical mark (the the original's
+ * `an original routine` and its `an original routine`); that
+ * handler runs for a seat of the computer player type only. A bar sits below the critical mark for at
+ * most the minute before its seat's turn.
  */
 export const AI_NEED_REFILL_TICKS = 60 * TICKS_PER_SECOND;
 

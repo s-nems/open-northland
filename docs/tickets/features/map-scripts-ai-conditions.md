@@ -7,8 +7,8 @@ garrison standing still where the original's scripted handler creates three sold
 of external flag 2, marches on a besieger's base under `AI_MainTask_Attack`, and holds the
 `AI_MainTask_Defend` posts. `SetExternalFlag` already lands in `components/ai-flags.ts`, unread, and
 the seat toggles of the section are imported (`MapAiSeat`); the task and condition lines are dropped
-by `extractMapScript`. Eleven mod maps author the program, 234 `CreateCreatures` and 163 `Defend`
-tasks among them.
+by `extractMapScript`. 91 mod maps author the program: 962 `Defend`, 237 `CreateCreatures` and 41
+`Attack` tasks among them.
 
 ## Scope
 

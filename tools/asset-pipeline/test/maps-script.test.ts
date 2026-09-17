@@ -34,6 +34,8 @@ describe('resolveMapScript', () => {
         '[MissionData]\ndebuginfo "Win"\ndescription 30\ngoal "PlayerDied" 1\nresult "MissionWon" 0\n' +
         '[MissionData]\ndebuginfo "Untexted"\ndescription 31\ngoal "True"\n',
     );
+    // The loose maps keep their seat toggles in ai.inc (cn_1's include order: mission, ai, player, misc).
+    await writeFile(join(dir, 'ai.inc'), '[aidata]\nHAI_Disable 1\n');
     const script = await resolveMapScript(dir, 'x/map.dat', undefined, {
       30: 'Defeat the Franks',
       50: 'Ragnar',
@@ -46,7 +48,10 @@ describe('resolveMapScript', () => {
     expect(script?.missions).toHaveLength(3);
     // `-1` and an id the table lacks stay textless; a resolvable id carries its goal text.
     expect(script?.missions.map((m) => m.description)).toEqual([undefined, 'Defeat the Franks', undefined]);
-    expect(script?.source?.file).toBe('x/player.inc+mission.inc');
+    expect(script?.ai.map((row) => [row.player, row.disabled, row.strategicOff.length])).toEqual([
+      [1, false, 7],
+    ]);
+    expect(script?.source?.file).toBe('x/player.inc+mission.inc+ai.inc');
   });
 
   it('keeps the roster nameless without a string table and yields undefined with no sources', async () => {

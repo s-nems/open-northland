@@ -15,6 +15,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, positionOfNode, Rng, Simulation, type TerrainMap } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
+  AI_DECISION_INTERVAL_TICKS,
   militaryModule,
   THREAT_STAND_DOWN_MARGIN_NODES,
   TOWER_GARRISON_ARCHERS,
@@ -343,6 +344,15 @@ describe('ai defence - the alarm', () => {
     expect(postings(commands).every((p) => p.building === tower)).toBe(true);
     expect(postings(commands)).toHaveLength(TOWER_GARRISON_ARCHERS);
     expect(attackMoves(commands).map((m) => m.entity)).toEqual(band);
+
+    // The live seat dispatches that half: its first decision lands the postings in the log.
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, modules: { military: false } });
+    sim.run(AI_DECISION_INTERVAL_TICKS + 1);
+    const logged = sim.commands.log.filter((entry) => entry.origin === 'ai' && entry.player === SEAT);
+    expect(logged.filter((entry) => entry.command.kind === 'assignWorker')).toHaveLength(
+      TOWER_GARRISON_ARCHERS,
+    );
+    expect(logged.some((entry) => entry.command.kind === 'setDefenceMode')).toBe(true);
   });
 
   it('keeps marching while a raider it cannot walk to holds the alarm up', () => {

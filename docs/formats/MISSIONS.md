@@ -501,32 +501,35 @@ loader and tick unless marked otherwise:
   `HAI_Disable{CollectResources,GuideBuild,HomeExpansion,HouseBuild,HouseUpgrade,Military,RoadBuild}`
   one module each (the house build and upgrade forms take a category index below 8). This build maps
   the blanket forms and the five un-indexed module forms onto the strategic AI's module enables
-  (`MapAiSeat` in the script sidecar); the corpus authors only `HAI_Disable` and `AI_Disable`. The
-  monster-tribe rule is not applied.
+  (`MapAiSeat` in the script sidecar); the corpus authors only `HAI_Disable` (339 lines) and
+  `AI_Disable` (115). The monster-tribe rule is not applied.
 
 The rest of the section is the authored program, which this build does not run. Corpus counts are
-over the 11 mod maps that author it. Positions are map points. Where a field is called a player by
-its use, the corpus also writes 20, one past the last seat, seemingly for any player:
+over the 121 mod maps that carry the section (91 author a program; `//` comment lines occur).
+Positions are map points. Where a field is called a player by its use, the corpus also writes 20,
+one past the last seat, seemingly for any player:
 
 | Line | Uses | Parameters after `<player>` |
 | --- | --- | --- |
-| `AI_UnitLimit` | 16 | `<n>` (`AI_MaxUnitLimit` likewise, unused) |
-| `AI_SoldiersDefaultPosition` | 33 | `<x> <y> <range>` |
-| `AI_MainTask_Defend` | 163 | `<priority> <condition> <x> <y> <a> <b> <c>` (the corpus authors `40 5 10` or `40 2 3`) |
-| `AI_MainTask_Attack` | 27 | `<priority> <condition> <x> <y> <a> <b> <c> <x2> <y2> <d>` |
-| `AI_MainTask_CreateCreatures` | 234 | `<priority> <condition> <tribe> <job> <x> <y> <a> <count> <once>`: `count` humans of `tribe`/`job` at the point with behaviour mask 0, on every task recheck that finds the condition active, once only with `once` |
-| `AI_MainTask_BuildHouse`, `ChangeDiplomacy`, `SelfDestroyPlayer`, `ClearTributes`, `BuildMilestone` | 0 | one-shot tasks; `SelfDestroyPlayer` frees every human of the seat |
-| `AI_SetCondition_True` | 0 | `<slot>` |
-| `AI_SetCondition_OnTime` | 0 | `<slot> <minutes>` (stored as `720 * minutes` ticks) |
-| `AI_SetCondition_OnConditions` | 138 | `<slot> <flag> <mode> <slot>...` up to ten slots; the corpus uses mode 1 over several slots and mode 3 over one (all-of and not, by their use; the combinator table is unread) |
+| `AI_UnitLimit`, `AI_MaxUnitLimit` | 280, 39 | `<n>` |
+| `AI_SoldiersDefaultPosition` | 248 | `<x> <y> <range>` |
+| `AI_MainTask_Defend` | 962 | `<priority> <condition> <x> <y> <a> <b> <c>` (the corpus authors `40 5 10` or `40 2 3`) |
+| `AI_MainTask_Attack` | 41 | `<priority> <condition> <x> <y> <a> <b> <c> <x2> <y2> <d>` |
+| `AI_MainTask_CreateCreatures` | 237 | `<priority> <condition> <tribe> <job> <x> <y> <a> <count> <once>`: `count` humans of `tribe`/`job` at the point with behaviour mask 0, on every task recheck that finds the condition active, once only with `once` |
+| `AI_MainTask_BuildHouse`, `ChangeDiplomacy`, `SelfDestroyPlayer` | 0 | one-shot tasks; `SelfDestroyPlayer` frees every human of the seat |
+| `AI_MainTask_ClearTributes`, `BuildMilestone`, `AI_AddTribute`, `AI_SetTributeHireling` | 0 | in the token table, but the loader reads none of them |
+| `AI_SetCondition_True` | 22 | `<slot>` |
+| `AI_SetCondition_OnTime` | 1 | `<slot> <minutes>` (stored as `720 * minutes` ticks) |
+| `AI_SetCondition_OnConditions` | 232 | `<slot> <flag> <mode> <slot>...` up to ten slots; the corpus uses mode 1 over several slots and mode 3 over one (all-of and not, by their use; the combinator table is unread) |
 | `AI_SetCondition_OnConditionChangeDelayed` | 1 | `<slot> <flag> <slot> <bool> <seconds>` (stored as `12 * seconds` ticks) |
-| `AI_SetCondition_OnCreatureInRange` | 14 | `<slot> <flag> <x> <y> <range> <player> <bool> <bool>` (player by use) |
-| `AI_SetCondition_OnHouseInRange` | 62 | `<slot> <flag> <x> <y> <range> <player> <bool> <houseType> <bool>` (player by use) |
+| `AI_SetCondition_OnDiplomacyChange` | 0 | `<slot> <flag> <a> <b> <c>` |
+| `AI_SetCondition_OnCreatureInRange` | 59 | `<slot> <flag> <x> <y> <range> <player> <bool> <bool>` (player by use) |
+| `AI_SetCondition_OnHouseInRange` | 314 | `<slot> <flag> <x> <y> <range> <player> <bool> <houseType> <bool>` (player by use) |
 | `AI_SetCondition_OnPlayerSeen` | 0 | `<slot> <flag> <player> <player>` |
 | `AI_SetCondition_OnPlayerDead` | 0 | `<slot> <player>` |
-| `AI_SetCondition_OnNumberOfSoldiers` | 46 | `<slot> <flag> <n> <player>` (player by use) |
-| `AI_SetCondition_OnExternal` | 31 | `<slot> <bool>`: the slot `SetExternalFlag` writes |
-| `AI_SetCondition_OnTimer` | 8 | `<slot> <a> <b> <c>` |
+| `AI_SetCondition_OnNumberOfSoldiers` | 143 | `<slot> <flag> <n> <player>` (player by use) |
+| `AI_SetCondition_OnExternal` | 36 | `<slot> <bool>`: the slot `SetExternalFlag` writes |
+| `AI_SetCondition_OnTimer` | 13 | `<slot> <a> <b> <c>` |
 
 Tasks are rechecked on the handler's first turn and on every turn a condition changed. A task
 whose condition slot is active gets its priority (slot 100000 is always active, 100001 never, and

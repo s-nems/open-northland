@@ -8,11 +8,12 @@ import { findPathCaseInsensitive } from '../../roots.js';
 /**
  * The plaintext script files an unpacked map folder ships: `player.inc` usually carries
  * `[playerdata]`/`[playermisc]`/`[multiplayer]`, `mission.inc` the repeated `[MissionData]` triggers,
- * while `misc.inc` and `map.ini` sometimes host those sections instead of `#include`ing the others.
- * The order matches the maps' `map.ini` include order: a few maps author `[multiplayer]` in two files
- * with differing `playeroption` rows, and keeping the first row per slot is a named approximation.
+ * `ai.inc` the `[aidata]` seat toggles, while `misc.inc` and `map.ini` sometimes host those sections
+ * instead of `#include`ing the others. The order matches the maps' `map.ini` include order: a few
+ * maps author `[multiplayer]` in two files with differing `playeroption` rows, and keeping the first
+ * row per slot is a named approximation.
  */
-const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'misc.inc', 'map.ini'] as const;
+const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'ai.inc', 'misc.inc', 'map.ini'] as const;
 
 /**
  * Resolves one map folder's player roster, diplomacy and mission triggers: the already-decoded sibling
