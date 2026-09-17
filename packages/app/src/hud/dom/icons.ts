@@ -25,6 +25,11 @@ export const GLYPH = {
 export const RESIDENTS_TOKEN =
   '<svg aria-hidden="true" class="on-token on-action__art" fill="url(#on-pawn-wood)"><use href="#on-pawns"/></svg>';
 
+/** The game-menu medallion art: the painted door, or the line glyph while the pack is unpublished. */
+export function menuArt(size: number): string {
+  return uiFoundationArt() === null ? GLYPH.menu : paintedIcon('menu', size);
+}
+
 /** One painted cell of the delivered icon atlas in a `size` px box; an empty box while the pack is
  *  unpublished or the name is not in the atlas. */
 export function paintedIcon(name: string, size: number): string {

@@ -486,17 +486,16 @@ button.medallion:hover {
   color: var(--text-hi);
 }
 .menu {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   margin-left: 4px;
 }
-.menu svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
+.menu .painted {
+  width: 34px;
+  height: 34px;
+  background-image: url(./nordic-menu-v1.png);
+  background-size: 200% 200%;
+  background-position: 0% 100%;
 }
 
 /* ---------- notifications: frameless cards down the left edge ---------- */

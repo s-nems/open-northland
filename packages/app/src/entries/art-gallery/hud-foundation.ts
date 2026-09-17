@@ -1,6 +1,6 @@
 import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
 import foundationCss from '../../hud/dom/foundation.css?inline';
-import { GLYPH, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
+import { GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
 import { createHudPlane } from '../../hud/dom/root.js';
 import { WINDOW_ORNAMENTS } from '../../hud/dom/symbols.js';
 import { MAX_UI_SCALE_BASE, MIN_UI_SCALE, UI_SCALE_FACTOR_MAX } from '../../hud/ui-scale.js';
@@ -11,6 +11,8 @@ const BOARD_WIDTH = 1280;
 const BOARD_HEIGHT = 720;
 const ACTION_ART_PX = 50;
 const TITLE_ART_PX = 43;
+const MENU_MEDALLION_PX = 40;
+const MENU_ART_PX = 34;
 const SCALE_STEP = 0.05;
 
 const ACTIONS: readonly (readonly [icon: string | null, label: string])[] = [
@@ -47,7 +49,7 @@ function boardMarkup(): string {
 <div class="on-bar on-bar--right on-panel" style="position:absolute;top:0;right:0;display:flex;z-index:30">
   <time class="on-clock">01:24:08</time>
   <div class="on-speed" role="toolbar" aria-label="Tempo symulacji"><button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button><button type="button" aria-pressed="true">×1</button><button type="button" aria-pressed="false">×3</button></div>
-  <button type="button" class="on-medallion" style="width:32px;height:32px;margin-left:4px" aria-label="Menu gry">${GLYPH.menu}</button>
+  <button type="button" class="on-medallion" style="width:${MENU_MEDALLION_PX}px;height:${MENU_MEDALLION_PX}px;margin-left:4px" aria-label="Menu gry">${menuArt(MENU_ART_PX)}</button>
 </div>
 <aside style="position:absolute;top:18px;left:10px;width:198px">
   <div style="display:flex;align-items:center;gap:10px;padding:0 0 10px 2px">

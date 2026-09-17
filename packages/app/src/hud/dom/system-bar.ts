@@ -1,8 +1,9 @@
 import { formatMessage, messages } from '../../i18n/index.js';
 import { GAME_SPEED_STATES, type GameSpeedControl, type RunningGameSpeed } from '../tool-panel/game-speed.js';
-import { GLYPH } from './icons.js';
+import { menuArt } from './icons.js';
 
-const MENU_MEDALLION_PX = 32;
+const MENU_MEDALLION_PX = 40;
+const MENU_ART_PX = 34;
 
 export interface HudSystemBarDeps {
   readonly onPauseToggle: () => void;
@@ -58,7 +59,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
     height: `${MENU_MEDALLION_PX}px`,
     marginLeft: '4px',
   });
-  menu.innerHTML = GLYPH.menu;
+  menu.innerHTML = menuArt(MENU_ART_PX);
   menu.addEventListener('click', deps.onMenu);
 
   bar.append(speed, menu);
