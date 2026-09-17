@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { type ContentSet, EMPTY_SOUND_BANK, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, emptySoundBank, IR_VERSION, parseContentSet } from '@open-northland/data';
 import {
   extractAnimalCalls,
   extractHumanVoices,
@@ -80,7 +80,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     roots,
     soundFile,
     (sections) => extractSounds(sections, { humanVoices, animalCalls }),
-    EMPTY_SOUND_BANK,
+    emptySoundBank(),
   );
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);

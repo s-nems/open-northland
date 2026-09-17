@@ -111,6 +111,7 @@ function direct(opts: {
   ticks?: number;
   random?: () => number;
   localPlayer?: number | null;
+  visibleTile?: (col: number, row: number) => boolean;
 }) {
   const localPlayer = opts.localPlayer === undefined ? LOCAL : opts.localPlayer;
   return directAudio({
@@ -122,6 +123,7 @@ function direct(opts: {
     index,
     bindings,
     ...(localPlayer === null ? {} : { localPlayer }),
+    ...(opts.visibleTile !== undefined ? { visibleTile: opts.visibleTile } : {}),
     ...(opts.responses !== undefined ? { responses: opts.responses } : {}),
     ...(opts.drawn !== undefined
       ? {
@@ -195,6 +197,11 @@ describe('idle chatter', () => {
     expect(direct({ drawn: [6], random: scripted(0) })).toHaveLength(0);
     // And without a local player no one is ours.
     expect(direct({ drawn: [2, 3], random: scripted(0), localPlayer: null })).toHaveLength(0);
+  });
+
+  it('keeps a speaker standing in the fog silent, even when its pool won the roll', () => {
+    expect(direct({ drawn: [2], random: scripted(0), visibleTile: () => false })).toHaveLength(0);
+    expect(direct({ drawn: [2], random: scripted(0), visibleTile: () => true })).toHaveLength(1);
   });
 
   it('caps a long frame at MAX_CHATTER_TICKS_PER_FRAME rolls', () => {

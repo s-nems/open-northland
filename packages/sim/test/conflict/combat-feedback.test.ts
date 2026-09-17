@@ -84,7 +84,8 @@ describe('combatHit - a landed melee blow', () => {
     attack(silent, fist, victim, 100); // a weapon listing no impact for this material lands silently
     silent.step();
     const hit = silent.snapshot().events.find((ev) => ev.kind === 'combatHit');
-    expect(hit !== undefined && 'soundType' in hit).toBe(false);
+    expect(hit).toBeDefined();
+    expect(hit).not.toHaveProperty('soundType');
   });
 
   it('emits NO combatHit when the swing strikes air (target has no Health - a miss)', () => {

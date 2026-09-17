@@ -417,15 +417,29 @@ export const plSurfaces = {
     voiceRoles: { scream: 'Krzyk', chatter: 'Gwar', ok: 'Tak', no: 'Nie' },
     children: 'Dzieci',
     actionsCatalog: {
-      buildingPlaced: { label: 'Postawienie budynku', trigger: 'gdy gracz stawia nowy budynek' },
       boatPlaced: { label: 'Zwodowanie łodzi', trigger: 'gdy powstaje łódź' },
       goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
       buildingFinished: {
         label: 'Ukończenie budowy',
         trigger: 'gdy twój budynek zostaje dokończony na ekranie',
       },
+      buildingDestroyed: {
+        label: 'Zniszczenie budynku',
+        trigger: 'gdy wali się budynek zbudowany co najmniej w połowie',
+      },
       settlerBorn: { label: 'Narodziny', trigger: 'gdy twój osadnik rodzi się na ekranie' },
+      settlersMarried: { label: 'Ślub', trigger: 'gdy twoi osadnicy biorą ślub na ekranie' },
       settlerDied: { label: 'Śmierć', trigger: 'gdy twój osadnik ginie na ekranie' },
+      defenceAlarmRaised: { label: 'Alarm obronny', trigger: 'gdy przełączasz budynek w tryb obrony' },
+      chestOpened: { label: 'Otwarcie skrzyni', trigger: 'gdy twój osadnik otwiera skrzynię' },
+      combatSwing: {
+        label: 'Zamach w walce',
+        trigger: 'gdy wojownik zamachuje się bronią, której klip nie ma własnego świstu',
+      },
+      playerWon: { label: 'Zwycięstwo', trigger: 'gdy twoje miejsce wygrywa misję' },
+      playerDefeated: { label: 'Porażka', trigger: 'gdy twoje miejsce zostaje pokonane' },
+      missionCutscene: { label: 'Odprawa', trigger: 'gdy skrypt mapy otwiera odprawę' },
+      missionEarthquake: { label: 'Trzęsienie ziemi', trigger: 'gdy skrypt mapy wywołuje trzęsienie ziemi' },
     },
     voicesCatalog: {
       male: 'Mężczyźni',

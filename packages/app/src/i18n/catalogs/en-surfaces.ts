@@ -419,15 +419,29 @@ export const enSurfaces = {
     voiceRoles: { scream: 'Scream', chatter: 'Chatter', ok: 'Ok', no: 'No' },
     children: 'Children',
     actionsCatalog: {
-      buildingPlaced: { label: 'Place building', trigger: 'when a player places a new building' },
       boatPlaced: { label: 'Launch boat', trigger: 'when a boat is created' },
       goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },
       buildingFinished: {
         label: 'Finish construction',
         trigger: 'when your building is completed on screen',
       },
+      buildingDestroyed: {
+        label: 'Building destroyed',
+        trigger: 'when a building at least half built comes down',
+      },
       settlerBorn: { label: 'Birth', trigger: 'when your settler is born on screen' },
+      settlersMarried: { label: 'Wedding', trigger: 'when your settlers marry on screen' },
       settlerDied: { label: 'Death', trigger: 'when your settler dies on screen' },
+      defenceAlarmRaised: { label: 'Defence alarm', trigger: 'when you put a building into defence mode' },
+      chestOpened: { label: 'Open chest', trigger: 'when your settler opens a chest' },
+      combatSwing: {
+        label: 'Melee swing',
+        trigger: 'when a fighter swings a weapon whose clip sounds no swing of its own',
+      },
+      playerWon: { label: 'Victory', trigger: 'when your seat wins the mission' },
+      playerDefeated: { label: 'Defeat', trigger: 'when your seat is defeated' },
+      missionCutscene: { label: 'Briefing', trigger: 'when a map script opens a briefing' },
+      missionEarthquake: { label: 'Earthquake', trigger: 'when a map script starts an earthquake' },
     },
     voicesCatalog: {
       male: 'Men',

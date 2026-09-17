@@ -3,8 +3,6 @@ import type { EntitySnapshot } from '@open-northland/sim';
 import type { SoundIndex } from './bank.js';
 import { creatureTribe, isPerson, voiceClassOf } from './snapshot.js';
 
-/** Which of the `humans/sounds.cif` voice rows a snapshot person speaks with. */
-
 /** The voice row a person speaks with: its tribe's pool for its class, or undefined when the tribe
  *  leaves that class silent or the entity is no person. */
 export function humanVoicesOf(index: SoundIndex, e: EntitySnapshot): HumanVoices | undefined {

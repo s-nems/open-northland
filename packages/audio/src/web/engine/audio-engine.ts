@@ -292,20 +292,20 @@ export class WebAudioEngine {
     const now = ctx.currentTime;
     const last = this.lastPlayed.get(shot.key);
     if (last !== undefined && now - last < ONE_SHOT_COOLDOWN_S) return;
-    pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
-    this.lastPlayed.set(shot.key, now);
     if (shot.files.length === 0) return;
     // Randomness lives here (impure), not in the pure director.
     const file = pickRandom(shot.files, this.random);
     const exclusive = shot.exclusive !== undefined;
     if (exclusive) {
       // A group-exclusive shot yields to any line of its pool still sounding; a wav-exclusive one to the
-      // very wav it picked.
+      // very wav it picked. A yielded shot starts no key cooldown, so the next ask is not held twice over.
       const held = shot.exclusive === 'group' ? shot.files : [file];
       if (held.some((f) => (this.soundingUntil.get(f) ?? 0) > now)) return;
       this.soundingUntil.set(file, Number.POSITIVE_INFINITY); // reserved until the buffer says how long
       pruneExpired(this.soundingUntil, COOLDOWN_PRUNE_SIZE, now, 0);
     }
+    pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
+    this.lastPlayed.set(shot.key, now);
     void samples.get(file).then((buffer) => {
       if (buffer === null || !this.canPlay() || this.sfxBus === null) {
         if (exclusive) this.soundingUntil.delete(file);

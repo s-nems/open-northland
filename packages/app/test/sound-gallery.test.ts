@@ -1,5 +1,5 @@
 import { defaultBindings } from '@open-northland/audio';
-import { EMPTY_SOUND_BANK, type SoundBank } from '@open-northland/data';
+import { emptySoundBank, type SoundBank } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { buildSoundGalleryModel } from '../src/entries/sound.js';
 
@@ -115,16 +115,26 @@ describe('buildSoundGalleryModel', () => {
     expect(model.ambient).toEqual([{ group: 'Meadow Green', clips: ['ambient/meadow1.wav'] }]);
   });
 
-  it('omits an action whose binding is absent in this build (no empty rows)', () => {
-    // Swing and release moved to the animation cue, so nothing binds them - and no row claims they exist.
-    const labels = model.actions.map((a) => a.label);
-    expect(labels).not.toContain('Rąbanie drzewa');
-    expect(labels).not.toContain('Postawienie budynku');
-    expect(labels).toContain('Zwodowanie łodzi');
+  it('lists one named row per bound event, so no binding hides from the listener', () => {
+    // The rows come from the bindings, not a hand list: every bound kind needs a catalog label, and a
+    // kind nothing binds (the chopping swing lives in the animation cue) gets no row.
+    const bound = Object.keys(defaultBindings().byEvent);
+    expect(model.actions).toHaveLength(bound.length);
+    expect(model.actions.map((a) => a.label)).not.toContain('Rąbanie drzewa');
+    expect(model.actions.find((a) => a.label === 'Odprawa')).toEqual({
+      label: 'Odprawa',
+      trigger: 'gdy skrypt mapy otwiera odprawę',
+      sound: 'briefing',
+      kind: 'cue',
+      screenGated: false,
+      clips: ['gui/briefing_popup.wav'],
+    });
+    // A jingle the bank lacks still shows its MusicType, so the gap is visible rather than silent.
+    expect(model.actions.find((a) => a.label === 'Ślub')).toMatchObject({ sound: 'MusicType 22', clips: [] });
   });
 
   it('shows a group missing from the bank with an empty clip list, not a crash', () => {
-    const bare: SoundBank = { ...EMPTY_SOUND_BANK, humanVoices: bank.humanVoices };
+    const bare: SoundBank = { ...emptySoundBank(), humanVoices: bank.humanVoices };
     const m = buildSoundGalleryModel(bare, defaultBindings());
     // Voice rows still listed from their table, each with no clips since the bank has no groups.
     expect(m.voices).toHaveLength(3);

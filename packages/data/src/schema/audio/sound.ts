@@ -109,11 +109,8 @@ export const SoundBank = z.strictObject({
 });
 export type SoundBank = z.infer<typeof SoundBank>;
 
-/** The bank a set without decoded sound carries: every table empty. */
-export const EMPTY_SOUND_BANK: SoundBank = {
-  staticGroups: [],
-  ambient: [],
-  jingles: [],
-  humanVoices: [],
-  animalCalls: [],
-};
+/** The bank a set without decoded sound carries: every table empty. A fresh object per call, because
+ *  zod hands every parse the same nested arrays of a plain object default. */
+export function emptySoundBank(): SoundBank {
+  return { staticGroups: [], ambient: [], jingles: [], humanVoices: [], animalCalls: [] };
+}

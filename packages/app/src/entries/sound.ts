@@ -24,7 +24,7 @@ export interface ActionRow {
   readonly label: string;
   /** Localized description of when it fires. */
   readonly trigger: string;
-  /** The bound sound's handle (the `SoundFXStatic` group name, the jingle name, or a hardwired wav). */
+  /** The bound sound's handle: the `SoundFXStatic` group name, the jingle name, or the hardwired cue's name. */
   readonly sound: string;
   /** Spatial (positioned in the world), jingle (life-event stinger) or cue (a hardwired centred wav). */
   readonly kind: EventSound['kind'];
@@ -63,25 +63,13 @@ export type TribeLabel = (tribe: number) => string | undefined;
 /** The gallery's class order: the grown voices first. */
 const VOICE_CLASS_ORDER: readonly VoiceClass[] = ['male', 'female', 'child'];
 
-/** An action's binding key - one of the `byEvent` sim-event kinds. */
-type ActionKind =
-  | 'buildingPlaced'
-  | 'boatPlaced'
-  | 'goodProduced'
-  | 'buildingFinished'
-  | 'settlerBorn'
-  | 'settlerDied';
+/** The happenings the catalog names; every event `defaultBindings` binds must be one (test-enforced). */
+type ActionKind = keyof ReturnType<typeof messages>['soundGallery']['actionsCatalog'];
 
-const ACTION_EVENTS: readonly {
-  readonly kind: ActionKind;
-}[] = [
-  { kind: 'buildingPlaced' },
-  { kind: 'boatPlaced' },
-  { kind: 'goodProduced' },
-  { kind: 'buildingFinished' },
-  { kind: 'settlerBorn' },
-  { kind: 'settlerDied' },
-];
+function actionCopy(kind: string): { readonly label: string; readonly trigger: string } | undefined {
+  const catalog = messages().soundGallery.actionsCatalog;
+  return Object.hasOwn(catalog, kind) ? catalog[kind as ActionKind] : undefined;
+}
 
 /** Matches the `SoundFXStatic` group name case-insensitively; `[]` when the bank lacks it. */
 function groupClips(sounds: SoundBank, name: string): readonly string[] {
@@ -141,10 +129,10 @@ export function buildSoundGalleryModel(
   tribeLabel: TribeLabel = () => undefined,
 ): SoundGalleryModel {
   const actions: ActionRow[] = [];
-  for (const ev of ACTION_EVENTS) {
-    const resolved = resolveSound(bindings.byEvent[ev.kind], sounds);
-    if (resolved === null) continue; // unbound in this build - omit the row rather than show an empty one
-    const copy = messages().soundGallery.actionsCatalog[ev.kind];
+  for (const [kind, sound] of Object.entries(bindings.byEvent)) {
+    const copy = actionCopy(kind);
+    const resolved = resolveSound(sound, sounds);
+    if (copy === undefined || resolved === null) continue;
     actions.push({ label: copy.label, trigger: copy.trigger, ...resolved });
   }
 

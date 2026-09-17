@@ -121,6 +121,33 @@ describe('WebAudioEngine one-shots', () => {
     expect(ctx.sources).toHaveLength(2); // the pool held the answer; the other wav was free for the scream
   });
 
+  it('releases an exclusive reservation whose load landed while muted, so the wav can sound later', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ key: 'voice:a', exclusive: 'wav' })], ambient: [] }); // reserved, loading
+    engine.setEnabled(false); // mute lands before the wav arrives
+    await flush();
+    expect(ctx.sources).toHaveLength(0);
+    engine.setEnabled(true);
+    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01;
+    engine.apply({ oneShots: [shot({ key: 'voice:b', exclusive: 'wav' })], ambient: [] }); // the same wav
+    await flush();
+    expect(ctx.sources).toHaveLength(1); // not held by the abandoned reservation
+  });
+
+  it('lets a yielded exclusive shot leave its key cooldown untouched', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ key: 'respond:a', exclusive: 'wav' })], ambient: [] }); // sounds for 4 s
+    await flush();
+    ctx.currentTime = 4 - ONE_SHOT_COOLDOWN_S / 2;
+    engine.apply({ oneShots: [shot({ key: 'respond:b', exclusive: 'wav' })], ambient: [] }); // held: still sounding
+    ctx.currentTime = 4 + ONE_SHOT_COOLDOWN_S / 2; // the line has ended, within a cooldown of the yielded ask
+    engine.apply({ oneShots: [shot({ key: 'respond:b', exclusive: 'wav' })], ambient: [] });
+    await flush();
+    expect(ctx.sources).toHaveLength(2); // the yielded ask started no cooldown
+  });
+
   it('memoises a failed load and never re-fetches the missing wav', async () => {
     const { engine, ctx, fetched } = makeEngine({ failFetch: true });
     await engine.resume();

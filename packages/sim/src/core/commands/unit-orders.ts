@@ -276,7 +276,8 @@ export type UnitOrderCommand =
  * The settler a player's order addresses, or undefined for a command aimed at a building, the map or
  * the seat itself. `entity` is the unit-order vocabulary's addressee field alone (an order's other party
  * rides as `chest`, `target`, `house`...), so its presence is the test - the original's `AddHumanCommand`
- * family, which the client answers with the settler's voice.
+ * family, which the client answers with the settler's voice. That covers the panel pickers too: the
+ * job, equipment, produced-good, learn and trader windows are among `PlayRespondingSound`'s callers.
  */
 export function orderedSettler(command: Command): Entity | undefined {
   return 'entity' in command ? command.entity : undefined;
