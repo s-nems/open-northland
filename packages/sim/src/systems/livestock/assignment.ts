@@ -1,5 +1,6 @@
 import {
   CurrentAtomic,
+  DraughtAnimal,
   FarmAnimal,
   Livestock,
   MoveGoal,
@@ -93,6 +94,8 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
   const byDoor = new Map<NodeId, Entity[]>();
   const strays: Entity[] = [];
   for (const e of world.canonicalQuery(Livestock, Owner, Settler, Position)) {
+    // A cart's recruit is walking to its cart: herding resumes on release.
+    if (world.has(e, DraughtAnimal)) continue;
     const held = world.tryGet(e, FarmAnimal);
     if (held !== undefined && !farmStands(world, ctx, held.farm)) {
       world.remove(e, FarmAnimal); // its farm is gone: back to the base yard

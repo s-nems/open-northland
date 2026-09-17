@@ -339,8 +339,8 @@ since nobody can attach to it. The recruit scan runs every `DRAUGHT_RECRUIT_CADE
 such carts only and walks the livestock store: the owner's animals of the tribe with a position, not
 inside a farm, booked by no farm visit or other cart, not scattering, on the door's continent, in
 ascending entity id; the first two are passed over and the nearest of the rest by hexagon distance
-wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd and graze drives
-respect like a farm visit) and is aimed at the cart's boarding node, the riders' door approximation,
+wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd, graze and herd-home
+drives respect like a farm visit) and is aimed at the cart's boarding node, the riders' door approximation,
 re-aimed whenever it stops short; on arrival `harnessVehicle` removes it without a death and the cart
 takes `transformVehicleType` in place, with that type's seat counts and hit-point pool (current points
 kept, clamped), so the renderer's per-type binding swaps the sprite. A recruit whose cart is gone walks
