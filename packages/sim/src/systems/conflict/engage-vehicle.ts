@@ -192,8 +192,9 @@ function actOnTarget(
   }
   const dist = manhattan(terrain, here, targetNode);
   if (dist >= weapon.minRange && dist <= weapon.maxRange) {
-    if (world.has(e, VehicleDrive)) {
-      world.mut(e, VehicleDrive).route.length = 0; // finish the leg under way, then fire
+    const drive = world.tryGet(e, VehicleDrive);
+    if (drive !== undefined) {
+      if (drive.route.length > 0) world.mut(e, VehicleDrive).route.length = 0; // finish the leg, then fire
       return;
     }
     const live = world.mut(e, Vehicle);
