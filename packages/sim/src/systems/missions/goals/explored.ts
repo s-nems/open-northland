@@ -38,7 +38,7 @@ export function animalsExploredHolds(
 }
 
 /** Nothing carrying the id holds nowhere, whatever the slot; the slot rule applies per entity. */
-function anyOnExploredPoint(pass: MissionPass, player: number, entities: readonly Entity[]): boolean {
+export function anyOnExploredPoint(pass: MissionPass, player: number, entities: readonly Entity[]): boolean {
   if (entities.length === 0) return false;
   if (!isValidPlayer(player)) return true;
   return entities.some((e) => {

@@ -17,6 +17,7 @@ import type { SystemContext } from '../../context.js';
 import { vehicleAnchor, vehicleDoorNode } from '../../footprint/index.js';
 import { removeSettlerSilently } from '../../lifecycle/death.js';
 import { clearNavState } from '../../movement/nav-state.js';
+import { vehicleTraversal } from '../../readviews/vehicles.js';
 import { spawnSettler } from '../../spawn/index.js';
 import { createVehicle } from '../../vehicles/create.js';
 import { attachToVehicle, boardRider, detachFromVehicle, passengerJobAllowed } from '../../vehicles/crew.js';
@@ -73,7 +74,7 @@ export function spawnScriptedVehicle(
   const door = vehicleDoorNode(world, ctx.content, vehicle);
   const jobType = type.passengerJobs[0];
   if (door === null || jobType === undefined || !terrain.inBounds(door.hx, door.hy)) return;
-  const before = world.componentGeneration(Settler);
+  const captain = world.nextEntityId as Entity; // the id the spawn's `create` takes
   spawnSettler(world, ctx, {
     kind: 'spawnSettler',
     jobType,
@@ -83,21 +84,12 @@ export function spawnScriptedVehicle(
     owner: op.player,
     missionId: op.vehicleId,
   });
-  if (world.componentGeneration(Settler) === before) return; // the trade is not in the content
-  const captain = newestSettler(world);
-  if (captain === null) return;
+  if (!world.isAlive(captain) || !world.has(captain, Settler)) return; // the trade is not in the content
   if (!attachToVehicle(world, ctx, { kind: 'attachToVehicle', entity: captain, vehicle })) {
     removeSettlerSilently(world, captain);
     return;
   }
   boardRider(world, captain, vehicle);
-}
-
-/** The settler with the highest entity id: the one a spawn seam just assembled. */
-function newestSettler(world: World): Entity | null {
-  let newest: Entity | null = null;
-  for (const e of world.query(Settler)) if (newest === null || e > newest) newest = e;
-  return newest;
 }
 
 /** `RemoveVehicles`: every vehicle with the id leaves the map the script way, with no wreck and no spill;
@@ -215,9 +207,10 @@ function stampVehicles(pass: MissionPass, player: number, id: number, keep: (e: 
 /**
  * The vehicle half of `MoveUnitsInArea`: up to {@link VEHICLE_TELEPORT_CAP} of the player's vehicles
  * standing within `range` of the source, a carried one excepted, are set down at the destination and
- * their drives dropped. Each lands on the first node in hexagon-ring order its walk-block admits, so a
- * group fans out where the original stacks it and then orders every vehicle to the same point; a
- * vehicle no node within {@link TELEPORT_LANDING_RADIUS} takes stays where it was.
+ * their drives dropped. Each lands on the first node in hexagon-ring order of its own traversal that
+ * its walk-block admits, so a group fans out where the original stacks it and then orders every
+ * vehicle to the same point; a vehicle no node within {@link TELEPORT_LANDING_RADIUS} takes stays
+ * where it was.
  */
 export function teleportVehiclesInArea(
   pass: MissionPass,
@@ -233,7 +226,9 @@ export function teleportVehiclesInArea(
   let moved = 0;
   for (const e of [...vehicleIndex(world).ownedBy(player)]) {
     if (moved >= VEHICLE_TELEPORT_CAP) break;
-    if (vehicleAnchor(world, e) === null || !withinRange(world, e, source, range)) continue;
+    // One riding a carrier, or on its way into one, stays with the ship (the original's carrier test).
+    if (world.get(e, Vehicle).carrier !== null || vehicleAnchor(world, e) === null) continue;
+    if (!withinRange(world, e, source, range)) continue;
     if (teleportVehicle(world, ctx, terrain, e, destination, claimed)) moved++;
   }
 }
@@ -250,12 +245,14 @@ function teleportVehicle(
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined) return false;
   const blocked = vehicleWalkBlocks(world, ctx, terrain, e, type);
+  const traversal = vehicleTraversal(type);
   let landing: NodeId | null = null;
   for (let r = 0; r <= TELEPORT_LANDING_RADIUS && landing === null; r++) {
     for (const { point } of hexagonRing(destination, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const node = terrain.nodeAt(point.hx, point.hy);
-      if (blocked.has(node) || claimed.has(node)) continue;
+      // The walk-block knows nothing of land and water: a cart must land on ground, a ship at sea.
+      if (!terrain.traversable(node, traversal) || blocked.has(node) || claimed.has(node)) continue;
       landing = node;
       break;
     }

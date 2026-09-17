@@ -11,11 +11,11 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { vehicleStockGood } from '../../vehicles/stock.js';
-import { playerExploredNode } from '../../vision/gates.js';
 import { groupsWithinRange } from '../nearby.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
-import { entityPoint, missionHouses, missionHumans, missionVehicles, withinRange } from '../targets.js';
+import { missionHouses, missionHumans, missionVehicles, withinRange } from '../targets.js';
+import { anyOnExploredPoint } from './explored.js';
 
 // The vehicle goals of docs/formats/MISSIONS.md: each reads the vehicle index or the id index and
 // measures in map points like its human twin. A vehicle riding a carrier has no position and is nowhere.
@@ -48,13 +48,7 @@ export function vehiclesExploredHolds(
   pass: MissionPass,
   op: Extract<MissionGoalOp, { opcode: 'FindVehicles' }>,
 ): boolean {
-  const vehicles = missionVehicles(pass.world, op.vehicleId);
-  if (vehicles.length === 0) return false;
-  if (!isValidPlayer(op.player)) return true;
-  return vehicles.some((e) => {
-    const at = entityPoint(pass.world, e);
-    return at !== undefined && playerExploredNode(pass.ctx.fog, op.player, at.hx, at.hy);
-  });
+  return anyOnExploredPoint(pass, op.player, missionVehicles(pass.world, op.vehicleId));
 }
 
 /** Any vehicle with the id stands within `range` of the point. */
@@ -130,13 +124,13 @@ export function vehiclesInAreaHolds(
 }
 
 /** The player's vehicles of the type within `range` of the point, counted up to `limit`. */
-export function countVehiclesInArea(
+function countVehiclesInArea(
   world: World,
   player: number,
   vehicleType: number,
   point: HalfCellNode,
   range: number,
-  limit = Number.POSITIVE_INFINITY,
+  limit: number,
 ): number {
   let count = 0;
   for (const e of playerVehiclesOfType(world, player, vehicleType)) {

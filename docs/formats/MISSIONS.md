@@ -337,7 +337,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 67 | `ChangeMissionIdOfPlayer` | 1, 10 | give every human of the player the id | sim | 1 |
 | 68 | `SetVertexColor` | 16, 17, 9, 7 | save a palette index on terrain nodes within `range` and update the display | both | 413 |
 | 69 | `RemoveLandscapesInArea` | 16, 17, 9 | remove live landscape placements and their sprites strictly closer than `range` to the point (a range of 0 or 1 clears the point alone); the group removals below include the ring at `range` | both | 11 |
-| 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and up to 20 vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range`; a vehicle riding a carrier stays. Here: each vehicle lands on the first ring node its walk-block admits, its drive dropped (approximation: the original stacks them and orders each to the point) | sim | 346 |
+| 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and up to 20 vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range`; a vehicle riding a carrier stays. Here: each vehicle lands on the first ring node of its own traversal its walk-block admits, its drive dropped (approximation: the original stacks them and orders each to the point) | sim | 346 |
 | 71 | `SetHouseExtensionLevel` | 14, 7 | rebuild up to 10 houses with the id at the new level in place | sim | 1 |
 | 72 | `InfoClear` | 1, 36 | clear the player's info line `index` (0 to 4); player 20 or -1 clears every player's | sim | 202 |
 | 73 | `InfoShowString` | 1, 36, 27 | show the string on the line; its `%d` prints a zero (reading) | sim | 112 |

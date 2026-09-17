@@ -422,8 +422,8 @@ through `createVehicle`, `removeVehicle` with cause `script`, `attachToVehicle`,
 `spawnSettler` and the owner and id stamps. Named approximations: the captain's trade is the type's
 first `logicpassenger` entry, since the IR carries no `logiccommander` lane (right for the carts and
 the catapult, a civilian at a ship's helm); `AttachHumanToVehicle` stops at a full vehicle; a
-teleported vehicle lands on the first node in hexagon-ring order within radius 9 that its walk-block
-admits and is not already claimed by the same line, with its drive, held goal, mooring and guard reset
+teleported vehicle lands on the first node in hexagon-ring order within radius 9 of its own traversal
+(ground for a cart, water for a ship) that its walk-block admits and is not already claimed by the same line, with its drive, held goal, mooring and guard reset
 and no goto issued; callback 37 is not identified and not mirrored (*open*); `IsHumanInVehicle` reads
 the `Rider` aboard state. Vehicle goals and results were verified on the 2022 macOS build; the 2001
 executable is not checked for them.

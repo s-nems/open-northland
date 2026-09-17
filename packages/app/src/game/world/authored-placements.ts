@@ -159,13 +159,14 @@ export function resolveAuthoredPlacements(
   for (const v of entities.vehicles ?? []) {
     const typeId = joins.vehicleType(v.type);
     const tribe = joins.tribe(v.tribe);
-    if (typeId === undefined || tribe === undefined || !inBounds(v.hx, v.hy)) {
+    if (
+      typeId === undefined ||
+      tribe === undefined ||
+      !inBounds(v.hx, v.hy) ||
+      !components.isValidPlayer(v.player)
+    ) {
       skipped++;
-      continue;
-    }
-    if (!components.isValidPlayer(v.player)) {
-      skipped++;
-      droppedGoods += v.goods?.length ?? 0;
+      droppedGoods += v.goods?.length ?? 0; // a dropped row drops its cargo with it
       continue;
     }
     const goods = (v.goods ?? []).flatMap((g) => {

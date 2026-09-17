@@ -361,6 +361,45 @@ describe('MoveUnitsInArea', () => {
   });
 });
 
+describe('MoveUnitsInArea over water', () => {
+  it('lands a cart on ground beside a destination at sea and leaves a vehicle loading into a ship alone', () => {
+    const source = { hx: 4, hy: 8 };
+    const sea = { hx: 10, hy: 8 }; // the water column at cell 5
+    const sim = missionSim(
+      [
+        {
+          successfullIf: SUCCESSFUL_IF.all,
+          active: true,
+          visible: false,
+          goals: [],
+          results: [
+            {
+              opcode: 'MoveUnitsInArea',
+              player: OWNER,
+              point: source,
+              range: 2,
+              index: sea.hx,
+              extra: sea.hy,
+            },
+          ],
+        },
+      ],
+      testContent(),
+      splitMap(),
+    );
+    const moved = cart(sim, { at: source });
+    const loading = cart(sim, { at: { hx: source.hx, hy: source.hy + 2 } });
+    sim.world.mut(loading, Vehicle).carrier = moved; // stands in for a ship it is driving into
+    sim.run(FIRST_PASS);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const at = nodeOf(sim, moved);
+    expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy))).toBe(true);
+    expect(hexDistance(at, sea)).toBeLessThanOrEqual(2);
+    expect(nodeOf(sim, loading)).toEqual({ hx: source.hx, hy: source.hy + 2 });
+  });
+});
+
 describe('the vehicle goals', () => {
   it("GoodsInVehicles sums the hold of every vehicle with the id, under the hold's alias", () => {
     const goal: MissionGoalOp = { opcode: 'GoodsInVehicles', vehicleId: CART_ID, good: WOOD, amount: 5 };
