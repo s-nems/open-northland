@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Open Northland — in-game UI foundation</title>
+<title>Open Northland - in-game UI foundation</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="foundation.css">
 </head>
@@ -61,32 +61,92 @@
 <div class="hud-root" id="hud">
 
   <div class="topbar">
-    <div class="summary panel">
-      <button type="button" aria-label="Kobiety: 12"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="11" r="6"/><path d="M16 17v12m-5-5h10"/></svg><b>12</b></button>
-      <button type="button" aria-label="Mężczyźni: 16"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="19" r="6"/><path d="m17.5 14.5 9-9M19 5h8v8"/></svg><b>16</b></button>
-      <button type="button" aria-label="Dzieci: 6"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="8" r="4"/><path d="M16 14v9m-7-8 7 3 7-3m-7 8-5 6m5-6 5 6"/></svg><b>6</b></button>
+    <div class="summary panel" role="group" aria-label="Osada">
+      <div class="resource">
+        <button type="button" aria-expanded="false" aria-label="Kobiety: 12"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="11" r="6"/><path d="M16 17v12m-5-5h10"/></svg><b>12</b></button>
+        <button type="button" aria-expanded="false" aria-label="Mężczyźni: 16"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="19" r="6"/><path d="m17.5 14.5 9-9M19 5h8v8"/></svg><b>16</b></button>
+        <button type="button" aria-expanded="false" aria-label="Dzieci: 6"><svg class="population-symbol" aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="8" r="4"/><path d="M16 14v9m-7-8 7 3 7-3m-7 8-5 6m5-6 5 6"/></svg><b>6</b></button>
+        <div class="resource-tip panel" role="tooltip" hidden>
+          <h4>Mieszkańcy</h4>
+          <p><span>Kobiety</span><b>12</b></p>
+          <p><span>Mężczyźni</span><b>16</b></p>
+          <p><span>Dzieci</span><b>6</b></p>
+          <p class="sub"><span>w tym niemowlęta</span><b>2</b></p>
+          <p class="total"><span>Razem</span><b>34</b></p>
+          <small>Twoi osadnicy · cała mapa. Dziecko liczy się do dorosłości, potem jako kobieta lub mężczyzna.</small>
+        </div>
+      </div>
       <span class="divider"></span>
-      <button type="button" aria-label="Żywność: 86"><span data-good="bread"></span><b>86</b></button>
+      <div class="resource">
+        <button type="button" aria-expanded="false" aria-label="Żywność: 86"><span data-good="bread"></span><b>86</b></button>
+        <div class="resource-tip panel wide" role="tooltip" hidden>
+          <h4>Żywność</h4>
+          <div class="columns">
+            <p><span>Chleb</span><b>34</b></p>
+            <p><span>Mięso</span><b>20</b></p>
+            <p><span>Grzyby</span><b>12</b></p>
+            <p><span>Miód</span><b>8</b></p>
+            <p><span>Woda</span><b>9</b></p>
+            <p><span>Miód pitny</span><b>3</b></p>
+            <p class="zero"><span>Zboże</span><b>0</b></p>
+            <p class="zero"><span>Mąka</span><b>0</b></p>
+            <p class="zero"><span>Słodycze</span><b>0</b></p>
+            <p class="zero"><span>Prosty posiłek</span><b>0</b></p>
+            <p class="zero"><span>Wykwintny posiłek</span><b>0</b></p>
+            <p class="zero"><span>Święty olej</span><b>0</b></p>
+          </div>
+          <small>Magazyny, domy, wieże i gotowe wyroby warsztatów Twoich osadników · cała mapa</small>
+        </div>
+      </div>
       <div class="resource">
         <button type="button" id="materials" aria-expanded="false" aria-label="Materiały: 72"><span data-good="wood"></span><b>72</b></button>
-        <div class="resource-tip panel" id="resource-tip" hidden>
+        <div class="resource-tip panel" id="resource-tip" role="tooltip" hidden>
           <h4>Materiały</h4>
           <p><span>Drewno</span><b>42</b></p>
           <p><span>Kamień</span><b>18</b></p>
           <p><span>Glina</span><b>12</b></p>
-          <small>Magazyny Twojego plemienia · cała mapa</small>
+          <p class="zero"><span>Deski</span><b>0</b></p>
+          <p class="zero"><span>Cegły</span><b>0</b></p>
+          <p class="zero"><span>Żelazo</span><b>0</b></p>
+          <small>Magazyny, domy, wieże i gotowe wyroby warsztatów Twoich osadników · cała mapa</small>
         </div>
       </div>
-      <button type="button" aria-label="Uzbrojenie"><span data-good="sword_shord"></span></button>
-      <button type="button" aria-label="Wyposażenie"><span data-good="shoes"></span></button>
-      <button type="button" aria-label="Inne"><span data-good="crockery"></span></button>
+      <div class="resource">
+        <button type="button" aria-expanded="false" aria-label="Uzbrojenie: 2"><span data-good="sword_shord"></span><b>2</b></button>
+        <div class="resource-tip panel" role="tooltip" hidden>
+          <h4>Uzbrojenie</h4>
+          <p><span>Krótki miecz</span><b>2</b></p>
+          <p class="zero"><span>Krótki łuk</span><b>0</b></p>
+          <p class="zero"><span>Włócznia drewniana</span><b>0</b></p>
+          <p class="zero"><span>Zbroja wełniana</span><b>0</b></p>
+          <small>Magazyny, domy, wieże i gotowe wyroby warsztatów Twoich osadników · cała mapa</small>
+        </div>
+      </div>
+      <div class="resource">
+        <button type="button" aria-expanded="false" aria-label="Wyposażenie: 0"><span data-good="shoes"></span><b class="zero">0</b></button>
+        <div class="resource-tip panel" role="tooltip" hidden>
+          <h4>Wyposażenie</h4>
+          <p class="empty">Nic na stanie. Narzędzia, naczynia, meble i buty pojawią się tutaj, gdy warsztaty je wytworzą.</p>
+          <small>Magazyny, domy, wieże i gotowe wyroby warsztatów Twoich osadników · cała mapa</small>
+        </div>
+      </div>
+      <div class="resource">
+        <button type="button" aria-expanded="false" aria-label="Inne: 14"><span data-good="crockery"></span><b>14</b></button>
+        <div class="resource-tip panel" role="tooltip" hidden>
+          <h4>Inne</h4>
+          <p><span>Złoto</span><b>14</b></p>
+          <p class="zero"><span>Amulet</span><b>0</b></p>
+          <small>Magazyny, domy, wieże i gotowe wyroby warsztatów Twoich osadników · cała mapa</small>
+        </div>
+      </div>
     </div>
     <div class="timebar panel">
-      <time>01:24:08</time>
+      <time id="sim-clock" aria-label="Czas gry">1:24:08</time>
       <div class="speed" role="toolbar" aria-label="Tempo symulacji">
         <button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button>
-        <button type="button" aria-label="Tempo ×1" aria-pressed="true">×1</button>
-        <button type="button" aria-label="Tempo ×3" aria-pressed="false">×3</button>
+        <button type="button" aria-label="Tempo ×1" aria-pressed="true" data-factor="1">×1</button>
+        <button type="button" aria-label="Tempo ×2" aria-pressed="false" data-factor="2">×2</button>
+        <button type="button" aria-label="Tempo ×3" aria-pressed="false" data-factor="3">×3</button>
       </div>
       <button type="button" class="menu medallion" aria-label="Menu gry"><span class="painted" aria-hidden="true"></span></button>
     </div>

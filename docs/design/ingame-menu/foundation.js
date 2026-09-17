@@ -4,9 +4,8 @@ const viewport = document.querySelector('#viewport');
 const hud = document.querySelector('#hud');
 const build = document.querySelector('.build');
 const buildNav = document.querySelector('.nav > button');
-const resource = document.querySelector('.resource');
-const materials = document.querySelector('#materials');
-const resourceTip = document.querySelector('#resource-tip');
+const resources = [...document.querySelectorAll('.resource')];
+const simClock = document.querySelector('#sim-clock');
 const placementName = document.querySelector('[data-picked]');
 const status = document.querySelector('#asset-status');
 
@@ -29,9 +28,14 @@ function press(key, value) {
   for (const button of document.querySelectorAll(`[data-${key}]`))
     button.setAttribute('aria-pressed', String(button.dataset[key] === value));
 }
-function showResource(show) {
-  resourceTip.hidden = !show;
-  materials.setAttribute('aria-expanded', String(show));
+// One breakdown at a time; the wrapper spans button and tip, so moving into the tip keeps it open.
+function showResource(group, show) {
+  for (const wrapper of resources) {
+    const open = show && wrapper === group;
+    wrapper.querySelector('.resource-tip').hidden = !open;
+    for (const button of wrapper.querySelectorAll(':scope > button'))
+      button.setAttribute('aria-expanded', String(open));
+  }
 }
 function showBuild(show) {
   build.hidden = !show;
@@ -72,8 +76,11 @@ document.addEventListener('click', (event) => {
     for (const item of button.closest('.speed').querySelectorAll('button'))
       item.setAttribute('aria-pressed', String(item === button));
     paused = button.getAttribute('aria-label') === 'Pauza';
+    if (button.dataset.factor) speedFactor = Number(button.dataset.factor);
   }
-  if (button === materials) showResource(resourceTip.hidden);
+  const group = button.closest('.resource');
+  if (group && button.parentElement === group)
+    showResource(group, group.querySelector('.resource-tip').hidden);
   if (button.matches('.build .icon-button')) showBuild(false);
   if (button === buildNav) showBuild(true);
   if (button.matches('.building-card:not(:disabled)')) {
@@ -82,12 +89,14 @@ document.addEventListener('click', (event) => {
     placementName.textContent = button.querySelector('strong').textContent;
   }
 });
-resource.addEventListener('mouseenter', () => showResource(true));
-resource.addEventListener('mouseleave', () => showResource(false));
-resource.addEventListener('focusin', () => showResource(true));
-resource.addEventListener('focusout', (event) => {
-  if (!resource.contains(event.relatedTarget)) showResource(false);
-});
+for (const group of resources) {
+  group.addEventListener('mouseenter', () => showResource(group, true));
+  group.addEventListener('mouseleave', () => showResource(group, false));
+  group.addEventListener('focusin', () => showResource(group, true));
+  group.addEventListener('focusout', (event) => {
+    if (!group.contains(event.relatedTarget)) showResource(group, false);
+  });
+}
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Delete' && event.target.closest('.notice')) {
     if (event.shiftKey)
@@ -96,7 +105,7 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (event.key !== 'Escape') return;
-  showResource(false);
+  showResource(null, false);
   showBuild(false);
   pinNoticeFull(null, false);
   buildNav.focus();
@@ -289,6 +298,15 @@ async function character(job) {
 const animations = [];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let paused = false;
+// The review page's stand-in for simulation time: elapsed sim seconds, advancing at the picked
+// speed and stopping with the pause. The runtime reads the session's tick instead.
+let speedFactor = 1;
+let simSeconds = 1 * 3600 + 24 * 60 + 8;
+function formatSimClock(seconds) {
+  const whole = Math.floor(seconds);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${Math.floor(whole / 3600)}:${pad(Math.floor(whole / 60) % 60)}:${pad(whole % 60)}`;
+}
 // Only a preview on screen paints; a card scrolled under the fold or hidden costs nothing.
 const visible = new WeakSet();
 const watcher = new IntersectionObserver((entries) => {
@@ -398,7 +416,11 @@ Promise.allSettled(pending).then((results) => {
 let clock = 0;
 let last = 0;
 function animate(time) {
-  if (!paused) clock += time - last;
+  if (!paused) {
+    clock += time - last;
+    simSeconds += ((time - last) / 1000) * speedFactor;
+    simClock.textContent = formatSimClock(simSeconds);
+  }
   last = time;
   if (!document.hidden && !paused)
     for (const { canvas, paint } of animations) if (visible.has(canvas)) paint(clock);
