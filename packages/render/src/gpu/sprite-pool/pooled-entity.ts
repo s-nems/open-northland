@@ -27,8 +27,6 @@ interface MutableBounds {
  */
 interface PooledEntityBase extends PresentationTrack {
   readonly container: Container;
-  /** Parallel to {@link PooledEntity.sprites}: whether that layer is a cast shadow this frame. */
-  readonly shadowFlags: boolean[];
   placeholder?: Graphics;
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. */
@@ -46,6 +44,9 @@ interface PooledEntityBase extends PresentationTrack {
 export interface PalettedPooledEntity extends PooledEntityBase {
   readonly paletted: true;
   readonly sprites: PalettedSprite[];
+  /** This character's cast shadow, kept apart from the meshes: a silhouette atlas holds no palette
+   *  indices, so it draws as a plain sprite under them. Built on the first frame that resolves one. */
+  shadow?: Sprite;
   readonly palette: PlayerColourLut;
 }
 
@@ -53,6 +54,9 @@ export interface PalettedPooledEntity extends PooledEntityBase {
 export interface PlainPooledEntity extends PooledEntityBase {
   readonly paletted: false;
   readonly sprites: Sprite[];
+  /** Parallel to {@link PlainPooledEntity.sprites}: whether that layer is a cast shadow this frame, the
+   *  pixel picker's exclusion. A paletted character keeps its shadow on a sprite of its own. */
+  readonly shadowFlags: boolean[];
 }
 
 export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
@@ -63,7 +67,6 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
   const base = {
     ...createPresentationTrack(kind),
     container: new Container(),
-    shadowFlags: [],
     attached: false,
     lastSeen: -1,
     viewSeen: -1,
@@ -72,6 +75,6 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
     selectionEllipse: undefined,
   };
   return palette === undefined
-    ? { ...base, paletted: false, sprites: [] }
+    ? { ...base, paletted: false, sprites: [], shadowFlags: [] }
     : { ...base, paletted: true, sprites: [], palette };
 }

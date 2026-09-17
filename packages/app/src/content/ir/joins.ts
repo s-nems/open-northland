@@ -83,6 +83,10 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
  * The served body-atlas stem → shadow-atlas stem join, from every IR row pairing a body `.bmd` with a
  * shadow `.bmd` (`GfxBobLibs` second value). Loading a body layer with its entry attaches the shadow twin
  * drawn under each bob. First-wins on a repeated stem: the recolours of one `.bmd` share its shadow set.
+ *
+ * Character bodies are absent: they load under a palette no record names (the recolourable `indexed`
+ * atlas), and the sheet they feed keeps no shadow lane, so the per-job look carries their twin stem
+ * itself.
  */
 export function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
   const map = new Map<string, string>();

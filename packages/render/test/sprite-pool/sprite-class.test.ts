@@ -1,10 +1,12 @@
-import type { TextureSource } from 'pixi.js';
-import { Container, Sprite } from 'pixi.js';
+import { Container, Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
+import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
+import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
+import type { PlayerColourLut } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
@@ -18,7 +20,7 @@ import { entity, snapshotOf } from '../support/fixtures.js';
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 const CAMERA: Camera = { offsetX: 0, offsetY: 0 };
 const VIEW_ALL: Viewport = { minX: -1e6, maxX: 1e6, minY: -1e6, maxY: 1e6 };
-const source = {} as TextureSource;
+const source = new TextureSource({ width: 64, height: 64 });
 
 const BODY_BOB = 1;
 const atlas: SpriteAtlas = {
@@ -61,6 +63,110 @@ describe('SpritePool - the sprite-class decision without a LUT', () => {
     const bounds = pool.boundsOf(1);
     if (bounds === undefined) throw new Error('a drawn settler must stamp bounds');
     expect(bounds.maxY - bounds.minY).toBe(32); // the body frame's rect, feet-anchored
+  });
+});
+
+describe('SpritePool - a plain character shadow draws under the body without moving its box', () => {
+  // The silhouette is wider and shorter than the body, as the decoded `_s` twins are, so a box that
+  // counted it would be unmistakable - and the picker's box is what a click on the shadow would hit.
+  const SHADOW_WIDTH = 40;
+  const shadowAtlas: SpriteAtlas = {
+    width: 64,
+    height: 16,
+    frames: new Map([
+      [BODY_BOB, { x: 0, y: 0, width: SHADOW_WIDTH, height: 12, offsetX: -20, offsetY: -12 }],
+    ]),
+  };
+  const shadowed: SpriteSheet = {
+    ...sheet,
+    characters: {
+      byJob: {},
+      default: {
+        body: { source, atlas, shadow: { source, atlas: shadowAtlas } },
+        binding: { idle: BODY_BOB },
+      },
+    },
+  };
+
+  it('binds both layers and stamps the body rect alone', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), shadowed);
+
+    pool.reconcile(poolFrame(snapshotOf([entity(1, 0, 0, { Settler: { tribe: 0 } })])));
+
+    const container = layer.children[0] as Container;
+    expect(container.children.filter((c) => c.visible).length).toBe(2);
+    const bounds = pool.boundsOf(1);
+    if (bounds === undefined) throw new Error('a drawn settler must stamp bounds');
+    expect(bounds.maxX - bounds.minX).toBe(16); // the body frame's width, not the silhouette's
+    expect(bounds.maxY - bounds.minY).toBe(32);
+  });
+});
+
+describe('LayerBinder - a paletted character binds its silhouette on a plain sprite of its own', () => {
+  // The LUT meshes need a DOM canvas, so this binds a shadow-only layer list: the silhouette path the
+  // character resolver puts first, without the body mesh that follows it in a real frame.
+  const lut: PlayerColourLut = {
+    source,
+    colours: 17,
+    playerRows: 16,
+    armorTierByGood: new Map(),
+    headRow: 16,
+  };
+  const shadowSource = new TextureSource({ width: 64, height: 64 });
+  const shadowLayer: ResolvedLayer = {
+    source: shadowSource,
+    frame: { x: 0, y: 0, width: 20, height: 8, offsetX: -10, offsetY: -6 },
+    scale: 1,
+    boundsExempt: true,
+    shadow: true,
+  };
+  const item: DrawItem = { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe: 0 };
+  const bindFrame = { camera: CAMERA, screenW: 800, screenH: 600 };
+  const paletted = () => {
+    const pe = createPooled('settler', lut);
+    if (!pe.paletted) throw new Error('a LUT must create the paletted variant');
+    return pe;
+  };
+
+  it('draws the silhouette ahead of the meshes, on no mesh slot, stamping no bounds', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+    // A mesh from an earlier frame: the silhouette must still land first in child order.
+    const earlier = new Sprite();
+    pe.container.addChild(earlier);
+
+    binder.bind(pe, item, [shadowLayer], bindFrame, 1);
+
+    expect(pe.shadow?.visible).toBe(true);
+    expect(pe.container.children[0]).toBe(pe.shadow);
+    expect(pe.sprites.length).toBe(0); // the silhouette never consumes a mesh slot
+    expect(pe.shadow?.texture.source).toBe(shadowSource);
+    expect(pe.boundsFrame).toBe(-1); // bounds-exempt and alone, so nothing is pickable
+    expect(pe.container.children[1]).toBe(earlier);
+  });
+
+  it('hides the silhouette on a later frame whose bob has none', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+    binder.bind(pe, item, [shadowLayer], bindFrame, 1);
+    const spr = pe.shadow;
+
+    binder.bind(pe, item, [], bindFrame, 2);
+
+    expect(pe.shadow).toBe(spr); // retained, not re-minted
+    expect(spr?.visible).toBe(false);
+  });
+
+  it('hides the silhouette behind the placeholder when the entity resolves no layers at all', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+    binder.bind(pe, item, [shadowLayer], bindFrame, 1);
+
+    binder.bind(pe, item, null, bindFrame, 2);
+
+    expect(pe.shadow?.visible).toBe(false);
+    expect(pe.placeholder?.visible).toBe(true);
   });
 });
 

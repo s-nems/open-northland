@@ -98,10 +98,13 @@ export class LayerBinder {
       item.upgradePct === undefined &&
       displayReveal === undefined;
     let hasSelection = false;
+    // A paletted character's cast shadow binds onto a plain sprite of its own, so `spriteSlot` counts
+    // only what `pe.sprites` holds.
+    let spriteSlot = 0;
+    let drewShadow = false;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
-      pe.shadowFlags[i] = layer.shadow === true;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own
       // [fromPct,toPct] window, reaches its baked TimeMask threshold (the original's
       // PrintBob_UsingTimeMask construction blit). `null` - no time data or no bake - crops instead.
@@ -120,11 +123,15 @@ export class LayerBinder {
           : null;
       const box = this.drawBox;
       layerDrawBox(box, layer, displayReveal, revealTexture !== null);
-      if (pe.paletted) {
+      if (pe.paletted && layer.shadow === true) {
+        this.bindShadowSprite(pe, layer, box, tint);
+        drewShadow = true;
+      } else if (pe.paletted) {
         const row = layerLutRow(pe.palette, layer, playerRow);
-        this.bindPalettedLayer(pe, i, layer, originX, originY, camScale, frame, row);
+        this.bindPalettedLayer(pe, spriteSlot++, layer, originX, originY, camScale, frame, row);
       } else {
-        this.bindPlainLayer(pe, i, layer, revealTexture, box, tint, enhanceBuilding);
+        pe.shadowFlags[spriteSlot] = layer.shadow === true;
+        this.bindPlainLayer(pe, spriteSlot++, layer, revealTexture, box, tint, enhanceBuilding);
       }
       if (layer.boundsExempt === true) continue;
       const selection = layer.frame.selectionEllipse;
@@ -146,13 +153,17 @@ export class LayerBinder {
         box.oy + box.height,
       );
     }
-    // Hide leftover sprites from a frame that needed more layers, and drop the shadow flags that
-    // described them.
+    // Hide what this frame did not bind: leftover sprites from a frame that needed more layers, and a
+    // silhouette the drawn bob has none for. The shadow flags shrink with the sprites they describe.
     if (!hasSelection) pe.selectionEllipse = undefined;
-    pe.shadowFlags.length = layers.length;
-    for (let i = layers.length; i < pe.sprites.length; i++) {
+    for (let i = spriteSlot; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;
+    }
+    if (pe.paletted) {
+      if (!drewShadow && pe.shadow !== undefined) pe.shadow.visible = false;
+    } else {
+      pe.shadowFlags.length = spriteSlot;
     }
     // A fog ghost stamps no bounds so it cannot be picked: its ref may be a dead entity, and selecting
     // a live one through the fog would leak its current state into the details panel.
@@ -166,6 +177,32 @@ export class LayerBinder {
         frameId,
       );
     }
+  }
+
+  /**
+   * A paletted character's cast shadow - one silhouette, the twin frame of the drawn body bob. The
+   * silhouette atlas carries no palette indices, so it draws as a plain batched sprite - which is also
+   * what puts it on the soft-shadow bake - first in child order so it paints under the meshes. It rides
+   * the container transform like every other plain layer, so it follows the interpolated feet anchor the
+   * meshes place themselves from.
+   */
+  private bindShadowSprite(
+    pe: PalettedPooledEntity,
+    layer: ResolvedLayer,
+    box: LayerDrawBox,
+    tint: number,
+  ): void {
+    let spr = pe.shadow;
+    if (spr === undefined) {
+      spr = worldBatched(new Sprite());
+      pe.shadow = spr;
+      pe.container.addChildAt(spr, 0);
+    }
+    spr.texture = this.textures.getShadow(layer.source, layer.frame);
+    spr.position.set(box.ox, box.drawnOy);
+    spr.scale.set(layer.scale);
+    if (spr.tint !== tint) spr.tint = tint;
+    spr.visible = true;
   }
 
   private bindPalettedLayer(
@@ -246,6 +283,7 @@ export class LayerBinder {
    *  its fixed body box. */
   private showPlaceholder(pe: PooledEntity, item: DrawItem, frame: BindFrame, frameId: number): void {
     for (const s of pe.sprites) s.visible = false;
+    if (pe.paletted && pe.shadow !== undefined) pe.shadow.visible = false;
     if (pe.placeholder === undefined) {
       pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
       if (pe.kind === 'projectile') pe.placeholder.position.y = -PROJECTILE_FLIGHT_HEIGHT;

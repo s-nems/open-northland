@@ -8,7 +8,7 @@ import {
   preferredPaletteFor,
   referencedFamilyLayers,
 } from '../../src/content/building-gfx/index.js';
-import { humanSequences, playableSequences } from '../../src/content/ir/joins.js';
+import { humanSequences, playableSequences, servedShadowStem } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import {
   ADULT_CHARACTER_BY_JOB,
@@ -82,6 +82,25 @@ describe.runIf(hasRealIr())('every civilization is drawable', () => {
       expect(atlasExists(`${exact?.bodyBmd}.${INDEXED}`), `hero body ${exact?.bodyBmd} is not decoded`).toBe(
         true,
       );
+    }
+  });
+
+  it('names and decodes a cast-shadow twin for every character body', () => {
+    // The render side looks a character's silhouette up by the body's own bob id, and an id the twin
+    // leaves empty draws no shadow at all - which is how the data reads: the santa body ships an empty
+    // twin, and the bodies that borrow another body's set (77 borrows the woman's) see ids outside
+    // their own pool. What must hold is that the set each record names is actually decoded, else that
+    // civilization's settlers silently draw shadow-less.
+    const ir = rawIrUnderTest() as ContentIr;
+    if (!existsSync(bobsDir())) return;
+    const rows = ir.jobGraphics ?? [];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      // The stem comes from the app's own join, so a renamed shadow atlas fails here too.
+      const stem = servedShadowStem(row.shadowBody);
+      expect(stem, `tribe ${row.tribe} job ${row.job} names no shadow set`).toBeDefined();
+      if (stem === undefined) continue;
+      expect(atlasExists(stem), `shadow set ${stem} is not decoded`).toBe(true);
     }
   });
 

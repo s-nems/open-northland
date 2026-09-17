@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { OPEN_CHEST_ATOMIC } from '../src/catalog/atomics.js';
 import {
+  JOB_BABY_MALE,
   JOB_CIVILIST,
   JOB_HERO_SWORD,
   JOB_SOLDIER_SWORD,
@@ -14,7 +15,7 @@ import {
   JOB_WOMAN,
 } from '../src/catalog/jobs.js';
 import type { BobSeqRow, ContentIr, JobGraphicsRow } from '../src/content/ir/rows.js';
-import { tribeLooks } from '../src/content/settler-gfx/index.js';
+import { CHARACTER_SPECS, tribeLooks } from '../src/content/settler-gfx/index.js';
 import type { LoadedLook, ResolvedLook } from '../src/content/sprite-sheet/character-looks.js';
 import { tribeCharacters } from '../src/content/sprite-sheet/tribe-characters.js';
 
@@ -60,9 +61,14 @@ function seqs(names: readonly string[]): Map<string, BobSeqRow> {
 }
 
 /** Every look the tribe resolves, with the bodies named in `decoded` loaded and the rest missing. */
-function inputsFor(tribe: number, decoded: readonly string[], names = [...CIVILIAN_SEQS, ...WARRIOR_SEQS]) {
+function inputsFor(
+  tribe: number,
+  decoded: readonly string[],
+  names = [...CIVILIAN_SEQS, ...WARRIOR_SEQS],
+  source: ContentIr = ir,
+) {
   const looks = new Map<string, ResolvedLook[]>();
-  for (const [specId, chain] of tribeLooks(ir, tribe)) {
+  for (const [specId, chain] of tribeLooks(source, tribe)) {
     looks.set(
       specId,
       chain.map((look) => ({ ...look, bodyStem: look.bodyBmd, headStems: [] })),
@@ -182,5 +188,35 @@ describe('tribeCharacters', () => {
     // Job 31's own body binds nothing, so the spec takes the civilian body behind it in the chain.
     expect(table?.byJob[JOB_SOLDIER_UNARMED]).toBeUndefined();
     expect(table?.default).toBeDefined();
+  });
+
+  it('drops a feet-calibrated body and its silhouette by the same shift', () => {
+    // The baby lib's authored hotspots float its sprite above the anchor, so its spec declares a shift.
+    // Body and silhouette print from one anchor, so a twin left unshifted would float at the head.
+    const shift = CHARACTER_SPECS.baby.feetShiftY;
+    const babyIr: ContentIr = {
+      jobGraphics: [...(ir.jobGraphics ?? []), row(VIKING, JOB_BABY_MALE, 'cr_hum_body_22')],
+    };
+    const inputs = inputsFor(
+      VIKING,
+      ['cr_hum_body_00', 'cr_hum_body_22'],
+      ['human_child_baby_generic_crouch', 'human_child_baby_generic_wait', ...CIVILIAN_SEQS],
+      babyIr,
+    );
+    const shadow = layer();
+    const body = inputs.layersByBody.get('cr_hum_body_22');
+    if (body === undefined) throw new Error('the baby body must be loaded');
+    inputs.layersByBody.set('cr_hum_body_22', { ...body, body: { ...body.body, shadow } });
+
+    const baby = tribeCharacters(babyIr, [], VIKING, inputs)?.youngByJob?.[JOB_BABY_MALE];
+
+    const bodyOffset = baby?.body.atlas.frames.get(0)?.offsetY;
+    const shadowOffset = baby?.body.shadow?.atlas.frames.get(0)?.offsetY;
+    expect(shift).toBeGreaterThan(0);
+    expect(bodyOffset).toBe(shift);
+    expect(shadowOffset).toBe(shift);
+    // An uncalibrated look keeps both layers verbatim.
+    const civilian = tribeCharacters(babyIr, [], VIKING, inputs)?.default;
+    expect(civilian?.body.atlas.frames.get(0)?.offsetY).toBe(0);
   });
 });

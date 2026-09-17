@@ -7,8 +7,7 @@ through the `sourceLayerFor` → `resolveFromLayer` pair that every other layere
 private to `gpu/sprite-pool/layered-layers.ts`). It calls `lookupFrame` directly and hardcodes
 `scale: 1` at both emit sites (body and head), so `kindScales.settler` is ignored exactly on the
 real-content path (sheets with `characters`) while honoured on the synthetic fall-through. The human
-branch also skips the shadow policy the animal branch above it applies, though `human-sheet.ts` loads
-character atlases without a shadow twin, so that half is currently moot.
+branch applies the same shadow policy as the animal branch above it, so only the scale owner is open.
 
 Two smaller seams in the same dispatch: `resolveSpriteFrame` (`data/sprites/resolve.ts`) has no
 production caller, existing as a public barrel export used only as the bob-selection oracle by
@@ -20,7 +19,8 @@ that reads like a bug in one `case` of `resolveLayers`.
 
 - Route the character body/head through `resolveFromLayer` (generalize it to carry atlas dimensions,
   which the paletted mesh path needs, and export it from `layered-layers.ts`) so scale has one owner.
-  Decide there whether "settlers cast no shadow" is policy or an artifact of the atlases loaded.
+  A character's cast shadow must keep binding on its own plain sprite, since the silhouette atlas holds
+  no palette indices.
 - Decide `resolveSpriteFrame`: keep it as the tested pure seam, or delete it and retarget those
   assertions at `resolveSpriteBobId` + `lookupFrame`.
 - Keep both kind dispatches exhaustive over `DrawKind`. The kind → binding-key rule still has two

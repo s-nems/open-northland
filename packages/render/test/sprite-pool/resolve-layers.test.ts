@@ -1,6 +1,12 @@
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { type DrawItem, resolveLayers, type SpriteAtlas, type SpriteSheet } from '../../src/index.js';
+import {
+  type DrawItem,
+  resolveLayers,
+  type SpriteAtlas,
+  type SpriteLayer,
+  type SpriteSheet,
+} from '../../src/index.js';
 
 /** `resolveLayers` is a pure layer decision, so these fake sources are never touched. */
 const source = {} as TextureSource;
@@ -96,6 +102,71 @@ describe('resolveLayers - construction reveal: per-pixel with time data, crop fa
     const layers = resolveLayers(sheetWith(false), site, 0) ?? [];
     expect(layers.map((l) => [l.frame.x, l.reveal, l.revealWindow ?? null, l.times ?? null])).toEqual([
       [85, 0.3, null, null],
+    ]);
+  });
+});
+
+describe('resolveLayers - a human character casts its body twin silhouette', () => {
+  const bodySource = {} as TextureSource;
+  const headSource = {} as TextureSource;
+  /** The plain walk gait, the trader's cart-pulling gait, and a bob the twin holds no silhouette for. */
+  const WALK_BOB = 3;
+  const CART_BOB = 9;
+  const UNSHADOWED_BOB = 4;
+  const bodyAtlas: SpriteAtlas = {
+    width: 64,
+    height: 10,
+    frames: new Map([frame(WALK_BOB), frame(CART_BOB), frame(UNSHADOWED_BOB)]),
+  };
+  const shadowAtlas: SpriteAtlas = {
+    width: 64,
+    height: 10,
+    frames: new Map([frame(WALK_BOB), frame(CART_BOB)]),
+  };
+  const body = { source: bodySource, atlas: bodyAtlas, shadow: { source: shadowSource, atlas: shadowAtlas } };
+  const sheetAt = (bob: number, heads?: readonly SpriteLayer[]): SpriteSheet => ({
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: { settler: 1, resource: 1, building: 1 },
+    characters: {
+      byJob: {},
+      default: { body, binding: { idle: bob }, ...(heads !== undefined ? { heads } : {}) },
+    },
+  });
+  const settler: DrawItem = { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, state: 'idle' };
+  const readLayers = (bob: number, heads?: readonly SpriteLayer[]) =>
+    (resolveLayers(sheetAt(bob, heads), settler, 0) ?? []).map((l) => [
+      l.frame.x,
+      l.source === shadowSource,
+      l.shadow ?? false,
+      l.boundsExempt ?? false,
+    ]);
+
+  it('prepends the same-id silhouette under the body, bounds-exempt and unpickable', () => {
+    expect(readLayers(WALK_BOB)).toEqual([
+      [WALK_BOB, true, true, true],
+      [WALK_BOB, false, false, false],
+    ]);
+  });
+
+  it('shadows a cart-pulling gait from the same twin (the vehicle bobs of the body set)', () => {
+    expect(readLayers(CART_BOB)).toEqual([
+      [CART_BOB, true, true, true],
+      [CART_BOB, false, false, false],
+    ]);
+  });
+
+  it('draws the body alone for a bob the twin holds no silhouette for', () => {
+    expect(readLayers(UNSHADOWED_BOB)).toEqual([[UNSHADOWED_BOB, false, false, false]]);
+  });
+
+  it('keeps the head overlay above the body, with the silhouette still at the bottom', () => {
+    const head: SpriteLayer = { source: headSource, atlas: bodyAtlas };
+    const layers = resolveLayers(sheetAt(WALK_BOB, [head]), settler, 0) ?? [];
+    expect(layers.map((l) => [l.source === shadowSource, l.source === bodySource, l.head ?? false])).toEqual([
+      [true, false, false],
+      [false, true, false],
+      [false, false, true],
     ]);
   });
 });

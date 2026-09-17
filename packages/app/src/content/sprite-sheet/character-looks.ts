@@ -1,5 +1,6 @@
 import type { SpriteLayer } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
+import { servedShadowStem } from '../ir/joins.js';
 import { loadGalleryLayers } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
 import { type CharacterSpecId, lookStem, type TribeLook, tribeLooks } from '../settler-gfx/index.js';
@@ -7,6 +8,9 @@ import { type CharacterSpecId, lookStem, type TribeLook, tribeLooks } from '../s
 /** One tribe's look for a character spec, with the served atlas stems its palettes resolve to. */
 export interface ResolvedLook extends TribeLook {
   readonly bodyStem: string;
+  /** The body's cast-shadow atlas stem. Palette-less, so it is the same set behind every skin the
+   *  body loads in. */
+  readonly shadowStem?: string;
   readonly headStems: readonly string[];
 }
 
@@ -35,11 +39,15 @@ export function resolveLooks(
     for (const [specId, chain] of tribeLooks(ir, tribe)) {
       resolved.set(
         specId,
-        chain.map((look) => ({
-          ...look,
-          bodyStem: lookStem(look.bodyBmd, palette ?? look.bodyPalette),
-          headStems: look.headBmds.map((bmd) => lookStem(bmd, palette ?? look.headPalette)),
-        })),
+        chain.map((look) => {
+          const shadowStem = servedShadowStem(look.shadowBmd);
+          return {
+            ...look,
+            bodyStem: lookStem(look.bodyBmd, palette ?? look.bodyPalette),
+            ...(shadowStem !== undefined ? { shadowStem } : {}),
+            headStems: look.headBmds.map((bmd) => lookStem(bmd, palette ?? look.headPalette)),
+          };
+        }),
       );
     }
     byTribe.set(tribe, resolved);
@@ -47,22 +55,27 @@ export function resolveLooks(
   return byTribe;
 }
 
-/** Load every distinct served body once with the heads that overlay it; a body that 404s is left out, so
- *  its looks fall back rather than failing the sheet. */
+/** Load every distinct served body once with the heads that overlay it and its cast-shadow twin; a body
+ *  that 404s is left out, so its looks fall back rather than failing the sheet. */
 export async function loadLookLayers(looks: readonly ResolvedLook[]): Promise<Map<string, LoadedLook>> {
   // Heads are keyed per body stem, since two looks on one body (civilist and scout) carry different hats.
   const headStemsByBody = new Map<string, Set<string>>();
+  // One shadow set per body; first-wins, since the records naming one body agree on its silhouettes.
+  const shadowStemByBody = new Map<string, string>();
   for (const look of looks) {
     const set = headStemsByBody.get(look.bodyStem) ?? new Set<string>();
     for (const stem of look.headStems) set.add(stem);
     headStemsByBody.set(look.bodyStem, set);
+    if (look.shadowStem !== undefined && !shadowStemByBody.has(look.bodyStem)) {
+      shadowStemByBody.set(look.bodyStem, look.shadowStem);
+    }
   }
   const loaded = new Map<string, LoadedLook>();
   await Promise.all(
     [...headStemsByBody].map(async ([bodyStem, heads]) => {
       const headStems = [...heads];
       try {
-        const layers = await loadGalleryLayers(bodyStem, headStems);
+        const layers = await loadGalleryLayers(bodyStem, headStems, shadowStemByBody.get(bodyStem));
         const headsByStem = new Map<string, SpriteLayer>();
         layers.heads.forEach((layer, i) => {
           const stem = headStems[i];

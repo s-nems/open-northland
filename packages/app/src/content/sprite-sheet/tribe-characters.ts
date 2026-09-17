@@ -3,6 +3,7 @@ import type {
   ByJobTable,
   SettlerCharacter,
   SettlerStateBinding,
+  SpriteAtlas,
   SpriteLayer,
 } from '@open-northland/render';
 import { MUSHROOM_HARVEST_ATOMIC } from '../../catalog/atomics.js';
@@ -35,13 +36,24 @@ import type { LoadedLook, ResolvedLook } from './character-looks.js';
 
 /**
  * A body layer with every frame's draw offset dropped by `shift` px (no shift → the layer verbatim) - the
- * anchor calibration a `CharacterSpec.feetShiftY` declares.
+ * anchor calibration a `CharacterSpec.feetShiftY` declares. The cast-shadow twin moves with it: body and
+ * silhouette print from one anchor, so a correction to that anchor applies to both.
  */
 function feetShiftedLayer(layer: SpriteLayer, shift: number | undefined): SpriteLayer {
   if (shift === undefined || shift === 0) return layer;
+  return {
+    ...layer,
+    atlas: feetShiftedAtlas(layer.atlas, shift),
+    ...(layer.shadow !== undefined
+      ? { shadow: { ...layer.shadow, atlas: feetShiftedAtlas(layer.shadow.atlas, shift) } }
+      : {}),
+  };
+}
+
+function feetShiftedAtlas(atlas: SpriteAtlas, shift: number): SpriteAtlas {
   const frames = new Map<number, AtlasFrame>();
-  for (const [id, frame] of layer.atlas.frames) frames.set(id, { ...frame, offsetY: frame.offsetY + shift });
-  return { ...layer, atlas: { ...layer.atlas, frames } };
+  for (const [id, frame] of atlas.frames) frames.set(id, { ...frame, offsetY: frame.offsetY + shift });
+  return { ...atlas, frames };
 }
 
 /** One pick bends {@link MUSHROOM_PLUCKS_PER_PICK} times, so the authored one-shot pluck list repeats

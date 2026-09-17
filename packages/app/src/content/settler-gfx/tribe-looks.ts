@@ -10,6 +10,9 @@ export interface TribeLook {
   readonly job: number;
   /** The body bob stem, e.g. `cr_hum_body_30`. */
   readonly bodyBmd: string;
+  /** The body's shadow bob stem (`cr_hum_body_30_s`), when the record names one. Its silhouettes
+   *  parallel the body's own bob ids. */
+  readonly shadowBmd?: string;
   /** The head-look stems in `gfxbobmanagerhead` slot order, deduplicated; empty for a body-only look. */
   readonly headBmds: readonly string[];
   readonly bodyPalette: string;
@@ -39,6 +42,7 @@ function lookFrom(row: JobGraphicsRow): TribeLook {
   return {
     job: row.job,
     bodyBmd: bobStem(row.body),
+    ...(row.shadowBody !== undefined ? { shadowBmd: bobStem(row.shadowBody) } : {}),
     headBmds: heads,
     bodyPalette: row.bodyPalette ?? DEFAULT_PALETTE,
     headPalette: row.headPalette ?? DEFAULT_PALETTE,

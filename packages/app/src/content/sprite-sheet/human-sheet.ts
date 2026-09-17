@@ -95,8 +95,9 @@ export async function loadHumanSpriteSheet(
    *  ones actually placed are loaded. */
   tribes: WorldTribes = [VIKING_TRIBE],
 ): Promise<SpriteSheet> {
-  // Settlers draw shadow-less, so the body/head fetches start before the IR await; the tree/house/family
-  // loads wait for the IR's body-stem → shadow-stem join to attach each atlas's cast-shadow twin.
+  // This sheet's own body/head layers draw no cast shadow - a settler's silhouette rides its per-job
+  // character look - so their fetches start before the IR await; the tree/house/family loads wait for
+  // the IR's body-stem → shadow-stem join to attach each atlas's twin.
   const bodyLoad = loadLayer(HUMAN_BODY_ATLAS);
   const headLoad = loadLayer(HUMAN_HEAD_ATLAS);
   // Keep an absent-content rejection from surfacing as unhandled while the IR await is still pending.
