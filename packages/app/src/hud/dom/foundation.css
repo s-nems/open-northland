@@ -854,7 +854,7 @@
 .on-hud .on-bar {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 9px 8px;
   background-image:
     linear-gradient(
       180deg,
@@ -1018,20 +1018,24 @@
   padding: 8px 12px 4px;
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
-  background-image:
-    linear-gradient(180deg, #0000 0 34px, color-mix(in srgb, var(--deep) 92%, transparent) 60px),
-    var(--on-surface);
-  background-position:
-    0 0,
-    center top;
-  background-size:
-    auto,
-    620px auto;
+  isolation: isolate;
+  background-image: var(--on-surface);
+  background-position: center top;
+  background-size: 620px auto;
   box-shadow:
     inset 0 1px var(--bronze),
     inset 0 0 0 1px var(--wood-lo),
     0 -6px 20px #0009;
   overflow: visible;
+}
+/* The surface's carved rails: its top rail fills the upper half, its bottom rail the lower half. */
+.on-hud .on-beam::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0;
+  z-index: -1;
+  background: var(--on-surface) center bottom / 620px auto no-repeat;
+  pointer-events: none;
 }
 .on-hud .on-beam::before {
   inset: 3px 3px 0;

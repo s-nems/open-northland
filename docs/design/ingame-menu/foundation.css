@@ -317,7 +317,7 @@ button.medallion:hover {
 .timebar {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 9px 8px;
   background:
     linear-gradient(
       180deg,
@@ -1405,14 +1405,22 @@ button.medallion:hover {
   padding: 8px 12px 4px;
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
-  background:
-    linear-gradient(180deg, #0000 0 34px, color-mix(in srgb, var(--deep) 92%, transparent) 60px),
-    url(./nordic-surface-v1.png) center top / 620px auto;
+  isolation: isolate;
+  background: url(./nordic-surface-v1.png) center top / 620px auto;
   box-shadow:
     inset 0 1px var(--bronze),
     inset 0 0 0 1px var(--wood-lo),
     0 -6px 20px #0009;
   overflow: visible;
+}
+/* The surface's carved rails: its top rail fills the upper half, its bottom rail the lower half. */
+.nav::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0;
+  z-index: -1;
+  background: url(./nordic-surface-v1.png) center bottom / 620px auto no-repeat;
+  pointer-events: none;
 }
 .hud-root.scaled .nav {
   left: calc(50% + 68px);
