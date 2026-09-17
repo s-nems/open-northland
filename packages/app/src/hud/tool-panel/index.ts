@@ -103,6 +103,8 @@ export interface ToolPanelOptions {
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
+  /** True while the system menu owns the keyboard, so Escape is not the shell's to take. */
+  readonly systemMenuOpen?: () => boolean;
   /** The mission window's brief for a briefing page, or the map's fallback text with null. */
   readonly missionBrief?: (page: number | null) => MissionBrief | null;
   readonly missionBriefingHistory?: () => readonly number[];
@@ -299,7 +301,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           text: id === 'residents' ? shellCopy.residentsPending : shellCopy.knowledgePending,
           closeLabel: shellCopy.close,
         });
-        window.onClose(() => focusOwner?.(navEntryForWindow(id)));
+        window.onDismiss(() => focusOwner?.(navEntryForWindow(id)));
         return window;
       },
       buildings: opts.buildings,
@@ -401,6 +403,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       held,
       bindings: opts.bindings,
       closeWindow,
+      ...(opts.systemMenuOpen !== undefined ? { keyboardOwned: opts.systemMenuOpen } : {}),
       togglePause: () => speed.togglePause(),
       cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => {

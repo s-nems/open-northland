@@ -410,6 +410,23 @@ describe('diplomacy window controller', () => {
   });
 });
 
+it('shortens a tall window to the beam floor instead of stepping beside it', () => {
+  const { ctx } = stubContext();
+  const tributes = Array.from({ length: 20 }, (_, slot) => ({
+    slot,
+    payable: true,
+    descriptionH: 0,
+    lines: 2,
+  }));
+  const raw = expectedLayout(ctx, [1, 2, 3], 1, tributes);
+  const floor = ctx.layout.windowFloor(SCREEN);
+  expect(raw.window.y + raw.window.h).toBeGreaterThan(floor);
+  const built = fitDiplomacyWindow(raw, SCREEN, null, 0, floor);
+  expect(built.window.x).toBe(raw.window.x);
+  expect(built.window.y + built.window.h).toBeLessThanOrEqual(floor);
+  expect(built.maxScroll).toBeGreaterThan(0);
+});
+
 it('allows scrolling to and paying a tribute beyond the initial viewport', () => {
   const { ctx } = stubContext();
   const paid: number[] = [];
@@ -428,10 +445,11 @@ it('allows scrolling to and paying a tribute beyond the initial viewport', () =>
     lines: 1,
   }));
   const raw = expectedLayout(ctx, [1], 1, tributes);
-  const reserve = ctx.layout.bottomReserve(SCREEN, raw.window, null);
   const inside = { x: raw.window.x + raw.window.w / 2, y: raw.window.y + 100 };
   for (let i = 0; i < 40; i++) window.handleWheel(inside.x, inside.y, 100);
-  const last = fitDiplomacyWindow(raw, SCREEN, reserve, Infinity).tributes.at(-1);
+  const last = fitDiplomacyWindow(raw, SCREEN, null, Infinity, ctx.layout.windowFloor(SCREEN)).tributes.at(
+    -1,
+  );
   expect(last).toBeDefined();
   if (last === undefined) return;
   window.handleClick(last.pay.x + last.pay.w / 2, last.pay.y + last.pay.h / 2);

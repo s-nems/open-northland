@@ -14,15 +14,18 @@ const SCREEN_INSET_PX = 4;
  *  (approximation: about two rows). */
 const MIN_BODY_UNDER_TABS = 72;
 
+/** Fit the window to the screen: it shortens to `floor` (the navigation beam), and steps beside
+ *  `reserve` (the bottom-corner minimap) where its span crosses that, or shortens above it too. */
 export function fitDiplomacyWindow(
   layout: DiplomacyWindowLayout,
   screen: { readonly width: number; readonly height: number },
   reserve: Rect | null,
   requestedScroll: number,
+  floor: number = screen.height,
 ): FittedDiplomacyWindow {
   const inset = SCREEN_INSET_PX;
   let x = Math.max(inset, Math.min(layout.window.x, screen.width - layout.window.w - inset));
-  let bottom = screen.height - inset;
+  let bottom = Math.min(screen.height, floor) - inset;
   let height = Math.min(layout.window.h, bottom - inset);
   let y = Math.max(inset, Math.min(layout.window.y, bottom - height));
   if (

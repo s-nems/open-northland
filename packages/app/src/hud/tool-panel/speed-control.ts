@@ -1,11 +1,9 @@
 import {
-  cycleGameSpeed,
   DEFAULT_GAME_SPEED_CONTROL,
   effectiveGameSpeedSpec,
   type GameSpeedChangeCause,
   type GameSpeedControl,
   type GameSpeedStateSpec,
-  gameSpeedClickCause,
   type RunningGameSpeed,
   toggleGameSpeedPause,
 } from './game-speed.js';
@@ -19,8 +17,6 @@ export interface SpeedControlDeps {
 
 /** The game-speed control behind the system bar's segments and the pause hotkey. */
 export interface SpeedControl {
-  /** The legacy single-button gesture: the next running speed, or resume while paused. */
-  cycle(): void;
   togglePause(): void;
   /** Pick a running speed; a pick while paused resumes at it. */
   setRunning(running: RunningGameSpeed): void;
@@ -39,7 +35,6 @@ export function createSpeedControl(deps: SpeedControlDeps): SpeedControl {
     if (cause !== null) deps.onSpeedChange(effectiveGameSpeedSpec(control), cause);
   };
   return {
-    cycle: () => apply(cycleGameSpeed(control), gameSpeedClickCause(control)),
     togglePause: () => apply(toggleGameSpeedPause(control), 'pause-toggle'),
     setRunning: (running) => {
       // Resuming at the remembered speed only flips the pause flag, like the pause key; any other pick

@@ -191,7 +191,6 @@ export const plGame = {
     selectedCount: 'Wybrano: {count}',
     subjectCount: 'Liczba poddanych na liście: {count}',
     commandHint: 'Kliknij PPM na świecie, aby wydać rozkaz.',
-    dropHint: '{label} - kliknij, aby położyć; Esc kończy',
     placementHint: '{label} - kliknij, aby postawić; Esc anuluje',
     placementPaperHint: '{label} z planu - kliknij, aby postawić gotowy budynek; Esc anuluje',
     heldPaperHint: 'Plan budowy - wybierz budynek z menu; Esc anuluje',
@@ -428,11 +427,6 @@ export const plGame = {
     select: 'Pokaż',
     becameSoldier: '{name} został żołnierzem',
     learnedProfession: '{name} nauczył się zawodu: {profession}',
-    levelTooltips: {
-      '0': 'Każdy komunikat',
-      '1': 'Bez drobiazgów',
-      '2': 'Wyłącznie pilne sprawy',
-    },
     rows: {
       '33': 'w odniesieniu do swojego doświadczenia może teraz wykonywać następujące prace',
       '34': 'Nowe zawody',

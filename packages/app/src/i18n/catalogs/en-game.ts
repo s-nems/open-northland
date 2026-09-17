@@ -191,7 +191,6 @@ export const enGame = {
     selectedCount: '{count} selected',
     subjectCount: 'Subjects on the list: {count}',
     commandHint: 'Right click the world to issue a command.',
-    dropHint: '{label} - click to drop, Esc to finish',
     placementHint: '{label} - click to build, Esc to cancel',
     /** Placement paid by a paper: the house stands finished where it lands. */
     placementPaperHint: '{label} from a paper - click to place it finished, Esc to cancel',
@@ -442,11 +441,6 @@ export const enGame = {
     becameSoldier: '{name} became a soldier',
     learnedProfession: '{name} learned the {profession} profession',
     /** The priority button's hover text per filter level; the `main` table rows 14-16 stand in front. */
-    levelTooltips: {
-      '0': 'Every message',
-      '1': 'Unimportant messages hidden',
-      '2': 'Important messages only',
-    },
     /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
     rows: {
       '33': 'can now do the following based on experience',

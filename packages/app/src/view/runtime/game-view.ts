@@ -383,6 +383,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
       overlayReserve: () => minimap?.panelRect() ?? null,
       onSystemMenu: () => systemMenu?.toggle(),
+      systemMenuOpen: () => systemMenu?.isOpen() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       missionBrief: briefFor,
       missionBriefingHistory: () => sim.missionBriefingHistory(),

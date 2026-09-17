@@ -36,8 +36,11 @@ export function createHudNav<Id extends string>(
     nav.append(button);
   }
   plane.append(nav);
+  let active: Id | null = null;
   return {
     setActive: (id) => {
+      if (id === active) return;
+      active = id;
       for (const [entryId, button] of buttons) button.setAttribute('aria-pressed', String(entryId === id));
     },
     focus: (id) => buttons.get(id)?.focus(),

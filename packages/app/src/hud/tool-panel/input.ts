@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { isActionHotkey } from '../hotkeys.js';
+import { isActionHotkey, isTypingTarget } from '../hotkeys.js';
 import type { KeyBindings } from '../keybindings.js';
 import type { ToolWindows } from './windows.js';
 
@@ -31,6 +31,8 @@ export interface ToolPanelInputDeps {
   readonly bindings: KeyBindings;
   /** Close the open central window; true when one was open. */
   readonly closeWindow: () => boolean;
+  /** True while another surface owns the keyboard (the system menu); Escape is then its press. */
+  readonly keyboardOwned?: () => boolean;
   readonly togglePause: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is byte-verified). */
@@ -108,10 +110,16 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
 
   // Escape steps back one level per press: a held mode, then the open central window. It runs in the
   // capture phase so the unit controls' own ladder (job list, armed order, selection) only sees a
-  // press the shell left alone, whichever listener registered first.
+  // press the shell left alone, whichever listener registered first. A text field, a modal dialog
+  // and the system menu keep their own Escape.
+  const keyboardOwned = (e: KeyboardEvent): boolean =>
+    isTypingTarget(e.target) ||
+    (e.target instanceof Element && e.target.closest('[aria-modal="true"]') !== null) ||
+    deps.keyboardOwned?.() === true;
   const onKeyDown = (e: KeyboardEvent): void => {
     const sheet = windows.byId.mission;
     if (e.code === 'Escape') {
+      if (keyboardOwned(e)) return;
       if (anyHeld()) {
         deps.cue('fail');
         for (const mode of held) mode.cancel();

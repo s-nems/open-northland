@@ -23,8 +23,9 @@ export interface HudWindow {
   open(): void;
   close(): void;
   place(x: number, y: number): void;
-  /** Runs after every close, from the medallion or the owner; the owner returns focus. */
-  onClose(listener: () => void): void;
+  /** Runs when the close medallion closed the window, so the owner can return focus; a close the
+   *  owner made itself (another window replacing this one) stays silent. */
+  onDismiss(listener: () => void): void;
   dispose(): void;
 }
 
@@ -54,11 +55,12 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
   if (!(body instanceof HTMLElement)) throw new Error('hud window: body missing');
   const listeners: (() => void)[] = [];
   const close = (): void => {
-    if (element.hidden) return;
     element.hidden = true;
-    for (const listener of listeners) listener();
   };
-  closeButton.addEventListener('click', close);
+  closeButton.addEventListener('click', () => {
+    close();
+    for (const listener of listeners) listener();
+  });
   plane.append(element);
   return {
     element,
@@ -72,7 +74,7 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
       element.style.left = `${x}px`;
       element.style.top = `${y}px`;
     },
-    onClose: (listener) => {
+    onDismiss: (listener) => {
       listeners.push(listener);
     },
     dispose: () => element.remove(),

@@ -60,16 +60,25 @@ let windowTarget: EventTarget;
 beforeEach(() => {
   windowTarget = new EventTarget();
   vi.stubGlobal('window', windowTarget);
-  vi.stubGlobal('HTMLInputElement', class {});
+  vi.stubGlobal('HTMLInputElement', TextField);
   vi.stubGlobal('HTMLTextAreaElement', class {});
   vi.stubGlobal('HTMLElement', class {});
+  vi.stubGlobal('Element', DialogButton);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function mount() {
+/** Stand-ins for the DOM classes the keyboard-owner guard probes. */
+class TextField {}
+class DialogButton {
+  closest(selector: string): object | null {
+    return selector === '[aria-modal="true"]' ? this : null;
+  }
+}
+
+function mount(keyboardOwned?: () => boolean) {
   const canvas = new EventTarget() as unknown as HTMLCanvasElement;
   const cues: UiCue[] = [];
   const held = heldMode();
@@ -91,6 +100,7 @@ function mount() {
       closed.push(1);
       return true;
     },
+    ...(keyboardOwned !== undefined ? { keyboardOwned } : {}),
     togglePause: () => undefined,
     cue: (cue) => {
       cues.push(cue);
@@ -153,6 +163,27 @@ describe('tool panel Escape ladder', () => {
     const third = key('Escape');
     windowTarget.dispatchEvent(third);
     expect(third.defaultPrevented).toBe(false); // nothing left for the shell: the unit controls' turn
+    expect(cues).toEqual(['fail']);
+    input.dispose();
+  });
+
+  it('leaves Escape to a text field, a modal dialog and the system menu', () => {
+    const { input, cues, arm, openWindow, closed, windowTarget } = mount(() => menuOpen);
+    let menuOpen = false;
+    arm();
+    openWindow();
+    const typed = key('Escape');
+    Object.defineProperty(typed, 'target', { value: new TextField() });
+    windowTarget.dispatchEvent(typed);
+    const inDialog = key('Escape');
+    Object.defineProperty(inDialog, 'target', { value: new DialogButton() });
+    windowTarget.dispatchEvent(inDialog);
+    menuOpen = true;
+    windowTarget.dispatchEvent(key('Escape'));
+    expect(cues).toEqual([]);
+    expect(closed).toEqual([]);
+    menuOpen = false;
+    windowTarget.dispatchEvent(key('Escape'));
     expect(cues).toEqual(['fail']);
     input.dispose();
   });

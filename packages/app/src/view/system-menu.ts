@@ -8,6 +8,8 @@ import { buildSystemSettingsPanel } from './system-settings-panel.js';
 
 export interface SystemMenu {
   toggle(): void;
+  /** True while the dimmed menu is up; it owns the keyboard until it hides. */
+  isOpen(): boolean;
   dispose(): void;
 }
 
@@ -196,6 +198,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   document.body.append(backdrop);
 
   return {
+    isOpen: () => backdrop.style.display !== 'none',
     toggle(): void {
       if (backdrop.style.display === 'none') {
         // The whole menu holds the pause, so the sim never runs behind the dimmed backdrop.

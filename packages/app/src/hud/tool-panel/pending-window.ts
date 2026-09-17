@@ -17,9 +17,10 @@ export interface PendingWindowSpec {
  *  head with the entry's icon and a note saying so. It takes part in the window registry like a
  *  legacy pop-up, but the plane routes its own pointer input, so it claims no canvas point. */
 export interface PendingWindow extends ToolWindow {
-  /** Re-place against the plane's design-px size; call once per frame. */
+  /** Re-place an open window against the plane's design-px size; call once per frame. */
   place(): void;
-  onClose(listener: () => void): void;
+  /** The close medallion was pressed; the owner returns focus to the beam. */
+  onDismiss(listener: () => void): void;
   dispose(): void;
 }
 
@@ -44,6 +45,7 @@ export function createPendingWindow(plane: HTMLElement, spec: PendingWindowSpec)
     claims: () => false,
     handleClick: () => false,
     place: () => {
+      if (!window.isOpen()) return;
       // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
       const size = { width: plane.clientWidth, height: plane.clientHeight };
       const origin = centralWindowOrigin(size, 1, PENDING_WINDOW_W);
@@ -52,7 +54,7 @@ export function createPendingWindow(plane: HTMLElement, spec: PendingWindowSpec)
       placed = key;
       window.place(origin.x, origin.y);
     },
-    onClose: window.onClose,
+    onDismiss: window.onDismiss,
     dispose: window.dispose,
   };
 }

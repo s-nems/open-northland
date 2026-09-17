@@ -137,8 +137,13 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       declarable: selectedRow?.canDeclare === true ? selectedRow.yourStance : null,
       tributes: cards.map((c) => c.spec),
     });
-    const reserve = ctx.layout.bottomReserve(screen, raw.window, ctx.overlayReserve?.() ?? null);
-    const built = fitDiplomacyWindow(raw, screen, reserve, scroll);
+    const built = fitDiplomacyWindow(
+      raw,
+      screen,
+      ctx.overlayReserve?.() ?? null,
+      scroll,
+      ctx.layout.windowFloor(screen),
+    );
     scroll = built.scroll;
     layout = built;
 

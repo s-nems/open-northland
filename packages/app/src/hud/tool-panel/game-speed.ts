@@ -1,8 +1,6 @@
-// The game-speed button state machine, pinned to the original's speed button. Each visible state maps to
-// an app-side tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`.
-//
-// Approximation: a click cycles only the running speeds, never into pause, and pause is a separate
-// toggle. Exact cycling behavior is unconfirmed against the running original.
+// The game-speed states, pinned to the original's speed button. Each visible state maps to an
+// app-side tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`; pause is a separate
+// toggle that remembers the running speed.
 
 export type GameSpeedState = 'normal' | 'fast' | 'faster' | 'paused';
 
@@ -45,18 +43,6 @@ export interface GameSpeedControl {
 /** ×1 running is the original's default in-game speed. */
 export const DEFAULT_GAME_SPEED_CONTROL: GameSpeedControl = { running: 'normal', paused: false };
 
-/** Declaration order is the click cycle, wrapping. */
-const RUNNING_CYCLE: readonly RunningGameSpeed[] = ['normal', 'fast', 'faster'];
-
-/** While paused, a click resumes at the remembered running speed instead of advancing the cycle. */
-export function cycleGameSpeed(control: GameSpeedControl): GameSpeedControl {
-  if (control.paused) return { running: control.running, paused: false };
-  const i = RUNNING_CYCLE.indexOf(control.running);
-  const next = RUNNING_CYCLE[(i + 1) % RUNNING_CYCLE.length];
-  if (next === undefined) throw new Error('game-speed: running cycle index out of range');
-  return { running: next, paused: false };
-}
-
 export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedControl {
   return { running: control.running, paused: !control.paused };
 }
@@ -67,12 +53,6 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
  * `'pause-toggle'` must only flip the pause flag, or a seeded `?speed=0.5` would resume at ×1.
  */
 export type GameSpeedChangeCause = 'cycle' | 'pause-toggle';
-
-/** The cause a click reports, from the pre-click control: a click while paused is an un-pause, so both
- *  resume gestures behave alike. */
-export function gameSpeedClickCause(control: GameSpeedControl): GameSpeedChangeCause {
-  return control.paused ? 'pause-toggle' : 'cycle';
-}
 
 /** The spec the button draws + the loop applies for a control: the pause glyph wins while paused. */
 export function effectiveGameSpeedSpec(control: GameSpeedControl): GameSpeedStateSpec {
