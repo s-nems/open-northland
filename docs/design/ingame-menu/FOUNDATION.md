@@ -152,7 +152,9 @@ not this visual reference.
 
 Local-only review inputs in `/private/tmp/ingame-foundation` (never add these to Git):
 
-- `alegreya-400/500/700.woff2`, `cinzel.woff2`: the review fonts; the repository page falls back to system fonts without them.
+- `alegreya-400/500/700.woff2`, `alegreya-latinext-400/500/700.woff2`, `cinzel.woff2`, `cinzel-latinext.woff2`: the
+  review fonts, copies of the runtime subsets in `packages/app/public/fonts/`; the repository page falls back to
+  system fonts without them, and without the Latin Extended files Polish diacritics fall back alone.
 - `world.png`: existing map capture; preserve it while the temporary directory exists.
 - `review-characters/ir.json`: copy of the primary checkout's generated `content/ir.json`.
 - `review-characters/`: original `content/bobs/cr_hum_{body_00,head_00,body_10,head_10}.test_human_00`

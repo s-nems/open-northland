@@ -1,7 +1,13 @@
 /* Approved in-game UI foundation: B · Leśny łupek slate with wood, bronze and parchment (study 05). */
+/* The runtime's Latin and Latin Extended subsets, so Polish diacritics keep the face and its x-height. */
 @font-face {
   font-family: Alegreya;
   src: url(./alegreya-400.woff2);
+}
+@font-face {
+  font-family: Alegreya;
+  src: url(./alegreya-latinext-400.woff2);
+  unicode-range: U+0100-024F, U+1E00-1EFF;
 }
 @font-face {
   font-family: Alegreya;
@@ -10,13 +16,31 @@
 }
 @font-face {
   font-family: Alegreya;
+  src: url(./alegreya-latinext-500.woff2);
+  font-weight: 500;
+  unicode-range: U+0100-024F, U+1E00-1EFF;
+}
+@font-face {
+  font-family: Alegreya;
   src: url(./alegreya-700.woff2);
   font-weight: 700;
+}
+@font-face {
+  font-family: Alegreya;
+  src: url(./alegreya-latinext-700.woff2);
+  font-weight: 700;
+  unicode-range: U+0100-024F, U+1E00-1EFF;
 }
 @font-face {
   font-family: Cinzel;
   src: url(./cinzel.woff2);
   font-weight: 600;
+}
+@font-face {
+  font-family: Cinzel;
+  src: url(./cinzel-latinext.woff2);
+  font-weight: 600;
+  unicode-range: U+0100-024F, U+1E00-1EFF;
 }
 
 /* Page-level tokens (review page chrome and the spec cards). */
