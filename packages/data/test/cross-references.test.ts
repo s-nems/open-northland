@@ -207,6 +207,15 @@ describe('validateCrossReferences', () => {
       error: /vehicle "cart" admits unknown passenger jobType 99/,
     },
     {
+      name: 'a vehicle naming an unknown commander job',
+      overrides: {
+        vehicles: [
+          { typeId: 5, id: 'cart', jobId: 54, hitpoints: 3000, passengerJobs: [1], commanderJob: UNKNOWN },
+        ],
+      },
+      error: /vehicle "cart" names unknown commander jobType 99/,
+    },
+    {
       name: 'a vehicle transforming into an unknown vehicle',
       overrides: {
         vehicles: [

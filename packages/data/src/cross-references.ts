@@ -329,6 +329,8 @@ function checkVehicles(set: ContentSet, { jobIds, vehicleIds }: IdSets): string[
         errors.push(`vehicle "${v.id}" admits unknown passenger jobType ${job}`);
       }
     }
+    if (v.commanderJob !== undefined && !jobIds.has(v.commanderJob))
+      errors.push(`vehicle "${v.id}" names unknown commander jobType ${v.commanderJob}`);
     if (v.transformVehicleType !== undefined && !vehicleIds.has(v.transformVehicleType))
       errors.push(`vehicle "${v.id}" transforms into unknown vehicleType ${v.transformVehicleType}`);
   }

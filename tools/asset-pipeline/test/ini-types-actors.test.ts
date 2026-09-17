@@ -170,6 +170,7 @@ describe('extractVehicles', () => {
         cargoGoods: [],
         // Repeated `logicpassenger N` lines in file order, a vehicle job id (86) among them.
         passengerJobs: [25, 7, 86],
+        commanderJob: 25,
         vehicleSlots: 1,
         passengerVector: { direction: 2, distance: 4 },
         // A synthetic type id the hit-point table does not list takes the carts' pool.
@@ -194,10 +195,10 @@ describe('extractVehicles', () => {
     ]);
   });
 
-  it('keeps `logiccommander` and `stockvector` out: the original reads neither', () => {
-    const [, barge] = extractVehicles(parseIniSections(VEHICLETYPES_INI), { file: 'vehicletypes.ini' });
-    expect(barge).not.toHaveProperty('commanderJob');
+  it('keeps `stockvector` out (the original reads it nowhere) and leaves `commanderJob` off a type without one', () => {
+    const [sledge, barge] = extractVehicles(parseIniSections(VEHICLETYPES_INI), { file: 'vehicletypes.ini' });
     expect(barge).not.toHaveProperty('stockVector');
+    expect(sledge).not.toHaveProperty('commanderJob');
   });
 
   it('slugs the ox-less oxcart (type 6) by its define name and reads its animal and transform keys', () => {

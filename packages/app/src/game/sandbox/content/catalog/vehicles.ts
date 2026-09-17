@@ -21,8 +21,10 @@ import {
  * The six `vehicletypes.ini` records with their extracted slot, size, door and pool values
  * (docs/formats/VEHICLES.md), keyed on the sandbox's own good and job ids: every good but the sentinel
  * may ride in a hold, and the ships take every adult job while the carts take the two haulers and the
- * catapult the fighters. `jobId` follows `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`); the
- * sandbox declares only the catapult's, for its weapon row.
+ * catapult the fighters; the script captain is the trader on a cart, the carrier on a ship and the
+ * unarmed soldier on the catapult, as `logiccommander` authors them. `jobId` follows
+ * `JOB_TYPE_VEHICLE_* = type + 49` (`logicdefines.inc`); the sandbox declares only the catapult's, for
+ * its weapon row.
  */
 export function buildSandboxVehicles(
   goods: readonly { readonly typeId: number }[],
@@ -33,7 +35,8 @@ export function buildSandboxVehicles(
   const fighters = jobTypes.filter((job) => job >= JOB_SOLDIER_UNARMED && job <= JOB_HEROINE_BOW);
   const haulers = jobTypes.filter((job) => job === JOB_TRADER || job === JOB_CARRIER);
   const jobOf = (typeId: number): number => typeId + VEHICLE_JOB_OFFSET;
-  const cart = (typeId: number, id: string, stockSlots: number, passengerJobs: number[]): VehicleType => ({
+  /** A cart with a crew list also names the trader as its script captain; the ox-less one has neither. */
+  const cart = (typeId: number, id: string, stockSlots: number, crew: number[] | null): VehicleType => ({
     typeId,
     id,
     jobId: jobOf(typeId),
@@ -41,7 +44,8 @@ export function buildSandboxVehicles(
     passengerSlots: 0,
     logicSize: CART_SIZE,
     cargoGoods,
-    passengerJobs,
+    passengerJobs: crew ?? [],
+    ...(crew === null ? {} : { commanderJob: JOB_TRADER }),
     vehicleSlots: 0,
     hitpoints: CART_HITPOINTS,
   });
@@ -62,6 +66,7 @@ export function buildSandboxVehicles(
       cargoGoods,
       // The ship rows also admit the vehicle jobs they carry, which is how a cart is loaded aboard.
       passengerJobs: [...adults, jobOf(VEHICLE_HANDCART), jobOf(VEHICLE_OXCART), jobOf(VEHICLE_CATAPULT)],
+      commanderJob: JOB_CARRIER,
       vehicleSlots,
       passengerVector: SHIP_DOOR,
       hitpoints: SHIP_HITPOINTS,
@@ -69,7 +74,7 @@ export function buildSandboxVehicles(
   return [
     cart(VEHICLE_HANDCART, 'handcart', HANDCART_SLOTS, haulers),
     {
-      ...cart(VEHICLE_CART_NO_OX, 'cart_no_ox', OXCART_SLOTS, []),
+      ...cart(VEHICLE_CART_NO_OX, 'cart_no_ox', OXCART_SLOTS, null),
       transformVehicleType: VEHICLE_OXCART,
     },
     cart(VEHICLE_OXCART, 'oxcart', OXCART_SLOTS, haulers),
@@ -84,6 +89,7 @@ export function buildSandboxVehicles(
       logicSize: CATAPULT_SIZE,
       cargoGoods: [],
       passengerJobs: fighters,
+      commanderJob: JOB_SOLDIER_UNARMED,
       vehicleSlots: 0,
       hitpoints: CATAPULT_HITPOINTS,
     },

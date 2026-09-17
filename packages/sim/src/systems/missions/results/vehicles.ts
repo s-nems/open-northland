@@ -44,11 +44,9 @@ const TELEPORT_LANDING_RADIUS = 9;
 
 /**
  * `SetVehicle`: a vehicle of the type at the point for the player and tribe, with the id. With the
- * captain flag the line also spawns its commander at the door, attaches and boards it, and takes the
- * human back when either step is refused; the commander carries the vehicle's id and no behaviour.
- * Approximation: the original's captain trade is the type's `logiccommander`, which the IR does not
- * carry; the first `logicpassenger` entry stands in (it matches for carts and the catapult, and seats a
- * civilian instead of a carrier at a ship's helm).
+ * captain flag the line also spawns the type's `logiccommander` trade at the door, attaches and boards
+ * it, and takes the human back when either step is refused; the commander carries the vehicle's id and
+ * no behaviour. A type authoring no commander spawns bare.
  */
 export function spawnScriptedVehicle(
   pass: MissionPass,
@@ -72,7 +70,7 @@ export function spawnScriptedVehicle(
   });
   if (vehicle === null || !op.withCaptain) return;
   const door = vehicleDoorNode(world, ctx.content, vehicle);
-  const jobType = type.passengerJobs[0];
+  const jobType = type.commanderJob;
   if (door === null || jobType === undefined || !terrain.inBounds(door.hx, door.hy)) return;
   const captain = world.nextEntityId as Entity; // the id the spawn's `create` takes
   spawnSettler(world, ctx, {

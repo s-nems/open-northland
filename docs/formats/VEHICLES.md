@@ -6,7 +6,7 @@ readable `.ini` files. Every rule below is byte-verified unless marked *inferred
 Corpus counts are over the decoded `content/maps` of `CNMod-1.3.2` (123 maps). Tickets under
 `docs/tickets/features/vehicles-*` implement this document; Open Northland approximations are named
 where they are made. The IR carries the type table as `vehicles` (`VehicleType`, with `jobId`, the
-slug `cart_no_ox` for type 6, `passengerJobs`, `vehicleSlots`, `passengerVector`,
+slug `cart_no_ox` for type 6, `passengerJobs`, `commanderJob`, `vehicleSlots`, `passengerVector`,
 `draggingAnimalTribe`, `transformVehicleType`, `hitpoints`), the yards as `vehicle`-kind buildings with
 `vehicleType` and `ignoreContinents`, the good-to-yard pairing as `GoodType.vehicleHouse`, and the
 sprites as `vehicleGraphics`.
@@ -24,7 +24,7 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `logicgood n` | Storable good ids (1..55). Storage is a byte per allowed good: current, wanted, reserved. Goods 18, 19, 22 alias onto 16 and 20 onto 17 when not listed themselves. |
 | `passengerslots` | Ordinary passenger slots. The commander occupies one extra slot at index `passengerslots`, so real capacity is `passengerslots + 1`. |
 | `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54 (the big ship lists no vehicle). Carts 1 and 2: 24, 25. The ox-less cart (6) lists none, so nobody can attach to it until its ox arrives. |
-| `logiccommander n` | The trade the `SetVehicle` result spawns as captain (`l_ExecuteResult` case 2); no other reader. The commander seat itself goes to the first attached human with an allowed job. Not in the IR yet (`docs/tickets/pipeline/vehicle-commander-lane.md`). |
+| `logiccommander n` | The trade the `SetVehicle` result spawns as captain (`l_ExecuteResult` case 2); no other reader. Carts 1 and 2: 25 (trader); ships: 24 (carrier); catapult: 31 (soldier); the ox-less cart (6) authors none. The commander seat itself goes to the first attached human with an allowed job. IR: `VehicleType.commanderJob`. |
 | `passengervector a b` | Door geometry: direction offset `a` from the facing, distance `b`. `b` is also the ring radius searched around a dock click (ships: 2 4). |
 | `stockvector` | Parsed, no logic reader found (*open*; probably a render-side cargo point). |
 | `vehicleslots` | Carried-vehicle slots: small ship 1, big ship 0. |
@@ -419,9 +419,8 @@ and `FindHumansByPlayersMM` run a vehicle iterator after the human one; `NumberO
 
 Open Northland (`systems/missions/results/vehicles.ts`, `goals/vehicles.ts`): every result goes
 through `createVehicle`, `removeVehicle` with cause `script`, `attachToVehicle`, `detachFromVehicle`,
-`spawnSettler` and the owner and id stamps. Named approximations: the captain's trade is the type's
-first `logicpassenger` entry, since the IR carries no `logiccommander` lane (right for the carts and
-the catapult, a civilian at a ship's helm); `AttachHumanToVehicle` stops at a full vehicle; a
+`spawnSettler` and the owner and id stamps; the captain is the type's `commanderJob`, and a type
+without one spawns bare. Named approximations: `AttachHumanToVehicle` stops at a full vehicle; a
 teleported vehicle lands on the first node in hexagon-ring order within radius 9 of its own traversal
 (ground for a cart, water for a ship) that its walk-block admits and is not already claimed by the same line, with its drive, held goal, mooring and guard reset
 and no goto issued; callback 37 is not identified and not mirrored (*open*); `IsHumanInVehicle` reads

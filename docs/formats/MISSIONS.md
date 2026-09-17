@@ -269,7 +269,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | --- | --- | --- | --- | --- | --- |
 | 0 | `None` | | nothing | | 306 |
 | 1 | `SetHuman` | 1, 3, 4, 16, 17, 10, 29 | spawn one human at the point with the id and behaviour flags | sim | 2067 |
-| 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle with the id; with the captain flag also spawn its commander of the type's `logiccommander` trade at the door, carrying the vehicle's id, attach and board it, and take the human back when either is refused. Here: the type's first `logicpassenger` trade stands in for `logiccommander`, which the IR does not carry (approximation, see [VEHICLES.md](VEHICLES.md#map-scripts)) | sim | 154 |
+| 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle with the id; with the captain flag also spawn its commander of the type's `logiccommander` trade at the door, carrying the vehicle's id, attach and board it, and take the human back when either is refused ([VEHICLES.md](VEHICLES.md#map-scripts)) | sim | 154 |
 | 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished when the built flag is set and as a construction site when it is 0, with the id; warns when no spot exists | sim | 30 |
 | 4 | `SetLandscape` | 16, 17, 18, 8, 32 | replace the landscape at the point using the named graphic; size and final-flag limitations below | both | 760 |
 | 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver) | sim | 96 |

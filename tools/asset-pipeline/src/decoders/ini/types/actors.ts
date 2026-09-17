@@ -124,8 +124,8 @@ export function extractArmor(sections: readonly RuleSection[], src: SourceRef): 
 const PASSENGER_VECTOR_ARITY = 2;
 
 /**
- * `logiccommander` and `stockvector` are parsed by the original but read by nothing found, so neither
- * is extracted. Two records sharing a slug throw: `VEHICLE_SLUG_BY_TYPE` must tell them apart.
+ * `stockvector` is parsed by the original but read by nothing found, so it is not extracted. Two
+ * records sharing a slug throw: `VEHICLE_SLUG_BY_TYPE` must tell them apart.
  */
 export function extractVehicles(sections: readonly RuleSection[], src: SourceRef): VehicleType[] {
   const vehicles: VehicleType[] = [];
@@ -140,6 +140,7 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
     const passengerVector = getIntTuple(sec, 'passengervector', PASSENGER_VECTOR_ARITY);
     const draggingAnimalTribe = getInt(sec, 'logicdragginganimaltribe');
     const transformVehicleType = getInt(sec, 'logictransformvehicleType');
+    const commanderJob = getInt(sec, 'logiccommander');
     vehicles.push(
       VehicleType.parse({
         typeId,
@@ -151,6 +152,7 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
         logicSize: getInt(sec, 'logicsize'),
         cargoGoods: getIntList(sec, 'logicgood'),
         passengerJobs: getIntList(sec, 'logicpassenger'),
+        ...(commanderJob !== undefined ? { commanderJob } : {}),
         vehicleSlots: getInt(sec, 'vehicleslots'),
         ...(passengerVector !== undefined
           ? { passengerVector: { direction: passengerVector[0], distance: passengerVector[1] } }

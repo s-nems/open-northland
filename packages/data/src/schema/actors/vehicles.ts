@@ -37,6 +37,9 @@ export const VehicleType = z.strictObject({
   /** `logicpassenger` allow-list - the job ids that may attach, in file order. A ship's list also
    *  names the vehicle job ids (50, 51, 54) it may carry. Type 6 lists none. */
   passengerJobs: z.array(TypeId).default([]),
+  /** `logiccommander` - the job the `SetVehicle` script result spawns as captain (trader for the carts,
+   *  carrier for the ships, the soldier for the catapult). The ox-less cart authors none. */
+  commanderJob: TypeId.optional(),
   /** `vehicleslots` - carried-vehicle slots (small ship 1, big ship 0). */
   vehicleSlots: z.number().int().nonnegative().default(0),
   /** `passengervector`, absent on the carts and the catapult. */

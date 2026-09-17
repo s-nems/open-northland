@@ -163,10 +163,11 @@ jobtype 53
 // Mirrors Data/logic/vehicletypes.ini (plain `.ini`, the `<CULTURES_CIF_BEGIN>` header line is not a
 // `[section]` so the parser ignores it like goodtypes/landscapetypes): each `[vehicletype]` carries a
 // numeric `type`, a quoted `name`, `logicsize`, `stockslots` (the carry capacity), `passengerslots`,
-// and the repeated `logicgood N` cargo allow-list (now carried as `cargoGoods`); the `logicpassenger`/
-// `debug*` extras the schema doesn't carry are ignored. The sledge (12 slots, no passengers, land
-// size 0, two `logicgood`) and the barge (46 slots, 17 passengers, sea size 2, no `logicgood`)
-// bracket the range. The third omits the slot/size lines to exercise the schema defaults.
+// the repeated `logicgood N` cargo allow-list (`cargoGoods`), the `logicpassenger` list and the
+// `logiccommander` captain job; the `stockvector`/`debug*` extras the schema doesn't carry are
+// ignored. The sledge (12 slots, no passengers, land size 0, two `logicgood`) and the barge (46 slots,
+// 17 passengers, sea size 2, no `logicgood`) bracket the range. The third omits the slot/size lines to
+// exercise the schema defaults.
 export const VEHICLETYPES_INI = `<CULTURES_CIF_BEGIN><03FD><00000150> Don't modify this line!
 [vehicletype]
 type 35

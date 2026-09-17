@@ -48,6 +48,9 @@ const OTHER_ID = 41;
 const CREW_ID = 50;
 const HANDCART = 1;
 const CATAPULT = 5;
+const SHIP_SMALL = 3;
+const CARRIER = 24;
+const TRADER = 25;
 const SCOUT = 27;
 const SOLDIER = 31;
 const WOOD = 1;
@@ -107,6 +110,8 @@ function splitMap(): TerrainMap {
   for (let row = 0; row < MAP_CELLS; row++) typeIds[row * MAP_CELLS + 5] = WATER;
   return halfCellMapFromCells({ width: MAP_CELLS, height: MAP_CELLS, typeIds });
 }
+/** A node in the water column of {@link splitMap}. */
+const SEA = { hx: 10, hy: 8 };
 
 describe('SetVehicle', () => {
   it('stands a vehicle of the type for the player with the id', () => {
@@ -132,28 +137,63 @@ describe('SetVehicle', () => {
     expect([...sim.world.query(Person)]).toHaveLength(0);
   });
 
-  it('with the captain flag also seats a commander of the first passenger trade, aboard, with the vehicle id', () => {
+  /** The captain the flag seats: the type's `logiccommander` trade, aboard, owned and stamped like
+   *  the vehicle. */
+  function seatedCaptain(sim: Simulation): { vehicle: Entity; captain: Entity } {
+    const [vehicle] = vehicles(sim);
+    if (vehicle === undefined) throw new Error('no vehicle spawned');
+    const captain = vehicleCommander(sim.world.get(vehicle, Vehicle));
+    if (captain === null) throw new Error('no captain seated');
+    expect(ownerOf(sim.world, captain)).toBe(OWNER);
+    expect(sim.world.get(captain, MissionObjectId).id).toBe(CART_ID);
+    expect(isAboardVehicle(sim.world, captain)).toBe(true);
+    expect(missionObjects(sim.world, CART_ID)).toEqual([vehicle, captain]);
+    return { vehicle, captain };
+  }
+
+  it.each([
+    { name: 'a cart takes the trader, not its first passenger', vehicleType: HANDCART, job: TRADER },
+    { name: 'the catapult takes the soldier', vehicleType: CATAPULT, job: SOLDIER },
+  ])('with the captain flag also seats the commander trade aboard with the vehicle id: $name', ({
+    vehicleType,
+    job,
+  }) => {
     const sim = firingSim([
       {
         opcode: 'SetVehicle',
         player: OWNER,
         tribe: VIKING,
-        vehicleType: CATAPULT,
+        vehicleType,
         point: POINT,
         vehicleId: CART_ID,
         withCaptain: true,
       },
     ]);
     sim.run(FIRST_PASS);
-    const [e] = vehicles(sim);
-    if (e === undefined) throw new Error('no vehicle spawned');
-    const captain = vehicleCommander(sim.world.get(e, Vehicle));
-    if (captain === null) throw new Error('no captain seated');
-    expect(sim.world.get(captain, Settler).jobType).toBe(SOLDIER);
-    expect(ownerOf(sim.world, captain)).toBe(OWNER);
-    expect(sim.world.get(captain, MissionObjectId).id).toBe(CART_ID);
-    expect(isAboardVehicle(sim.world, captain)).toBe(true);
-    expect(missionObjects(sim.world, CART_ID)).toEqual([e, captain]);
+    const { captain } = seatedCaptain(sim);
+    expect(sim.world.get(captain, Settler).jobType).toBe(job);
+  });
+
+  it('seats the carrier at the helm of a ship set down at sea', () => {
+    const sim = firingSim(
+      [
+        {
+          opcode: 'SetVehicle',
+          player: OWNER,
+          tribe: VIKING,
+          vehicleType: SHIP_SMALL,
+          point: SEA,
+          vehicleId: CART_ID,
+          withCaptain: true,
+        },
+      ],
+      testContent(),
+      splitMap(),
+    );
+    sim.run(FIRST_PASS);
+    const { vehicle, captain } = seatedCaptain(sim);
+    expect(sim.world.get(vehicle, Vehicle).vehicleType).toBe(SHIP_SMALL);
+    expect(sim.world.get(captain, Settler).jobType).toBe(CARRIER);
   });
 
   it('reports a point off the map or a type the content lacks as a failed line', () => {
@@ -364,7 +404,6 @@ describe('MoveUnitsInArea', () => {
 describe('MoveUnitsInArea over water', () => {
   it('lands a cart on ground beside a destination at sea and leaves a vehicle loading into a ship alone', () => {
     const source = { hx: 4, hy: 8 };
-    const sea = { hx: 10, hy: 8 }; // the water column at cell 5
     const sim = missionSim(
       [
         {
@@ -378,8 +417,8 @@ describe('MoveUnitsInArea over water', () => {
               player: OWNER,
               point: source,
               range: 2,
-              index: sea.hx,
-              extra: sea.hy,
+              index: SEA.hx,
+              extra: SEA.hy,
             },
           ],
         },
@@ -395,7 +434,7 @@ describe('MoveUnitsInArea over water', () => {
     if (terrain === undefined) throw new Error('mapped sim expected');
     const at = nodeOf(sim, moved);
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy))).toBe(true);
-    expect(hexDistance(at, sea)).toBeLessThanOrEqual(2);
+    expect(hexDistance(at, SEA)).toBeLessThanOrEqual(2);
     expect(nodeOf(sim, loading)).toEqual({ hx: source.hx, hy: source.hy + 2 });
   });
 });
