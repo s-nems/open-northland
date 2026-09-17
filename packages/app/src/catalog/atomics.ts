@@ -12,6 +12,8 @@ export const IRON_HARVEST_ATOMIC = 27;
 export const GOLD_HARVEST_ATOMIC = 28;
 /** Wheat's scythe/reap action (`goodtypes.ini` wheat `atomicForHarvesting 29`). */
 export const WHEAT_HARVEST_ATOMIC = 29;
+/** The herbalist's reap (`goodtypes.ini` herb `atomicForHarvesting 31`), drawn with the wheat scythe. */
+export const HERB_HARVEST_ATOMIC = 31;
 export const MUSHROOM_HARVEST_ATOMIC = 32;
 /** The hunter's carcass-harvest action (`goodtypes.ini` leather/meat `atomicForHarvesting 33`). */
 export const HARVEST_CADAVER_ATOMIC = 33;

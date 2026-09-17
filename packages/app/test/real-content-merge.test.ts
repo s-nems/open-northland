@@ -63,7 +63,13 @@ function rawRealLike(): ContentSet {
   const unfarmed = {
     ...stripFarming(goodById(base, 'wheat')),
     typeId: OUT_OF_CATALOG_TYPE_ID + 1,
-    id: 'testherb',
+    id: 'testcrop',
+  };
+  // Real herb: wheat's field atomics under the id the overlay keys, which the sandbox never ships.
+  const herb = {
+    ...stripFarming(goodById(base, 'wheat')),
+    typeId: OUT_OF_CATALOG_TYPE_ID + 2,
+    id: 'herb',
   };
   // A building absent from VIKING_BUILDINGS (headquarters' shape, a fresh id) - uncataloged.
   const firstBuilding = base.buildings[0];
@@ -81,7 +87,7 @@ function rawRealLike(): ContentSet {
   const stripShelter = (b: ContentSet['buildings'][number]) => ({ ...b, shelterCapacity: 0 });
   return parseContentSet({
     ...base,
-    goods: [...base.goods.map((g) => stripEquip(stripFarming(zeroGathering(g)))), unbalanced, unfarmed],
+    goods: [...base.goods.map((g) => stripEquip(stripFarming(zeroGathering(g)))), unbalanced, unfarmed, herb],
     buildings: [...base.buildings, uncataloged].map(stripShelter),
   });
 }
@@ -134,8 +140,11 @@ describe('mergeRealContent', () => {
   it('re-adds the clean-room farming block to a farmed good the pipeline shipped without one', () => {
     const raw = rawRealLike();
     expect(goodById(raw, 'wheat').farming).toBeUndefined(); // stand-in ships no block, like real ir.json
+    expect(goodById(raw, 'herb').farming).toBeUndefined();
     const { content } = mergeRealContent(raw);
     expect(goodById(content, 'wheat').farming).toEqual(FARMING_BALANCE_BY_ID.wheat);
+    // The herb hut runs the farm's loop: the original reaches one routine from both job entries.
+    expect(goodById(content, 'herb').farming).toEqual(FARMING_BALANCE_BY_ID.herb);
   });
 
   it('overlays the clean-room equip axis onto goods the pipeline ships without one', () => {
@@ -206,8 +215,9 @@ describe('mergeRealContent', () => {
     const { unbalancedGoods, unfarmedFieldGoods, uncatalogedBuildings } = mergeRealContent(rawRealLike());
     expect(unbalancedGoods).toContain('testberry');
     expect(unbalancedGoods).not.toContain('wood'); // wood has a clean-room balance
-    expect(unfarmedFieldGoods).toContain('testherb');
-    expect(unfarmedFieldGoods).not.toContain('wheat'); // wheat got its clean-room farming block
+    expect(unfarmedFieldGoods).toContain('testcrop');
+    expect(unfarmedFieldGoods).not.toContain('wheat'); // wheat and herb got their clean-room farming block
+    expect(unfarmedFieldGoods).not.toContain('herb');
     expect(uncatalogedBuildings).toEqual(['wonder_test']);
   });
 
@@ -303,14 +313,14 @@ describe('logRealContentGaps', () => {
     logRealContentGaps({
       content,
       unbalancedGoods: ['testberry'],
-      unfarmedFieldGoods: ['herb'],
+      unfarmedFieldGoods: ['mushroom'],
       uncatalogedBuildings: ['wonder'],
     });
     const logged = diag.entries().slice(before);
     expect(logged).toHaveLength(1);
     const line = logged[0]?.message ?? '';
     expect(line).toContain('testberry'); // names the uncalibrated gathered good
-    expect(line).toContain('herb'); // names the unfarmed field good
+    expect(line).toContain('mushroom'); // names the unfarmed field good
     expect(line).toContain('wonder'); // names the uncataloged building
     logRealContentGaps({ content, unbalancedGoods: [], unfarmedFieldGoods: [], uncatalogedBuildings: [] });
     expect(diag.entries()).toHaveLength(before + 1);

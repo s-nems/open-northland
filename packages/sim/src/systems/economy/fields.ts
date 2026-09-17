@@ -14,9 +14,10 @@ import {
 import { resourcesAtNode } from '../spatial/resources.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
-// Source basis for the farm's sow, water and reap loop: its vocabulary is readable original data
-// (`goodtypes.ini` wheat atomics 34/35/29 plus `isProducedOnMapFlag`, `landscapetypes.ini` wheat lanes
-// 27/28/29 with `maximumValency 5`); its plot size and radius are the content `farming` block's calibration.
+// Source basis for the sow, water and reap loop: its vocabulary is readable original data (`goodtypes.ini`
+// wheat atomics 34/35/29 and herb atomics 34/35/31 plus `isProducedOnMapFlag`, `landscapetypes.ini` wheat
+// lanes 27/28/29 and herb lanes 33/34/35 with `maximumValency 5`); its plot size and radius are the content
+// `farming` block's calibration. Any good carrying the three atomics and a `farming` block runs it.
 
 // Watering is the only growth: the cultivate clip fires the `GROW` cue (`atomicanimations.ini` `event 14 16`,
 // `ATOMIC_ANIMATION_EVENT_TYPE_GROW` in `logicdefines.inc`) and `wheat (growing)` answers the transition of
@@ -89,7 +90,8 @@ export function applySow(
 ): void {
   const spec = farmingSpecFor(ctx, effect.goodType);
   if (spec === null) return; // content changed under the swing
-  // Grain grows only on plantable ground (the original's `biocanplanton` class - grass, never sand); the
+  // A field grows only on plantable ground (the original's `biocanplanton` class - grass, never sand; the
+  // plant swing itself re-tests `CanPlantBioAtTargetMapPosition` and drops the target when it fails); the
   // planner already filters, this is the completion-time re-check every goods effect carries.
   if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
     return;

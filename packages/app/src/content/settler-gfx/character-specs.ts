@@ -9,6 +9,7 @@ import {
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
   HARVEST_CADAVER_ATOMIC,
+  HERB_HARVEST_ATOMIC,
   HIVE_DRAW_ATOMIC,
   IRON_HARVEST_ATOMIC,
   KISS_ATOMIC,
@@ -140,9 +141,9 @@ export const CHARACTER_SPECS = {
     carryPrefix: 'human_man_generic_walk_',
     // The civilist's fist brawl (job 6) on the generic man body every civilian trade shares.
     attack: 'human_man_Civilian_Fight_punch',
-    // The atomics this body authors a sequence for; their frame lists come from the collector/farmer jobs
-    // 8 and 18 and the generic job-6 rows. The pick-up bend serves the deposit too, since the body authors
-    // no separate put-down.
+    // The atomics this body authors a sequence for; their frame lists come from the collector/farmer/herb
+    // jobs 8, 18 and 29 and the generic job-6 rows. The pick-up bend serves the deposit too, since the body
+    // authors no separate put-down.
     atomics: {
       [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
       [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
@@ -151,6 +152,7 @@ export const CHARACTER_SPECS = {
       [GOLD_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
       [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ },
       [WHEAT_HARVEST_ATOMIC]: { seq: REAP_SEQ },
+      [HERB_HARVEST_ATOMIC]: { seq: REAP_SEQ },
       [PLANT_ATOMIC]: { seq: SOW_SEQ },
       [CULTIVATE_ATOMIC]: { seq: WATER_SEQ },
       [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },

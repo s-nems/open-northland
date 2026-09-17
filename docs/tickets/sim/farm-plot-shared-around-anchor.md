@@ -1,29 +1,30 @@
-# Work fields by reach from the farm's anchor, shared between farms in reach
+# Work fields by reach from the workplace's anchor, shared between workplaces in reach
 
 **Area:** sim, app · **Focus:** drives/farming, catalog/farming · **Priority:** P3
-**Needs user:** one observation in the running original.
 
 Every field carries `Crop.farm`, the drive counts and picks only `targets.cropsByFarm.get(farm)`, and
 `FarmClaims.byFarm` reserves sow slots per farm. A field is thereby owned: two farms whose radii overlap
 keep two disjoint plots on the same ground, and a demolished farm's fields stand untended within another
-farm's reach. The readable data has no owner on a field - `wheat (growing)` is a landscape point like any
-other. The cap (`FARM_MAX_FIELDS 24` in `packages/app/src/catalog/farming.ts`) is an observed standing-plant
-count and the radius (`FARM_FIELD_RADIUS 16`) an authored value.
+farm's reach.
+
+The original has no owner on a field. Byte evidence (`an original routine`,
+the original an original routine, reached from the farmer's and the herb guy's shared
+`an original routine`, an original routine): a worker searches 10 map points out
+from its work centre for every point of its good's growing landscape, whoever sowed it, stops counting
+at 25, plants only while it counted fewer, else reaps a ripe one or waters the lowest. The cap
+(`FARM_MAX_FIELDS 25` in `packages/app/src/catalog/farming.ts`) matches; the radius
+(`FARM_FIELD_RADIUS 16` Manhattan nodes) approximates the 10-point hexagon; the ownership does not.
 
 ## Scope
 
-- Observe first (Needs user): two farms in the original whose plots overlap - does a farmer tend the
-  other farm's plants, and how far from its farm does a farmer sow.
-- If a farmer tends the other farm's plants: drop `Crop.farm`; index fields spatially and let each farmer
-  count, sow, reap and water the fields within reach of its farm's anchor, whichever farm sowed them, so
-  farms in reach share one pool and a demolished farm leaves its fields to any farmer in reach. Rework
-  `FarmClaims.byFarm` into an in-flight sow count per anchor, and keep `fieldReclaimSystem`'s
-  stranded-field rule working from the anchor instead of `Crop.farm`. If not, keep the owner and close
-  this ticket with the observation recorded.
-- Set the radius from the observation and re-check the cap against the standing-plant count seen there;
-  until then the shipped values stay.
-- Non-goal: a player-movable plot anchor. That is a feature for the owner's roadmap; this ticket keeps
-  the anchor at the farm's own position.
+- Drop `Crop.farm`; index fields spatially and let each worker count, sow, reap and water the fields of
+  its good within reach of its workplace's anchor, whichever workplace sowed them, so workplaces in reach
+  share one pool and a demolished one leaves its fields to any worker in reach. Rework `FarmClaims.byFarm`
+  into an in-flight sow count per anchor, and keep `fieldReclaimSystem`'s stranded-field rule working
+  from the anchor instead of `Crop.farm`.
+- Non-goal: a player-movable plot anchor (`DoExecuteUserCommand_SetWorkCenter` accepts the farmer but
+  not the herb guy). That is a feature for the owner's roadmap; this ticket keeps the anchor at the
+  workplace's own position.
 
 ## Verify
 

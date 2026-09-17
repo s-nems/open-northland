@@ -59,14 +59,17 @@ function boundFarmTarget(
 }
 
 /**
- * The field-cultivation loop for a settler bound to a farm: carry a cut sheaf home, sow while the plot is
- * under its cap, reap a ripe field, water the least-grown field, else wait inside the farm. Returns false
- * only for a settler that is not a field-farmer here.
+ * The field-cultivation loop for a settler bound to a farm or herb hut: carry a cut pile home, sow while
+ * the plot is under its cap, reap a ripe field, water the least-grown field, else wait inside. Returns
+ * false only for a settler that is not a field trade here.
  *
- * Approximation: the rung order is not readable data. Sowing outranks the scythe and the can so a plot
- * fills before it turns over; a water-first farmer would never expand it, since every field below its top
- * stage is thirsty. Reap and sheaf-carry pause while no store can take the crop; sowing and watering
- * continue.
+ * The rung order is the original's (`an original routine`, owned
+ * the original an original routine, one routine for the farmer and the herb guy): a cut pile the house has demand
+ * for, else a free plantable spot while fewer than the cap stand, else a ripe field, else the lowest
+ * field. Approximations: the
+ * original picks the ripe field by worker id and the thirsty one at random among the lowest, where this
+ * takes the nearest; and it keeps reaping into a full store until a flush trip, where reap and carry pause
+ * while no store can take the crop.
  */
 export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
@@ -151,9 +154,8 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     return true;
   }
 
-  // Sow the next field while the farm is under its plot cap, in-flight sow-walks counted in. Observation:
-  // the cap belongs to the farm, not its crew - extra farmers turn the plot over faster without enlarging
-  // it.
+  // Sow the next field while the farm is under its plot cap, in-flight sow-walks counted in. The cap
+  // belongs to the farm, not its crew - extra farmers turn the plot over faster without enlarging it.
   if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
     const node = nextSowNode(plan, { anchor, spec, claims, gates });
     if (node !== null) {

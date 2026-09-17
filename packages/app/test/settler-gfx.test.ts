@@ -2,10 +2,12 @@ import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   ATTACK_ATOMIC,
+  HERB_HARVEST_ATOMIC,
   OPEN_CHEST_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   WELL_DRAW_ATOMIC,
+  WHEAT_HARVEST_ATOMIC,
 } from '../src/catalog/atomics.js';
 import { JOB_SOLDIER_UNARMED } from '../src/catalog/jobs.js';
 import {
@@ -391,6 +393,25 @@ describe('characterBinding', () => {
     });
     // Without the tribe's rows the spec-less action is simply absent.
     expect(characterBinding(spec, seqs, [], { programsByAction })?.byAtomic?.[91]).toBeUndefined();
+  });
+
+  it('reaps herb with the wheat scythe program, the clip the source binds to the herb guy', () => {
+    const seqs = new Map([
+      ['human_man_generic_wait', { name: 'human_man_generic_wait', start: 100, length: 8 }],
+      [
+        'human_man_farmer_work_reap_grain',
+        { name: 'human_man_farmer_work_reap_grain', start: 400, length: 88 },
+      ],
+    ]);
+    // One program per action: `[gfxanimatomic]` job 18 action 29 and job 29 action 31 both name the reap.
+    const reap = new Map([['human_man_farmer_work_reap_grain', { dirFrames: [[51, 50, 49]], mode: 0 }]]);
+    const programsByAction = new Map([
+      [WHEAT_HARVEST_ATOMIC, reap],
+      [HERB_HARVEST_ATOMIC, reap],
+    ]);
+    const byAtomic = characterBinding(CHARACTER_SPECS.civilian, seqs, [], { programsByAction })?.byAtomic;
+    expect(byAtomic?.[HERB_HARVEST_ATOMIC]).toEqual({ start: 400, frameLists: [[51, 50, 49]] });
+    expect(byAtomic?.[HERB_HARVEST_ATOMIC]).toEqual(byAtomic?.[WHEAT_HARVEST_ATOMIC]);
   });
 
   it('idles on the wait seq gfxAtomics program (looped) instead of cycling the raw wait strip', () => {
