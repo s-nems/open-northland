@@ -62,8 +62,8 @@ document.addEventListener('click', (event) => {
     press('notices', button.dataset.notices);
   }
   if (button.matches('.notice-dismiss')) dismissNotice(button.closest('.notice'));
-  if (button.matches('.notice-card[aria-expanded]'))
-    button.setAttribute('aria-expanded', String(button.getAttribute('aria-expanded') !== 'true'));
+  // A card with a target would centre the camera; a long one without pins its full text instead.
+  if (button.matches('.long .notice-card')) pinNoticeFull(button, pinned !== button);
   if (button === noticeMore) noticeList.scrollBy({ top: noticeList.clientHeight - 40, behavior: 'smooth' });
   if (button.closest('.speed')) {
     for (const item of button.closest('.speed').querySelectorAll('button'))
@@ -87,13 +87,15 @@ resource.addEventListener('focusout', (event) => {
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Delete' && event.target.closest('.notice')) {
-    if (event.shiftKey) for (const item of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(item);
+    if (event.shiftKey)
+      for (const item of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(item);
     else dismissNotice(event.target.closest('.notice'));
     return;
   }
   if (event.key !== 'Escape') return;
   showResource(false);
   showBuild(false);
+  pinNoticeFull(null, false);
   buildNav.focus();
 });
 
@@ -102,52 +104,131 @@ const notices = document.querySelector('.notices');
 const noticeList = notices.querySelector('.notice-list');
 const noticeMore = notices.querySelector('.notice-more');
 const noticeEmpty = notices.querySelector('.notice-empty');
-const noticeCount = notices.querySelector('.notice-count');
+const noticeCount = notices.querySelector('[data-count]');
+const noticeFull = document.querySelector('#notice-full');
+/* Below this visible strip per card the fan stops and the list scrolls instead. */
+const MIN_CARD_STRIP = 32;
+const CARD_GAP = 7;
 const LEVEL_OF_FILTER = { Wszystkie: 0, 'Ważne i pilne': 1, 'Tylko pilne': 2 };
+const LEVEL_NAMES = ['zwykłe', 'ważne', 'pilne'];
+let filterLevel = 0;
 function noticeLevel(item) {
   return item.classList.contains('danger') ? 2 : item.classList.contains('warning') ? 1 : 0;
 }
-function refreshNoticeCount() {
-  const shown = noticeList.querySelectorAll('.notice:not([hidden])').length;
-  noticeCount.querySelector('[data-count]').textContent = shown;
-  noticeCount.title = `Wiadomości: ${shown}`;
-  noticeEmpty.hidden = shown > 0;
-  notices.dataset.state = shown === 0 ? 'empty' : notices.dataset.state;
-  updateNoticeMore();
+/* The filter hides cards; the seals still count every live card of their weight. */
+function applyNoticeFilter() {
+  const counts = [0, 0, 0];
+  for (const item of noticeList.querySelectorAll('.notice')) {
+    const live = item.dataset.live === '1';
+    if (live) counts[noticeLevel(item)]++;
+    item.hidden = !(live && noticeLevel(item) >= filterLevel);
+  }
+  for (const button of notices.querySelectorAll('.priority button')) {
+    const level = Number(button.dataset.level);
+    button.querySelector('[data-level-count]').textContent = counts[level];
+    const label = `${button.dataset.priority} · ${LEVEL_NAMES[level]}: ${counts[level]}`;
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  }
+  const total = counts[0] + counts[1] + counts[2];
+  noticeCount.textContent = `Wiadomości: ${total}`;
+  noticeEmpty.hidden = total > 0;
+  if (total === 0) notices.dataset.state = 'empty';
+  layoutNotices();
 }
 function showNotices(state, filter) {
   notices.dataset.state = state;
+  filterLevel = LEVEL_OF_FILTER[filter];
   press('priority', filter);
   notices.querySelector('.priority em').textContent = filter;
-  const level = LEVEL_OF_FILTER[filter];
   for (const item of noticeList.querySelectorAll('.notice')) {
     const inState = state === 'overflow' || (state !== 'empty' && !item.classList.contains('more'));
-    item.hidden = !(inState && noticeLevel(item) >= level);
+    item.dataset.live = inState ? '1' : '0';
   }
   noticeList.scrollTop = 0;
-  refreshNoticeCount();
+  pinNoticeFull(null, false);
+  applyNoticeFilter();
 }
 function dismissNotice(item) {
-  item.hidden = true;
-  refreshNoticeCount();
+  item.dataset.live = '0';
+  if (pinned !== null && item.contains(pinned)) pinNoticeFull(null, false);
+  applyNoticeFilter();
 }
+/* Fan the cards so they all fit: one uniform overlap, weightier cards in front. Fanned cards keep one
+   event line, so the heights are measured again once the fan is on. */
+function layoutNotices() {
+  const shown = [...noticeList.querySelectorAll('.notice:not([hidden])')];
+  shown.forEach((item, index) => {
+    item.style.setProperty('--z', shown.length - index);
+  });
+  const styles = getComputedStyle(noticeList);
+  const room = noticeList.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
+  const natural = () => shown.reduce((sum, item) => sum + item.offsetHeight + CARD_GAP, 0);
+  notices.classList.remove('stacked');
+  let overlap = 0;
+  if (shown.length > 1 && natural() > room) {
+    notices.classList.add('stacked');
+    const heights = shown.map((item) => item.offsetHeight);
+    const maxOverlap = Math.min(...heights) - MIN_CARD_STRIP + CARD_GAP;
+    overlap = Math.min(maxOverlap, Math.ceil((natural() - room) / (shown.length - 1)));
+  }
+  noticeList.style.setProperty('--overlap', `${overlap}px`);
+  updateNoticeMore();
+}
+let pinned = null;
+function showNoticeFull(card) {
+  noticeFull.textContent = card.dataset.full;
+  noticeFull.hidden = false;
+  const item = card.closest('.notice');
+  noticeFull.style.top = `${noticeList.offsetTop + item.offsetTop - noticeList.scrollTop}px`;
+}
+function hideNoticeFull() {
+  if (pinned === null) noticeFull.hidden = true;
+}
+function pinNoticeFull(card, pin) {
+  pinned = pin ? card : null;
+  if (pin) showNoticeFull(card);
+  else noticeFull.hidden = true;
+  for (const each of noticeList.querySelectorAll('.long .notice-card'))
+    each.setAttribute('aria-expanded', String(each === pinned));
+}
+noticeList.addEventListener('mouseover', (event) => {
+  const card = event.target.closest('.long .notice-card');
+  if (card && pinned === null) showNoticeFull(card);
+});
+noticeList.addEventListener('mouseout', (event) => {
+  if (event.target.closest('.long .notice-card')) hideNoticeFull();
+});
+noticeList.addEventListener('focusin', (event) => {
+  const card = event.target.closest('.long .notice-card');
+  if (card && pinned === null) showNoticeFull(card);
+});
+noticeList.addEventListener('focusout', (event) => {
+  if (event.target.closest('.long .notice-card')) hideNoticeFull();
+});
 function updateNoticeMore() {
   const fold = noticeList.scrollTop + noticeList.clientHeight;
   let below = 0;
-  for (const item of noticeList.querySelectorAll('.notice:not([hidden])')) if (item.offsetTop + 24 > fold) below++;
+  for (const item of noticeList.querySelectorAll('.notice:not([hidden])'))
+    if (item.offsetTop + item.offsetHeight - 6 > fold) below++;
   noticeMore.hidden = below === 0;
   noticeMore.querySelector('[data-more]').textContent = below;
   notices.classList.toggle('overflowing', noticeList.scrollHeight > noticeList.clientHeight + 1);
 }
 noticeList.addEventListener('scroll', updateNoticeMore);
+// The fan settles through a margin transition; count the fold again once it has.
+noticeList.addEventListener('transitionend', updateNoticeMore);
 noticeList.addEventListener('contextmenu', (event) => {
   const item = event.target.closest('.notice');
   if (!item) return;
   event.preventDefault();
-  if (event.shiftKey) for (const each of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(each);
+  if (event.shiftKey)
+    for (const each of noticeList.querySelectorAll('.notice:not([hidden])')) dismissNotice(each);
   else dismissNotice(item);
 });
-new ResizeObserver(updateNoticeMore).observe(noticeList);
+new ResizeObserver(layoutNotices).observe(noticeList);
+for (const card of noticeList.querySelectorAll('.long .notice-card'))
+  card.setAttribute('aria-expanded', 'false');
 showNotices('mixed', 'Wszystkie');
 
 // Original decoded art is local review evidence, never a repository asset.

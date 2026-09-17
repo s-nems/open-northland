@@ -543,25 +543,17 @@ button.medallion:hover {
   padding: 0 0 4px 6px;
   text-shadow: 0 1px 4px #000;
 }
-.notice-count {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  font:
-    700 13px Alegreya,
-    serif;
-  font-variant-numeric: tabular-nums;
-}
 .priority {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
 }
+/* Filter and tally in one: the wax disc carries how many notes of its weight exist, filtered or not. */
 .priority button {
   position: relative;
-  width: 26px;
-  height: 26px;
-  min-height: 26px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
   padding: 0;
   border: 1px solid var(--bronze-lo);
   border-radius: 50%;
@@ -571,14 +563,27 @@ button.medallion:hover {
 .priority button:after {
   content: "";
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 24px;
+  height: 24px;
   margin: auto;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), currentColor;
   box-shadow:
     inset 0 -2px 3px #0006,
     0 1px 2px #000a;
+}
+.priority button span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  font:
+    700 11px / 1 Alegreya,
+    serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-hi);
+  text-shadow: 0 1px 1px #000d;
 }
 .priority button.low {
   color: var(--wax-ok);
@@ -595,16 +600,6 @@ button.medallion:hover {
   border-color: currentColor;
   background: #2c2a21;
 }
-.priority button[aria-pressed="true"]:before {
-  content: "✓";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #211d17;
-  font-size: 13px;
-  z-index: 1;
-}
 .priority em {
   position: absolute;
   width: 1px;
@@ -618,10 +613,8 @@ button.medallion:hover {
   color: var(--muted);
   text-shadow: 0 1px 4px #000;
 }
-.notices[data-state="empty"] .notice-count {
-  opacity: 0.6;
-}
 .notice-list {
+  --overlap: 0px;
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
@@ -639,20 +632,37 @@ button.medallion:hover {
 }
 .notice {
   position: relative;
+  z-index: var(--z);
   margin-bottom: 7px;
+  transition: margin-top 0.14s;
+}
+.notice:hover,
+.notice:focus-within {
+  z-index: 100;
+}
+/* Cards that do not fit fan downwards: an earlier (weightier) card lies over the top of the next,
+   leaving the event line and the seal of every card visible. Hover pushes the neighbours apart. */
+.notice + .notice {
+  margin-top: calc(-1 * var(--overlap));
+}
+.notice + .notice:hover,
+.notice + .notice:focus-within,
+.notice:hover + .notice,
+.notice:focus-within + .notice {
+  margin-top: 0;
 }
 .notice-card {
   position: relative;
   width: 100%;
-  min-height: 76px;
-  padding: 9px 12px 9px 72px;
+  min-height: 68px;
+  padding: 8px 12px 8px 66px;
   text-align: left;
   border: 0;
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    transparent 0 50px,
-    color-mix(in srgb, var(--deep) 94%, transparent) 66px,
+    transparent 0 44px,
+    color-mix(in srgb, var(--deep) 94%, transparent) 60px,
     color-mix(in srgb, var(--deep) 82%, transparent) 88%,
     transparent
   );
@@ -664,7 +674,7 @@ button.medallion:hover {
 .notice-card:before {
   content: "";
   position: absolute;
-  inset: 5px 4px 5px 66px;
+  inset: 5px 4px 5px 60px;
   border-top: 1px solid color-mix(in srgb, var(--bronze) 28%, transparent);
   border-bottom: 1px solid #0006;
   pointer-events: none;
@@ -677,11 +687,39 @@ button.medallion:hover {
   transform: translateX(3px);
   background: linear-gradient(
     90deg,
-    transparent 0 50px,
-    color-mix(in srgb, var(--fill) 96%, transparent) 66px,
+    transparent 0 44px,
+    color-mix(in srgb, var(--fill) 96%, transparent) 60px,
     color-mix(in srgb, var(--fill) 84%, transparent) 88%,
     transparent
   );
+}
+/* In a fan the cards are opaque, so nothing shows through the one in front. */
+.notices.stacked .notice-card {
+  background: linear-gradient(
+    90deg,
+    transparent 0 44px,
+    var(--deep) 60px,
+    color-mix(in srgb, var(--deep) 97%, #000)
+  );
+}
+.notices.stacked .notice-card:hover {
+  background: linear-gradient(
+    90deg,
+    transparent 0 44px,
+    var(--fill) 60px,
+    color-mix(in srgb, var(--fill) 97%, #000)
+  );
+}
+.notices.stacked .notice-card > .settler-preview {
+  background-color: #182521f4;
+}
+/* Fanned cards keep one event line and cast a shadow on the next, so the strip reads as an edge;
+   the hovered card unfolds to its full text. */
+.notices.stacked .notice-card {
+  box-shadow: 0 3px 8px #0008;
+}
+.notices.stacked .notice:not(:hover, :focus-within) .notice-card b {
+  -webkit-line-clamp: 1;
 }
 /* Arrival: a short slide in; an urgent seal pulses three times, then rests. */
 .notice.fresh .notice-card {
@@ -711,8 +749,8 @@ button.medallion:hover {
   position: absolute;
   left: -4px;
   bottom: 0;
-  width: 70px;
-  height: 80px;
+  width: 64px;
+  height: 72px;
   object-fit: cover;
   pointer-events: none;
   border-radius: 8px;
@@ -726,8 +764,8 @@ button.medallion:hover {
   color: var(--bronze);
 }
 .settler-preview.glyph svg {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
@@ -741,53 +779,33 @@ button.medallion:hover {
 .notice.gone .notice-card small {
   color: var(--muted);
 }
-.notice-card b {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
-  padding-right: 12px;
-  font-size: 13px;
-  line-height: 1.2;
-  color: var(--text-hi);
-}
+/* Subject first, then the event, as the sentence reads; the event line stays out of the overlap. */
 .notice-card small {
   display: block;
-  margin-top: 3px;
   padding-right: 12px;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.25;
   color: #ddd5c1;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* A long text (unlock lists) unfolds on the card instead of opening a window. */
-.notice.expand .notice-card small {
-  padding-right: 22px;
+.notice-card b {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin-top: 2px;
+  padding-right: 12px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--text-hi);
 }
-.notice.expand .notice-card:after {
-  content: "";
-  position: absolute;
-  right: 9px;
-  bottom: 28px;
-  width: 7px;
-  height: 7px;
-  border: solid var(--bronze);
-  border-width: 0 1.6px 1.6px 0;
-  transform: rotate(45deg);
-  transition: transform 0.12s;
-}
-.notice.expand .notice-card[aria-expanded="true"]:after {
-  transform: rotate(225deg);
-}
-.notice.expand .notice-card[aria-expanded="true"] small {
-  white-space: normal;
-}
+/* The seal sits on the thumbnail's bottom-right corner. */
 .seal {
   position: absolute;
-  right: 7px;
-  bottom: 7px;
+  left: 52px;
+  bottom: -2px;
   width: 15px;
   height: 15px;
   border-radius: 50%;
@@ -887,6 +905,31 @@ button.medallion:hover {
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+/* The full text of a long card, beside the column so the list never grows for it. */
+.notice-full {
+  position: absolute;
+  left: calc(100% + 6px);
+  width: 250px;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--deep) 96%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-line;
+  box-shadow: 0 6px 18px #000b;
+  z-index: 200;
+}
+.notice-full:before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 14px;
+  border: 5px solid transparent;
+  border-right-color: var(--bronze-lo);
+  border-left: 0;
 }
 
 /* ---------- minimap ---------- */
