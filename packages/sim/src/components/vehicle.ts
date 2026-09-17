@@ -118,9 +118,9 @@ export function seatPassenger(world: World, vehicle: Entity, rider: Entity): boo
 }
 
 /**
- * Free `rider`'s slot. A departing commander is replaced by the first ordinary passenger, as the
- * original promotes the first remaining allowed-job rider; the crew ticket adds the job filter.
- * False when the rider was not aboard.
+ * Free `rider`'s slot. A departing commander is replaced by the first ordinary passenger (the original
+ * promotes the first remaining rider whose job the type allows; the caller applies that gate). False
+ * when the rider was not aboard.
  */
 export function unseatPassenger(world: World, vehicle: Entity, rider: Entity): boolean {
   const current = world.get(vehicle, Vehicle);

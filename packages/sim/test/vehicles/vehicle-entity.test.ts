@@ -34,6 +34,7 @@ import {
   createVehicle,
   modifyVehicleStock,
   removeVehicle,
+  removeVehiclesOf,
   VEHICLE_CARGO_SPILL_RADIUS,
   vehicleIndex,
   vehicleStockGood,
@@ -111,6 +112,22 @@ function spawnRider(s: Simulation, x: number, y: number, owner = P0): Entity {
   const rider = riders[riders.length - 1];
   if (rider === undefined) throw new Error('rider missing');
   return rider;
+}
+
+/** Mark a seated rider as aboard: off the map, the way the boarding drive removes him. */
+function boardSeated(s: Simulation, vehicle: Entity, rider: Entity): void {
+  const live = s.world.mut(vehicle, Vehicle);
+  const seat = live.passengers.find((slot) => slot !== null && slot.entity === rider);
+  if (seat === undefined || seat === null) throw new Error('rider not seated');
+  seat.inside = true;
+  s.world.remove(rider, Position);
+}
+
+/** Put `cargo` into `ship`'s carried-vehicle slot, off the map. */
+function carry(s: Simulation, ship: Entity, cargo: Entity): void {
+  s.world.mut(ship, Vehicle).vehicles[0] = { entity: cargo, inside: true };
+  s.world.mut(cargo, Vehicle).carrier = ship;
+  s.world.remove(cargo, Position);
 }
 
 function loosePiles(s: Simulation, good: number): { node: { hx: number; hy: number }; amount: number }[] {
@@ -308,22 +325,27 @@ describe('footprint', () => {
 });
 
 describe('removeVehicle', () => {
-  it('frees the crew onto the door node of a moored ship and drowns it with a ship at sea', () => {
+  it("sets a boarded rider down on a moored ship's door, leaves a walking rider where he stands, and drowns a crew at sea", () => {
     const s = sim(shoreMap());
     const shoreX = MAP_CELLS;
     const moored = spawn(s, SHIP_SMALL, shoreX + 2, 10);
     const atSea = spawn(s, SHIP_SMALL, shoreX + SHIP_DOOR_DISTANCE + 4, 10);
-    const freed = spawnRider(s, 2, 2);
-    const drowned = spawnRider(s, 2, 4);
-    seatPassenger(s.world, moored, freed);
+    const aboard = spawnRider(s, 2, 2);
+    const walking = spawnRider(s, 2, 4);
+    const drowned = spawnRider(s, 2, 6);
+    seatPassenger(s.world, moored, aboard);
+    seatPassenger(s.world, moored, walking);
     seatPassenger(s.world, atSea, drowned);
+    boardSeated(s, moored, aboard);
     const door = s.vehicleView(moored)?.door;
     if (door === null || door === undefined) throw new Error('moored ship has no door');
     removeVehicle(s.world, ctxOf(s), moored, 'destroyed');
     removeVehicle(s.world, ctxOf(s), atSea, 'destroyed');
-    expect(s.world.isAlive(freed)).toBe(true);
-    const p = s.world.get(freed, Position);
+    expect(s.world.isAlive(aboard)).toBe(true);
+    const p = s.world.get(aboard, Position);
     expect(nodeOfPosition(p.x, p.y)).toEqual(door);
+    const q = s.world.get(walking, Position);
+    expect(nodeOfPosition(q.x, q.y)).toEqual({ hx: 2, hy: 4 });
     expect(s.world.isAlive(drowned)).toBe(false);
     expect(
       s.events
@@ -337,6 +359,57 @@ describe('removeVehicle', () => {
     expect(wrecks.every((ev) => ev.ruins.length === 0)).toBe(true);
     expect(s.world.isAlive(moored)).toBe(false);
     expect(vehicleIndex(s.world).all).toEqual([]);
+  });
+
+  it('sets a carried cart down on the door of a moored ship and takes it down with a ship at sea', () => {
+    const s = sim(shoreMap());
+    const shoreX = MAP_CELLS;
+    const moored = spawn(s, SHIP_SMALL, shoreX + 2, 10);
+    const atSea = spawn(s, SHIP_SMALL, shoreX + SHIP_DOOR_DISTANCE + 4, 10);
+    const landed = spawn(s, HANDCART, 2, 2);
+    const sunk = spawn(s, HANDCART, 2, 4);
+    carry(s, moored, landed);
+    carry(s, atSea, sunk);
+    const door = s.vehicleView(moored)?.door;
+    if (door === null || door === undefined) throw new Error('moored ship has no door');
+    removeVehicle(s.world, ctxOf(s), moored, 'destroyed');
+    removeVehicle(s.world, ctxOf(s), atSea, 'destroyed');
+    expect(s.world.isAlive(landed)).toBe(true);
+    expect(s.vehicleView(landed)).toMatchObject({ carrier: null, at: door });
+    expect(s.world.isAlive(sunk)).toBe(false);
+    expect(
+      s.events
+        .current()
+        .filter((ev) => ev.kind === 'vehicleDestroyed')
+        .map((ev) => ev.entity),
+    ).toEqual([moored, sunk, atSea]);
+  });
+
+  it('removes a vehicle for a script with no cargo spill, no ruins and no RNG draw', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 12);
+    modifyVehicleStock(s.world, cart, s.content, WOOD, HANDCART_SLOTS);
+    const catapult = spawn(s, CATAPULT, 20, 20);
+    const rngBefore = s.rng.getState();
+    removeVehicle(s.world, ctxOf(s), cart, 'script');
+    removeVehicle(s.world, ctxOf(s), catapult, 'script');
+    expect(s.rng.getState()).toBe(rngBefore);
+    expect(loosePiles(s, WOOD)).toEqual([]);
+    const wrecks = s.events.current().filter((ev) => ev.kind === 'vehicleDestroyed');
+    expect(wrecks.map((ev) => ev.cause)).toEqual(['script', 'script']);
+    expect(wrecks.every((ev) => ev.ruins.length === 0)).toBe(true);
+  });
+
+  it("leaves a defeated seat's cart as ruins without spilling its cargo", () => {
+    const s = sim();
+    const catapult = spawn(s, CATAPULT, 20, 20);
+    modifyVehicleStock(s.world, spawn(s, HANDCART, 12, 12), s.content, WOOD, HANDCART_SLOTS);
+    removeVehiclesOf(s.world, ctxOf(s), P0);
+    expect(loosePiles(s, WOOD)).toEqual([]);
+    const wrecks = s.events.current().filter((ev) => ev.kind === 'vehicleDestroyed');
+    expect(wrecks.map((ev) => ev.cause)).toEqual(['defeated', 'defeated']);
+    const catapultWreck = wrecks.find((ev) => ev.entity === catapult);
+    expect(catapultWreck?.ruins.length).toBeGreaterThan(0);
   });
 
   it("spills a wrecked cart's cargo within the spill radius and draws ruins on its footprint by the seed", () => {
@@ -379,6 +452,20 @@ describe('removeVehicle', () => {
     expect(s.events.current().some((ev) => ev.kind === 'vehicleDestroyed' && ev.cause === 'destroyed')).toBe(
       true,
     );
+  });
+
+  it('reaps a sinking ship and a rider at 0 hit points in one tick without a second death', () => {
+    const s = sim(shoreMap());
+    const ship = spawn(s, SHIP_SMALL, MAP_CELLS + SHIP_DOOR_DISTANCE + 4, 10);
+    const rider = spawnRider(s, 2, 2);
+    seatPassenger(s.world, ship, rider);
+    boardSeated(s, ship, rider);
+    s.world.mut(ship, Health).hitpoints = 0;
+    s.world.mut(rider, Health).hitpoints = 0;
+    s.step();
+    expect(s.world.isAlive(ship)).toBe(false);
+    expect(s.world.isAlive(rider)).toBe(false);
+    expect(s.events.current().filter((ev) => ev.kind === 'settlerDied')).toHaveLength(1);
   });
 
   it("destroys a defeated seat's vehicles and keeps the survivors' ones", () => {

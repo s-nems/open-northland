@@ -1,12 +1,4 @@
-import {
-  Building,
-  DeliveryFlag,
-  GroundDrop,
-  Palisade,
-  Position,
-  Stockpile,
-  Vehicle,
-} from '../../components/index.js';
+import { Building, DeliveryFlag, GroundDrop, Palisade, Position, Stockpile } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -85,17 +77,12 @@ export function lowestStockedGood(stock: { amounts: ReadonlyMap<number, number> 
   return lowest;
 }
 
-/** Whether `e` is a heap lying on the ground: a positioned stockpile that is neither a building store, a
- *  wall's construction stock nor a vehicle, whatever marker it carries. A vehicle's hold is
- *  `VehicleStock`, never a `Stockpile`; the exclusion pins that a hand drop beside one can never land in
- *  it. */
+/** Whether `e` is a heap lying on the ground: a positioned stockpile that is neither a building store nor a
+ *  wall's construction stock, whatever marker it carries. A vehicle's hold is `VehicleStock`, never a
+ *  `Stockpile`, so none is ever a pile. */
 export function isLoosePile(world: World, e: Entity): boolean {
   return (
-    world.has(e, Stockpile) &&
-    world.has(e, Position) &&
-    !world.has(e, Building) &&
-    !world.has(e, Palisade) &&
-    !world.has(e, Vehicle)
+    world.has(e, Stockpile) && world.has(e, Position) && !world.has(e, Building) && !world.has(e, Palisade)
   );
 }
 

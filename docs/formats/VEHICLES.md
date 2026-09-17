@@ -33,7 +33,8 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 
 Hit points (table indexed by type): ship small 5000, ship big 5000, catapult 3000, everything
 else 1000; the pipeline stamps the table onto `VehicleType.hitpoints`. Vision: 15 default, ship
-small 20, ship big 25, catapult 20. Vehicles have no armour.
+small 20, ship big 25, catapult 20 (`CVehicle::Init`; Open Northland still gives every vehicle the
+civilian radius, *open*). Vehicles have no armour.
 
 ## Construction
 
@@ -118,8 +119,11 @@ commander; a moored ship boards everyone first; then scans the hex ring of radiu
 `>= logicsize`, walks there, stores the mooring point and task 1 "docks"; on arrival the dock
 animation plays and the moored flag is set. No port building is involved. The bas-c label
 `IsShipAtSea` is inverted: it is the moored flag. Unload people (`f` on a ship) empties the crew
-onto the door cell only when it is on land. A ship destroyed at sea frees every passenger and any
-carried vehicle; ships leave no wreck and no cargo.
+onto the door cell only when it is on land. When a vehicle leaves the map with its door on land,
+riders who are aboard are put on the door cell and riders still walking to it are only detached
+where they stand (`Passengers_MoveOut_h`), and a carried vehicle is set down on the door cell
+(`Passengers_MoveOut_v`); with the door at sea the crew dies and a carried vehicle is removed with
+the ship. Ships leave no wreck and no cargo.
 
 Open Northland: a spawned ship's mooring point is the nearest walkable node in hexagon-ring order
 within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
@@ -150,10 +154,15 @@ Damage to any vehicle: `damage[6] * 200 / (200 - min(armour, 100))`, armour 0, h
 player 0 on easy. At 0 hit points the vehicle is removed; carts and catapults scatter ruin
 landscape on 51 % of footprint nodes and drop all cargo within radius 10.
 
+Both effects are gated in `CVehicle::Exit` on two global flags that every script removal sets, so
+a scripted removal draws no ruins, spills nothing and draws no random number; a player leaving the
+game (`Player_LeftGameModifyObjects`) removes his vehicles with ruins but without the cargo spill.
+
 Open Northland: `removeVehicle` (`packages/sim/src/systems/vehicles/remove.ts`) draws the ruin
 nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the renderer's
 decals, since the ruin landscape type is not identified (*open*); the cargo spill walks the shared
-Manhattan spill rings (approximation).
+Manhattan spill rings (approximation). The match rule's defeat teardown reuses the leave-game path,
+ruins without cargo (approximation: the original's dead-player teardown is not read).
 
 ## Lifecycle
 

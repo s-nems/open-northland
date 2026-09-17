@@ -17,7 +17,7 @@ import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { BREEDING_PAIR, craftablePool } from '../../../economy/production.js';
-import { removeSettlerSilently } from '../../../lifecycle/cleanup.js';
+import { removeSettlerSilently } from '../../../lifecycle/death.js';
 import {
   attachToFarm,
   farmStands,

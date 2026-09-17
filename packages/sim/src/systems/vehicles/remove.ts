@@ -14,7 +14,7 @@ import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { type SpilledStock, scatterSpilledStock } from '../economy/goods-spill.js';
 import { vehicleAnchor, vehicleDoorPoint, vehicleFootprintNodes } from '../footprint/index.js';
-import { reap } from '../lifecycle/cleanup.js';
+import { reap } from '../lifecycle/death.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { vehicleIndex } from './registry.js';
 
@@ -30,11 +30,13 @@ const PERCENT = 100;
 export type VehicleRemovalCause = 'destroyed' | 'defeated' | 'script';
 
 /**
- * Take a vehicle off the map (docs/formats/VEHICLES.md "Lifecycle"): its passengers step onto the door
- * node when that is land, otherwise they die with it; a carried vehicle goes the same way first; a cart
- * or catapult heaps its cargo around it and draws ruins on {@link VEHICLE_RUIN_PERCENT} of its footprint
- * through the seeded RNG; a ship leaves nothing. The event goes out before the destroy so the owner and
- * position are still readable.
+ * Take a vehicle off the map (docs/formats/VEHICLES.md "Lifecycle"). With the door on land, riders who
+ * were aboard step onto it and riders still walking to it are merely detached, and a carried vehicle is
+ * set down there; with the door at sea, or none, the crew drowns and a carried vehicle goes down with
+ * the ship. A wrecked cart or catapult draws ruins on {@link VEHICLE_RUIN_PERCENT} of its footprint
+ * through the seeded RNG, and one destroyed in play also heaps its cargo around it; a script removal
+ * leaves neither and draws nothing, and a ship leaves nothing. The event goes out before the destroy so
+ * the owner and position are still readable.
  */
 export function removeVehicle(world: World, ctx: SystemContext, e: Entity, cause: VehicleRemovalCause): void {
   const vehicle = world.tryGet(e, Vehicle);
@@ -44,15 +46,19 @@ export function removeVehicle(world: World, ctx: SystemContext, e: Entity, cause
   const door = type !== undefined && anchor !== null ? vehicleDoorPoint(vehicle, type, anchor) : null;
   const landing = door !== null && isLand(ctx, door) ? door : null;
 
-  for (const seat of carriedVehicles(vehicle)) removeVehicle(world, ctx, seat.entity, cause);
+  for (const seat of carriedVehicles(vehicle)) {
+    if (!world.isAlive(seat.entity)) continue;
+    if (landing === null) removeVehicle(world, ctx, seat.entity, cause);
+    else setDownVehicle(world, seat.entity, landing);
+  }
   for (const seat of vehiclePassengers(vehicle)) {
     if (!world.isAlive(seat.entity)) continue;
     if (landing === null) reap(world, ctx, seat.entity);
-    else setDown(world, seat.entity, landing);
+    else if (seat.inside) setDown(world, seat.entity, landing);
   }
 
-  const wrecks = type !== undefined && !isShipVehicle(type);
-  const spill = wrecks ? cargoSpillOf(world, e, anchor) : null;
+  const wrecks = cause !== 'script' && type !== undefined && !isShipVehicle(type);
+  const spill = wrecks && cause === 'destroyed' ? cargoSpillOf(world, e, anchor) : null;
   const ruins = wrecks && ctx.terrain !== undefined ? drawRuins(world, ctx, e) : [];
   const player = world.tryGet(e, Owner)?.player ?? null;
   ctx.events.emit({
@@ -93,6 +99,13 @@ function setDown(world: World, rider: Entity, point: HalfCellNode): void {
     pos.x = at.x;
     pos.y = at.y;
   }
+}
+
+/** Put a carried vehicle back on the map at `point`, off its carrier. */
+function setDownVehicle(world: World, carried: Entity, point: HalfCellNode): void {
+  setDown(world, carried, point);
+  const live = world.tryMut(carried, Vehicle);
+  if (live !== undefined) live.carrier = null;
 }
 
 function cargoSpillOf(world: World, e: Entity, anchor: HalfCellNode | null): SpilledStock | null {

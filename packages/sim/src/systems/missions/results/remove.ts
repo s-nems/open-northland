@@ -1,6 +1,7 @@
 import { Person, Position } from '../../../components/index.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { removeBuildingSilently, removeSettlerSilently } from '../../lifecycle/cleanup.js';
+import { removeBuildingSilently } from '../../lifecycle/cleanup.js';
+import { removeSettlerSilently } from '../../lifecycle/death.js';
 import type { MissionPass } from '../pass.js';
 import { missionAnimals, missionHouses, missionHumans, withinRange } from '../targets.js';
 

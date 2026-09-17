@@ -111,8 +111,8 @@ const PALETTES_INI = [
 ].join('\n');
 
 const VEHICLES = [
-  VehicleType.parse({ typeId: 1, id: 'handcart', jobId: 50 }),
-  VehicleType.parse({ typeId: 3, id: 'ship_small', jobId: 52 }),
+  VehicleType.parse({ typeId: 1, id: 'handcart', jobId: 50, hitpoints: 1000 }),
+  VehicleType.parse({ typeId: 3, id: 'ship_small', jobId: 52, hitpoints: 5000 }),
 ];
 
 function input() {

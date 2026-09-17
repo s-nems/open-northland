@@ -9,7 +9,7 @@ import {
 import type { World } from '../../ecs/world.js';
 import { ownedSettlers } from '../ai-player/seat-roster.js';
 import type { SystemContext } from '../context.js';
-import { removeSettlerSilently } from '../lifecycle/cleanup.js';
+import { removeSettlerSilently } from '../lifecycle/death.js';
 import { spawnSettler } from '../spawn/index.js';
 import { conditionActive } from './conditions.js';
 

@@ -28,6 +28,8 @@ boarding, and carried vehicles boarding a ship.
   messages.
 - Aboard settlers keep needs frozen and are excluded from map queries but stay owned by their seat
   for goals and defeat.
+- A dying rider is unseated from its vehicle, and removing a carried vehicle clears its carrier's
+  slot, so `removeVehicle` never meets a dead seat.
 
 ## Verify
 

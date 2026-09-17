@@ -36,6 +36,7 @@ function vehicleContent(): ContentSet {
         typeId: 4,
         id: 'ship_big',
         jobId: 53,
+        hitpoints: 5000,
         stockSlots: 200,
         passengerSlots: 9,
         logicSize: 2,
@@ -46,6 +47,7 @@ function vehicleContent(): ContentSet {
         typeId: 1,
         id: 'handcart',
         jobId: 50,
+        hitpoints: 1000,
         stockSlots: 15,
         passengerSlots: 0,
         logicSize: 0,
@@ -56,18 +58,28 @@ function vehicleContent(): ContentSet {
         typeId: 3,
         id: 'ship_small',
         jobId: 52,
+        hitpoints: 5000,
         stockSlots: 50,
         passengerSlots: 19,
         logicSize: 2,
         cargoGoods: [16, 17, 1],
       },
       // catapult (typeId 5) - a siege engine, NOT a ship: it carries no passengers (logicSize 1) or cargo.
-      { typeId: 5, id: 'catapult', jobId: 54, stockSlots: 0, passengerSlots: 0, logicSize: 1 },
+      {
+        typeId: 5,
+        id: 'catapult',
+        jobId: 54,
+        hitpoints: 3000,
+        stockSlots: 0,
+        passengerSlots: 0,
+        logicSize: 1,
+      },
       // oxcart (typeId 2) - a land cart: no passengers.
       {
         typeId: 2,
         id: 'oxcart',
         jobId: 51,
+        hitpoints: 1000,
         stockSlots: 30,
         passengerSlots: 0,
         logicSize: 0,
@@ -106,7 +118,7 @@ describe('shipVehicles', () => {
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
-      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15 }],
+      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, hitpoints: 1000, stockSlots: 15 }],
     });
     expect(shipVehicles(content)).toEqual([]);
   });
@@ -135,7 +147,7 @@ describe('largestShipCapacity', () => {
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
-      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15 }],
+      vehicles: [{ typeId: 1, id: 'handcart', jobId: 50, hitpoints: 1000, stockSlots: 15 }],
     });
     expect(largestShipCapacity(cartsOnly)).toBe(0);
   });

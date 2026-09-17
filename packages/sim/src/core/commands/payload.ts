@@ -113,6 +113,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   attackMoveUnit: { required: { entity: 'integer', ...NODE } },
   attackUnit: { required: { entity: 'integer', target: 'integer' } },
   cancelUpgrade: { required: { building: 'integer' } },
+  createVehicle: {
+    required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
+    optional: { owner: 'integer', missionId: 'integer' },
+  },
   debugCompleteConstruction: { required: { target: 'integer' } },
   debugFillStockpile: { required: { target: 'integer' } },
   debugKill: { required: { target: 'integer' } },
@@ -201,10 +205,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setSignpostNavigation: { required: { enabled: 'boolean' } },
   setStance: { required: { entity: 'integer', mode: 'integer' } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },
-  createVehicle: {
-    required: { vehicleType: 'integer', ...NODE, tribe: 'integer' },
-    optional: { owner: 'integer', missionId: 'integer' },
-  },
   spawnAnimalHerd: {
     required: { tribe: 'integer', ...NODE },
     optional: { count: 'integer', missionId: 'integer', owner: 'integer' },

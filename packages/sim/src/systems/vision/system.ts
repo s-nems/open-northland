@@ -136,8 +136,9 @@ export const visionSystem: System = (world, ctx) => {
 };
 
 /** The vision radius in nodes of one owned entity, or null when it is not an eye. A rising site counts as
- *  manned ground and sees the building radius, a boat hull sees like a civilian, and a signpost is an
- *  authored standing eye that keeps {@link SIGNPOST_VISION_NODES} around it visible under fog of war. */
+ *  manned ground and sees the building radius, a vehicle sees like a civilian (approximation), and a
+ *  signpost is an authored standing eye that keeps {@link SIGNPOST_VISION_NODES} around it visible under
+ *  fog of war. */
 function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | null {
   const settler = world.tryGet(e, Settler);
   if (settler !== undefined) {

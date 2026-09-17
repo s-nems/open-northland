@@ -201,12 +201,18 @@ describe('validateCrossReferences', () => {
     // vehicles
     {
       name: 'a vehicle admitting an unknown passenger job',
-      overrides: { vehicles: [{ typeId: 5, id: 'cart', jobId: 54, passengerJobs: [1, UNKNOWN] }] },
+      overrides: {
+        vehicles: [{ typeId: 5, id: 'cart', jobId: 54, hitpoints: 3000, passengerJobs: [1, UNKNOWN] }],
+      },
       error: /vehicle "cart" admits unknown passenger jobType 99/,
     },
     {
       name: 'a vehicle transforming into an unknown vehicle',
-      overrides: { vehicles: [{ typeId: 6, id: 'cart_no_ox', jobId: 55, transformVehicleType: UNKNOWN }] },
+      overrides: {
+        vehicles: [
+          { typeId: 6, id: 'cart_no_ox', jobId: 55, hitpoints: 1000, transformVehicleType: UNKNOWN },
+        ],
+      },
       error: /vehicle "cart_no_ox" transforms into unknown vehicleType 99/,
     },
     {
@@ -389,20 +395,20 @@ describe('validateCrossReferences', () => {
     {
       name: 'a jobEnables vehicle target that resolves against the vehicle table (carve-out)',
       overrides: {
-        vehicles: [{ typeId: 5, id: 'cart', jobId: 54 }],
+        vehicles: [{ typeId: 5, id: 'cart', jobId: 54, hitpoints: 3000 }],
         tribes: [{ typeId: 1, id: 'viking', jobEnables: [{ jobType: 1, kind: 'vehicle', targetId: 5 }] }],
       },
     },
     {
       name: 'a vehicle whose own job id is not in the job table (carve-out - jobId is not resolved)',
-      overrides: { vehicles: [{ typeId: 5, id: 'cart', jobId: 54, passengerJobs: [1] }] },
+      overrides: { vehicles: [{ typeId: 5, id: 'cart', jobId: 54, hitpoints: 3000, passengerJobs: [1] }] },
     },
     {
       name: 'a vehicle good paired with the yard that spawns its vehicle',
       overrides: {
         goods: [{ typeId: 63, id: 'catapult', vehicleHouse: 46 }],
         buildings: [{ typeId: 46, id: 'catapult', kind: 'vehicle', vehicleType: 5 }],
-        vehicles: [{ typeId: 5, id: 'catapult', jobId: 54 }],
+        vehicles: [{ typeId: 5, id: 'catapult', jobId: 54, hitpoints: 3000 }],
       },
     },
     {
