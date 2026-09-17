@@ -190,6 +190,43 @@ playerfixcolors 1
     });
   });
 
+  it('types the [AIData] seat toggles and leaves the task program alone', () => {
+    // Mirrors SPECJALNA- FORTECA's packed section: a blanket HAI_Disable per fortress seat beside the
+    // authored tasks; the plaintext skin spells the header [aidata].
+    const lines: CifLine[] = [
+      { level: 1, text: 'playerdata' },
+      { level: 2, text: 'player 0 1 1 0' },
+      { level: 1, text: 'AIData' },
+      { level: 2, text: 'HAI_Disable 6' },
+      { level: 2, text: 'HAI_Disable 6' },
+      { level: 2, text: 'AI_Disable 2' },
+      { level: 2, text: 'HAI_DisableMilitary 3' },
+      { level: 2, text: 'hai_disableroadbuild 3' },
+      { level: 2, text: 'HAI_DisableHouseBuild 3 2' },
+      { level: 2, text: 'HAI_Disable x' },
+      { level: 2, text: 'AI_MainTask_Defend 6 10 100000 215 270 40 5 10' },
+    ];
+    const script = extractMapScript(cifLinesToSections(lines), { file: 'x/map.cif' });
+    expect(script?.ai).toEqual([
+      {
+        player: 6,
+        disabled: false,
+        strategicOff: [
+          'collectResources',
+          'guideBuild',
+          'homeExpansion',
+          'houseBuild',
+          'houseUpgrade',
+          'military',
+          'roadBuild',
+        ],
+      },
+      { player: 2, disabled: true, strategicOff: [] },
+      { player: 3, disabled: false, strategicOff: ['military', 'roadBuild'] },
+    ]);
+    expect(script?.misc).toEqual([]);
+  });
+
   it('types the [multiplayer] table in the packed numeric skin (a lobby-openable ai slot)', () => {
     // Mirrors the packed SPECJALNA- MOSTY NA RZECE map.cif: playerdata authors one human slot, but
     // playeroption offers human (1) on an ai slot too - the lobby's seat-eligibility table.

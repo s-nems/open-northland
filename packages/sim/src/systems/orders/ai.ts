@@ -17,9 +17,10 @@ import { resetAssistantCounters } from './assistant.js';
  * is an ordinary component, so it hashes and replays.
  *
  * The AI plays through standing world state, so detaching the hand that published it must withdraw it:
- * the assistant counters ({@link AI_PUBLISHED_COUNTERS}) and the alarms its military module raised,
- * which nothing else would ever lower. Disable resets every AI-published kind, and an in-place module
- * update resets the kinds whose publishing gates just broke.
+ * the assistant counters ({@link AI_PUBLISHED_COUNTERS}) and the alarms its defence raised, which
+ * nothing else would ever lower. Disable resets every AI-published kind, and an in-place module update
+ * resets the kinds whose publishing gates just broke; the alarms stay, since the defence keeps
+ * deciding for a seat with its military module off.
  */
 export function setPlayerAi(world: World, command: Extract<Command, { kind: 'setPlayerAi' }>): void {
   if (!isValidPlayer(command.player)) return;
@@ -42,7 +43,6 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
       resetAssistantCounters(world, command.player, entry.kinds);
     }
   }
-  if (previous.military && !modules.military) standDownAlarms(world, command.player);
   world.mut(carrier, AiPlayer).modules = modules;
 }
 

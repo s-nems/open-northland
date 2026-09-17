@@ -146,7 +146,17 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null),
   });
   for (const seat of options.aiSeats) {
-    sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
+    const authored = options.script?.ai?.find((row) => row.player === seat);
+    // `AI_Disable` idles the seat outright; `HAI_Disable*` keeps it a computer seat without the
+    // named strategic modules.
+    if (authored?.disabled) continue;
+    const off = authored?.strategicOff ?? [];
+    sim.enqueueSetup({
+      kind: 'setPlayerAi',
+      player: seat,
+      enabled: true,
+      ...(off.length > 0 ? { modules: Object.fromEntries(off.map((id) => [id, false])) } : {}),
+    });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
   grantStartingPapers(sim, options.specialItems ?? []);

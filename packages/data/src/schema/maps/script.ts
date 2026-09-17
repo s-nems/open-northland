@@ -114,11 +114,45 @@ export const MapHumanName = z.strictObject({
 });
 export type MapHumanName = z.infer<typeof MapHumanName>;
 
+/**
+ * A strategic-AI concern a map's `[AIData]` may switch off, named after the engine's own
+ * `HAI_Disable<Module>` keywords (byte evidence: the the original's `an original routine`
+ * token table). The sim's AI player runs one module per name.
+ */
+export const MapAiModule = z.enum([
+  'collectResources',
+  'guideBuild',
+  'homeExpansion',
+  'houseBuild',
+  'houseUpgrade',
+  'military',
+  'roadBuild',
+]);
+export type MapAiModule = z.infer<typeof MapAiModule>;
+
+/**
+ * One player's `[AIData]` toggles. The engine runs two handlers per computer seat: the scripted one
+ * (authored tasks and conditions, and the minute refill of its humans' food and stamina) and the
+ * strategic one behind the modules. `AI_Disable` stops both, `HAI_Disable` only the strategic modules.
+ * The corpus authors only those two blanket forms; the indexed `HAI_DisableHouseBuild <player> <n>`
+ * and `HAI_DisableHouseUpgrade <player> <n>` lines are not read.
+ */
+export const MapAiSeat = z.strictObject({
+  player: z.number().int().nonnegative(),
+  /** `AI_Disable`: the seat runs no AI at all. */
+  disabled: z.boolean(),
+  /** The strategic modules the map stops; every one after a blanket `HAI_Disable`. */
+  strategicOff: z.array(MapAiModule),
+});
+export type MapAiSeat = z.infer<typeof MapAiSeat>;
+
 /** The whole decoded script: `misc` keeps `playermisc` and unrecognised `playerdata` lines lossless,
  *  and `missions` stays in authored order. */
 export const MapScript = z.strictObject({
   players: z.array(MapPlayerSlot).default([]),
   diplomacy: z.array(MapDiplomacy).default([]),
+  /** The `[AIData]` seat toggles, one row per player the section names. */
+  ai: z.array(MapAiSeat).default([]),
   /** The `[multiplayer]` lobby table, when the map ships one. */
   multiplayer: MapMultiplayer.optional(),
   /** The `[specialItems]` starting papers, in authored order. */

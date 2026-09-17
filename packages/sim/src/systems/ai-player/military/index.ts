@@ -29,14 +29,22 @@ export {
 export { WAVE_GATHER_TICKS } from './plan.js';
 
 /**
- * One strategic decision for the seat's fighting men, home before abroad: the towers take their garrison
+ * One decision for the seat's fighting men, home before abroad: the towers take their garrison
  * ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates takes the rest of it, and the
  * campaign gets what neither claimed.
  *
- * Defence has no module flag of its own because the module list mirrors the original's `HAI_Disable*` map
- * flags, which name no defence toggle.
+ * The home half runs with the module off too. The original's `HAI_DisableMilitary` reaches only its
+ * strategic handler; the scripted handler every computer seat runs mans the towers and answers an
+ * attack on its own (byte evidence: the the original's `an original routine` calling
+ * `an original routine` and `an original routine`). The shape and radii of the defence here are
+ * approximations.
  */
-function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
+function runMilitary(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  campaign: boolean,
+): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return []; // mapless sim: no ground to march over
   const owned = ownedBuildings(world, player);
@@ -51,11 +59,14 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     ...alarmOrders(world, ctx, terrain, owned, raiders),
     ...posts.commands,
     ...(raid === null ? [] : sortieOrders(world, terrain, free, raid)),
-    ...runOffensive(world, ctx, terrain, player, { army: marchable, awaitingWeapon: army.awaitingWeapon }),
+    ...(campaign
+      ? runOffensive(world, ctx, terrain, player, { army: marchable, awaitingWeapon: army.awaitingWeapon })
+      : []),
   ];
 }
 
 export const militaryModule: AiPlayerModule = {
   id: 'military',
-  run: runMilitary,
+  run: (world, ctx, player) => runMilitary(world, ctx, player, true),
+  whileDisabled: (world, ctx, player) => runMilitary(world, ctx, player, false),
 };

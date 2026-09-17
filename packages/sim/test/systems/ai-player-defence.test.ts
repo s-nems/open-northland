@@ -314,7 +314,7 @@ describe('ai defence - the alarm', () => {
     expect(sim.world.has(hq, DefenceMode)).toBe(false);
   });
 
-  it('lowers them when the military gate alone flips off', () => {
+  it('holds them when the military gate alone flips off, since the defence keeps deciding', () => {
     const sim = aiSim();
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
     standOff(sim, hq, watchOf(sim), SPEARMAN);
@@ -323,7 +323,26 @@ describe('ai defence - the alarm', () => {
 
     sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, modules: { military: false } });
     sim.step();
-    expect(sim.world.has(hq, DefenceMode)).toBe(false);
+    expect(sim.world.has(hq, DefenceMode)).toBe(true);
+  });
+
+  it('still rings, mans the wall and sorties with the military module off', () => {
+    // The original's map toggles reach only the strategic handler; the scripted handler every computer
+    // seat runs defends the home on its own.
+    const sim = aiSim();
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    const tower = place(sim, TOWER_TYPE, SEAT_TOWER);
+    spawn(sim, TOWER_GARRISON_ARCHERS, { x: SEAT_TOWER.x + 6, y: SEAT_TOWER.y }, BOWMAN);
+    const band = spawn(sim, 4, { x: SEAT_HQ.x, y: SEAT_HQ.y + 6 }, SPEARMAN);
+    standOff(sim, hq, watchOf(sim), SPEARMAN);
+
+    const decide = militaryModule.whileDisabled;
+    if (decide === undefined) throw new Error('the military module has no disabled half');
+    const commands = [...decide(sim.world, ctxOf(sim, EAGER_SEED), SEAT)];
+    expect(alarms(commands)).toEqual([{ building: hq, enabled: true }]);
+    expect(postings(commands).every((p) => p.building === tower)).toBe(true);
+    expect(postings(commands)).toHaveLength(TOWER_GARRISON_ARCHERS);
+    expect(attackMoves(commands).map((m) => m.entity)).toEqual(band);
   });
 
   it('keeps marching while a raider it cannot walk to holds the alarm up', () => {

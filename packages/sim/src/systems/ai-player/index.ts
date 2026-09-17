@@ -25,11 +25,17 @@ export * from './workforce/index.js';
  * player input.
  */
 
-/** One strategic concern of the AI player (see {@link AiModuleId} - the HAI toggle decomposition).
- *  `run` returns the commands the seat issues this decision; the system enqueues them. */
+/** The commands a seat issues this decision; the system enqueues them. */
+type AiDecision = (world: World, ctx: SystemContext, player: number) => readonly PlayerCommand[];
+
+/** One strategic concern of the AI player (see {@link AiModuleId} - the HAI toggle decomposition). */
 export interface AiPlayerModule {
   readonly id: AiModuleId;
-  readonly run: (world: World, ctx: SystemContext, player: number) => readonly PlayerCommand[];
+  readonly run: AiDecision;
+  /** What the seat still does with the module switched off. The original's map toggles address only
+   *  its strategic handler; a computer seat's scripted handler runs whatever the toggles say, and the
+   *  part of a module it owns keeps deciding here. */
+  readonly whileDisabled?: AiDecision;
 }
 
 /**
@@ -64,8 +70,9 @@ export function runAiPlayerModules(
     // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
     if (isPlayerDead(world, seat.player)) continue;
     for (const module of modules) {
-      if (!seat.modules[module.id]) continue;
-      for (const command of module.run(world, ctx, seat.player)) {
+      const decide = seat.modules[module.id] ? module.run : module.whileDisabled;
+      if (decide === undefined) continue;
+      for (const command of decide(world, ctx, seat.player)) {
         ctx.commands.enqueue(aiCommand(seat.player, command));
       }
     }

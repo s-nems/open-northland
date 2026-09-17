@@ -10,7 +10,16 @@ import {
 const line = (...values: string[]): { key: string; values: string[] } => ({ key: 'x', values });
 
 function script(over: Partial<MapScript> = {}): MapScript {
-  return { players: [], diplomacy: [], specialItems: [], misc: [], humanNames: [], missions: [], ...over };
+  return {
+    players: [],
+    diplomacy: [],
+    ai: [],
+    specialItems: [],
+    misc: [],
+    humanNames: [],
+    missions: [],
+    ...over,
+  };
 }
 
 describe('neverDiesSeats and matchParticipants', () => {

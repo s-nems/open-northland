@@ -1,12 +1,14 @@
 /**
- * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`specialItems`/`MissionData` sections
- * into a validated {@link MapScript}. Token resolution accepts both source skins: the plaintext
+ * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`specialItems`/`AIData`/`MissionData`
+ * sections into a validated {@link MapScript}. Token resolution accepts both source skins: the plaintext
  * `player.inc`/`mission.inc` macros (`#PLAYER_TYPE_HUMAN`) and the packed `map.cif` carrying those macros
  * already resolved to numbers.
  */
 import {
   MAP_PLAYER_COLOR_COUNT,
   MAP_SPECIAL_ITEM_KIND_COUNT,
+  MapAiModule,
+  type MapAiSeat,
   MapScript,
   type MapScriptLine,
 } from '@open-northland/data';
@@ -166,6 +168,38 @@ function multiplayerSection(sec: RuleSection, out: NonNullable<MapScript['multip
   }
 }
 
+/** The `HAI_Disable<Module>` keywords, lower-cased, by the strategic module each one stops. */
+const HAI_MODULE_KEYWORDS: Readonly<Record<string, MapAiModule>> = {
+  hai_disablecollectresources: 'collectResources',
+  hai_disableguidebuild: 'guideBuild',
+  hai_disablehomeexpansion: 'homeExpansion',
+  hai_disablemilitary: 'military',
+  hai_disableroadbuild: 'roadBuild',
+};
+
+/**
+ * Folds the seat toggles of one `[AIData]` section into `out`, one row per player, keyed
+ * case-insensitively like the engine's token table. The authored task and condition program
+ * (`AI_MainTask_*`, `AI_SetCondition_*`) is not extracted.
+ */
+function aiSection(sec: RuleSection, out: MapAiSeat[]): void {
+  for (const p of sec.props) {
+    const key = p.key.toLowerCase();
+    const player = int(p.values[0]);
+    if (player === undefined || player < 0) continue;
+    const module = HAI_MODULE_KEYWORDS[key];
+    if (key !== 'ai_disable' && key !== 'hai_disable' && module === undefined) continue;
+    let row = out.find((seat) => seat.player === player);
+    if (row === undefined) {
+      row = { player, disabled: false, strategicOff: [] };
+      out.push(row);
+    }
+    if (key === 'ai_disable') row.disabled = true;
+    const off = key === 'hai_disable' ? MapAiModule.options : module === undefined ? [] : [module];
+    for (const id of off) if (!row.strategicOff.includes(id)) row.strategicOff.push(id);
+  }
+}
+
 /** One repeated `MissionData` section as a trigger: typed header scalars, lossless goal/result lines. */
 function mission(sec: RuleSection): MapScript['missions'][number] {
   const out: MapScript['missions'][number] = { goals: [], results: [], other: [] };
@@ -217,7 +251,7 @@ function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined 
  * rows typed, and one mission per repeated `MissionData` section in authored order. Section names match
  * case-insensitively (the corpus carries both `[AIData]` and `[aidata]`), and a duplicate `player`
  * slot keeps its first row. Returns undefined when no section yields anything, and the caller then
- * emits no script sidecar. `aidata`, the AI task and condition program, is out of scope here.
+ * emits no script sidecar. Of `aidata` only the seat toggles are read.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {
   const permissions: NonNullable<MapScript['permissions']> = [];
@@ -225,6 +259,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const seenSlots = new Set<number>();
   const diplomacy: NonNullable<MapScript['diplomacy']> = [];
   const specialItems: NonNullable<MapScript['specialItems']> = [];
+  const ai: MapAiSeat[] = [];
   const misc: NonNullable<MapScript['misc']> = [];
   const humanNames: NonNullable<MapScript['humanNames']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
@@ -283,17 +318,20 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     } else if (name === 'multiplayer') {
       multiplayer ??= { slotOptions: [], hiddenSlots: [], other: [] };
       multiplayerSection(sec, multiplayer);
+    } else if (name === 'aidata') {
+      aiSection(sec, ai);
     } else if (name === 'missiondata') {
       missions.push(mission(sec));
     }
   }
   const playerLines = players.length + diplomacy.length + specialItems.length + misc.length;
-  const scripted = playerLines + missions.length + humanNames.length + permissions.length;
+  const scripted = playerLines + missions.length + humanNames.length + permissions.length + ai.length;
   if (scripted === 0 && multiplayer === undefined) return undefined;
   return MapScript.parse({
     players,
     ...(permissions.length > 0 ? { permissions } : {}),
     diplomacy,
+    ai,
     multiplayer,
     specialItems,
     misc,

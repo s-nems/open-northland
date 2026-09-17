@@ -1,23 +1,14 @@
+import { type MapAiModule, MapAiModule as MapAiModuleSchema } from '@open-northland/data';
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
- * The strategic AI player's module ids, one per concern the AI runs for a seat. The list mirrors the
- * original's per-module HAI map-data toggles (`the original` strings `HAI_DisableCollectResources`,
- * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`, `HAI_DisableHouseUpgrade`,
- * `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map onto it one-to-one.
- * Approximation: the behavior inside each module is a genre convention.
+ * The strategic AI player's module ids, one per concern the AI runs for a seat: the map data's
+ * `[AIData]` per-module toggles, so an authored flag maps onto a module one-to-one. Approximation:
+ * the behavior inside each module is a genre convention.
  */
-export const AI_MODULE_IDS = [
-  'collectResources',
-  'guideBuild',
-  'homeExpansion',
-  'houseBuild',
-  'houseUpgrade',
-  'military',
-  'roadBuild',
-] as const;
+export const AI_MODULE_IDS: readonly MapAiModule[] = MapAiModuleSchema.options;
 
-export type AiModuleId = (typeof AI_MODULE_IDS)[number];
+export type AiModuleId = MapAiModule;
 
 /** Which modules run for one AI seat - a full record (every id present), so it hashes canonically. */
 export type AiModuleEnables = Record<AiModuleId, boolean>;

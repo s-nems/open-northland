@@ -1,11 +1,11 @@
 # Distinguish scripted, autonomous, idle, and closed map seats
 
 **Area:** sim, app · **Priority:** P2
-**Blocked by:** [authored HAI toggles](../pipeline/aidata-hai-toggles.md)
 
 The roster currently reduces every unclaimed seat to Idle or AI. That cannot represent the map's own
-HAI configuration, and `PLAYER_TYPE_NONE` seats still spawn their authored entities. Once HAI toggles
-are imported, the states have distinct behavior: Script follows the map's module flags, AI enables the
+HAI configuration, and `PLAYER_TYPE_NONE` seats still spawn their authored entities. The `[AIData]`
+toggles are imported (`MapAiSeat` in the script sidecar) and applied to every AI-driven seat at
+setup, so the states have distinct behavior: Script follows the map's module flags, AI enables the
 full strategic player, Idle keeps the seat's entities without strategic commands, and Closed removes
 the seat from setup.
 

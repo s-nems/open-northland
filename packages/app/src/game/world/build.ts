@@ -1,4 +1,4 @@
-import type { ContentSet, MapDiplomacy, MapHumanName, MapScript } from '@open-northland/data';
+import type { ContentSet, MapAiSeat, MapDiplomacy, MapHumanName, MapScript } from '@open-northland/data';
 import { components, type MissionScript, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
@@ -9,6 +9,8 @@ export interface MapScriptWorld {
   readonly victory?: 'script' | 'elimination';
   readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
+  /** The `[AIData]` seat toggles: which computer seats run no strategic modules, or no AI at all. */
+  readonly ai?: readonly MapAiSeat[];
   readonly humanNames?: readonly MapHumanName[];
   readonly missions?: MissionScript;
   readonly participants?: readonly number[];

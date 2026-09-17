@@ -1,24 +1,31 @@
-# Connect mission external flags to authored AI conditions
+# Run the authored AI program of a map's [AIData]
 
 **Area:** pipeline, sim · **Priority:** P2
 
-`SetExternalFlag` persists per-player flags, but no AI-condition consumer reads them. The
-[HAI toggles ticket](../pipeline/aidata-hai-toggles.md) explicitly excludes the authored
-`AI_MainTask_*` / `AI_SetCondition_*` layer.
+A scripted computer seat does nothing its map authored: `SPECJALNA: FORTECA` keeps its fortress
+garrison standing still where the original's scripted handler creates three soldiers on every pulse
+of external flag 2, marches on a besieger's base under `AI_MainTask_Attack`, and holds the
+`AI_MainTask_Defend` posts. `SetExternalFlag` already lands in `components/ai-flags.ts`, unread, and
+the seat toggles of the section are imported (`MapAiSeat`); the task and condition lines are dropped
+by `extractMapScript`. Eleven mod maps author the program, 234 `CreateCreatures` and 163 `Defend`
+tasks among them.
 
 ## Scope
 
-- Inspect owned `ai.inc` data and original behavior to establish condition slots, activation,
-  clearing, task transitions and behavior without an AI handler. Keep unconfirmed readings explicit.
-- Extract the authored conditions and tasks needed by a selected intact loose map into validated IR.
-- Execute that route deterministically and connect external flags to its conditions. Report unsupported
-  task kinds explicitly; retaining a flag alone must not imply that its authored AI behavior works.
-- Preserve condition/task progress through save/load and sub-mission suspension and return.
-- Update MISSIONS.md with actual support and remaining limitations. Coordinate module permissions
-  with the HAI ticket; do not duplicate its extraction scope.
+- Extract the `AI_MainTask_*`, `AI_SetCondition_*`, `AI_UnitLimit` and `AI_SoldiersDefaultPosition`
+  lines into validated IR. The loader's parameter layouts are in `docs/formats/MISSIONS.md` (AI data);
+  the lettered fields there still need a reading of the task and soldier-assignment code
+  (`an original routine`, `an original routine`,
+  `an original routine`, the original) before they are named.
+- Run the program per scripted seat on the handler's turn cadence (`AI_NEED_REFILL_TICKS` and its
+  seat stagger in `systems/lifecycle/needs`): condition slots with the recheck loop, external flags
+  from `ai-flags.ts`, `CreateCreatures` through `spawnSettler`, and `Defend`/`Attack` through the
+  existing military commands. Report task kinds without an evaluator through an event, as missions do.
+- Preserve slot and task progress through save/load and sub-mission suspension.
 
 ## Verify
 
-Cover activation, clearing, wrong-player isolation, absent handlers and save/load. Demonstrate an
-intact loose-map flag triggering its authored AI action. Run normal gates and pipeline/content gates
-when extraction changes. Campaign archive extraction is excluded.
+Unit tests per condition kind and task kind, a save/load round trip, and a headless run of
+`SPECJALNA: FORTECA`: the garrison gains soldiers at the castle after the mission script's first
+flag pulse, and marches on player 0's base only once its `OnHouseInRange` and `OnCreatureInRange`
+conditions hold. Pipeline and content gates on the extraction change.
