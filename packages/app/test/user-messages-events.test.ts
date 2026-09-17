@@ -407,6 +407,7 @@ describe('user messages from sim events', () => {
     ]);
     const out = run(
       [
+        { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noAnimal' },
         { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noCommander' },
         { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noPath' },
         { kind: 'vehicleMoveRefused', entity: e(1), player: LOCAL, reason: 'noPath' },
@@ -415,6 +416,12 @@ describe('user messages from sim events', () => {
       snap,
     );
     expect(out.map((m) => [m.type, m.subject, m.at, m.text])).toEqual([
+      [
+        USER_MESSAGE_TYPE.vehicleNoAnimal,
+        { kind: 'vehicle', entity: e(1) },
+        { hx: 10, hy: 4 },
+        `Wóz:${USER_MESSAGE_TYPE.vehicleNoAnimal}`,
+      ],
       [
         USER_MESSAGE_TYPE.vehicleNoCommander,
         { kind: 'vehicle', entity: e(1) },

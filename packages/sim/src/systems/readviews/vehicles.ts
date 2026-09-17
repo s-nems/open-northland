@@ -24,6 +24,12 @@ export function isSiegeVehicle(vehicle: VehicleType): boolean {
   return !isShipVehicle(vehicle) && vehicle.stockSlots === 0;
 }
 
+/** Whether the vehicle still needs its draught animal: its type recruits one and none has arrived. Such a
+ *  vehicle waits under `waitsForAnimal` and refuses a goto with `vehicleNoAnimal`. */
+export function awaitsDraughtAnimal(vehicle: VehicleType, state: { readonly harnessed: boolean }): boolean {
+  return vehicle.draggingAnimalTribe !== undefined && !state.harnessed;
+}
+
 /** Sorted ascending by `typeId`, so enumeration does not depend on declaration order. */
 export function shipVehicles(content: ContentSet): VehicleType[] {
   return content.vehicles.filter(isShipVehicle).sort((a, b) => a.typeId - b.typeId);

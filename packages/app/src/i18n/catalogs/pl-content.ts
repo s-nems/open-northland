@@ -243,6 +243,11 @@ export const plContent = {
       summary:
         'Stolarnia trzeciego poziomu, której dwaj stolarze mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
     },
+    'vehicle-ox': {
+      title: 'Wóz bez wołu',
+      summary:
+        'Pusty wóz obok czterech krów gracza. Rozkaz jazdy zostaje odrzucony z braku zwierzęcia; potem wóz sam wybiera najbliższą krowę poza parą hodowlaną stada, krowa podchodzi i zostaje zaprzężona, a wóz zamienia się w miejscu w wóz z wołem, do którego może już dołączyć czekający tragarz.',
+    },
     'vehicle-cargo': {
       title: 'Ładunek wozów',
       summary:

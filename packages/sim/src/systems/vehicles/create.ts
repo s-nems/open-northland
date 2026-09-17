@@ -15,7 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexagonRing, positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isShipVehicle } from '../readviews/vehicles.js';
+import { awaitsDraughtAnimal, isShipVehicle } from '../readviews/vehicles.js';
 import { stockVehicleGoods } from './stock.js';
 
 /** The facing a fresh vehicle takes. Approximation: neither `setvehicle` nor a yard authors one. */
@@ -63,7 +63,7 @@ export function createVehicle(
   world.add(e, Vehicle, {
     vehicleType: type.typeId,
     tribe: spec.tribe,
-    task: 'none',
+    task: awaitsDraughtAnimal(type, { harnessed: false }) ? 'waitsForAnimal' : 'none',
     facing: SPAWN_FACING,
     moored: mooring !== null,
     mooring,

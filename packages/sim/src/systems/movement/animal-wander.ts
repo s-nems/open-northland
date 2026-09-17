@@ -2,6 +2,7 @@ import {
   Anger,
   AttackOrder,
   CurrentAtomic,
+  DraughtAnimal,
   Engagement,
   FarmAnimal,
   Frightened,
@@ -112,8 +113,10 @@ export const animalWanderSystem: System = (world, ctx) => {
 
   for (const e of animals) {
     if (world.has(e, CurrentAtomic)) continue;
-    // A summoned animal is walking itself to the farm door: no graze leg competing with that.
-    if (world.has(e, Resting) || world.tryGet(e, FarmAnimal)?.summoner != null) continue;
+    // A summoned animal is walking itself to the farm door, and a cart's recruit to its cart: no graze
+    // leg competing with either walk.
+    if (world.has(e, Resting) || world.tryGet(e, FarmAnimal)?.summoner != null || world.has(e, DraughtAnimal))
+      continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
     if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing

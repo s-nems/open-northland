@@ -1,4 +1,5 @@
 import type { VehicleType } from '@open-northland/data';
+import { ANIMAL_TRIBE_CATTLE } from '../../../../catalog/animal-tribes.js';
 import {
   JOB_CARRIER,
   JOB_HEROINE_BOW,
@@ -75,6 +76,7 @@ export function buildSandboxVehicles(
     cart(VEHICLE_HANDCART, 'handcart', HANDCART_SLOTS, haulers),
     {
       ...cart(VEHICLE_CART_NO_OX, 'cart_no_ox', OXCART_SLOTS, null),
+      draggingAnimalTribe: ANIMAL_TRIBE_CATTLE,
       transformVehicleType: VEHICLE_OXCART,
     },
     cart(VEHICLE_OXCART, 'oxcart', OXCART_SLOTS, haulers),

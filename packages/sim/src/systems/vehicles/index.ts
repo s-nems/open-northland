@@ -21,6 +21,13 @@ export {
 } from './crew.js';
 export { dockVehicle } from './dock.js';
 export {
+  DRAUGHT_BREEDING_PAIR,
+  DRAUGHT_RECRUIT_CADENCE_TICKS,
+  draughtAnimalSystem,
+  harnessVehicle,
+  pickDraughtAnimal,
+} from './draught.js';
+export {
   facingOfStep,
   moveVehicle,
   sendVehicleTo,

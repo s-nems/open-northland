@@ -43,7 +43,12 @@ import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
 import { traderDisembarkSystem } from './trade/index.js';
-import { riderSystem, vehicleBoardingSystem, vehicleMovementSystem } from './vehicles/index.js';
+import {
+  draughtAnimalSystem,
+  riderSystem,
+  vehicleBoardingSystem,
+  vehicleMovementSystem,
+} from './vehicles/index.js';
 import { visionSystem } from './vision/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
@@ -90,6 +95,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // ladder's rider rung answers it the same tick; a rider without a seat is released first.
   { name: 'rider', system: riderSystem },
   { name: 'vehicleBoarding', system: vehicleBoardingSystem },
+  // Beside the boarding pass and before the planner: a recruited animal's walk to the cart routes on
+  // this tick's pathfinding pass, and the herd and graze drives ahead of it already saw the booking.
+  { name: 'draughtAnimal', system: draughtAnimalSystem },
   // After the boarding pass, which starts a held drive the tick its crew is in, so a trader whose cart
   // stopped steps out before the planner works the stop.
   { name: 'traderDisembark', system: traderDisembarkSystem },

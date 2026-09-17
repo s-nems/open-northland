@@ -379,6 +379,11 @@ export const economyContent = {
   // ship (disc radius 2, passengers, a door four steps off the bow, one carried vehicle, the carrier as
   // captain) and the catapult (radius 1, no cargo, soldiers). The cart and ship carry wood, plank and
   // food_simple; bread aliases onto food_simple the way the original's dishes do.
+  // The vehicle shapes of `vehicletypes.ini` with their real slot, size and pool values: a cart
+  // (footprint one node, cargo, the hauler and scout trades as crew), the ox cart pair, a ship (disc
+  // radius 2, passengers, a door four steps off the bow, one carried vehicle) and the catapult (radius 1,
+  // no cargo, soldiers). The carts and ship carry wood, plank and food_simple; bread aliases onto
+  // food_simple the way the original's dishes do.
   vehicles: [
     {
       typeId: 1,
@@ -389,6 +394,30 @@ export const economyContent = {
       cargoGoods: [1, 2, 3],
       passengerJobs: [24, 25, 27],
       commanderJob: 25,
+      hitpoints: 1000,
+    },
+    // The ox cart pair: the ox-less cart (6) admits no crew, recruits the cow (13, the fixture's catchable
+    // livestock) and becomes the ox cart (2) when it arrives.
+    {
+      typeId: 2,
+      id: 'oxcart',
+      jobId: 51,
+      stockSlots: 30,
+      logicSize: 0,
+      cargoGoods: [1, 2, 3],
+      passengerJobs: [24, 25, 27],
+      hitpoints: 1000,
+    },
+    {
+      typeId: 6,
+      id: 'cart_no_ox',
+      jobId: 55,
+      stockSlots: 30,
+      logicSize: 0,
+      cargoGoods: [1, 2, 3],
+      passengerJobs: [],
+      draggingAnimalTribe: 13,
+      transformVehicleType: 2,
       hitpoints: 1000,
     },
     {

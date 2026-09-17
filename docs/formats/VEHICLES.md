@@ -23,7 +23,7 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `stockslots` | One shared unit budget across all goods (15, 30, 50, 200, catapult 0). |
 | `logicgood n` | Storable good ids (1..55). Storage is a byte per allowed good: current, wanted, reserved. Goods 18, 19, 22 alias onto 16 and 20 onto 17 when not listed themselves. |
 | `passengerslots` | Ordinary passenger slots. The commander occupies one extra slot at index `passengerslots`, so real capacity is `passengerslots + 1`. |
-| `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54 (the big ship lists no vehicle). Carts 1 and 2: 24, 25. The ox-less cart (6) lists none, so nobody can attach to it until its ox arrives. |
+| `logicpassenger n` | Allowed job ids for attaching. The same list, indexed by a vehicle *job* id (50, 51, 54), says which vehicles a ship may carry. Catapult: 31..47 (soldiers and heroes). Ships: 5..47 plus 50, 51, 54 (the big ship lists no vehicle). Carts 1 and 2: 24, 25. The ox-less cart (6) lists none, so nobody can attach to it until its ox arrives and it becomes type 2 ("Lifecycle"). |
 | `logiccommander n` | The trade the `SetVehicle` result spawns as captain (`l_ExecuteResult` case 2); no other reader. Carts 1 and 2: 25 (trader); ships: 24 (carrier); catapult: 31 (soldier); the ox-less cart (6) authors none. The commander seat itself goes to the first attached human with an allowed job. IR: `VehicleType.commanderJob`. |
 | `passengervector a b` | Door geometry: direction offset `a` from the facing, distance `b`. `b` is also the ring radius searched around a dock click (ships: 2 4). |
 | `stockvector` | Parsed, no logic reader found (*open*; probably a render-side cargo point). |
@@ -333,6 +333,22 @@ drawn).
   (a breeding pair) and taking the nearest; the animal walks over, is consumed, and the cart becomes
   type 2 in place. Missing animal on a goto raises `vehicleNoAnimal`.
 
+Open Northland (`systems/vehicles/draught.ts`): a vehicle whose type names a `draggingAnimalTribe`
+spawns under `waitsForAnimal` and refuses a goto with `vehicleNoAnimal` ahead of the commander gate,
+since nobody can attach to it. The recruit scan runs every `DRAUGHT_RECRUIT_CADENCE_TICKS` (20) for
+such carts only and walks the livestock store: the owner's animals of the tribe with a position, not
+inside a farm, booked by no farm visit or other cart, not scattering, on the door's continent, in
+ascending entity id; the first two are passed over and the nearest of the rest by hexagon distance
+wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd and graze drives
+respect like a farm visit) and is aimed at the cart's boarding node, the riders' door approximation,
+re-aimed whenever it stops short; on arrival `harnessVehicle` removes it without a death and the cart
+takes `transformVehicleType` in place, with that type's seat counts and hit-point pool (current points
+kept, clamped), so the renderer's per-type binding swaps the sprite. A recruit whose cart is gone walks
+back to its stay point. Approximations: the scan cadence, the id order the pair is skipped in, the
+livestock-store scan (a draught tribe that is not catchable is never owned and never found), the
+boarding node standing in for the cart's own door node, and the pool handling on transform; the
+original's animal list order and transform details are not read.
+
 Open Northland (`packages/app/src/hud/details-panel/model/vehicle.ts`, `view/unit-controls/vehicle-orders.ts`):
 a vehicle is selected by a click on its drawn sprite (solid pixels), after the door markers, flags,
 settlers and buildings under the same point and before a signpost, and never by a marquee; the
@@ -351,8 +367,8 @@ original's order (enemy human, own moored ship for a land vehicle, enemy vehicle
 to) but the attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's
 attack order silently; a ship's right-click on land is a goto the sim refuses, the mooring order
 being explicit; the ring's "Assign Vehicle" is offered to every grown settler and the type's job list
-decides on the pick. Message ids 0x0f (no raise site, *open*), 0x16 (no vehicle discovery event) and
-0x35 (the draught animal ticket) have no raiser yet.
+decides on the pick. Message ids 0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event)
+have no raiser yet; 0x35 is the goto refusal above.
 
 ## Map scripts
 

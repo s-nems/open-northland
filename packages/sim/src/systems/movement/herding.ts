@@ -1,5 +1,6 @@
 import {
   CurrentAtomic,
+  DraughtAnimal,
   Frightened,
   HerdMember,
   MoveGoal,
@@ -49,8 +50,9 @@ export const herdingSystem: System = (world, ctx) => {
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Frightened)) continue; // a scattering follower is not pulled back into the scare
-    // Inside a building it is out of the herd's reach until it steps out again.
-    if (world.has(e, Resting)) continue;
+    // Inside a building it is out of the herd's reach until it steps out again; a cart's recruit is
+    // walking to its cart.
+    if (world.has(e, Resting) || world.has(e, DraughtAnimal)) continue;
     // A reaped leader has no Position, so the follower has no cell to return to and stays where it is.
     if (!world.has(leader, Position)) continue;
 

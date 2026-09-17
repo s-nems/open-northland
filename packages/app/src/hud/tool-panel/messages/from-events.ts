@@ -3,6 +3,13 @@ import { isBuilding, isVehicle, ownerPlayerOf, type SnapshotEntity } from '../..
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { type MessageTechnology, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
 
+/** The note each refused move order on a vehicle raises about it. */
+const MOVE_REFUSAL_MESSAGE = {
+  noAnimal: USER_MESSAGE_TYPE.vehicleNoAnimal,
+  noCommander: USER_MESSAGE_TYPE.vehicleNoCommander,
+  noPath: USER_MESSAGE_TYPE.vehicleNoPath,
+} as const;
+
 /** The note each refused crew order on a vehicle raises about it. */
 const CREW_REFUSAL_MESSAGE = {
   noRoom: USER_MESSAGE_TYPE.vehicleNoPassengerRoom,
@@ -254,13 +261,7 @@ export function messagesFromEvents(
         break;
       case 'vehicleMoveRefused': {
         const e = ownedVehicle(ev.entity);
-        if (e === undefined) break;
-        raiser.vehicle(
-          ev.reason === 'noCommander'
-            ? USER_MESSAGE_TYPE.vehicleNoCommander
-            : USER_MESSAGE_TYPE.vehicleNoPath,
-          e,
-        );
+        if (e !== undefined) raiser.vehicle(MOVE_REFUSAL_MESSAGE[ev.reason], e);
         break;
       }
       case 'vehicleCrewRefused': {

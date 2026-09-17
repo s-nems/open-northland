@@ -62,7 +62,8 @@ export const Vehicle = defineComponent<{
    *  the `docks` task carries the point it sails toward here before it moors. */
   moored: boolean;
   mooring: HalfCellNode | null;
-  /** An ox cart whose animal has arrived. */
+  /** A cart whose draught animal has arrived: it took its type's `transformVehicleType` and never
+   *  recruits again. */
   harnessed: boolean;
   /** The ship carrying this vehicle, or null while it stands on the map. */
   carrier: Entity | null;
@@ -85,6 +86,13 @@ export const Vehicle = defineComponent<{
  * door node. An aboard rider has no `Position`: it stands nowhere on the map until it is set down.
  */
 export const Rider = defineComponent<{ vehicle: Entity; boarding: boolean }>('Rider', 'movement');
+
+/**
+ * An animal a cart recruited as its draught animal, from the pick until it is consumed at the cart's
+ * door or released when the cart is gone. Owns the animal against the herd, graze and farm-visit drives
+ * the way `LivestockVisit` does.
+ */
+export const DraughtAnimal = defineComponent<{ vehicle: Entity }>('DraughtAnimal', 'movement');
 
 /** Whether `e` is attached to a vehicle and inside it: off the map, owned by its seat. */
 export function isAboardVehicle(world: World, e: Entity): boolean {

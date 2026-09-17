@@ -244,6 +244,11 @@ export const enContent = {
       summary:
         'A level-3 joinery whose two joiners are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.',
     },
+    'vehicle-ox': {
+      title: 'Ox cart without ox',
+      summary:
+        "A bare ox cart beside the player's four cows. Its goto is refused for want of an animal; then the cart recruits the nearest cow past the herd's breeding pair, the cow walks over and is consumed, and the cart becomes an ox cart in place, which the carrier standing by may now attach to.",
+    },
     'vehicle-cargo': {
       title: 'Vehicle cargo',
       summary:

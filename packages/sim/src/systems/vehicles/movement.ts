@@ -30,7 +30,7 @@ import {
 } from '../footprint/index.js';
 import { groundBlockOverlay, vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { redirectRoute } from '../movement/nav-state.js';
-import { isSiegeVehicle, vehicleTraversal } from '../readviews/vehicles.js';
+import { awaitsDraughtAnimal, isSiegeVehicle, vehicleTraversal } from '../readviews/vehicles.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { endChat } from '../social/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
@@ -174,7 +174,7 @@ export function refuseMove(
   world: World,
   ctx: SystemContext,
   vehicle: Entity,
-  reason: 'noCommander' | 'noPath',
+  reason: 'noCommander' | 'noPath' | 'noAnimal',
 ): void {
   ctx.events.emit({
     kind: 'vehicleMoveRefused',
@@ -277,7 +277,8 @@ export function abandonDock(world: World, vehicle: Entity): void {
 }
 
 /**
- * The goto order (`e`): refused with `vehicleNoCommander` while nobody commands the vehicle and with
+ * The goto order (`e`): refused with `vehicleNoAnimal` for a cart still waiting on its draught animal,
+ * with `vehicleNoCommander` while nobody commands the vehicle and with
  * `vehicleNoPath` when the target snaps to nothing on the vehicle's continent, lies beyond the walk
  * range, or has no route. A crew still outside is boarded first: the goal is held under the
  * `waitsForHuman` task and the drive starts once everyone is inside (`CVehicle::DoUpdateAI` runs
@@ -296,6 +297,11 @@ export function moveVehicle(
   const state = world.tryGet(e, Vehicle);
   const anchor = vehicleAnchor(world, e);
   if (state === undefined || anchor === null || state.carrier !== null) return false;
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type !== undefined && awaitsDraughtAnimal(type, state)) {
+    refuseMove(world, ctx, e, 'noAnimal'); // before the commander gate: nobody can attach to such a cart
+    return false;
+  }
   if (vehicleCommander(state) === null) {
     refuseMove(world, ctx, e, 'noCommander');
     return false;
