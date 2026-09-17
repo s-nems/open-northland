@@ -1,4 +1,5 @@
 import {
+  DraughtAnimal,
   diplomacyStance,
   FarmAnimal,
   HerdMember,
@@ -85,6 +86,11 @@ function claim(world: World, animal: Entity, player: number): void {
     const summoned = world.get(animal, FarmAnimal).summoner !== null;
     world.remove(animal, FarmAnimal);
     if (summoned) clearNavState(world, animal);
+  }
+  if (world.has(animal, DraughtAnimal)) {
+    // A steal mid-walk abandons the cart's recruitment and the walk to its door with it.
+    world.remove(animal, DraughtAnimal);
+    clearNavState(world, animal);
   }
   if (wasHerded) promoteWildLeader(world, animal);
 }

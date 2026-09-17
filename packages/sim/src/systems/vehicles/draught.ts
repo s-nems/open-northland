@@ -81,12 +81,16 @@ export function pickDraughtAnimal(
   return best;
 }
 
-/** The seats of a transformed vehicle: the old ones kept in slot order, the commander moved to the
- *  new last slot, and anything beyond the new capacity dropped (the seat lists were empty on every
+/** The seats of a transformed vehicle: the old ones kept in slot order, with the commander moved to the
+ *  new last slot where the list has one, and anything beyond the new capacity dropped (empty on every
  *  shipped transform, whose source type admits no crew). */
-function reseat(seats: readonly (VehicleSeat | null)[], capacity: number): (VehicleSeat | null)[] {
+function reseat(
+  seats: readonly (VehicleSeat | null)[],
+  capacity: number,
+  withCommander: boolean,
+): (VehicleSeat | null)[] {
   const next = new Array<VehicleSeat | null>(capacity).fill(null);
-  const commander = commanderSlotOf(seats.length - 1);
+  const commander = withCommander ? commanderSlotOf(seats.length - 1) : -1;
   for (let slot = 0; slot < seats.length; slot++) {
     const seat = seats[slot];
     if (seat === null || seat === undefined) continue;
@@ -113,12 +117,13 @@ export function harnessVehicle(world: World, ctx: SystemContext, vehicle: Entity
   live.task = 'none';
   if (next === undefined || next.typeId === live.vehicleType) return;
   live.vehicleType = next.typeId;
-  live.passengers = reseat(live.passengers, commanderSlotOf(next.passengerSlots) + 1);
-  live.vehicles = reseat(live.vehicles, next.vehicleSlots);
-  const health = world.tryMut(vehicle, Health);
-  if (health !== undefined) {
-    health.max = next.hitpoints;
-    health.hitpoints = Math.min(health.hitpoints, health.max);
+  live.passengers = reseat(live.passengers, commanderSlotOf(next.passengerSlots) + 1, true);
+  live.vehicles = reseat(live.vehicles, next.vehicleSlots, false);
+  const health = world.tryGet(vehicle, Health);
+  if (health !== undefined && health.max !== next.hitpoints) {
+    const pool = world.mut(vehicle, Health);
+    pool.max = next.hitpoints;
+    pool.hitpoints = Math.min(pool.hitpoints, pool.max);
   }
 }
 
@@ -134,9 +139,10 @@ function aimAtDoor(world: World, animal: Entity, door: NodeId): void {
   if (!world.has(animal, CurrentAtomic)) redirectRoute(world, animal, door);
 }
 
-/** Re-aim a recruit that stopped short of the boarding node, unless a walk or a scare holds it. */
+/** Re-aim a recruit that stopped short of the boarding node, unless a walk, a scare or a farm it is
+ *  inside holds it. */
 function escort(world: World, terrain: TerrainGraph, animal: Entity, door: NodeId): void {
-  if (isTravelling(world, animal) || world.has(animal, Frightened)) return;
+  if (isTravelling(world, animal) || world.has(animal, Frightened) || world.has(animal, Resting)) return;
   if (entityNode(world, terrain, animal) !== door) aimAtDoor(world, animal, door);
 }
 
@@ -162,7 +168,12 @@ export const draughtAnimalSystem: System = (world, ctx) => {
   for (const animal of canonicalById(world.query(DraughtAnimal))) {
     const vehicle = world.get(animal, DraughtAnimal).vehicle;
     const state = world.tryGet(vehicle, Vehicle);
-    if (state === undefined || draughtTribeOf(ctx, state) === null || !world.has(vehicle, Position)) {
+    if (
+      state === undefined ||
+      draughtTribeOf(ctx, state) === null ||
+      !world.has(vehicle, Position) ||
+      recruits.has(vehicle) // a second recruit for one cart: only a hand-made fixture books two
+    ) {
       releaseDraughtAnimal(world, animal);
       continue;
     }
@@ -174,16 +185,16 @@ export const draughtAnimalSystem: System = (world, ctx) => {
     const tribe = draughtTribeOf(ctx, state);
     if (tribe === null || state.carrier !== null) continue;
     if (state.task !== 'waitsForAnimal') world.mut(e, Vehicle).task = 'waitsForAnimal';
+    const recruit = recruits.get(e);
+    if (recruit === undefined && !scanDue) continue; // the boarding-node search is the costly part
     const door = boardingNode(world, ctx, terrain, e);
     if (door === null) continue;
-    const recruit = recruits.get(e);
     if (recruit !== undefined) {
       if (world.has(recruit, Position) && entityNode(world, terrain, recruit) === door) {
         harnessVehicle(world, ctx, e, recruit);
       } else escort(world, terrain, recruit, door);
       continue;
     }
-    if (!scanDue) continue;
     const pick = pickDraughtAnimal(world, terrain, e, tribe, door);
     if (pick === null) continue;
     world.add(pick, DraughtAnimal, { vehicle: e });

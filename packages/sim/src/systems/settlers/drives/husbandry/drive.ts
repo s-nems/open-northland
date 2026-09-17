@@ -1,6 +1,7 @@
 import {
   Building,
   CARRY_CAPACITY,
+  DraughtAnimal,
   FarmAnimal,
   JobAssignment,
   MoveGoal,
@@ -307,6 +308,7 @@ function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: Node
     // breeder converges on the one its colleague leads and finds it gone. Passing it over puts that
     // breeder on the next animal instead, and keeps it out of the count that decides the pair.
     if (summoner !== null) continue;
+    if (world.has(animal, DraughtAnimal)) continue; // walking to the cart that recruited it
     spare += 1;
     const range = hexRange(plan, door, entityNode(world, terrain, animal));
     if (range < bestRange || (range === bestRange && best !== null && animal < best)) {

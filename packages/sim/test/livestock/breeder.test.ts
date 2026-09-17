@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Carrying,
   CurrentAtomic,
+  DraughtAnimal,
   FarmAnimal,
   MoveGoal,
   Position,
@@ -288,6 +289,20 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
 
     // Only three animals stand, one of them already being led away: nothing is left over the pair.
     expect(sim.world.get(held, FarmAnimal).summoner).toBe(colleague);
+    expect(sim.world.has(breeder, MoveGoal)).toBe(false);
+  });
+
+  it('never leads away an animal a cart has recruited', () => {
+    const sim = livestockSim();
+    const { farm, breeder } = farmWithBreeder(sim);
+    const cart = sim.world.create(); // any entity stands in for the cart: only the link is tested
+    const recruit = cowAt(sim, FARM_AT.hx + 2, FARM_AT.hy, { owner: P0, farm });
+    for (let i = 0; i < 2; i++) cowAt(sim, 4 + i, 4, { owner: P0, farm });
+    sim.world.add(recruit, DraughtAnimal, { vehicle: cart });
+
+    plan(sim);
+
+    expect(sim.world.get(recruit, FarmAnimal).summoner).toBeNull();
     expect(sim.world.has(breeder, MoveGoal)).toBe(false);
   });
 

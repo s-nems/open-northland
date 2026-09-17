@@ -334,13 +334,13 @@ drawn).
   type 2 in place. Missing animal on a goto raises `vehicleNoAnimal`.
 
 Open Northland (`systems/vehicles/draught.ts`): a vehicle whose type names a `draggingAnimalTribe`
-spawns under `waitsForAnimal` and refuses a goto with `vehicleNoAnimal` ahead of the commander gate,
-since nobody can attach to it. The recruit scan runs every `DRAUGHT_RECRUIT_CADENCE_TICKS` (20) for
+spawns under `waitsForAnimal` and refuses a goto with `vehicleNoAnimal` ahead of the commander gate
+(`DoExecuteUserCommand_Goto` tests `Passengers_NeedsDraggingAnimal` first). The recruit scan runs every `DRAUGHT_RECRUIT_CADENCE_TICKS` (20) for
 such carts only and walks the livestock store: the owner's animals of the tribe with a position, not
-inside a farm, booked by no farm visit or other cart, not scattering, on the door's continent, in
+inside a farm, led away by no breeder nor booked by another cart, not scattering, on the door's continent, in
 ascending entity id; the first two are passed over and the nearest of the rest by hexagon distance
-wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd, graze and herd-home
-drives respect like a farm visit) and is aimed at the cart's boarding node, the riders' door approximation,
+wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd, graze, herd-home and
+breeder's slaughter pick respect like a breeder's summon, and which a scout's capture drops with the walk) and is aimed at the cart's boarding node, the riders' door approximation,
 re-aimed whenever it stops short; on arrival `harnessVehicle` removes it without a death and the cart
 takes `transformVehicleType` in place, with that type's seat counts and hit-point pool (current points
 kept, clamped), so the renderer's per-type binding swaps the sprite. A recruit whose cart is gone walks

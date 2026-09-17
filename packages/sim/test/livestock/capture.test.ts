@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { FarmAnimal, HerdMember, Owner, setDiplomacyStance } from '../../src/components/index.js';
+import {
+  DraughtAnimal,
+  FarmAnimal,
+  HerdMember,
+  MoveGoal,
+  Owner,
+  setDiplomacyStance,
+} from '../../src/components/index.js';
 import { positionOfNode } from '../../src/index.js';
 import { livestockCaptureSystem } from '../../src/systems/index.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -91,6 +98,21 @@ describe('livestock capture - a scout claims the catchable animals it passes', (
     // The lowest-id remaining member leads; both wild followers point at it.
     expect(sim.world.get(followerA, HerdMember).leader).toBe(followerA);
     expect(sim.world.get(followerB, HerdMember).leader).toBe(followerA);
+  });
+
+  it("a steal mid-walk drops a cart's recruitment and the walk to its door with it", () => {
+    const sim = livestockSim();
+    const cart = sim.world.create(); // any entity stands in for the cart: only the link is tested
+    scoutAt(sim, 10, 10, P0);
+    const recruit = cowAt(sim, 10, 11, { owner: P1 });
+    sim.world.add(recruit, DraughtAnimal, { vehicle: cart });
+    sim.world.add(recruit, MoveGoal, { cell: sim.terrain?.nodeAtClamped(20, 20) ?? 0 });
+
+    livestockCaptureSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(recruit, Owner).player).toBe(P0);
+    expect(sim.world.has(recruit, DraughtAnimal)).toBe(false);
+    expect(sim.world.has(recruit, MoveGoal)).toBe(false);
   });
 
   it('never claims a non-catchable animal (the bear stays wild)', () => {
