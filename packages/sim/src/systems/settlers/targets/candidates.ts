@@ -58,8 +58,9 @@ export interface TargetCandidates {
   /** Walls carrying {@link Damaged}, indexed like {@link repairSiteCells}; kept apart because builders
    *  mend walls only once no building site is left. */
   readonly wallRepairCells: InteractionCellIndex;
-  /** The unfinished vehicle sites, for the yard drive's reuse pick. */
-  readonly vehicleSites: readonly Entity[];
+  /** The unfinished vehicle sites, for the yard drive's reuse pick. Mutable: the drive appends a site it
+   *  opens, so a workmate planned later in the same pass reuses it instead of opening its own. */
+  readonly vehicleSites: Entity[];
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
   /** {@link groundDrops} under every good each pile holds, ascending-id, so a scan for one good never

@@ -113,7 +113,7 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   }
   const type = contentIndex(ctx.content).commandBuildings.get(houseType);
   if (type === undefined) return null;
-  return assembleBuilding(world, ctx, type, {
+  const site = assembleBuilding(world, ctx, type, {
     buildingType: houseType,
     tribe: plan.tribe,
     owner: plan.owner,
@@ -123,4 +123,6 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
     underConstruction: true,
     fillStock: false,
   });
+  if (site !== null) targets.vehicleSites.push(site);
+  return site;
 }
