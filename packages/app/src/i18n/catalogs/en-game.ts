@@ -262,6 +262,7 @@ export const enGame = {
       lockedHint: 'discover a trade or a good',
       emptyTitle: 'Nothing to build',
       emptyText: 'This map allows no new buildings, or you are watching another settlement.',
+      emptyCategory: 'Nothing in this category',
       help: 'Knowledge: {name}',
       helpHint: 'Description in Knowledge',
       costLine: '{name} ×{amount}',

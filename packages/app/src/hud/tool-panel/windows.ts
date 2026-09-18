@@ -194,12 +194,19 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     onHelp: () => openOnly(knowledge),
   });
 
+  // The held paper lifts the technology locks outside any tick, so its change is the one per-frame
+  // signal the construction window gets.
+  let paperHeld = false;
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
     menu: {
       window: menu,
       perFrame: () => {
         menu.place();
-        menu.refresh();
+        const held = heldPaper.held() !== null;
+        if (held !== paperHeld) {
+          paperHeld = held;
+          menu.refresh();
+        }
       },
     },
     extras: { window: extras, perFrame: () => extras.refresh() },

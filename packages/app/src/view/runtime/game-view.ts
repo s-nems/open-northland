@@ -48,6 +48,7 @@ import type { CameraController } from '../camera/index.js';
 import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera/index.js';
 import {
   applyGameSpeed,
+  buildingLabelsFromContent,
   goodLabelsFromContent,
   menuEntriesFromContent,
   mountGameToolPanel,
@@ -372,6 +373,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...entry,
         availability: () => buildAvailability(localPlayer, entry.typeId),
       })),
+      buildingLabels: buildingLabelsFromContent(sim.content, lang),
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       goods: sim.content.goods,

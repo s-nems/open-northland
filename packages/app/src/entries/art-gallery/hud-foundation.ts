@@ -1,5 +1,5 @@
 import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
-import { buildingCardMarkup } from '../../hud/dom/construction-window.js';
+import { type BuildingCardView, buildingCardMarkup } from '../../hud/dom/construction-window.js';
 import foundationCss from '../../hud/dom/foundation.css?inline';
 import { goodIconMarkup } from '../../hud/dom/good-art.js';
 import { ACTION_ART_PX, FIGURE, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
@@ -92,34 +92,15 @@ const noticeTally = (level: NoticeCardView['level']): number =>
   SAMPLE_NOTICES.filter((card) => card.level === level).length;
 
 /** A construction card on the board: the picture box holds the house glyph, as a card without a
- *  sheet does; `reason` marks a locked entry, `short` the cost lines the seat cannot cover. */
-function card(
-  title: string,
-  cost: readonly number[],
-  options: { readonly reason?: string; readonly short?: readonly number[]; readonly picked?: boolean } = {},
-): string {
-  const locked = options.reason !== undefined;
-  const markup = buildingCardMarkup(cost, GLYPH.house, locked)
-    .replace('<strong class="on-bcard__title"></strong>', `<strong class="on-bcard__title">${title}</strong>`)
-    .replace(
-      'class="on-medallion on-bcard__help"',
-      `class="on-medallion on-bcard__help" aria-label="Wiedza: ${title}"`,
-    )
-    .replace(
-      '<small class="on-bcard__reason" hidden></small>',
-      locked ? `<small class="on-bcard__reason">${options.reason}</small>` : '',
-    );
-  const slots = markup.split('<i class="on-cost__slot">');
-  const withShort = slots
-    .map((part, index) =>
-      index === 0
-        ? part
-        : `<i class="on-cost__slot${options.short?.includes(index - 1) ? ' on-cost__slot--short' : ''}">${part}`,
-    )
-    .join('');
-  return `<article class="on-bcard${locked ? ' on-bcard--locked' : ''}">${
-    options.picked === true ? withShort.replace('aria-pressed="false"', 'aria-pressed="true"') : withShort
-  }</article>`;
+ *  sheet does. */
+function card(view: Omit<BuildingCardView, 'thumb' | 'helpLabel'>): string {
+  return `<article class="on-bcard${view.reason === undefined ? '' : ' on-bcard--locked'}">${buildingCardMarkup(
+    {
+      ...view,
+      thumb: GLYPH.house,
+      helpLabel: `Wiedza: ${view.title}`,
+    },
+  )}</article>`;
 }
 
 /** Every primitive of the foundation on one board, laid out where the HUD regions will sit. */
@@ -158,13 +139,13 @@ function boardMarkup(): string {
   ${WINDOW_ORNAMENTS}
   <header class="on-window__head"><div class="on-window__heading">${paintedIcon('build', TITLE_ART_PX)}<div><h2 class="on-window__title">Budowanie</h2></div></div><button type="button" class="on-medallion on-window__close" aria-label="Zamknij">${GLYPH.close}</button></header>
   <div class="on-window__body on-window__body--column">
-  <div class="on-toolrow"><button type="button" class="on-button" disabled>Droga</button><button type="button" class="on-button" disabled>Palisada</button><button type="button" class="on-button" disabled>Brama</button><button type="button" class="on-button on-button--accent">${GLYPH.scroll}Papiery<span class="on-count">2</span></button></div>
-  <div class="on-tabs" role="tablist"><button type="button" role="tab" class="on-tab" aria-selected="true">Wszystko<span class="on-tab__count">2</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Praca<span class="on-tab__count">1</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Magazyn<span class="on-tab__count">1</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Dom<span class="on-tab__count">0</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Wojsko<span class="on-tab__count">0</span></button><fieldset class="on-view"><legend class="on-sr">Widok</legend><button type="button" class="on-view__button" aria-pressed="true" title="Kafelki"><svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button><button type="button" class="on-view__button" aria-pressed="false" title="Lista"><svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 6h3M10 6h10M4 12h3M10 12h10M4 18h3M10 18h10"/></svg></button></fieldset></div>
+  <div class="on-toolrow"><button type="button" class="on-button" disabled>Droga</button><button type="button" class="on-button" disabled>Palisada</button><button type="button" class="on-button" disabled>Brama</button><button type="button" class="on-button on-button--accent">${GLYPH.papers}Papiery<span class="on-count">2</span></button></div>
+  <div class="on-tabs" role="tablist"><button type="button" role="tab" class="on-tab" aria-selected="true">Wszystko<span class="on-tab__count">2</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Praca<span class="on-tab__count">1</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Magazyn<span class="on-tab__count">1</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Dom<span class="on-tab__count">0</span></button><button type="button" role="tab" class="on-tab" aria-selected="false">Wojsko<span class="on-tab__count">0</span></button><fieldset class="on-view"><legend class="on-sr">Widok</legend><button type="button" class="on-view__button" aria-pressed="true" title="Kafelki">${GLYPH.grid}</button><button type="button" class="on-view__button" aria-pressed="false" title="Lista">${GLYPH.list}</button></fieldset></div>
   <div class="on-parchment on-catalog" data-view="grid"><p class="on-parchment__note"><span>Dostępne teraz</span><span class="on-parchment__count">2</span></p><div class="on-build-grid">
-    ${card('Chata drwala', [2, 1], { picked: true })}
-    ${card('Magazyn (poziom 1)', [1, 1, 2, 1], { short: [2] })}
+    ${card({ title: 'Chata drwala', cost: [2, 1], picked: true })}
+    ${card({ title: 'Magazyn (poziom 1)', cost: [1, 1, 2, 1], short: [2] })}
   </div><p class="on-parchment__note on-parchment__note--locked"><span>Zablokowane</span><span class="on-parchment__count">1 · odkryj zawód lub towar</span></p><div class="on-build-grid">
-    ${card('Kuźnia (poziom 1)', [2, 1, 1, 1, 1], { reason: 'Wymagane odkrycia: Kowal, Żelazo (Zbieracz)' })}
+    ${card({ title: 'Kuźnia (poziom 1)', cost: [2, 1, 1, 1, 1], reason: 'Wymagane odkrycia: Kowal, Żelazo (Zbieracz)' })}
   </div></div>
   </div>
 </section>

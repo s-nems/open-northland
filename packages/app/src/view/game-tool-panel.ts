@@ -51,6 +51,8 @@ export interface GameToolPanelDeps {
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
   readonly elevation?: ElevationField;
   readonly buildings: readonly MenuBuildingEntry[];
+  /** Every building type's localized name, catalogue or not: notes, papers and the strip name them. */
+  readonly buildingLabels: ReadonlyMap<number, string>;
   /** Localized name of a profession, good, or building announced by a discovery note. */
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   /** A good's localized name, for a produce permit's label. */
@@ -143,17 +145,22 @@ export function menuEntriesFromContent(
   return content.buildings.flatMap((b) => {
     const cost = constructionBillForType(content.buildings, b.typeId);
     if (!CATALOGUE_KINDS.has(b.kind) || cost.length === 0) return [];
-    const catalog = vikingBuildingByTypeId(b.typeId);
-    const english = catalog?.label ?? b.id;
-    return [
-      {
-        typeId: b.typeId,
-        label: localizedBuildingName(catalog?.id ?? b.id, english, lang),
-        kind: b.kind,
-        cost,
-      },
-    ];
+    return [{ typeId: b.typeId, label: buildingLabel(b, lang), kind: b.kind, cost }];
   });
+}
+
+/** Every building type's localized name, the catalogue's and the rest alike (the headquarters a
+ *  note reports attacked, the wonder a paper names). */
+export function buildingLabelsFromContent(
+  content: Pick<ContentSet, 'buildings'>,
+  lang: string = currentLocale(),
+): ReadonlyMap<number, string> {
+  return new Map(content.buildings.map((b) => [b.typeId, buildingLabel(b, lang)]));
+}
+
+function buildingLabel(b: { readonly typeId: number; readonly id: string }, lang: string): string {
+  const catalog = vikingBuildingByTypeId(b.typeId);
+  return localizedBuildingName(catalog?.id ?? b.id, catalog?.label ?? b.id, lang);
 }
 
 /** The content set's goods by type, labelled with their authored name; the `none` sentinel is no good. */
@@ -181,6 +188,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       plane: deps.plane,
       uiscale,
       buildings: deps.buildings,
+      buildingLabels: deps.buildingLabels,
       technologyLabel: deps.technologyLabel,
       goodLabel: deps.goodLabel,
       goods: deps.goods,

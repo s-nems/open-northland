@@ -110,7 +110,8 @@ they were.
   its whole chain down to the base, since the site is placed at that tier from nothing.
 - A pick hides the window and starts the placement with the strip up; Esc, the right button or Buduj
   bring the window back as it was, the picked card lit and focused. A site that lands leaves the
-  window away. A place-any paper from the chest opens the window with the paper held, every
+  window away, and so does an informational window opened over the placement (one window at a
+  time): its cancel then returns to no window, and Buduj reopens the catalogue as it was. A place-any paper from the chest opens the window with the paper held, every
   technology lock lifted for that pick; a map's ban still stands.
 - The "?" opens the building's Knowledge page; until the knowledge ticket it opens the pending note.
 

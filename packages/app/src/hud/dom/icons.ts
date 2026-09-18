@@ -25,6 +25,12 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 10a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v9H3zM3 12h18M12 12v4M10 14h4"/></svg>',
   forge:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-6h10v6M5 14h14l-2-4H7zM10 10V4h4v6M9 4h6"/></svg>',
+  road: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20 9 4h6l5 16M12 6v3M12 12v3M12 18v2"/></svg>',
+  wall: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 20V9l3-4 3 4v11M9 12h12v8H9M12 12v-2h3v2M17 12v-2h3v2"/></svg>',
+  papers:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"/></svg>',
+  grid: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>',
+  list: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 6h3M10 6h10M4 12h3M10 12h10M4 18h3M10 18h10"/></svg>',
 } as const;
 
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */

@@ -30,16 +30,7 @@ const TITLE_ART_PX = 43;
 const THUMB_BOX_PX = 72;
 const COST_ICON_BOX_PX = 16;
 const VIEWS: readonly CatalogueView[] = ['grid', 'list'];
-const VIEW_GLYPH: Readonly<Record<CatalogueView, string>> = {
-  grid: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>',
-  list: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 6h3M10 6h10M4 12h3M10 12h10M4 18h3M10 18h10"/></svg>',
-};
-const ROAD_GLYPH =
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20 9 4h6l5 16M12 6v3M12 12v3M12 18v2"/></svg>';
-const WALL_GLYPH =
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 20V9l3-4 3 4v11M9 12h12v8H9M12 12v-2h3v2M17 12v-2h3v2"/></svg>';
-const PAPERS_GLYPH =
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"/></svg>';
+const VIEW_GLYPH: Readonly<Record<CatalogueView, string>> = { grid: GLYPH.grid, list: GLYPH.list };
 
 export interface ConstructionWindowDeps {
   readonly plane: HTMLElement;
@@ -66,9 +57,10 @@ export interface ConstructionWindowDeps {
 export interface ConstructionWindow extends ToolWindow {
   /** Re-place an open window against the plane's design-px size; call once per frame. */
   place(): void;
-  /** Per-frame while open: re-sort the cards on an availability change, refresh the papers count. */
+  /** Availability changed outside a tick (a paper taken in hand or dropped): re-sort the cards. */
   refresh(): void;
-  /** The tick's stocks mark the cost lines the seat cannot cover; the same model twice costs nothing. */
+  /** The tick's model: it re-sorts the cards, refreshes the papers count and marks the cost lines the
+   *  seat cannot cover; the same model twice costs nothing. */
   update(model: HudModel): void;
   /** Hide for a placement without closing the window's state; `resume` brings it back. */
   suspend(): void;
@@ -102,11 +94,37 @@ export function costSlotMarkup(amount: number): string {
   return `<i class="on-cost__slot">${goodIconMarkup(COST_ICON_BOX_PX)}<b>${amount}</b></i>`;
 }
 
-/** A card's inner markup, shared with the gallery board: the name, the reason and the help label are
- *  text the owner sets afterwards. `thumb` is the picture box's content. */
-export function buildingCardMarkup(cost: readonly number[], thumb: string, locked = false): string {
-  const slots = cost.map((amount) => costSlotMarkup(amount)).join('');
-  return `<button type="button" class="on-bcard__pick"${locked ? ' disabled' : ' aria-pressed="false"'}><span class="on-bcard__thumb">${thumb}</span><span class="on-bcard__body"><strong class="on-bcard__title"></strong><small class="on-bcard__reason" hidden></small><span class="on-cost">${slots}</span></span></button><button type="button" class="on-medallion on-bcard__help">?</button>`;
+const escapeHtml = (text: string): string =>
+  text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
+
+export interface BuildingCardView {
+  readonly title: string;
+  /** The amount of each cost line, in bill order. */
+  readonly cost: readonly number[];
+  /** Indices into `cost` the seat cannot cover. */
+  readonly short?: readonly number[];
+  /** The picture box's content: a canvas, or the house glyph. */
+  readonly thumb: string;
+  readonly helpLabel: string;
+  /** Set, the card is locked and shows this reason. */
+  readonly reason?: string;
+  readonly picked?: boolean;
+}
+
+/** A card's inner markup, shared with the gallery board. */
+export function buildingCardMarkup(view: BuildingCardView): string {
+  const locked = view.reason !== undefined;
+  const slots = view.cost
+    .map(
+      (amount, index) =>
+        `<i class="on-cost__slot${view.short?.includes(index) === true ? ' on-cost__slot--short' : ''}">${goodIconMarkup(COST_ICON_BOX_PX)}<b>${amount}</b></i>`,
+    )
+    .join('');
+  const pressed = locked ? ' disabled' : ` aria-pressed="${view.picked === true}"`;
+  const reason = locked
+    ? `<small class="on-bcard__reason" title="${escapeHtml(view.reason)}">${escapeHtml(view.reason)}</small>`
+    : '<small class="on-bcard__reason" hidden></small>';
+  return `<button type="button" class="on-bcard__pick"${pressed}><span class="on-bcard__thumb">${view.thumb}</span><span class="on-bcard__body"><strong class="on-bcard__title">${escapeHtml(view.title)}</strong>${reason}<span class="on-cost">${slots}</span></span></button><button type="button" class="on-medallion on-bcard__help" aria-label="${escapeHtml(view.helpLabel)}">?</button>`;
 }
 
 export function createConstructionWindow(deps: ConstructionWindowDeps): ConstructionWindow {
@@ -128,9 +146,9 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const quick = document.createElement('div');
   quick.className = 'on-toolrow';
   for (const [glyph, label] of [
-    [ROAD_GLYPH, copy.road],
-    [WALL_GLYPH, copy.palisade],
-    [WALL_GLYPH, copy.gate],
+    [GLYPH.road, copy.road],
+    [GLYPH.wall, copy.palisade],
+    [GLYPH.wall, copy.gate],
   ] as const) {
     const control = button('on-button', `${glyph}<span></span>`);
     control.disabled = true;
@@ -141,7 +159,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   }
   const papers = button(
     'on-button on-button--accent',
-    `${PAPERS_GLYPH}<span></span><span class="on-count"></span>`,
+    `${GLYPH.papers}<span></span><span class="on-count"></span>`,
   );
   papers.title = copy.papersHint;
   const papersLabel = papers.querySelector('span');
@@ -220,7 +238,10 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const [emptyTitle, emptyText] = empty.children;
   if (emptyTitle !== undefined) emptyTitle.textContent = copy.emptyTitle;
   if (emptyText !== undefined) emptyText.textContent = copy.emptyText;
-  parchment.append(openNote.note, openGrid, lockedNote.note, lockedGrid, empty);
+  const emptyTab = document.createElement('p');
+  emptyTab.className = 'on-catalog__empty';
+  emptyTab.textContent = copy.emptyCategory;
+  parchment.append(openNote.note, openGrid, lockedNote.note, lockedGrid, empty, emptyTab);
   // Kept live: a hidden element reads its scroll as 0, so the close cannot read it back.
   parchment.addEventListener('scroll', () => {
     state = { ...state, scrollTop: parchment.scrollTop };
@@ -237,27 +258,25 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     const element = document.createElement('article');
     element.className = 'on-bcard';
     element.dataset.category = row.category;
-    element.innerHTML = buildingCardMarkup(
-      entry.cost.map((line) => line.amount),
-      '<canvas></canvas>',
-    );
+    element.innerHTML = buildingCardMarkup({
+      title: entry.label,
+      cost: entry.cost.map((line) => line.amount),
+      thumb: '<canvas></canvas>',
+      helpLabel: formatMessage(copy.help, { name: entry.label }),
+    });
     const pick = element.querySelector('.on-bcard__pick');
-    const title = element.querySelector('.on-bcard__title');
     const reason = element.querySelector('.on-bcard__reason');
     const thumb = element.querySelector('canvas');
     const help = element.querySelector('.on-bcard__help');
     if (
       !(pick instanceof HTMLButtonElement) ||
-      title === null ||
       !(reason instanceof HTMLElement) ||
       thumb === null ||
       !(help instanceof HTMLButtonElement)
     ) {
       throw new Error('construction: card markup');
     }
-    title.textContent = entry.label;
     if (!deps.thumbs.paint(thumb, entry.typeId, THUMB_BOX_PX)) thumb.outerHTML = GLYPH.house;
-    help.setAttribute('aria-label', formatMessage(copy.help, { name: entry.label }));
     help.title = copy.helpHint;
     const slots = [...element.querySelectorAll('.on-cost__slot')].flatMap((slot, index) => {
       const line = entry.cost[index];
@@ -311,6 +330,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     lockedNote.note.hidden = locked === 0;
     lockedGrid.hidden = locked === 0;
     empty.hidden = cards.size > 0;
+    emptyTab.hidden = cards.size === 0 || open + locked > 0;
   };
 
   const showView = (view: CatalogueView): void => {
@@ -370,10 +390,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     papersCount.hidden = count === 0;
   };
 
-  let shownModel: HudModel | null = null;
   const markStocks = (model: HudModel): void => {
-    if (model === shownModel) return;
-    shownModel = model;
     const stock = new Map(model.stocks.map((line) => [line.goodType, line.amount]));
     const stockOf = (goodType: number): number => stock.get(goodType) ?? 0;
     for (const card of cards.values()) {
@@ -393,19 +410,33 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     }
   };
 
+  // The tick is what moves availability, papers and stocks, so the listing follows the model and
+  // a frame between ticks costs nothing; the held paper is the one change outside a tick.
+  let model: HudModel | null = null;
+  let shownModel: HudModel | null = null;
+  const relist = (): void => {
+    if (layoutCards()) showCategory(state.category);
+  };
+  const present = (): void => {
+    if (model === shownModel) return;
+    shownModel = model;
+    relist();
+    refreshPapers();
+    if (model !== null) markStocks(model);
+  };
+
   let placed = '';
   const open = (): void => {
     layoutCards();
     showCategory(state.category);
     refreshPapers();
-    if (shownModel !== null) {
-      const model = shownModel;
-      shownModel = null;
-      markStocks(model);
-    }
+    shownModel = null;
+    present();
     window.open();
     parchment.scrollTop = state.scrollTop;
   };
+  // A close from any path also forgets a pending resume: another window opened over a placement
+  // takes the window's place, and the placement's cancel then leaves it away (one window at a time).
   const close = (): void => {
     state = { ...state, suspended: false };
     window.close();
@@ -443,13 +474,11 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       window.element.style.maxHeight = `${Math.max(0, floor - origin.y)}px`;
     },
     refresh: () => {
-      if (!window.isOpen()) return;
-      if (layoutCards()) showCategory(state.category);
-      refreshPapers();
+      if (window.isOpen()) relist();
     },
-    update: (model) => {
-      if (window.isOpen()) markStocks(model);
-      else shownModel = model;
+    update: (next) => {
+      model = next;
+      if (window.isOpen()) present();
     },
     suspend,
     resume,

@@ -252,6 +252,7 @@ export const plGame = {
       lockedHint: 'odkryj zawód lub towar',
       emptyTitle: 'Nic do zbudowania',
       emptyText: 'Ta mapa nie pozwala na nowe budynki albo oglądasz cudzą osadę.',
+      emptyCategory: 'Nic w tej kategorii',
       help: 'Wiedza: {name}',
       helpHint: 'Opis w Wiedzy',
       costLine: '{name} ×{amount}',

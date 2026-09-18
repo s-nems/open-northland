@@ -705,7 +705,6 @@
   max-width: 540px;
   padding: 7px 12px;
   transform: translateX(-50%);
-  pointer-events: auto;
   border: 1px solid var(--bronze-lo);
   border-radius: 3px;
   background: linear-gradient(90deg, #273832f2, #182521f2);

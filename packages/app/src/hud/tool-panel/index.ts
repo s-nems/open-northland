@@ -71,6 +71,8 @@ export interface ToolPanelOptions {
   readonly uiscale: number;
   /** The buildings the construction window lists. */
   readonly buildings: readonly MenuBuildingEntry[];
+  /** Every building type's localized name, for the notes, the papers and the placement strip. */
+  readonly buildingLabels: ReadonlyMap<number, string>;
   /** Localized name of a profession, good, or building announced by a discovery note. */
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
   /** A good's localized name, for the paper that permits producing it. */
@@ -239,7 +241,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const { art, strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
 
-  const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
+  const labelByType = opts.buildingLabels;
 
   const root = new Container();
   root.zIndex = 1000;
