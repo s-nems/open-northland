@@ -7,14 +7,37 @@ import { shadowLayerFor } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
- * The body frame again, for the binder to project onto the ground under the character. An indexed sheet
+ * One frame again, for the binder to project onto the ground under the character. An indexed sheet
  * carries the palette index in red and coverage in alpha, and a species sheet is plain RGB; either way
- * only the coverage reaches a silhouette, so both cast from the frame as it is. The head overlay is left
- * out: two overlapping semi-transparent silhouettes would darken where they meet, so the projection is of
- * the body's own height (named approximation).
+ * only the coverage reaches a silhouette, so both cast from the frame as it is. `rows` keeps that many
+ * of the frame's top rows, which is how the head overlay casts beside the body instead of over it.
  */
-function castLayerFor(source: TextureSource, frame: AtlasFrame, scale: number): ResolvedLayer {
-  return { source, frame, scale, boundsExempt: true, shadow: true, cast: true };
+function castLayerFor(source: TextureSource, frame: AtlasFrame, scale: number, rows?: number): ResolvedLayer {
+  return {
+    source,
+    frame,
+    scale,
+    boundsExempt: true,
+    shadow: true,
+    cast: true,
+    ...(rows !== undefined ? { castRows: rows } : {}),
+  };
+}
+
+/**
+ * Rows of the head frame that sit above the body frame's own top row; both anchor on the same feet
+ * origin, so their `offsetY` compare directly. The projection is linear about that origin, so those rows
+ * and only those land clear of the body's cast: the rest would paint a second silhouette over ground the
+ * body already darkens. 0 means the head starts inside the body frame and casts nothing of its own.
+ *
+ * Approximation: the rule follows frame boxes, not coverage, so a head wider than the body's top rows
+ * loses the fringe of its own silhouette there. Measured over every frame of the man, woman and boy
+ * `generic_wait` and `generic_walk` clips, that costs a median 4% and at most 25% of the projected
+ * body-and-head silhouette, against a doubled silhouette over 4-77 px of ground per frame at map zoom 1
+ * if the whole head cast.
+ */
+function headCastRows(bodyFrame: AtlasFrame, headFrame: AtlasFrame): number {
+  return Math.min(headFrame.height, Math.max(0, bodyFrame.offsetY - headFrame.offsetY));
 }
 
 /** Appearance variants use stable entity ids; optional head layers may use a separate motion binding. */
@@ -44,10 +67,19 @@ export function resolveCharacterLayers(
   const body = char.body;
   const scale = char.scale ?? 1;
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
-  const layers: ResolvedLayer[] = [];
   const bodyFrame = lookupFrame(body.atlas, bob);
+  const heads = char.heads;
+  const head = heads !== undefined && heads.length > 0 ? heads[item.ref % heads.length] : undefined;
+  const headBob =
+    char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
+  const headFrame = head === undefined ? null : lookupFrame(head.atlas, headBob);
+  const layers: ResolvedLayer[] = [];
   if (bodyFrame !== null) {
     layers.push(castLayerFor(body.source, bodyFrame, scale));
+    if (head !== undefined && headFrame !== null) {
+      const rows = headCastRows(bodyFrame, headFrame);
+      if (rows > 0) layers.push(castLayerFor(head.source, headFrame, scale, rows));
+    }
     const shadow = shadowLayerFor(body, bob, scale);
     if (shadow !== null) layers.push(shadow);
     layers.push({
@@ -58,22 +90,15 @@ export function resolveCharacterLayers(
       atlasH: body.atlas.height,
     });
   }
-  const heads = char.heads;
-  if (heads !== undefined && heads.length > 0) {
-    const head = heads[item.ref % heads.length];
-    const headBob =
-      char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
-    const headFrame = head === undefined ? null : lookupFrame(head.atlas, headBob);
-    if (head !== undefined && headFrame !== null) {
-      layers.push({
-        source: head.source,
-        frame: headFrame,
-        scale,
-        atlasW: head.atlas.width,
-        atlasH: head.atlas.height,
-        head: true,
-      });
-    }
+  if (head !== undefined && headFrame !== null) {
+    layers.push({
+      source: head.source,
+      frame: headFrame,
+      scale,
+      atlasW: head.atlas.width,
+      atlasH: head.atlas.height,
+      head: true,
+    });
   }
   return layers.length > 0 ? layers : null;
 }

@@ -20,8 +20,8 @@ describe('setCastShadowTransform', () => {
     expect(m.tx).toBeCloseTo(BODY.ox - DEFAULT_SHADOW_STYLE.castShear * BODY.oy);
     expect(m.ty).toBeCloseTo(DEFAULT_SHADOW_STYLE.castFlatten * BODY.oy);
     // A point 27 px above the feet lands 27 x shear to the right and 27 x flatten above them.
-    expect(m.tx).toBeCloseTo(BODY.ox + 10.8);
-    expect(m.ty).toBeCloseTo(-6.75);
+    expect(m.tx).toBeCloseTo(BODY.ox + 14.85);
+    expect(m.ty).toBeCloseTo(-8.1);
   });
 
   it('shears right with height and flattens the frame, leaving columns vertical', () => {
@@ -34,7 +34,7 @@ describe('setCastShadowTransform', () => {
     expect(m.c).toBeCloseTo(-DEFAULT_SHADOW_STYLE.castShear * scale);
     expect(m.d).toBeCloseTo(DEFAULT_SHADOW_STYLE.castFlatten * scale);
     // The whole frame collapses to `flatten` of its own height.
-    expect(m.d * BODY.height).toBeCloseTo(8.5);
+    expect(m.d * BODY.height).toBeCloseTo(10.2);
     spr.destroy();
   });
 
@@ -74,5 +74,23 @@ describe('TextureCache.castSilhouette', () => {
   it('marks a silhouette atlas frame on the shadow path, whichever branch serves it', () => {
     const cache = new TextureCache();
     expect(isShadowTexture(cache.getShadow(SOURCE, frame))).toBe(true);
+  });
+
+  it('keeps only the frame top rows a head cast asks for, anchored where the whole frame is', () => {
+    const cache = new TextureCache();
+    const cropped = cache.castSilhouette(SOURCE, frame, 9);
+    expect(cropped.frame.y).toBe(frame.y); // the kept rows are the top ones, so the anchor is unmoved
+    expect(cropped.frame.height).toBe(9);
+    expect(cropped.frame.width).toBe(frame.width);
+    expect(isShadowTexture(cropped)).toBe(true);
+  });
+
+  it('caches a row count per frame, clamps it, and never returns the whole-frame view for it', () => {
+    const cache = new TextureCache();
+    expect(cache.castSilhouette(SOURCE, frame, 9)).toBe(cache.castSilhouette(SOURCE, frame, 9));
+    expect(cache.castSilhouette(SOURCE, frame, 9)).not.toBe(cache.castSilhouette(SOURCE, frame));
+    expect(cache.castSilhouette(SOURCE, frame, frame.height + 5)).toBe(cache.castSilhouette(SOURCE, frame));
+    expect(cache.castSilhouette(SOURCE, frame, -1).frame.height).toBe(0);
+    expect(cache.pageSources().has(SOURCE)).toBe(false);
   });
 });

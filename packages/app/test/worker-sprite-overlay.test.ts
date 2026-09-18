@@ -135,6 +135,67 @@ describe('WorkerSpriteOverlay ground silhouettes', () => {
   });
 });
 
+describe('WorkerSpriteOverlay head overlay paint order', () => {
+  /**
+   * A two-frame idle whose head cast comes and goes: on `LIFTED_BOB` the head frame starts 10 px above
+   * the body frame's top row and casts; on `TUCKED_BOB` the two tops coincide, so the head casts nothing
+   * and the resolved list is one layer shorter. The loaded walks do exactly this - a carried sack raises
+   * the body box over the head - and the head must stay on top of the body through the change.
+   */
+  const LIFTED_BOB = 20;
+  const TUCKED_BOB = 21;
+  const HEAD_X = 2000; // so a drawn head reads back distinguishably from a body
+  const bodyFrame = (bob: number, offsetY: number): [number, AtlasFrame] => [
+    bob,
+    { x: bob, y: 0, width: 10, height: 20, offsetX: -5, offsetY },
+  ];
+  const headFrame = (bob: number): [number, AtlasFrame] => [
+    bob,
+    { x: HEAD_X + bob, y: 0, width: 8, height: 10, offsetX: -4, offsetY: -30 },
+  ];
+  const HEAD_SHEET: SpriteSheet = {
+    ...SHEET,
+    characters: {
+      byJob: {},
+      default: {
+        body: {
+          source: SHEET.source,
+          atlas: {
+            width: 64,
+            height: 20,
+            frames: new Map([bodyFrame(LIFTED_BOB, -20), bodyFrame(TUCKED_BOB, -30)]),
+          },
+        },
+        heads: [
+          {
+            source: SHEET.source,
+            atlas: {
+              width: HEAD_X + 64,
+              height: 10,
+              frames: new Map([headFrame(LIFTED_BOB), headFrame(TUCKED_BOB)]),
+            },
+          },
+        ],
+        binding: { idle: { start: LIFTED_BOB, dirs: 1, stride: 2 } },
+      },
+    },
+  };
+
+  it('keeps the head over the body when the head cast drops out between frames', () => {
+    const stage = new Container();
+    const overlay = new WorkerSpriteOverlay(stubApp(stage), HEAD_SHEET, 0);
+
+    // Tick 0 casts a head (four resolved layers), tick 1 does not (three).
+    overlay.update(snapshotOf([worker(1), STORE], 0), BUILDING, FIELD);
+    expect(drawnBobs(stage)).toEqual([LIFTED_BOB, HEAD_X + LIFTED_BOB]);
+
+    overlay.update(snapshotOf([worker(1), STORE], 1), BUILDING, FIELD);
+    expect(drawnBobs(stage)).toEqual([TUCKED_BOB, HEAD_X + TUCKED_BOB]);
+
+    overlay.dispose();
+  });
+});
+
 describe('WorkerSpriteOverlay field selection', () => {
   it('falls through an EMPTY resident grouping to the site crew, rather than blanking the field', () => {
     // A home still going up: it houses nobody (no families), but the crew raising it must still show.

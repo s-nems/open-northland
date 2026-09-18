@@ -247,7 +247,7 @@ export class LayerBinder {
     style: ShadowStyle | undefined,
   ): void {
     if (layer.cast === true && style !== undefined) {
-      spr.texture = this.textures.castSilhouette(layer.source, layer.frame);
+      spr.texture = this.textures.castSilhouette(layer.source, layer.frame, layer.castRows);
       setCastShadowTransform(spr, layer.scale, style, box.ox, box.drawnOy);
     } else {
       spr.texture = this.textures.getShadow(layer.source, layer.frame);

@@ -214,6 +214,53 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     expect(pe.container.children.slice(0, 2)).toEqual([pe.shadows[0], pe.shadows[1]]);
   });
 
+  /** The head overlay's cast, cropped to the rows above `castLayer`'s own top row, as the character
+   *  resolver crops it. */
+  const HEAD_FRAME = { x: 0, y: 32, width: 14, height: 22, offsetX: -7, offsetY: -41 };
+  const HEAD_ROWS = castLayer.frame.offsetY - HEAD_FRAME.offsetY;
+  const headCast = (scale: number): ResolvedLayer => ({
+    source: bodySource,
+    frame: HEAD_FRAME,
+    scale,
+    boundsExempt: true,
+    shadow: true,
+    cast: true,
+    castRows: HEAD_ROWS,
+  });
+
+  it('crops a head cast to its own row count while the body cast keeps the whole frame', () => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+
+    binder.bind(pe, item, [castLayer, headCast(1)], { ...bindFrame, shadowStyle: DEFAULT_SHADOW_STYLE }, 1);
+
+    expect(pe.shadows.map((spr) => spr.texture.frame.height)).toEqual([32, HEAD_ROWS]);
+    // The kept rows are the top ones, so the head cast still hangs off the head frame's own anchor.
+    expect(pe.shadows[1]?.texture.frame.y).toBe(HEAD_FRAME.y);
+  });
+
+  it.each([1, 2])('meets the head cast bottom to the body cast top at scale %i', (scale) => {
+    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
+    const pe = paletted();
+    const body = { ...castLayer, scale };
+
+    binder.bind(pe, item, [body, headCast(scale)], { ...bindFrame, shadowStyle: DEFAULT_SHADOW_STYLE }, 1);
+
+    const [bodyCast, head] = pe.shadows;
+    if (bodyCast === undefined || head === undefined) throw new Error('both casts must bind');
+    bodyCast.updateLocalTransform();
+    head.updateLocalTransform();
+    // The crop takes the head frame's own top rows, so the drawn rows are the ones above the body frame.
+    expect(head.texture.frame.y).toBe(HEAD_FRAME.y);
+    // The whole point of it: the head's last projected row sits exactly on the body's first, from the rows
+    // actually bound, so the two silhouettes neither gap nor overlap.
+    const drawnRows = head.texture.frame.height;
+    const headBottom = head.position.y + drawnRows * scale * DEFAULT_SHADOW_STYLE.castFlatten;
+    expect(headBottom).toBeCloseTo(bodyCast.position.y);
+    // Columns shear by height alone, so the seam row lands at the same x in both.
+    expect(head.localTransform.c).toBeCloseTo(bodyCast.localTransform.c);
+  });
+
   it('hides the authored blob in cast-only mode and keeps the projection', () => {
     const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
     const pe = paletted();

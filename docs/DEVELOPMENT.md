@@ -184,9 +184,10 @@ Projectiles, damage smoke, fades and building collapse already use interpolated 
 Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back to original shadows when
 unavailable or over budget. The shadow switch also does more than soften: every silhouette the world
 draws (buildings, trees, tall blocks, animals, characters) is painted at a multiplied alpha, with the
-strength and colour compiled into the `world` batch shader, and each settler and animal projects its own body frame
-onto the ground under itself, sheared toward the light of the original building silhouettes. The
-projection omits the head overlay, so it is of the body's own height.
+strength and colour compiled into the `world` batch shader, and each settler and animal projects its
+own body frame onto the ground under itself, sheared toward the light of the original building
+silhouettes. A character's head overlay casts too, cropped to the rows above its body frame so the two
+projections meet instead of darkening the ground twice where they overlap.
 `shadows=gain:<n>,max:<n>,tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for
 one session; strength and tint compile into the shader, so a change needs a reload, not a live toggle.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters

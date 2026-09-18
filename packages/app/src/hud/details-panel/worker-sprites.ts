@@ -37,8 +37,8 @@ interface WorkerHit {
 
 export class WorkerSpriteOverlay {
   private readonly container: PixiContainer = new Container();
-  /** Keyed by (panel slot, layerIndex) rather than by entity, so the pool cannot grow past the field's
-   *  slot count × the deepest layer stack. */
+  /** Keyed by panel slot rather than by entity, so the pool cannot grow past the field's slot count x
+   *  the deepest drawn layer stack. */
   private readonly pool: SettlerSpritePool;
   /** This frame's clickable worker boxes, rebuilt each update. */
   private hits: WorkerHit[] = [];
@@ -142,10 +142,7 @@ export class WorkerSpriteOverlay {
       const feetX = cellX + slotW / 2;
       // The body's (armor tier, player) LUT row the world pool binds, so the figure matches the map look.
       const row = this.sheet === undefined ? 0 : settlerPaletteLutRow(this.sheet, r.item);
-      for (let li = 0; li < r.layers.length; li++) {
-        const layer = r.layers[li];
-        if (layer !== undefined) this.pool.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, row);
-      }
+      this.pool.drawFigure(`${i}`, r.layers, feetX, feetY, zoom, row);
       this.hits.push({ id: r.id, x: cellX, y: inner.y, w: slotW, h: inner.h });
     });
 

@@ -184,6 +184,49 @@ describe('resolveLayers - a human character casts its body twin silhouette', () 
       [false, false, false, true],
     ]);
   });
+
+  /** A head overlay atlas whose frame starts `above` px over the 10 px body frame's own top row. */
+  const headAtlas = (above: number): SpriteAtlas => ({
+    width: 64,
+    height: 10,
+    frames: new Map([[WALK_BOB, { x: WALK_BOB, y: 0, width: 10, height: 10, offsetX: 0, offsetY: -above }]]),
+  });
+  /** `[cast, castRows, head]` per resolved layer, for a character wearing that head overlay. */
+  const readHeadCast = (above: number) =>
+    (
+      resolveLayers(sheetAt(WALK_BOB, [{ source: headSource, atlas: headAtlas(above) }]), settler, 0) ?? []
+    ).map((l) => [l.cast ?? false, l.castRows ?? null, l.head ?? false]);
+
+  it('casts the head overlay as well, cropped to the rows clear of the body frame', () => {
+    // The head starts 8 px above the body frame's top row, so its bottom 2 rows project onto ground the
+    // body's own cast already darkens and are dropped.
+    expect(readHeadCast(8)).toEqual([
+      [true, null, false],
+      [true, 8, false],
+      [false, null, false],
+      [false, null, false],
+      [false, null, true],
+    ]);
+  });
+
+  it('casts the whole head frame when it clears the body frame entirely', () => {
+    expect(readHeadCast(20)).toEqual([
+      [true, null, false],
+      [true, 10, false],
+      [false, null, false],
+      [false, null, false],
+      [false, null, true],
+    ]);
+  });
+
+  it('casts no head at all when the head frame starts inside the body frame', () => {
+    expect(readHeadCast(0)).toEqual([
+      [true, null, false],
+      [false, null, false],
+      [false, null, false],
+      [false, null, true],
+    ]);
+  });
 });
 
 describe('resolveLayers - wildlife species resolution', () => {

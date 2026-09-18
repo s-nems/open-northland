@@ -152,7 +152,7 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
  * A gallery character's layers: one body atlas plus N head atlases, given already-resolved served stems
  * (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`). An absent body throws
  * `MissingAtlasError`; a missing head degrades to `undefined` in its `heads` slot, which keeps stem order.
- * `bodyShadowStem` attaches the body's cast-shadow twin; heads cast none of their own.
+ * `bodyShadowStem` attaches the body's authored silhouette twin; no head bob has one.
  */
 export async function loadGalleryLayers(
   bodyStem: string,

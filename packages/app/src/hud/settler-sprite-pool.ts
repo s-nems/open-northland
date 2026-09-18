@@ -22,11 +22,33 @@ export class SettlerSpritePool {
     this.drawn.clear();
   }
 
+  /**
+   * One figure's resolved layers under `key`, in resolved order. A shadow silhouette is dropped: a HUD
+   * figure stands on a panel, not on ground, and the world's silhouette pages carry no palette indices.
+   * Each drawn layer is keyed by its place among the drawn ones, not in `layers`: the silhouette count
+   * varies with the bob, and a key that counted the dropped ones would hand a later frame's body the
+   * sprite the head is holding, painting the body over it.
+   */
+  drawFigure(
+    key: string,
+    layers: readonly ResolvedLayer[],
+    feetX: number,
+    feetY: number,
+    zoom: number,
+    playerRow: number,
+    zIndex?: number,
+  ): void {
+    let slot = 0;
+    for (const layer of layers) {
+      if (layer.shadow === true) continue;
+      this.drawLayer(`${key}:${slot++}`, layer, feetX, feetY, zoom, playerRow, zIndex);
+    }
+  }
+
   /** `playerRow` is the body's LUT row; a head layer reads the head row instead. `zIndex` orders the
    *  layer against its container's other children, for a caller whose sprites interleave with art it
-   *  does not own; omit it to keep insertion order. A shadow silhouette is dropped: a HUD figure stands
-   *  on a panel, not on ground, and the world's silhouette pages carry no palette indices. */
-  drawLayer(
+   *  does not own; omit it to keep insertion order. */
+  private drawLayer(
     key: string,
     layer: ResolvedLayer,
     feetX: number,
@@ -35,7 +57,6 @@ export class SettlerSpritePool {
     playerRow: number,
     zIndex?: number,
   ): void {
-    if (layer.shadow === true) return;
     const lut = this.sheet?.palette;
     if (lut !== undefined) {
       let spr = this.sprites.get(key);

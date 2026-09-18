@@ -38,6 +38,11 @@ export interface ResolvedLayer {
    * shadow enhancement is on, so the frame's art never reaches the screen unprojected.
    */
   readonly cast?: true;
+  /**
+   * Rows of a {@link cast} layer's frame to keep, counted from its top. Present only on a character's
+   * head overlay, where it drops the rows that project onto ground the body's own cast already covers.
+   */
+  readonly castRows?: number;
   /** A settler's head overlay, which the paletted path reads through the LUT's head row. */
   readonly head?: true;
 }

@@ -36,8 +36,9 @@ export class TextureCache {
   private useSoftShadows = false;
   private shadowVersion = 0;
   private readonly cache = new Map<AtlasFrame, Texture>();
-  /** Cast-silhouette views of body frames, kept out of {@link cache} so the same frame can draw both. */
-  private readonly casts = new Map<AtlasFrame, Texture>();
+  /** Cast-silhouette views of the character frames that project onto the ground, kept out of
+   *  {@link cache} so the same frame can draw both, keyed by how many of its top rows the view keeps. */
+  private readonly casts = new Map<AtlasFrame, Map<number, Texture>>();
   private readonly pages = new Set<TextureSource>();
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
    *  frame→texture cache above stays a clean 1:1. */
@@ -70,17 +71,25 @@ export class TextureCache {
    * A second view of a body frame, for drawing that frame as its own cast silhouette. It is kept apart
    * from {@link get}'s view so the batch shader can shade one and not the other, and out of
    * {@link pageSources} so casting from an indexed character sheet cannot hand its page to the
-   * linear-sampling flip. Sub-rect views share the page, so this costs no texture memory.
+   * linear-sampling flip. `rows` keeps only that many of the frame's top rows, as an integer row count in
+   * the frame's own source space, clamped to the frame. Sub-rect views share the page, so this costs no
+   * texture memory.
    */
-  castSilhouette(source: TextureSource, frame: AtlasFrame): Texture {
-    let tex = this.casts.get(frame);
+  castSilhouette(source: TextureSource, frame: AtlasFrame, rows: number = frame.height): Texture {
+    const kept = clamp(Math.round(rows), 0, frame.height);
+    let byRows = this.casts.get(frame);
+    if (byRows === undefined) {
+      byRows = new Map();
+      this.casts.set(frame, byRows);
+    }
+    let tex = byRows.get(kept);
     if (tex === undefined) {
       tex = new Texture({
         source,
-        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+        frame: new Rectangle(frame.x, frame.y, frame.width, kept),
       });
       markShadowTexture(tex);
-      this.casts.set(frame, tex);
+      byRows.set(kept, tex);
     }
     return tex;
   }
@@ -217,7 +226,9 @@ export class TextureCache {
     this.softShadows.clear();
     for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();
-    for (const tex of this.casts.values()) tex.destroy();
+    for (const byRows of this.casts.values()) {
+      for (const tex of byRows.values()) tex.destroy();
+    }
     this.casts.clear();
     for (const byTop of this.cropCache.values()) {
       for (const tex of byTop.values()) tex.destroy();
