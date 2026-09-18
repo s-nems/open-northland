@@ -133,6 +133,11 @@ function nestedInSelf(frames: ReadonlyMap<number, Frame>, frame: Frame): boolean
   return false;
 }
 
+/** Codepoint order, the stable tie-break of equal self time (see ./report/summarize.ts). */
+function byCodepoint(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export function summarizeProfile(profile: Profiler.Profile): ProfileSummary {
   const selfUs = selfUsByNode(profile);
   const frames = framesOf(profile);
@@ -169,9 +174,9 @@ export function summarizeProfile(profile: Profiler.Profile): ProfileSummary {
         selfPct: pct(row.selfUs),
         totalMs: row.totalUs / US_PER_MS,
       }))
-      .sort((a, b) => b.selfMs - a.selfMs),
+      .sort((a, b) => b.selfMs - a.selfMs || byCodepoint(a.name, b.name)),
     files: [...byFile.entries()]
       .map(([file, us]) => ({ file, selfMs: us / US_PER_MS, selfPct: pct(us) }))
-      .sort((a, b) => b.selfMs - a.selfMs),
+      .sort((a, b) => b.selfMs - a.selfMs || byCodepoint(a.file, b.file)),
   };
 }

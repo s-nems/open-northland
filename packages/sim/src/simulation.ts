@@ -271,9 +271,9 @@ export class Simulation {
 
   /**
    * A buildability test for one building type, reading the same rules the `placeBuilding` command gates on.
-   * Obstacle sets are memoized per {@link placementBlockerVersion}, so probing a viewport costs O(visible
-   * tiles); with a `player` the probe also refuses the ground a hostile army the seat can see contests.
-   * A supplied tribe adds its player-scoped technology gate. Null for a mapless sim.
+   * Blockers come from the incrementally maintained placement count grid, so probing a viewport costs
+   * O(visible tiles); with a `player` the probe also refuses the ground a hostile army the seat can see
+   * contests. A supplied tribe adds its player-scoped technology gate. Null for a mapless sim.
    */
   placementProbe(buildingType: number, player?: number, tribe?: number): PlayerPlacementProbe | null {
     return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, player, tribe);

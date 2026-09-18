@@ -1,104 +1,57 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, DeliveryFlag, Position } from '../../../../components/index.js';
-import type { Component, Entity, World } from '../../../../ecs/world.js';
+import { DeliveryFlag, Position } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
 import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { sameCells } from '../../geometry.js';
-import {
-  type BlockedCells,
-  BUILDING_SOURCE,
-  markerCells,
-  rederiveBlockedCells,
-  STATIC_SOURCES,
-  type StaticBlockerSource,
-} from './blocker-cells.js';
+import { type BlockerJournal, startBlockerJournal } from '../blocker-journal.js';
+import { type BlockedCells, blockedCellsOf, markerCells, rederiveBlockedCells } from './blocker-cells.js';
 import { workFlagMoveCount } from './flag-moves.js';
 
 // The incrementally-maintained work-flag blocked set - the refcounted per-world cache behind
-// ../work-flag's placement queries, with its journal replay, rebuild, and coherence verifier.
+// ../work-flag's placement queries, over the shared replay of ../blocker-journal.ts, with its marker
+// layer, rebuild and coherence verifier.
+
+/** Node → standing contribution count; `blocked` holds exactly the keys with a positive count. */
+interface BlockedRefcounts {
+  readonly counts: Map<NodeId, number>;
+  readonly blocked: Set<NodeId>;
+}
 
 /**
- * The per-world incremental blocked-set state. The refcounted `counts`/`blocked` pair is maintained
- * against the blocker stores' membership journals, so a burst that plants N flags or signposts costs
- * N × O(own footprint) instead of the N × O(all blockers) a rebuild-on-bump memo pays. It feeds command
- * gates and sim decisions, so the registered `verifyCaches` verifier proves the held set byte-identical to
- * a full {@link rederiveBlockedCells}.
+ * The per-world incremental blocked-set state: the journal-replayed blocker stores plus the marker layer,
+ * which no journal covers. It feeds command gates and sim decisions, so the registered `verifyCaches`
+ * verifier proves the held set byte-identical to a full {@link rederiveBlockedCells}.
  */
-interface IncrementalBlocks {
+interface IncrementalBlocks extends BlockedRefcounts {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
-  /** Held membership generations of the three journal-replayed stores ({@link STATIC_SOURCES}). */
-  readonly gens: Map<Component<unknown>, number>;
-  /** Guard for the one input no journal covers: the in-place tier swap (a `World.mut` value bump)
-   *  changes captured cells with no membership bump. The bump itself is ambiguous - construction
-   *  progress moves it every active-site tick - so {@link buildingTypes} narrows it to the buildings
-   *  whose type actually changed. */
-  buildingValueGen: number;
-  /** The `buildingType` each held Building capture used - the only Building value the capture reads,
-   *  so a value bump resyncs exactly the mismatches instead of demanding a full rebuild. */
-  readonly buildingTypes: Map<Entity, number>;
+  readonly journal: BlockerJournal;
   /** The marker layer's inputs; a bump re-diffs the whole DeliveryFlag store - O(flags), tiny. */
   flagGen: number;
   flagMoves: number;
-  /** Node → standing contribution count; `blocked` holds exactly the keys with a positive count. */
-  readonly counts: Map<NodeId, number>;
-  readonly blocked: Set<NodeId>;
-  readonly records: Map<StaticBlockerSource, Map<Entity, BlockedCells>>;
   readonly flagCells: Map<Entity, BlockedCells>;
 }
 const blocksMemo = new WeakMap<World, IncrementalBlocks>();
 
-function recordsOf(state: IncrementalBlocks, source: StaticBlockerSource): Map<Entity, BlockedCells> {
-  let held = state.records.get(source);
-  if (held === undefined) {
-    held = new Map();
-    state.records.set(source, held);
-  }
-  return held;
-}
-
-function addCells(state: IncrementalBlocks, cells: BlockedCells): void {
+function addCells(refs: BlockedRefcounts, cells: BlockedCells): void {
   for (const node of cells) {
-    const next = (state.counts.get(node) ?? 0) + 1;
-    state.counts.set(node, next);
-    if (next === 1) state.blocked.add(node);
+    const next = (refs.counts.get(node) ?? 0) + 1;
+    refs.counts.set(node, next);
+    if (next === 1) refs.blocked.add(node);
   }
 }
 
-function removeCells(state: IncrementalBlocks, cells: BlockedCells): void {
+function removeCells(refs: BlockedRefcounts, cells: BlockedCells): void {
   for (const node of cells) {
-    const next = (state.counts.get(node) ?? 0) - 1;
+    const next = (refs.counts.get(node) ?? 0) - 1;
     if (next <= 0) {
-      state.counts.delete(node);
-      state.blocked.delete(node);
+      refs.counts.delete(node);
+      refs.blocked.delete(node);
     } else {
-      state.counts.set(node, next);
+      refs.counts.set(node, next);
     }
   }
-}
-
-/** Replay one journal entry: drop the held record, then re-admit from live state. Idempotent, so a
- *  same-entity op sequence (add + destroy, remove + re-add) converges on the final membership. */
-function resyncEntity(world: World, state: IncrementalBlocks, source: StaticBlockerSource, e: Entity): void {
-  const map = recordsOf(state, source);
-  const held = map.get(e);
-  if (held !== undefined) {
-    removeCells(state, held);
-    map.delete(e);
-  }
-  if (source === BUILDING_SOURCE) recordBuildingType(world, state, e);
-  if (!world.has(e, source.component)) return;
-  const cells = source.capture(world, state.content, state.terrain, e);
-  map.set(e, cells);
-  addCells(state, cells);
-}
-
-/** Record the type the held cells were derived from (cleared on removal), synchronously with the
- *  resync so record and cells cannot drift. */
-function recordBuildingType(world: World, state: IncrementalBlocks, e: Entity): void {
-  const b = world.tryGet(e, Building);
-  if (b === undefined) state.buildingTypes.delete(e);
-  else state.buildingTypes.set(e, b.buildingType);
 }
 
 /** Re-derive the whole marker layer from the DeliveryFlag store - flags are the one blocker that MOVES
@@ -115,48 +68,30 @@ function refreshMarkerLayer(world: World, state: IncrementalBlocks): void {
 }
 
 function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph): IncrementalBlocks {
-  const gens = new Map<Component<unknown>, number>();
-  for (const source of STATIC_SOURCES) {
-    world.journalMembership(source.component);
-    gens.set(source.component, world.componentGeneration(source.component));
-  }
+  // The refcounts the journal stamps into are the ones the state below hands out - same Map and Set.
+  const refs: BlockedRefcounts = { counts: new Map(), blocked: new Set() };
+  const journal = startBlockerJournal(world, {
+    capture: (w, store, e) => blockedCellsOf(w, content, terrain, store, e),
+    apply: (cells) => addCells(refs, cells),
+    withdraw: (cells) => removeCells(refs, cells),
+  });
   const state: IncrementalBlocks = {
     content,
     terrain,
-    gens,
-    buildingValueGen: world.componentValueGeneration(Building),
-    buildingTypes: new Map(),
+    ...refs,
+    journal,
     flagGen: world.componentGeneration(DeliveryFlag),
     flagMoves: workFlagMoveCount(world),
-    counts: new Map(),
-    blocked: new Set(),
-    records: new Map(),
     flagCells: new Map(),
   };
-  for (const source of STATIC_SOURCES) {
-    for (const e of world.query(source.component, Position)) resyncEntity(world, state, source, e);
-  }
   refreshMarkerLayer(world, state);
   return state;
 }
 
-/** Catch `state` up to the live world via the membership journals; false demands a full rebuild
- *  (a journal gap). */
+/** Catch `state` up to the live world: the journaled blocker stores, then the marker layer; false demands
+ *  a full rebuild (a journal gap). */
 function catchUp(world: World, state: IncrementalBlocks): boolean {
-  for (const source of STATIC_SOURCES) {
-    const gen = world.componentGeneration(source.component);
-    const held = state.gens.get(source.component) ?? 0;
-    if (gen === held) continue;
-    const deltas = world.membershipDeltasSince(source.component, held);
-    if (deltas === null) return false;
-    for (const e of deltas) resyncEntity(world, state, source, e);
-    state.gens.set(source.component, gen);
-  }
-  const buildingValueGen = world.componentValueGeneration(Building);
-  if (buildingValueGen !== state.buildingValueGen) {
-    resyncChangedBuildingTypes(world, state);
-    state.buildingValueGen = buildingValueGen;
-  }
+  if (!state.journal.catchUp()) return false;
   const flagGen = world.componentGeneration(DeliveryFlag);
   const moves = workFlagMoveCount(world);
   if (flagGen !== state.flagGen || moves !== state.flagMoves) {
@@ -165,15 +100,6 @@ function catchUp(world: World, state: IncrementalBlocks): boolean {
     state.flagMoves = moves;
   }
   return true;
-}
-
-/** The Building value-bump response: resync only buildings whose live type differs from the held
- *  record - O(buildings) compares, zero captures when only construction progress (`built`) moved. */
-function resyncChangedBuildingTypes(world: World, state: IncrementalBlocks): void {
-  for (const e of world.query(Building, Position)) {
-    if (state.buildingTypes.get(e) === world.get(e, Building).buildingType) continue;
-    resyncEntity(world, state, BUILDING_SOURCE, e);
-  }
 }
 
 /** The live incremental state for `world`, caught up or rebuilt as needed. */
@@ -235,12 +161,10 @@ function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGra
   ];
 }
 
-/** Whether every input generation matches the held state - the verifier's "claims freshness" gate. */
 function isFresh(world: World, state: IncrementalBlocks): boolean {
   return (
-    world.componentValueGeneration(Building) === state.buildingValueGen &&
+    state.journal.fresh() &&
     world.componentGeneration(DeliveryFlag) === state.flagGen &&
-    workFlagMoveCount(world) === state.flagMoves &&
-    STATIC_SOURCES.every((s) => world.componentGeneration(s.component) === (state.gens.get(s.component) ?? 0))
+    workFlagMoveCount(world) === state.flagMoves
   );
 }

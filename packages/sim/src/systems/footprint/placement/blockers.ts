@@ -108,6 +108,7 @@ export const BUILDING_STORE: BlockerStore = { component: Building, cells: buildi
  *  journal-replayed. */
 export const BLOCKER_STORES: readonly BlockerStore[] = [
   {
+    // Keyed on the footprint rather than `Resource`, so a chest blocks like a node and a re-stamp replays.
     component: ResourceFootprint,
     cells: (world, _content, e, visit) => resourceBlockerCells(world, e, visit),
   },

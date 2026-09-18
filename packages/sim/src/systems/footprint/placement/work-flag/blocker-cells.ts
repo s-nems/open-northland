@@ -1,26 +1,22 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, ResourceFootprint, Signpost } from '../../../../components/index.js';
-import type { Component, Entity, World } from '../../../../ecs/world.js';
+import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import {
   type BlockerChannel,
+  type BlockerStore,
   type BlockerVisit,
   BUILDING_ZONE,
-  buildingBlockerCells,
   EXCLUSION,
   eachBlockerCell,
   MARKER,
   markerBlockerCells,
   OBSTACLE,
   RESOURCE_ANCHOR,
-  resourceBlockerCells,
-  signpostBlockerCells,
 } from '../blockers.js';
 
 // Which nodes a blocker denies a work flag - ../blockers.ts channels projected onto this one rule.
 
-/** One blocker's blocked nodes (in bounds; duplicates kept so add and removal replay symmetrically).
- *  Captured at admit time - the entity may be destroyed by removal. */
+/** One blocker's blocked nodes, in bounds. */
 export type BlockedCells = readonly NodeId[];
 
 /** Every channel but the margin zones, which stay open ground for a flag. Exhaustive over
@@ -42,32 +38,17 @@ function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void)
   return cells;
 }
 
-/** One journal-replayed blocker store: its component and per-entity capturer. */
-export interface StaticBlockerSource {
-  readonly component: Component<unknown>;
-  readonly capture: (world: World, content: ContentSet, terrain: TerrainGraph, e: Entity) => BlockedCells;
+/** The nodes `store`'s contribution for `e` denies a flag - the per-entity slice the incremental state
+ *  captures and replays. */
+export function blockedCellsOf(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  store: BlockerStore,
+  e: Entity,
+): BlockedCells {
+  return captureCells(terrain, (v) => store.cells(world, content, e, v));
 }
-
-/** Keyed on the footprint rather than `Resource`, so a chest blocks like a node and a restamp replays. */
-export const RESOURCE_SOURCE: StaticBlockerSource = {
-  component: ResourceFootprint,
-  capture: (world, _content, terrain, e) => captureCells(terrain, (v) => resourceBlockerCells(world, e, v)),
-};
-
-export const BUILDING_SOURCE: StaticBlockerSource = {
-  component: Building,
-  capture: (world, content, terrain, e) =>
-    captureCells(terrain, (v) => buildingBlockerCells(world, content, e, v)),
-};
-
-export const STATIC_SOURCES: readonly StaticBlockerSource[] = [
-  RESOURCE_SOURCE,
-  BUILDING_SOURCE,
-  {
-    component: Signpost,
-    capture: (world, _content, terrain, e) => captureCells(terrain, (v) => signpostBlockerCells(world, e, v)),
-  },
-];
 
 export function markerCells(world: World, terrain: TerrainGraph, e: Entity): BlockedCells {
   return captureCells(terrain, (v) => markerBlockerCells(world, e, v));
