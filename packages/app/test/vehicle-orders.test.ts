@@ -114,10 +114,17 @@ interface Arms {
   readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;
   /** The selected settlers standing on the map, for the right-click attach. */
   readonly settlers?: readonly number[];
+  /** Own settlers drawn under the cursor, which take the right-click ahead of a vehicle beneath them. */
+  readonly settlersUnder?: readonly Pickable[];
 }
 
 const targetsOf = (arms: Arms): UnitTargets => ({
-  owned: (kind) => (kind === 'vehicle' ? [...(arms.vehicles ?? [])] : []),
+  owned: (kind) =>
+    kind === 'vehicle'
+      ? [...(arms.vehicles ?? [])]
+      : kind === 'settler'
+        ? [...(arms.settlersUnder ?? [])]
+        : [],
   buildings: () => [],
   enemies: () => [...(arms.enemies ?? [])],
   flags: () => [],
@@ -249,6 +256,22 @@ describe('right-click attach', () => {
     });
     expect(h.controller.issueAttachSelected(rightClick)).toBe(true);
     expect(h.issued).toEqual([{ kind: 'attachToVehicle', entity: OWN_SETTLER, vehicle: SHIP }]);
+  });
+
+  it('yields to an own settler or an enemy drawn over the vehicle, the crew waiting at its door', () => {
+    const rider = harness([OWN_SETTLER], {
+      vehicles: [under(SHIP, 'vehicle')],
+      settlersUnder: [under(CART_COMMANDER, 'settler')],
+      settlers: [OWN_SETTLER],
+    });
+    expect(rider.controller.issueAttachSelected(rightClick)).toBe(false);
+    const enemy = harness([OWN_SETTLER], {
+      vehicles: [under(SHIP, 'vehicle')],
+      enemies: [under(ENEMY_SOLDIER, 'settler')],
+      settlers: [OWN_SETTLER],
+    });
+    expect(enemy.controller.issueAttachSelected(rightClick)).toBe(false);
+    expect([...rider.issued, ...enemy.issued]).toEqual([]);
   });
 
   it('orders nothing when no vehicle lies under the cursor or nobody selected may board', () => {

@@ -67,7 +67,8 @@ export interface VehicleOrderController {
   issueAttach(event: MouseEvent, settler: number): boolean;
   /** The selected settlers' right-click on an own vehicle: each one the attach rule admits is assigned
    *  to it (approximation, user rule: the original assigns through the ring's pick only). False when
-   *  no vehicle lies under the cursor or nobody selected may board it. */
+   *  no vehicle lies under the cursor, an own settler or an enemy drawn there takes the click first (a
+   *  crew waiting by the door stands over the hull), or nobody selected may board it. */
   issueAttachSelected(event: MouseEvent): boolean;
 }
 
@@ -190,6 +191,8 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
     if (vehicle === null) return false;
+    if (pickTopAt(deps.targets.owned('settler'), world.x, world.y) !== null) return false;
+    if (pickTopAt(deps.targets.enemies(), world.x, world.y) !== null) return false;
     let sent = false;
     for (const target of deps.targets.ownedSettlersIn(deps.selected())) {
       const settler = target.ref;

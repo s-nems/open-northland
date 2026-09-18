@@ -49,7 +49,6 @@ function build(sim: Simulation): void {
   const catapult = spawnVehicleDirect(sim, VEHICLE_CATAPULT, CATAPULT_AT.x, CATAPULT_AT.y);
   const commander = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, COMMANDER_AT.x, COMMANDER_AT.y);
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: commander, vehicle: catapult }));
-  sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'boardVehicle', entity: commander }));
   const hut = placeBuiltSandboxBuilding(sim, ENEMY_HUT[0], ENEMY_HUT[1], ENEMY_HUT[2], ENEMY_PLAYER);
   for (const [job, weaponTypeId, x, y] of ENEMY_PICKET) {
     spawnSandboxSettler(sim, job, x, y, ENEMY_PLAYER, { weaponTypeId });

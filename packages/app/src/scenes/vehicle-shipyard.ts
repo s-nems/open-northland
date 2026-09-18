@@ -71,7 +71,6 @@ function build(sim: Simulation): void {
   }
 }
 
-
 export const vehicleShipyardScene: SceneDefinition = {
   id: 'vehicle-shipyard',
   seed: 19,

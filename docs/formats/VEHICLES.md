@@ -441,8 +441,8 @@ Open Northland (`packages/app/src/game/world/authored-placements.ts`, `systems/s
 a `setvehicle` row becomes a `createVehicle` before any human, its cargo through `stockVehicleGoods`
 (booked, stowed and wanted, as above); the name join takes the lowest type id sharing the name. A
 crewman's `boardVehicleAt` rides on its `spawnSettler` as `vehicle` and goes through `attachToVehicle`
-at the spawn, which also walks him to the door where the original leaves him standing until the
-vehicle asks (approximation); `inside` boards him at once through `boardRider`.
+at the spawn, which also walks him to the door, where a passenger steps in and a carrier or trader
+waits for the vehicle's ask as under "Crew"; `inside` boards him at once through `boardRider`.
 
 Results (`l_ExecuteResult`): `SetVehicle` is `Logic_EntryPoint_Add_Vehicle` for the player, tribe,
 type and id; with the captain flag set it also adds a human of the type's `logiccommander` job

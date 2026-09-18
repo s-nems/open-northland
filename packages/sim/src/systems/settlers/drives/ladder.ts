@@ -25,6 +25,7 @@ import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { planTrader } from '../../trade/index.js';
 import { planRider } from '../../vehicles/boarding.js';
+import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
@@ -117,12 +118,17 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     return;
   }
 
-  // A vehicle that asked its crew in takes its rider over every need below (user rule, a deviation from
-  // the original's pending-need gate on the board request): the order is a forced boarding, and a need
-  // stands still aboard. Whatever the rider waited in, it steps out of.
-  if (world.tryGet(e, Rider)?.boarding === true && planRider(world, ctx, terrain, e, pass.spacing)) {
-    stepOut(world, e);
-    return;
+  // A vehicle that asked its crew in takes its empty-handed rider over every need below (user rule, a
+  // deviation from the original's pending-need gate on the board request): the order is a forced
+  // boarding, and a need stands still aboard. Any cargo booking is given back first, and a rider with a
+  // unit on its back runs the ladder down to the delivery rung before it answers, so nothing rides
+  // aboard in its hands. Whatever the rider waited in, it steps out of.
+  if (world.tryGet(e, Rider)?.boarding === true) {
+    abandonCargoRun(world, e);
+    if ((load === undefined || load.amount <= 0) && planRider(world, ctx, terrain, e, pass.spacing)) {
+      stepOut(world, e);
+      return;
+    }
   }
 
   // Already home for one need: top the others up before stepping back out, rather than walking the whole

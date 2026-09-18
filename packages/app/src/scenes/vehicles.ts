@@ -145,7 +145,6 @@ function build(sim: Simulation): void {
     for (const member of PARTY_AT) {
       const entity = spawnSettlerDirect(sim, member.job, member.x, member.y, HUMAN_PLAYER);
       sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity, vehicle: ship }));
-      sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'boardVehicle', entity }));
     }
   }
   spawnDriver(sim, VEHICLE_OXCART, JOB_CARRIER, CART_DRIVE, WRECK_SEQUENCE + 1);

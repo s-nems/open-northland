@@ -287,6 +287,23 @@ describe('the carrier rung', () => {
     expect(s.world.get(carrier, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
   });
 
+  it('boards a carrier asked in mid-trip with empty hands and its booking given back', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const carrier = attachCarrier(s, cart);
+    dropPile(s, WOOD, SOURCE_AT, 1);
+    want(s, cart, WOOD, 3);
+    for (let tick = 0; tick < TRIP_TICKS && !s.world.has(carrier, CargoRun); tick++) s.step();
+    expect(s.world.get(carrier, CargoRun).direction).toBe('load');
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: CART_AT.hx - 6, y: CART_AT.hy }));
+    for (let tick = 0; tick < 4 * TRIP_TICKS && s.world.has(carrier, Position); tick++) s.step();
+    expect(s.world.has(carrier, Position)).toBe(false);
+    expect(s.world.has(carrier, CargoRun)).toBe(false);
+    expect(s.world.has(carrier, Carrying)).toBe(false);
+    // The unit fetched before the ask went into the hold; nothing stays booked for a rider aboard.
+    expect(line(s, cart, WOOD).reserved).toBe(line(s, cart, WOOD).current);
+  });
+
   it('ignores a source across the water and keeps its seat, the hold waiting unbooked', () => {
     const s = new Simulation({
       seed: 3,

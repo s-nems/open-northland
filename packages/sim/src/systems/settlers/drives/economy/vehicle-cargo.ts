@@ -50,8 +50,9 @@ const CARGO_UNIT = 1;
  * within it, then whatever its signpost area reaches, every source on the door's continent; with a unit
  * on its back it books it and sets it into the hold at the door; while a good's booking exceeds its
  * wanted amount it walks the booking down a unit a trip, lifting a unit out when one is aboard. A rider
- * the vehicle asked aboard, one standing on another continent than the door, and a load the hold will
- * not take fall through to the other rungs, any booking they hold given back first.
+ * standing on another continent than the door and a load the hold will not take fall through to the
+ * other rungs, any booking they hold given back first; a rider the vehicle asked aboard never reaches
+ * this rung, the ladder's forced-boarding rung having taken it or sent it down to the delivery rung.
  */
 export function planVehicleCargo(
   plan: PlannerContext,
@@ -68,7 +69,7 @@ export function planVehicleCargo(
   if (run !== undefined && (run.vehicle !== vehicle || (run.direction === 'load') !== loaded)) {
     abandonCargoRun(world, e);
   }
-  const served = servedHold(plan, rider.boarding, vehicle);
+  const served = servedHold(plan, vehicle);
   if (served === null) {
     abandonCargoRun(world, e);
     return false;
@@ -77,15 +78,14 @@ export function planVehicleCargo(
   return fetchShortfall(plan, vehicle, served.type, served.door) || flushSurplus(plan, vehicle, served.door);
 }
 
-/** The hold this carrier serves right now: its type and boarding node, or null while the vehicle asks
- *  the rider aboard, lies at sea, has no door, or stands on another continent than the carrier. */
+/** The hold this carrier serves right now: its type and boarding node, or null while the vehicle lies
+ *  at sea, has no door, or stands on another continent than the carrier. */
 function servedHold(
   plan: PlannerContext,
-  boarding: boolean,
   vehicle: Entity,
 ): { readonly type: VehicleType; readonly door: NodeId } | null {
   const { world, ctx, terrain, here } = plan;
-  if (boarding || !isCarrierJob(ctx, plan.jobType)) return null;
+  if (!isCarrierJob(ctx, plan.jobType)) return null;
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined || !world.has(vehicle, VehicleStock) || isShipAtSea(ctx, state)) return null;
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
