@@ -13,8 +13,10 @@ import {
   navEntryForWindow,
 } from '../src/hud/tool-panel/nav-effects.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
-import { createToolWindows, type ToolWindowId } from '../src/hud/tool-panel/windows.js';
+import { createToolWindows, type ToolWindowId, type ToolWindows } from '../src/hud/tool-panel/windows.js';
+import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
+import { stubPlacementStrip } from './support/placement-strip-stub.js';
 
 const SCREEN = { width: 1280, height: 720 };
 const BUILDING_JOINERY = 23;
@@ -50,21 +52,30 @@ function stubContext(): PanelContext {
 function mountSurfaces() {
   const ctx = stubContext();
   const container = new Container();
+  const strip = stubPlacementStrip();
+  let windows: ToolWindows | null = null;
   const placement = createPlacementController({
     ctx,
-    container,
+    strip,
     labelByType: new Map([[BUILDING_JOINERY, 'Joinery']]),
     enqueue: () => undefined,
     screenToTile: () => ({ col: 1, row: 1 }),
     canPlaceAt: () => true,
     tribe: 1,
     owner: 0,
+    // As the mount wires it: a cancelled placement brings the construction window back.
+    onCancel: () => windows?.byId.menu.resume(),
   });
-  const windows = createToolWindows({
+  let menu: ConstructionWindowStub | null = null;
+  windows = createToolWindows({
     ctx,
     container,
     pendingWindow: stubPendingWindow,
-    buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace' }],
+    constructionWindow: (seam) => {
+      menu = stubConstructionWindow(seam);
+      return menu;
+    },
+    buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [] }],
     grants: {
       read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
       set: () => true,
@@ -75,19 +86,23 @@ function mountSurfaces() {
     },
     papers: { read: () => [] },
     paperLabel: (paper) => `${paper.kind}:${paper.param}`,
-    heldPaper: createHeldPaperController(ctx, container),
+    heldPaper: createHeldPaperController(ctx, strip),
     diplomacyRows: () => [],
     art: null,
     missionBrief: () => null,
     missionBriefingHistory: () => [],
     missionReplayPage: () => null,
     history: null,
-    onPickBuilding: (typeId) => placement.enter(typeId),
+    onPickBuilding: (typeId) => {
+      windows?.byId.menu.suspend();
+      placement.enter(typeId);
+    },
     onPayTribute: () => undefined,
   });
+  if (menu === null) throw new Error('the registry did not mount the construction window');
   const surfaces = { windows: windows.byId, cancelHeld: () => placement.cancel() };
   const press = (id: NavEntryId): void => applyNavEntry(surfaces, id);
-  return { press, windows, placement };
+  return { press, windows, placement, pick: (menu as ConstructionWindowStub).seam.onPick };
 }
 
 describe('navigation entries', () => {
@@ -148,6 +163,41 @@ describe('applying a navigation entry', () => {
 
     press('build');
     expect(placement.isActive()).toBe(false);
+  });
+
+  it('a pick hides the construction window; a cancelled placement brings it back, a landing does not', () => {
+    const { press, windows, placement, pick } = mountSurfaces();
+    press('build');
+    pick(BUILDING_JOINERY);
+    expect(windows.openId()).toBeNull(); // hidden for the placement: no window lit, the map takes presses
+    expect(placement.isActive()).toBe(true);
+
+    placement.cancel(); // Esc or the right button
+    expect(windows.openId()).toBe('menu');
+    expect(placement.isActive()).toBe(false);
+
+    pick(BUILDING_JOINERY);
+    placement.handleClick(0, 0); // the site lands
+    expect(placement.isActive()).toBe(false);
+    expect(windows.openId()).toBeNull(); // the window stays away after a placement
+  });
+
+  it('Buduj during a placement cancels it and shows the window; another entry replaces it', () => {
+    const { press, windows, placement, pick } = mountSurfaces();
+    press('build');
+    pick(BUILDING_JOINERY);
+
+    press('build');
+    expect(placement.isActive()).toBe(false);
+    expect(windows.openId()).toBe('menu');
+    press('build');
+    expect(windows.openId()).toBeNull();
+
+    press('build');
+    pick(BUILDING_JOINERY);
+    press('assistant');
+    expect(placement.isActive()).toBe(false);
+    expect(windows.openId()).toBe('extras');
   });
 
   it('opens the mission window on a caller-supplied page and still closes the others', () => {

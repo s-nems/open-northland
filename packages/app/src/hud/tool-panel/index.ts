@@ -1,7 +1,14 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-northland/render';
-import type { DiplomacyState, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import {
+  type DiplomacyState,
+  type Paper,
+  PLACING_PAPER_KINDS,
+  type PlayerCommand,
+  type SimEvent,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
@@ -17,8 +24,11 @@ import {
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import { messages, professionLabel } from '../../i18n/index.js';
+import { createBuildingThumbs } from '../dom/building-thumb.js';
+import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
+import { createPlacementStrip } from '../dom/placement-strip.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
@@ -59,7 +69,7 @@ export interface ToolPanelOptions {
   readonly plane: HTMLElement;
   /** The resolved HUD scale; the pinned internal geometry is multiplied by this. May be fractional. */
   readonly uiscale: number;
-  /** The buildings the build menu lists. */
+  /** The buildings the construction window lists. */
   readonly buildings: readonly MenuBuildingEntry[];
   /** Localized name of a profession, good, or building announced by a discovery note. */
   readonly technologyLabel: (kind: 'job' | 'good' | 'house', typeId: number) => string;
@@ -118,7 +128,8 @@ export interface ToolPanelOptions {
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
-  /** The map's sprite sheet, which draws a settler on its card; absent leaves the thumbnail bare. */
+  /** The map's sprite sheet, which draws a settler on its notice card and a building on its
+   *  construction card; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
   /** Owner slot to team-colour slot for those figures; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
@@ -235,8 +246,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   app.stage.addChild(root);
   const infoContainer = new Container();
   const windowContainer = new Container();
-  const bannerContainer = new Container();
-  root.addChild(infoContainer, windowContainer, bannerContainer);
+  root.addChild(infoContainer, windowContainer);
 
   const domParts: { dispose(): void }[] = [];
   let input: ToolPanelInput | null = null;
@@ -276,17 +286,21 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         },
         goodLabel: opts.goodLabel,
       });
+    const strip = createPlacementStrip(plane);
+    domParts.push(strip);
     const placement = createPlacementController({
       ctx,
-      container: bannerContainer,
+      strip,
       labelByType,
       enqueue,
       screenToTile: opts.screenToTile,
       canPlaceAt: opts.canPlaceAt,
       tribe: opts.tribe,
       owner: opts.owner,
+      // A pick hid the window for the placement; a cancel brings it back where it was.
+      onCancel: () => windows.byId.menu.resume(),
     });
-    const heldPaper = createHeldPaperController(ctx, bannerContainer);
+    const heldPaper = createHeldPaperController(ctx, strip);
     const held: readonly HeldMode[] = [placement, heldPaper];
     const cancelHeld = (): void => {
       for (const mode of held) mode.cancel();
@@ -295,6 +309,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     // Closing a window returns keyboard focus to the beam entry that owns it.
     let focusOwner: ((id: NavEntryId) => void) | null = null;
     const shellCopy = messages().hud.shell;
+    const goodIdByType = new Map(opts.goods.map((g) => [g.typeId, g.id]));
+    const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
+    const thumbs = createBuildingThumbs(opts.sheet, opts.tribe);
     const windows = createToolWindows({
       ctx,
       container: windowContainer,
@@ -307,6 +324,22 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           closeLabel: shellCopy.close,
         });
         window.onDismiss(() => focusOwner?.(navEntryForWindow(id)));
+        return window;
+      },
+      constructionWindow: (seam) => {
+        const window = createConstructionWindow({
+          plane,
+          entries: seam.entries,
+          thumbs,
+          goodIdOf: (goodType) => goodIdByType.get(goodType),
+          goodLabel: (goodType) => opts.goodLabel(goodType) ?? `#${goodType}`,
+          papersCount: () => opts.papers.read().filter((paper) => PLACING_PAPER_KINDS.has(paper.kind)).length,
+          onPick: seam.onPick,
+          onPapers: seam.onPapers,
+          onHelp: seam.onHelp,
+          cue: ctx.cue,
+        });
+        window.onDismiss(() => focusOwner?.('build'));
         return window;
       },
       buildings: opts.buildings,
@@ -345,8 +378,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onSpeedChange: opts.onSpeedChange,
       onShow: (control) => systemBar.setSpeed(control),
     });
-    const goodIdByType = new Map(opts.goods.map((g) => [g.typeId, g.id]));
-    const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const systemBar = createHudSystemBar(plane, {
       summary: {
         goodIdOf: (goodType) => goodIdByType.get(goodType),
@@ -455,11 +486,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       placementPaper: () => placement.activePaper(),
       update(hudFor, model): void {
         systemBar.update(model);
+        windows.presentStocks(model);
         windows.refresh(hudFor);
         const open = windows.openId();
         nav.setActive(open === null ? null : navEntryForWindow(open));
         infoLines.refresh();
-        for (const mode of held) mode.placeBanner();
       },
       mapViews: () => windows.mission.mapViews(),
       presentMessages: (snapshot, events, alpha) => messageCenter.present(snapshot, events, alpha),

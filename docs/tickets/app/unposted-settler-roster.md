@@ -18,10 +18,10 @@ A settlement-wide view listing the local player's settlers that hold a trade but
 name, trade, and a click that selects and centres on the settler. The details panel's
 `onSelectEntity` / `onCenterOnEntity` seams already do the second half.
 
-The tool panel's `tabbed-list` window (`hud/tool-panel/tabbed-list/`) is the existing scrollable list
-surface; the extras and statistics windows show how a pop-up is mounted and refreshed. Reading the
-roster is an O(entities) snapshot scan, so pull it only while the window is open, the way
-`stats-window.ts` gates `hudFor`.
+The construction window's parchment catalogue (`hud/dom/construction-window.ts`) is the existing
+scrollable list surface on the DOM plane; the extras and statistics windows show how a legacy pop-up
+is mounted and refreshed. Reading the roster is an O(entities) snapshot scan, so pull it only while
+the window is open, the way `stats-window.ts` gates `hudFor`.
 
 Out of scope: any automatic re-employment, and any change to who counts as employed.
 

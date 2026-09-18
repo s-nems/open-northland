@@ -41,19 +41,22 @@ export function navEntryForWindow(window: ToolWindowId): NavEntryId {
 }
 
 export interface NavSurfaces {
-  readonly windows: Readonly<Record<ToolWindowId, { toggle(): void; close(): void }>>;
+  readonly windows: Readonly<Record<ToolWindowId, { isOpen(): boolean; toggle(): void; close(): void }>>;
   readonly cancelHeld: () => void;
 }
 
 /** Apply a beam entry: one central window at a time, so every other window closes before this one
  *  toggles. `open` replaces the toggle for a caller that opens the window on something of its own (a
- *  script's briefing page) and still wants the rest of the effect. */
+ *  script's briefing page) and still wants the rest of the effect. A cancelled placement brings the
+ *  construction window back by itself; when that is the entry's own window, the press is done. */
 export function applyNavEntry(surfaces: NavSurfaces, id: NavEntryId, open?: () => void): void {
   const effect = navEntryEffect(id);
+  const target = surfaces.windows[effect.window];
+  const wasOpen = target.isOpen();
   if (effect.cancelsHeld) surfaces.cancelHeld();
   for (const [window, surface] of Object.entries(surfaces.windows)) {
     if (window !== effect.window) surface.close();
   }
   if (open !== undefined) open();
-  else surfaces.windows[effect.window].toggle();
+  else if (wasOpen || !target.isOpen()) target.toggle();
 }

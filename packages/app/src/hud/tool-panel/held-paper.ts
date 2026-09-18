@@ -1,13 +1,13 @@
 import type { Paper } from '@open-northland/sim';
-import type { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
+import type { PlacementStrip } from '../dom/placement-strip.js';
 import type { PanelContext } from './context.js';
-import { createHeldItemBanner } from './held-item-banner.js';
 import type { HeldMode } from './input.js';
 
 /**
- * The place-any paper the build menu was opened for. Held, with its banner up, until the menu's next pick
- * takes it; Esc, a right or world click, or the menu closing drop it back into the list unspent.
+ * The place-any paper the construction window was opened for. Held, with the strip up, until the
+ * window's next pick takes it; Esc, a right or world click, or the window closing drop it back into
+ * the list unspent.
  */
 export interface HeldPaperController extends HeldMode {
   hold(paper: Paper): void;
@@ -16,17 +16,17 @@ export interface HeldPaperController extends HeldMode {
   held(): Paper | null;
 }
 
-export function createHeldPaperController(ctx: PanelContext, container: Container): HeldPaperController {
-  const banner = createHeldItemBanner(ctx, container);
+export function createHeldPaperController(ctx: PanelContext, strip: PlacementStrip): HeldPaperController {
   let paper: Paper | null = null;
   const drop = (): void => {
     paper = null;
-    banner.clear();
+    strip.clear();
   };
   return {
     hold: (held): void => {
       paper = held;
-      banner.show(messages().hud.heldPaperHint);
+      const copy = messages().hud.construction;
+      strip.show({ label: copy.heldPaper, hint: copy.heldPaperHint });
     },
     take: (): Paper | null => {
       const taken = paper;
@@ -42,6 +42,5 @@ export function createHeldPaperController(ctx: PanelContext, container: Containe
       drop();
       return true;
     },
-    placeBanner: () => banner.place(),
   };
 }

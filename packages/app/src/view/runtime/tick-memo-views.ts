@@ -1,5 +1,6 @@
 import type { OpenTribute, Simulation } from '@open-northland/sim';
-import { technologyReason } from '../../game/technology.js';
+import { technologyAvailability } from '../../game/technology.js';
+import type { BuildingAvailability } from '../../hud/tool-panel/building-menu.js';
 import type { DiplomacySimView } from '../projections/diplomacy-rows.js';
 
 /**
@@ -11,14 +12,15 @@ export function createTickMemoViews(
   tribeOf: (player: number) => number,
 ): {
   readonly diplomacyView: DiplomacySimView;
-  readonly buildReason: (player: number, typeId: number) => string | null;
+  readonly buildAvailability: (player: number, typeId: number) => BuildingAvailability;
 } {
   let owedMemo: {
     readonly tick: number;
     readonly payer: number;
     readonly owed: readonly OpenTribute[];
   } | null = null;
-  let reasonMemo: { readonly tick: number; readonly reasons: Map<string, string | null> } | null = null;
+  let reasonMemo: { readonly tick: number; readonly reasons: Map<string, BuildingAvailability> } | null =
+    null;
   return {
     diplomacyView: {
       hasMetPlayer: (viewer, other) => sim.hasMetPlayer(viewer, other),
@@ -31,18 +33,18 @@ export function createTickMemoViews(
         return owedMemo.owed;
       },
     },
-    buildReason: (player, typeId) => {
+    buildAvailability: (player, typeId) => {
       if (reasonMemo === null || reasonMemo.tick !== sim.tick)
         reasonMemo = { tick: sim.tick, reasons: new Map() };
       const key = `${player}:${typeId}`;
       const known = reasonMemo.reasons.get(key);
       if (known !== undefined) return known;
-      const reason = technologyReason(
+      const availability = technologyAvailability(
         sim.content,
         sim.unlockStatus('house', typeId, tribeOf(player), player),
       );
-      reasonMemo.reasons.set(key, reason);
-      return reason;
+      reasonMemo.reasons.set(key, availability);
+      return availability;
     },
   };
 }

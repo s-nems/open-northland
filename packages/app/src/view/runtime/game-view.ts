@@ -314,7 +314,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     };
 
     const goodLabelByType = goodLabelsFromContent(sim.content);
-    const { diplomacyView, buildReason } = createTickMemoViews(sim, seatTribeOf);
+    const { diplomacyView, buildAvailability } = createTickMemoViews(sim, seatTribeOf);
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
         localPlayer,
@@ -370,7 +370,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
         ...entry,
-        disabledReason: () => buildReason(localPlayer, entry.typeId),
+        availability: () => buildAvailability(localPlayer, entry.typeId),
       })),
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),

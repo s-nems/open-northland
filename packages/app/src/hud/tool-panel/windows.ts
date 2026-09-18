@@ -1,10 +1,16 @@
 import type { HypertextBook } from '@open-northland/data';
-import type { HudLayout } from '@open-northland/render';
+import type { HudLayout, HudModel } from '@open-northland/render';
 import type { DiplomacyState, Paper } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
-import { type BuildingCategory, buildingTabbedList, type MenuBuildingEntry } from './building-menu.js';
+import type { ConstructionWindow } from '../dom/construction-window.js';
+import {
+  type BuildingAvailability,
+  type ConstructionWindowState,
+  type MenuBuildingEntry,
+  OPEN_AVAILABILITY,
+} from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasTab } from './extras-menu.js';
@@ -23,11 +29,6 @@ import {
 } from './mission/index.js';
 import type { PendingWindow } from './pending-window.js';
 import { createStatsWindow } from './stats-window.js';
-import {
-  createTabbedListWindow,
-  type TabbedListWindow,
-  type TabbedListWindowState,
-} from './tabbed-list/index.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
 /** The central windows in mount order, which is the legacy pop-ups' draw order. */
@@ -43,12 +44,23 @@ interface ToolWindowEntry {
   readonly perFrame: (hudFor: () => HudLayout) => void;
 }
 
+/** What the registry hands the construction window's factory: the entries as the held paper sees
+ *  them and the presses the registry routes. */
+export interface ConstructionWindowSeam {
+  readonly entries: readonly MenuBuildingEntry[];
+  readonly onPick: (typeId: number) => void;
+  readonly onPapers: () => void;
+  readonly onHelp: (typeId: number) => void;
+}
+
 export interface ToolWindowsDeps {
   readonly ctx: PanelContext;
   /** Every pop-up mounts its own container under this one; child order is draw order. */
   readonly container: Container;
   /** The pending note window for an entry without contents yet, mounted on the DOM plane. */
   readonly pendingWindow: (id: PendingWindowId) => PendingWindow;
+  /** The construction window, mounted on the DOM plane. */
+  readonly constructionWindow: (seam: ConstructionWindowSeam) => ConstructionWindow;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
@@ -72,7 +84,7 @@ export interface ToolWindowsDeps {
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
-  /** The place-any paper a papers-tab click hands to the build menu. */
+  /** The place-any paper a papers-tab click hands to the construction window. */
   readonly heldPaper: HeldPaperController;
   /** A building was picked for placement; `paper` is the paper the placement spends, when one is held. */
   readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
@@ -80,7 +92,7 @@ export interface ToolWindowsDeps {
 
 export interface ToolWindows {
   /** Each window by id, as the beam entries toggle them. */
-  readonly byId: Readonly<Record<ToolWindowId, ToolWindow>>;
+  readonly byId: Readonly<Record<ToolWindowId, ToolWindow>> & { readonly menu: ConstructionWindow };
   /** The mission window itself, for the page a script opens it on. */
   readonly mission: MissionWindow;
   /** The open central window, or null; the beam lights its entry. */
@@ -93,6 +105,8 @@ export interface ToolWindows {
   handleWheel(x: number, y: number, deltaY: number): boolean;
   handleHover(x: number, y: number): void;
   refresh(hudFor: () => HudLayout): void;
+  /** The tick's stock figures, for the construction window's cost marks. */
+  presentStocks(model: HudModel): void;
   state(): ToolWindowsState;
   restore(state: ToolWindowsState): void;
   dispose(): void;
@@ -100,10 +114,10 @@ export interface ToolWindows {
 
 export interface ToolWindowsState {
   readonly openIds: readonly ToolWindowId[];
-  readonly buildings: TabbedListWindowState<BuildingCategory>;
+  readonly buildings: ConstructionWindowState;
   readonly extras: ExtrasTab;
   readonly diplomacy: number | null;
-  /** The paper the build menu holds for its next pick, restored with its banner. */
+  /** The paper the construction window holds for its next pick, restored with its strip. */
   readonly heldPaper: Paper | null;
   readonly mission: MissionWindowState;
 }
@@ -112,21 +126,13 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container, heldPaper } = deps;
   const paperAwareBuildings = deps.buildings.map((building) => ({
     ...building,
-    // A place-any paper opens this same menu, but its authorization replaces the normal technology
-    // reason. Other menu constraints remain in the placement probe after the pick.
-    disabledReason: (): string | null =>
-      heldPaper.held() === null ? (building.disabledReason?.() ?? null) : null,
-  }));
-  const menu = createTabbedListWindow({
-    ctx,
-    container,
-    source: buildingTabbedList(paperAwareBuildings),
-    onPick: (b) => {
-      const paper = heldPaper.take();
-      if (paper === null) deps.onPickBuilding(b.typeId);
-      else deps.onPickBuilding(b.typeId, paper);
+    // A place-any paper opens this same window, but its authorization replaces the technology lock; a
+    // map's ban stands. Other constraints remain in the placement probe after the pick.
+    availability: (): BuildingAvailability => {
+      const own = building.availability?.() ?? OPEN_AVAILABILITY;
+      return heldPaper.held() !== null && own.kind === 'locked' ? OPEN_AVAILABILITY : own;
     },
-  });
+  }));
   const extras = createExtrasWindow({
     ctx,
     container,
@@ -134,8 +140,8 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     counters: deps.counters,
     papers: deps.papers,
     paperLabel: deps.paperLabel,
-    // A house paper names its house, so it goes straight to placement; a place-any paper opens the build
-    // menu to choose one, as the original's paper window does.
+    // A house paper names its house, so it goes straight to placement; a place-any paper opens the
+    // construction window to choose one, as the original's paper window does.
     onUsePaper: (paper) => {
       if (paper.kind === 'placeAny') {
         heldPaper.hold(paper);
@@ -166,12 +172,36 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     ...(deps.missionHuman !== undefined ? { missionHuman: deps.missionHuman } : {}),
     ...(deps.onLargeWindow !== undefined ? { onOpenChange: deps.onLargeWindow } : {}),
   });
-
-  /** The pop-ups that own a scrollable, hoverable list. */
-  const lists: readonly TabbedListWindow<BuildingCategory>[] = [menu];
+  /** Show `target` alone, as a beam press would. */
+  const openOnly = (target: ToolWindow): void => {
+    for (const id of MOUNT_ORDER) {
+      if (entries[id].window !== target) entries[id].window.close();
+    }
+    if (!target.isOpen()) target.toggle();
+  };
+  const menu = deps.constructionWindow({
+    entries: paperAwareBuildings,
+    onPick: (typeId) => {
+      const paper = heldPaper.take();
+      if (paper === null) deps.onPickBuilding(typeId);
+      else deps.onPickBuilding(typeId, paper);
+    },
+    onPapers: () => {
+      extras.restore('plans');
+      openOnly(extras);
+    },
+    // The building's Knowledge page is the knowledge ticket's; until then the pending note stands in.
+    onHelp: () => openOnly(knowledge),
+  });
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
-    menu: { window: menu, perFrame: () => menu.refresh() },
+    menu: {
+      window: menu,
+      perFrame: () => {
+        menu.place();
+        menu.refresh();
+      },
+    },
     extras: { window: extras, perFrame: () => extras.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
@@ -197,24 +227,17 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       if (top === null) return false;
       if (top === mission) return mission.handleWheel(x, y, deltaY);
       if (top === diplomacy) return diplomacy.handleWheel(x, y, deltaY);
-      for (const list of lists) {
-        if (list === top) list.handleWheel(x, y, deltaY);
-      }
       return true;
     },
     handleHover: (x, y): void => {
-      const top = topAt(x, y);
-      for (const list of lists) {
-        if (list === top) list.handleHover(x, y);
-        else list.clearHover(); // no row highlight under a window that would take the press instead
-      }
-      if (top === mission) mission.handleHover(x, y);
+      if (topAt(x, y) === mission) mission.handleHover(x, y);
       else mission.clearHover();
     },
     refresh: (hudFor): void => {
       if (heldPaper.held() !== null && !menu.isOpen()) heldPaper.cancel();
       for (const e of mounted) e.perFrame(hudFor);
     },
+    presentStocks: (model) => menu.update(model),
     state: () => ({
       openIds: MOUNT_ORDER.filter((id) => entries[id].window.isOpen()),
       buildings: menu.state(),
@@ -237,6 +260,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       }
     },
     dispose: (): void => {
+      menu.dispose();
       residents.dispose();
       knowledge.dispose();
     },

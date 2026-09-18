@@ -1,13 +1,15 @@
 import type { UiCue } from '@open-northland/audio';
-import { type HudLayout, terrainWorldBounds } from '@open-northland/render';
+import type { HudLayout } from '@open-northland/render';
 import type { Command, Paper } from '@open-northland/sim';
-import { Container, Graphics, Texture } from 'pixi.js';
+import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Rect } from '../src/hud/geometry.js';
-import { minimapLayout } from '../src/hud/minimap/model.js';
-import { navBeamRect } from '../src/hud/nav-beam.js';
 import type { TextRun } from '../src/hud/text-run.js';
-import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
+import {
+  type BuildingAvailability,
+  type MenuBuildingEntry,
+  OPEN_AVAILABILITY,
+} from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import {
   type AssistantCounterFace,
@@ -26,21 +28,17 @@ import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
-import {
-  createTabbedListWindow,
-  layoutTabbedList,
-  type TabbedListSource,
-} from '../src/hud/tool-panel/tabbed-list/index.js';
-import { standardWindowWidth } from '../src/hud/tool-panel/window-family/index.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { messages } from '../src/i18n/index.js';
+import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
+import { stubPlacementStrip } from './support/placement-strip-stub.js';
 
 /**
- * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / stats / placement) over a stubbed
- * {@link PanelContext} - the seams the package split opened up. These pin the input-routing contracts
- * the mount relies on (claim regions, close-on-pick, close-on-inside) and the stats change-key guard
- * (a tick-only change must NOT rebuild the glyph runs - the per-frame perf contract).
+ * Headless tests for the tool-panel WINDOW CONTROLLERS (registry / stats / placement / chest) over a
+ * stubbed {@link PanelContext} and a DOM-less construction window. These pin the input-routing
+ * contracts the mount relies on (claim regions, close-on-inside, the paper flow) and the stats
+ * change-key guard (a tick-only change must NOT rebuild the glyph runs - the per-frame perf contract).
  */
 
 const SCREEN = { width: 800, height: 600 };
@@ -82,8 +80,8 @@ function stubContext(overlayReserve?: () => Rect | null): {
 }
 
 const BUILDINGS: readonly MenuBuildingEntry[] = [
-  { typeId: 1, label: 'Headquarters', kind: 'storage' },
-  { typeId: 23, label: 'Joinery', kind: 'workplace' },
+  { typeId: 7, label: 'Stock', kind: 'storage', cost: [] },
+  { typeId: 23, label: 'Joinery', kind: 'workplace', cost: [] },
 ];
 
 /** The stats window's width, which `stats-window.ts` keeps private (design px). */
@@ -116,50 +114,8 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
-/** The same layout the shared tabbed-list controller computes internally (same origin formula + inputs):
- *  the family's standard width centred in the window region. These fixtures are shorter than the
- *  stub screen's viewport, so the controller's row cap does not bind. */
-function expectedListLayout<Id, Item extends { readonly label: string }>(
-  ctx: PanelContext,
-  source: TabbedListSource<Id, Item>,
-) {
-  const origin = windowOrigin(ctx, standardWindowWidth(ctx.scale));
-  return layoutTabbedList({
-    originX: origin.x,
-    originY: origin.y,
-    scale: ctx.scale,
-    tabs: source.tabs(),
-    tabColumns: source.tabColumns,
-    selected: source.initialTab,
-    items: source.items(source.initialTab),
-  });
-}
-
-const expectedMenuLayout = (ctx: PanelContext, buildings: readonly MenuBuildingEntry[] = BUILDINGS) =>
-  expectedListLayout(ctx, buildingTabbedList(buildings));
-
-// A category longer than the viewport (stub screen fits MAX_LIST_ROWS = 13), so the scroll path engages.
-const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => ({
-  typeId: 200 + i,
-  label: `B${i}`,
-  kind: 'workplace',
-}));
-
-/** A canvas point inside the build menu's first list row (past the headline + tab band). */
-function firstRowPoint(ctx: PanelContext): { x: number; y: number } {
-  const origin = windowOrigin(ctx, standardWindowWidth(ctx.scale));
-  return { x: origin.x + 20, y: origin.y + 45 * ctx.scale };
-}
-
-/** Build the shared tabbed-list window the panel mounts for the build menu. */
-function menuWindow(ctx: PanelContext, buildings: readonly MenuBuildingEntry[], onPick: (t: number) => void) {
-  return createTabbedListWindow({
-    ctx,
-    container: new Container(),
-    source: buildingTabbedList(buildings),
-    onPick: (b) => onPick(b.typeId),
-  });
-}
+/** An empty papers list, for the windows that never open the plans tab. */
+const NO_PAPERS = { read: (): readonly Paper[] => [] };
 
 /** A HUD read-view: the volatile `tick` row the stats window excludes from its change key, then a tally. */
 const hud = (tick: number, wood: number): HudLayout => ({
@@ -171,8 +127,8 @@ const hud = (tick: number, wood: number): HudLayout => ({
   ],
 });
 
-/** A read-view with enough tallies that the content-sized stats window reaches down over the build
- *  menu's first list row (both windows size themselves from their content, so they can overlap). */
+/** A read-view with enough tallies that the content-sized stats window reaches down into the chest
+ *  window (both centre in the region, so they overlap). */
 const TALL_HUD: HudLayout = {
   width: 100,
   height: 80,
@@ -182,190 +138,6 @@ const TALL_HUD: HudLayout = {
     text,
   })),
 };
-
-/** An empty papers list, for the windows that never open the plans tab. */
-const NO_PAPERS = { read: (): readonly Paper[] => [] };
-
-describe('tabbed-list window controller (build menu)', () => {
-  it('opens on toggle, claims the window rect, and closes on the close box', () => {
-    const { ctx } = stubContext();
-    const menu = menuWindow(ctx, BUILDINGS, () => undefined);
-    const geo = expectedMenuLayout(ctx);
-
-    expect(menu.isOpen()).toBe(false);
-    expect(menu.claims(geo.window.x + 1, geo.window.y + 1)).toBe(false); // closed → no claim
-
-    menu.toggle();
-    expect(menu.isOpen()).toBe(true);
-    expect(menu.claims(geo.window.x + 1, geo.window.y + 1)).toBe(true);
-    expect(menu.claims(geo.window.x - 1, geo.window.y - 1)).toBe(false); // outside the window
-
-    const close = centreOf(geo.closeRect);
-    expect(menu.handleClick(close.x, close.y)).toBe(true);
-    expect(menu.isOpen()).toBe(false);
-  });
-
-  it('closes itself BEFORE handing a picked building to onPick', () => {
-    const { ctx } = stubContext();
-    const picks: Array<{ typeId: number; menuOpenAtPick: boolean }> = [];
-    const menu = menuWindow(ctx, BUILDINGS, (typeId) =>
-      picks.push({ typeId, menuOpenAtPick: menu.isOpen() }),
-    );
-    menu.toggle();
-    const row = centreOf(expectedMenuLayout(ctx).rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-
-    expect(menu.handleClick(row.x, row.y)).toBe(true);
-    expect(picks).toEqual([{ typeId: 23, menuOpenAtPick: false }]);
-  });
-
-  it('does not consume clicks outside the open window', () => {
-    const { ctx } = stubContext();
-    const menu = menuWindow(ctx, BUILDINGS, () => undefined);
-    menu.toggle();
-    expect(menu.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
-    expect(menu.isOpen()).toBe(true);
-  });
-
-  it('clicks confirm for a row, a tab and the close box, but not for the window body', () => {
-    const { ctx, cues } = stubContext();
-    const menu = menuWindow(ctx, BUILDINGS, () => undefined);
-    menu.toggle();
-    const geo = expectedMenuLayout(ctx);
-    // The window's bottom margin is consumed but is no button.
-    const body = { x: geo.window.x + 2, y: geo.window.y + geo.window.h - 2 };
-    expect(menu.handleClick(body.x, body.y)).toBe(true);
-    expect(cues).toEqual([]);
-    const row = centreOf(geo.rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-    menu.handleClick(row.x, row.y); // picks and closes
-    expect(cues).toEqual(['confirm']);
-    menu.toggle();
-    const tab = centreOf(geo.tabs[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-    menu.handleClick(tab.x, tab.y);
-    expect(cues).toEqual(['confirm', 'confirm']);
-    const close = centreOf(expectedMenuLayout(ctx).closeRect);
-    menu.handleClick(close.x, close.y);
-    expect(cues).toEqual(['confirm', 'confirm', 'confirm']);
-  });
-
-  it('consumes the wheel over the open window and ignores it outside', () => {
-    const { ctx } = stubContext();
-    const menu = menuWindow(ctx, MANY, () => undefined);
-    menu.toggle();
-    const p = firstRowPoint(ctx);
-    expect(menu.handleWheel(p.x, p.y, 120)).toBe(true); // over the window → scrolls, consumed
-    expect(menu.handleWheel(5000, 5000, 120)).toBe(false); // off the window → not consumed
-  });
-
-  it('wheel-scrolls the overflowing list so a fixed point clicks the scrolled-in building', () => {
-    const { ctx } = stubContext();
-    const picks: number[] = [];
-    const menu = menuWindow(ctx, MANY, (t) => picks.push(t));
-    const p = firstRowPoint(ctx);
-
-    // Baseline: at rest the top row is the first building.
-    menu.toggle();
-    menu.handleClick(p.x, p.y); // a building pick closes the menu
-    const top = picks.at(-1) ?? -1;
-
-    // Scroll five rows; the SAME screen point now lands five buildings later (the list moved under it).
-    menu.toggle();
-    for (let i = 0; i < 5; i++) menu.handleWheel(p.x, p.y, 120);
-    menu.handleClick(p.x, p.y);
-    expect(picks.at(-1)).toBe(top + 5);
-  });
-
-  it('restores the selected tab and scroll position into replacement chrome', () => {
-    const { ctx } = stubContext();
-    const original = menuWindow(ctx, MANY, () => undefined);
-    const point = firstRowPoint(ctx);
-    original.toggle();
-    for (let i = 0; i < 5; i++) original.handleWheel(point.x, point.y, 120);
-
-    const saved = original.state();
-    const picks: number[] = [];
-    const replacement = menuWindow(ctx, MANY, (typeId) => picks.push(typeId));
-    replacement.restore(saved);
-    replacement.toggle();
-    replacement.handleClick(point.x, point.y);
-
-    expect(saved).toEqual({ selected: 'all', scrollTop: 5 });
-    expect(picks).toEqual([205]);
-  });
-});
-
-describe('tabbed-list window bound by the beam and the bottom-corner overlay', () => {
-  /** The lowest canvas y the open window still claims, probed down its own column: the controller keeps
-   *  its layout private, and `claims` is the seam the panel routes presses through anyway. */
-  function claimedBottom(
-    menu: { claims(x: number, y: number): boolean },
-    x: number,
-    screenH: number,
-  ): number {
-    let last = -1;
-    for (let y = 0; y < screenH; y++) {
-      if (menu.claims(x, y)) last = y;
-    }
-    return last;
-  }
-
-  const columnX = (ctx: PanelContext): number => windowOrigin(ctx, standardWindowWidth(ctx.scale)).x + 1;
-
-  it('shortens the list so no row is left under the navigation beam', () => {
-    const { ctx } = stubContext();
-    const menu = menuWindow(ctx, MANY, () => undefined);
-    menu.toggle();
-    const beam = navBeamRect(SCREEN, ctx.scale);
-    const bottom = claimedBottom(menu, columnX(ctx), SCREEN.height);
-    expect(bottom).toBeGreaterThan(0);
-    expect(bottom).toBeLessThan(beam.y);
-  });
-
-  it('yields to the minimap where a window wider than the region crosses it', () => {
-    // A screen so narrow the standard window centres over the bottom-left overlay.
-    const screen = { width: 640, height: 600 };
-    const overlay: Rect = { x: 0, y: 260, w: 224, h: screen.height - 260 };
-    const free: PanelContext = { ...stubContext().ctx, screen: () => screen };
-    const bounded: PanelContext = { ...stubContext(() => overlay).ctx, screen: () => screen };
-    const wide = menuWindow(free, MANY, () => undefined);
-    const clipped = menuWindow(bounded, MANY, () => undefined);
-    wide.toggle();
-    clipped.toggle();
-    expect(windowOrigin(free, standardWindowWidth(1)).x).toBeLessThan(overlay.x + overlay.w);
-    expect(claimedBottom(wide, columnX(free), screen.height)).toBeGreaterThanOrEqual(overlay.y);
-    expect(claimedBottom(clipped, columnX(free), screen.height)).toBeLessThan(overlay.y);
-  });
-
-  it('clears the beam and the real minimap window across the reachable and pinned uiscales', () => {
-    // The shipped bottom-left overlay, not a fixture: the wired reserve is exactly this rect.
-    const bounds = terrainWorldBounds(200, 200);
-    for (const uiscale of [1, 1.25, 1.4, 1.75, 2]) {
-      const screen = { width: 1400, height: 900 };
-      const panel = minimapLayout(bounds, screen.height, uiscale).panel;
-      const layout = buildToolPanelLayout(uiscale);
-      const ctx: PanelContext = { ...stubContext().ctx, layout, scale: layout.scale, screen: () => screen };
-      const menu = menuWindow({ ...ctx, overlayReserve: () => panel }, MANY, () => {});
-      menu.toggle();
-      const x = columnX(ctx);
-      const lowest = claimedBottom(menu, x, screen.height);
-      const beam = navBeamRect(screen, layout.scale);
-      const floor = Math.min(beam.y, x < panel.x + panel.w ? panel.y : screen.height);
-      expect({ uiscale, covered: lowest >= floor }).toEqual({ uiscale, covered: false });
-    }
-  });
-
-  it('re-fits on refresh when the screen changes', () => {
-    // Short enough that the beam, not the row cap, bounds the list.
-    let screen = { width: SCREEN.width, height: 420 };
-    const live: PanelContext = { ...stubContext().ctx, screen: () => screen };
-    const menu = menuWindow(live, MANY, () => undefined);
-    menu.toggle();
-    const before = claimedBottom(menu, columnX(live), 2000);
-
-    screen = { width: SCREEN.width, height: SCREEN.height + 300 }; // a taller screen lowers the beam
-    menu.refresh();
-    expect(claimedBottom(menu, columnX(live), 2000)).toBeGreaterThan(before);
-  });
-});
 
 describe('stats window controller', () => {
   it('rebuilds only when a tally row changes, never on the tick row alone', () => {
@@ -447,83 +219,22 @@ describe('tool windows registry', () => {
     read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
     set: () => true,
   };
-  /** `windows.ts`'s mount order: each pop-up's child index in the panel's window container, which is the
-   *  order they draw in. */
-  const MOUNT_INDEX = { menu: 0, extras: 1, stats: 2, diplomacy: 3, mission: 4 } as const;
 
-  function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
-    const { ctx: base } = stubContext();
-    const picks: number[] = [];
+  function mountWindows(papers: readonly Paper[] = [], buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
+    const { ctx } = stubContext();
+    const picks: [number, Paper | undefined][] = [];
     const container = new Container();
-    /** Every text run built so far, to check which pop-up ends up drawing it. */
-    const textRuns: Container[] = [];
-    const ctx: PanelContext = {
-      ...base,
-      makeText: (text, color, px) => {
-        const run = base.makeText(text, color, px);
-        textRuns.push(run.container);
-        return run;
-      },
-    };
+    let menu: ConstructionWindowStub | null = null;
+    const heldPaper = createHeldPaperController(ctx, stubPlacementStrip());
     const windows = createToolWindows({
       ctx,
       container,
       buildings,
       pendingWindow: stubPendingWindow,
-      grants: GRANTS,
-      counters: stubCountersSeam().seam,
-      papers: NO_PAPERS,
-      paperLabel: (paper) => `${paper.kind}:${paper.param}`,
-      heldPaper: createHeldPaperController(ctx, new Container()), // the banner layer, not a pop-up
-      diplomacyRows: () => [],
-      art: null,
-      missionBrief: () => null,
-      missionBriefingHistory: () => [],
-      missionReplayPage: () => null,
-      history: null,
-      onPickBuilding: (typeId) => picks.push(typeId),
-      onPayTribute: () => undefined,
-      onDeclareDiplomacy: () => undefined,
-    });
-    return { ctx, windows, picks, container, textRuns };
-  }
-
-  /** The row-wash layer's index inside a tabbed list's own container (back < frame < hover < labels). */
-  const HOVER_LAYER = 2;
-
-  /** The container one pop-up draws everything inside, by its mount index. */
-  function popupContainer(container: Container, at: number): Container {
-    const win = container.children[at];
-    if (!(win instanceof Container)) throw new Error(`no pop-up mounted at index ${at}`);
-    return win;
-  }
-
-  /** Whether the build menu's row-hover highlight is drawn. */
-  function hasRowHighlight(container: Container): boolean {
-    const layer = popupContainer(container, MOUNT_INDEX.menu).children[HOVER_LAYER];
-    if (!(layer instanceof Graphics)) throw new Error('the build menu no longer owns its hover layer');
-    return layer.context.instructions.length > 0;
-  }
-
-  it('a house paper goes straight to placement; a place-any paper opens the menu and rides its next pick', () => {
-    const { ctx: base } = stubContext();
-    const picks: [number, Paper | undefined][] = [];
-    let firstBuildingLocked = true;
-    const buildings = BUILDINGS.map((building, index) =>
-      index === 0
-        ? { ...building, disabledReason: () => (firstBuildingLocked ? 'technology locked' : null) }
-        : building,
-    );
-    const papers: Paper[] = [
-      { kind: 'placeHouse', param: 23 },
-      { kind: 'placeAny', param: 0 },
-    ];
-    const heldPaper = createHeldPaperController(base, new Container());
-    const windows = createToolWindows({
-      ctx: base,
-      container: new Container(),
-      buildings,
-      pendingWindow: stubPendingWindow,
+      constructionWindow: (seam) => {
+        menu = stubConstructionWindow(seam);
+        return menu;
+      },
       grants: GRANTS,
       counters: stubCountersSeam().seam,
       papers: { read: () => papers },
@@ -539,58 +250,83 @@ describe('tool windows registry', () => {
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,
     });
-    const extras = windows.byId.extras;
-    extras.toggle();
-    const plansTab = layoutExtrasMenu({ ...extrasGeometry(base), tab: 'assistant' }).tabs[1]?.rect;
+    if (menu === null) throw new Error('the registry did not mount the construction window');
+    return { ctx, windows, picks, container, heldPaper, menu: menu as ConstructionWindowStub };
+  }
+
+  /** The plans tab's rect and the paper rows the extras window lays out for `papers`. */
+  function plansGeometry(ctx: PanelContext, papers: readonly Paper[]) {
+    const plansTab = layoutExtrasMenu({ ...extrasGeometry(ctx), tab: 'assistant' }).tabs[1]?.rect;
     if (plansTab === undefined) throw new Error('no plans tab');
-    extras.handleClick(...centreXY(plansTab));
     const plans = layoutExtrasMenu({
-      ...extrasGeometry(base),
+      ...extrasGeometry(ctx),
       tab: 'plans',
       papers: papers.map((p) => paperFace(p, `${p.kind}:${p.param}`)),
     });
-    const houseRow = plans.papers[0]?.rect;
-    const anyRow = plans.papers[1]?.rect;
+    return { plansTab, rows: plans.papers.map((row) => row.rect) };
+  }
+
+  it('a house paper goes straight to placement; a place-any paper opens the window and rides its next pick', () => {
+    let firstBuildingLocked = true;
+    const buildings = BUILDINGS.map((building, index) =>
+      index === 0
+        ? {
+            ...building,
+            availability: (): BuildingAvailability =>
+              firstBuildingLocked ? { kind: 'locked', reason: 'technology locked' } : OPEN_AVAILABILITY,
+          }
+        : building,
+    );
+    const papers: Paper[] = [
+      { kind: 'placeHouse', param: 23 },
+      { kind: 'placeAny', param: 0 },
+    ];
+    const { ctx, windows, picks, heldPaper, menu } = mountWindows(papers, buildings);
+    const extras = windows.byId.extras;
+    const { plansTab, rows } = plansGeometry(ctx, papers);
+    const [houseRow, anyRow] = rows;
     if (houseRow === undefined || anyRow === undefined) throw new Error('no paper rows');
 
-    // The house paper: placement at once, window closed, menu untouched.
+    // The house paper: placement at once, window closed, the construction window untouched.
+    extras.toggle();
+    extras.handleClick(...centreXY(plansTab));
     expect(extras.handleClick(...centreXY(houseRow))).toBe(true);
     expect(picks).toEqual([[23, papers[0]]]);
     expect(extras.isOpen()).toBe(false);
-    expect(windows.byId.menu.isOpen()).toBe(false);
+    expect(menu.isOpen()).toBe(false);
 
-    // The place-any paper: the build menu opens with the paper held (a banner up, a held mode), and its
-    // pick carries the paper once.
+    // The place-any paper: the construction window opens with the paper held (the strip up, a held
+    // mode), every locked entry reads as open for it, and its pick carries the paper once.
     extras.toggle();
     extras.handleClick(...centreXY(plansTab));
     expect(extras.handleClick(...centreXY(anyRow))).toBe(true);
-    expect(windows.byId.menu.isOpen()).toBe(true);
+    expect(menu.isOpen()).toBe(true);
     expect(heldPaper.isActive()).toBe(true);
-    const row = centreOf(expectedMenuLayout(base).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-    expect(windows.handleClick(row.x, row.y)).toBe(true);
+    expect(menu.seam.entries[0]?.availability?.()).toEqual(OPEN_AVAILABILITY);
+    menu.seam.onPick(BUILDINGS[0]?.typeId ?? 0);
     expect(picks[1]).toEqual([BUILDINGS[0]?.typeId, papers[1]]);
-    expect(windows.byId.menu.isOpen()).toBe(false); // a pick closes the menu
     expect(heldPaper.isActive()).toBe(false);
+    expect(menu.seam.entries[0]?.availability?.()).toEqual({ kind: 'locked', reason: 'technology locked' });
 
-    // Closing the menu without a pick drops the held paper: the next pick is an ordinary site.
+    // Closing the window without a pick drops the held paper: the next pick is an ordinary site.
     firstBuildingLocked = false;
     extras.toggle();
     extras.handleClick(...centreXY(plansTab));
     extras.handleClick(...centreXY(anyRow));
-    windows.byId.menu.toggle();
+    menu.toggle();
     windows.refresh(() => hud(1, 0));
     expect(heldPaper.isActive()).toBe(false);
-    windows.byId.menu.toggle();
-    windows.handleClick(row.x, row.y);
+    menu.toggle();
+    menu.seam.onPick(BUILDINGS[0]?.typeId ?? 0);
     expect(picks[2]).toEqual([BUILDINGS[0]?.typeId, undefined]);
 
-    // A cancel (Esc, a right click) or a world click drops it too, and the menu stays open.
+    // A cancel (Esc, a right click) or a world click drops it too, and the window stays open.
     extras.toggle();
     extras.handleClick(...centreXY(plansTab));
     extras.handleClick(...centreXY(anyRow));
     expect(heldPaper.handleClick(0, 0)).toBe(true); // a world press: consumed, the paper dropped
     expect(heldPaper.isActive()).toBe(false);
-    expect(windows.byId.menu.isOpen()).toBe(true);
+    expect(menu.isOpen()).toBe(true);
     expect(heldPaper.handleClick(0, 0)).toBe(false); // nothing held: the press is the world's
     heldPaper.hold(papers[1] as Paper);
     heldPaper.cancel();
@@ -599,97 +335,89 @@ describe('tool windows registry', () => {
     expect(heldPaper.held()).toEqual(papers[1]);
   });
 
+  it('a map ban stands even with a place-any paper in hand', () => {
+    const banned = BUILDINGS.map((building) => ({
+      ...building,
+      availability: (): BuildingAvailability => ({ kind: 'forbidden' }),
+    }));
+    const { heldPaper, menu } = mountWindows([], banned);
+    heldPaper.hold({ kind: 'placeAny', param: 0 });
+    expect(menu.seam.entries.map((entry) => entry.availability?.().kind)).toEqual(['forbidden', 'forbidden']);
+  });
+
+  it('the Papiery button shows the chest window on its papers tab in place of the catalogue', () => {
+    const { windows, menu } = mountWindows();
+    menu.toggle();
+    menu.seam.onPapers();
+    expect(menu.isOpen()).toBe(false);
+    expect(windows.byId.extras.isOpen()).toBe(true);
+    expect(windows.state().extras).toBe('plans');
+    expect(windows.openId()).toBe('extras');
+  });
+
+  it("a card's help opens the knowledge note in place of the catalogue", () => {
+    const { windows, menu } = mountWindows();
+    menu.toggle();
+    menu.seam.onHelp(23);
+    expect(menu.isOpen()).toBe(false);
+    expect(windows.openId()).toBe('knowledge');
+  });
+
+  it("hands the tick's stocks to the construction window and carries its state through a remount", () => {
+    const { windows, menu } = mountWindows();
+    const model = { tick: 1, player: 0, population: 0, jobs: [], stocks: [] };
+    windows.presentStocks(model);
+    expect(menu.models).toEqual([model]);
+
+    menu.toggle();
+    menu.restore({ category: 'home', view: 'list', scrollTop: 40, picked: 23, suspended: false });
+    const saved = windows.state();
+    expect(saved.openIds).toEqual(['menu']);
+    expect(saved.buildings).toEqual({
+      category: 'home',
+      view: 'list',
+      scrollTop: 40,
+      picked: 23,
+      suspended: false,
+    });
+
+    const again = mountWindows();
+    again.windows.restore(saved);
+    expect(again.menu.isOpen()).toBe(true);
+    expect(again.menu.state()).toEqual(saved.buildings);
+  });
+
   it('claims a point only while a pop-up is open under it', () => {
     const { ctx, windows } = mountWindows();
-    const inside = centreOf(expectedMenuLayout(ctx).window);
+    const inside = { x: statsOrigin(ctx).x + 1, y: statsOrigin(ctx).y + 1 };
 
     expect(windows.claims(inside.x, inside.y)).toBe(false); // all closed → the world keeps the point
-    windows.byId.menu.toggle();
+    windows.byId.stats.toggle();
+    windows.refresh(() => hud(1, 5));
     expect(windows.claims(inside.x, inside.y)).toBe(true);
+    expect(windows.claims(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
+    // The construction window lives on the DOM plane, which routes its own presses.
+    windows.byId.menu.toggle();
     expect(windows.claims(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
   });
 
-  it('routes a click to the open pop-up under the point and passes on the rest', () => {
-    const { ctx, windows, picks } = mountWindows();
-    windows.byId.menu.toggle();
-    const row = centreOf(expectedMenuLayout(ctx).rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-
-    expect(windows.handleClick(row.x, row.y)).toBe(true);
-    expect(picks).toEqual([23]); // reached the build menu's pick → the panel's placement mode
-    // Nothing open under the point: the press falls through to placement / world picking.
-    expect(windows.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
-  });
-
   it('probes the pop-ups in draw order, so an overlap goes to the top-drawn window', () => {
-    const { ctx, windows, picks } = mountWindows();
-    windows.byId.menu.toggle();
+    const { ctx, windows } = mountWindows();
+    windows.byId.extras.toggle();
     windows.byId.stats.toggle();
     windows.refresh(() => TALL_HUD); // the stats window draws (and gains its rect) on its first refresh
 
-    // Statistics draws after (over) the build menu and its column overlaps the menu's list: a point
-    // inside the statistics panel and inside the menu's first building row.
-    const row = expectedMenuLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-    const shared = { x: statsOrigin(ctx).x + 1, y: row.y + 1 };
-    expect(windows.byId.menu.claims(shared.x, shared.y)).toBe(true);
+    // Statistics draws after (over) the chest window and both centre in the same region: a point
+    // inside the statistics panel is inside the chest window too.
+    const shared = { x: statsOrigin(ctx).x + 1, y: statsOrigin(ctx).y + 1 };
+    expect(windows.byId.extras.claims(shared.x, shared.y)).toBe(true);
     expect(windows.byId.stats.claims(shared.x, shared.y)).toBe(true);
 
     expect(windows.handleClick(shared.x, shared.y)).toBe(true);
     expect(windows.byId.stats.isOpen()).toBe(false); // statistics took the press and closed on inside
-    expect(windows.byId.menu.isOpen()).toBe(true);
-    expect(picks).toEqual([]); // the covered menu row must not enter building placement
-  });
-
-  it('gives the wheel to the top-drawn window instead of scrolling a covered list', () => {
-    const { ctx, windows, picks } = mountWindows(MANY);
-    windows.byId.menu.toggle();
-    windows.byId.stats.toggle();
-    windows.refresh(() => TALL_HUD);
-
-    const row = expectedMenuLayout(ctx, MANY).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-    const covered = { x: statsOrigin(ctx).x + 1, y: row.y + 1 };
-    expect(windows.byId.stats.claims(covered.x, covered.y)).toBe(true);
-
-    expect(windows.handleWheel(covered.x, covered.y, 120)).toBe(true); // statistics owns the wheel there
-    // The list did not move under the cursor: the uncovered part of the same row still picks the first
-    // building (a scroll would have paged it forward).
-    const uncovered = firstRowPoint(ctx);
-    windows.handleClick(uncovered.x, uncovered.y);
-    expect(picks).toEqual([MANY[0]?.typeId]);
-  });
-
-  it('drops the build-menu row highlight where another pop-up covers the point', () => {
-    const { ctx, windows, container } = mountWindows();
-    windows.byId.menu.toggle();
-    windows.byId.stats.toggle();
-    windows.refresh(() => TALL_HUD);
-
-    const row = expectedMenuLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-    windows.handleHover(row.x + 1, row.y + 1);
-    expect(hasRowHighlight(container)).toBe(true);
-
-    // The same row, but under the statistics window: highlighting it would promise a pick the press
-    // no longer makes.
-    windows.handleHover(statsOrigin(ctx).x + 1, row.y + 1);
-    expect(hasRowHighlight(container)).toBe(false);
-  });
-
-  it('keeps a rebuilt menu below a pop-up mounted after it', () => {
-    const { ctx, windows, container, textRuns } = mountWindows(MANY);
-    windows.byId.menu.toggle();
-    windows.byId.stats.toggle();
-    windows.refresh(() => TALL_HUD); // the per-frame pass refreshes in mount order, statistics last
-    expect(textRuns.at(-1)?.parent).toBe(popupContainer(container, MOUNT_INDEX.stats));
-
-    textRuns.length = 0; // from here only the menu rebuilds, so every new run is one of its labels
-    const p = firstRowPoint(ctx);
-    expect(windows.handleWheel(p.x, p.y, 120)).toBe(true); // a scroll repaints its chrome and labels
-    expect(textRuns.length).toBeGreaterThan(0);
-
-    // Each pop-up draws inside one child of the panel's container, so the menu's labels stay under the
-    // statistics frame mounted after them instead of landing on top of it.
-    expect(container.children).toHaveLength(Object.keys(MOUNT_INDEX).length);
-    const menu = popupContainer(container, MOUNT_INDEX.menu);
-    for (const run of textRuns) expect(run.parent).toBe(menu);
+    expect(windows.byId.extras.isOpen()).toBe(true); // the covered chest window saw nothing
+    // Nothing open under the point: the press falls through to placement / world picking.
+    expect(windows.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
   });
 
   it('consumes the wheel over any open pop-up, list or not', () => {
@@ -704,22 +432,6 @@ describe('tool windows registry', () => {
     windows.refresh(() => hud(1, 5));
     // The statistics window has no scrollable list, but the wheel must not page the document behind it.
     expect(windows.handleWheel(overStats.x, overStats.y, 120)).toBe(true);
-  });
-
-  it('scrolls the build menu with the wheel it consumed', () => {
-    const { ctx, windows, picks } = mountWindows(MANY);
-    const p = firstRowPoint(ctx);
-
-    // Baseline: at rest the top row is the first building (a pick closes the menu).
-    windows.byId.menu.toggle();
-    windows.handleClick(p.x, p.y);
-    const top = picks.at(-1) ?? -1;
-
-    // Five wheels through the registry; the SAME point now clicks five buildings later.
-    windows.byId.menu.toggle();
-    for (let i = 0; i < 5; i++) expect(windows.handleWheel(p.x, p.y, 120)).toBe(true);
-    windows.handleClick(p.x, p.y);
-    expect(picks.at(-1)).toBe(top + 5);
   });
 
   it('pulls the HUD read-view in the per-frame pass only for an open window', () => {
@@ -746,18 +458,40 @@ describe('placement controller', () => {
   ) {
     const { ctx, cues } = stubContext();
     const commands: Command[] = [];
+    const strip = stubPlacementStrip();
+    let cancels = 0;
     const placement = createPlacementController({
       ctx,
-      container: new Container(),
+      strip,
       labelByType: new Map([[23, 'Joinery']]),
       enqueue: (c) => commands.push(c),
       screenToTile,
       canPlaceAt,
       tribe: 1,
       owner: 0,
+      onCancel: () => {
+        cancels++;
+      },
     });
-    return { placement, commands, cues };
+    return { placement, commands, cues, strip, cancelled: () => cancels };
   }
+
+  it('names the held building on the strip, clears it with the mode, and reports only a cancel', () => {
+    const { placement, strip, cancelled } = mount(() => ({ col: 4, row: 2 }));
+    placement.enter(23);
+    expect(strip.shown).toEqual({ label: 'Joinery', hint: messages().hud.construction.placeHint });
+    placement.handleClick(10, 10);
+    expect(strip.shown).toBeNull();
+    expect(cancelled()).toBe(0); // a landing is not a cancel: the window stays away
+
+    placement.enter(23, { kind: 'placeHouse', param: 23 });
+    expect(strip.shown?.hint).toBe(messages().hud.construction.placePaperHint);
+    placement.cancel();
+    expect(strip.shown).toBeNull();
+    expect(cancelled()).toBe(1);
+    placement.cancel(); // nothing held: nothing to report
+    expect(cancelled()).toBe(1);
+  });
 
   it('places a construction site at an accepted tile and EXITS build mode (one click = one foundation)', () => {
     const { placement, commands } = mount(() => ({ col: 4, row: 2 }));

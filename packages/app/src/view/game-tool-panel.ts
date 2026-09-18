@@ -1,7 +1,13 @@
 import type { UiCue } from '@open-northland/audio';
+import type { ContentSet } from '@open-northland/data';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
-import type { DiplomacyState, Paper, PlayerCommand } from '@open-northland/sim';
+import {
+  constructionBillForType,
+  type DiplomacyState,
+  type Paper,
+  type PlayerCommand,
+} from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
@@ -9,7 +15,7 @@ import type { MissionBrief } from '../game/mission-brief.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
-import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
+import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
 import type {
   ExtrasCountersSeam,
@@ -124,21 +130,29 @@ export function applyGameSpeed(
 }
 
 /**
- * The content set's building types, labelled through the viking catalog and localized to `lang`. The
- * English catalog label is the fallback when a language has no authored name.
+ * The content set's building types the construction window lists, labelled through the viking
+ * catalog and localized to `lang`; the English catalog label is the fallback when a language has no
+ * authored name. As the original's selection window, it skips the vehicles and the wonders, and a
+ * type that costs nothing: the headquarters stands from the map and the wall segment comes from the
+ * wall tool, never from the catalogue. Each entry carries the from-scratch bill the sim charges.
  */
 export function menuEntriesFromContent(
-  content: { buildings: readonly { typeId: number; id: string; kind: string }[] },
+  content: Pick<ContentSet, 'buildings'>,
   lang: string = currentLocale(),
 ): MenuBuildingEntry[] {
-  return content.buildings.map((b) => {
+  return content.buildings.flatMap((b) => {
+    const cost = constructionBillForType(content.buildings, b.typeId);
+    if (!CATALOGUE_KINDS.has(b.kind) || cost.length === 0) return [];
     const catalog = vikingBuildingByTypeId(b.typeId);
     const english = catalog?.label ?? b.id;
-    return {
-      typeId: b.typeId,
-      label: localizedBuildingName(catalog?.id ?? b.id, english, lang),
-      kind: b.kind,
-    };
+    return [
+      {
+        typeId: b.typeId,
+        label: localizedBuildingName(catalog?.id ?? b.id, english, lang),
+        kind: b.kind,
+        cost,
+      },
+    ];
   });
 }
 

@@ -1,14 +1,13 @@
 import type { Paper, PlayerCommand } from '@open-northland/sim';
-import type { Container } from 'pixi.js';
-import { formatMessage, messages } from '../../i18n/index.js';
+import { messages } from '../../i18n/index.js';
+import type { PlacementStrip } from '../dom/placement-strip.js';
 import type { PanelContext } from './context.js';
-import { createHeldItemBanner } from './held-item-banner.js';
 
 export interface PlacementDeps {
   readonly ctx: PanelContext;
-  /** The panel's banner container (drawn over the windows). */
-  readonly container: Container;
-  /** typeId → display label for the banner text. */
+  /** The strip that names the held building while placing. */
+  readonly strip: PlacementStrip;
+  /** typeId → display label for the strip. */
   readonly labelByType: ReadonlyMap<number, string>;
   /** Submit the `placeBuilding` command (the one-way seam). */
   readonly enqueue: (command: PlayerCommand) => void;
@@ -20,9 +19,11 @@ export interface PlacementDeps {
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
+  /** A placement was called off (Esc, the right button, a beam entry) with nothing placed. */
+  readonly onCancel?: () => void;
 }
 
-/** Placement mode: pick a building in the menu, then one left-click on buildable ground places and
+/** Placement mode: pick a building in the window, then one left-click on buildable ground places and
  *  exits the mode, as in the original. Esc or right-click abandons. The landing click confirms through
  *  the GUI cue; the world itself makes no sound for a new site. */
 export interface PlacementController {
@@ -37,21 +38,18 @@ export interface PlacementController {
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
   handleClick(clientX: number, clientY: number): boolean;
-  /** Per-frame: re-place the banner text against the live canvas size. */
-  placeBanner(): void;
 }
 
 export function createPlacementController(deps: PlacementDeps): PlacementController {
-  const { ctx } = deps;
+  const { ctx, strip } = deps;
 
   let placementType: number | null = null;
   let placementPaper: Paper | null = null;
-  const banner = createHeldItemBanner(ctx, deps.container);
 
   const exitPlacement = (): void => {
     placementType = null;
     placementPaper = null;
-    banner.clear();
+    strip.clear();
   };
 
   return {
@@ -61,11 +59,17 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     enter: (typeId, paper): void => {
       placementType = typeId;
       placementPaper = paper ?? null;
-      const label = deps.labelByType.get(typeId) ?? `#${typeId}`;
-      const hint = paper === undefined ? messages().hud.placementHint : messages().hud.placementPaperHint;
-      banner.show(formatMessage(hint, { label }));
+      const copy = messages().hud.construction;
+      strip.show({
+        label: deps.labelByType.get(typeId) ?? `#${typeId}`,
+        hint: paper === undefined ? copy.placeHint : copy.placePaperHint,
+      });
     },
-    cancel: exitPlacement,
+    cancel: (): void => {
+      if (placementType === null) return;
+      exitPlacement();
+      deps.onCancel?.();
+    },
     handleClick: (clientX, clientY): boolean => {
       if (placementType === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
@@ -94,6 +98,5 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       }
       return true;
     },
-    placeBanner: () => banner.place(),
   };
 }

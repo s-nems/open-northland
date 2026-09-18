@@ -2,8 +2,6 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [05-construction](ingame-ui-05-construction.md)
-
 `hud/tool-panel/extras-papers.ts` and `view/assistant-grants.ts` implement papers under Extras, with some document types still display-only according to the reference.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

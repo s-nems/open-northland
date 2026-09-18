@@ -57,18 +57,20 @@ export const GOOD_ICON_BOX_PX = 25;
 const GOOD_ICON_MASS_PX = 19.5;
 const GOOD_ICON_MARGIN_PX = 1;
 
-/** An empty icon slot: the `GOOD_ICON_BOX_PX` box centring the frame element `goodIconStyle` fills. */
-export function goodIconMarkup(): string {
-  return `<span class="on-good" aria-hidden="true" style="width:${GOOD_ICON_BOX_PX}px;height:${GOOD_ICON_BOX_PX}px"><i class="on-good__frame"></i></span>`;
+/** An empty icon slot: a `boxPx` box centring the frame element `goodIconStyle` fills. */
+export function goodIconMarkup(boxPx = GOOD_ICON_BOX_PX): string {
+  return `<span class="on-good" aria-hidden="true" style="width:${boxPx}px;height:${boxPx}px"><i class="on-good__frame"></i></span>`;
 }
 
 /** The frame element's inline style: sized to the scaled frame exactly, so the sheet shows nothing
- *  beside a thin sprite (a background the size of the box would leak the neighbouring frames in). */
-export function goodIconStyle(source: GoodIconSource): string {
+ *  beside a thin sprite (a background the size of the box would leak the neighbouring frames in). A
+ *  smaller box keeps the same mass-to-box proportion. */
+export function goodIconStyle(source: GoodIconSource, boxPx = GOOD_ICON_BOX_PX): string {
   const { rect, sheet } = source;
+  const proportion = boxPx / GOOD_ICON_BOX_PX;
   const scale = Math.min(
-    GOOD_ICON_MASS_PX / Math.sqrt(rect.width * rect.height),
-    (GOOD_ICON_BOX_PX - GOOD_ICON_MARGIN_PX) / Math.max(rect.width, rect.height),
+    (GOOD_ICON_MASS_PX * proportion) / Math.sqrt(rect.width * rect.height),
+    (boxPx - GOOD_ICON_MARGIN_PX * proportion) / Math.max(rect.width, rect.height),
   );
   const px = (n: number): string => `${n.toFixed(2)}px`;
   return `width:${px(rect.width * scale)};height:${px(rect.height * scale)};background-image:url("${source.url}");background-size:${px(sheet.width * scale)} ${px(sheet.height * scale)};background-position:${px(-rect.x * scale)} ${px(-rect.y * scale)};`;

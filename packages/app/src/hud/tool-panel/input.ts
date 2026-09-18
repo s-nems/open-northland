@@ -11,7 +11,6 @@ export interface HeldMode {
   cancel(): void;
   /** True when this mode took the press; the first claimer wins. */
   handleClick(clientX: number, clientY: number): boolean;
-  placeBanner(): void;
 }
 
 export interface ToolPanelInputDeps {

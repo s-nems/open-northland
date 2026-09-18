@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILDING_CATEGORIES,
   buildingsInCategory,
-  buildingTabbedList,
+  CATALOGUE_KINDS,
   categoryOfKind,
+  INITIAL_CONSTRUCTION_STATE,
   type MenuBuildingEntry,
 } from '../src/hud/tool-panel/building-menu.js';
 
 const ENTRIES: readonly MenuBuildingEntry[] = [
-  { typeId: 1, label: 'Headquarters', kind: 'storage' },
-  { typeId: 2, label: 'Home', kind: 'home' },
-  { typeId: 12, label: 'Grain farm', kind: 'workplace' },
-  { typeId: 39, label: 'Barracks', kind: 'training' },
-  { typeId: 40, label: 'Watchtower', kind: 'tower' },
+  { typeId: 7, label: 'Stock', kind: 'storage', cost: [] },
+  { typeId: 2, label: 'Home', kind: 'home', cost: [] },
+  { typeId: 12, label: 'Grain farm', kind: 'workplace', cost: [] },
+  { typeId: 39, label: 'Barracks', kind: 'training', cost: [] },
+  { typeId: 40, label: 'Watchtower', kind: 'tower', cost: [] },
 ];
 
 describe('building-menu', () => {
@@ -35,6 +36,12 @@ describe('building-menu', () => {
     expect(categoryOfKind('training')).toBe('military');
   });
 
+  it('lists the house kinds and leaves vehicles and wonders to their workshops', () => {
+    expect([...CATALOGUE_KINDS].sort()).toEqual(['home', 'storage', 'tower', 'training', 'workplace']);
+    expect(CATALOGUE_KINDS.has('vehicle')).toBe(false);
+    expect(CATALOGUE_KINDS.has('wonder')).toBe(false);
+  });
+
   it('filters entries by category, with all returning everything', () => {
     expect(buildingsInCategory(ENTRIES, 'all')).toHaveLength(5);
     expect(buildingsInCategory(ENTRIES, 'home').map((entry) => entry.typeId)).toEqual([2]);
@@ -42,12 +49,13 @@ describe('building-menu', () => {
     expect(buildingsInCategory(ENTRIES, 'work').map((entry) => entry.typeId)).toEqual([12]);
   });
 
-  it('exposes the categories as one tabbed-list row of localized tabs, opening on Wszystko', () => {
-    const source = buildingTabbedList(ENTRIES);
-    expect(source.tabs().map((tab) => tab.label)).toEqual(['Wszystko', 'Praca', 'Magazyn', 'Dom', 'Wojsko']);
-    expect(source.tabs().map((tab) => tab.stringId)).toEqual([2, 3, 4, 5, 6]);
-    expect(source.tabColumns).toBe(BUILDING_CATEGORIES.length); // all five side by side
-    expect(source.initialTab).toBe('all');
-    expect(source.items('military').map((entry) => entry.typeId)).toEqual([39, 40]);
+  it('opens on the all tab in the grid view with nothing picked', () => {
+    expect(INITIAL_CONSTRUCTION_STATE).toEqual({
+      category: 'all',
+      view: 'grid',
+      scrollTop: 0,
+      picked: null,
+      suspended: false,
+    });
   });
 });

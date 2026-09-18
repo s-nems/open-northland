@@ -1,7 +1,19 @@
 import type { ContentSet } from '@open-northland/data';
 import type { Simulation } from '@open-northland/sim';
 import { professionDefForJob } from '../catalog/professions.js';
+import { type BuildingAvailability, OPEN_AVAILABILITY } from '../hud/tool-panel/building-menu.js';
 import { messages, professionLabel } from '../i18n/index.js';
+
+/** A house's place in the construction window: banned entries are never listed, undiscovered ones
+ *  wait at the end with the discoveries they need. */
+export function technologyAvailability(
+  content: ContentSet,
+  status: ReturnType<Simulation['unlockStatus']>,
+): BuildingAvailability {
+  if (!status.allowed) return { kind: 'forbidden' };
+  const reason = technologyReason(content, status);
+  return reason === null ? OPEN_AVAILABILITY : { kind: 'locked', reason };
+}
 
 export function technologyReason(
   content: ContentSet,

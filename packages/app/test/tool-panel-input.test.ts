@@ -35,7 +35,6 @@ function heldMode(): HeldMode & { active: boolean } {
       mode.active = false;
     },
     handleClick: (): boolean => mode.active,
-    placeBanner: (): void => undefined,
   };
   return mode;
 }

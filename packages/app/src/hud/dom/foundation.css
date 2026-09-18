@@ -313,15 +313,44 @@
   overflow: auto;
 }
 
-/* ---------- tool row, tabs and parchment catalogue ---------- */
+/* ---------- construction window: tool row, tabs, parchment catalogue ---------- */
+.on-hud .on-window--construction .on-window__body--column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
 .on-hud .on-toolrow {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
   padding: 9px 12px 6px;
 }
+.on-hud .on-toolrow .on-button:disabled {
+  cursor: not-allowed;
+  color: #b7ab92;
+  background: linear-gradient(#5a4631, #3e3022);
+  border-color: #2e2418;
+  box-shadow: inset 0 1px #fff1;
+}
+.on-hud .on-toolrow .on-button:disabled .on-glyph {
+  opacity: 0.5;
+}
 .on-hud .on-toolrow .on-button--accent {
   margin-left: auto;
+}
+.on-hud .on-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bronze-lo);
+  color: #1c1610;
+  font: 700 11px / 18px var(--font-body);
+  text-align: center;
+}
+.on-hud .on-count[hidden] {
+  display: none;
 }
 .on-hud .on-tabs {
   position: relative;
@@ -361,6 +390,36 @@
 .on-hud .on-tab[aria-selected="true"] .on-tab__count {
   opacity: 0.85;
 }
+/* Grid or list: the choice sits at the tabs' right end and survives closing the window. */
+.on-hud .on-view {
+  display: flex;
+  gap: 2px;
+  align-self: center;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+}
+.on-hud .on-view__button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #a48a5c66;
+  border-radius: 3px;
+  background: #fff5;
+  color: var(--ink-muted);
+}
+.on-hud .on-view__button .on-glyph {
+  width: 15px;
+  height: 15px;
+}
+.on-hud .on-view__button[aria-pressed="true"] {
+  background: linear-gradient(#fbf1d3, #e9d9b3);
+  border-color: var(--bronze-lo);
+  color: var(--ink);
+  box-shadow: inset 0 1px #fff8;
+}
 .on-hud .on-parchment {
   overflow: auto;
   min-height: 0;
@@ -392,20 +451,34 @@
   height: 1px;
   background: linear-gradient(90deg, #8d7549aa, transparent);
 }
-.on-hud .on-grid {
+.on-hud .on-parchment__count::before {
+  content: "· ";
+}
+.on-hud .on-parchment__note--locked {
+  margin-top: 14px;
+}
+.on-hud .on-parchment > [hidden],
+.on-hud .on-bcard[hidden] {
+  display: none;
+}
+.on-hud .on-build-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.on-hud .on-card {
+.on-hud .on-bcard {
   position: relative;
+  min-width: 0;
+}
+/* Every card has the same fixed height: the picture beside the name, the cost right under it; the
+   height holds a two-line name, a requirement line and two rows of goods, so nothing ever clips. */
+.on-hud .on-bcard__pick {
   display: grid;
-  grid-template-columns: 70px 1fr;
-  grid-template-rows: 1fr auto;
-  gap: 6px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 9px;
   align-items: center;
-  text-align: left;
-  min-height: 104px;
+  width: 100%;
+  height: 120px;
   padding: 8px;
   overflow: hidden;
   border: 1px solid #a48a5c;
@@ -415,49 +488,9 @@
     inset 0 1px #fff8,
     0 1px 2px #5a43221f;
   color: var(--ink);
+  text-align: left;
 }
-.on-hud .on-card__thumb {
-  position: relative;
-  display: grid;
-  place-items: center;
-  grid-row: 1 / -1;
-  width: 68px;
-  height: 78px;
-  border: 1px solid #a48a5c88;
-  border-radius: 2px;
-  background: radial-gradient(ellipse at 50% 85%, #6b532a33, transparent 60%), #e4d6b4;
-  box-shadow: inset 0 0 0 1px #fff6;
-  color: var(--ink-muted);
-}
-.on-hud .on-card__thumb .on-glyph {
-  width: 49px;
-  height: 49px;
-  stroke-width: 1.35;
-  filter: drop-shadow(0 2px #fff5);
-}
-.on-hud .on-card__title {
-  display: block;
-  font: 700 15px / 1.15 var(--font-body);
-  letter-spacing: 0.01em;
-  color: var(--ink);
-}
-.on-hud .on-card__text {
-  display: block;
-  margin-top: 3px;
-  font-size: 12px;
-  line-height: 1.3;
-  color: var(--ink-muted);
-}
-.on-hud .on-card__cost {
-  grid-column: 2;
-  display: flex;
-  gap: 6px;
-  padding-top: 6px;
-  border-top: 1px dotted #8d7549aa;
-  font-size: 12px;
-  color: var(--ink);
-}
-.on-hud .on-card:hover {
+.on-hud .on-bcard__pick:hover {
   transform: translateY(-1px);
   background: linear-gradient(#fbf2d9, #efe2c2);
   border-color: var(--bronze-lo);
@@ -465,7 +498,8 @@
     inset 0 1px #fff8,
     0 4px 10px #4a341a33;
 }
-.on-hud .on-card[aria-pressed="true"] {
+/* The card last picked keeps a lit rim, so Esc from a placement lands back on it; no other mark. */
+.on-hud .on-bcard__pick[aria-pressed="true"] {
   background: linear-gradient(#fbf1d3, #f0e2bd);
   border-color: var(--bronze-lo);
   box-shadow:
@@ -473,38 +507,131 @@
     0 0 0 1px #fff5 inset,
     0 3px 8px #4a341a33;
 }
-.on-hud .on-card[aria-pressed="true"]::after {
-  content: "";
+.on-hud .on-bcard__thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  padding: 3px;
+  overflow: hidden;
+  border: 1px solid #a48a5c88;
+  border-radius: 2px;
+  background: radial-gradient(ellipse at 50% 85%, #6b532a33, transparent 60%), #e4d6b4;
+  box-shadow: inset 0 0 0 1px #fff6;
+  color: var(--ink-muted);
+}
+.on-hud .on-bcard__thumb canvas {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 2px #3a2a1466);
+}
+.on-hud .on-bcard__thumb .on-glyph {
+  width: 49px;
+  height: 49px;
+  stroke-width: 1.35;
+  filter: drop-shadow(0 2px #fff5);
+}
+.on-hud .on-bcard__body {
+  min-width: 0;
+}
+.on-hud .on-bcard__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font: 700 14.5px / 1.15 var(--font-body);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.on-hud .on-bcard__reason {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink-muted);
+}
+.on-hud .on-bcard__reason[hidden] {
+  display: none;
+}
+.on-hud .on-bcard__help {
   position: absolute;
-  right: -6px;
-  top: -6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fbe9c4' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='m6 12 4 4 8-8'/></svg>")
-    center / 14px no-repeat,
-    radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%),
-    var(--wax-danger);
-  box-shadow:
-    0 0 0 1.5px #fff8,
-    0 2px 4px #0008,
-    inset 0 -2px 3px #0006;
+  right: 8px;
+  bottom: 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font: 700 13px / 1 var(--font-body);
+  color: #f0e4c8;
   z-index: 1;
 }
-.on-hud .on-card:disabled {
+.on-hud .on-cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 1px;
+  margin-top: 5px;
+  padding: 0 4px 4px 0;
+}
+/* One slot per good: the icon on a small parchment square, the amount as a badge in its corner. */
+.on-hud .on-cost__slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 21px;
+  height: 21px;
+  border: 1px solid #a48a5c66;
+  border-radius: 3px;
+  background: #fff7;
+  font-style: normal;
+}
+.on-hud .on-cost__slot b {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: #3b2d1c;
+  box-shadow: 0 0 0 1px #f2e7c9;
+  font: 700 9.5px / 13px var(--font-body);
+  color: #f4e9cf;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-cost__slot--short {
+  border-color: #a8412f;
+  background: #f1d9c8aa;
+}
+.on-hud .on-cost__slot--short b {
+  background: var(--wax-danger);
+}
+.on-hud .on-bcard--locked .on-bcard__pick {
   cursor: not-allowed;
   background: #cdbf9d;
 }
-.on-hud .on-card:disabled .on-card__title,
-.on-hud .on-card:disabled .on-card__text,
-.on-hud .on-card:disabled .on-card__cost {
+.on-hud .on-bcard--locked .on-bcard__title,
+.on-hud .on-bcard--locked .on-bcard__reason {
   color: #7d6d52;
 }
-.on-hud .on-card:disabled .on-card__thumb {
+.on-hud .on-bcard--locked .on-cost__slot {
+  background: #fff3;
+  border-color: #a48a5c33;
+  opacity: 0.75;
+}
+.on-hud .on-bcard--locked .on-cost__slot b {
+  background: #6b5a44;
+  box-shadow: 0 0 0 1px #cdbf9d;
+}
+.on-hud .on-bcard--locked .on-bcard__thumb {
   opacity: 0.4;
 }
-.on-hud .on-card:disabled .on-card__thumb::after {
+.on-hud .on-bcard--locked .on-bcard__thumb::after {
   content: "";
   position: absolute;
   right: -5px;
@@ -520,47 +647,94 @@
     0 0 0 1.5px #e4d6b4,
     0 1px 3px #0007;
 }
-.on-hud .on-chip {
-  display: inline-flex;
-  align-items: center;
+/* The list drops the picture: one 36 px row per building, the name, the reason, the cost. */
+.on-hud .on-catalog[data-view="list"] .on-build-grid {
+  grid-template-columns: 1fr;
   gap: 3px;
-  padding: 1px 6px;
-  border: 1px solid #a48a5c66;
-  border-radius: 10px;
-  background: #fff7;
-  font: 600 11.5px / 1.4 var(--font-body);
-  font-style: normal;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__pick {
+  grid-template-columns: minmax(0, 1fr);
+  height: 36px;
+  padding: 5px 8px;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__thumb {
+  display: none;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__title {
+  display: block;
+  flex: none;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__reason {
+  flex: 1;
+  margin: 0;
+}
+.on-hud .on-catalog[data-view="list"] .on-cost {
+  flex: none;
+  flex-wrap: nowrap;
+  margin: 0 28px 0 auto;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__help {
+  bottom: 6px;
+}
+.on-hud .on-catalog__empty {
+  display: grid;
+  gap: 6px;
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.on-hud .on-catalog__empty strong {
+  font: 700 16px var(--font-body);
   color: var(--ink);
 }
-.on-hud .on-chip--bad {
-  border-color: #a8412f66;
-  color: #7a2a1c;
-  background: #f1d9c866;
-}
-.on-hud .on-hint {
+/* The strip at the head of the central region while a building or a paper is held. */
+.on-hud .on-strip {
+  position: absolute;
+  left: 50%;
   display: flex;
   align-items: center;
   gap: 9px;
-  flex-shrink: 0;
-  margin: 0 10px 10px;
-  padding: 7px 10px;
+  max-width: 540px;
+  padding: 7px 12px;
+  transform: translateX(-50%);
+  pointer-events: auto;
   border: 1px solid var(--bronze-lo);
   border-radius: 3px;
-  background: linear-gradient(90deg, #c9a26226, #c9a26208);
+  background: linear-gradient(90deg, #273832f2, #182521f2);
+  box-shadow: 0 6px 16px #0009;
   color: #f0e4c8;
   font-size: 12.5px;
+  white-space: nowrap;
 }
-.on-hud .on-hint .on-glyph {
+.on-hud .on-strip[hidden] {
+  display: none;
+}
+.on-hud .on-strip > .on-glyph {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
   color: var(--bronze-hi);
   stroke-width: 1.8;
 }
-.on-hud .on-hint b {
+.on-hud .on-strip b {
   color: var(--bronze-hi);
 }
-.on-hud .on-hint .on-key {
-  margin-left: auto;
+.on-hud .on-strip__keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding-left: 10px;
+  border-left: 1px solid #ffffff22;
+  color: #cdbf9d;
 }
 
 /* ---------- details: sections, ledger rows, meters, portrait ---------- */

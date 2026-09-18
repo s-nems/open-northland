@@ -3,8 +3,8 @@
 **Status:** approved as the shared visual direction: the frozen HUD layout of the wireframe with the
 B · Leśny łupek slate base and the wood, bronze and parchment chrome of study 05. The runtime
 primitives live in `packages/app/src/hud/dom/` and the production art in the published `ui/foundation`
-package. Individual panel contents still require their own detailed design review; the construction
-and selection panels shown here are illustrative.
+package. Individual panel contents still require their own detailed design review; the selection panel
+shown here is illustrative, the construction window is the accepted design (rules below).
 
 The reference is [foundation.html](foundation.html) with `foundation.css` and `foundation.js`. It is
 a single flattened stylesheet: later panel mockups extend it instead of layering overrides. The
@@ -40,7 +40,8 @@ labels, so colour is never the only carrier of state.
   and a bronze knot at the top centre. Minor controls use thinner edges. Close buttons, the message
   count, the game menu and the settler level are bronze medallions.
 - Catalogue interiors are parchment with a faint SVG grain. Entries look like permits: parchment
-  cards, ink text, cost chips, a wax check on the selected card, a lock badge on locked entries.
+  cards, ink text, cost slots with a corner badge, a lit rim on the card last picked, a lock badge on
+  locked entries.
 - Bottom navigation: seven bronze medallions on the carved beam, persistent labels, hotkey badge
   1–7, lit medallion and marker for the active entry.
 - Top bar: one beam carrying population symbols, goods counters, the simulation clock, the segmented
@@ -51,9 +52,9 @@ labels, so colour is never the only carrier of state.
   above the list carry the tally of each weight.
 - Selection details use ledger rows with dotted leaders, small-caps section titles with rules,
   quarter ticks on meters and icon buttons for orders.
-- The placement bar under the catalogue is an interaction proposal for the construction ticket. The
-  digit badges on the beam are dropped: digits 1-9 and 0 are the control-group keys, so the runtime
-  beam carries no digit hotkeys.
+- A held building or paper shows as a dark strip at the head of the central region, not inside the
+  window (the window is away while placing). The digit badges on the beam are dropped: digits 1-9 and 0
+  are the control-group keys, so the runtime beam carries no digit hotkeys.
 
 ## Components and geometry
 
@@ -64,7 +65,8 @@ filters are an explicit exception in this mouse/keyboard study.
 
 - Main action art: 36 px; resource art: 29 px; gallery art: 44 px.
 - Bottom actions: 56 × 64 px on a 44 px medallion, with persistent labels and a selected marker.
-- Construction: 540 px wide, content-sized rather than filling the screen vertically.
+- Construction: 540 px wide, content-sized rather than filling the screen vertically; the catalogue
+  scrolls inside it once the window would reach the beam.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
 - Notifications: 180 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px, touching the bottom-left corner.
@@ -76,6 +78,41 @@ The preview offers 90/100/125%, light/dark terrain and selected long English lab
 Hover lifts action art and medallions slightly; selection adds the lit rim and marker. Disabled
 catalogue entries keep readable requirements with faded art. Reduced-motion suppresses transitions
 and the walk loop. Escape/close hides construction; Buduj restores it.
+
+### Construction window
+
+The window (ticket 05) replaces the legacy tabbed list on the DOM plane; the sim's commands stay as
+they were.
+
+- Head: the painted build icon and the title alone, no subtitle. The quick row holds Droga, Palisada
+  and Brama, disabled with the tooltip "Niedostępne w tej wersji gry" until the sim has a road, wall
+  and gate command, and Papiery at the right with a count of the papers a pick could spend. Papiery
+  shows the papers list, which is the chest window's tab until the documents ticket gives it a view.
+- Tabs: the original's five categories (Wszystko, Praca, Magazyn, Dom, Wojsko; tower and training
+  fold into Wojsko), each counting the entries buildable now. At the tabs' right end a two-button
+  toggle switches the catalogue between tiles and a list; the choice is remembered for the game, with
+  the tab, the scroll and the last pick, in the tool-window state (never browser storage).
+- Entries: every house kind the content has, minus vehicles, wonders and types with no construction
+  cost (the headquarters stands from the map, the wall segment comes from the wall tool). A type the
+  map or the tribe bans is never listed; an undiscovered one is listed after the open entries under a
+  "Zablokowane" note with the discoveries it waits on, faded, with a lock badge, its "?" still live.
+  With nothing to list at all the parchment says "Nic do zbudowania" (a banned map, a spectator seat).
+- A card is one fixed size in both views (120 px tile, 36 px list row), so the grid stays symmetric
+  and the "?" medallion sits at the same bottom-right spot of every card. The picture is the finished
+  body the map draws for the seat's tribe, cut from the loaded sheet into the card's own canvas,
+  contained in a 72 px box; a body taller than 1.35 times its width shows its upper part instead. A
+  card without a sheet frame shows the house glyph. The name wraps to two lines; the cost sits under it
+  as one slot per good, the amount as a corner badge, wrapping past six goods. A slot the seat cannot
+  cover from its stock is marked red with "masz N z M" in its tooltip; it is information only, since
+  placement never checks stock (the original neither) and the builders wait for the goods. No worker,
+  product or capacity text on the card: that is Knowledge's.
+- Cost is the from-scratch bill the sim charges (`constructionBillForType`): a leveled tier sums
+  its whole chain down to the base, since the site is placed at that tier from nothing.
+- A pick hides the window and starts the placement with the strip up; Esc, the right button or Buduj
+  bring the window back as it was, the picked card lit and focused. A site that lands leaves the
+  window away. A place-any paper from the chest opens the window with the paper held, every
+  technology lock lifted for that pick; a map's ban still stands.
+- The "?" opens the building's Knowledge page; until the knowledge ticket it opens the pending note.
 
 ## HUD shell
 
