@@ -1,5 +1,5 @@
 import type { HudModel } from '@open-northland/render';
-import { TICKS_PER_SECOND } from '@open-northland/sim';
+import { systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import {
   JOB_BABY_FEMALE,
   JOB_BABY_MALE,
@@ -31,10 +31,17 @@ export interface SummaryCategorySpec {
 /**
  * The five categories and their rows, as the user grouped them for the approved design. A named
  * approximation keyed by the goods' stable string ids: no such grouping exists in `goodtypes.ini`.
- * A stocked good outside every list joins "other", so nothing on hand goes unreported.
+ * A stocked good outside every list joins "other", so nothing on hand goes unreported. Food lists the
+ * two edibles the larders slot (`food_simple`, `food_extra`) rather than the dishes: a dish still in
+ * its bakery or farm is counted as the edible it leaves as (`EDIBLE_FORM_BY_DISH`), so bread never
+ * shows beside the loaf it becomes, and candy never doubles the cake it shares a name with.
  */
 export const SUMMARY_CATEGORIES: readonly SummaryCategorySpec[] = [
-  { id: 'food', icon: 'food_simple', columns: [['wheat', 'flour', 'food_simple', 'candy', 'mead']] },
+  {
+    id: 'food',
+    icon: 'food_simple',
+    columns: [['wheat', 'flour', 'food_simple', 'food_extra', 'honey', 'mead']],
+  },
   {
     id: 'materials',
     icon: 'wood',
@@ -85,7 +92,7 @@ export const SUMMARY_CATEGORIES: readonly SummaryCategorySpec[] = [
 /** The category an unlisted good falls into. */
 const UNLISTED_CATEGORY: SummaryCategoryId = 'other';
 /** Stocked goods the bar never reports: water is a well's working stock, not a resource on hand. */
-const HIDDEN_GOODS: ReadonlySet<string> = new Set(['water']);
+export const HIDDEN_GOODS: ReadonlySet<string> = new Set(['water']);
 const LISTED_GOODS: ReadonlySet<string> = new Set(SUMMARY_CATEGORIES.flatMap((c) => c.columns.flat()));
 
 export interface SummaryPopulation {
@@ -152,8 +159,8 @@ export interface SummaryCategory {
 /**
  * The seat's stock by category, in the fixed row order. `goodIdOf` names a stock entry's good; an
  * entry it cannot name is not a good the catalog knows and is left out, as is a {@link HIDDEN_GOODS}
- * entry. Unlisted goods with stock are appended to the shorter column of {@link UNLISTED_CATEGORY}
- * (the first on a tie), in the model's ascending-id order.
+ * entry, and a dish is tallied under the edible it becomes. Unlisted goods with stock are appended to
+ * the shorter column of {@link UNLISTED_CATEGORY} (the first on a tie), in the model's ascending-id order.
  */
 export function summaryStocks(
   model: HudModel,
@@ -161,8 +168,10 @@ export function summaryStocks(
 ): readonly SummaryCategory[] {
   const amounts = new Map<string, number>();
   for (const { goodType, amount } of model.stocks) {
-    const goodId = goodIdOf(goodType);
-    if (goodId !== undefined) amounts.set(goodId, (amounts.get(goodId) ?? 0) + amount);
+    const dishId = goodIdOf(goodType);
+    if (dishId === undefined) continue;
+    const goodId = systems.EDIBLE_FORM_BY_DISH.get(dishId) ?? dishId;
+    amounts.set(goodId, (amounts.get(goodId) ?? 0) + amount);
   }
   const unlisted: SummaryRow[] = [...amounts]
     .filter(([goodId, amount]) => !LISTED_GOODS.has(goodId) && !HIDDEN_GOODS.has(goodId) && amount > 0)

@@ -34,7 +34,13 @@ const TYPE_BY_ID = new Map<string, number>([
   ['coin', 8],
   ['amulet_speed', 55],
   ['honey', 12],
+  ['food_simple', 16],
+  ['food_extra', 17],
   ['bread', 19],
+  ['candy', 20],
+  ['meat', 21],
+  ['sheep', 57],
+  ['chest', 64],
   ['water', 101],
 ]);
 const ID_BY_TYPE = new Map([...TYPE_BY_ID].map(([id, type]) => [type, id] as const));
@@ -139,8 +145,8 @@ describe('summaryStocks', () => {
       model(
         [],
         [
-          { goodType: typeOf('honey'), amount: 6 },
-          { goodType: typeOf('bread'), amount: 1 },
+          { goodType: typeOf('sheep'), amount: 6 },
+          { goodType: typeOf('chest'), amount: 1 },
           { goodType: typeOf('coin'), amount: 3 },
           { goodType: 999, amount: 5 }, // no catalog id: not a good
         ],
@@ -151,13 +157,41 @@ describe('summaryStocks', () => {
     expect(other?.total).toBe(10);
     // Both columns list seven goods, so the tie sends the extras to the first one.
     expect(other?.columns[0]?.slice(-2)).toEqual([
-      { goodId: 'honey', amount: 6 },
-      { goodId: 'bread', amount: 1 },
+      { goodId: 'sheep', amount: 6 },
+      { goodId: 'chest', amount: 1 },
     ]);
-    expect(other?.columns[1]?.some((row) => row.goodId === 'honey')).toBe(false);
+    expect(other?.columns[1]?.some((row) => row.goodId === 'sheep')).toBe(false);
     expect(
-      out.flatMap((c) => c.columns.flat()).some((row) => row.goodId === 'bread' && row.amount === 0),
+      out.flatMap((c) => c.columns.flat()).some((row) => row.goodId === 'chest' && row.amount === 0),
     ).toBe(false);
+  });
+
+  it('tallies a dish still in its workshop as the edible it leaves as, under food', () => {
+    const out = summaryStocks(
+      model(
+        [],
+        [
+          { goodType: typeOf('bread'), amount: 8 },
+          { goodType: typeOf('meat'), amount: 4 },
+          { goodType: typeOf('food_simple'), amount: 2 },
+          { goodType: typeOf('candy'), amount: 3 },
+          { goodType: typeOf('food_extra'), amount: 1 },
+          { goodType: typeOf('honey'), amount: 12 },
+        ],
+      ),
+      goodIdOf,
+    );
+    const food = out[0];
+    expect(food?.total).toBe(30);
+    expect(food?.columns[0]?.map((row) => [row.goodId, row.amount])).toEqual([
+      ['wheat', 0],
+      ['flour', 0],
+      ['food_simple', 14],
+      ['food_extra', 4],
+      ['honey', 12],
+      ['mead', 0],
+    ]);
+    expect(out[4]?.total).toBe(0);
   });
 
   it('heads the "other" columns with herbs and the coin, potions under one and amulets under the other', () => {
@@ -174,8 +208,8 @@ describe('summaryStocks', () => {
   });
 
   it('leaves an unlisted good with nothing on hand out entirely', () => {
-    const out = summaryStocks(model([], [{ goodType: typeOf('honey'), amount: 0 }]), goodIdOf);
-    expect(out[4]?.columns.flat().some((row) => row.goodId === 'honey')).toBe(false);
+    const out = summaryStocks(model([], [{ goodType: typeOf('chest'), amount: 0 }]), goodIdOf);
+    expect(out[4]?.columns.flat().some((row) => row.goodId === 'chest')).toBe(false);
     expect(out[4]?.columns.map((column) => column.length)).toEqual(
       SUMMARY_CATEGORIES[4]?.columns.map((column) => column.length),
     );

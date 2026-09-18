@@ -123,10 +123,28 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
     const carriedAmount = readNumField(components, 'Carrying', 'amount');
     if (carriedGood !== undefined && carriedAmount !== undefined) addPairs([[carriedGood, carriedAmount]]);
   }
+  // A hexagon of range r spans r columns and r rows each way, so the box around every anchor bounds
+  // the reach; only the heaps inside it pay for the per-anchor distance test.
+  let minHx = Number.POSITIVE_INFINITY;
+  let maxHx = Number.NEGATIVE_INFINITY;
+  let minHy = Number.POSITIVE_INFINITY;
+  let maxHy = Number.NEGATIVE_INFINITY;
+  for (const anchor of anchors) {
+    if (anchor.hx < minHx) minHx = anchor.hx;
+    if (anchor.hx > maxHx) maxHx = anchor.hx;
+    if (anchor.hy < minHy) minHy = anchor.hy;
+    if (anchor.hy > maxHy) maxHy = anchor.hy;
+  }
+  const inReachBox = (node: HalfCellNode): boolean =>
+    node.hx > minHx - WALK_RANGE_NODES &&
+    node.hx < maxHx + WALK_RANGE_NODES &&
+    node.hy > minHy - WALK_RANGE_NODES &&
+    node.hy < maxHy + WALK_RANGE_NODES;
   for (const heap of heaps) {
     const node = nodeOf(heap);
     if (
       node !== null &&
+      inReachBox(node) &&
       anchors.some((anchor) => hexDistanceBetween(anchor.hx, anchor.hy, node.hx, node.hy) < WALK_RANGE_NODES)
     ) {
       addPairs(readStockpileAmounts(heap));

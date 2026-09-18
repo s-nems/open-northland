@@ -39,7 +39,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   clock.className = 'on-clock';
   clock.setAttribute('role', 'timer');
   const clockCopy = messages().hud.summary;
-  let shownTick = Number.NaN;
+  let shownClock = '';
 
   const speed = document.createElement('div');
   speed.className = 'on-speed';
@@ -88,9 +88,9 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
     },
     update: (model) => {
       summary.update(model);
-      if (model.tick !== shownTick) {
-        shownTick = model.tick;
-        const text = formatSimClock(model.tick);
+      const text = formatSimClock(model.tick);
+      if (text !== shownClock) {
+        shownClock = text;
         clock.textContent = text;
         clock.setAttribute(
           'aria-label',

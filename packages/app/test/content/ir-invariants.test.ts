@@ -11,6 +11,7 @@ import { BRIDGE_EDIT_GROUP } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
+import { HIDDEN_GOODS, SUMMARY_CATEGORIES } from '../../src/hud/summary/model.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
@@ -50,6 +51,18 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
       ...Object.keys(WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG),
     ]);
     for (const slug of slugs) expect(ids, `weapon good slug '${slug}' missing`).toContain(slug);
+  });
+
+  it('every good the summary bar lists, hides or shows as an icon exists in the real goods', async () => {
+    // A misspelled id would sit on the bar as a permanent muted zero while the real good drifts into
+    // Inne through the unlisted rule, with every synthetic test still green.
+    const { real } = await loadContentUnderTest();
+    const ids = new Set(real.goods.map((g) => g.id));
+    const listed = new Set([
+      ...SUMMARY_CATEGORIES.flatMap((category) => [category.icon, ...category.columns.flat()]),
+      ...HIDDEN_GOODS,
+    ]);
+    for (const id of listed) expect(ids, `summary good '${id}' missing`).toContain(id);
   });
 
   it('no building stocks or produces a vehicle good (stripVehicleGoods holds on real data)', async () => {

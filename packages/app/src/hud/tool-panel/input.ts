@@ -108,6 +108,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const onKeyDown = (e: KeyboardEvent): void => {
     const sheet = windows.byId.mission;
     if (e.code === 'Escape') {
+      escapeClaimed = false;
       if (keyboardOwned(e)) return;
       if (anyHeld()) {
         deps.cue('fail');

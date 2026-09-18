@@ -134,7 +134,8 @@ medallion, with no divider frame between them.
   counting, which takes a workplace's product slots and skips its input slots (the reading behind the
   sim's `countsAsOwnStock`).
 - Five categories with fixed rows (`hud/summary/model.ts`, keyed by good string id): Żywność (wheat,
-  flour, food, candy, mead), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
+  flour, food, cake, honey, mead; a dish still in its bakery or farm counts as the edible it leaves
+  as, the sim's `EDIBLE_FORM_BY_DISH`, so bread and meat are food and candy is cake), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
   tile, stone block, marble, holy oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,
   wooden and iron tools, crockery, furniture), Inne (herbs, six potions | coin, six amulets). A listed
   good with nothing on hand stays listed as a muted zero; a stocked good outside every list is
