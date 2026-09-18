@@ -19,7 +19,6 @@ import {
   serializeSaveGame,
 } from '../../src/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
-import { MISSION_EVALUATION_TICKS } from '../../src/systems/missions/system.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import {
@@ -31,6 +30,7 @@ import {
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
+import { LOAD_PASS } from '../missions/support.js';
 
 /**
  * The cargo of docs/formats/VEHICLES.md "Cargo": the wanted-amount orders and their clamps, the attached
@@ -57,8 +57,6 @@ const CART_AT = { hx: 20, hy: 20 };
 const TRIP_TICKS = 120;
 /** The source piles and houses stand this far east of the cart's door. */
 const SOURCE_AT = { hx: 24, hy: 20 };
-/** One pass of the mission engine plus the setup ticks. */
-const FIRST_PASS = MISSION_EVALUATION_TICKS;
 
 function sim(seed = 3): Simulation {
   const s = new Simulation({ seed, content: testContent(), map: grassNodeMap(MAP_NODES, MAP_NODES) });
@@ -478,7 +476,7 @@ describe('the script paths', () => {
       goods: [{ good: WOOD, amount: 2 }],
     });
     const other = spawnCart(s, { hx: 40, hy: 40 });
-    s.run(FIRST_PASS);
+    s.run(LOAD_PASS);
     if (stamped === null) throw new Error('handcart not in the fixture');
     // No carrier attached: the stow sets wanted to the new actual amount before the request is raised.
     expect(line(s, stamped, WOOD)).toEqual({ current: 6, wanted: 10, reserved: 6 });

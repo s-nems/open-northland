@@ -24,13 +24,19 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import {
-  FIRST_PASS,
+  firingMission,
   firingSim,
+  goalMission,
   goalSim,
   holds,
+  LOAD_PASS,
+  loadPassAfter,
   MAP_NODES,
   missionSim,
+  PASS_TICKS,
   POINT,
+  runLoadPass,
+  scriptedSim,
   spawn,
   VIKING,
 } from './support.js';
@@ -59,6 +65,8 @@ const FAR = { hx: POINT.hx + 16, hy: POINT.hy };
 const AREA = 4;
 /** Long enough for a scout spawned a few nodes off to walk to a cart's door and step in. */
 const BOARD_TICKS = 120;
+/** One tick in, a setup attach has seated its rider; the script is enabled after it. */
+const BOARDED = 1;
 const MAP_CELLS = 16;
 const GRASS = 0;
 const WATER = 1;
@@ -96,11 +104,14 @@ function nodeOf(sim: Simulation, e: Entity): HalfCellNode {
   return nodeOfPosition(at.x, at.y);
 }
 
+/** The tick the fixture's placements land and the fog mode takes effect; the script is enabled after it. */
+const FOG_SETTLED = 1;
+
 function goalVerdict(goal: MissionGoalOp, arrange: (sim: Simulation) => void): boolean {
-  const sim = goalSim(goal);
+  const sim = scriptedSim([goalMission(goal)]);
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
   arrange(sim);
-  sim.run(FIRST_PASS);
+  loadPassAfter(sim, FOG_SETTLED);
   return holds(sim);
 }
 
@@ -126,7 +137,7 @@ describe('SetVehicle', () => {
         withCaptain: false,
       },
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     const [e] = vehicles(sim);
     if (e === undefined) throw new Error('no vehicle spawned');
     expect(vehicles(sim)).toHaveLength(1);
@@ -154,25 +165,25 @@ describe('SetVehicle', () => {
   it.each([
     { name: 'a cart takes the trader, not its first passenger', vehicleType: HANDCART, job: TRADER },
     { name: 'the catapult takes the soldier', vehicleType: CATAPULT, job: SOLDIER },
-  ])('with the captain flag also seats the commander trade aboard with the vehicle id: $name', ({
-    vehicleType,
-    job,
-  }) => {
-    const sim = firingSim([
-      {
-        opcode: 'SetVehicle',
-        player: OWNER,
-        tribe: VIKING,
-        vehicleType,
-        point: POINT,
-        vehicleId: CART_ID,
-        withCaptain: true,
-      },
-    ]);
-    sim.run(FIRST_PASS);
-    const { captain } = seatedCaptain(sim);
-    expect(sim.world.get(captain, Settler).jobType).toBe(job);
-  });
+  ])(
+    'with the captain flag also seats the commander trade aboard with the vehicle id: $name',
+    ({ vehicleType, job }) => {
+      const sim = firingSim([
+        {
+          opcode: 'SetVehicle',
+          player: OWNER,
+          tribe: VIKING,
+          vehicleType,
+          point: POINT,
+          vehicleId: CART_ID,
+          withCaptain: true,
+        },
+      ]);
+      sim.run(PASS_TICKS);
+      const { captain } = seatedCaptain(sim);
+      expect(sim.world.get(captain, Settler).jobType).toBe(job);
+    },
+  );
 
   it('seats the carrier at the helm of a ship set down at sea', () => {
     const sim = firingSim(
@@ -190,7 +201,7 @@ describe('SetVehicle', () => {
       testContent(),
       splitMap(),
     );
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     const { vehicle, captain } = seatedCaptain(sim);
     expect(sim.world.get(vehicle, Vehicle).vehicleType).toBe(SHIP_SMALL);
     expect(sim.world.get(captain, Settler).jobType).toBe(CARRIER);
@@ -219,7 +230,7 @@ describe('SetVehicle', () => {
     ];
     for (const line of lines) {
       const sim = firingSim([line]);
-      sim.run(FIRST_PASS);
+      sim.run(LOAD_PASS);
       expect(vehicles(sim)).toHaveLength(0);
       expect(sim.events.current().filter((e) => e.kind === 'missionResultFailed')).toHaveLength(1);
     }
@@ -228,7 +239,7 @@ describe('SetVehicle', () => {
 
 describe('the removals', () => {
   it('RemoveVehicles takes every vehicle with the id off the map without a wreck, setting its crew down', () => {
-    const sim = firingSim([{ opcode: 'RemoveVehicles', vehicleId: CART_ID }]);
+    const sim = scriptedSim([firingMission([{ opcode: 'RemoveVehicles', vehicleId: CART_ID }])]);
     const doomed = cart(sim, { missionId: CART_ID });
     const spared = cart(sim, { at: FAR, missionId: OTHER_ID });
     spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: POINT.hx + 2, hy: POINT.hy } });
@@ -236,7 +247,7 @@ describe('the removals', () => {
     const [crew] = missionObjects(sim.world, CREW_ID);
     if (crew === undefined) throw new Error('no crew');
     sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: doomed });
-    sim.run(FIRST_PASS - sim.tick);
+    loadPassAfter(sim, BOARDED);
     expect(vehicles(sim)).toEqual([spared]);
     expect(sim.world.isAlive(crew)).toBe(true);
     expect(sim.world.has(crew, Rider)).toBe(false);
@@ -247,14 +258,16 @@ describe('the removals', () => {
 
   it('RemoveVehiclesWithMissionId takes the crews with it only when the flag is set', () => {
     for (const flag of [false, true]) {
-      const sim = firingSim([{ opcode: 'RemoveVehiclesWithMissionId', vehicleId: CART_ID, flag }]);
+      const sim = scriptedSim([
+        firingMission([{ opcode: 'RemoveVehiclesWithMissionId', vehicleId: CART_ID, flag }]),
+      ]);
       const doomed = cart(sim, { missionId: CART_ID });
       spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: POINT.hx + 2, hy: POINT.hy } });
       sim.step();
       const [crew] = missionObjects(sim.world, CREW_ID);
       if (crew === undefined) throw new Error('no crew');
       sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: doomed });
-      sim.run(FIRST_PASS - sim.tick);
+      loadPassAfter(sim, BOARDED);
       expect(vehicles(sim)).toHaveLength(0);
       expect(sim.world.isAlive(crew)).toBe(!flag);
     }
@@ -263,7 +276,9 @@ describe('the removals', () => {
 
 describe('ownership and ids', () => {
   it('ChangeVehiclesPlayerId hands the vehicles with the id over and leaves the crew its owner', () => {
-    const sim = firingSim([{ opcode: 'ChangeVehiclesPlayerId', vehicleId: CART_ID, player: OTHER }]);
+    const sim = scriptedSim([
+      firingMission([{ opcode: 'ChangeVehiclesPlayerId', vehicleId: CART_ID, player: OTHER }]),
+    ]);
     const handed = cart(sim, { missionId: CART_ID });
     const kept = cart(sim, { at: FAR });
     spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: POINT.hx + 2, hy: POINT.hy } });
@@ -271,7 +286,7 @@ describe('ownership and ids', () => {
     const [crew] = missionObjects(sim.world, CREW_ID);
     if (crew === undefined) throw new Error('no crew');
     sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: handed });
-    sim.run(FIRST_PASS - sim.tick);
+    loadPassAfter(sim, BOARDED);
     expect(ownerOf(sim.world, handed)).toBe(OTHER);
     expect(ownerOf(sim.world, kept)).toBe(OWNER);
     expect(ownerOf(sim.world, crew)).toBe(OWNER);
@@ -285,7 +300,7 @@ describe('ownership and ids', () => {
     ]);
     const renumbered = cart(sim, { missionId: CART_ID });
     const cleared = cart(sim, { at: FAR, missionId: 7 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(sim.world.get(renumbered, MissionObjectId).id).toBe(OTHER_ID);
     expect(sim.world.has(cleared, MissionObjectId)).toBe(false);
   });
@@ -303,7 +318,7 @@ describe('ownership and ids', () => {
     const inside = cart(sim, { at: { hx: POINT.hx + 2, hy: POINT.hy } });
     const outside = cart(sim, { at: FAR });
     const foreign = cart(sim, { at: POINT, owner: OTHER });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(sim.world.tryGet(inside, MissionObjectId)?.id).toBe(CART_ID);
     expect(sim.world.has(outside, MissionObjectId)).toBe(false);
     expect(sim.world.has(foreign, MissionObjectId)).toBe(false);
@@ -334,7 +349,7 @@ describe('ownership and ids', () => {
     );
     const near = cart(sim, { at: { hx: 6, hy: 12 } });
     const across = cart(sim, { at: east });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(sim.world.tryGet(near, MissionObjectId)?.id).toBe(CART_ID);
     expect(sim.world.has(across, MissionObjectId)).toBe(false);
   });
@@ -349,7 +364,7 @@ describe('the crew results', () => {
     spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: near });
     spawn(sim, { player: OWNER, job: SOLDIER, missionId: CREW_ID, at: near }); // not a cart trade
     spawn(sim, { player: OTHER, job: SCOUT, missionId: CREW_ID, at: near }); // another owner
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     const seated = vehiclePassengers(sim.world.get(first, Vehicle)).map((seat) => seat.entity);
     expect(seated).toHaveLength(1);
     expect(sim.world.get(seated[0] as Entity, Settler).jobType).toBe(SCOUT);
@@ -358,7 +373,7 @@ describe('the crew results', () => {
   });
 
   it('DetachHumanFromVehicle frees every rider with the id where it stands', () => {
-    const sim = firingSim([{ opcode: 'DetachHumanFromVehicle', humanId: CREW_ID }]);
+    const sim = scriptedSim([firingMission([{ opcode: 'DetachHumanFromVehicle', humanId: CREW_ID }])]);
     const e = cart(sim);
     spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: POINT.hx + 2, hy: POINT.hy } });
     sim.step();
@@ -367,7 +382,7 @@ describe('the crew results', () => {
     sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: e });
     sim.step();
     expect(sim.world.has(crew, Rider)).toBe(true);
-    sim.run(FIRST_PASS - sim.tick);
+    runLoadPass(sim);
     expect(sim.world.has(crew, Rider)).toBe(false);
     expect(vehiclePassengers(sim.world.get(e, Vehicle))).toHaveLength(0);
   });
@@ -390,7 +405,7 @@ describe('MoveUnitsInArea', () => {
     const other = cart(sim, { at: { hx: POINT.hx - 1, hy: POINT.hy } });
     const left = cart(sim, { at: FAR });
     const foreign = cart(sim, { at: POINT, owner: OTHER });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     for (const e of [moved, other]) {
       expect(hexDistance(nodeOf(sim, e), destination)).toBeLessThanOrEqual(1);
       expect(sim.world.has(e, VehicleDrive)).toBe(false);
@@ -429,7 +444,7 @@ describe('MoveUnitsInArea over water', () => {
     const moved = cart(sim, { at: source });
     const loading = cart(sim, { at: { hx: source.hx, hy: source.hy + 2 } });
     sim.world.mut(loading, Vehicle).carrier = moved; // stands in for a ship it is driving into
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
     const at = nodeOf(sim, moved);
@@ -641,7 +656,7 @@ describe('the sample lines stay well formed', () => {
       { opcode: 'ChangeMissionIdOfVehicles', vehicleId: CART_ID, index: OTHER_ID },
     ];
     const sim = firingSim(results, testContent(), grassNodeMap(MAP_NODES, MAP_NODES));
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(
       sim.events.current().filter((e) => e.kind === 'missionUnsupported' || e.kind === 'missionResultFailed'),
     ).toEqual([]);
