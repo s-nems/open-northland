@@ -76,7 +76,7 @@ export const enContent = {
     barracks: 'Barracks',
     tower_00: 'Watchtower (level 1)',
     tower_01: 'Watchtower (level 2)',
-    // The hidden yard houses a joinery raises beside itself; a site is named after the vehicle it becomes.
+    // The hidden yard houses a workshop raises beside itself; a site is named after the vehicle it becomes.
     handcart: 'Handcart',
     oxcart: 'Ox cart',
     ship_small: 'Small ship',

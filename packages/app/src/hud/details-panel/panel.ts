@@ -88,7 +88,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     previews: buildingPreviews(opts.sheet),
     ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),
     animalGoods: animalGoodIcons(opts.sheet, opts.goods, opts.livestockTribeOfGood),
-    vehicleGoods: vehicleGoodIcons(opts.sheet, opts),
+    vehicleGoods: vehicleGoodIcons(opts.sheet, {
+      goods: opts.goods,
+      buildings: opts.buildings,
+      vehicles: opts.vehicles,
+    }),
   };
   const stage = createPanelStage({ app, assets, scale });
   const workerField = createWorkerField({

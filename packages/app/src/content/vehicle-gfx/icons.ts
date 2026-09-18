@@ -76,6 +76,7 @@ export function vehicleGoodIcons(
     const frame =
       look === undefined ? undefined : layer?.atlas.frames.get(frameOf(look.idle, DEFAULT_FACING, 0));
     if (layer === undefined || frame === undefined) continue;
+    // The frame's feet-anchor offset is discarded: the icon is centred on the picture's bounding box.
     icons.set(
       good.id,
       new Texture({
