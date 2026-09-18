@@ -3,16 +3,15 @@
 **Area:** sim · **Focus:** ai-player · **Priority:** P2 · **Complexity:** medium
 
 A due seat runs all five strategic modules (workforce, build order, scout, population, military) in
-one tick. Live magiczny_las 6-AI evidence (rev fb833032, `?debug=profile`): `aiPlayer` mean
-3.8-5.1 ms/tick but max 41-54 ms on the due tick, and with six staggered seats a due tick lands
-every ~4th tick - the per-seat pass is the dominant recurring frame spike. Most of that max was the
-work-flag blocked-set rebuild, since removed (construction progress no longer invalidates the
-incremental set); this ticket bounds whatever remains.
+one tick. With the placement grid now maintained incrementally, the fortress at tick ~48k (13 AI seats,
+`npm run bench:map` from the 48k checkpoint) still shows `aiPlayer` at a 0.05 ms median but a due-tick
+max of 12.6 ms, the second-largest single-system spike after the planner's; its inclusive profile splits
+44% workforce, 27% build-order placement search, 24% military. At speed x3 a 12 ms tick costs a frame.
 
 ## Scope
 
-- Re-measure the due-tick max after the blocker-rebuild fix lands; proceed only if the residual
-  still spikes past a normal tick.
+- Profile one due tick (`npm run bench:profile` from the checkpoint) to see which module the residual
+  spike sits in.
 - Spread one seat's modules across consecutive ticks (module index derived from tick and seat, same
   stagger idea as seats today) or give the pass an explicit per-tick budget with deterministic
   carryover. The schedule must stay a pure function of (tick, seat) so replays hold.

@@ -2,8 +2,9 @@
 
 **Area:** sim, tooling · **Focus:** conflict · **Priority:** P2 · **Complexity:** medium
 
-The target session is late game at speed x3 with large armies, but no benchmark measures a mass
-battle: `bench:map` grows an economy (combat share 9-11% there, post target-index rework), and the
+The target session is late game at speed x3 with large armies, but no benchmark stages a mass
+battle: `bench:map` grows an economy, the fortress checkpoint (`ON_BENCH_CHECKPOINT`) holds one siege
+at tick ~48k where combat is 1.4 ms of a 4.8 ms tick after the member-scan target index, and the
 synthetic bench spawns fighters without staging an engagement. Which term dominates at army scale -
 combat target picks, `separation`'s collider pass, `pathfinding` under mass orders, `projectile`
 flight, or the conflict-adjacent scans (`animalFright`, defence) - is currently unmeasured, and
