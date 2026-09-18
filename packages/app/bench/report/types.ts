@@ -16,6 +16,15 @@ export interface TickStat {
   readonly p95Ms: number;
 }
 
+/** One of the run's slowest ticks: where a stutter came from, not how the average was spent. */
+export interface SlowTick {
+  /** Index into the measured ticks (0 = the first measured tick). */
+  readonly index: number;
+  readonly totalMs: number;
+  /** The systems that cost most in that tick, heaviest first. */
+  readonly systems: readonly { readonly name: string; readonly ms: number }[];
+}
+
 interface WorldCounts {
   readonly mapCells: { readonly width: number; readonly height: number };
   /** Live settlers at the start / end of the measured window. A gap means the medians span two
@@ -95,6 +104,11 @@ export interface BenchReport {
   readonly tickMs: TickStat;
   /** Whole-run per-system rows, heaviest median first. */
   readonly systems: readonly SystemStat[];
+  /** The run's slowest ticks, slowest first. */
+  readonly slowestTicks: readonly SlowTick[];
+  /** Per system, how many slow ticks (over {@link SLOW_TICK_FACTOR} times the median) it topped. Omits
+   *  systems that topped none. */
+  readonly stutterSources: readonly { readonly name: string; readonly slowTicks: number }[];
   /** Always at least one entry; the growth tables print only when there are several. */
   readonly windows: readonly BenchWindow[];
   readonly environment: BenchEnvironment;

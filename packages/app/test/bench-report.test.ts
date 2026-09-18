@@ -267,3 +267,32 @@ describe('formatReport', () => {
     expect(text).toContain('rev 9ab7c02 (clean)');
   });
 });
+
+describe('slowest ticks', () => {
+  it('names the slowest measured ticks with the systems that filled them, slowest first', () => {
+    const perSystem = new Map<string, readonly number[]>([
+      ['ai', [1, 1, 9, 1]],
+      ['combat', [2, 2, 2, 12]],
+      ['planner', [3, 3, 3, 3]],
+    ]);
+    const report = summarize(perSystem, [6, 6, 14, 16], META);
+    expect(report.slowestTicks.map((t) => [t.index, t.totalMs])).toEqual([
+      [3, 16],
+      [2, 14],
+      [0, 6],
+      [1, 6],
+    ]);
+    expect(report.slowestTicks[0]?.systems).toEqual([
+      { name: 'combat', ms: 12 },
+      { name: 'planner', ms: 3 },
+      { name: 'ai', ms: 1 },
+    ]);
+    // The nearest-rank median is 6, so ticks 2 (14 ms) and 3 (16 ms) are stutters, topped by ai and combat.
+    expect(report.stutterSources).toEqual([
+      { name: 'ai', slowTicks: 1 },
+      { name: 'combat', slowTicks: 1 },
+    ]);
+    expect(summarize(perSystem, [6, 6, 7, 8], META).stutterSources).toEqual([]);
+    expect(formatReport(report)).toContain('slowest ticks');
+  });
+});

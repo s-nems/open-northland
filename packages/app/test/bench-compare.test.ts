@@ -37,6 +37,8 @@ function report(overrides: Partial<BenchReport> = {}): BenchReport {
       { name: 'ai', medianMs: 4, p95Ms: 8, sharePct: 80 },
       { name: 'movement', medianMs: 1, p95Ms: 2, sharePct: 20 },
     ],
+    slowestTicks: [],
+    stutterSources: [],
     windows: [window(0, 5), window(1, 7)],
     environment: {
       node: 'v22.14.0',

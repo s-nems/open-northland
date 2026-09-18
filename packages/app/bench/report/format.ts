@@ -3,7 +3,7 @@
  * An untrustworthy run leads with a banner rather than a footnote: a warning printed below a table
  * scrolls off the top of whatever the reader is looking at.
  */
-import { systemGrowth } from './summarize.js';
+import { SLOW_TICK_FACTOR, systemGrowth } from './summarize.js';
 import { type Column, table } from './table.js';
 import type { BenchReport, BenchWindow, BenchWorld, SystemStat } from './types.js';
 
@@ -95,6 +95,28 @@ function growthSection(report: BenchReport): readonly string[] {
   ];
 }
 
+/** The stutter view: which ticks were slowest and what filled them. `index` counts measured ticks, so the
+ *  absolute tick is the first window's first tick plus it. */
+function slowestTicksSection(report: BenchReport): readonly string[] {
+  if (report.slowestTicks.length === 0) return [];
+  const firstTick = report.windows.at(0)?.fromTick ?? 0;
+  return [
+    '',
+    'slowest ticks',
+    ...report.slowestTicks.map((t) => {
+      const systems = t.systems.map((s) => `${s.name} ${ms(s.ms)}`).join(', ');
+      return `  tick ${firstTick + t.index}  ${ms(t.totalMs)} ms  (${systems})`;
+    }),
+    ...(report.stutterSources.length === 0
+      ? []
+      : [
+          `  topped a tick over ${SLOW_TICK_FACTOR}x the median: ${report.stutterSources
+            .map((s) => `${s.name} ${s.slowTicks}`)
+            .join(', ')}`,
+        ]),
+  ];
+}
+
 function windowSection(windows: readonly BenchWindow[]): readonly string[] {
   if (windows.length < 2) return [];
   return [
@@ -132,6 +154,7 @@ export function formatReport(report: BenchReport): string {
     `tick total: median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms`,
     '',
     ...table(SYSTEM_COLUMNS, systemRows(report.systems)),
+    ...slowestTicksSection(report),
     ...windowSection(report.windows),
     ...growthSection(report),
   ].join('\n');

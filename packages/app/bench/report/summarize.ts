@@ -9,9 +9,17 @@ import type {
   BenchTrust,
   BenchWindow,
   BenchWorld,
+  SlowTick,
   SystemStat,
   TickStat,
 } from './types.js';
+
+/** How many of the slowest ticks a report names, and how many systems each names. Enough to see whether
+ *  a stutter has one source or many. */
+const SLOWEST_TICKS = 5;
+const SYSTEMS_PER_SLOW_TICK = 3;
+/** A tick this many times the median counts as a stutter: at x3 speed one such tick costs a frame. */
+export const SLOW_TICK_FACTOR = 2;
 
 /**
  * Nearest-rank percentile of a timing sample (`p` in 0..100). Nearest-rank (not interpolated) keeps
@@ -53,6 +61,47 @@ export function summarizeSegment(
   return { tickMs: { medianMs: percentile(tickSamples, 50), p95Ms: percentile(tickSamples, 95) }, systems };
 }
 
+/** The slowest measured ticks with the systems that filled them. Ties keep the earlier tick, so the
+ *  list is stable for a given run. */
+export function slowestTicks(
+  perSystem: ReadonlyMap<string, readonly number[]>,
+  tickSamples: readonly number[],
+): readonly SlowTick[] {
+  return tickSamples
+    .map((totalMs, index) => ({ totalMs, index }))
+    .sort((a, b) => b.totalMs - a.totalMs || a.index - b.index)
+    .slice(0, SLOWEST_TICKS)
+    .map(({ totalMs, index }) => ({
+      index,
+      totalMs,
+      systems: [...perSystem]
+        .map(([name, samples]) => ({ name, ms: samples[index] ?? 0 }))
+        .sort((a, b) => b.ms - a.ms || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+        .slice(0, SYSTEMS_PER_SLOW_TICK),
+    }));
+}
+
+/** Which system topped each slow tick, counted per system, most often first. */
+export function stutterSources(
+  perSystem: ReadonlyMap<string, readonly number[]>,
+  tickSamples: readonly number[],
+): readonly { readonly name: string; readonly slowTicks: number }[] {
+  const threshold = percentile(tickSamples, 50) * SLOW_TICK_FACTOR;
+  const counts = new Map<string, number>();
+  tickSamples.forEach((totalMs, index) => {
+    if (totalMs <= threshold) return;
+    let top: { name: string; ms: number } | null = null;
+    for (const [name, samples] of perSystem) {
+      const ms = samples[index] ?? 0;
+      if (top === null || ms > top.ms) top = { name, ms };
+    }
+    if (top !== null) counts.set(top.name, (counts.get(top.name) ?? 0) + 1);
+  });
+  return [...counts]
+    .map(([name, slowTicks]) => ({ name, slowTicks }))
+    .sort((a, b) => b.slowTicks - a.slowTicks || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
 /** Fold the whole run into the report. `perSystem` holds one sample per system per measured tick;
  *  `tickSamples` one per measured tick. */
 export function summarize(
@@ -73,6 +122,8 @@ export function summarize(
     ticks: meta.ticks,
     tickMs,
     systems,
+    slowestTicks: slowestTicks(perSystem, tickSamples),
+    stutterSources: stutterSources(perSystem, tickSamples),
     windows: meta.windows,
     environment: meta.environment,
     trust: meta.trust,
