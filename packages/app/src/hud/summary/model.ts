@@ -61,7 +61,6 @@ export const SUMMARY_CATEGORIES: readonly SummaryCategorySpec[] = [
     icon: 'amulet_strength',
     columns: [
       [
-        'coin',
         'herb',
         'potion_food_small',
         'potion_food_big',
@@ -71,6 +70,7 @@ export const SUMMARY_CATEGORIES: readonly SummaryCategorySpec[] = [
         'potion_heal_big',
       ],
       [
+        'coin',
         'amulet_food',
         'amulet_stamina',
         'amulet_strength',
@@ -84,6 +84,8 @@ export const SUMMARY_CATEGORIES: readonly SummaryCategorySpec[] = [
 
 /** The category an unlisted good falls into. */
 const UNLISTED_CATEGORY: SummaryCategoryId = 'other';
+/** Stocked goods the bar never reports: water is a well's working stock, not a resource on hand. */
+const HIDDEN_GOODS: ReadonlySet<string> = new Set(['water']);
 const LISTED_GOODS: ReadonlySet<string> = new Set(SUMMARY_CATEGORIES.flatMap((c) => c.columns.flat()));
 
 export interface SummaryPopulation {
@@ -149,8 +151,9 @@ export interface SummaryCategory {
 
 /**
  * The seat's stock by category, in the fixed row order. `goodIdOf` names a stock entry's good; an
- * entry it cannot name is not a good the catalog knows and is left out. Unlisted goods with stock
- * are appended to the shorter column of {@link UNLISTED_CATEGORY}, in the model's ascending-id order.
+ * entry it cannot name is not a good the catalog knows and is left out, as is a {@link HIDDEN_GOODS}
+ * entry. Unlisted goods with stock are appended to the shorter column of {@link UNLISTED_CATEGORY}
+ * (the first on a tie), in the model's ascending-id order.
  */
 export function summaryStocks(
   model: HudModel,
@@ -162,7 +165,7 @@ export function summaryStocks(
     if (goodId !== undefined) amounts.set(goodId, (amounts.get(goodId) ?? 0) + amount);
   }
   const unlisted: SummaryRow[] = [...amounts]
-    .filter(([goodId, amount]) => !LISTED_GOODS.has(goodId) && amount > 0)
+    .filter(([goodId, amount]) => !LISTED_GOODS.has(goodId) && !HIDDEN_GOODS.has(goodId) && amount > 0)
     .map(([goodId, amount]) => ({ goodId, amount }));
 
   return SUMMARY_CATEGORIES.map((category) => {

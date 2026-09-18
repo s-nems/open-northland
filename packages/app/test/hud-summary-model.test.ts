@@ -35,6 +35,7 @@ const TYPE_BY_ID = new Map<string, number>([
   ['amulet_speed', 55],
   ['honey', 12],
   ['bread', 19],
+  ['water', 101],
 ]);
 const ID_BY_TYPE = new Map([...TYPE_BY_ID].map(([id, type]) => [type, id] as const));
 const goodIdOf = (goodType: number): string | undefined => ID_BY_TYPE.get(goodType);
@@ -148,14 +149,28 @@ describe('summaryStocks', () => {
     );
     const other = out[4];
     expect(other?.total).toBe(10);
-    expect(other?.columns[1]?.slice(-2)).toEqual([
+    // Both columns list seven goods, so the tie sends the extras to the first one.
+    expect(other?.columns[0]?.slice(-2)).toEqual([
       { goodId: 'honey', amount: 6 },
       { goodId: 'bread', amount: 1 },
     ]);
-    expect(other?.columns[0]?.some((row) => row.goodId === 'honey')).toBe(false);
+    expect(other?.columns[1]?.some((row) => row.goodId === 'honey')).toBe(false);
     expect(
       out.flatMap((c) => c.columns.flat()).some((row) => row.goodId === 'bread' && row.amount === 0),
     ).toBe(false);
+  });
+
+  it('heads the "other" columns with herbs and the coin, potions under one and amulets under the other', () => {
+    const other = summaryStocks(model([], []), goodIdOf)[4];
+    expect(other?.columns.map((column) => column[0]?.goodId)).toEqual(['herb', 'coin']);
+    expect(other?.columns[0]?.slice(1).every((row) => row.goodId.startsWith('potion_'))).toBe(true);
+    expect(other?.columns[1]?.slice(1).every((row) => row.goodId.startsWith('amulet_'))).toBe(true);
+  });
+
+  it('never reports water, however much a well holds', () => {
+    const out = summaryStocks(model([], [{ goodType: typeOf('water'), amount: 9 }]), goodIdOf);
+    expect(out.flatMap((c) => c.columns.flat()).some((row) => row.goodId === 'water')).toBe(false);
+    expect(out.map((c) => c.total)).toEqual([0, 0, 0, 0, 0]);
   });
 
   it('leaves an unlisted good with nothing on hand out entirely', () => {

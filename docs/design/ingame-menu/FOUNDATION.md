@@ -135,10 +135,11 @@ medallion, with no divider frame between them.
 - Five categories with fixed rows (`hud/summary/model.ts`, keyed by good string id): Żywność (wheat,
   flour, food, candy, mead), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
   tile, stone block, marble, holy oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,
-  wooden and iron tools, crockery, furniture), Inne (coin, herbs, six potions | six amulets). A listed
+  wooden and iron tools, crockery, furniture), Inne (herbs, six potions | coin, six amulets). A listed
   good with nothing on hand stays listed as a muted zero; a stocked good outside every list is
-  appended to Inne, so nothing on hand goes unreported. Row names are the content's localized good
-  names, never a second copy in the catalogs.
+  appended to the shorter Inne column, so nothing on hand goes unreported. Water is the one exception:
+  a well's working stock, never reported. Row names are the content's localized good names, never a
+  second copy in the catalogs.
 - A category's icon is its representative good (food, wood, short sword, shoes, strength amulet): the
   project's own art when it exists, else the original's recoloured pile frame, sized by area
   (`good-art.ts`) so a thin sword and a round loaf carry the same visual mass in the 25 px box. The
@@ -148,8 +149,10 @@ medallion, with no divider frame between them.
   their figures at 13 px, the clock at 13 px, the speed segments at 11 px.
 - A breakdown opens on hover or focus of its counters, one at a time, stays while the pointer moves
   into it (a 12 px invisible bridge spans the bar's frame), closes on leave, blur or Esc; a press
-  toggles it. The first three hang left-aligned under their counters, the last three right-aligned so
-  none overhangs the screen edge. A single-column tip is 235 px wide, a two-column one 480 px.
+  toggles it. The first three hang left-aligned under their counters, the last three right-aligned,
+  and any tip that would still run past a screen edge is shifted back inside it, 6 px off the edge,
+  measured when it opens and on every resize. A single-column tip is 235 px wide, a two-column one
+  480 px.
 - The clock is elapsed simulation time from the session tick, `h:mm:ss` with the hour always shown so
   the bar never re-flows. It runs at the picked speed, stops with the pause and reads back after a
   save or a load.
