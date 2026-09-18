@@ -52,9 +52,9 @@ const BREAD = 7;
 const STONE = 4;
 const MAP_NODES = 120;
 const CART_AT = { hx: 20, hy: 20 };
-/** A carrier's round trip to a source five nodes from the door beside the cart at its nine ticks a
+/** A carrier's round trip to a source four nodes from the door beside the cart at its nine ticks a
  *  node, with the pickup and pileup clips: one unit a trip. */
-const TRIP_TICKS = 140;
+const TRIP_TICKS = 120;
 /** The source piles and houses stand this far east of the cart's door. */
 const SOURCE_AT = { hx: 24, hy: 20 };
 /** One pass of the mission engine plus the setup ticks. */

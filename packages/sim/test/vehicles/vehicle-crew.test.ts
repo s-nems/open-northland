@@ -52,8 +52,8 @@ const SHORE_CELL = 10;
 const STARVING_PCT = 90;
 /** A scout's ten-node walk at its nine ticks a node, with a tick to board. */
 const BOARD_TICKS = 120;
-/** The door of a handcart parked at (12, 6): the first open node of the ring around it, north-west. */
-const CART_DOOR = { hx: 11, hy: 5 } as const;
+/** The door of a handcart parked at (12, 6): the first open node of the ring around it, north-east. */
+const CART_DOOR = { hx: 12, hy: 5 } as const;
 const SAIL_TICKS = 300;
 
 /** The west grass, the east open water, at cell resolution. */

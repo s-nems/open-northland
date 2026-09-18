@@ -24,7 +24,7 @@ import { removeSettlerSilently } from '../lifecycle/death.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { awaitsDraughtAnimal } from '../readviews/vehicles.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
-import { boardingNode } from './boarding.js';
+import { boardingNode } from './crew.js';
 import { nodeOf } from './movement.js';
 
 // The draught animal of docs/formats/VEHICLES.md "Lifecycle": a cart whose type names a
@@ -156,8 +156,8 @@ function draughtTribeOf(
 
 /**
  * Drive every cart that waits for its animal: a recruit on its way is kept aimed at the cart's boarding
- * node (the door node, or the nearest open node beside a door the cart's own footprint covers, the
- * riders' approximation) and consumed on arrival; a cart with none scans the herd every
+ * node (the door beside the cart, or the nearest open node when another blocker covers it, the riders'
+ * approximation) and consumed on arrival; a cart with none scans the herd every
  * {@link DRAUGHT_RECRUIT_CADENCE_TICKS}. A recruit whose cart vanished is released. A cart riding a
  * carrier recruits nothing until it is set down.
  */

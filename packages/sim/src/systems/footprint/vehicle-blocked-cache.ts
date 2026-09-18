@@ -23,17 +23,19 @@ const vehicleBlockedCache = new WeakMap<World, VehicleBlockedCache>();
 
 /** Every standing vehicle's disc, so a settler walks around a parked cart and its crew stands beside it
  *  (approximation: the original's map attach links the node's moveable list and sets no blocked bit).
- *  The door lies outside the disc unless nothing around the vehicle is open ground, and then it stays
- *  passable like a building's door. */
+ *  A door lies outside its own disc unless nothing around the vehicle is open ground, and then it stays
+ *  passable like a building's door; a door another vehicle covers is that vehicle's cell, and the
+ *  boarding node's ring snap moves the crew beside it. */
 function deriveVehicleBlockedCells(world: World, content: ContentSet, terrain: TerrainGraph): Set<NodeId> {
   const blocked = new Set<NodeId>();
-  const doors = new Set<NodeId>();
   for (const e of world.query(Vehicle, Position)) {
-    for (const node of vehicleFootprintNodes(world, content, terrain, e)) blocked.add(node);
     const door = vehicleDoorNode(world, { content, terrain }, e);
-    if (door !== null && terrain.inBounds(door.hx, door.hy)) doors.add(terrain.nodeAt(door.hx, door.hy));
+    const doorNode =
+      door !== null && terrain.inBounds(door.hx, door.hy) ? terrain.nodeAt(door.hx, door.hy) : null;
+    for (const node of vehicleFootprintNodes(world, content, terrain, e)) {
+      if (node !== doorNode) blocked.add(node);
+    }
   }
-  for (const door of doors) blocked.delete(door);
   return blocked;
 }
 

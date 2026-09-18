@@ -75,11 +75,12 @@ export function vehicleEntryPoint(
 
 /**
  * The door point the crew and the cargo hands stand on. The original's humans walk through a vehicle,
- * so its entry point may lie on the vehicle itself, and `Door_GetEntryPoint` only moves on to the first
- * open node of the surrounding ring when that point is blocked. Open Northland blocks a standing
- * vehicle's disc for humans (approximation), so an entry point inside the disc always takes the
- * original's fallback: the first node in ring order just outside the disc that is open ground on the
- * anchor's continent. Without a terrain, or with no such node, the entry point stands. Unclamped.
+ * so its entry point may lie on the vehicle itself, and `Door_GetEntryPoint` only moves on to the ring
+ * around it when that point is blocked. Open Northland blocks a standing vehicle's disc for humans
+ * (approximation), so an entry point inside the disc always takes that fallback: the first open ground
+ * node on the anchor's continent around the ring just outside the disc, tested in the original's order
+ * (it steps before it tests, so the north-east node comes first and the north-west start last).
+ * Without a terrain, or with no such node, the entry point stands. Unclamped.
  */
 export function vehicleDoorPoint(
   vehicle: VehicleStateView,
@@ -88,10 +89,14 @@ export function vehicleDoorPoint(
   terrain: TerrainGraph | undefined,
 ): HalfCellNode {
   const entry = vehicleEntryPoint(vehicle, type, anchor);
+  if (vehicle.moored && vehicle.mooring !== null) return entry; // the shore, never the ship's disc
   if (terrain === undefined || hexDistance(entry, anchor) > type.logicSize) return entry;
   if (!terrain.inBounds(anchor.hx, anchor.hy)) return entry;
   const continent = terrain.componentOf(terrain.nodeAt(anchor.hx, anchor.hy));
-  for (const { point } of hexagonRing(entry, type.logicSize + 1)) {
+  const ring = Array.from(hexagonRing(anchor, type.logicSize + 1), ({ point }) => point);
+  const start = ring.shift();
+  if (start !== undefined) ring.push(start);
+  for (const point of ring) {
     if (!terrain.inBounds(point.hx, point.hy)) continue;
     const node = terrain.nodeAt(point.hx, point.hy);
     if (terrain.isWalkable(node) && terrain.componentOf(node) === continent) return point;

@@ -5,6 +5,7 @@ import {
   MissionObjectId,
   Owner,
   Position,
+  Rider,
   Settler,
   Stockpile,
   seatPassenger,
@@ -26,12 +27,13 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
-import { hexDistance, stepHex } from '../../src/nav/halfcell.js';
+import { type HexDirection, hexDistance, stepHex } from '../../src/nav/halfcell.js';
 import { targetMaterial } from '../../src/systems/conflict/weapons.js';
 import { canPlaceBuilding, vehicleDoorNode } from '../../src/systems/footprint/index.js';
 import { vehicleBlockedCells } from '../../src/systems/footprint/vehicle-blocked-cache.js';
 import { ARMOR_MATERIAL, isYardHeap } from '../../src/systems/index.js';
 import { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from '../../src/systems/match/index.js';
+import { boardingNode, boardRider } from '../../src/systems/vehicles/crew.js';
 import {
   createVehicle,
   modifyVehicleStock,
@@ -336,7 +338,7 @@ describe('footprint', () => {
     const cartDoor = vehicleDoorNode(s.world, ctxOf(s), cart);
     const catapultDoor = vehicleDoorNode(s.world, ctxOf(s), catapult);
     if (cartDoor === null || catapultDoor === null) throw new Error('vehicle without a door');
-    expect(cartDoor).toEqual(stepHex({ hx: 4, hy: 4 }, 'northWest')); // the original's ring scan starts there
+    expect(cartDoor).toEqual(stepHex({ hx: 4, hy: 4 }, 'northEast')); // the original's scan steps before it tests
     expect(hexDistance(catapultDoor, { hx: 12, hy: 12 })).toBe(2);
     const blocked = vehicleBlockedCells(s.world, ctxOf(s), terrain);
     expect(blocked.has(terrain.nodeAt(cartDoor.hx, cartDoor.hy))).toBe(false);
@@ -353,6 +355,61 @@ describe('footprint', () => {
     expect(door).not.toEqual({ hx: 0, hy: 0 });
     expect(hexDistance(door, { hx: 0, hy: 0 })).toBe(1);
     expect(s.terrain?.inBounds(door.hx, door.hy)).toBe(true);
+  });
+
+  it('skips ring nodes off the continent: a cart on the shore opens its door on the land side', () => {
+    const s = sim(shoreMap());
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const shoreX = MAP_CELLS - 1; // the last land node column before the water
+    const anchor = { hx: shoreX, hy: 7 };
+    const cart = spawn(s, HANDCART, anchor.hx, anchor.hy);
+    const door = vehicleDoorNode(s.world, ctxOf(s), cart);
+    const land = terrain.componentOf(terrain.nodeAt(anchor.hx, anchor.hy));
+    const scanOrder: readonly HexDirection[] = [
+      'northEast',
+      'east',
+      'southEast',
+      'southWest',
+      'west',
+      'northWest',
+    ];
+    const expected = scanOrder
+      .map((direction) => stepHex(anchor, direction))
+      .find(
+        (p) =>
+          terrain.isWalkable(terrain.nodeAt(p.hx, p.hy)) &&
+          terrain.componentOf(terrain.nodeAt(p.hx, p.hy)) === land,
+      );
+    expect(expected).not.toEqual(stepHex(anchor, 'northEast')); // the first candidate is water
+    expect(door).toEqual(expected);
+  });
+
+  it("keeps a cart parked on another cart's door blocked and boards beside both", () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const first = spawn(s, HANDCART, 8, 8);
+    const firstDoor = vehicleDoorNode(s.world, ctxOf(s), first);
+    if (firstDoor === null) throw new Error('cart without a door');
+    const second = spawn(s, HANDCART, firstDoor.hx, firstDoor.hy);
+    const blocked = vehicleBlockedCells(s.world, ctxOf(s), terrain);
+    expect(blocked.has(terrain.nodeAt(8, 8))).toBe(true);
+    expect(blocked.has(terrain.nodeAt(firstDoor.hx, firstDoor.hy))).toBe(true);
+    const boarding = boardingNode(s.world, ctxOf(s), terrain, first);
+    if (boarding === null) throw new Error('no boarding node');
+    expect(blocked.has(boarding)).toBe(false);
+    const rider = spawnRider(s, 8, 8);
+    expect(seatPassenger(s.world, first, rider)).toBe(true);
+    s.world.add(rider, Rider, { vehicle: first, boarding: false });
+    boardRider(s.world, rider, first);
+    s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: first }));
+    s.step();
+    const p = s.world.get(rider, Position);
+    const at = nodeOfPosition(p.x, p.y);
+    expect(blocked.has(terrain.nodeAt(at.hx, at.hy))).toBe(false); // beside the carts, on neither
+    expect(vehicleBlockedCells(s.world, ctxOf(s), terrain).has(terrain.nodeAt(at.hx, at.hy))).toBe(false);
+    expect(s.world.has(second, Vehicle)).toBe(true);
   });
 
   it('routes a walking settler around a parked cart instead of through it', () => {

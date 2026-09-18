@@ -12,16 +12,16 @@ import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
-import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
-import { dynamicBlockOverlay, vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
+import { vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
 import { clearNavState, redirectRoute } from '../movement/nav-state.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import {
+  boardingNode,
   boardRider,
   isShipAtSea,
   landingOf,
@@ -80,26 +80,6 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
     if (!seat.inside && world.isAlive(seat.entity)) allInside = false;
   }
   return allInside;
-}
-
-/**
- * The node a rider boards `vehicle` from: the door node, or, where another blocker covers it, the nearest
- * open node around it in the walk's ring order (approximation: the original walks the human onto the
- * entry point and only its door lookup moves it). Null for a vehicle riding a carrier, which has no door
- * on the map.
- */
-export function boardingNode(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  vehicle: Entity,
-): NodeId | null {
-  const door = vehicleDoorNode(world, ctx, vehicle);
-  if (door === null) return null;
-  const node = terrain.nodeAtClamped(door.hx, door.hy);
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  if (terrain.isWalkable(node) && !blocked.has(node)) return node;
-  return ringSearch(terrain, node, STAND_SEARCH_CAP, { accept: (n) => !blocked.has(n) });
 }
 
 /**

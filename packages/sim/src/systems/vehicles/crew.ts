@@ -17,9 +17,11 @@ import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
+import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { releaseEmployment } from '../economy/jobs/binding.js';
-import { vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
+import { dynamicBlockOverlay, vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isOrderableSettler } from '../orders/guards.js';
 import { sendUnit } from '../orders/movement.js';
@@ -146,8 +148,28 @@ export function releaseRider(world: World, rider: Entity, vehicle: Entity): void
 }
 
 /**
- * Where a rider stepping out of `vehicle` lands: the door node, or the carrier's door while the vehicle
- * rides inside a ship. Null for a ship at sea, whose riders stay aboard.
+ * The node a rider boards `vehicle` from and steps out onto: the door node, or, where another blocker
+ * covers it, the nearest open node around it in the walk's ring order (approximation: the original walks
+ * the human onto the entry point and only its door lookup moves it). Null for a vehicle riding a
+ * carrier, which has no door on the map.
+ */
+export function boardingNode(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+): NodeId | null {
+  const door = vehicleDoorNode(world, ctx, vehicle);
+  if (door === null) return null;
+  const node = terrain.nodeAtClamped(door.hx, door.hy);
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  if (terrain.isWalkable(node) && !blocked.has(node)) return node;
+  return ringSearch(terrain, node, STAND_SEARCH_CAP, { accept: (n) => !blocked.has(n) });
+}
+
+/**
+ * Where a rider stepping out of `vehicle` lands: its boarding node, or the carrier's while the vehicle
+ * rides inside a ship; the bare door without a terrain. Null for a ship at sea, whose riders stay aboard.
  */
 export function landingOf(world: World, ctx: SystemContext, vehicle: Entity): HalfCellNode | null {
   const state = world.tryGet(vehicle, Vehicle);
@@ -155,7 +177,10 @@ export function landingOf(world: World, ctx: SystemContext, vehicle: Entity): Ha
   if (state.carrier !== null && vehicleAnchor(world, vehicle) === null)
     return landingOf(world, ctx, state.carrier);
   if (isShipAtSea(ctx, state)) return null;
-  return vehicleDoorNode(world, ctx, vehicle);
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return vehicleDoorNode(world, ctx, vehicle);
+  const node = boardingNode(world, ctx, terrain, vehicle);
+  return node === null ? null : { hx: terrain.xOf(node), hy: terrain.yOf(node) };
 }
 
 /** Stand `e` on `point`, restoring the Position that boarding gave up. */

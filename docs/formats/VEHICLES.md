@@ -90,10 +90,12 @@ heaps any surplus delivered past the bill. The chest catapult takes the opener's
 - Door (`Door_GetEntryPoint(point, size)`): a moored ship's mooring point; otherwise the map position
   moved `passengervector[1]` steps in direction `passengervector[0] + facing` (modulo six), so a cart or
   catapult, which authors no vector, has its entry point on its own node. When that node is blocked or
-  its size class is below `size`, `Point_ScanArroundForPointWithSize` walks the ring of radius 1 around
-  it, starting one step north-west and turning through the six directions, and takes the first node
-  on the map that is not blocked, has the same continent byte and a size class `>= size`; the carrier
-  and the trader ask with `size` 0. A parked vehicle sets no blocked bit: `l_Attachment_AttachToGameMap`
+  its size class is below `size`, `Point_ScanArroundForPointWithSize` moves the cursor one step
+  north-west and then, for each of the six directions in turn, steps first and tests second, so the
+  ring of radius 1 is tested north-east, east, south-east, south-west, west, north-west; the first node
+  on the map that is not blocked, has the same continent byte and a size class `>= size` is the entry
+  point, and a failed scan leaves the cursor on the north-west node. The carrier
+  (`l_StartTask_ExecuteJob_Carrier_Vehicle`) asks with `size` 0. A parked vehicle sets no blocked bit: `l_Attachment_AttachToGameMap`
   only links the vehicle into the node's moveable list, so humans walk through a standing cart and its
   crew and cargo hands stand on the cart's node.
 - Board (0x28, "moves inside"): succeeds only when the human stands on the door point. Aboard, the
@@ -129,9 +131,11 @@ owner refusals of attach raise `cannotEnterVehicle` and a full vehicle `vehicleN
 refused load raises `cannotAttachVehicle`, which the original never raises; a rider refused off a
 ship at sea raises `cannotLeaveVehicle`; a standing vehicle's whole disc is blocked for humans, so a
 settler walks around a parked cart and an entry point inside the disc always takes the original's
-ring fallback, the first open ground node in ring order just outside the disc on the anchor's continent
-(`vehicleDoorPoint`; the original blocks nothing and walks the crew onto the cart); a rider boards
-from that door node or, where another blocker covers it, the nearest open node beside it; a rider
+ring fallback, the first open ground node on the anchor's continent around the ring just outside the
+disc, tested in the original's order, with the entry point kept when the ring has none
+(`vehicleDoorPoint`; the original blocks nothing and walks the crew onto the cart, and its scan is the
+radius-1 ring only, where a catapult's door here lies on ring 2); a rider boards from and steps out
+onto that door node or, where another blocker covers it, the nearest open node beside it; a rider
 whose walk to the door fails is dropped with a
 lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
 drill, marriage, need, equipment, explore, signpost and chest orders; a commander detaching mid-drive

@@ -15,9 +15,8 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { manhattan } from '../../../spatial/metric.js';
 import { isCarrierJob, isLoosePile } from '../../../stores/index.js';
-import { boardingNode } from '../../../vehicles/boarding.js';
 import { abandonCargoRun } from '../../../vehicles/cargo.js';
-import { isShipAtSea } from '../../../vehicles/crew.js';
+import { boardingNode, isShipAtSea } from '../../../vehicles/crew.js';
 import {
   modifyVehicleReserved,
   vehicleIsFull,
