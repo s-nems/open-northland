@@ -52,7 +52,9 @@ type 6, the ox-less cart. The worker producing that good:
    free-size class `>= logicsize`, house placement is allowed, and no parked vehicle stands inside;
    with `logicignorecontinentsflag` the point's continent must differ from the worker's and the
    house work point must lie on the worker's continent, which is how a ship site lands on the water
-   beside the shipyard;
+   beside the shipyard (Open Northland reads the class at the anchor alone for a ship site, since
+   the hull's shoreward rows lie against the land its door stands on; approximation, the original's
+   per-node test is read for land sites only);
 2. fetches and carries the house's construction goods like building materials (the IR's
    `construction` list of houses 42..46: handcart 2 wood, ox cart 5 wood, small ship 5 leather +
    10 wood, big ship 5 leather + 15 wood, catapult 9 wood + 1 iron);

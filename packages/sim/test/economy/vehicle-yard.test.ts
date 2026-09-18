@@ -48,6 +48,28 @@ const HANDCART_GOOD = 50;
 const SHIP_GOOD = 51;
 const HANDCART_YARD = 50;
 const SHIP_YARD = 51;
+/** The real small-ship yard body: rows -2..2, five wide at the middle. */
+const SHIP_HULL = [
+  [-1, -2],
+  [0, -2],
+  [1, -2],
+  [-2, -1],
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-2, 0],
+  [-1, 0],
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [-2, 1],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+  [-1, 2],
+  [0, 2],
+  [1, 2],
+].map(([dx, dy]) => ({ dx: dx as number, dy: dy as number }));
 const WAINWRIGHT = 52;
 const HEADQUARTERS = 1;
 const CARPENTER = 2;
@@ -115,9 +137,9 @@ function yardContent(): ContentSet {
         },
       },
       {
-        // The small-ship yard (the real house 44 shape: `logicignorecontinentsflag 1`): its site lies on
-        // the water with the door three rows south on the shore. A one-node body keeps the water fixture
-        // small; the ship's own `logicSize` 2 disc is what the water clearance reads.
+        // The small-ship yard (the real house 44: `logicignorecontinentsflag 1`, a hull two rows deep
+        // either side of the anchor, the door three rows south on the shore): the hull's shoreward rows
+        // lie against the land, so only the anchor carries the ship's `logicSize` 2 clearance.
         typeId: SHIP_YARD,
         id: 'ship_yard',
         kind: 'vehicle',
@@ -126,10 +148,10 @@ function yardContent(): ContentSet {
         construction: [{ goodType: WOOD, amount: 3 }],
         hitpoints: 100,
         footprint: {
-          blocked: [{ dx: 0, dy: 0 }],
-          familyBody: [{ dx: 0, dy: 0 }],
-          reserved: [{ dx: 0, dy: 0 }],
-          door: { dx: 0, dy: 3 },
+          blocked: SHIP_HULL,
+          familyBody: SHIP_HULL,
+          reserved: SHIP_HULL,
+          door: { dx: -2, dy: 3 },
         },
       },
       {
@@ -274,6 +296,18 @@ describe('the yard site search', () => {
     expect(s.world.get(worker, SiteAssignment).site).toBe(near);
   });
 
+  it('two workmates planned in one pass share the yard the first of them opened', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s);
+    const mate = carpenterAt(s, 13, 13, shop);
+    s.world.add(mate, CraftSelection, { goods: [HANDCART_GOOD], cursor: 0 });
+    plannerSystem(s.world, ctxOf(s));
+    const [site, ...others] = sitesOf(s, HANDCART_YARD);
+    expect(others).toEqual([]);
+    expect(s.world.get(worker, SiteAssignment).site).toBe(site);
+    expect(s.world.get(mate, SiteAssignment).site).toBe(site);
+  });
+
   it('leaves a yard past the reuse ring, and another player’s yard, alone', () => {
     const s = sim();
     const { shop } = yardWorld(s);
@@ -346,8 +380,11 @@ describe('the yard site search', () => {
     const at = anchorOf(s, site);
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy))).toBe(false);
     expect(hexDistance(anchorOf(s, shop), at)).toBeLessThan(VEHICLE_SITE_PLACEMENT_RINGS);
-    // The fixture's door lies three rows south of the anchor: on the shore, on the worker's continent.
-    const door = terrain.nodeAt(at.hx, at.hy + 3);
+    // The hull's last row lies against the shore and the door three rows south of the anchor, on the
+    // worker's continent.
+    expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy + 2))).toBe(false);
+    expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy + 3))).toBe(true);
+    const door = terrain.nodeAt(at.hx - 2, at.hy + 3);
     const workerNode = terrain.nodeAt(anchorOf(s, worker).hx, anchorOf(s, worker).hy);
     expect(terrain.isWalkable(door)).toBe(true);
     expect(terrain.componentOf(door)).toBe(terrain.componentOf(workerNode));

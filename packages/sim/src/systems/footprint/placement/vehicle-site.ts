@@ -120,11 +120,12 @@ function landObjection(
 }
 
 /**
- * Why a ship house may not go at `(hx, hy)`: its body must lie on one water body, every body node with
- * the free-size class the vehicle needs (the water side of the one clearance field), its work point on
- * the worker's shore, and no ship parked there. The shore rule is what "a water continent bordering
- * the worker's continent" reduces to when the work point is a footprint cell (approximation: the
- * original's continent-adjacency test is not read).
+ * Why a ship house may not go at `(hx, hy)`: its body must lie on one water body, its anchor with the
+ * free-size class the vehicle needs (the water side of the one clearance field; the anchor alone, as the
+ * launched ship's movement reads it, since the hull's shoreward rows lie against the land its door
+ * stands on), its work point on the worker's shore, and no ship parked there. The shore rule is what
+ * "a water continent bordering the worker's continent" reduces to when the work point is a footprint
+ * cell (approximation: the original's continent-adjacency test is not read).
  */
 function waterObjection(
   world: World,
@@ -144,10 +145,9 @@ function waterObjection(
   if (!terrain.isWater(anchor)) return 'blocked';
   const continent = terrain.componentOf(anchor);
   const forbidden = landscapeEditState(world).forbidden;
-  const clearance = vehicleClearance(world, ctx, terrain);
+  if (vehicleClearance(world, ctx, terrain).classOf(anchor) < vehicle.logicSize) return 'blocked';
   for (const node of body) {
     if (forbidden.has(node) || terrain.componentOf(node) !== continent) return 'blocked';
-    if (clearance.classOf(node) < vehicle.logicSize) return 'blocked';
   }
   const point = workPoint(terrain, house, hx, hy);
   if (point === null || terrain.componentOf(point) !== workerContinent) return 'blocked';
