@@ -128,7 +128,7 @@ export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunter
 
 /**
  * Whether the attacker entity `self` (of `attackerTribe`/`attackerJob`) may swing at target `t` (of
- * `targetTribe`) - the composed hostility relation both the ring-search filter and the attack-order check
+ * `targetTribe`) - the composed hostility relation both the target-search filter and the attack-order check
  * consult, so autonomous engagement and explicit orders obey the same rule.
  *
  * When both sides carry an {@link Owner} the player axis alone decides, through the directed

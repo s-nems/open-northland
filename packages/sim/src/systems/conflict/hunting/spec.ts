@@ -132,7 +132,7 @@ function lastResortGate(
     if (gameless === null) {
       const { x, y } = terrain.coordsOf(at);
       const scan = radius * HUNT_LAST_RESORT_SCAN_FACTOR;
-      gameless = index.nearest(x, y, 0, scan, (t) => !lastResort(t) && reachablePrey(t)) === null;
+      gameless = index.nearest(x, y, 0, scan, (t) => !lastResort(t) && reachablePrey(t), null) === null;
     }
     return gameless;
   };

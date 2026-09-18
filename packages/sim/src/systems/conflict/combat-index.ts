@@ -3,53 +3,87 @@ import { Anger, Owner, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isAggressiveAnimal, isAnimalTribe } from '../readviews/index.js';
-import { entityNode, NodeBuckets } from '../spatial/nodes.js';
+import { isAggressiveAnimal, isAnimalTribe, isLowPriorityBuildingTarget } from '../readviews/index.js';
+import { entityNode } from '../spatial/nodes.js';
 import { buildingBodyNodes } from './target-node.js';
 
-/** Coarse cell edge (half-cell nodes). Sized so a sight- or defend-radius query (≤ ~20 nodes) spans at most
- *  two cells per axis; only query cost depends on it, never a winner. */
-const COARSE_CELL_NODES = 32;
+/** Coarse cell edge (half-cell nodes). A sight- or defend-radius query (≤ ~20 nodes) spans three or four
+ *  cells per axis, a box about 2.5× the diamond it scans for; a coarser cell scans more members outside the
+ *  band, a finer one walks more cells. Only query cost depends on it, never a winner. */
+const COARSE_CELL_NODES = 16;
+
+/**
+ * How many rings past the first hit {@link CombatIndex.nearestFew} keeps taking. Without it a band holding
+ * fewer acceptors than the caller asked for costs every candidate out to `maxDist`. Approximation: three
+ * rings is the huddle around the nearest target, so a garrison fans onto enemies beside its closest one
+ * rather than onto stragglers half a map behind them.
+ */
+const NEAREST_FEW_TAIL_RINGS = 3;
+
+/** A candidate packs as `distance * CANDIDATE_ID_SPAN + entity`, so a numeric sort orders by distance and then
+ *  id. Entity ids stay below 2^32 and distances below 2^21, so the key is an exact double. */
+const CANDIDATE_ID_SPAN = 2 ** 32;
+
+/** The `memberOwner` entry of a member without an {@link Owner}; player ids are non-negative. */
+const NO_OWNER = -1;
 
 /** An unowned animal's presence class, or null for anything owned or non-animal. */
 type WildClass = 'passive' | 'hostile' | null;
 
-/** One coarse cell: its early-out tallies, and the (target, node) pairs whose fine buckets are still
- *  unbuilt. Counts are per member, not per node - both queries reduce to "does a member of some class
- *  exist here?", which no weighting can change. */
+/** One coarse cell: its early-out tallies and its members with the node each was admitted at. Counts are per
+ *  member, not per node - both queries reduce to "does a member of some class exist here?", which no
+ *  weighting can change. */
 interface CoarseCell {
   total: number;
   passive: number;
   hostileAnimal: number;
   readonly byPlayer: Map<number, number>;
   readonly members: Entity[];
-  readonly memberNodes: NodeId[];
+  readonly memberX: number[];
+  readonly memberY: number[];
+  /** The member's owning player, or {@link NO_OWNER}. */
+  readonly memberOwner: number[];
   /** The last member tallied, so a building's several nodes in one cell count once. */
   countedLast: Entity | null;
-  realized: boolean;
+  /** {@link countedLast}'s owner, reused for its further nodes. */
+  countedLastOwner: number;
 }
 
 /**
- * The combat tick's target index over every combatant and attackable building: a coarse count grid gating
- * the fine ring-search buckets under it. Derived state, rebuilt each tick and never hashed.
+ * The combat tick's target index over every combatant and attackable building: a grid of coarse cells, each
+ * holding its early-out tallies and its members. Derived state, rebuilt each tick and never hashed.
  *
  * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond, cell granularity, and "not mine
- * minus passive wildlife" ⊇ every gated accept filter), so a `false` proves the ring search would find
+ * minus passive wildlife" ⊇ every gated accept filter), so a `false` proves the nearest search would find
  * nothing; a seeker whose filter breaks that superset is ungated via a null `EngageSpec.player`.
  *
- * A coarse cell's fine buckets are built on the first query that reaches it, which is what keeps the build
- * proportional to active conflict rather than to map population. Every query realizes the whole box it is
- * about to walk first, so the walk reads exactly what an up-front build would have put there.
+ * A nearest query scans the members of the coarse cells its box overlaps rather than walking every node of
+ * every ring: a search band of radius 20 holds 840 nodes but rarely more than a few dozen members. The
+ * winner is still the canonical (min distance, then min id) one, because candidates are sorted on exactly
+ * that key before `accept` sees them.
  */
 export class CombatIndex {
   /** Coarse column → row → cell; nested numeric maps keep negative/off-map nodes collision-free. */
   private readonly byCx = new Map<number, Map<number, CoarseCell>>();
-  private readonly fine: NodeBuckets;
   private readonly content: ContentSet;
   private readonly tick: number;
+  private readonly ctx: SystemContext;
+  /** Members on the deprioritized siege tier, classified once at build: a building's class cannot change
+   *  within the tick the index lives. */
+  private readonly lowPriority = new Set<Entity>();
+  /** The last band's sorted candidates: a seeker asks the same band once per target tier, so the second
+   *  tier reuses the first tier's scan. A nested query with another band simply rebuilds it. */
+  private lastBand: {
+    x: number;
+    y: number;
+    minDist: number;
+    maxDist: number;
+    skipOwner: number | null;
+    keys: Float64Array;
+  } | null = null;
 
   /** `combatants` are the seekers and unit targets, `buildings` the live attackable structures; a building
-   *  joins at every wall node, so a ring search finds it at the distance to its nearest face. */
+   *  joins at every wall node, so a search finds it at the distance to its nearest face. */
   constructor(
     private readonly world: World,
     ctx: SystemContext,
@@ -59,27 +93,54 @@ export class CombatIndex {
   ) {
     this.content = ctx.content;
     this.tick = ctx.tick;
-    this.fine = new NodeBuckets(world, []);
+    this.ctx = ctx;
     for (const e of combatants) this.admit(e, entityNode(world, terrain, e));
     for (const b of buildings) {
       for (const node of buildingBodyNodes(world, ctx, terrain, b)) this.admit(b, node);
     }
   }
 
-  /** The nearest indexed target to node (fromX, fromY) satisfying `accept`, over `minDist..maxDist`.
-   *  `accept` may re-enter this method: the box is realized before the walk starts, so a nested query can
-   *  only realize cells holding no node this walk reads. */
+  /** Whether member `e` is a plain building - the siege tier a warrior turns on only when nothing better is
+   *  in sight. False for a settler, a headquarters, a tower and anything not indexed. */
+  isLowPriorityBuilding(e: Entity): boolean {
+    return this.lowPriority.has(e);
+  }
+
+  /**
+   * The nearest indexed target to node (fromX, fromY) satisfying `accept`, over Manhattan `minDist..maxDist`:
+   * the min-distance, then min-id acceptor, `accept` asked in that order and stopped at the first yes.
+   * Members owned by `skipOwner` are never offered: a seeker's own player is rejected by every target filter,
+   * so skipping them here saves the filter's reads without changing the winner. `accept` may re-enter this
+   * method: all search state is call-local.
+   */
   nearest(
     fromX: number,
     fromY: number,
     minDist: number,
     maxDist: number,
     accept: (e: Entity) => boolean,
+    skipOwner: number | null,
   ): { entity: Entity; distance: number } | null {
-    this.realizeBox(fromX, fromY, maxDist);
-    return this.fine.nearest(fromX, fromY, minDist, maxDist, accept);
+    const candidates = this.candidatesInBand(fromX, fromY, minDist, maxDist, skipOwner);
+    // A member admitted at several nodes recurs at a larger distance; a rejection holds for all of them.
+    const rejected = new Set<Entity>();
+    for (let i = 0; i < candidates.length; i++) {
+      const key = candidates[i] ?? 0;
+      const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+      const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+      if (rejected.has(entity)) continue;
+      if (accept(entity)) return { entity, distance };
+      rejected.add(entity);
+    }
+    return null;
   }
 
+  /**
+   * The `limit` nearest indexed targets satisfying `accept`, in the same (distance, then id) order
+   * {@link nearest} picks its winner from, so `[0]` is exactly what `nearest` returns. A member indexed at
+   * several nodes is listed once, at its nearest. The take stops at `limit` acceptors, `maxDist`, or
+   * {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit.
+   */
   nearestFew(
     fromX: number,
     fromY: number,
@@ -87,9 +148,24 @@ export class CombatIndex {
     maxDist: number,
     accept: (e: Entity) => boolean,
     limit: number,
+    skipOwner: number | null,
   ): readonly { entity: Entity; distance: number }[] {
-    this.realizeBox(fromX, fromY, maxDist);
-    return this.fine.nearestFew(fromX, fromY, minDist, maxDist, accept, limit);
+    const candidates = this.candidatesInBand(fromX, fromY, minDist, maxDist, skipOwner);
+    const found: { entity: Entity; distance: number }[] = [];
+    const seen = new Set<Entity>();
+    let lastRing = maxDist;
+    for (let i = 0; i < candidates.length && found.length < limit; i++) {
+      const key = candidates[i] ?? 0;
+      const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+      if (distance > lastRing) break;
+      const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+      if (seen.has(entity)) continue;
+      seen.add(entity);
+      if (!accept(entity)) continue;
+      found.push({ entity, distance });
+      lastRing = Math.min(lastRing, distance + NEAREST_FEW_TAIL_RINGS);
+    }
+    return found;
   }
 
   /**
@@ -114,19 +190,70 @@ export class CombatIndex {
     return this.someCell(hx, hy, radius, (cell) => cell.total - cell.passive - cell.hostileAnimal > 0);
   }
 
-  /** Tally `e` into node `node`'s coarse cell and hold the pair for that cell's eventual fine build. */
+  /** Every (member, admitted node) pair within the band, as sorted candidate keys. */
+  private candidatesInBand(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    skipOwner: number | null,
+  ): Float64Array {
+    const last = this.lastBand;
+    if (
+      last !== null &&
+      last.x === fromX &&
+      last.y === fromY &&
+      last.minDist === minDist &&
+      last.maxDist === maxDist &&
+      last.skipOwner === skipOwner
+    ) {
+      return last.keys;
+    }
+    const keys: number[] = [];
+    const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      const column = this.byCx.get(cx);
+      if (column === undefined) continue;
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const cell = column.get(cy);
+        if (cell === undefined) continue;
+        const { members, memberX, memberY, memberOwner } = cell;
+        for (let i = 0; i < members.length; i++) {
+          if (memberOwner[i] === skipOwner) continue;
+          const distance = Math.abs((memberX[i] ?? 0) - fromX) + Math.abs((memberY[i] ?? 0) - fromY);
+          if (distance < minDist || distance > maxDist) continue;
+          keys.push(distance * CANDIDATE_ID_SPAN + (members[i] ?? 0));
+        }
+      }
+    }
+    // A typed array sorts numerically without a comparator call per compare.
+    const sorted = new Float64Array(keys).sort();
+    this.lastBand = { x: fromX, y: fromY, minDist, maxDist, skipOwner, keys: sorted };
+    return sorted;
+  }
+
+  /** Tally `e` into node `node`'s coarse cell and hold the pair for the cell's member scan. */
   private admit(e: Entity, node: NodeId): void {
-    const cell = this.cellAt(coarseOf(this.terrain.xOf(node)), coarseOf(this.terrain.yOf(node)));
+    const x = this.terrain.xOf(node);
+    const y = this.terrain.yOf(node);
+    const cell = this.cellAt(coarseOf(x), coarseOf(y));
     cell.members.push(e);
-    cell.memberNodes.push(node);
-    if (cell.countedLast === e) return;
+    cell.memberX.push(x);
+    cell.memberY.push(y);
+    if (cell.countedLast === e) {
+      cell.memberOwner.push(cell.countedLastOwner);
+      return;
+    }
+    const owner = this.world.tryGet(e, Owner)?.player ?? NO_OWNER;
+    cell.memberOwner.push(owner);
     cell.countedLast = e;
+    cell.countedLastOwner = owner;
     cell.total++;
     const wild = this.wildClassOf(e);
     if (wild === 'passive') cell.passive++;
     else if (wild === 'hostile') cell.hostileAnimal++;
-    const owner = this.world.tryGet(e, Owner);
-    if (owner !== undefined) cell.byPlayer.set(owner.player, (cell.byPlayer.get(owner.player) ?? 0) + 1);
+    if (owner !== NO_OWNER) cell.byPlayer.set(owner, (cell.byPlayer.get(owner) ?? 0) + 1);
+    if (isLowPriorityBuildingTarget(this.world, this.ctx, e)) this.lowPriority.add(e);
   }
 
   /**
@@ -143,31 +270,6 @@ export class CombatIndex {
     if (isAggressiveAnimal(content, s.tribe)) return 'hostile';
     const anger = world.tryGet(e, Anger);
     return anger !== undefined && this.tick < anger.until ? 'hostile' : 'passive';
-  }
-
-  /** Build the fine buckets of every coarse cell overlapping the box `radius` nodes around (hx, hy). */
-  private realizeBox(hx: number, hy: number, radius: number): void {
-    const { cx0, cx1, cy0, cy1 } = boxCellRange(hx, hy, radius);
-    for (let cx = cx0; cx <= cx1; cx++) {
-      const column = this.byCx.get(cx);
-      if (column === undefined) continue;
-      for (let cy = cy0; cy <= cy1; cy++) {
-        const cell = column.get(cy);
-        if (cell !== undefined && !cell.realized) this.realize(cell);
-      }
-    }
-  }
-
-  private realize(cell: CoarseCell): void {
-    cell.realized = true;
-    for (let i = 0; i < cell.members.length; i++) {
-      const e = cell.members[i];
-      const node = cell.memberNodes[i];
-      if (e === undefined || node === undefined) continue;
-      // Sorted insert, not append: cells realize in query order, and only ascending-id buckets make a
-      // ring search's first match the canonical winner.
-      this.fine.insert(e, this.terrain.xOf(node), this.terrain.yOf(node));
-    }
   }
 
   /** Whether any coarse cell overlapping the box `radius` nodes around (hx, hy) passes `test`. */
@@ -198,9 +300,11 @@ export class CombatIndex {
         hostileAnimal: 0,
         byPlayer: new Map<number, number>(),
         members: [],
-        memberNodes: [],
+        memberX: [],
+        memberY: [],
+        memberOwner: [],
         countedLast: null,
-        realized: false,
+        countedLastOwner: NO_OWNER,
       };
       column.set(cy, cell);
     }

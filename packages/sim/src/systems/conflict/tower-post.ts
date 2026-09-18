@@ -58,7 +58,7 @@ export function towerPostFor(world: World, ctx: SystemContext, e: Entity, jobTyp
  * The post `e` is physically standing on, or null - the {@link Garrison} marker confirmed against the
  * settler's tile. Position, not the marker alone, is the authority: another drive can march a garrison off
  * its tower, and a settler carrying a stale marker must not keep the tower's reach or its untargetability
- * out in the open. Kept to two component reads and a coordinate compare, because the combat ring search
+ * out in the open. Kept to two component reads and a coordinate compare, because the combat target search
  * asks it of every candidate.
  */
 export function standsAtPost(world: World, e: Entity): Entity | null {

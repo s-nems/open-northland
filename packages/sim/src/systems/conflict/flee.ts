@@ -49,7 +49,7 @@ const FLEE_REPATH_CADENCE = 6;
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
 
 /**
- * The FLEE drive - run a unit away from the nearest threat. It reuses the combat ring-search index rather
+ * The FLEE drive - run a unit away from the nearest threat. It reuses the combat target index rather
  * than opening a scan of its own: the nearest hostile within {@link SIGHT_RADIUS_NODES} is the threat. A
  * collapsing need outranks the flee, and a clear sight line winds the cool-down down; otherwise the unit
  * re-aims away on the {@link FLEE_REPATH_CADENCE} throttle at its normal pace, since escape comes from
@@ -83,13 +83,13 @@ export function fleeDrive(
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   // Near bound 0, not the weapon-reach floor of 1: fear has no dead zone, so a fleeing unit reacts to a
   // hostile on its very tile too. The coarse presence early-out (perf-only) spares every calm civilian its
-  // per-tick full-sight ring scan; a FLEE-stance hunter is exempt from it, like every hunter spec.
+  // per-tick full-sight scan; a FLEE-stance hunter is exempt from it, like every hunter spec.
   const threat =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&
     !index.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
       ? null
-      : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);
+      : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept, viewer?.player ?? null);
   const fleeing = world.tryGet(e, Fleeing);
 
   if (threat === null) {

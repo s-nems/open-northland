@@ -10,7 +10,7 @@ import { manhattan, nearestCell, ringOffsetCount, ringOffsetDx, ringOffsetDy } f
 import { entityNode } from '../spatial/nodes.js';
 import type { WeaponBand } from './melee-slots.js';
 
-// The nodes combat measures a target's distance to, and paths a chaser toward, so the ring-search index, the
+// The nodes combat measures a target's distance to, and paths a chaser toward, so the target index, the
 // chase drive and the mid-swing whiff check all resolve a building target's approach the same way.
 
 /** Shared and frozen so a body-less lookup allocates nothing. */

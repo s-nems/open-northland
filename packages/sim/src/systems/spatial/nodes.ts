@@ -18,14 +18,6 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
 /**
- * How many rings past the first hit {@link NodeBuckets.nearestFew} keeps walking. Without it a band holding
- * fewer acceptors than the caller asked for costs every ring out to `maxDist`. Approximation: three rings is
- * the huddle around the nearest target, so a garrison fans onto enemies beside its closest one rather than
- * onto stragglers half a map behind them.
- */
-const NEAREST_FEW_TAIL_RINGS = 3;
-
-/**
  * Entities grouped by their {@link Position}'s half-cell node, each bucket preserving input order. Feed the
  * constructor a {@link canonicalById} list: {@link NodeBuckets.nearest} is only canonical because buckets
  * hold ascending ids, and the build appends rather than sorts. {@link NodeBuckets.insert} is the seam for a
@@ -114,46 +106,6 @@ export class NodeBuckets {
       if (best !== null) return { entity: best, distance: d };
     }
     return null;
-  }
-
-  /**
-   * The `limit` nearest bucketed entities satisfying `accept`, in the same (distance, then id) order
-   * {@link nearest} picks its winner from, so `[0]` is exactly what `nearest` returns. An entity bucketed
-   * at several nodes is listed once, at its nearest. The walk stops at the first of `limit` acceptors,
-   * `maxDist`, or {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit.
-   */
-  nearestFew(
-    fromX: number,
-    fromY: number,
-    minDist: number,
-    maxDist: number,
-    accept: (e: Entity) => boolean,
-    limit: number,
-  ): readonly { entity: Entity; distance: number }[] {
-    const found: { entity: Entity; distance: number }[] = [];
-    const taken = new Set<Entity>();
-    let lastRing = maxDist;
-    // Refilled per ring and drained into `found` before the next one, so one buffer serves the whole walk.
-    const ring: Entity[] = [];
-    for (let d = minDist; d <= lastRing && found.length < limit; d++) {
-      ring.length = 0;
-      const offsets = ringOffsetCount(d);
-      for (let i = 0; i < offsets; i++) {
-        const bucket = this.at(fromX + ringOffsetDx(d, i), fromY + ringOffsetDy(d, i));
-        for (let b = 0; b < bucket.length; b++) {
-          const e = bucket[b];
-          if (e === undefined) continue; // b < length, so only for the type
-          if (!taken.has(e) && accept(e)) {
-            taken.add(e);
-            ring.push(e);
-          }
-        }
-      }
-      ring.sort((a, b) => a - b);
-      for (const entity of ring) found.push({ entity, distance: d });
-      if (found.length > 0) lastRing = Math.min(lastRing, d + NEAREST_FEW_TAIL_RINGS);
-    }
-    return found.length > limit ? found.slice(0, limit) : found;
   }
 
   /** The lower-id of `best` and the smallest accepted entity on node (x,y). */

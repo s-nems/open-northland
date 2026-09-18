@@ -5,7 +5,6 @@ import type { SystemContext } from '../context.js';
 import {
   isAnimalTribe,
   isHunterJob,
-  isLowPriorityBuildingTarget,
   MILITARY_MODE,
   type MilitaryMode,
   stanceMode,
@@ -64,7 +63,7 @@ export interface CombatantStance {
 }
 
 /**
- * How a combatant acquires a target this tick, resolved from its stance: the ring-search `accept` filter, the
+ * How a combatant acquires a target this tick, resolved from its stance: the nearest-search `accept` filter, the
  * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND post, a
  * hunter's ground).
  */
@@ -91,7 +90,7 @@ export function engageSpec(
   const hostileInSight = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
   const generalAccept = (t: Entity): boolean => hostileInSight(t) && reachable(t);
   // The default deprioritized tier: plain buildings fall behind units and high-value structures.
-  const lowPriorityBuildings = (t: Entity): boolean => isLowPriorityBuildingTarget(world, ctx, t);
+  const lowPriorityBuildings = (t: Entity): boolean => index.isLowPriorityBuilding(t);
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
@@ -198,9 +197,9 @@ function garrisonGroup(player: number | undefined, attacker: SettlerIdentity, hu
 }
 
 export interface EngageSpec {
-  /** The ring-search per-candidate hostility/predation filter. */
+  /** The nearest search's per-candidate hostility/predation filter. */
   readonly accept: (t: Entity) => boolean;
-  /** Near reach - the ring search ignores anything closer (a ranged weapon's dead zone). */
+  /** Near reach - the search ignores anything closer (a ranged weapon's dead zone). */
   readonly minDist: number;
   /** Far reach - how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
@@ -214,7 +213,7 @@ export interface EngageSpec {
    *  Absent means take the nearest. */
   readonly spread?: { readonly seat: number; readonly group: string };
   /** The deprioritized tier among accepted targets, searched only when the primary tier finds nothing in
-   *  sight. It splits RAW ring-search candidates ahead of {@link EngageSpec.accept}, so it must stay total
+   *  sight. It splits RAW search candidates ahead of {@link EngageSpec.accept}, so it must stay total
    *  and pure over any indexed entity - a friendly unit, an own building, a carcass. */
   readonly lowPriority: (t: Entity) => boolean;
   /** Target commitment: non-null for a stance that holds one target across ticks instead of re-acquiring
@@ -233,7 +232,7 @@ function defendAnchor(world: World, e: Entity, here: NodeId): NodeId {
 
 /**
  * The enemy this combatant fights this tick with its Manhattan distance from `here`, or null. An
- * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the ring search - a focus that died
+ * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search - a focus that died
  * drops the order and falls through to auto-engagement. Otherwise the nearest target `spec.accept` admits
  * within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
  * primary tier finds nothing in sight.
@@ -252,7 +251,7 @@ export function resolveTarget(
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
     // An ordered target is chased regardless of sight, so measure its real distance, uncapped by the ring
-    // search's band. A building is measured at its nearest wall cell, the same node the chase walks to.
+    // search band. A building is measured at its nearest wall cell, the same node the chase walks to.
     if (isValidOrderedTarget(world, ctx, self, attacker, focus)) {
       return focusedOn(world, ctx, terrain, here, focus);
     }
@@ -265,13 +264,20 @@ export function resolveTarget(
     // chase, not dropped. The tier rule still outranks it, so a hold on the deprioritized tier yields to
     // any primary-tier target in sight.
     const preempt = spec.lowPriority(locked)
-      ? index.nearest(x, y, spec.minDist, spec.searchRadius, (t) => !spec.lowPriority(t) && spec.accept(t))
+      ? index.nearest(
+          x,
+          y,
+          spec.minDist,
+          spec.searchRadius,
+          (t) => !spec.lowPriority(t) && spec.accept(t),
+          spec.player,
+        )
       : null;
     if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
     return focusedOn(world, ctx, terrain, here, locked);
   }
   // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant or building can
-  // be in the search band, both ring searches would return null.
+  // be in the search band, both tier searches would return null.
   if (spec.player !== null && !index.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
   // The animal seeker's twin: no civ in the band proves both empty.
   if (spec.animalSeeker === true && !index.civsWithin(x, y, spec.searchRadius)) return null;
@@ -296,7 +302,7 @@ function pickInBand(
   const accept = (t: Entity): boolean => spec.lowPriority(t) === wantsLowPriority && spec.accept(t);
   const spread = spec.spread;
   if (spread === undefined) {
-    const found = pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept);
+    const found = pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept, spec.player);
     return found === null ? null : { target: found.entity, dist: found.distance };
   }
   // One search per garrison, not per seat: `spread.group`, the centre and the reach name every input the
@@ -305,7 +311,15 @@ function pickInBand(
   const key = `${x},${y},${spec.minDist},${spec.searchRadius},${spread.group},${tier}`;
   let band = pass.bands.get(key);
   if (band === undefined) {
-    band = pass.index.nearestFew(x, y, spec.minDist, spec.searchRadius, accept, GARRISON_SPREAD_TARGETS);
+    band = pass.index.nearestFew(
+      x,
+      y,
+      spec.minDist,
+      spec.searchRadius,
+      accept,
+      GARRISON_SPREAD_TARGETS,
+      spec.player,
+    );
     pass.bands.set(key, band);
   }
   if (band.length === 0) return null;
@@ -313,7 +327,7 @@ function pickInBand(
   return share === undefined ? null : { target: share.entity, dist: share.distance };
 }
 
-/** A focused target and its real distance from `here`, uncapped by the ring search's band - a building
+/** A focused target and its real distance from `here`, uncapped by the search band - a building
  *  measured at the wall the chase closes on. */
 function focusedOn(
   world: World,

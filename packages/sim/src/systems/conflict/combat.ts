@@ -20,8 +20,8 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  * pool, so the system is inert on non-combat settlers.
  *
  * The dormancy gate decides in one cheap pass whether any hostile pair or lingering combat state exists, so
- * a peaceful map costs nothing. The {@link CombatIndex} then makes a seeker's nearest-enemy query a bounded
- * ring search rather than an O(entities) scan per seeker.
+ * a peaceful map costs nothing. The {@link CombatIndex} then answers a seeker's nearest-enemy query from the
+ * coarse cells around it rather than with an O(entities) scan per seeker.
  *
  * Two reach radii: the weapon's extracted `[minRange, maxRange]` band is where a swing lands, while the
  * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on.
@@ -34,7 +34,7 @@ export const combatSystem: System = (world, ctx) => {
   // an O(combatants) scan, not the canonical sort, on a tick with no fight.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
-  // The scan order and the ring-search index are built from the canonical (ascending-id) list, so a
+  // The scan order and the target index are built from the canonical (ascending-id) list, so a
   // distance or first-match tie-break lands on the same winner.
   const combatants = canonicalById(world.query(Settler, Health, Position));
   const pass: CombatPass = {
