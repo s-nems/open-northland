@@ -29,6 +29,7 @@ import { sendUnit } from '../orders/movement.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
+import { endChat } from '../social/gossip/drive.js';
 import { abandonCargoRun } from './cargo.js';
 
 // The crew of docs/formats/VEHICLES.md "Crew": who may attach, where a rider boards and leaves, and what
@@ -111,9 +112,9 @@ export function refuseCrew(
 }
 
 /**
- * The attach order - see the command doc. The rider gives up its workplace, its post and its fight
- * (`DoExecuteUserCommand_AttachVehicle` detaches the work house and resets the attack targets) and
- * walks to the door through the unconfined walk order, which also sets a carried load down first.
+ * The attach order - see the command doc. The rider gives up its workplace, its post, its fight
+ * (`DoExecuteUserCommand_AttachVehicle` detaches the work house and resets the attack targets) and its
+ * chat, and walks to the door through the unconfined walk order, which also sets a carried load down first.
  */
 export function attachToVehicle(
   world: World,
@@ -145,6 +146,7 @@ export function attachToVehicle(
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
   world.remove(e, HuntFocus);
+  endChat(world, ctx.tick, e);
   world.add(e, Rider, { vehicle, boarding: false });
   const door = vehicleDoorNode(world, ctx, vehicle);
   // The walk order snaps a door another blocker covers to the node beside it, as the rider rung does.

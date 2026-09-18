@@ -120,10 +120,15 @@ Open Northland: `Rider` (`packages/sim/src/components/vehicle.ts`) marks an atta
 seat's `inside` says whether it is aboard; a rider aboard has no `Position`, which is what keeps it
 out of every map query, and its needs and hitpoints stand still (approximation: the original's
 hitpoint step aboard is not read). `attachToVehicle` walks the rider to the door through the
-unconfined walk order; the rider rung of the drive ladder (`systems/vehicles/boarding.ts`) keeps it
-by the door and steps it in once the vehicle asks. A goto with anyone outside holds its goal under
-`waitsForHuman` and starts once the crew is inside, the way `DoUpdateAI` runs `l_Passengers_MoveIn`
-ahead of a target. `loadIntoVehicle` is `q` and `s` in one order. An attack order given while the crew is still outside
+unconfined walk order and ends any chat it was in; the rider rung of the drive ladder
+(`systems/vehicles/boarding.ts`) steps a passenger in as soon as it reaches the door, while a carrier
+or trader, the crew that works its vehicle from outside, waits by the door until the vehicle asks
+(deviation, user rule: the original keeps every rider outside until asked). A rider on a neighbour of a
+door another settler holds boards from there (approximation: the original's humans stand through each
+other, a collider here cannot). A goto with anyone outside holds its goal under `waitsForHuman` and
+starts once the crew is inside, the way `DoUpdateAI` runs `l_Passengers_MoveIn` ahead of a target;
+the request is a forced boarding that outranks the rider's needs, which stand still aboard (deviation,
+user rule: the original's `NeedTypeToFulfill` gate skips a rider with a pending need). `loadIntoVehicle` is `q` and `s` in one order. An attack order given while the crew is still outside
 waits under `waitsForHuman` like a goto's goal and the combat pass takes it up once everyone is in
 (approximation: the original's `DoUpdateAI` runs `l_Passengers_MoveIn` ahead of any target, which is
 read for the goto only). Named approximations: the job and

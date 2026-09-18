@@ -3,6 +3,7 @@ import {
   PathRequest,
   Position,
   Rider,
+  Settler,
   Vehicle,
   VehicleDrive,
   vehicleCommander,
@@ -11,15 +12,17 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
 import { clearNavState, redirectRoute } from '../movement/nav-state.js';
+import { isTraderJob } from '../readviews/jobs.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
+import type { PlannerSpacing } from '../settlers/planner/spacing.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { isCarrierJob } from '../stores/workplace.js';
 import {
   boardingNode,
   boardRider,
@@ -44,16 +47,12 @@ function continentAt(terrain: TerrainGraph, point: HalfCellNode): number {
   return terrain.componentOf(terrain.nodeAt(point.hx, point.hy));
 }
 
-/** Whether `rider`, outside its vehicle, has a need the ladder will pull it away for: the original's
- *  `NeedTypeToFulfill` gate on the board request. */
-function needPending(world: World, ctx: SystemContext, rider: Entity): boolean {
-  return anyNeedPressing(world, ctx.content, rider);
-}
-
 /**
  * One pass of `l_Passengers_MoveIn`: every rider still outside is asked in when it stands on the door's
- * continent and has no pending need, and detached where it stands when on another continent. Returns
- * whether the whole crew is inside; a carried vehicle counts once it rides inside too.
+ * continent, and detached where it stands when on another continent. Returns whether the whole crew is
+ * inside; a carried vehicle counts once it rides inside too. Deviation (user rule): the original skips a
+ * rider with a pending need; here the vehicle's order is a forced boarding, and the rider rung answers
+ * it over the need, which stands still aboard.
  */
 export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): boolean {
   const terrain = ctx.terrain;
@@ -72,7 +71,6 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
       continue;
     }
     allInside = false;
-    if (needPending(world, ctx, rider)) continue;
     const live = world.tryMut(rider, Rider);
     if (live !== undefined && !live.boarding) live.boarding = true;
   }
@@ -83,10 +81,46 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
 }
 
 /**
- * The rider rung of the drive ladder, for an idle attached settler: walk to the vehicle's boarding node,
- * step in there when the vehicle asked, else stand by it. True when the rung took the settler.
+ * Whether a rider steps in as soon as it reaches the door, unasked: everyone but the crew that works its
+ * vehicle from outside, a carrier serving the hold or a trader working a route, who wait by the door for
+ * their own rungs until the vehicle asks. Deviation (user rule): the original keeps every rider outside
+ * until the vehicle's order asks it in.
  */
-export function planRider(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): boolean {
+function boardsUnasked(ctx: SystemContext, jobType: number | null): boolean {
+  return jobType !== null && !isCarrierJob(ctx, jobType) && !isTraderJob(ctx.content, jobType);
+}
+
+/**
+ * Whether `e` stands at `doorNode` for boarding: on it, or on a neighbour while another settler holds the
+ * door (approximation: the original boards only from the door point, but its humans stand through each
+ * other, while a collider here can never share the door with a bystander).
+ */
+function standsAtDoor(
+  terrain: TerrainGraph,
+  spacing: PlannerSpacing,
+  e: Entity,
+  here: NodeId,
+  doorNode: NodeId,
+): boolean {
+  if (here === doorNode) return true;
+  const door = terrain.coordsOf(doorNode);
+  const at = terrain.coordsOf(here);
+  if (hexDistance({ hx: at.x, hy: at.y }, { hx: door.x, hy: door.y }) !== 1) return false;
+  return spacing.occupancy.at(door.x, door.y).some((other) => other !== e);
+}
+
+/**
+ * The rider rung of the drive ladder, for an idle attached settler: walk to the vehicle's boarding node
+ * and step in there, at once for a passenger, once the vehicle asks for a carrier or trader. True when
+ * the rung took the settler.
+ */
+export function planRider(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  spacing: PlannerSpacing,
+): boolean {
   const rider = world.tryGet(e, Rider);
   if (rider === undefined) return false;
   const vehicle = rider.vehicle;
@@ -94,8 +128,9 @@ export function planRider(world: World, ctx: SystemContext, terrain: TerrainGrap
   const doorNode = boardingNode(world, ctx, terrain, vehicle);
   if (doorNode === null) return true; // the vehicle rides a carrier: nowhere to walk to
   const here = entityNode(world, terrain, e);
-  if (here === doorNode) {
-    if (rider.boarding && !isShipAtSea(ctx, world.get(vehicle, Vehicle))) boardRider(world, e, vehicle);
+  if (standsAtDoor(terrain, spacing, e, here, doorNode)) {
+    const steps = rider.boarding || boardsUnasked(ctx, world.get(e, Settler).jobType);
+    if (steps && !isShipAtSea(ctx, world.get(vehicle, Vehicle))) boardRider(world, e, vehicle);
     return true;
   }
   redirectRoute(world, e, doorNode);

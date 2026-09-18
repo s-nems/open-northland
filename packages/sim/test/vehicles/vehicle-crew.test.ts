@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Chat,
   JobAssignment,
   PlayerOrder,
   Position,
@@ -47,6 +48,8 @@ const HANDCART = 1;
 const SHIP_SMALL = 3;
 const CATAPULT = 5;
 const SCOUT = 27;
+const CARRIER = 24;
+const SOLDIER = 31;
 const CIVILIST = 6;
 const WOODCUTTER = 1;
 const MAP_CELLS = 16;
@@ -63,6 +66,8 @@ const CART_LOAD = 5;
 const STARVING_PCT = 90;
 /** A scout's ten-node walk at its nine ticks a node, with a tick to board. */
 const BOARD_TICKS = 120;
+/** The same walk at a carrier's slower gait, with margin. */
+const CARRIER_WALK_TICKS = 300;
 /** The door of a handcart parked at (12, 6): the first open node of the ring around it, north-east. */
 const CART_DOOR = { hx: 12, hy: 5 } as const;
 const SAIL_TICKS = 300;
@@ -146,7 +151,7 @@ function boardOut(s: Simulation, vehicle: Entity, rider: Entity, limit = BOARD_T
 }
 
 describe('attachToVehicle', () => {
-  it('seats an allowed trade in the commander slot and walks it to the door, leaving its workplace', () => {
+  it('seats an allowed trade in the commander slot and walks it in at the door, leaving its workplace', () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 12, 6);
     const scout = spawnSettler(s, 2, 6);
@@ -155,9 +160,51 @@ describe('attachToVehicle', () => {
     expect(seatOf(s, cart, scout)).toEqual({ entity: scout, inside: false });
     expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false });
     expect(s.world.has(scout, JobAssignment)).toBe(false);
-    s.run(BOARD_TICKS);
-    expect(nodeOf(s, scout)).toEqual(CART_DOOR);
-    expect(seatOf(s, cart, scout)?.inside).toBe(false); // nobody asked it in
+    s.run(ATTACH_WALK_TICKS);
+    expect(nodeOf(s, scout)).not.toEqual(CART_DOOR);
+    boardOut(s, cart, scout);
+    expect(s.world.has(scout, Position)).toBe(false); // a passenger steps in unasked
+    expect(s.world.get(cart, Vehicle).task).toBe('none'); // and the cart stands until ordered
+  });
+
+  it('keeps a carrier by the door of its cart until the cart asks it in', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const carrier = spawnSettler(s, 2, 6, CARRIER);
+    attach(s, carrier, cart);
+    s.run(CARRIER_WALK_TICKS);
+    expect(nodeOf(s, carrier)).toEqual(CART_DOOR);
+    expect(seatOf(s, cart, carrier)?.inside).toBe(false);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: 4, y: 12 }));
+    boardOut(s, cart, carrier, CARRIER_WALK_TICKS);
+  });
+
+  it('ends the chat the settler was in and boards from beside a door another settler holds', () => {
+    const s = sim();
+    const ship = spawn(s, SHIP_SMALL, 22, 8);
+    const door = s.vehicleView(ship)?.door;
+    if (door === undefined || door === null) throw new Error('the ship spawned with no door');
+    const bystander = spawnSettler(s, door.hx, door.hy, SOLDIER);
+    const soldier = spawnSettler(s, 2, 6, SOLDIER);
+    s.world.add(soldier, Chat, {
+      partner: bystander,
+      kind: 'company',
+      seeker: true,
+      talking: false,
+      speaks: true,
+    });
+    s.world.add(bystander, Chat, {
+      partner: soldier,
+      kind: 'company',
+      seeker: false,
+      talking: false,
+      speaks: false,
+    });
+    attach(s, soldier, ship);
+    expect(s.world.has(soldier, Chat)).toBe(false);
+    expect(s.world.has(bystander, Chat)).toBe(false);
+    boardOut(s, ship, soldier, SAIL_TICKS);
+    expect(nodeOf(s, bystander)).toEqual(door);
   });
 
   it('refuses a trade the type does not list with cannotEnter and a full vehicle with noRoom', () => {
@@ -296,18 +343,19 @@ describe('boarding', () => {
     expect(vehicleCommander(s.world.get(ship, Vehicle))).toBe(near);
   });
 
-  it('does not ask a rider with a pending need aboard', () => {
+  it('boards a starving carrier when the cart asks: the order outranks the need', () => {
     const s = sim();
     s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
     const cart = spawn(s, HANDCART, 12, 6);
-    const scout = spawnSettler(s, 12, 6);
-    attach(s, scout, cart);
-    s.enqueue(adminCommand({ kind: 'debugSetNeeds', target: scout, hunger: STARVING_PCT }));
+    const carrier = spawnSettler(s, 12, 6, CARRIER);
+    attach(s, carrier, cart);
+    s.enqueue(adminCommand({ kind: 'debugSetNeeds', target: carrier, hunger: STARVING_PCT }));
+    s.run(ATTACH_WALK_TICKS);
+    expect(s.world.has(carrier, Position)).toBe(true);
     s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: 4, y: 12 }));
-    s.run(BOARD_TICKS);
-    expect(s.world.get(cart, Vehicle).task).toBe('waitsForHuman');
-    expect(s.world.get(scout, Rider).boarding).toBe(false);
-    expect(s.world.has(scout, Position)).toBe(true);
+    boardOut(s, cart, carrier, CARRIER_WALK_TICKS);
+    s.step();
+    expect(s.world.get(cart, Vehicle).task).toBe('none');
   });
 
   it('boardVehicle steps a rider standing on the door in without a goto', () => {

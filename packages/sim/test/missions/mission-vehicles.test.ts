@@ -567,11 +567,10 @@ describe('the vehicle goals', () => {
     const [crew] = missionObjects(sim.world, CREW_ID);
     if (crew === undefined) throw new Error('no crew');
     sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: e });
-    sim.run(FIRST_PASS - sim.tick);
+    sim.step();
     expect(holds(sim)).toBe(false); // seated, still outside
-    sim.enqueueSetup({ kind: 'boardVehicle', entity: crew });
     sim.run(BOARD_TICKS);
-    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true); // a passenger steps in unasked
     sim.run(MISSION_EVALUATION_TICKS);
     expect(holds(sim)).toBe(true);
   });

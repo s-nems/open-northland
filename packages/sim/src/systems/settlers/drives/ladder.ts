@@ -8,6 +8,7 @@ import {
   MISSION_BEHAVIOUR,
   ownerOf,
   Position,
+  Rider,
   SettlerProgress,
   type SettlerView,
   Stance,
@@ -116,6 +117,14 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     return;
   }
 
+  // A vehicle that asked its crew in takes its rider over every need below (user rule, a deviation from
+  // the original's pending-need gate on the board request): the order is a forced boarding, and a need
+  // stands still aboard. Whatever the rider waited in, it steps out of.
+  if (world.tryGet(e, Rider)?.boarding === true && planRider(world, ctx, terrain, e, pass.spacing)) {
+    stepOut(world, e);
+    return;
+  }
+
   // Already home for one need: top the others up before stepping back out, rather than walking the whole
   // errand again for each bar.
   if (planHomeTopUp(world, ctx, e, settler)) return;
@@ -166,7 +175,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     // A trader commanding a cart works its route from here, above the rider rung that would otherwise
     // keep it at the door; the rung yields while the cart is under way, and the rider rung boards it.
     if (planTrader(plan)) return;
-    if (planRider(world, ctx, terrain, e)) return;
+    if (planRider(world, ctx, terrain, e, pass.spacing)) return;
   }
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
