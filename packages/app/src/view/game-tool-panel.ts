@@ -28,6 +28,7 @@ import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/in
 import { currentLocale } from '../i18n/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
+import type { AssetSet } from './settings-store.js';
 
 /**
  * Wraps the tool panel with the wiring the map viewer and the acceptance scenes share, chiefly the
@@ -59,6 +60,8 @@ export interface GameToolPanelDeps {
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The content set's goods, for the summary bar's per-good rows. */
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
+  /** The asset set the map draws with, so the HUD's good icons match it. */
+  readonly assetSet: AssetSet;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -192,6 +195,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       technologyLabel: deps.technologyLabel,
       goodLabel: deps.goodLabel,
       goods: deps.goods,
+      assetSet: deps.assetSet,
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,

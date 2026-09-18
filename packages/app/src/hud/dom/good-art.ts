@@ -1,11 +1,13 @@
 import { loadGoodsManifest } from '../../content/goods-gfx.js';
 import { fetchJsonOrNull } from '../../content/net.js';
 import { type GoodIconSource, ownGoodIconSource } from '../../content/own-assets/goods.js';
+import type { AssetSet } from '../../view/settings-store.js';
 
 /**
- * A good's icon for a DOM surface, drawn as a CSS background crop of its sheet: the project's own art
- * when it exists, else the original's recoloured pile atlas (`/bobs/ls_goods.<palette>.png`), the
- * same frame the Pixi panels show. `null` when neither is served.
+ * A good's icon for a DOM surface, drawn as a CSS background crop of its sheet, from the asset set the
+ * map draws with: the project's own art under the own set (the original's frame where the project has
+ * none yet), else the original's recoloured pile atlas (`/bobs/ls_goods.<palette>.png`), the same
+ * frame the Pixi panels show. `null` when nothing is served.
  */
 
 /** The served atlas manifest's fields this reader needs. */
@@ -34,8 +36,8 @@ function paletteAtlas(stem: string): Promise<AtlasJson | null> {
   return pending;
 }
 
-export async function goodIconSource(goodId: string): Promise<GoodIconSource | null> {
-  const own = ownGoodIconSource(goodId);
+export async function goodIconSource(goodId: string, assetSet: AssetSet): Promise<GoodIconSource | null> {
+  const own = assetSet === 'own' ? ownGoodIconSource(goodId) : undefined;
   if (own !== undefined) return own;
   const manifest = await loadGoodsManifest();
   const icon = manifest?.icons[goodId];

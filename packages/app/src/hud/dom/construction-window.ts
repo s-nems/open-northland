@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HudModel } from '@open-northland/render';
 import { formatMessage, messages } from '../../i18n/index.js';
+import type { AssetSet } from '../../view/settings-store.js';
 import { centralWindowFloor, centralWindowOrigin } from '../regions.js';
 import {
   BUILDING_CATEGORIES,
@@ -36,6 +37,8 @@ export interface ConstructionWindowDeps {
   readonly plane: HTMLElement;
   readonly entries: readonly MenuBuildingEntry[];
   readonly thumbs: BuildingThumbs;
+  /** The asset set the map draws with; the cost icons come from the same. */
+  readonly assetSet: AssetSet;
   /** A cost line's good by content type id; `undefined` skips its icon. */
   readonly goodIdOf: (goodType: number) => string | undefined;
   readonly goodLabel: (goodType: number) => string;
@@ -77,7 +80,6 @@ interface Card {
   readonly row: CatalogueRow;
   readonly element: HTMLElement;
   readonly pick: HTMLButtonElement;
-  readonly reason: HTMLElement;
   readonly slots: readonly { readonly element: HTMLElement; readonly goodType: number; shown: string }[];
 }
 
@@ -106,14 +108,14 @@ export interface BuildingCardView {
   /** The picture box's content: a canvas, or the house glyph. */
   readonly thumb: string;
   readonly helpLabel: string;
-  /** Set, the card is locked and shows this reason. */
-  readonly reason?: string;
+  /** True for a card waiting on a discovery: it cannot be picked. */
+  readonly locked?: boolean;
   readonly picked?: boolean;
 }
 
 /** A card's inner markup, shared with the gallery board. */
 export function buildingCardMarkup(view: BuildingCardView): string {
-  const locked = view.reason !== undefined;
+  const locked = view.locked === true;
   const slots = view.cost
     .map(
       (amount, index) =>
@@ -121,10 +123,7 @@ export function buildingCardMarkup(view: BuildingCardView): string {
     )
     .join('');
   const pressed = locked ? ' disabled' : ` aria-pressed="${view.picked === true}"`;
-  const reason = locked
-    ? `<small class="on-bcard__reason" title="${escapeHtml(view.reason)}">${escapeHtml(view.reason)}</small>`
-    : '<small class="on-bcard__reason" hidden></small>';
-  return `<button type="button" class="on-bcard__pick"${pressed}><span class="on-bcard__thumb">${view.thumb}</span><span class="on-bcard__body"><strong class="on-bcard__title">${escapeHtml(view.title)}</strong>${reason}<span class="on-cost">${slots}</span></span></button><button type="button" class="on-medallion on-bcard__help" aria-label="${escapeHtml(view.helpLabel)}">?</button>`;
+  return `<button type="button" class="on-bcard__pick"${pressed}><span class="on-bcard__thumb">${view.thumb}</span><span class="on-bcard__body"><strong class="on-bcard__title">${escapeHtml(view.title)}</strong><span class="on-cost">${slots}</span></span></button><button type="button" class="on-medallion on-bcard__help" aria-label="${escapeHtml(view.helpLabel)}">?</button>`;
 }
 
 export function createConstructionWindow(deps: ConstructionWindowDeps): ConstructionWindow {
@@ -265,15 +264,9 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       helpLabel: formatMessage(copy.help, { name: entry.label }),
     });
     const pick = element.querySelector('.on-bcard__pick');
-    const reason = element.querySelector('.on-bcard__reason');
     const thumb = element.querySelector('canvas');
     const help = element.querySelector('.on-bcard__help');
-    if (
-      !(pick instanceof HTMLButtonElement) ||
-      !(reason instanceof HTMLElement) ||
-      thumb === null ||
-      !(help instanceof HTMLButtonElement)
-    ) {
+    if (!(pick instanceof HTMLButtonElement) || thumb === null || !(help instanceof HTMLButtonElement)) {
       throw new Error('construction: card markup');
     }
     if (!deps.thumbs.paint(thumb, entry.typeId, THUMB_BOX_PX)) thumb.outerHTML = GLYPH.house;
@@ -284,7 +277,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       const frame = slot.querySelector('.on-good__frame');
       const goodId = deps.goodIdOf(line.goodType);
       if (frame instanceof HTMLElement && goodId !== undefined) {
-        void goodIconSource(goodId).then((source) => {
+        void goodIconSource(goodId, deps.assetSet).then((source) => {
           if (!disposed && source !== null) frame.style.cssText = goodIconStyle(source, COST_ICON_BOX_PX);
         });
       }
@@ -300,7 +293,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       deps.cue('confirm');
       deps.onHelp(entry.typeId);
     });
-    return { row, element, pick, reason, slots };
+    return { row, element, pick, slots };
   };
 
   const setPicked = (typeId: number | null): void => {
@@ -360,10 +353,6 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
         card.pick.disabled = locked;
         if (locked) card.pick.removeAttribute('aria-pressed');
         else card.pick.setAttribute('aria-pressed', String(row.entry.typeId === state.picked));
-        const reason = row.availability.kind === 'locked' ? row.availability.reason : '';
-        card.reason.textContent = reason;
-        card.reason.title = reason;
-        card.reason.hidden = reason === '';
         grid.append(card.element);
       }
     };
@@ -378,7 +367,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     const counts = tabCounts(partition.open);
     for (const [id, tab] of tabButtons) tab.count.textContent = String(counts[id]);
     openNote.count.textContent = String(partition.open.length);
-    lockedNote.count.textContent = `${partition.locked.length} · ${copy.lockedHint}`;
+    lockedNote.count.textContent = String(partition.locked.length);
     return true;
   };
 

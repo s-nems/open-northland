@@ -7,12 +7,6 @@ import { boundBuildingRef } from '../../content/building-gfx/index.js';
  * actual game building). Painted into the card's own canvas, so it needs no GPU and no second fetch.
  */
 
-/** A body taller than this many times its width would shrink to a sliver in the square box, so its
- *  upper part fills the box instead (a tower, a mint). */
-export const TALL_THUMB_RATIO = 1.35;
-/** How far down a tall body the shown square starts, as a share of the hidden height: the roof and
- *  the upper storey, not the bare footing. */
-const TALL_THUMB_FOCUS = 0.22;
 /** Backing pixels per design px, so the thumb stays crisp on a scaled plane. */
 const THUMB_BACKING_SCALE = 2;
 
@@ -29,22 +23,10 @@ export interface ThumbFit {
   readonly dh: number;
 }
 
-/** Contain the frame in a `box` square, centred; a tall frame is cropped to a square of its width
- *  taken near the top instead. */
+/** Contain the whole frame in a `box` square, centred: a tall body (a tower) stands small and whole
+ *  rather than cropped. */
 export function thumbFit(frame: { readonly width: number; readonly height: number }, box: number): ThumbFit {
   const { width, height } = frame;
-  if (height > width * TALL_THUMB_RATIO) {
-    return {
-      sx: 0,
-      sy: (height - width) * TALL_THUMB_FOCUS,
-      sw: width,
-      sh: width,
-      dx: 0,
-      dy: 0,
-      dw: box,
-      dh: box,
-    };
-  }
   const scale = Math.min(box / width, box / height);
   const dw = width * scale;
   const dh = height * scale;

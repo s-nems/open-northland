@@ -1,5 +1,6 @@
 import type { SpriteSheet } from '@open-northland/render';
 import {
+  entityById,
   type HalfCellNode,
   type Paper,
   type SimEvent,
@@ -11,6 +12,7 @@ import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
+import type { BuildingThumbs } from '../../dom/building-thumb.js';
 import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
@@ -33,6 +35,9 @@ export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 const PLAYER_STRING_ID = 361;
 /** A note this young slides in as it arrives; an older one (a restored feed) simply stands. */
 const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
+/** The building body's canvas box on a note (design px): the thumbnail's content height at rest;
+ *  `object-fit: contain` fits it to whatever the padding leaves. */
+const NOTICE_THUMB_BOX_PX = 44;
 
 /** Where a note's press centres the view: the subject while it lives, else the spot it was raised at. */
 export interface MessageTarget {
@@ -48,6 +53,9 @@ export interface MessageCenterDeps {
   readonly bottomInset: number;
   /** The sheet the cards' settler figures draw from; absent, the thumbnails stay clear. */
   readonly sheet?: SpriteSheet | undefined;
+  /** Paints a finished building's body on its note, as the construction window pictures it; absent,
+   *  the note shows the house glyph. */
+  readonly buildingThumbs?: BuildingThumbs | undefined;
   readonly playerColourOf?: ((player: number) => number) | undefined;
   /** Only this seat's messages become notes. */
   readonly localPlayer: number;
@@ -145,15 +153,24 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
   };
 }
 
-function cardOf(m: UserMessage, tick: number): NoticeCardView {
+function buildingTypeIn(snapshot: WorldSnapshot): (entity: number) => number | undefined {
+  return (entity) => {
+    const building = entityById(snapshot, entity)?.components.Building as
+      | { buildingType?: unknown }
+      | undefined;
+    return num(building?.buildingType);
+  };
+}
+
+function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
   return {
     id: m.id,
     level: m.priority,
     short: m.text.short,
     full: m.text.full,
-    thumb: noticeThumb(m.type, m.subject),
+    thumb: noticeThumb(m.type, m.subject, buildingTypeIn(snapshot)),
     canGo: m.subject !== null || m.at !== null,
-    fresh: tick - m.tick < FRESH_NOTE_TICKS,
+    fresh: snapshot.tick - m.tick < FRESH_NOTE_TICKS,
   };
 }
 
@@ -167,6 +184,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const column = createNoticeColumn({
     plane: deps.plane,
     bottomInset: deps.bottomInset,
+    paintBuilding: (canvas, typeId) =>
+      deps.buildingThumbs?.paint(canvas, typeId, NOTICE_THUMB_BOX_PX) === true,
     onLevel: (level) => {
       ctx.cue('confirm');
       feed.setLevel(level);
@@ -231,7 +250,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       if (feed.version() !== renderedVersion) {
         renderedVersion = feed.version();
         column.render(
-          orderNotes(feed.displayed()).map((m) => cardOf(m, snapshot.tick)),
+          orderNotes(feed.displayed()).map((m) => cardOf(m, snapshot)),
           feed.tally(),
           feed.level(),
         );

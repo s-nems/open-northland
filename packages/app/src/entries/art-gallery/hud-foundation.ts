@@ -94,13 +94,11 @@ const noticeTally = (level: NoticeCardView['level']): number =>
 /** A construction card on the board: the picture box holds the house glyph, as a card without a
  *  sheet does. */
 function card(view: Omit<BuildingCardView, 'thumb' | 'helpLabel'>): string {
-  return `<article class="on-bcard${view.reason === undefined ? '' : ' on-bcard--locked'}">${buildingCardMarkup(
-    {
-      ...view,
-      thumb: GLYPH.house,
-      helpLabel: `Wiedza: ${view.title}`,
-    },
-  )}</article>`;
+  return `<article class="on-bcard${view.locked === true ? ' on-bcard--locked' : ''}">${buildingCardMarkup({
+    ...view,
+    thumb: GLYPH.house,
+    helpLabel: `Wiedza: ${view.title}`,
+  })}</article>`;
 }
 
 /** Every primitive of the foundation on one board, laid out where the HUD regions will sit. */
@@ -144,8 +142,8 @@ function boardMarkup(): string {
   <div class="on-parchment on-catalog" data-view="grid"><p class="on-parchment__note"><span>Dostępne teraz</span><span class="on-parchment__count">2</span></p><div class="on-build-grid">
     ${card({ title: 'Chata drwala', cost: [2, 1], picked: true })}
     ${card({ title: 'Magazyn (poziom 1)', cost: [1, 1, 2, 1], short: [2] })}
-  </div><p class="on-parchment__note on-parchment__note--locked"><span>Zablokowane</span><span class="on-parchment__count">1 · odkryj zawód lub towar</span></p><div class="on-build-grid">
-    ${card({ title: 'Kuźnia (poziom 1)', cost: [2, 1, 1, 1, 1], reason: 'Wymagane odkrycia: Kowal, Żelazo (Zbieracz)' })}
+  </div><p class="on-parchment__note on-parchment__note--locked"><span>Zablokowane</span><span class="on-parchment__count">1</span></p><div class="on-build-grid">
+    ${card({ title: 'Kuźnia (poziom 1)', cost: [2, 1, 1, 1, 1], locked: true })}
   </div></div>
   </div>
 </section>

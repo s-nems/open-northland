@@ -24,6 +24,7 @@ import {
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import { messages, professionLabel } from '../../i18n/index.js';
+import type { AssetSet } from '../../view/settings-store.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
@@ -79,6 +80,8 @@ export interface ToolPanelOptions {
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The content set's goods, so the summary can name a stock entry by its stable string id. */
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
+  /** The asset set the map draws with; the DOM surfaces' good icons come from the same. */
+  readonly assetSet: AssetSet;
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
@@ -333,6 +336,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           plane,
           entries: seam.entries,
           thumbs,
+          assetSet: opts.assetSet,
           goodIdOf: (goodType) => goodIdByType.get(goodType),
           goodLabel: (goodType) => opts.goodLabel(goodType) ?? `#${goodType}`,
           papersCount: () => opts.papers.read().filter((paper) => PLACING_PAPER_KINDS.has(paper.kind)).length,
@@ -382,6 +386,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     });
     const systemBar = createHudSystemBar(plane, {
       summary: {
+        assetSet: opts.assetSet,
         goodIdOf: (goodType) => goodIdByType.get(goodType),
         goodLabel: (goodId) => {
           const typeId = goodTypeById.get(goodId);
@@ -414,6 +419,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       // native frame at the art scale.
       bottomInset: FRAME_NATIVE.h * MINIMAP_ART_SCALE + NOTICE_MINIMAP_GAP,
       sheet: opts.sheet,
+      buildingThumbs: thumbs,
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
       buildingLabel: (typeId) => labelByType.get(typeId),

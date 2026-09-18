@@ -7,8 +7,8 @@
 /** Whether the seat may build a type now, read from the sim's unlock status once a tick. */
 export type BuildingAvailability =
   | { readonly kind: 'open' }
-  /** Not discovered yet: listed after the open entries with the discoveries it waits on. */
-  | { readonly kind: 'locked'; readonly reason: string }
+  /** Not discovered yet: listed after the open entries. */
+  | { readonly kind: 'locked' }
   /** The map or the tribe bans it: never listed. */
   | { readonly kind: 'forbidden' };
 

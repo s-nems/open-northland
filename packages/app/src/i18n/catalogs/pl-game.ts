@@ -249,7 +249,6 @@ export const plGame = {
       listView: 'Lista',
       availableNow: 'Dostępne teraz',
       locked: 'Zablokowane',
-      lockedHint: 'odkryj zawód lub towar',
       emptyTitle: 'Nic do zbudowania',
       emptyText: 'Ta mapa nie pozwala na nowe budynki albo oglądasz cudzą osadę.',
       emptyCategory: 'Nic w tej kategorii',

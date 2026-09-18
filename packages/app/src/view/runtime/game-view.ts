@@ -42,6 +42,7 @@ import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
+import { assetSetFor } from '../asset-settings.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
@@ -377,6 +378,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       goods: sim.content.goods,
+      assetSet: assetSetFor(params),
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),

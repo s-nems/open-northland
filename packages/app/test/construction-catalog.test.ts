@@ -28,33 +28,35 @@ const entry = (
 describe('construction catalogue', () => {
   it('lists the open entries first and the locked ones after, both in catalogue order; a ban is dropped', () => {
     const entries = [
-      entry(23, 'workplace', () => ({ kind: 'locked', reason: 'needs a joiner' })),
+      entry(23, 'workplace', () => ({ kind: 'locked' })),
       entry(12, 'workplace'),
       entry(47, 'wonder', () => ({ kind: 'forbidden' })),
       entry(2, 'home', () => OPEN_AVAILABILITY),
-      entry(40, 'tower', () => ({ kind: 'locked', reason: 'needs stone' })),
+      entry(40, 'tower', () => ({ kind: 'locked' })),
     ];
     const partition = partitionCatalogue(entries);
     expect(partition.open.map((row) => row.entry.typeId)).toEqual([12, 2]);
     expect(partition.locked.map((row) => row.entry.typeId)).toEqual([23, 40]);
     expect(partition.open.map((row) => row.category)).toEqual(['work', 'home']);
-    expect(partition.locked[0]?.availability).toEqual({ kind: 'locked', reason: 'needs a joiner' });
+    expect(partition.locked[0]?.availability).toEqual({ kind: 'locked' });
   });
 
-  it('keys the partition on membership and reasons, so a discovery or a new reason re-sorts and a tick does not', () => {
-    let reason = 'needs a joiner';
+  it('keys the partition on membership, so a discovery or a ban re-sorts and a tick does not', () => {
     let open = false;
+    let banned = false;
     const entries = [
-      entry(23, 'workplace', () => (open ? OPEN_AVAILABILITY : { kind: 'locked', reason })),
+      entry(23, 'workplace', () =>
+        banned ? { kind: 'forbidden' } : open ? OPEN_AVAILABILITY : { kind: 'locked' },
+      ),
       entry(12, 'workplace'),
     ];
     const before = availabilityKey(partitionCatalogue(entries));
     expect(availabilityKey(partitionCatalogue(entries))).toBe(before);
-    reason = 'needs a joiner and stone';
-    const reworded = availabilityKey(partitionCatalogue(entries));
-    expect(reworded).not.toBe(before);
     open = true;
-    expect(availabilityKey(partitionCatalogue(entries))).not.toBe(reworded);
+    const discovered = availabilityKey(partitionCatalogue(entries));
+    expect(discovered).not.toBe(before);
+    banned = true;
+    expect(availabilityKey(partitionCatalogue(entries))).not.toBe(discovered);
   });
 
   it('counts the buildable entries per tab, every one under all', () => {
@@ -64,7 +66,7 @@ describe('construction catalogue', () => {
       entry(7, 'storage'),
       entry(40, 'tower'),
       entry(39, 'training'),
-      entry(23, 'workplace', () => ({ kind: 'locked', reason: 'later' })),
+      entry(23, 'workplace', () => ({ kind: 'locked' })),
     ]);
     expect(tabCounts(open)).toEqual({ all: 5, work: 1, storage: 1, home: 1, military: 2 });
   });

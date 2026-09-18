@@ -52,6 +52,8 @@ export interface NoticeColumnDeps {
   readonly onGo: (id: number) => void;
   readonly onDismiss: (id: number) => void;
   readonly onDismissAll: () => void;
+  /** Paint a building's body into a card's canvas; false leaves the house glyph in its place. */
+  readonly paintBuilding: (canvas: HTMLCanvasElement, typeId: number) => boolean;
 }
 
 /** The figure canvases inside the list's visible area and their shared size on screen. */
@@ -80,11 +82,19 @@ const NOTICE_GLYPH: Readonly<Record<NoticeGlyph, string>> = {
   scroll: GLYPH.scroll,
 };
 
+function glyphMarkup(glyph: NoticeGlyph, dim: boolean): string {
+  return `<span class="on-notice__preview on-notice__preview--glyph${dim ? ' on-notice__preview--dim' : ''}" aria-hidden="true">${NOTICE_GLYPH[glyph]}</span>`;
+}
+
 function previewMarkup(thumb: NoticeThumb): string {
-  if (thumb.kind === 'settler') {
-    return '<canvas class="on-notice__preview on-notice__preview--settler" aria-hidden="true"></canvas>';
+  switch (thumb.kind) {
+    case 'settler':
+      return '<canvas class="on-notice__preview on-notice__preview--settler" aria-hidden="true"></canvas>';
+    case 'building':
+      return '<canvas class="on-notice__preview on-notice__preview--building" aria-hidden="true"></canvas>';
+    case 'glyph':
+      return glyphMarkup(thumb.glyph, thumb.dim);
   }
-  return `<span class="on-notice__preview on-notice__preview--glyph${thumb.dim ? ' on-notice__preview--dim' : ''}" aria-hidden="true">${NOTICE_GLYPH[thumb.glyph]}</span>`;
 }
 
 /** The markup of one card, shared with the gallery board's sample column. */
@@ -300,6 +310,12 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
           if (!(made instanceof HTMLLIElement)) throw new Error('notice column: card markup');
           li = made;
           cardsById.set(card.id, li);
+          if (card.thumb.kind === 'building') {
+            const canvas = li.querySelector('.on-notice__preview--building');
+            if (canvas instanceof HTMLCanvasElement && !deps.paintBuilding(canvas, card.thumb.typeId)) {
+              canvas.outerHTML = glyphMarkup('house', false);
+            }
+          }
           if (card.fresh) {
             // Retire the class once the arrival has played, so a later reorder does not replay it.
             const last = card.level === IMPORTANT_LEVEL ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;

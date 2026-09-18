@@ -471,7 +471,7 @@
   min-width: 0;
 }
 /* Every card has the same fixed height: the picture beside the name, the cost right under it; the
-   height holds a two-line name, a requirement line and two rows of goods, so nothing ever clips. */
+   height holds a two-line name and two rows of goods, so nothing ever clips. */
 .on-hud .on-bcard__pick {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -544,19 +544,6 @@
   letter-spacing: 0.01em;
   color: var(--ink);
 }
-.on-hud .on-bcard__reason {
-  display: block;
-  margin-top: 3px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 12px;
-  line-height: 1.3;
-  color: var(--ink-muted);
-}
-.on-hud .on-bcard__reason[hidden] {
-  display: none;
-}
 .on-hud .on-bcard__help {
   position: absolute;
   right: 8px;
@@ -615,8 +602,7 @@
   cursor: not-allowed;
   background: #cdbf9d;
 }
-.on-hud .on-bcard--locked .on-bcard__title,
-.on-hud .on-bcard--locked .on-bcard__reason {
+.on-hud .on-bcard--locked .on-bcard__title {
   color: #7d6d52;
 }
 .on-hud .on-bcard--locked .on-cost__slot {
@@ -671,10 +657,6 @@
   flex: none;
   white-space: nowrap;
   font-size: 14px;
-}
-.on-hud .on-catalog[data-view="list"] .on-bcard__reason {
-  flex: 1;
-  margin: 0;
 }
 .on-hud .on-catalog[data-view="list"] .on-cost {
   flex: none;
@@ -1109,6 +1091,16 @@
 .on-hud .on-notice__preview--settler {
   display: block;
 }
+/* A finished building's body, painted once into the card's canvas and kept whole inside the padding.
+   On a covered card the top padding grows with the cover, so the body shrinks into the visible strip
+   instead of losing its roof to the clip; the cap keeps 21 px of body on the most covered card. */
+.on-hud .on-notice__preview--building {
+  display: block;
+  padding: 5px;
+  padding-top: min(calc(5px + var(--covered) / 2), 28px);
+  object-fit: contain;
+  transition: padding-top 0.14s;
+}
 /* A glyph sits in the box's middle, or in the middle of the visible strip on a covered card, like the
    painted figure does. */
 .on-hud .on-notice__preview--glyph {
@@ -1530,6 +1522,10 @@
 .on-hud .on-action:disabled {
   opacity: 0.38;
   cursor: not-allowed;
+}
+/* A beam action shows no focus ring (user rule): the pressed art and the lit key hint are its cues. */
+.on-hud .on-action:focus-visible {
+  outline: none;
 }
 .on-hud .on-action::before {
   content: "";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TALL_THUMB_RATIO, thumbFit } from '../src/hud/dom/building-thumb.js';
+import { thumbFit } from '../src/hud/dom/building-thumb.js';
 
 const BOX = 72;
 
@@ -14,15 +14,8 @@ describe('building thumbnail fit', () => {
     expect(square.dy).toBeCloseTo(2.54, 1);
   });
 
-  it('shows the upper part of a tall body instead of shrinking it to a sliver', () => {
-    const tower = thumbFit({ width: 100, height: 100 * TALL_THUMB_RATIO + 1 }, BOX);
-    expect(tower.sw).toBe(100);
-    expect(tower.sh).toBe(100);
-    expect(tower.sy).toBeGreaterThan(0);
-    expect(tower.sy + tower.sh).toBeLessThan(136);
-    expect([tower.dx, tower.dy, tower.dw, tower.dh]).toEqual([0, 0, BOX, BOX]);
-    // At the ratio itself the body still fits whole.
-    const atRatio = thumbFit({ width: 100, height: 100 * TALL_THUMB_RATIO }, BOX);
-    expect(atRatio.sh).toBe(100 * TALL_THUMB_RATIO);
+  it('shows a tall body whole, standing small in the middle of the box', () => {
+    const tower = thumbFit({ width: 100, height: 200 }, BOX);
+    expect(tower).toEqual({ sx: 0, sy: 0, sw: 100, sh: 200, dx: 18, dy: 0, dw: 36, dh: 72 });
   });
 });

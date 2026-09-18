@@ -39,10 +39,7 @@ export function createTickMemoViews(
       const key = `${player}:${typeId}`;
       const known = reasonMemo.reasons.get(key);
       if (known !== undefined) return known;
-      const availability = technologyAvailability(
-        sim.content,
-        sim.unlockStatus('house', typeId, tribeOf(player), player),
-      );
+      const availability = technologyAvailability(sim.unlockStatus('house', typeId, tribeOf(player), player));
       reasonMemo.reasons.set(key, availability);
       return availability;
     },

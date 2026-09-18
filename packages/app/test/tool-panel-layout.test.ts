@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { panelBottomInset, panelRect, panelSpanFromRight } from '../src/hud/details-panel/layout/shared.js';
+import { panelBottomInset, panelRect } from '../src/hud/details-panel/layout/shared.js';
 import { minimapPanelWidth } from '../src/hud/minimap/model.js';
 import { NAV_BEAM_H, NAV_BEAM_W, navBeamRect } from '../src/hud/nav-beam.js';
 import {
@@ -8,7 +8,6 @@ import {
   centralWindowFloor,
   centralWindowOrigin,
   liftedTop,
-  NOTICE_COLUMN,
   WINDOW_REGION_TOP,
 } from '../src/hud/regions.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
@@ -27,23 +26,21 @@ describe('navigation beam', () => {
 });
 
 describe('central window region', () => {
-  it('runs from the wider of the notice column and the minimap to the selection panel, top bar to beam', () => {
+  it('spans the screen width from under the top bar to the beam', () => {
     const region = centralRegion(SCREEN, 1);
-    expect(region.x).toBe(minimapPanelWidth(1) + 8); // the minimap (223.5) outreaches the column (190)
+    expect(region.x).toBe(0);
+    expect(region.w).toBe(SCREEN.width);
     expect(region.y).toBe(WINDOW_REGION_TOP);
-    expect(region.x + region.w).toBe(SCREEN.width - panelSpanFromRight(1) - 8);
     expect(region.y + region.h).toBe(navBeamRect(SCREEN, 1).y - 8);
-    expect(NOTICE_COLUMN.left + NOTICE_COLUMN.width).toBeLessThan(minimapPanelWidth(1));
   });
 
-  it('centres a window in the region, or on the screen when the window is wider than the region', () => {
-    const region = centralRegion(SCREEN, 1);
-    const fits = centralWindowOrigin(SCREEN, 1, 400);
-    expect(fits).toEqual({ x: Math.round(region.x + (region.w - 400) / 2), y: WINDOW_REGION_TOP });
+  it('centres a window on the screen, on the axis the beam sits on', () => {
+    expect(centralWindowOrigin(SCREEN, 1, 400)).toEqual({ x: 440, y: WINDOW_REGION_TOP });
+    const beam = navBeamRect(SCREEN, 1);
+    expect(centralWindowOrigin(SCREEN, 1, beam.w).x).toBe(beam.x);
     const narrow = { width: 900, height: 600 };
-    const wide = centralWindowOrigin(narrow, 1, 500);
-    expect(centralRegion(narrow, 1).w).toBeLessThan(500);
-    expect(wide).toEqual({ x: 200, y: WINDOW_REGION_TOP });
+    expect(centralWindowOrigin(narrow, 1, 500)).toEqual({ x: 200, y: WINDOW_REGION_TOP });
+    expect(centralWindowOrigin(narrow, 1, 1000).x).toBe(0);
   });
 
   it('floors a window at the beam and lifts one that would cross it, never above the top bar', () => {

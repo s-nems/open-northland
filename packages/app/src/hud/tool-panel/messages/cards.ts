@@ -8,10 +8,11 @@ export function orderNotes(notes: readonly UserMessage[]): UserMessage[] {
 /** The line glyphs a card without a live settler shows on its thumbnail. */
 export type NoticeGlyph = 'house' | 'swords' | 'skull' | 'banner' | 'chest' | 'scroll';
 
-/** What a card's thumbnail shows: the subject settler drawn as on the map, or a glyph. A dim glyph marks
- *  a subject that is gone. */
+/** What a card's thumbnail shows: the subject settler drawn as on the map, the subject building's body
+ *  as the construction window pictures it, or a glyph. A dim glyph marks a subject that is gone. */
 export type NoticeThumb =
   | { readonly kind: 'settler'; readonly entity: number }
+  | { readonly kind: 'building'; readonly typeId: number }
   | { readonly kind: 'glyph'; readonly glyph: NoticeGlyph; readonly dim: boolean };
 
 const GLYPH_BY_TYPE: ReadonlyMap<UserMessageType, NoticeGlyph> = new Map<UserMessageType, NoticeGlyph>([
@@ -27,12 +28,22 @@ const GLYPH_BY_TYPE: ReadonlyMap<UserMessageType, NoticeGlyph> = new Map<UserMes
 
 const GONE_GLYPH: NoticeGlyph = 'skull';
 
-/** An attacked settler shows the swords rather than its figure; any other settler subject is drawn. */
-export function noticeThumb(type: UserMessageType, subject: MessageSubject | null): NoticeThumb {
+/** An attacked settler shows the swords rather than its figure; any other settler subject is drawn. A
+ *  building subject that would show the house glyph shows its own body instead while `buildingTypeOf`
+ *  still knows its type. */
+export function noticeThumb(
+  type: UserMessageType,
+  subject: MessageSubject | null,
+  buildingTypeOf: (entity: number) => number | undefined,
+): NoticeThumb {
   if (subject?.kind === 'settler' && type !== USER_MESSAGE_TYPE.humanAttacked) {
     return { kind: 'settler', entity: subject.entity };
   }
   const glyph = GLYPH_BY_TYPE.get(type) ?? (subject?.kind === 'settler' ? 'swords' : 'scroll');
+  if (subject?.kind === 'building' && glyph === 'house') {
+    const typeId = buildingTypeOf(subject.entity);
+    if (typeId !== undefined) return { kind: 'building', typeId };
+  }
   return { kind: 'glyph', glyph, dim: glyph === GONE_GLYPH };
 }
 

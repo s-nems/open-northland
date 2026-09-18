@@ -259,7 +259,6 @@ export const enGame = {
       listView: 'List',
       availableNow: 'Available now',
       locked: 'Locked',
-      lockedHint: 'discover a trade or a good',
       emptyTitle: 'Nothing to build',
       emptyText: 'This map allows no new buildings, or you are watching another settlement.',
       emptyCategory: 'Nothing in this category',

@@ -7,7 +7,8 @@ package. Individual panel contents still require their own detailed design revie
 shown here is illustrative, the construction window is the accepted design (rules below).
 
 The reference is [foundation.html](foundation.html) with `foundation.css` and `foundation.js`. It is
-a single flattened stylesheet: later panel mockups extend it instead of layering overrides. The
+a single flattened stylesheet: later panel mockups extend it instead of layering overrides. Where a
+rule below differs from the mockup (a change accepted on the running game), the rule wins. The
 tokens below are the shared language for every screen, including a future main-menu redesign.
 
 ## Tokens
@@ -95,19 +96,23 @@ they were.
 - Entries: every house kind the content has, minus vehicles, wonders and types with no construction
   cost (the headquarters stands from the map, the wall segment comes from the wall tool). A type the
   map or the tribe bans is never listed; an undiscovered one is listed after the open entries under a
-  "Zablokowane" note with the discoveries it waits on, faded, with a lock badge, its "?" still live.
+  "Zablokowane" note with their count, faded, with a lock badge, its "?" still live. No requirement
+  text on the card or under the note (user rule): the "?" page is where the discoveries are read.
   With nothing to list at all the parchment says "Nic do zbudowania" (a banned map, a spectator seat).
 - A card is one fixed size in both views (120 px tile, 36 px list row), so the grid stays symmetric
   and the "?" medallion sits at the same bottom-right spot of every card. The picture is the finished
   body the map draws for the seat's tribe, cut from the loaded sheet into the card's own canvas,
-  contained in a 72 px box; a body taller than 1.35 times its width shows its upper part instead. A
-  card without a sheet frame shows the house glyph. The name wraps to two lines; the cost sits under it
+  contained whole in a 72 px box (a tower stands small rather than cropped). A card without a sheet
+  frame shows the house glyph. The name wraps to two lines; the cost sits under it
   as one slot per good, the amount as a corner badge, wrapping past six goods. A slot the seat cannot
   cover from its stock is marked red with "masz N z M" in its tooltip; it is information only, since
   placement never checks stock (the original neither) and the builders wait for the goods. No worker,
   product or capacity text on the card: that is Knowledge's.
 - Cost is the from-scratch bill the sim charges (`constructionBillForType`): a leveled tier sums
   its whole chain down to the base, since the site is placed at that tier from nothing.
+- Every good icon on the DOM plane (the cost slots, the summary counters) comes from the asset set the
+  map draws with: the original pile atlas under the original set, the project's own art under the own
+  set with the original's frame where the project has none yet. The two sets never mix on one screen.
 - A pick hides the window and starts the placement with the strip up; Esc, the right button or Buduj
   bring the window back as it was, the picked card lit and focused. A site that lands leaves the
   window away, and so does an informational window opened over the placement (one window at a
@@ -125,12 +130,13 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 180, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
-| Central window | between the left column and the selection panel, top 96, floor at the beam | one legacy window at a time, centred in the region; Mieszkańcy and Wiedza show a framed pending note |
+| Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam | one window at a time; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
 
 Rules the shell enforces:
 
+- A beam action shows no focus ring (user rule): its pressed art and the lit key hint are the cues.
 - One central window at a time. A beam entry closes the other window and toggles its own; the same
   entry pressed again closes it. Buduj, Asystent and Misja drop a held placement or paper first;
   Statystyki, Dyplomacja, Mieszkańcy and Wiedza leave a running placement alone.
@@ -213,9 +219,10 @@ lifetime, dedupe and priority table.
   without an ellipsis (a good or stance the row is about follows a colon: "Brak: drewno",
   "Obcy: wrogi"); the original's sentence is never on the card. The thumbnail is the live settler
   painted into the card's own canvas, as on the map with its current activity, motion and pace, over
-  a translucent backing that shows the map through; an attacked settler, a building, a death, a seat,
-  a paper and a subjectless row show a bronze line glyph instead (swords, house, dim skull, banner,
-  chest, scroll). The seal on the thumbnail's right edge, the event line and the × share one line,
+  a translucent backing that shows the map through; a finished or upgraded building is its body as
+  the construction card pictures it, painted once; an attacked settler or building, a death, a seat,
+  a paper and a subjectless row show a bronze line glyph instead (swords, house for a building whose
+  type is gone, dim skull, banner, chest, scroll). The seal on the thumbnail's right edge, the event line and the × share one line,
   centred in the card's visible part; the card carries no hairline, the seal alone tells the weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead. Right click, Delete or the ×

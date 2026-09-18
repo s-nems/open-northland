@@ -18,7 +18,7 @@ export interface CatalogueRow {
 export interface CataloguePartition {
   /** Buildable now, in catalogue order. */
   readonly open: readonly CatalogueRow[];
-  /** Waiting on a discovery, listed after the open entries with the reason. */
+  /** Waiting on a discovery, listed after the open entries. */
   readonly locked: readonly CatalogueRow[];
 }
 
@@ -39,11 +39,8 @@ export function partitionCatalogue(entries: readonly MenuBuildingEntry[]): Catal
 /** A change key over every listed entry's availability, so the window re-sorts its cards only on a
  *  discovery or a script's permission change, never per frame. */
 export function availabilityKey(partition: CataloguePartition): string {
-  const open = partition.open.map((row) => row.entry.typeId).join(',');
-  const locked = partition.locked
-    .map((row) => `${row.entry.typeId}:${row.availability.kind === 'locked' ? row.availability.reason : ''}`)
-    .join(',');
-  return `${open}|${locked}`;
+  const ids = (rows: readonly CatalogueRow[]): string => rows.map((row) => row.entry.typeId).join(',');
+  return `${ids(partition.open)}|${ids(partition.locked)}`;
 }
 
 /** How many buildable entries each tab shows; the all tab counts every one. */

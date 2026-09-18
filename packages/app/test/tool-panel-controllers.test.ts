@@ -273,7 +273,7 @@ describe('tool windows registry', () => {
         ? {
             ...building,
             availability: (): BuildingAvailability =>
-              firstBuildingLocked ? { kind: 'locked', reason: 'technology locked' } : OPEN_AVAILABILITY,
+              firstBuildingLocked ? { kind: 'locked' } : OPEN_AVAILABILITY,
           }
         : building,
     );
@@ -306,7 +306,7 @@ describe('tool windows registry', () => {
     menu.seam.onPick(BUILDINGS[0]?.typeId ?? 0);
     expect(picks[1]).toEqual([BUILDINGS[0]?.typeId, papers[1]]);
     expect(heldPaper.isActive()).toBe(false);
-    expect(menu.seam.entries[0]?.availability?.()).toEqual({ kind: 'locked', reason: 'technology locked' });
+    expect(menu.seam.entries[0]?.availability?.()).toEqual({ kind: 'locked' });
 
     // Closing the window without a pick drops the held paper: the next pick is an ordinary site.
     firstBuildingLocked = false;
