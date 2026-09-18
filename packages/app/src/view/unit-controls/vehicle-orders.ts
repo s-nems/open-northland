@@ -65,6 +65,10 @@ export interface VehicleOrderController {
   /** Attach `settler` to the own vehicle under the cursor (the ring's "Assign Vehicle"); a vehicle the
    *  attach rule refuses orders nothing, the way a red building cancels a building pick. */
   issueAttach(event: MouseEvent, settler: number): boolean;
+  /** The selected settlers' right-click on an own vehicle: each one the attach rule admits is assigned
+   *  to it (approximation, user rule: the original assigns through the ring's pick only). False when
+   *  no vehicle lies under the cursor or nobody selected may board it. */
+  issueAttachSelected(event: MouseEvent): boolean;
 }
 
 export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrderController {
@@ -182,6 +186,20 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return true;
   };
 
+  const issueAttachSelected = (event: MouseEvent): boolean => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
+    if (vehicle === null) return false;
+    let sent = false;
+    for (const target of deps.targets.ownedSettlersIn(deps.selected())) {
+      const settler = target.ref;
+      if (deps.canAttachToVehicle !== undefined && !deps.canAttachToVehicle(settler, vehicle)) continue;
+      deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
+      sent = true;
+    }
+    return sent;
+  };
+
   const issueRightClick = (event: MouseEvent): boolean => {
     const vehicle = selectedVehicle();
     if (vehicle === null) return false;
@@ -223,5 +241,6 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     issueAttackTarget,
     issueLoadInto,
     issueAttach,
+    issueAttachSelected,
   };
 }

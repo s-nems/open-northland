@@ -208,6 +208,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         applySelection([marker.ref], false);
         cue('confirm');
       } else if (
+        vehicleOrders.issueAttachSelected(e) ||
         orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null) ||
         vehicleOrders.issueRightClick(e)
       ) {

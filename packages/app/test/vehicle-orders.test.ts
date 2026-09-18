@@ -112,6 +112,8 @@ interface Arms {
   /** The sim's vehicle rules, absent by default: every spot moors and every own vehicle takes a rider. */
   readonly canMoorAt?: (vehicle: number, x: number, y: number) => boolean;
   readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;
+  /** The selected settlers standing on the map, for the right-click attach. */
+  readonly settlers?: readonly number[];
 }
 
 const targetsOf = (arms: Arms): UnitTargets => ({
@@ -124,7 +126,7 @@ const targetsOf = (arms: Arms): UnitTargets => ({
   goods: () => [],
   resources: () => [],
   wildlife: () => [],
-  ownedSettlersIn: () => [],
+  ownedSettlersIn: () => (arms.settlers ?? []).map((ref) => ({ ref, x: 0, y: 0 })),
 });
 
 function harness(selected: readonly number[], arms: Arms) {
@@ -234,6 +236,31 @@ describe('vehicle right-click defaults', () => {
     expect(harness([CART_PASSENGER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
     // A cart riding a ship has nothing to drive; its commander's click orders nothing, as the sim's rule.
     expect(harness([CARRIED_COMMANDER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
+  });
+});
+
+describe('right-click attach', () => {
+  it('assigns each selected settler the attach rule admits to the own vehicle under the cursor', () => {
+    const second = OWN_SETTLER + 1;
+    const h = harness([OWN_SETTLER, second], {
+      vehicles: [under(SHIP, 'vehicle')],
+      settlers: [OWN_SETTLER, second],
+      canAttachToVehicle: (settler) => settler === OWN_SETTLER,
+    });
+    expect(h.controller.issueAttachSelected(rightClick)).toBe(true);
+    expect(h.issued).toEqual([{ kind: 'attachToVehicle', entity: OWN_SETTLER, vehicle: SHIP }]);
+  });
+
+  it('orders nothing when no vehicle lies under the cursor or nobody selected may board', () => {
+    const none = harness([OWN_SETTLER], { settlers: [OWN_SETTLER] });
+    expect(none.controller.issueAttachSelected(rightClick)).toBe(false);
+    const refused = harness([OWN_SETTLER], {
+      vehicles: [under(SHIP_AT_SEA, 'vehicle')],
+      settlers: [OWN_SETTLER],
+      canAttachToVehicle: () => false,
+    });
+    expect(refused.controller.issueAttachSelected(rightClick)).toBe(false);
+    expect(refused.issued).toEqual([]);
   });
 });
 

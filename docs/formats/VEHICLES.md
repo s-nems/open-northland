@@ -404,7 +404,8 @@ attack order silently; a ship's right-click on a shore the mooring probe accepts
 it is a goto the sim refuses, the mooring order being explicit; the ring's "Assign Vehicle" is offered
 to every grown settler, its pick lights the settler's own vehicles green where `canAttachToVehicle`
 (job list, free seat, a door on the settler's continent) takes it and red otherwise, and a red vehicle
-drops the click; a commander selected while aboard (through the Mieszkańcy row) stands for its
+drops the click; the selected settlers' right-click on an own vehicle attaches each one that rule
+admits (approximation, user rule: the original assigns through the pick only); a commander selected while aboard (through the Mieszkańcy row) stands for its
 vehicle, so a right-click on the ground drives the vehicle whether the commander is aboard or beside
 it, and the ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids
 0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the
