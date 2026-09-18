@@ -1,7 +1,7 @@
 import { FOG_MODE_BY_NAME, fogModeName } from '../../../game/fog.js';
 import { messages } from '../../../i18n/index.js';
 import { gameRuleControls } from '../lobby-controls/rules.js';
-import type { LobbyOptions } from './model.js';
+import { LOBBY_FOG_MODES, type LobbyOptions } from './model.js';
 
 export function lobbyOptionsCard(options: LobbyOptions): HTMLElement {
   const lobby = messages().mainMenu.lobby;
@@ -12,12 +12,15 @@ export function lobbyOptionsCard(options: LobbyOptions): HTMLElement {
   title.textContent = lobby.settingsTitle;
   const controls = gameRuleControls({
     presentation: 'compact',
-    fog: { label: lobby.fogLabel, modes: lobby.fogModes },
+    map: { label: lobby.mapLabel, modes: lobby.mapModes },
+    fogOfWar: { label: lobby.fogOfWarLabel, ...lobby.fogOfWarModes },
     progression: { label: lobby.progressionLabel, ...lobby.progressionModes },
     needs: { label: lobby.needsLabel, ...lobby.needsModes },
     onChange(change) {
-      if (change.fog !== undefined && change.fog !== null)
-        options.fog = fogModeName(change.fog) ?? options.fog;
+      if (change.fog != null) {
+        const name = fogModeName(change.fog);
+        options.fog = LOBBY_FOG_MODES.find((mode) => mode === name) ?? options.fog;
+      }
       if (change.progression != null) options.professionProgression = change.progression;
       if (change.needs != null) options.settlerNeeds = change.needs;
       paint();

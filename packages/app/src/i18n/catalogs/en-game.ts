@@ -331,7 +331,7 @@ export const enGame = {
     playerOwner: 'Player (owner)',
     playerTitle: 'Player {player} ({name})',
     armor: 'Armor',
-    fog: 'Fog of war',
+    fog: 'Visibility',
     geometry: 'Building geometry',
     warriors: 'Warriors',
     civilians: 'Civilians',
@@ -358,9 +358,11 @@ export const enGame = {
     geometryOff: 'Grid: OFF (click to show)',
     fogModes: {
       off: 'Map revealed',
-      reveal: 'Classic',
+      classic: 'Classic',
       recon: 'Recon',
     },
+    fogOfWarOn: 'Fog of war: ON (click to disable)',
+    fogOfWarOff: 'Fog of war: OFF (click to enable)',
     units: {
       unarmed: 'Warrior (unarmed)',
       spear: 'Spearman',

@@ -1,4 +1,4 @@
-import { FOG_MODE, isValidPlayer } from '../../components/index.js';
+import { FOG_MODE, type FogMode, isValidPlayer } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -12,8 +12,8 @@ export const FOG_STATE = {
 } as const;
 
 /** The fourth mask byte, a cell a script revealed: {@link FogState.stateAt} returns it as VISIBLE, and
- *  the RECON downgrade lowers VISIBLE bytes alone, so the sight lasts. Raw mask readers (the stamp, the
- *  save digits, the hash) see the byte itself. */
+ *  the fog-of-war downgrade lowers VISIBLE bytes alone, so the sight lasts. Raw mask readers (the stamp,
+ *  the save digits, the hash) see the byte itself. */
 export const REVEALED_BYTE = 3;
 
 /** The number of distinct mask byte values, the stride that keeps one cell's fold contributions apart
@@ -81,7 +81,7 @@ export class FogState {
   /** Bumped on every rebuild or reset; a read-path aid for re-compositing, never hashed. */
   generation = 0;
   /** The mode the last completed rebuild ran under; a change forces an off-cadence rebuild. */
-  activeMode: number = FOG_MODE.OFF;
+  activeMode: FogMode = FOG_MODE.OFF;
   /** Tick of the last rebuild, -1 before the first. */
   lastRebuildTick = -1;
   /** vision group → mask fold, maintained only while a sync digest is on; the masks are far too large
@@ -264,8 +264,8 @@ export class FogState {
 
   /**
    * Mark every cell with a node within `range` map points of `point` {@link REVEALED_BYTE} for
-   * `player`'s group, so a script's reveal shows like ground an own eye covers and outlasts any RECON
-   * downgrade. Scans the cells of the clamped box and tests a cell's four nodes only while it is not
+   * `player`'s group, so a script's reveal shows like ground an own eye covers and outlasts any
+   * fog-of-war downgrade. Scans the cells of the clamped box and tests a cell's four nodes only while it is not
    * yet revealed; a range no lattice distance exceeds is the whole grid. The may-hold-VISIBLE box stays
    * untouched: the byte is not VISIBLE, so no downgrade ever needs to find it.
    */
@@ -376,7 +376,7 @@ export class FogState {
   }
 
   /** The raw {@link FOG_STATE} of a cell for `player`'s group, a revealed cell reading VISIBLE; out of
-   *  grid or maskless reads UNEXPLORED. RECON's terrain-known-from-the-start is a view mapping in
+   *  grid or maskless reads UNEXPLORED. A RECON map's terrain-known-from-the-start is a view mapping in
    *  `effectiveFogState`, not raw state. */
   stateAt(player: number, cellX: number, cellY: number): number {
     if (cellX < 0 || cellY < 0 || cellX >= this.cellsWide || cellY >= this.cellsHigh) {

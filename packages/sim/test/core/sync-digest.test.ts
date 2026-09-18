@@ -60,10 +60,10 @@ function sequence(sim: Simulation, ticks: number, onTick?: (sim: Simulation) => 
   return digests;
 }
 
-/** A world with one owned settler under REVEAL fog, stepped past its first mask rebuild. */
+/** A world with one owned settler under CLASSIC fog, stepped past its first mask rebuild. */
 function watchedWorld(): Simulation {
   const sim = digesting(mapped);
-  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: IDLE_JOB, x: 8, y: 8, tribe: VIKING, owner: P0 });
   sim.step();
   return sim;
@@ -154,7 +154,7 @@ describe('sync digest', () => {
     const idle = digesting(mapless);
     for (const sim of [rules, fogRules, idle]) sim.step();
     rules.enqueue(adminCommand({ kind: 'setNeedsEnabled', enabled: false }));
-    fogRules.enqueue(adminCommand({ kind: 'setFogMode', mode: FOG_MODE.REVEAL }));
+    fogRules.enqueue(adminCommand({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC }));
     for (const sim of [rules, fogRules, idle]) sim.step();
 
     expect(differingDomains(digestOf(idle), digestOf(rules))).toEqual(['entities', 'players']);

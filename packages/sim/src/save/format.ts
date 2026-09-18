@@ -1,3 +1,4 @@
+import type { FogMode } from '../components/rules.js';
 import type { CommandEnvelope } from '../core/commands/index.js';
 import type { SavedCommand } from '../core/continuation.js';
 
@@ -8,7 +9,7 @@ export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. A reader accepts
  *  exactly this version and rejects any other, never migrating. */
-export const SAVE_FORMAT_VERSION = 16;
+export const SAVE_FORMAT_VERSION = 17;
 
 /** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
  *  is rejected at export. */
@@ -66,7 +67,7 @@ export interface RngSection {
  */
 export interface FogSection {
   readonly id: 'fog';
-  readonly activeMode: number;
+  readonly activeMode: FogMode;
   readonly lastRebuildTick: number;
   /** Each group of players sharing one mask, its members ascending, ascending by first member; a
    *  player listed nowhere keeps a mask of its own. */

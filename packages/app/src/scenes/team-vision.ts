@@ -6,7 +6,7 @@ import { spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * Shared team vision under RECON fog: the teammate's soldier far to the east keeps its surroundings
+ * Shared team vision under recon fog of war: the teammate's soldier far to the east keeps its surroundings
  * in your sight and its neighbour discovered, while a hermit beyond every eye stays unknown. The
  * browser view shows the east clearing lit with no unit of yours near it, and the diplomacy window
  * listing the neighbour.
@@ -56,7 +56,7 @@ export const teamVisionScene: SceneDefinition = {
   id: 'team-vision',
   seed: 37,
   terrain: grassTerrain(MAP_W, MAP_H),
-  fog: 'recon',
+  fog: 'recon-fow',
   build,
   runTicks: 60,
   initialZoom: 0.8,

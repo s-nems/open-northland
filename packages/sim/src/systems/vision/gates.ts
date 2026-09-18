@@ -1,4 +1,4 @@
-import { FOG_MODE, hasMetContact, Position } from '../../components/index.js';
+import { FOG_MODE, type FogMode, fogSettings, hasMetContact, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import { FOG_STATE, type FogState } from './state.js';
@@ -10,19 +10,19 @@ export function cellOfNode(hx: number, hy: number): { cx: number; cy: number } {
 }
 
 /**
- * The state a player's eye effectively sees at a cell under `mode`: the raw mask with RECON's rule that the
- * terrain starts known, so an UNEXPLORED cell reads EXPLORED. The one mapping render, minimap, and the
- * headless checks share.
+ * The state a player's eye effectively sees at a cell under `mode`: the raw mask with the known-terrain
+ * rule of a RECON map, under which an UNEXPLORED cell reads EXPLORED. The one mapping render, minimap,
+ * and the headless checks share.
  */
 export function effectiveFogState(
   fog: FogState,
-  mode: number,
+  mode: FogMode,
   player: number,
   cellX: number,
   cellY: number,
 ): number {
   const raw = fog.stateAt(player, cellX, cellY);
-  if (mode === FOG_MODE.RECON && raw === FOG_STATE.UNEXPLORED) return FOG_STATE.EXPLORED;
+  if (raw === FOG_STATE.UNEXPLORED && fogSettings(mode)?.terrainKnown === true) return FOG_STATE.EXPLORED;
   return raw;
 }
 
@@ -38,8 +38,8 @@ function playerSeesNode(fog: FogState | undefined, player: number, hx: number, h
 
 /**
  * Whether `player` has explored the half-cell node (hx, hy): its cell reads at least EXPLORED under the
- * mode the last rebuild ran, so RECON's known terrain counts as explored, and fog off or absent reads
- * explored everywhere.
+ * mode the last rebuild ran, so a RECON map's known terrain counts as explored, and fog off or absent
+ * reads explored everywhere.
  */
 export function playerExploredNode(
   fog: FogState | undefined,

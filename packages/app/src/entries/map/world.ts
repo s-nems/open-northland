@@ -164,7 +164,7 @@ function runWorld(
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
   const scripted = scriptedWorld(options);
   applySessionRuleOverrides(sim, {
-    fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null),
+    fog: options.fog ?? (scripted ? FOG_MODE.CLASSIC : null),
     progression: options.progression,
     needs: options.needs,
   });

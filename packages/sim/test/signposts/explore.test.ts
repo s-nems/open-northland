@@ -29,7 +29,7 @@ const P0 = 0;
 
 function simWithFog(w = 24, h = 8): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(w, h) });
-  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
   return sim;
 }
 

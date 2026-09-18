@@ -225,10 +225,10 @@ describe('PlayerDied', () => {
 describe('PlayerSeen', () => {
   const seen: MissionGoalOp = { opcode: 'PlayerSeen', player: OWNER, otherPlayer: RIVAL };
 
-  /** The fixture under REVEAL fog, its load pass run once the fog was stamped. */
+  /** The fixture under CLASSIC fog, its load pass run once the fog was stamped. */
   function underFog(missions: readonly MissionDefinition[], rivalAt: { hx: number; hy: number }): Simulation {
     const sim = scriptedSim(missions);
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
     spawn(sim, { player: OWNER });
     spawn(sim, { player: RIVAL, at: rivalAt });
     loadPassAfter(sim, FOG_SETTLED);

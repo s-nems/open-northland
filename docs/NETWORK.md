@@ -1,8 +1,9 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 6` in
-`packages/net-protocol`. A change a client of the current version could not parse bumps the version;
-the relay refuses a `hello` that names another.
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 7` in
+`packages/net-protocol`. A change one side of the current version could not honour, a message shape
+or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
+`hello` that names another.
 
 The model is server-paced deterministic lockstep. Every client runs the full simulation. The relay
 is the authority for time, order, membership, and session settings, and for nothing else: it holds

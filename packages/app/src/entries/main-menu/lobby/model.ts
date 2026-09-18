@@ -9,7 +9,6 @@ import {
   sessionSearch,
 } from '../../../game/session-url.js';
 import { formatSearch } from '../../../view/params.js';
-import { RULE_FOG_MODES as LOBBY_FOG_MODES } from '../lobby-controls/rules-state.js';
 import type { MapPlayerSlot, SeatChoice } from './roster-state.js';
 import {
   aiSeats,
@@ -20,13 +19,17 @@ import {
   type VacantMode,
 } from './roster-state.js';
 
-export { RULE_FOG_MODES as LOBBY_FOG_MODES } from '../lobby-controls/rules-state.js';
+/** The fog modes a lobby offers: its map setting times fog of war. `off` stays a debug-menu pick. */
+export type LobbyFogModeName = Exclude<FogModeName, 'off'>;
 
-/** Fallback fog mode for a `?map=` launch that carries no explicit pick. */
-export const DEFAULT_FOG_MODE: FogModeName = 'reveal';
+export const LOBBY_FOG_MODES: readonly LobbyFogModeName[] = ['classic', 'classic-fow', 'recon', 'recon-fow'];
+
+/** Fallback fog mode for a `?map=` launch that carries no explicit pick: the original's classic map
+ *  without fog of war. */
+export const DEFAULT_FOG_MODE: LobbyFogModeName = 'classic';
 
 export interface LobbyOptions {
-  fog: FogModeName;
+  fog: LobbyFogModeName;
   professionProgression: boolean;
   settlerNeeds: boolean;
 }

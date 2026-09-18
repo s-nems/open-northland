@@ -52,8 +52,8 @@ export function declareScriptedVerdict(
 }
 
 /** Reveal the hexagon of `range` map points around the point, or the whole map for a zero x, y or
- *  range, as fully as ground the player's own eye covers, for good under REVEAL and RECON alike. Fog
- *  off shows everything already and holds no mask to write. */
+ *  range, as fully as ground the player's own eye covers, for good under every fog mode. Fog off shows
+ *  everything already and holds no mask to write. */
 export function exploreScriptedArea(
   pass: MissionPass,
   mission: number,

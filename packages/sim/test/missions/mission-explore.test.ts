@@ -27,7 +27,7 @@ import {
 
 /**
  * The reveal a script grants and the goals that ask whether a player has explored a point. Fog is
- * off by default, where everything reads explored; under REVEAL and RECON a reveal shows as fully as
+ * off by default, where everything reads explored; under every other mode a reveal shows as fully as
  * ground an own eye covers, and keeps showing.
  */
 
@@ -94,7 +94,7 @@ function houseAt(sim: Simulation, owner: number, at: HalfCellNode, missionId: nu
 
 describe('ExploreArea', () => {
   it('reveals the hexagon around the point for the named player alone, as fully as an own eye', () => {
-    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.REVEAL);
+    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.CLASSIC);
     expect(cellState(sim, OWNER, POINT)).toBe(FOG_STATE.VISIBLE);
     expect(cellState(sim, OWNER, ON_RIM)).toBe(FOG_STATE.VISIBLE);
     expect(cellState(sim, OWNER, PAST_RIM)).toBe(FOG_STATE.UNEXPLORED);
@@ -103,7 +103,7 @@ describe('ExploreArea', () => {
   });
 
   it('keeps the reveal in sight across later rebuilds, with no eye of the player near', () => {
-    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.REVEAL, (s) =>
+    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.CLASSIC, (s) =>
       spawn(s, { player: OWNER, at: FAR_EAST }),
     );
     sim.run(2 * VISION_CADENCE_TICKS);
@@ -112,13 +112,13 @@ describe('ExploreArea', () => {
   });
 
   it('a zero coordinate or range reveals the whole map', () => {
-    const sim = revealing([explore(OWNER, POINT, 0)], FOG_MODE.REVEAL);
+    const sim = revealing([explore(OWNER, POINT, 0)], FOG_MODE.CLASSIC);
     expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.VISIBLE);
     expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.VISIBLE);
   });
 
-  it('a whole-map reveal stays in sight in RECON as well', () => {
-    const sim = revealing([explore(OWNER, POINT, 0)], FOG_MODE.RECON, (s) =>
+  it('a whole-map reveal stays in sight under fog of war as well', () => {
+    const sim = revealing([explore(OWNER, POINT, 0)], FOG_MODE.RECON_FOG_OF_WAR, (s) =>
       spawn(s, { player: OWNER, at: FAR_EAST }),
     );
     sim.run(2 * VISION_CADENCE_TICKS);
@@ -128,21 +128,21 @@ describe('ExploreArea', () => {
   });
 
   it('a range no lattice distance exceeds reveals the whole map too', () => {
-    const sim = revealing([explore(OWNER, POINT, 4 * MAP_NODES)], FOG_MODE.REVEAL);
+    const sim = revealing([explore(OWNER, POINT, 4 * MAP_NODES)], FOG_MODE.CLASSIC);
     expect(cellState(sim, OWNER, { hx: 0, hy: 0 })).toBe(FOG_STATE.VISIBLE);
     expect(cellState(sim, OWNER, { hx: LAST_NODE, hy: LAST_NODE })).toBe(FOG_STATE.VISIBLE);
     expect(sim.checkInvariants()).toEqual([]);
   });
 
   it("reveals for every player sharing the named player's vision", () => {
-    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.REVEAL, (s) =>
+    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.CLASSIC, (s) =>
       s.enqueueSetup({ kind: 'setSharedVision', players: [OWNER, RIVAL] }),
     );
     expect(cellState(sim, RIVAL, ON_RIM)).toBe(FOG_STATE.VISIBLE);
   });
 
-  it('keeps the reveal in sight in RECON, where every later rebuild lowers what no eye covers', () => {
-    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.RECON, (s) =>
+  it('keeps the reveal in sight under fog of war, where every later rebuild lowers what no eye covers', () => {
+    const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.RECON_FOG_OF_WAR, (s) =>
       spawn(s, { player: OWNER, at: FAR_EAST }),
     );
     sim.run(2 * VISION_CADENCE_TICKS);
@@ -159,7 +159,12 @@ describe('ExploreArea', () => {
   });
 
   it('carries the reveal through the save round trip, past the rebuilds that follow', () => {
-    for (const mode of [FOG_MODE.REVEAL, FOG_MODE.RECON]) {
+    for (const mode of [
+      FOG_MODE.CLASSIC,
+      FOG_MODE.CLASSIC_FOG_OF_WAR,
+      FOG_MODE.RECON,
+      FOG_MODE.RECON_FOG_OF_WAR,
+    ]) {
       const sim = revealing([explore(OWNER, POINT, RANGE)], mode);
       const restored = roundTrip(sim);
       restored.run(2 * VISION_CADENCE_TICKS);
@@ -168,7 +173,7 @@ describe('ExploreArea', () => {
   });
 
   it('reports a slot the sim keeps no fog for', () => {
-    const sim = revealing([explore(WILD, POINT, RANGE)], FOG_MODE.REVEAL);
+    const sim = revealing([explore(WILD, POINT, RANGE)], FOG_MODE.CLASSIC);
     expect(failedResultsNow(sim)).toEqual(['ExploreArea']);
   });
 });
@@ -183,17 +188,17 @@ describe('FindPos', () => {
   });
 
   it("under fog holds for a point the player's eye reached and not for one beyond it", () => {
-    const near = asking(at(OWNER, NEAR_EAST), FOG_MODE.REVEAL, (s) => spawn(s, { player: OWNER }));
+    const near = asking(at(OWNER, NEAR_EAST), FOG_MODE.CLASSIC, (s) => spawn(s, { player: OWNER }));
     expect(holds(near)).toBe(true);
 
-    const far = asking(at(OWNER, FAR_EAST), FOG_MODE.REVEAL, (s) => spawn(s, { player: OWNER }));
+    const far = asking(at(OWNER, FAR_EAST), FOG_MODE.CLASSIC, (s) => spawn(s, { player: OWNER }));
     expect(holds(far)).toBe(false);
   });
 
   it('holds for a scripted reveal', () => {
     const sim = underFog(
       [goalMission(at(OWNER, ON_RIM)), firingMission([explore(OWNER, POINT, RANGE)])],
-      FOG_MODE.REVEAL,
+      FOG_MODE.CLASSIC,
     );
     expect(holds(sim)).toBe(false); // judged before the reveal in the same pass
     sim.run(PASS_TICKS);
@@ -201,46 +206,50 @@ describe('FindPos', () => {
   });
 
   it("holds for a slot above the sim's players whatever the fog", () => {
-    const sim = asking(at(BEYOND_SLOTS, FAR_EAST), FOG_MODE.REVEAL);
+    const sim = asking(at(BEYOND_SLOTS, FAR_EAST), FOG_MODE.CLASSIC);
     expect(holds(sim)).toBe(true);
   });
 
-  it('knows the terrain from the start in RECON', () => {
-    const sim = asking(at(OWNER, FAR_EAST), FOG_MODE.RECON);
+  it('knows the terrain from the start on a RECON map', () => {
+    const sim = asking(at(OWNER, FAR_EAST), FOG_MODE.RECON_FOG_OF_WAR);
     expect(holds(sim)).toBe(true);
   });
 });
 
 describe('FindHumans, FindHouses and FindAnimals', () => {
   it('hold when something stamped with the id stands on a point the player explored', () => {
-    const humans = asking({ opcode: 'FindHumans', player: OWNER, humanId: MARK }, FOG_MODE.REVEAL, (s) => {
+    const humans = asking({ opcode: 'FindHumans', player: OWNER, humanId: MARK }, FOG_MODE.CLASSIC, (s) => {
       spawn(s, { player: OWNER });
       spawn(s, { player: RIVAL, at: NEAR_EAST, missionId: MARK });
     });
     expect(holds(humans)).toBe(true);
 
-    const houses = asking({ opcode: 'FindHouses', player: OWNER, objectId: MARK }, FOG_MODE.REVEAL, (s) => {
+    const houses = asking({ opcode: 'FindHouses', player: OWNER, objectId: MARK }, FOG_MODE.CLASSIC, (s) => {
       spawn(s, { player: OWNER });
       houseAt(s, RIVAL, NEAR_EAST, MARK);
     });
     expect(holds(houses)).toBe(true);
 
-    const animals = asking({ opcode: 'FindAnimals', player: OWNER, objectId: MARK }, FOG_MODE.REVEAL, (s) => {
-      spawn(s, { player: OWNER });
-      s.enqueueSetup({
-        kind: 'spawnAnimalHerd',
-        tribe: WOLF,
-        x: NEAR_EAST.hx,
-        y: NEAR_EAST.hy,
-        count: 1,
-        missionId: MARK,
-      });
-    });
+    const animals = asking(
+      { opcode: 'FindAnimals', player: OWNER, objectId: MARK },
+      FOG_MODE.CLASSIC,
+      (s) => {
+        spawn(s, { player: OWNER });
+        s.enqueueSetup({
+          kind: 'spawnAnimalHerd',
+          tribe: WOLF,
+          x: NEAR_EAST.hx,
+          y: NEAR_EAST.hy,
+          count: 1,
+          missionId: MARK,
+        });
+      },
+    );
     expect(holds(animals)).toBe(true);
   });
 
   it('hold nowhere for a stamped human beyond every eye', () => {
-    const sim = asking({ opcode: 'FindHumans', player: OWNER, humanId: MARK }, FOG_MODE.REVEAL, (s) => {
+    const sim = asking({ opcode: 'FindHumans', player: OWNER, humanId: MARK }, FOG_MODE.CLASSIC, (s) => {
       spawn(s, { player: OWNER });
       spawn(s, { player: RIVAL, at: FAR_EAST, missionId: MARK });
     });
@@ -248,7 +257,7 @@ describe('FindHumans, FindHouses and FindAnimals', () => {
   });
 
   it("hold for a slot above the sim's players once anything carries the id, wherever it stands", () => {
-    const sim = asking({ opcode: 'FindHumans', player: BEYOND_SLOTS, humanId: MARK }, FOG_MODE.REVEAL, (s) =>
+    const sim = asking({ opcode: 'FindHumans', player: BEYOND_SLOTS, humanId: MARK }, FOG_MODE.CLASSIC, (s) =>
       spawn(s, { player: RIVAL, at: FAR_EAST, missionId: MARK }),
     );
     expect(holds(sim)).toBe(true);

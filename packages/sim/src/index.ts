@@ -3,12 +3,19 @@ export * as components from './components/index.js';
 export type { MatchOutcome, MatchRulesView } from './components/match.js';
 export { BRIEFING_HISTORY_LIMIT } from './components/mission.js';
 export type { MissionPresentationView } from './components/mission-presentation.js';
-// Fog-of-war mode ids and the diplomacy stance union, flattened to the package root for render and
-// app consumers.
+// Fog mode ids, their two settings and the diplomacy stance union, flattened to the package root for
+// render and app consumers.
 /** The four need bars, the vocabulary the `orderNeed` command addresses one by. */
 export type { NeedKind } from './components/needs.js';
 export { PAPER_KINDS, type Paper, type PaperKind, PLACING_PAPER_KINDS } from './components/papers.js';
-export { type DiplomacyState, FOG_MODE, type FogMode } from './components/rules.js';
+export {
+  type DiplomacyState,
+  FOG_MODE,
+  type FogMode,
+  type FogSettings,
+  fogModeOf,
+  fogSettings,
+} from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
 export type { LoggedCommand } from './core/command-queue.js';

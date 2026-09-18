@@ -61,10 +61,10 @@ function drive(sim: Simulation, gen: Rng, ticks: number): void {
   }
 }
 
-/** A mapped run under RECON fog with moving eyes, wildlife, a building, and loose goods. */
+/** A mapped run under RECON + fog of war with moving eyes, wildlife, a building, and loose goods. */
 function scenario(): Simulation {
   const sim = new Simulation({ seed: 21, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
-  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: 27, x: 4, y: 4, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 8, y: 8, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: COW_TRIBE, x: 16, y: 16, count: 3 });
@@ -228,7 +228,7 @@ describe('restoreSimulation rejection', () => {
 
   it('rejects a fog mask whose cell count does not match the map', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 4, y: 4, tribe: VIKING, owner: P0 });
     sim.run(6);
     const doc = docOf(sim);
@@ -242,7 +242,7 @@ describe('restoreSimulation rejection', () => {
 
   it('rejects a fog mask keyed by a player that shares another group', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 4, y: 4, tribe: VIKING, owner: P0 });
     sim.run(6);
     const doc = docOf(sim);

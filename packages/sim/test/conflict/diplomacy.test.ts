@@ -73,7 +73,7 @@ describe('diplomacyStance - the DiplomacyRules read/write pair', () => {
 
   it('a landed blow under fog records the victim-to-attacker contact, even unseen', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 1) });
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     // 15 cells = 1020 px apart: beyond both 408 px civilian eyes, so only the blow reveals anything.
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const victim = fighterAt(sim, 15, 0, VIKING, WOODCUTTER, { owner: P1 });

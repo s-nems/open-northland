@@ -20,7 +20,8 @@ export function roomSettings(deps: NetworkRoomDeps) {
     presentation: 'select',
     inheritedLabel: copy.authored,
     fieldClassName: 'network-room__field',
-    fog: { label: lobby.fogLabel, modes: lobby.fogModes },
+    map: { label: lobby.mapLabel, modes: lobby.mapModes, revealed: messages().admin.fogModes.off },
+    fogOfWar: { label: lobby.fogOfWarLabel, on: copy.enabled, off: copy.disabled },
     progression: { label: copy.progression, on: copy.enabled, off: copy.disabled },
     needs: { label: copy.needs, on: copy.enabled, off: copy.disabled },
     onChange(change) {
@@ -44,7 +45,10 @@ export function roomSettings(deps: NetworkRoomDeps) {
   root.append(...rules.elements, speed.root, fallout.root);
   return {
     root,
-    rejected: queue.rejected,
+    rejected(): void {
+      queue.rejected();
+      rules.rejected();
+    },
     dispose: queue.dispose,
     update(next: RoomView, editable: boolean): void {
       queue.update(next, editable);

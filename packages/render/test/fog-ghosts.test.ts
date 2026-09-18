@@ -62,11 +62,11 @@ describe('FogGhostStore', () => {
     expect(later).toEqual([]);
   });
 
-  it('RECON seeds natural resources and chests (never buildings) sight-unseen, once per recon stretch', () => {
+  it('a RECON map seeds natural resources and chests (never buildings) sight-unseen, once per known-terrain stretch', () => {
     const stump = entity(3, 11, 4, { Stump: { goodType: 3 } });
     const chest = entity(5, 15, 4, { Chest: { kind: 'wooden', contents: 20, gfxIndex: 845 } });
     const store = new FogGhostStore();
-    // Nothing is visible, but recon's known-terrain view still knows where nature is.
+    // Nothing is visible, but the known-terrain view still knows where nature is.
     const seeded = store.update(
       snapshotOf([HOUSE, TREE, stump, chest]),
       viewOf(new Map(), 1, FOG_MODE.RECON),
@@ -74,13 +74,21 @@ describe('FogGhostStore', () => {
     expect(seeded.map((g) => g.ref).sort()).toEqual([2, 3, 5]);
     expect(seeded.every((g) => g.kind !== 'building')).toBe(true);
     expect(seeded.find((g) => g.ref === 5)).toMatchObject({ kind: 'chest', gfxIndex: 845 });
-    // The seed is start-of-recon knowledge, so a later spawn is not seeded retroactively.
+    // The seed is start-of-stretch knowledge, so a later spawn is not seeded retroactively, and the
+    // stretch spans both RECON modes.
     const lateTree = entity(4, 13, 4, { Resource: { goodType: 3 } });
     const next = store.update(
       snapshotOf([HOUSE, TREE, stump, lateTree, chest]),
-      viewOf(new Map(), 2, FOG_MODE.RECON),
+      viewOf(new Map(), 2, FOG_MODE.RECON_FOG_OF_WAR),
     );
     expect(next.map((g) => g.ref).sort()).toEqual([2, 3, 5]);
+    // A CLASSIC map ends the stretch; the next RECON stretch seeds afresh.
+    store.update(snapshotOf([HOUSE, TREE, stump, lateTree, chest]), viewOf(new Map(), 3, FOG_MODE.CLASSIC));
+    const reseeded = store.update(
+      snapshotOf([HOUSE, TREE, stump, lateTree, chest]),
+      viewOf(new Map(), 4, FOG_MODE.RECON_FOG_OF_WAR),
+    );
+    expect(reseeded.map((g) => g.ref).sort()).toEqual([2, 3, 4, 5]);
   });
 
   it('remembers a goods heap at its last-seen fill, but never a delivery flag or an emptied pile', () => {
@@ -109,10 +117,10 @@ describe('FogGhostStore', () => {
     // The memory draws the heap the viewer last saw, not the one the sim holds now.
     const scene = collectSpriteScene(snapshotOf([]), { ghosts: fogged });
     expect(scene.items[0]).toMatchObject({ ref: 6, kind: 'stockpile', ghost: true, goodType: 30, fill: 3 });
-    // RECON seeds a map's heaps like its chests.
+    // A RECON map seeds its heaps like its chests.
     const seeded = new FogGhostStore().update(
       snapshotOf([heap(2), flag]),
-      viewOf(new Map(), 1, FOG_MODE.RECON),
+      viewOf(new Map(), 1, FOG_MODE.RECON_FOG_OF_WAR),
     );
     expect(seeded.map((g) => g.ref)).toEqual([6]);
   });

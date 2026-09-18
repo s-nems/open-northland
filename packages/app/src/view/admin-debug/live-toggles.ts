@@ -1,4 +1,11 @@
-import { type Command, FOG_MODE } from '@open-northland/sim';
+import {
+  type Command,
+  FOG_MODE,
+  type FogMode,
+  type FogSettings,
+  fogModeOf,
+  fogSettings,
+} from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { ROW_STYLE, setButtonActive } from './chrome.js';
@@ -13,10 +20,12 @@ export interface LiveToggle {
   refresh(): void;
 }
 
-const FOG_MODES = [
-  { mode: FOG_MODE.OFF, key: 'off' },
-  { mode: FOG_MODE.REVEAL, key: 'reveal' },
-  { mode: FOG_MODE.RECON, key: 'recon' },
+/** The debug menu's map row: the two lobby maps plus the revealed map (no fog at all) the lobby does
+ *  not offer. */
+const FOG_MAPS = [
+  { key: 'off', terrainKnown: null },
+  { key: 'classic', terrainKnown: false },
+  { key: 'recon', terrainKnown: true },
 ] as const;
 
 /**
@@ -53,33 +62,51 @@ export function createNeedsToggle(deps: {
   };
 }
 
-/** One button per `FOG_MODE`, the active one highlighted from the sim's own read. */
+/** A map row (revealed, classic, recon) over a fog-of-war toggle, the active picks highlighted from
+ *  the sim's own read; the toggle is moot, and disabled, while the map is revealed. */
 export function createFogSwitcher(deps: {
   readonly enqueue: (command: Command) => void;
-  readonly fogMode: (() => number) | undefined;
+  readonly fogMode: (() => FogMode) | undefined;
 }): LiveToggle {
-  const fogButtons: { readonly button: HTMLButtonElement; readonly mode: number }[] = [];
-  let activeFogMode = deps.fogMode?.() ?? FOG_MODE.OFF;
+  const copy = messages().admin;
+  let active = fogSettings(deps.fogMode?.() ?? FOG_MODE.OFF);
+  const mapButtons: { readonly button: HTMLButtonElement; readonly terrainKnown: boolean | null }[] = [];
+  const fogOfWarButton = el('button', BUTTON_STYLE);
   const paint = (): void => {
-    for (const { button, mode } of fogButtons) setButtonActive(button, mode === activeFogMode);
+    for (const { button, terrainKnown } of mapButtons) {
+      setButtonActive(button, terrainKnown === (active?.terrainKnown ?? null));
+    }
+    const fogOfWar = active?.fogOfWar === true;
+    fogOfWarButton.textContent = fogOfWar ? copy.fogOfWarOn : copy.fogOfWarOff;
+    fogOfWarButton.disabled = active === null;
+    setButtonActive(fogOfWarButton, fogOfWar);
   };
-  const row = el('div', ROW_STYLE);
-  const labels = messages().admin.fogModes;
-  for (const { mode, key } of FOG_MODES) {
-    const b = el('button', BUTTON_STYLE, labels[key]);
-    b.addEventListener('click', () => {
-      activeFogMode = mode;
-      deps.enqueue({ kind: 'setFogMode', mode });
-      paint();
+  const request = (next: FogSettings | null): void => {
+    active = next;
+    deps.enqueue({ kind: 'setFogMode', mode: next === null ? FOG_MODE.OFF : fogModeOf(next) });
+    paint();
+  };
+  const mapRow = el('div', ROW_STYLE);
+  for (const { key, terrainKnown } of FOG_MAPS) {
+    const button = el('button', BUTTON_STYLE, copy.fogModes[key]);
+    button.addEventListener('click', () => {
+      request(terrainKnown === null ? null : { terrainKnown, fogOfWar: active?.fogOfWar ?? false });
     });
-    fogButtons.push({ button: b, mode });
-    row.append(b);
+    mapButtons.push({ button, terrainKnown });
+    mapRow.append(button);
   }
+  fogOfWarButton.addEventListener('click', () => {
+    if (active !== null) request({ ...active, fogOfWar: !active.fogOfWar });
+  });
+  const fogOfWarRow = el('div', ROW_STYLE);
+  fogOfWarRow.append(fogOfWarButton);
+  const row = el('div', 'display:flex;flex-direction:column;gap:6px');
+  row.append(mapRow, fogOfWarRow);
   paint();
   return {
     row,
     refresh: () => {
-      activeFogMode = deps.fogMode?.() ?? activeFogMode;
+      if (deps.fogMode !== undefined) active = fogSettings(deps.fogMode());
       paint();
     },
   };

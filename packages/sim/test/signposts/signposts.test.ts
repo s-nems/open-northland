@@ -284,10 +284,10 @@ describe('signpostNetwork - connected groups', () => {
   });
 });
 
-describe('signpost fog vision - the permanent recon reveal', () => {
-  it('a standing signpost keeps its circle VISIBLE in RECON with no unit nearby', () => {
+describe('signpost fog vision - the standing eye', () => {
+  it('a standing signpost keeps its circle VISIBLE under fog of war with no unit nearby', () => {
     const sim = freshSim(64, 16);
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(8), y: fx.fromInt(8) });
     sim.world.add(e, Owner, { player: P0 });
@@ -295,6 +295,6 @@ describe('signpost fog vision - the permanent recon reveal', () => {
     for (let t = 0; t < 12; t++) sim.step(); // past a couple of vision cadences
     const view = sim.fogView(P0);
     expect(view?.stateAt(8, 8)).toBe(FOG_STATE.VISIBLE); // the post's own cell
-    expect(view?.stateAt(60, 8)).toBe(FOG_STATE.EXPLORED); // far ground stays recon-grey
+    expect(view?.stateAt(60, 8)).toBe(FOG_STATE.EXPLORED); // far ground stays known-terrain grey
   });
 });

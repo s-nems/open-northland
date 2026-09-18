@@ -1,4 +1,4 @@
-import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
+import { FOG_STATE, type FogView, fogSettings, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../projection/index.js';
 import type { DrawKind, EntityKind, StaticDrawFields } from '../scene/draw-item.js';
 import { assignStaticFields, classify, readPosition } from '../scene/snapshot-readers/index.js';
@@ -8,8 +8,8 @@ import { fogCellOfTile } from './mask.js';
  * The viewer's remembered statics: a building, resource node, stump, chest or goods heap that was once
  * seen keeps drawing on explored ground, frozen at its last-seen state until the player re-sees the
  * cell. Render-side and per local viewer only - the sim reads its own masks, so determinism is
- * untouched. Authored approximation: the original's reveal mode never un-sees ground, so it has no
- * ghosts.
+ * untouched. Authored approximation: the original never un-sees ground (the classic map without fog
+ * of war), so it has no ghosts.
  */
 
 type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump' | 'chest' | 'stockpile'>;
@@ -51,7 +51,7 @@ export class FogGhostStore {
   private drawList: FogGhost[] = [];
   private lastGeneration = -1;
   private lastMode = -1;
-  /** Whether the current RECON stretch already seeded natural resources. */
+  /** Whether the current known-terrain stretch already seeded natural resources. */
   private reconSeeded = false;
   /** Refs to capture on the next rebuild whatever their visibility: a virgin map node first worked
    *  under fog leaves the static layer, and its last-seen look must not vanish from explored ground.
@@ -84,8 +84,9 @@ export class FogGhostStore {
     ) {
       return this.drawList;
     }
-    if (view.mode !== FOG_MODE.RECON) this.reconSeeded = false;
-    const seedResources = view.mode === FOG_MODE.RECON && !this.reconSeeded;
+    const terrainKnown = fogSettings(view.mode)?.terrainKnown === true;
+    if (!terrainKnown) this.reconSeeded = false;
+    const seedResources = terrainKnown && !this.reconSeeded;
 
     // Forget ground the viewer sees: a dead static must not leave a ghost on watched ground.
     for (const [ref, ghost] of this.records) {
@@ -93,9 +94,9 @@ export class FogGhostStore {
       if (view.stateAt(cx, cy) === FOG_STATE.VISIBLE) this.records.delete(ref);
     }
 
-    // Taking effect, RECON seeds every natural resource, map chest and goods heap wherever it stands, as
-    // the known-terrain view shows the map's placed objects; buildings stay intel the player has to see
-    // for himself.
+    // Taking effect, a RECON map seeds every natural resource, map chest and goods heap wherever it
+    // stands, as the known-terrain view shows the map's placed objects; buildings stay intel the player
+    // has to see for himself.
     for (const entity of snapshot.entities) {
       if (staticRefs?.has(entity.id)) continue;
       const kind = classify(entity.components);

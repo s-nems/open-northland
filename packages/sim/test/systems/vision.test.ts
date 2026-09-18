@@ -6,7 +6,10 @@ import {
   Fleeing,
   FOG_MODE,
   type FogMode,
+  type FogSettings,
   fogMode,
+  fogModeOf,
+  fogSettings,
   Health,
   Owner,
   PlayerContacts,
@@ -35,10 +38,11 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * The fog-of-war layer (systems/vision.ts): per-player masks over the cell grid, the three modes'
- * update rules (OFF revealed / REVEAL sticky / RECON known-terrain), the OFF default + reset, and
- * the combat/flee fog gates. Authored throughout, radii included (no readable fog source), so these
- * tests pin self-consistency, not original fidelity.
+ * The fog layer (systems/vision.ts): per-player masks over the cell grid, the modes' update rules
+ * (OFF revealed; the map setting: CLASSIC black start / RECON known terrain; fog of war: sticky sight
+ * without it, a downgrade with it), the OFF default + reset, and the combat/flee fog gates. Authored
+ * throughout, radii included (no readable fog source), so these tests pin self-consistency, not
+ * original fidelity.
  */
 
 const VIKING = 1;
@@ -85,7 +89,7 @@ function teleport(sim: Simulation, e: Entity, x: number, y: number): void {
   p.y = fx.fromInt(y);
 }
 
-/** The raw mask state of visual cell (x,y) for a player (bypasses RECON's view mapping). */
+/** The raw mask state of visual cell (x,y) for a player (bypasses the known-terrain view mapping). */
 function rawState(sim: Simulation, player: number, x: number, y: number): number {
   const fog = sim.fog;
   if (fog === undefined) throw new Error('mapless sim');
@@ -110,7 +114,7 @@ describe('vision radii - the per-job classification', () => {
 
 describe('scout experience - the signpost craft widens the eye', () => {
   it('a mastered scout sees cells a fresh scout cannot (the visionRadiusOf wiring)', () => {
-    const sim = simOn(FOG_MODE.RECON, 48, 8);
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR, 48, 8);
     const scout = unit(sim, 4, 4, P0, { jobType: SCOUT_JOB });
     for (let t = 0; t <= VISION_CADENCE_TICKS + 1; t++) sim.step();
     // 15 cells (30 nodes) east: beyond the base 26-node eye, inside mastery's +6.
@@ -138,6 +142,20 @@ describe('stampVision - the world-metric ellipse', () => {
 });
 
 describe('fog modes - update rules over the per-player mask', () => {
+  it('is the product of the two settings, OFF apart: every pair composes a mode that reads back', () => {
+    expect(fogSettings(FOG_MODE.OFF)).toBeNull();
+    const pairs: FogSettings[] = [
+      { terrainKnown: false, fogOfWar: false },
+      { terrainKnown: false, fogOfWar: true },
+      { terrainKnown: true, fogOfWar: false },
+      { terrainKnown: true, fogOfWar: true },
+    ];
+    const modes = pairs.map((pair) => fogModeOf(pair));
+    expect(new Set(modes).size).toBe(pairs.length);
+    for (const [i, pair] of pairs.entries()) expect(fogSettings(modes[i] ?? FOG_MODE.OFF)).toEqual(pair);
+    expect(fogModeOf({ terrainKnown: false, fogOfWar: false })).toBe(FOG_MODE.CLASSIC); // the original
+  });
+
   it('is OFF by default: no view, no masks, zero exploration', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(8, 4) });
     unit(sim, 2, 2, P0);
@@ -156,8 +174,8 @@ describe('fog modes - update rules over the per-player mask', () => {
     expect(sim.commands.log).toHaveLength(1); // logged for faithful replay
   });
 
-  it('REVEAL: explored ground stays fully visible after the eye moves away', () => {
-    const sim = simOn(FOG_MODE.REVEAL);
+  it('CLASSIC: explored ground stays fully visible after the eye moves away', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
     const e = unit(sim, 2, 2, P0);
     sim.run(1); // tick 1: mode applied + first rebuild
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
@@ -168,8 +186,21 @@ describe('fog modes - update rules over the per-player mask', () => {
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE); // old ground STAYS visible (sticky)
   });
 
-  it('RECON: the raw mask records what an eye saw but the view reads unexplored ground as explored', () => {
-    const sim = simOn(FOG_MODE.RECON);
+  it('CLASSIC + fog of war: the map starts black and ground the eye leaves falls back to explored', () => {
+    const sim = simOn(FOG_MODE.CLASSIC_FOG_OF_WAR);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
+    expect(sim.fogView(P0)?.stateAt(20, 2)).toBe(FOG_STATE.UNEXPLORED); // never seen: black
+    teleport(sim, e, 20, 2);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED); // seen once, no current eye
+    expect(sim.fogView(P0)?.stateAt(2, 2)).toBe(FOG_STATE.EXPLORED);
+  });
+
+  it('RECON + fog of war: the raw mask records what an eye saw but the view reads unexplored ground as explored', () => {
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     const e = unit(sim, 2, 2, P0);
     sim.run(1);
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.UNEXPLORED); // raw: never seen
@@ -183,8 +214,36 @@ describe('fog modes - update rules over the per-player mask', () => {
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED); // known terrain, no current eye
   });
 
-  it('RECON: a script reveal over ground an eye watched outlasts the eye and every downgrade', () => {
+  it('RECON without fog of war: terrain known from the start, and ground once seen stays visible', () => {
     const sim = simOn(FOG_MODE.RECON);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1);
+    expect(sim.fogView(P0)?.stateAt(20, 2)).toBe(FOG_STATE.EXPLORED); // never seen, still known
+    teleport(sim, e, 20, 2);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE); // sticky, as under CLASSIC
+  });
+
+  it('switching fog of war on lowers what no eye covers on the next rebuild; off leaves it', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1);
+    teleport(sim, e, 20, 2);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC_FOG_OF_WAR });
+    sim.run(1); // a mode change rebuilds the same tick
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED);
+    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    sim.run(1);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED); // history is kept, not re-raised
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('RECON + fog of war: a script reveal over ground an eye watched outlasts the eye and every downgrade', () => {
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     const e = unit(sim, 2, 2, P0);
     sim.run(1); // the eye's stamp lands first: VISIBLE bytes the reveal then raises
     sim.fog?.revealArea(P0, { hx: 4, hy: 4 }, 2);
@@ -197,7 +256,7 @@ describe('fog modes - update rules over the per-player mask', () => {
   });
 
   it('masks are per PLAYER: one player exploring reveals nothing to the other', () => {
-    const sim = simOn(FOG_MODE.REVEAL);
+    const sim = simOn(FOG_MODE.CLASSIC);
     unit(sim, 2, 2, P0);
     unit(sim, 20, 2, P1);
     sim.run(1);
@@ -208,7 +267,7 @@ describe('fog modes - update rules over the per-player mask', () => {
   });
 
   it('switching OFF drops the masks; re-enabling starts exploration fresh', () => {
-    const sim = simOn(FOG_MODE.REVEAL);
+    const sim = simOn(FOG_MODE.CLASSIC);
     const e = unit(sim, 2, 2, P0);
     sim.run(1);
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
@@ -216,7 +275,7 @@ describe('fog modes - update rules over the per-player mask', () => {
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
     sim.run(1);
     expect(sim.fogView(P0)).toBeNull();
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
     sim.run(1);
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.UNEXPLORED); // history gone - only the new spot shows
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
@@ -237,8 +296,8 @@ describe('shared vision - players a setSharedVision command joined explore one m
     return sim;
   }
 
-  it('RECON: what one eye sees now, every member sees, and ground it leaves stays known to all', () => {
-    const sim = sharedSim(FOG_MODE.RECON);
+  it('RECON + fog of war: what one eye sees now, every member sees, and ground it leaves stays known to all', () => {
+    const sim = sharedSim(FOG_MODE.RECON_FOG_OF_WAR);
     sim.run(1);
     expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.VISIBLE);
     expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
@@ -252,8 +311,8 @@ describe('shared vision - players a setSharedVision command joined explore one m
     expect(sim.fog?.groupsWithMasks()).toEqual([P0]); // one mask, keyed by the lowest member
   });
 
-  it('REVEAL: ground either member explored stays visible to both', () => {
-    const sim = sharedSim(FOG_MODE.REVEAL);
+  it('CLASSIC: ground either member explored stays visible to both', () => {
+    const sim = sharedSim(FOG_MODE.CLASSIC);
     sim.run(1);
     const west = [...sim.world.query(Owner)].find((e) => sim.world.get(e, Owner).player === P0);
     if (west === undefined) throw new Error('west unit missing');
@@ -264,7 +323,7 @@ describe('shared vision - players a setSharedVision command joined explore one m
   });
 
   it('a contact one member makes is a contact of every member', () => {
-    const sim = sharedSim(FOG_MODE.RECON);
+    const sim = sharedSim(FOG_MODE.RECON_FOG_OF_WAR);
     unit(sim, EAST.x + 1, EAST.y, P2); // inside P1's eye alone
     sim.run(1);
     expect(sim.hasMetPlayer(P0, P2)).toBe(true);
@@ -274,7 +333,7 @@ describe('shared vision - players a setSharedVision command joined explore one m
   });
 
   it('joining after exploration drops the masks, so exploration restarts under the new grouping', () => {
-    const sim = simOn(FOG_MODE.REVEAL);
+    const sim = simOn(FOG_MODE.CLASSIC);
     const e = unit(sim, WEST.x, WEST.y, P0);
     sim.run(1);
     teleport(sim, e, WEST.x + 8, WEST.y);
@@ -285,7 +344,7 @@ describe('shared vision - players a setSharedVision command joined explore one m
   });
 
   it('skips invalid slots and a lone player, and merges an overlapping later group', () => {
-    const sim = simOn(FOG_MODE.REVEAL);
+    const sim = simOn(FOG_MODE.CLASSIC);
     sim.enqueueSetup({ kind: 'setSharedVision', players: [P1, 99] });
     sim.enqueueSetup({ kind: 'setSharedVision', players: [P1, P2] });
     sim.enqueueSetup({ kind: 'setSharedVision', players: [P2, 5] });
@@ -300,7 +359,7 @@ describe('shared vision - players a setSharedVision command joined explore one m
 
   it('two same-seed runs with shared vision reach the same state hash, unlike an unshared one', () => {
     const run = (shared: boolean): string => {
-      const sim = simOn(FOG_MODE.RECON);
+      const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
       if (shared) sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
       unit(sim, WEST.x, WEST.y, P0);
       unit(sim, EAST.x, EAST.y, P1);
@@ -329,7 +388,7 @@ describe('first contact - the vision-driven discovery of other players', () => {
   });
 
   it('records a DIRECTED contact: the scout meets the civilian, not the other way round', () => {
-    const sim = simOn(FOG_MODE.RECON);
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
     unit(sim, CIV_AT.x, CIV_AT.y, P1);
     sim.run(1); // mode applied + first rebuild, contacts settle with the masks
@@ -339,7 +398,7 @@ describe('first contact - the vision-driven discovery of other players', () => {
   });
 
   it('a contact never expires: it survives the eye leaving and a fog reset', () => {
-    const sim = simOn(FOG_MODE.RECON);
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     const civ = unit(sim, CIV_AT.x, CIV_AT.y, P1);
     unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
     sim.run(1);
@@ -351,13 +410,13 @@ describe('first contact - the vision-driven discovery of other players', () => {
 
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
     sim.run(1);
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     sim.run(1);
     expect(sim.hasMetPlayer(P0, P1)).toBe(true); // masks reset, knowledge kept
   });
 
   it('meets a unit standing on ground explored earlier, out of sight now', () => {
-    const sim = simOn(FOG_MODE.RECON);
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     const scout = unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
     sim.run(1);
     teleport(sim, scout, 23, 7); // the start cells stay EXPLORED behind the scout
@@ -368,7 +427,7 @@ describe('first contact - the vision-driven discovery of other players', () => {
   });
 
   it('skips an invalid owner slot instead of recording a contact for it', () => {
-    const sim = simOn(FOG_MODE.RECON);
+    const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
     unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
     unit(sim, SCOUT_AT.x + 1, SCOUT_AT.y, 99); // in plain sight, but not a valid player
     sim.run(1);
@@ -377,7 +436,7 @@ describe('first contact - the vision-driven discovery of other players', () => {
 
   it('is deterministic: two same-seed runs with fog and contacts reach the same state hash', () => {
     const run = (): string => {
-      const sim = simOn(FOG_MODE.RECON);
+      const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
       unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
       unit(sim, CIV_AT.x, CIV_AT.y, P1);
       sim.run(VISION_CADENCE_TICKS * 3);
@@ -408,7 +467,7 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
 
   it('ATTACK auto-acquire ignores an enemy in the fog - and engages it with fog off', () => {
     for (const [mode, engages] of [
-      [FOG_MODE.REVEAL, false],
+      [FOG_MODE.CLASSIC, false],
       [FOG_MODE.OFF, true],
     ] as const) {
       const sim = simOn(mode);
@@ -420,7 +479,7 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
   });
 
   it('an explicit attack order still chases a fog-hidden target (orders are ungated)', () => {
-    const sim = simOn(FOG_MODE.REVEAL);
+    const sim = simOn(FOG_MODE.CLASSIC);
     const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.ATTACK });
     const enemy = unit(sim, ENEMY.x, ENEMY.y, P1);
     sim.enqueueSetup({ kind: 'attackUnit', entity: attacker, target: enemy });
@@ -431,7 +490,7 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
 
   it('FLEE reacts only to a SEEN threat - and flees it with fog off', () => {
     for (const [mode, flees] of [
-      [FOG_MODE.REVEAL, false],
+      [FOG_MODE.CLASSIC, false],
       [FOG_MODE.OFF, true],
     ] as const) {
       const sim = simOn(mode);

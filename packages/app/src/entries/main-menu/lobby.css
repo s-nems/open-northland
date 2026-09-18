@@ -395,13 +395,13 @@
   color: var(--text-body);
 }
 
-.main-menu__lobby-fog .main-menu__seg-btn {
+.main-menu__lobby-map .main-menu__seg-btn {
   flex: 1;
   text-align: center;
   padding: calc(var(--u) * 12) calc(var(--u) * 10);
 }
 
-.main-menu__lobby-fog-field[data-tip]::after {
+.main-menu__lobby-map-field[data-tip]::after {
   max-width: 100%;
 }
 

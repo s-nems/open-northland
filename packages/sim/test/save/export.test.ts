@@ -44,7 +44,7 @@ function sectionOf<Id extends SaveGameSection['id']>(
 /** A mapped run with fog on, a standing fog eye, and a queued command - every section populated. */
 function populatedSim(): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(8, 8) });
-  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
   sim.world.add(e, Owner, { player: P0 });
@@ -162,7 +162,7 @@ describe('exportSaveGame sections', () => {
     const save = exportSaveGame(sim);
     expect(componentSection(save, 'FogRules')?.entries).toHaveLength(1);
     const fogSection = sectionOf(save, 'fog');
-    expect(fogSection.activeMode).toBe(FOG_MODE.RECON);
+    expect(fogSection.activeMode).toBe(FOG_MODE.RECON_FOG_OF_WAR);
     expect(fogSection.lastRebuildTick).toBeGreaterThanOrEqual(0);
     const fog = sim.fog;
     if (fog === undefined) throw new Error('populated sim must have fog');

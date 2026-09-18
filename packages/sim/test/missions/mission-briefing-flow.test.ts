@@ -68,7 +68,7 @@ describe('briefing delivery and persistence', () => {
       }),
       mission({ active: false, description: STRING, goals: [{ opcode: 'TimeGone', seconds: 3 }] }),
     ]);
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
     sim.enqueueSetup({ kind: 'setDiplomacy', from: OWNER, to: rival, state: 'friend' });
     sim.enqueueSetup({ kind: 'setDiplomacy', from: rival, to: OWNER, state: 'friend' });
     spawn(sim, { player: OWNER, missionId: HUMAN });

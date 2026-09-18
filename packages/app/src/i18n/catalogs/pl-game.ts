@@ -318,7 +318,7 @@ export const plGame = {
     playerOwner: 'Gracz (właściciel)',
     playerTitle: 'Gracz {player} ({name})',
     armor: 'Pancerz',
-    fog: 'Mgła wojny',
+    fog: 'Widoczność',
     geometry: 'Geometria budynków',
     warriors: 'Wojownicy',
     civilians: 'Cywile',
@@ -345,9 +345,11 @@ export const plGame = {
     geometryOff: 'Siatka: WYŁĄCZONA (kliknij, aby pokazać)',
     fogModes: {
       off: 'Odkryta mapa',
-      reveal: 'Klasyczna',
+      classic: 'Klasyczna',
       recon: 'Rozpoznanie',
     },
+    fogOfWarOn: 'Mgła wojny: WŁĄCZONA (kliknij, aby wyłączyć)',
+    fogOfWarOff: 'Mgła wojny: WYŁĄCZONA (kliknij, aby włączyć)',
     units: {
       unarmed: 'Wojownik (bez broni)',
       spear: 'Włócznik',

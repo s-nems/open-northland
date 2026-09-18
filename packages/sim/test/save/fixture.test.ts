@@ -38,7 +38,7 @@ const FIXTURE_MAP_ID = 'fixture';
  *  pending envelope. */
 function fixtureSim(): Simulation {
   const sim = new Simulation({ seed: 9, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
-  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
   sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: JOB_SCOUT, x: 4, y: 4, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: JOB_IDLE, x: 8, y: 8, tribe: VIKING, owner: P0 });

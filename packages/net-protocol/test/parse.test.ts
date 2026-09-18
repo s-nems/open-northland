@@ -151,7 +151,7 @@ describe('client messages', () => {
     ],
     [
       'a fog rule the sim has no mode for',
-      { kind: 'createRoom', settings: { ...settings, rules: { ...settings.rules, fog: 3 } }, seats: [] },
+      { kind: 'createRoom', settings: { ...settings, rules: { ...settings.rules, fog: 9 } }, seats: [] },
       /not a fog mode/,
     ],
     [

@@ -29,8 +29,8 @@ describe('buildMapWorld', () => {
   it.each([
     null,
     FOG_MODE.OFF,
-    FOG_MODE.RECON,
-  ])('starts enabled scripts under reveal fog unless overridden (%s)', (fog) => {
+    FOG_MODE.RECON_FOG_OF_WAR,
+  ])('starts enabled scripts under classic fog unless overridden (%s)', (fog) => {
     const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
@@ -39,7 +39,7 @@ describe('buildMapWorld', () => {
       missions: null,
       fog,
     });
-    expect(sim.fogMode()).toBe(fog ?? FOG_MODE.REVEAL);
+    expect(sim.fogMode()).toBe(fog ?? FOG_MODE.CLASSIC);
     expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
   });
 
@@ -127,10 +127,10 @@ describe('buildMapWorld', () => {
       ...NO_SESSION_FLAGS,
       map: { ...map, width: 32, height: 32, typeIds: new Array(32 * 32).fill(map.typeIds[0]) },
       ir: AUTHORED_IR,
-      fog: FOG_MODE.REVEAL,
+      fog: FOG_MODE.CLASSIC,
     });
     const fog = sim.fogView(0);
-    expect(fog?.mode).toBe(FOG_MODE.REVEAL);
+    expect(fog?.mode).toBe(FOG_MODE.CLASSIC);
     expect(fog?.stateAt(31, 31)).toBe(FOG_STATE.UNEXPLORED);
     if (kind === 'authored') expect(fog?.stateAt(4, 2)).toBe(FOG_STATE.VISIBLE);
   });
@@ -142,10 +142,10 @@ describe('buildMapWorld', () => {
       ir: AUTHORED_IR,
       aiSeats: [2],
       assistantSeats: [0, 2],
-      fog: FOG_MODE.RECON,
+      fog: FOG_MODE.RECON_FOG_OF_WAR,
       progression: false,
     });
-    expect(sim.fogMode()).toBe(FOG_MODE.RECON);
+    expect(sim.fogMode()).toBe(FOG_MODE.RECON_FOG_OF_WAR);
     expect(sim.professionProgressionEnabled()).toBe(false);
     expect(components.isAiPlayer(sim.world, 2)).toBe(true);
     expect(components.isAiPlayer(sim.world, 1)).toBe(false);

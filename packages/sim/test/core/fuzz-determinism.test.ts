@@ -239,9 +239,9 @@ const ALARM_RAISED_FROM = 200;
 const ALARM_RERAISE_EVERY = 20;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) - exercises `setStance`. */
 const STANCE_MODES = [0, 1, 2, 3, 4, 7] as const;
-/** Fog modes: the three valid `FOG_MODE`s + one out-of-range (skipped) - exercises `setFogMode`, the
+/** Fog modes: the five valid `FOG_MODE`s + one out-of-range (skipped) - exercises `setFogMode`, the
  *  VisionSystem's rebuild/downgrade/reset paths, and the fog-mask bytes `hashState` mixes in. */
-const FOG_MODES = [0, 1, 2, 9] as const;
+const FOG_MODES = [0, 1, 2, 3, 4, 9] as const;
 /** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] - live, dead, and never-created. */
 const TARGET_ID_RANGE = 80;
 /** The AIMED family commands (rolls 24–26) draw ids from [1, NUCLEUS_ID_RANGE] instead - the band the
@@ -539,9 +539,10 @@ function nextCommand(rng: Rng): Command {
       // built/non-building/dead ids (skipped - no UnderConstruction marker). Exercises the force-finish.
       return { kind: 'debugCompleteConstruction', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 17:
-      // The fog-of-war mode: flips the FogRules singleton mid-stream across all three modes (plus an
-      // invalid one - the skip path). Exercises the VisionSystem's RECON rebuild/downgrade,
-      // sticky REVEAL, the OFF reset, the combat/flee fog gates, and the mask bytes in hashState.
+      // The fog mode: flips the FogRules singleton mid-stream across every mode (plus an invalid one -
+      // the skip path). Exercises the VisionSystem's fog-of-war rebuild/downgrade, sticky sight
+      // without it, the known-terrain view, the OFF reset, the combat/flee fog gates, and the mask
+      // bytes in hashState.
       return { kind: 'setFogMode', mode: pick(rng, FOG_MODES) };
     case 18:
       // A builder assignment at two random ids: owned builders pinned to live construction sites

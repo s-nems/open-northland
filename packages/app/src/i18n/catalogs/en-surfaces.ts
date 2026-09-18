@@ -89,20 +89,21 @@ export const enSurfaces = {
       teamColour: 'Team colour',
       teamColourLocked: 'this map fixes its colours',
       settingsTitle: 'Match settings',
-      fogLabel: 'Fog of war',
-      fogModes: {
-        off: {
-          label: 'Map revealed',
-          detail: 'The whole map and every entity remain visible at all times.',
-        },
-        reveal: {
+      mapLabel: 'Map',
+      mapModes: {
+        classic: {
           label: 'Classic',
-          detail: 'The map starts black. Everything explored remains revealed.',
+          detail: 'The map starts black; your settlers uncover it.',
         },
         recon: {
           label: 'Recon',
-          detail: 'All terrain is known from the start; units require current vision.',
+          detail: 'All terrain is known from the start: grey ground with no entities, as under fog of war.',
         },
+      },
+      fogOfWarLabel: 'Fog of war',
+      fogOfWarModes: {
+        on: 'Ground out of sight falls back under the fog',
+        off: 'Ground once uncovered stays visible',
       },
       progressionLabel: 'Profession development',
       progressionModes: {

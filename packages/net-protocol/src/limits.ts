@@ -18,7 +18,7 @@ export const MAX_ENVELOPE_BYTES = 1024;
 export const PAUSE_BUDGET = 3;
 export const MAX_SPEED = 8;
 /** The sim's `FOG_MODE` ids, which a test pins; the descriptor refuses any other. */
-export const FOG_MODES: readonly number[] = [0, 1, 2];
+export const FOG_MODES: readonly number[] = [0, 1, 2, 3, 4];
 /** The sim seeds its generator with 32 bits; a wider seed would collapse onto another. */
 export const MAX_SEED = 0xffff_ffff;
 

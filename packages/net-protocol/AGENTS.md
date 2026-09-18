@@ -17,5 +17,6 @@ input. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the contract its
 
 ## Changing the protocol
 
-A change a client of the current `PROTOCOL_VERSION` could not parse bumps the version. Add a message
-to the catalogue, to both parsers' kind lists, and to `docs/NETWORK.md` in one commit.
+A change one side of the current `PROTOCOL_VERSION` could not honour bumps the version: a message
+shape, or the value set of a field both sides validate, such as the fog mode ids. Add a message to
+the catalogue, to both parsers' kind lists, and to `docs/NETWORK.md` in one commit.

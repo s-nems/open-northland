@@ -1,4 +1,11 @@
-import { FOG_MODE, FOG_STATE, type FogMode, type FogView, type WorldSnapshot } from '@open-northland/sim';
+import {
+  FOG_MODE,
+  FOG_STATE,
+  type FogMode,
+  type FogView,
+  fogSettings,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { ONE } from '../../src/data/projection/index.js';
 import type { SpriteState } from '../../src/data/scene/index.js';
 import type { DrawnGeometry } from '../../src/gpu/sprite-pool/index.js';
@@ -66,11 +73,11 @@ export function drawnGeometry(seams: Partial<DrawnGeometry> = {}): DrawnGeometry
 }
 
 /** A {@link FogView} over a sparse `"cx,cy"` map where a missing cell is UNEXPLORED, mirroring the sim's
- *  RECON rule so a recon spec reads the same mapping the app does. */
+ *  known-terrain rule so a RECON spec reads the same mapping the app does. */
 export function fogViewOf(
   states: ReadonlyMap<string, number>,
   generation: number,
-  mode: FogMode = FOG_MODE.REVEAL,
+  mode: FogMode = FOG_MODE.CLASSIC,
 ): FogView {
   return {
     mode,
@@ -79,7 +86,7 @@ export function fogViewOf(
     generation,
     stateAt: (cx, cy) => {
       const raw = states.get(`${cx},${cy}`) ?? FOG_STATE.UNEXPLORED;
-      if (mode === FOG_MODE.RECON && raw === FOG_STATE.UNEXPLORED) return FOG_STATE.EXPLORED;
+      if (raw === FOG_STATE.UNEXPLORED && fogSettings(mode)?.terrainKnown === true) return FOG_STATE.EXPLORED;
       return raw;
     },
   };

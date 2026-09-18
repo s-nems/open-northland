@@ -88,7 +88,7 @@ describe('contested ground - who contests it', () => {
 
   it('counts only the fighters the seat can see', () => {
     const sim = fresh();
-    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
     spawn(sim, SPEARMAN, FOE);
     // Nobody of the seat's is near, so the fighter stands in its fog: the ghost is no enemy detector.
     expect(contestedFor(sim, SEAT, CAMP)).toBe(false);

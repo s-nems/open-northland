@@ -18,7 +18,7 @@ type Doc = { header: Record<string, unknown>; sections: Array<Record<string, unk
 /** A mapped run with fog, a standing eye, and a pending envelope - every section present. */
 function populatedDoc(): Doc {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(8, 8) });
-  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
   sim.world.add(e, Owner, { player: P0 });
@@ -186,7 +186,7 @@ describe('parseSaveGame rng, fog, and command rejection', () => {
     const fog = sectionOf(doc, 'fog');
     fog.activeMode = 9;
     expect(() => parseSaveGame(doc)).toThrow(/activeMode: unknown fog mode 9/);
-    fog.activeMode = FOG_MODE.RECON;
+    fog.activeMode = FOG_MODE.RECON_FOG_OF_WAR;
     const masks = fog.masks as Array<[number, string]>;
     const mask = masks[0];
     if (mask === undefined) throw new Error('populated doc must hold a fog mask');

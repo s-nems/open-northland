@@ -91,8 +91,8 @@ describe('WorldFog', () => {
     fog.setView(watching(HOUSE_CELL, 2));
     const rebuilt = fog.update(WORLD, VIEWPORT).fogEpoch;
     expect(rebuilt).not.toBe(first);
-    // RECON remaps what stateAt answers without a mask rebuild, so the epoch must move too.
-    fog.setView(fogViewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 2, FOG_MODE.RECON));
+    // A RECON map remaps what stateAt answers without a mask rebuild, so the epoch must move too.
+    fog.setView(fogViewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 2, FOG_MODE.RECON_FOG_OF_WAR));
     expect(fog.update(WORLD, VIEWPORT).fogEpoch).not.toBe(rebuilt);
   });
 

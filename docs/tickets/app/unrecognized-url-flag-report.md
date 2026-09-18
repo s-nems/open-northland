@@ -2,7 +2,7 @@
 
 **Area:** app · **Focus:** entries · **Priority:** P3 · **Complexity:** low
 
-`?fog=reveals` (a plausible typo of `reveal`) parses to null and silently keeps the world's default,
+`?fog=clasic` (a plausible typo of `classic`) parses to null and silently keeps the world's default,
 so a session that meant to pin a rule runs without it and nothing says so; `fogModeParam`,
 `onOffParam`, and the other enumerated flag parsers all share the silent-fallback shape. Diagnostic
 URLs are the main consumer of these flags, which makes a silent wrong value expensive.

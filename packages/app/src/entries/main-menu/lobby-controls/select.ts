@@ -33,11 +33,11 @@ export function selectControl(
   return {
     root,
     input,
-    update(value: string, disabled: boolean): void {
+    update(value: string, disabled: boolean, label = value): void {
       current = value;
       // Custom protocol values remain readable even when the menu offers only the usual choices.
       if (![...input.options].some((option) => option.value === value)) {
-        const option = node('option', value);
+        const option = node('option', label);
         option.value = value;
         input.append(option);
       }

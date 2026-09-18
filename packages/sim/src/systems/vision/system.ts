@@ -3,6 +3,7 @@ import {
   Building,
   FOG_MODE,
   fogMode,
+  fogSettings,
   isValidPlayer,
   metContactBits,
   Owner,
@@ -56,15 +57,16 @@ const NODE_STEP_PX = 34;
 /**
  * Rebuild the per-group fog masks on the {@link VISION_CADENCE_TICKS} cadence, and immediately on a mode
  * change so a `setFogMode` command takes effect the same tick. Runs before the combatSystem in
- * `SYSTEM_ORDER`, so combat gates on this tick's (at worst a cadence-stale) visibility. REVEAL keeps
- * exploration sticky, matching the original's observed behaviour. Every eye stamps its owner's vision
- * group, so players sharing vision explore, see and meet as one.
+ * `SYSTEM_ORDER`, so combat gates on this tick's (at worst a cadence-stale) visibility. Without fog of
+ * war exploration is sticky, matching the original's observed behaviour. Every eye stamps its owner's
+ * vision group, so players sharing vision explore, see and meet as one.
  */
 export const visionSystem: System = (world, ctx) => {
   const fog = ctx.fog;
   if (fog === undefined) return; // mapless sim - no grid to mask
   const mode = fogMode(world);
-  if (mode === FOG_MODE.OFF) {
+  const settings = fogSettings(mode);
+  if (settings === null) {
     if (fog.activeMode !== FOG_MODE.OFF) {
       fog.reset(); // exploration restarts if fog is switched back on
       fog.activeMode = FOG_MODE.OFF;
@@ -77,10 +79,10 @@ export const visionSystem: System = (world, ctx) => {
   const due = fog.lastRebuildTick === -1 || ctx.tick - fog.lastRebuildTick >= VISION_CADENCE_TICKS;
   if (!modeChanged && !due) return;
 
-  // Downgrade pass (RECON): ground no eye covers falls back to explored, a script's revealed byte
+  // Downgrade pass (fog of war): ground no eye covers falls back to explored, a script's revealed byte
   // excepted. Masks walk in ascending-group order, the order hashState mixes them in, and each scan
   // covers only that group's may-hold-VISIBLE box.
-  if (mode !== FOG_MODE.REVEAL) {
+  if (settings.fogOfWar) {
     for (const group of fog.groupsWithMasks()) {
       fog.downgradeVisible(group);
     }
@@ -142,7 +144,7 @@ export const visionSystem: System = (world, ctx) => {
 
 /** The vision radius in nodes of one owned entity, or null when it is not an eye. A rising site counts as
  *  manned ground and sees the building radius, a boat hull sees like a civilian, and a signpost is an
- *  authored standing eye that keeps {@link SIGNPOST_VISION_NODES} around it visible in RECON. */
+ *  authored standing eye that keeps {@link SIGNPOST_VISION_NODES} around it visible under fog of war. */
 function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | null {
   const settler = world.tryGet(e, Settler);
   if (settler !== undefined) {

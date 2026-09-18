@@ -93,12 +93,12 @@ describe('game session descriptor', () => {
     expect(() =>
       parseGameSession({ ...session(), seats: [{ player: 0, mode: 'human', color: -1 }] }),
     ).toThrow(/negative colour/);
-    expect(() => parseGameSession({ ...session(), rules: { fog: 'reveal' } })).toThrow(/rules.fog/);
+    expect(() => parseGameSession({ ...session(), rules: { fog: 'classic' } })).toThrow(/rules.fog/);
   });
 
   it('rejects unsafe integers and undefined fog modes', () => {
     expect(() => parseGameSession(session({ seed: 1e30 }))).toThrow(/seed/);
-    expect(() => parseGameSession(session({ rules: { fog: 3, progression: null, needs: null } }))).toThrow(
+    expect(() => parseGameSession(session({ rules: { fog: 9, progression: null, needs: null } }))).toThrow(
       /rules.fog/,
     );
   });

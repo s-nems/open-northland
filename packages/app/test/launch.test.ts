@@ -35,7 +35,7 @@ describe('swapToEntry', () => {
     const probe = stubWindow();
 
     await swapToEntry(
-      '?map=fjord&fog=reveal',
+      '?map=fjord&fog=classic',
       () => probe.trace.push('teardown'),
       (params, onLoaded) => {
         probe.trace.push(`load ${params.get('map')}`);
@@ -48,7 +48,7 @@ describe('swapToEntry', () => {
     // The menu holds the frame until the entry's module is in, and the URL turns over with it.
     expect(probe.trace).toEqual([
       'load fjord',
-      'push ?map=fjord&fog=reveal',
+      'push ?map=fjord&fog=classic',
       'listen popstate',
       'teardown',
       'draw',

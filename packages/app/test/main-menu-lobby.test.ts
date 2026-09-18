@@ -69,21 +69,23 @@ describe('lobbySlotRows', () => {
 describe('initialLobbyOptions', () => {
   it('defaults to classic fog, progression on and needs on, honouring explicit URL params', () => {
     expect(initialLobbyOptions(new URLSearchParams(''))).toEqual({
-      fog: 'reveal',
+      fog: 'classic',
       professionProgression: true,
       settlerNeeds: true,
     });
-    expect(initialLobbyOptions(new URLSearchParams('fog=off&progression=off&needs=off'))).toEqual({
-      fog: 'off',
+    expect(initialLobbyOptions(new URLSearchParams('fog=recon-fow&progression=off&needs=off'))).toEqual({
+      fog: 'recon-fow',
       professionProgression: false,
       settlerNeeds: false,
     });
-    expect(initialLobbyOptions(new URLSearchParams('fog=bogus')).fog).toBe('reveal');
+    // The revealed map is a debug-menu pick, never a lobby one.
+    expect(initialLobbyOptions(new URLSearchParams('fog=off')).fog).toBe('classic');
+    expect(initialLobbyOptions(new URLSearchParams('fog=bogus')).fog).toBe('classic');
     expect(initialLobbyOptions(new URLSearchParams('needs=bogus')).settlerNeeds).toBe(true);
   });
 });
 
-const OPTIONS = { fog: 'reveal', professionProgression: true, settlerNeeds: true } as const;
+const OPTIONS = { fog: 'classic', professionProgression: true, settlerNeeds: true } as const;
 
 /** The offered seats the launched session declares as AI, which is what `?ai=` carries. */
 function aiSeatsOfLobby(state: RosterState, players: readonly MapsIndexPlayerSlot[]): number[] {
@@ -169,7 +171,7 @@ describe('lobbyStartEntry', () => {
     const state = initialLobbyState(players);
     const params = new URLSearchParams(
       lobbyStartEntry('zatoka', state, players, {
-        fog: 'recon',
+        fog: 'recon-fow',
         professionProgression: false,
         settlerNeeds: false,
       }),
@@ -187,7 +189,7 @@ describe('lobbyStartEntry', () => {
     expect(
       lobbySession('forteca', initialLobbyState(forteca), forteca, OPTIONS).seats.map((seat) => seat.mode),
     ).toEqual(['human', 'ai', 'ai', 'ai']);
-    expect(params.get('fog')).toBe('recon');
+    expect(params.get('fog')).toBe('recon-fow');
     expect(params.get('progression')).toBe('off');
     expect(params.get('needs')).toBe('off');
   });
@@ -195,7 +197,7 @@ describe('lobbyStartEntry', () => {
   it('writes the needs default explicitly, so a carried `needs=off` cannot leak into the next map', () => {
     const players = [slot(0, { claimable: true, type: 'human' })];
     const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, {
-      fog: 'reveal',
+      fog: 'classic',
       professionProgression: true,
       settlerNeeds: true,
     });

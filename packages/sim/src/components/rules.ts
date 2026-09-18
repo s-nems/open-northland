@@ -23,24 +23,53 @@ export function setNeedsEnabled(world: World, enabled: boolean): void {
 }
 
 /**
- * The fog-of-war modes the `setFogMode` command selects between. No readable fog source exists:
- *
- *  - OFF - no fog at all: everything visible, zero per-tick cost. The default.
- *  - REVEAL - observation: the map starts unexplored and anything ever seen stays fully visible.
- *  - RECON - authored: terrain is known from the start, current vision is fully visible, and ground out of
- *    every eye's reach falls back to grey terrain with no entities.
+ * The fog modes the `setFogMode` command selects between: OFF, or the product of the lobby's two
+ * settings, the map and fog of war ({@link FogSettings}). No readable fog source exists: CLASSIC is the
+ * original's observed behaviour (black start, anything ever seen stays fully visible); the other three
+ * are authored.
  */
 export const FOG_MODE = {
+  /** No fog at all: everything visible, zero per-tick cost. The default. */
   OFF: 0,
-  REVEAL: 1,
-  RECON: 2,
+  CLASSIC: 1,
+  CLASSIC_FOG_OF_WAR: 2,
+  RECON: 3,
+  RECON_FOG_OF_WAR: 4,
 } as const;
 
 export type FogMode = (typeof FOG_MODE)[keyof typeof FOG_MODE];
 
+/** The two settings every mode but OFF is the product of. */
+export interface FogSettings {
+  /** RECON: the terrain is known from the start as grey ground with no entities. CLASSIC: the map
+   *  starts black. */
+  readonly terrainKnown: boolean;
+  /** Ground out of every eye's reach falls back to grey terrain with no entities; without it,
+   *  anything ever seen stays fully visible. */
+  readonly fogOfWar: boolean;
+}
+
+const FOG_MODE_SETTINGS: Readonly<Record<Exclude<FogMode, typeof FOG_MODE.OFF>, FogSettings>> = {
+  [FOG_MODE.CLASSIC]: { terrainKnown: false, fogOfWar: false },
+  [FOG_MODE.CLASSIC_FOG_OF_WAR]: { terrainKnown: false, fogOfWar: true },
+  [FOG_MODE.RECON]: { terrainKnown: true, fogOfWar: false },
+  [FOG_MODE.RECON_FOG_OF_WAR]: { terrainKnown: true, fogOfWar: true },
+};
+
+/** The settings `mode` is the product of; null for OFF. */
+export function fogSettings(mode: FogMode): FogSettings | null {
+  return mode === FOG_MODE.OFF ? null : FOG_MODE_SETTINGS[mode];
+}
+
+/** The mode two settings compose. */
+export function fogModeOf(settings: FogSettings): FogMode {
+  if (settings.terrainKnown) return settings.fogOfWar ? FOG_MODE.RECON_FOG_OF_WAR : FOG_MODE.RECON;
+  return settings.fogOfWar ? FOG_MODE.CLASSIC_FOG_OF_WAR : FOG_MODE.CLASSIC;
+}
+
 /** The `setFogMode` validity gate: a bad mode is a recoverable bad input, skipped rather than thrown. */
 export function isFogMode(mode: number): mode is FogMode {
-  return mode === FOG_MODE.OFF || mode === FOG_MODE.REVEAL || mode === FOG_MODE.RECON;
+  return Object.values(FOG_MODE).includes(mode as FogMode);
 }
 
 const fogRules = defineWorldSingleton<{ mode: FogMode }>('FogRules', 'fog', () => ({ mode: FOG_MODE.OFF }));

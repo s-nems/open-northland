@@ -1,4 +1,4 @@
-import type { Command, Entity } from '@open-northland/sim';
+import type { Command, Entity, FogMode } from '@open-northland/sim';
 import { HUMAN_HITPOINTS } from '../../catalog/units.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place/index.js';
@@ -65,8 +65,8 @@ export interface AdminDebugDeps {
   readonly animals?: readonly AnimalEntry[];
   /** The sim's live needs-rule state, drawn on the toggle button. */
   readonly needsEnabled?: () => boolean;
-  /** The sim's live fog-of-war mode (`FOG_MODE.*`). Absent hides the fog section. */
-  readonly fogMode?: () => number;
+  /** The sim's live fog mode. Absent hides the visibility section. */
+  readonly fogMode?: () => FogMode;
   readonly geometryEnabled: () => boolean;
   readonly setGeometryEnabled: (enabled: boolean) => void;
 }

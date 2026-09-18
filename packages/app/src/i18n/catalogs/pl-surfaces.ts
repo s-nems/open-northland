@@ -88,20 +88,21 @@ export const plSurfaces = {
       teamColour: 'Kolor drużyny',
       teamColourLocked: 'ta mapa ma stałe kolory',
       settingsTitle: 'Ustawienia rozgrywki',
-      fogLabel: 'Mgła wojny',
-      fogModes: {
-        off: {
-          label: 'Odkryta mapa',
-          detail: 'Cała mapa i wszystkie jednostki są zawsze widoczne.',
-        },
-        reveal: {
+      mapLabel: 'Mapa',
+      mapModes: {
+        classic: {
           label: 'Klasyczna',
-          detail: 'Mapa zaczyna się czarna. Wszystko odkryte pozostaje odkryte.',
+          detail: 'Mapa zaczyna się czarna; odkrywasz ją osadnikami.',
         },
         recon: {
           label: 'Rozpoznanie',
-          detail: 'Cały teren jest znany od początku; jednostki wymagają aktualnego pola widzenia.',
+          detail: 'Cały teren jest znany od początku: szary, bez jednostek, jak pod mgłą wojny.',
         },
+      },
+      fogOfWarLabel: 'Mgła wojny',
+      fogOfWarModes: {
+        on: 'Teren poza zasięgiem wzroku wraca pod mgłę',
+        off: 'Raz odkryty teren pozostaje widoczny',
       },
       progressionLabel: 'Rozwój zawodów',
       progressionModes: {

@@ -6,7 +6,7 @@ import { spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * First-contact discovery and the diplomacy stance table under RECON fog: the ally beside you is
+ * First-contact discovery and the diplomacy stance table under recon fog of war: the ally beside you is
  * discovered at once and mutual friendship never becomes a fight, a one-way aggressor marching out of
  * the fog is discovered by its own blow and flips your stance to enemy, and a player no eye ever
  * reached stays undiscovered. The browser view pairs this with the diplomacy window on the tool panel.
@@ -62,7 +62,7 @@ export const diplomacyScene: SceneDefinition = {
   id: 'diplomacy',
   seed: 31,
   terrain: grassTerrain(MAP_W, MAP_H),
-  fog: 'recon',
+  fog: 'recon-fow',
   build,
   runTicks: 900,
   initialZoom: 0.8,

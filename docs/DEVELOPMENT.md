@@ -155,7 +155,8 @@ loading a save preserves its stored mission rules.
 | `?sounds` | sound-binding gallery |
 | `?shot` | single-frame screenshot entry used by the harness |
 
-Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`,
+Common modifiers include `lang=<pol|eng>`, `fog=<off|classic|classic-fow|recon|recon-fow>` (the
+lobby's map setting, with `-fow` for fog of war; `off` reveals the map), `player=<...>`, `ai=<...>`, `sound=off`,
 `intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. `ai=<seat,...>`
 names the seats a person could have taken that the strategic AI plays instead; a map's own computer
 seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks

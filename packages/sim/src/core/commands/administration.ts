@@ -21,8 +21,8 @@ export type RulesCommand =
        * tick, and switching to `OFF` drops them, resetting exploration history.
        */
       readonly kind: 'setFogMode';
-      /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..2); any other value is
-       *  skipped. */
+      /** The target {@link import('../../components/rules.js').FOG_MODE} id; a value `isFogMode`
+       *  rejects is skipped. */
       readonly mode: number;
     }
   | {

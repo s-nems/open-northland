@@ -32,11 +32,11 @@ function session(search: string) {
 
 describe('mapSession', () => {
   it('reads the world, the seat, the seed, the rules and the tempo', () => {
-    const parsed = session('map=magiczny_las&player=1&seed=42&fog=recon&needs=off&speed=2');
+    const parsed = session('map=magiczny_las&player=1&seed=42&fog=recon-fow&needs=off&speed=2');
     expect(parsed.world).toEqual({ kind: 'map', mapId: 'magiczny_las' });
     expect(parsed.localSeat).toBe(1);
     expect(parsed.seed).toBe(42);
-    expect(parsed.rules).toEqual({ fog: FOG_MODE.RECON, progression: null, needs: false });
+    expect(parsed.rules).toEqual({ fog: FOG_MODE.RECON_FOG_OF_WAR, progression: null, needs: false });
     expect(parsed.speed).toBe(2);
   });
 
@@ -127,7 +127,7 @@ describe('sceneSession', () => {
 describe('sessionSearch', () => {
   it('round-trips every parameter a session carries', () => {
     const search =
-      'map=magiczny_las&player=2&seed=42&colors=0:3&ai=1&fog=recon&progression=off&needs=on&speed=1.5';
+      'map=magiczny_las&player=2&seed=42&colors=0:3&ai=1&fog=recon-fow&progression=off&needs=on&speed=1.5';
     const parsed = session(search);
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });
