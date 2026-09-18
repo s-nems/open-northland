@@ -29,7 +29,7 @@ export function snapDistanceForKind(kind: SpriteKind): number {
   return kind === 'projectile' ? Number.POSITIVE_INFINITY : SNAP_DISTANCE;
 }
 
-/** Settlers use tick anchors unless their artwork or the animation setting enables interpolation. */
+/** Original settlers use tick anchors; authored smooth clips opt into between-tick placement. */
 export function drawAlphaForKind(kind: SpriteKind, frameAlpha: number, interpolate = false): number {
   return kind === 'settler' && !interpolate ? 1 : frameAlpha;
 }

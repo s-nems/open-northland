@@ -176,9 +176,11 @@ palette-resolved original characters), shadows, and smoother motion. They defaul
 this experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
 `polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of these
 switches saves the effective set and clears the URL override. Use the same map, camera and zoom for
-A/B review, including ×2 and zoom-out while panning. Motion interpolates original humans, animals
-and fish, enriches water and smooths the breeze on own vegetation. Original work/tree/building clips
-retain their authored images and durations: a fractional clock does not invent additional frames.
+A/B review, including ×2 and zoom-out while panning. Motion interpolates fish, enriches water and
+smooths the breeze on own vegetation. Original humans and animals keep their tick anchors: the
+original engine moves a walker only together with its walk frame, and moving the body inside a frame
+hold would drag the planted foot. Original work/tree/building clips retain their authored images and
+durations: a fractional clock does not invent additional frames.
 Own-art motion interpolation remains enabled according to its authored binding when the switch is off.
 Projectiles, damage smoke, fades and building collapse already use interpolated presentation clocks.
 Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back to original shadows when
@@ -190,10 +192,6 @@ silhouettes. A character's head overlay casts too, cropped to the rows above its
 projections meet instead of darkening the ground twice where they overlap.
 `shadows=gain:<n>,max:<n>,tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for
 one session; strength and tint compile into the shader, so a change needs a reload, not a live toggle.
-`placement=anchor|linear|window` chooses where an original walker stands between ticks under the
-motion switch: the tick position (the original's stepping, feet planted), even interpolation (the
-default, smoothest body, the planted foot drags with it during each frame hold), or a rest followed by
-a short move that lands with the frame change.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
 minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
 the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already

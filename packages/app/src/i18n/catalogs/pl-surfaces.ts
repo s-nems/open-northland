@@ -159,7 +159,7 @@ export const plSurfaces = {
         'Zmiękcza i pogłębia wszystkie cienie oraz dorzuca rzucany cień osadnikom i zwierzętom. Działa od razu.',
       environmentMotion: 'Eksperyment: płynniejszy ruch',
       environmentMotionTip:
-        'Interpoluje ruch osadników, zwierząt i ryb; urozmaica wodę i wygładza wiatr. Nie dodaje klatek do oryginalnych animacji.',
+        'Interpoluje ruch ryb, urozmaica wodę i wygładza wiatr. Osadnicy i zwierzęta chodzą krokiem oryginału. Nie dodaje klatek do oryginalnych animacji.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',

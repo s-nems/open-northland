@@ -3,7 +3,6 @@ import type { SpriteSheet } from '../sprite-sheet.js';
 import type { PooledEntity } from './pooled-entity.js';
 import { presentItem } from './present-item.js';
 import type { PoolFrame } from './sprite-pool.js';
-import { DEFAULT_WALK_PLACEMENT, walkPlacementAlpha } from './walk-placement.js';
 
 export function presentEntity(
   pe: PooledEntity,
@@ -11,15 +10,7 @@ export function presentEntity(
   frame: PoolFrame,
   sheet: SpriteSheet | undefined,
 ) {
-  const layers = presentItem(
-    pe,
-    item,
-    frame.tick,
-    frame.alpha,
-    sheet,
-    frame.environmentMotion === true,
-    frame.walkPlacement,
-  );
+  const layers = presentItem(pe, item, frame.tick, frame.alpha, sheet, frame.environmentMotion === true);
   pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
   return layers;
 }

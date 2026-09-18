@@ -28,7 +28,6 @@ import {
 } from '../pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../shadow-style.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
-import { DEFAULT_WALK_PLACEMENT, type WalkPlacement } from '../sprite-pool/walk-placement.js';
 import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
@@ -80,7 +79,6 @@ export class WorldRenderer {
   private readonly viewSmoothing: boolean;
   private readonly pixelArtScaler: PixelArtScaler;
   private readonly shadowStyle: ShadowStyle;
-  private readonly walkPlacement: WalkPlacement;
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = {
     enhancedSampling: false,
@@ -94,7 +92,6 @@ export class WorldRenderer {
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.pixelArtScaler = opts?.pixelArtScaler ?? DEFAULT_PIXEL_ART_SCALER;
     this.shadowStyle = opts?.shadowStyle ?? DEFAULT_SHADOW_STYLE;
-    this.walkPlacement = opts?.walkPlacement ?? DEFAULT_WALK_PLACEMENT;
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
     // Own Pixi render group: moving sprites re-write zIndex every frame, and that must re-sort and
@@ -255,7 +252,6 @@ export class WorldRenderer {
       enhancedSampling: this.enhancements.enhancedSampling,
       pixelArtScaler: this.pixelArtScaler,
       environmentMotion: this.enhancements.environmentMotion,
-      walkPlacement: this.walkPlacement,
       shadowStyle: this.enhancements.softShadows ? this.shadowStyle : undefined,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),

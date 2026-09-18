@@ -31,7 +31,6 @@ import { PortraitSubject } from './portrait-subject.js';
 import { presentEntity } from './present-entity.js';
 import { reconcileSprites } from './reconcile.js';
 import { SpriteSceneCache } from './scene-cache.js';
-import type { WalkPlacement } from './walk-placement.js';
 
 /** The retained per-entity sprite pool, keyed by the entity's monotonic, never-reused id. */
 
@@ -47,9 +46,6 @@ export interface PoolFrame {
   /** How original pixel art magnifies under enhanced sampling; the registry default when absent. */
   readonly pixelArtScaler?: PixelArtScaler;
   readonly environmentMotion?: boolean;
-  /** Where an original walker stands between ticks under the motion enhancement; the default curve
-   *  when absent. */
-  readonly walkPlacement?: WalkPlacement | undefined;
   /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
    *  character's projected cast layer off the screen. */
   readonly shadowStyle?: ShadowStyle | undefined;
