@@ -10,7 +10,8 @@ export interface ShadowStyle {
   /** Ceiling for the gained alpha, so an opaque body frame cast as a silhouette lands beside a
    *  gained `_s` blob instead of painting solid. */
   readonly maxAlpha: number;
-  /** Shadow colour as 0xRRGGBB; replaces the silhouette's own black. */
+  /** Shadow colour as 0xRRGGBB. Black keeps the original's neutral shadow; a tinted shadow reads as
+   *  a colour cast on the ground, which the accepted look rejects. */
   readonly tint: number;
   /** Screen px the cast silhouette moves right per px of caster height. */
   readonly castShear: number;
@@ -33,13 +34,13 @@ export interface ShadowStyle {
  *
  * The original is not internally consistent: `ls_statues`, `ls_trees`, `ls_goetter`, `ls_skeletons` and
  * every character body carry an undisplaced ground blob instead, and the largest `ls_houses_*` frames run
- * up to 0.75x. Strength and colour are named approximations, not measurements: the original bakes every
- * silhouette pure black at 0x50 alpha.
+ * up to 0.75x. Strength is a named approximation, not a measurement: the original bakes every silhouette
+ * pure black at 0x50 alpha, and the colour stays that black.
  */
 export const DEFAULT_SHADOW_STYLE: ShadowStyle = {
   alphaGain: 1.8,
   maxAlpha: 0.58,
-  tint: 0x1d2740,
+  tint: 0x000000,
   castShear: 0.4,
   castFlatten: 0.25,
   cast: true,
