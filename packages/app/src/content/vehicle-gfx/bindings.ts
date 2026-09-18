@@ -150,6 +150,8 @@ export function buildVehicleBinding(
   frames: DrawableFrames,
   fallbackTribe: number,
   attackFxLoaded: boolean,
+  /** The types that ride the swell at sea; empty draws every vehicle rigid. */
+  ships: ReadonlySet<number> = new Set(),
 ): VehicleBinding | undefined {
   const byTribe: Record<number, Record<number, VehicleLook>> = {};
   let any = false;
@@ -157,7 +159,7 @@ export function buildVehicleBinding(
     const look = vehicleLook(row, loaded, frames);
     if (look === undefined) continue;
     const looks = byTribe[row.tribe] ?? {};
-    looks[row.vehicleType] = look;
+    looks[row.vehicleType] = ships.has(row.vehicleType) ? { ...look, afloat: true } : look;
     byTribe[row.tribe] = looks;
     any = true;
   }

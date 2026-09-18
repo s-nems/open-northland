@@ -26,6 +26,8 @@ export interface VehicleLook {
   readonly loadedMoving?: SpriteFrameRef;
   /** The catapult's shot (action 81), looped on the attack cadence while the vehicle attacks. */
   readonly attack?: SpriteFrameRef;
+  /** A ship: it rides the swell at sea (`gpu/ship-sway.ts`) and lies still moored. */
+  readonly afloat?: boolean;
 }
 
 /** Per-type looks of one tribe. */

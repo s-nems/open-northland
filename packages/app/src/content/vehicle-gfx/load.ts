@@ -8,6 +8,15 @@ import {
   vehicleGraphicsRows,
 } from './bindings.js';
 
+/** The ship types of the IR, by the sim's rule (`isShipVehicle`: a type with passenger slots). */
+function shipTypes(ir: ContentIr | null): ReadonlySet<number> {
+  const ships = new Set<number>();
+  for (const row of ir?.vehicles ?? []) {
+    if (row.typeId !== undefined && (row.passengerSlots ?? 0) > 0) ships.add(row.typeId);
+  }
+  return ships;
+}
+
 /** The vehicle half of the sheet: the binding and exactly the family atlases it draws from. */
 export interface VehicleSheet {
   readonly binding: VehicleBinding | undefined;
@@ -43,5 +52,8 @@ export async function loadVehicleSheet(
       return [stem, drawable] as const;
     }),
   );
-  return { binding: buildVehicleBinding(rows, loaded, frames, fallbackTribe, attackFxLoaded), families };
+  return {
+    binding: buildVehicleBinding(rows, loaded, frames, fallbackTribe, attackFxLoaded, shipTypes(ir)),
+    families,
+  };
 }

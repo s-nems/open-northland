@@ -26,15 +26,16 @@ export function pushLayeredWithShadow(
   kind: SpriteKind,
   draw: BuildingDraw,
   shear?: number,
+  dy?: number,
 ): boolean {
   const layer = sourceLayerFor(sheet, kind, draw);
   if (layer === undefined) return false;
-  return pushBodyWithShadow(out, layer, draw.bob, layeredScale(sheet, kind, draw), shear);
+  return pushBodyWithShadow(out, layer, draw.bob, layeredScale(sheet, kind, draw), shear, dy);
 }
 
 /**
  * Append one bob's `[shadow, body]` from a layer; false appends nothing: the body has no frame there. A
- * `shear` sways the body only, since the shadow lies on the ground.
+ * `shear` sways and a `dy` lifts the body only, since the shadow lies on the ground.
  */
 export function pushBodyWithShadow(
   out: LayerBuffer,
@@ -42,12 +43,14 @@ export function pushBodyWithShadow(
   bob: number,
   scale: number,
   shear?: number,
+  dy?: number,
 ): boolean {
   const body = resolveFromLayer(layer, bob, scale);
   if (body === null) return false;
   const shadow = shadowLayerFor(layer, bob, scale);
   if (shadow !== null) out.push(shadow);
-  out.push(shear === undefined ? body : { ...body, shear });
+  if (shear === undefined && dy === undefined) out.push(body);
+  else out.push({ ...body, ...(shear !== undefined ? { shear } : {}), ...(dy !== undefined ? { dy } : {}) });
   return true;
 }
 

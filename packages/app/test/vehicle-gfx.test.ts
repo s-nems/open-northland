@@ -197,5 +197,16 @@ describe('the vehicle look join', () => {
     ).toEqual([OXCART, CATAPULT]);
     expect(binding?.attackFx).toMatchObject({ name: 'fx smoke' });
     expect(buildVehicleBinding([vikingOxcart], loaded, frames, VIKING, false)?.attackFx).toBeUndefined();
+    // A type named as a ship rides the swell; the rest stand rigid.
+    const afloat = buildVehicleBinding(
+      [vikingOxcart, catapult],
+      loaded,
+      frames,
+      VIKING,
+      false,
+      new Set([OXCART]),
+    );
+    expect(afloat?.byTribe[VIKING]?.[OXCART]?.afloat).toBe(true);
+    expect(afloat?.byTribe[VIKING]?.[CATAPULT]?.afloat).toBeUndefined();
   });
 });

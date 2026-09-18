@@ -38,6 +38,11 @@ export function vehicleMovingRef(look: VehicleLook, item: DrawItem): SpriteFrame
   return byGood ?? (loaded ? look.loadedMoving : undefined) ?? look.moving ?? look.idle;
 }
 
+/** A vehicle's frame and whether it rides the swell this frame: a ship at sea, sailing or standing. */
+export interface VehicleDraw extends BuildingDraw {
+  readonly sway: 'none' | 'atSea' | 'sailing';
+}
+
 /**
  * The frame a vehicle draws, or `null` for a type its tribe and the fallback tribe both lack. An
  * attacking vehicle loops its shot on the attack cadence, a moving one its drive on the gait clock, and a
@@ -48,19 +53,21 @@ export function resolveVehicleDraw(
   item: DrawItem,
   tick: number,
   gaitClock: number = tick,
-): BuildingDraw | null {
+): VehicleDraw | null {
   if (binding === undefined) return null;
   const look = vehicleLookFor(binding, item);
   if (look === undefined) return null;
   const facing = item.facing ?? DEFAULT_FACING;
+  const afloat = look.afloat === true && item.moored !== true;
   let bob: number;
   if (item.task === 'attacks' && look.attack !== undefined) {
     bob = frameOf(look.attack, facing, attackPhase(tick, item.attackClipStart));
   } else if (item.state === 'moving') {
     bob = frameOf(vehicleMovingRef(look, item), facing, gaitClock);
+    return { bob, layer: look.layer, sway: afloat ? 'sailing' : 'none' };
   } else {
     const idle = item.moored === true ? (look.mooredIdle ?? look.idle) : look.idle;
     bob = frameOf(idle, facing, tick);
   }
-  return { bob, layer: look.layer };
+  return { bob, layer: look.layer, sway: afloat ? 'atSea' : 'none' };
 }

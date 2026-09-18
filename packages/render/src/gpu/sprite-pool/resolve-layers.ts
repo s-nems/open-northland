@@ -9,6 +9,7 @@ import {
   resolveStockpileDraw,
   resolveVehicleDraw,
 } from '../../data/sprites/index.js';
+import { shipSway } from '../ship-sway.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { vegetationShear } from '../vegetation-sway.js';
 import { pushBuildingExtras, pushBuildingLayers } from './building-layers.js';
@@ -143,7 +144,10 @@ function pushLayers(
       // frame from the shared body atlas.
       const draw = resolveVehicleDraw(sheet.bindings.vehicle, item, tick, gaitClock);
       if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
-      return pushLayeredWithShadow(out, sheet, 'vehicle', draw);
+      if (draw.sway === 'none' || item.ghost === true)
+        return pushLayeredWithShadow(out, sheet, 'vehicle', draw);
+      const sway = shipSway(tick, item.x, item.y, draw.sway === 'sailing');
+      return pushLayeredWithShadow(out, sheet, 'vehicle', draw, sway.shear, sway.dy);
     }
     default: {
       const _exhaustive: never = item.kind;

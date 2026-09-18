@@ -54,6 +54,7 @@ const ship: VehicleLook = {
   idle: oneFrame(6000),
   mooredIdle: oneFrame(7000),
   moving: oneFrame(6000),
+  afloat: true,
 };
 const catapult: VehicleLook = {
   layer: 'cr_veh_body_00.goods_bow',
@@ -76,7 +77,7 @@ const item = (fields: Parameters<typeof drawItem>[1]) => drawItem('vehicle', { t
 describe('resolveVehicleDraw', () => {
   it('stands a vehicle on its wait at its facing, from its own family atlas', () => {
     const draw = resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 3, state: 'idle' }), 7);
-    expect(draw).toEqual({ bob: 1003, layer: CART_LAYER });
+    expect(draw).toEqual({ bob: 1003, layer: CART_LAYER, sway: 'none' });
   });
 
   it('defaults an item with no facing to the toward-camera pose', () => {
@@ -103,7 +104,7 @@ describe('resolveVehicleDraw', () => {
       3,
       9,
     );
-    expect(draw).toEqual({ bob: 5004, layer: 'cr_veh_body_00.oxcart' });
+    expect(draw).toEqual({ bob: 5004, layer: 'cr_veh_body_00.oxcart', sway: 'none' });
   });
 
   it('furls the sails while a ship lies moored, sets them at sea, and keeps a cart on its one wait', () => {
@@ -115,6 +116,14 @@ describe('resolveVehicleDraw', () => {
     expect(resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 0, moored: true }), 0)?.bob).toBe(
       1000,
     );
+  });
+
+  it('rides the swell at sea, harder under sail, and lies still moored; a cart never sways', () => {
+    const sway = (fields: Parameters<typeof item>[0]) => resolveVehicleDraw(binding, item(fields), 0)?.sway;
+    expect(sway({ typeId: SHIP, facing: 0, moored: true })).toBe('none');
+    expect(sway({ typeId: SHIP, facing: 0 })).toBe('atSea');
+    expect(sway({ typeId: SHIP, facing: 0, state: 'moving' })).toBe('sailing');
+    expect(sway({ typeId: HANDCART, facing: 0, state: 'moving' })).toBe('none');
   });
 
   it('loops the catapult shot on the attack cadence while the vehicle attacks, whatever its motion state', () => {
