@@ -4,25 +4,12 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { landscapeBlocks } from '../../landscape/view.js';
-import { BUILDING_ZONE, EXCLUSION, eachBlockerCell, OBSTACLE, placementBlockerVersion } from './blockers.js';
+import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
 
-// Building placement evaluates the blocker channels of ./blockers.ts over a version-memoized mask grid that
-// the one-shot command gate and the per-frame overlay probe both read, so the two cannot disagree. The
-// obstacle mask holds the reserved-zone blockers, the exclusion mask the body blockers.
-
-/**
- * The dense blocker representation: one byte per half-cell node, row-major `y*width+x` like the index
- * `TerrainGraph.nodeAt` mints, `1` where that node blocks a reserved zone (OBSTACLE, BUILDING_ZONE) or a
- * body (EXCLUSION). Off-map blocker cells are never stamped: their `y*width+x` would alias onto a real tile
- * a row over, and the bounds check rejects an off-map candidate first. Terrain buildability stays a live
- * `isBuildable()` call.
- */
-interface PlacementGrid {
-  readonly terrain: TerrainGraph;
-  readonly obstacle: Uint8Array;
-  readonly exclusion: Uint8Array;
-}
+// Building placement evaluates the blocker channels of ./blockers.ts over the one incrementally maintained
+// count grid of ./blocker-grid.ts that the one-shot command gate and the per-frame overlay probe both read,
+// so the two cannot disagree. The obstacle counts hold the reserved-zone blockers, the exclusion counts the
+// body blockers.
 
 /**
  * Whether `footprint` may be placed with its anchor at integer tile `(x, y)` against the stamped
@@ -46,13 +33,13 @@ function canPlaceAnchor(
   const h = terrain.height;
   // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
   //    clear of reserved-zone blockers (OBSTACLE nodes and other buildings' reserved zones, both in the
-  //    obstacle mask), so two buildings' reserved rings never overlap.
+  //    obstacle counts), so two buildings' reserved rings never overlap.
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
-    if (obstacle[cy * w + cx] === 1) return false; // a resource body, a wall, or another reserved zone
+    if ((obstacle[cy * w + cx] ?? 0) > 0) return false; // a resource body, a wall, or another reserved zone
   }
   // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones, so placing
   //    level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1 already proved
@@ -60,7 +47,7 @@ function canPlaceAnchor(
   for (const c of footprint.familyBody) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
-    if (cx >= 0 && cy >= 0 && cx < w && cy < h && exclusion[cy * w + cx] === 1) return false;
+    if (cx >= 0 && cy >= 0 && cx < w && cy < h && (exclusion[cy * w + cx] ?? 0) > 0) return false;
   }
   // 3. `logicbuildonbiopattern` checks the walk-block body against the source's vegetation ground flags.
   // The original tests every surrounding triangle; the collision join conservatively collapses each
@@ -73,87 +60,6 @@ function canPlaceAnchor(
     }
   }
   return true;
-}
-
-/** One full stamp of the blocker masks into an already-zeroed `grid` - the memo rebuild and the
- *  verifier's reference derivation run through this single path. */
-function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid): void {
-  const w = grid.terrain.width;
-  const h = grid.terrain.height;
-  const landscape = landscapeBlocks(world, grid.terrain);
-  for (const node of landscape.walk) grid.obstacle[node] = 1;
-  for (const node of landscape.build) grid.exclusion[node] = 1;
-  for (const node of landscapeEditState(world).forbidden.keys()) grid.obstacle[node] = 1;
-  eachBlockerCell(world, content, (x, y, channel) => {
-    if (channel !== OBSTACLE && channel !== EXCLUSION && channel !== BUILDING_ZONE) return;
-    if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never queried (see PlacementGrid)
-    (channel === EXCLUSION ? grid.exclusion : grid.obstacle)[y * w + x] = 1;
-  });
-}
-
-/**
- * Per-world memo of the placement grid, keyed by the {@link placementBlockerVersion} it was stamped at.
- * Without it every consumer re-scans every Resource and Building on the map. Keying on the blocker version
- * rather than the tick lets an unchanged world reuse the grid across ticks, and a direct `world.add` or
- * `remove` invalidates it the moment it bumps a generation. The mask arrays are reused across rebuilds of
- * the same world and terrain, so a rebuild clears and re-stamps instead of churning a map-sized allocation.
- */
-interface GridMemo {
-  version: string;
-  content: ContentSet;
-  terrain: TerrainGraph;
-  grid: PlacementGrid;
-  /** The verifier's reference buffers, reused across checked ticks since a real map is about 1M nodes. */
-  scratch: PlacementGrid | undefined;
-}
-const gridMemo = new WeakMap<World, GridMemo>();
-
-function emptyGrid(terrain: TerrainGraph): PlacementGrid {
-  const size = terrain.width * terrain.height;
-  return { terrain, obstacle: new Uint8Array(size), exclusion: new Uint8Array(size) };
-}
-
-/** The {@link gridMemo} coherence verifier: while the key claims freshness, a re-stamp must agree - the
- *  tripwire for a blocker input {@link placementBlockerVersion} fails to see (`verifyCaches`). */
-function verifyGridMemo(world: World, content: ContentSet, terrain: TerrainGraph): string[] {
-  const held = gridMemo.get(world);
-  if (held === undefined || held.content !== content || held.terrain !== terrain) return [];
-  if (held.version !== placementBlockerVersion(world)) return []; // stale key - the next read re-stamps
-  const fresh = held.scratch ?? emptyGrid(terrain);
-  held.scratch = fresh;
-  fresh.obstacle.fill(0);
-  fresh.exclusion.fill(0);
-  stampBlockerGrid(world, content, fresh);
-  for (let i = 0; i < fresh.obstacle.length; i++) {
-    if (held.grid.obstacle[i] === fresh.obstacle[i] && held.grid.exclusion[i] === fresh.exclusion[i]) {
-      continue;
-    }
-    return [
-      'placementBlockerGrid memo diverges from a fresh stamp - a blocker changed without a placementBlockerVersion bump',
-    ];
-  }
-  return [];
-}
-
-function memoizedPlacementGrid(world: World, content: ContentSet, terrain: TerrainGraph): PlacementGrid {
-  const version = placementBlockerVersion(world);
-  const cached = gridMemo.get(world);
-  if (
-    cached !== undefined &&
-    cached.version === version &&
-    cached.content === content &&
-    cached.terrain === terrain
-  ) {
-    return cached.grid;
-  }
-  const reuse = cached?.grid.terrain === terrain ? cached : undefined;
-  const grid = reuse?.grid ?? emptyGrid(terrain);
-  grid.obstacle.fill(0);
-  grid.exclusion.fill(0);
-  stampBlockerGrid(world, content, grid);
-  gridMemo.set(world, { version, content, terrain, grid, scratch: reuse?.scratch });
-  world.registerCacheVerifier('placementBlockerGrid', () => verifyGridMemo(world, content, terrain));
-  return grid;
 }
 
 /**
@@ -180,7 +86,7 @@ export function canPlaceBuilding(
     );
   }
   return canPlaceAnchor(
-    memoizedPlacementGrid(world, ctx.content, terrain),
+    placementBlockerGrid(world, ctx.content, terrain),
     footprint,
     buildOnBioPattern,
     x,
@@ -203,8 +109,8 @@ export interface PlacementProbe {
  * A {@link PlacementProbe} for `buildingType` with its footprint resolved once, so a caller can probe a
  * whole band against the same rule the `placeBuilding` command gates on without re-resolving content per
  * cell. A footprint-less type has no collision rule but retains any bio-pattern ground restriction. The
- * probe reads the memo's shared mask arrays, which are re-stamped in place on the next blocker change, so
- * drain a probe's band before the world can change again.
+ * probe reads the live shared count arrays, which the next blocker change updates in place, so drain a
+ * probe's band before the world can change again.
  */
 export function placementProbe(
   world: World,
@@ -222,7 +128,7 @@ export function placementProbe(
         (!buildOnBioPattern || (terrain.inBounds(x, y) && terrain.isPlantable(terrain.nodeAt(x, y)))),
     };
   }
-  const grid = memoizedPlacementGrid(world, content, terrain);
+  const grid = placementBlockerGrid(world, content, terrain);
   return {
     canPlace: (x, y) => canPlaceAnchor(grid, footprint, buildOnBioPattern, x, y),
   };

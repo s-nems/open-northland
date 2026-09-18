@@ -46,7 +46,7 @@ export function landscapeView(world: World, terrain: TerrainGraph): LandscapeVie
   return view;
 }
 
-interface LandscapeBlocks {
+export interface LandscapeBlocks {
   readonly revision: number;
   readonly terrain: TerrainGraph;
   readonly walk: ReadonlySet<NodeId>;

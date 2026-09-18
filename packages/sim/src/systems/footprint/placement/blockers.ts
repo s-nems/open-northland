@@ -1,7 +1,7 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, DeliveryFlag, Position, ResourceFootprint, Signpost } from '../../../components/index.js';
 import { landscapePlacementRevision } from '../../../components/landscape.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { Component, Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
 
@@ -46,8 +46,8 @@ export type MarkerScan = 'with-markers' | 'without-markers';
 export type BlockerVisit = (x: number, y: number, channel: BlockerChannel) => void;
 
 /** One footprinted object's (cell, channel) contributions - a resource node or a chest, the per-entity
- *  slice of {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift. A
- *  Position-less entity contributes nothing, which a replayed journal entry can reach. */
+ *  slice of {@link eachBlockerCell}, shared with the incremental blocker caches so they cannot drift from
+ *  it. A Position-less entity contributes nothing, which a replayed journal entry can reach. */
 export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
   if (p === undefined) return;
@@ -93,6 +93,28 @@ export function markerBlockerCells(world: World, e: Entity, visit: BlockerVisit)
   visit(hx, hy, MARKER);
 }
 
+/** One store of standing blockers: its component and the per-entity contribution above. A blocker kind
+ *  added here reaches the full walk and every incremental stamp replaying the same journals. */
+export interface BlockerStore {
+  readonly component: Component<unknown>;
+  readonly cells: (world: World, content: ContentSet, e: Entity, visit: BlockerVisit) => void;
+}
+
+/** Named apart because a building's contribution depends on a stored VALUE (`buildingType`), which an
+ *  incremental stamp has to guard separately from membership. */
+export const BUILDING_STORE: BlockerStore = { component: Building, cells: buildingBlockerCells };
+
+/** The standing blockers, markers excluded: a flag MOVES, so its layer is re-derived rather than
+ *  journal-replayed. */
+export const BLOCKER_STORES: readonly BlockerStore[] = [
+  {
+    component: ResourceFootprint,
+    cells: (world, _content, e, visit) => resourceBlockerCells(world, e, visit),
+  },
+  BUILDING_STORE,
+  { component: Signpost, cells: (world, _content, e, visit) => signpostBlockerCells(world, e, visit) },
+];
+
 /**
  * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and - under
  * `'with-markers'` - delivery flags contribute. Consumers filter by channel; a cell may be visited on more
@@ -105,12 +127,12 @@ export function eachBlockerCell(
   visit: BlockerVisit,
   markers: MarkerScan = 'without-markers',
 ): void {
-  for (const e of world.query(ResourceFootprint, Position)) resourceBlockerCells(world, e, visit);
-  for (const e of world.query(Building, Position)) buildingBlockerCells(world, content, e, visit);
+  for (const store of BLOCKER_STORES) {
+    for (const e of world.query(store.component, Position)) store.cells(world, content, e, visit);
+  }
   if (markers === 'with-markers') {
     for (const e of world.query(DeliveryFlag, Position)) markerBlockerCells(world, e, visit);
   }
-  for (const e of world.query(Signpost, Position)) signpostBlockerCells(world, e, visit);
 }
 
 /**
