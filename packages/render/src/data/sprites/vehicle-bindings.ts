@@ -14,8 +14,10 @@ export interface VehicleLook {
   readonly layer: string;
   /** The wait (`[gfxanimatomic]` action 2), looped on the free tick. */
   readonly idle: SpriteFrameRef;
-  /** The wait with cargo aboard: the ships' second hull (action 4). */
-  readonly loadedIdle?: SpriteFrameRef;
+  /** The wait of a ship lying moored: the second hull (action 4), whose sails are furled and whose
+   *  deck carries cargo (observation of the `ls_vehicles` frames). Sailing and standing at sea play
+   *  {@link idle}, the sails set. */
+  readonly mooredIdle?: SpriteFrameRef;
   /** The unloaded drive (`[gfxwalkatomic]` good 0), clocked by the motion track. */
   readonly moving?: SpriteFrameRef;
   /** The drive per hauled good; a good absent here plays {@link loadedMoving}. */

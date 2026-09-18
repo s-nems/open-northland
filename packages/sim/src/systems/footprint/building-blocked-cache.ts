@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { CountedCells } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { buildingFootprintOf, countsMatchCells, sameCells, translatedCells } from './geometry.js';
 import { standingWallCells, wallJointSeals } from './wall-joints.js';
 
@@ -225,14 +225,14 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  */
 export function buildingBlockedCells(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   terrain: TerrainGraph,
 ): ReadonlySet<NodeId> {
   return buildingBlockedLayer(world, ctx, terrain).cells;
 }
 
 /** {@link buildingBlockedCells} with its per-node counts, for the dynamic overlay. */
-export function buildingBlockedLayer(world: World, ctx: SystemContext, terrain: TerrainGraph): CountedCells {
+export function buildingBlockedLayer(world: World, ctx: ContentContext, terrain: TerrainGraph): CountedCells {
   const membershipGeneration = world.componentGeneration(Building);
   const valueGeneration = world.componentValueGeneration(Building);
   const cached = buildingBlockedCache.get(world);

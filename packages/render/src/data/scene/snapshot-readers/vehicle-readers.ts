@@ -56,10 +56,15 @@ function isStockLine(pair: unknown): pair is readonly [number, { current?: unkno
   );
 }
 
+function readMoored(components: Readonly<Record<string, unknown>>): boolean {
+  const v = components.Vehicle as { moored?: unknown } | undefined;
+  return v?.moored === true;
+}
+
 /**
- * The live vehicle fields on top of the static ones: its task and its load. The load is drawn as one
- * good, the one with the most units aboard (approximation: the original's loaded variants are palette
- * rows of one cart body, not per-good art, so any good picks the same loaded look).
+ * The live vehicle fields on top of the static ones: its task, whether it lies moored, and its load. The
+ * load is drawn as one good, the one with the most units aboard (approximation: the original's loaded
+ * variants are palette rows of one cart body, not per-good art, so any good picks the same loaded look).
  */
 export function readVehicleFields(
   item: MutableDrawItem,
@@ -70,6 +75,7 @@ export function readVehicleFields(
   if (task !== undefined) item.task = task;
   const clipStart = readAttackClipStart(components);
   if (clipStart !== undefined) item.attackClipStart = clipStart;
+  if (readMoored(components)) item.moored = true;
   const stock = components.VehicleStock as { lines?: unknown } | undefined;
   if (stock === undefined || !Array.isArray(stock.lines)) return;
   let best: number | undefined;

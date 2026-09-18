@@ -2,7 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import { Position, Vehicle } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { sameCells } from './geometry.js';
 import { vehicleDoorNode, vehicleFootprintNodes } from './vehicle-footprint.js';
 
@@ -59,7 +59,7 @@ function verifyVehicleBlockedCache(world: World, content: ContentSet, terrain: T
  *  set is the shared cached copy, membership reads only. */
 export function vehicleBlockedCells(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   terrain: TerrainGraph,
 ): ReadonlySet<NodeId> {
   const membershipGeneration = world.componentGeneration(Vehicle);

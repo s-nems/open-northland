@@ -41,7 +41,7 @@ export function vehicleMovingRef(look: VehicleLook, item: DrawItem): SpriteFrame
 /**
  * The frame a vehicle draws, or `null` for a type its tribe and the fallback tribe both lack. An
  * attacking vehicle loops its shot on the attack cadence, a moving one its drive on the gait clock, and a
- * standing one its wait on the free tick, the loaded hull when cargo is aboard.
+ * standing one its wait on the free tick, the furled-sail hull while a ship lies moored.
  */
 export function resolveVehicleDraw(
   binding: VehicleBinding | undefined,
@@ -59,7 +59,7 @@ export function resolveVehicleDraw(
   } else if (item.state === 'moving') {
     bob = frameOf(vehicleMovingRef(look, item), facing, gaitClock);
   } else {
-    const idle = item.carrying === true ? (look.loadedIdle ?? look.idle) : look.idle;
+    const idle = item.moored === true ? (look.mooredIdle ?? look.idle) : look.idle;
     bob = frameOf(idle, facing, tick);
   }
   return { bob, layer: look.layer };

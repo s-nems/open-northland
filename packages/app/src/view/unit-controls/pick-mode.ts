@@ -1,7 +1,8 @@
 import type { UiCue } from '@open-northland/audio';
 import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
-import type { Entity, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
+import { type Entity, entityById, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
+import { isVehicle, ownerPlayerOf } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import {
@@ -194,6 +195,9 @@ export interface PickModeDeps {
   readonly vehicleOrders: () => VehicleOrderController;
   /** Named addition: the original signals an armed mode with prompt text, not a cursor. */
   readonly setArmedCursor: (armed: boolean) => void;
+  /** The sim's attach rule (`Simulation.canAttachToVehicle`), which the "Assign Vehicle" pick lights
+   *  the settler's own vehicles by; absent, the pick lights nothing. */
+  readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
 }
 
 /**
@@ -224,6 +228,8 @@ export interface PickModeController {
   cancel(): void;
   isArmed(): boolean;
   signpostActive(): boolean;
+  /** The ship whose dock pick is armed, or null: the frame loop washes the map with its mooring spots. */
+  dockVehicle(): number | null;
   /** Non-null when a mode was armed: the press resolved or cancelled it, so the caller must not fall
    *  through to selection or an order. */
   handleMouseDown(event: MouseEvent): PickPress | null;
@@ -231,7 +237,26 @@ export interface PickModeController {
    *  mode resolves; one that needs a picked unit or building stays armed, so scrolling the overview to
    *  find that target does not call it off. Non-null when the armed mode took the press. */
   handleOverviewPress(button: number, target: Tile): PickPress | null;
+  /** The lit and dimmed pick targets of the armed mode: a building pick's candidate buildings, the
+   *  "Assign Vehicle" pick's own vehicles. Null when the armed mode lights nothing. */
   highlight(): readonly BuildingHighlightItem[] | null;
+}
+
+/** The settler's owner's vehicles, green where the sim's attach rule takes the settler, red otherwise. */
+function computeVehicleHighlight(
+  snapshot: WorldSnapshot,
+  settler: number,
+  canAttach: (settler: number, vehicle: number) => boolean,
+): BuildingHighlightItem[] {
+  const self = entityById(snapshot, settler);
+  const owner = self === undefined ? undefined : ownerPlayerOf(self);
+  if (owner === undefined) return [];
+  const items: BuildingHighlightItem[] = [];
+  for (const e of snapshot.entities) {
+    if (!isVehicle(e) || ownerPlayerOf(e) !== owner) continue;
+    items.push({ id: e.id, ok: canAttach(settler, e.id) });
+  }
+  return items;
 }
 
 export function createPickModeController(deps: PickModeDeps): PickModeController {
@@ -371,8 +396,13 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const highlightFor = memoBySnapshot(
     (snapshot: WorldSnapshot) => {
       const mode = pickMode;
-      // Only the building picks light targets up; the rest show on the ground or the cursor.
-      if (mode === null || !isBuildingPick(mode)) return null;
+      if (mode === null) return null;
+      if (mode.kind === 'vehicle') {
+        const canAttach = deps.canAttachToVehicle;
+        return canAttach === undefined ? null : computeVehicleHighlight(snapshot, mode.settler, canAttach);
+      }
+      // The other picks show on the ground or the cursor.
+      if (!isBuildingPick(mode)) return null;
       return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.units, buildingsByType);
     },
     () => pickVersion,
@@ -383,6 +413,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     cancel,
     isArmed: () => pickMode !== null,
     signpostActive: () => pickMode?.kind === 'signpost',
+    dockVehicle: () => (pickMode?.kind === 'vehicle-dock' ? pickMode.vehicle : null),
     handleMouseDown,
     handleOverviewPress,
     highlight: () => highlightFor(deps.snapshot()),

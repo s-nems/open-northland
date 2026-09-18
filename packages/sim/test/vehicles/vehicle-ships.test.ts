@@ -33,6 +33,7 @@ import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missi
 import {
   boardRider,
   createVehicle,
+  mooringProbe,
   removeVehicle,
   VEHICLE_WALK_RANGE_NODES,
 } from '../../src/systems/vehicles/index.js';
@@ -414,6 +415,58 @@ describe('dockVehicle', () => {
     dock(s, ship, far.hx, far.hy);
     s.step();
     expect(refusals(s)).toEqual([`${ship}:noPath`]);
+  });
+
+  it('the mooring probe lights the shores a dock order reaches and nothing else', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const { ship } = crewedShip(s, 20, MID_ROW);
+    const probe = s.mooringProbe(ship);
+    if (probe === null) throw new Error('no probe for a ship');
+    // Either shore within the door distance of the strait's sailable water, land side only.
+    expect(probe.canMoor(EAST_SHORE_X + 1, MID_ROW)).toBe(true);
+    expect(probe.canMoor(WEST_SHORE_X - 1, MID_ROW)).toBe(true);
+    expect(probe.canMoor(EAST_SHORE_X, 2)).toBe(true);
+    expect(probe.canMoor(24, MID_ROW)).toBe(false); // open water
+    expect(probe.canMoor(EAST_SHORE_X + DOOR_DISTANCE + 3, MID_ROW)).toBe(false); // inland past the ring
+    expect(probe.canMoor(-1, MID_ROW)).toBe(false);
+    // Every lit node takes the order: the sail starts and the mooring is the node itself.
+    for (const hy of [2, MID_ROW, 2 * MAP_H - 3]) {
+      const t = sim();
+      const crewed = crewedShip(t, 20, MID_ROW);
+      dock(t, crewed.ship, EAST_SHORE_X + 1, hy);
+      t.step();
+      expect(refusals(t)).toEqual([]);
+      expect(t.world.get(crewed.ship, Vehicle).mooring).toEqual({ hx: EAST_SHORE_X + 1, hy });
+    }
+    // The same ship answers from the memo until a blocker changes; a land vehicle has no probe.
+    expect(s.mooringProbe(ship)).toBe(probe);
+    expect(s.mooringProbe(spawn(s, HANDCART, 4, 4))).toBeNull();
+    expect(s.mooringProbe(ship)).not.toBe(probe); // the cart's cells joined the walk-block
+  });
+
+  it('the mooring probe keeps the basin past a gap the ship cannot pass dark, and a far shore too', () => {
+    const barred = sim(7, undefined, islandMap({ bar: true }));
+    const { ship } = crewedShip(barred, WEST_SHORE_X + 3, 6);
+    const probe = barred.mooringProbe(ship);
+    if (probe === null) throw new Error('no probe for a ship');
+    expect(probe.canMoor(EAST_SHORE_X + 1, 6)).toBe(true); // the north basin
+    expect(probe.canMoor(EAST_SHORE_X + 1, 26)).toBe(false); // the south basin, past the gap
+    const tall = sim(7, undefined, islandMap({ height: TALL_MAP_H }));
+    const far = crewedShip(tall, 20, 2);
+    const farProbe = tall.mooringProbe(far.ship);
+    if (farProbe === null) throw new Error('no probe for a ship');
+    expect(farProbe.canMoor(EAST_SHORE_X + 1, 2)).toBe(true);
+    expect(farProbe.canMoor(EAST_SHORE_X + 1, 2 * TALL_MAP_H - 2)).toBe(false);
+    // A moved ship rebuilds: the probe is keyed on where the ship stands.
+    dock(tall, far.ship, EAST_SHORE_X + 1, 2);
+    sailOut(tall, far.ship);
+    const terrain = tall.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const moved = mooringProbe(tall.world, ctxOf(tall), terrain, far.ship);
+    expect(moved).not.toBe(farProbe);
+    expect(moved?.canMoor(EAST_SHORE_X + 1, 2)).toBe(true);
   });
 
   it('forgets the shore when stopped on the way to it', () => {

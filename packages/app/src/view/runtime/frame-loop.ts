@@ -10,6 +10,7 @@ import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
+  makeDockOverlaySource,
   makeLineReachSource,
   makeLitOverlaySource,
   makeOverlayFrameSource,
@@ -60,6 +61,8 @@ export interface FrameLoopDeps {
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
   readonly lineReach: ReturnType<typeof makeLineReachSource>;
   readonly litOverlayFrame: ReturnType<typeof makeLitOverlaySource>;
+  /** The mooring-spot band probe, live while a ship's dock pick is armed. */
+  readonly dockOverlayFrame: ReturnType<typeof makeDockOverlaySource>;
   /** Memoized by snapshot identity, so it rebuilds per tick rather than per RAF. */
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The same per-tick aggregation behind {@link hudFor}, for its figures rather than its layout. */
@@ -116,6 +119,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     signpostOverlayFrame,
     lineReach,
     litOverlayFrame,
+    dockOverlayFrame,
     hudFor,
     hudModelFor,
     doorBadgesFor,
@@ -171,6 +175,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       ? null
       : litOverlayFrame(lit, cameraCtl.camera(), app.screen.width, app.screen.height);
   };
+  const dockOverlay = (vehicle: number) =>
+    dockOverlayFrame(vehicle, cameraCtl.camera(), app.screen.width, app.screen.height);
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
   const collect = (): void => {
@@ -237,8 +243,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       placementPaper: toolPanel.controller.placementPaper(),
       palisadeGfxIndex: toolPanel.controller.palisadeGfxIndex(),
       signpostActive: controls.signpostPlacementActive(),
+      dockVehicle: controls.dockPickVehicle(),
       buildingOverlay,
       signpostOverlay,
+      dockOverlay,
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
       canPlaceSignpostAt,

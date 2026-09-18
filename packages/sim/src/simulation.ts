@@ -79,7 +79,14 @@ import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import { type TradeOffer, type TraderView, tradeOffersAt, traderView } from './systems/trade/index.js';
-import { type VehicleView, vehiclesOf, vehicleView } from './systems/vehicles/index.js';
+import {
+  canAttachToVehicle,
+  type MooringProbe,
+  mooringProbe,
+  type VehicleView,
+  vehiclesOf,
+  vehicleView,
+} from './systems/vehicles/index.js';
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
 export type { FogView } from './simulation/read-seams.js';
@@ -488,6 +495,21 @@ export class Simulation {
   /** The content with the terrain when the run has one; an absent optional resource is omitted, not undefined. */
   private mapContext(): MapContext {
     return { content: this.content, ...(this.terrain !== undefined ? { terrain: this.terrain } : {}) };
+  }
+
+  /** Whether the `attachToVehicle` command would seat `settler` on `vehicle` right now. */
+  canAttachToVehicle(settler: Entity, vehicle: Entity): boolean {
+    return canAttachToVehicle(this.world, this.mapContext(), settler, vehicle);
+  }
+
+  /**
+   * Where a ship's dock order would find a mooring, reading the rule the `dockVehicle` command applies;
+   * memoized per blocker version and ship position. Null for a mapless sim or a vehicle that takes no
+   * dock order.
+   */
+  mooringProbe(vehicle: Entity): MooringProbe | null {
+    if (this.terrain === undefined) return null;
+    return mooringProbe(this.world, { content: this.content }, this.terrain, vehicle);
   }
 
   /** Every mission of the map's script with its live flags, for the mission window's goal list;

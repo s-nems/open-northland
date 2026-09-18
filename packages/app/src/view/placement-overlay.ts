@@ -4,7 +4,7 @@ import {
   type PlacementOverlayFrame,
   visibleTileRange,
 } from '@open-northland/render';
-import { FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
+import { type Entity, FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type ActiveLine, type LineFan, lineFan, lineReach } from '../hud/tool-panel/line-tool.js';
 import type { LitNodes } from '../hud/tool-panel/placement.js';
@@ -106,6 +106,30 @@ export function makeLitOverlaySource(
     band(
       () => ({ canPlace: (x: number, y: number) => lit.has(x, y) }),
       () => lit.key,
+      camera,
+      screenW,
+      screenH,
+    );
+}
+
+/**
+ * The dock-pick twin of {@link makeSignpostOverlaySource}: the shore a ship's dock order would moor at,
+ * lit, and the rest of the band dimmed. Memoized on the sim's mooring probe key, which changes with the
+ * ship's position and the walk-blockers, so an armed pick over a still sea re-walks nothing.
+ */
+export function makeDockOverlaySource(
+  sim: Simulation,
+  mapSize: { readonly width: number; readonly height: number },
+  player: number = HUMAN_PLAYER,
+): (vehicle: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+  const band = makeBandProber(sim, mapSize, player);
+  return (vehicle, camera, screenW, screenH) =>
+    band(
+      () => {
+        const probe = sim.mooringProbe(vehicle as Entity);
+        return probe === null ? null : { canPlace: probe.canMoor, key: probe.key };
+      },
+      (probe) => `d${vehicle}:${probe.key}`,
       camera,
       screenW,
       screenH,

@@ -163,7 +163,7 @@ describe('the vehicle look join', () => {
     expect(look?.moving).toBeDefined();
     expect(look?.loadedMoving).toBeUndefined();
     expect(look?.movingByGood).toBeUndefined();
-    expect(look?.loadedIdle).toBeDefined();
+    expect(look?.mooredIdle).toBeDefined();
   });
 
   it('binds nothing for a row whose body did not load, and no binding at all when none did', () => {

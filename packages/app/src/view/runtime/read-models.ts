@@ -7,6 +7,7 @@ import { workerRoleOf } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import {
+  makeDockOverlaySource,
   makeLineReachSource,
   makeLitOverlaySource,
   makeOverlayFrameSource,
@@ -80,6 +81,7 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
   /** A started line's reach, and the wash that lights it or another tool's node set. */
   readonly lineReach: ReturnType<typeof makeLineReachSource>;
   readonly litOverlayFrame: ReturnType<typeof makeLitOverlaySource>;
+  readonly dockOverlayFrame: ReturnType<typeof makeDockOverlaySource>;
 }
 
 export async function createViewReadModels(deps: ViewReadModelDeps): Promise<ViewReadModels> {
@@ -94,6 +96,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
     lineReach: makeLineReachSource(sim, localPlayer),
     litOverlayFrame: makeLitOverlaySource(sim, mapSize, localPlayer),
+    dockOverlayFrame: makeDockOverlaySource(sim, mapSize, localPlayer),
     ...createSnapshotProjections(
       deps.viewer,
       buildings.infoOf,

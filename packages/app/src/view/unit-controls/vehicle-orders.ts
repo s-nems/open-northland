@@ -30,6 +30,11 @@ export interface VehicleOrderDeps {
   readonly viewer: ViewerSeat;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The sim's attach rule; absent, every own vehicle under the cursor takes the attach click. */
+  readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
+  /** The sim's mooring rule (`Simulation.mooringProbe`); absent, every spot takes the dock click and a
+   *  ship's right-click is always a goto. */
+  readonly canMoorAt?: ((vehicle: number, x: number, y: number) => boolean) | undefined;
 }
 
 /**
@@ -43,19 +48,22 @@ export interface VehicleOrderController {
   selectedVehicle(): number | null;
   /**
    * The original's default right-click for a vehicle: an enemy human, vehicle or house is attacked, an
-   * own moored ship is boarded by a land vehicle, anything else is driven to. Named approximation: the
+   * own moored ship is boarded by a land vehicle, anything else is driven to. Named approximations: the
    * attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's attack order
-   * silently; the original's per-vehicle gate is not read.
+   * silently, the original's per-vehicle gate not being read; a ship's right-click on a shore its
+   * mooring rule accepts docks there, where the original's goto is refused.
    */
   issueRightClick(event: MouseEvent): boolean;
   issueMoveTo(vehicle: number, target: Tile): boolean;
+  /** Moor `vehicle` at `target`; a spot the mooring rule rejects orders nothing. */
   issueDock(vehicle: number, target: Tile): boolean;
   issueAttackPosition(vehicle: number, target: Tile): boolean;
   /** Aim `vehicle` at the enemy of `kind` under the cursor; a click that hits none orders nothing. */
   issueAttackTarget(event: MouseEvent, vehicle: number, kind: UnitTargetKind): boolean;
   /** Load `vehicle` into the own ship under the cursor. */
   issueLoadInto(event: MouseEvent, vehicle: number): boolean;
-  /** Attach `settler` to the own vehicle under the cursor (the ring's "Assign Vehicle"). */
+  /** Attach `settler` to the own vehicle under the cursor (the ring's "Assign Vehicle"); a vehicle the
+   *  attach rule refuses orders nothing, the way a red building cancels a building pick. */
   issueAttach(event: MouseEvent, settler: number): boolean;
 }
 
@@ -105,8 +113,12 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return true;
   };
 
+  const canMoorAt = (vehicle: number, node: Tile): boolean =>
+    deps.canMoorAt === undefined || deps.canMoorAt(vehicle, node.col, node.row);
+
   const issueDock = (vehicle: number, target: Tile): boolean => {
     const node = clampNode(target);
+    if (!canMoorAt(vehicle, node)) return false;
     deps.enqueue({ kind: 'dockVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
     return true;
   };
@@ -165,6 +177,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
     if (vehicle === null) return false;
+    if (deps.canAttachToVehicle !== undefined && !deps.canAttachToVehicle(settler, vehicle)) return false;
     deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
     return true;
   };
@@ -194,7 +207,11 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
       const enemy = pickTopAt(enemies, world.x, world.y);
       if (enemy !== null) return strike(vehicle, enemy);
     }
-    return issueMoveTo(vehicle, worldToTile(world.x, world.y, deps.elevation));
+    const target = worldToTile(world.x, world.y, deps.elevation);
+    if (!land && deps.canMoorAt !== undefined && canMoorAt(vehicle, clampNode(target))) {
+      return issueDock(vehicle, target);
+    }
+    return issueMoveTo(vehicle, target);
   };
 
   return {

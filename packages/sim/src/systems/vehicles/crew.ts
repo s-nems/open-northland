@@ -3,6 +3,7 @@ import {
   AttackOrder,
   Engagement,
   HuntFocus,
+  hasFreeSeat,
   ownerOf,
   Position,
   Rider,
@@ -16,10 +17,10 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, MapContext, SystemContext } from '../context.js';
 import { releaseEmployment } from '../economy/jobs/binding.js';
 import { dynamicBlockOverlay, vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
@@ -38,8 +39,50 @@ export function passengerJobAllowed(type: VehicleType, jobType: number | null): 
   return jobType !== null && type.passengerJobs.includes(jobType);
 }
 
+/**
+ * Whether the attach order would seat `settler` on `vehicle`: the settler's own vehicle, an own vehicle
+ * whose type admits the settler's job with a seat free, and a door the settler can walk to: on the
+ * settler's own continent, a moored ship's shore or a land vehicle's node (a ship at sea has none). The
+ * ring's "Assign Vehicle" pick lights vehicles by it. {@link attachToVehicle} applies the same gates but
+ * the walk, which the boarding judges after the attach as the original does, detaching a rider that
+ * cannot reach the door.
+ */
+export function canAttachToVehicle(world: World, ctx: MapContext, settler: Entity, vehicle: Entity): boolean {
+  if (!isOrderableSettler(world, settler)) return false;
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || ownerOf(world, vehicle) !== ownerOf(world, settler)) return false;
+  if (world.tryGet(settler, Rider)?.vehicle === vehicle) return true;
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type === undefined || !passengerJobAllowed(type, world.get(settler, Settler).jobType)) return false;
+  return hasFreeSeat(state) && doorReachable(world, ctx, settler, vehicle);
+}
+
+/**
+ * Whether `settler` stands on the continent of `vehicle`'s door. A vehicle riding a carrier or a
+ * settler aboard one is judged where it would step out. True without a map, where nothing walks.
+ */
+function doorReachable(world: World, ctx: MapContext, settler: Entity, vehicle: Entity): boolean {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return true;
+  const door = landingOf(world, ctx, vehicle);
+  if (door === null || !terrain.inBounds(door.hx, door.hy)) return false;
+  const position = world.tryGet(settler, Position);
+  const rider = world.tryGet(settler, Rider);
+  const from =
+    position !== undefined
+      ? nodeOfPosition(position.x, position.y)
+      : rider === undefined
+        ? null
+        : landingOf(world, ctx, rider.vehicle);
+  if (from === null || !terrain.inBounds(from.hx, from.hy)) return false;
+  return (
+    terrain.componentOf(terrain.nodeAt(from.hx, from.hy)) ===
+    terrain.componentOf(terrain.nodeAt(door.hx, door.hy))
+  );
+}
+
 /** Whether `vehicle` is a ship lying at sea: its riders may neither step in nor out. */
-export function isShipAtSea(ctx: SystemContext, vehicle: { vehicleType: number; moored: boolean }): boolean {
+export function isShipAtSea(ctx: ContentContext, vehicle: { vehicleType: number; moored: boolean }): boolean {
   const type = contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
   return type !== undefined && isShipVehicle(type) && !vehicle.moored;
 }
@@ -171,7 +214,7 @@ export function boardingNode(
  * Where a rider stepping out of `vehicle` lands: its boarding node, or the carrier's while the vehicle
  * rides inside a ship; the bare door without a terrain. Null for a ship at sea, whose riders stay aboard.
  */
-export function landingOf(world: World, ctx: SystemContext, vehicle: Entity): HalfCellNode | null {
+export function landingOf(world: World, ctx: MapContext, vehicle: Entity): HalfCellNode | null {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return null;
   if (state.carrier !== null && vehicleAnchor(world, vehicle) === null)

@@ -279,7 +279,13 @@ ship moors on the arrival tick with a `vehicleDocked` event, since the dock clip
 record and its length is not read; a goto clears the pending mooring point and never re-moors on
 arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock
 walk that loses its route drops the mooring point behind the `vehicleNoPath` note. A sunk ship's
-crew is reaped like any death, so the owner's casualty tallies count it.
+crew is reaped like any death, so the owner's casualty tallies count it. The dock pick shows where the
+order would moor (`mooringProbe`): the water the ship can reach under its walk-block within the walk
+range is flooded once per blocker change and ship position, and every walkable node at exactly the door
+distance from it is a mooring spot, lit on the map; the rest is dimmed, a click there orders nothing, and
+a ship's right-click on a lit spot docks instead of the refused goto. Approximations: the original's
+dock command takes any point, the probe accepts land only (where the crew can step off); the flood is
+bounded to the walk-range disc, so a route that leaves the disc and returns is not found.
 
 ## Catapult
 
@@ -389,9 +395,11 @@ vehicle rides a ship) and the stance buttons' "hold" name come from the command 
 button-by-button reading; `n` is the "unload goods" button; the right-click defaults follow the
 original's order (enemy human, own moored ship for a land vehicle, enemy vehicle or house, else go
 to) but the attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's
-attack order silently; a ship's right-click on land is a goto the sim refuses, the mooring order
-being explicit; the ring's "Assign Vehicle" is offered to every grown settler and the type's job list
-decides on the pick; a commander selected while aboard (through the Mieszkańcy row) stands for its
+attack order silently; a ship's right-click on a shore the mooring probe accepts docks there, elsewhere
+it is a goto the sim refuses, the mooring order being explicit; the ring's "Assign Vehicle" is offered
+to every grown settler, its pick lights the settler's own vehicles green where `canAttachToVehicle`
+(job list, free seat, a door on the settler's continent) takes it and red otherwise, and a red vehicle
+drops the click; a commander selected while aboard (through the Mieszkańcy row) stands for its
 vehicle, so a right-click on the ground drives the vehicle whether the commander is aboard or beside
 it, and the ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids
 0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the
@@ -508,6 +516,11 @@ these choices for the holes:
   wanted is the characters' path, one indexed `ls_vehicles.indexed` atlas plus a ten-row ship LUT
   (`human_ship01..10`) read through `PalettedSprite` (the hull bobs are the same type 1/4 as the
   character bobs), about 1.5 MB in all, not ten 1.5 MB bakes.
+- The ships' two hulls: action 2 (bobs 0..31 of `ls_vehicles`) has the sails set, action 4 (bobs 66..94)
+  has them furled with crates on deck (observation of the baked frames). A moored ship draws the furled
+  hull, a ship standing or sailing at sea the set one; the `wood` gait the rows author as the loaded
+  drive is the furled hull too and plays as authored while a loaded ship sails. Which state the
+  original draws action 4 in is not read; the moored reading follows the observed game.
 - The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps.
 - A wreck's `ruins` nodes draw the `debris wood` `[GfxLandscape]` records for the bone pile's lifetime
   (approximation: the ruin landscape type is unidentified, see above).

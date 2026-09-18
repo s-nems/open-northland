@@ -14,13 +14,14 @@ export {
   attachToVehicle,
   boardRider,
   boardVehicle,
+  canAttachToVehicle,
   detachBeforeOrder,
   detachFromVehicle,
   forcesDetach,
   passengerJobAllowed,
   unloadPeople,
 } from './crew.js';
-export { dockVehicle } from './dock.js';
+export { dockVehicle, type MooringProbe, mooringProbe } from './dock.js';
 export {
   DRAUGHT_BREEDING_PAIR,
   DRAUGHT_RECRUIT_CADENCE_TICKS,

@@ -20,7 +20,7 @@ import { type HalfCellNode, hexagonRing, hexDistance, positionOfNode } from '../
 import { findPath } from '../../nav/pathfinding/index.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { System, SystemContext } from '../context.js';
+import type { ContentContext, System, SystemContext } from '../context.js';
 import {
   dynamicBlockOverlay,
   hexDisc,
@@ -119,7 +119,7 @@ function continentOf(terrain: TerrainGraph, node: NodeId): number {
  */
 export function vehicleWalkBlocks(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   vehicle: Entity,
   type: VehicleType,

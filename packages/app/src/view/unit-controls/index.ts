@@ -124,6 +124,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     setArmedCursor: (armed) => {
       canvas.style.cursor = armed ? 'crosshair' : '';
     },
+    canAttachToVehicle: opts.canAttachToVehicle,
   });
 
   /** The hotkey obeys the ring's own gate, so both ways of arming the order agree on who may take it. */
@@ -170,6 +171,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     viewer: opts.viewer,
     toWorld,
     enqueue: opts.enqueue,
+    canAttachToVehicle: opts.canAttachToVehicle,
+    canMoorAt: opts.canMoorAt,
   });
 
   const overviewPress = createOverviewOrders({
@@ -337,6 +340,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     signpostPlacementActive: pickMode.signpostActive,
     claimsEscape: () =>
       chrome.actions().state().mode === 'jobs' || pickMode.isArmed() || selection.ids().size > 0,
+    dockPickVehicle: pickMode.dockVehicle,
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD
     // rather than world.
     claimsPointer: (x, y) =>

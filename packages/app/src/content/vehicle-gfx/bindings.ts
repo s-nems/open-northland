@@ -15,10 +15,11 @@ import { frameListsByFacing } from '../settler-gfx/index.js';
 // resolved to bob ids of the row's body) become the renderer's per-tribe `VehicleLook`s over the atlases
 // that loaded. Byte loading lives in `./load.ts`.
 
-/** The vehicle job's standing wait (`[gfxanimatomic]` action 2). */
+/** The vehicle job's standing wait (`[gfxanimatomic]` action 2): a ship with its sails set. */
 const WAIT_ACTION = 2;
-/** The ships' second hull (action 4), drawn as the wait with cargo aboard. */
-const LOADED_WAIT_ACTION = 4;
+/** The ships' second hull (action 4): sails furled, crates on deck (observation of the `ls_vehicles`
+ *  frames, docs/formats/VEHICLES.md "Graphics"), drawn while the ship lies moored. */
+const MOORED_WAIT_ACTION = 4;
 
 /** The catapult's shot, staged as this `[GfxLandscape]` record beside the vehicle: weapon 21 authors
  *  `createsmoke 1`, and this is the one looping smoke record the content ships (the in-house cauldron's).
@@ -116,11 +117,11 @@ export function vehicleLook(
   const wait = clipOf(WAIT_ACTION);
   const idle = wait ?? (moving === undefined ? undefined : holdFirstFrame(moving));
   if (idle === undefined) return undefined;
-  const loadedIdle = clipOf(LOADED_WAIT_ACTION);
+  const mooredIdle = clipOf(MOORED_WAIT_ACTION);
   return {
     layer,
     idle,
-    ...(loadedIdle !== undefined ? { loadedIdle } : {}),
+    ...(mooredIdle !== undefined ? { mooredIdle } : {}),
     ...(moving !== undefined ? { moving } : {}),
     ...(Object.keys(movingByGood).length > 0 ? { movingByGood } : {}),
     ...(loadedMoving !== undefined ? { loadedMoving } : {}),

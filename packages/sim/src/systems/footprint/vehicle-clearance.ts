@@ -6,7 +6,7 @@ import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { ClearanceField, type ClearanceProbe } from '../../nav/clearance.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { buildingFootprintOf, translatedCells } from './geometry.js';
@@ -41,7 +41,7 @@ const memoByWorld = new WeakMap<World, ClearanceMemo>();
 const SOURCES: readonly Component<unknown>[] = [Building, ResourceFootprint];
 
 /** The ground walk-block a vehicle's clearance is measured against: every dynamic layer but the vehicles. */
-export function groundBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
+export function groundBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
   return new LayeredBlocks([
     buildingBlockedCells(world, ctx, terrain),
     resourceBlockedCells(world, terrain),
@@ -49,7 +49,7 @@ export function groundBlockOverlay(world: World, ctx: SystemContext, terrain: Te
   ]);
 }
 
-function probeOf(world: World, ctx: SystemContext, terrain: TerrainGraph): ClearanceProbe {
+function probeOf(world: World, ctx: ContentContext, terrain: TerrainGraph): ClearanceProbe {
   const blocked = groundBlockOverlay(world, ctx, terrain);
   return (node) => (terrain.isWalkable(node) || terrain.isWater(node)) && !blocked.has(node);
 }
@@ -89,7 +89,7 @@ function resyncEntity(world: World, memo: ClearanceMemo, e: Entity, changed: Set
   for (const node of cells) changed.add(node);
 }
 
-function rebuild(world: World, ctx: SystemContext, terrain: TerrainGraph): ClearanceMemo {
+function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): ClearanceMemo {
   const gens = new Map<Component<unknown>, number>();
   for (const source of SOURCES) {
     world.journalMembership(source);
@@ -113,7 +113,7 @@ function rebuild(world: World, ctx: SystemContext, terrain: TerrainGraph): Clear
 }
 
 /** Catch the memo up through the journals; false demands a rebuild (a journal gap or a landscape edit). */
-function catchUp(world: World, ctx: SystemContext, memo: ClearanceMemo): boolean {
+function catchUp(world: World, ctx: ContentContext, memo: ClearanceMemo): boolean {
   if (landscapeEditState(world).topologyRevision !== memo.landscapeRevision) return false;
   const changed = new Set<NodeId>();
   for (const source of SOURCES) {
@@ -141,7 +141,7 @@ function catchUp(world: World, ctx: SystemContext, memo: ClearanceMemo): boolean
  * The current free-size classes over the ground walk-block, land and water alike. The returned field
  * is the live memo: read it within a decision and never across a blocker change.
  */
-export function vehicleClearance(world: World, ctx: SystemContext, terrain: TerrainGraph): ClearanceField {
+export function vehicleClearance(world: World, ctx: ContentContext, terrain: TerrainGraph): ClearanceField {
   const held = memoByWorld.get(world);
   if (
     held !== undefined &&
@@ -158,7 +158,7 @@ export function vehicleClearance(world: World, ctx: SystemContext, terrain: Terr
 }
 
 /** The coherence tripwire: while the memo claims freshness, a field built from scratch must agree. */
-function verifyMemo(world: World, ctx: SystemContext, terrain: TerrainGraph): string[] {
+function verifyMemo(world: World, ctx: ContentContext, terrain: TerrainGraph): string[] {
   const memo = memoByWorld.get(world);
   if (memo === undefined || memo.content !== ctx.content || memo.terrain !== terrain) return [];
   if (!isFresh(world, memo)) return []; // a pending catch-up - the next read applies it

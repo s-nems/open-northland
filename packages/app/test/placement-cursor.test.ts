@@ -7,6 +7,8 @@ import { type PlacementCursorInput, placementCursor } from '../src/view/runtime/
 const BUILDING_WASH: PlacementOverlayFrame = { minCol: 0, maxCol: 8, minRow: 0, maxRow: 8, blocked: [] };
 const SIGNPOST_WASH: PlacementOverlayFrame = { minCol: 1, maxCol: 9, minRow: 1, maxRow: 9, blocked: [] };
 const LINE_WASH: PlacementOverlayFrame = { minCol: 2, maxCol: 7, minRow: 2, maxRow: 7, blocked: [] };
+const DOCK_WASH: PlacementOverlayFrame = { minCol: 2, maxCol: 10, minRow: 2, maxRow: 10, blocked: [] };
+const SHIP = 31;
 
 const HOUSE = 7;
 const LOCAL_PLAYER = 2;
@@ -18,14 +20,20 @@ const TILE = { col: 4, row: 9 };
 function frame(over: Partial<PlacementCursorInput> = {}) {
   let tileProbes = 0;
   let signpostProbes = 0;
+  let dockProbes = 0;
   const input: PlacementCursorInput = {
     placementType: null,
     placementPaper: null,
     signpostActive: false,
+    dockVehicle: null,
     buildingOverlay: () => BUILDING_WASH,
     signpostOverlay: () => {
       signpostProbes++;
       return SIGNPOST_WASH;
+    },
+    dockOverlay: () => {
+      dockProbes++;
+      return DOCK_WASH;
     },
     tileAt: () => {
       tileProbes++;
@@ -41,6 +49,7 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
     cursor: () => placementCursor(input),
     tileProbes: () => tileProbes,
     signpostProbes: () => signpostProbes,
+    dockProbes: () => dockProbes,
   };
 }
 
@@ -181,6 +190,23 @@ describe('placement cursor', () => {
     });
 
     expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: null });
+  });
+
+  it('washes the mooring spots of an armed dock pick with no ghost and no cursor probe', () => {
+    const f = frame({ dockVehicle: SHIP });
+
+    expect(f.cursor()).toEqual({ overlay: DOCK_WASH, ghost: null });
+    expect(f.dockProbes()).toBe(1);
+    expect(f.tileProbes()).toBe(0);
+  });
+
+  it('lets a held building or a pending signpost win over an armed dock pick', () => {
+    const building = frame({ placementType: HOUSE, dockVehicle: SHIP });
+    expect(building.cursor().overlay).toBe(BUILDING_WASH);
+    expect(building.dockProbes()).toBe(0);
+    const signpost = frame({ signpostActive: true, dockVehicle: SHIP });
+    expect(signpost.cursor().overlay).toBe(SIGNPOST_WASH);
+    expect(signpost.dockProbes()).toBe(0);
   });
 
   it('drops the signpost ghost when its band probe has no frame to draw', () => {

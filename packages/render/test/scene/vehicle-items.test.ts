@@ -39,6 +39,7 @@ function vehicle(
     vehicleType: number;
     facing: number;
     task: string;
+    moored: boolean;
     lines: [number, { current: number; wanted: number; reserved: number }][];
     passengers: ({ entity: number; inside: boolean } | null)[];
     drive: ReturnType<typeof drive>;
@@ -50,7 +51,7 @@ function vehicle(
       tribe: VIKING,
       task: fields.task ?? 'none',
       facing: fields.facing ?? 0,
-      moored: false,
+      moored: fields.moored ?? false,
       mooring: null,
       harnessed: false,
       carrier: null,
@@ -84,6 +85,12 @@ describe('vehicle draw items', () => {
       state: 'idle',
     });
     expect(item?.carrying).toBeUndefined();
+    expect(item?.moored).toBeUndefined();
+  });
+
+  it('reads a moored ship as such', () => {
+    const [item] = buildSpriteScene(snapshotOf([vehicle(1, { moored: true })]));
+    expect(item?.moored).toBe(true);
   });
 
   it('reads the hold as the load, the fullest good first, and the drive as motion', () => {

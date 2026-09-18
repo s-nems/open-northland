@@ -206,6 +206,11 @@ export function carriedVehicles(vehicle: VehicleStateView): DeepReadonly<Vehicle
   return vehicle.vehicles.filter((seat): seat is DeepReadonly<VehicleSeat> => seat !== null);
 }
 
+/** Whether any passenger slot is free, the commander's included. */
+export function hasFreeSeat(vehicle: VehicleStateView): boolean {
+  return vehicle.passengers.some((seat) => seat === null);
+}
+
 /**
  * Seat `rider` on `vehicle`: the commander slot first, then the lowest free ordinary slot, the original's
  * attach order. False when every slot is taken; the caller has already checked the job gate.

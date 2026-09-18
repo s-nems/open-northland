@@ -25,6 +25,7 @@ function harness(): {
     cancel: () => undefined,
     isArmed: () => armed.length > 0,
     signpostActive: () => false,
+    dockVehicle: () => null,
     handleMouseDown: () => null,
     handleOverviewPress: () => null,
     highlight: () => null,

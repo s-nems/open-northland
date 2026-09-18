@@ -52,7 +52,7 @@ const waitOnly: VehicleLook = { layer: 'cr_veh_body_00.oxcart', idle: oneFrame(5
 const ship: VehicleLook = {
   layer: 'ls_vehicles.human_ship01',
   idle: oneFrame(6000),
-  loadedIdle: oneFrame(7000),
+  mooredIdle: oneFrame(7000),
   moving: oneFrame(6000),
 };
 const catapult: VehicleLook = {
@@ -106,9 +106,13 @@ describe('resolveVehicleDraw', () => {
     expect(draw).toEqual({ bob: 5004, layer: 'cr_veh_body_00.oxcart' });
   });
 
-  it('shows the loaded hull at rest with cargo aboard and falls back to the empty one without a second hull', () => {
-    expect(resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, carrying: true }), 0)?.bob).toBe(7000);
-    expect(resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 0, carrying: true }), 0)?.bob).toBe(
+  it('furls the sails while a ship lies moored, sets them at sea, and keeps a cart on its one wait', () => {
+    expect(resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, moored: true }), 0)?.bob).toBe(7000);
+    expect(
+      resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, moored: true, carrying: true }), 0)?.bob,
+    ).toBe(7000);
+    expect(resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, carrying: true }), 0)?.bob).toBe(6000);
+    expect(resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 0, moored: true }), 0)?.bob).toBe(
       1000,
     );
   });

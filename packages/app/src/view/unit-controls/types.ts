@@ -72,6 +72,11 @@ export interface UnitControlsOptions {
   /** The sim's trader read seams (`Simulation.traderView` / `tradeOffersAt`); absent hides trade. */
   readonly traderView?: (entity: number) => TraderView | undefined;
   readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];
+  /** The sim's vehicle rules (`Simulation.canAttachToVehicle` / `mooringProbe`), which light the
+   *  "Assign Vehicle" and dock picks' targets and gate their clicks; absent, the picks light nothing
+   *  and the sim alone refuses. */
+  readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;
+  readonly canMoorAt?: (vehicle: number, x: number, y: number) => boolean;
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;
@@ -103,6 +108,8 @@ export interface UnitControls {
   readonly signpostPlacementActive: () => boolean;
   /** True while an Escape would land here: the job list is open, a pick is armed or units are selected. */
   readonly claimsEscape: () => boolean;
+  /** The ship whose dock pick is armed, whose mooring spots the frame loop washes onto the map. */
+  readonly dockPickVehicle: () => number | null;
   readonly tick: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
   /** Hide the details panel with the rest of the HUD and close the ring; a ring opened while hidden

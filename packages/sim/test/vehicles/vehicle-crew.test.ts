@@ -186,6 +186,28 @@ describe('attachToVehicle', () => {
     expect(vehiclePassengers(s.world.get(cart, Vehicle))).toEqual([]);
   });
 
+  it('canAttachToVehicle answers as the order would, with the walk to the door judged ahead', () => {
+    const s = sim(splitMap());
+    const cart = spawn(s, HANDCART, 4, 6);
+    const scout = spawnSettler(s, 2, 6);
+    const woodcutter = spawnSettler(s, 2, 8, WOODCUTTER);
+    const far = spawnSettler(s, 20, 6);
+    const foreign = spawnSettler(s, 2, 10, SCOUT, P1);
+    expect(s.canAttachToVehicle(scout, cart)).toBe(true);
+    expect(s.canAttachToVehicle(woodcutter, cart)).toBe(false); // the type lists no woodcutter
+    expect(s.canAttachToVehicle(far, cart)).toBe(false); // the other landmass
+    expect(s.canAttachToVehicle(foreign, cart)).toBe(false); // another seat's settler
+    expect(s.canAttachToVehicle(scout, scout)).toBe(false); // not a vehicle
+    attach(s, scout, cart);
+    expect(s.canAttachToVehicle(scout, cart)).toBe(true); // its own seat
+    const second = spawnSettler(s, 2, 12);
+    expect(s.canAttachToVehicle(second, cart)).toBe(false); // the one seat is taken
+    const ship = spawn(s, SHIP_SMALL, 4, 12);
+    expect(s.canAttachToVehicle(second, ship)).toBe(true);
+    s.world.mut(ship, Vehicle).moored = false; // a ship at sea has no door to walk to
+    expect(s.canAttachToVehicle(second, ship)).toBe(false);
+  });
+
   it('promotes the first ordinary passenger when the commander detaches', () => {
     const s = sim();
     const ship = spawn(s, SHIP_SMALL, 22, 8);

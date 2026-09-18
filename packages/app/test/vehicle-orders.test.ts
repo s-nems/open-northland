@@ -109,6 +109,9 @@ const under = (ref: number, kind: NonNullable<Pickable['kind']>): Pickable => ({
 interface Arms {
   readonly enemies?: readonly Pickable[];
   readonly vehicles?: readonly Pickable[];
+  /** The sim's vehicle rules, absent by default: every spot moors and every own vehicle takes a rider. */
+  readonly canMoorAt?: (vehicle: number, x: number, y: number) => boolean;
+  readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;
 }
 
 const targetsOf = (arms: Arms): UnitTargets => ({
@@ -136,6 +139,8 @@ function harness(selected: readonly number[], arms: Arms) {
     viewer: fixedViewerSeat(HUMAN_PLAYER),
     toWorld: (x, y) => ({ x, y }),
     enqueue: (command) => issued.push(command),
+    canMoorAt: arms.canMoorAt,
+    canAttachToVehicle: arms.canAttachToVehicle,
   });
   const pickMode = createPickModeController({
     snapshot: () => WORLD,
@@ -150,6 +155,7 @@ function harness(selected: readonly number[], arms: Arms) {
     },
     vehicleOrders: () => controller,
     setArmedCursor: () => undefined,
+    canAttachToVehicle: arms.canAttachToVehicle,
   });
   return { issued, controller, pickMode };
 }
@@ -198,6 +204,20 @@ describe('vehicle right-click defaults', () => {
     expect(issued).toEqual([{ kind: 'moveVehicle', vehicle: HANDCART, x: spot.col, y: spot.row }]);
   });
 
+  it('moors a ship on a shore its mooring rule accepts and drives it anywhere else', () => {
+    const spot = worldToTile(CLICK.x, CLICK.y);
+    const shore = harness([SHIP], { canMoorAt: (_vehicle, x, y) => x === spot.col && y === spot.row });
+    expect(shore.controller.issueRightClick(rightClick)).toBe(true);
+    expect(shore.issued).toEqual([{ kind: 'dockVehicle', vehicle: SHIP, x: spot.col, y: spot.row }]);
+    const sea = harness([SHIP], { canMoorAt: () => false });
+    expect(sea.controller.issueRightClick(rightClick)).toBe(true);
+    expect(sea.issued).toEqual([{ kind: 'moveVehicle', vehicle: SHIP, x: spot.col, y: spot.row }]);
+    // A land vehicle never docks, whatever the rule says of the spot.
+    const cart = harness([HANDCART], { canMoorAt: () => true });
+    expect(cart.controller.issueRightClick(rightClick)).toBe(true);
+    expect(cart.issued).toEqual([{ kind: 'moveVehicle', vehicle: HANDCART, x: spot.col, y: spot.row }]);
+  });
+
   it('takes no click while a settler shares the selection, an enemy vehicle is selected, or two are', () => {
     expect(harness([CATAPULT, OWN_SETTLER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
     expect(harness([ENEMY_CART], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
@@ -234,6 +254,34 @@ describe('vehicle picks', () => {
       { kind: 'attackWithVehicle', vehicle: CATAPULT, target: { kind: 'ground', hx: 3, hy: 3 } },
       { kind: 'loadIntoVehicle', vehicle: HANDCART, carrier: SHIP },
     ]);
+  });
+
+  it('names the ship of an armed dock pick, and drops a dock click on a spot the mooring rule rejects', () => {
+    const { issued, pickMode } = harness([SHIP], { canMoorAt: () => false });
+    expect(pickMode.dockVehicle()).toBeNull();
+    pickMode.arm({ kind: 'vehicle-dock', vehicle: SHIP });
+    expect(pickMode.dockVehicle()).toBe(SHIP);
+    expect(pickMode.handleMouseDown(leftClick)).toBe('missed');
+    expect(pickMode.dockVehicle()).toBeNull();
+    expect(issued).toEqual([]);
+  });
+
+  it('lights the own vehicles of an armed assign-vehicle pick by the attach rule and drops a red click', () => {
+    const { issued, pickMode } = harness([OWN_SETTLER], {
+      vehicles: [under(HANDCART, 'vehicle')],
+      canAttachToVehicle: (_settler, vehicle) => vehicle === SHIP,
+    });
+    expect(pickMode.highlight()).toBeNull();
+    pickMode.arm({ kind: 'vehicle', settler: OWN_SETTLER });
+    expect(pickMode.highlight()).toEqual([
+      { id: CATAPULT, ok: false },
+      { id: HANDCART, ok: false },
+      { id: SHIP, ok: true },
+      { id: SHIP_AT_SEA, ok: false },
+    ]);
+    expect(pickMode.handleMouseDown(leftClick)).toBe('missed');
+    expect(issued).toEqual([]);
+    expect(pickMode.highlight()).toBeNull();
   });
 
   it("arms the ring's assign-vehicle pick, which attaches the settler to the own vehicle it clicks", () => {
