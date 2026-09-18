@@ -117,6 +117,8 @@ export interface DetailsPanelAssets extends DetailsPanelArt {
   readonly packGoods?: ReadonlyMap<string, Texture>;
   /** The species goods, drawn as the animal a herd row counts rather than as a pile of it. */
   readonly animalGoods?: ReadonlyMap<string, Texture>;
+  /** Good id -> the standing vehicle a vehicle good's icon draws, cut from the loaded vehicle atlases. */
+  readonly vehicleGoods?: ReadonlyMap<string, Texture>;
   readonly previews: BuildingPreviews;
 }
 

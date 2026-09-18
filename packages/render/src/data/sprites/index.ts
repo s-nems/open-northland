@@ -41,7 +41,14 @@ export type {
   StockpileBinding,
 } from './layered-bindings.js';
 export { resolveSpriteBobId } from './resolve.js';
-export { DEFAULT_FACING, GFX_DIR_TO_FACING, pickByJob, resolveSettlerBobId, subClipKey } from './settler.js';
+export {
+  DEFAULT_FACING,
+  frameOf,
+  GFX_DIR_TO_FACING,
+  pickByJob,
+  resolveSettlerBobId,
+  subClipKey,
+} from './settler.js';
 export type {
   ByJobTable,
   CarryingBinding,

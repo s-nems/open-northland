@@ -76,6 +76,11 @@ export const plContent = {
     barracks: 'Koszary',
     tower_00: 'Wieża strażnicza (poziom 1)',
     tower_01: 'Wieża strażnicza (poziom 2)',
+    handcart: 'Wózek ręczny',
+    oxcart: 'Wóz wołowy',
+    ship_small: 'Mały statek',
+    ship_big: 'Duży statek',
+    catapult: 'Katapulta',
   },
   goods: {
     wood: 'Drewno',

@@ -21,10 +21,12 @@ import {
   BUILDING_ANIMAL_FARM,
   BUILDING_BARRACKS,
   BUILDING_FARM,
+  BUILDING_HANDCART_YARD,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_HOME_02,
   BUILDING_JOINERY,
+  BUILDING_JOINERY_02,
   BUILDING_MILL,
   BUILDING_WATCHTOWER,
   GOOD_CATTLE,
@@ -32,6 +34,7 @@ import {
   GOOD_FLOUR,
   GOOD_FURNITURE,
   GOOD_GOLD,
+  GOOD_HANDCART,
   GOOD_HOLY_OIL,
   GOOD_IRON,
   GOOD_MEAT,
@@ -41,6 +44,7 @@ import {
   GOOD_SHEEP,
   GOOD_SHOES,
   GOOD_STONE,
+  GOOD_TOOL_IRON,
   GOOD_TOOL_WOODEN,
   GOOD_WHEAT,
   GOOD_WOOD,
@@ -57,6 +61,7 @@ import {
 } from '../src/hud/details-panel/index.js';
 import { jobDisplayName } from '../src/hud/details-panel/model/context.js';
 import type { PanelBar } from '../src/hud/details-panel/model/index.js';
+import { messages } from '../src/i18n/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
@@ -1471,5 +1476,44 @@ describe('the animal farm panel - the species rows are its herd', () => {
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.defenseEnabled).toBe(true); // the alarm alone does not take the window
     expect(model.garrison).toBeNull();
+  });
+});
+
+describe('the joinery and its vehicle yard', () => {
+  /** The level-3 joinery's ordinary wares, in its recipe order, beside the handcart it raises on a yard. */
+  const JOINERY_02_WARES = [GOOD_TOOL_WOODEN, GOOD_TOOL_IRON, GOOD_FURNITURE];
+
+  it('lists no production row for a vehicle good, whose yard never runs a cycle', () => {
+    const sim = createSceneSim(sandboxScene);
+    const snapshot = snapshotOf([buildingEntity(1, BUILDING_JOINERY_02)]);
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxOf(sim));
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    if (model.production?.kind !== 'recipe') throw new Error('expected recipe production');
+    expect(model.production.rows.map((r) => r.goodType)).toEqual(JOINERY_02_WARES);
+  });
+
+  it("keeps the vehicle among the joiner's craft choices, where the player orders it", () => {
+    const sim = createSceneSim(sandboxScene);
+    const slot = sim.content.buildings.find((b) => b.typeId === BUILDING_JOINERY_02)?.workers[0];
+    if (slot === undefined) throw new Error('joinery has no worker slots');
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_JOINERY_02),
+      { id: 2, components: { Settler: { jobType: slot.jobType }, JobAssignment: { workplace: 1 } } },
+    ]);
+    const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([...JOINERY_02_WARES, GOOD_HANDCART]);
+    expect(model.work.craftChoices.at(-1)?.goodId).toBe('handcart');
+  });
+
+  it('titles the yard site by the vehicle it becomes, through the locale table', () => {
+    const sim = createSceneSim(sandboxScene);
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_HANDCART_YARD, { built: 0, components: { UnderConstruction: {} } }),
+    ]);
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxOf(sim));
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    expect(model.title).toBe(messages().building.handcart);
+    expect(model.title).not.toBe('handcart');
   });
 });

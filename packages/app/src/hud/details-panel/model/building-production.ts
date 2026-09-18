@@ -150,7 +150,9 @@ export function productionModel(
   if (herdRows.length > 0) return { kind: 'recipe', rows: herdRows };
   // A self-filling house (the well, the hive) runs no craft cycle, so a production bar would never move.
   if (def?.refillsOwnStock === true) return null;
-  const outputs = recipeOutputs(ctx, def);
+  // A vehicle good is built on a hidden yard beside the shop, never as a cycle, so its bar would never
+  // move; the joiner picks it in the settler window's craft choices instead.
+  const outputs = recipeOutputs(ctx, def).filter((o) => goodDef(ctx, o.goodType)?.vehicleHouse === undefined);
   if (outputs.length === 0) return null; // not a producer - no Produkcja window
   const inputsByProduct = new Map<number, string>();
   for (const recipe of def?.recipes ?? []) {

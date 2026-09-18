@@ -3,6 +3,7 @@ import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application, Texture } from 'pixi.js';
 import { animalGoodIcons } from '../../content/animal-gfx/icons.js';
+import { vehicleGoodIcons } from '../../content/vehicle-gfx/index.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
@@ -87,6 +88,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     previews: buildingPreviews(opts.sheet),
     ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),
     animalGoods: animalGoodIcons(opts.sheet, opts.goods, opts.livestockTribeOfGood),
+    vehicleGoods: vehicleGoodIcons(opts.sheet, opts),
   };
   const stage = createPanelStage({ app, assets, scale });
   const workerField = createWorkerField({

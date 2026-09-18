@@ -101,7 +101,9 @@ export function buildingTitle(
   const catalog = vikingBuildingByTypeId(typeId);
   // The same localized name the build menu shows, falling back to the English catalog label.
   if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, currentLocale());
-  return buildingDef(ctx, typeId)?.id ?? `#${typeId}`;
+  // A type outside the build catalog (a vehicle yard) is still named through the locale table.
+  const id = buildingDef(ctx, typeId)?.id;
+  return id === undefined ? `#${typeId}` : localizedBuildingName(id, id, currentLocale());
 }
 
 export function goodDef(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: number): GoodDef | undefined {

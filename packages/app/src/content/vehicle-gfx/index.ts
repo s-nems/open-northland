@@ -7,4 +7,5 @@ export {
   vehicleGraphicsRows,
   vehicleLook,
 } from './bindings.js';
+export { type VehicleIconContent, vehicleGoodIcons, vehicleTypeOfGood } from './icons.js';
 export { loadVehicleSheet, type VehicleSheet } from './load.js';

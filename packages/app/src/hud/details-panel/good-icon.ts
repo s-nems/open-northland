@@ -26,7 +26,8 @@ export function createGoodIcon(
   };
 
   const goodIcon = (goodId: string, r: Rect): void => {
-    const texture = assets.packGoods?.get(goodId) ?? assets.animalGoods?.get(goodId);
+    const texture =
+      assets.packGoods?.get(goodId) ?? assets.animalGoods?.get(goodId) ?? assets.vehicleGoods?.get(goodId);
     if (!texture) {
       placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
       return;
