@@ -2,8 +2,6 @@
 
 **Area:** app, sim · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [01-visual-foundation](ingame-ui-01-visual-foundation.md)
-
 `hud/tool-panel/stats-window.ts` exposes diagnostic summaries rather than the original historical series and building lists.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

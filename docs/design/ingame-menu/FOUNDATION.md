@@ -1,9 +1,10 @@
-# In-game UI visual foundation — approved style reference
+# In-game UI visual foundation: approved style reference
 
 **Status:** approved as the shared visual direction: the frozen HUD layout of the wireframe with the
-B · Leśny łupek slate base and the wood, bronze and parchment chrome of study 05. Runtime primitives
-and production art exports remain ticket 01 work. Individual panel contents still require their own
-detailed design review; the construction and selection panels shown here are illustrative.
+B · Leśny łupek slate base and the wood, bronze and parchment chrome of study 05. The runtime
+primitives live in `packages/app/src/hud/dom/` and the production art in the published `ui/foundation`
+package. Individual panel contents still require their own detailed design review; the construction
+and selection panels shown here are illustrative.
 
 The reference is [foundation.html](foundation.html) with `foundation.css` and `foundation.js`. It is
 a single flattened stylesheet: later panel mockups extend it instead of layering overrides. The
@@ -222,8 +223,8 @@ the 4 × 2 atlas `nordic-icons-v4.png` of simple single-object icons, the game-m
 directly; the runtime uses the package's delivered atlas and texture. The atlas's pawn and door cells and
 the sheet's other candidates are unused.
 
-No original game UI art is copied. Ticket 01 remains open for shared runtime primitives. Panel
-contents and illustrative counts are not production specifications.
+No original game UI art is copied. Panel contents and illustrative counts are not production
+specifications.
 
 ## Resume the local review
 

@@ -6,12 +6,12 @@ placeholder values or gameplay behavior. The functional baseline is
 [Original in-game menu bar](../../ORIGINAL-INGAME-MENU-BAR.md); its current-implementation comparison
 is revision-specific and must be rechecked against code.
 
-Ticket 01's [visual foundation reference](foundation.html) and
+The [visual foundation reference](foundation.html) and
 [written specification](FOUNDATION.md) establish the approved visual direction: the B · Leśny łupek
 slate base with wood, bronze and parchment chrome, notification refinements, framed selection preview,
-population symbols and original Cultures character preview. Ticket 01 still needs shared runtime
-primitives and production art exports; approval does not finalize individual panel contents or
-validate runtime behavior. See [resume instructions](FOUNDATION.md#resume-the-local-review).
+population symbols and original Cultures character preview. Its runtime primitives and art are in
+place and verified on the real renderer; approval does not finalize individual panel contents.
+See [resume instructions](FOUNDATION.md#resume-the-local-review).
 
 ## Approved product direction
 
@@ -75,9 +75,9 @@ its accepted replacement makes unreachable. Shared legacy pieces remain only whi
 consumer still needs them. Ticket 20 audits residual paths and consistency; it is not the point where
 the old HUD is removed in bulk.
 
-Ticket 01 establishes the shared component/style reference: [FOUNDATION.md](FOUNDATION.md) with
-the reference page, and at runtime `packages/app/src/hud/dom/foundation.css` shown on the gallery
-board (`?art=gallery&tab=hud`). Keep palette, typography, spacing, icon semantics, sizes and states in
+The shared component/style reference is [FOUNDATION.md](FOUNDATION.md) with the reference page,
+and at runtime `packages/app/src/hud/dom/foundation.css` shown on the gallery board
+(`?art=gallery&tab=hud`). Keep palette, typography, spacing, icon semantics, sizes and states in
 that one source; later panels reuse it. A new common pattern must update that source and be checked against existing consumers.
 Do not grow one unrelated UI implementation per session. No universal UI framework is required.
 
@@ -102,14 +102,15 @@ embed secrets in prompts/browser code or commit credentials. A present key is no
 Keep exact prompts, model/tool/settings, ordered references and hashes, selected masters and export
 parameters. Review icons at their runtime sizes, including true alpha where needed, and obtain
 concrete visual acceptance. Reuse one icon family throughout the UI. For goods reuse the
-[goods icon contract](../../art/goods/README.md); menu action icons need an appropriate ownership/export
-route established by ticket 01 rather than being mislabelled as tradeable goods. UI-only work does
+[goods icon contract](../../art/goods/README.md); menu action icons belong to the `ui/foundation`
+art package rather than being mislabelled as tradeable goods. UI-only work does
 not authorize replacement world buildings or characters.
 
 ## Implementation order
 
 Work one panel/ticket at a time in the shared checkout; see [session instructions](AGENTS.md).
-The shell is in place; finish 01, then 03–07 to establish the basic play loop. Continue with details, automation,
+The shell, the notification column and the summary bar are in place; continue with 05–07 to
+establish the basic play loop. Continue with details, automation,
 statistics, mission, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
 prerequisites; numbering is the suggested review order, not permission for parallel sessions to edit
 shared files. Ticket 12 separates statistics data from chart rendering because the current popup is
@@ -117,7 +118,6 @@ only diagnostics.
 
 | Ticket | Outcome |
 | --- | --- |
-| [01-visual-foundation](../../tickets/app/ingame-ui-01-visual-foundation.md) | Design and approve the shared in-game UI language |
 | [05-construction](../../tickets/app/ingame-ui-05-construction.md) | Design and implement the direct construction window |
 | [06-documents](../../tickets/app/ingame-ui-06-documents.md) | Integrate permits and other documents into construction |
 | [07-residents](../../tickets/app/ingame-ui-07-residents.md) | Build the direct residents list and actionable filters |
