@@ -74,6 +74,30 @@ describe('environment animation setting', () => {
     });
   }
 
+  it('places an original walker by the chosen curve, own art by its binding', () => {
+    const own: SpriteSheet = {
+      ...sheet,
+      characters: { default: { ...original, interpolateMotion: true }, byJob: {} },
+    };
+    const moved = { ...walker, x: 12 };
+    const expected = { anchor: [12, 12], linear: [3, 9.6], window: [0, 0.5 * 12] } as const;
+    for (const [walkPlacement, [quarter, atEighty]] of Object.entries(expected)) {
+      const pe = createPooled('settler', undefined);
+      const at = { ...frame, environmentMotion: true, walkPlacement } as PoolFrame;
+      presentEntity(pe, walker, at, sheet);
+      presentEntity(pe, moved, { ...at, tick: 11 }, sheet);
+      expect(pe.container.x).toBe(quarter);
+      presentEntity(pe, moved, { ...at, tick: 11, alpha: 0.8 }, sheet);
+      expect(pe.container.x).toBeCloseTo(atEighty);
+      pe.container.destroy();
+      const smooth = createPooled('settler', undefined);
+      presentEntity(smooth, walker, at, own);
+      presentEntity(smooth, moved, { ...at, tick: 11 }, own);
+      expect(smooth.container.x).toBe(3);
+      smooth.container.destroy();
+    }
+  });
+
   it('keeps remembered and frozen anchors still between ticks', () => {
     for (const held of [{ ghost: true }, { frozen: true }]) {
       const pe = createPooled('settler', undefined);

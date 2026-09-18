@@ -6,6 +6,7 @@ import { characterGaitRate, characterInterpolatesMotion } from './character-laye
 import { drawAlphaForKind, type MotionTrack, snapDistanceForKind, trackMotion } from './motion.js';
 import { easeReveal, motionClocks, revealedItem, walkPose } from './presentation.js';
 import { resolveLayers } from './resolve-layers.js';
+import { DEFAULT_WALK_PLACEMENT, type WalkPlacement, walkPlacementAlpha } from './walk-placement.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
@@ -62,14 +63,26 @@ export function presentItem(
   frameAlpha: number,
   sheet: SpriteSheet | undefined,
   environmentMotion = false,
+  walkPlacement?: WalkPlacement,
 ): ResolvedLayer[] | null {
   if (track.motion.tick === -1) track.atomicPose.item = undefined;
   const atomic = atomicPose(item, tick, track.atomicPose);
   const authoredSmooth = characterInterpolatesMotion(sheet?.characters, item);
-  const smooth = authoredSmooth || (environmentMotion && track.kind === 'settler');
+  // An original walker's tick-locked clip has no travel of its own, so the motion enhancement places
+  // it by the chosen curve instead of trusting the frame fraction.
+  const placement =
+    !authoredSmooth && environmentMotion && track.kind === 'settler'
+      ? (walkPlacement ?? DEFAULT_WALK_PLACEMENT)
+      : undefined;
+  const smooth = authoredSmooth || placement === 'linear';
   const held = item.ghost === true || item.frozen === true;
   const actionBoundary = track.kind === 'settler' && !authoredSmooth && item.state !== 'moving';
-  const alpha = held || actionBoundary ? 1 : drawAlphaForKind(track.kind, frameAlpha, smooth);
+  const alpha =
+    held || actionBoundary
+      ? 1
+      : placement !== undefined
+        ? walkPlacementAlpha(frameAlpha, placement)
+        : drawAlphaForKind(track.kind, frameAlpha, smooth);
   const pose = authoredSmooth ? interpolateAtomicPose(atomic, alpha) : atomic;
   // A remembered/portrait pose must not finish a pending movement or resume it when watched again.
   if (held) track.motion.tick = -1;

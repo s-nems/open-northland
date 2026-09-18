@@ -1,7 +1,7 @@
 import { DEFAULT_SHADOW_STYLE } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { graphicsEnhancementsFor } from '../src/view/graphics-enhancements.js';
-import { pixelArtScalerParam, shadowStyleParam } from '../src/view/params.js';
+import { pixelArtScalerParam, shadowStyleParam, walkPlacementParam } from '../src/view/params.js';
 import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
 
 describe('graphics experiment choices', () => {
@@ -59,5 +59,11 @@ describe('graphics experiment choices', () => {
     expect(mode('blob')).toEqual([false, true]);
     expect(mode('both')).toEqual([true, true]);
     expect(mode('neither')).toEqual([DEFAULT_SHADOW_STYLE.cast, DEFAULT_SHADOW_STYLE.blob]);
+  });
+
+  it('reads the walk placement choice and drops an unknown one', () => {
+    expect(walkPlacementParam(new URLSearchParams())).toBeNull();
+    expect(walkPlacementParam(new URLSearchParams('placement=window'))).toBe('window');
+    expect(walkPlacementParam(new URLSearchParams('placement=glide'))).toBeNull();
   });
 });

@@ -1,4 +1,9 @@
-import { DEFAULT_SHADOW_STYLE, type PixelArtScaler, type ShadowStyle } from '@open-northland/render';
+import {
+  DEFAULT_SHADOW_STYLE,
+  type PixelArtScaler,
+  type ShadowStyle,
+  type WalkPlacement,
+} from '@open-northland/render';
 
 /**
  * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
@@ -78,6 +83,13 @@ export function postFxParam(params: URLSearchParams): boolean | null {
 export function pixelArtScalerParam(params: URLSearchParams): PixelArtScaler | null {
   const raw = params.get('scaler');
   return raw === 'bilinear' || raw === 'sharp' || raw === 'xbr' ? raw : null;
+}
+
+/** The `?placement` diagnostic choice of where an original walker stands between ticks under the
+ *  motion enhancement; `null` when absent or unknown. */
+export function walkPlacementParam(params: URLSearchParams): WalkPlacement | null {
+  const raw = params.get('placement');
+  return raw === 'anchor' || raw === 'linear' || raw === 'window' ? raw : null;
 }
 
 /** Which of a character's two silhouettes `?shadows=mode:` draws. */

@@ -12,6 +12,7 @@ import type {
 } from '../overlays/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
 import type { ShadowStyle } from '../shadow-style.js';
+import type { WalkPlacement } from '../sprite-pool/walk-placement.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
@@ -32,6 +33,9 @@ export interface WorldRendererOptions {
   readonly pixelArtScaler?: PixelArtScaler | undefined;
   /** Diagnostic A/B tuning of the shadow enhancement; `DEFAULT_SHADOW_STYLE` when absent. */
   readonly shadowStyle?: ShadowStyle | undefined;
+  /** Diagnostic A/B choice of where an original walker stands between ticks under the motion
+   *  enhancement; `DEFAULT_WALK_PLACEMENT` when absent. */
+  readonly walkPlacement?: WalkPlacement | undefined;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**

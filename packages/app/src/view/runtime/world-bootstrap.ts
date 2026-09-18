@@ -12,7 +12,7 @@ import { messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { graphicsEnhancementsFor } from '../graphics-enhancements.js';
 import { mountMessage, navButton } from '../overlay.js';
-import { pixelArtScalerParam, postFxParam, shadowStyleParam } from '../params.js';
+import { pixelArtScalerParam, postFxParam, shadowStyleParam, walkPlacementParam } from '../params.js';
 import { readStoredSettings } from '../settings-store.js';
 import type { GameViewDeps } from './game-view.js';
 
@@ -47,6 +47,7 @@ export function createWorldRenderer(
     enhancements: graphicsEnhancementsFor(params, readStoredSettings()),
     pixelArtScaler: pixelArtScalerParam(params) ?? undefined,
     shadowStyle: shadowStyleParam(params) ?? undefined,
+    walkPlacement: walkPlacementParam(params) ?? undefined,
     sheet,
     viewSmoothing: true,
     spriteSmoothing: readStoredSettings().spriteSmoothing,

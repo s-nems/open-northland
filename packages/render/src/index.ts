@@ -163,6 +163,7 @@ export {
   type ResolvedLayer,
   resolveLayers,
 } from './gpu/sprite-pool/index.js';
+export { DEFAULT_WALK_PLACEMENT, type WalkPlacement } from './gpu/sprite-pool/walk-placement.js';
 export {
   layerLutRow,
   type PlayerColourLut,

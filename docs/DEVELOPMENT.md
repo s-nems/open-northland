@@ -190,6 +190,10 @@ silhouettes. A character's head overlay casts too, cropped to the rows above its
 projections meet instead of darkening the ground twice where they overlap.
 `shadows=gain:<n>,max:<n>,tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for
 one session; strength and tint compile into the shader, so a change needs a reload, not a live toggle.
+`placement=anchor|linear|window` chooses where an original walker stands between ticks under the
+motion switch: the tick position (the original's stepping, feet planted), even interpolation (the
+default, smoothest body, the planted foot drags with it during each frame hold), or a rest followed by
+a short move that lands with the frame change.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
 minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
 the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already
