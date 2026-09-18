@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type BlockOverlay, CountedBlocks, LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedLayer } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
@@ -16,7 +16,7 @@ import { vehicleBlockedCells } from './vehicle-blocked-cache.js';
 // not span a stamp or unstamp.
 
 /** Every standing building's door node - the passable gates the building walk-block carves out. */
-export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<NodeId> {
+export function buildingDoorNodes(world: World, ctx: ContentContext, terrain: TerrainGraph): Set<NodeId> {
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const door = buildingFootprintOf(ctx.content, world.get(e, Building).buildingType)?.door;
@@ -108,7 +108,7 @@ function writesKeepSiteTypes(world: World, memo: ConstructionPlotMemo, valueGene
  *  when the type blocks nothing. A displacement search may cross this body but no other blocked cell. */
 export function walkBlockedBodyOf(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   terrain: TerrainGraph,
   building: Entity,
 ): Set<NodeId> | null {
@@ -130,7 +130,7 @@ export function walkBlockedBodyOf(
 /** The dynamic walk-block overlay (buildings, resources, landscapes, vehicles): the counted layers read
  *  through their live per-node counts, the vehicle discs through their cached set, so composing it copies
  *  nothing. */
-export function dynamicBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
+export function dynamicBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
   const landscape = landscapeBlocks(world, terrain);
   const counted = new CountedBlocks([
     buildingBlockedLayer(world, ctx, terrain),

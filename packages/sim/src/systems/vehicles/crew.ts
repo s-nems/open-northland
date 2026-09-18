@@ -198,7 +198,7 @@ export function releaseRider(world: World, rider: Entity, vehicle: Entity): void
  */
 export function boardingNode(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   vehicle: Entity,
 ): NodeId | null {
