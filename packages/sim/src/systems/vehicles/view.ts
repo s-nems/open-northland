@@ -17,7 +17,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
-import type { ContentContext } from '../context.js';
+import type { MapContext } from '../context.js';
 import { vehicleAnchor, vehicleDoorPoint } from '../footprint/index.js';
 import { vehicleIndex } from './registry.js';
 
@@ -67,7 +67,7 @@ export interface VehicleView {
 }
 
 /** The vehicle `e`, or undefined for anything else. */
-export function vehicleView(world: World, ctx: ContentContext, e: Entity): VehicleView | undefined {
+export function vehicleView(world: World, ctx: MapContext, e: Entity): VehicleView | undefined {
   const vehicle = world.tryGet(e, Vehicle);
   if (vehicle === undefined) return undefined;
   const type = contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
@@ -91,7 +91,7 @@ export function vehicleView(world: World, ctx: ContentContext, e: Entity): Vehic
     harnessed: vehicle.harnessed,
     carrier: vehicle.carrier,
     at: anchor,
-    door: type !== undefined && anchor !== null ? vehicleDoorPoint(vehicle, type, anchor) : null,
+    door: type !== undefined && anchor !== null ? vehicleDoorPoint(vehicle, type, anchor, ctx.terrain) : null,
     goal: drive === undefined ? null : { hx: drive.goal.hx, hy: drive.goal.hy },
     leg:
       drive === undefined || drive.from === null
@@ -117,7 +117,7 @@ export function vehicleView(world: World, ctx: ContentContext, e: Entity): Vehic
 }
 
 /** The vehicles `player` owns, ascending by entity id. */
-export function vehiclesOf(world: World, ctx: ContentContext, player: number): VehicleView[] {
+export function vehiclesOf(world: World, ctx: MapContext, player: number): VehicleView[] {
   return vehicleIndex(world)
     .ownedBy(player)
     .flatMap((e) => {

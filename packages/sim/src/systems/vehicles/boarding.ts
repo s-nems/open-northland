@@ -58,7 +58,7 @@ function needPending(world: World, ctx: SystemContext, rider: Entity): boolean {
 export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): boolean {
   const terrain = ctx.terrain;
   const state = world.get(vehicle, Vehicle);
-  const door = vehicleDoorNode(world, ctx.content, vehicle);
+  const door = vehicleDoorNode(world, ctx, vehicle);
   if (door === null || terrain === undefined) return vehiclePassengers(state).every((seat) => seat.inside);
   const continent = continentAt(terrain, door);
   let allInside = true;
@@ -83,10 +83,10 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
 }
 
 /**
- * The node a rider boards `vehicle` from: the door node, or, where the vehicle's own footprint or another
- * blocker covers it (a cart's door is its anchor), the nearest open node around it in the walk's ring
- * order. Approximation: the original walks the human onto the entry point itself. Null for a vehicle
- * riding a carrier, which has no door on the map.
+ * The node a rider boards `vehicle` from: the door node, or, where another blocker covers it, the nearest
+ * open node around it in the walk's ring order (approximation: the original walks the human onto the
+ * entry point and only its door lookup moves it). Null for a vehicle riding a carrier, which has no door
+ * on the map.
  */
 export function boardingNode(
   world: World,
@@ -94,7 +94,7 @@ export function boardingNode(
   terrain: TerrainGraph,
   vehicle: Entity,
 ): NodeId | null {
-  const door = vehicleDoorNode(world, ctx.content, vehicle);
+  const door = vehicleDoorNode(world, ctx, vehicle);
   if (door === null) return null;
   const node = terrain.nodeAtClamped(door.hx, door.hy);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
@@ -170,7 +170,7 @@ function canRideInside(
   const crew = vehiclePassengers(world.get(vehicle, Vehicle)).length;
   const room = carrierState.passengers.filter((seat) => seat === null).length;
   if (crew > room) return 'noRoom';
-  const door = vehicleDoorNode(world, ctx.content, carrier);
+  const door = vehicleDoorNode(world, ctx, carrier);
   const anchor = vehicleAnchor(world, vehicle);
   if (door === null || anchor === null || terrain === undefined) return 'cannotNearShip';
   if (continentAt(terrain, door) !== continentAt(terrain, anchor)) return 'cannotNearShip';
@@ -312,7 +312,7 @@ export const vehicleBoardingSystem: System = (world, ctx) => {
       continue;
     }
     if (!boardCrew(world, ctx, e)) continue;
-    const door = vehicleDoorNode(world, ctx.content, carrier);
+    const door = vehicleDoorNode(world, ctx, carrier);
     const anchor = vehicleAnchor(world, e);
     if (door === null || anchor === null) continue;
     if (door.hx === anchor.hx && door.hy === anchor.hy) {

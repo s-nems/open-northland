@@ -20,13 +20,15 @@ import {
   hexDistanceBetween,
   nodeOfPosition,
   parseSaveGame,
+  playerCommand,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { hexDistance, stepHex } from '../../src/nav/halfcell.js';
 import { targetMaterial } from '../../src/systems/conflict/weapons.js';
-import { canPlaceBuilding } from '../../src/systems/footprint/index.js';
+import { canPlaceBuilding, vehicleDoorNode } from '../../src/systems/footprint/index.js';
 import { vehicleBlockedCells } from '../../src/systems/footprint/vehicle-blocked-cache.js';
 import { ARMOR_MATERIAL, isYardHeap } from '../../src/systems/index.js';
 import { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from '../../src/systems/match/index.js';
@@ -71,6 +73,8 @@ const GRASS = 0;
 const WATER = 1;
 /** A hut whose one blocked cell and reserved ring make a parked vehicle a placement obstacle. */
 const HUT = 50;
+/** Headroom for a settler's walk of a few nodes around a cart. */
+const WALK_TICKS = 200;
 
 function sim(map: TerrainMap = grassCellMap(MAP_CELLS, MAP_CELLS), seed = 3): Simulation {
   return new Simulation({ seed, content: testContent(), map });
@@ -287,17 +291,17 @@ describe('crew slots', () => {
 });
 
 describe('footprint', () => {
-  it('blocks the disc minus the door for walking and refuses a house over a parked vehicle', () => {
+  it('blocks the whole disc for walking and refuses a house over a parked vehicle', () => {
     const s = sim();
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('map missing');
     const cart = spawn(s, HANDCART, 4, 4);
     spawn(s, CATAPULT, 12, 12);
     const blocked = vehicleBlockedCells(s.world, ctxOf(s), terrain);
-    expect(blocked.has(terrain.nodeAt(4, 4))).toBe(false); // a cart's one node is its own door
-    expect(blocked.has(terrain.nodeAt(12, 12))).toBe(false);
+    expect(blocked.has(terrain.nodeAt(4, 4))).toBe(true); // a settler walks around a parked cart
+    expect(blocked.has(terrain.nodeAt(12, 12))).toBe(true);
     expect(blocked.has(terrain.nodeAt(13, 12))).toBe(true);
-    expect(blocked.size).toBe(6);
+    expect(blocked.size).toBe(1 + 7);
     const content = parseContentSet({
       manifest: TEST_MANIFEST,
       ...economyContent,
@@ -321,6 +325,52 @@ describe('footprint', () => {
     expect(canPlaceBuilding(s.world, ctx, terrain, HUT, 8, 8)).toBe(true);
     removeVehicle(s.world, ctxOf(s), cart, 'script');
     expect(canPlaceBuilding(s.world, ctx, terrain, HUT, 4, 4)).toBe(true);
+  });
+
+  it("puts a cart's door on the first open ring node beside it and a catapult's just outside its disc", () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const cart = spawn(s, HANDCART, 4, 4);
+    const catapult = spawn(s, CATAPULT, 12, 12);
+    const cartDoor = vehicleDoorNode(s.world, ctxOf(s), cart);
+    const catapultDoor = vehicleDoorNode(s.world, ctxOf(s), catapult);
+    if (cartDoor === null || catapultDoor === null) throw new Error('vehicle without a door');
+    expect(cartDoor).toEqual(stepHex({ hx: 4, hy: 4 }, 'northWest')); // the original's ring scan starts there
+    expect(hexDistance(catapultDoor, { hx: 12, hy: 12 })).toBe(2);
+    const blocked = vehicleBlockedCells(s.world, ctxOf(s), terrain);
+    expect(blocked.has(terrain.nodeAt(cartDoor.hx, cartDoor.hy))).toBe(false);
+    expect(blocked.has(terrain.nodeAt(catapultDoor.hx, catapultDoor.hy))).toBe(false);
+    expect(s.vehicleView(cart)?.door).toEqual(cartDoor);
+  });
+
+  it('moves a door whose ring node is not walkable ground on to the next ring node', () => {
+    const s = sim();
+    // The map's north-west corner: the ring's first node lies off the map.
+    const cart = spawn(s, HANDCART, 0, 0);
+    const door = vehicleDoorNode(s.world, ctxOf(s), cart);
+    if (door === null) throw new Error('cart without a door');
+    expect(door).not.toEqual({ hx: 0, hy: 0 });
+    expect(hexDistance(door, { hx: 0, hy: 0 })).toBe(1);
+    expect(s.terrain?.inBounds(door.hx, door.hy)).toBe(true);
+  });
+
+  it('routes a walking settler around a parked cart instead of through it', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 8, 8);
+    const walker = spawnRider(s, 4, 8);
+    s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: walker, x: 12, y: 8 }));
+    let stoodOnCart = false;
+    for (let tick = 0; tick < WALK_TICKS; tick++) {
+      s.step();
+      const p = s.world.get(walker, Position);
+      const at = nodeOfPosition(p.x, p.y);
+      if (at.hx === 8 && at.hy === 8) stoodOnCart = true;
+    }
+    const p = s.world.get(walker, Position);
+    expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: 12, hy: 8 });
+    expect(stoodOnCart).toBe(false);
+    expect(s.world.has(cart, Vehicle)).toBe(true);
   });
 });
 

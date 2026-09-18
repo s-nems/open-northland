@@ -69,7 +69,7 @@ export function spawnScriptedVehicle(
     missionId: op.vehicleId,
   });
   if (vehicle === null || !op.withCaptain) return;
-  const door = vehicleDoorNode(world, ctx.content, vehicle);
+  const door = vehicleDoorNode(world, ctx, vehicle);
   const jobType = type.commanderJob;
   if (door === null || jobType === undefined || !terrain.inBounds(door.hx, door.hy)) return;
   const captain = world.nextEntityId as Entity; // the id the spawn's `create` takes

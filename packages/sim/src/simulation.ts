@@ -47,7 +47,7 @@ import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from '.
 import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
-import type { SystemContext } from './systems/context.js';
+import type { MapContext, SystemContext } from './systems/context.js';
 import type { PlacementProbe } from './systems/footprint/index.js';
 import {
   type ConstructionPlot,
@@ -477,12 +477,17 @@ export class Simulation {
 
   /** A vehicle's type, crew, hold and standing as a detached copy; undefined for anything else. */
   vehicleView(vehicle: Entity): VehicleView | undefined {
-    return vehicleView(this.world, { content: this.content }, vehicle);
+    return vehicleView(this.world, this.mapContext(), vehicle);
   }
 
   /** Every vehicle `player` owns, ascending by entity id, as detached copies. */
   vehiclesOf(player: number): readonly VehicleView[] {
-    return vehiclesOf(this.world, { content: this.content }, player);
+    return vehiclesOf(this.world, this.mapContext(), player);
+  }
+
+  /** The content with the terrain when the run has one; an absent optional resource is omitted, not undefined. */
+  private mapContext(): MapContext {
+    return { content: this.content, ...(this.terrain !== undefined ? { terrain: this.terrain } : {}) };
   }
 
   /** Every mission of the map's script with its live flags, for the mission window's goal list;

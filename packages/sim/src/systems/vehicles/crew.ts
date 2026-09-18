@@ -101,8 +101,8 @@ export function attachToVehicle(
   world.remove(e, AttackOrder);
   world.remove(e, HuntFocus);
   world.add(e, Rider, { vehicle, boarding: false });
-  const door = vehicleDoorNode(world, ctx.content, vehicle);
-  // The walk order snaps a blocked door (a cart's anchor) to the node beside it, as the rider rung does.
+  const door = vehicleDoorNode(world, ctx, vehicle);
+  // The walk order snaps a door another blocker covers to the node beside it, as the rider rung does.
   if (door !== null && world.has(e, Position)) sendUnit(world, ctx, e, door.hx, door.hy);
   return true;
 }
@@ -155,7 +155,7 @@ export function landingOf(world: World, ctx: SystemContext, vehicle: Entity): Ha
   if (state.carrier !== null && vehicleAnchor(world, vehicle) === null)
     return landingOf(world, ctx, state.carrier);
   if (isShipAtSea(ctx, state)) return null;
-  return vehicleDoorNode(world, ctx.content, vehicle);
+  return vehicleDoorNode(world, ctx, vehicle);
 }
 
 /** Stand `e` on `point`, restoring the Position that boarding gave up. */

@@ -87,6 +87,15 @@ heaps any surplus delivered past the bill. The chest catapult takes the opener's
   remaining allowed-job passenger. No commander means the vehicle cannot move, dock or fire.
 - Detach (0x27): refused for a ship not moored; a vehicle riding a carrier is sent out first; the
   human is put on the door cell. Several ordinary human commands force a detach first.
+- Door (`Door_GetEntryPoint(point, size)`): a moored ship's mooring point; otherwise the map position
+  moved `passengervector[1]` steps in direction `passengervector[0] + facing` (modulo six), so a cart or
+  catapult, which authors no vector, has its entry point on its own node. When that node is blocked or
+  its size class is below `size`, `Point_ScanArroundForPointWithSize` walks the ring of radius 1 around
+  it, starting one step north-west and turning through the six directions, and takes the first node
+  on the map that is not blocked, has the same continent byte and a size class `>= size`; the carrier
+  and the trader ask with `size` 0. A parked vehicle sets no blocked bit: `l_Attachment_AttachToGameMap`
+  only links the vehicle into the node's moveable list, so humans walk through a standing cart and its
+  crew and cargo hands stand on the cart's node.
 - Board (0x28, "moves inside"): succeeds only when the human stands on the door point. Aboard, the
   human is removed from the map (`IsInVehicle`). Leaving happens on the door cell, which for a
   moored ship is its mooring point on the shore. `VehicleMisc_Enter` is the step itself:
@@ -118,8 +127,12 @@ waits under `waitsForHuman` like a goto's goal and the combat pass takes it up o
 read for the goto only). Named approximations: the job and
 owner refusals of attach raise `cannotEnterVehicle` and a full vehicle `vehicleNoPassengerRoom`; a
 refused load raises `cannotAttachVehicle`, which the original never raises; a rider refused off a
-ship at sea raises `cannotLeaveVehicle`; a rider boards from the door node or, where a footprint
-covers it, the nearest open node beside it; a rider whose walk to the door fails is dropped with a
+ship at sea raises `cannotLeaveVehicle`; a standing vehicle's whole disc is blocked for humans, so a
+settler walks around a parked cart and an entry point inside the disc always takes the original's
+ring fallback, the first open ground node in ring order just outside the disc on the anchor's continent
+(`vehicleDoorPoint`; the original blocks nothing and walks the crew onto the cart); a rider boards
+from that door node or, where another blocker covers it, the nearest open node beside it; a rider
+whose walk to the door fails is dropped with a
 lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
 drill, marriage, need, equipment, explore, signpost and chest orders; a commander detaching mid-drive
 leaves the drive running.
@@ -214,8 +227,9 @@ distance gate on the goto; an off-continent or out-of-range target raises `vehic
 being ignored; a goto held for a crew still outside is refused at once when no route exists at order
 time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces
 the hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
-routed around, the shove happens on entering a node only and sends a settler outside the discs of
-the whole remaining route. A real map's water is the cells whose two ground triangles are both
+routed around by vehicles and humans alike (the original's humans walk through them, see "Crew"), the
+shove happens on entering a node only and sends a settler outside the discs of the whole remaining
+route. A real map's water is the cells whose two ground triangles are both
 `isWater` pattern types (approximation of the per-node rule; an unknown or border pattern counts as
 land, so a ship never sails onto the map edge).
 
@@ -340,13 +354,13 @@ such carts only and walks the livestock store: the owner's animals of the tribe 
 inside a farm, led away by no breeder nor booked by another cart, not scattering, on the door's continent, in
 ascending entity id; the first two are passed over and the nearest of the rest by hexagon distance
 wins, ties to the lower id. The recruit carries `DraughtAnimal` (which the herd, graze, herd-home and
-breeder's slaughter pick respect like a breeder's summon, and which a scout's capture drops with the walk) and is aimed at the cart's boarding node, the riders' door approximation,
+breeder's slaughter pick respect like a breeder's summon, and which a scout's capture drops with the walk) and is aimed at the cart's boarding node, the riders' door beside the cart,
 re-aimed whenever it stops short; on arrival `harnessVehicle` removes it without a death and the cart
 takes `transformVehicleType` in place, with that type's seat counts and hit-point pool (current points
 kept, clamped), so the renderer's per-type binding swaps the sprite. A recruit whose cart is gone walks
 back to its stay point. Approximations: the scan cadence, the id order the pair is skipped in, the
 livestock-store scan (a draught tribe that is not catchable is never owned and never found), the
-boarding node standing in for the cart's own door node, and the pool handling on transform; the
+boarding node standing in for the cart's own node, and the pool handling on transform; the
 original's animal list order and transform details are not read.
 
 Open Northland (`packages/app/src/hud/details-panel/model/vehicle.ts`, `view/unit-controls/vehicle-orders.ts`):

@@ -257,7 +257,7 @@ describe('dockVehicle', () => {
     expect(
       vehicleClearance(s.world, ctxOf(s), terrain).classOf(terrain.nodeAt(at.hx, at.hy)),
     ).toBeGreaterThanOrEqual(SHIP_SIZE);
-    expect(vehicleDoorNode(s.world, s.content, ship)).toEqual(point);
+    expect(vehicleDoorNode(s.world, ctxOf(s), ship)).toEqual(point);
     expect(docked(s)).toEqual([point]);
   });
 
@@ -324,7 +324,7 @@ describe('dockVehicle', () => {
     expect(held.task).toBe('docks');
     expect(held.heldGoal).toEqual(point);
     expect(held.moored).toBe(true); // the door stays on the old mooring while the scout walks to it
-    expect(vehicleDoorNode(s.world, s.content, ship)).toEqual(mooring);
+    expect(vehicleDoorNode(s.world, ctxOf(s), ship)).toEqual(mooring);
     let cast = 0;
     while (s.world.get(ship, Vehicle).moored) {
       s.step();
@@ -490,6 +490,6 @@ describe('SendVehicle and DockVehicle', () => {
     expect(s.world.get(ship, Vehicle).task).toBe('docks');
     sailOut(s, ship);
     expect(s.world.get(ship, Vehicle).moored).toBe(true);
-    expect(vehicleDoorNode(s.world, s.content, ship)).toEqual(point);
+    expect(vehicleDoorNode(s.world, ctxOf(s), ship)).toEqual(point);
   });
 });

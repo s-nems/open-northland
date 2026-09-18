@@ -347,7 +347,7 @@ describe('moveVehicle', () => {
     order(s, cart, 11, 8);
     driveOut(s, cart);
     const at = anchorOf(s, cart);
-    expect(vehicleBlockedCells(s.world, ctxOf(s), terrain).has(terrain.nodeAt(at.hx, at.hy))).toBe(false);
+    expect(hexDistanceBetween(at.hx, at.hy, 12, 8)).toBeGreaterThan(1); // outside the catapult's ring
     expect(anchorOf(s, parked)).toEqual({ hx: 12, hy: 8 });
     // Beyond it: the route passes around the ring rather than through it.
     order(s, cart, 20, 8);

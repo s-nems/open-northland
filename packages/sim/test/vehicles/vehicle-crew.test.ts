@@ -52,6 +52,8 @@ const SHORE_CELL = 10;
 const STARVING_PCT = 90;
 /** A scout's ten-node walk at its nine ticks a node, with a tick to board. */
 const BOARD_TICKS = 120;
+/** The door of a handcart parked at (12, 6): the first open node of the ring around it, north-west. */
+const CART_DOOR = { hx: 11, hy: 5 } as const;
 const SAIL_TICKS = 300;
 
 /** The west grass, the east open water, at cell resolution. */
@@ -137,7 +139,7 @@ describe('attachToVehicle', () => {
     expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false });
     expect(s.world.has(scout, JobAssignment)).toBe(false);
     s.run(BOARD_TICKS);
-    expect(nodeOf(s, scout)).toEqual({ hx: 12, hy: 6 }); // the cart's door is its anchor
+    expect(nodeOf(s, scout)).toEqual(CART_DOOR);
     expect(seatOf(s, cart, scout)?.inside).toBe(false); // nobody asked it in
   });
 
@@ -315,7 +317,7 @@ describe('leaving', () => {
     boardOut(s, cart, scout);
     s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: cart }));
     s.step();
-    expect(nodeOf(s, scout)).toEqual({ hx: 12, hy: 6 });
+    expect(nodeOf(s, scout)).toEqual(CART_DOOR);
     expect(s.world.has(scout, Rider)).toBe(false);
     expect(vehiclePassengers(s.world.get(cart, Vehicle))).toEqual([]);
   });
@@ -346,7 +348,7 @@ describe('leaving', () => {
     s.enqueue(adminCommand({ kind: 'debugKill', target: cart }));
     s.step();
     expect(s.world.isAlive(scout)).toBe(true);
-    expect(nodeOf(s, scout)).toEqual({ hx: 12, hy: 6 });
+    expect(nodeOf(s, scout)).toEqual(CART_DOOR);
     expect(s.world.has(scout, Rider)).toBe(false);
     const ship = spawn(s, SHIP_SMALL, 22, 8);
     const sailor = spawnSettler(s, 2, 8);

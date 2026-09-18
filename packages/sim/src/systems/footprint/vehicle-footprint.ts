@@ -6,10 +6,12 @@ import {
   type HalfCellNode,
   HEX_DIRECTIONS,
   hexagonRing,
+  hexDistance,
   nodeOfPosition,
   stepHex,
 } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { MapContext } from '../context.js';
 
 // A vehicle's ground geometry: the hex disc of radius `logicSize` it occupies and the door point its
 // crew boards and leaves at (byte-verified rules in docs/formats/VEHICLES.md). Pure over the component
@@ -51,12 +53,12 @@ export function vehicleFootprintNodes(
 }
 
 /**
- * The door point: a moored ship's mooring node on the shore; otherwise `passengerVector` walked from
- * the anchor in the direction `facing + direction` (modulo the six map-point directions), which is the
- * anchor itself for a cart or catapult that authors no vector. Unclamped; null for a positionless
- * vehicle.
+ * The authored entry point (`Door_GetEntryPoint`): a moored ship's mooring node on the shore; otherwise
+ * `passengerVector` walked from the anchor in the direction `facing + direction` (modulo the six
+ * map-point directions), which is the anchor itself for a cart or catapult that authors no vector.
+ * Unclamped.
  */
-export function vehicleDoorPoint(
+export function vehicleEntryPoint(
   vehicle: VehicleStateView,
   type: VehicleType,
   anchor: HalfCellNode,
@@ -71,10 +73,36 @@ export function vehicleDoorPoint(
   return at;
 }
 
-export function vehicleDoorNode(world: World, content: ContentSet, e: Entity): HalfCellNode | null {
+/**
+ * The door point the crew and the cargo hands stand on. The original's humans walk through a vehicle,
+ * so its entry point may lie on the vehicle itself, and `Door_GetEntryPoint` only moves on to the first
+ * open node of the surrounding ring when that point is blocked. Open Northland blocks a standing
+ * vehicle's disc for humans (approximation), so an entry point inside the disc always takes the
+ * original's fallback: the first node in ring order just outside the disc that is open ground on the
+ * anchor's continent. Without a terrain, or with no such node, the entry point stands. Unclamped.
+ */
+export function vehicleDoorPoint(
+  vehicle: VehicleStateView,
+  type: VehicleType,
+  anchor: HalfCellNode,
+  terrain: TerrainGraph | undefined,
+): HalfCellNode {
+  const entry = vehicleEntryPoint(vehicle, type, anchor);
+  if (terrain === undefined || hexDistance(entry, anchor) > type.logicSize) return entry;
+  if (!terrain.inBounds(anchor.hx, anchor.hy)) return entry;
+  const continent = terrain.componentOf(terrain.nodeAt(anchor.hx, anchor.hy));
+  for (const { point } of hexagonRing(entry, type.logicSize + 1)) {
+    if (!terrain.inBounds(point.hx, point.hy)) continue;
+    const node = terrain.nodeAt(point.hx, point.hy);
+    if (terrain.isWalkable(node) && terrain.componentOf(node) === continent) return point;
+  }
+  return entry;
+}
+
+export function vehicleDoorNode(world: World, ctx: MapContext, e: Entity): HalfCellNode | null {
   const vehicle = world.tryGet(e, Vehicle);
   const anchor = vehicleAnchor(world, e);
   if (vehicle === undefined || anchor === null) return null;
-  const type = contentIndex(content).vehicles.get(vehicle.vehicleType);
-  return type === undefined ? null : vehicleDoorPoint(vehicle, type, anchor);
+  const type = contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
+  return type === undefined ? null : vehicleDoorPoint(vehicle, type, anchor, ctx.terrain);
 }

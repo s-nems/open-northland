@@ -135,8 +135,8 @@ function cartNearHouse(world: World, ctx: SystemContext, cart: TradeCart, house:
 
 /**
  * `l_Trader_MoveVehicleNearHouse`: order the cart to the first node in ring order around the house's
- * door, out to {@link TRADE_CART_SEARCH_RADIUS}, that the cart may stand on and that is no house's door,
- * as a goto the cart holds until the trader boards. When no such node lies within the working distance
+ * door, out to {@link TRADE_CART_SEARCH_RADIUS}, that the cart may stand on and that is no house's door
+ * nor the stop's own work point, as a goto the cart holds until the trader boards. When no such node lies within the working distance
  * of the door the trader lets go of the cart and stays on foot (approximation: the original detaches
  * through the detach command with its own note; here the trader's idle-without-a-cart state is what the
  * player sees). A node the cart has no route to keeps the trader seated: the door goes into its
@@ -152,9 +152,10 @@ function driveCartTo(plan: PlannerContext, cart: TradeCart, house: Entity): bool
   const doorNode = terrain.nodeAtClamped(door.hx, door.hy);
   if (isUnreachableGoal(unreachableGoals(world, ctx, e), doorNode)) return false;
   const doors = buildingDoorNodes(world, ctx, terrain);
+  // A house with no authored door is worked at its anchor, where a parked cart would block the trader.
   const goal = snapVehicleTarget(world, ctx, terrain, cart.vehicle, door, {
     radius: TRADE_CART_SEARCH_RADIUS,
-    exclude: (node) => doors.has(node),
+    exclude: (node) => node === doorNode || doors.has(node),
   });
   const point = goal === null ? null : nodeOf(terrain, goal);
   if (goal === null || point === null || hexDistance(point, door) > TRADE_CART_HOUSE_DISTANCE) {
