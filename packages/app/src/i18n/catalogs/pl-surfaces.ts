@@ -43,7 +43,6 @@ export const plSurfaces = {
         scenes: 'Sceny testowe',
       },
       categoryNames: {
-        campaign: 'kampania',
         free: 'wolna gra',
         multiplayer: 'multiplayer',
         scenes: 'scena testowa',

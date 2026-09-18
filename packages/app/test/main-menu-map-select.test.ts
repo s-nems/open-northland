@@ -17,11 +17,11 @@ function slot(player: number, hidden = false): MapsIndexPlayerSlot {
 }
 
 describe('map filter tabs', () => {
-  it('keeps every live filter clickable and parks the coming-soon mode next to "all"', () => {
+  it('keeps every live filter clickable and parks the coming-soon modes next to "all"', () => {
     const filters = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'filter' ? [tab.filter] : []));
-    expect(filters).toEqual(['all', 'campaign', 'free', 'multiplayer', 'scenes']);
+    expect(filters).toEqual(['all', 'free', 'multiplayer', 'scenes']);
     const comingSoon = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'comingSoon' ? [tab.id] : []));
-    expect(comingSoon).toEqual(['tutorial']);
+    expect(comingSoon).toEqual(['campaign', 'tutorial']);
     expect(SINGLE_PLAYER_TABS[0]).toEqual({ kind: 'filter', filter: 'all' });
     expect(ROOM_TABS).toEqual([]);
   });
@@ -29,16 +29,16 @@ describe('map filter tabs', () => {
 
 describe('mapItem', () => {
   it('carries the maptype header and lists visible seats', () => {
-    const campaign = mapItem({
-      id: 'cn_1',
-      name: 'Prolog',
+    const free = mapItem({
+      id: 'dolina',
+      name: 'Dolina',
       minimap: false,
-      mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+      mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
       players: [slot(0), slot(1, true)],
     });
-    expect(mapCategory(campaign)).toBe('campaign');
-    expect(campaign.seats).toEqual([{ tribeId: 1, colorId: 0 }]); // the hidden slot is never listed
-    expect(campaign.players).toHaveLength(2); // …but the lobby still negotiates the full roster
+    expect(mapCategory(free)).toBe('free');
+    expect(free.seats).toEqual([{ tribeId: 1, colorId: 0 }]); // the hidden slot is never listed
+    expect(free.players).toHaveLength(2); // …but the lobby still negotiates the full roster
     const arena = mapItem({
       id: 'arena',
       minimap: true,
@@ -84,20 +84,21 @@ describe('listedIn', () => {
     expect(room).toEqual([multi, userMulti, untyped, multiOnly]);
   });
 
-  it('takes the free types, campaign maps and unrestricted multiplayer maps into New Game', () => {
+  it('takes the free types and unrestricted multiplayer maps into New Game, never a campaign map', () => {
     const single = [campaign, free, userFree, multi, userMulti, demo, untyped, multiOnly, scene].filter(
       (item) => listedIn(item, 'single'),
     );
-    expect(single).toEqual([campaign, free, userFree, multi, untyped, scene]);
+    expect(single).toEqual([free, userFree, multi, untyped, scene]);
   });
 });
 
 describe('filterItems', () => {
-  const campaign = mapItem({
-    id: 'cn_1',
-    name: 'Prolog',
+  const subMission = mapItem({
+    id: 'gringo_sub',
+    name: 'Gringo - bitwa',
     minimap: false,
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+    campaign: { campaignId: 0, missionId: 66641 },
   });
   const free = mapItem({
     id: 'dolina',
@@ -112,16 +113,15 @@ describe('filterItems', () => {
     mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
   });
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
-  const items = [campaign, free, arena, scene];
+  const items = [subMission, free, arena, scene];
 
-  it('lists every map under "all" and keeps test scenes to their own filter', () => {
-    expect(filterItems(items, 'single', 'all', '')).toEqual([campaign, free, arena]);
+  it('lists every root map under "all" and keeps test scenes to their own filter', () => {
+    expect(filterItems(items, 'single', 'all', '')).toEqual([free, arena]);
     expect(filterItems(items, 'single', 'scenes', '')).toEqual([scene]);
     expect(filterItems(items, 'multiplayer', 'all', '')).toEqual([arena]);
   });
 
   it('splits the tabs by maptype and keeps a multiplayer-only map off the New Game multiplayer tab', () => {
-    expect(filterItems(items, 'single', 'campaign', '')).toEqual([campaign]);
     expect(filterItems(items, 'single', 'free', '')).toEqual([free]);
     expect(filterItems(items, 'single', 'multiplayer', '')).toEqual([arena]);
     const both = mapItem({
@@ -136,7 +136,8 @@ describe('filterItems', () => {
 
   it('searches the title case-insensitively and the id stem', () => {
     expect(filterItems(items, 'single', 'all', 'MGIEŁ')).toEqual([arena]);
-    expect(filterItems(items, 'single', 'all', 'cn_')).toEqual([campaign]);
+    expect(filterItems(items, 'single', 'all', 'zatoka')).toEqual([arena]);
+    expect(filterItems(items, 'single', 'all', 'gringo')).toEqual([]); // search never surfaces a sub-mission
     expect(filterItems(items, 'single', 'all', 'nic takiego')).toEqual([]);
   });
 });

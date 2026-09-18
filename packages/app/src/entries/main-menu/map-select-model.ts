@@ -9,20 +9,21 @@ import { MAP_TYPE } from '@open-northland/data';
 /** The two menus of the original, each with its own reading of a map's `maptype` codes. */
 export type MapListing = 'single' | 'multiplayer';
 
-export type MapFilter = 'all' | 'campaign' | 'free' | 'multiplayer' | 'scenes';
+export type MapFilter = 'all' | 'free' | 'multiplayer' | 'scenes';
 
-/** A mode the corpus cannot serve yet; its tab renders greyed out with a coming-soon tooltip. */
-export type ComingSoonTab = 'tutorial';
+/** A mode of the original this build cannot launch yet (its maps are `SINGLE_PLAYER_CAMPAIGN`,
+ *  which no list takes); its tab renders greyed out with a coming-soon tooltip. */
+export type ComingSoonTab = 'campaign' | 'tutorial';
 
 export type MapFilterTab =
   | { readonly kind: 'filter'; readonly filter: MapFilter }
   | { readonly kind: 'comingSoon'; readonly id: ComingSoonTab };
 
-/** Segmented-bar order of the New Game screen: the coming-soon mode sits by "all", before the live
+/** Segmented-bar order of the New Game screen: the coming-soon modes sit by "all", before the live
  *  filters. A room lists multiplayer maps only, so it shows no bar. */
 export const SINGLE_PLAYER_TABS: readonly MapFilterTab[] = [
   { kind: 'filter', filter: 'all' },
-  { kind: 'filter', filter: 'campaign' },
+  { kind: 'comingSoon', id: 'campaign' },
   { kind: 'comingSoon', id: 'tutorial' },
   { kind: 'filter', filter: 'free' },
   { kind: 'filter', filter: 'multiplayer' },
@@ -103,7 +104,6 @@ const untyped = (item: MapSelectItem): boolean => item.kind === 'map' && item.ty
 /** The label a map row and card carry; the highest-ranking of its codes names it. */
 export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
   if (item.kind === 'scene') return 'scenes';
-  if (has(item, MAP_TYPE.SINGLE_PLAYER_CAMPAIGN)) return 'campaign';
   if (has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE))
     return 'multiplayer';
   return 'free';
@@ -115,9 +115,11 @@ export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
  * the user-map root, empty or `USER_MULTI_PLAYER_FREE`; the two sections are one list here, since
  * an item does not carry its root. Its single-player free-game list takes the free types plus a
  * multiplayer map without `mapmultiplayeronly` (observed in the another original build; the untyped case is
- * carried over from the multiplayer rule). Approximations: campaign maps are listed under their own
- * tab until a campaign mode exists to launch them, and `SINGLE_PLAYER_DEMO` is listed nowhere, its
- * menu being unobserved.
+ * carried over from the multiplayer rule). Neither list takes `SINGLE_PLAYER_CAMPAIGN`: the
+ * original reaches such a map only through its `mapcampaignid` pair, and in the symbolised macOS
+ * build that lookup's one caller is `SubMap_StartSubMap`, reached from mission-goal evaluation, so
+ * a sub-mission starts from its parent map's script and never from a menu. Approximation:
+ * `SINGLE_PLAYER_DEMO` is listed nowhere, its menu being unobserved.
  */
 export function listedIn(item: MapSelectItem, listing: MapListing): boolean {
   if (item.kind === 'scene') return listing === 'single';
@@ -125,7 +127,6 @@ export function listedIn(item: MapSelectItem, listing: MapListing): boolean {
   if (listing === 'multiplayer')
     return has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE);
   return (
-    has(item, MAP_TYPE.SINGLE_PLAYER_CAMPAIGN) ||
     has(item, MAP_TYPE.SINGLE_PLAYER_FREE) ||
     has(item, MAP_TYPE.USER_SINGLE_PLAYER_FREE) ||
     (has(item, MAP_TYPE.MULTI_PLAYER_FREE) && !item.multiplayerOnly)
@@ -138,8 +139,6 @@ function matchesFilter(item: MapSelectItem, filter: MapFilter): boolean {
       return item.kind === 'map';
     case 'scenes':
       return item.kind === 'scene';
-    case 'campaign':
-      return has(item, MAP_TYPE.SINGLE_PLAYER_CAMPAIGN);
     case 'free':
       return (
         untyped(item) || has(item, MAP_TYPE.SINGLE_PLAYER_FREE) || has(item, MAP_TYPE.USER_SINGLE_PLAYER_FREE)

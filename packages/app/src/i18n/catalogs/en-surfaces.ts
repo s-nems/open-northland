@@ -44,7 +44,6 @@ export const enSurfaces = {
         scenes: 'Test scenes',
       },
       categoryNames: {
-        campaign: 'campaign',
         free: 'free game',
         multiplayer: 'multiplayer',
         scenes: 'test scene',
