@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { SourceMap, type SourceMapPayload } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkoutRoot } from '../test/support/checkout-root.js';
 
 /**
  * Where a profiled call frame lives, as a developer would go looking for it. V8 reports the built
@@ -10,7 +11,6 @@ import { fileURLToPath } from 'node:url';
  * path rather than guessing a source line.
  */
 
-const REPO_ROOT = resolve(import.meta.dirname, '../../..');
 const FILE_SCHEME = 'file://';
 /** V8 call frames count lines from 0; a location a reader can paste counts from 1. */
 const FIRST_LINE = 1;
@@ -57,7 +57,7 @@ function mappedSource(path: string, line: number, column: number): SourceLocatio
 }
 
 function repoRelative(path: string): string {
-  const rel = relative(REPO_ROOT, path);
+  const rel = relative(checkoutRoot(), path);
   return rel.startsWith('..') ? path : rel;
 }
 

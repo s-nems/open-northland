@@ -4,7 +4,7 @@
 // result.
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { rebuildWorkspace, runBenchFile } from './bench-run.mjs';
+import { rebuildWorkspace, runBenchProgram } from './bench-run.mjs';
 import { contentDir } from './content-dir.mjs';
 
 const dir = contentDir();
@@ -17,4 +17,4 @@ if (missing.length > 0) {
 }
 
 rebuildWorkspace();
-runBenchFile('map-profile');
+runBenchProgram('map-profile');

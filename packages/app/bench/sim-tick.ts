@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { intEnv } from './knobs.js';
 import { measureWindows } from './measure.js';
 import type { BenchReport } from './report/index.js';
@@ -10,7 +9,7 @@ import { type BenchWorldOptions, benchWorld } from './world.js';
  * rule 6 (AGENTS.md) asserts and no test can: that per-tick cost scales with active work, not
  * entities². Content is the clean-room sandbox set, so this benchmark runs on any checkout;
  * `npm run bench:map` measures a real decoded map instead. See docs/TESTING.md for how both fit the
- * pyramid and how they are kept out of `npm test`.
+ * pyramid.
  *
  * Knobs (env, all optional): `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`,
  * `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`, `ON_BENCH_JSON=<path>` (write the machine-readable report).
@@ -35,10 +34,6 @@ const DEFAULT_WINDOWS = 1;
 /** Ticks the determinism check replays - long enough to reach the steady economy (and, when fighters
  *  are on, the first deaths at ~tick 50, so the check covers combat rather than the approach). */
 const DETERMINISM_TICKS = 200;
-
-/** The bench builds and runs whole worlds - far past vitest's 5 s default. */
-const BENCH_TIMEOUT_MS = 30 * 60_000;
-const DETERMINISM_TIMEOUT_MS = 10 * 60_000;
 
 function worldOptions(): BenchWorldOptions {
   return {
@@ -84,33 +79,38 @@ function measure(
   });
 }
 
-describe('sim per-system benchmark', () => {
-  it('reports median/p95 ms per system over the measured window', { timeout: BENCH_TIMEOUT_MS }, () => {
-    const options = worldOptions();
-    const report = measure(
-      options,
-      intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0),
-      intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1),
-      intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1),
-    );
+/** Two runs of the same options must end at the same state: a benchmark of a world that drifts
+ *  measures a different world every time. */
+function checkDeterminism(options: BenchWorldOptions): void {
+  const first = benchWorld(options).sim;
+  const second = benchWorld(options).sim;
+  first.run(DETERMINISM_TICKS);
+  second.run(DETERMINISM_TICKS);
+  const hash = first.hashState();
+  // Guard against a vacuous pass: two empty hashes would match as readily as two real ones.
+  if (hash === '') throw new Error(`the world hashed to nothing after ${DETERMINISM_TICKS} ticks`);
+  if (hash !== second.hashState()) {
+    throw new Error(`two runs diverged over ${DETERMINISM_TICKS} ticks: ${hash} vs ${second.hashState()}`);
+  }
+  console.log(`determinism: two ${DETERMINISM_TICKS}-tick runs both hash to ${hash}\n`);
+}
 
-    publishReport(report);
+function main(): void {
+  const options = worldOptions();
+  const report = measure(
+    options,
+    intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0),
+    intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1),
+    intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1),
+  );
 
-    // The run must have profiled a real world - a silently empty one would report a table of zeros.
-    expect(report.systems.length).toBeGreaterThan(0);
-    expect(report.world.settlersAtStart).toBeGreaterThan(0);
-  });
+  publishReport(report);
 
-  it('measures a deterministic world: two runs of the same options hash identically', {
-    timeout: DETERMINISM_TIMEOUT_MS,
-  }, () => {
-    const options = worldOptions();
-    const first = benchWorld(options).sim;
-    const second = benchWorld(options).sim;
-    first.run(DETERMINISM_TICKS);
-    second.run(DETERMINISM_TICKS);
-    // Guard against a vacuous pass: two undefineds would also be `toBe`-equal.
-    expect(first.hashState()).toEqual(expect.any(String));
-    expect(first.hashState()).toBe(second.hashState());
-  });
-});
+  // The run must have profiled a real world - a silently empty one would report a table of zeros.
+  if (report.systems.length === 0) throw new Error('the measured ticks ran no systems');
+  if (report.world.settlersAtStart === 0) throw new Error('the benchmark world spawned no settlers');
+
+  checkDeterminism(options);
+}
+
+main();

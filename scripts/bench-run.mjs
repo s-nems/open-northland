@@ -1,10 +1,11 @@
 // Shared plumbing for the benchmark entry points (docs/TESTING.md "Benchmarks and long runs").
 import { spawnSync } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { basename, dirname, resolve, sep } from 'node:path';
 import { repoRoot } from './content-dir.mjs';
 
-const BENCH_CONFIG = 'packages/app/bench/vitest.config.ts';
+/** Where `packages/app/tsconfig.bench.json` compiles the benchmark programs to. */
+const BENCH_PROGRAM_DIR = 'packages/app/dist/bench';
 // `spawnSync` resolves no PATHEXT and Node refuses to spawn Windows' `npx.cmd` directly, so `npx` is
 // only reachable there through a shell. Every argument below is an internal literal.
 const NEEDS_SHELL = process.platform === 'win32';
@@ -39,23 +40,26 @@ export function rebuildWorkspace() {
 function tscProjects() {
   const solution = JSON.parse(readFileSync(resolve(repoRoot, 'tsconfig.json'), 'utf8'));
   return solution.references.map(({ path }) => {
-    const dir = resolve(repoRoot, path);
-    const { compilerOptions } = JSON.parse(readFileSync(resolve(dir, 'tsconfig.json'), 'utf8'));
+    // A reference names either a directory or the config file itself (`packages/app` carries two).
+    const resolved = resolve(repoRoot, path);
+    const config = resolved.endsWith('.json') ? resolved : resolve(resolved, 'tsconfig.json');
+    const dir = dirname(config);
+    const { compilerOptions } = JSON.parse(readFileSync(config, 'utf8'));
     const outDir = resolve(dir, compilerOptions?.outDir ?? '');
     if (!outDir.startsWith(dir + sep)) {
-      throw new Error(`${path}/tsconfig.json must declare an outDir below itself, not '${outDir}'`);
+      throw new Error(`${path} must declare an outDir below itself, not '${outDir}'`);
     }
-    return { outDir, buildInfo: resolve(dir, 'tsconfig.tsbuildinfo') };
+    return { outDir, buildInfo: config.replace(/\.json$/, '.tsbuildinfo') };
   });
 }
 
-/** Runs one benchmark file through the bench runner config and exits with its status. */
-export function runBenchFile(filter, env = process.env) {
-  const result = spawnSync('npx', ['vitest', 'run', '--config', BENCH_CONFIG, filter], {
-    stdio: 'inherit',
-    cwd: repoRoot,
-    env,
-    shell: NEEDS_SHELL,
-  });
+/** Runs one compiled benchmark program and exits with its status. */
+export function runBenchProgram(name, env = process.env) {
+  const program = resolve(repoRoot, BENCH_PROGRAM_DIR, `${name}.js`);
+  if (!existsSync(program)) {
+    console.error(`bench: ${basename(program)} is not built - run 'npx tsc --build' first.`);
+    process.exit(1);
+  }
+  const result = spawnSync(process.execPath, [program], { stdio: 'inherit', cwd: repoRoot, env });
   process.exit(result.status ?? 1);
 }

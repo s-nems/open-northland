@@ -10,6 +10,7 @@
     { "path": "packages/render" },
     { "path": "packages/audio" },
     { "path": "packages/app" },
+    { "path": "packages/app/tsconfig.bench.json" },
     { "path": "packages/desktop" },
     { "path": "tools/asset-pipeline" },
     { "path": "packages/art-contracts" },

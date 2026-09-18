@@ -31,8 +31,8 @@ function pct(value: number): string {
 export function formatProfile(summary: ProfileSummary): string {
   return [
     `cpu profile: ${ms(summary.sampledMs)} ms sampled across ${summary.functions.length} function(s)`,
-    // Both are unavoidable here and both are large enough to distort a share read off this table.
-    'harness frames included: node:inspector is the profiler stopping itself, vite/vitest is module loading',
+    // Unavoidable here, and large enough to distort a share read off this table.
+    'harness frames included: node:inspector is the profiler stopping itself',
     '',
     `top ${TOP_FUNCTIONS} by self time`,
     ...table(

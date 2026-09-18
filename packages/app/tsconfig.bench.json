@@ -4,17 +4,19 @@
     "outDir": "./dist",
     "rootDir": ".",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
     "noEmit": false
   },
-  "include": ["src/**/*.ts", "src/assets/own/**/*.json"],
+  "include": [
+    "bench/**/*.ts",
+    "test/support/checkout-root.ts",
+    "test/content/helpers.ts",
+    "test/content/real-map-world.ts"
+  ],
   "references": [
+    { "path": "./tsconfig.json" },
     { "path": "../data" },
     { "path": "../sim" },
-    { "path": "../lockstep" },
-    { "path": "../net-protocol" },
-    { "path": "../net-client" },
-    { "path": "../render" },
-    { "path": "../audio" },
-    { "path": "../art-contracts" }
+    { "path": "../lockstep" }
   ]
 }

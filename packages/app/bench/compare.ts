@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
 import { compareReports, formatComparison, readReport } from './report/index.js';
 import { benchOutDir, latestComparablePair, type StoredReport } from './store.js';
 
@@ -25,15 +24,17 @@ function pair(): { readonly before: StoredReport; readonly after: StoredReport }
   return { before: reportAt(before), after: reportAt(after) };
 }
 
-describe('benchmark comparison', () => {
-  it('reports per-system deltas between two runs', () => {
-    const { before: beforeStored, after: afterStored } = pair();
-    const before = beforeStored.report;
-    const comparison = compareReports(before, afterStored.report);
-    console.log(`\n${formatComparison(comparison)}\n`);
-    // `tick total` is always appended, so it proves nothing; require a row per system the inputs
-    // actually carried, or the tool would report a clean comparison of two empty reports.
-    expect(comparison.rows).toHaveLength(before.systems.length + 1);
-    expect(before.systems.length).toBeGreaterThan(0);
-  });
-});
+function main(): void {
+  const { before: beforeStored, after: afterStored } = pair();
+  const before = beforeStored.report;
+  const comparison = compareReports(before, afterStored.report);
+  console.log(`\n${formatComparison(comparison)}\n`);
+  // `tick total` is always appended, so it proves nothing; require a row per system the inputs
+  // actually carried, or the tool would report a clean comparison of two empty reports.
+  if (before.systems.length === 0) throw new Error(`${beforeStored.path} names no systems`);
+  if (comparison.rows.length !== before.systems.length + 1) {
+    throw new Error(`compared ${comparison.rows.length} rows over ${before.systems.length} system(s)`);
+  }
+}
+
+main();

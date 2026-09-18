@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, isAbsolute, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { isAbsolute, resolve } from 'node:path';
 import type { ContentSet } from '@open-northland/data';
 import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../src/content/real-content.js';
+import { checkoutRoot } from '../support/checkout-root.js';
 
 /**
  * Shared plumbing for the manual real-content suite (`npm run test:content` / `test:pipeline` -
@@ -12,14 +12,12 @@ import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../
  * still skips cleanly on a bare checkout.
  */
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-
 /** The content directory under test: `ON_CONTENT_DIR` (absolute, or relative to the repo root) when set,
  *  else `content/`. Resolution rules mirror `scripts/test-content.mjs` - keep them in step. */
 export function contentDir(): string {
   const override = process.env.ON_CONTENT_DIR;
-  if (override === undefined || override === '') return resolve(REPO_ROOT, 'content');
-  return isAbsolute(override) ? override : resolve(REPO_ROOT, override);
+  if (override === undefined || override === '') return resolve(checkoutRoot(), 'content');
+  return isAbsolute(override) ? override : resolve(checkoutRoot(), override);
 }
 
 export function irPath(): string {

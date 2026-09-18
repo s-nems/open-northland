@@ -6,7 +6,7 @@
 // with no arguments the pair is resolved there too, against the same guards the comparison raises on.
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runBenchFile } from './bench-run.mjs';
+import { runBenchProgram } from './bench-run.mjs';
 
 const args = process.argv.slice(2);
 if (args.length !== 0 && args.length !== 2) {
@@ -29,4 +29,4 @@ if (args.length === 2) {
 }
 
 // No rebuild: the comparison reads two stored reports and never loads a workspace package.
-runBenchFile('compare', { ...process.env, ...named });
+runBenchProgram('compare', { ...process.env, ...named });

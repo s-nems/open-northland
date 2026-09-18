@@ -228,8 +228,11 @@ frame. Replace a file there to change the rotation.
 Every report judges the machine that produced it. Numbers under an untrustworthy banner are void
 rather than weak: re-run on an idle box instead of reading them.
 
-`bench:sim` and `bench:map` each rebuild the workspace from scratch before measuring, so a bare run
-describes the working tree rather than whatever was last built.
+The benchmarks run as plain Node programs over the compiled `dist/` of the workspace packages, with
+no test runner in the process: a runner wraps every cross-module import, and that wrapper lands in a
+CPU profile inside the sim's own frames. `bench:sim`, `bench:map` and `bench:profile` each rebuild the
+workspace from scratch before measuring, so a bare run describes the working tree rather than whatever
+was last built; `bench:compare` only reads two stored reports and runs on the build already there.
 
 Run the synthetic simulation benchmark with `npm run bench:sim`. Its main controls are
 `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
