@@ -278,6 +278,7 @@ describe('vehicle picks', () => {
       { id: HANDCART, ok: false },
       { id: SHIP, ok: true },
       { id: SHIP_AT_SEA, ok: false },
+      { id: CARRIED_CART, ok: false },
     ]);
     expect(pickMode.handleMouseDown(leftClick)).toBe('missed');
     expect(issued).toEqual([]);
