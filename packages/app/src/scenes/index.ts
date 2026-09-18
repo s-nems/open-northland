@@ -39,7 +39,7 @@ import { warehouseScene } from './warehouse.js';
 import { wildlifeScene } from './wildlife.js';
 
 export { MAP_SCENES, mapSceneParams } from './map-scenes.js';
-export { createSceneSim, restoreSceneSim } from './runtime.js';
+export { createSceneSim, createSceneWorld, enableSceneScript, restoreSceneSim } from './runtime.js';
 export type { SceneDefinition } from './types.js';
 
 /** The acceptance-scene registry: a listed scene is covered by the headless mechanic test and reachable

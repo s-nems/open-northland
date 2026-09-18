@@ -24,10 +24,10 @@ import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/com
 import { ctxOf } from '../fixtures/context.js';
 import {
   CARPENTER,
-  FIRST_PASS,
   firingSim,
   HUT_LARGE,
   houseContent,
+  LOAD_PASS,
   POINT,
   spawn,
   VIKING,
@@ -70,7 +70,7 @@ describe('the results that write the mask', () => {
     ]);
     spawn(sim, { player: OWNER, missionId: GROUP });
     spawn(sim, { player: OWNER });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const flagged = humansOf(sim, OWNER).filter((e) => sim.world.has(e, MissionBehaviour));
     expect(flagged).toHaveLength(1);
 
@@ -90,7 +90,7 @@ describe('the results that write the mask', () => {
       missionId: GROUP,
       behaviourFlags: MISSION_BEHAVIOUR.PASSIVE | MISSION_BEHAVIOUR.STAYS_PUT,
     });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const e = only(sim, OWNER);
     expect(hasMissionBehaviour(sim.world, e, MISSION_BEHAVIOUR.PASSIVE)).toBe(false);
     expect(hasMissionBehaviour(sim.world, e, MISSION_BEHAVIOUR.STAYS_PUT)).toBe(true);
@@ -107,7 +107,7 @@ describe('the results that write the mask', () => {
     ]);
     spawn(sim, { player: OWNER });
     spawn(sim, { player: OWNER + 1 });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(hasMissionBehaviour(sim.world, only(sim, OWNER), MISSION_BEHAVIOUR.INVULNERABLE)).toBe(true);
     expect(hasMissionBehaviour(sim.world, only(sim, OWNER + 1), MISSION_BEHAVIOUR.INVULNERABLE)).toBe(false);
   });
@@ -115,7 +115,7 @@ describe('the results that write the mask', () => {
   it('sets the import marker on its own bit', () => {
     const sim = firingSim([{ opcode: 'SetImportHumanFlag', humanId: GROUP, flag: true }]);
     spawn(sim, { player: OWNER, missionId: GROUP });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(hasMissionBehaviour(sim.world, only(sim, OWNER), MISSION_BEHAVIOUR.IMPORTED)).toBe(true);
   });
 
@@ -133,7 +133,7 @@ describe('the results that write the mask', () => {
       owner: OWNER,
       missionId: GROUP,
     });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const [house] = [...sim.world.query(Building)];
     if (house === undefined) throw new Error('no house');
     expect(hasHouseBehaviour(sim.world, house, HOUSE_BEHAVIOUR.INDESTRUCTIBLE)).toBe(true);

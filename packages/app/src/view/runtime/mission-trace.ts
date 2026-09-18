@@ -12,8 +12,10 @@ export function firedMissionRows(status: readonly MissionStatus[]): MissionStatu
     .slice(0, MAX_VISIBLE_MISSIONS);
 }
 
+/** Rebuilds its rows on every cadence pass and on a frame that carried a script event, which is how
+ *  the load pass, on no cadence tick, shows up. */
 export function mountMissionTrace(sim: Pick<Simulation, 'missionStatus'>): {
-  refresh(tick: number): void;
+  refresh(tick: number, scriptFired: boolean): void;
   dispose(): void;
 } {
   const copy = messages().missionTrace;
@@ -25,9 +27,9 @@ export function mountMissionTrace(sim: Pick<Simulation, 'missionStatus'>): {
   document.body.append(panel);
   let pass = -1;
   return {
-    refresh(tick) {
+    refresh(tick, scriptFired) {
       const current = Math.floor(tick / systems.MISSION_EVALUATION_TICKS);
-      if (current === pass) return;
+      if (current === pass && !scriptFired) return;
       pass = current;
       const rows = firedMissionRows(sim.missionStatus());
       summary.textContent = formatMessage(copy.atTick, { tick });

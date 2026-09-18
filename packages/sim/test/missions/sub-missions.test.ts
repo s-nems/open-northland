@@ -7,9 +7,9 @@ import {
   serializeSaveGame,
 } from '../../src/index.js';
 import { MAX_SUBMISSION_DEPTH } from '../../src/save/parse.js';
-import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
+import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
-import { firingSim, MAP_NODES, missionSim } from './support.js';
+import { firingSim, LOAD_PASS, MAP_NODES, missionSim, PASS_TICKS } from './support.js';
 
 describe('sub-mission transitions', () => {
   it('finishes results and later missions before requesting the new world, then resumes without retriggering', () => {
@@ -32,7 +32,7 @@ describe('sub-mission transitions', () => {
         results: [{ opcode: 'SetExternalFlag', player: 0, flagId: 3, flag: true }],
       },
     ]);
-    sim.run(MISSION_EVALUATION_TICKS);
+    sim.run(LOAD_PASS);
     expect(sim.events.current()).toContainEqual({
       kind: 'missionSubMission',
       transition: { kind: 'start', campaignId: 0, mapId: 91, mission: 0 },
@@ -40,7 +40,7 @@ describe('sub-mission transitions', () => {
     expect(sim.missionStatus().map((m) => m.fireCount)).toEqual([1, 1]);
     const parent = exportSaveGame(sim, { mapId: 'parent' });
     const child = firingSim([{ opcode: 'EndSubMission' }]);
-    child.run(MISSION_EVALUATION_TICKS);
+    child.run(LOAD_PASS);
     const saved = parseSaveGame(
       JSON.parse(serializeSaveGame(exportSaveGame(child, { mapId: 'child', parent }))),
     );
@@ -52,7 +52,7 @@ describe('sub-mission transitions', () => {
       ...(sim.missions !== undefined ? { missions: sim.missions } : {}),
     });
     expect(exportSaveGame(restored, { mapId: 'parent' })).toEqual(parent);
-    restored.run(MISSION_EVALUATION_TICKS);
+    restored.run(PASS_TICKS - LOAD_PASS); // ends on the cadence pass, where a retrigger would show
     expect(restored.events.current().some((e) => e.kind === 'missionSubMission')).toBe(false);
   });
 
@@ -60,7 +60,7 @@ describe('sub-mission transitions', () => {
     const start = { opcode: 'StartSubMission', campaignId: 1, mapId: 2 } as const;
     const end = { opcode: 'EndSubMission' } as const;
     const sim = firingSim(endFirst ? [end, start] : [start, end]);
-    sim.run(MISSION_EVALUATION_TICKS);
+    sim.run(LOAD_PASS);
     expect(sim.events.current()).toContainEqual({
       kind: 'missionSubMission',
       transition: { kind: 'end', mission: 0 },

@@ -16,7 +16,7 @@ import type {
 } from '../../src/systems/missions/index.js';
 import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
-import { FIRST_PASS } from './support.js';
+import { LOAD_PASS, PASS_TICKS } from './support.js';
 
 /**
  * The mission engine: its evaluation cadence, the `successfullif` verdicts, the deactivate-then-execute
@@ -65,49 +65,60 @@ const NO_RESULT: MissionResultOp = { opcode: 'None' };
 describe('the mission system gate', () => {
   it('materializes no state and runs nothing while MissionRules is off', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), missions: { missions: [mission()] } });
-    sim.run(FIRST_PASS + 1);
+    sim.run(MISSION_EVALUATION_TICKS + 1);
     expect(missionStateExists(sim.world)).toBe(false);
   });
 
   it('leaves a world built with no script untouched', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
-    sim.run(FIRST_PASS + 1);
+    sim.run(MISSION_EVALUATION_TICKS + 1);
     expect(missionStateExists(sim.world)).toBe(false);
   });
 
   it('takes the authored active and visible flags as the records it starts from', () => {
+    // A timer the load pass cannot satisfy, so the records are read as authored.
     const sim = missionSim([
-      mission({ active: true, visible: true, goals: [TRUE_GOAL] }),
+      mission({ active: true, visible: true, goals: [{ opcode: 'TimeGone', seconds: 999 }] }),
       mission({ active: false }),
     ]);
-    sim.run(1);
+    sim.run(LOAD_PASS);
     expect(records(sim).map((r) => [r.active, r.visible])).toEqual([
       [true, true],
       [false, false],
     ]);
     // An authored-active mission counts the tick its records appear as its activation.
-    expect(records(sim)[0]?.activationTick).toBe(1);
+    expect(records(sim)[0]?.activationTick).toBe(LOAD_PASS);
   });
 });
 
 describe('the evaluation cadence', () => {
-  it('fires nothing between two multiples of the cadence', () => {
+  it('runs the load pass on the tick the script is enabled', () => {
     const sim = missionSim([mission({ goals: [TRUE_GOAL], results: [{ opcode: 'Exit' }] })]);
-    sim.run(FIRST_PASS - 1);
+    sim.run(LOAD_PASS);
+    expect(records(sim)[0]?.active).toBe(false);
+    expect(eventsOfKind(sim, 'missionExit')).toEqual([{ kind: 'missionExit', mission: 0 }]);
+  });
+
+  it('fires nothing between the load pass and the first multiple of the cadence', () => {
+    // One second: held from tick 13 on, so only the cadence pass at 36 can fire it.
+    const sim = missionSim([
+      mission({ goals: [{ opcode: 'TimeGone', seconds: 1 }], results: [{ opcode: 'Exit' }] }),
+    ]);
+    sim.run(MISSION_EVALUATION_TICKS - 1);
     expect(records(sim)[0]?.active).toBe(true);
     sim.step();
-    expect(sim.tick).toBe(FIRST_PASS);
+    expect(sim.tick).toBe(MISSION_EVALUATION_TICKS);
     expect(records(sim)[0]?.active).toBe(false);
     expect(eventsOfKind(sim, 'missionExit')).toEqual([{ kind: 'missionExit', mission: 0 }]);
   });
 
   it('stops touching the world once no mission is active', () => {
     const sim = missionSim([mission({ goals: [TRUE_GOAL] })]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[0]?.active).toBe(false);
     const settled = sim.world.mutationVersion;
-    sim.run(FIRST_PASS * 3);
+    sim.run(PASS_TICKS * 3);
     // A finished script must not re-dirty the world every three seconds: nothing derived from it
     // would ever stay cached.
     expect(sim.world.mutationVersion).toBe(settled);
@@ -137,7 +148,7 @@ describe('the successfullif rules', () => {
     ['an unknown rule always holds', 7, [unheld, unheld], true],
   ])('judges %s', (_label, successfullIf, goals, fires) => {
     const sim = missionSim([mission({ successfullIf, goals })]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[0]?.evaluated).toBe(fires);
   });
 
@@ -148,7 +159,7 @@ describe('the successfullif rules', () => {
     ['none', SUCCESSFUL_IF.none, true],
   ])('holds a goalless mission under %s', (_label, successfullIf, fires) => {
     const sim = missionSim([mission({ successfullIf, goals: [] })]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[0]?.evaluated).toBe(fires);
   });
 });
@@ -160,10 +171,10 @@ describe('activation', () => {
       mission({ goals: [TRUE_GOAL], results: [{ opcode: 'ActivateMission', missionIndex: 1 }] }),
       mission({ active: false, goals: [{ opcode: 'TimeGone', seconds: 60 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const activated = records(sim)[1]?.activationTick;
-    expect(activated).toBe(FIRST_PASS);
-    sim.run(FIRST_PASS * 3);
+    expect(activated).toBe(LOAD_PASS);
+    sim.run(PASS_TICKS * 3);
     // Mission 0 keeps firing, but mission 1 was already active, so its clock never restarted.
     expect(records(sim)[1]?.activationTick).toBe(activated);
   });
@@ -175,11 +186,11 @@ describe('activation', () => {
         results: [{ opcode: 'ActivateMission', missionIndex: 0 }],
       }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     // Deactivate-then-execute: the mission's own result re-activated it, so it is active again and
-    // its clock restarted on this pass.
+    // its clock restarted on the pass that fired it.
     expect(records(sim)[0]?.active).toBe(true);
-    expect(records(sim)[0]?.activationTick).toBe(FIRST_PASS);
+    expect(records(sim)[0]?.activationTick).toBe(PASS_TICKS);
   });
 
   it('clears every active flag on DisableAll', () => {
@@ -188,7 +199,7 @@ describe('activation', () => {
       mission({ active: true, goals: [{ opcode: 'TimeGone', seconds: 999 }] }),
       mission({ active: true, goals: [{ opcode: 'TimeGone', seconds: 999 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim).map((r) => r.active)).toEqual([false, false, false]);
   });
 
@@ -197,7 +208,7 @@ describe('activation', () => {
       mission({ goals: [TRUE_GOAL], results: [{ opcode: 'SetVisible', missionIndex: 1, flag: true }] }),
       mission({ active: false, visible: false }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[1]?.visible).toBe(true);
   });
 });
@@ -208,7 +219,7 @@ describe('the mission-reading goals', () => {
       mission({ goals: [TRUE_GOAL], results: [NO_RESULT] }),
       mission({ goals: [{ opcode: 'IsMissionDone', missionIndex: 0 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     // Mission 0 fired and deactivated on this pass; mission 1 read its flags in the same pass.
     expect(records(sim)[0]?.active).toBe(false);
     expect(records(sim)[1]?.evaluated).toBe(true);
@@ -219,7 +230,7 @@ describe('the mission-reading goals', () => {
       mission({ active: false, successfullIf: SUCCESSFUL_IF.none, goals: [TRUE_GOAL] }),
       mission({ goals: [{ opcode: 'IsMissionDone', missionIndex: 0 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     // Mission 0 never ran, so its goal flag is still false and its "no goal holds" rule is met.
     expect(records(sim)[1]?.evaluated).toBe(true);
   });
@@ -229,7 +240,7 @@ describe('the mission-reading goals', () => {
       mission({ active: false, goals: [TRUE_GOAL], results: [{ opcode: 'Exit' }] }),
       mission({ goals: [{ opcode: 'CheckMission', missionIndex: 0 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[1]?.evaluated).toBe(true);
     // The probe stored mission 0's verdict but ran none of its results.
     expect(records(sim)[0]?.evaluated).toBe(true);
@@ -241,7 +252,7 @@ describe('the mission-reading goals', () => {
       mission({ goals: [{ opcode: 'CheckMission', missionIndex: 1 }] }),
       mission({ goals: [{ opcode: 'CheckMission', missionIndex: 0 }] }),
     ]);
-    expect(() => sim.run(FIRST_PASS)).not.toThrow();
+    expect(() => sim.run(LOAD_PASS)).not.toThrow();
   });
 
   it('reads IfMissionIsActive off the live flag', () => {
@@ -249,7 +260,7 @@ describe('the mission-reading goals', () => {
       mission({ active: false }),
       mission({ goals: [{ opcode: 'IfMissionIsActive', missionIndex: 0 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[1]?.evaluated).toBe(false);
   });
 });
@@ -262,7 +273,7 @@ describe('RandomTimeGone', () => {
       return runUntil(sim, 2000, (s) => records(s)[0]?.active === false);
     });
     for (const fired of fireTicks) {
-      // Quantised to the cadence, and counted from the tick-1 activation.
+      // Quantised to the cadence, and counted from the load-pass activation.
       expect(fired % MISSION_EVALUATION_TICKS).toBe(0);
       expect(fired).toBeGreaterThanOrEqual((seconds / 2) * TICKS_PER_SECOND);
       expect(fired).toBeLessThan(seconds * TICKS_PER_SECOND + MISSION_EVALUATION_TICKS + 1);
@@ -272,7 +283,7 @@ describe('RandomTimeGone', () => {
 
   it('fires at once for a span too short to draw from', () => {
     const sim = missionSim([mission({ goals: [{ opcode: 'RandomTimeGone', seconds: 1 }] })]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[0]?.active).toBe(false);
   });
 
@@ -289,7 +300,7 @@ describe('RandomTimeGone', () => {
       }),
       mission({ active: false }),
     ]);
-    sim.run(FIRST_PASS * 4);
+    sim.run(PASS_TICKS * 4);
     expect(records(sim)[0]?.active).toBe(true); // the second goal never held, so it never fired
     const drawn = new Set<number>();
     for (let pass = 0; pass < 6; pass++) {
@@ -322,12 +333,12 @@ describe('an opcode this build cannot run', () => {
         results: [{ opcode: 'Exit' }],
       }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
       { kind: 'missionUnsupported', mission: 0, opcode: 'BuildVehicles' },
     ]);
     expect(records(sim)[0]?.active).toBe(true);
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([]);
   });
 
@@ -338,7 +349,7 @@ describe('an opcode this build cannot run', () => {
         results: [{ opcode: 'RemoveVehicles', vehicleId: 1 }, { opcode: 'Exit' }],
       }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
       { kind: 'missionUnsupported', mission: 0, opcode: 'RemoveVehicles' },
     ]);
@@ -363,7 +374,7 @@ describe('unavailable goal verdicts', () => {
     [SUCCESSFUL_IF.all, [unknown, TRUE_GOAL], false],
   ])('only fires a rule when its known goals establish success (%s)', (successfullIf, goals, fires) => {
     const sim = missionSim([mission({ successfullIf, goals, results: [{ opcode: 'Exit' }] })]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionExit')).toHaveLength(fires ? 1 : 0);
     expect(records(sim)[0]?.unknownGoals).toEqual([0]);
   });
@@ -373,7 +384,7 @@ describe('unavailable goal verdicts', () => {
       mission({ active: false, goals: [unknown] }),
       mission({ successfullIf: SUCCESSFUL_IF.none, goals: [{ opcode: 'CheckMission', missionIndex: 0 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[1]?.active).toBe(true);
     expect(records(sim)[1]?.unknownGoals).toEqual([0]);
   });
@@ -383,7 +394,7 @@ describe('unavailable goal verdicts', () => {
       mission({ active: false, goals: [unknown, falseGoal] }),
       mission({ successfullIf: SUCCESSFUL_IF.none, goals: [{ opcode: 'CheckMission', missionIndex: 0 }] }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[1]?.active).toBe(false);
     expect(records(sim)[1]?.unknownGoals).toBeUndefined();
   });
@@ -395,15 +406,15 @@ describe('unavailable goal verdicts', () => {
       mission({ successfullIf: SUCCESSFUL_IF.none, goals: [{ opcode: 'IsMissionDone', missionIndex: 0 }] }),
     ];
     const sim = missionSim(definitions);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[2]?.active).toBe(true);
     const save = parseSaveGame(JSON.parse(JSON.stringify(exportSaveGame(sim))));
     const restored = restoreSimulation(save, {
       content: testContent(),
       missions: { missions: definitions },
     });
-    sim.run(FIRST_PASS);
-    restored.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
+    restored.run(PASS_TICKS);
     expect(records(restored)[2]?.active).toBe(true);
     expect(restored.hashState()).toBe(sim.hashState());
   });
@@ -415,7 +426,7 @@ describe('unavailable goal verdicts', () => {
         goals: [{ opcode: 'CheckMission', missionIndex: 0 }],
       }),
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(records(sim)[0]?.active).toBe(true);
     expect(records(sim)[0]?.unknownGoals).toEqual([0]);
   });

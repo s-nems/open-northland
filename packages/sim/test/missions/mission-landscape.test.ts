@@ -15,7 +15,7 @@ import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { fresh, map, POINT, terrainOf, WALL } from './landscape-support.js';
-import { FIRST_PASS, HUT, houseContent, missionSim } from './support.js';
+import { HUT, houseContent, LOAD_PASS, missionSim } from './support.js';
 
 describe('script landscape state and blockers', () => {
   it('does not invalidate collision views for tints or mutate repeated identical writes', () => {
@@ -182,7 +182,7 @@ describe('script landscape state and blockers', () => {
       houseContent(),
       map(),
     );
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.events.current().filter((event) => event.kind === 'missionExit')).toEqual([
       { kind: 'missionExit', mission: 1 },
     ]);
@@ -267,7 +267,7 @@ describe('script landscape state and blockers', () => {
       houseContent(),
       map(),
     );
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.events.current().some((e) => e.kind === 'missionExit')).toBe(true);
   });
 });

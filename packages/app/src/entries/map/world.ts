@@ -108,7 +108,20 @@ export function buildMapWorld(options: MapWorldOptions): MapWorld {
   applySessionRules(sim, options);
   const { harvestablePlacements, pooledPlacements } = spawnHarvestables(sim, options);
   sim.step();
+  enableScript(sim, options);
   return { sim, kind, harvestablePlacements, pooledPlacements };
+}
+
+/** Whether the world runs its map's `[MissionData]` script; `?missions=off` keeps it off. */
+function scriptedWorld(options: MapWorldOptions): boolean {
+  return options.script?.missions !== undefined && options.missions !== false;
+}
+
+/** Enqueued after the boot step, so the script's load pass runs on the first live tick, where the
+ *  frame loop collects its opening briefing; a boot tick's events reach nobody. */
+function enableScript(sim: Simulation, options: MapWorldOptions): void {
+  const enabled = options.missions ?? (scriptedWorld(options) ? true : null);
+  if (enabled !== null) sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled });
 }
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
@@ -149,11 +162,11 @@ function runWorld(
 }
 
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
-  const scripted = options.script?.missions !== undefined && options.missions !== false;
+  const scripted = scriptedWorld(options);
   applySessionRuleOverrides(sim, {
-    ...options,
-    missions: options.missions ?? (scripted ? true : null),
     fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null),
+    progression: options.progression,
+    needs: options.needs,
   });
   for (const players of options.sharedVision ?? []) sim.enqueueSetup({ kind: 'setSharedVision', players });
   const roster = options.playerRoster === undefined ? null : { players: options.playerRoster };

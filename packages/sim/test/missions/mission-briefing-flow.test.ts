@@ -2,12 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { BRIEFING_HISTORY_LIMIT, deliverMissionBriefing, FOG_MODE } from '../../src/components/index.js';
 import { playerCommand } from '../../src/index.js';
 import { type MissionDefinition, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
-import { FIRST_PASS, missionSim, POINT, roundTrip, spawn, stamped } from './support.js';
+import {
+  loadPassAfter,
+  missionSim,
+  PASS_TICKS,
+  POINT,
+  roundTrip,
+  scriptedSim,
+  spawn,
+  stamped,
+} from './support.js';
 
 const OWNER = 0;
 const HUMAN = 7;
 const PAGE = 500;
 const STRING = 21;
+/** The tick the fixture's spawns land and the fog mode takes effect; the script is enabled after it. */
+const FOG_SETTLED = 1;
 
 function mission(definition: Partial<MissionDefinition>): MissionDefinition {
   return {
@@ -46,7 +57,7 @@ describe('briefing delivery and persistence', () => {
   it('opens a contact briefing after exploration and exposes the next objective across restore', () => {
     const rival = 1;
     const destination = { hx: 44, hy: POINT.hy };
-    const sim = missionSim([
+    const sim = scriptedSim([
       mission({
         goals: [{ opcode: 'PlayerSeen', player: OWNER, otherPlayer: rival }],
         results: [
@@ -62,7 +73,7 @@ describe('briefing delivery and persistence', () => {
     sim.enqueueSetup({ kind: 'setDiplomacy', from: rival, to: OWNER, state: 'friend' });
     spawn(sim, { player: OWNER, missionId: HUMAN });
     spawn(sim, { player: rival, at: destination });
-    sim.run(FIRST_PASS);
+    loadPassAfter(sim, FOG_SETTLED);
     expect(sim.missionBriefingHistory()).toEqual([]);
     expect(sim.missionStatus()[1]?.visible).toBe(false);
     const restored = roundTrip(sim);
@@ -88,7 +99,7 @@ describe('briefing delivery and persistence', () => {
     expect(sim.missionStatus()[1]).toMatchObject({ visible: true, active: true, done: false });
     expect(restored.hashState()).toBe(sim.hashState());
     expect(roundTrip(sim).missionBriefingHistory()).toEqual([PAGE]);
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(sim.missionStatus()[1]?.done).toBe(true);
   });
 });

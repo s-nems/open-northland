@@ -5,7 +5,7 @@ import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/com
 import { ctxOf } from '../fixtures/context.js';
 import {
   CARPENTER,
-  FIRST_PASS,
+  goalMission,
   goalSim,
   HEADQUARTERS,
   HUT,
@@ -13,8 +13,11 @@ import {
   houseContent,
   kill,
   missionSim,
+  PASS_TICKS,
   POINT,
+  runLoadPass,
   SOLDIER,
+  scriptedSim,
   spawn,
   stamped,
   VIKING,
@@ -29,6 +32,8 @@ import {
 
 /** The id a counting goal is told to leave alone. */
 const UNTAGGED = 12345;
+/** One tick in, a setup spawn stands with the id its line stamped. */
+const SPAWNED = 1;
 
 const NO_TALLY = { humansDied: 0, soldiersDied: 0, humansKilled: 0 };
 
@@ -55,7 +60,7 @@ describe('the death tallies', () => {
       },
     ]);
     spawn(sim, { player: 2, missionId: 1 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(missionObjects(sim.world, 1)).toHaveLength(0);
     expect(playerTally(sim.world, 2)).toEqual(NO_TALLY);
   });
@@ -111,13 +116,13 @@ describe('the goals that read a tally', () => {
     const sim = goalSim({ opcode: 'NumberOfHumansDied', player: 2, amount: 2 });
     spawn(sim, { player: 2, missionId: 1 });
     spawn(sim, { player: 2, missionId: 2 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     kill(sim, stamped(sim, 1));
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false); // one short
     kill(sim, stamped(sim, 2));
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
@@ -127,10 +132,10 @@ describe('the goals that read a tally', () => {
     spawn(sim, { player: 2, job: SOLDIER, missionId: 2 });
     sim.run(2);
     kill(sim, stamped(sim, 1));
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false); // a civilian death is not a soldier's
     kill(sim, stamped(sim, 2));
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
@@ -138,7 +143,7 @@ describe('the goals that read a tally', () => {
     const sim = goalSim({ opcode: 'NumberOfHumansKilled', player: 3, amount: 1 });
     spawn(sim, { player: 2, missionId: 1 });
     spawn(sim, { player: 3, missionId: 2, at: { hx: POINT.hx + 1, hy: POINT.hy } });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     resolveCombatHit(
       sim.world,
@@ -149,7 +154,7 @@ describe('the goals that read a tally', () => {
       [],
       'melee',
     );
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 });
@@ -158,10 +163,10 @@ describe('the goals that count what is standing', () => {
   it('holds while the id names living humans and turns once they are gone', () => {
     const sim = goalSim({ opcode: 'HumansDied', humanId: 1 });
     spawn(sim, { player: 2, missionId: 1 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     kill(sim, stamped(sim, 1));
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
@@ -176,7 +181,7 @@ describe('the goals that count what is standing', () => {
       owner: 2,
       missionId: 5,
     });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     // The id names a house only, so no animal carries it and the goal already holds.
     expect(holds(sim)).toBe(true);
   });
@@ -184,44 +189,44 @@ describe('the goals that count what is standing', () => {
   it('counts a player`s whole population', () => {
     const sim = goalSim({ opcode: 'Population', player: 2, amount: 2 });
     spawn(sim, { player: 2 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     spawn(sim, { player: 2 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
   it('needs one match even for an amount of zero', () => {
     const empty = goalSim({ opcode: 'Population', player: 2, amount: 0 });
-    empty.run(FIRST_PASS);
+    empty.run(PASS_TICKS);
     expect(holds(empty)).toBe(false);
     const one = goalSim({ opcode: 'Population', player: 2, amount: 0 });
     spawn(one, { player: 2 });
-    one.run(FIRST_PASS);
+    one.run(PASS_TICKS);
     expect(holds(one)).toBe(true);
     const soldiers = goalSim({ opcode: 'NumberOfSoldiers', player: 2, amount: 0 });
     spawn(soldiers, { player: 2 });
-    soldiers.run(FIRST_PASS);
+    soldiers.run(PASS_TICKS);
     expect(holds(soldiers)).toBe(false);
   });
 
   it('counts only the soldiers for NumberOfSoldiers', () => {
     const sim = goalSim({ opcode: 'NumberOfSoldiers', player: 2, amount: 1 });
     spawn(sim, { player: 2 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     spawn(sim, { player: 2, job: SOLDIER });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
   it('reads the job of the humans an id names', () => {
     const sim = goalSim({ opcode: 'CheckHumanJob', humanId: 1, job: SOLDIER });
     spawn(sim, { player: 2, missionId: 1 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     spawn(sim, { player: 2, job: SOLDIER, missionId: 1 });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
@@ -237,7 +242,7 @@ describe('the goals that count what is standing', () => {
     });
     // A job id outside the age classes: the fixture reuses ids 1..4 for adult trades.
     spawn(sim, { player: 2, job: SOLDIER, at: { hx: POINT.hx + 3, hy: POINT.hy } });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     spawn(sim, {
       player: 2,
@@ -245,7 +250,7 @@ describe('the goals that count what is standing', () => {
       at: { hx: POINT.hx + 4, hy: POINT.hy },
       home: { x: POINT.hx, y: POINT.hy },
     });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 
@@ -260,14 +265,14 @@ describe('the goals that count what is standing', () => {
       owner: 2,
     });
     spawn(sim, { player: 2, at: { hx: POINT.hx + 2, hy: POINT.hy } });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     spawn(sim, {
       player: 2,
       at: { hx: POINT.hx + 3, hy: POINT.hy },
       workplace: { x: POINT.hx, y: POINT.hy },
     });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
   });
 });
@@ -278,7 +283,7 @@ describe('the counting goals that tag what they counted', () => {
     spawn(sim, { player: 2, job: CARPENTER });
     spawn(sim, { player: 2, job: CARPENTER });
     spawn(sim, { player: 2, job: WOODCUTTER });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, 42)).toHaveLength(2);
   });
@@ -286,17 +291,19 @@ describe('the counting goals that tag what they counted', () => {
   it('leaves them unstamped when the goal names the untagged id', () => {
     const sim = goalSim({ opcode: 'BuildHumans', player: 2, job: CARPENTER, amount: 1, humanId: UNTAGGED });
     spawn(sim, { player: 2, job: CARPENTER });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, UNTAGGED)).toHaveLength(0);
   });
 
   it('clears the ids they carried when the goal names id 0', () => {
-    const sim = goalSim({ opcode: 'BuildHumans', player: 2, job: CARPENTER, amount: 1, humanId: 0 });
+    const sim = scriptedSim([
+      goalMission({ opcode: 'BuildHumans', player: 2, job: CARPENTER, amount: 1, humanId: 0 }),
+    ]);
     spawn(sim, { player: 2, job: CARPENTER, missionId: 7 });
-    sim.run(1);
+    sim.run(SPAWNED);
     expect(missionObjects(sim.world, 7)).toHaveLength(1);
-    sim.run(FIRST_PASS);
+    runLoadPass(sim);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, 7)).toHaveLength(0);
   });
@@ -318,7 +325,7 @@ describe('the counting goals that tag what they counted', () => {
       y: POINT.hy,
       owner: 3,
     });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(false);
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -328,7 +335,7 @@ describe('the counting goals that tag what they counted', () => {
       y: POINT.hy,
       owner: 2,
     });
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, 43)).toHaveLength(1);
   });

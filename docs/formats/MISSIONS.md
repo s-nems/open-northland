@@ -127,7 +127,9 @@ All of this section is a reading unless marked otherwise.
   At the original's 12 logic ticks per second that is every 3 seconds. `TimeGone n` holds once the
   current tick reaches `activationTick + 12 * n`. The tick counter is reset to 1 before the script
   loads and incremented before the callback, so the first pass runs at tick 36, never on the load
-  tick; missions active at load carry activation tick 1.
+  tick; missions active at load carry activation tick 1. Here: a load pass also runs on the tick the
+  script is enabled, the map's first live tick, so the opening briefing shows as the map opens
+  instead of three seconds in (a deliberate deviation); the cadence passes are unchanged.
 - A pass clears the pending sub-mission flags, then visits missions in index order, skipping inactive
   ones. A result can raise a stop flag (`PlayCutscene` does); the pass ends after that mission. After
   the loop the pending `EndSubMission` returns to the parent map, else a pending `StartSubMission`

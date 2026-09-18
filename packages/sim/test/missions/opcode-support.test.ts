@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { Simulation } from '../../src/index.js';
 import type { MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
-import {
-  MISSION_EVALUATION_TICKS,
-  SUCCESSFUL_IF,
-  SUPPORTED_GOALS,
-  SUPPORTED_RESULTS,
-} from '../../src/systems/missions/index.js';
+import { SUCCESSFUL_IF, SUPPORTED_GOALS, SUPPORTED_RESULTS } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
+import { LOAD_PASS } from './support.js';
 
 /**
  * The published support lists against the evaluators themselves: the coverage report reads the lists,
@@ -343,7 +339,7 @@ function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): st
     },
   });
   sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
-  sim.run(MISSION_EVALUATION_TICKS);
+  sim.run(LOAD_PASS);
   return sim.events.current().flatMap((e) => (e.kind === 'missionUnsupported' ? [e.opcode] : []));
 }
 

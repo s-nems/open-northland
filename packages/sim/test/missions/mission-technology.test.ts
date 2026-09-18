@@ -10,7 +10,7 @@ import { exportSaveGame, restoreSimulation, Simulation } from '../../src/index.j
 import { testContent } from '../fixtures/content.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
-import { FIRST_PASS, firingSim } from './support.js';
+import { firingSim, LOAD_PASS } from './support.js';
 
 const PLAYER = 0;
 const RIVAL = 1;
@@ -50,7 +50,7 @@ it('AllowGood removes a map ban without granting technology, and survives save/l
   const sim = firingSim([{ opcode: 'AllowGood', player: PLAYER, tribe: TRIBE, good: PLANK }], content());
   setMapPermission(sim.world, { player: PLAYER, tribe: TRIBE, kind: 'good', typeId: PLANK, allowed: false });
   expect(sim.unlockStatus('good', PLANK, TRIBE, PLAYER).allowed).toBe(false);
-  sim.run(FIRST_PASS);
+  sim.run(LOAD_PASS);
   expect(sim.unlockStatus('good', PLANK, TRIBE, PLAYER)).toMatchObject({ allowed: true, enabled: false });
   const restored = restoreSimulation(exportSaveGame(sim), {
     content: sim.content,
@@ -65,7 +65,7 @@ it('AllowGood removes a map ban without granting technology, and survives save/l
 it('EnableGood leaves a map ban in place', () => {
   const sim = firingSim([{ opcode: 'EnableGood', player: PLAYER, tribe: TRIBE, good: PLANK }], content());
   setMapPermission(sim.world, { player: PLAYER, tribe: TRIBE, kind: 'good', typeId: PLANK, allowed: false });
-  sim.run(FIRST_PASS);
+  sim.run(LOAD_PASS);
   expect(sim.unlockStatus('good', PLANK, TRIBE, PLAYER)).toMatchObject({ allowed: false, enabled: false });
 });
 

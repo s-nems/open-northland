@@ -6,7 +6,7 @@ import { createChest } from '../../src/systems/chests/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
-import { FIRST_PASS, failedResultsUntil, holds, missionSim, POINT } from './support.js';
+import { failedResultsUntil, holds, LOAD_PASS, missionSim, POINT } from './support.js';
 
 const WOODEN_CHEST = 85;
 
@@ -48,7 +48,7 @@ describe('mission chests', () => {
     ];
     const map = chestMap();
     const sim = missionSim(missions, testContent(), map);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
 
     const [chest] = [...sim.world.query(Chest, LandscapeResource, Position)];
     if (chest === undefined) throw new Error('script did not place its chest');
@@ -84,7 +84,7 @@ describe('mission chests', () => {
       map,
     );
     createChest(sim.world, sim.content, { kind: 'wooden', contents: 20, x: POINT.hx, y: POINT.hy });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
 
     const positions = [...sim.world.query(Chest, Position)].map((entity) => {
       const p = sim.world.get(entity, Position);
@@ -107,8 +107,8 @@ describe('mission chests', () => {
     ];
     const first = missionSim(missions, testContent(), chestMap());
     const second = missionSim(missions, testContent(), chestMap());
-    first.run(FIRST_PASS);
-    second.run(FIRST_PASS);
+    first.run(LOAD_PASS);
+    second.run(LOAD_PASS);
 
     expect(first.hashState()).toBe(second.hashState());
     const [chest] = [...first.world.query(Chest, LandscapeResource, Position)];
@@ -142,7 +142,7 @@ describe('mission chests', () => {
       x: POINT.hx,
       y: POINT.hy,
     });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(holds(sim)).toBe(true);
     const opened = missionSim(
       [
@@ -165,7 +165,7 @@ describe('mission chests', () => {
     });
     opened.world.remove(openedChest, Chest);
     opened.world.add(openedChest, OpenedChest, {});
-    opened.run(FIRST_PASS);
+    opened.run(LOAD_PASS);
     expect(holds(opened)).toBe(false);
 
     const empty = missionSim(
@@ -181,7 +181,7 @@ describe('mission chests', () => {
       testContent(),
       chestMap(),
     );
-    expect(failedResultsUntil(empty, FIRST_PASS)).toEqual([]);
+    expect(failedResultsUntil(empty, LOAD_PASS)).toEqual([]);
     expect([...empty.world.query(Chest)]).toEqual([]);
 
     const invalid = missionSim(
@@ -197,6 +197,6 @@ describe('mission chests', () => {
       testContent(),
       chestMap(),
     );
-    expect(failedResultsUntil(invalid, FIRST_PASS)).toEqual(['SetRandomChestOnRandomPos']);
+    expect(failedResultsUntil(invalid, LOAD_PASS)).toEqual(['SetRandomChestOnRandomPos']);
   });
 });

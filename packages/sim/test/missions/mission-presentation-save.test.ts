@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MissionPresentation, retainMissionPresentation } from '../../src/components/mission-presentation.js';
 import { Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-import { FIRST_PASS, firingSim, roundTrip } from './support.js';
+import { firingSim, LOAD_PASS, roundTrip } from './support.js';
 
 const POINT = { hx: 12, hy: 14 };
 
@@ -22,7 +22,7 @@ describe('persistent mission presentation', () => {
       { opcode: 'SetMapAreaMarkerMagic', point: POINT, range: 2, index: 1, flag: true },
       { opcode: 'SetWeather', point: POINT, range: 5, amount: 25, flag: false },
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const before = sim.missionPresentation();
     expect(before.guiMarkers).toEqual([{ marker: 3, point: POINT }]);
     expect(before.groundMarkers).toHaveLength(13);

@@ -10,7 +10,8 @@ sceneAcceptance(tributeScene, import.meta.url);
 
 const { Building, Stockpile } = components;
 const NEIGHBOUR_PLAYER = 1;
-const FIRST_PASS = systems.MISSION_EVALUATION_TICKS;
+/** The scene enables its script from tick 0, so the load pass opens the tributes on tick 1. */
+const LOAD_PASS = 1;
 
 function warehousesHold(sim: Simulation, good: number): number {
   let total = 0;
@@ -25,14 +26,14 @@ function warehousesHold(sim: Simulation, good: number): number {
  *  the neighbour friendly. */
 it('paying the timber tribute empties the warehouse of it and buys the friendship', () => {
   const sim = createSceneSim(tributeScene);
-  sim.run(FIRST_PASS);
+  sim.run(LOAD_PASS);
   const before = sim.openTributes(HUMAN_PLAYER).find((t) => t.slot === TIMBER_TRIBUTE);
   expect(before?.payable).toBe(true);
 
   sim.enqueue(
     playerCommand(HUMAN_PLAYER, { kind: 'payTribute', player: HUMAN_PLAYER, slot: TIMBER_TRIBUTE }),
   );
-  sim.run(FIRST_PASS);
+  sim.run(systems.MISSION_EVALUATION_TICKS);
 
   // The demand left the warehouses as a whole: the wood from the one that held it, the stone from
   // the first in id order, which also held it all.

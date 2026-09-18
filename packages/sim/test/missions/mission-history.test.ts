@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
-import { FIRST_PASS, missionSim, roundTrip } from './support.js';
+import { LOAD_PASS, missionSim, PASS_TICKS, roundTrip } from './support.js';
 
 describe('saved mission execution history', () => {
   it('counts repeated executions and continues the same history after restore', () => {
@@ -14,19 +14,19 @@ describe('saved mission execution history', () => {
       },
     ]);
     expect(sim.missionStatus()[0]?.fireCount).toBe(0);
-    sim.run(FIRST_PASS * 2);
+    sim.run(PASS_TICKS);
     expect(sim.missionStatus()[0]).toMatchObject({
-      firstFiredTick: FIRST_PASS,
-      lastFiredTick: FIRST_PASS * 2,
+      firstFiredTick: LOAD_PASS,
+      lastFiredTick: PASS_TICKS,
       fireCount: 2,
     });
     const restored = roundTrip(sim);
-    sim.run(FIRST_PASS);
-    restored.run(FIRST_PASS);
+    sim.run(PASS_TICKS);
+    restored.run(PASS_TICKS);
     expect(restored.hashState()).toBe(sim.hashState());
     expect(restored.missionStatus()[0]).toMatchObject({
-      firstFiredTick: FIRST_PASS,
-      lastFiredTick: FIRST_PASS * 3,
+      firstFiredTick: LOAD_PASS,
+      lastFiredTick: PASS_TICKS * 2,
       fireCount: 3,
     });
   });
@@ -42,7 +42,7 @@ describe('saved mission execution history', () => {
       },
       { active: false, visible: false, successfullIf: SUCCESSFUL_IF.all, goals: [], results: [] },
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.missionStatus()[0]?.fireCount).toBe(1);
     expect(sim.missionStatus()[1]).toMatchObject({ done: true, fireCount: 0 });
     expect(sim.missionStatus()[1]?.lastFiredTick).toBeUndefined();

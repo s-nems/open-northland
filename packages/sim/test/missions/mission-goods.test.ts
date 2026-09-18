@@ -8,7 +8,20 @@ import type { MissionGoalOp, MissionResultOp } from '../../src/systems/missions/
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
-import { FIRST_PASS, firingSim, goalSim, HEADQUARTERS, holds, missionSim, POINT, VIKING } from './support.js';
+import {
+  enableMissions,
+  firingMission,
+  firingSim,
+  goalSim,
+  HEADQUARTERS,
+  holds,
+  LOAD_PASS,
+  loadPassAfter,
+  missionSim,
+  POINT,
+  scriptedSim,
+  VIKING,
+} from './support.js';
 
 /**
  * The goods a script hands out and asks about: stock put into named houses, into the player's
@@ -27,7 +40,7 @@ const OWNER = 0;
 const RIVAL = 1;
 const GROUP = 5;
 const OTHER_GROUP = 6;
-/** Two ticks in, every setup command has applied and no pass has run. */
+/** Two ticks in, every setup command has applied; a script enabled then judges the standing houses. */
 const PLACED = 2;
 /** Well outside every range these tests use, on either side of the point. */
 const FAR = { hx: POINT.hx + 12, hy: POINT.hy + 12 };
@@ -108,11 +121,17 @@ function groundTotal(sim: Simulation, good: number): number {
   return groundPiles(sim, good).reduce((sum, p) => sum + p.amount, 0);
 }
 
-/** Run to the first pass, reporting each house's stock of `good` before and after it. */
-function firstPassDelta(sim: Simulation, good: number): { before: number[]; after: number[] } {
+/** A firing world whose script waits for the placements, so {@link loadPassDelta} can read them first. */
+function placedSim(results: readonly MissionResultOp[], content: ContentSet = testContent()): Simulation {
+  return scriptedSim([firingMission(results)], content);
+}
+
+/** Run the load pass over the standing houses, reporting each one's stock of `good` before and after. */
+function loadPassDelta(sim: Simulation, good: number): { before: number[]; after: number[] } {
   sim.run(PLACED);
   const before = houses(sim).map((e) => stock(sim, e, good));
-  sim.run(FIRST_PASS - PLACED);
+  enableMissions(sim);
+  sim.step();
   const after = houses(sim).map((e) => stock(sim, e, good));
   return { before, after };
 }
@@ -128,11 +147,11 @@ function areaOp(
 
 describe('AddGoodsToHouses', () => {
   it('gives every house carrying the id the amount, over its slot capacity, and only those', () => {
-    const sim = firingSim([{ opcode: 'AddGoodsToHouses', objectId: GROUP, good: WOOD, amount: 50 }]);
+    const sim = placedSim([{ opcode: 'AddGoodsToHouses', objectId: GROUP, good: WOOD, amount: 50 }]);
     place(sim, { type: HEADQUARTERS, missionId: GROUP });
     place(sim, { type: SAWMILL, at: FAR, missionId: GROUP });
     place(sim, { type: HEADQUARTERS, at: ELSEWHERE, missionId: OTHER_GROUP });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     expect(after).toEqual([(before[0] ?? 0) + 50, (before[1] ?? 0) + 50, before[2]]);
     expect(after[1]).toBeGreaterThan(SAWMILL_WOOD_CAPACITY); // filled past the slot, as the original's write does
   });
@@ -141,33 +160,33 @@ describe('AddGoodsToHouses', () => {
     const sim = firingSim([{ opcode: 'AddGoodsToHouses', objectId: GROUP, good: PLANK, amount: 5 }]);
     place(sim, { type: HEADQUARTERS, missionId: GROUP });
     place(sim, { type: SAWMILL, at: FAR, missionId: GROUP });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(houses(sim).map((e) => stock(sim, e, PLANK))).toEqual([5, 5]);
   });
 
   it('skips a house whose type has no slot for the good', () => {
     const sim = firingSim([{ opcode: 'AddGoodsToHouses', objectId: GROUP, good: BREAD, amount: 5 }]);
     place(sim, { type: HEADQUARTERS, missionId: GROUP });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(stock(sim, onlyHouse(sim), BREAD)).toBe(0);
   });
 
   it('does nothing for an amount of zero or less', () => {
-    const sim = firingSim([{ opcode: 'AddGoodsToHouses', objectId: GROUP, good: WOOD, amount: -5 }]);
+    const sim = placedSim([{ opcode: 'AddGoodsToHouses', objectId: GROUP, good: WOOD, amount: -5 }]);
     place(sim, { type: HEADQUARTERS, missionId: GROUP });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     expect(after).toEqual(before);
   });
 });
 
 describe('AddGoodsToAnyStock', () => {
   it('fills the player storages to capacity in id order and spills the rest to the next', () => {
-    const sim = firingSim([{ opcode: 'AddGoodsToAnyStock', player: OWNER, good: WOOD, amount: 200 }]);
+    const sim = placedSim([{ opcode: 'AddGoodsToAnyStock', player: OWNER, good: WOOD, amount: 200 }]);
     place(sim, { type: HEADQUARTERS, owner: OWNER });
     place(sim, { type: HEADQUARTERS, at: ELSEWHERE, owner: OWNER });
     place(sim, { type: SAWMILL, at: FAR, owner: OWNER });
     place(sim, { type: HEADQUARTERS, at: FAR_CORNER, owner: RIVAL });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     const spilled = 200 - (HQ_WOOD_CAPACITY - (before[0] ?? 0));
     expect(after).toEqual([HQ_WOOD_CAPACITY, (before[1] ?? 0) + spilled, before[2], before[3]]);
   });
@@ -175,18 +194,18 @@ describe('AddGoodsToAnyStock', () => {
   it('loses what no storage has room for', () => {
     const sim = firingSim([{ opcode: 'AddGoodsToAnyStock', player: OWNER, good: WOOD, amount: 1000 }]);
     place(sim, { type: HEADQUARTERS, owner: OWNER });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(stock(sim, onlyHouse(sim), WOOD)).toBe(HQ_WOOD_CAPACITY);
   });
 
   it('passes an unfinished storage by', () => {
-    const sim = firingSim(
+    const sim = placedSim(
       [{ opcode: 'AddGoodsToAnyStock', player: OWNER, good: WOOD, amount: 10 }],
       shedContent(),
     );
     place(sim, { type: SHED, owner: OWNER, unfinished: true });
     place(sim, { type: SHED, at: ELSEWHERE, owner: OWNER });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     expect(after).toEqual([before[0], (before[1] ?? 0) + 10]);
   });
 });
@@ -195,8 +214,8 @@ describe('AddGoodsToMapArea', () => {
   it('bounds an oversized range to the map and preserves nearest-ring placement', () => {
     const bounded = firingSim([areaOp('AddGoodsToMapArea', 12, 80, false)]);
     const oversized = firingSim([areaOp('AddGoodsToMapArea', 12, 1_000_000_000, false)]);
-    bounded.run(FIRST_PASS);
-    oversized.run(FIRST_PASS);
+    bounded.run(LOAD_PASS);
+    oversized.run(LOAD_PASS);
     expect(groundPiles(oversized, WOOD)).toEqual(groundPiles(bounded, WOOD));
   });
 
@@ -212,13 +231,13 @@ describe('AddGoodsToMapArea', () => {
         player: OWNER,
       },
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(groundTotal(sim, WOOD)).toBe(3);
   });
 
   it('stacks the good on the ground nearest the point first', () => {
     const sim = firingSim([areaOp('AddGoodsToMapArea', 12, 2, false)]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(groundTotal(sim, WOOD)).toBe(12);
     const centre = groundPiles(sim, WOOD).find((p) => p.at.hx === POINT.hx && p.at.hy === POINT.hy);
     expect(centre?.amount).toBe(MAX_GROUND_STACK);
@@ -226,55 +245,55 @@ describe('AddGoodsToMapArea', () => {
 
   it('stops at the range and loses what the area cannot hold', () => {
     const sim = firingSim([areaOp('AddGoodsToMapArea', 9, 0, false)]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(groundTotal(sim, WOOD)).toBe(MAX_GROUND_STACK);
   });
 
   it('lays nothing for an amount of zero', () => {
     const sim = firingSim([areaOp('AddGoodsToMapArea', 0, 2, false)]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(groundPiles(sim, WOOD)).toEqual([]);
   });
 
   it('fills the player house standing there before the ground when the flag says so', () => {
-    const sim = firingSim([areaOp('AddGoodsToMapArea', 200, 6, true)]);
+    const sim = placedSim([areaOp('AddGoodsToMapArea', 200, 6, true)]);
     place(sim, { type: HEADQUARTERS, owner: OWNER });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     expect(after[0]).toBe(HQ_WOOD_CAPACITY);
     expect(groundTotal(sim, WOOD)).toBe(200 - (HQ_WOOD_CAPACITY - (before[0] ?? 0)));
   });
 
   it('leaves the house alone without the flag, and another player house with it', () => {
-    const without = firingSim([areaOp('AddGoodsToMapArea', 20, 6, false)]);
+    const without = placedSim([areaOp('AddGoodsToMapArea', 20, 6, false)]);
     place(without, { type: HEADQUARTERS, owner: OWNER });
-    const { before, after } = firstPassDelta(without, WOOD);
+    const { before, after } = loadPassDelta(without, WOOD);
     expect(after).toEqual(before);
     expect(groundTotal(without, WOOD)).toBe(20);
 
-    const rival = firingSim([areaOp('AddGoodsToMapArea', 20, 6, true)]);
+    const rival = placedSim([areaOp('AddGoodsToMapArea', 20, 6, true)]);
     place(rival, { type: HEADQUARTERS, owner: RIVAL });
-    const delta = firstPassDelta(rival, WOOD);
+    const delta = loadPassDelta(rival, WOOD);
     expect(delta.after).toEqual(delta.before);
   });
 });
 
 describe('RemoveGoodsFromMapArea', () => {
   function seeded(remove: MissionResultOp, house?: HouseSpec): Simulation {
-    const sim = firingSim([areaOp('AddGoodsToMapArea', 12, 2, false), remove]);
+    const sim = placedSim([areaOp('AddGoodsToMapArea', 12, 2, false), remove]);
     if (house !== undefined) place(sim, house);
     return sim;
   }
 
   it('picks the good up off the ground and reaps the heaps it empties', () => {
     const sim = seeded(areaOp('RemoveGoodsFromMapArea', 7, 2, false));
-    sim.run(FIRST_PASS);
+    loadPassAfter(sim, PLACED);
     expect(groundTotal(sim, WOOD)).toBe(5);
     expect(groundPiles(sim, WOOD).every((p) => p.amount > 0)).toBe(true);
   });
 
   it('takes the player house own stock first when the flag says so', () => {
     const sim = seeded(areaOp('RemoveGoodsFromMapArea', 15, 2, true), { type: HEADQUARTERS, owner: OWNER });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     const held = before[0] ?? 0;
     expect(after[0]).toBe(0);
     expect(groundTotal(sim, WOOD)).toBe(12 - (15 - held));
@@ -282,7 +301,7 @@ describe('RemoveGoodsFromMapArea', () => {
 
   it('leaves another player house alone, flag or not', () => {
     const sim = seeded(areaOp('RemoveGoodsFromMapArea', 15, 2, true), { type: HEADQUARTERS, owner: RIVAL });
-    const { before, after } = firstPassDelta(sim, WOOD);
+    const { before, after } = loadPassDelta(sim, WOOD);
     expect(after).toEqual(before);
     expect(groundTotal(sim, WOOD)).toBe(0);
   });
@@ -293,7 +312,7 @@ describe('RemoveGoodsFromMapArea', () => {
       owner: OWNER,
       goods: [{ good: WOOD, amount: SAWMILL_WOOD_CAPACITY }],
     });
-    sim.run(FIRST_PASS);
+    loadPassAfter(sim, PLACED);
     expect(stock(sim, onlyHouse(sim), WOOD)).toBe(SAWMILL_WOOD_CAPACITY);
     expect(groundTotal(sim, WOOD)).toBe(0);
   });
@@ -304,25 +323,25 @@ describe('the goods goals', () => {
     const enough = goalSim({ opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 30 });
     place(enough, { type: HEADQUARTERS, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
     place(enough, { type: SAWMILL, at: FAR, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
-    enough.run(FIRST_PASS);
+    enough.run(LOAD_PASS);
     expect(holds(enough)).toBe(true);
 
     const short = goalSim({ opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 31 });
     place(short, { type: HEADQUARTERS, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
     place(short, { type: SAWMILL, at: FAR, missionId: GROUP, goods: [{ good: WOOD, amount: 10 }] });
-    short.run(FIRST_PASS);
+    short.run(LOAD_PASS);
     expect(holds(short)).toBe(false);
   });
 
   it('GoodsGlobal counts a workplace product but not its inputs', () => {
     const product = goalSim({ opcode: 'GoodsGlobal', player: OWNER, good: PLANK, amount: 5 });
     place(product, { type: SAWMILL, owner: OWNER, goods: [{ good: PLANK, amount: 5 }] });
-    product.run(FIRST_PASS);
+    product.run(LOAD_PASS);
     expect(holds(product)).toBe(true);
 
     const input = goalSim({ opcode: 'GoodsGlobal', player: OWNER, good: WOOD, amount: 5 });
     place(input, { type: SAWMILL, owner: OWNER, goods: [{ good: WOOD, amount: SAWMILL_WOOD_CAPACITY }] });
-    input.run(FIRST_PASS);
+    input.run(LOAD_PASS);
     expect(holds(input)).toBe(false);
   });
 
@@ -332,7 +351,7 @@ describe('the goods goals', () => {
       { opcode: 'NumberOfGoodsInHousesInArea', player: OWNER, good: WOOD, amount: 0, point: POINT, range: 3 },
     ] as const) {
       const sim = goalSim(goal);
-      sim.run(FIRST_PASS);
+      sim.run(LOAD_PASS);
       expect(holds(sim), goal.opcode).toBe(true);
     }
     for (const goal of [
@@ -340,11 +359,11 @@ describe('the goods goals', () => {
       { opcode: 'GoodsGlobal', player: OWNER, good: WOOD, amount: -1 },
     ] as const) {
       const empty = goalSim(goal);
-      empty.run(FIRST_PASS);
+      empty.run(LOAD_PASS);
       expect(holds(empty), goal.opcode).toBe(false);
       const housed = goalSim(goal);
       place(housed, { type: HEADQUARTERS, owner: OWNER, missionId: GROUP });
-      housed.run(FIRST_PASS);
+      housed.run(LOAD_PASS);
       expect(holds(housed), goal.opcode).toBe(true);
     }
   });
@@ -365,7 +384,7 @@ describe('the goods goals', () => {
       { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] },
     ]);
     for (const spec of specs) place(sim, spec);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     return {
       held: missionRecords(sim.world)[1]?.evaluated === true,
       stocks: houses(sim).map((e) => stock(sim, e, WOOD)),

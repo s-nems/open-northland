@@ -5,13 +5,14 @@ import { positionOfNode } from '../../src/nav/halfcell.js';
 import type { MissionGoalOp } from '../../src/systems/missions/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import {
-  FIRST_PASS,
   goalSim,
   HUT,
   HUT_LARGE,
   holds,
   houseContent,
+  LOAD_PASS,
   missionSim,
+  PASS_TICKS,
   POINT,
   SOLDIER,
   spawn,
@@ -23,8 +24,7 @@ import {
 
 /**
  * The goals that measure map-point distance. Each pair is one world where the goal holds and one
- * where it does not; the areas are wide because an idle settler drifts while the first pass comes
- * round, and the units that must stay out are put far enough that drift cannot reach in.
+ * where it does not, judged on the load pass, where every setup placement stands where its line put it.
  */
 
 const OWNER = 2;
@@ -34,7 +34,7 @@ const AREA = 10;
 const FAR = { hx: POINT.hx + 22, hy: POINT.hy };
 
 function judged(sim: Simulation): boolean {
-  sim.run(FIRST_PASS);
+  sim.run(LOAD_PASS);
   return holds(sim);
 }
 
@@ -100,7 +100,7 @@ describe('the goal flag a range test writes', () => {
       },
     ]);
     spawn(sim, { player: OWNER, missionId: HERE });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(missionRecords(sim.world)[0]?.goalsHeld[0]).toBe(true);
 
     // Set down outside rather than walked out: the goal reads where the unit stands, and a walk order
@@ -111,7 +111,7 @@ describe('the goal flag a range test writes', () => {
     const at = sim.world.mut(walker, Position);
     at.x = out.x;
     at.y = out.y;
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS); // the next pass reads the new stand
     expect(missionRecords(sim.world)[0]?.goalsHeld[0]).toBe(false);
   });
 });

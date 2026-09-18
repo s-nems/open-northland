@@ -16,8 +16,11 @@ import { MISSION_EVALUATION_TICKS, missionObjects, SUCCESSFUL_IF } from '../../s
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
-/** The tick the first pass runs on - `setMissionsEnabled` applies on tick 1. */
-export const FIRST_PASS = MISSION_EVALUATION_TICKS;
+/** `setMissionsEnabled` applies on tick 1, and the load pass runs with it. */
+export const LOAD_PASS = 1;
+/** One cadence period: from a fresh fixture it reaches the first cadence pass, by which setup
+ *  placements have finished and a short walk has arrived; from any pass, the next one. */
+export const PASS_TICKS = MISSION_EVALUATION_TICKS;
 export const MAP_NODES = 48;
 export const VIKING = 1;
 /** A second civilization sharing the house chain: one typeId belongs to five tribes in real content,
@@ -82,36 +85,69 @@ export function houseContent(): ContentSet {
   });
 }
 
+/** A world carrying the script with `MissionRules` still off; {@link enableMissions} turns it on. */
+export function scriptedSim(
+  missions: readonly MissionDefinition[],
+  content: ContentSet = testContent(),
+  map = grassNodeMap(MAP_NODES, MAP_NODES),
+): Simulation {
+  return new Simulation({ seed: 1, content, map, missions: { missions } });
+}
+
+/** The load pass runs on the tick this lands. */
+export function enableMissions(sim: Simulation): void {
+  sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
+}
+
+/** A scripted world enabled from tick 0, so the load pass judges the setup placements on `LOAD_PASS`. */
 export function missionSim(
   missions: readonly MissionDefinition[],
   content: ContentSet = testContent(),
   map = grassNodeMap(MAP_NODES, MAP_NODES),
 ): Simulation {
-  const sim = new Simulation({ seed: 1, content, map, missions: { missions } });
-  sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
+  const sim = scriptedSim(missions, content, map);
+  enableMissions(sim);
   return sim;
 }
 
-/** A world whose one mission fires on the first pass: a mission with no goals holds under `all`. */
+/**
+ * Let the fixture settle for `ticks` before the script is enabled - a fog mode takes effect at the
+ * vision system's slot, after the mission system's, and a walk needs its ticks - then run the load
+ * pass, the way a map's boot enables the script after its own steps.
+ */
+export function loadPassAfter(sim: Simulation, ticks: number): void {
+  sim.run(ticks);
+  runLoadPass(sim);
+}
+
+/** Enable the script and run its load pass, the next tick. */
+export function runLoadPass(sim: Simulation): void {
+  enableMissions(sim);
+  sim.step();
+}
+
+/** A mission with no goals holds under `all`, so it fires on the load pass. */
+export function firingMission(results: readonly MissionResultOp[]): MissionDefinition {
+  return { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [], results };
+}
+
+/** A mission whose only goal is the one under test and whose results are empty, so the stored
+ *  verdict is the whole tell. */
+export function goalMission(goal: MissionGoalOp): MissionDefinition {
+  return { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] };
+}
+
+/** A world whose one mission fires on the load pass. */
 export function firingSim(
   results: readonly MissionResultOp[],
   content: ContentSet = testContent(),
   map = grassNodeMap(MAP_NODES, MAP_NODES),
 ): Simulation {
-  return missionSim(
-    [{ successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [], results }],
-    content,
-    map,
-  );
+  return missionSim([firingMission(results)], content, map);
 }
 
-/** A world with one mission whose only goal is the one under test and whose results are empty, so
- *  the stored verdict is the whole tell. */
 export function goalSim(goal: MissionGoalOp, content: ContentSet = testContent()): Simulation {
-  return missionSim(
-    [{ successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] }],
-    content,
-  );
+  return missionSim([goalMission(goal)], content);
 }
 
 export function holds(sim: Simulation): boolean {
@@ -178,6 +214,13 @@ export function failedResultsUntil(sim: Simulation, tick: number): string[] {
   return eventsUntil(sim, tick, ['missionResultFailed']).map(({ event }) =>
     event.kind === 'missionResultFailed' ? event.opcode : '',
   );
+}
+
+/** The opcodes of the results that ran but could not act on the current tick. */
+export function failedResultsNow(sim: Simulation): string[] {
+  return sim.events
+    .current()
+    .flatMap((event) => (event.kind === 'missionResultFailed' ? [event.opcode] : []));
 }
 
 /** A restore of the sim's save on the same map and script, checked to hash the same. */

@@ -26,15 +26,20 @@ export const MISSION_EVALUATION_TICKS = 36;
 const reported = new WeakMap<World, Set<string>>();
 
 /**
- * Runs the map's `[MissionData]` script: every {@link MISSION_EVALUATION_TICKS} it visits the active
- * missions in index order and fires the results of each whose goals satisfy its `successfullif` rule.
- * Inert without a script or with `MissionRules` off, which is every world that does not opt in.
+ * Runs the map's `[MissionData]` script: on the load tick and then every {@link MISSION_EVALUATION_TICKS}
+ * it visits the active missions in index order and fires the results of each whose goals satisfy its
+ * `successfullif` rule. Inert without a script or with `MissionRules` off, which is every world that
+ * does not opt in.
+ *
+ * The load pass is a deliberate deviation: the original's first pass is at tick 36, so its opening
+ * briefing appears three seconds into the map. Here the map opens on it.
  */
 export const missionSystem: System = (world, ctx) => {
   const script = ctx.missions;
   if (script === undefined || script.missions.length === 0 || !missionsEnabled(world)) return;
-  if (!missionStateExists(world)) initMissionState(world, script, ctx.tick);
-  if (ctx.tick % MISSION_EVALUATION_TICKS !== 0) return;
+  const loadPass = !missionStateExists(world);
+  if (loadPass) initMissionState(world, script, ctx.tick);
+  else if (ctx.tick % MISSION_EVALUATION_TICKS !== 0) return;
   // A script with nothing active has no pass to run, and taking the write seam anyway would dirty the
   // world - and every cache derived from it - every three seconds for the rest of a finished map.
   if (!missionRecords(world).some((record) => record.active)) return;

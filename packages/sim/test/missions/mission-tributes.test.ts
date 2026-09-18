@@ -12,12 +12,13 @@ import type { HalfCellNode } from '../../src/nav/halfcell.js';
 import type { MissionDefinition, MissionResultOp } from '../../src/systems/missions/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import {
-  FIRST_PASS,
   failedResultsUntil,
   firingSim,
   HEADQUARTERS,
   holds,
+  LOAD_PASS,
   missionSim,
+  PASS_TICKS,
   POINT,
   roundTrip,
   VIKING,
@@ -49,8 +50,8 @@ const KITCHEN = 21;
 const HQ_WOOD = 10;
 const ELSEWHERE = { hx: 8, hy: 8 };
 const FAR_CORNER = { hx: 36, hy: 36 };
-/** The tick after the first pass, on which a command enqueued at the pass applies. */
-const AFTER_FIRST_PASS = FIRST_PASS + 1;
+/** The tick after the load pass, on which a command enqueued at the pass applies. */
+const AFTER_LOAD_PASS = LOAD_PASS + 1;
 
 interface HouseSpec {
   readonly type: number;
@@ -96,7 +97,7 @@ function clear(slot = SLOT): MissionResultOp {
   return { opcode: 'ClearTribute', slot };
 }
 
-/** Mission 0 fires the results on the first pass; mission 1 then asks `PayTribute` in the same pass. */
+/** Mission 0 fires the results on the load pass; mission 1 then asks `PayTribute` in the same pass. */
 function tributeSim(results: readonly MissionResultOp[], slot = SLOT): Simulation {
   const opening: MissionDefinition = {
     successfullIf: SUCCESSFUL_IF.all,
@@ -127,7 +128,7 @@ function pay(sim: Simulation, slot = SLOT, seat = OWNER, payer = seat): void {
 describe('CreateTribute and PayTribute', () => {
   it('opens the slot paid with nothing demanded, so the goal holds in the same pass', () => {
     const sim = tributeSim([create()]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(tributeSlot(sim.world, SLOT)).toEqual({
       active: true,
       paid: true,
@@ -142,7 +143,7 @@ describe('CreateTribute and PayTribute', () => {
 
   it('reopens a slot over whatever it held', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), create(SLOT, RIVAL, OWNER)]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(tributeSlot(sim.world, SLOT)).toMatchObject({
       payer: RIVAL,
       receiver: OWNER,
@@ -153,7 +154,7 @@ describe('CreateTribute and PayTribute', () => {
 
   it('reports a slot outside the table for every tribute line', () => {
     const sim = firingSim([create(TRIBUTE_SLOTS), demand(WOOD, 1, -1), clear(TRIBUTE_SLOTS)]);
-    expect(failedResultsUntil(sim, FIRST_PASS)).toEqual(['CreateTribute', 'AddTributeGoods', 'ClearTribute']);
+    expect(failedResultsUntil(sim, LOAD_PASS)).toEqual(['CreateTribute', 'AddTributeGoods', 'ClearTribute']);
     expect(tributeSlot(sim.world, TRIBUTE_SLOTS)).toBeUndefined();
   });
 });
@@ -161,7 +162,7 @@ describe('CreateTribute and PayTribute', () => {
 describe('AddTributeGoods', () => {
   it('makes the slot unpaid, grows a repeated good and appends a new one', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 2), demand(WOOD, 3)]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(tributeSlot(sim.world, SLOT)).toMatchObject({
       paid: false,
       demands: [
@@ -183,7 +184,7 @@ describe('AddTributeGoods', () => {
       demand(WHEAT, 1),
       demand(WOOD, 1),
     ]);
-    expect(failedResultsUntil(sim, FIRST_PASS)).toEqual(['AddTributeGoods']);
+    expect(failedResultsUntil(sim, LOAD_PASS)).toEqual(['AddTributeGoods']);
     const held = tributeSlot(sim.world, SLOT);
     expect(held?.demands.map((d) => d.good)).toEqual([WOOD, PLANK, FOOD, STONE, MUSHROOM]);
     expect(held?.demands[0]?.amount).toBe(2);
@@ -191,7 +192,7 @@ describe('AddTributeGoods', () => {
 
   it('is skipped on a closed slot and on one never opened, without a report', () => {
     const sim = tributeSim([create(), clear(), demand(WOOD, 5), demand(PLANK, 1, OTHER_SLOT)]);
-    expect(failedResultsUntil(sim, FIRST_PASS)).toEqual([]);
+    expect(failedResultsUntil(sim, LOAD_PASS)).toEqual([]);
     expect(tributeSlot(sim.world, SLOT)).toMatchObject({ active: false, paid: true, demands: [] });
     expect(tributeSlot(sim.world, OTHER_SLOT)).toBeUndefined();
   });
@@ -200,7 +201,7 @@ describe('AddTributeGoods', () => {
 describe('ClearTribute', () => {
   it('closes the slot: the goal stops holding and the window lists nothing, the data stays', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), clear()]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(paidHolds(sim)).toBe(false);
     expect(sim.openTributes(OWNER)).toEqual([]);
     expect(tributeSlot(sim.world, SLOT)).toMatchObject({
@@ -221,7 +222,7 @@ describe('the open tributes a payer owes', () => {
     ]);
     place(sim, { type: HEADQUARTERS });
     place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: WOOD, amount: 5 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.openTributes(OWNER)).toEqual([
       {
         slot: SLOT,
@@ -248,38 +249,38 @@ describe('the open tributes a payer owes', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
     place(sim, { type: HEADQUARTERS });
     place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 3 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     // Ten wood here and three planks there add up.
     expect(sim.openTributes(OWNER)[0]?.payable).toBe(true);
 
     const short = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
     place(short, { type: HEADQUARTERS });
     place(short, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 2 }] });
-    short.run(FIRST_PASS);
+    short.run(LOAD_PASS);
     expect(short.openTributes(OWNER)[0]?.payable).toBe(false);
   });
 
   it("counts a workplace's product and never the inputs delivered to it", () => {
     const sim = tributeSim([create(), demand(WOOD, 2)]);
     place(sim, { type: SAWMILL, goods: [{ good: WOOD, amount: 10 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.openTributes(OWNER)[0]).toMatchObject({ demands: [{ onHand: 0 }], payable: false });
 
     const product = tributeSim([create(), demand(PLANK, 2)]);
     place(product, { type: SAWMILL, goods: [{ good: PLANK, amount: 5 }] });
-    product.run(FIRST_PASS);
+    product.run(LOAD_PASS);
     expect(product.openTributes(OWNER)[0]).toMatchObject({ demands: [{ onHand: 5 }], payable: true });
   });
 
   it('adds up two demands one stocked good answers, so a store that could not pay both is not payable', () => {
     const short = tributeSim([create(), demand(BREAD, 2), demand(FOOD, 2)]);
     place(short, { type: HEADQUARTERS, goods: [{ good: FOOD, amount: 3 }] });
-    short.run(FIRST_PASS);
+    short.run(LOAD_PASS);
     expect(short.openTributes(OWNER)[0]?.payable).toBe(false);
 
     const enough = tributeSim([create(), demand(BREAD, 2), demand(FOOD, 2)]);
     place(enough, { type: HEADQUARTERS, goods: [{ good: FOOD, amount: 4 }] });
-    enough.run(FIRST_PASS);
+    enough.run(LOAD_PASS);
     expect(enough.openTributes(OWNER)[0]?.payable).toBe(true);
     pay(enough);
     expect(stockAt(enough, HEADQUARTERS, FOOD)).toBe(0);
@@ -289,7 +290,7 @@ describe('the open tributes a payer owes', () => {
   it('meets a dish with the edible it becomes at a storage, and an edible with the dish at its kitchen', () => {
     const sim = tributeSim([create(), demand(BREAD, 2)]);
     place(sim, { type: HEADQUARTERS, goods: [{ good: FOOD, amount: 3 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.openTributes(OWNER)[0]).toMatchObject({
       demands: [{ good: BREAD, onHand: 3 }],
       payable: true,
@@ -297,7 +298,7 @@ describe('the open tributes a payer owes', () => {
 
     const kitchen = tributeSim([create(), demand(FOOD, 2)]);
     place(kitchen, { type: KITCHEN, goods: [{ good: BREAD, amount: 2 }] });
-    kitchen.run(FIRST_PASS);
+    kitchen.run(LOAD_PASS);
     expect(kitchen.openTributes(OWNER)[0]).toMatchObject({
       demands: [{ good: FOOD, onHand: 2 }],
       payable: true,
@@ -318,9 +319,9 @@ describe('the payTribute command', () => {
       ],
     });
     place(sim, { type: SAWMILL, at: FAR_CORNER, goods: [{ good: PLANK, amount: 5 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     pay(sim);
-    expect(sim.tick).toBe(AFTER_FIRST_PASS);
+    expect(sim.tick).toBe(AFTER_LOAD_PASS);
     // The headquarters stood first and gave its wood; the planks came from the warehouse, so the
     // sawmill's product was never touched.
     expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(HQ_WOOD - 5);
@@ -335,7 +336,7 @@ describe('the payTribute command', () => {
       ],
     });
     expect(sim.openTributes(OWNER)).toEqual([]);
-    sim.run(FIRST_PASS);
+    sim.run(PASS_TICKS); // the cadence pass after the payment
     expect(paidHolds(sim)).toBe(true);
   });
 
@@ -343,7 +344,7 @@ describe('the payTribute command', () => {
     const sim = tributeSim([create(), demand(WOOD, 4)]);
     place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: WOOD, amount: 6 }] });
     place(sim, { type: HEADQUARTERS });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     pay(sim);
     // The warehouse has the lower entity id and could cover the whole demand, yet the headquarters
     // type goes first (reading of the original's three-pass drain).
@@ -356,7 +357,7 @@ describe('the payTribute command', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
     place(sim, { type: HEADQUARTERS });
     place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 2 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     pay(sim);
     expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(HQ_WOOD);
     expect(stockAt(sim, WAREHOUSE, PLANK)).toBe(2);
@@ -364,7 +365,7 @@ describe('the payTribute command', () => {
 
     const paid = tributeSim([create(), demand(WOOD, 5)]);
     place(paid, { type: HEADQUARTERS });
-    paid.run(FIRST_PASS);
+    paid.run(LOAD_PASS);
     pay(paid);
     pay(paid);
     expect(stockAt(paid, HEADQUARTERS, WOOD)).toBe(HQ_WOOD - 5);
@@ -373,7 +374,7 @@ describe('the payTribute command', () => {
   it('pays a dish demand out of the edible a storage holds', () => {
     const sim = tributeSim([create(), demand(BREAD, 2)]);
     place(sim, { type: HEADQUARTERS, goods: [{ good: FOOD, amount: 3 }] });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     pay(sim);
     expect(stockAt(sim, HEADQUARTERS, FOOD)).toBe(1);
     expect(tributeSlot(sim.world, SLOT)?.paid).toBe(true);
@@ -382,7 +383,7 @@ describe('the payTribute command', () => {
   it('is refused for another seat and for a slot the seat does not owe', () => {
     const sim = tributeSim([create(), demand(WOOD, 5)]);
     place(sim, { type: HEADQUARTERS });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     pay(sim, SLOT, RIVAL, OWNER); // a seat naming another payer never passes the authority gate
     pay(sim, SLOT, RIVAL); // and paying its own name for a slot it does not owe is skipped
     expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(HQ_WOOD);
@@ -399,7 +400,7 @@ describe('the payTribute command', () => {
         { good: PLANK, amount: 1 },
       ],
     });
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const restored = roundTrip(sim);
     expect(restored.openTributes(OWNER)).toEqual(sim.openTributes(OWNER));
     pay(sim);

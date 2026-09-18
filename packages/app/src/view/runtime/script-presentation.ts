@@ -86,9 +86,12 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
     return at === undefined ? null : nodeOfPosition(at.x, at.y);
   };
 
+  // Whether a script event reached this frame; the trace reads and clears it.
+  let scriptFired = false;
   return {
     onEvents(events) {
       for (const event of events) {
+        if (event.kind.startsWith('mission')) scriptFired = true;
         switch (event.kind) {
           case 'missionCutscene':
             toolPanel.controller.openMission(event.page);
@@ -133,7 +136,8 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
     },
     jitter: (nowMs) => effects.jitter(nowMs),
     frame(snapshot, camera, nowMs) {
-      trace?.refresh(snapshot.tick);
+      trace?.refresh(snapshot.tick, scriptFired);
+      scriptFired = false;
       if (snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
         linesTick = snapshot.tick;
         lines = infoLineTexts(sim.infoLines(deps.localPlayer), deps.mapText);

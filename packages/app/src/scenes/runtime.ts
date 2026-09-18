@@ -5,12 +5,28 @@ import { resolveWorldContent, type WorldContentOptions } from '../game/sandbox/i
 import type { SceneWorld } from './types.js';
 
 /**
- * Builds a fresh deterministic sim for a scene world at tick 0, then runs `scene.build`. The headless
- * twin never passes `options.content`, so copyrighted `content/` never enters tests, and it keeps the
- * clean-room footprints where the browser feeds the real door-shifted ones: a placement-sensitive scene
- * must keep its placements legal under both geometries.
+ * Builds a fresh deterministic sim for a scene world at tick 0, then runs `scene.build`, with the
+ * scene's script enabled from the start: the headless twin's shape, where the load pass runs on tick 1.
  */
 export function createSceneSim(scene: SceneWorld, options: WorldContentOptions = {}): Simulation {
+  const sim = createSceneWorld(scene, options);
+  enableSceneScript(sim, scene);
+  return sim;
+}
+
+/** The load pass runs on the tick this lands, so a scene shown in the browser enables its script only
+ *  after the boot tick, where the frame loop can collect the pass's briefing and camera events. */
+export function enableSceneScript(sim: Simulation, scene: SceneWorld): void {
+  if (scene.missions !== undefined) sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
+}
+
+/**
+ * The scene world with its script still off. The headless twin never passes `options.content`, so
+ * copyrighted `content/` never enters tests, and it keeps the clean-room footprints where the browser
+ * feeds the real door-shifted ones: a placement-sensitive scene must keep its placements legal under
+ * both geometries.
+ */
+export function createSceneWorld(scene: SceneWorld, options: WorldContentOptions = {}): Simulation {
   const sim = new Simulation({
     seed: scene.seed,
     content: resolveWorldContent(scene.terrain, options),
@@ -22,7 +38,6 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
   scene.build(sim);
-  if (scene.missions !== undefined) sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
   // Scenes run with needs off so an inspection unit cannot starve mid-run. Enqueued after build so it
   // lands before tick 1's needsSystem; `SceneDefinition.needs` opts back in (FIFO, later write wins).
   if (scene.needs !== true) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });

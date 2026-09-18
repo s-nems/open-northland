@@ -18,7 +18,8 @@ import { ownerPlayerOf } from '../game/snapshot.js';
 import { messages, sceneCopy, scenePages, sceneStrings } from '../i18n/index.js';
 import { routeFor } from '../routes.js';
 import {
-  createSceneSim,
+  createSceneWorld,
+  enableSceneScript,
   getScene,
   MAP_SCENES,
   mapSceneParams,
@@ -119,7 +120,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
       return;
     }
   } else {
-    sim = createSceneSim(scene, worldOptions);
+    sim = createSceneWorld(scene, worldOptions);
   }
   setDiagGameSession({
     entry: 'scene',
@@ -160,9 +161,13 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
 
   // Framed on the first tick's snapshot: a scene's settler spawns run as tick-1 commands, so the tick-0
   // centroid is empty and `cameraFor` would fall back to the tile origin. The browser view therefore
-  // runs one tick more than the headless twin. Through the driver, so the session takes every tick's
-  // frame in order. A restored world stands at its saved tick already.
-  if (stagedSave === null) driver.runTick();
+  // runs one tick more than the headless twin, and enables the script after it, so the load pass fires
+  // on a tick the frame loop collects. Through the driver, so the session takes every tick's frame in
+  // order. A restored world stands at its saved tick already, its script on.
+  if (stagedSave === null) {
+    driver.runTick();
+    enableSceneScript(sim, scene);
+  }
   const snapshot = sim.snapshot();
   const initialViewport = { width: app.screen.width, height: app.screen.height };
   const cameraCtl = createCameraController(

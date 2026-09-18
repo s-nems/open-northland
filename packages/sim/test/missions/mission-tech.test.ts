@@ -21,10 +21,10 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import {
   CARPENTER,
-  FIRST_PASS,
   FRANK,
   firingSim,
   holds,
+  LOAD_PASS,
   missionSim,
   spawn,
   VIKING,
@@ -61,7 +61,7 @@ function firing(result: MissionResultOp): MissionDefinition {
 describe('EnableGood', () => {
   it('makes the good produceable for that player and tribe, and no other', () => {
     const sim = firingSim([{ opcode: 'EnableGood', player: OWNER, tribe: VIKING, good: PLANK }]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     const ctx = ctxOf(sim);
     expect(goodEnabled(sim.world, ctx, OWNER, VIKING, PLANK)).toBe(true);
     expect(goodEnabled(sim.world, ctx, RIVAL, VIKING, PLANK)).toBe(false);
@@ -84,21 +84,21 @@ describe('EnableGood', () => {
         results: [],
       },
     ]);
-    scripted.run(FIRST_PASS);
+    scripted.run(LOAD_PASS);
     expect(missionRecords(scripted.world)[1]?.evaluated).toBe(true);
 
     const goal = { opcode: 'GoodProduceable', player: OWNER, tribe: VIKING, good: PLANK } as const;
     const bare = missionSim([
       { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] },
     ]);
-    bare.run(FIRST_PASS);
+    bare.run(LOAD_PASS);
     expect(holds(bare)).toBe(false);
 
     const earned = missionSim([
       { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] },
     ]);
     spawn(earned, { player: OWNER, job: WOODCUTTER });
-    earned.run(FIRST_PASS);
+    earned.run(LOAD_PASS);
     expect(holds(earned)).toBe(true);
   });
 });
@@ -106,7 +106,7 @@ describe('EnableGood', () => {
 describe('AllowGood', () => {
   it('records permission without unlocking anything', () => {
     const sim = firingSim([{ opcode: 'AllowGood', player: OWNER, tribe: VIKING, good: PLANK }]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(scriptAllows(sim.world, OWNER, VIKING, 'good', PLANK)).toBe(true);
     expect(goodEnabled(sim.world, ctxOf(sim), OWNER, VIKING, PLANK)).toBe(false);
   });
@@ -119,14 +119,14 @@ describe('EnableJob and JobEnabled', () => {
     const open = missionSim([
       { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] },
     ]);
-    open.run(FIRST_PASS);
+    open.run(LOAD_PASS);
     expect(holds(open)).toBe(true);
 
     const gated = missionSim(
       [{ successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [goal], results: [] }],
       techContent(),
     );
-    gated.run(FIRST_PASS);
+    gated.run(LOAD_PASS);
     expect(holds(gated)).toBe(false);
 
     const lived = missionSim(
@@ -134,7 +134,7 @@ describe('EnableJob and JobEnabled', () => {
       techContent(),
     );
     spawn(lived, { player: OWNER, job: WOODCUTTER });
-    lived.run(FIRST_PASS);
+    lived.run(LOAD_PASS);
     expect(holds(lived)).toBe(true);
 
     const scripted = missionSim(
@@ -144,7 +144,7 @@ describe('EnableJob and JobEnabled', () => {
       ],
       techContent(),
     );
-    scripted.run(FIRST_PASS);
+    scripted.run(LOAD_PASS);
     expect(missionRecords(scripted.world)[1]?.evaluated).toBe(true);
     expect(jobEnabled(scripted.world, ctxOf(scripted), RIVAL, VIKING, CARPENTER)).toBe(false);
   });
@@ -157,7 +157,7 @@ describe('EnableHouse and AllowHouse', () => {
       { opcode: 'AllowHouse', player: OWNER, tribe: VIKING, houseType: GATED_HOUSE },
       { opcode: 'AllowJob', player: OWNER, tribe: VIKING, job: CARPENTER },
     ]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(scriptEnables(sim.world, OWNER, VIKING, 'house', GATED_HOUSE)).toBe(true);
     expect(scriptAllows(sim.world, OWNER, VIKING, 'house', GATED_HOUSE)).toBe(true);
     expect(scriptAllows(sim.world, OWNER, VIKING, 'job', CARPENTER)).toBe(true);
@@ -177,8 +177,8 @@ describe('the unlock tables', () => {
       { opcode: 'EnableGood', player: OWNER, tribe: VIKING, good: PLANK },
       { opcode: 'EnableGood', player: OWNER, tribe: VIKING, good: 7 },
     ]);
-    a.run(FIRST_PASS);
-    b.run(FIRST_PASS);
+    a.run(LOAD_PASS);
+    b.run(LOAD_PASS);
     const tables = (sim: typeof a) => {
       const e = sim.world.lowestEntityWith(ScriptUnlocks);
       return e === null ? undefined : sim.world.get(e, ScriptUnlocks).byPlayer.get(OWNER)?.get(VIKING);
@@ -189,7 +189,7 @@ describe('the unlock tables', () => {
 
   it('ignore a slot the sim does not seat', () => {
     const sim = firingSim([{ opcode: 'EnableGood', player: 20, tribe: VIKING, good: PLANK }]);
-    sim.run(FIRST_PASS);
+    sim.run(LOAD_PASS);
     expect(sim.world.lowestEntityWith(ScriptUnlocks)).toBeNull();
     grantScriptUnlock(sim.world, 'enabled', -1, VIKING, 'good', PLANK);
     expect(sim.world.lowestEntityWith(ScriptUnlocks)).toBeNull();
@@ -199,7 +199,7 @@ describe('the unlock tables', () => {
     const script = [firing({ opcode: 'EnableGood', player: OWNER, tribe: VIKING, good: PLANK })];
     const live = scenario(testContent(), { seed: 3, missions: { missions: script } })
       .command({ kind: 'setMissionsEnabled', enabled: true })
-      .run(FIRST_PASS).sim;
+      .run(LOAD_PASS).sim;
     const bytes = serializeSaveGame(exportSaveGame(live, { mapId: 'mission-tech' }));
     const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
       content: testContent(),

@@ -6,14 +6,16 @@ import { sceneAcceptance } from './scene-case.js';
 
 sceneAcceptance(presentationScene, import.meta.url);
 
-const FIRST_PASS = systems.MISSION_EVALUATION_TICKS;
+/** The scene enables its script from tick 0, so the load pass runs on tick 1. */
+const LOAD_PASS = 1;
 
-/** The display results all fire on the first pass, the cutscene last, and the pass ends there: the
+/** The display results all fire on the load pass, the cutscene last, and the pass ends there: the
  *  ford mission is only visited on the next one. */
-it('fires every display event on the first pass, the briefing last', () => {
+it('fires every display event on the load pass, the briefing last', () => {
   const sim = createSceneSim(presentationScene);
-  sim.run(FIRST_PASS);
-  const kinds = sim.events.current().map((e) => e.kind);
+  sim.run(LOAD_PASS);
+  // The tick also births the scene's settlers; only the script's own events are in question.
+  const kinds = sim.events.current().flatMap((e) => (e.kind.startsWith('mission') ? [e.kind] : []));
   expect(kinds).toEqual([
     'missionGuiMarker',
     'missionCamera',
@@ -31,8 +33,9 @@ it('fires every display event on the first pass, the briefing last', () => {
   // The one selected is the hero, the only settler carrying the script's id.
   const [hero] = systems.missionObjects(sim.world, HERO_ID);
   expect(hero).toBe(selected.entity);
-  // The second pass brings the follow-up page, which keeps the replayable one where it was.
-  sim.run(FIRST_PASS);
+  // The follow-up timer elapses on the second cadence pass; its page keeps the replayable one where
+  // it was.
+  sim.run(2 * systems.MISSION_EVALUATION_TICKS - LOAD_PASS);
   const later = sim.events.current();
   expect(later.map((e) => e.kind)).toEqual(['missionAreaMarkers', 'missionCutscene']);
   expect(later.find((e) => e.kind === 'missionCutscene')).toEqual({

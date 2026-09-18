@@ -10,8 +10,6 @@ export function onOffParam(params: URLSearchParams, name: string): boolean | nul
   return null;
 }
 
-export type SessionRuleOverrides = SessionRules & { readonly missions?: boolean | null };
-
 /** The `?fog=`, `?progression=` and `?needs=` flags as the session's rule overrides. */
 export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
   return {
@@ -26,13 +24,10 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
  * rules, so a flag wins in either direction; an absent flag enqueues nothing, keeping the command
  * stream byte-identical.
  */
-export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRuleOverrides): void {
+export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRules): void {
   if (overrides.fog !== null) sim.enqueueSetup({ kind: 'setFogMode', mode: overrides.fog });
   if (overrides.progression !== null) {
     sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: overrides.progression });
   }
   if (overrides.needs !== null) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: overrides.needs });
-  if (overrides.missions !== undefined && overrides.missions !== null) {
-    sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: overrides.missions });
-  }
 }
