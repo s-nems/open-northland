@@ -121,6 +121,9 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
     case 'assignVehicle':
       if (single !== undefined) deps.pickMode.arm({ kind: 'vehicle', settler: single });
       return;
+    case 'removeVehicle':
+      each((entity) => ({ kind: 'detachFromVehicle', entity }));
+      return;
     default: {
       const unreachable: never = id;
       throw new Error(`unhandled action command: ${String(unreachable)}`);

@@ -111,6 +111,21 @@ export function isPalisade(e: SnapshotEntity): boolean {
   return e.components.Palisade !== undefined;
 }
 
+/** The commander's seat is the last passenger slot; a free slot there reads as no commander. */
+export function vehicleCommanderOf(e: SnapshotEntity): number | undefined {
+  const slots = (e.components.Vehicle as { passengers?: unknown } | undefined)?.passengers;
+  if (!Array.isArray(slots) || slots.length === 0) return undefined;
+  return num((slots[slots.length - 1] as { entity?: unknown } | null)?.entity);
+}
+
+/** The vehicle `e` commands: the one its `Rider` names when `e` holds the commander seat. */
+export function commandedVehicleOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
+  const vehicle = num((e.components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
+  if (vehicle === undefined) return undefined;
+  const carrier = entityById(snapshot, vehicle);
+  return carrier !== undefined && vehicleCommanderOf(carrier) === e.id ? vehicle : undefined;
+}
+
 interface SnapshotIndex {
   readonly actors: readonly SnapshotEntity[];
   readonly trainingOccupancy: ReadonlyMap<number, number>;

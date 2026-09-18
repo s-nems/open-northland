@@ -44,6 +44,7 @@ describe('action-ring command table', () => {
       'assignLearningPlace',
       'removeWorkPlace',
       'assignWorkPlace',
+      'removeVehicle',
       'assignVehicle',
       'removeHome',
       'assignHome',

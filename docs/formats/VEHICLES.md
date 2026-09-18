@@ -139,7 +139,13 @@ onto that door node or, where another blocker covers it, the nearest open node b
 whose walk to the door fails is dropped with a
 lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
 drill, marriage, need, equipment, explore, signpost and chest orders; a commander detaching mid-drive
-leaves the drive running.
+leaves the drive running. Deviation (user decision): a walk or attack-position order given to a
+vehicle's commander, aboard or standing beside it, is handed to the vehicle as its goto
+(`systems/vehicles/commander.ts`), so a trader ordered somewhere takes the cart and its cargo along;
+the vehicle's refusals apply and a refused point leaves the commander seated. The original detaches
+the commander and walks him off alone, leaving the cart standing. A commander outside drops its own
+walk to board at once, while one held by an atomic finishes it first (a trader completes the unit it
+is loading). Detach and unload people remain the way to leave a vehicle behind.
 
 ## Cargo
 
@@ -385,8 +391,11 @@ original's order (enemy human, own moored ship for a land vehicle, enemy vehicle
 to) but the attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's
 attack order silently; a ship's right-click on land is a goto the sim refuses, the mooring order
 being explicit; the ring's "Assign Vehicle" is offered to every grown settler and the type's job list
-decides on the pick. Message ids 0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event)
-have no raiser yet; 0x35 is the goto refusal above.
+decides on the pick; a commander selected while aboard (through the Mieszkańcy row) stands for its
+vehicle, so a right-click on the ground drives the vehicle whether the commander is aboard or beside
+it, and the ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids
+0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the
+goto refusal above.
 
 ## Map scripts
 

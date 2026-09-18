@@ -2,26 +2,24 @@ import type { VehicleType } from '@open-northland/data';
 import {
   Carrying,
   ownerOf,
-  Rider,
   recordGoodsTraded,
   TradeRoute,
   Vehicle,
   type VehicleStateView,
   VehicleStock,
-  vehicleCommander,
   vehicleLoad,
   vehicleStockEntries,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
-import { vehicleAnchor } from '../footprint/index.js';
 import { stockOf } from '../missions/stock.js';
 import { grantTradeExperience } from '../progression/index.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
 import { isShipVehicle, isSiegeVehicle } from '../readviews/vehicles.js';
 import { addCarry, dropCarryAtOwnTile } from '../settlers/atomics/effects/goods/carry.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../stores/index.js';
+import { commandedVehicleOf } from '../vehicles/commander.js';
 import { tradeVehicleStock, vehicleLineCap, vehicleStockGood } from '../vehicles/stock.js';
 import { activeAgreement } from './agreements.js';
 import { sameFoodClass } from './goods.js';
@@ -53,14 +51,13 @@ export interface CartHold {
  * rides along, a ship or a catapult, or a cart riding inside a ship.
  */
 export function tradeCartOf(world: World, ctx: ContentContext, trader: Entity): TradeCart | null {
-  const rider = world.tryGet(trader, Rider);
-  if (rider === undefined) return null;
-  const state = world.tryGet(rider.vehicle, Vehicle);
-  if (state === undefined || vehicleCommander(state) !== trader || state.carrier !== null) return null;
+  const vehicle = commandedVehicleOf(world, trader);
+  if (vehicle === null) return null;
+  const state = world.get(vehicle, Vehicle);
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined || isShipVehicle(type) || isSiegeVehicle(type)) return null;
-  if (!world.has(rider.vehicle, VehicleStock) || vehicleAnchor(world, rider.vehicle) === null) return null;
-  return { vehicle: rider.vehicle, type, state };
+  if (!world.has(vehicle, VehicleStock)) return null;
+  return { vehicle, type, state };
 }
 
 /** A detached read of the cart's hold for one decision. */

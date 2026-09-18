@@ -8,6 +8,7 @@ export {
   vehicleBoardingSystem,
 } from './boarding.js';
 export { abandonCargoRun, clearVehicleWantedOrder, setVehicleWantedOrder } from './cargo.js';
+export { commandedVehicleOf, driveCommandedVehicle, isCommanderWalkOrder } from './commander.js';
 export { createVehicle } from './create.js';
 export {
   attachToVehicle,

@@ -548,6 +548,7 @@ export const plGame = {
     removeBuildingSite: 'Usuń miejsce budowy', // 28
     removeLearningPlace: 'Usuń miejsce nauki', // 26
     assignVehicle: 'Przydziel wehikuł', // 31
+    removeVehicle: 'Usuń wehikuł', // 32
     attackAnimal: 'Zaatakuj zwierzę', // 46
     attackVehicle: 'Zaatakuj wehikuł', // 47
     allowRegeneration: 'Zezwól na regenerację', // 42

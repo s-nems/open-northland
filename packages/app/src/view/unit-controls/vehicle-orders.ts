@@ -7,7 +7,14 @@ import {
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { isVehicle, num, ownerPlayerOf, type SnapshotEntity } from '../../game/snapshot.js';
+import {
+  commandedVehicleOf,
+  isVehicle,
+  num,
+  ownerPlayerOf,
+  positionOf,
+  type SnapshotEntity,
+} from '../../game/snapshot.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
@@ -31,7 +38,8 @@ export interface VehicleOrderDeps {
  * caller's click feedback.
  */
 export interface VehicleOrderController {
-  /** The one owned vehicle the selection holds, when it holds nothing else that takes orders. */
+  /** The one owned vehicle the selection holds, itself or through its commander aboard it, when it
+   *  holds nothing else that takes orders. */
   selectedVehicle(): number | null;
   /**
    * The original's default right-click for a vehicle: an enemy human, vehicle or house is attacked, an
@@ -69,13 +77,19 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     for (const id of deps.selected()) {
       const e = entityById(snapshot, id);
       if (e === undefined) continue;
+      let vehicle = id;
       if (!isVehicle(e)) {
-        // A settler in the selection takes the click itself; a building or signpost takes no orders.
-        if (e.components.Settler !== undefined) return null;
-        continue;
+        if (e.components.Settler === undefined) continue; // a building or signpost takes no orders
+        // A settler standing on the map takes the click itself (the sim hands a commander's walk order
+        // to its vehicle); one aboard the vehicle it commands stands for that vehicle, so the click
+        // drives it either way. Any other settler aboard is nobody's to order from here.
+        const commanded = positionOf(e) === undefined ? commandedVehicleOf(snapshot, e) : undefined;
+        if (commanded === undefined) return null;
+        vehicle = commanded;
       }
-      if (!ours(e) || found !== null) return null;
-      found = id;
+      const self = entityById(snapshot, vehicle);
+      if (self === undefined || !ours(self) || (found !== null && found !== vehicle)) return null;
+      found = vehicle;
     }
     return found;
   };

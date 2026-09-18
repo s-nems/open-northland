@@ -68,7 +68,9 @@ import {
   detachBeforeOrder,
   detachFromVehicle,
   dockVehicle,
+  driveCommandedVehicle,
   forcesDetach,
+  isCommanderWalkOrder,
   leaveCarrier,
   loadIntoVehicle,
   moveVehicle,
@@ -106,8 +108,10 @@ function wakeAddressed(world: World, command: Command): void {
 }
 
 function applyCommand(world: World, ctx: SystemContext, command: Command): void {
-  // A settler crewing a vehicle is taken off it before an order sends it elsewhere; one that may not
-  // leave (aboard a ship at sea) keeps its seat and the order is dropped.
+  // A vehicle's commander hands a walk order to the vehicle. Any other settler crewing a vehicle is
+  // taken off it before an order sends it elsewhere; one that may not leave (aboard a ship at sea)
+  // keeps its seat and the order is dropped.
+  if (isCommanderWalkOrder(command) && driveCommandedVehicle(world, ctx, command)) return;
   if (forcesDetach(command) && !detachBeforeOrder(world, ctx, command.entity)) return;
   switch (command.kind) {
     case 'placeBuilding':

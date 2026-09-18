@@ -276,7 +276,8 @@ export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): 
 
 /** The player commands that take a settler away from its vehicle first. Approximation: the original's
  *  list is read from its human command handlers' `DoExecuteUserCommand_DetachVehicle` calls, not
- *  exhaustively. */
+ *  exhaustively. The walk orders reach here only for a rider that is not the commander: the commander's
+ *  go to its vehicle (`commander.ts`). */
 export function forcesDetach(command: Command): command is Command & { entity: Entity } {
   switch (command.kind) {
     case 'moveUnit':

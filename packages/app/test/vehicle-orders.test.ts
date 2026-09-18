@@ -28,6 +28,9 @@ const ENEMY_SOLDIER = 20;
 const ENEMY_HOUSE = 21;
 const ENEMY_CART = 22;
 const OWN_SETTLER = 30;
+/** The handcart's crew: both aboard, so neither stands anywhere on the map. */
+const CART_COMMANDER = 31;
+const CART_PASSENGER = 32;
 const ENEMY_PLAYER = 1;
 
 const CLICK = { x: 100, y: 100 };
@@ -38,18 +41,39 @@ const at = (col: number, row: number): { x: number; y: number } => ({
   y: fx.fromInt(row),
 });
 
-const vehicle = (id: number, vehicleType: number, player: number, moored = false): Ent => ({
+const vehicle = (
+  id: number,
+  vehicleType: number,
+  player: number,
+  moored = false,
+  passengers: ReadonlyArray<{ entity: number; inside: boolean } | null> = [],
+): Ent => ({
   id,
   components: {
-    Vehicle: { vehicleType, tribe: 1, moored, passengers: [], vehicles: [], carrier: null },
+    Vehicle: { vehicleType, tribe: 1, moored, passengers, vehicles: [], carrier: null },
     Owner: { player },
     Position: at(2, 2),
   },
 });
 
+/** A settler aboard `vehicle`: a `Rider` with no `Position`. */
+const aboard = (id: number, vehicle: number): Ent => ({
+  id,
+  components: {
+    Settler: { jobType: null },
+    Owner: { player: HUMAN_PLAYER },
+    Rider: { vehicle, boarding: false },
+  },
+});
+
 const WORLD: WorldSnapshot = snapshotOf([
   vehicle(CATAPULT, VEHICLE_CATAPULT, HUMAN_PLAYER),
-  vehicle(HANDCART, VEHICLE_HANDCART, HUMAN_PLAYER),
+  vehicle(HANDCART, VEHICLE_HANDCART, HUMAN_PLAYER, false, [
+    { entity: CART_PASSENGER, inside: true },
+    { entity: CART_COMMANDER, inside: true },
+  ]),
+  aboard(CART_COMMANDER, HANDCART),
+  aboard(CART_PASSENGER, HANDCART),
   vehicle(SHIP, VEHICLE_SHIP_SMALL, HUMAN_PLAYER, true),
   vehicle(SHIP_AT_SEA, VEHICLE_SHIP_SMALL, HUMAN_PLAYER, false),
   vehicle(ENEMY_CART, VEHICLE_HANDCART, ENEMY_PLAYER),
@@ -165,6 +189,16 @@ describe('vehicle right-click defaults', () => {
     expect(harness([CATAPULT, OWN_SETTLER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
     expect(harness([ENEMY_CART], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
     expect(harness([CATAPULT, HANDCART], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
+  });
+
+  it('drives the vehicle for its commander selected aboard it, and nothing for a passenger aboard', () => {
+    const { issued, controller } = harness([CART_COMMANDER], { enemies: ENEMIES_UNDER });
+    expect(controller.issueRightClick(rightClick)).toBe(true);
+    const spot = worldToTile(CLICK.x, CLICK.y);
+    expect(issued).toEqual([{ kind: 'moveVehicle', vehicle: HANDCART, x: spot.col, y: spot.row }]);
+    // The commander and its own vehicle selected together are one vehicle, not two.
+    expect(harness([CART_COMMANDER, HANDCART], ALL_UNDER).controller.selectedVehicle()).toBe(HANDCART);
+    expect(harness([CART_PASSENGER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
   });
 });
 

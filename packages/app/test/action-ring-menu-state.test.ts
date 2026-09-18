@@ -33,6 +33,7 @@ const WORKSHOP = 51;
 const BARRACKS = 52;
 const SITE = 53;
 const FLAG = 54;
+const CART = 55;
 interface Opts {
   readonly female?: boolean;
   readonly child?: boolean;
@@ -45,6 +46,7 @@ interface Opts {
   readonly site?: boolean;
   readonly workFlag?: boolean;
   readonly noRegeneration?: boolean;
+  readonly rider?: boolean;
   readonly tribe?: number;
   readonly unplaced?: boolean;
   readonly behaviour?: number;
@@ -69,6 +71,7 @@ function settler(id: number, jobType: number, opts: Opts = {}): Ent {
       ...(opts.workFlag === true ? { WorkFlag: { flag: FLAG, radius: 24 } } : {}),
       ...(opts.noRegeneration === true ? { NoRegeneration: { prohibited: true } } : {}),
       ...(opts.behaviour !== undefined ? { MissionBehaviour: { flags: opts.behaviour } } : {}),
+      ...(opts.rider === true ? { Rider: { vehicle: CART, boarding: false } } : {}),
     },
   };
 }
@@ -167,6 +170,9 @@ describe('allowedActions - one settler', () => {
       [1],
     );
     expect(drilling.has('removeLearningPlace')).toBe(true);
+    const riding = allowedActions(content, snapshotOf([settler(1, JOB_COLLECTOR, { rider: true })]), [1]);
+    expect(riding.has('removeVehicle')).toBe(true);
+    expect(set.has('removeVehicle')).toBe(false);
   });
 
   it('keeps the trade and the equipment orders from a woman', () => {

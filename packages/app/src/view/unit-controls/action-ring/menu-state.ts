@@ -129,6 +129,9 @@ function allows(
     // a grown settler is offered the order (approximation: the original's ring row is not read).
     case 'assignVehicle':
       return isAdult(e);
+    // The explicit way off a vehicle, since a commander's walk order drives the vehicle instead.
+    case 'removeVehicle':
+      return e.components.Rider !== undefined;
     case 'eat':
     case 'sleep':
       return !systems.isHeroJob(content, job);

@@ -562,6 +562,7 @@ export const enGame = {
     removeBuildingSite: 'Remove Building Site', // 28
     removeLearningPlace: 'Remove Learning Place', // 26
     assignVehicle: 'Assign Vehicle', // 31
+    removeVehicle: 'Remove Vehicle', // 32
     attackAnimal: 'Attack Animal', // 46
     attackVehicle: 'Attack Vehicle', // 47
     allowRegeneration: 'Allow Regeneration', // 42

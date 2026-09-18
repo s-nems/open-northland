@@ -1,6 +1,12 @@
 import type { VehicleType } from '@open-northland/data';
 import { type components, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { isVehicle, num, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import {
+  isVehicle,
+  num,
+  ownerPlayerOf,
+  type SnapshotEntity,
+  vehicleCommanderOf,
+} from '../../../game/snapshot.js';
 import { vehicleLabel } from '../../../game/technology.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../../good-categories.js';
@@ -276,12 +282,6 @@ function cargoRows(
   return rows;
 }
 
-/** The commander's slot is the last passenger slot; a free slot there reads as no commander. */
-function commanderOf(passengerSlots: unknown): number | undefined {
-  if (!Array.isArray(passengerSlots) || passengerSlots.length === 0) return undefined;
-  return num((passengerSlots[passengerSlots.length - 1] as { entity?: unknown } | null)?.entity);
-}
-
 export function vehiclePanelModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -293,7 +293,7 @@ export function vehiclePanelModel(
   const type = vehicleTypeOf(ctx, typeId);
   const passengers = readSeats(v.passengers);
   const vehicles = readSeats(v.vehicles);
-  const commander = commanderOf(v.passengers);
+  const commander = vehicleCommanderOf(ent);
   const task = taskOf(v.task);
   const stance = stanceOf(v.stance);
   const siege = type !== undefined && systems.isSiegeVehicle(type);

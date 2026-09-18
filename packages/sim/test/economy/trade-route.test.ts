@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
+  CurrentAtomic,
   goodsTradedWith,
   MissionObjectId,
   Owner,
@@ -36,7 +37,8 @@ import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js
  * five steps of each house, between the player's own houses moves the surplus of one to the other in
  * the cart's hold, and at another player's house trades on the map's agreement, handing the give goods
  * over first and loading the take goods after, while the ledger counts what it brought back. A trader
- * without a cart stands idle, and one whose cart cannot reach a stop lets go of it.
+ * without a cart stands idle, one whose cart cannot reach a stop lets go of it, and one the player sends
+ * somewhere drives its cart there and resumes.
  */
 
 const VIKING = 1;
@@ -57,6 +59,8 @@ const MAP_W = 10;
 const MAP_H = 3;
 /** Long enough for several round trips on the fixture's short map. */
 const RUN_TICKS = 900;
+/** Where the player sends the trader mid-stop: the row below the houses, between them. */
+const ORDER_NODE = { hx: 8, hy: 4 } as const;
 
 function houseAt(
   sim: Simulation,
@@ -268,6 +272,42 @@ describe('a trader between its own houses', () => {
     expect(sim.world.has(trader, Position)).toBe(true);
     expect(sim.traderView(trader)?.cart).toBeNull();
     expect(stockOf(sim, far, WOOD)).toBe(0);
+  });
+
+  it("finishes the unit it is loading, drives the cart to the player's point with the load, then trades on", () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, 0]]);
+    const trader = traderAt(sim, NEAR_X);
+    attach(sim, trader, near);
+    attach(sim, trader, far);
+    const loading = (): boolean => sim.world.tryGet(trader, CurrentAtomic)?.effect?.kind === 'cartLoad';
+    for (let tick = 0; tick < RUN_TICKS && !loading(); tick++) sim.step();
+    expect(loading()).toBe(true);
+    const cart = sim.world.get(trader, Rider).vehicle;
+    const aboardBefore = cartOf(sim, trader, WOOD);
+
+    sim.enqueue(
+      playerCommand(HUMAN, { kind: 'moveUnit', entity: trader, x: ORDER_NODE.hx, y: ORDER_NODE.hy }),
+    );
+    sim.step();
+    expect(loading()).toBe(true); // the unit in hand is finished first
+    expect(sim.world.get(cart, Vehicle).heldGoal).toEqual(ORDER_NODE);
+    expect(sim.world.has(trader, Rider)).toBe(true);
+
+    let arrived = false;
+    for (let tick = 0; tick < RUN_TICKS && !arrived; tick++) {
+      sim.step();
+      const anchor = vehicleAnchor(sim.world, cart);
+      arrived = anchor !== null && anchor.hx === ORDER_NODE.hx && anchor.hy === ORDER_NODE.hy;
+    }
+    expect(arrived).toBe(true);
+    expect(cartOf(sim, trader, WOOD)).toBe(aboardBefore + 1);
+    expect(sim.world.has(trader, Rider)).toBe(true);
+
+    sim.run(RUN_TICKS); // the route resumes from where the cart stands
+    expect(stockOf(sim, far, WOOD)).toBeGreaterThan(0);
+    expect(stockOf(sim, near, WOOD) + stockOf(sim, far, WOOD) + cartOf(sim, trader, WOOD)).toBe(10);
   });
 });
 

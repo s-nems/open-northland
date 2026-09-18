@@ -40,6 +40,7 @@ export type ActionOrderId =
   | 'ignorantMode'
   | 'allowRegeneration'
   | 'prohibitRegeneration'
+  | 'removeVehicle'
   | 'assignVehicle';
 
 export type ActionCommandId = ActionOrderId | 'changeProfession';
@@ -81,6 +82,7 @@ export const ACTION_COMMANDS: readonly ActionCommand[] = [
   { id: 'assignLearningPlace', arm: RIGHT_ARM, icon: 'order_assign_learning_place', multi: true },
   { id: 'removeWorkPlace', arm: RIGHT_ARM, icon: 'order_remove_work_place', multi: true },
   { id: 'assignWorkPlace', arm: RIGHT_ARM, icon: 'order_assign_work_place', multi: true },
+  { id: 'removeVehicle', arm: RIGHT_ARM, icon: 'order_remove_vehicle', multi: true },
   { id: 'assignVehicle', arm: RIGHT_ARM, icon: 'order_assign_vehicle', multi: false },
   { id: 'removeHome', arm: RIGHT_ARM, icon: 'order_remove_home', multi: true },
   { id: 'assignHome', arm: RIGHT_ARM, icon: 'order_assign_home', multi: true },
