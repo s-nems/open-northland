@@ -219,6 +219,7 @@ frame. Replace a file there to change the rotation.
 | question | reach for |
 | --- | --- |
 | what does the sim spend a tick on, and does it grow as the settlement develops? | `npm run bench:map` |
+| which function inside that tick burns the time? | `npm run bench:profile` |
 | does one axis (settlers, fighters) drive a system's cost? | `npm run bench:sim` |
 | did my change make it slower? | `npm run bench:compare` |
 | what does a live session spend a frame on, sim or render? | `?debug=profile` and `window.__opennorthland.perf()` |
@@ -239,6 +240,25 @@ Run the real-map benchmark with `npm run bench:map`. It needs generated content 
 `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, what a networked session pays), and
 `ON_BENCH_JSON`. `ON_CONTENT_DIR` points it at a content directory outside the checkout. The default
 run is 20k ticks; `ON_BENCH_TICKS=50000` covers a full AI build-out.
+
+`npm run bench:profile` runs that same world and CPU-profiles the measured ticks, printing the top
+functions and files by self time next to the per-system table for the same ticks, and writing the raw
+`.cpuprofile` under `bench-out/` for DevTools or Speedscope. It takes the `bench:map` controls except
+`ON_BENCH_WINDOWS` and `ON_BENCH_JSON`, and defaults to 2k ticks. It prints its per-system report
+rather than storing it: profiled timings are inflated by the sampler and must never become a
+`bench:compare` baseline.
+
+Both real-map benchmarks take a checkpoint so a late-game hotspot hunt does not rebuild the
+settlement every time:
+
+```bash
+ON_BENCH_CHECKPOINT=/tmp/late.checkpoint ON_BENCH_SKIP=40000 npm run bench:profile
+```
+
+The first run builds the world, runs `ON_BENCH_SKIP` ticks unmeasured, writes the checkpoint and
+measures; every later run with the same path restores it and measures from there (warm-up still
+applies - restored code is cold again). A checkpoint holding another map, seat count or content IR
+version is refused by name rather than measured.
 
 Every run keeps its report under `bench-out/` (untracked), so a baseline exists without having been
 planned for. `npm run bench:compare` with no arguments compares the two most recent runs of the same

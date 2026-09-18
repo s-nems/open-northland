@@ -220,6 +220,10 @@ windows so a system whose cost grows as the settlement develops is visible as a 
 hidden in one average. It needs generated content and fails loudly without it, because a benchmark
 that measures nothing must not read as a clean run.
 
+`npm run bench:profile` profiles the same real-map world function by function (V8's sampler), and
+prints the per-system table for the same ticks beside it. `ON_BENCH_CHECKPOINT` plus `ON_BENCH_SKIP`
+let both real-map benchmarks start from a saved late-game state instead of rebuilding the settlement.
+
 Both reports record the machine they were taken on and judge it. A contended box, a machine whose own
 speed drifted mid-run, or a window spiking far above its median leads the report with an untrustworthy
 banner. Treat those numbers as void rather than as a result.

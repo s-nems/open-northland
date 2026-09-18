@@ -7,6 +7,7 @@ export {
   worldIdentity,
 } from './compare.js';
 export { formatReport } from './format.js';
+export { formatProfile } from './profile.js';
 export { readReport } from './read.js';
 export { percentile, type SystemGrowth, summarize, summarizeSegment, systemGrowth } from './summarize.js';
 export { assessTrust, type TrustInputs } from './trust.js';

@@ -1,7 +1,6 @@
-import { FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { realMapWorld } from '../test/content/real-map-world.js';
-import { boolEnv, intEnv, stringEnv } from './knobs.js';
+import { intEnv } from './knobs.js';
+import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLine } from './map-world.js';
 import { measureWindows } from './measure.js';
 import type { BenchWindow } from './report/index.js';
 import { publishReport, reportFrom } from './run.js';
@@ -18,17 +17,13 @@ import { publishReport, reportFrom } from './run.js';
  *
  * Knobs (env, all optional): `ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
  * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
- * cost), `ON_BENCH_JSON=<path>` (write the machine-readable report).
+ * cost), `ON_BENCH_CHECKPOINT` and `ON_BENCH_SKIP` (see `map-world.ts`), `ON_BENCH_JSON=<path>`
+ * (write the machine-readable report).
  */
 
-const DEFAULT_MAP_ID = 'magiczny_las';
-/** Every seat under AI, matching the `?ai=0,1,2,3,4,5` session the real-content scenarios also use. */
-const DEFAULT_AI_SEATS = 6;
 /** Far enough in for the AI to leave its opening build order and start straining the systems that
  *  scale with settlement size. `ON_BENCH_TICKS=50000` covers a full build-out. */
 const DEFAULT_MEASURED_TICKS = 20_000;
-/** The opening ticks are atypical (crews bind, routes are cold) and JIT tiering has not settled. */
-const DEFAULT_WARMUP_TICKS = 200;
 /** Enough segments to read a curve without turning the table into a log. */
 const DEFAULT_WINDOWS = 10;
 
@@ -47,26 +42,17 @@ describe('map per-system benchmark', () => {
   it('reports how per-system cost grows as the settlement develops', {
     timeout: MAP_BENCH_TIMEOUT_MS,
   }, async () => {
-    const mapId = stringEnv('ON_BENCH_MAP', DEFAULT_MAP_ID);
-    const seats = intEnv('ON_BENCH_SEATS', DEFAULT_AI_SEATS, 0);
-    const warmupTicks = intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0);
-    const measuredTicks = intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1);
+    const knobs = mapBenchKnobs(DEFAULT_MEASURED_TICKS);
     const windows = intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1);
-    const syncDigest = boolEnv('ON_BENCH_SYNC_DIGEST');
 
     const startedAtMs = Date.now();
     const startMs = performance.now();
-    const { sim, mapCells } = await realMapWorld({
-      mapId,
-      aiSeats: [...Array(seats).keys()],
-      rules: { fog: FOG_MODE.CLASSIC, progression: null, needs: null },
-      berryBushes: true,
-    });
-    sim.setSyncDigest(syncDigest);
+    const world = await mapBenchWorld(knobs);
+    console.log(worldSourceLine(world, knobs.checkpointPath));
 
-    const measurement = measureWindows(sim, {
-      warmupTicks,
-      measuredTicks,
+    const measurement = measureWindows(world.sim, {
+      warmupTicks: knobs.warmupTicks,
+      measuredTicks: knobs.measuredTicks,
       windows,
       // A multi-hour run must report progress rather than go silent for an hour.
       onWindow: (window) => console.log(progressLine(window, windows)),
@@ -76,23 +62,16 @@ describe('map per-system benchmark', () => {
       measurement,
       world: {
         kind: 'realMap',
-        mapId,
-        aiSeats: seats,
-        mapCells,
+        mapId: knobs.mapId,
+        aiSeats: knobs.aiSeats,
+        mapCells: world.mapCells,
         settlersAtStart: measurement.settlersAtStart,
         settlersAtEnd: measurement.settlersAtEnd,
         buildings: measurement.buildings,
       },
-      knobs: {
-        ON_BENCH_MAP: mapId,
-        ON_BENCH_SEATS: `${seats}`,
-        ON_BENCH_TICKS: `${measuredTicks}`,
-        ON_BENCH_WARMUP: `${warmupTicks}`,
-        ON_BENCH_WINDOWS: `${windows}`,
-        ON_BENCH_SYNC_DIGEST: syncDigest ? 'on' : 'off',
-      },
-      ticks: { warmup: warmupTicks, measured: measuredTicks },
-      stateHash: sim.hashState(),
+      knobs: { ...knobRecord(knobs), ON_BENCH_WINDOWS: `${windows}` },
+      ticks: { warmup: knobs.warmupTicks, measured: knobs.measuredTicks },
+      stateHash: world.sim.hashState(),
       startedAtMs,
       wallSeconds: (performance.now() - startMs) / 1000,
     });

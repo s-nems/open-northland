@@ -19,6 +19,7 @@
     "test:watch": "vitest --project=!content",
     "bench:sim": "node scripts/bench-sim.mjs",
     "bench:map": "node scripts/bench-map.mjs",
+    "bench:profile": "node scripts/bench-profile.mjs",
     "bench:compare": "node scripts/bench-compare.mjs",
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
