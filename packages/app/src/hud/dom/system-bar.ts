@@ -5,8 +5,8 @@ import { GAME_SPEED_STATES, type GameSpeedControl, type RunningGameSpeed } from 
 import { menuArt } from './icons.js';
 import { createHudSummary, type HudSummaryDeps } from './summary.js';
 
-const MENU_MEDALLION_PX = 40;
-const MENU_ART_PX = 34;
+const MENU_MEDALLION_PX = 34;
+const MENU_ART_PX = 29;
 
 export interface HudSystemBarDeps {
   readonly summary: HudSummaryDeps;
@@ -72,7 +72,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   Object.assign(menu.style, {
     width: `${MENU_MEDALLION_PX}px`,
     height: `${MENU_MEDALLION_PX}px`,
-    marginLeft: '4px',
+    marginLeft: '3px',
   });
   menu.innerHTML = menuArt(MENU_ART_PX);
   menu.addEventListener('click', deps.onMenu);

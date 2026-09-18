@@ -24,6 +24,11 @@ export interface ToolPanelInputDeps {
   readonly closeWindow: () => boolean;
   /** True while another surface owns the keyboard (the system menu); Escape is then its press. */
   readonly keyboardOwned?: () => boolean;
+  /** True while the unit controls would take an Escape themselves (a job list, an armed pick, a
+   *  selection), the rungs of the cancel ladder below the shell's own. */
+  readonly escapeClaimed?: () => boolean;
+  readonly openMenu: () => void;
+  readonly toggleConstruction: () => void;
   readonly togglePause: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is byte-verified). */
@@ -87,12 +92,19 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
 
   // Escape steps back one level per press: a held mode, then the open central window. It runs in the
   // capture phase so the unit controls' own ladder (job list, armed order, selection) only sees a
-  // press the shell left alone, whichever listener registered first. A text field, a modal dialog
-  // and the system menu keep their own Escape.
+  // press the shell left alone, whichever listener registered first. A text field, a modal dialog and
+  // the system menu keep their own keys.
   const keyboardOwned = (e: KeyboardEvent): boolean =>
     isTypingTarget(e.target) ||
     (e.target instanceof Element && e.target.closest('[aria-modal="true"]') !== null) ||
     deps.keyboardOwned?.() === true;
+  const consume = (e: KeyboardEvent): void => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  // Whether the unit controls would take the Escape now in flight, read before any bubble listener
+  // (theirs included) could act on it.
+  let escapeClaimed = false;
   const onKeyDown = (e: KeyboardEvent): void => {
     const sheet = windows.byId.mission;
     if (e.code === 'Escape') {
@@ -100,9 +112,23 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       if (anyHeld()) {
         deps.cue('fail');
         for (const mode of held) mode.cancel();
-      } else if (!deps.closeWindow()) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
+      } else if (!deps.closeWindow()) {
+        escapeClaimed = deps.escapeClaimed?.() === true;
+        return;
+      }
+      consume(e);
+      return;
+    }
+    if (isActionHotkey(e, deps.bindings, 'gameMenu')) {
+      if (keyboardOwned(e)) return;
+      consume(e);
+      deps.openMenu();
+      return;
+    }
+    if (isActionHotkey(e, deps.bindings, 'construction')) {
+      if (keyboardOwned(e)) return;
+      consume(e);
+      deps.toggleConstruction();
       return;
     }
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {
@@ -112,10 +138,21 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     }
   };
 
+  // The game menu is the ladder's last rung when Escape is its key: it opens in the bubble phase, after
+  // every DOM surface with an Escape of its own (a counter's breakdown, a pinned note, the admin
+  // palette) had the press and stopped it, and only when the unit controls were not going to take it.
+  const onEscapeMenu = (e: KeyboardEvent): void => {
+    if (e.code !== 'Escape' || e.defaultPrevented || !isActionHotkey(e, deps.bindings, 'gameMenu')) return;
+    if (keyboardOwned(e) || escapeClaimed) return;
+    consume(e);
+    deps.openMenu();
+  };
+
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown, { capture: true });
+  window.addEventListener('keydown', onEscapeMenu);
 
   return {
     dispose(): void {
@@ -123,6 +160,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('keydown', onEscapeMenu);
     },
   };
 }

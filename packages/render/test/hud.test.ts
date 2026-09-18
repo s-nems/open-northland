@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { IDLE_JOB } from '../src/data/hud/model.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
@@ -44,6 +44,36 @@ function store(
       Building: { tribe, buildingType: 0, built: 1 },
       Stockpile: { amounts },
       Owner: { player },
+    },
+  };
+}
+
+/** A standing signpost of `player` at visual tile `(x, y)`. */
+function signpost(id: number, player: number, x: number, y: number): WorldSnapshot['entities'][number] {
+  return {
+    id,
+    components: {
+      Signpost: { links: [] },
+      Position: { x: fx.fromInt(x), y: fx.fromInt(y) },
+      Owner: { player },
+    },
+  };
+}
+
+/** A haulable ground pile at visual tile `(x, y)`: the sim's `GroundDrop` shape, which no seat owns. */
+function groundPile(
+  id: number,
+  x: number,
+  y: number,
+  goodType: number,
+  amount: number,
+): WorldSnapshot['entities'][number] {
+  return {
+    id,
+    components: {
+      GroundDrop: { goodType },
+      Stockpile: { amounts: [[goodType, amount]] },
+      Position: { x: fx.fromInt(x), y: fx.fromInt(y) },
     },
   };
 }
@@ -157,6 +187,39 @@ describe('buildHud', () => {
       { goodType: 2, amount: 14 }, // 10 + 4
       { goodType: 5, amount: 3 },
       // goodType 9 sums to 0
+    ]);
+  });
+
+  it('adds a ground pile strictly inside the walk range of one of the player signposts', () => {
+    const hud = buildHud(
+      snapshotOf([
+        store(1, 0, [[2, 10]]),
+        signpost(2, 0, 10, 10),
+        groundPile(3, 12, 11, 2, 4), // two tiles from the post
+        groundPile(4, 12, 12, 7, 1),
+        groundPile(5, 70, 70, 2, 99), // far beyond fifty nodes of any post
+      ]),
+      0,
+    );
+    expect(hud.stocks).toEqual([
+      { goodType: 2, amount: 14 },
+      { goodType: 7, amount: 1 },
+    ]);
+  });
+
+  it('leaves ground piles out without a post of the player in reach, whoever else stands one there', () => {
+    const entities = [store(1, 0, [[2, 10]]), groundPile(3, 12, 11, 2, 4)];
+    expect(buildHud(snapshotOf(entities), 0).stocks).toEqual([{ goodType: 2, amount: 10 }]);
+    expect(buildHud(snapshotOf([...entities, signpost(2, 1, 10, 10)]), 0).stocks).toEqual([
+      { goodType: 2, amount: 10 },
+    ]);
+    // A loose pile (no GroundDrop marker) is not haulable and rests outside every count.
+    const loose = {
+      id: 6,
+      components: { Stockpile: { amounts: [[2, 5]] }, Position: { x: fx.fromInt(11), y: fx.fromInt(11) } },
+    };
+    expect(buildHud(snapshotOf([...entities, signpost(2, 0, 10, 10), loose]), 0).stocks).toEqual([
+      { goodType: 2, amount: 14 },
     ]);
   });
 

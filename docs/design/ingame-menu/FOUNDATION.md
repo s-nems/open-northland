@@ -97,7 +97,10 @@ Rules the shell enforces:
   Statystyki, Dyplomacja, Mieszkańcy and Wiedza leave a running placement alone.
 - Esc steps back one level per press: a held placement or paper, then the open central window, then
   the unit controls' own ladder (job list, armed order, selection). The shell handles Esc before the
-  other listeners and stops it once it consumed the press.
+  other listeners and stops it once it consumed the press. With every rung clear, Esc opens the game
+  menu: that last step is the rebindable "Menu gry" action (default Esc, the one action Esc may hold)
+  and on any other key it opens the menu at once. "Okno budowania" (default B) toggles the
+  construction window like its beam entry.
 - Closing with Esc or the close medallion returns keyboard focus to the beam entry that owns the
   window. Only the mission sheet and the system menu hold the simulation paused; other windows never
   touch the pause.
@@ -113,13 +116,18 @@ The top-right bar (ticket 04) is one panel: the counters, the clock, the speed s
 medallion, with no divider frame between them.
 
 - Residents are the seat's whole population across the map, by `Owner.player` (never by tribe: a seat
-  fields several): women and men are the grown
-  people with and without the sim's `Female` marker, children are everyone in a born stage (babies
-  included, and the babies also named in the breakdown). The three are disjoint and sum to the total.
-- Stock scope is every store the seat owns: warehouses, homes and workplaces alike, a workplace's
-  inputs counted like its products (the `buildHud` projection the statistics window already shows).
-  A deliberate divergence from the original's counting, which takes a workplace's product slots and
-  skips its input slots (the reading behind the sim's `countsAsOwnStock`).
+  fields several). The bar shows two counters, women and men: the grown people with and without the
+  sim's `Female` marker (a woman in a trade, or a heroine, is a woman). The breakdown adds the men
+  split into workers and soldiers (the `jobtypes.ini` soldier band and the heroes; an idle man is a
+  worker), the children as one figure split into girls and boys, the infants among them, and the
+  total. Women, men and children are disjoint and sum to the total.
+- Stock scope is every store the seat owns, warehouses, homes and workplaces alike, a workplace's
+  inputs counted like its products (the `buildHud` projection the statistics window already shows),
+  plus the ground piles inside the seat's signpost network: a haulable pile strictly under the
+  50-node walk range of one of the seat's posts. An approximation of the collecting settler's own
+  navigation limit: its post-range term, without the collector's radius, group catching or terrain
+  connectivity. A deliberate divergence from the original's counting, which takes a workplace's
+  product slots and skips its input slots (the reading behind the sim's `countsAsOwnStock`).
 - Five categories with fixed rows (`hud/summary/model.ts`, keyed by good string id): Żywność (wheat,
   flour, food, candy, mead), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
   tile, stone block, marble, holy oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,
@@ -129,7 +137,11 @@ medallion, with no divider frame between them.
   names, never a second copy in the catalogs.
 - A category's icon is its representative good (food, wood, short sword, shoes, strength amulet): the
   project's own art when it exists, else the original's recoloured pile frame, sized by area
-  (`good-art.ts`) so a thin sword and a round loaf carry the same visual mass in the 29 px box.
+  (`good-art.ts`) so a thin sword and a round loaf carry the same visual mass in the 25 px box. The
+  frame element is exactly the crop, never a box-sized background, so the sheet's neighbouring frames
+  cannot show beside a thin sprite.
+- The bar is 48 design px tall (the panel border, 6 px padding and the 34 px medallion); counters set
+  their figures at 13 px, the clock at 13 px, the speed segments at 11 px.
 - A breakdown opens on hover or focus of its counters, one at a time, stays while the pointer moves
   into it (a 12 px invisible bridge spans the bar's frame), closes on leave, blur or Esc; a press
   toggles it. The first three hang left-aligned under their counters, the last three right-aligned so

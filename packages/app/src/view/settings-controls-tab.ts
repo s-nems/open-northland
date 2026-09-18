@@ -64,7 +64,7 @@ export function createControlsTab(opts: {
         stop();
         return;
       }
-      if (event.code === 'Escape') {
+      if (event.code === 'Escape' && !bindingAllowedFor(action, 'Escape')) {
         event.preventDefault();
         event.stopPropagation();
         stop();
@@ -112,7 +112,11 @@ export function createControlsTab(opts: {
       chip.addEventListener('click', () => startCapture(action, chip));
       return opts.settingRow(text.bindings[action], chip, {
         tip: [
-          action === 'workFlagOrder' ? text.pointerBindingRebindTip : text.bindingRebindTip,
+          action === 'workFlagOrder'
+            ? text.pointerBindingRebindTip
+            : bindingAllowedFor(action, 'Escape')
+              ? text.escapeBindingRebindTip
+              : text.bindingRebindTip,
           ...(RECALL_ACTIONS.has(action) ? [text.recallSelectedTip] : []),
           ...(opts.deferredTip === undefined ? [] : [opts.deferredTip]),
         ].join(' '),

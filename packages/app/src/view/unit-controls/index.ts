@@ -274,6 +274,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     workAreaRings: () => workArea.rings(opts.snapshot()),
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
+    claimsEscape: () =>
+      chrome.actions().state().mode === 'jobs' || pickMode.isArmed() || selection.ids().size > 0,
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD
     // rather than world.
     claimsPointer: (x, y) =>

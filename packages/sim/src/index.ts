@@ -16,6 +16,7 @@ export {
   fogModeOf,
   fogSettings,
 } from './components/rules.js';
+export { WALK_RANGE_NODES } from './components/signpost.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
 export type { LoggedCommand } from './core/command-queue.js';

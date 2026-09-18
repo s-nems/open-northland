@@ -107,6 +107,9 @@ export interface ToolPanelOptions {
   readonly onSystemMenu?: () => void;
   /** True while the system menu owns the keyboard, so Escape is not the shell's to take. */
   readonly systemMenuOpen?: () => boolean;
+  /** True while the unit controls would take an Escape (a job list, an armed pick, a selection); the
+   *  game menu's Escape waits for that too. */
+  readonly escapeClaimed?: () => boolean;
   /** The mission window's brief for a briefing page, or the map's fallback text with null. */
   readonly missionBrief?: (page: number | null) => MissionBrief | null;
   readonly missionBriefingHistory?: () => readonly number[];
@@ -410,6 +413,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       bindings: opts.bindings,
       closeWindow,
       ...(opts.systemMenuOpen !== undefined ? { keyboardOwned: opts.systemMenuOpen } : {}),
+      ...(opts.escapeClaimed !== undefined ? { escapeClaimed: opts.escapeClaimed } : {}),
+      openMenu: () => {
+        ctx.cue('confirm');
+        opts.onSystemMenu?.();
+      },
+      toggleConstruction: () => {
+        ctx.cue('confirm');
+        applyNavEntry(surfaces, 'build');
+        nav.focus('build');
+      },
       togglePause: () => speed.togglePause(),
       cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => {

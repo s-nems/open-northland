@@ -345,6 +345,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
     // reach them through these slots.
     let selectEntity: ((id: number) => void) | null = null;
+    let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
     let missionWindowOpen = false;
     // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
@@ -383,6 +384,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       overlayReserve: () => minimap?.panelRect() ?? null,
       onSystemMenu: () => systemMenu?.toggle(),
       systemMenuOpen: () => systemMenu?.isOpen() === true,
+      escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       missionBrief: briefFor,
       missionBriefingHistory: () => sim.missionBriefingHistory(),
@@ -530,6 +532,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;
+    escapeClaimed = controls.claimsEscape;
     overviewPress = controls.overviewPress;
 
     const {

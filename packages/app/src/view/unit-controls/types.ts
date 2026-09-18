@@ -99,6 +99,8 @@ export interface UnitControls {
    *  is armed. */
   readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;
   readonly signpostPlacementActive: () => boolean;
+  /** True while an Escape would land here: the job list is open, a pick is armed or units are selected. */
+  readonly claimsEscape: () => boolean;
   readonly tick: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
   readonly setUiScale: (uiscale: number) => Promise<void>;

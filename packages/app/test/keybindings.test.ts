@@ -118,10 +118,35 @@ describe('isBindableCode', () => {
     }
   });
 
-  it('rejects modifiers, Escape, and browser-owned keys', () => {
-    for (const code of ['Escape', 'ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F5']) {
+  it('rejects modifiers and browser-owned keys', () => {
+    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F5']) {
       expect(isBindableCode(code), code).toBe(false);
     }
+  });
+});
+
+describe('Escape', () => {
+  it('is bindable, but only plain and only to the game menu', () => {
+    expect(isBindableCode('Escape')).toBe(true);
+    expect(isBindableBinding('Escape')).toBe(true);
+    expect(isBindableBinding('Shift+Escape')).toBe(false);
+    expect(bindingAllowedFor('gameMenu', 'Escape')).toBe(true);
+    expect(bindingAllowedFor('gameMenu', 'KeyM')).toBe(true);
+    for (const action of ['pauseToggle', 'construction', 'actionRing', 'controlGroup1'] as const) {
+      expect(bindingAllowedFor(action, 'Escape'), action).toBe(false);
+    }
+  });
+
+  it('opens the game menu by default, with B on the construction window', () => {
+    expect(DEFAULT_KEY_BINDINGS.gameMenu).toBe('Escape');
+    expect(DEFAULT_KEY_BINDINGS.construction).toBe('KeyB');
+    expect(keyDisplayLabel('Escape', { space: 'Space' })).toBe('Esc');
+  });
+
+  it('never sticks to another action through storage', () => {
+    const parsed = parseKeyBindings({ pauseToggle: 'Escape', gameMenu: 'KeyM' });
+    expect(parsed.pauseToggle).toBe('KeyP');
+    expect(parsed.gameMenu).toBe('KeyM');
   });
 });
 

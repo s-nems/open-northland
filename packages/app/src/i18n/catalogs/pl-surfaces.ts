@@ -175,6 +175,8 @@ export const plSurfaces = {
         panUp: 'Przesuwanie mapy w górę',
         panDown: 'Przesuwanie mapy w dół',
         pauseToggle: 'Pauza',
+        gameMenu: 'Menu gry',
+        construction: 'Okno budowania',
         actionRing: 'Pierścień akcji jednostki',
         professionPicker: 'Lista zawodów osadnika',
         attackMove: 'Atak w marszu',
@@ -225,6 +227,8 @@ export const plSurfaces = {
       bindingUnassigned: 'nieprzypisany',
       bindingFixedTip: 'Stały skrót, nie można go zmienić.',
       bindingRebindTip: 'Kliknij, potem naciśnij nowy klawisz lub kombinację. Esc anuluje.',
+      escapeBindingRebindTip:
+        'Kliknij, potem naciśnij nowy klawisz lub kombinację; Esc też można tu przypisać. Kliknięcie obok anuluje. Esc najpierw zamyka to, co otwarte, a menu otwiera, gdy nie ma już nic do zamknięcia.',
       recallSelectedTip: 'Naciśnięty, gdy grupa jest już zaznaczona, wyśrodkowuje widok na grupie.',
       pointerBindingRebindTip:
         'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia. Esc anuluje.',

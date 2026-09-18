@@ -1104,8 +1104,8 @@
 .on-hud .on-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 9px 8px;
+  gap: 3px;
+  padding: 6px 6px;
   background-image:
     linear-gradient(
       180deg,
@@ -1140,10 +1140,10 @@
 .on-hud .on-bar__count {
   display: flex;
   align-items: center;
-  gap: 5px;
-  min-width: 44px;
-  min-height: 36px;
-  padding: 2px 6px;
+  gap: 4px;
+  min-width: 38px;
+  min-height: 30px;
+  padding: 2px 5px;
   border: 0;
   border-radius: 3px;
   background: transparent;
@@ -1155,33 +1155,39 @@
   box-shadow: inset 0 -2px var(--bronze);
 }
 .on-hud .on-bar__count b {
-  font: 700 15px / 1 var(--font-body);
+  font: 700 13px / 1 var(--font-body);
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 2px #000;
 }
 .on-hud .on-bar__count .on-figure {
-  width: 25px;
-  height: 29px;
+  width: 21px;
+  height: 25px;
   color: #e2d5b6;
   filter: drop-shadow(0 1px 1px #000c);
 }
-/* A good's icon: a crop of its sheet, sized by area in good-art.ts so every good carries the same mass. */
+/* A good's icon: its sheet frame, sized by area in good-art.ts so every good carries the same mass,
+   centred in the box; the frame element is exactly the crop, so no neighbouring frame shows. */
 .on-hud .on-good {
-  display: block;
-  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   filter: drop-shadow(0 1px 1px #000c);
 }
+.on-hud .on-good__frame {
+  display: block;
+  background-repeat: no-repeat;
+}
 .on-hud .on-clock {
-  font: 600 15px / 1 var(--font-body);
+  font: 600 13px / 1 var(--font-body);
   font-variant-numeric: tabular-nums;
   color: var(--text-hi);
-  padding: 7px 10px 7px 8px;
+  padding: 6px 8px 6px 6px;
   text-shadow: 0 1px 2px #000;
 }
 .on-hud .on-speed {
   display: inline-flex;
-  margin: 0 4px;
+  margin: 0 3px;
   border: 1px solid var(--bronze-lo);
   border-radius: 4px;
   overflow: hidden;
@@ -1189,14 +1195,14 @@
   box-shadow: inset 0 1px 3px #000a;
 }
 .on-hud .on-speed button {
-  min-width: 34px;
-  min-height: 30px;
-  padding: 2px 7px;
+  min-width: 30px;
+  min-height: 26px;
+  padding: 2px 6px;
   border: 0;
   border-right: 1px solid #ffffff10;
   background: transparent;
   color: #b9b09a;
-  font: 700 12px / 1 var(--font-body);
+  font: 700 11px / 1 var(--font-body);
   letter-spacing: 0.02em;
 }
 .on-hud .on-speed button:last-child {
@@ -1211,12 +1217,13 @@
   background: #c9a26222;
   color: var(--text-hi);
 }
-/* The breakdown hangs under its own counters, left-aligned so it never overhangs the bar's left edge;
-   the invisible bridge above it keeps the hover alive across the bar's frame. */
+/* The breakdown hangs under its own counters (2 px into the bar's bottom frame), left-aligned so it
+   never overhangs the bar's left edge; the invisible bridge above it keeps the hover alive across the
+   bar's frame. */
 .on-hud .on-tip {
   position: absolute;
   left: 0;
-  top: 46px;
+  top: 37px;
   width: 235px;
   padding: 13px 14px;
   z-index: 20;

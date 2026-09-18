@@ -179,6 +179,8 @@ export const enSurfaces = {
         panUp: 'Pan map up',
         panDown: 'Pan map down',
         pauseToggle: 'Pause',
+        gameMenu: 'Game menu',
+        construction: 'Construction window',
         actionRing: 'Unit action ring',
         professionPicker: 'Settler profession list',
         attackMove: 'Attack-move',
@@ -229,6 +231,8 @@ export const enSurfaces = {
       bindingUnassigned: 'unbound',
       bindingFixedTip: 'Fixed shortcut, it cannot be changed.',
       bindingRebindTip: 'Click, then press the new key or combination. Esc cancels.',
+      escapeBindingRebindTip:
+        'Click, then press the new key or combination; Esc can be assigned here. Clicking elsewhere cancels. Esc first closes whatever is open and opens the menu once nothing is left to close.',
       recallSelectedTip: 'Pressed while the group is already selected, it centres the view on the group.',
       pointerBindingRebindTip:
         'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to selection. Esc cancels.',

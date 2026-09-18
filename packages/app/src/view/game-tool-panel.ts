@@ -77,6 +77,7 @@ export interface GameToolPanelDeps {
   readonly onSystemMenu?: () => void;
   /** True while the system menu is open and owns the keyboard. */
   readonly systemMenuOpen?: () => boolean;
+  readonly escapeClaimed?: () => boolean;
   /** The mission window's brief for a briefing page, or the map's fallback text with null. */
   readonly missionBrief?: (page: number | null) => MissionBrief | null;
   readonly missionBriefingHistory?: () => readonly number[];
@@ -189,6 +190,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
       ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
       ...(deps.systemMenuOpen !== undefined ? { systemMenuOpen: deps.systemMenuOpen } : {}),
+      ...(deps.escapeClaimed !== undefined ? { escapeClaimed: deps.escapeClaimed } : {}),
       ...(deps.missionBrief !== undefined ? { missionBrief: deps.missionBrief } : {}),
       ...(deps.missionBriefingHistory !== undefined
         ? { missionBriefingHistory: deps.missionBriefingHistory }

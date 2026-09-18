@@ -53,11 +53,17 @@ export async function goodIconSource(goodId: string): Promise<GoodIconSource | n
  * the same visual mass (FOUNDATION.md): the sprite's square root of area lands on `mass` design px,
  * capped so its longest side stays inside the box with a margin.
  */
-export const GOOD_ICON_BOX_PX = 29;
-const GOOD_ICON_MASS_PX = 22.5;
+export const GOOD_ICON_BOX_PX = 25;
+const GOOD_ICON_MASS_PX = 19.5;
 const GOOD_ICON_MARGIN_PX = 1;
 
-/** The inline style that crops `source` into a `GOOD_ICON_BOX_PX` square element. */
+/** An empty icon slot: the `GOOD_ICON_BOX_PX` box centring the frame element `goodIconStyle` fills. */
+export function goodIconMarkup(): string {
+  return `<span class="on-good" aria-hidden="true" style="width:${GOOD_ICON_BOX_PX}px;height:${GOOD_ICON_BOX_PX}px"><i class="on-good__frame"></i></span>`;
+}
+
+/** The frame element's inline style: sized to the scaled frame exactly, so the sheet shows nothing
+ *  beside a thin sprite (a background the size of the box would leak the neighbouring frames in). */
 export function goodIconStyle(source: GoodIconSource): string {
   const { rect, sheet } = source;
   const scale = Math.min(
@@ -65,7 +71,5 @@ export function goodIconStyle(source: GoodIconSource): string {
     (GOOD_ICON_BOX_PX - GOOD_ICON_MARGIN_PX) / Math.max(rect.width, rect.height),
   );
   const px = (n: number): string => `${n.toFixed(2)}px`;
-  const left = (GOOD_ICON_BOX_PX - rect.width * scale) / 2 - rect.x * scale;
-  const top = (GOOD_ICON_BOX_PX - rect.height * scale) / 2 - rect.y * scale;
-  return `background-image:url("${source.url}");background-size:${px(sheet.width * scale)} ${px(sheet.height * scale)};background-position:${px(left)} ${px(top)};`;
+  return `width:${px(rect.width * scale)};height:${px(rect.height * scale)};background-image:url("${source.url}");background-size:${px(sheet.width * scale)} ${px(sheet.height * scale)};background-position:${px(-rect.x * scale)} ${px(-rect.y * scale)};`;
 }

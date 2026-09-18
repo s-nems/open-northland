@@ -1,6 +1,6 @@
 import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
 import foundationCss from '../../hud/dom/foundation.css?inline';
-import { GOOD_ICON_BOX_PX } from '../../hud/dom/good-art.js';
+import { goodIconMarkup } from '../../hud/dom/good-art.js';
 import { ACTION_ART_PX, FIGURE, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
 import { type NoticeCardView, noticeCardMarkup } from '../../hud/dom/notice-column.js';
 import { createHudPlane } from '../../hud/dom/root.js';
@@ -13,8 +13,8 @@ import { element } from './controls.js';
 const BOARD_WIDTH = 1280;
 const BOARD_HEIGHT = 720;
 const TITLE_ART_PX = 43;
-const MENU_MEDALLION_PX = 40;
-const MENU_ART_PX = 34;
+const MENU_MEDALLION_PX = 34;
+const MENU_ART_PX = 29;
 const SCALE_STEP = 0.05;
 
 /** The five stock counters, Materiały with its breakdown open, the last three hanging their tip to
@@ -108,11 +108,10 @@ function boardMarkup(): string {
     <div class="on-resource">
       <button type="button" class="on-bar__count" aria-label="Kobiety: 12" aria-expanded="false">${FIGURE.woman}<b>12</b></button>
       <button type="button" class="on-bar__count" aria-label="Mężczyźni: 16" aria-expanded="false">${FIGURE.man}<b>16</b></button>
-      <button type="button" class="on-bar__count" aria-label="Dzieci: 6" aria-expanded="false">${FIGURE.child}<b>6</b></button>
     </div>
     ${SAMPLE_CATEGORIES.map(
       ([name, count, open, flip]) =>
-        `<div class="on-resource${flip ? ' on-resource--flip' : ''}"><button type="button" class="on-bar__count" aria-label="${name}: ${count}" aria-expanded="${open}"><span class="on-good" aria-hidden="true" style="width:${GOOD_ICON_BOX_PX}px;height:${GOOD_ICON_BOX_PX}px"></span><b>${count}</b></button>${
+        `<div class="on-resource${flip ? ' on-resource--flip' : ''}"><button type="button" class="on-bar__count" aria-label="${name}: ${count}" aria-expanded="${open}">${goodIconMarkup()}<b>${count}</b></button>${
           open
             ? `<div class="on-tip on-tip--wide" role="tooltip"><h4 class="on-tip__title">${name}</h4><div class="on-tip__columns"><div><p class="on-tip__row"><span>Drewno</span><b>42</b></p><p class="on-tip__row"><span>Kamień</span><b>18</b></p><p class="on-tip__row on-tip__row--zero"><span>Żelazo</span><b>0</b></p></div><div><p class="on-tip__row on-tip__row--zero"><span>Cegła</span><b>0</b></p><p class="on-tip__row on-tip__row--zero"><span>Dachówka</span><b>0</b></p></div></div></div>`
             : ''
@@ -121,7 +120,7 @@ function boardMarkup(): string {
   </div>
   <time class="on-clock" role="timer" aria-label="Czas gry">1:24:08</time>
   <div class="on-speed" role="toolbar" aria-label="Tempo symulacji"><button type="button" aria-label="Pauza" aria-pressed="false">❚❚</button><button type="button" aria-pressed="true">×1</button><button type="button" aria-pressed="false">×2</button><button type="button" aria-pressed="false">×3</button></div>
-  <button type="button" class="on-medallion" style="width:${MENU_MEDALLION_PX}px;height:${MENU_MEDALLION_PX}px;margin-left:4px" aria-label="Menu gry">${menuArt(MENU_ART_PX)}</button>
+  <button type="button" class="on-medallion" style="width:${MENU_MEDALLION_PX}px;height:${MENU_MEDALLION_PX}px;margin-left:3px" aria-label="Menu gry">${menuArt(MENU_ART_PX)}</button>
 </div>
 <aside class="on-notices" style="top:${NOTICE_COLUMN.top}px;left:${NOTICE_COLUMN.left}px;width:${NOTICE_COLUMN.width}px;bottom:230px">
   <div class="on-notices__head"><span class="on-sr">Wiadomości: ${SAMPLE_NOTICES.length}</span><div class="on-filters" role="toolbar" aria-label="Poziom wiadomości"><button type="button" class="on-filter on-filter--low" aria-label="Wszystkie · zwykłe: ${noticeTally(0)}" aria-pressed="true"><span class="on-filter__count">${noticeTally(0)}</span></button><button type="button" class="on-filter on-filter--medium" aria-label="Ważne i pilne · ważne: ${noticeTally(1)}" aria-pressed="false"><span class="on-filter__count">${noticeTally(1)}</span></button><button type="button" class="on-filter on-filter--high" aria-label="Tylko pilne · pilne: ${noticeTally(2)}" aria-pressed="false"><span class="on-filter__count">${noticeTally(2)}</span></button></div></div>

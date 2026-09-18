@@ -8,7 +8,7 @@ import {
   summaryPopulation,
   summaryStocks,
 } from '../summary/model.js';
-import { GOOD_ICON_BOX_PX, goodIconSource, goodIconStyle } from './good-art.js';
+import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
 import { FIGURE } from './icons.js';
 
 export interface HudSummaryDeps {
@@ -18,8 +18,8 @@ export interface HudSummaryDeps {
   readonly goodLabel: (goodId: string) => string;
 }
 
-/** The counters left of the clock: the residents and the five stock categories, each with a breakdown
- *  that opens on hover or focus and stays while the pointer moves into it. */
+/** The counters left of the clock: the women and men, then the five stock categories, each with a
+ *  breakdown that opens on hover or focus and stays while the pointer moves into it. */
 export interface HudSummary {
   readonly element: HTMLElement;
   /** Show the model as it stands; the same model twice costs nothing. */
@@ -139,27 +139,36 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     row.row.classList.toggle('on-tip__row--zero', value === 0);
   };
 
-  // Residents: three counters over one breakdown.
+  // Residents: the two grown counters over one breakdown; the children live in the breakdown only.
   const women = countButton(copy.women, FIGURE.woman);
   const men = countButton(copy.men, FIGURE.man);
-  const children = countButton(copy.children, FIGURE.child);
-  const residents = group([women, men, children], copy.residents, false);
+  const residents = group([women, men], copy.residents, false);
+  const SUB = 'on-tip__row--sub';
   const womenRow = tipRow(copy.women);
   const menRow = tipRow(copy.men);
+  const workersRow = tipRow(copy.workers, SUB);
+  const soldiersRow = tipRow(copy.soldiers, SUB);
   const childrenRow = tipRow(copy.children);
-  const babiesRow = tipRow(copy.babies, 'on-tip__row--sub');
+  const girlsRow = tipRow(copy.girls, SUB);
+  const boysRow = tipRow(copy.boys, SUB);
+  const babiesRow = tipRow(copy.babies, SUB);
   const totalRow = tipRow(copy.total, 'on-tip__row--total');
-  residents.tip.append(womenRow.row, menRow.row, childrenRow.row, babiesRow.row, totalRow.row);
+  residents.tip.append(
+    womenRow.row,
+    menRow.row,
+    workersRow.row,
+    soldiersRow.row,
+    childrenRow.row,
+    girlsRow.row,
+    boysRow.row,
+    babiesRow.row,
+    totalRow.row,
+  );
 
   // Stock: one counter per category, its icon the category's representative good.
   const categories = SUMMARY_CATEGORIES.map((spec) => {
     const name = copy.categories[spec.id];
-    const icon = document.createElement('span');
-    icon.className = 'on-good';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.style.width = `${GOOD_ICON_BOX_PX}px`;
-    icon.style.height = `${GOOD_ICON_BOX_PX}px`;
-    const count = countButton(name, icon.outerHTML);
+    const count = countButton(name, goodIconMarkup());
     const made = group([count], name, FLIPPED_CATEGORIES.has(spec.id));
     const wide = spec.columns.length > 1;
     made.tip.classList.toggle('on-tip--wide', wide);
@@ -173,9 +182,9 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     });
     goodIconSource(spec.icon)
       .then((source) => {
-        const slot = count.button.querySelector('.on-good');
-        if (disposed || source === null || !(slot instanceof HTMLElement)) return;
-        slot.style.cssText += goodIconStyle(source);
+        const frame = count.button.querySelector('.on-good__frame');
+        if (disposed || source === null || !(frame instanceof HTMLElement)) return;
+        frame.style.cssText = goodIconStyle(source);
       })
       .catch((error: unknown) => diag.warn('hud', `summary icon ${spec.icon}: ${String(error)}`));
     return { spec, count, columns };
@@ -214,10 +223,13 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       const population = summaryPopulation(model);
       setCount(women, population.women);
       setCount(men, population.men);
-      setCount(children, population.children);
       setRow(womenRow, population.women);
       setRow(menRow, population.men);
+      setRow(workersRow, population.workers);
+      setRow(soldiersRow, population.soldiers);
       setRow(childrenRow, population.children);
+      setRow(girlsRow, population.girls);
+      setRow(boysRow, population.boys);
       setRow(babiesRow, population.babies);
       setRow(totalRow, population.total);
       const stocks = summaryStocks(model, deps.goodIdOf);

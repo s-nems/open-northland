@@ -32,6 +32,8 @@ export const KEYBINDING_ACTIONS = [
   'panLeft',
   'panRight',
   'pauseToggle',
+  'gameMenu',
+  'construction',
   'actionRing',
   'professionPicker',
   'attackMove',
@@ -60,6 +62,8 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panUp: 'ArrowUp',
   panDown: 'ArrowDown',
   pauseToggle: 'KeyP',
+  gameMenu: 'Escape',
+  construction: 'KeyB',
   actionRing: 'Space',
   professionPicker: 'KeyC',
   attackMove: 'KeyA',
@@ -79,9 +83,11 @@ export function controlGroupBinding(action: ControlGroupBindingAction): {
   };
 }
 
-/** Codes a binding may take. Escape (the fixed cancel key), Tab, Enter, and the F-row stay out. */
+/** Codes a binding may take. Escape stays the fixed cancel key and may hold only the game menu, which
+ *  opens once there is nothing left to cancel (`bindingAllowedFor`); Tab, Enter and the F-row stay out. */
 const BINDABLE_KEY_CODE =
-  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
+  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
+const ESCAPE_ACTION: KeybindingAction = 'gameMenu';
 const BINDABLE_POINTER_CODE = /^Mouse[012]$/;
 const MODIFIER_ORDER = ['Primary', 'Ctrl', 'Shift', 'Alt', 'Meta'] as const;
 
@@ -94,6 +100,7 @@ export function isBindableBinding(binding: string): boolean {
   const code = parts.pop();
   if (code === undefined || (!BINDABLE_KEY_CODE.test(code) && !BINDABLE_POINTER_CODE.test(code)))
     return false;
+  if (code === 'Escape' && parts.length > 0) return false;
   const modifiers = new Set(parts);
   if (
     modifiers.size !== parts.length ||
@@ -148,6 +155,7 @@ export function bindingAllowedFor(action: KeybindingAction, binding: string): bo
   const parts = binding.split('+');
   const code = parts.at(-1) ?? '';
   const mouse = code.startsWith('Mouse');
+  if (code === 'Escape') return action === ESCAPE_ACTION && parts.length === 1;
   if (action === 'workFlagOrder') {
     return mouse && code !== 'Mouse1' && parts.length > 1 && binding !== 'Shift+Mouse0';
   }
@@ -183,6 +191,7 @@ export function assignBinding(bindings: KeyBindings, action: KeybindingAction, b
 }
 
 const CODE_LABELS: Readonly<Record<string, string>> = {
+  Escape: 'Esc',
   ArrowLeft: '←',
   ArrowRight: '→',
   ArrowUp: '↑',

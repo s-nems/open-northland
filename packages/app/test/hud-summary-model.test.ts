@@ -7,7 +7,10 @@ import {
   JOB_CHILD_FEMALE,
   JOB_CHILD_MALE,
   JOB_CIVILIST,
+  JOB_HERO_SWORD,
+  JOB_HEROINE_BOW,
   JOB_IDLE,
+  JOB_SOLDIER_SWORD,
   JOB_WOMAN,
 } from '../src/catalog/jobs.js';
 import {
@@ -52,7 +55,7 @@ function model(jobs: readonly JobCount[], stocks: readonly StockCount[] = [], ti
 }
 
 describe('summaryPopulation', () => {
-  it('splits adults by the Female tally and keeps every born stage under children', () => {
+  it('splits adults by the Female tally, men by the army band, and children by sex and stage', () => {
     const out = summaryPopulation(
       model([
         { jobType: JOB_BABY_FEMALE, count: 1, female: 1 },
@@ -62,14 +65,37 @@ describe('summaryPopulation', () => {
         { jobType: JOB_WOMAN, count: 3, female: 3 },
         { jobType: JOB_CIVILIST, count: 2, female: 0 },
         { jobType: WOODCUTTER, count: 4, female: 1 }, // a woman in a trade stays a woman
-        { jobType: JOB_IDLE, count: 1, female: 0 },
+        { jobType: JOB_IDLE, count: 1, female: 0 }, // an idle man is a worker without work
+        { jobType: JOB_SOLDIER_SWORD, count: 2, female: 0 },
+        { jobType: JOB_HERO_SWORD, count: 1, female: 0 },
+        { jobType: JOB_HEROINE_BOW, count: 1, female: 1 }, // a heroine is a woman, not a soldier
       ]),
     );
-    expect(out).toEqual({ women: 4, men: 6, children: 5, babies: 2, total: 15 });
+    expect(out).toEqual({
+      women: 5,
+      men: 9,
+      soldiers: 3,
+      workers: 6,
+      children: 5,
+      girls: 3,
+      boys: 2,
+      babies: 2,
+      total: 19,
+    });
   });
 
   it('reads all zeros off an empty seat', () => {
-    expect(summaryPopulation(model([]))).toEqual({ women: 0, men: 0, children: 0, babies: 0, total: 0 });
+    expect(summaryPopulation(model([]))).toEqual({
+      women: 0,
+      men: 0,
+      soldiers: 0,
+      workers: 0,
+      children: 0,
+      girls: 0,
+      boys: 0,
+      babies: 0,
+      total: 0,
+    });
   });
 });
 

@@ -6,7 +6,8 @@ import type { ToolWindows } from '../src/hud/tool-panel/windows.js';
 
 /**
  * The tool panel's canvas and key input over a fake canvas and window: which press plays which GUI
- * click, and the Escape ladder (a held mode, then the open central window, then nothing).
+ * click, the Escape ladder (a held mode, then the open central window, then the unit controls' turn,
+ * then the game menu) and the menu and construction hotkeys.
  */
 
 /** A press the handler reads like a MouseEvent: client point, button, modifiers. */
@@ -71,9 +72,11 @@ class DialogButton {
   }
 }
 
-function mount(keyboardOwned?: () => boolean) {
+function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
   const canvas = new EventTarget() as unknown as HTMLCanvasElement;
   const cues: UiCue[] = [];
+  let menuOpened = 0;
+  let constructionToggled = 0;
   const held = heldMode();
   const arm = (): void => {
     held.active = true;
@@ -93,6 +96,13 @@ function mount(keyboardOwned?: () => boolean) {
       return true;
     },
     ...(keyboardOwned !== undefined ? { keyboardOwned } : {}),
+    ...(escapeClaimed !== undefined ? { escapeClaimed } : {}),
+    openMenu: () => {
+      menuOpened++;
+    },
+    toggleConstruction: () => {
+      constructionToggled++;
+    },
     togglePause: () => undefined,
     cue: (cue) => {
       cues.push(cue);
@@ -109,6 +119,8 @@ function mount(keyboardOwned?: () => boolean) {
     },
     closed,
     windowTarget,
+    menuOpened: (): number => menuOpened,
+    constructionToggled: (): number => constructionToggled,
   };
 }
 
@@ -135,8 +147,11 @@ describe('tool panel input clicks', () => {
 });
 
 describe('tool panel Escape ladder', () => {
-  it('cancels a held mode first, then closes the open window, then leaves the press alone', () => {
-    const { input, cues, held, arm, openWindow, closed, windowTarget } = mount();
+  it('cancels a held mode first, then closes the open window, then leaves the press to a claimant', () => {
+    const { input, cues, held, arm, openWindow, closed, windowTarget, menuOpened } = mount(
+      undefined,
+      () => true,
+    );
     arm();
     openWindow();
 
@@ -156,6 +171,74 @@ describe('tool panel Escape ladder', () => {
     windowTarget.dispatchEvent(third);
     expect(third.defaultPrevented).toBe(false); // nothing left for the shell: the unit controls' turn
     expect(cues).toEqual(['fail']);
+    expect(menuOpened()).toBe(0);
+    input.dispose();
+  });
+
+  it('opens the game menu on Escape once nothing is held, open or claimed', () => {
+    const { input, openWindow, windowTarget, menuOpened } = mount(undefined, () => false);
+    openWindow();
+    windowTarget.dispatchEvent(key('Escape'));
+    expect(menuOpened()).toBe(0);
+    const clear = key('Escape');
+    windowTarget.dispatchEvent(clear);
+    expect(menuOpened()).toBe(1);
+    expect(clear.defaultPrevented).toBe(true);
+    input.dispose();
+  });
+
+  it('leaves the menu shut when a DOM surface already took the Escape', () => {
+    windowTarget.addEventListener('keydown', (e) => e.preventDefault()); // a breakdown or a pinned note
+    const { input, windowTarget: target, menuOpened } = mount(undefined, () => false);
+    target.dispatchEvent(key('Escape'));
+    expect(menuOpened()).toBe(0);
+    input.dispose();
+  });
+
+  it('opens the menu at once on a key of its own, and keeps Escape as the plain cancel', () => {
+    const { input, arm, held, openWindow, closed, windowTarget, menuOpened } = mount(undefined, () => false);
+    const bindings = { ...DEFAULT_KEY_BINDINGS, gameMenu: 'KeyM' };
+    const other = createToolPanelInput({
+      canvas: new EventTarget() as unknown as HTMLCanvasElement,
+      toCanvas: (x, y) => ({ x, y }),
+      windows: CLOSED_WINDOWS,
+      held: [],
+      bindings,
+      closeWindow: () => false,
+      openMenu: () => {
+        opened++;
+      },
+      toggleConstruction: () => undefined,
+      togglePause: () => undefined,
+      cue: () => undefined,
+    });
+    let opened = 0;
+    input.dispose();
+    arm();
+    openWindow();
+    const menuKey = key('KeyM');
+    windowTarget.dispatchEvent(menuKey);
+    expect(opened).toBe(1);
+    expect(menuKey.defaultPrevented).toBe(true);
+    expect(held.isActive()).toBe(true); // the ladder is Escape's alone
+    expect(closed).toEqual([]);
+    windowTarget.dispatchEvent(key('Escape'));
+    expect(opened).toBe(1);
+    expect(menuOpened()).toBe(0);
+    other.dispose();
+  });
+
+  it('toggles the construction window on its key, unless another surface owns the keyboard', () => {
+    let owned = false;
+    const { input, windowTarget, constructionToggled, cues } = mount(() => owned);
+    const build = key('KeyB');
+    windowTarget.dispatchEvent(build);
+    expect(constructionToggled()).toBe(1);
+    expect(build.defaultPrevented).toBe(true);
+    owned = true;
+    windowTarget.dispatchEvent(key('KeyB'));
+    expect(constructionToggled()).toBe(1);
+    expect(cues).toEqual([]);
     input.dispose();
   });
 
@@ -181,7 +264,7 @@ describe('tool panel Escape ladder', () => {
   });
 
   it('stops a consumed Escape before the listeners registered after it', () => {
-    const { input, openWindow, windowTarget } = mount();
+    const { input, openWindow, windowTarget } = mount(undefined, () => true);
     let reached = 0;
     windowTarget.addEventListener('keydown', () => {
       reached++;

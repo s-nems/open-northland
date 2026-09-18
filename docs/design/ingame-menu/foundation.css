@@ -335,9 +335,9 @@ button.medallion:hover {
   right: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   z-index: 30;
-  padding: 9px 8px;
+  padding: 6px 6px;
   border-radius: 0 0 0 5px;
   background:
     linear-gradient(
@@ -360,10 +360,10 @@ button.medallion:hover {
 .summary button {
   display: flex;
   align-items: center;
-  gap: 5px;
-  min-width: 44px;
-  min-height: 36px;
-  padding: 2px 6px;
+  gap: 4px;
+  min-width: 38px;
+  min-height: 30px;
+  padding: 2px 5px;
   border: 0;
   border-radius: 3px;
   background: transparent;
@@ -376,7 +376,7 @@ button.medallion:hover {
 }
 .summary b {
   font:
-    700 15px / 1 Alegreya,
+    700 13px / 1 Alegreya,
     serif;
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
@@ -388,14 +388,14 @@ button.medallion:hover {
   background: linear-gradient(#0000, var(--bronze-lo), #0000);
 }
 .summary .population-symbol {
-  width: 25px;
-  height: 29px;
+  width: 21px;
+  height: 25px;
   color: #e2d5b6;
   filter: drop-shadow(0 1px 1px #000c);
 }
 .summary .game-good {
-  width: 29px;
-  height: 29px;
+  width: 25px;
+  height: 25px;
   background: none;
   filter: drop-shadow(0 1px 1px #000c);
 }
@@ -412,7 +412,7 @@ button.medallion:hover {
 .resource-tip {
   position: absolute;
   left: 0;
-  top: 46px;
+  top: 37px;
   width: 235px;
   padding: 13px 14px;
   z-index: 20;
@@ -495,16 +495,16 @@ button.medallion:hover {
 }
 .timebar time {
   font:
-    600 15px / 1 Alegreya,
+    600 13px / 1 Alegreya,
     serif;
   font-variant-numeric: tabular-nums;
   color: var(--text-hi);
-  padding: 7px 10px 7px 8px;
+  padding: 6px 8px 6px 6px;
   text-shadow: 0 1px 2px #000;
 }
 .speed {
   display: inline-flex;
-  margin: 0 4px;
+  margin: 0 3px;
   border: 1px solid var(--bronze-lo);
   border-radius: 4px;
   overflow: hidden;
@@ -512,15 +512,15 @@ button.medallion:hover {
   box-shadow: inset 0 1px 3px #000a;
 }
 .speed button {
-  min-width: 34px;
-  min-height: 30px;
-  padding: 2px 7px;
+  min-width: 30px;
+  min-height: 26px;
+  padding: 2px 6px;
   border: 0;
   border-right: 1px solid #ffffff10;
   background: transparent;
   color: #b9b09a;
   font:
-    700 12px / 1 Alegreya,
+    700 11px / 1 Alegreya,
     serif;
   letter-spacing: 0.02em;
 }
@@ -537,9 +537,9 @@ button.medallion:hover {
   color: var(--text-hi);
 }
 .menu {
-  width: 40px;
-  height: 40px;
-  margin-left: 4px;
+  width: 34px;
+  height: 34px;
+  margin-left: 3px;
 }
 .menu .painted {
   width: 34px;

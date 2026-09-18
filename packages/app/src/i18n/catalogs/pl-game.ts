@@ -267,7 +267,11 @@ export const plGame = {
       residents: 'Mieszkańcy',
       women: 'Kobiety',
       men: 'Mężczyźni',
+      workers: 'pracownicy',
+      soldiers: 'żołnierze',
       children: 'Dzieci',
+      girls: 'dziewczynki',
+      boys: 'chłopcy',
       babies: 'w tym niemowlęta',
       total: 'Razem',
       categories: {

@@ -1,5 +1,12 @@
-import { IDLE_JOB as SIM_IDLE_JOB, type WorldSnapshot } from '@open-northland/sim';
-import { readNumField, readStockpileAmounts } from '../snapshot/index.js';
+import {
+  type Fixed,
+  hexDistanceBetween,
+  nodeOfPosition,
+  IDLE_JOB as SIM_IDLE_JOB,
+  WALK_RANGE_NODES,
+  type WorldSnapshot,
+} from '@open-northland/sim';
+import { readNumField, readPosition, readStockpileAmounts } from '../snapshot/index.js';
 
 /**
  * Turns a {@link WorldSnapshot} into a flat {@link HudModel}. Aggregates are re-derived from the
@@ -32,7 +39,8 @@ export interface HudModel {
   readonly population: number;
   /** Per-job head-counts, ascending by `jobType`. */
   readonly jobs: readonly JobCount[];
-  /** Per-good totals across the player's stores, ascending by `goodType`; zero entries omitted. */
+  /** Per-good totals across the player's stores and the ground piles its signposts reach, ascending
+   *  by `goodType`; zero entries omitted. */
   readonly stocks: readonly StockCount[];
 }
 
@@ -42,22 +50,55 @@ function jobTypeOf(components: Readonly<Record<string, unknown>>): number {
   return readNumField(components, 'Settler', 'jobType') ?? IDLE_JOB;
 }
 
+interface HalfCellNode {
+  readonly hx: number;
+  readonly hy: number;
+}
+
+/** The half-cell node under an entity's `Position`, or null for one that stands nowhere. */
+function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | null {
+  const p = readPosition(components);
+  return p === null ? null : nodeOfPosition(p.x as Fixed, p.y as Fixed);
+}
+
 /**
  * Build one player's {@link HudModel} from a frame {@link WorldSnapshot}. Membership is `Owner.player`,
  * not `tribe`: a seat routinely fields several tribes and a tribe is routinely split across seats, so
  * only the owner answers "what do I command". A neutral entity carries no `Owner` and counts for nobody,
  * which is stricter than the sim's `ownersCompatible` side rule - a neutral store every seat may draw
  * from would show in none of their totals. No decoded map authors one.
+ *
+ * Stock is every owned building's pile plus the ground piles inside the seat's signpost network: a
+ * `GroundDrop` strictly under `WALK_RANGE_NODES` of one of the seat's posts. An approximation of the
+ * collecting settler's own limit (`networkLimitAt`), keeping its post-range term and ignoring the
+ * collector's radius, group catching and terrain connectivity; only a gatherer takes a pile, never a
+ * carrier.
  * Output ordering is total (sorted by id), so the same snapshot yields an identical model every call.
  */
 export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   let population = 0;
   const jobCounts = new Map<number, { count: number; female: number }>();
   const stockTotals = new Map<number, number>();
+  const addStock = (components: Readonly<Record<string, unknown>>): void => {
+    for (const [goodType, amount] of readStockpileAmounts(components)) {
+      stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
+    }
+  };
+  const posts: HalfCellNode[] = [];
+  const piles: Readonly<Record<string, unknown>>[] = [];
 
   for (const entity of snapshot.entities) {
     const components = entity.components;
+    // A haulable ground pile belongs to nobody; whether it counts is settled below, by the posts.
+    if ('GroundDrop' in components) {
+      piles.push(components);
+      continue;
+    }
     if (readNumField(components, 'Owner', 'player') !== player) continue;
+    if ('Signpost' in components) {
+      const node = nodeOf(components);
+      if (node !== null) posts.push(node);
+    }
 
     // The `Person` marker is the sim's own population query key, so wildlife and a claimed animal are
     // left out here the same way.
@@ -70,10 +111,15 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
       jobCounts.set(jobType, tally);
     }
 
-    if ('Building' in components) {
-      for (const [goodType, amount] of readStockpileAmounts(components)) {
-        stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
-      }
+    if ('Building' in components) addStock(components);
+  }
+  for (const pile of piles) {
+    const node = nodeOf(pile);
+    if (
+      node !== null &&
+      posts.some((post) => hexDistanceBetween(post.hx, post.hy, node.hx, node.hy) < WALK_RANGE_NODES)
+    ) {
+      addStock(pile);
     }
   }
 

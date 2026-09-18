@@ -32,8 +32,6 @@ export const FIGURE = {
   woman:
     '<svg aria-hidden="true" class="on-figure" viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="5.5" r="3.6"/><path d="M12.5 10.5h7l4.5 12.5H8z"/><rect x="12" y="23" width="3.2" height="8" rx="1"/><rect x="16.8" y="23" width="3.2" height="8" rx="1"/></svg>',
   man: '<svg aria-hidden="true" class="on-figure" viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="5.5" r="3.6"/><rect x="9.5" y="10.5" width="13" height="11.5" rx="3"/><rect x="10.5" y="22" width="4.4" height="9" rx="1"/><rect x="17.1" y="22" width="4.4" height="9" rx="1"/></svg>',
-  child:
-    '<svg aria-hidden="true" class="on-figure" viewBox="0 0 32 32" fill="currentColor"><circle cx="16" cy="9.5" r="3.3"/><rect x="11.5" y="14" width="9" height="8.5" rx="2.5"/><rect x="12.3" y="22.5" width="3.2" height="8.5" rx="1"/><rect x="16.5" y="22.5" width="3.2" height="8.5" rx="1"/></svg>',
 } as const;
 
 /** Painted-icon size on a beam action (design px); mirrors `.on-action__art` in foundation.css. */

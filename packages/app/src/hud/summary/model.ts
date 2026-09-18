@@ -1,6 +1,15 @@
 import type { HudModel } from '@open-northland/render';
 import { TICKS_PER_SECOND } from '@open-northland/sim';
-import { JOB_BABY_FEMALE, JOB_BABY_MALE, JOB_CHILD_FEMALE, JOB_CHILD_MALE } from '../../catalog/jobs.js';
+import {
+  JOB_BABY_FEMALE,
+  JOB_BABY_MALE,
+  JOB_CHILD_FEMALE,
+  JOB_CHILD_MALE,
+  JOB_HERO_UNARMED,
+  JOB_HEROINE_BOW,
+  SOLDIER_JOB_MAX,
+  SOLDIER_JOB_MIN,
+} from '../../catalog/jobs.js';
 
 /**
  * The top-right summary's figures, read off the per-tick {@link HudModel}: the seat's people split by
@@ -81,33 +90,55 @@ export interface SummaryPopulation {
   /** Grown people with and without the sim's `Female` marker; a woman in a trade is still a woman. */
   readonly women: number;
   readonly men: number;
+  /** The men in a soldier or hero job; `workers` is every other man, idle ones included. */
+  readonly soldiers: number;
+  readonly workers: number;
   /** Everyone in a born stage (baby or child of either sex); disjoint from the adults. */
   readonly children: number;
+  readonly girls: number;
+  readonly boys: number;
   /** The part of `children` still in the baby stage. */
   readonly babies: number;
   readonly total: number;
 }
 
+const GIRL_JOBS: ReadonlySet<number> = new Set([JOB_BABY_FEMALE, JOB_CHILD_FEMALE]);
+const BOY_JOBS: ReadonlySet<number> = new Set([JOB_BABY_MALE, JOB_CHILD_MALE]);
 const BABY_JOBS: ReadonlySet<number> = new Set([JOB_BABY_FEMALE, JOB_BABY_MALE]);
-const CHILD_JOBS: ReadonlySet<number> = new Set([JOB_CHILD_FEMALE, JOB_CHILD_MALE]);
+
+/** The `jobtypes.ini` soldier band and the named heroes: the people the original lists under its army. */
+const isMilitaryJob = (jobType: number): boolean =>
+  (jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX) ||
+  (jobType >= JOB_HERO_UNARMED && jobType <= JOB_HEROINE_BOW);
 
 export function summaryPopulation(model: HudModel): SummaryPopulation {
   let women = 0;
   let men = 0;
-  let children = 0;
+  let soldiers = 0;
+  let girls = 0;
+  let boys = 0;
   let babies = 0;
   for (const { jobType, count, female } of model.jobs) {
-    if (BABY_JOBS.has(jobType)) {
-      babies += count;
-      children += count;
-    } else if (CHILD_JOBS.has(jobType)) {
-      children += count;
-    } else {
+    if (GIRL_JOBS.has(jobType)) girls += count;
+    else if (BOY_JOBS.has(jobType)) boys += count;
+    else {
       women += female;
       men += count - female;
+      if (isMilitaryJob(jobType)) soldiers += count - female;
     }
+    if (BABY_JOBS.has(jobType)) babies += count;
   }
-  return { women, men, children, babies, total: model.population };
+  return {
+    women,
+    men,
+    soldiers,
+    workers: men - soldiers,
+    children: girls + boys,
+    girls,
+    boys,
+    babies,
+    total: model.population,
+  };
 }
 
 export interface SummaryRow {
