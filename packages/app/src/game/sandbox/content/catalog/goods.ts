@@ -16,7 +16,10 @@ import { EXTENDED_GOODS, PRODUCE_ATOMIC_BY_GOOD_ID } from '../../../../catalog/g
 import { CARCASS_GOOD_SLUGS } from '../../../../catalog/hunting.js';
 import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
 import {
+  BUILDING_CATAPULT_YARD,
   BUILDING_HANDCART_YARD,
+  BUILDING_SHIP_SMALL_YARD,
+  GOOD_CATAPULT,
   GOOD_COIN,
   GOOD_GOLD,
   GOOD_HANDCART,
@@ -25,6 +28,7 @@ import {
   GOOD_MUSHROOM,
   GOOD_NONE,
   GOOD_PLANK,
+  GOOD_SHIP_SMALL,
   GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
@@ -33,7 +37,11 @@ import type { SandboxContentExtras } from '../types.js';
 
 /** The vehicle good to yard pairing of `logicdefines.inc` (`GOOD_TYPE_VEHICLE_*` / `HOUSE_TYPE_VEHICLE_*`),
  *  for the one vehicle the sandbox builds. */
-const VEHICLE_HOUSE_BY_GOOD: ReadonlyMap<number, number> = new Map([[GOOD_HANDCART, BUILDING_HANDCART_YARD]]);
+const VEHICLE_HOUSE_BY_GOOD: ReadonlyMap<number, number> = new Map([
+  [GOOD_HANDCART, BUILDING_HANDCART_YARD],
+  [GOOD_SHIP_SMALL, BUILDING_SHIP_SMALL_YARD],
+  [GOOD_CATAPULT, BUILDING_CATAPULT_YARD],
+]);
 
 export function buildSandboxGoods(extras: SandboxContentExtras): readonly object[] {
   const localName = (id: string): { name?: string } => {

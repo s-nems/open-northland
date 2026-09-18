@@ -250,6 +250,11 @@ export const enContent = {
       summary:
         'A level-3 joinery whose two joiners are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.',
     },
+    'vehicle-shipyard': {
+      title: 'Shipyard',
+      summary:
+        'A level-4 joinery on a shore whose joiners are set to the small ship and the catapult in turn: the ship yard opens on the water beside the shop with the shipwright working from the shore, the catapult yard on the land. The launched ship lies moored at the shore with its sails furled.',
+    },
     'vehicle-ox': {
       title: 'Ox cart without ox',
       summary:

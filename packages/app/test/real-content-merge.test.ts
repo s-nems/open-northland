@@ -267,9 +267,8 @@ describe('mergeRealContent', () => {
     expect(unfarmedFieldGoods).toContain('testcrop');
     expect(unfarmedFieldGoods).not.toContain('wheat'); // wheat and herb got their clean-room farming block
     expect(unfarmedFieldGoods).not.toContain('herb');
-    // The sandbox base carries the handcart yard, a `vehicle`-kind row the viking building catalog
-    // deliberately leaves out, so it reports beside the fixture's own stranger.
-    expect(uncatalogedBuildings).toEqual(['handcart', 'wonder_test']);
+    // The sandbox base's three vehicle yards are `vehicle`-kind rows no menu lists, so they never report.
+    expect(uncatalogedBuildings).toEqual(['wonder_test']);
   });
 
   it('injects the sim nav-terrain classes so a collision-resolved grid navigates on real content', () => {

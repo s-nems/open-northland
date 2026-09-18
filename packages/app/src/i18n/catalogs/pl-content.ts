@@ -248,6 +248,11 @@ export const plContent = {
       summary:
         'Stolarnia trzeciego poziomu, której dwaj stolarze mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
     },
+    'vehicle-shipyard': {
+      title: 'Stocznia',
+      summary:
+        'Stolarnia czwartego poziomu na brzegu, której stolarze mają robić na zmianę mały statek i katapultę: plac statku otwiera się na wodzie obok warsztatu, a szkutnik pracuje na brzegu; plac katapulty na lądzie. Zwodowany statek stoi zacumowany przy brzegu ze zwiniętymi żaglami.',
+    },
     'vehicle-ox': {
       title: 'Wóz bez wołu',
       summary:

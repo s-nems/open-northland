@@ -66,8 +66,11 @@ export const GOOD_AMULET_STRENGTH = 152;
 export const GOOD_AMULET_DEFENSE = 153;
 export const GOOD_AMULET_CRITICAL_HIT = 154;
 export const GOOD_AMULET_SPEED = 155;
-/** The handcart (`goodtypes.ini` 59): a yard-built vehicle good, never stocked. */
+/** The handcart, small ship and catapult (`goodtypes.ini` 59/61/63): yard-built vehicle goods, never
+ *  stocked. */
 export const GOOD_HANDCART = 159;
+export const GOOD_SHIP_SMALL = 161;
+export const GOOD_CATAPULT = 163;
 
 /** The classification only; the good itself, with its name and icon, lives once in the global catalog. */
 export type EquipGoodSpec = EquipClass & {

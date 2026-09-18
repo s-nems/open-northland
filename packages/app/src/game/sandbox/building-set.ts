@@ -9,6 +9,7 @@ import type { SandboxContentExtras } from './content/types.js';
 import {
   BUILDING_ANIMAL_FARM,
   BUILDING_BAKERY,
+  BUILDING_CATAPULT_YARD,
   BUILDING_DRUID_HUT,
   BUILDING_DRUID_HUT_01,
   BUILDING_FARM,
@@ -22,6 +23,7 @@ import {
   BUILDING_MILL,
   BUILDING_POTTERY,
   BUILDING_POTTERY_01,
+  BUILDING_SHIP_SMALL_YARD,
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
@@ -29,6 +31,7 @@ import {
   BUILDING_WELL,
   GOOD_BREAD,
   GOOD_BRICK,
+  GOOD_CATAPULT,
   GOOD_CATTLE,
   GOOD_COIN,
   GOOD_CROCKERY,
@@ -54,6 +57,7 @@ import {
   GOOD_POTION_STAMINA_BIG,
   GOOD_POTION_STAMINA_SMALL,
   GOOD_SHEEP,
+  GOOD_SHIP_SMALL,
   GOOD_STONE,
   GOOD_TILE,
   GOOD_TOOL_IRON,
@@ -62,7 +66,9 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   GOOD_WOOL,
+  VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
+  VEHICLE_SHIP_SMALL,
 } from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
 
@@ -92,8 +98,16 @@ const CRAFT_INPUT_CAPACITY = 10;
 // Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
 // vehicle good is built on a yard, not shelved.
 const JOINERY_CART_CAPACITY = 20;
-// Extracted "viking handcart" (house 42): `logicvehicletype 1`, a 2-wood bill, the real footprint.
+// Extracted bills of the vehicle yards (houses 42/44/46): the handcart's 2 wood, the small ship's
+// 5 leather and 10 wood, the catapult's 9 wood and 1 iron; the footprints are the real ones.
 const HANDCART_YARD_WOOD = 2;
+const SHIP_YARD_LEATHER = 5;
+const SHIP_YARD_WOOD = 10;
+const CATAPULT_YARD_WOOD = 9;
+const CATAPULT_YARD_IRON = 1;
+/** Extracted `logicstock` caps of the level-4 joinery: 20 per input and vehicle good, 15 leather. */
+const JOINERY_03_INPUT_CAPACITY = 20;
+const JOINERY_03_LEATHER_CAPACITY = 15;
 
 export interface StockSlot {
   readonly goodType: number;
@@ -163,6 +177,8 @@ export interface SandboxBuildingRow {
   shelterCapacity?: number;
   /** The vehicle a finished site of this `vehicle`-kind house spawns. */
   vehicleType?: number;
+  /** A ship yard (`logicignorecontinentsflag`): its site lies on the water beside the shipyard. */
+  ignoreContinents?: boolean;
 }
 
 /** Extracted `logicstock 16 25` / `43 25` on both tower tiers. */
@@ -244,15 +260,22 @@ function joineryUpgrade(outputCapacity: number, inputCapacity: number): Partial<
   };
 }
 
-function withHandcart(row: Partial<SandboxBuildingRow>): Partial<SandboxBuildingRow> {
+/** A joinery row that also raises `vehicles` on yards: each vehicle good gets its never-filled stock slot
+ *  and a {@link vehicleTurn}, beside any `extraStock` its yards' bills draw on. */
+function withVehicleTurns(
+  row: Partial<SandboxBuildingRow>,
+  vehicles: readonly number[],
+  extraStock: readonly StockSlot[] = [],
+): Partial<SandboxBuildingRow> {
   return {
     ...row,
-    stock: [...(row.stock ?? []), { goodType: GOOD_HANDCART, capacity: JOINERY_CART_CAPACITY, initial: 0 }],
-    produces: [...(row.produces ?? []), GOOD_HANDCART],
-    recipes: [
-      ...(row.recipes ?? []),
-      { inputs: [], outputs: [{ goodType: GOOD_HANDCART, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS },
+    stock: [
+      ...(row.stock ?? []),
+      ...extraStock,
+      ...vehicles.map((goodType) => ({ goodType, capacity: JOINERY_CART_CAPACITY, initial: 0 })),
     ],
+    produces: [...(row.produces ?? []), ...vehicles],
+    recipes: [...(row.recipes ?? []), ...vehicles.map(vehicleTurn)],
   };
 }
 
@@ -433,8 +456,14 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   // The level-3 joinery ("work joinery 02") also lists the handcart among its products
   // (`logicproduction 59`): its joiner's turn for a cart is a yard site beside the shop, not a cycle, so
   // the cart recipe carries no inputs; the yard's bill is what the cart costs.
-  [BUILDING_JOINERY_02]: withHandcart(joineryUpgrade(25, CRAFT_INPUT_CAPACITY)),
-  [BUILDING_JOINERY_03]: joineryUpgrade(25, 20),
+  [BUILDING_JOINERY_02]: withVehicleTurns(joineryUpgrade(25, CRAFT_INPUT_CAPACITY), [GOOD_HANDCART]),
+  // The level-4 joinery ("work joinery 03") adds the small ship and the catapult to its products
+  // (`logicproduction 61 63`, the big ship left out of the sandbox); leather and iron feed their yards.
+  [BUILDING_JOINERY_03]: withVehicleTurns(
+    joineryUpgrade(25, JOINERY_03_INPUT_CAPACITY),
+    [GOOD_HANDCART, GOOD_SHIP_SMALL, GOOD_CATAPULT],
+    [{ goodType: GOOD_LEATHER, capacity: JOINERY_03_LEATHER_CAPACITY, initial: 0 }],
+  ),
   // Extracted `work pottery 00/01`: the upgrade keeps bricks, adds tiles, and unlocks crockery.
   [BUILDING_POTTERY]: {
     stock: [
@@ -462,46 +491,195 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   },
 };
 
-/** The handcart yard: no worker slot of its own, since the joiner building the cart crews the site. */
-function handcartYardRow(): SandboxBuildingRow {
-  return {
+/** A vehicle turn of a joinery: a yard site beside the shop, not a cycle, so the recipe carries no inputs
+ *  and the yard's bill is what the vehicle costs. */
+function vehicleTurn(goodType: number): SandboxRecipe {
+  return { inputs: [], outputs: [{ goodType, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS };
+}
+
+interface VehicleYard {
+  readonly typeId: number;
+  readonly id: string;
+  readonly vehicleType: number;
+  readonly construction: readonly { goodType: number; amount: number }[];
+  readonly ignoreContinents?: boolean;
+  readonly footprint: BuildingFootprint;
+}
+
+/** Cells `(dx, dy)` from a flat list. */
+function cells(pairs: readonly (readonly [number, number])[]): { dx: number; dy: number }[] {
+  return pairs.map(([dx, dy]) => ({ dx, dy }));
+}
+
+const HANDCART_BODY = cells([
+  [0, -1],
+  [0, 0],
+  [1, 0],
+  [0, 1],
+]);
+const SHIP_SMALL_BODY = cells([
+  [-1, -2],
+  [0, -2],
+  [1, -2],
+  [-2, -1],
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-2, 0],
+  [-1, 0],
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [-2, 1],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+  [-1, 2],
+  [0, 2],
+  [1, 2],
+]);
+const CATAPULT_BODY = cells([
+  [-1, -1],
+  [0, -1],
+  [-1, 0],
+  [0, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+]);
+
+/** The three yards the sandbox joineries raise, the real footprints of houses 42, 44 and 46. */
+const VEHICLE_YARDS: readonly VehicleYard[] = [
+  {
     typeId: BUILDING_HANDCART_YARD,
     id: 'handcart',
-    kind: 'vehicle',
     vehicleType: VEHICLE_HANDCART,
     construction: [{ goodType: GOOD_WOOD, amount: HANDCART_YARD_WOOD }],
-    hitpoints: buildingHitpoints('vehicle'),
     footprint: {
-      blocked: [
-        { dx: 0, dy: -1 },
-        { dx: 0, dy: 0 },
-        { dx: 1, dy: 0 },
-        { dx: 0, dy: 1 },
-      ],
-      familyBody: [
-        { dx: 0, dy: -1 },
-        { dx: 0, dy: 0 },
-        { dx: 1, dy: 0 },
-        { dx: 0, dy: 1 },
-      ],
-      reserved: [
-        { dx: 0, dy: -2 },
-        { dx: 1, dy: -2 },
-        { dx: -1, dy: -1 },
-        { dx: 0, dy: -1 },
-        { dx: 1, dy: -1 },
-        { dx: -1, dy: 0 },
-        { dx: 0, dy: 0 },
-        { dx: 1, dy: 0 },
-        { dx: 2, dy: 0 },
-        { dx: -1, dy: 1 },
-        { dx: 0, dy: 1 },
-        { dx: 1, dy: 1 },
-        { dx: 0, dy: 2 },
-        { dx: 1, dy: 2 },
-      ],
+      blocked: HANDCART_BODY,
+      familyBody: HANDCART_BODY,
+      reserved: cells([
+        [0, -2],
+        [1, -2],
+        [-1, -1],
+        [0, -1],
+        [1, -1],
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [-1, 1],
+        [0, 1],
+        [1, 1],
+        [0, 2],
+        [1, 2],
+      ]),
       door: { dx: -1, dy: 1 },
     },
+  },
+  {
+    typeId: BUILDING_SHIP_SMALL_YARD,
+    id: 'ship_small',
+    vehicleType: VEHICLE_SHIP_SMALL,
+    construction: [
+      { goodType: GOOD_LEATHER, amount: SHIP_YARD_LEATHER },
+      { goodType: GOOD_WOOD, amount: SHIP_YARD_WOOD },
+    ],
+    ignoreContinents: true,
+    footprint: {
+      blocked: SHIP_SMALL_BODY,
+      familyBody: SHIP_SMALL_BODY,
+      reserved: cells([
+        [-2, -3],
+        [-1, -3],
+        [0, -3],
+        [1, -3],
+        [-2, -2],
+        [-1, -2],
+        [0, -2],
+        [1, -2],
+        [2, -2],
+        [-3, -1],
+        [-2, -1],
+        [-1, -1],
+        [0, -1],
+        [1, -1],
+        [2, -1],
+        [-3, 0],
+        [-2, 0],
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [3, 0],
+        [5, 0],
+        [-3, 1],
+        [-2, 1],
+        [-1, 1],
+        [0, 1],
+        [1, 1],
+        [2, 1],
+        [-2, 2],
+        [-1, 2],
+        [0, 2],
+        [1, 2],
+        [2, 2],
+        [-2, 3],
+        [-1, 3],
+        [0, 3],
+        [1, 3],
+      ]),
+      door: { dx: -2, dy: 3 },
+    },
+  },
+  {
+    typeId: BUILDING_CATAPULT_YARD,
+    id: 'catapult',
+    vehicleType: VEHICLE_CATAPULT,
+    construction: [
+      { goodType: GOOD_WOOD, amount: CATAPULT_YARD_WOOD },
+      { goodType: GOOD_IRON, amount: CATAPULT_YARD_IRON },
+    ],
+    footprint: {
+      blocked: CATAPULT_BODY,
+      familyBody: CATAPULT_BODY,
+      reserved: cells([
+        [-1, -2],
+        [0, -2],
+        [1, -2],
+        [-2, -1],
+        [-1, -1],
+        [0, -1],
+        [1, -1],
+        [-2, 0],
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [-2, 1],
+        [-1, 1],
+        [0, 1],
+        [1, 1],
+        [-1, 2],
+        [0, 2],
+        [1, 2],
+      ]),
+      door: { dx: -1, dy: 2 },
+    },
+  },
+];
+
+/** A vehicle yard: no worker slot of its own, since the joiner building the vehicle crews the site. */
+function vehicleYardRow(yard: VehicleYard): SandboxBuildingRow {
+  return {
+    typeId: yard.typeId,
+    id: yard.id,
+    kind: 'vehicle',
+    vehicleType: yard.vehicleType,
+    construction: yard.construction,
+    hitpoints: buildingHitpoints('vehicle'),
+    footprint: yard.footprint,
+    ...(yard.ignoreContinents === true ? { ignoreContinents: true } : {}),
   };
 }
 
@@ -565,7 +743,7 @@ export function buildSandboxBuildings(extras: SandboxContentExtras): Map<number,
       ...footprintOf(b.typeId, b.kind),
     });
   }
-  buildings.set(BUILDING_HANDCART_YARD, handcartYardRow());
+  for (const yard of VEHICLE_YARDS) buildings.set(yard.typeId, vehicleYardRow(yard));
   for (const b of extras.buildings ?? []) {
     if (!buildings.has(b.typeId)) {
       const kind = b.kind ?? 'workplace';
