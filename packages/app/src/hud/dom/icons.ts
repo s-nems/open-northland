@@ -25,8 +25,12 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 10a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v9H3zM3 12h18M12 12v4M10 14h4"/></svg>',
   forge:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-6h10v6M5 14h14l-2-4H7zM10 10V4h4v6M9 4h6"/></svg>',
-  road: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20 9 4h6l5 16M12 6v3M12 12v3M12 18v2"/></svg>',
-  wall: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 20V9l3-4 3 4v11M9 12h12v8H9M12 12v-2h3v2M17 12v-2h3v2"/></svg>',
+  /* A cobbled track bending away, a stake fence, and a gate between two stakes: no highway
+     markings, no battlements (user rule). */
+  road: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 21c2-5 2-9 4-12s5-4 8-6M16 21c0-5-1-8 1-11s3-3 4-5"/><path d="M8 17h1M11 17h1M14 17h1M10 12h1M13 12h1M12 8h1M15 8h1"/></svg>',
+  palisade:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 21V9l2.5-4 2.5 4v12M9.5 21V7l2.5-4 2.5 4v14M16 21V9l2.5-4 2.5 4v12M2 16h20"/></svg>',
+  gate: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 21V7l2.5-4 2.5 4v14M16 21V7l2.5-4 2.5 4v14M8 21V12a4 4 0 0 1 8 0v9M8 21h8M8 8h8"/><path d="M12 12v9M8 16.5h8"/></svg>',
   papers:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"/></svg>',
   grid: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>',

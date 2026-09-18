@@ -24,9 +24,10 @@ import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
 import { GLYPH, paintedIcon } from './icons.js';
 import { createHudWindow } from './window.js';
 
-/** Design px (FOUNDATION.md): the central window width, the head's painted icon, a card's picture box
+/** Design px (FOUNDATION.md): the window width, sized so the widest bill in the content (eight goods,
+ *  the top house) sits in one row beside the picture; the head's painted icon, a card's picture box
  *  and a cost slot's icon box. */
-const CONSTRUCTION_WINDOW_W = 540;
+const CONSTRUCTION_WINDOW_W = 640;
 const TITLE_ART_PX = 43;
 const THUMB_BOX_PX = 72;
 const COST_ICON_BOX_PX = 16;
@@ -146,8 +147,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   quick.className = 'on-toolrow';
   for (const [glyph, label] of [
     [GLYPH.road, copy.road],
-    [GLYPH.wall, copy.palisade],
-    [GLYPH.wall, copy.gate],
+    [GLYPH.palisade, copy.palisade],
+    [GLYPH.gate, copy.gate],
   ] as const) {
     const control = button('on-button', `${glyph}<span></span>`);
     control.disabled = true;

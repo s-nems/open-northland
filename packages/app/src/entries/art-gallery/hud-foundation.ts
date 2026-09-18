@@ -133,7 +133,7 @@ function boardMarkup(): string {
   <div class="on-notices__head"><span class="on-sr">Wiadomości: ${SAMPLE_NOTICES.length}</span><div class="on-filters" role="toolbar" aria-label="Poziom wiadomości"><button type="button" class="on-filter on-filter--low" aria-label="Wszystkie · zwykłe: ${noticeTally(0)}" aria-pressed="true"><span class="on-filter__count">${noticeTally(0)}</span></button><button type="button" class="on-filter on-filter--medium" aria-label="Ważne i pilne · ważne: ${noticeTally(1)}" aria-pressed="false"><span class="on-filter__count">${noticeTally(1)}</span></button><button type="button" class="on-filter on-filter--high" aria-label="Tylko pilne · pilne: ${noticeTally(2)}" aria-pressed="false"><span class="on-filter__count">${noticeTally(2)}</span></button></div></div>
   <ul class="on-notices__list" aria-label="Powiadomienia">${SAMPLE_NOTICES.map((card) => noticeCardMarkup(card, 'Usuń powiadomienie')).join('')}</ul>
 </aside>
-<section class="on-window on-window--construction on-panel" style="left:50%;top:96px;width:540px;transform:translateX(-50%)" aria-label="Budowanie">
+<section class="on-window on-window--construction on-panel" style="left:50%;top:96px;width:640px;transform:translateX(-50%)" aria-label="Budowanie">
   ${WINDOW_ORNAMENTS}
   <header class="on-window__head"><div class="on-window__heading">${paintedIcon('build', TITLE_ART_PX)}<div><h2 class="on-window__title">Budowanie</h2></div></div><button type="button" class="on-medallion on-window__close" aria-label="Zamknij">${GLYPH.close}</button></header>
   <div class="on-window__body on-window__body--column">

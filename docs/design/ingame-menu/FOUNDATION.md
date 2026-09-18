@@ -66,8 +66,9 @@ filters are an explicit exception in this mouse/keyboard study.
 
 - Main action art: 36 px; resource art: 29 px; gallery art: 44 px.
 - Bottom actions: 56 × 64 px on a 44 px medallion, with persistent labels and a selected marker.
-- Construction: 540 px wide, content-sized rather than filling the screen vertically; the catalogue
-  scrolls inside it once the window would reach the beam.
+- Construction: 640 px wide, so the widest bill in the content (eight goods) sits in one row on a
+  card (user rule); content-sized rather than filling the screen vertically; the catalogue scrolls
+  inside it once the window would reach the beam.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
 - Notifications: 180 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px, touching the bottom-left corner.
@@ -86,7 +87,8 @@ The window (ticket 05) replaces the legacy tabbed list on the DOM plane; the sim
 they were.
 
 - Head: the painted build icon and the title alone, no subtitle. The quick row holds Droga, Palisada
-  and Brama, disabled with the tooltip "Niedostępne w tej wersji gry" until the sim has a road, wall
+  and Brama as line glyphs of their own: a cobbled track bending away, a stake fence, a gate between
+  two stakes (no highway markings, no battlements: user rule); disabled with the tooltip "Niedostępne w tej wersji gry" until the sim has a road, wall
   and gate command, and Papiery at the right with a count of the papers a pick could spend. Papiery
   shows the papers list, which is the chest window's tab until the documents ticket gives it a view.
 - Tabs: the original's five categories (Wszystko, Praca, Magazyn, Dom, Wojsko; tower and training
@@ -104,7 +106,8 @@ they were.
   body the map draws for the seat's tribe, cut from the loaded sheet into the card's own canvas,
   contained whole in a 72 px box (a tower stands small rather than cropped). A card without a sheet
   frame shows the house glyph. The name wraps to two lines; the cost sits under it
-  as one slot per good, the amount as a corner badge, wrapping past six goods. A slot the seat cannot
+  as one slot per good, the amount as a corner badge, in one row: the window is wide enough for the
+  widest bill in the content, and the plane scales as a whole, so no UI scale wraps it. A slot the seat cannot
   cover from its stock is marked red with "masz N z M" in its tooltip; it is information only, since
   placement never checks stock (the original neither) and the builders wait for the goods. No worker,
   product or capacity text on the card: that is Knowledge's.

@@ -471,7 +471,8 @@
   min-width: 0;
 }
 /* Every card has the same fixed height: the picture beside the name, the cost right under it; the
-   height holds a two-line name and two rows of goods, so nothing ever clips. */
+   height holds a two-line name over the bill, which the window's width keeps to one row (user
+   rule), so nothing ever clips. */
 .on-hud .on-bcard__pick {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
