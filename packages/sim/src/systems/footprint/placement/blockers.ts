@@ -78,7 +78,7 @@ export function buildingBlockerCells(
 
 /** One signpost's contribution: its anchor is an OBSTACLE - no building's reserved zone and no
  *  work flag may cover it (observed original behaviour). It never blocks movement (no walk overlay). */
-export function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
+function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
   if (p === undefined) return;
   const { hx, hy } = nodeOfPosition(p.x, p.y);

@@ -109,6 +109,7 @@ export class CombatIndex {
   /**
    * The nearest indexed target to node (fromX, fromY) satisfying `accept`, over Manhattan `minDist..maxDist`:
    * the min-distance, then min-id acceptor, `accept` asked in that order and stopped at the first yes.
+   * `accept` must be total and pure over any indexed entity: a rejection is remembered for the call.
    * Members owned by `skipOwner` are never offered: a seeker's own player is rejected by every target filter,
    * so skipping them here saves the filter's reads without changing the winner. `accept` may re-enter this
    * method: all search state is call-local.
@@ -138,7 +139,8 @@ export class CombatIndex {
   /**
    * The `limit` nearest indexed targets satisfying `accept`, in the same (distance, then id) order
    * {@link nearest} picks its winner from, so `[0]` is exactly what `nearest` returns. A member indexed at
-   * several nodes is listed once, at its nearest. The take stops at `limit` acceptors, `maxDist`, or
+   * several nodes is listed once, at its nearest, and `accept` is asked once per member, so it must be
+   * total and pure over any indexed entity. The take stops at `limit` acceptors, `maxDist`, or
    * {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit.
    */
   nearestFew(

@@ -172,11 +172,11 @@ describe('the dense mask rule agrees with an independent derivation', () => {
   });
 });
 
-describe('placementBlockerVersion - the shared memo key that decouples the blocker scan from the tick', () => {
-  // Both the build-mode overlay and the `placeBuilding` command gate re-derive the blocker grid only when
-  // this value moves; keying it on the tick (the old regression) re-scanned every RAF while the game
-  // played. So the version MUST hold steady across ticks yet move the instant a building/resource enters
-  // or leaves the world.
+describe('placementBlockerVersion - the overlay memo key that decouples the blocker scan from the tick', () => {
+  // The build-mode overlay and the work-flag blocker memo re-derive their views only when this value
+  // moves; keying it on the tick (the old regression) re-scanned every RAF while the game played. So the
+  // version MUST hold steady across ticks yet move the instant a building/resource enters or leaves the
+  // world. The `placeBuilding` gate itself reads the journal-kept placement grid instead.
   it('holds steady across ticks while buildings and resources are unchanged', () => {
     const sim = mappedSim();
     const v0 = sim.placementBlockerVersion();

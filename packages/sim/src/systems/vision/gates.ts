@@ -72,7 +72,7 @@ export function playerHasMet(
 /**
  * Whether `player` currently sees the entity `target`. Authored rule: a unit in fog can be neither
  * auto-engaged nor fled from, while a position-less target has no cell to hide in and is seen. A pure read
- * of the mask frozen this tick, so ring-search winners stay deterministic.
+ * of the mask frozen this tick, so nearest-search winners stay deterministic.
  */
 export function playerSeesEntity(
   world: World,
