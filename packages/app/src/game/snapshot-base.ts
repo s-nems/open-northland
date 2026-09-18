@@ -118,12 +118,16 @@ export function vehicleCommanderOf(e: SnapshotEntity): number | undefined {
   return num((slots[slots.length - 1] as { entity?: unknown } | null)?.entity);
 }
 
-/** The vehicle `e` commands: the one its `Rider` names when `e` holds the commander seat. */
+/** The vehicle `e` commands and that stands on the map: the one its `Rider` names when `e` holds the
+ *  commander seat and the vehicle rides no carrier (the sim's `commandedVehicleOf`). */
 export function commandedVehicleOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
   const vehicle = num((e.components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
   if (vehicle === undefined) return undefined;
-  const carrier = entityById(snapshot, vehicle);
-  return carrier !== undefined && vehicleCommanderOf(carrier) === e.id ? vehicle : undefined;
+  const self = entityById(snapshot, vehicle);
+  if (self === undefined || vehicleCommanderOf(self) !== e.id || positionOf(self) === undefined)
+    return undefined;
+  const carrier = (self.components.Vehicle as { carrier?: unknown }).carrier;
+  return carrier === null ? vehicle : undefined;
 }
 
 interface SnapshotIndex {

@@ -1,4 +1,14 @@
-import { PlayerOrder, Position, Rider, Vehicle, vehicleCommander } from '../../components/index.js';
+import {
+  AttackOrder,
+  Engagement,
+  Fleeing,
+  HuntFocus,
+  PlayerOrder,
+  Position,
+  Rider,
+  Vehicle,
+  vehicleCommander,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -8,8 +18,7 @@ import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { moveVehicle } from './movement.js';
 
 // A vehicle's commander drives it: a walk order given to the commander goes to the vehicle, whether the
-// commander is aboard or stands beside it. Named deviation in docs/formats/VEHICLES.md "Crew": the
-// original detaches the human first and walks him off alone, leaving the cart and its cargo behind.
+// commander is aboard or stands beside it (the deviation named in docs/formats/VEHICLES.md "Crew").
 
 /** The vehicle `e` commands and that stands on the map: the vehicle its `Rider` names when `e` holds the
  *  commander seat. Null for a settler on foot, an ordinary passenger, or a vehicle riding a carrier. */
@@ -31,9 +40,10 @@ export function isCommanderWalkOrder(
 /**
  * Give a commander's walk order to its vehicle as a goto (`moveVehicle`, with its refusals): the crew
  * boards first through the goto's `waitsForHuman` hold. A commander outside and free to move drops its
- * own walk so the rider rung turns it to the door at once; one held by an atomic finishes it first, the
- * way a trader completes the unit it is loading before the cart leaves the stop. False when `e`
- * commands no vehicle, leaving the order to the ordinary walk.
+ * own walk and its fight, as the ordinary walk order does, so the rider rung turns it to the door at
+ * once; one held by an atomic finishes it first, the way a trader completes the unit it is loading
+ * before the cart leaves the stop. False when `e` commands no vehicle, leaving the order to the
+ * ordinary walk.
  */
 export function driveCommandedVehicle(
   world: World,
@@ -47,6 +57,10 @@ export function driveCommandedVehicle(
   if (world.has(e, Position) && !atomicHoldsSettler(world, e)) {
     clearNavState(world, e);
     world.remove(e, PlayerOrder);
+    world.remove(e, Engagement);
+    world.remove(e, AttackOrder);
+    world.remove(e, HuntFocus);
+    world.remove(e, Fleeing);
   }
   return true;
 }

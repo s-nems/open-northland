@@ -31,6 +31,9 @@ const OWN_SETTLER = 30;
 /** The handcart's crew: both aboard, so neither stands anywhere on the map. */
 const CART_COMMANDER = 31;
 const CART_PASSENGER = 32;
+/** A cart riding inside the moored ship and the commander aboard it: nothing to drive on the map. */
+const CARRIED_CART = 14;
+const CARRIED_COMMANDER = 33;
 const ENEMY_PLAYER = 1;
 
 const CLICK = { x: 100, y: 100 };
@@ -47,12 +50,13 @@ const vehicle = (
   player: number,
   moored = false,
   passengers: ReadonlyArray<{ entity: number; inside: boolean } | null> = [],
+  carrier: number | null = null,
 ): Ent => ({
   id,
   components: {
-    Vehicle: { vehicleType, tribe: 1, moored, passengers, vehicles: [], carrier: null },
+    Vehicle: { vehicleType, tribe: 1, moored, passengers, vehicles: [], carrier },
     Owner: { player },
-    Position: at(2, 2),
+    ...(carrier === null ? { Position: at(2, 2) } : {}), // a carried vehicle stands nowhere on the map
   },
 });
 
@@ -74,6 +78,15 @@ const WORLD: WorldSnapshot = snapshotOf([
   ]),
   aboard(CART_COMMANDER, HANDCART),
   aboard(CART_PASSENGER, HANDCART),
+  vehicle(
+    CARRIED_CART,
+    VEHICLE_HANDCART,
+    HUMAN_PLAYER,
+    false,
+    [{ entity: CARRIED_COMMANDER, inside: true }],
+    SHIP,
+  ),
+  aboard(CARRIED_COMMANDER, CARRIED_CART),
   vehicle(SHIP, VEHICLE_SHIP_SMALL, HUMAN_PLAYER, true),
   vehicle(SHIP_AT_SEA, VEHICLE_SHIP_SMALL, HUMAN_PLAYER, false),
   vehicle(ENEMY_CART, VEHICLE_HANDCART, ENEMY_PLAYER),
@@ -199,6 +212,8 @@ describe('vehicle right-click defaults', () => {
     // The commander and its own vehicle selected together are one vehicle, not two.
     expect(harness([CART_COMMANDER, HANDCART], ALL_UNDER).controller.selectedVehicle()).toBe(HANDCART);
     expect(harness([CART_PASSENGER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
+    // A cart riding a ship has nothing to drive; its commander's click orders nothing, as the sim's rule.
+    expect(harness([CARRIED_COMMANDER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
   });
 });
 

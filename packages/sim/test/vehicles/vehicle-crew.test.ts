@@ -54,6 +54,8 @@ const GRASS = 0;
 const WATER = 1;
 /** The first water column of the shore map, in cells; the ships lie east of it. */
 const SHORE_CELL = 10;
+/** A few ticks into a scout's attach walk: on its way, nowhere near the door. */
+const ATTACH_WALK_TICKS = 5;
 /** A load the driven cart must keep: the fixture's wood. */
 const CART_GOOD = 1;
 const CART_LOAD = 5;
@@ -332,16 +334,17 @@ describe('leaving', () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 12, 6);
     stockVehicleGoods(s.world, cart, s.content, CART_GOOD, CART_LOAD);
-    const scout = spawnSettler(s, 12, 6);
+    const scout = spawnSettler(s, 2, 6);
     attach(s, scout, cart);
-    s.run(BOARD_TICKS); // beside the cart, outside
-    expect(seatOf(s, cart, scout)?.inside).toBe(false);
+    s.run(ATTACH_WALK_TICKS); // still on the attach walk to the door
+    expect(s.world.has(scout, PlayerOrder)).toBe(true);
     s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: scout, x: 4, y: 6 }));
     s.step();
     expect(s.world.get(cart, Vehicle).task).toBe('waitsForHuman');
     expect(s.world.get(cart, Vehicle).heldGoal).toEqual({ hx: 4, hy: 6 });
     expect(s.world.has(scout, Rider)).toBe(true);
-    expect(s.world.has(scout, PlayerOrder)).toBe(false);
+    expect(s.world.has(scout, PlayerOrder)).toBe(false); // the walk is the cart's now
+    expect(s.world.get(scout, Rider).boarding).toBe(true);
     boardOut(s, cart, scout);
     s.run(SAIL_TICKS);
     expect(s.world.isAlive(cart)).toBe(true);
@@ -365,6 +368,23 @@ describe('leaving', () => {
     s.step();
     expect(s.world.get(cart, VehicleDrive).goal).toEqual({ hx: 12, hy: 12 });
     expect(s.world.has(scout, Position)).toBe(false);
+  });
+
+  it("sails a ship on its captain's walk order to water and refuses one to land", () => {
+    const s = sim();
+    const ship = spawn(s, SHIP_SMALL, 22, 8);
+    const captain = spawnSettler(s, 2, 6);
+    attach(s, captain, ship);
+    s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: captain }));
+    boardOut(s, ship, captain, SAIL_TICKS);
+    s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: captain, x: 2, y: 6 }));
+    s.step();
+    expect(moveRefusals(s)).toEqual([`${ship}:noPath:${P0}`]);
+    expect(s.world.has(captain, Position)).toBe(false);
+    s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: captain, x: 26, y: 20 }));
+    s.step();
+    expect(s.world.get(ship, VehicleDrive).goal).toEqual({ hx: 26, hy: 20 });
+    expect(s.world.get(ship, Vehicle).moored).toBe(false);
   });
 
   it("keeps the commander seated when its vehicle refuses the walk order's point", () => {
