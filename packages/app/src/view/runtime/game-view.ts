@@ -632,7 +632,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       traderView: (entity) => sim.traderView(entity as Entity),
       tradeOffersAt: (house) => sim.tradeOffersAt(house as Entity),
       canAttachToVehicle: (settler, vehicle) => sim.canAttachToVehicle(settler as Entity, vehicle as Entity),
-      canMoorAt: (vehicle, x, y) => sim.mooringProbe(vehicle as Entity)?.canMoor(x, y) === true,
+      // The fog gate matches the overlay's, so a dimmed shore in the fog takes no dock click either.
+      canMoorAt: (vehicle, x, y) =>
+        fogGates.seesNode(x, y) && sim.mooringProbe(vehicle as Entity)?.canMoor(x, y) === true,
       boundsOf: (ref) => renderer.entityBounds(ref),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       claimPointer: (x: number, y: number) =>

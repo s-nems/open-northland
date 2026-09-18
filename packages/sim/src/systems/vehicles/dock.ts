@@ -177,7 +177,9 @@ export function mooringProbe(
   return probe;
 }
 
-/** The land nodes at exactly `doorDistance` from any water node the ship can reach from `anchor`. */
+/** The land nodes at exactly `doorDistance` from any water node the ship can reach from `anchor`. A
+ *  ship whose own node closed under it (a blocker grew beside it) sails on but cannot moor in place, the
+ *  way {@link dockCandidates} drops a blocked ring node, so its own ring stays dark. */
 function mooringSpots(
   terrain: TerrainGraph,
   blocked: BlockOverlay,
@@ -186,6 +188,7 @@ function mooringSpots(
 ): ReadonlySet<NodeId> {
   const spots = new Set<NodeId>();
   for (const node of reachableWater(terrain, blocked, anchor)) {
+    if (blocked.has(node)) continue; // only the start can be, as the pathfinder's blocked-start exemption
     const { x, y } = terrain.coordsOf(node);
     for (const { point } of hexagonRing({ hx: x, hy: y }, doorDistance)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
