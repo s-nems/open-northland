@@ -6,19 +6,19 @@ const build = document.querySelector('.build');
 const buildNav = document.querySelector('.nav > button');
 const resources = [...document.querySelectorAll('.resource')];
 const simClock = document.querySelector('#sim-clock');
+const placement = document.querySelector('[data-placement]');
 const placementName = document.querySelector('[data-picked]');
+const catalog = document.querySelector('#catalog');
 const status = document.querySelector('#asset-status');
 
 const copy = {
   pl: {
     buildTitle: 'Budowanie',
-    buildSubtitle: 'Wybierz budynek, następnie wskaż miejsce na mapie',
     buildNav: 'Buduj',
     peopleNav: 'Mieszkańcy',
   },
   en: {
     buildTitle: 'Construction',
-    buildSubtitle: 'Choose a building, then select its position in the world',
     buildNav: 'Construction',
     peopleNav: 'Population overview',
   },
@@ -37,10 +37,53 @@ function showResource(group, show) {
       button.setAttribute('aria-expanded', String(open));
   }
 }
-function showBuild(show) {
-  build.hidden = !show;
-  buildNav.setAttribute('aria-pressed', String(show));
+// The construction window's review states: the catalogue, the placement strip after a pick (the window
+// yields the map and comes back on Esc with its tab, scroll and pick intact), an empty catalogue, closed.
+let buildState = 'catalog';
+function showBuild(state) {
+  buildState = state;
+  build.hidden = state !== 'catalog' && state !== 'empty';
+  placement.hidden = state !== 'placing';
+  catalog.querySelector('[data-empty]').hidden = state !== 'empty';
+  for (const part of catalog.querySelectorAll('.catalog-note, .build-grid')) part.hidden = state === 'empty';
+  buildNav.setAttribute('aria-pressed', String(state !== 'closed'));
+  press('build', state);
 }
+function showTab(tab) {
+  for (const button of build.querySelectorAll('[role="tab"]'))
+    button.setAttribute('aria-selected', String(button.dataset.tab === tab));
+  let available = 0;
+  let locked = 0;
+  for (const card of catalog.querySelectorAll('.building-card')) {
+    const shown = tab === 'all' || card.dataset.category === tab;
+    card.hidden = !shown;
+    if (shown) card.classList.contains('locked') ? locked++ : available++;
+  }
+  catalog.querySelector('[data-available-count]').textContent = available;
+  catalog.querySelector('[data-locked-count]').textContent = locked;
+  catalog.querySelector('.locked-note').hidden = locked === 0;
+}
+
+/* The grid or list choice is per game, not per opening: it lives with the window state. */
+function showView(view) {
+  catalog.dataset.view = view;
+  for (const button of build.querySelectorAll('[data-view]'))
+    button.setAttribute('aria-pressed', String(button.dataset.view === view));
+}
+
+/* A body much taller than wide would shrink to a sliver; show its upper part instead. */
+const TALL_THUMB_RATIO = 1.35;
+function markTallThumb(img) {
+  if (img.naturalHeight > img.naturalWidth * TALL_THUMB_RATIO) img.classList.add('tall');
+}
+catalog.addEventListener(
+  'load',
+  (event) => {
+    if (event.target instanceof HTMLImageElement) markTallThumb(event.target);
+  },
+  true,
+);
+for (const img of catalog.querySelectorAll('.thumb img')) if (img.complete) markTallThumb(img);
 
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
@@ -81,12 +124,17 @@ document.addEventListener('click', (event) => {
   const group = button.closest('.resource');
   if (group && button.parentElement === group)
     showResource(group, group.querySelector('.resource-tip').hidden);
-  if (button.matches('.build .icon-button')) showBuild(false);
-  if (button === buildNav) showBuild(true);
-  if (button.matches('.building-card:not(:disabled)')) {
-    for (const card of document.querySelectorAll('.building-card'))
-      card.setAttribute('aria-pressed', String(card === button));
+  if (button.dataset.build) showBuild(button.dataset.build);
+  if (button.matches('.build .icon-button')) showBuild('closed');
+  if (button === buildNav)
+    showBuild(buildState === 'closed' || buildState === 'placing' ? 'catalog' : 'closed');
+  if (button.dataset.tab) showTab(button.dataset.tab);
+  if (button.dataset.view) showView(button.dataset.view);
+  if (button.matches('.building-card .pick:not(:disabled)')) {
+    for (const pick of catalog.querySelectorAll('.building-card .pick'))
+      pick.setAttribute('aria-pressed', String(pick === button));
     placementName.textContent = button.querySelector('strong').textContent;
+    showBuild('placing');
   }
 });
 for (const group of resources) {
@@ -106,8 +154,14 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.key !== 'Escape') return;
   showResource(null, false);
-  showBuild(false);
   pinNoticeFull(null, false);
+  // One rung per press: placement returns to the catalogue, the catalogue closes.
+  if (buildState === 'placing') {
+    showBuild('catalog');
+    catalog.querySelector('.pick[aria-pressed="true"]')?.focus();
+    return;
+  }
+  showBuild('closed');
   buildNav.focus();
 });
 
@@ -413,8 +467,92 @@ async function mountGoods() {
     }),
   );
 }
+// A sample mid-game settlement decides which real buildings are unlocked and what the stores hold; the
+// committed markup keeps a representative subset, the local review inputs replace it with the full list.
+const SAMPLE_JOBS = new Set([
+  'farmer',
+  'collector',
+  'mason',
+  'potter',
+  'joiner',
+  'baker',
+  'miller',
+  'tailor',
+  'breeder',
+  'archer_short',
+  'archer_long',
+]);
+const SAMPLE_GOODS = new Set([
+  'wheat',
+  'wood',
+  'mud',
+  'stone',
+  'pillar',
+  'brick',
+  'flour',
+  'bread',
+  'shoes',
+  'tool_wooden',
+  'furniture',
+]);
+const SAMPLE_STOCK = {
+  wood: 42,
+  stone: 18,
+  mud: 12,
+  wheat: 12,
+  iron: 0,
+  gold: 14,
+  brick: 0,
+  tile: 0,
+  pillar: 0,
+  ornament: 0,
+  holy_oil: 0,
+};
+const CATEGORY_OF_KIND = {
+  workplace: 'work',
+  storage: 'storage',
+  home: 'home',
+  tower: 'military',
+  training: 'military',
+};
+function cardMarkup(b) {
+  const lockedJobs = b.requiresJobs.filter((j) => !SAMPLE_JOBS.has(j.job)).map((j) => j.name);
+  const lockedGoods = b.requiresGoods.filter((g) => !SAMPLE_GOODS.has(g.good)).map((g) => g.name);
+  const locked = lockedJobs.length > 0 || lockedGoods.length > 0;
+  const reason = `Wymaga: ${[...lockedJobs, ...lockedGoods].join(', ')}`;
+  const chips = b.cost
+    .map((c) => {
+      const have = SAMPLE_STOCK[c.good];
+      const short = !locked && have !== undefined && have < c.amount;
+      const title = short ? `${c.name}: masz ${have} z ${c.amount}` : `${c.name} ×${c.amount}`;
+      return `<i${short ? ' class="short"' : ''} title="${title}"><span data-good="${c.good}"></span><b>${c.amount}</b></i>`;
+    })
+    .join('');
+  return `<article class="building-card${locked ? ' locked' : ''}" data-category="${CATEGORY_OF_KIND[b.kind]}" data-type="${b.typeId}">
+  <button type="button" class="pick"${locked ? ' disabled' : ' aria-pressed="false"'}><span class="thumb"><img src="/review-buildings/${b.typeId}.png" alt=""></span><span class="body"><strong>${b.name}</strong>${locked ? `<small class="reason" title="${reason}">${reason}</small>` : ''}<span class="cost">${chips}</span></span></button>
+  <button type="button" class="help medallion" aria-label="Wiedza: ${b.name}" title="Opis w Wiedzy">?</button>
+</article>`;
+}
+async function mountCatalog() {
+  const response = await fetch('/review-buildings/catalog.json');
+  if (!response.ok) throw new Error('Katalog budynków dostępny tylko w lokalnym podglądzie.');
+  const buildings = await response.json();
+  const available = buildings.filter((b) => cardMarkup(b).includes('aria-pressed'));
+  const locked = buildings.filter((b) => !cardMarkup(b).includes('aria-pressed'));
+  catalog.querySelector('[data-available]').innerHTML = available.map(cardMarkup).join('');
+  catalog.querySelector('[data-locked]').innerHTML = locked.map(cardMarkup).join('');
+  catalog.querySelector('.pick')?.setAttribute('aria-pressed', 'true');
+  placementName.textContent = catalog.querySelector('.pick strong')?.textContent ?? '';
+  for (const tab of build.querySelectorAll('[role="tab"]')) {
+    const id = tab.dataset.tab;
+    tab.querySelector('.count').textContent = available.filter(
+      (b) => id === 'all' || CATEGORY_OF_KIND[b.kind] === id,
+    ).length;
+  }
+  showTab('all');
+}
 const pending = [...document.querySelectorAll('[data-settler]')].map(mountCharacter);
-pending.push(mountGoods());
+pending.push(mountCatalog().then(mountGoods, mountGoods));
 Promise.allSettled(pending).then((results) => {
   const failures = results.filter((result) => result.status === 'rejected').length;
   if (failures)

@@ -14,6 +14,8 @@
 <symbol id="i-road" viewBox="0 0 24 24"><path d="M8 22 10 2M16 22 14 2M12 5v3M12 11v3M12 17v3"/></symbol>
 <symbol id="i-wall" viewBox="0 0 24 24"><path d="M3 21V9h3V5h3v4h3V5h3v4h3V5h3v16M3 14h18M8 21v-4h8v4"/></symbol>
 <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h9l4 4v16H6zM15 2v5h4M9 11h7M9 15h7M9 19h4"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h3M10 6h10M4 12h3M10 12h10M4 18h3M10 18h10"/></symbol>
 <symbol id="i-house" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M5 10v10h14V10M9 20v-6h6v6"/></symbol>
 <symbol id="i-fishhut" viewBox="0 0 24 24"><path d="M3 11 12 5l9 6M5 10v10h12M9 20v-6h6v6M18 8l3-3M18 5h3v3"/></symbol>
 <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9h16v12H4zM3 9l2-5h14l2 5M8 13h3v3H8M14 13h3v3h-3M8 18h3v3M14 18h3v3"/></symbol>
@@ -48,6 +50,11 @@
   <span>Tekst</span>
   <button type="button" data-lang="pl" aria-pressed="true">PL</button>
   <button type="button" data-lang="en" aria-pressed="false">EN · długi</button>
+  <span>Okno budowy</span>
+  <button type="button" data-build="catalog" aria-pressed="true">Katalog</button>
+  <button type="button" data-build="placing" aria-pressed="false">Stawianie</button>
+  <button type="button" data-build="empty" aria-pressed="false">Pusto</button>
+  <button type="button" data-build="closed" aria-pressed="false">Zamknięte</button>
   <span>Powiadomienia</span>
   <button type="button" data-notices="mixed" aria-pressed="true">6 kart</button>
   <button type="button" data-notices="empty" aria-pressed="false">Pusto</button>
@@ -230,44 +237,92 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
     </div>
   </div>
 
-  <section class="build panel">
+  <section class="build panel" data-build-state="catalog">
     <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
     <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
     <header class="window-head">
       <div class="title">
         <span class="painted" aria-hidden="true" style="--ix:0%;--iy:11.5%"></span>
-        <div><h2 data-copy="buildTitle">Budowanie</h2><p data-copy="buildSubtitle">Wybierz budynek, następnie wskaż miejsce na mapie</p></div>
+        <div><h2 data-copy="buildTitle">Budowanie</h2></div>
       </div>
       <button type="button" class="icon-button medallion" aria-label="Zamknij"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button>
     </header>
     <div class="quick">
-      <button type="button"><svg aria-hidden="true" class="icon"><use href="#i-road"/></svg>Droga</button>
-      <button type="button"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Palisada</button>
-      <button type="button"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Brama</button>
-      <button type="button" class="docs"><svg aria-hidden="true" class="icon"><use href="#i-doc"/></svg>Dokumenty · 2</button>
+      <button type="button" disabled title="Niedostępne w tej wersji gry"><svg aria-hidden="true" class="icon"><use href="#i-road"/></svg>Droga</button>
+      <button type="button" disabled title="Niedostępne w tej wersji gry"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Palisada</button>
+      <button type="button" disabled title="Niedostępne w tej wersji gry"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Brama</button>
+      <button type="button" class="docs" title="Papiery ze skrzyń: plany i zapiski"><svg aria-hidden="true" class="icon"><use href="#i-doc"/></svg>Papiery<span class="count">2</span></button>
     </div>
     <div class="tabs" role="tablist">
-      <button type="button" role="tab" aria-selected="true">Wszystkie<span class="count">4</span></button>
-      <button type="button" role="tab" aria-selected="false">Praca<span class="count">2</span></button>
-      <button type="button" role="tab" aria-selected="false">Magazyny<span class="count">1</span></button>
-      <button type="button" role="tab" aria-selected="false">Domy<span class="count">0</span></button>
-      <button type="button" role="tab" aria-selected="false">Wojsko<span class="count">1</span></button>
+      <button type="button" role="tab" aria-selected="true" data-tab="all">Wszystko<span class="count">14</span></button>
+      <button type="button" role="tab" aria-selected="false" data-tab="work">Praca<span class="count">9</span></button>
+      <button type="button" role="tab" aria-selected="false" data-tab="storage">Magazyn<span class="count">1</span></button>
+      <button type="button" role="tab" aria-selected="false" data-tab="home">Dom<span class="count">1</span></button>
+      <button type="button" role="tab" aria-selected="false" data-tab="military">Wojsko<span class="count">3</span></button>
+      <fieldset class="view-toggle"><legend class="sr-only">Widok</legend><button type="button" data-view="grid" aria-pressed="true" title="Kafelki"><svg aria-hidden="true" class="icon"><use href="#i-grid"/></svg></button><button type="button" data-view="list" aria-pressed="false" title="Lista"><svg aria-hidden="true" class="icon"><use href="#i-list"/></svg></button></fieldset>
     </div>
-    <div class="catalog">
-      <p class="catalog-note">Dostępne teraz · 4 budynki</p>
-      <div class="build-grid">
-        <button type="button" class="building-card" aria-pressed="true"><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-house"/></svg></span><span><strong>Chata drwala</strong><small>Produkuje drewno · 1–3 pracowników</small></span><span class="cost"><i>🪵 8</i><i>◆ 4</i></span></button>
-        <button type="button" class="building-card"><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-fishhut"/></svg></span><span><strong>Chata rybaka</strong><small>Łowi ryby przy brzegu</small></span><span class="cost"><i>🪵 6</i><i>◆ 2</i></span></button>
-        <button type="button" class="building-card"><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-store"/></svg></span><span><strong>Magazyn</strong><small>Przechowuje towary plemienia</small></span><span class="cost bad"><i>🪵 12 / 8</i><i>brak 3</i></span></button>
-        <button type="button" class="building-card" disabled><span class="thumb"><svg aria-hidden="true" class="icon icon-lg"><use href="#i-forge"/></svg></span><span><strong>Kuźnia</strong><small>Wymaga: Kowal II</small></span><span class="cost"><i>Niedostępne</i></span></button>
+    <div class="catalog" id="catalog" data-view="grid">
+      <p class="catalog-note">Dostępne teraz · <span data-available-count>14</span></p>
+      <div class="build-grid" data-available>
+        <article class="building-card" data-category="work" data-type="12">
+          <button type="button" class="pick" aria-pressed="true"><span class="thumb"><img src="/review-buildings/12.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Farma</strong><span class="cost"><i><span data-good="wood"></span><b>2</b></i><i><span data-good="mud"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Farma">?</button>
+        </article>
+        <article class="building-card" data-category="home" data-type="2">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/2.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Dom (poziom 1)</strong><span class="cost"><i><span data-good="wheat"></span><b>1</b></i><i><span data-good="wood"></span><b>2</b></i><i><span data-good="mud"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Dom (poziom 1)">?</button>
+        </article>
+        <article class="building-card" data-category="storage" data-type="7">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/7.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Magazyn (poziom 1)</strong><span class="cost"><i><span data-good="stone"></span><b>1</b></i><i><span data-good="mud"></span><b>1</b></i><i><span data-good="wood"></span><b>2</b></i><i><span data-good="wheat"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Magazyn (poziom 1)">?</button>
+        </article>
+        <article class="building-card" data-category="work" data-type="23">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/23.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Stolarnia (poziom 1)</strong><span class="cost"><i><span data-good="wheat"></span><b>1</b></i><i><span data-good="wood"></span><b>2</b></i><i><span data-good="mud"></span><b>2</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Stolarnia (poziom 1)">?</button>
+        </article>
+        <article class="building-card" data-category="work" data-type="29">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/29.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Chata kamieniarza (poziom 1)</strong><span class="cost"><i><span data-good="wheat"></span><b>1</b></i><i><span data-good="wood"></span><b>2</b></i><i><span data-good="stone"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Chata kamieniarza (poziom 1)">?</button>
+        </article>
+        <article class="building-card" data-category="military" data-type="40">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/40.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Wieża strażnicza (poziom 1)</strong><span class="cost"><i><span data-good="wheat"></span><b>1</b></i><i><span data-good="mud"></span><b>1</b></i><i><span data-good="wood"></span><b>2</b></i><i><span data-good="stone"></span><b>6</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Wieża strażnicza (poziom 1)">?</button>
+        </article>
+        <article class="building-card" data-category="work" data-type="20">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/20.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Garncarnia (poziom 1)</strong><span class="cost"><i><span data-good="stone"></span><b>2</b></i><i><span data-good="mud"></span><b>1</b></i><i><span data-good="wood"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Garncarnia (poziom 1)">?</button>
+        </article>
+        <article class="building-card" data-category="work" data-type="11">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/11.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Pasieka</strong><span class="cost"><i><span data-good="wood"></span><b>1</b></i><i><span data-good="stone"></span><b>1</b></i><i class="short" title="Masz 0 z 1"><span data-good="brick"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Pasieka">?</button>
+        </article>
+      </div>
+      <p class="catalog-note locked-note">Zablokowane · <span data-locked-count>26</span> · odkryj zawód lub towar</p>
+      <div class="build-grid" data-locked>
+        <article class="building-card locked" data-category="work" data-type="31">
+          <button type="button" class="pick" disabled><span class="thumb"><img src="/review-buildings/31.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Kuźnia (poziom 1)</strong><small class="reason">Wymaga: Kowal · Żelazo (Zbieracz)</small><span class="cost"><i><span data-good="wood"></span><b>2</b></i><i><span data-good="mud"></span><b>1</b></i><i><span data-good="wheat"></span><b>1</b></i><i><span data-good="stone"></span><b>1</b></i><i><span data-good="iron"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Kuźnia (poziom 1)">?</button>
+        </article>
+        <article class="building-card locked" data-category="work" data-type="16">
+          <button type="button" class="pick" disabled><span class="thumb"><img src="/review-buildings/16.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Browar</strong><small class="reason">Wymaga: Piwowar · Cegła (Garncarz), Miód pitny</small><span class="cost"><i><span data-good="wood"></span><b>3</b></i><i><span data-good="stone"></span><b>2</b></i><i><span data-good="brick"></span><b>1</b></i><i><span data-good="pillar"></span><b>2</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Browar">?</button>
+        </article>
+        <article class="building-card locked" data-category="home" data-type="3">
+          <button type="button" class="pick" disabled><span class="thumb"><img src="/review-buildings/3.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Dom (poziom 2)</strong><small class="reason">Wymaga: Kamienny blok (Murarz)</small><span class="cost"><i><span data-good="wheat"></span><b>1</b></i><i><span data-good="stone"></span><b>2</b></i><i><span data-good="pillar"></span><b>1</b></i></span></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Dom (poziom 2)">?</button>
+        </article>
+      </div>
+      <div class="catalog-empty" data-empty hidden>
+        <strong>Nic do zbudowania</strong>
+        <span>Ta mapa nie pozwala na nowe budynki albo oglądasz cudzą osadę.</span>
       </div>
     </div>
-    <div class="placement">
-      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>
-      <span><b data-picked>Chata drwala</b> · wskaż miejsce na mapie</span>
-      <kbd>Esc</kbd>
-    </div>
   </section>
+  <div class="placement panel" data-placement hidden>
+    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>
+    <span><b data-picked>Farma</b> · wskaż miejsce na mapie</span>
+    <span class="keys"><kbd>Esc</kbd> wraca do katalogu · <kbd>PPM</kbd> anuluje</span>
+  </div>
 
   <aside class="selection panel">
     <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
@@ -306,7 +361,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
   </nav>
 </div>
 </section>
-<p class="asset-status" id="asset-status">Podgląd stylu: animacje przykładowe, bez połączenia ze stanem gry. Miniatury budynków pozostają mockiem.</p>
+<p class="asset-status" id="asset-status">Podgląd stylu: animacje przykładowe, bez połączenia ze stanem gry. Miniatury budynków i katalog pochodzą z lokalnych materiałów przeglądu, gdy są dostępne.</p>
 </main>
 
 <section class="spec">
@@ -326,14 +381,14 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
   <div class="card">
     <h2>Rytm i rozmiary</h2>
     <div class="metrics">
-      <div class="metric"><b>4 px</b><small>bazowa siatka</small></div>
-      <div class="metric"><b>36 px</b><small>minimum kontroli</small></div>
-      <div class="metric"><b>50 px</b><small>ikona główna</small></div>
-      <div class="metric"><b>7 px</b><small>rama dużego okna</small></div>
+      <div class="metric"><b>4 px</b></div>
+      <div class="metric"><b>36 px</b></div>
+      <div class="metric"><b>50 px</b></div>
+      <div class="metric"><b>7 px</b></div>
     </div>
-    <div class="type-row"><small>Nagłówek 25</small><span class="type-title">Budowanie</span></div>
-    <div class="type-row"><small>Treść 14</small><span class="type-body">Przechowuje towary plemienia</span></div>
-    <div class="type-row"><small>Meta 12</small><span class="eyebrow">Dostępne teraz</span></div>
+    <div class="type-row"><span class="type-title">Budowanie</span></div>
+    <div class="type-row"><span class="type-body">Przechowuje towary plemienia</span></div>
+    <div class="type-row"><span class="eyebrow">Dostępne teraz</span></div>
   </div>
   <div class="card">
     <h2>Stany interakcji</h2>
@@ -372,6 +427,19 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
       <li>Trzy pieczęcie nad listą to filtr i licznik w jednym: liczba na każdej to wszystkie zwykłe, ważne i pilne powiadomienia, także te schowane przez filtr (najwyżej 200, bo tyle mieści kolejka). Powiadomienia: pilne na górze, w obrębie wagi najnowsze pierwsze. Lewy klik lub Enter przenosi kamerę na cel i zaznacza go, bez okna; prawy klik, Delete lub × usuwa, Shift usuwa wszystkie. Karta bez celu nie ma szewronu; pełna treść długiej karty to dymek po prawej.</li>
       <li>Gdy karty się nie mieszczą, nakładają się tak, by została widoczna linia zdarzenia i pieczęć na rogu miniatury; najechanie odsuwa sąsiadów. Dopiero poniżej 32 px na kartę lista się przewija, a plakietka „starszych” liczy karty pod krawędzią. Pauza i reduced-motion zatrzymują osadnika na bieżącej klatce; malowane są tylko widoczne karty.</li>
       <li>Osadnicy, towary i tło mapy pochodzą z lokalnych materiałów przeglądu; nie trafiają do repozytorium.</li>
+    </ul>
+  </div>
+  <div class="card notes">
+    <h2>Okno budowy (ticket 05, do przeglądu)</h2>
+    <ul>
+      <li>Buduj / B otwiera katalog od razu; jedno okno centralne, 540 px, przewija się pergamin, nie ekran. Zakładki jak w oryginale: Wszystko, Praca, Magazyn, Dom, Wojsko; liczba na zakładce to budynki dostępne teraz.</li>
+      <li>Karta ma stały rozmiar: miniatura z atlasu gry (wysoki, wąski budynek pokazuje górną część zamiast kurczyć się do paska), nazwa, a pod nią koszt jako ikony towarów z liczbą w rogu. Poziom N kosztuje tyle, co cały łańcuch od poziomu 1 (tak liczy sim). Do sześciu towarów mieści się w jednym rzędzie, siedem i osiem (Dom 5) zawijają się w drugi; karta ma na to miejsce. Czerwona ramka i czerwona liczba: w składach jest mniej niż trzeba (najechanie mówi ile); stawiać można mimo to, budowniczy poczekają na dostawy, tak jak w oryginale. „?” zawsze w prawym dolnym rogu karty.</li>
+      <li>Kafelki albo lista: przełącznik po prawej stronie zakładek. Lista to jeden wiersz na budynek, nazwa i koszt, bez miniatur i opisów. Wybór jest pamiętany w tej grze między otwarciami okna.</li>
+      <li>Zablokowane budynki idą na koniec listy, wyszarzone z kłódką i wierszem „Wymaga: zawód, towar”, zamiast znikać jak w oryginale, bo gracz widzi, co odkryć. Budynki zakazane na mapie nie pojawiają się wcale.</li>
+      <li>„?” na karcie otwiera opis budynku w Wiedzy (ticket 16); do tego czasu pokazuje notę „w przygotowaniu”.</li>
+      <li>Klik karty zamyka okno i włącza stawianie: pasek u góry pola gry z nazwą, Esc wraca do katalogu z tą samą zakładką, przewinięciem i zaznaczeniem, prawy klik anuluje bez powrotu. Po postawieniu okno zostaje zamknięte (oryginał), B otwiera je w tym samym stanie.</li>
+      <li>Droga, Palisada, Brama są w oknie, ale wyłączone z podpowiedzią „Niedostępne w tej wersji gry”: symulacja nie ma jeszcze tych komend (osobne zadanie o bramach). Papiery z licznikiem otwierają zakładkę papierów; ich własny widok to ticket 06.</li>
+      <li>Pusty katalog (mapa bez budynków, cudza osada) pokazuje jedną notę zamiast siatki.</li>
     </ul>
   </div>
 </section>

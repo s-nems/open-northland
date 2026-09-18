@@ -1091,9 +1091,9 @@ button.medallion:hover {
 }
 .build {
   left: 50%;
-  top: 112px;
+  top: 96px;
   width: 540px;
-  min-height: 410px;
+  max-height: calc(100% - 96px - 84px);
   transform: translateX(-50%);
 }
 .build[hidden] {
@@ -1102,9 +1102,8 @@ button.medallion:hover {
 .hud-root.scaled .build {
   top: 76px;
   left: 46%;
-  width: 460px;
-  min-height: 0;
-  max-height: calc(100% - 183px);
+  width: 480px;
+  max-height: calc(100% - 76px - 84px);
 }
 .selection {
   right: 0;
@@ -1256,9 +1255,30 @@ button.medallion:hover {
   padding: 5px;
   font-size: 12px;
 }
+.quick button:disabled {
+  cursor: not-allowed;
+  color: #b7ab92;
+  background: linear-gradient(#5a4631, #3e3022);
+  border-color: #2e2418;
+  box-shadow: inset 0 1px #fff1;
+}
+.quick button:disabled .icon {
+  opacity: 0.5;
+}
 .quick .docs {
   margin-left: auto;
   color: var(--bronze-hi);
+}
+.quick .count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bronze-lo);
+  color: #1c1610;
+  font:
+    700 11px / 18px Alegreya,
+    serif;
+  text-align: center;
 }
 .tabs {
   flex-shrink: 0;
@@ -1336,15 +1356,22 @@ button.medallion:hover {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+.locked-note {
+  margin-top: 14px;
+}
 .building-card {
   position: relative;
+  min-width: 0;
+}
+/* Every card has the same fixed height: the thumb beside the name, the cost right under it; the
+   height holds a two-line name, a requirement line and two rows of goods, so nothing ever clips. */
+.building-card .pick {
   display: grid;
-  grid-template-columns: 70px 1fr;
-  grid-template-rows: 1fr auto;
-  gap: 6px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 9px;
   align-items: center;
-  text-align: left;
-  min-height: 104px;
+  width: 100%;
+  height: 120px;
   padding: 8px;
   overflow: hidden;
   border: 1px solid #a48a5c;
@@ -1354,11 +1381,9 @@ button.medallion:hover {
     inset 0 1px #fff8,
     0 1px 2px #5a43221f;
   color: var(--ink);
+  text-align: left;
 }
-.hud-root.scaled .building-card {
-  min-height: 96px;
-}
-.building-card:hover {
+.building-card .pick:hover {
   transform: translateY(-1px);
   background: linear-gradient(#fbf2d9, #efe2c2);
   border-color: var(--bronze-lo);
@@ -1366,7 +1391,7 @@ button.medallion:hover {
     inset 0 1px #fff8,
     0 4px 10px #4a341a33;
 }
-.building-card[aria-pressed="true"] {
+.building-card .pick[aria-pressed="true"] {
   background: linear-gradient(#fbf1d3, #f0e2bd);
   border-color: var(--bronze-lo);
   box-shadow:
@@ -1374,47 +1399,47 @@ button.medallion:hover {
     0 0 0 1px #fff5 inset,
     0 3px 8px #4a341a33;
 }
-.building-card[aria-pressed="true"]:after {
-  content: "";
-  position: absolute;
-  right: -6px;
-  top: -6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fbe9c4' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='m6 12 4 4 8-8'/></svg>")
-    center / 14px no-repeat,
-    radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%),
-    var(--wax-danger);
-  box-shadow:
-    0 0 0 1.5px #fff8,
-    0 2px 4px #0008,
-    inset 0 -2px 3px #0006;
-  z-index: 1;
-}
 .building-card .thumb {
+  position: relative;
   display: grid;
   place-items: center;
-  grid-row: 1 / -1;
-  width: 68px;
-  height: 78px;
+  width: 72px;
+  height: 72px;
+  padding: 3px;
+  overflow: hidden;
   border: 1px solid #a48a5c88;
   border-radius: 2px;
   background: radial-gradient(ellipse at 50% 85%, #6b532a33, transparent 60%), #e4d6b4;
   box-shadow: inset 0 0 0 1px #fff6;
 }
-.building-card .thumb .icon {
-  width: 49px;
-  height: 49px;
-  stroke-width: 1.35;
-  color: var(--ink-muted);
-  filter: drop-shadow(0 2px #fff5);
+.building-card .thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px #3a2a1466);
+}
+/* A tall, narrow body (tower, mint) shows its upper part instead of shrinking to a sliver. */
+.building-card .thumb img.tall {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+}
+.building-card .thumb-fallback {
+  width: 40px;
+  height: 40px;
+  border: 1px dashed #a48a5c;
+}
+.building-card .body {
+  min-width: 0;
 }
 .building-card strong {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font:
-    700 15px / 1.15 Alegreya,
+    700 14.5px / 1.15 Alegreya,
     serif;
   letter-spacing: 0.01em;
   color: var(--ink);
@@ -1422,54 +1447,102 @@ button.medallion:hover {
 .building-card small {
   display: block;
   margin-top: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 12px;
   line-height: 1.3;
   color: var(--ink-muted);
 }
-.cost {
-  grid-column: 2;
-  display: flex;
-  gap: 6px;
-  padding-top: 6px;
-  border-top: 1px dotted #8d7549aa;
-  font-size: 12px;
-  color: var(--ink);
-}
-.cost i {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  border: 1px solid #a48a5c66;
-  border-radius: 10px;
-  background: #fff7;
+.building-card .help {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   font:
-    600 11.5px / 1.4 Alegreya,
+    700 13px / 1 Alegreya,
     serif;
-  color: var(--ink);
+  color: #f0e4c8;
+  z-index: 1;
 }
-.cost.bad {
-  color: var(--paper-error);
+.cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 1px;
+  margin-top: 5px;
+  padding: 0 4px 4px 0;
 }
-.cost.bad i {
-  border-color: #a8412f66;
-  color: #7a2a1c;
-  background: #f1d9c866;
+/* One slot per good: the icon on a small parchment square, the amount as a badge in its corner. */
+.cost i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 21px;
+  height: 21px;
+  border: 1px solid #a48a5c66;
+  border-radius: 3px;
+  background: #fff7;
+  font-style: normal;
 }
-.building-card:disabled {
+.cost i [data-good] {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-repeat: no-repeat;
+}
+.cost i .game-good {
+  width: 16px;
+  height: 16px;
+}
+.cost i b {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: #3b2d1c;
+  box-shadow: 0 0 0 1px #f2e7c9;
+  font:
+    700 9.5px / 13px Alegreya,
+    serif;
+  color: #f4e9cf;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cost .short {
+  border-color: #a8412f;
+  background: #f1d9c8aa;
+}
+.cost .short b {
+  background: var(--wax-danger);
+}
+.building-card.locked .pick {
   cursor: not-allowed;
   background: #cdbf9d;
 }
-.building-card:disabled strong,
-.building-card:disabled small,
-.building-card:disabled .cost {
+.building-card.locked strong,
+.building-card.locked small {
   color: #7d6d52;
 }
-.building-card:disabled .thumb {
-  position: relative;
+.building-card.locked .cost i {
+  background: #fff3;
+  border-color: #a48a5c33;
+  opacity: 0.75;
+}
+.building-card.locked .cost i b {
+  background: #6b5a44;
+  box-shadow: 0 0 0 1px #cdbf9d;
+}
+.building-card.locked .thumb {
   opacity: 0.4;
 }
-.building-card:disabled .thumb:after {
+.building-card.locked .thumb:after {
   content: "";
   position: absolute;
   right: -5px;
@@ -1485,17 +1558,155 @@ button.medallion:hover {
     0 0 0 1.5px #e4d6b4,
     0 1px 3px #0007;
 }
+.hud-root.scaled .building-card .pick {
+  grid-template-columns: 64px minmax(0, 1fr);
+  height: 112px;
+}
+.hud-root.scaled .building-card .thumb {
+  width: 64px;
+  height: 64px;
+}
+.hud-root.scaled .cost {
+  gap: 5px 2px;
+}
+.hud-root.scaled .cost i {
+  width: 18px;
+  height: 18px;
+}
+.hud-root.scaled .cost i [data-good],
+.hud-root.scaled .cost i .game-good {
+  width: 14px;
+  height: 14px;
+}
+.hud-root.scaled .building-card .help {
+  width: 22px;
+  height: 22px;
+}
+/* Grid or list: the list drops the thumb and the description, one row per building, and the
+   choice survives closing the window. */
+.tabs .view-toggle {
+  display: flex;
+  gap: 2px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  align-self: center;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.tabs .view-toggle button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #a48a5c66;
+  border-radius: 3px;
+  background: #fff5;
+  color: var(--ink-muted);
+}
+.tabs .view-toggle button .icon {
+  width: 15px;
+  height: 15px;
+}
+.tabs .view-toggle button[aria-pressed="true"] {
+  background: linear-gradient(#fbf1d3, #e9d9b3);
+  border-color: var(--bronze-lo);
+  color: var(--ink);
+  box-shadow: inset 0 1px #fff8;
+}
+.catalog[data-view="list"] .build-grid {
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+.catalog[data-view="list"] .building-card .pick {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  height: 36px;
+  padding: 5px 8px;
+}
+.catalog[data-view="list"] .building-card .thumb,
+.catalog[data-view="list"] .building-card small:not(.reason) {
+  display: none;
+}
+.catalog[data-view="list"] .building-card .body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.catalog[data-view="list"] .building-card strong {
+  display: block;
+  flex: none;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.catalog[data-view="list"] .building-card small.reason {
+  flex: 1;
+  margin: 0;
+}
+.catalog[data-view="list"] .cost {
+  flex: none;
+  flex-wrap: nowrap;
+  margin: 0 28px 0 auto;
+  padding: 0 4px 4px 0;
+}
+.catalog[data-view="list"] .building-card .help {
+  bottom: 6px;
+}
+.catalog[data-view="list"] .building-card.locked .body:after {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  align-self: center;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d6d52' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><rect x='5' y='11' width='14' height='10' rx='1.5'/><path d='M8 11V7a4 4 0 0 1 8 0v4'/></svg>")
+    center / 14px no-repeat;
+}
+.catalog-empty {
+  display: grid;
+  gap: 6px;
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.catalog-empty strong {
+  font:
+    700 16px Alegreya,
+    serif;
+  color: var(--ink);
+}
+.catalog-empty[hidden],
+.catalog > [hidden],
+.building-card[hidden] {
+  display: none;
+}
 .placement {
+  position: absolute;
+  left: 50%;
+  top: 96px;
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: 0 10px 10px;
-  padding: 7px 10px;
+  max-width: 540px;
+  padding: 7px 12px;
+  transform: translateX(-50%);
   border: 1px solid var(--bronze-lo);
   border-radius: 3px;
-  background: linear-gradient(90deg, #c9a26226, #c9a26208);
+  background: linear-gradient(90deg, #273832f2, #182521f2);
+  box-shadow: 0 6px 16px #0009;
   color: #f0e4c8;
   font-size: 12.5px;
+  white-space: nowrap;
+}
+.placement[hidden] {
+  display: none;
 }
 .placement svg {
   width: 18px;
@@ -1511,8 +1722,13 @@ button.medallion:hover {
 .placement b {
   color: var(--bronze-hi);
 }
+.placement .keys {
+  margin-left: 6px;
+  padding-left: 10px;
+  border-left: 1px solid #ffffff22;
+  color: #cdbf9d;
+}
 .placement kbd {
-  margin-left: auto;
   padding: 1px 6px;
   border: 1px solid #ffffff2a;
   border-bottom-width: 2px;
