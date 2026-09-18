@@ -1,5 +1,6 @@
 import { ONE, positionOfNode, components as simComponents } from '@open-northland/sim';
 import { clamp01, lerp } from '../../math.js';
+import { rowStagger } from '../../projection/iso.js';
 import { readNumField } from '../../snapshot/index.js';
 import { gfxDirToFacing } from '../../sprites/settler.js';
 import type { MutableDrawItem, StaticDrawFields, VehicleDrawTask } from '../draw-item.js';
@@ -101,7 +102,9 @@ export function readVehicleDriving(components: Readonly<Record<string, unknown>>
  * The tile a driving vehicle draws at. The sim moves the anchor onto a leg's node as the leg starts and
  * counts `progress` toward `NODE_PROGRESS_FULL` on it, so the drawn tile slides from `from`, the node
  * the leg left, to the anchor by that fraction; between legs and while standing it is the anchor. Lerped
- * in Position space, the same line a walking settler's steps follow.
+ * in world space (column plus the row's stagger), not in tile space: a diagonal leg out of an odd
+ * half-row crosses the integer row where the stagger kinks, and a tile-space lerp would swing the hull
+ * a quarter column sideways there, the swerve a walking settler avoids with its seam waypoint.
  */
 export function vehicleDrawTile(
   components: Readonly<Record<string, unknown>>,
@@ -116,7 +119,15 @@ export function vehicleDrawTile(
   const progress = typeof drive?.progress === 'number' ? drive.progress : 0;
   const t = clamp01(progress / NODE_PROGRESS_FULL);
   const left = positionOfNode(from.hx, from.hy);
-  return { x: lerp(left.x / ONE, tileX, t), y: lerp(left.y / ONE, tileY, t) };
+  const leftY = left.y / ONE;
+  const row = lerp(leftY, tileY, t);
+  const worldX = lerp(worldColumn(left.x / ONE, leftY), worldColumn(tileX, tileY), t);
+  return { x: worldX - rowStagger(row) / 2, y: row };
+}
+
+/** A tile position's world column: its column plus the half-column stagger of its row. */
+function worldColumn(tileX: number, tileY: number): number {
+  return tileX + rowStagger(tileY) / 2;
 }
 
 /** The entity ids seated in this vehicle's crew, aboard or still walking to it, or none for a

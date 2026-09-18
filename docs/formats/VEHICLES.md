@@ -242,7 +242,10 @@ capped at 7, one field for land and water (`nav/clearance.ts`); `g` reads 0 ever
 map's roughness lane is imported (`TerrainGraph.groundSpeedClass`); the walk range is a hexagon
 distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of
 being ignored; a goto held for a crew still outside is refused at once when no route exists at order
-time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the start of a leg, not halfway, and the vehicle faces
+time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the
+start of a leg, not halfway; a leg's period is the node period scaled by its edge's length over the
+E/W step (the 8-direction lattice's edges span 19 to 51 px, and the original's per-node counter is
+unread past its formula), so the drawn speed holds on every heading; the vehicle faces
 the hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
 routed around by vehicles and humans alike (the original's humans walk through them, see "Crew"), the
 shove happens on entering a node only and sends a settler outside the discs of the whole remaining

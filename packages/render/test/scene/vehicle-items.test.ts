@@ -129,6 +129,23 @@ describe('vehicle draw items', () => {
     expect(walkerShaped).toMatchObject({ ...tileToScreen(4, 2), state: 'idle' });
   });
 
+  it('slides a diagonal leg out of an odd half-row straight on screen, across the stagger kink', () => {
+    // Node (9, 5) -> (10, 7): both on odd half-rows, the leg crossing integer row 3 where the stagger
+    // kinks. Halfway, the hull must sit on the screen midpoint of the two nodes, not a quarter column off.
+    const from = { hx: 9, hy: 5 };
+    const to = positionOfNode(10, 7);
+    const { Position: _fixtureCell, ...base } = vehicle(1).components;
+    const midway = { goal: GOAL, route: [], from, progress: NODE_PROGRESS_FULL / 2, increment: 1 };
+    const [item] = buildSpriteScene(
+      snapshotOf([entity(1, to.x / ONE, to.y / ONE, { ...base, VehicleDrive: midway })]),
+    );
+    const left = positionOfNode(from.hx, from.hy);
+    const start = tileToScreen(left.x / ONE, left.y / ONE);
+    const end = tileToScreen(to.x / ONE, to.y / ONE);
+    expect(item?.x).toBeCloseTo((start.x + end.x) / 2);
+    expect(item?.y).toBeCloseTo((start.y + end.y) / 2);
+  });
+
   it('maps the owner slot through playerColourOf like a settler', () => {
     const [item] = buildSpriteScene(snapshotOf([vehicle(1)]), { playerColourOf: (p) => p + 10 });
     expect(item?.player).toBe(PLAYER + 10);

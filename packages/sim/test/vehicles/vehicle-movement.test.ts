@@ -23,6 +23,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../../src/nav/world-metric.js';
 import {
   canPlaceWorkFlag,
   placementBlockerVersion,
@@ -37,6 +38,7 @@ import {
   snapVehicleTarget,
   VEHICLE_TARGET_SNAP_RADIUS,
   VEHICLE_WALK_RANGE_NODES,
+  vehicleLegTicks,
   vehicleMovePeriod,
   vehicleProgressPerTick,
 } from '../../src/systems/vehicles/index.js';
@@ -157,6 +159,30 @@ describe('vehicle move period', () => {
       const increment = vehicleProgressPerTick(period);
       expect(Math.ceil(NODE_PROGRESS_FULL / increment)).toBe(period);
     }
+  });
+
+  it('scales the period by the edge length so a diagonal and a half-row leg keep the E/W speed', () => {
+    expect(vehicleLegTicks(CART_PERIOD_FLAT, HALF_COLUMN)).toBe(CART_PERIOD_FLAT);
+    expect(vehicleLegTicks(CART_PERIOD_FLAT, DIAGONAL_STEP)).toBe(6); // 51 px over 34 px, times 4
+    expect(vehicleLegTicks(CART_PERIOD_FLAT, HALF_ROW)).toBe(2); // 19 px over 34 px, times 4, rounded
+    expect(vehicleLegTicks(CATAPULT_PERIOD_FLAT, DIAGONAL_STEP)).toBe(12);
+    expect(vehicleLegTicks(1, HALF_ROW)).toBe(1); // never a zero-tick leg
+  });
+
+  it('drives a diagonal leg over its longer edge in more ticks than an E/W leg', () => {
+    const s = sim();
+    const cart = commanded(s, HANDCART, 4, 8);
+    order(s, cart, 5, 10); // one SE diagonal step: (+1, +2)
+    s.step();
+    expect(anchorOf(s, cart)).toEqual({ hx: 5, hy: 10 });
+    expect(s.vehicleView(cart)?.leg?.progress).toBe(vehicleProgressPerTick(6));
+    for (let t = 0; t < 5; t++) {
+      expect(s.vehicleView(cart)?.leg).not.toBeNull();
+      s.step();
+    }
+    expect(s.vehicleView(cart)?.leg).toBeNull(); // six ticks, not the E/W step's four
+    s.step();
+    expect(s.world.has(cart, VehicleDrive)).toBe(false);
   });
 
   it('turns a lattice step into the map-point facing it is made of', () => {

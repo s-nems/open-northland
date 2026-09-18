@@ -14,12 +14,15 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { type HalfCellNode, hexagonRing, hexDistance, positionOfNode } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { nodeLatticeDistance } from '../../nav/terrain/lattice-distance.js';
+import { HALF_COLUMN } from '../../nav/world-metric.js';
 import type { ContentContext, System, SystemContext } from '../context.js';
 import {
   dynamicBlockOverlay,
@@ -38,9 +41,9 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
 // target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
 // on water by the vehicle's traversal class, through nodes whose free-size class admits the vehicle's
-// `logicSize`, each node takes the ground's move period, the footprint travels with the anchor and
-// shoves the settlers it lands on. A ship that starts a drive leaves its mooring; one on a dock drive
-// moors again where it arrives (`dock.ts`).
+// `logicSize`, each leg takes the ground's move period scaled by its edge's length, the footprint
+// travels with the anchor and shoves the settlers it lands on. A ship that starts a drive leaves its
+// mooring; one on a dock drive moors again where it arrives (`dock.ts`).
 
 /** The walk range of a vehicle goto in map-point steps from where it stands (`Pathfinder_Start(goal, 60)`,
  *  the vehicle twin of the humans' 50/63). */
@@ -70,7 +73,7 @@ const FACING_VECTORS_PX: readonly (readonly [number, number])[] = [
   [HALF_COLUMN_PX / 2, -HALF_ROW_PX],
 ];
 
-/** The ticks a vehicle spends on one node whose ground reads class `g`. */
+/** The ticks a vehicle spends crossing one E/W step from a node whose ground reads class `g`. */
 export function vehicleMovePeriod(g: number, siege: boolean): number {
   const period = (g * MOVE_PERIOD_PER_CLASS + MOVE_PERIOD_BASE) << (siege ? SIEGE_PERIOD_SHIFT : 0);
   return Math.max(MOVE_PERIOD_MIN, period);
@@ -80,6 +83,19 @@ export function vehicleMovePeriod(g: number, siege: boolean): number {
  *  the original's integer division. */
 export function vehicleProgressPerTick(period: number): number {
   return Math.floor((period + NODE_PROGRESS_FULL - 1) / period);
+}
+
+const ROUNDING_HALF: Fixed = fx.div(ONE, fx.fromInt(2));
+
+/**
+ * The ticks a leg over a lattice edge of world length `edge` takes: the node period scaled by the edge
+ * over the E/W step, rounded to whole ticks, at least one. Approximation: the original's counter runs per
+ * node whatever the step; the 8-direction lattice's edges span 19 to 51 px, so an unscaled period would
+ * swing the vehicle's speed by 2.7x from leg to leg. The scale keeps one ground speed on every heading.
+ */
+export function vehicleLegTicks(period: number, edge: Fixed): number {
+  const scaled = fx.mulDiv(fx.fromInt(period), edge, HALF_COLUMN);
+  return Math.max(1, fx.toInt(fx.add(scaled, ROUNDING_HALF)));
 }
 
 /**
@@ -432,7 +448,9 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     const live = world.mut(e, VehicleDrive);
     live.route.shift();
     live.from = anchor;
-    live.increment = vehicleProgressPerTick(period);
+    live.increment = vehicleProgressPerTick(
+      vehicleLegTicks(period, nodeLatticeDistance(terrain, here, nextNode)),
+    );
     live.progress = live.increment;
     const at = positionOfNode(next.hx, next.hy);
     const pos = world.mut(e, Position);
