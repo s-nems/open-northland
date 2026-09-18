@@ -55,7 +55,7 @@ function model(jobs: readonly JobCount[], stocks: readonly StockCount[] = [], ti
 }
 
 describe('summaryPopulation', () => {
-  it('splits adults by the Female tally, men by the army band, and children by sex and stage', () => {
+  it('splits adults by the Female tally, men by the army band, and children by sex', () => {
     const out = summaryPopulation(
       model([
         { jobType: JOB_BABY_FEMALE, count: 1, female: 1 },
@@ -79,7 +79,6 @@ describe('summaryPopulation', () => {
       children: 5,
       girls: 3,
       boys: 2,
-      babies: 2,
       total: 19,
     });
   });
@@ -93,7 +92,6 @@ describe('summaryPopulation', () => {
       children: 0,
       girls: 0,
       boys: 0,
-      babies: 0,
       total: 0,
     });
   });

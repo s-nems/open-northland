@@ -93,18 +93,15 @@ export interface SummaryPopulation {
   /** The men in a soldier or hero job; `workers` is every other man, idle ones included. */
   readonly soldiers: number;
   readonly workers: number;
-  /** Everyone in a born stage (baby or child of either sex); disjoint from the adults. */
+  /** Everyone not yet grown, baby or child, split by sex; disjoint from the adults. */
   readonly children: number;
   readonly girls: number;
   readonly boys: number;
-  /** The part of `children` still in the baby stage. */
-  readonly babies: number;
   readonly total: number;
 }
 
 const GIRL_JOBS: ReadonlySet<number> = new Set([JOB_BABY_FEMALE, JOB_CHILD_FEMALE]);
 const BOY_JOBS: ReadonlySet<number> = new Set([JOB_BABY_MALE, JOB_CHILD_MALE]);
-const BABY_JOBS: ReadonlySet<number> = new Set([JOB_BABY_FEMALE, JOB_BABY_MALE]);
 
 /** The `jobtypes.ini` soldier band and the named heroes: the people the original lists under its army. */
 const isMilitaryJob = (jobType: number): boolean =>
@@ -117,7 +114,6 @@ export function summaryPopulation(model: HudModel): SummaryPopulation {
   let soldiers = 0;
   let girls = 0;
   let boys = 0;
-  let babies = 0;
   for (const { jobType, count, female } of model.jobs) {
     if (GIRL_JOBS.has(jobType)) girls += count;
     else if (BOY_JOBS.has(jobType)) boys += count;
@@ -126,7 +122,6 @@ export function summaryPopulation(model: HudModel): SummaryPopulation {
       men += count - female;
       if (isMilitaryJob(jobType)) soldiers += count - female;
     }
-    if (BABY_JOBS.has(jobType)) babies += count;
   }
   return {
     women,
@@ -136,7 +131,6 @@ export function summaryPopulation(model: HudModel): SummaryPopulation {
     children: girls + boys,
     girls,
     boys,
-    babies,
     total: model.population,
   };
 }

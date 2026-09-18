@@ -284,7 +284,6 @@ export const enGame = {
       children: 'Children',
       girls: 'girls',
       boys: 'boys',
-      babies: 'of them infants',
       total: 'Total',
       categories: {
         food: 'Food',

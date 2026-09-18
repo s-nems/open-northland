@@ -6,7 +6,7 @@ import {
   WALK_RANGE_NODES,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { readNumField, readPosition, readStockpileAmounts } from '../snapshot/index.js';
+import { readAmountPairs, readNumField, readPosition, readStockpileAmounts } from '../snapshot/index.js';
 
 /**
  * Turns a {@link WorldSnapshot} into a flat {@link HudModel}. Aggregates are re-derived from the
@@ -39,8 +39,8 @@ export interface HudModel {
   readonly population: number;
   /** Per-job head-counts, ascending by `jobType`. */
   readonly jobs: readonly JobCount[];
-  /** Per-good totals across the player's stores and the ground piles its signposts reach, ascending
-   *  by `goodType`; zero entries omitted. */
+  /** Per-good totals of everything the player holds: its stores and hulls, what its people carry, and
+   *  the ground heaps inside its reach; ascending by `goodType`, zero entries omitted. */
   readonly stocks: readonly StockCount[];
 }
 
@@ -68,36 +68,40 @@ function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | n
  * which is stricter than the sim's `ownersCompatible` side rule - a neutral store every seat may draw
  * from would show in none of their totals. No decoded map authors one.
  *
- * Stock is every owned building's pile plus the ground piles inside the seat's signpost network: a
- * `GroundDrop` strictly under `WALK_RANGE_NODES` of one of the seat's posts. An approximation of the
- * collecting settler's own limit (`networkLimitAt`), keeping its post-range term and ignoring the
- * collector's radius, group catching and terrain connectivity; only a gatherer takes a pile, never a
- * carrier.
+ * Stock is every unit the seat holds, wherever it sits: the piles of its buildings and boat hulls, the
+ * inventory a building keeps aside while it upgrades, the unit in a settler's hands, and every heap on
+ * the ground (a felled trunk, an ore pile, a gatherer's yard heap, an evicted stack; none is owned)
+ * strictly under `WALK_RANGE_NODES` of one of the seat's signposts or buildings. The ground term is an
+ * approximation of the collecting settler's own limit (`networkLimitAt`): its post-range term, with
+ * the seat's buildings standing in for a collector's own radius, and without group catching or terrain
+ * connectivity. Counting the hands and the yard keeps the figure still while a gatherer walks a unit
+ * from trunk to heap to store; nothing is consumed on that trip.
  * Output ordering is total (sorted by id), so the same snapshot yields an identical model every call.
  */
 export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   let population = 0;
   const jobCounts = new Map<number, { count: number; female: number }>();
   const stockTotals = new Map<number, number>();
-  const addStock = (components: Readonly<Record<string, unknown>>): void => {
-    for (const [goodType, amount] of readStockpileAmounts(components)) {
+  const addPairs = (pairs: readonly (readonly [number, number])[]): void => {
+    for (const [goodType, amount] of pairs) {
       stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
     }
   };
-  const posts: HalfCellNode[] = [];
-  const piles: Readonly<Record<string, unknown>>[] = [];
+  const anchors: HalfCellNode[] = [];
+  const heaps: Readonly<Record<string, unknown>>[] = [];
 
   for (const entity of snapshot.entities) {
     const components = entity.components;
-    // A haulable ground pile belongs to nobody; whether it counts is settled below, by the posts.
-    if ('GroundDrop' in components) {
-      piles.push(components);
+    const owner = readNumField(components, 'Owner', 'player');
+    if (owner === undefined) {
+      // A heap on the ground belongs to nobody; whether it counts is settled below, by the anchors.
+      if ('Stockpile' in components && 'Position' in components) heaps.push(components);
       continue;
     }
-    if (readNumField(components, 'Owner', 'player') !== player) continue;
-    if ('Signpost' in components) {
+    if (owner !== player) continue;
+    if ('Signpost' in components || 'Building' in components) {
       const node = nodeOf(components);
-      if (node !== null) posts.push(node);
+      if (node !== null) anchors.push(node);
     }
 
     // The `Person` marker is the sim's own population query key, so wildlife and a claimed animal are
@@ -111,15 +115,21 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
       jobCounts.set(jobType, tally);
     }
 
-    if ('Building' in components) addStock(components);
+    // An owned pile is a building's or a boat hull's; the ground never carries an owner.
+    addPairs(readStockpileAmounts(components));
+    const upgrading = components.Upgrading as { savedStock?: unknown } | undefined;
+    if (upgrading !== undefined) addPairs(readAmountPairs(upgrading.savedStock));
+    const carriedGood = readNumField(components, 'Carrying', 'goodType');
+    const carriedAmount = readNumField(components, 'Carrying', 'amount');
+    if (carriedGood !== undefined && carriedAmount !== undefined) addPairs([[carriedGood, carriedAmount]]);
   }
-  for (const pile of piles) {
-    const node = nodeOf(pile);
+  for (const heap of heaps) {
+    const node = nodeOf(heap);
     if (
       node !== null &&
-      posts.some((post) => hexDistanceBetween(post.hx, post.hy, node.hx, node.hy) < WALK_RANGE_NODES)
+      anchors.some((anchor) => hexDistanceBetween(anchor.hx, anchor.hy, node.hx, node.hy) < WALK_RANGE_NODES)
     ) {
-      addStock(pile);
+      addPairs(readStockpileAmounts(heap));
     }
   }
 

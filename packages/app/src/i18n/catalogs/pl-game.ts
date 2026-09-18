@@ -272,7 +272,6 @@ export const plGame = {
       children: 'Dzieci',
       girls: 'dziewczynki',
       boys: 'chłopcy',
-      babies: 'w tym niemowlęta',
       total: 'Razem',
       categories: {
         food: 'Żywność',

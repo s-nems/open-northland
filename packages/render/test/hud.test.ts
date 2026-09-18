@@ -60,6 +60,35 @@ function signpost(id: number, player: number, x: number, y: number): WorldSnapsh
   };
 }
 
+/** A heap lying on the ground at visual tile `(x, y)` with no marker: the sim's yard-heap shape. */
+function looseHeap(
+  id: number,
+  x: number,
+  y: number,
+  goodType: number,
+  amount: number,
+): WorldSnapshot['entities'][number] {
+  return {
+    id,
+    components: {
+      Stockpile: { amounts: [[goodType, amount]] },
+      Position: { x: fx.fromInt(x), y: fx.fromInt(y) },
+    },
+  };
+}
+
+/** A {@link store} standing at visual tile `(x, y)`. */
+function placedStore(
+  id: number,
+  player: number,
+  x: number,
+  y: number,
+  amounts: readonly [number, number][],
+): WorldSnapshot['entities'][number] {
+  const made = store(id, player, amounts);
+  return { ...made, components: { ...made.components, Position: { x: fx.fromInt(x), y: fx.fromInt(y) } } };
+}
+
 /** A haulable ground pile at visual tile `(x, y)`: the sim's `GroundDrop` shape, which no seat owns. */
 function groundPile(
   id: number,
@@ -190,7 +219,7 @@ describe('buildHud', () => {
     ]);
   });
 
-  it('adds a ground pile strictly inside the walk range of one of the player signposts', () => {
+  it('adds a ground heap strictly inside the walk range of one of the player signposts', () => {
     const hud = buildHud(
       snapshotOf([
         store(1, 0, [[2, 10]]),
@@ -198,28 +227,74 @@ describe('buildHud', () => {
         groundPile(3, 12, 11, 2, 4), // two tiles from the post
         groundPile(4, 12, 12, 7, 1),
         groundPile(5, 70, 70, 2, 99), // far beyond fifty nodes of any post
+        looseHeap(6, 11, 11, 2, 5), // a yard heap, no marker at all
       ]),
       0,
     );
     expect(hud.stocks).toEqual([
-      { goodType: 2, amount: 14 },
+      { goodType: 2, amount: 19 },
       { goodType: 7, amount: 1 },
     ]);
   });
 
-  it('leaves ground piles out without a post of the player in reach, whoever else stands one there', () => {
-    const entities = [store(1, 0, [[2, 10]]), groundPile(3, 12, 11, 2, 4)];
+  it('leaves ground heaps out with neither a post nor a building of the player in reach', () => {
+    const entities = [store(1, 0, [[2, 10]]), groundPile(3, 12, 11, 2, 4), looseHeap(6, 11, 11, 2, 5)];
     expect(buildHud(snapshotOf(entities), 0).stocks).toEqual([{ goodType: 2, amount: 10 }]);
+    // Another seat's post, or an own post out of range, opens nothing.
     expect(buildHud(snapshotOf([...entities, signpost(2, 1, 10, 10)]), 0).stocks).toEqual([
       { goodType: 2, amount: 10 },
     ]);
-    // A loose pile (no GroundDrop marker) is not haulable and rests outside every count.
-    const loose = {
-      id: 6,
-      components: { Stockpile: { amounts: [[2, 5]] }, Position: { x: fx.fromInt(11), y: fx.fromInt(11) } },
-    };
-    expect(buildHud(snapshotOf([...entities, signpost(2, 0, 10, 10), loose]), 0).stocks).toEqual([
-      { goodType: 2, amount: 14 },
+    expect(buildHud(snapshotOf([...entities, signpost(2, 0, 70, 70)]), 0).stocks).toEqual([
+      { goodType: 2, amount: 10 },
+    ]);
+  });
+
+  it('anchors the reach on an own building too, the collector radius of a seat without posts', () => {
+    const hud = buildHud(
+      snapshotOf([
+        placedStore(1, 0, 10, 10, [[2, 10]]),
+        groundPile(3, 12, 11, 2, 4),
+        looseHeap(6, 70, 70, 2, 5),
+      ]),
+      0,
+    );
+    expect(hud.stocks).toEqual([{ goodType: 2, amount: 14 }]);
+  });
+
+  it('counts the unit in an own settler hands, a boat hull and an upgrading building aside stash', () => {
+    const hud = buildHud(
+      snapshotOf([
+        store(1, 0, [[2, 10]]),
+        {
+          ...settler(2, 0, 5),
+          components: { ...settler(2, 0, 5).components, Carrying: { goodType: 2, amount: 1 } },
+        },
+        {
+          ...settler(3, 1, 5),
+          components: { ...settler(3, 1, 5).components, Carrying: { goodType: 2, amount: 1 } },
+        },
+        {
+          id: 4,
+          components: {
+            Vehicle: { vehicleType: 0, tribe: 0 },
+            Stockpile: { amounts: [[7, 3]] },
+            Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
+            Owner: { player: 0 },
+          },
+        },
+        {
+          id: 5,
+          components: {
+            ...store(5, 0, [[2, 2]]).components,
+            Upgrading: { savedStock: [[2, 6]], seeded: [] },
+          },
+        },
+      ]),
+      0,
+    );
+    expect(hud.stocks).toEqual([
+      { goodType: 2, amount: 19 },
+      { goodType: 7, amount: 3 },
     ]);
   });
 
@@ -271,8 +346,8 @@ describe('layoutHud', () => {
       model({
         population: 3,
         jobs: [
-          { jobType: IDLE_JOB, count: 1 },
-          { jobType: 5, count: 2 },
+          { jobType: IDLE_JOB, count: 1, female: 0 },
+          { jobType: 5, count: 2, female: 0 },
         ],
         stocks: [{ goodType: 2, amount: 14 }],
       }),
@@ -289,13 +364,17 @@ describe('layoutHud', () => {
   it('sizes the panel height to the row count (padding + lines + bottom padding)', () => {
     const empty = layoutHud(model(), LABELS); // 4 rows: header, population, Jobs, Stocks
     expect(empty.height).toBe(HUD_PAD + 4 * HUD_LINE_H + HUD_PAD);
-    const busy = layoutHud(model({ jobs: [{ jobType: 1, count: 1 }] }), LABELS); // +1 row
+    const busy = layoutHud(model({ jobs: [{ jobType: 1, count: 1, female: 0 }] }), LABELS); // +1 row
     expect(busy.height).toBe(empty.height + HUD_LINE_H);
     expect(busy.width).toBe(empty.width); // width is a fixed column, height grows with content
   });
 
   it('is byte-identical for the same model (deterministic - never reshuffles between equal frames)', () => {
-    const m = model({ tick: 3, jobs: [{ jobType: 1, count: 2 }], stocks: [{ goodType: 9, amount: 5 }] });
+    const m = model({
+      tick: 3,
+      jobs: [{ jobType: 1, count: 2, female: 0 }],
+      stocks: [{ goodType: 9, amount: 5 }],
+    });
     expect(layoutHud(m, LABELS)).toEqual(layoutHud(m, LABELS));
   });
 });

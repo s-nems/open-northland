@@ -119,15 +119,19 @@ medallion, with no divider frame between them.
   fields several). The bar shows two counters, women and men: the grown people with and without the
   sim's `Female` marker (a woman in a trade, or a heroine, is a woman). The breakdown adds the men
   split into workers and soldiers (the `jobtypes.ini` soldier band and the heroes; an idle man is a
-  worker), the children as one figure split into girls and boys, the infants among them, and the
+  worker), the children as one figure split into girls and boys (babies included in each), and the
   total. Women, men and children are disjoint and sum to the total.
-- Stock scope is every store the seat owns, warehouses, homes and workplaces alike, a workplace's
-  inputs counted like its products (the `buildHud` projection the statistics window already shows),
-  plus the ground piles inside the seat's signpost network: a haulable pile strictly under the
-  50-node walk range of one of the seat's posts. An approximation of the collecting settler's own
-  navigation limit: its post-range term, without the collector's radius, group catching or terrain
-  connectivity. A deliberate divergence from the original's counting, which takes a workplace's
-  product slots and skips its input slots (the reading behind the sim's `countsAsOwnStock`).
+- Stock scope is every unit the seat holds, wherever it sits: the piles of its buildings (warehouses,
+  homes and workplaces alike, a workplace's inputs counted like its products) and boat hulls, the
+  inventory a building keeps aside while it upgrades, the unit in a settler's hands, and every heap on
+  the ground (felled trunk, ore pile, gatherer's yard heap, evicted stack) strictly under the 50-node
+  walk range of one of the seat's signposts or buildings (the `buildHud` projection the statistics
+  window already shows). The ground term is an approximation of the collecting settler's own
+  navigation limit: its post-range term, the seat's buildings standing in for a collector's own radius,
+  without group catching or terrain connectivity. Hands and yard heaps count so the figure holds still
+  while a unit travels from trunk to heap to store. A deliberate divergence from the original's
+  counting, which takes a workplace's product slots and skips its input slots (the reading behind the
+  sim's `countsAsOwnStock`).
 - Five categories with fixed rows (`hud/summary/model.ts`, keyed by good string id): Żywność (wheat,
   flour, food, candy, mead), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
   tile, stone block, marble, holy oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,

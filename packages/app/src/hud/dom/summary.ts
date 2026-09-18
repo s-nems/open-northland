@@ -151,7 +151,6 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   const childrenRow = tipRow(copy.children);
   const girlsRow = tipRow(copy.girls, SUB);
   const boysRow = tipRow(copy.boys, SUB);
-  const babiesRow = tipRow(copy.babies, SUB);
   const totalRow = tipRow(copy.total, 'on-tip__row--total');
   residents.tip.append(
     womenRow.row,
@@ -161,7 +160,6 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     childrenRow.row,
     girlsRow.row,
     boysRow.row,
-    babiesRow.row,
     totalRow.row,
   );
 
@@ -230,7 +228,6 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       setRow(childrenRow, population.children);
       setRow(girlsRow, population.girls);
       setRow(boysRow, population.boys);
-      setRow(babiesRow, population.babies);
       setRow(totalRow, population.total);
       const stocks = summaryStocks(model, deps.goodIdOf);
       categories.forEach((category, i) => {
