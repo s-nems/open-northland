@@ -8,15 +8,35 @@ import type {
   SpriteBindings,
   SpriteKind,
 } from '../data/sprites/index.js';
+import type { ClothIndexRanges } from './cloth-wind.js';
 import type { ResolvedLayer } from './sprite-pool/resolved-layer.js';
+
+/** A `256 x colours` palette LUT the paletted meshes read an indexed atlas through. */
+export interface PaletteLut {
+  readonly source: TextureSource;
+  /** Total row count. */
+  readonly colours: number;
+}
+
+/**
+ * The owner-colour LUT of the vehicles whose look is {@link VehicleLook.indexed} (the ships' palette
+ * family): row `n` is the family's member `n + 1`. Approximation: the family has fewer members than
+ * there are player colours, so an owner past the last row wraps around.
+ */
+export interface VehicleColourLut extends PaletteLut {
+  /** The palette indices the bound atlases paint their sails with; absent draws the sails rigid. */
+  readonly sailRanges?: ClothIndexRanges;
+}
+
+/** The row a vehicle of `player` reads. */
+export function vehicleLutRow(palette: PaletteLut, player: number | undefined): number {
+  return (player ?? 0) % palette.colours;
+}
 
 /** The player-colour LUT the paletted settler meshes read team colours through. The texture carries one
  *  `playerRows`-row block per recolor tier (`row = tier * playerRows + player`, tier 0 = the plain
  *  player rows), then the head row. */
-export interface PlayerColourLut {
-  readonly source: TextureSource;
-  /** Total row count, the head row included. */
-  readonly colours: number;
+export interface PlayerColourLut extends PaletteLut {
   /** Rows per armor-tier block. */
   readonly playerRows: number;
   /** Worn armor `goodType` → its recolor tier (`armortypes.ini` `type`, 1..4). */
@@ -145,6 +165,8 @@ export interface SpriteSheet {
    *  atlases are the recolourable indexed variant (palette index in red): one indexed atlas plus one LUT
    *  serve all `colours` players. */
   readonly palette?: PlayerColourLut;
+  /** The LUT the indexed vehicle looks are drawn through per owner; absent draws the baked looks. */
+  readonly vehiclePalette?: VehicleColourLut;
   /** The indoor craft choreography the scene draws a working craftsman from. */
   readonly inHousePrograms?: InHouseProgramLookup;
   /** Persistent holy-fire effects anchored to mature homes. */

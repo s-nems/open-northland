@@ -2,12 +2,18 @@ import { Graphics, Sprite, type Texture } from 'pixi.js';
 import { FOG_GHOST_TINT } from '../../data/fog/index.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
+import { buildTimeThreshold, type SpriteKind, vehicleLookFor } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
-import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
+import {
+  layerLutRow,
+  type PaletteLut,
+  type SpriteSheet,
+  settlerPaletteLutRow,
+  vehicleLutRow,
+} from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
@@ -58,14 +64,23 @@ export class LayerBinder {
   ) {}
 
   /** A settler is created paletted only when the player-colour LUT and the indexed characters are both
-   *  loaded; animal atlases are baked recolours, never LUT-indexed. The sheet and an entity's tribe
-   *  never change, so the sprite class is decided once here. */
+   *  loaded; animal atlases are baked recolours, never LUT-indexed. A vehicle is created paletted when
+   *  its look is the indexed body. The sheet and an entity's tribe and type never change, so the sprite
+   *  class is decided once here. */
   create(kind: SpriteKind, item: DrawItem): PooledEntity {
+    return createPooled(kind, this.paletteFor(kind, item));
+  }
+
+  private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
     const sheet = this.sheet;
+    if (kind === 'vehicle') {
+      const binding = sheet?.bindings.vehicle;
+      const indexed = binding !== undefined && vehicleLookFor(binding, item)?.indexed === true;
+      return indexed ? sheet?.vehiclePalette : undefined;
+    }
     const characters = sheet?.characters;
     const isAnimal = item.tribe !== undefined && characters?.animals?.tribes.has(item.tribe) === true;
-    const palette = kind === 'settler' && characters !== undefined && !isAnimal ? sheet?.palette : undefined;
-    return createPooled(kind, palette);
+    return kind === 'settler' && characters !== undefined && !isAnimal ? sheet?.palette : undefined;
   }
 
   /**
@@ -102,7 +117,13 @@ export class LayerBinder {
     const originX = snapToDevicePixels(cameraScreenX(frame.camera, drawX), snap);
     const originY = snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap);
     // The (armor tier, player) LUT row - worn armor recolours the clothing bands. Unused on the plain path.
-    const playerRow = pe.paletted && this.sheet !== undefined ? settlerPaletteLutRow(this.sheet, item) : 0;
+    const bodyRow = !pe.paletted
+      ? 0
+      : pe.kind === 'vehicle'
+        ? vehicleLutRow(pe.palette, item.player)
+        : settlerPaletteLutRow(this.sheet, item);
+    // Only a settler's layers include a head, which reads the settler LUT's own head row.
+    const settlerLut = pe.kind === 'vehicle' ? undefined : this.sheet?.palette;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
     // Feet-local union of the drawn rects: one box for mesh and plain layers alike.
     const bounds = this.layerBounds;
@@ -146,8 +167,8 @@ export class LayerBinder {
       if (pe.paletted && layer.shadow === true) {
         this.bindShadowSprite(pe, shadowSlot++, layer, box, tint, shadowStyle);
       } else if (pe.paletted) {
-        const row = layerLutRow(pe.palette, layer, playerRow);
-        this.bindPalettedLayer(pe, spriteSlot++, layer, originX, originY, camScale, frame, row);
+        const row = settlerLut === undefined ? bodyRow : layerLutRow(settlerLut, layer, bodyRow);
+        this.bindPalettedLayer(pe, spriteSlot++, layer, originX, originY, camScale, frame, row, tint);
       } else {
         pe.shadowFlags[spriteSlot] = layer.shadow === true;
         if (layer.cast === true) {
@@ -311,6 +332,7 @@ export class LayerBinder {
     camScale: number,
     frame: BindFrame,
     lutRow: number,
+    tint: number,
   ): void {
     let spr = pe.sprites[i];
     if (spr === undefined) {
@@ -331,10 +353,16 @@ export class LayerBinder {
       frame.screenW,
       frame.screenH,
     );
-    spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh
+    // Retained so the portrait pass can re-place the mesh and the picker can find its texels.
+    spr.artScale = layer.scale;
+    spr.artDx = layer.dx ?? 0;
+    spr.artDy = layer.dy ?? 0;
     spr.sampling =
       frame.enhancedSampling === true ? (frame.pixelArtScaler ?? DEFAULT_PIXEL_ART_SCALER) : 'nearest';
     spr.player = lutRow;
+    spr.shear = layer.shear ?? 0;
+    spr.paletteTint = tint;
+    spr.setClothWind(layer.cloth ?? null);
     spr.visible = true;
   }
 

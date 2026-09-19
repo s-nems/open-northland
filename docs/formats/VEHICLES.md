@@ -522,11 +522,16 @@ these choices for the holes:
 - The catapult loops its 40-frame shot over the 48-tick attack cadence while `task` is `attacks` and
   stages `fx smoke` (weapon 21's `createsmoke`) for the last 20 ticks of each cycle; which smoke record
   and where in the clip the shot releases are approximations.
-- Ship player colour: the pipeline bakes only `ls_vehicles.human_ship01`, so every player sails the
-  player-one hull today and the binding carries no per-owner atlas. The cheap route when team colour is
-  wanted is the characters' path, one indexed `ls_vehicles.indexed` atlas plus a ten-row ship LUT
-  (`human_ship01..10`) read through `PalettedSprite` (the hull bobs are the same type 1/4 as the
-  character bobs), about 1.5 MB in all, not ten 1.5 MB bakes.
+- Ship player colour: besides the baked `human_ship01` atlas, the pipeline emits each ship library as
+  an indexed atlas (`ls_vehicles.indexed`, `ve_test_ship.indexed`) and the `human_ship01..10` family as
+  a ten-row LUT (`human_ship01.lut.png`), and a ship draws through `PalettedSprite` with its owner's
+  row. Approximation: an owner past the tenth palette wraps around. `ve_test_ship` paints nothing from
+  the band the ten palettes differ in (indices 128..159), so the viking big ship shows no owner colour.
+- Wind in the sails: the original draws one rigid frame per heading. A set sail at sea ripples in the
+  shader (`gpu/cloth-wind.ts`), an artistic approximation like the swell: the pixels of the sail's
+  palette indices (the cream ramp 104..111 and the owner band, an observation of the `ls_vehicles`
+  frames) slide sideways on a travelling wave inside the sail's fixed outline. A moored ship's furled
+  sail and the `ve_test_ship` sail, which draws from neither range, stay rigid.
 - The ships' two hulls: action 2 (bobs 0..31 of `ls_vehicles`) has the sails set, action 4 (bobs 66..94)
   has them furled with crates on deck (observation of the baked frames). A moored ship draws the furled
   hull, a ship standing or sailing at sea the set one; the `wood` gait the rows author as the loaded

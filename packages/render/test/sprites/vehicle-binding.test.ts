@@ -77,7 +77,7 @@ const item = (fields: Parameters<typeof drawItem>[1]) => drawItem('vehicle', { t
 describe('resolveVehicleDraw', () => {
   it('stands a vehicle on its wait at its facing, from its own family atlas', () => {
     const draw = resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 3, state: 'idle' }), 7);
-    expect(draw).toEqual({ bob: 1003, layer: CART_LAYER, sway: 'none' });
+    expect(draw).toEqual({ bob: 1003, layer: CART_LAYER, sway: 'none', indexed: false });
   });
 
   it('defaults an item with no facing to the toward-camera pose', () => {
@@ -104,7 +104,7 @@ describe('resolveVehicleDraw', () => {
       3,
       9,
     );
-    expect(draw).toEqual({ bob: 5004, layer: 'cr_veh_body_00.oxcart', sway: 'none' });
+    expect(draw).toEqual({ bob: 5004, layer: 'cr_veh_body_00.oxcart', sway: 'none', indexed: false });
   });
 
   it('furls the sails while a ship lies moored, sets them at sea, and keeps a cart on its one wait', () => {
@@ -124,6 +124,18 @@ describe('resolveVehicleDraw', () => {
     expect(sway({ typeId: SHIP, facing: 0 })).toBe('atSea');
     expect(sway({ typeId: SHIP, facing: 0, state: 'moving' })).toBe('sailing');
     expect(sway({ typeId: HANDCART, facing: 0, state: 'moving' })).toBe('none');
+  });
+
+  it('marks the frame of an indexed look, whatever the vehicle is doing', () => {
+    const owned: VehicleBinding = {
+      ...binding,
+      byTribe: { [VIKING]: { [SHIP]: { ...ship, layer: 'ls_vehicles.indexed', indexed: true } } },
+    };
+    const indexed = (fields: Parameters<typeof item>[0]) =>
+      resolveVehicleDraw(owned, item(fields), 0)?.indexed;
+    expect(indexed({ typeId: SHIP, facing: 0 })).toBe(true);
+    expect(indexed({ typeId: SHIP, facing: 0, state: 'moving' })).toBe(true);
+    expect(resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0 }), 0)?.indexed).toBe(false);
   });
 
   it('loops the catapult shot on the attack cadence while the vehicle attacks, whatever its motion state', () => {

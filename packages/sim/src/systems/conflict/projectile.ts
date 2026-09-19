@@ -3,7 +3,6 @@ import {
   Health,
   isWildlife,
   Owner,
-  Palisade,
   Position,
   Projectile,
   Resting,
@@ -23,8 +22,8 @@ import {
 } from '../settlers/atomics/effects/combat/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import { passIndexOf } from './combat-index.js';
-import { projectileStep } from './shot-aim.js';
 import { resolveGroundImpact } from './ground-impact.js';
+import { projectileStep } from './shot-aim.js';
 import { targetBodyNodes } from './target-node.js';
 import { isStructureTarget, mayTarget } from './targeting.js';
 import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from './weapons.js';

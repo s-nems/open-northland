@@ -6,6 +6,7 @@ import {
   type DrawableFrames,
   vehicleAtlasStems,
   vehicleLook,
+  vehicleOwnerFamily,
 } from '../src/content/vehicle-gfx/index.js';
 
 /**
@@ -156,6 +157,27 @@ describe('the vehicle look join', () => {
     expect(attack.frameLists[GFX_DIR_TO_FACING[0]]).toHaveLength(40);
   });
 
+  it('binds the indexed body of the rows in the palette family whose owner LUT loaded', () => {
+    const family = vehicleOwnerFamily([vikingOxcart, vikingBigShip]);
+    expect(family).toBe('human_ship01');
+    expect(vehicleOwnerFamily([vikingOxcart, catapult])).toBeUndefined();
+
+    const { stems, shadowByStem } = vehicleAtlasStems([vikingOxcart, vikingBigShip], family);
+    expect([...stems].sort()).toEqual(['cr_veh_body_00.oxcart', 've_test_ship.indexed']);
+    expect(shadowByStem.get('ve_test_ship.indexed')).toBe('ve_test_ship_s.shadow');
+
+    const stem = 've_test_ship.indexed';
+    const look = vehicleLook(vikingBigShip, new Set([stem]), drawable(stem, range(32)), family);
+    expect(look).toMatchObject({ layer: stem, indexed: true });
+    const baked = 've_test_ship.human_ship01';
+    expect(vehicleLook(vikingBigShip, new Set([baked]), drawable(baked, range(32)))?.indexed).toBeUndefined();
+    // A cart outside the family keeps its baked palette whatever LUT loaded.
+    const cartStem = 'cr_veh_body_00.oxcart';
+    const cart = vehicleLook(vikingOxcart, new Set([cartStem]), drawable(cartStem, CART_FRAMES), family);
+    expect(cart).toMatchObject({ layer: cartStem });
+    expect(cart?.indexed).toBeUndefined();
+  });
+
   it('drops the viking big ship’s loaded hull, whose bobs the 32-frame bake lacks, and keeps the rest', () => {
     const stem = 've_test_ship.human_ship01';
     const look = vehicleLook(vikingBigShip, new Set([stem]), drawable(stem, range(32)));
@@ -198,14 +220,9 @@ describe('the vehicle look join', () => {
     expect(binding?.attackFx).toMatchObject({ name: 'fx smoke' });
     expect(buildVehicleBinding([vikingOxcart], loaded, frames, VIKING, false)?.attackFx).toBeUndefined();
     // A type named as a ship rides the swell; the rest stand rigid.
-    const afloat = buildVehicleBinding(
-      [vikingOxcart, catapult],
-      loaded,
-      frames,
-      VIKING,
-      false,
-      new Set([OXCART]),
-    );
+    const afloat = buildVehicleBinding([vikingOxcart, catapult], loaded, frames, VIKING, false, {
+      ships: new Set([OXCART]),
+    });
     expect(afloat?.byTribe[VIKING]?.[OXCART]?.afloat).toBe(true);
     expect(afloat?.byTribe[VIKING]?.[CATAPULT]?.afloat).toBeUndefined();
   });

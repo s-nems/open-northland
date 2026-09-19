@@ -12,9 +12,10 @@ uniform vec4 uPlacement;  // xy = feet-anchor screen px, z = pixels-per-native-p
 // device-pixel size) and syncs it onto any mesh shader declaring it, overwriting this one.
 uniform vec2 uScreen;
 uniform vec2 uFlip;       // .x > 0.5: negate clip Y (render upright into a bottom-up render texture)
+uniform vec2 uShear;      // .x = native px of x shift per native px of y, about the feet anchor
 
 void main(void) {
-  vec2 screen = uPlacement.xy + uPlacement.z * aPosition;
+  vec2 screen = uPlacement.xy + uPlacement.z * (aPosition + vec2(uShear.x * aPosition.y, 0.0));
   // Screen pixels → clip space (Y points down in screen space, up in clip space).
   float clipY = 1.0 - screen.y / uScreen.y * 2.0;
   // A WebGL render texture is stored bottom-up, so a straight draw lands upside-down; uFlip negates clip Y
@@ -39,6 +40,11 @@ uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) - for the 'round' corner key
 uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
 uniform vec2 uSampling;     // .x: world magnification mode (0 nearest / 1 bilinear / 2 sharp / 3 xbr)
+uniform vec4 uTint;         // .rgb multiplies the LUT colour; white draws it straight
+uniform vec2 uAtlasSize;    // the indexed atlas's size in px
+uniform vec4 uClothRanges;  // two inclusive palette-index ranges (loA, hiA, loB, hiB) that are cloth
+uniform vec4 uClothWave;    // .x phase (rad), .y displacement in native px (0 = still), .z shade depth
+uniform vec2 uClothFreq;    // the wave's radians per native px along x and y
 
 // GUI transparent key, a floating-HUD deviation with no original mechanism behind it (the original's GUI
 // drawing has no colour key; source basis "Left tool panel"). The in-game GUI palettes reserve palette index 0 as a
@@ -52,6 +58,11 @@ const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the
 const float KEY_ROUND_CLIP = 1.0;  // 'round' mode: fade out past this normalized radius (the disc fills the
                                    // frame, touching its edges at rad 1.0; corners run to ~1.41) → clean disc
 
+bool isCloth(float index) {
+  return (index >= uClothRanges.x && index <= uClothRanges.y) ||
+         (index >= uClothRanges.z && index <= uClothRanges.w);
+}
+
 vec4 resolvedTexel(ivec2 pixel) {
   ivec2 size = textureSize(uTexture, 0);
   vec2 uv = (vec2(pixel) + 0.5) / vec2(size);
@@ -60,7 +71,7 @@ vec4 resolvedTexel(ivec2 pixel) {
   vec4 t = texelFetch(uTexture, pixel, 0);
   float index = floor(t.r * 255.0 + 0.5);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
-  return vec4(textureLod(uLut, lutUV, 0.0).rgb * t.a, t.a);
+  return vec4(textureLod(uLut, lutUV, 0.0).rgb * uTint.rgb * t.a, t.a);
 }
 
 #define MAGNIFY_FETCH(px) resolvedTexel(px)
@@ -74,7 +85,7 @@ void main(void) {
   // GUI keying/silhouettes retain their exact existing path. Magnification modes resolve colours
   // before blending; a 2x2 footprint reduces minification sparkle without filtering indices or
   // allocating per-player RGBA atlases. Not a mipmap substitute at extreme zoom-out: sampling cost
-  // is deliberately bounded.
+  // is deliberately bounded. The tint rides along; the cloth wave draws only on the nearest path.
   if (uSampling.x > 0.5 && uColorKey.x < 0.5 && uSilhouette.w < 0.5) {
     vec2 size = vec2(textureSize(uTexture, 0));
     vec2 p = vUV * size;
@@ -100,6 +111,20 @@ void main(void) {
   if (texel.a == 0.0) discard; // unwritten bob pixel
   // Recover the exact palette index (0..255) from the red channel, then read the player's LUT row.
   float index = floor(texel.r * 255.0 + 0.5);
+  float shade = 1.0;
+  if (uClothWave.y > 0.0 && isCloth(index)) {
+    // Wind in the cloth: a travelling wave slides the weave sideways inside the cloth's own outline (a
+    // displaced read that leaves the cloth keeps this texel) and lights its crests.
+    vec2 local = (vUV - uFrameUV.xy) * uAtlasSize;
+    float wave = dot(local, uClothFreq) - uClothWave.x;
+    float u = vUV.x + uClothWave.y * sin(wave) / uAtlasSize.x;
+    if (u > uFrameUV.x && u < uFrameUV.z) {
+      vec4 moved = textureLod(uTexture, vec2(u, vUV.y), 0.0);
+      float movedIndex = floor(moved.r * 255.0 + 0.5);
+      if (moved.a > 0.0 && isCloth(movedIndex)) index = movedIndex;
+    }
+    shade = 1.0 + uClothWave.z * cos(wave);
+  }
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
   vec3 rgb = textureLod(uLut, lutUV, 0.0).rgb;
   if (uColorKey.x > 0.5) {
@@ -120,6 +145,7 @@ void main(void) {
       if (rad > KEY_ROUND_CLIP) discard;
     }
   }
+  rgb *= shade * uTint.rgb; // after the keys, which test the palette's own colours
   // Silhouette mode: every pixel that survived the colour key draws one flat colour - the discards above
   // already carved the glyph's shape, so this is exactly its keyed silhouette (used for outline stamps).
   if (uSilhouette.w > 0.5) {
@@ -148,6 +174,8 @@ const QUAD_INDICES = new Uint32Array([0, 1, 2, 0, 2, 3]);
 
 /** Width of the palette LUT (one texel per 8-bit palette index). */
 const LUT_WIDTH = 256;
+/** A cloth-range bound no 8-bit palette index reaches: the empty range. */
+const NO_INDEX = -1;
 
 /** The mesh's mutable uniforms. Every field is a `Float32Array` mutated in place, not a scalar `f32`,
  *  because the shared GL program re-uploads a loose uniform only when its array contents change. */
@@ -168,6 +196,18 @@ export interface PalettedUniforms {
     uSilhouette: Float32Array;
     /** [mode, _] - the world magnification mode; see {@link PALETTED_SAMPLING_MODES}. */
     uSampling: Float32Array;
+    /** [shear, _] - x shift per unit of y about the feet anchor. */
+    uShear: Float32Array;
+    /** [r, g, b, _] - the colour multiply (normalized). */
+    uTint: Float32Array;
+    /** [width, height] of the bound indexed atlas in px. */
+    uAtlasSize: Float32Array;
+    /** [loA, hiA, loB, hiB] - the inclusive palette-index ranges drawn as cloth. */
+    uClothRanges: Float32Array;
+    /** [phase, displacementPx, shadeDepth, _]. */
+    uClothWave: Float32Array;
+    /** [radians per px along x, along y]. */
+    uClothFreq: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -195,6 +235,15 @@ export function createPalettedShader(lut: TextureSource, colours: number): Shade
     uFrameUV: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' as const },
     uSilhouette: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
     uSampling: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
+    uShear: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
+    uTint: { value: new Float32Array([1, 1, 1, 1]), type: 'vec4<f32>' as const },
+    uAtlasSize: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
+    uClothRanges: {
+      value: new Float32Array([NO_INDEX, NO_INDEX, NO_INDEX, NO_INDEX]),
+      type: 'vec4<f32>' as const,
+    },
+    uClothWave: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
+    uClothFreq: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
   };
   return Shader.from({
     gl: { vertex: VERTEX, fragment: FRAGMENT },

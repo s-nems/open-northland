@@ -6,6 +6,7 @@ import {
   paletteLutRow,
   type SettlerCharacterSet,
   settlerPaletteLutRow,
+  vehicleLutRow,
 } from '../src/gpu/sprite-sheet.js';
 
 /** A LUT of `blocks` 16-player blocks plus the head row (81 rows for the five armor tiers); chain
@@ -76,5 +77,16 @@ describe('layerLutRow', () => {
     const lut = armorLut(5);
     expect(layerLutRow(lut, { head: true }, 3 * 16 + 2)).toBe(lut.headRow);
     expect(layerLutRow(lut, {}, 3 * 16 + 2)).toBe(3 * 16 + 2);
+  });
+});
+
+describe('vehicleLutRow', () => {
+  const SHIP_PALETTES = 10;
+  const lut = { source: {} as PlayerColourLut['source'], colours: SHIP_PALETTES };
+
+  it("reads the owner's row, the first for an unowned vehicle, and wraps past the family", () => {
+    expect(vehicleLutRow(lut, 3)).toBe(3);
+    expect(vehicleLutRow(lut, undefined)).toBe(0);
+    expect(vehicleLutRow(lut, SHIP_PALETTES + 2)).toBe(2);
   });
 });

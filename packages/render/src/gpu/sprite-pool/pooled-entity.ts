@@ -2,7 +2,7 @@ import { Container, type Graphics, type Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
-import type { PlayerColourLut } from '../sprite-sheet.js';
+import type { PaletteLut } from '../sprite-sheet.js';
 import { createPresentationTrack, type PresentationTrack } from './present-item.js';
 
 /** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
@@ -44,14 +44,14 @@ interface PooledEntityBase extends PresentationTrack {
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
 }
 
-/** A settler drawing team-coloured {@link PalettedSprite} meshes through its own LUT. */
+/** A settler or an indexed vehicle, drawing team-coloured {@link PalettedSprite} meshes through its LUT. */
 export interface PalettedPooledEntity extends PooledEntityBase {
   readonly paletted: true;
   readonly sprites: PalettedSprite[];
   /** This character's shadow silhouettes in resolved order, kept apart from the meshes: a silhouette
    *  draws palette-less, as a plain sprite under them. Grown as frames resolve them. */
   readonly shadows: Sprite[];
-  readonly palette: PlayerColourLut;
+  readonly palette: PaletteLut;
 }
 
 /** Every other entity: its atlas layers are plain cached-sub-texture {@link Sprite}s. */
@@ -67,7 +67,7 @@ export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
 
 /** A fresh, empty pooled entity; sprites and placeholder grow lazily, and a `palette` makes it the
  *  paletted (team-coloured mesh) variant. */
-export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefined): PooledEntity {
+export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined): PooledEntity {
   const base = {
     ...createPresentationTrack(kind),
     container: new Container(),

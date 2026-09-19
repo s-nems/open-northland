@@ -1,5 +1,6 @@
 import { UNLOADED_GOOD_TYPE, type VehicleGraphics } from '@open-northland/data';
 import {
+  type ClothIndexRanges,
   type FrameListAnim,
   VEHICLE_ATTACK_TICKS,
   type VehicleBinding,
@@ -20,6 +21,17 @@ const WAIT_ACTION = 2;
 /** The ships' second hull (action 4): sails furled, crates on deck (observation of the `ls_vehicles`
  *  frames, docs/formats/VEHICLES.md "Graphics"), drawn while the ship lies moored. */
 const MOORED_WAIT_ACTION = 4;
+/** The pipeline's suffix for an indexed body atlas (`stages/vehicle-colors.ts`). */
+const INDEXED_SUFFIX = 'indexed';
+/**
+ * The palette indices the `ls_vehicles` hulls paint their sails with: the cream ramp, then the 32-entry
+ * band the `human_shipNN` palettes differ in. Observation of the decoded frames, where no other part of
+ * a hull draws from either range. The viking big ship's `ve_test_ship` sail draws from neither, so it
+ * hangs rigid and shows no owner colour.
+ */
+const SAIL_CREAM_RAMP = [104, 111] as const;
+const SHIP_OWNER_BAND = [128, 159] as const;
+export const SHIP_SAIL_INDEX_RANGES: ClothIndexRanges = [...SAIL_CREAM_RAMP, ...SHIP_OWNER_BAND];
 
 /** The catapult's shot, staged as this `[GfxLandscape]` record beside the vehicle: weapon 21 authors
  *  `createsmoke 1`, and this is the one looping smoke record the content ships (the in-house cauldron's).
@@ -30,24 +42,39 @@ export const VEHICLE_ATTACK_SMOKE_FX = 'fx smoke';
 const ATTACK_SMOKE_DX = 0;
 const ATTACK_SMOKE_DY = -36;
 
-/** The served atlas stem of a row's body under its palette (`cr_veh_body_00.goods01`). */
-export function vehicleAtlasStem(row: Pick<VehicleGraphics, 'body' | 'bodyPalette'>): string {
-  return `${row.body.slice(row.body.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${row.bodyPalette}`;
+/** Whether `row` draws per owner: its body palette starts the family whose LUT loaded. */
+function drawsPerOwner(row: VehicleGraphics, ownerFamily: string | undefined): boolean {
+  return ownerFamily !== undefined && row.playerPalettes !== undefined && row.bodyPalette === ownerFamily;
 }
 
 /**
- * The atlases a binding over `rows` draws from: every body under its own palette, with each body's
- * shadow twin. A row's `playerPalettes` family is not baked per player (the pipeline decodes
- * `human_ship01` alone), so every owner sails that one hull.
+ * The served atlas stem of a row's body: baked under its palette (`cr_veh_body_00.goods01`), or the
+ * indexed body (`ls_vehicles.indexed`) when the row draws per owner through `ownerFamily`'s LUT.
  */
-export function vehicleAtlasStems(rows: readonly VehicleGraphics[]): {
+export function vehicleAtlasStem(row: VehicleGraphics, ownerFamily?: string): string {
+  const body = row.body.slice(row.body.lastIndexOf('/') + 1).replace(/\.bmd$/i, '');
+  return `${body}.${drawsPerOwner(row, ownerFamily) ? INDEXED_SUFFIX : row.bodyPalette}`;
+}
+
+/** The first palette family the rows name (the ships' `human_ship01`): the one family a sheet's single
+ *  vehicle LUT serves. A second family would draw its baked first member. */
+export function vehicleOwnerFamily(rows: readonly VehicleGraphics[]): string | undefined {
+  return rows.find((row) => row.playerPalettes !== undefined)?.bodyPalette;
+}
+
+/** The atlases a binding over `rows` draws from: every body under {@link vehicleAtlasStem}, with each
+ *  body's shadow twin. */
+export function vehicleAtlasStems(
+  rows: readonly VehicleGraphics[],
+  ownerFamily?: string,
+): {
   stems: Set<string>;
   shadowByStem: Map<string, string>;
 } {
   const stems = new Set<string>();
   const shadowByStem = new Map<string, string>();
   for (const row of rows) {
-    const stem = vehicleAtlasStem(row);
+    const stem = vehicleAtlasStem(row, ownerFamily);
     stems.add(stem);
     const shadow = servedShadowStem(row.shadowBody);
     if (shadow !== undefined && !shadowByStem.has(stem)) shadowByStem.set(stem, shadow);
@@ -88,8 +115,9 @@ export function vehicleLook(
   row: VehicleGraphics,
   loaded: ReadonlySet<string>,
   frames: DrawableFrames,
+  ownerFamily?: string,
 ): VehicleLook | undefined {
-  const layer = vehicleAtlasStem(row);
+  const layer = vehicleAtlasStem(row, ownerFamily);
   const drawable = frames.get(layer);
   if (!loaded.has(layer) || drawable === undefined) return undefined;
   const clipOf = (action: number): FrameListAnim | undefined => {
@@ -126,6 +154,7 @@ export function vehicleLook(
     ...(Object.keys(movingByGood).length > 0 ? { movingByGood } : {}),
     ...(loadedMoving !== undefined ? { loadedMoving } : {}),
     ...(attack !== undefined ? { attack } : {}),
+    ...(drawsPerOwner(row, ownerFamily) ? { indexed: true } : {}),
   };
 }
 
@@ -150,16 +179,20 @@ export function buildVehicleBinding(
   frames: DrawableFrames,
   fallbackTribe: number,
   attackFxLoaded: boolean,
-  /** The types that ride the swell at sea; empty draws every vehicle rigid. */
-  ships: ReadonlySet<number> = new Set(),
+  options: {
+    /** The types that ride the swell at sea; absent draws every vehicle rigid. */
+    readonly ships?: ReadonlySet<number>;
+    /** The palette family whose LUT loaded; its rows bind the indexed body. */
+    readonly ownerFamily?: string;
+  } = {},
 ): VehicleBinding | undefined {
   const byTribe: Record<number, Record<number, VehicleLook>> = {};
   let any = false;
   for (const row of rows) {
-    const look = vehicleLook(row, loaded, frames);
+    const look = vehicleLook(row, loaded, frames, options.ownerFamily);
     if (look === undefined) continue;
     const looks = byTribe[row.tribe] ?? {};
-    looks[row.vehicleType] = ships.has(row.vehicleType) ? { ...look, afloat: true } : look;
+    looks[row.vehicleType] = options.ships?.has(row.vehicleType) === true ? { ...look, afloat: true } : look;
     byTribe[row.tribe] = looks;
     any = true;
   }

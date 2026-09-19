@@ -1,9 +1,10 @@
 import type { TextureSource } from 'pixi.js';
 import type { AtlasFrame, BuildTimeSheet } from '../../data/sprites/index.js';
+import type { ClothWind } from '../cloth-wind.js';
 
 /** One resolved atlas layer to draw: which source page, which frame rect, at what scale.
- *  `atlasW`/`atlasH` are the source sheet's pixel size, needed only by the paletted settler path, whose
- *  mesh samples the indexed atlas by UV. */
+ *  `atlasW`/`atlasH` are the source sheet's pixel size, needed only by the paletted path, whose mesh
+ *  samples its atlas by UV. */
 export interface ResolvedLayer {
   readonly source: TextureSource;
   readonly frame: AtlasFrame;
@@ -12,6 +13,8 @@ export interface ResolvedLayer {
   readonly dx?: number;
   readonly dy?: number;
   readonly shear?: number;
+  /** Wind through the layer's cloth pixels; paletted path only. */
+  readonly cloth?: ClothWind;
   readonly atlasW?: number;
   readonly atlasH?: number;
   /** Construction reveal fraction, 0..1 of `builtPct/100`, present only on an under-construction

@@ -109,6 +109,7 @@ export {
   texturePageKey,
   type WorldBounds,
 } from './data/terrain/index.js';
+export type { ClothIndexRanges } from './gpu/cloth-wind.js';
 export { type DrawableResource, isDrawableResource, readable2dContext } from './gpu/drawable-resource.js';
 export {
   AnimationGallery,
@@ -187,6 +188,8 @@ export {
   type SpriteLayer,
   type SpriteSheet,
   settlerPaletteLutRow,
+  type VehicleColourLut,
+  vehicleLutRow,
 } from './gpu/sprite-sheet.js';
 export {
   bakeToFlippedSprite,

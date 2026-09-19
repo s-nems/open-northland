@@ -1,7 +1,7 @@
 import { Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
-import type { EntityBounds, PooledEntity } from './pooled-entity.js';
+import type { EntityBounds, PalettedPooledEntity, PooledEntity } from './pooled-entity.js';
 
 /**
  * Read-only queries over what the pool drew this frame: no mutation, no Pixi scene changes. Each gates on
@@ -43,7 +43,10 @@ export function pixelHit(
   wy: number,
 ): boolean | undefined {
   if (pe === undefined || pe.boundsFrame !== frameId) return undefined;
-  if (pe.paletted) return undefined; // settler meshes keep the (deliberately generous) box hit
+  if (pe.paletted) {
+    // Settler meshes keep the (deliberately generous) box hit; a ship's sail box is mostly air.
+    return pe.kind === 'settler' ? undefined : palettedPixelHit(pe, wx, wy);
+  }
   // An under-construction site keeps the box hit too: its drawn pixels are the partial reveal, and a
   // player clicks the site (its final-building rect), not whatever scattered pixels exist so far.
   if (pe.reveal !== undefined) return undefined;
@@ -66,6 +69,28 @@ export function pixelHit(
     if (maskSolidAt(mask, frame.x + lx, frame.y + ly)) return true;
   }
   // No visible atlas layer at all (a placeholder marker) leaves no exact answer, so keep the box.
+  return sampledEveryLayer ? false : undefined;
+}
+
+/** {@link pixelHit} over self-placing meshes, whose frame sits at its draw offset from the feet anchor. */
+function palettedPixelHit(pe: PalettedPooledEntity, wx: number, wy: number): boolean | undefined {
+  let sampledEveryLayer = false;
+  for (let i = 0; i < pe.sprites.length; i++) {
+    const spr = pe.sprites[i];
+    if (spr === undefined || !spr.visible) continue; // its silhouettes live in `pe.shadows`, never here
+    const frame = spr.frame;
+    const mask = spr.frameSource === undefined ? null : alphaMaskOf(spr.frameSource);
+    if (frame === undefined || mask === null) return undefined;
+    sampledEveryLayer = true;
+    const scale = spr.artScale;
+    if (!(scale > 0)) return undefined;
+    const ny = (wy - pe.motion.drawY - spr.artDy) / scale;
+    const nx = (wx - pe.motion.drawX - spr.artDx) / scale - spr.shear * ny;
+    const lx = Math.floor(nx - frame.offsetX);
+    const ly = Math.floor(ny - frame.offsetY);
+    if (lx < 0 || ly < 0 || lx >= frame.width || ly >= frame.height) continue;
+    if (maskSolidAt(mask, frame.x + lx, frame.y + ly)) return true;
+  }
   return sampledEveryLayer ? false : undefined;
 }
 

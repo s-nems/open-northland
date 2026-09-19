@@ -374,7 +374,7 @@ export class SpritePool {
     }
   }
 
-  /** Re-place every drawn paletted settler's meshes for a camera and target size (logical px). Must
+  /** Re-place every drawn paletted entity's meshes for a camera and target size (logical px). Must
    *  mirror the {@link LayerBinder}'s placement exactly. */
   private placePaletted(camera: Camera, resWidth: number, resHeight: number): void {
     const camScale = camera.scale ?? 1;
@@ -385,7 +385,13 @@ export class SpritePool {
       const originY = snapToDevicePixels(cameraScreenY(camera, pe.motion.drawY), snap);
       for (const spr of pe.sprites) {
         if (!spr.visible) continue;
-        spr.place(originX, originY, camScale * spr.artScale, resWidth, resHeight);
+        spr.place(
+          originX + spr.artDx * camScale,
+          originY + spr.artDy * camScale,
+          camScale * spr.artScale,
+          resWidth,
+          resHeight,
+        );
       }
     }
   }

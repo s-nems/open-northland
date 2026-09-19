@@ -1,5 +1,6 @@
 import { Mesh, type MeshGeometry, type Shader, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
+import type { ClothWind } from '../cloth-wind.js';
 import {
   createPalettedGeometry,
   createPalettedShader,
@@ -7,6 +8,8 @@ import {
   type PalettedSampling,
   type PalettedUniforms,
 } from './shader.js';
+
+const WHITE = 0xffffff;
 
 /**
  * GUI transparent-key mode for a {@link PalettedSprite}. `'off'` draws straight; `'magenta'` keys only the
@@ -24,7 +27,7 @@ export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
  * whole-sprite tint, and one indexed atlas plus one LUT draw all N player colours.
  *
  * It is a custom-shader {@link Mesh} because Pixi's batched `Sprite` cannot run a custom fragment shader.
- * That bypasses batching (one draw call each), so keep it to characters.
+ * That bypasses batching (one draw call each), so keep it to characters and ships.
  *
  * Positioning is manual, in screen space via {@link place}: Pixi does not wire its transform uniform
  * blocks into a custom `Shader.from` program, so the mesh cannot ride the scene-graph transform.
@@ -40,9 +43,13 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   private lastFrame?: AtlasFrame;
   private lastAtlasW = -1;
   private lastAtlasH = -1;
+  private lastTint = WHITE;
   /** The layer's art scale (native px → design px) last placed with, kept so the mesh can be re-placed for
    *  an alternate camera without re-resolving its layer. Set by the pool right after {@link place}. */
   artScale = 1;
+  /** The layer's offset from the feet anchor in world px (a ship's heave), retained like {@link artScale}. */
+  artDx = 0;
+  artDy = 0;
 
   /**
    * @param lut the `256 × colours` palette LUT (nearest-sampled), shared across every PalettedSprite.
@@ -96,6 +103,59 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
       u[3] = 1;
     }
     this.vars.update();
+  }
+
+  /** X shift per unit of y about the feet anchor: a ship's roll. `0` draws upright. */
+  set shear(shear: number) {
+    const u = this.vars.uniforms.uShear;
+    if (u[0] === shear) return;
+    u[0] = shear;
+    this.vars.update();
+  }
+  get shear(): number {
+    return this.vars.uniforms.uShear[0] ?? 0;
+  }
+
+  /** A colour multiply (`0xRRGGBB`) over the LUT colour, the mesh's stand-in for a sprite tint; white
+   *  draws straight. Not Pixi's `tint`, which a custom shader never reads. */
+  set paletteTint(color: number) {
+    if (color === this.lastTint) return;
+    this.lastTint = color;
+    const u = this.vars.uniforms.uTint;
+    u[0] = ((color >> 16) & 0xff) / 255;
+    u[1] = ((color >> 8) & 0xff) / 255;
+    u[2] = (color & 0xff) / 255;
+    this.vars.update();
+  }
+
+  /**
+   * Blow wind through the frame's cloth (`gpu/cloth-wind.ts`): the pixels whose palette index falls in
+   * `wind.ranges` ripple by `wave`. `null` draws the frame rigid.
+   */
+  setClothWind(wind: ClothWind | null): void {
+    const wave = this.vars.uniforms.uClothWave;
+    if (wind === null) {
+      if (wave[1] === 0) return;
+      wave[1] = 0;
+      this.vars.update();
+      return;
+    }
+    this.vars.uniforms.uClothRanges.set(wind.ranges);
+    wave[0] = wind.phase;
+    wave[1] = wind.displacementPx;
+    wave[2] = wind.shadeDepth;
+    const freq = this.vars.uniforms.uClothFreq;
+    freq[0] = wind.freqX;
+    freq[1] = wind.freqY;
+    this.vars.update();
+  }
+
+  /** The atlas page and frame last set, for the picker's texel test. */
+  get frameSource(): TextureSource | undefined {
+    return this.lastSource;
+  }
+  get frame(): AtlasFrame | undefined {
+    return this.lastFrame;
   }
 
   /**
@@ -167,6 +227,9 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     uv[1] = t[1];
     uv[2] = t[4];
     uv[3] = t[5];
+    const size = this.vars.uniforms.uAtlasSize;
+    size[0] = atlasWidth;
+    size[1] = atlasHeight;
     this.vars.update();
     const geo = this.geometry;
     geo.positions.set(this.positions);

@@ -240,6 +240,7 @@ export async function loadHumanSpriteSheet(
     inHousePrograms: inHouseProgramLookup(ir, goods),
     ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
     ...(characters !== undefined ? { characters } : {}),
+    ...(vehicles.palette !== undefined ? { vehiclePalette: vehicles.palette } : {}),
     // Team-colour LUT: present ⇒ the characters are the indexed atlas and the pool paints each per its
     // player; absent ⇒ the baked characters draw as plain sprites. The armor recolor axis rides along.
     ...(lut !== undefined

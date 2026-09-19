@@ -7,9 +7,7 @@ import {
   resolveSignpostDraw,
   resolveSpriteBobId,
   resolveStockpileDraw,
-  resolveVehicleDraw,
 } from '../../data/sprites/index.js';
-import { shipSway } from '../ship-sway.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { vegetationShear } from '../vegetation-sway.js';
 import { pushBuildingExtras, pushBuildingLayers } from './building-layers.js';
@@ -23,6 +21,7 @@ import {
   resolveFromLayer,
 } from './layered-layers.js';
 import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
+import { pushVehicleLayers } from './vehicle-layers.js';
 
 /**
  * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder. Returns layer
@@ -139,16 +138,8 @@ function pushLayers(
       if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
       return pushLayeredWithShadow(out, sheet, 'craftfx', draw);
     }
-    case 'vehicle': {
-      // Every vehicle look names its family atlas; an unloaded one draws the placeholder, never a human
-      // frame from the shared body atlas.
-      const draw = resolveVehicleDraw(sheet.bindings.vehicle, item, tick, gaitClock);
-      if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
-      if (draw.sway === 'none' || item.ghost === true)
-        return pushLayeredWithShadow(out, sheet, 'vehicle', draw);
-      const sway = shipSway(tick, item.x, item.y, draw.sway === 'sailing');
-      return pushLayeredWithShadow(out, sheet, 'vehicle', draw, sway.shear, sway.dy);
-    }
+    case 'vehicle':
+      return pushVehicleLayers(out, sheet, item, tick, gaitClock);
     default: {
       const _exhaustive: never = item.kind;
       void _exhaustive;

@@ -5,7 +5,6 @@ import {
   consumeGoods,
   type GoodsLine,
   Health,
-  JobAssignment,
   ownerOf,
   Palisade,
   PalisadeBlocking,

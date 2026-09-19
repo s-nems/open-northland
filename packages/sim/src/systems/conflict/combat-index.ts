@@ -13,8 +13,8 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isLastResortPrey } from '../readviews/index.js';
 import { vehicleFootprintNodes } from '../footprint/index.js';
+import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isLastResortPrey } from '../readviews/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import {
   type BandScan,

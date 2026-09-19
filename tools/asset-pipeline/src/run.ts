@@ -16,6 +16,7 @@ import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
 import { HYPERTEXT_PICTURES_DIR } from './stages/gui/paths.js';
 import { writeIr } from './stages/ir/index.js';
+import { loadVehicleGraphicsBindings } from './stages/ir/vehicle-graphics.js';
 import { BOBS_INDEX_FILE, MAPS_INDEX_FILE, writeListings } from './stages/listings.js';
 import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
 import { renderMusicStage } from './stages/music/index.js';
@@ -27,6 +28,7 @@ import {
 } from './stages/player-colors.js';
 import { copySoundTree } from './stages/sounds.js';
 import { indexSourceAssets } from './stages/source-files.js';
+import { convertVehiclePaletteFamilies } from './stages/vehicle-colors.js';
 import { convertVertexPalette, VERTEX_PALETTE_FILE } from './stages/vertex-palette.js';
 
 /** Runs the full conversion of the mod root into the IR under `args.out`. */
@@ -71,10 +73,17 @@ export async function runPipeline(args: Args): Promise<void> {
     console.warn(`[pipeline] guidepost player atlases skipped: ${errorMessage(err)}`);
     return 0;
   });
+  const vehicleColors = await convertVehiclePaletteFamilies(
+    (await loadVehicleGraphicsBindings(roots)).map((row) => row.binding),
+    palettes,
+    args.out,
+    assets,
+  );
   console.log(
     `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
       `${lut ? `, ${lut.colors}-colour ×${lut.armorTiers}-tier + head LUT -> ${lut.png}` : ' (LUT skipped)'}` +
-      `, ${guideAtlases} guidepost player atlas(es)`,
+      `, ${guideAtlases} guidepost player atlas(es)` +
+      `, ${vehicleColors.indexed.length} indexed vehicle atlas(es) over ${vehicleColors.luts.length} palette family LUT(s)`,
   );
 
   // The history book and every map briefing write content-addressed pictures here, so the reset

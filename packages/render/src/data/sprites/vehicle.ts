@@ -41,6 +41,8 @@ export function vehicleMovingRef(look: VehicleLook, item: DrawItem): SpriteFrame
 /** A vehicle's frame and whether it rides the swell this frame: a ship at sea, sailing or standing. */
 export interface VehicleDraw extends BuildingDraw {
   readonly sway: 'none' | 'atSea' | 'sailing';
+  /** The frame is the indexed body, read through the vehicle colour LUT. */
+  readonly indexed: boolean;
 }
 
 /**
@@ -59,15 +61,16 @@ export function resolveVehicleDraw(
   if (look === undefined) return null;
   const facing = item.facing ?? DEFAULT_FACING;
   const afloat = look.afloat === true && item.moored !== true;
+  const indexed = look.indexed === true;
   let bob: number;
   if (item.task === 'attacks' && look.attack !== undefined) {
     bob = frameOf(look.attack, facing, attackPhase(tick, item.attackClipStart));
   } else if (item.state === 'moving') {
     bob = frameOf(vehicleMovingRef(look, item), facing, gaitClock);
-    return { bob, layer: look.layer, sway: afloat ? 'sailing' : 'none' };
+    return { bob, layer: look.layer, sway: afloat ? 'sailing' : 'none', indexed };
   } else {
     const idle = item.moored === true ? (look.mooredIdle ?? look.idle) : look.idle;
     bob = frameOf(idle, facing, tick);
   }
-  return { bob, layer: look.layer, sway: afloat ? 'atSea' : 'none' };
+  return { bob, layer: look.layer, sway: afloat ? 'atSea' : 'none', indexed };
 }

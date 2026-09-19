@@ -7,8 +7,7 @@ import type { SpriteFrameRef } from './settler-bindings.js';
  * `[bobseq]` offsets). Every slot but `idle` is optional and falls back down the chain
  * `loaded → unloaded → idle`, which is what the shipped data's holes need: a cart with a wait but no
  * drive stands still while it moves, a ship whose loaded hull has no frames sails with the empty one.
- * The atlas is one bake for every owner: a ship's team colour is not drawn yet (docs/formats/VEHICLES.md
- * "Graphics" names the LUT route for it).
+ * The atlas is one bake for every owner unless the look is {@link VehicleLook.indexed}.
  */
 export interface VehicleLook {
   readonly layer: string;
@@ -28,6 +27,8 @@ export interface VehicleLook {
   readonly attack?: SpriteFrameRef;
   /** A ship: it rides the swell at sea (`gpu/ship-sway.ts`) and lies still moored. */
   readonly afloat?: boolean;
+  /** {@link layer} is the indexed body, drawn per owner through the sheet's vehicle colour LUT. */
+  readonly indexed?: boolean;
 }
 
 /** Per-type looks of one tribe. */
