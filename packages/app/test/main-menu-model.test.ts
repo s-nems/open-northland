@@ -16,15 +16,8 @@ describe('backTarget', () => {
 });
 
 describe('MAIN_NAV', () => {
-  it('lists the menu order with multiplayer available', () => {
-    expect(MAIN_NAV.map((item) => item.id)).toEqual([
-      'newGame',
-      'load',
-      'multiplayer',
-      'settings',
-      'credits',
-      'exit',
-    ]);
+  it('lists the menu order with multiplayer available and credits hidden', () => {
+    expect(MAIN_NAV.map((item) => item.id)).toEqual(['newGame', 'load', 'multiplayer', 'settings', 'exit']);
     expect(MAIN_NAV.find((item) => item.id === 'multiplayer')?.kind).toBe('open');
   });
 });
