@@ -1,3 +1,4 @@
+import type { MapRelationFlag } from '@open-northland/data';
 import type { DiplomacyState, OpenTribute } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -6,6 +7,7 @@ import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/di
 export interface DiplomacySimView {
   hasMetPlayer(viewer: number, other: number): boolean;
   diplomacyStance(from: number, to: number): DiplomacyState;
+  diplomacyLocked(a: number, b: number): boolean;
   /** The open tributes `payer` owes, as the sim's probe lists them. */
   openTributes(payer: number): readonly OpenTribute[];
 }
@@ -25,6 +27,11 @@ export interface DiplomacyRosterOptions {
   readonly goodLabelOf?: (goodType: number) => string | undefined;
   /** Whether the viewer's seat may issue a payment at all; a read-only spectator's buttons stay dead. */
   readonly canPay?: boolean;
+  /** Whether the viewer's seat may declare a stance at all, as `canPay` for payments. */
+  readonly canDeclare?: boolean;
+  /** The map's `[playermisc]` relation rows: a `hide` pair drops each player from the other's window,
+   *  a `hideDetails` pair takes away the stance buttons (the original gives that player no page). */
+  readonly relationFlags?: readonly MapRelationFlag[];
 }
 
 /**
@@ -51,22 +58,37 @@ export function harshestStance(
   return met > 0 && friendly === met ? 'friend' : 'neutral';
 }
 
-/** One diplomacy-window row per roster player the viewer has discovered, the viewer itself excluded,
- *  each carrying the tributes the viewer owes that player. */
+function flagged(
+  flags: readonly MapRelationFlag[],
+  kind: MapRelationFlag['kind'],
+  a: number,
+  b: number,
+): boolean {
+  return flags.some((f) => f.kind === kind && ((f.a === a && f.b === b) || (f.a === b && f.b === a)));
+}
+
+/** One diplomacy-window row per roster player the viewer has discovered and the map does not hide, the
+ *  viewer itself excluded, each carrying the tributes the viewer owes that player. */
 export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterOptions): DiplomacyPanelRow[] {
   const colourOf = opts.playerColourOf ?? ((player: number): number => player);
-  const owed = sim.openTributes(opts.localPlayer);
+  const flags = opts.relationFlags ?? [];
+  const local = opts.localPlayer;
+  const owed = sim.openTributes(local);
   const rows: DiplomacyPanelRow[] = [];
   for (const other of opts.rosterPlayers) {
-    if (other === opts.localPlayer) continue;
-    if (!opts.observer && !sim.hasMetPlayer(opts.localPlayer, other)) continue;
+    if (other === local || flagged(flags, 'hide', local, other)) continue;
+    if (!opts.observer && !sim.hasMetPlayer(local, other)) continue;
     const name = opts.seatNameOf?.(other);
     rows.push({
       player: other,
       ...(name !== undefined ? { name } : {}),
       colour: PLAYER_SWATCH_COLORS[colourOf(other)] ?? 0,
-      towardYou: sim.diplomacyStance(other, opts.localPlayer),
-      yourStance: sim.diplomacyStance(opts.localPlayer, other),
+      towardYou: sim.diplomacyStance(other, local),
+      yourStance: sim.diplomacyStance(local, other),
+      canDeclare:
+        opts.canDeclare !== false &&
+        !sim.diplomacyLocked(local, other) &&
+        !flagged(flags, 'hideDetails', local, other),
       tributes: owed.filter((t) => t.receiver === other).map((t) => tributeRow(t, opts)),
     });
   }

@@ -1,4 +1,4 @@
-import { aiPlayerSystem } from './ai-player/index.js';
+import { aiDiplomacySystem, aiPlayerSystem } from './ai-player/index.js';
 import { aiProgramSystem } from './ai-program/index.js';
 import { assistantSystem } from './assistant/index.js';
 import { commandSystem } from './command/index.js';
@@ -118,4 +118,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the strategic decision, on the scripted handlers' own round: its one-shots spawn and its
   // orders enqueue like the strategic AI's.
   { name: 'aiProgram', system: aiProgramSystem },
+  // The seat's handler turn ends on its diplomacy answer, after the program has run, as the original's
+  // manager runs the scripted handler and then the strategic one.
+  { name: 'aiDiplomacy', system: aiDiplomacySystem },
 ];

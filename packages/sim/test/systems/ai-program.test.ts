@@ -297,6 +297,8 @@ describe('ai program - one-shots and saves', () => {
     sim.run(AI_HANDLER_ROUND_TICKS);
     expect(diplomacyStance(sim.world, SEAT, FOE)).toBe('enemy');
     setDiplomacyStance(sim.world, SEAT, FOE, 'neutral');
+    // Neutral back, so the seat's diplomacy answer has nothing to turn and only a repeat could move it.
+    setDiplomacyStance(sim.world, FOE, SEAT, 'neutral');
     sim.run(2 * AI_HANDLER_ROUND_TICKS);
     expect(diplomacyStance(sim.world, SEAT, FOE)).toBe('neutral');
 

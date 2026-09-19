@@ -92,6 +92,7 @@ function mountSurfaces() {
     onPickBuilding: (typeId) => placement.enter(typeId),
     onPickGood: (goodType) => goodsDrop.enter(goodType),
     onPayTribute: () => undefined,
+    onDeclareDiplomacy: () => undefined,
   });
   const pressed: string[] = [];
   const surfaces: ToolButtonSurfaces = {

@@ -8,6 +8,7 @@ import {
   assistantGrantedGoods,
   type DiplomacyState,
   defaultAssistantCounters,
+  diplomacyLocked,
   diplomacyStance,
   type FogMode,
   fogMode,
@@ -361,6 +362,11 @@ export class Simulation {
    *  command sets; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState {
     return diplomacyStance(this.world, from, to);
+  }
+
+  /** Whether the pair's stances are locked, so neither seat's `declareDiplomacy` changes them. */
+  diplomacyLocked(a: number, b: number): boolean {
+    return diplomacyLocked(this.world, a, b);
   }
 
   matchEnded(): boolean {

@@ -27,6 +27,7 @@ import {
   attackMoveUnit,
   attackUnit,
   cancelTraining,
+  declareDiplomacy,
   equipGood,
   exploreArea,
   makeChild,
@@ -202,6 +203,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'payTribute':
       payTribute(world, ctx, command);
+      return;
+    case 'declareDiplomacy':
+      declareDiplomacy(world, command);
       return;
     case 'attachTradeHouse':
     case 'detachTradeHouse':

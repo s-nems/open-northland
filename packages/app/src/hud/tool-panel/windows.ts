@@ -1,6 +1,6 @@
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout } from '@open-northland/render';
-import type { Paper } from '@open-northland/sim';
+import type { DiplomacyState, Paper } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
@@ -49,6 +49,8 @@ export interface ToolWindowsDeps {
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A live pay button in the diplomacy window was pressed for the tribute slot. */
   readonly onPayTribute: (slot: number) => void;
+  /** A stance button in the diplomacy window was pressed: the seat's new stance toward the player. */
+  readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** The decoded GUI sheet the mission window draws its papyrus from; null degrades to flat chrome. */
   readonly art: GuiArt | null;
   /** The mission window's brief for a briefing page, or for the map's fallback text with null. */
@@ -143,6 +145,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     container,
     rows: deps.diplomacyRows,
     onPayTribute: deps.onPayTribute,
+    onDeclareDiplomacy: deps.onDeclareDiplomacy,
   });
   const mission = createMissionWindow({
     ctx,

@@ -1,7 +1,14 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, SpriteSheet } from '@open-northland/render';
-import type { Command, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type {
+  Command,
+  DiplomacyState,
+  Paper,
+  PlayerCommand,
+  SimEvent,
+  WorldSnapshot,
+} from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
@@ -83,6 +90,8 @@ export interface ToolPanelOptions {
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The diplomacy window's pay button: the seat pays the tribute slot. */
   readonly onPayTribute: (slot: number) => void;
+  /** The diplomacy window's stance buttons: the seat declares its stance toward the player. */
+  readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
@@ -288,6 +297,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       heldPaper,
       diplomacyRows: opts.diplomacyRows,
       onPayTribute: opts.onPayTribute,
+      onDeclareDiplomacy: opts.onDeclareDiplomacy,
       art,
       missionBrief: opts.missionBrief ?? ((): null => null),
       missionBriefingHistory: opts.missionBriefingHistory ?? (() => []),

@@ -13,6 +13,7 @@ import { workforceModule } from './workforce/index.js';
 export * from './base.js';
 export * from './build-order/index.js';
 export * from './cadence.js';
+export * from './diplomacy.js';
 export * from './military/index.js';
 export * from './population.js';
 export * from './scout/index.js';

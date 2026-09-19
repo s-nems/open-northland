@@ -294,7 +294,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(50);
+  const roll = rng.int(51);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -731,6 +731,16 @@ function nextCommand(rng: Rng): Command {
         house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         target: pick(rng, ['job', 'good'] as const),
         typeId: rng.int(TARGET_ID_RANGE),
+      };
+    case 50:
+      // A seat's own stance change on a random pair: the seat branch holds the declarer to the
+      // issuing seat, the handler skips a self pair and an out-of-range slot, and a landed stance
+      // flips who the combat drives may engage, as the setup rows of case 45 do.
+      return {
+        kind: 'declareDiplomacy',
+        player: pick(rng, OWNERS),
+        other: pick(rng, OWNERS),
+        state: pick(rng, ['friend', 'neutral', 'enemy'] as const),
       };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);

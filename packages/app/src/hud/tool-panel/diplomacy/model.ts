@@ -8,6 +8,7 @@ import {
   HEADLINE_H,
   ROW_H,
   ROW_INSET_X,
+  rowCardRect,
   standardWindowWidth,
   TAB_CONTENT_GAP,
   TAB_H,
@@ -16,15 +17,21 @@ import {
 
 /**
  * The diplomacy pop-up model: a titled window with one tab per discovered player over a short stance
- * readout for the selected one, and under it the tributes the viewer owes that player, each a card
- * with a pay button, the place the original lists them (reading). Metrics come from the shared
- * window-family set, so the pop-ups read as one family.
+ * readout for the selected one, the buttons that change the viewer's stance toward that player, and
+ * under them the tributes the viewer owes that player, each a card with a pay button, the place the
+ * original lists them (reading). Metrics come from the shared window-family set, so the pop-ups read as
+ * one family.
  */
 
 /** Tabs per grid row: two columns, so an authored tribe name has room to stay legible. */
 const TAB_COLUMNS = 2;
 /** Readout cards under the tabs: identity, then one card per stance direction. */
 const BODY_LINES = 3;
+
+/** The stance buttons in the original window's order (its buttons 0x2776, 0x2775, 0x2774). One row
+ *  each: the original sets them side by side, and its button labels do not fit a third of this window. */
+const DECLARABLE_STANCES: readonly DiplomacyState[] = ['friend', 'neutral', 'enemy'];
+
 /** A tribute card stacks its wrapped description over one line per demand (design px per line),
  *  inside a vertical pad. */
 const TRIBUTE_LINE_H = 12;
@@ -79,6 +86,9 @@ export interface DiplomacyPanelRow {
   readonly towardYou: DiplomacyState;
   /** The stance the viewer holds toward this player. */
   readonly yourStance: DiplomacyState;
+  /** The viewer may change `yourStance`: its seat acts, and the map neither locks the pair nor keeps this
+   *  player's page closed. */
+  readonly canDeclare: boolean;
   /** The open tributes the viewer owes this player, ascending by slot. */
   readonly tributes: readonly TributePanelRow[];
 }
@@ -97,6 +107,13 @@ export interface DiplomacyTabRect {
   readonly player: number;
   readonly rect: Rect;
   readonly selected: boolean;
+}
+
+export interface DiplomacyStanceRect {
+  readonly state: DiplomacyState;
+  /** The viewer already holds this stance: the button shows lit and does nothing. */
+  readonly current: boolean;
+  readonly rect: Rect;
 }
 
 export interface DiplomacyTributeRect {
@@ -119,6 +136,8 @@ export interface DiplomacyWindowLayout {
   readonly tabs: readonly DiplomacyTabRect[];
   /** The readout card slots, top to bottom (one when the row set is empty: the placeholder). */
   readonly bodyLines: readonly Rect[];
+  /** The stance buttons under the readout, empty when the viewer may not declare one. */
+  readonly stances: readonly DiplomacyStanceRect[];
   /** The selected player's tribute cards under the readout, in the order they were given. */
   readonly tributes: readonly DiplomacyTributeRect[];
 }
@@ -140,6 +159,9 @@ export interface DiplomacyLayoutOptions {
   readonly scale: number;
   readonly players: readonly number[];
   readonly selected: number | null;
+  /** The viewer's stance toward the selected player when it may change it; absent or null lays out no
+   *  buttons. */
+  readonly declarable?: DiplomacyState | null;
   /** The selected player's tributes, in listing order. */
   readonly tributes: readonly TributeCardSpec[];
 }
@@ -183,10 +205,20 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     bodyLines.push({ x: contentX, y: bodyTop + i * lineH, w: contentW, h: lineH });
   }
 
+  let nextCardY = bodyTop + lineCount * lineH;
+  const declarable = players.length === 0 ? null : (opts.declarable ?? null);
+  const stances: DiplomacyStanceRect[] =
+    declarable === null
+      ? []
+      : DECLARABLE_STANCES.map((state) => {
+          const slot: Rect = { x: contentX, y: nextCardY, w: contentW, h: lineH };
+          nextCardY += lineH;
+          return { state, current: state === declarable, rect: rowCardRect(slot, s) };
+        });
+
   const payInset = px(PAY_BUTTON_INSET);
   const payW = px(PAY_BUTTON_W);
   const textX = contentX + px(ROW_INSET_X);
-  let nextCardY = bodyTop + lineCount * lineH;
   const tributes: DiplomacyTributeRect[] = opts.tributes.map((tribute) => {
     const linesTop = TRIBUTE_CARD_PAD_Y + tribute.descriptionH;
     const cardH = px(linesTop + tribute.lines * TRIBUTE_LINE_H + TRIBUTE_CARD_PAD_Y);
@@ -225,6 +257,7 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     },
     tabs,
     bodyLines,
+    stances,
     tributes,
   };
 }
@@ -233,16 +266,21 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
 export type DiplomacyHit =
   | { readonly kind: 'close' }
   | { readonly kind: 'tab'; readonly player: number }
+  | { readonly kind: 'declare'; readonly state: DiplomacyState }
   | { readonly kind: 'pay'; readonly slot: number }
   | { readonly kind: 'window' } // over the chrome, the readout or a dead button, consumed without an action
   | null;
 
-/** Resolve a screen point against an open window (close > tab > live pay button > window background >
- *  miss). A pay button that is not live is window background. */
+/** Resolve a screen point against an open window (close > tab > stance button > live pay button >
+ *  window background > miss). The current stance's button and a pay button that is not live are window
+ *  background. */
 export function hitTestDiplomacyWindow(layout: DiplomacyWindowLayout, x: number, y: number): DiplomacyHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   for (const t of layout.tabs) {
     if (contains(t.rect, x, y)) return { kind: 'tab', player: t.player };
+  }
+  for (const b of layout.stances) {
+    if (!b.current && contains(b.rect, x, y)) return { kind: 'declare', state: b.state };
   }
   for (const t of layout.tributes) {
     if (t.payable && contains(t.pay, x, y)) return { kind: 'pay', slot: t.slot };

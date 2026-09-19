@@ -13,6 +13,7 @@ function script(over: Partial<MapScript> = {}): MapScript {
   return {
     players: [],
     diplomacy: [],
+    relationFlags: [],
     ai: [],
     specialItems: [],
     misc: [],

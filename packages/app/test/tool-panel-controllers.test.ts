@@ -552,6 +552,7 @@ describe('tool windows registry', () => {
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
       onPayTribute: () => undefined,
+      onDeclareDiplomacy: () => undefined,
     });
     return { ctx, windows, picks, container, textRuns };
   }
@@ -606,6 +607,7 @@ describe('tool windows registry', () => {
       onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
       onPickGood: () => undefined,
       onPayTribute: () => undefined,
+      onDeclareDiplomacy: () => undefined,
     });
     const extras = windows.byId.extras;
     extras.toggle();

@@ -34,6 +34,8 @@ const IN_STORES_STRING_ID = 355; // miscwindow 'in stores', the tribute demand's
 const THEIR_STANCE_STRING_ID = 358; // miscwindow 'Relationship to your tribe is'
 const YOUR_STANCE_STRING_ID = 359; // miscwindow 'Your relation to the other tribe'
 const PLAYER_STRING_ID = 361; // miscwindow 'Player'
+/** miscwindow 'Become Friendly', 'Become Neutral', 'Become Hostile': the original's stance buttons. */
+const DECLARE_STRING_ID: Readonly<Record<DiplomacyState, number>> = { friend: 352, neutral: 353, enemy: 354 };
 
 /** A tribute's wrapped description, measured before the layout so its card can take its height. */
 interface TributeCard {
@@ -98,6 +100,19 @@ export function createDiplomacyBody(layers: WindowLayers) {
     );
   };
 
+  /** The stance buttons: the viewer's current stance lit, the other two live. */
+  const paintStances = (built: DiplomacyWindowLayout): void => {
+    for (const button of built.stances) {
+      paintPlate(layers, button.rect, button.current);
+      const label = ctx.uiString(
+        'miscwindow',
+        DECLARE_STRING_ID[button.state],
+        messages().hud.diplomacyDeclare[button.state],
+      );
+      centreRun(layers, addRun(layers, label, 'white', ROW_PX), button.rect);
+    }
+  };
+
   /** Wrap each tribute's description ahead of the layout, so a long one grows its card. */
   const measureCards = (tributes: readonly TributePanelRow[]): TributeCard[] =>
     tributes.map((tribute) => {
@@ -153,6 +168,7 @@ export function createDiplomacyBody(layers: WindowLayers) {
     ) => {
       if (row !== undefined) {
         paintBody(built, row);
+        paintStances(built);
         paintTributes(built, cards);
       } else {
         const line = built.bodyLines[0];

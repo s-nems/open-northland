@@ -103,6 +103,11 @@ export const enGame = {
       neutral: 'neutral',
       enemy: 'hostile',
     },
+    diplomacyDeclare: {
+      friend: 'Become Friendly',
+      neutral: 'Become Neutral',
+      enemy: 'Become Hostile',
+    },
     diplomacyNoneMet: 'No other tribes met yet',
     tribute: 'Tribute',
     tributePay: 'Pay',

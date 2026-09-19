@@ -103,6 +103,11 @@ export const plGame = {
       neutral: 'neutralny',
       enemy: 'wrogi',
     },
+    diplomacyDeclare: {
+      friend: 'Zmień stosunek na przyjazny',
+      neutral: 'Zmień stosunek na neutralny',
+      enemy: 'Zmień stosunek na wrogi',
+    },
     diplomacyNoneMet: 'Nie spotkano jeszcze innych plemion',
     tribute: 'Trybut',
     tributePay: 'Zapłać',

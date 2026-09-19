@@ -1,3 +1,4 @@
+import type { DiplomacyState } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
@@ -52,6 +53,7 @@ const row = (player: number, over: Partial<DiplomacyPanelRow> = {}): DiplomacyPa
   colour: 0xff0000,
   towardYou: 'enemy',
   yourStance: 'enemy',
+  canDeclare: false,
   tributes: [],
   ...over,
 });
@@ -77,6 +79,7 @@ function expectedLayout(
   players: readonly number[],
   selected: number | null,
   tributes: readonly TributeCardSpec[] = [],
+  declarable: DiplomacyState | null = null,
 ): DiplomacyWindowLayout {
   const anchor = ctx.layout.buttons.find((b) => b.id === 'diplomacy');
   if (anchor === undefined) throw new Error('no diplomacy button in the strip');
@@ -86,6 +89,7 @@ function expectedLayout(
     scale: ctx.scale,
     players,
     selected,
+    declarable,
     tributes,
   });
 }
@@ -190,6 +194,44 @@ describe('diplomacy window model', () => {
     expect(first.pay.x + first.pay.w).toBeLessThanOrEqual(first.card.x + first.card.w);
     expect(first.pay.y).toBeGreaterThan(first.card.y);
     expect(first.pay.y + first.pay.h).toBeLessThanOrEqual(first.card.y + first.card.h);
+  });
+
+  it('stacks the three stance buttons between the readout and the tributes, the current one dead', () => {
+    const layout = layoutDiplomacyWindow({
+      originX: 0,
+      originY: 0,
+      scale: 1,
+      players: [1],
+      selected: 1,
+      declarable: 'neutral',
+      tributes: [card(4, true)],
+    });
+    expect(layout.stances.map((b) => [b.state, b.current])).toEqual([
+      ['friend', false],
+      ['neutral', true],
+      ['enemy', false],
+    ]);
+    const lastLine = layout.bodyLines.at(-1);
+    const [friend, neutral, enemy] = layout.stances;
+    if (friend === undefined || neutral === undefined || enemy === undefined || lastLine === undefined) {
+      throw new Error('three buttons under a readout expected');
+    }
+    expect(friend.rect.y).toBeGreaterThanOrEqual(lastLine.y + lastLine.h);
+    expect(layout.tributes[0]?.card.y).toBeGreaterThanOrEqual(enemy.rect.y + enemy.rect.h);
+    const onEnemy = centreOf(enemy.rect);
+    expect(hitTestDiplomacyWindow(layout, onEnemy.x, onEnemy.y)).toEqual({ kind: 'declare', state: 'enemy' });
+    const onCurrent = centreOf(neutral.rect);
+    expect(hitTestDiplomacyWindow(layout, onCurrent.x, onCurrent.y)).toEqual({ kind: 'window' });
+    const locked = layoutDiplomacyWindow({
+      originX: 0,
+      originY: 0,
+      scale: 1,
+      players: [1],
+      selected: 1,
+      tributes: [card(4, true)],
+    });
+    expect(locked.stances).toEqual([]);
+    expect(layout.window.h).toBeGreaterThan(locked.window.h);
   });
 
   it('hit-tests a live pay button and treats a dead one as window background', () => {
@@ -315,6 +357,37 @@ describe('diplomacy window controller', () => {
     window.refresh();
     expect(texts).not.toContain('Drewno dla sąsiada');
     expect(texts).toContain('Trybut 7');
+  });
+
+  it('declares a stance toward the selected player, and offers none where the row may not', () => {
+    const { ctx, texts } = stubContext();
+    const rows = [
+      row(1, { yourStance: 'neutral', canDeclare: true }),
+      row(3, { yourStance: 'neutral', canDeclare: false }),
+    ];
+    const declared: [number, DiplomacyState][] = [];
+    const window = createDiplomacyWindow({
+      ctx,
+      container: new Container(),
+      rows: () => rows,
+      onDeclareDiplomacy: (player, state) => declared.push([player, state]),
+    });
+    window.toggle();
+    expect(texts).toContain('Zmień stosunek na wrogi');
+
+    const layout = expectedLayout(ctx, [1, 3], 1, [], 'neutral');
+    const [friend, neutral] = layout.stances;
+    if (friend === undefined || neutral === undefined) throw new Error('stance buttons expected');
+    const onCurrent = centreOf(neutral.rect);
+    expect(window.handleClick(onCurrent.x, onCurrent.y)).toBe(true);
+    const onFriend = centreOf(friend.rect);
+    expect(window.handleClick(onFriend.x, onFriend.y)).toBe(true);
+    expect(declared).toEqual([[1, 'friend']]);
+
+    texts.length = 0;
+    const tab = centreOf(layout.tabs[1]?.rect ?? layout.window);
+    window.handleClick(tab.x, tab.y);
+    expect(texts).not.toContain('Zmień stosunek na wrogi');
   });
 
   it('shows a discovered-nobody placeholder and grows a tab when a player appears', () => {

@@ -144,6 +144,7 @@ export async function presentMapWorld(
     tribes: world.tribes,
     seatNameOf: playerNameMap(script),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
+    relationFlags: script?.relationFlags ?? [],
     ...terrainColourOption(world.terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },

@@ -66,7 +66,7 @@ describe('command payload contracts', () => {
     expect(() => parse({ kind: 'exploreArea', entity: UNIT, x: 1e30, y: 0 })).toThrow(/command.x/);
   });
 
-  it('rejects malformed school, tribute and mission-toggle orders', () => {
+  it('rejects malformed school, tribute, stance and mission-toggle orders', () => {
     const learn = { kind: 'learn', entity: UNIT, house: UNIT + 1, target: 'job', typeId: 2 };
     expect(parse(learn)).toEqual(imported(learn));
     expect(() => parse({ ...learn, target: 'house' })).toThrow(/command.target/);
@@ -76,6 +76,9 @@ describe('command payload contracts', () => {
     expect(parse(pay)).toEqual(imported(pay));
     expect(() => parse({ ...pay, slot: 0.5 })).toThrow(/command.slot/);
     expect(() => parse({ kind: 'payTribute', player: SEAT })).toThrow(/missing field 'slot'/);
+    const declare = { kind: 'declareDiplomacy', player: SEAT, other: SEAT + 1, state: 'enemy' };
+    expect(parse(declare)).toEqual(imported(declare));
+    expect(() => parse({ ...declare, state: 'ally' })).toThrow(/command.state/);
     expect(() => parse({ kind: 'setMissionsEnabled', enabled: 'yes' })).toThrow(/command.enabled/);
   });
 

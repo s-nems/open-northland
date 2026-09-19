@@ -22,6 +22,9 @@ nametribe 0 50
 nametribeshort 0 60
 playerneverdies 2
 relationnotchangeable 0 2
+relationhide 1 2
+relationhidedetails 0 1
+relationhide 3
 
 [specialItems]
 
@@ -82,13 +85,18 @@ esult "AddTributeGoods" 15 "coin" 40
       { player: 0, kind: 2, param: 0 },
       { player: 1, kind: 3, param: 41 },
     ]);
+    expect(script?.relationFlags).toEqual([
+      { kind: 'notChangeable', a: 0, b: 2 },
+      { kind: 'hide', a: 1, b: 2 },
+      { kind: 'hideDetails', a: 0, b: 1 },
+      { kind: 'hide', a: 3, b: 0 }, // `relationhide 3`: the missing slot reads 0
+    ]);
     // playermisc + unrecognized playerdata/specialItems lines land lossless in misc, file order preserved.
     expect(script?.misc).toEqual([
       { key: 'noseenfirstmessage', values: ['0', '5'] },
       { key: 'nametribe', values: ['0', '50'] },
       { key: 'nametribeshort', values: ['0', '60'] },
       { key: 'playerneverdies', values: ['2'] },
-      { key: 'relationnotchangeable', values: ['0', '2'] },
       { key: 'add', values: ['2', '#SPECIAL_ITEM_TYPE_NONE'] },
       { key: 'add', values: ['X', '#SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE'] },
       { key: 'remove', values: ['0', '#SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE'] },

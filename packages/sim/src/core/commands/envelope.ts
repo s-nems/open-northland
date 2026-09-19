@@ -1,6 +1,7 @@
 import { assertNever } from '../brand.js';
 import { isPlainRecord, valueShapeName } from '../plain-value.js';
 import type { AssistantCommand } from './assistant.js';
+import type { DiplomacyCommand } from './diplomacy.js';
 import type { Command } from './index.js';
 import type { PlayerPlacementCommand } from './placement.js';
 import type { TradeCommand } from './trade.js';
@@ -16,6 +17,7 @@ export type PlayerCommand =
   | UnitOrderCommand
   | AssistantCommand
   | TributeCommand
+  | DiplomacyCommand
   | TradeCommand;
 
 /** A command plus the authority it was issued under - the serializable external input the sim accepts. */
@@ -80,6 +82,7 @@ export const COMMAND_ISSUER: {
   debugFillStockpile: 'trusted',
   debugKill: 'trusted',
   debugSetNeeds: 'trusted',
+  declareDiplomacy: 'seat',
   demolish: 'seat',
   demolishSignpost: 'seat',
   detachTradeHouse: 'seat',

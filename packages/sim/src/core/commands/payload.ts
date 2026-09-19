@@ -65,6 +65,9 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     required: { entity: 'integer', house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' },
   },
   payTribute: { required: { player: 'integer', slot: 'integer' } },
+  declareDiplomacy: {
+    required: { player: 'integer', other: 'integer', state: { oneOf: DIPLOMACY_STATES } },
+  },
   attachTradeHouse: { required: { entity: 'integer', house: 'integer' } },
   detachTradeHouse: { required: { entity: 'integer', house: 'integer' } },
   setTradeImport: { required: { entity: 'integer', house: 'integer', good: 'integer', on: 'boolean' } },

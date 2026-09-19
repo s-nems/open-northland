@@ -1,4 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
+import type { MapRelationFlag } from '@open-northland/data';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
   DoorBadge,
@@ -132,6 +133,9 @@ export interface GameViewDeps {
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The map roster's player slots; the diplomacy window lists the discovered ones. Default empty. */
   readonly rosterPlayers?: readonly number[];
+  /** The map's `[playermisc]` relation rows, which hide players from the diplomacy window or its
+   *  stance buttons. */
+  readonly relationFlags?: readonly MapRelationFlag[];
   /** The map's own string by id: the tribute descriptions, the goal texts, the info lines and the
    *  names a map gives its settlers. */
   readonly mapText?: (stringId: number) => string | undefined;
@@ -317,6 +321,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         observer: deps.observer === true,
         goodLabelOf: (goodType) => goodLabelByType.get(goodType),
         canPay: !readOnly,
+        canDeclare: !readOnly,
+        ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
         ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
         ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
         ...(deps.mapText !== undefined ? { tributeText: deps.mapText } : {}),
@@ -357,6 +363,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       papers: { read: () => sim.papers(localPlayer) },
       diplomacyRows,
       onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
+      onDeclareDiplomacy: (other, state) =>
+        issueCommand({ kind: 'declareDiplomacy', player: localPlayer, other, state }),
       canPlaceAt,
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),

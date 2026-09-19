@@ -7,17 +7,20 @@ import {
   harshestStance,
 } from '../src/view/projections/diplomacy-rows.js';
 
-/** A sim stub over explicit met pairs and stances; unset pairs read the sim's `enemy` default. */
+/** A sim stub over explicit met pairs, stances and locked pairs; unset pairs read the sim's `enemy`
+ *  default. */
 function simView(
   met: readonly [number, number][],
   stances: readonly [number, number, 'friend' | 'neutral' | 'enemy'][],
   owed: readonly OpenTribute[] = [],
+  locked: readonly [number, number][] = [],
 ): DiplomacySimView {
   const metSet = new Set(met.map(([v, o]) => `${v}:${o}`));
   const stanceMap = new Map(stances.map(([f, t, s]) => [`${f}:${t}`, s]));
   return {
     hasMetPlayer: (viewer, other) => viewer === other || metSet.has(`${viewer}:${other}`),
     diplomacyStance: (from, to) => stanceMap.get(`${from}:${to}`) ?? 'enemy',
+    diplomacyLocked: (a, b) => locked.some(([x, y]) => (x === a && y === b) || (x === b && y === a)),
     openTributes: () => owed,
   };
 }
@@ -44,9 +47,37 @@ describe('diplomacyPanelRows', () => {
         colour: PLAYER_SWATCH_COLORS[2],
         towardYou: 'friend',
         yourStance: 'neutral',
+        canDeclare: true,
         tributes: [],
       },
     ]);
+  });
+
+  it('drops a pair the map hides and takes the stance buttons off a locked pair or a page it closes', () => {
+    const met: [number, number][] = [1, 2, 3, 4].map((p) => [0, p]);
+    const sim = simView(met, [], [], [[2, 0]]);
+    const rows = diplomacyPanelRows(sim, {
+      localPlayer: 0,
+      rosterPlayers: [0, 1, 2, 3, 4],
+      observer: false,
+      relationFlags: [
+        { kind: 'hide', a: 1, b: 0 },
+        { kind: 'hideDetails', a: 0, b: 3 },
+        { kind: 'hide', a: 2, b: 4 }, // a pair the viewer is not part of
+      ],
+    });
+    expect(rows.map((r) => [r.player, r.canDeclare])).toEqual([
+      [2, false],
+      [3, false],
+      [4, true],
+    ]);
+    const spectator = diplomacyPanelRows(sim, {
+      localPlayer: 0,
+      rosterPlayers: [0, 4],
+      observer: false,
+      canDeclare: false,
+    });
+    expect(spectator.map((r) => r.canDeclare)).toEqual([false]);
   });
 
   it('hands each row the tributes owed to its player, worded from the map strings and good labels', () => {

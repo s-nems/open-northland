@@ -58,7 +58,8 @@ qualifications live on `Settler`. The common progression contract is in
 
 A result that changes a player's standing writes a player table beside the world, never an entity: a
 stance, a lock, a verdict, an AI flag, an attacked-by mark. A verdict is read by the match outcome
-and announced through the match events; the rest are read here or not yet at all. A reveal goes
+and announced through the match events, and a lock by a seat's own `declareDiplomacy`; the rest are
+read here or not yet at all. A reveal goes
 through `FogState` like the vision system's own stamps. A scripted map declares its mortal seats
 with `setMatchParticipants` in script-victory mode: death checks run for even one seat, while only
 script results award victory. The default elimination mode preserves the skirmish rule.

@@ -138,6 +138,24 @@ function diplomacyRow(p: RuleProp): MapScript['diplomacy'][number] | undefined {
   return { from, to, state };
 }
 
+const RELATION_FLAG_KINDS: Readonly<Record<string, MapScript['relationFlags'][number]['kind']>> = {
+  relationnotchangeable: 'notChangeable',
+  relationhide: 'hide',
+  relationhidedetails: 'hideDetails',
+};
+
+/** A `[playermisc]` `relation* <a> <b>` line to a row, or undefined for any other line or a malformed
+ *  one. A missing second slot reads 0, as the loader's integer read returns 0 at the end of the line
+ *  (owned `the original` 0x424a9a): the corpus's five single-slot `relationhide` lines pair with player 0. */
+function relationFlagRow(p: RuleProp): MapScript['relationFlags'][number] | undefined {
+  const kind = RELATION_FLAG_KINDS[p.key];
+  const [aRaw, bRaw] = p.values;
+  const a = int(aRaw);
+  const b = bRaw === undefined ? 0 : int(bRaw);
+  if (kind === undefined || a === undefined || a < 0 || b === undefined || b < 0) return undefined;
+  return { kind, a, b };
+}
+
 /**
  * Folds one `[multiplayer]` section into the accumulator, which stays mutable so a map splitting the
  * section across inc files still merges into one table. Unrecognized lines stay lossless in `other`,
@@ -472,6 +490,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const players: NonNullable<MapScript['players']> = [];
   const seenSlots = new Set<number>();
   const diplomacy: NonNullable<MapScript['diplomacy']> = [];
+  const relationFlags: NonNullable<MapScript['relationFlags']> = [];
   const specialItems: NonNullable<MapScript['specialItems']> = [];
   const ai: MapAiSeat[] = [];
   const misc: NonNullable<MapScript['misc']> = [];
@@ -528,7 +547,11 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
         misc.push(asLine(p));
       }
     } else if (name === 'playermisc') {
-      for (const p of sec.props) misc.push(asLine(p));
+      for (const p of sec.props) {
+        const row = relationFlagRow(p);
+        if (row === undefined) misc.push(asLine(p));
+        else relationFlags.push(row);
+      }
     } else if (name === 'specialitems') {
       for (const p of sec.props) {
         const row = p.key === 'add' ? specialItemRow(p) : undefined;
@@ -544,7 +567,8 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       missions.push(mission(sec));
     }
   }
-  const playerLines = players.length + diplomacy.length + specialItems.length + misc.length;
+  const playerLines =
+    players.length + diplomacy.length + relationFlags.length + specialItems.length + misc.length;
   const scripted =
     playerLines +
     missions.length +
@@ -557,6 +581,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     players,
     ...(permissions.length > 0 ? { permissions } : {}),
     diplomacy,
+    relationFlags,
     ai,
     multiplayer,
     specialItems,

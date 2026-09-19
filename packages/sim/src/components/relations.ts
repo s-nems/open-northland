@@ -9,9 +9,9 @@ const diplomacyLocks = defineWorldSingleton<{
 }>('DiplomacyLocks', 'players', () => ({ locked: new Map() }));
 
 /**
- * The pairs a map script marked not changeable (`SetDiplomacyNotChangeableFlag`). A script's own
- * `SetDiplomacy` writes through a lock, as the original's setter does; a seat's stance order is the
- * reader the lock waits for.
+ * The pairs whose stances no seat may change: a map's `relationnotchangeable` and `relationhide` rows
+ * and the script's `SetDiplomacyNotChangeableFlag`. Only a seat's `declareDiplomacy` reads it; a
+ * script, a blow and a computer seat's answer write through a lock, as the original's setter does.
  */
 export const DiplomacyLocks = diplomacyLocks.component;
 

@@ -23,6 +23,7 @@ export function createTickMemoViews(
     diplomacyView: {
       hasMetPlayer: (viewer, other) => sim.hasMetPlayer(viewer, other),
       diplomacyStance: (from, to) => sim.diplomacyStance(from, to),
+      diplomacyLocked: (a, b) => sim.diplomacyLocked(a, b),
       openTributes: (payer) => {
         if (owedMemo === null || owedMemo.tick !== sim.tick || owedMemo.payer !== payer) {
           owedMemo = { tick: sim.tick, payer, owed: sim.openTributes(payer) };

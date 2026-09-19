@@ -203,6 +203,24 @@ describe('buildMapWorld', () => {
     expect(sim.diplomacyStance(0, 3)).toBe('enemy');
   });
 
+  it("locks the pairs a map's relation rows make unchangeable or hide, before the first tick", () => {
+    const { sim } = buildMapWorld({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      script: {
+        relationFlags: [
+          { kind: 'notChangeable', a: 0, b: 1 },
+          { kind: 'hide', a: 2, b: 0 },
+          { kind: 'hideDetails', a: 0, b: 3 },
+        ],
+      },
+    });
+    expect(sim.diplomacyLocked(1, 0)).toBe(true);
+    expect(sim.diplomacyLocked(0, 2)).toBe(true);
+    expect(sim.diplomacyLocked(0, 3)).toBe(false); // a closed page is the window's rule, not a lock
+  });
+
   it('keeps every pair hostile when the map ships neither a roster nor diplomacy rows', () => {
     const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,

@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
-import type { Command, Paper, PlayerCommand } from '@open-northland/sim';
+import type { Command, DiplomacyState, Paper, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
@@ -63,6 +63,8 @@ export interface GameToolPanelDeps {
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The diplomacy window's pay button; a closure, so it follows a scene restart. */
   readonly onPayTribute: (slot: number) => void;
+  /** The diplomacy window's stance buttons; a closure, as the pay button. */
+  readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** UI string language (`pol`/`eng`); defaults to the active locale. */
   readonly lang?: string;
   readonly bindings: KeyBindings;
@@ -174,6 +176,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       diplomacyRows: deps.diplomacyRows,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       onPayTribute: deps.onPayTribute,
+      onDeclareDiplomacy: deps.onDeclareDiplomacy,
       screenToTile: clientToTile,
       canPlaceAt: deps.canPlaceAt,
       onSpeedChange: deps.onSpeed,

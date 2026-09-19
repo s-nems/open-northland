@@ -286,7 +286,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, set as fully visible as ground an own eye covers and kept so under every fog mode, for every player sharing the player's vision; nothing with fog off, and a house or landscape reveals only what its own eye sees (approximation) | sim | 1412 |
 | 17 | `Exit` | | leave the map (restart callback) | app | 70 |
 | 18 | `SetExternalFlag` | 1, 24, 32 | set or clear condition slot `n` (below 100) of the player's AI handler, accepted only when that slot is an external-activate condition of its `ai.inc`; a seat without a handler drops it. Here: kept per player with no reader (see below) | sim | 67 |
-| 19 | `SetDiplomacy` | 1, 2, 25 | set the first player's stance toward the second (one direction only, both slots in use), through any lock on the pair; the original sends a message unless the pair is marked not changeable | sim | 632 |
+| 19 | `SetDiplomacy` | 1, 2, 25 | set the first player's stance toward the second (one direction only, both slots in use), through any lock on the pair; the original sends a message unless the pair is hidden (`relationhide`) | sim | 632 |
 | 20 | `SetVisible` | 21, 32 | show or hide mission `n` in the mission window | app | 506 |
 | 21 | `ChangeHumanPlayerId` | 10, 1 | hand every human with the id to the player (detached from houses) | sim | 266 |
 | 22 | `ChangePlayerPlayerId` | 1, 2 | hand every vehicle, house, human, animal, and guide of the first player to the second | sim | 68 |
@@ -312,7 +312,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
 | 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it, `Tool_TechTree_EnableGoodProduction`) | sim | 101 |
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
-| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions; the stance setter only silences its message for a flagged pair, so the lock binds in the diplomacy window (not examined) | sim | 189 |
+| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (owned `the original` 0x4201b0), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 \* |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
@@ -449,13 +449,28 @@ Readings unless marked otherwise.
   in the vision system's pass over its masks when the entity's cell is explored for the viewer, in
   sight or not, at the vision cadence rather than every tick, and reads everyone as seen with fog
   off (approximation).
-- **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when they
-  want symmetry (corpus). After `[playerdata]` loads, the loader sets every pair of declared players
-  still unset to neutral, and each player's own entry to self (byte-level, owned `the original`
-  0x409003), so seats a map never relates neither fight nor ally; map world assembly writes those
-  rows (`withNeutralRosterPairs`), and a world without a roster keeps the sim's everyone-hostile
-  default. The not-changeable flag is symmetric and silences stance messages; this
-  build keeps it in `components/relations.ts`, with no seat command yet that would have to respect it.
+- **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when
+  they want symmetry (corpus). After `[playerdata]` loads, the loader sets every pair of declared
+  players still unset to neutral, and each player's own entry to self (byte-level, owned
+  `the original` 0x409003), so seats a map never relates neither fight nor ally; map world assembly
+  writes those rows (`withNeutralRosterPairs`), and a world without a roster keeps the sim's
+  everyone-hostile default. `[playermisc]` rows flag a pair in both directions (byte-level, owned
+  `the original` loader 0x408c8c-0x408de5, a missing second slot read as 0 by 0x424a9a):
+  `relationnotchangeable` sets the not-changeable flag, `relationhide` sets it and the hidden flag,
+  `relationhidedetails` the no-details flag. The diplomacy window lists no hidden player, gives a
+  no-details one no page, and shows a player's three stance buttons (command 0x7f) only for a pair
+  without the not-changeable flag (0x4adb7f); the command and every other writer ignore that flag,
+  and the setter silences its stance message for a hidden pair (0x409c14). This build locks a pair
+  (`components/relations.ts`) for the first two rows and for `SetDiplomacyNotChangeableFlag`, and
+  refuses a locked pair at the seat's `declareDiplomacy` command rather than in the window alone.
+  Its window drops a hidden player, and with it the messages about that player, and keeps a
+  no-details player's readout but gives it no stance buttons, having no overview page to list it on.
+- **Computer diplomacy**: a computer seat's strategic handler ends its turn with a look at one slot
+  of 20, in turn (the the original's `an original routine`), so `AI_Disable`, `HAI_Disable`
+  and a monster tribe silence it: a neutral seat turns enemy toward a player that holds it as enemy,
+  and a friendly seat drops to the other's stance; an enemy seat never makes peace. It also turns a
+  neutral seat enemy toward a player whose people stood in its villages on six looks in a row, which
+  this build leaves out (`systems/ai-player/diplomacy.ts`).
 - **External flags**: up to 100 condition slots on a seat's AI handler; a slot takes a script's flag
   only when its `ai.inc` condition is the external-activate kind (see [AI data](#ai-data)). This build
   keeps the raised slots per player (`components/ai-flags.ts`), whatever the slot's kind, and the

@@ -64,6 +64,7 @@ export function fitDiplomacyWindow(
     closeRect: move(layout.closeRect),
     tabs: layout.tabs.map((tab) => ({ ...tab, rect: move(tab.rect, scrollTabs ? scroll : 0) })),
     bodyLines: layout.bodyLines.map((line) => move(line, scroll)),
+    stances: layout.stances.map((button) => ({ ...button, rect: move(button.rect, scroll) })),
     tributes: layout.tributes.map((tribute) => ({
       ...tribute,
       card: move(tribute.card, scroll),

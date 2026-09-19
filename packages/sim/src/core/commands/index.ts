@@ -1,6 +1,7 @@
 import type { DebugCommand, RulesCommand } from './administration.js';
 import type { AiPlayerCommand } from './ai-player.js';
 import type { AssistantCommand } from './assistant.js';
+import type { DiplomacyCommand } from './diplomacy.js';
 import type { PlacementCommand } from './placement.js';
 import type { SpawnCommand } from './spawn.js';
 import type { TradeAgreementCommand, TradeCommand } from './trade.js';
@@ -37,6 +38,7 @@ export type Command =
   | AiPlayerCommand
   | AssistantCommand
   | TributeCommand
+  | DiplomacyCommand
   | TradeCommand
   | TradeAgreementCommand
   | DebugCommand;

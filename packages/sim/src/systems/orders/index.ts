@@ -2,6 +2,7 @@ export * from './assistant.js';
 export * from './chests.js';
 export * from './combat.js';
 export * from './defence.js';
+export * from './diplomacy.js';
 export * from './equipment.js';
 export * from './explore.js';
 export * from './family.js';

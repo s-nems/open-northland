@@ -3,6 +3,7 @@ import type {
   MapAiSeat,
   MapDiplomacy,
   MapHumanName,
+  MapRelationFlag,
   MapScript,
   MapTradeAgreement,
 } from '@open-northland/data';
@@ -16,6 +17,8 @@ export interface MapScriptWorld {
   readonly victory?: 'script' | 'elimination';
   readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
+  /** The `[playermisc]` relation rows; the ones that lock a pair's stances are stood up before tick 0. */
+  readonly relationFlags?: readonly MapRelationFlag[];
   /** The `[AIData]` rows: the seat toggles the builder applies, and the scripted handlers' programs the
    *  simulation runs. */
   readonly ai?: readonly MapAiSeat[];
@@ -70,6 +73,9 @@ export function newWorldSim(
     systems.addFishSwarms(sim.world, sim.terrain, map.fishSwarms);
   }
   for (const row of script.permissions ?? []) components.setMapPermission(sim.world, row);
+  for (const row of script.relationFlags ?? []) {
+    if (row.kind !== 'hideDetails') components.setDiplomacyLock(sim.world, row.a, row.b, true);
+  }
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   for (const row of diplomacy) {
     sim.enqueueSetup({ kind: 'setDiplomacy', from: row.from, to: row.to, state: row.state });

@@ -1,3 +1,4 @@
+import type { DiplomacyState } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { messages } from '../../../i18n/index.js';
 import { WIN_PAD } from '../../chrome.js';
@@ -36,6 +37,9 @@ export interface DiplomacyWindowDeps {
   readonly rows: () => readonly DiplomacyPanelRow[];
   /** A live pay button was pressed; the rows show the payment once the sim applied it. */
   readonly onPayTribute?: (slot: number) => void;
+  /** A stance button was pressed for the selected player; the rows show the stance once the sim
+   *  applied it. */
+  readonly onDeclareDiplomacy?: (player: number, state: DiplomacyState) => void;
 }
 
 /** The pop-up diplomacy window; per-frame refresh rebuilds only when the rows or selection changed. */
@@ -92,6 +96,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
         r.colour,
         r.towardYou,
         r.yourStance,
+        r.canDeclare,
         r.tributes.map((t) => [
           t.slot,
           t.text ?? null,
@@ -125,6 +130,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       scale,
       players: rows.map((r) => r.player),
       selected,
+      declarable: selectedRow?.canDeclare === true ? selectedRow.yourStance : null,
       tributes: cards.map((c) => c.spec),
     });
     const built = fitDiplomacyWindow(raw, ctx.screen(), ctx.overlayReserve?.() ?? null, scroll);
@@ -187,7 +193,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       }
       const hit = hitTestDiplomacyWindow(layout, x, y);
       if (
-        (hit?.kind === 'pay' || (hit?.kind === 'tab' && layout.scrollTabs)) &&
+        (hit?.kind === 'pay' || hit?.kind === 'declare' || (hit?.kind === 'tab' && layout.scrollTabs)) &&
         !contains(layout.viewport, x, y)
       )
         return contains(layout.window, x, y);
@@ -201,6 +207,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
           selected = hit.player;
           scroll = 0;
           rebuild(deps.rows());
+          break;
+        case 'declare':
+          if (selected !== null) deps.onDeclareDiplomacy?.(selected, hit.state);
           break;
         case 'pay':
           deps.onPayTribute?.(hit.slot);

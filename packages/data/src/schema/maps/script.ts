@@ -46,6 +46,19 @@ export const MapDiplomacy = z.strictObject({
 });
 export type MapDiplomacy = z.infer<typeof MapDiplomacy>;
 
+/**
+ * One `[playermisc]` `relationnotchangeable`/`relationhide`/`relationhidedetails <a> <b>` row. Each
+ * flags the pair in both directions (byte evidence: owned `the original` loader 0x408c8c-0x408de5):
+ * `notChangeable` locks both stances, `hide` locks them and drops each player from the other's
+ * diplomacy window, and `hideDetails` leaves the other player without a page there to change a stance on.
+ */
+export const MapRelationFlag = z.strictObject({
+  kind: z.enum(['notChangeable', 'hide', 'hideDetails']),
+  a: z.number().int().nonnegative(),
+  b: z.number().int().nonnegative(),
+});
+export type MapRelationFlag = z.infer<typeof MapRelationFlag>;
+
 /** One raw script line kept lossless: its key/opcode and the raw value tokens, file order preserved. */
 export const MapScriptLine = z.strictObject({
   key: z.string(),
@@ -318,6 +331,8 @@ export type MapTradeAgreement = z.infer<typeof MapTradeAgreement>;
 export const MapScript = z.strictObject({
   players: z.array(MapPlayerSlot).default([]),
   diplomacy: z.array(MapDiplomacy).default([]),
+  /** The `[playermisc]` relation rows, in file order. */
+  relationFlags: z.array(MapRelationFlag).default([]),
   /** The `[AIData]` seat toggles, one row per player the section names. */
   ai: z.array(MapAiSeat).default([]),
   /** The `[multiplayer]` lobby table, when the map ships one. */
