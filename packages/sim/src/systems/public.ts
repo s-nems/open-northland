@@ -45,8 +45,10 @@ export {
   NEED_DRIVE_THRESHOLD,
   NEED_OVERFILL_FLOOR,
 } from './lifecycle/needs/index.js';
-// The herding ring bound, asserted by the livestock scene.
+// The herding ring bound, asserted by the livestock scene; the slaughter clip's wares, so the
+// real-content suite reads them the way the sim does.
 export { LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
+export { slayDepositGoods } from './livestock/slay-clip.js';
 // The match cadence, so an acceptance scene can run past the first verdict without restating it.
 export { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from './match/index.js';
 // The mission engine's cadence, the opcodes it runs, and the ids a world's placements carry: the
@@ -107,8 +109,9 @@ export {
   scoutJobType,
 } from './readviews/jobs.js';
 export { MILITARY_MODE } from './readviews/stances.js';
-// Exported so the app's livestock-heart projection keys on the same content read as the capture drive.
-export { isCatchableAnimal } from './readviews/tribes/animals.js';
+// Exported so the app's livestock-heart projection keys on the same content read as the capture drive,
+// and so a real-content scenario stands its herd on the same pool the spawn would give it.
+export { animalHitpoints, isCatchableAnimal } from './readviews/tribes/animals.js';
 // The livestock join, so the details panel names a farm's herds from the same table the sim breeds by
 // and the real-content suite can pin the slug join on the extracted ids.
 export {
