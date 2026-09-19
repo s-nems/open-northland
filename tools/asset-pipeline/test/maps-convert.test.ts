@@ -80,6 +80,31 @@ describe('convertMapDatTree', () => {
     warn.mockRestore();
   });
 
+  it('reads the placements from map.ini when a flattened folder ships no staticobjects.inc', async () => {
+    const dir = join(game, 'CnModMaps', 'forteca');
+    await writeFile(
+      join(dir, 'map.ini'),
+      [
+        "<CULTURES_CIF_BEGIN><0000><00000000> Don't modify this line!",
+        '[MissionData]',
+        'goal "HumansDied" 5',
+        '[StaticObjects]',
+        'sethuman 0 "viking" "hero_sword_BJARNI" 12 34 5 0',
+      ].join('\r\n'),
+    );
+    await convertMapDatTree({ mod: game }, out);
+    const grid = JSON.parse(await readFile(join(out, 'maps', 'forteca.json'), 'utf8'));
+    expect(grid.entities.humans).toEqual([
+      { tribe: 'viking', role: 'hero_sword_BJARNI', player: 0, hx: 12, hy: 34, missionId: 5 },
+    ]);
+
+    // The included file is the usual home and wins when both carry the section.
+    await writeFile(join(dir, 'staticobjects.inc'), '[StaticObjects]\nsethuman 1 "frank" "woman" 1 2 0 0\n');
+    await convertMapDatTree({ mod: game }, out);
+    const included = JSON.parse(await readFile(join(out, 'maps', 'forteca.json'), 'utf8'));
+    expect(included.entities.humans).toEqual([{ tribe: 'frank', role: 'woman', player: 1, hx: 1, hy: 2 }]);
+  });
+
   /** Raw single-byte string → bytes (for CP1250 fixtures written verbatim to disk). */
   const rawBytes = (s: string): Uint8Array => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
 

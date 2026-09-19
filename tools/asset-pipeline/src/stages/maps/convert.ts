@@ -19,6 +19,12 @@ import { mapProvenance } from './provenance.js';
 import { resolveMapScript } from './script.js';
 import { type MapDatTerrainFile, mapDatToTerrain } from './terrain/index.js';
 
+/**
+ * Where an unpacked map (no `map.cif`) keeps its `[StaticObjects]` placements, in lookup order: the
+ * `staticobjects.inc` its `map.ini` includes, or, in a few flattened folders, `map.ini` itself.
+ */
+const PLAINTEXT_STATIC_OBJECT_FILES = ['staticobjects.inc', 'map.ini'] as const;
+
 /** One emitted map terrain artifact. */
 export interface MapDatConversion {
   /** The map's slug id, the same key as its `map.cif` `MapInfo`. */
@@ -83,18 +89,15 @@ export async function convertMapDatTree(
         // Undecodable: the entity layer is skipped.
       }
     }
-    // Unpacked maps ship no map.cif: their placements live in a sibling plaintext
-    // `staticobjects.inc` with the identical `[StaticObjects]` grammar (sethouse/sethuman/setanimal),
-    // and readable mod source is preferred over the encrypted cif.
-    if (terrain.entities === undefined) {
-      const incPath = await findPathCaseInsensitive(mapDir, ['staticobjects.inc']);
-      if (incPath !== undefined) {
-        try {
-          const entities = extractStaticObjects(iniBytesToSections(await readFile(incPath)));
-          if (entities !== undefined) terrain = { ...terrain, entities };
-        } catch (err) {
-          console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${errorMessage(err)}`);
-        }
+    for (const file of PLAINTEXT_STATIC_OBJECT_FILES) {
+      if (terrain.entities !== undefined) break;
+      const path = await findPathCaseInsensitive(mapDir, [file]);
+      if (path === undefined) continue;
+      try {
+        const entities = extractStaticObjects(iniBytesToSections(await readFile(path)));
+        if (entities !== undefined) terrain = { ...terrain, entities };
+      } catch (err) {
+        console.warn(`[pipeline] map ${rel}: ${file} undecodable: ${errorMessage(err)}`);
       }
     }
     const output = `${MAPS_DIR}/${id}.json`;

@@ -28,8 +28,6 @@ lobby concept the check never sees.
   it (`systems/ai-player`, `systems/ai-program`). The original's handlers keep working for a dead seat
   (`an original routine` and `WorkOnAI` test only the handler's enabled byte), and the
   corpus relies on it: on script-victory maps the counted seats without an adult man are
-  `wielka_bitwa_z_saracenami` 1, 2, 4, 6 (1 and 4 author 40 and 38 tasks, `CreateCreatures` among
-  them, and the script hands them a town later through `ChangePlayerPlayerId` and `SetHuman`),
   `cn_2_dni_sub` 2, 3, 4, `zdradziecka_mielizna_sub2` 2 and `specjalna_forteca` 5 (one woman). Let
   a dead seat's program and orders run, or lift the mark when the seat gains an adult man.
 

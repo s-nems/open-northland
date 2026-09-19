@@ -23,10 +23,11 @@ Nothing here is copied from the engine. Constants and semantics are described, n
 
 A map folder's `map.ini` includes `mission.inc`, `staticobjects.inc`, `ai.inc`, `player.inc`, and
 `misc.inc` (corpus), the last carrying the `[misc_humannames]` and `[misc_weather]` sections beside
-the map's name, type and music. Packed base-game maps carry the same sections inside `map.cif`. Texts live in
-`text/<lang>/strings.ini` (`[text] stringn <id> "..."`) and briefing pages in
-`text/<lang>/briefings/NNNN.hlt` with their prose in a sibling `briefings.txt`
-(`[blockstart:N]` .. `[blockend:N]`).
+the map's name, type and music. `WIELKA BITWA Z SARACENAMI` and `oasis_o_plenty` ship a flattened
+`map.ini` that holds every section inline, `[StaticObjects]` included. Packed base-game maps carry
+the same sections inside `map.cif`. Texts live in `text/<lang>/strings.ini`
+(`[text] stringn <id> "..."`) and briefing pages in `text/<lang>/briefings/NNNN.hlt` with their
+prose in a sibling `briefings.txt` (`[blockstart:N]` .. `[blockend:N]`).
 
 One `[MissionData]` section is one mission. Its index is its position in the file, counted from
 zero; every `ActivateMission`, `CheckMission`, and `SetVisible` argument is such an index (corpus,
