@@ -24,8 +24,9 @@ const HIDDEN = 2;
 /** One whole sweep of a computer seat's cursor: the original's 20 slots, one per handler round. */
 const CURSOR_SWEEP_TICKS = 20 * systems.AI_HANDLER_ROUND_TICKS;
 
-/** Building a real map world and running it for a sweep takes several seconds. */
-const REAL_MAP_TIMEOUT_MS = 60_000;
+/** Building a real map world and running it for a sweep takes seconds alone and half a minute on a
+ *  loaded four-core CI runner; a hang guard, not a benchmark. */
+const REAL_MAP_TIMEOUT_MS = 180_000;
 
 function declareWar(sim: Simulation, other: number): void {
   sim.enqueue(playerCommand(PLAYER, { kind: 'declareDiplomacy', player: PLAYER, other, state: 'enemy' }));

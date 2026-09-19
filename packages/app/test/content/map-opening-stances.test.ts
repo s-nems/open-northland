@@ -23,8 +23,9 @@ const MULTIPLAYER_SECONDS = 20;
 
 const PLAYER = 0;
 
-/** Building a real map world and running it past a minute takes several seconds. */
-const REAL_MAP_TIMEOUT_MS = 60_000;
+/** Building a real map world and running it past a minute takes seconds alone and over a minute on a
+ *  loaded four-core CI runner; a hang guard, not a benchmark. */
+const REAL_MAP_TIMEOUT_MS = 180_000;
 
 function blowsWithin(sim: Simulation, seconds: number): number {
   let blows = 0;
