@@ -14,7 +14,12 @@ export interface MapObjectSprite {
   /** More than one frame is a loop played at the sim tick rate. */
   readonly frames: readonly AtlasFrame[];
   readonly scale: number;
+  /** Breeze shear per unit of height, authored with the art: it runs whatever the graphics switches say. */
   readonly sway?: number;
+  /** The same, for art shipped as one still frame: the environment-motion switch adds it, so it runs
+   *  only while that switch is on. It lives on this static sprite alone: once the sprite pool draws the
+   *  object (a felled or save-restored harvestable), it stands still. */
+  readonly environmentSway?: number;
   readonly decor: boolean;
   /** Starting frame offset into {@link frames}; static objects ignore it. */
   readonly phase: number;
@@ -50,6 +55,11 @@ export interface MapObjectSprite {
 /** Shared by the body and shadow binds, so the pair can never drift. */
 export function objectFrameIndexAt(obj: MapObjectSprite, tick: number): number {
   return obj.frames.length <= 1 ? 0 : (tick + obj.phase) % obj.frames.length;
+}
+
+/** The breeze strength in play, `undefined` for an object that stands still. */
+export function activeSway(obj: MapObjectSprite, environmentMotion: boolean): number | undefined {
+  return obj.sway ?? (environmentMotion ? obj.environmentSway : undefined);
 }
 
 export function objectFrameAt(obj: MapObjectSprite, tick: number): AtlasFrame | undefined {

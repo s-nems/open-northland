@@ -11,9 +11,9 @@ import {
 import { SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
-import { setVegetationShear, vegetationShear } from '../vegetation-sway.js';
+import { castShadowShear, setVegetationShear, vegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
-import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
+import { activeSway, type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
  * The tall landscape objects - anything that occludes a settler: pooled sprites in the renderer's shared
@@ -82,6 +82,7 @@ export class TallObjectLayer {
   /** The animation tick the tall-object frames were last refreshed for. */
   private lastAnimTick = -1;
   private lastMotionTime = -1;
+  private lastEnvironmentMotion = false;
   private lastShadowRevision = -1;
 
   /** Tall objects attach to `spriteLayer` so they interleave with entities in one painter order. */
@@ -167,7 +168,13 @@ export class TallObjectLayer {
 
   /** Bind the pose at `clock` onto a member's sprites. False when that pose has no frame, which
    *  leaves the member untouched. */
-  private bindPose(po: PooledObject, sprite: Sprite, clock: number, motionTime: number): boolean {
+  private bindPose(
+    po: PooledObject,
+    sprite: Sprite,
+    clock: number,
+    motionTime: number,
+    sway: number,
+  ): boolean {
     const obj = po.obj;
     const frameIndex = objectFrameIndexAt(obj, clock);
     const frame = obj.frames[frameIndex];
@@ -175,7 +182,7 @@ export class TallObjectLayer {
     // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
     const lift = obj.lift ?? 0;
     sprite.texture = this.textures.get(obj.source, frame);
-    const shear = vegetationShear(motionTime, obj.x, obj.y, obj.sway ?? 0);
+    const shear = vegetationShear(motionTime, obj.x, obj.y, sway);
     setVegetationShear(sprite, obj.scale, shear);
     sprite.position.set(
       obj.x + (frame.offsetX + frame.offsetY * shear) * obj.scale,
@@ -186,8 +193,10 @@ export class TallObjectLayer {
       po.shadowSprite.visible = shadowFrame !== undefined; // a pose with no silhouette just hides it
       if (shadowFrame !== undefined) {
         po.shadowSprite.texture = this.textures.getShadow(obj.shadow.source, shadowFrame);
+        const shadowShear = castShadowShear(shear, frame.offsetY, shadowFrame.offsetY);
+        setVegetationShear(po.shadowSprite, obj.scale, shadowShear);
         po.shadowSprite.position.set(
-          obj.x + shadowFrame.offsetX * obj.scale,
+          obj.x + (shadowFrame.offsetX + shadowFrame.offsetY * shadowShear) * obj.scale,
           obj.y - lift + shadowFrame.offsetY * obj.scale,
         );
       }
@@ -204,11 +213,13 @@ export class TallObjectLayer {
   update(
     vp: Viewport,
     tick: number,
-    fogStateOfCell?: (cellX: number, cellY: number) => number,
-    motionTime: number = tick,
+    fogStateOfCell: ((cellX: number, cellY: number) => number) | undefined,
+    motionTime: number,
+    environmentMotion: boolean,
   ): void {
     const animAdvanced = tick !== this.lastAnimTick;
     const motionAdvanced = motionTime !== this.lastMotionTime;
+    const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
     const shadowsChanged = this.lastShadowRevision !== this.textures.shadowRevision;
     for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
@@ -233,6 +244,7 @@ export class TallObjectLayer {
         // Assigned only on change: Pixi's tint setter allocates a Color.shared round-trip even for an
         // unchanged value, and this runs per visible object per frame.
         const watched = fogState === FOG_STATE.VISIBLE;
+        const sway = activeSway(obj, environmentMotion);
         const tint = watched ? po.baseTint : po.ghostTint;
         if (sprite.tint !== tint) sprite.tint = tint;
         // The frozen/live pose switches with the tint.
@@ -241,8 +253,11 @@ export class TallObjectLayer {
           shadowsChanged ||
           watched !== po.lastWatched ||
           (watched && animAdvanced && obj.frames.length > 1) ||
-          (watched && motionAdvanced && obj.sway !== undefined);
-        if (rebind && !this.bindPose(po, sprite, watched ? tick : 0, watched ? motionTime : 0)) continue;
+          (watched && motionAdvanced && sway !== undefined) ||
+          (motionSwitched && obj.environmentSway !== undefined);
+        if (rebind && !this.bindPose(po, sprite, watched ? tick : 0, watched ? motionTime : 0, sway ?? 0)) {
+          continue;
+        }
         po.lastWatched = watched;
         if (!po.attached) {
           this.spriteLayer.addChild(sprite);
@@ -254,6 +269,7 @@ export class TallObjectLayer {
     }
     this.lastAnimTick = tick;
     this.lastMotionTime = motionTime;
+    this.lastEnvironmentMotion = environmentMotion;
     this.lastShadowRevision = this.textures.shadowRevision;
   }
 

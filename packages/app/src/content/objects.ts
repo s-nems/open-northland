@@ -19,6 +19,7 @@ import { loadLayer, MissingAtlasError } from './ir/load.js';
 import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 import { footprintBrightness, unshadedLogicTypeIds } from './object-shading.js';
+import { standingVegetationTypeIds, stillVegetationSway } from './object-sway.js';
 
 /**
  * The map-object binding: each `objects` placement's `EditName` joins the `landscapeGfx` IR table for its
@@ -119,6 +120,7 @@ export async function loadMapObjects(
 ): Promise<LoadedMapObjects> {
   const recordByName = landscapeRecordsByName(ir);
   const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
+  const standingVegetation = standingVegetationTypeIds(ir.landscape);
   const layerKeys = new Map<string, string | undefined>();
   for (const type of objects.types) {
     const record = recordByName.get(type);
@@ -145,6 +147,7 @@ export async function loadMapObjects(
     /** The cast-shadow twin frames, index-paired with {@link frames}; absent when no pose casts one. */
     readonly shadow: MapObjectSprite['shadow'];
     readonly decor: boolean;
+    readonly environmentSway: number | undefined;
     /** The bridge-deck depth row ({@link deckFarRow}), absent for everything that sorts at its anchor. */
     readonly farRow: number | undefined;
     /** False for the tree logic types (the measured full-bright exemption). */
@@ -178,6 +181,7 @@ export async function loadMapObjects(
         frames: frames.slice(0, count),
         shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
         decor: drawsAsFlatDecor(record),
+        environmentSway: stillVegetationSway(record, animated, standingVegetation),
         farRow,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
         walkFootprint,
@@ -211,6 +215,7 @@ export async function loadMapObjects(
       frames: type.frames,
       ...(type.shadow !== undefined ? { shadow: type.shadow } : {}),
       scale: 1,
+      ...(type.environmentSway !== undefined ? { environmentSway: type.environmentSway } : {}),
       decor: type.decor,
       ...(type.farRow !== undefined ? { depthY: halfCellToScreen(hx, hy + type.farRow).y } : {}),
       ...(lift !== 0 ? { lift } : {}),

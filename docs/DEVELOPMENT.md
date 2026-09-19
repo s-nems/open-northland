@@ -172,15 +172,18 @@ not carried across menu/game switches. The menu's settings screen covers the pla
 so direct query parameters are mainly for reproducible diagnostics.
 
 The graphics-polish experiment adds three live Graphics switches: texture quality (including
-palette-resolved original characters), shadows, and smoother motion. They default on in
-this experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
-`polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of these
-switches saves the effective set and clears the URL override. Use the same map, camera and zoom for
-A/B review, including ×2 and zoom-out while panning. Motion interpolates fish, enriches water and
-smooths the breeze on own vegetation. The water gains crossing swells, darker shallows and darker
-still deep water (the map's own two pattern families) and a glint band drifting over the deep water.
-Original humans and animals keep their tick anchors: the original engine moves a walker only together
-with its walk frame, and moving the body inside a frame hold would drag the planted foot. Original
+palette-resolved original characters), shadows, and smoother motion. They default on in this
+experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
+`polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of
+these switches saves the effective set and clears the URL override. Use the same map, camera and
+zoom for A/B review, including ×2 and zoom-out while panning. Motion interpolates fish, enriches
+water, smooths the breeze on own vegetation and adds that breeze to the tall trees the original
+ships as one still frame (its dead trees), whose cast shadows lean with them. That breeze belongs to
+the static map layer: a harvestable the sprite pool draws, which is every one after a save is
+restored, stands still. The water gains crossing swells, darker shallows and darker still deep water
+(the map's own two pattern families) and a glint band drifting over the deep water. Original humans
+and animals keep their tick anchors: the original engine moves a walker only together with its walk
+frame, and moving the body inside a frame hold would drag the planted foot. Original
 work/tree/building clips retain their authored images and durations: a fractional clock does not
 invent additional frames.
 Own-art motion interpolation remains enabled according to its authored binding when the switch is off.

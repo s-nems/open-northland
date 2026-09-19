@@ -199,7 +199,7 @@ export class MapObjectLayer {
         uploadAnimatedBatch(batch);
       }
     }
-    this.tall.update(vp, tick, fogStateOfCell, motionTime);
+    this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion);
   }
 
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */

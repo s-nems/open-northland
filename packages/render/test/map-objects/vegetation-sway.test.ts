@@ -5,10 +5,11 @@ import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/
 import { resolveLayers } from '../../src/gpu/sprite-pool/resolve-layers.js';
 import type { SpriteSheet } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
-import { vegetationShear } from '../../src/gpu/vegetation-sway.js';
+import { castShadowShear, vegetationShear } from '../../src/gpu/vegetation-sway.js';
 import { WIDE } from './support.js';
 
 const frame = { x: 0, y: 0, width: 8, height: 8, offsetX: -4, offsetY: -7 };
+const TREE_SWAY = 0.01;
 const tree: MapObjectSprite = {
   x: 20,
   y: 40,
@@ -17,7 +18,7 @@ const tree: MapObjectSprite = {
   scale: 0.5,
   decor: false,
   phase: 0,
-  sway: 0.01,
+  sway: TREE_SWAY,
 };
 
 describe('own vegetation breeze', () => {
@@ -71,6 +72,58 @@ describe('own vegetation breeze', () => {
     layer.update(WIDE, 60, () => FOG_STATE.EXPLORED);
     expect(sprite.x).toBe(frozenX);
     layer.destroy();
+  });
+
+  it('carries the far edge of the cast shadow with the crown and pins it at the feet', () => {
+    const shadowFrame = { x: 0, y: 0, width: 12, height: 3, offsetX: -6, offsetY: -2 };
+    const container = new Container();
+    const layer = new MapObjectLayer(container, new TextureCache());
+    layer.set([{ ...tree, shadow: { source: Texture.WHITE.source, frames: [shadowFrame] } }]);
+    layer.update(WIDE, 20, () => FOG_STATE.VISIBLE);
+    const [body, shadow] = container.children;
+    if (!(body instanceof Sprite) || !(shadow instanceof Sprite)) throw new Error('Missing tree or shadow');
+    body.updateLocalTransform();
+    shadow.updateLocalTransform();
+    const crownShift = body.localTransform.apply({ x: -frame.offsetX, y: 0 }).x - tree.x;
+    const farEdgeShift = shadow.localTransform.apply({ x: -shadowFrame.offsetX, y: 0 }).x - tree.x;
+    expect(crownShift).not.toBe(0);
+    expect(farEdgeShift).toBeCloseTo(crownShift, 10);
+    const feet = shadow.localTransform.apply({ x: -shadowFrame.offsetX, y: -shadowFrame.offsetY });
+    expect(feet.x).toBeCloseTo(tree.x, 10);
+    expect(feet.y).toBeCloseTo(tree.y, 10);
+    layer.destroy();
+  });
+
+  it('sways art shipped still only while environment motion is on', () => {
+    const { sway: _authored, ...still } = tree;
+    const container = new Container();
+    const layer = new MapObjectLayer(container, new TextureCache());
+    layer.set([{ ...still, environmentSway: TREE_SWAY }]);
+    layer.update(WIDE, 20, undefined, undefined, 20);
+    const sprite = container.children[0];
+    if (!(sprite instanceof Sprite)) throw new Error('Missing tree');
+    const restX = tree.x + frame.offsetX * tree.scale;
+    expect(sprite.x).toBe(restX);
+    expect(sprite.skew.x).toBe(0);
+    layer.setEnvironmentMotion(true);
+    layer.update(WIDE, 20, undefined, undefined, 20);
+    expect(sprite.x).not.toBe(restX);
+    layer.setEnvironmentMotion(false);
+    layer.update(WIDE, 20, undefined, undefined, 20);
+    expect(sprite.x).toBe(restX);
+    expect(sprite.skew.x).toBe(0);
+    layer.destroy();
+  });
+
+  it('leaves a silhouette that lies wholly below the feet unsheared', () => {
+    expect(castShadowShear(0.02, -100, 0)).toBe(0);
+    expect(castShadowShear(0.02, -100, 4)).toBe(0);
+  });
+
+  it('bounds the shear of a silhouette far flatter than its caster', () => {
+    const projected = castShadowShear(0.02, -120, -20);
+    expect(projected).toBeCloseTo(0.12, 10);
+    expect(castShadowShear(0.02, -120, -1)).toBeLessThan(projected * 2);
   });
 
   it('retains the same breeze after resource handover and leaves rocks still', () => {

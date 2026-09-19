@@ -38,6 +38,18 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
   return (record.walkBlockAreas ?? []).length === 0;
 }
 
+/** The `[landscapetype]` ids carrying one of `names`, so a rule names a logic type and hardcodes no id. */
+export function landscapeTypeIdsNamed(
+  landscape: ContentIr['landscape'],
+  names: ReadonlySet<string>,
+): ReadonlySet<number> {
+  const ids = new Set<number>();
+  for (const type of landscape ?? []) {
+    if (type.typeId !== undefined && type.name !== undefined && names.has(type.name)) ids.add(type.typeId);
+  }
+  return ids;
+}
+
 /** The `landscapeGfx` rows by `EditName`, the key a map's `objects` lane joins on; the first row of a
  *  repeated name wins. */
 export function landscapeRecordsByName(ir: ContentIr): ReadonlyMap<string, LandscapeGfxRow> {

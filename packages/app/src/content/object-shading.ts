@@ -1,5 +1,6 @@
 import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import type { BrightnessField } from '@open-northland/render';
+import { landscapeTypeIdsNamed } from './ir/joins.js';
 import type { ContentIr } from './ir/rows.js';
 
 /**
@@ -11,15 +12,8 @@ import type { ContentIr } from './ir/rows.js';
  */
 const UNSHADED_LANDSCAPE_TYPES: ReadonlySet<string> = new Set(['tree', 'tree falling']);
 
-/** Resolved from the IR `[landscapetype]` table by name, so no numeric id is hardcoded. */
 export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): ReadonlySet<number> {
-  const ids = new Set<number>();
-  for (const t of landscape ?? []) {
-    if (t.typeId !== undefined && t.name !== undefined && UNSHADED_LANDSCAPE_TYPES.has(t.name)) {
-      ids.add(t.typeId);
-    }
-  }
-  return ids;
+  return landscapeTypeIdsNamed(landscape, UNSHADED_LANDSCAPE_TYPES);
 }
 
 /**
