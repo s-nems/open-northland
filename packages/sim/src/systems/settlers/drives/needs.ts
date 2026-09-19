@@ -15,7 +15,11 @@ import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { NEED_DRIVE_THRESHOLD, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
+import {
+  NEED_CRITICAL_THRESHOLD,
+  NEED_DRIVE_THRESHOLD,
+  NEED_SATED_THRESHOLD,
+} from '../../lifecycle/needs/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isFood, isHeroJob, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -83,8 +87,9 @@ function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: N
 }
 
 /**
- * The in-place half of the needs ladder, for a settler that must not move: {@link planNeeds}'s rung order
- * with every tail that walks or lies down removed.
+ * The in-place half of the needs ladder, for a settler that must hold its ground: {@link planNeeds}'s rung
+ * order with every tail that walks or lies down removed, a tower's bed included, so fatigue waits for a
+ * stamina draught or the end of the fight.
  */
 export function answerNeedInPlace(
   world: World,
@@ -111,9 +116,7 @@ export function answerNeedInPlace(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    const seek = maySeek(world, e, ordered, 'fatigue');
-    if (seek && sleepAtPost(world, ctx, e, settler)) return true;
-    if (seek) settleUnservedNeedForAi(world, e, 'fatigue');
+    if (maySeek(world, e, ordered, 'fatigue')) settleUnservedNeedForAi(world, e, 'fatigue');
   }
   return false;
 }
@@ -142,6 +145,10 @@ function eatCarried(
  * Run the needs ladder for one idle settler: eat, then sleep, then pray. Returns true when a rung acted and
  * the settler is spoken for this tick, false when every need is below its threshold or unsatisfiable, in
  * which case the caller falls through to work with the unsatisfied bar clamped at ONE.
+ *
+ * A settler on alert answers a need in place, as {@link answerNeedInPlace} does, except that it walks to
+ * food once its hunger turns critical: hunger alone costs hitpoints, so a standoff that never comes to
+ * blows cannot starve an army. `onAlert` is asked only where its answer decides a walk, a bed or a prayer.
  */
 export function planNeeds(
   world: World,
@@ -156,6 +163,7 @@ export function planNeeds(
   limit: NavigationLimit | null,
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
   spacing: PlannerSpacing,
+  onAlert: () => boolean,
 ): boolean {
   if (isHeroJob(ctx.content, settler.jobType)) return false;
   // A script may freeze a unit's needs: they neither rise nor get answered, so it never leaves its post
@@ -163,6 +171,11 @@ export function planNeeds(
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN)) return false;
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
+  let alerted: boolean | undefined;
+  const alert = (): boolean => {
+    alerted ??= onAlert();
+    return alerted;
+  };
   if (pressing(settler.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, load)) return true;
@@ -177,7 +190,8 @@ export function planNeeds(
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
     // A larder and a wild berry bush share the eat animation; only the completion effect differs, so the
     // walk-or-act tail below is identical for both.
-    const food = seek ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
+    const walks = seek && (settler.hunger >= NEED_CRITICAL_THRESHOLD || !alert());
+    const food = walks ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
       const effect =
@@ -190,8 +204,9 @@ export function planNeeds(
       return true;
     }
     // Hungry with no reachable food, or forbidden to look: a human seat's settler falls through to
-    // work while hunger climbs to ONE and the starvation bite drains the pool until food appears.
-    if (seek) settleUnservedNeedForAi(world, e, 'hunger');
+    // work while hunger climbs to ONE and the starvation bite drains the pool until food appears. A
+    // settler holding its ground never looked, so nothing failed to settle.
+    if (walks) settleUnservedNeedForAi(world, e, 'hunger');
   }
 
   if (pressing(settler.fatigue, ordered, 'fatigue')) {
@@ -202,7 +217,7 @@ export function planNeeds(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    if (maySeek(world, e, ordered, 'fatigue')) {
+    if (maySeek(world, e, ordered, 'fatigue') && !alert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
       atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
@@ -223,7 +238,8 @@ export function planNeeds(
   const prays =
     pressing(settler.piety, ordered, 'piety') &&
     (ordered === 'piety' || jobNeedsReligion(ctx.content, settler.jobType)) &&
-    maySeek(world, e, ordered, 'piety');
+    maySeek(world, e, ordered, 'piety') &&
+    !alert();
   if (prays) {
     const temple = nearestTemple(
       targets.bands,

@@ -170,7 +170,19 @@ describe('sleep drive - walking aside before bedding down', () => {
     const ctx = ctxOf(sim);
     const settler = sim.world.get(e, Settler);
     const targets = collectTargets(sim.world, ctx, terrain);
-    return planNeeds(sim.world, ctx, terrain, e, settler, here, undefined, targets, null, spacing);
+    return planNeeds(
+      sim.world,
+      ctx,
+      terrain,
+      e,
+      settler,
+      here,
+      undefined,
+      targets,
+      null,
+      spacing,
+      () => false,
+    );
   }
 
   it('walks to a bed instead of sleeping on a doorstep', () => {

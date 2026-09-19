@@ -172,6 +172,11 @@ export const plContent = {
       title: 'Lot strzały',
       summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',
     },
+    'battle-weary': {
+      title: 'Zmęczona drużyna',
+      summary:
+        'Zmęczeni i głodni wojownicy walczą dalej: rezerwa czuwa obok walczącej linii, śpiący wartownik wstaje na widok napastnika, a odpoczywają dopiero po wygranej.',
+    },
     siege: {
       title: 'Oblężenie',
       summary:

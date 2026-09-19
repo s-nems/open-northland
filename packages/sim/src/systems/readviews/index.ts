@@ -87,6 +87,7 @@ export {
   isMilitaryMode,
   MILITARY_MODE,
   type MilitaryMode,
+  stanceFights,
   stanceMode,
 } from './stances.js';
 export {

@@ -60,3 +60,8 @@ export function stanceMode(
   const mode = s === undefined ? defaultStanceForJob(content, jobType) : s.mode;
   return mode === MILITARY_MODE.NONE ? MILITARY_MODE.IGNORE : mode;
 }
+
+/** Whether a unit under `mode` picks fights of its own: ATTACK and DEFEND do, IGNORE and FLEE never. */
+export function stanceFights(mode: MilitaryMode): boolean {
+  return mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND;
+}

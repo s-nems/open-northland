@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Building,
   Carrying,
+  CurrentAtomic,
   Engagement,
   Fleeing,
   Health,
@@ -9,9 +10,11 @@ import {
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   MoveGoal,
+  NeedOrder,
   Owner,
   PlayerOrder,
   Position,
+  Resting,
   Settler,
   type SettlerIdentity,
   Sheltering,
@@ -19,7 +22,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { drawsHouseBow, mannedShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
@@ -31,10 +34,12 @@ import {
   isHunterJob,
   MILITARY_MODE,
   type MilitaryMode,
+  stanceFights,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { entityNode } from '../spatial/nodes.js';
+import { STAND_TO_RADIUS_NODES, threatens } from './battle-alert.js';
 import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
@@ -74,7 +79,10 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
-  if (busyOrFelled(world, e)) return;
+  if (world.get(e, Health).hitpoints <= 0) return; // no swing from beyond the grave
+  // A sleeper on duty goes through the search below, which gets it up for a fight; any other atomic holds.
+  const dozing = asleepOnDuty(world, e);
+  if (!dozing && atomicHoldsSettler(world, e)) return;
   // `blockedUntil` rests an attack-move's aggression after a chase that could not route: it walks as a
   // plain move until then.
   const march = world.tryGet(e, PlayerOrder)?.attackMove;
@@ -93,6 +101,8 @@ export function engageCombatant(
     // only for a claim made after that pass, which reads as the first seat until the next tick.
     shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
+  // Only a unit that would pick the fight gets up for it; a passive or fleeing sleeper sleeps on.
+  if (dozing && !manning && (ordered || stance.mode === null || !stanceFights(stance.mode))) return;
 
   // A script-passive unit neither picks a fight nor runs from one: it stands and takes it, unless a
   // standing attack order names its target (`MISSIONS.md`, behaviour bit 2).
@@ -142,12 +152,22 @@ export function engageCombatant(
   const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, pass, e, here, attacker, spec);
   if (found === null) {
+    // Nothing to strike yet, but a fight near enough to stand to still gets it up. A guard's walk back to
+    // its anchor waits for the next pass.
+    if (dozing) {
+      if (!orderedToSleep(world, e) && fightNear(world, ctx, terrain, pass, e, here)) {
+        world.remove(e, CurrentAtomic);
+      }
+      return;
+    }
     restPreySearch(world, ctx, e, spec);
     breakOff(world, e, here, spec.defend);
     return;
   }
 
   const { target, dist } = found;
+  // Woken: the rest already slept keeps, the clip is cut where it stands.
+  if (dozing) world.remove(e, CurrentAtomic);
   holdPrey(world, e, spec, target);
   if (inReachAndStanding(dist, weapon, travelling && !arrivedAtGoal(world, e, terrain))) {
     swingAt(world, ctx, e, attacker, owned, target, weapon);
@@ -188,9 +208,36 @@ function wieldedWeaponTypeId(
   return drawsHouseBow(world, e) ? houseBow(ctx.content, attacker.tribe)?.typeId : undefined;
 }
 
-/** Mid-atomic (a swing or a need plays out), or felled and not yet reaped: no swing from beyond the grave. */
-function busyOrFelled(world: World, e: Entity): boolean {
-  return atomicHoldsSettler(world, e) || world.get(e, Health).hitpoints <= 0;
+/** Asleep in the open or on its tower, where an enemy can reach it; a settler asleep indoors elsewhere is
+ *  out of the fight. */
+function asleepOnDuty(world: World, e: Entity): boolean {
+  if (world.tryGet(e, CurrentAtomic)?.effect.kind !== 'sleep') return false;
+  return !world.has(e, Resting) || standsAtPost(world, e) !== null;
+}
+
+/** Whether a fight is on within {@link STAND_TO_RADIUS_NODES} of `here`. A sleeper with no target asks every
+ *  tick, so the threat half reads the tick's target index past its own player's members rather than
+ *  scanning the settlement it sleeps in. */
+function fightNear(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  e: Entity,
+  here: NodeId,
+): boolean {
+  const player = world.tryGet(e, Owner)?.player;
+  if (player === undefined) return false;
+  const { x, y } = terrain.coordsOf(here);
+  if (pass.engaged.near(player, x, y, STAND_TO_RADIUS_NODES)) return true;
+  if (!pass.index.othersWithin(player, x, y, STAND_TO_RADIUS_NODES)) return false;
+  const hostile = threatens(world, ctx, e, player);
+  return pass.index.nearest(x, y, 0, STAND_TO_RADIUS_NODES, hostile, player) !== null;
+}
+
+/** Whether the player sent `e` to bed: a fight near it no longer gets it up, only an enemy in its reach. */
+function orderedToSleep(world: World, e: Entity): boolean {
+  return world.tryGet(e, NeedOrder)?.need === 'fatigue';
 }
 
 /** A live player move order suppresses all auto-behavior en route, engage and flee alike; it dies on

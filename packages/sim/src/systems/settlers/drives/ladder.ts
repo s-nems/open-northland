@@ -2,6 +2,7 @@ import {
   Carrying,
   Chat,
   Female,
+  HuntFocus,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   ownerOf,
@@ -14,7 +15,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
-import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
+import { isFisherJob, MILITARY_MODE, stanceFights, stanceMode } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
@@ -81,9 +82,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
 
   // A pressing need on a fighting unit is answered from what it carries or what its post holds, never by
-  // walking to food, a bed or a temple and never by bedding down on the field. Under the alarm, which still
-  // outranks combat. Departure: the manual gives the need rule no combat exemption and carves a soldier out
-  // only for sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice.
+  // walking to food, a bed or a temple and never by lying down. Under the alarm, which still outranks
+  // combat. Departure: the manual gives the need rule no combat exemption and carves a soldier out only for
+  // sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice.
   if (combatOwnsFeet(world, e)) {
     answerNeedInPlace(world, ctx, e, settler);
     return;
@@ -102,7 +103,8 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // errand again for each bar.
   if (planHomeTopUp(world, ctx, e, settler)) return;
 
-  if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
+  const alert = (): boolean => holdsGround(pass, e, settler);
+  if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing, alert)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -
     // unless it is the bed the sleep rung just put it in, or a garrison that served its need on the
     // spot and is still holding the tower.
@@ -229,6 +231,19 @@ function planEconomy(
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);
   }
+}
+
+/**
+ * Whether an idle unit whose stance fights holds its ground against a pressing need because a fight is on
+ * inside the rest clearance, so a rear rank does not lie down while the front rank fights. A player's need
+ * order is obeyed regardless, and a hunter on a hunt is at work, not at war.
+ */
+function holdsGround(pass: PlannerPass, e: Entity, settler: SettlerView): boolean {
+  const { world, ctx } = pass;
+  if (orderedNeed(world, e) !== undefined || world.has(e, HuntFocus)) return false;
+  const player = ownerOf(world, e);
+  if (player === undefined || !stanceFights(stanceMode(world, ctx.content, e, settler.jobType))) return false;
+  return pass.threats.fightNear(e, player);
 }
 
 /** A script may pin a settler where it was left: it still works, shelters and answers its needs, but

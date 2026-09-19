@@ -173,6 +173,11 @@ export const enContent = {
       summary:
         'Four archers keep natural-scale arrows visible along horizontal, vertical and diagonal lanes.',
     },
+    'battle-weary': {
+      title: 'Weary warband',
+      summary:
+        'Tired, hungry soldiers fight on: the reserve stands to beside the front, a sleeping sentry gets up for a raider, and they rest only once the fight is won.',
+    },
     siege: {
       title: 'Siege',
       summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',

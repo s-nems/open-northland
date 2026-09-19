@@ -55,6 +55,7 @@ const ARROW_MUNITION = 1;
 const STARVING = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** Over the drive threshold, with hunger left at zero so the sleep rung is the one that fires. */
 const EXHAUSTED = fx.div(fx.fromInt(9), fx.fromInt(10));
+const SLEEP_ATOMIC = 8;
 /** Long enough for the walk to the door plus the step inside. */
 const WALK_TICKS = 120;
 
@@ -420,6 +421,27 @@ describe('the tower garrison - shooting from cover', () => {
     expect(tileOf(sim, garrison)).toEqual(post);
   });
 
+  it('wakes on its post to shoot a raider who comes into range', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, TOWER_X, ROW);
+    const garrison = settlerAt(sim, SOLDIER_JOB, 2, ROW);
+    manTheTower(sim, garrison, tower);
+    // A night's sleep far longer than the run, so only the raider can have ended it.
+    sim.world.add(garrison, CurrentAtomic, {
+      atomicId: SLEEP_ATOMIC,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 10_000,
+      effect: { kind: 'sleep' },
+      targetEntity: garrison,
+      targetTile: null,
+    });
+    const shotAt = standingTarget(sim, ENEMY_X);
+
+    expect(lowestHitpoints(sim, 60, shotAt)).toBeLessThan(TOUGH);
+    expect(sim.world.tryGet(garrison, Garrison)?.post).toBe(tower);
+  });
+
   it('never leaves the tower to chase - it holds the post whatever it can see', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, TOWER_X, ROW);
@@ -522,7 +544,7 @@ describe('the tower garrison - its needs', () => {
     expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // still on the wall
   });
 
-  it('sleeps on its post while ENGAGED, the fatigue twin of the ration rung', () => {
+  it('stays awake on its post while ENGAGED - a garrison under fire does not bed down', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
@@ -532,7 +554,7 @@ describe('the tower garrison - its needs', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(soldier, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
+    expect(sim.world.has(soldier, CurrentAtomic)).toBe(false);
     expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower);
   });
 
