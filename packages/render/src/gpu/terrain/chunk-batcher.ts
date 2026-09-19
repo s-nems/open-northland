@@ -29,10 +29,13 @@ export interface TerrainBatch {
    * attributes, so a land map pushes zeros; empty exactly when {@link brightnessUVs} is.
    */
   readonly waves: number[];
+  /** Per-vertex water shading pair (the node cell's water fraction, its deep-water fraction), 2 per
+   *  position pair, pushed in lockstep with {@link waves}. */
+  readonly water: number[];
 }
 
 export function emptyBatch(): TerrainBatch {
-  return { nodes: [], positions: [], uvs: [], indices: [], brightnessUVs: [], waves: [] };
+  return { nodes: [], positions: [], uvs: [], indices: [], brightnessUVs: [], waves: [], water: [] };
 }
 
 /**
@@ -61,6 +64,7 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
   if (batch.brightnessUVs.length > 0) {
     geometry.addAttribute('aBrightnessUV', { buffer: new Float32Array(batch.brightnessUVs) });
     geometry.addAttribute('aWave', { buffer: new Float32Array(batch.waves) });
+    geometry.addAttribute('aWater', { buffer: new Float32Array(batch.water) });
   }
   return geometry;
 }

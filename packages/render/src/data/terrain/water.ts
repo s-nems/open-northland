@@ -3,37 +3,61 @@ import { clampedCellAt } from './cell-field.js';
 import { nodeCell } from './tessellation.js';
 
 /**
- * The water-surface wave the ground shader bobs by - an Open Northland enhancement; the original's water
- * is a static ground texture plus animated foam decor.
+ * The water surface the ground shader animates and shades - an Open Northland enhancement; the
+ * original's water is a static ground texture plus animated foam decor.
  *
  * The mask keys off the map's own ground-pattern names (`empa`/`empb` → `eapd`), the one signal
  * authoritative on every textured map. Not the `lmms` lane: probed on the owned copies it carries the
  * same bands across plain meadow on waterless maps, so keying off it would bob grass.
  */
 
-/** A terrain-mesh node's wave amplitude factor in [0, 1] (0 = still ground). */
-export type NodeWaveFn = (hx: number, hy: number) => number;
+/** A terrain-mesh node's water value in [0, 1]. */
+export type WaterNodeFn = (hx: number, hy: number) => number;
+
+/**
+ * The per-node water inputs of a map's ground mesh: `wave` is the swell amplitude factor (0 = still
+ * ground), `surface` the node cell's water fraction (the shading mask), `deep` its fraction drawn with
+ * a deep-water pattern (0 on shallows and land).
+ */
+export interface WaterField {
+  readonly wave: WaterNodeFn;
+  readonly surface: WaterNodeFn;
+  readonly deep: WaterNodeFn;
+}
+
+const STILL: WaterNodeFn = () => 0;
 
 /** Shared so land maps allocate nothing. */
-export const NO_WAVE: NodeWaveFn = () => 0;
+export const NO_WATER: WaterField = { wave: STILL, surface: STILL, deep: STILL };
 
 /** A ground pattern drawing water surface, by `EditName` ('water 01', 'block water …',
  *  'block water shallow …' across the owned corpus). */
 const WATER_PATTERN_NAME = /water/i;
 
-export function makeWaveField(ground: SceneGround | undefined, width: number, height: number): NodeWaveFn {
-  if (ground === undefined || width <= 0 || height <= 0) return NO_WAVE;
+/** The authored shallow-water family (`EditGroups` 'water shallow' / 'water bright'): the map painter's
+ *  own depth split, drawn with its lighter texture. Every other water pattern counts as deep. */
+const SHALLOW_PATTERN_NAME = /shallow/i;
+
+export function makeWaterField(ground: SceneGround | undefined, width: number, height: number): WaterField {
+  if (ground === undefined || width <= 0 || height <= 0) return NO_WATER;
   const waterPattern = ground.patterns.map((name) => (WATER_PATTERN_NAME.test(name) ? 1 : 0));
-  // Per-cell water fraction: 1 = both triangles water, 0.5 = one, 0 = land.
+  const deepPattern = ground.patterns.map((name, i) =>
+    waterPattern[i] === 1 && !SHALLOW_PATTERN_NAME.test(name) ? 1 : 0,
+  );
+  // Per-cell fractions over the cell's two triangles: 1 = both, 0.5 = one, 0 = neither.
   const cells = width * height;
   const water = new Float32Array(cells);
+  const deep = new Float32Array(cells);
   let anyWater = false;
   for (let i = 0; i < cells; i++) {
-    const w = ((waterPattern[ground.a[i] ?? -1] ?? 0) + (waterPattern[ground.b[i] ?? -1] ?? 0)) / 2;
+    const a = ground.a[i] ?? -1;
+    const b = ground.b[i] ?? -1;
+    const w = ((waterPattern[a] ?? 0) + (waterPattern[b] ?? 0)) / 2;
     water[i] = w;
+    deep[i] = ((deepPattern[a] ?? 0) + (deepPattern[b] ?? 0)) / 2;
     if (w > 0) anyWater = true;
   }
-  if (!anyWater) return NO_WAVE; // a dictionary may name water no cell draws - still a land map
+  if (!anyWater) return NO_WATER; // a dictionary may name water no cell draws - still a land map
   const at = clampedCellAt(water, width, height);
   // Node amplitude = the minimum water fraction over the node's 3×3 cell neighbourhood, so any node a
   // land triangle can reach stays exactly still and the coastline never warps. The shader's varying
@@ -51,10 +75,15 @@ export function makeWaveField(ground: SceneGround | undefined, width: number, he
       amp[row * width + col] = min;
     }
   }
-  return (hx: number, hy: number): number => {
-    const [col, row] = nodeCell(hx, hy);
-    const c = col < 0 ? 0 : col >= width ? width - 1 : col;
-    const r = row < 0 ? 0 : row >= height ? height - 1 : row;
-    return amp[r * width + c] ?? 0;
-  };
+  // Surface and depth take the node's own cell, like the brightness lane: the varying then fades each
+  // across the coast triangle instead of stepping at the node.
+  const nodeValue =
+    (values: Float32Array): WaterNodeFn =>
+    (hx, hy) => {
+      const [col, row] = nodeCell(hx, hy);
+      const c = col < 0 ? 0 : col >= width ? width - 1 : col;
+      const r = row < 0 ? 0 : row >= height ? height - 1 : row;
+      return values[r * width + c] ?? 0;
+    };
+  return { wave: nodeValue(amp), surface: nodeValue(water), deep: nodeValue(deep) };
 }

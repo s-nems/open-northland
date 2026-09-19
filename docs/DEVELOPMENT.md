@@ -177,10 +177,12 @@ this experimental branch. `polish=off` restores the previous renderer; `polish=o
 `polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of these
 switches saves the effective set and clears the URL override. Use the same map, camera and zoom for
 A/B review, including ×2 and zoom-out while panning. Motion interpolates fish, enriches water and
-smooths the breeze on own vegetation. Original humans and animals keep their tick anchors: the
-original engine moves a walker only together with its walk frame, and moving the body inside a frame
-hold would drag the planted foot. Original work/tree/building clips retain their authored images and
-durations: a fractional clock does not invent additional frames.
+smooths the breeze on own vegetation. The water gains crossing swells, lighter shallows and darker
+deep water (the map's own two pattern families) and a glint band drifting over the deep water.
+Original humans and animals keep their tick anchors: the original engine moves a walker only together
+with its walk frame, and moving the body inside a frame hold would drag the planted foot. Original
+work/tree/building clips retain their authored images and durations: a fractional clock does not
+invent additional frames.
 Own-art motion interpolation remains enabled according to its authored binding when the switch is off.
 Projectiles, damage smoke, fades and building collapse already use interpolated presentation clocks.
 Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back to original shadows when

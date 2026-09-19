@@ -52,7 +52,8 @@ function pushTriangle(
   if (lane.brightnessTex !== undefined) {
     for (const [hx, hy] of nodes) {
       batch.brightnessUVs.push(...nodeLaneUV(hx, hy, terrain.width, terrain.height, lane.laneTexWidth));
-      batch.waves.push(lane.wave(hx, hy));
+      batch.waves.push(lane.water.wave(hx, hy));
+      batch.water.push(lane.water.surface(hx, hy), lane.water.deep(hx, hy));
     }
   }
   batch.indices.push(base, base + 1, base + 2);

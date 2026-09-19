@@ -86,9 +86,28 @@ const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
 const WAVE_SHIMMER = 0.08;
 /** The shimmer's own angular speed - off the swell's so glints don't pulse in lockstep. */
 const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
-/** The waves' common period (lcm of 30, 21, 42 and 35 ticks): the clock wraps modulo this, so the f32
- *  `uWave.x` never grows into `sin` precision loss over a long session. */
+/** The waves' common period (lcm of 30, 21, 42 and 35 ticks; the glint is defined to take one pass per
+ *  period): the clock wraps modulo this, so the f32 `uWave.x` never grows into `sin` precision loss
+ *  over a long session. */
 export const WAVE_TIME_PERIOD_TICKS = 210;
+
+// Water depth shading. The maps split water into the painter's shallow and deep pattern families, each
+// with its own texture (data/terrain/water.ts); the amounts pushing them further apart are an
+// approximation tuned by eye. All three multiply the lane brightness only.
+/** Brightness gain on shallow water. */
+const WATER_SHALLOW_LIGHTEN = 0.06;
+/** Brightness loss on deep water. */
+const WATER_DEEP_DARKEN = 0.08;
+/** Peak brightness gain of the glint band crossing deep water. */
+const WATER_GLINT = 0.1;
+/** One glint pass every {@link WAVE_TIME_PERIOD_TICKS} (17.5 s at the 12 Hz sim). */
+const WATER_GLINT_RADIANS_PER_TICK = (2 * Math.PI) / WAVE_TIME_PERIOD_TICKS;
+/** Spatial wavelength of the glint band, world px along its travel. */
+const WATER_GLINT_PHASE_PER_PX = (2 * Math.PI) / 640;
+/** The band's travel slants off the swell's diagonal so the two never align. */
+const WATER_GLINT_SLANT = 0.6;
+/** Exponent narrowing the sine into a band about a seventh of the wavelength wide. */
+const WATER_GLINT_SHARPNESS = 6;
 
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
@@ -98,6 +117,7 @@ const FIELD_VERTEX = `#version 300 es
   in vec2 aBrightnessUV;
   in vec3 aVertexColor;
   in float aWave;
+  in vec2 aWater;
 
   out vec2 vUV;
   out vec2 vBrightnessUV;
@@ -105,6 +125,8 @@ const FIELD_VERTEX = `#version 300 es
   out float vWave;
   out float vWavePhase;
   out float vCrossWavePhase;
+  out vec2 vWater;
+  out float vGlintPhase;
   uniform vec2 uWave; // x = animation time (sim ticks), y = master amplitude scale (0 = still)
   uniform float uEnvironmentMotion;
   ${matrixBlock}
@@ -127,6 +149,8 @@ const FIELD_VERTEX = `#version 300 es
     vWave = aWave;
     vWavePhase = phase;
     vCrossWavePhase = crossPhase;
+    vWater = aWater;
+    vGlintPhase = (aPosition.x * ${WATER_GLINT_SLANT.toFixed(4)} + aPosition.y) * ${WATER_GLINT_PHASE_PER_PX.toFixed(8)};
   }
 `;
 
@@ -140,6 +164,8 @@ const FIELD_FRAGMENT = `#version 300 es
   in float vWave;
   in float vWavePhase;
   in float vCrossWavePhase;
+  in vec2 vWater;
+  in float vGlintPhase;
 
   uniform sampler2D uTexture;
   uniform sampler2D uBrightnessTex;
@@ -161,6 +187,16 @@ const FIELD_FRAGMENT = `#version 300 es
     float polishedShimmer = 0.55 * shimmer + 0.3 * crossGlint + 0.15 * shimmer * crossGlint;
     lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
       * mix(shimmer, polishedShimmer, uEnvironmentMotion);
+    // Water depth: shallows read lighter, deep water darker, and a narrow glint band drifts across the
+    // deep water. vWater = (water fraction, deep fraction), zero at land nodes and fading out across
+    // the coast triangle. Gated with the motion enhancement, so the baseline renderer's water is
+    // unchanged.
+    float shallow = vWater.x - vWater.y;
+    float deep = vWater.y;
+    float glint = pow(max(sin(uWave.x * ${WATER_GLINT_RADIANS_PER_TICK.toFixed(8)} + vGlintPhase), 0.0),
+      ${WATER_GLINT_SHARPNESS.toFixed(1)});
+    lane *= 1.0 + uEnvironmentMotion * (${WATER_SHALLOW_LIGHTEN.toFixed(4)} * shallow
+      - ${WATER_DEEP_DARKEN.toFixed(4)} * deep + ${WATER_GLINT.toFixed(4)} * uWave.y * deep * glint);
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
   }

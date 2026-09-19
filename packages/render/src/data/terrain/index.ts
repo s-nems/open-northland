@@ -42,4 +42,4 @@ export {
   texturePageKey,
   triangleUVs,
 } from './uv.js';
-export { makeWaveField, NO_WAVE, type NodeWaveFn } from './water.js';
+export { makeWaterField, NO_WATER, type WaterField, type WaterNodeFn } from './water.js';

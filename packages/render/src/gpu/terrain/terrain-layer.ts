@@ -7,8 +7,8 @@ import {
   type ElevationField,
   makeBrightnessField,
   makeElevationField,
-  makeWaveField,
-  NO_WAVE,
+  makeWaterField,
+  NO_WATER,
 } from '../../data/terrain/index.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { makeWaveUniforms, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
@@ -99,15 +99,15 @@ export class TerrainLayer {
     }
     // Water-wave amplitudes ride the shaded mesh path only, so a water map without a shading lane
     // draws stock meshes and stays still. The animate() gate needs both, not just the wave field.
-    const wave = makeWaveField(terrain.ground, terrain.width, terrain.height);
-    this.hasWater = wave !== NO_WAVE && this.brightnessTex !== undefined;
+    const water = makeWaterField(terrain.ground, terrain.width, terrain.height);
+    this.hasWater = water !== NO_WATER && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
     this.waveGroup.uniforms.uEnhancedSampling = this.enhancedSampling ? 1 : 0;
     this.waveGroup.uniforms.uEnvironmentMotion = this.environmentMotion ? 1 : 0;
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
       laneTexWidth: this.laneTexWidth,
-      wave,
+      water,
       waveUniforms: this.waveGroup,
     };
     this.chunks =

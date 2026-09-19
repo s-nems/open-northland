@@ -48,6 +48,36 @@ describe('terrain footprint sampling', () => {
     });
   }
 
+  it('pushes the water shading pair in lockstep with the wave amplitude on a ground-lane map', () => {
+    const source = new BufferImageSource({ resource: new Uint8Array(64 * 64 * 4), width: 64, height: 64 });
+    const tile = { pageKey: 'ground', coordsA: [0, 0, 63, 63, 0, 63], coordsB: [0, 0, 63, 0, 63, 63] };
+    const textures = {
+      pages: new Map([['ground', source]]),
+      cellFor: () => undefined,
+      groundFor: () => tile,
+    };
+    // Two cells on one page: meadow, then deep water. Vertices come out triangle by triangle, cell A
+    // then cell B, so vertex 0 sits on the meadow cell's node and vertex 6 on the water cell's.
+    const terrain = {
+      width: 2,
+      height: 1,
+      typeIds: [0, 0],
+      brightness: [127, 127],
+      ground: { patterns: ['block meadow 00', 'block water 01'], a: [0, 1], b: [0, 1] },
+    };
+    const layer = new TerrainLayer();
+    layer.set(terrain, textures);
+    const geometry = meshOf(layer).geometry;
+    const waves = geometry.getBuffer('aWave').data;
+    const water = geometry.getBuffer('aWater').data;
+    expect(waves).toHaveLength(12);
+    expect(water).toHaveLength(24);
+    expect(Array.from(water.slice(0, 2))).toEqual([0, 0]);
+    expect(Array.from(water.slice(12, 14))).toEqual([1, 1]);
+    layer.destroy();
+    source.destroy();
+  });
+
   it('leaves mipmapped materials on hardware sampling', () => {
     const source = new BufferImageSource({
       resource: new Uint8Array(16),
