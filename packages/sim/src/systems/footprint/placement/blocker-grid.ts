@@ -34,9 +34,9 @@ interface StampedSlots {
   readonly exclusion: readonly number[];
 }
 
-/** The scripted landscape layer the grid currently holds: the blocks view it last applied (a script
- *  topology edit mints the next one, naming the cells that changed), plus the forbidden nodes, whose
- *  Map is edited in place and so is captured against its own revision. */
+/** The scripted landscape layer the grid currently holds: the blocks view it last applied (a read
+ *  after script edits mints the next one, naming the cells they changed), plus the forbidden nodes,
+ *  whose Map is edited in place and so is captured against its own revision. */
 interface LandscapeLayer {
   readonly blocks: LandscapeBlocks;
   readonly forbidden: readonly number[];
@@ -87,14 +87,24 @@ function applyLandscapeLayer(grid: PlacementGrid, layer: LandscapeLayer, delta: 
   addCounts(grid.obstacle, layer.forbidden, delta);
 }
 
-/** Replay the landscape views minted after `held`, cell by cell, so a script edit costs its footprint. */
-function applyLandscapeChanges(grid: PlacementGrid, held: LandscapeBlocks): void {
-  for (let view = held.next; view !== undefined; view = view.next) {
+/** Replay the landscape views minted after `held` up to `current`, cell by cell, so a script edit costs
+ *  its footprint. False when the chain no longer reaches `current`: the layer was re-keyed or the
+ *  views between were let go, and only a full re-read can tell what changed. */
+function applyLandscapeChanges(
+  grid: PlacementGrid,
+  held: LandscapeBlocks,
+  current: LandscapeBlocks,
+): boolean {
+  let view = held.next;
+  while (view !== undefined) {
     for (const change of view.changes) {
       const counts = change.channel === 'walk' ? grid.obstacle : grid.exclusion;
       addCounts(counts, [change.node], change.entered ? STAMP : WITHDRAW);
     }
+    if (view === current) return true;
+    view = view.next;
   }
+  return false;
 }
 
 function liveLandscapeLayer(world: World, terrain: TerrainGraph): LandscapeLayer {
@@ -154,7 +164,7 @@ function catchUp(world: World, state: IncrementalGrid): boolean {
   if (landscapeLayerFresh(world, state)) return true;
   const held = state.landscape;
   const blocks = landscapeBlocks(world, state.terrain);
-  if (blocks !== held.blocks) applyLandscapeChanges(state.grid, held.blocks);
+  if (blocks !== held.blocks && !applyLandscapeChanges(state.grid, held.blocks, blocks)) return false;
   const edits = landscapeEditState(world);
   let forbidden = held.forbidden;
   if (edits.forbiddenRevision !== held.forbiddenRevision) {

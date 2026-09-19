@@ -66,6 +66,31 @@ describe('script landscape state and blockers', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
+  it('catches the grid up over edits it never read, and re-reads once the chain is let go', () => {
+    const sim = fresh();
+    const terrain = terrainOf(sim);
+    const ctx = ctxOf(sim);
+    const probe = () => placementProbe(sim.world, sim.content, terrain, HUT);
+    expect(probe().canPlace(10, 8)).toBe(false);
+    // Three edits with no read of the layer between them: one catch-up carries all of them.
+    removeLandscapes(sim.world, terrain, POINT, 0);
+    expect(setLandscape(sim.world, ctx, { hx: 3, hy: 3 }, 1, 0)).toBe(true);
+    expect(setLandscape(sim.world, ctx, { hx: 12, hy: 12 }, 1, 0)).toBe(true);
+    expect(probe().canPlace(10, 8)).toBe(true);
+    expect(probe().canPlace(5, 3)).toBe(false);
+    expect(placementGridRebuilds(sim.world)).toBe(1);
+    expect(sim.world.verifyCaches()).toEqual([]);
+    // Far more edits than the layer keeps linked: the grid's chain breaks and it re-reads the layer.
+    for (let i = 0; i < 300; i++) {
+      removeLandscapes(sim.world, terrain, { hx: 12, hy: 12 }, 0);
+      expect(setLandscape(sim.world, ctx, { hx: 12, hy: 12 }, 1, 0)).toBe(true);
+      landscapeBlocks(sim.world, terrain);
+    }
+    expect(probe().canPlace(5, 3)).toBe(false);
+    expect(placementGridRebuilds(sim.world)).toBe(2);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
   it('finds placements by area in file order and the script additions after them', () => {
     const sim = fresh();
     const terrain = terrainOf(sim);
@@ -168,6 +193,14 @@ describe('script landscape state and blockers', () => {
         terrainOf(restored).nodeAt(8, 8),
       ),
     ).toBe(false);
+    // The restored world's layer and grid start from the saved edits and keep taking new ones.
+    const restoredTerrain = terrainOf(restored);
+    const probe = () => placementProbe(restored.world, restored.content, restoredTerrain, HUT);
+    expect(probe().canPlace(5, 3)).toBe(true);
+    expect(setLandscape(restored.world, ctxOf(restored), { hx: 3, hy: 3 }, 1, 0)).toBe(true);
+    expect(probe().canPlace(5, 3)).toBe(false);
+    expect(placementGridRebuilds(restored.world)).toBe(1);
+    expect(restored.world.verifyCaches()).toEqual([]);
   });
 
   it('never resurrects a resource-backed initial placement after its resource is depleted', () => {

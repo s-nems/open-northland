@@ -8,12 +8,10 @@ import type {
   ScriptLandscapeType,
   TerrainGraph,
 } from '../../nav/terrain/index.js';
+import { sameCells } from '../footprint/geometry.js';
 
-/**
- * The live landscape as a script sees it: the map's authored placements minus the ones a script removed
- * or a resource depleted, plus the script's own additions. A read costs the placements it touches, not
- * the map: a script flipping one object every pass (a pressure plate) is the common case.
- */
+// The live landscape as a script sees it: the map's authored placements minus the ones a script removed
+// or a resource depleted, plus the script's own additions, every read costing the placements it touches.
 
 /** The map's authored placements, indexed once per terrain: the input is immutable. */
 interface AuthoredLandscapes {
@@ -173,10 +171,15 @@ export interface LandscapeBlocks {
   readonly build: ReadonlySet<NodeId>;
   /** The cells that entered or left the sets since the previous view. */
   readonly changes: readonly LandscapeBlockChange[];
-  /** The view the next topology edit minted, so a holder of an older one replays every change since
-   *  rather than re-reading the whole layer. */
+  /** The view minted after this one, so a holder replays every change since rather than re-reading
+   *  the layer. Only the last {@link RETAINED_VIEWS} stay linked: a holder whose chain no longer
+   *  reaches the current view re-reads. */
   next?: LandscapeBlocks;
 }
+
+/** Views kept linked behind the current one; a placement grid left unconsulted for longer re-reads
+ *  the layer once rather than growing the chain for the rest of the session. */
+const RETAINED_VIEWS = 256;
 
 /**
  * The counted cells behind {@link landscapeBlocks}, kept in step with the edit state one placement at
@@ -194,6 +197,8 @@ interface BlockCounts {
   /** The edit revision the counts describe, and the view minted for it. */
   revision: number;
   view: LandscapeBlocks;
+  /** The linked views behind the current one, oldest first. */
+  readonly retained: LandscapeBlocks[];
 }
 const blockCounts = new WeakMap<World, BlockCounts>();
 
@@ -248,13 +253,60 @@ function freshCounts(world: World, terrain: TerrainGraph): BlockCounts {
     stamped: new Map(),
     revision: -1,
     view: { terrain, walk: walkCells, build: buildCells, changes: [] },
+    retained: [],
   };
   const authored = authoredLandscapes(terrain);
   for (const placement of terrain.landscapes?.placements ?? []) {
     if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, 1, null);
   }
   blockCounts.set(world, counts);
+  world.registerCacheVerifier('landscapeBlocks', () => verifyBlockCounts(world, terrain));
   return counts;
+}
+
+/** The sets read straight from the map and the edit state, the way a cold cache would build them. */
+function deriveBlockCells(world: World, terrain: TerrainGraph): { walk: Set<NodeId>; build: Set<NodeId> } {
+  const state = landscapeEditState(world);
+  const removed = new Set(state.removed);
+  const types = landscapeTypes(terrain);
+  const walk = new Set<NodeId>();
+  const build = new Set<NodeId>();
+  for (const p of [...(terrain.landscapes?.placements ?? []), ...state.added]) {
+    if (!countsBlocks(p) || removed.has(p.id)) continue;
+    const type = types.get(p.typeId);
+    for (const [cells, target] of [
+      [type?.walk ?? [], walk],
+      [type?.build ?? [], build],
+    ] as const) {
+      for (const cell of cells) {
+        const hx = p.hx + footprintCellDx(p.hy, cell);
+        const hy = p.hy + cell.dy;
+        if (terrain.inBounds(hx, hy)) target.add(terrain.nodeAt(hx, hy));
+      }
+    }
+  }
+  return { walk, build };
+}
+
+/** The {@link blockCounts} coherence verifier (`verifyCaches`): while the counts claim the live
+ *  revision, a cold derivation must agree cell for cell. */
+function verifyBlockCounts(world: World, terrain: TerrainGraph): string[] {
+  const counts = blockCounts.get(world);
+  if (counts === undefined || counts.terrain !== terrain) return [];
+  if (counts.revision !== landscapeEditState(world).topologyRevision) return []; // a pending catch-up
+  const fresh = deriveBlockCells(world, terrain);
+  const findings: string[] = [];
+  for (const [channel, held, derived] of [
+    ['walk', counts.walkCells, fresh.walk],
+    ['build', counts.buildCells, fresh.build],
+  ] as const) {
+    if (!sameCells(held, derived)) {
+      findings.push(
+        `landscapeBlocks ${channel} holds ${held.size} cells but re-derived ${derived.size} - stale landscape layer`,
+      );
+    }
+  }
+  return findings;
 }
 
 /** Apply what the edit state holds beyond the counts: the ids removed and the placements added or
@@ -292,6 +344,11 @@ function catchUpCounts(world: World, counts: BlockCounts): void {
     changes,
   };
   counts.view.next = view;
+  counts.retained.push(counts.view);
+  if (counts.retained.length > RETAINED_VIEWS) {
+    const dropped = counts.retained.shift();
+    if (dropped !== undefined) delete dropped.next;
+  }
   counts.view = view;
 }
 

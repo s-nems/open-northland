@@ -7,6 +7,7 @@ import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfce
 import type {
   LandscapeRemovalGroup,
   NodeId,
+  ResourceSpec,
   ScriptLandscapeType,
   TerrainGraph,
 } from '../../nav/terrain/index.js';
@@ -69,6 +70,22 @@ export function removeLandscapes(
   return freed;
 }
 
+/** What stands in for a placement of a type: the one entity kind its backing creates, or none for
+ *  decor and a bare fruit bush. One reading shared by the backing, its walk cells and the layer flag,
+ *  so the three cannot disagree on a type. */
+type PlacementBacking =
+  | { readonly kind: 'chest'; readonly chest: NonNullable<ScriptLandscapeType['chest']> }
+  | { readonly kind: 'good'; readonly goodId: string }
+  | { readonly kind: 'resource'; readonly resource: ResourceSpec }
+  | { readonly kind: 'none' };
+
+function placementBackingOf(type: ScriptLandscapeType): PlacementBacking {
+  if (type.chest !== undefined) return { kind: 'chest', chest: type.chest };
+  if (type.good !== undefined) return { kind: 'good', goodId: type.good.goodId };
+  if (type.resource !== undefined) return { kind: 'resource', resource: type.resource };
+  return { kind: 'none' };
+}
+
 /**
  * The live entity standing in for a scripted placement of `type`: a chest, a goods heap or a resource
  * node, each created before the old object is removed so a rejected replacement leaves the world as it
@@ -84,41 +101,53 @@ function createPlacementBacking(
   landscapeId: number,
 ): Entity | null | undefined {
   const at = { x: point.hx, y: point.hy, landscapeId };
-  if (type.chest !== undefined) {
-    return createChest(world, ctx.content, { ...type.chest, contents: level, ...at });
+  const backing = placementBackingOf(type);
+  switch (backing.kind) {
+    case 'chest':
+      return createChest(world, ctx.content, { ...backing.chest, contents: level, ...at });
+    case 'good': {
+      const goodType = contentIndex(ctx.content).goodTypeBySlug.get(backing.goodId);
+      if (goodType === undefined) return null;
+      return createGroundGoods(world, { goodType, amount: level, ...at });
+    }
+    case 'resource': {
+      const spec = backing.resource;
+      const deposit = spec.deposit;
+      const initial = deposit?.initial ?? spec.remaining;
+      const remaining =
+        deposit !== undefined && deposit.levels > 0
+          ? Math.min(initial, Math.max(1, Math.floor((initial * level) / deposit.levels)))
+          : spec.remaining;
+      const resource = createResourceNode(world, ctx.content, { ...spec, remaining, ...at });
+      if (resource === null) return null;
+      const footprint = world.get(resource, ResourceFootprint);
+      stampResourceFootprintData(world, resource, {
+        walk: type.walk.map((cell) => ({ ...cell })),
+        build: type.build.map((cell) => ({ ...cell })),
+        work: footprint.work.map((cell) => ({ ...cell })),
+        ...(footprint.sourceGfxIndex !== undefined ? { sourceGfxIndex: footprint.sourceGfxIndex } : {}),
+      });
+      return resource;
+    }
+    case 'none':
+      return undefined;
   }
-  if (type.good !== undefined) {
-    const goodType = contentIndex(ctx.content).goodTypeBySlug.get(type.good.goodId);
-    if (goodType === undefined) return null;
-    return createGroundGoods(world, { goodType, amount: level, ...at });
-  }
-  if (type.resource === undefined) return undefined;
-  const deposit = type.resource.deposit;
-  const initial = deposit?.initial ?? type.resource.remaining;
-  const remaining =
-    deposit !== undefined && deposit.levels > 0
-      ? Math.min(initial, Math.max(1, Math.floor((initial * level) / deposit.levels)))
-      : type.resource.remaining;
-  const resource = createResourceNode(world, ctx.content, { ...type.resource, remaining, ...at });
-  if (resource === null) return null;
-  const footprint = world.get(resource, ResourceFootprint);
-  stampResourceFootprintData(world, resource, {
-    walk: type.walk.map((cell) => ({ ...cell })),
-    build: type.build.map((cell) => ({ ...cell })),
-    work: footprint.work.map((cell) => ({ ...cell })),
-    ...(footprint.sourceGfxIndex !== undefined ? { sourceGfxIndex: footprint.sourceGfxIndex } : {}),
-  });
-  return resource;
 }
 
-/** The cells a placement of `type` will block for walking, as {@link createPlacementBacking} and the
- *  landscape layer stamp them: a chest carries its record's footprint, a goods heap and a bush none. */
+/** The cells a placement of `type` blocks for walking, as its backing or the landscape layer stamps
+ *  them: a chest its record's footprint, a goods heap and a bush none, the rest the type's own. */
 export function placementWalkCells(content: ContentSet, type: ScriptLandscapeType): readonly FootprintCell[] {
-  if (type.chest !== undefined)
-    return chestFootprint(chestRecord(content, type.chest.kind, type.chest.gfxIndex)).walk;
-  if (type.good !== undefined) return [];
-  if (type.resource === undefined && type.bushGfxIndex !== undefined) return [];
-  return type.walk;
+  const backing = placementBackingOf(type);
+  switch (backing.kind) {
+    case 'chest':
+      return chestFootprint(chestRecord(content, backing.chest.kind, backing.chest.gfxIndex)).walk;
+    case 'good':
+      return [];
+    case 'resource':
+      return type.walk;
+    case 'none':
+      return type.bushGfxIndex !== undefined ? [] : type.walk;
+  }
 }
 
 export function setLandscape(
@@ -150,7 +179,9 @@ export function setLandscape(
       hx: point.hx,
       hy: point.hy,
       level,
-      ...(resource !== undefined || type.bushGfxIndex !== undefined ? { resourceBacked: true } : {}),
+      ...(placementBackingOf(type).kind !== 'none' || type.bushGfxIndex !== undefined
+        ? { resourceBacked: true }
+        : {}),
     });
   });
   return true;
