@@ -59,7 +59,7 @@ interface Arms {
 }
 
 const targetsOf = (arms: Arms): ClickHitDeps['targets'] => ({
-  owned: () => [...(arms.owned ?? [])],
+  owned: (kind) => (arms.owned ?? []).filter((t) => kind === undefined || t.kind === kind),
   flags: () => [...(arms.flags ?? [])],
   signposts: () => [...(arms.signposts ?? [])],
 });
@@ -72,6 +72,13 @@ const hitsFor = (arms: Arms): ReturnType<typeof createClickHits> =>
     observer: arms.observer ?? false,
     ...(arms.elevation !== undefined ? { elevation: arms.elevation } : {}),
   });
+
+/** A feet row further down the screen, drawn over {@link under}'s row yet still under the click. */
+const DEPTH_STEP = 8;
+const frontOf = (ref: number, kind: NonNullable<Pickable['kind']>): Pickable => ({
+  ...under(ref, kind),
+  y: CLICK.y + DEPTH_STEP,
+});
 
 const OWNED_ARM = [under(OWNED_UNIT, 'settler')];
 const FLAG_ARM = [under(FLAG_GATHERER, 'settler')];
@@ -104,9 +111,19 @@ describe('click hit priority', () => {
     expect(selected({ ...ALL, badges: [flagOnlyDoor()] })).toBe(GARRISON_TOWER);
   });
 
-  it('gives a drop-off flag priority over an overlapping unit or building', () => {
-    expect(selected({ ...ALL, badges: [] })).toBe(FLAG_GATHERER);
+  it('gives a drop-off flag the click over a building, even one drawn in front of it', () => {
     expect(selected({ flags: FLAG_ARM, owned: [under(OWNED_BUILDING, 'building')] })).toBe(FLAG_GATHERER);
+    expect(selected({ flags: FLAG_ARM, owned: [frontOf(OWNED_BUILDING, 'building')] })).toBe(FLAG_GATHERER);
+  });
+
+  it('ranks a drop-off flag with a settler, so the one drawn in front takes the click', () => {
+    const settlerInFront = frontOf(OWNED_UNIT, 'settler');
+    const settlerBehind = { ...settlerInFront, y: CLICK.y - DEPTH_STEP };
+    expect(selected({ flags: FLAG_ARM, owned: [settlerInFront] })).toBe(OWNED_UNIT);
+    expect(selected({ flags: FLAG_ARM, owned: [settlerBehind] })).toBe(FLAG_GATHERER);
+    // A building drawn over both leaves the settler-or-flag choice alone.
+    const buildingOverBoth = { ...under(OWNED_BUILDING, 'building'), y: CLICK.y + 2 * DEPTH_STEP };
+    expect(selected({ flags: FLAG_ARM, owned: [settlerInFront, buildingOverBoth] })).toBe(OWNED_UNIT);
   });
 
   it('falls to the unit under the cursor when the door carries no marker or drop-off flag', () => {

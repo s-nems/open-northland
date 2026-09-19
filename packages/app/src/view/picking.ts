@@ -152,23 +152,24 @@ function boxFallbackHit(t: Pickable, wx: number, wy: number): boolean {
   return Math.abs(wx - t.x) <= box.halfW && wy >= t.y - box.up && wy <= t.y + box.down;
 }
 
-/**
- * The topmost target under a world-px point, or `null` if none. Frontmost wins (largest screen `y` is
- * drawn last), tie-broken by the higher entity id, so a click resolves to what a human sees on top.
- */
-export function pickTopAt(targets: readonly Pickable[], wx: number, wy: number): number | null {
-  let best: number | null = null;
-  let bestY = Number.NEGATIVE_INFINITY;
-  let bestRef = Number.NEGATIVE_INFINITY;
+/** Whether `a` is drawn over `b`: the larger screen `y` is drawn last, tie-broken by the higher entity id. */
+export function drawnInFront(a: Pickable, b: Pickable): boolean {
+  return a.y > b.y || (a.y === b.y && a.ref > b.ref);
+}
+
+/** The frontmost target under a world-px point, or `null` if none, so a click resolves to what a human
+ *  sees on top. */
+export function topTargetAt(targets: readonly Pickable[], wx: number, wy: number): Pickable | null {
+  let best: Pickable | null = null;
   for (const t of targets) {
     if (!hits(t, wx, wy)) continue;
-    if (t.y > bestY || (t.y === bestY && t.ref > bestRef)) {
-      best = t.ref;
-      bestY = t.y;
-      bestRef = t.ref;
-    }
+    if (best === null || drawnInFront(t, best)) best = t;
   }
   return best;
+}
+
+export function pickTopAt(targets: readonly Pickable[], wx: number, wy: number): number | null {
+  return topTargetAt(targets, wx, wy)?.ref ?? null;
 }
 
 /** The hit target whose feet anchor is closest to the click. Resource sprites often overlap in dense

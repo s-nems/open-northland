@@ -4,7 +4,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
-import { createUnitTargets, type UnitTargets } from '../src/view/unit-controls/unit-targets.js';
+import { pickTopAt } from '../src/view/picking.js';
+import {
+  createUnitTargets,
+  type UnitTargets,
+  type UnitTargetsDeps,
+} from '../src/view/unit-controls/unit-targets.js';
 
 /**
  * A click may only reach what the renderer's frame actually drew, while an ORDER must reach the whole
@@ -28,6 +33,7 @@ describe('unit-controls targets over the renderer frame', () => {
     drawn: readonly DrawItem[],
     hostileToward: (owner: number) => boolean = () => true,
     resourceVisible?: (tileX: number, tileY: number) => boolean,
+    boundsOf?: UnitTargetsDeps['boundsOf'],
   ): UnitTargets =>
     createUnitTargets({
       snapshot: () => snapshot,
@@ -35,7 +41,7 @@ describe('unit-controls targets over the renderer frame', () => {
       observer: false,
       hostileToward,
       drawnItems: () => drawn,
-      boundsOf: undefined,
+      boundsOf,
       pixelHitOf: undefined,
       resourceVisible,
     });
@@ -125,6 +131,38 @@ describe('unit-controls targets over the renderer frame', () => {
         () => false,
       ).resources(),
     ).toEqual([]);
+  });
+
+  it('hit-tests a drop-off flag against its drawn bounds, which ride the terrain lift', () => {
+    const FLAG = 90_030;
+    const GATHERER = 90_031;
+    const LIFT = 80;
+    const gatherer = {
+      id: GATHERER,
+      components: {
+        Settler: {},
+        Owner: { player: HUMAN_PLAYER },
+        Position: { x: 6 * ONE, y: 8 * ONE },
+        WorkFlag: { flag: FLAG, radius: 24 },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, gatherer] };
+    const flag = {
+      ref: FLAG,
+      kind: 'stockpile',
+      x: 200,
+      y: 300,
+      depth: 300,
+      isFlag: true,
+      lift: LIFT,
+    } satisfies DrawItem;
+    const drawnFlag = { minX: 190, minY: flag.y - LIFT - 50, maxX: 215, maxY: flag.y - LIFT + 4 };
+    const targets = targetsOver([flag], undefined, undefined, (ref) =>
+      ref === FLAG ? drawnFlag : undefined,
+    );
+
+    expect(pickTopAt(targets.flags(), 205, flag.y - LIFT - 40)).toBe(GATHERER);
+    expect(pickTopAt(targets.flags(), flag.x, flag.y)).toBeNull(); // the ground the flag was lifted off
   });
 
   it('never targets a fog ghost or the force-drawn portrait subject', () => {

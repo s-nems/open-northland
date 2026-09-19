@@ -164,7 +164,9 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         if (it.isFlag !== true || !isHitTarget(it)) continue;
         const gatherer = gathererOf.get(it.ref);
         if (gatherer === undefined) continue; // an unbound / non-human flag - not a selection proxy
-        out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
+        // The flag's own drawn bounds: the feet anchor is pre-lift, so a box around it misses a flag on
+        // raised ground.
+        out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler', box: deps.boundsOf?.(it.ref) });
       }
       return out;
     },

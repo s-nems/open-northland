@@ -1,5 +1,5 @@
 import type { DoorBadge, ElevationField } from '@open-northland/render';
-import { pickDoorBadgeRow, pickGarrisonFlag, pickTopAt } from '../picking.js';
+import { drawnInFront, pickDoorBadgeRow, pickGarrisonFlag, pickTopAt, topTargetAt } from '../picking.js';
 import type { UnitTargets } from './unit-targets.js';
 
 /** A door marker's click owner: a sign row stands for its settler, a garrison flag for its building. */
@@ -21,8 +21,9 @@ export interface ClickHits {
 }
 
 /**
- * The order a click resolves what it landed on. Markers beat ordinary units and buildings: flags and
- * sign rows are small intentional targets, while a building's larger sprite may overlap them.
+ * The order a click resolves what it landed on: a door marker, then an owned unit or drop-off flag, then
+ * a signpost. Sign rows and garrison flags are small intentional targets a building's larger sprite would
+ * otherwise swallow.
  */
 export function createClickHits(deps: ClickHitDeps): ClickHits {
   /** An enemy building's markers are not selection proxies for the men behind them. */
@@ -40,12 +41,23 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
     return building === null ? null : { kind: 'building', ref: building };
   };
 
+  /**
+   * A drop-off flag stands for its gatherer and outranks every building. It ties with a settler, and the
+   * one drawn in front takes the click. the original `an original routine`
+   * resolves a hit on a human's work-centre marker (`an original routine`) to that human at
+   * the rank humans hold, above houses and signposts, and the later hit of its front-to-back scan wins
+   * among equal ranks.
+   */
+  const unitAt = (wx: number, wy: number): number | null => {
+    const flag = topTargetAt(deps.targets.flags(), wx, wy);
+    if (flag === null) return pickTopAt(deps.targets.owned(), wx, wy);
+    const settler = topTargetAt(deps.targets.owned('settler'), wx, wy);
+    return settler !== null && drawnInFront(settler, flag) ? settler.ref : flag.ref;
+  };
+
   return {
     doorMarkerAt,
     selectionAt: (wx, wy) =>
-      doorMarkerAt(wx, wy)?.ref ??
-      pickTopAt(deps.targets.flags(), wx, wy) ??
-      pickTopAt(deps.targets.owned(), wx, wy) ??
-      pickTopAt(deps.targets.signposts(), wx, wy),
+      doorMarkerAt(wx, wy)?.ref ?? unitAt(wx, wy) ?? pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }
