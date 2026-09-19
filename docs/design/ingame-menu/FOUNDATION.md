@@ -150,6 +150,55 @@ keeps the assistant alone.
   kind too. A cancelled placement from a place-any plan hands the plan back into the hand with the
   catalogue, so a second Esc drops it: one rung per press.
 
+### Residents window
+
+The seat's people as one list (ticket 07), in the construction window's frame and width. Mieszkańcy
+on the beam or F7, the original's subjects-window key, opens it at once; F7 is fixed, since the
+F-row is outside the rebindable set, and works from inside the search field too.
+
+- Listed: the local seat's humans. Animals, vehicles and other seats' people stay out. The list
+  follows the tick while it is open and costs nothing closed: one walk over the snapshot's actors.
+- The find row: a search over name, profession and workplace at once ("piek" finds the bakers and
+  the bakery's crew), a Zawód list of the professions present with their head counts, and a Może
+  zostać list of the picker's trades, which keeps the holders of the trade and the grown men the sim
+  would let take it (`Simulation.canChooseJob`, asked only while that filter is set; a script's
+  trade lock on a unit is not mirrored).
+- Two chip rows share one grid of eight equal rectangular cells across the window, the count on top
+  and the caption under it, "Kto" and "Bez" in one narrow label column. A count is the whole
+  settlement, whatever else is filtered; a lacks cell at zero is dimmed.
+- Kto is one choice at a time (user ruling): Wszyscy, Mężczyźni, Kobiety, Dzieci, Pracownicy,
+  Cywile, Żołnierze, Bohaterowie. The groups follow the original subjects window: men and women are
+  adults, heroines stay out of the women, workers are adult men with a trade that is no soldier or
+  hero class. Cywile, adult men without a trade, is this project's addition: they are whom the player
+  opens the list to find.
+- Bez combines, and combines with everything else (user ruling): domu, pracy, narzędzi, butów, pary,
+  dzieci, broni, miodu. Home and partner skip soldiers and heroes, shoes skip heroes, children
+  counts the women, weapon the soldiers. Tools counts the workers other than the scout, which is
+  narrower than the original's every grown man who is no soldier or hero: it is whom the assistant
+  hands a tool. A child lacks nothing: it is housed and dressed through its parents. Two lacks are
+  this project's own. "Bez pracy" is a worker whose trade some workplace employs, posted at none and tied
+  to no work flag, so a builder or a scout never shows; it replaces a separate roster of unposted
+  tradesmen. "Bez miodu" is an adult with a job and no mead bottle in the misc slots: the people
+  the assistant's mead grant reaches. Approximation: the sim tracks a couple's one growing child, so
+  "bez dzieci" means none growing now, not a family history.
+- The parchment: a summary line naming the active filters with "Wyczyść filtry", sortable column
+  heads (Imię, Zawód, Miejsce pracy, Braki; a second press reverses), and 34 px rows: the map's own
+  settler standing still (a list runs to hundreds of rows, so nothing animates and only the rows on
+  screen are painted), the name the details panel shows, the profession (a child's with its age),
+  the workplace, and the lacks as the chip glyphs with tooltips. No live-activity column: the game
+  knows only coarse states. The list opens by profession, since a generated name tells the player
+  little; heroes lead under every order, as the original keeps them; unposted rows follow the posted
+  ones in both directions; the lacks order opens with the neediest.
+- A row press selects the person alone, centres the view and closes the window; the details panel
+  takes over. With Shift, Ctrl or Cmd the person joins the selected group and the window stays
+  (user ruling), its rows lit for whatever the unit controls hold selected and the footer counting
+  them. "Zaznacz pokazanych" does the same with the whole filtered list, without moving the view.
+- Filters, order and scroll are kept for the game in the tool-window state (never browser storage).
+  A tick rewrites only the rows that changed: a dead settler leaves, a new one enters at its place
+  in the order, and focus and scroll stay put. Esc closes the window; in the search field the first
+  Esc clears a typed query and the next one closes.
+- Empty states: "Nikt nie pasuje" with its own clear button, and "Nie masz mieszkańców".
+
 ## HUD shell
 
 The runtime shell (ticket 02) places the regions on the DOM plane in design px and keeps the legacy

@@ -22,6 +22,7 @@ import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
+import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
 import { currentLocale } from '../i18n/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -66,6 +67,7 @@ export interface GameToolPanelDeps {
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
   readonly papers: PapersSeam;
+  readonly residents: ResidentsSeam;
   /** The diplomacy window's roster: one row per discovered player. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A seat's roster name, for the note about an eliminated player. */
@@ -201,6 +203,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       grants: deps.grants,
       counters: deps.counters,
       papers: deps.papers,
+      residents: deps.residents,
       diplomacyRows: deps.diplomacyRows,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       onPayTribute: deps.onPayTribute,

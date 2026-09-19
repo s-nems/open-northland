@@ -38,6 +38,18 @@ export const GLYPH = {
   grid: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>',
   back: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>',
   list: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 6h3M10 6h10M4 12h3M10 12h10M4 18h3M10 18h10"/></svg>',
+  search:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6"/></svg>',
+  /* What a resident goes without: a hammer, a boot, a heart, a cradle, a blade and a mug. */
+  tool: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6ZM12.5 8.5 4 17l3 3 8.5-8.5"/></svg>',
+  boot: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 4h5v9l7 3q2 1 2 4H6Z M6 16h8"/></svg>',
+  heart:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>',
+  cradle:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M5 9h14v4a7 7 0 0 1-14 0ZM3 20q9-5 18 0M12 9V5"/></svg>',
+  blade:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M19 3 8 14M6 12l6 6M4 20l4-4M19 3h-4M19 3v4"/></svg>',
+  mug: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 9h10v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2ZM16 11h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2M9 5v1M12 4v2M15 5v1"/></svg>',
 } as const;
 
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */

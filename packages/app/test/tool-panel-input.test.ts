@@ -76,6 +76,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
   const cues: UiCue[] = [];
   let menuOpened = 0;
   let constructionToggled = 0;
+  let residentsToggled = 0;
   const held = heldMode();
   const arm = (): void => {
     held.active = true;
@@ -102,6 +103,9 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     toggleConstruction: () => {
       constructionToggled++;
     },
+    toggleResidents: () => {
+      residentsToggled++;
+    },
     togglePause: () => undefined,
     cue: (cue) => {
       cues.push(cue);
@@ -120,6 +124,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     windowTarget,
     menuOpened: (): number => menuOpened,
     constructionToggled: (): number => constructionToggled,
+    residentsToggled: (): number => residentsToggled,
   };
 }
 
@@ -208,6 +213,7 @@ describe('tool panel Escape ladder', () => {
         opened++;
       },
       toggleConstruction: () => undefined,
+      toggleResidents: () => undefined,
       togglePause: () => undefined,
       cue: () => undefined,
     });
@@ -238,6 +244,23 @@ describe('tool panel Escape ladder', () => {
     windowTarget.dispatchEvent(key('KeyB'));
     expect(constructionToggled()).toBe(1);
     expect(cues).toEqual([]);
+    input.dispose();
+  });
+
+  it('toggles the residents window on F7, from inside a text field too, but not under the system menu', () => {
+    let owned = false;
+    const { input, windowTarget, residentsToggled } = mount(() => owned);
+    const open = key('F7');
+    windowTarget.dispatchEvent(open);
+    expect(residentsToggled()).toBe(1);
+    expect(open.defaultPrevented).toBe(true);
+    const typed = key('F7');
+    Object.defineProperty(typed, 'target', { value: new TextField() });
+    windowTarget.dispatchEvent(typed);
+    expect(residentsToggled()).toBe(2);
+    owned = true;
+    windowTarget.dispatchEvent(key('F7'));
+    expect(residentsToggled()).toBe(2);
     input.dispose();
   });
 

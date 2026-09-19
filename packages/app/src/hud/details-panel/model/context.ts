@@ -59,7 +59,10 @@ function jobLabel(jobType: number | undefined): string {
   return professionLabel('idle');
 }
 
-export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefined): BuildingDef | undefined {
+export function buildingDef(
+  ctx: Pick<UnitPanelModelContext, 'buildings'>,
+  typeId: number | undefined,
+): BuildingDef | undefined {
   if (typeId === undefined) return undefined;
   return ctx.buildings.find((b) => b.typeId === typeId);
 }
@@ -77,7 +80,10 @@ export function recipeOutputs(
   return def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
 }
 
-export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
+export function buildingTitle(
+  ctx: Pick<UnitPanelModelContext, 'buildings'>,
+  typeId: number | undefined,
+): string {
   if (typeId === undefined) return messages().hud.build;
   const catalog = vikingBuildingByTypeId(typeId);
   // The same localized name the build menu shows, falling back to the English catalog label.
@@ -102,7 +108,10 @@ export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string 
  * the locale catalog. Every hero role is shown as the generic profession "Hero": maps reuse one hero
  * body for different named characters, so the job id is not a reliable personal name.
  */
-export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | undefined): string {
+export function jobDisplayName(
+  ctx: Pick<UnitPanelModelContext, 'jobs'>,
+  jobType: number | undefined,
+): string {
   if (jobType === undefined) return jobLabel(undefined);
   if (professionDefForJob(jobType) !== undefined) return jobLabel(jobType);
   const job = ctx.jobs.find((j) => j.typeId === jobType);
@@ -117,7 +126,7 @@ export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | und
  * reuse the same visual/job role for Ykol, Loke and Hatchie, and their `ScriptedName` must win.
  */
 export function heroFallbackName(
-  ctx: UnitPanelModelContext,
+  ctx: Pick<UnitPanelModelContext, 'jobs'>,
   jobType: number | undefined,
 ): string | undefined {
   const job = ctx.jobs.find((j) => j.typeId === jobType);

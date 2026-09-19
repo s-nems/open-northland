@@ -7,8 +7,6 @@ import {
 } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { JOB_IDLE } from '../../../catalog/jobs.js';
-import { characterName } from '../../../game/character-names/index.js';
-import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import {
   familiesByHome,
   isBuilding,
@@ -22,7 +20,6 @@ import {
   residenceHomeOf,
   shelterClaimCount,
   stanceModeOf,
-  surnameSourceOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
@@ -41,7 +38,6 @@ import {
   buildingTitle,
   type Comp,
   goodLabel,
-  heroFallbackName,
   jobDisplayName,
   type UnitPanelModelContext,
 } from './context.js';
@@ -53,6 +49,7 @@ import {
   stanceLabel,
 } from './settler.js';
 import { equipmentRows } from './settler-equipment.js';
+import { settlerDisplayName } from './settler-name.js';
 import { unlockProgressRows } from './settler-unlocks.js';
 import { settlerWork } from './settler-work.js';
 import { tradeOfferLabel, tradePanelModel } from './trade.js';
@@ -103,16 +100,6 @@ export type UnitPanelModel =
   | SignpostPanelModel
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
-
-/** The name the map gave this settler, when it gave one and the map's table carries the string. */
-function scriptedName(
-  ctx: UnitPanelModelContext,
-  comps: Readonly<Record<string, unknown>>,
-): string | undefined {
-  const named = comps.ScriptedName as { stringId?: unknown } | undefined;
-  const stringId = num(named?.stringId);
-  return stringId === undefined ? undefined : ctx.mapText?.(stringId);
-}
 
 /** The content's own name for a tribe the locale catalogs do not translate, so a selected animal reads as
  *  its species rather than a bare id. */
@@ -277,17 +264,7 @@ export function buildUnitPanelModel(
     return {
       kind: 'settler',
       entityId,
-      name:
-        scriptedName(ctx, comps) ??
-        heroFallbackName(ctx, num(s.jobType)) ??
-        characterName(
-          num(s.tribe) ?? PRIMARY_TRIBE,
-          num(s.jobType),
-          young,
-          entityId,
-          surnameSourceOf(snapshot, ent),
-          isFemale(ent),
-        ),
+      name: settlerDisplayName(ctx, snapshot, ent),
       profession: jobDisplayName(ctx, num(s.jobType)),
       // The child and woman gates are the sim's own `isTradeAssignable` refusals. The idle gate is the
       // panel's alone: a settler with no trade has nothing to place.

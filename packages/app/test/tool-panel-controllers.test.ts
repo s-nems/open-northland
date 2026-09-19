@@ -32,6 +32,7 @@ import { messages } from '../src/i18n/index.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
 import { stubPlacementStrip } from './support/placement-strip-stub.js';
+import { stubResidentsWindow } from './support/residents-window-stub.js';
 
 /**
  * Headless tests for the tool-panel WINDOW CONTROLLERS (registry / stats / placement / chest) over a
@@ -223,6 +224,7 @@ describe('tool windows registry', () => {
       container,
       buildings,
       pendingWindow: stubPendingWindow,
+      residentsWindow: stubResidentsWindow,
       constructionWindow: (seam) => {
         menu = stubConstructionWindow(seam);
         return menu;

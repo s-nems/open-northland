@@ -2,7 +2,6 @@ import {
   buildSpriteScene,
   createPresentationTrack,
   type DrawItem,
-  layerLutRow,
   type PresentationTrack,
   presentItem,
   type ResolvedLayer,
@@ -10,7 +9,7 @@ import {
   settlerPaletteLutRow,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { FigureFrames } from './figure-frames.js';
+import type { FigureFrames } from './figure-frames.js';
 
 /** The figure's map-px multiplier on its thumbnail, and how far above the thumbnail's bottom edge its
  *  feet stand (design px): the usual place, and the closest a covered card's lowered figure comes. */
@@ -59,17 +58,16 @@ export interface NoticeFigureBox {
 export class NoticeFigures {
   private readonly tracks = new Map<number, PresentationTrack>();
   private readonly contexts = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
-  private readonly frames: FigureFrames;
   /** The scene built for the last (snapshot, subjects) pair; frames between ticks reuse it. */
   private sceneFor: { snapshot: WorldSnapshot; refs: string; items: ReadonlyMap<number, DrawItem> } | null =
     null;
 
+  /** `frames` is the sheet's recoloured-frame cache, shared with every other figure painter. */
   constructor(
     private readonly sheet: SpriteSheet | undefined,
+    private readonly frames: FigureFrames,
     private readonly playerColourOf?: (player: number) => number,
-  ) {
-    this.frames = new FigureFrames(sheet?.palette);
-  }
+  ) {}
 
   /** `alpha` is the frame's inter-tick fraction, as the map draws with. */
   render(
@@ -102,25 +100,7 @@ export class NoticeFigures {
       const zoom = THUMB_ZOOM * pixelScale;
       const feetX = width / 2;
       const feetY = feetLine(layers, height, slot.visible * pixelScale, zoom, pixelScale);
-      for (const layer of layers) {
-        const row =
-          this.sheet.palette === undefined ? bodyRow : layerLutRow(this.sheet.palette, layer, bodyRow);
-        const image = this.frames.frame(layer, row);
-        if (image === null) continue;
-        const s = zoom * layer.scale;
-        ctx.imageSmoothingEnabled = layer.source.scaleMode !== 'nearest';
-        ctx.drawImage(
-          image.image,
-          image.x,
-          image.y,
-          image.width,
-          image.height,
-          feetX + (layer.dx ?? 0) * zoom + layer.frame.offsetX * s,
-          feetY + (layer.dy ?? 0) * zoom + layer.frame.offsetY * s,
-          image.width * s,
-          image.height * s,
-        );
-      }
+      this.frames.draw(ctx, layers, bodyRow, zoom, feetX, feetY);
     }
     for (const entity of this.tracks.keys()) if (!live.has(entity)) this.tracks.delete(entity);
   }

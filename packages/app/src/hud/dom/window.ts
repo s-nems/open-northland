@@ -22,6 +22,8 @@ export interface HudWindow {
   isOpen(): boolean;
   open(): void;
   close(): void;
+  /** Close as the medallion does, telling the dismiss listeners. */
+  dismiss(): void;
   place(x: number, y: number): void;
   /** Runs when the close medallion closed the window, so the owner can return focus; a close the
    *  owner made itself (another window replacing this one) stays silent. */
@@ -57,10 +59,11 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
   const close = (): void => {
     element.hidden = true;
   };
-  closeButton.addEventListener('click', () => {
+  const dismiss = (): void => {
     close();
     for (const listener of listeners) listener();
-  });
+  };
+  closeButton.addEventListener('click', dismiss);
   plane.append(element);
   return {
     element,
@@ -70,6 +73,7 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
       element.hidden = false;
     },
     close,
+    dismiss,
     place: (x, y) => {
       element.style.left = `${x}px`;
       element.style.top = `${y}px`;

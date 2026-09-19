@@ -91,6 +91,8 @@ export interface UnitControls {
   readonly overviewPress: OverviewPress;
   /** Replace the selection, as a map script's `SelectHuman` does. */
   readonly select: (ids: Iterable<number>) => void;
+  /** Add to the selection, as a Shift press on the map does. */
+  readonly extendSelection: (ids: Iterable<number>) => void;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The work-area circles the "Show Work Area" order has switched on. */

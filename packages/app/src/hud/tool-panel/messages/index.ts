@@ -19,6 +19,7 @@ import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
 import { noticeThumb, orderNotes } from './cards.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
+import type { FigureFrames } from './figure-frames.js';
 import { NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
@@ -54,6 +55,8 @@ export interface MessageCenterDeps {
   readonly bottomInset: number;
   /** The sheet the cards' settler figures draw from; absent, the thumbnails stay clear. */
   readonly sheet?: SpriteSheet | undefined;
+  /** That sheet's recoloured-frame cache, one for every figure painter of the panel. */
+  readonly figureFrames: FigureFrames;
   /** Paints a finished building's body on its note, as the construction window pictures it; absent,
    *  the note shows the house glyph. */
   readonly buildingThumbs?: BuildingThumbs | undefined;
@@ -209,7 +212,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       feed.removeAll(true);
     },
   });
-  const figures = new NoticeFigures(deps.sheet, deps.playerColourOf);
+  const figures = new NoticeFigures(deps.sheet, deps.figureFrames, deps.playerColourOf);
   let previous: WorldSnapshot | null = null;
   let renderedVersion = -1;
   let lastGalleryTick: number | null = null;

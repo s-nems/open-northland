@@ -40,6 +40,7 @@ import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
+import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { assetSetFor } from '../asset-settings.js';
@@ -57,7 +58,13 @@ import {
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
+import {
+  createFogGates,
+  diplomacyPanelRows,
+  entityAnchor,
+  memoBySnapshot,
+  messageTargetAnchor,
+} from '../projections/index.js';
 import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { readStoredSettings } from '../settings-store.js';
@@ -347,6 +354,19 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
     // reach them through these slots.
     let selectEntity: ((id: number) => void) | null = null;
+    let unitSelection: Pick<
+      UnitControls,
+      'select' | 'extendSelection' | 'selectedIds' | 'selectionVersion'
+    > | null = null;
+    const NO_SELECTION: ReadonlySet<number> = new Set();
+    const residentsFor = memoBySnapshot((snapshot: WorldSnapshot) =>
+      residentRows(snapshot, {
+        localPlayer,
+        content: sim.content,
+        mapText,
+        meadGood: sim.content.goods.find((good) => good.id === MEAD_GOOD_ID)?.typeId,
+      }),
+    );
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
     let missionWindowOpen = false;
@@ -363,6 +383,26 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
       counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
       papers: { read: () => sim.papers(localPlayer) },
+      residents: {
+        rows: () => residentsFor(sim.snapshot()),
+        snapshot: () => sim.snapshot(),
+        canBecome: (id, jobType) => sim.canChooseJob(id as Entity, jobType),
+        selection: {
+          ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,
+          version: () => unitSelection?.selectionVersion() ?? 0,
+        },
+        onSelect: (ids, extend) => {
+          if (extend) {
+            unitSelection?.extendSelection(ids);
+            return;
+          }
+          unitSelection?.select(ids);
+          const [only] = ids;
+          if (ids.length !== 1 || only === undefined) return;
+          const at = entityAnchor(sim.snapshot(), only, deps.elevation);
+          if (at !== null) jumpToWorld(at.x, at.y);
+        },
+      },
       diplomacyRows,
       onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
       onDeclareDiplomacy: (other, state) =>
@@ -536,6 +576,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;
+    unitSelection = controls;
     escapeClaimed = controls.claimsEscape;
     overviewPress = controls.overviewPress;
 

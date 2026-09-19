@@ -13,6 +13,9 @@ export interface HeldMode {
   handleClick(clientX: number, clientY: number): boolean;
 }
 
+/** The original's subjects-window key. Fixed: the F-row is outside the rebindable set. */
+const RESIDENTS_KEY_CODE = 'F7';
+
 export interface ToolPanelInputDeps {
   readonly canvas: HTMLCanvasElement;
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
@@ -28,6 +31,7 @@ export interface ToolPanelInputDeps {
   readonly escapeClaimed?: () => boolean;
   readonly openMenu: () => void;
   readonly toggleConstruction: () => void;
+  readonly toggleResidents: () => void;
   readonly togglePause: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is byte-verified). */
@@ -93,10 +97,10 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   // capture phase so the unit controls' own ladder (job list, armed order, selection) only sees a
   // press the shell left alone, whichever listener registered first. A text field, a modal dialog and
   // the system menu keep their own keys.
-  const keyboardOwned = (e: KeyboardEvent): boolean =>
-    isTypingTarget(e.target) ||
+  const modalOwned = (e: KeyboardEvent): boolean =>
     (e.target instanceof Element && e.target.closest('[aria-modal="true"]') !== null) ||
     deps.keyboardOwned?.() === true;
+  const keyboardOwned = (e: KeyboardEvent): boolean => isTypingTarget(e.target) || modalOwned(e);
   const consume = (e: KeyboardEvent): void => {
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -129,6 +133,12 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       if (keyboardOwned(e)) return;
       consume(e);
       deps.toggleConstruction();
+      return;
+    }
+    // A search field keeps its letters, but no field types an F-key, so this one works from inside too.
+    if (e.code === RESIDENTS_KEY_CODE && !e.repeat && !modalOwned(e)) {
+      consume(e);
+      deps.toggleResidents();
       return;
     }
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {

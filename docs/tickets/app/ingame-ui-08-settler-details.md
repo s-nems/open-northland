@@ -2,8 +2,6 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [07-residents](ingame-ui-07-residents.md)
-
 `hud/details-panel/layout/settler.ts` stacks general, work, experience and equipment sections in the bottom-right; the current model/actions must survive the new presentation.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and

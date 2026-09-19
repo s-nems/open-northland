@@ -5,6 +5,7 @@ import type { Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import type { ConstructionWindow } from '../dom/construction-window.js';
+import type { ResidentsWindow } from '../dom/residents-window.js';
 import type { ConstructionWindowState, MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
@@ -17,6 +18,7 @@ import {
   type MissionWindowState,
 } from './mission/index.js';
 import type { PendingWindow } from './pending-window.js';
+import type { ResidentsWindowState } from './residents/rows.js';
 import { createStatsWindow } from './stats-window.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
@@ -26,7 +28,7 @@ const MOUNT_ORDER = ['menu', 'extras', 'stats', 'diplomacy', 'residents', 'knowl
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
 
 /** The central windows whose contents a later ticket owns; the registry shows a pending note for them. */
-export type PendingWindowId = Extract<ToolWindowId, 'residents' | 'knowledge'>;
+export type PendingWindowId = Extract<ToolWindowId, 'knowledge'>;
 
 interface ToolWindowEntry {
   readonly window: ToolWindow;
@@ -50,6 +52,8 @@ export interface ToolWindowsDeps {
   readonly pendingWindow: (id: PendingWindowId) => PendingWindow;
   /** The construction window, mounted on the DOM plane. */
   readonly constructionWindow: (seam: ConstructionWindowSeam) => ConstructionWindow;
+  /** The residents window, mounted on the DOM plane. */
+  readonly residentsWindow: () => ResidentsWindow;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
@@ -102,6 +106,7 @@ export interface ToolWindows {
 export interface ToolWindowsState {
   readonly openIds: readonly ToolWindowId[];
   readonly buildings: ConstructionWindowState;
+  readonly residents: ResidentsWindowState;
   readonly diplomacy: number | null;
   /** The plan the construction window holds for its next pick, restored with its strip. */
   readonly heldPaper: Paper | null;
@@ -119,7 +124,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     onPayTribute: deps.onPayTribute,
     onDeclareDiplomacy: deps.onDeclareDiplomacy,
   });
-  const residents = deps.pendingWindow('residents');
+  const residents = deps.residentsWindow();
   const knowledge = deps.pendingWindow('knowledge');
   const mission = createMissionWindow({
     ctx,
@@ -163,7 +168,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     extras: { window: extras, perFrame: () => extras.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
-    residents: { window: residents, perFrame: () => residents.place() },
+    residents: { window: residents, perFrame: () => residents.refresh() },
     knowledge: { window: knowledge, perFrame: () => knowledge.place() },
     mission: { window: mission, perFrame: () => mission.refresh() },
   };
@@ -199,12 +204,14 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     state: () => ({
       openIds: MOUNT_ORDER.filter((id) => entries[id].window.isOpen()),
       buildings: menu.state(),
+      residents: residents.state(),
       diplomacy: diplomacy.state(),
       heldPaper: heldPaper.held(),
       mission: mission.state(),
     }),
     restore: (state): void => {
       menu.restore(state.buildings);
+      residents.restore(state.residents);
       diplomacy.restore(state.diplomacy);
       if (state.heldPaper === null) heldPaper.cancel();
       else heldPaper.hold(state.heldPaper);

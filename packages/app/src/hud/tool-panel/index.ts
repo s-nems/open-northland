@@ -3,7 +3,7 @@ import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-northland/render';
 import type { DiplomacyState, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
-import { professionDefForJob } from '../../catalog/professions.js';
+import { PROFESSIONS, professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import {
   type GuiBitmapName,
@@ -23,6 +23,7 @@ import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
 import { createPlacementStrip } from '../dom/placement-strip.js';
+import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
@@ -37,6 +38,7 @@ import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout } from './layout.js';
+import { FigureFrames } from './messages/figure-frames.js';
 import {
   createMessageCenter,
   type MessageFeedState,
@@ -49,6 +51,8 @@ import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
 import { createPlacementController } from './placement.js';
+import { ResidentFigures } from './residents/figures.js';
+import type { ResidentsSeam } from './residents/seam.js';
 import { createSpeedControl } from './speed-control.js';
 import { createToolWindows, type ToolWindowsState } from './windows.js';
 
@@ -92,6 +96,8 @@ export interface ToolPanelOptions {
   readonly counters: ExtrasCountersSeam;
   /** The construction window's papers seam (reads the sim's papers list, named for display). */
   readonly papers: PapersSeam;
+  /** The residents window's seam: the seat's people, the sim's trade rule and the selection. */
+  readonly residents: ResidentsSeam;
   /** The roster of discovered players, one row each: read by the diplomacy window while it is open,
    *  and once a tick by the message centre. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
@@ -317,18 +323,34 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const goodIdByType = new Map(opts.goods.map((g) => [g.typeId, g.id]));
     const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const thumbs = createBuildingThumbs(opts.sheet, opts.tribe);
+    const figureFrames = new FigureFrames(opts.sheet?.palette);
     const windows = createToolWindows({
       ctx,
       container: windowContainer,
       pendingWindow: (id) => {
         const window = createPendingWindow(plane, {
           title: shellCopy.nav[id],
-          art: id === 'residents' ? RESIDENTS_TOKEN : paintedIcon(id, TITLE_ART_PX),
+          art: paintedIcon(id, TITLE_ART_PX),
           kicker: shellCopy.pending,
-          text: id === 'residents' ? shellCopy.residentsPending : shellCopy.knowledgePending,
+          text: shellCopy.knowledgePending,
           closeLabel: shellCopy.close,
         });
         window.onDismiss(() => focusOwner?.(navEntryForWindow(id)));
+        return window;
+      },
+      residentsWindow: () => {
+        const figures = new ResidentFigures(opts.sheet, figureFrames, opts.playerColourOf);
+        const window = createResidentsWindow({
+          plane,
+          rows: opts.residents.rows,
+          canBecome: opts.residents.canBecome,
+          trades: PROFESSIONS.map((p) => ({ jobType: p.jobType, label: professionLabel(p.key) })),
+          selection: opts.residents.selection,
+          onSelect: opts.residents.onSelect,
+          paintFigures: (slots, box) => figures.paint(opts.residents.snapshot(), slots, box),
+          cue: ctx.cue,
+        });
+        window.onDismiss(() => focusOwner?.('residents'));
         return window;
       },
       constructionWindow: (seam) => {
@@ -419,6 +441,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       // native frame at the art scale.
       bottomInset: FRAME_NATIVE.h * MINIMAP_ART_SCALE + NOTICE_MINIMAP_GAP,
       sheet: opts.sheet,
+      figureFrames,
       buildingThumbs: thumbs,
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
@@ -461,6 +484,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         ctx.cue('confirm');
         applyNavEntry(surfaces, 'build');
         nav.focus('build');
+      },
+      toggleResidents: () => {
+        ctx.cue('confirm');
+        applyNavEntry(surfaces, 'residents');
+        nav.focus('residents');
       },
       togglePause: () => speed.togglePause(),
       cue: ctx.cue,

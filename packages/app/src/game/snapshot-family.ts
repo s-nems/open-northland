@@ -118,12 +118,26 @@ export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): num
   const marriage = marriageOf(e);
   if (marriage !== undefined && isFemale(e)) return marriage.spouse;
   if (isAdult(e)) return undefined;
-  for (const parent of snapshot.entities) {
-    const m = marriageOf(parent);
-    if (m?.child !== e.id) continue;
-    return isFemale(parent) ? m.spouse : parent.id;
+  return fathersByChild(snapshot).get(e.id);
+}
+
+const fatherIndex = new WeakMap<WorldSnapshot, ReadonlyMap<number, number>>();
+
+/** Every growing child's father, from one walk over the snapshot's actors: a list naming a whole
+ *  settlement asks once per child, which a scan per question would turn into a walk per child. */
+function fathersByChild(snapshot: WorldSnapshot): ReadonlyMap<number, number> {
+  let fathers = fatherIndex.get(snapshot);
+  if (fathers === undefined) {
+    const built = new Map<number, number>();
+    for (const parent of actorsOf(snapshot)) {
+      const m = marriageOf(parent);
+      if (m === undefined || m.child === null || built.has(m.child)) continue;
+      built.set(m.child, isFemale(parent) ? m.spouse : parent.id);
+    }
+    fathers = built;
+    fatherIndex.set(snapshot, built);
   }
-  return undefined;
+  return fathers;
 }
 
 /** One family living in a home, mirroring the sim's `familiesOf` grouping unit. */

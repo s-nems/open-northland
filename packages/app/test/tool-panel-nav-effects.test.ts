@@ -17,6 +17,7 @@ import { createToolWindows, type ToolWindowId, type ToolWindows } from '../src/h
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
 import { stubPlacementStrip } from './support/placement-strip-stub.js';
+import { stubResidentsWindow } from './support/residents-window-stub.js';
 
 const SCREEN = { width: 1280, height: 720 };
 const BUILDING_JOINERY = 23;
@@ -71,6 +72,7 @@ function mountSurfaces() {
     ctx,
     container,
     pendingWindow: stubPendingWindow,
+    residentsWindow: stubResidentsWindow,
     constructionWindow: (seam) => {
       menu = stubConstructionWindow(seam);
       return menu;

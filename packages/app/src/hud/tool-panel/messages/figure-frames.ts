@@ -2,6 +2,7 @@ import {
   type AtlasFrame,
   type DrawableResource,
   isDrawableResource,
+  layerLutRow,
   type PlayerColourLut,
   type ResolvedLayer,
   readable2dContext,
@@ -65,6 +66,36 @@ export class FigureFrames {
       this.cached += 1;
     }
     return image === null ? null : { image, x: 0, y: 0, width: frame.width, height: frame.height };
+  }
+
+  /** Draw a figure's resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map
+   *  px. `bodyRow` is the settler's own LUT row, which a layer may override. */
+  draw(
+    ctx: CanvasRenderingContext2D,
+    layers: readonly ResolvedLayer[],
+    bodyRow: number,
+    zoom: number,
+    feetX: number,
+    feetY: number,
+  ): void {
+    for (const layer of layers) {
+      const row = this.palette === undefined ? bodyRow : layerLutRow(this.palette, layer, bodyRow);
+      const image = this.frame(layer, row);
+      if (image === null) continue;
+      const s = zoom * layer.scale;
+      ctx.imageSmoothingEnabled = layer.source.scaleMode !== 'nearest';
+      ctx.drawImage(
+        image.image,
+        image.x,
+        image.y,
+        image.width,
+        image.height,
+        feetX + (layer.dx ?? 0) * zoom + layer.frame.offsetX * s,
+        feetY + (layer.dy ?? 0) * zoom + layer.frame.offsetY * s,
+        image.width * s,
+        image.height * s,
+      );
+    }
   }
 
   private recolour(source: DrawableResource, frame: AtlasFrame, row: number): HTMLCanvasElement | null {
