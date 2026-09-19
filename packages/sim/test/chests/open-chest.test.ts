@@ -6,6 +6,7 @@ import {
   Chest,
   CurrentAtomic,
   DeferredOrder,
+  Equipment,
   OpenChestOrder,
   OpenedChest,
   Owner,
@@ -61,6 +62,9 @@ const SMITHY_REWARD = 70;
 const SMITH = 13;
 const SMITHY_LEVEL_2 = 32;
 const LONG_SWORD = 42;
+const SWORDSMEN_CHEST = 94;
+const SWORDSMAN_LONG = 35;
+const LONG_SWORD_WEAPON = 8;
 /** The fixture's catchable cow: an owned one is an orderable `Settler` that is no person. */
 const COW_TRIBE = 13;
 
@@ -93,6 +97,32 @@ function workshopSim(): Simulation {
             ],
           },
     ),
+  });
+  return new Simulation({ seed: 7, content, map: grassCellMap(16, 16) });
+}
+
+/** The fixture plus the long-sword class: its trade, its weapon good, and the `weapons.ini` record joining
+ *  them. */
+function swordsmenSim(): Simulation {
+  const base = testContent();
+  const content = parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: LONG_SWORD, id: 'sword_long', equip: { category: 'weapon' } }],
+    jobs: [...base.jobs, { typeId: SWORDSMAN_LONG, id: 'soldier_sword_long' }],
+    weapons: [
+      ...base.weapons,
+      {
+        typeId: LONG_SWORD_WEAPON,
+        id: 'long_sword',
+        tribeType: VIKING,
+        mainType: 3,
+        goodType: LONG_SWORD,
+        jobType: SWORDSMAN_LONG,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 3800 },
+      },
+    ],
   });
   return new Simulation({ seed: 7, content, map: grassCellMap(16, 16) });
 }
@@ -241,6 +271,29 @@ describe('the openChest order', () => {
     for (const e of recruits) {
       expect(sim.world.get(e, Settler).jobType).toBe(CIVILIST);
       expect(sim.world.get(e, Owner).player).toBe(P0);
+    }
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('a soldiers chest stands up three swordsmen holding their long swords', () => {
+    const sim = swordsmenSim();
+    const chest = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: SWORDSMEN_CHEST,
+      x: 10,
+      y: 10,
+    });
+    const opener = spawn(sim, WOODCUTTER, 6, 6);
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest }));
+    stepUntilOpened(sim, chest);
+    const recruits = [...sim.world.query(Settler)].filter((e) => e !== opener);
+    expect(recruits).toHaveLength(3);
+    for (const e of recruits) {
+      expect(sim.world.get(e, Settler).jobType).toBe(SWORDSMAN_LONG);
+      expect(sim.world.get(e, Equipment).weapon).toEqual({
+        goodType: LONG_SWORD,
+        degreeOfUse: fx.fromInt(0),
+      });
     }
     expect(sim.checkInvariants()).toEqual([]);
   });

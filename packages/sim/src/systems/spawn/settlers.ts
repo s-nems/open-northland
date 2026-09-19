@@ -31,7 +31,7 @@ import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
-import { isAnimalTribe, isHeroJob, settlerHitpoints } from '../readviews/index.js';
+import { isAnimalTribe, isHeroJob, isSoldierJob, settlerHitpoints } from '../readviews/index.js';
 import { attachAuthoredBuildings } from './attach.js';
 
 /**
@@ -129,10 +129,9 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
         ...(fixedHeroArmorGood !== undefined ? { armor: { goodType: fixedHeroArmorGood } } : {}),
       }),
     );
-  } else if (!heroJob && spec.equipment != null) {
-    // Loose `!= null` because a command is the replay wire format, where an explicit `null` also means
-    // "no equipment".
-    world.add(e, Equipment, equipmentFromCommand(spec.equipment));
+  } else if (!heroJob) {
+    const equipment = withSoldierClassWeapon(content, spec);
+    if (equipment !== undefined) world.add(e, Equipment, equipmentFromCommand(equipment));
   }
   if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {
     world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)) });
@@ -198,6 +197,20 @@ function toEquipmentSlot(input: SettlerEquipmentSlot | null | undefined): Equipm
   if (input === null || input === undefined) return null;
   const pct = Math.max(0, Math.min(100, Math.trunc(input.degreeOfUsePct ?? 0)));
   return { goodType: input.goodType, degreeOfUse: fx.div(fx.fromInt(pct), fx.fromInt(100)) };
+}
+
+/**
+ * The spawn's equipment, with a soldier's class weapon good in the weapon slot when the spawn leaves that
+ * slot unnamed; an explicit `null` slot stays empty. Source basis: `an original routine` sets the class weapon of
+ * each spear, sword and bow soldier it creates, so a chest, mission or AI recruit stands up holding it. The
+ * good is the `weapons.ini` `goodtype` of the (tribe, job) record combat already fights with.
+ */
+function withSoldierClassWeapon(content: ContentSet, spec: SettlerSpec): SettlerEquipment | undefined {
+  // A command is the replay wire format, where an explicit `null` also means "no equipment".
+  const equipment = spec.equipment ?? undefined;
+  if (equipment?.weapon !== undefined || !isSoldierJob(content, spec.jobType)) return equipment;
+  const goodType = contentIndex(content).weaponsByTribeAndJob.get(spec.tribe)?.get(spec.jobType)?.goodType;
+  return goodType === undefined ? equipment : { ...equipment, weapon: { goodType } };
 }
 
 /** Build the {@link Equipment} component value from a command payload - the `misc` list is normalised to

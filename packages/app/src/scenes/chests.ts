@@ -1,33 +1,45 @@
 import type { ChestKind, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, ONE, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_COLLECTOR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
+import { JOB_ARCHER_LONG, JOB_COLLECTOR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { BUILDING_WELL, spawnSettlerDirect } from '../game/sandbox/index.js';
+import { BUILDING_WELL, GOOD_BOW_LONG, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * Chests and papers: four openers are each sent to a chest at tick 0 - a sword soldier to a wooden food
- * chest, collectors to a wooden chest holding three civilists, a wooden chest holding a well paper, and a
- * magical shoes chest that only a druid or hero may open, so its collector refuses - while the seat
- * spends a paper it already holds on a well that stands finished at once. Watch three settlers walk to
- * their chests, bend over the lid (the soldier on his own armed body), and the chests vanish; the
- * found-paper note names the well paper, which the extras window's plans tab then lists for a click; the
- * magical chest stays closed with nobody at it; the first well never shows a foundation.
+ * Chests and papers: five openers are each sent to a chest at tick 0 - a sword soldier to a wooden food
+ * chest, collectors to a wooden chest holding three civilists, a wooden chest holding a well paper, a
+ * magical shoes chest that only a druid or hero may open, so its collector refuses, and a wooden chest
+ * holding three long bowmen - while the seat spends a paper it already holds on a well that stands
+ * finished at once. Watch four settlers walk to their chests, bend over the lid (the soldier on his own
+ * armed body), and the chests vanish; the found-paper note names the well paper, which the extras
+ * window's plans tab then lists for a click; the magical chest stays closed with nobody at it; each
+ * bowman's details panel shows the long bow in its weapon slot; the first well never shows a foundation.
  */
 
-const MAP_W = 30;
+const MAP_W = 36;
 const MAP_H = 12;
 const ROW_Y = 6;
 /** Tile gap between the chest stations, so each opener's stance cell is its own. */
 const STATION_GAP = 6;
 const FIRST_STATION_X = 4;
-/** The chest types of the four stations (`chesttypes` rows 20, 92, 60 and 26). */
+/** The chest types of the five stations (`chesttypes` rows 20, 92, 60, 26 and 95). */
 const FOOD_CHEST = 20;
 const CIVILISTS_CHEST = 92;
 const WELL_PAPER_CHEST = 60;
 const SHOES_CHEST = 26;
-const CIVILISTS_PER_CHEST = 3;
+const LONG_BOWMEN_CHEST = 95;
+/** Settlers a settlers chest stands up. */
+const SETTLERS_PER_CHEST = 3;
+/** Every adult trade opens a wooden chest; the soldier proves the bend on an armed body too. */
+const STATIONS = [
+  { kind: 'wooden', contents: FOOD_CHEST, opener: JOB_SOLDIER_SWORD },
+  { kind: 'wooden', contents: CIVILISTS_CHEST, opener: JOB_COLLECTOR },
+  { kind: 'wooden', contents: WELL_PAPER_CHEST, opener: JOB_COLLECTOR },
+  { kind: 'magical', contents: SHOES_CHEST, opener: JOB_COLLECTOR },
+  { kind: 'wooden', contents: LONG_BOWMEN_CHEST, opener: JOB_COLLECTOR },
+] as const;
+const SETTLERS_CHESTS: ReadonlySet<number> = new Set([CIVILISTS_CHEST, LONG_BOWMEN_CHEST]);
 /** Where the paper-bought well stands, clear of the stations. */
 const WELL = { x: 4, y: 2 } as const;
 const WELL_PAPER = { kind: 'placeHouse', param: BUILDING_WELL } as const;
@@ -35,7 +47,7 @@ const WELL_PAPER = { kind: 'placeHouse', param: BUILDING_WELL } as const;
 const RUN_TICKS = 400;
 const INITIAL_ZOOM = 1.2;
 
-const { Building, Chest, Settler, Stockpile } = components;
+const { Building, Chest, Equipment, Settler, Stockpile } = components;
 
 function stationX(i: number): number {
   return FIRST_STATION_X + i * STATION_GAP;
@@ -47,14 +59,7 @@ function chestAt(sim: Simulation, kind: ChestKind, contents: number, x: number, 
 }
 
 function build(sim: Simulation): void {
-  // Every adult trade opens a wooden chest; the soldier proves the bend on an armed body too.
-  const stations = [
-    { kind: 'wooden', contents: FOOD_CHEST, opener: JOB_SOLDIER_SWORD },
-    { kind: 'wooden', contents: CIVILISTS_CHEST, opener: JOB_COLLECTOR },
-    { kind: 'wooden', contents: WELL_PAPER_CHEST, opener: JOB_COLLECTOR },
-    { kind: 'magical', contents: SHOES_CHEST, opener: JOB_COLLECTOR },
-  ] as const;
-  stations.forEach((station, i) => {
+  STATIONS.forEach((station, i) => {
     const chest = chestAt(sim, station.kind, station.contents, stationX(i), ROW_Y);
     const opener = spawnSettlerDirect(sim, station.opener, stationX(i), ROW_Y - 3);
     sim.enqueueSetup({ kind: 'openChest', entity: opener, chest });
@@ -107,8 +112,23 @@ export const chestsScene: SceneDefinition = {
       predicate: (sim) => looseGoodsHeld(sim) > 0,
     },
     {
-      label: 'the civilists chest stood up three settlers beside the four openers',
-      predicate: (sim) => [...sim.world.query(Settler)].length === 4 + CIVILISTS_PER_CHEST,
+      label: 'the two settlers chests stood up three settlers each beside the five openers',
+      predicate: (sim) => {
+        const settlersChests = STATIONS.filter((s) => SETTLERS_CHESTS.has(s.contents)).length;
+        return [...sim.world.query(Settler)].length === STATIONS.length + settlersChests * SETTLERS_PER_CHEST;
+      },
+    },
+    {
+      label: 'every long bowman from the chest holds the long bow in its weapon slot',
+      predicate: (sim) => {
+        const bowmen = [...sim.world.query(Settler)].filter(
+          (e) => sim.world.get(e, Settler).jobType === JOB_ARCHER_LONG,
+        );
+        return (
+          bowmen.length === SETTLERS_PER_CHEST &&
+          bowmen.every((e) => sim.world.tryGet(e, Equipment)?.weapon?.goodType === GOOD_BOW_LONG)
+        );
+      },
     },
     {
       label: 'the well paper was spent on a well that stands finished, never a foundation',

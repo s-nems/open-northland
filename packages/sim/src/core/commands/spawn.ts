@@ -48,7 +48,8 @@ export type SpawnCommand =
        *  `(tribe, jobType)` weapon. */
       readonly weaponTypeId?: number;
       /** The settler's worn equipment (stamps an `Equipment` component), an inventory/display axis
-       *  independent of the combat `weaponTypeId`/`armorClass` above. Omit and the settler carries none. */
+       *  independent of the combat `weaponTypeId`/`armorClass` above. Omit and the settler carries none,
+       *  except that a soldier whose weapon slot is left unnamed holds its class weapon good. */
       readonly equipment?: SettlerEquipment;
       /**
        * The settler's walk pace as ticks to cross one tile (the animal `movespeed` semantics: a
