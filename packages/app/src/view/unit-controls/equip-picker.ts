@@ -77,11 +77,13 @@ export function equipSlotFor(components: Readonly<Record<string, unknown>>, grou
   return free < 0 ? 0 : free;
 }
 
-/** One selected good becomes one order per still-live selected settler. */
+/** One selected good becomes one order per still-live selected settler. `skipReturn` skips the walk
+ *  back to where each settler stood. */
 export function selectionEquipCommands(
   snapshot: WorldSnapshot,
   settlerIds: readonly number[],
   pick: Pick<CommonEquipPick, 'goodType' | 'group'>,
+  { skipReturn = false }: { readonly skipReturn?: boolean } = {},
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   for (const settlerId of settlerIds) {
@@ -93,6 +95,7 @@ export function selectionEquipCommands(
       group: pick.group,
       slot: equipSlotFor(entity.components, pick.group),
       goodType: pick.goodType,
+      ...(skipReturn ? { skipReturn } : {}),
     });
   }
   return commands;

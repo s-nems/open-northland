@@ -25,7 +25,7 @@ import { canEquipCategory, isHeroJob } from '../readviews/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * The equip-window order handlers validate and stamp the {@link EquipOrder} errand; a drive runs it.
+ * The equip order handlers validate and stamp the {@link EquipOrder} errand; a drive runs it.
  * Wearability is checked here as well as in the picker so a profession change between opening the window
  * and clicking a row cannot dress a civilian in arms or hand a fighter a tool.
  */
@@ -51,24 +51,29 @@ function isEquipOrderable(world: World, e: Entity): boolean {
 
 /**
  * Stamp or queue an errand. A player order for another equipment slot waits behind the active player
- * errand; a later order for the same slot remains latest-wins. `returnTo` captures the issue position.
+ * errand; a later order for the same slot remains latest-wins. `returnTo` captures the issue position
+ * unless the order skips the return.
  */
 function stampEquipOrder(
   world: World,
   terrain: TerrainGraph,
   e: Entity,
-  spec: { group: EquipCategory; slot: number; goodType: number | null },
+  spec: { group: EquipCategory; slot: number; goodType: number | null; skipReturn: boolean },
 ): void {
+  const { skipReturn, ...target } = spec;
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);
   const intent: EquipOrderIntent = {
-    ...spec,
-    returnTo: terrain.nodeAtClamped(n.hx, n.hy),
+    ...target,
+    returnTo: skipReturn ? null : terrain.nodeAtClamped(n.hx, n.hy),
   };
   const active = world.tryMut(e, EquipOrder);
   if (active?.issuer === 'player' && (active.group !== spec.group || active.slot !== spec.slot)) {
     active.queued ??= [];
-    const queuedIntent = { ...intent, returnTo: active.returnTo };
+    // A queued return heads for where the active errand began, not where its walk has led by now.
+    // Behind an errand that keeps no such spot, it heads for where this order was given.
+    const returnTo = intent.returnTo === null ? null : (active.returnTo ?? intent.returnTo);
+    const queuedIntent = { ...intent, returnTo };
     const sameSlot = active.queued.findIndex(
       (queued) => queued.group === spec.group && queued.slot === spec.slot,
     );
@@ -114,6 +119,7 @@ export function equipGood(
     group: command.group,
     slot: command.slot,
     goodType: command.goodType,
+    skipReturn: command.skipReturn === true,
   });
 }
 
@@ -134,5 +140,10 @@ export function unequipGood(
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const eq = world.tryGet(e, Equipment);
   if (eq === undefined || equipSlotValue(eq, command.group, command.slot) === null) return;
-  stampEquipOrder(world, terrain, e, { group: command.group, slot: command.slot, goodType: null });
+  stampEquipOrder(world, terrain, e, {
+    group: command.group,
+    slot: command.slot,
+    goodType: null,
+    skipReturn: false,
+  });
 }

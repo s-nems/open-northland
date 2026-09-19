@@ -64,8 +64,8 @@ export interface EquipOrderIntent {
   slot: number;
   goodType: number | null;
   /** The node the settler stood on at issue, so the errand ends where it began (authored: the manual
-   *  describes the window's item list, not how the settler fetches). */
-  returnTo: NodeId;
+   *  describes the window's item list, not how the settler fetches). Null ends it where the fetch or stow leaves the settler. */
+  returnTo: NodeId | null;
 }
 
 /**
@@ -77,7 +77,7 @@ export const EquipOrder = defineComponent<
   EquipOrderIntent & {
     stage: 'acquire' | 'stow' | 'return';
     /** The player's click or one of the assistant's automatic hand-outs. Player orders set a carried load
-     *  down mid-errand; automatic orders yield it. Recruit arming additionally finishes at the stock source. */
+     *  down mid-errand; automatic orders yield it. */
     issuer: 'player' | 'assistant-grant' | 'assistant-recruit';
     /** Later player intents for different slots, in click order. */
     queued: EquipOrderIntent[];

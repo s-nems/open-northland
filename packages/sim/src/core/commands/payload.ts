@@ -119,6 +119,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
       slot: 'integer',
       goodType: 'integer',
     },
+    optional: { skipReturn: 'boolean' },
   },
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
   marry: { required: { entity: 'integer' } },

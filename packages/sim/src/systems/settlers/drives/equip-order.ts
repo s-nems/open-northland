@@ -199,8 +199,8 @@ function planStow(errand: EquipErrand): boolean {
   return true;
 }
 
-/** The `return` stage: walk back to the issue node. Arriving, or finding it unreachable, ends the errand
- *  and returns false so the economy re-tasks the settler the same tick. */
+/** The `return` stage: walk back to the issue node, if the order keeps one. Arriving, or finding it
+ *  unreachable, ends the errand and returns false so the economy re-tasks the settler the same tick. */
 function planReturn(errand: EquipErrand): boolean {
   const { world, ctx, terrain, entity, order, here, avoid, targets } = errand;
   // A queued player intent continues from the current stock/stow point. Only the final intent walks
@@ -217,15 +217,11 @@ function planReturn(errand: EquipErrand): boolean {
       return planFetch(errand, chained);
     }
   }
-  // An automatic hand-out is complete at the stock source. Walking back to its dispatch point made a
-  // newly armed recruit march to the barracks it had just left, despite having no further drill there.
-  if (order.issuer === 'assistant-recruit') {
+  const { returnTo } = order;
+  if (returnTo === null || here === returnTo || avoid?.(returnTo) === true) {
     return finishEquipOrder(errand);
   }
-  if (here === order.returnTo || avoid?.(order.returnTo) === true) {
-    return finishEquipOrder(errand);
-  }
-  world.add(entity, MoveGoal, { cell: order.returnTo });
+  world.add(entity, MoveGoal, { cell: returnTo });
   return true;
 }
 

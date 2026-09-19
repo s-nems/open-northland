@@ -241,6 +241,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
    * not already wear that item type gets the equip order by good type, so the sim fetches its nearest
    * reachable unit rather than this exact heap. A misc good (mead, potions, amulets) skips the worn
    * check, as its slots stack. The gate is the sim's pick list, the same read the equip window shows.
+   * Unlike an order from the equip window or the ring, the settler does not walk back to where it stood.
    */
   const wearFromGround = (commanded: readonly FormationUnit[], goodType: number): boolean => {
     const pickList = deps.equipPickList;
@@ -256,7 +257,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         }
         return pickList(ref, group).some((row) => row.goodType === goodType);
       });
-    const commands = selectionEquipCommands(snapshot, wearers, { goodType, group });
+    const commands = selectionEquipCommands(snapshot, wearers, { goodType, group }, { skipReturn: true });
     for (const command of commands) deps.enqueue(command);
     return commands.length > 0;
   };

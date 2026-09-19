@@ -105,8 +105,22 @@ describe('right-clicking a good on the ground', () => {
       boots: { goodType: GOOD_SHOES, degreeOfUse: fx.fromInt(0) },
     });
     expect(rightClick(sim, [collector, soldier, shod], shoes)).toEqual([
-      { kind: 'equipGood', entity: collector, group: 'boots', slot: 0, goodType: GOOD_SHOES },
-      { kind: 'equipGood', entity: soldier, group: 'boots', slot: 0, goodType: GOOD_SHOES },
+      {
+        kind: 'equipGood',
+        entity: collector,
+        group: 'boots',
+        slot: 0,
+        goodType: GOOD_SHOES,
+        skipReturn: true,
+      },
+      {
+        kind: 'equipGood',
+        entity: soldier,
+        group: 'boots',
+        slot: 0,
+        goodType: GOOD_SHOES,
+        skipReturn: true,
+      },
     ]);
     expect(rightClick(sim, [shod], shoes).map((c) => c.kind)).toEqual(['moveUnit']);
   });
@@ -117,7 +131,14 @@ describe('right-clicking a good on the ground', () => {
     const collector = settlerAt(sim, JOB_COLLECTOR);
     const soldier = settlerAt(sim, JOB_SOLDIER_SWORD);
     expect(rightClick(sim, [collector, soldier], sword)).toEqual([
-      { kind: 'equipGood', entity: soldier, group: 'weapon', slot: 0, goodType: GOOD_SWORD_SHORT },
+      {
+        kind: 'equipGood',
+        entity: soldier,
+        group: 'weapon',
+        slot: 0,
+        goodType: GOOD_SWORD_SHORT,
+        skipReturn: true,
+      },
     ]);
     expect(rightClick(sim, [collector], sword).map((c) => c.kind)).toEqual(['moveUnit']);
   });
@@ -129,7 +150,7 @@ describe('right-clicking a good on the ground', () => {
       misc: [{ goodType: GOOD_MEAD, degreeOfUse: fx.fromInt(0) }, null, null, null],
     });
     expect(rightClick(sim, [drinker], mead)).toEqual([
-      { kind: 'equipGood', entity: drinker, group: 'misc', slot: 1, goodType: GOOD_MEAD },
+      { kind: 'equipGood', entity: drinker, group: 'misc', slot: 1, goodType: GOOD_MEAD, skipReturn: true },
     ]);
   });
 

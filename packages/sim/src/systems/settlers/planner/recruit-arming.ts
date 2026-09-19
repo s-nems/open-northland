@@ -178,7 +178,8 @@ function dispatchWeaponFetch(
       group: 'weapon',
       slot: 0,
       goodType,
-      returnTo: route.here,
+      // Armed at the stock source: walking back marched the recruit to the barracks it had just left.
+      returnTo: null,
       stage: 'acquire',
       issuer: 'assistant-recruit',
       queued: [],
@@ -200,7 +201,7 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
     group: 'armor',
     slot: 0,
     goodType: pick,
-    returnTo: route.here,
+    returnTo: null, // like the weapon fetch, done at the stock source
     stage: 'acquire',
     issuer: 'assistant-recruit',
     queued: [],
@@ -210,8 +211,8 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
 
 /**
  * The equip drive's chain hook: the moment an assistant weapon errand lands, ask for the armor want
- * from the store rather than after the walk home. Returns the armor goodType to retarget the live order
- * at, or null to walk home, settling the booking for a dressed recruit or one with no tier reachable.
+ * from the store the recruit stands at. Returns the armor goodType to retarget the live order at, or
+ * null to end the errand there, settling the booking for a dressed recruit or one with no tier reachable.
  * The search runs over the network around the store the recruit stands at, not the drive's own gate.
  */
 export function chainRecruitArmor(

@@ -398,6 +398,70 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(nodeOfPosition(back.x, back.y)).toEqual(home);
   });
 
+  it('a skip-return order ends at the pile instead of walking back', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    pileAt(sim, 12, 2, SHOES, 1);
+
+    sim.enqueueSetup({
+      kind: 'equipGood',
+      entity: settler,
+      group: 'boots',
+      slot: 0,
+      goodType: SHOES,
+      skipReturn: true,
+    });
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+    const at = sim.world.get(settler, Position);
+    expect(nodeOfPosition(at.x, at.y)).toEqual(nodeOfPosition(fx.fromInt(12), fx.fromInt(2)));
+  });
+
+  it('the last queued intent decides whether the errand walks back, and to where', () => {
+    /** Long enough for the armor walk to be underway when the weapon order arrives. */
+    const ORDER_GAP_TICKS = 60;
+    const run = (armorSkipsReturn: boolean) => {
+      const sim = freshSim();
+      const settler = ownedSettler(sim, 2, 2);
+      setSettlerJob(sim.world, settler, FIGHTER_JOB);
+      pileAt(sim, 12, 2, MAIL, 1);
+      pileAt(sim, 12, 4, LONG_SWORD, 1);
+      const nodeNow = () => {
+        const at = sim.world.get(settler, Position);
+        return nodeOfPosition(at.x, at.y);
+      };
+      sim.enqueueSetup({
+        kind: 'equipGood',
+        entity: settler,
+        group: 'armor',
+        slot: 0,
+        goodType: MAIL,
+        skipReturn: armorSkipsReturn,
+      });
+      sim.run(ORDER_GAP_TICKS);
+      const weaponIssuedAt = nodeNow();
+      sim.enqueueSetup({
+        kind: 'equipGood',
+        entity: settler,
+        group: 'weapon',
+        slot: 0,
+        goodType: LONG_SWORD,
+        skipReturn: !armorSkipsReturn,
+      });
+      sim.run(2 * ERRAND_TICKS);
+      expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(LONG_SWORD);
+      return { weaponIssuedAt, end: nodeNow() };
+    };
+
+    expect(run(false).end).toEqual(nodeOfPosition(fx.fromInt(12), fx.fromInt(4)));
+    // Queued behind an errand that keeps no issue spot, a returning intent heads for where it was given.
+    const midWalk = run(true);
+    expect(midWalk.weaponIssuedAt).not.toEqual(nodeOfPosition(fx.fromInt(2), fx.fromInt(2)));
+    expect(midWalk.end).toEqual(midWalk.weaponIssuedAt);
+  });
+
   it('swap: a part-used replaced good is destroyed instead of stowed', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);

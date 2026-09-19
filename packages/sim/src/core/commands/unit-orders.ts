@@ -240,6 +240,9 @@ export type UnitOrderCommand =
       /** The misc row's slot index; 0 for the single-slot groups. */
       readonly slot: number;
       readonly goodType: number;
+      /** Skip the walk back to the issue spot: the errand ends where the fetch, or the stow of a
+       *  swapped-out good, leaves the settler. */
+      readonly skipReturn?: boolean;
     }
   | {
       /**
