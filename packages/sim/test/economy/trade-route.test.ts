@@ -44,6 +44,7 @@ import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js
 const VIKING = 1;
 const HUMAN = 0;
 const NEIGHBOUR = 1;
+const OUTSIDER = 2;
 const TRADER = 25;
 const HANDCART = 1;
 const WOOD = 1;
@@ -402,5 +403,37 @@ describe('a trader at a foreign house', () => {
     restored.run(RUN_TICKS);
 
     expect(restored.hashState()).toBe(sim.hashState());
+  });
+});
+
+describe('the houses a map agreement applies to', () => {
+  function offersIn(match: readonly number[], aiSeats: readonly number[], owner: number): number {
+    const sim = newSim();
+    const post = houseAt(sim, FAR_X, owner, [], TRADING_POST_ID);
+    sim.enqueueSetup({ kind: 'setMatchParticipants', players: match });
+    for (const player of aiSeats) sim.enqueueSetup({ kind: 'setPlayerAi', player, enabled: true });
+    sim.enqueueSetup({
+      kind: 'addTradeAgreement',
+      missionId: TRADING_POST_ID,
+      giveGood: WOOD,
+      giveAmount: 1,
+      takeGood: PLANK,
+      takeAmount: 2,
+    });
+    sim.run(1);
+    return sim.tradeOffersAt(post).length;
+  }
+
+  it("offers at a computer seat's house, in the match or not", () => {
+    expect(offersIn([HUMAN, NEIGHBOUR], [NEIGHBOUR], NEIGHBOUR)).toBe(1);
+    expect(offersIn([HUMAN, NEIGHBOUR], [], OUTSIDER)).toBe(1);
+  });
+
+  it("offers nothing at a human player's house", () => {
+    expect(offersIn([HUMAN, NEIGHBOUR], [], NEIGHBOUR)).toBe(0);
+  });
+
+  it('gates nothing in a world that set no match up', () => {
+    expect(offersIn([], [], NEIGHBOUR)).toBe(1);
   });
 });

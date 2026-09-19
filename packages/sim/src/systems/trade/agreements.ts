@@ -1,6 +1,7 @@
 import {
   Building,
   diplomacyStance,
+  isAiPlayer,
   isMatchParticipant,
   MissionObjectId,
   matchParticipantBits,
@@ -19,15 +20,18 @@ export interface HouseAgreement {
 }
 
 /**
- * Whether `house` is one a map's agreements can apply to: a standing house of a seat that plays no part
- * in the match. Reading: the original registers an agreement only for a house whose owner is neither a
- * human nor a computer player, the neutral trading nation. A world with no match set up gates nothing.
+ * Whether `house` is one a map's agreements can apply to: a standing house whose owner is no human
+ * player. Reading: the original registers an agreement for every house but one of a player of the
+ * `human player` type (its player-type names are `none`, `human player`, `ai player`), and the corpus
+ * bears it out: most trade houses belong to ordinary computer seats. A seat outside the match is no
+ * human player either, and a world with no match set up gates nothing.
  */
 export function isTradingHouse(world: World, house: Entity): boolean {
   const building = world.tryGet(house, Building);
   if (building === undefined || building.built !== ONE) return false;
   const owner = ownerOf(world, house);
-  return matchParticipantBits(world) === 0 || owner === undefined || !isMatchParticipant(world, owner);
+  if (matchParticipantBits(world) === 0 || owner === undefined) return true;
+  return !isMatchParticipant(world, owner) || isAiPlayer(world, owner);
 }
 
 /** The agreements `house` offers, in table order; empty for a house that trades on none. */
