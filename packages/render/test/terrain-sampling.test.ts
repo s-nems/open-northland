@@ -1,3 +1,4 @@
+import { TRANSITION_NONE, TRANSITION_PAIRS } from '@open-northland/data';
 import { BufferImageSource, Mesh, UniformGroup } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { TerrainLayer } from '../src/gpu/terrain/index.js';
@@ -57,7 +58,8 @@ describe('terrain footprint sampling', () => {
       groundFor: () => tile,
     };
     // Two cells on one page: meadow, then deep water. Vertices come out triangle by triangle, cell A
-    // then cell B, so vertex 0 sits on the meadow cell's node and vertex 6 on the water cell's.
+    // then cell B: vertices 0..5 belong to the meadow cell (some on the water cell's nodes), 6..11 to
+    // the water cell.
     const terrain = {
       width: 2,
       height: 1,
@@ -72,8 +74,45 @@ describe('terrain footprint sampling', () => {
     const water = geometry.getBuffer('aWater').data;
     expect(waves).toHaveLength(12);
     expect(water).toHaveLength(24);
-    expect(Array.from(water.slice(0, 2))).toEqual([0, 0]);
+    expect(Array.from(water.slice(0, 12))).toEqual(new Array(12).fill(0));
     expect(Array.from(water.slice(12, 14))).toEqual([1, 1]);
+    layer.destroy();
+    source.destroy();
+  });
+
+  it('keeps the water shading off a land transition overlaid on water', () => {
+    const source = new BufferImageSource({ resource: new Uint8Array(64 * 64 * 4), width: 64, height: 64 });
+    const tile = { pageKey: 'ground', coordsA: [0, 0, 63, 63, 0, 63], coordsB: [0, 0, 63, 0, 63, 63] };
+    const textures = {
+      pages: new Map([['ground', source]]),
+      cellFor: () => undefined,
+      groundFor: () => tile,
+      transitionFor: () => ({ pageKey: 'ground', coordsA: [tile.coordsA], coordsB: [tile.coordsB] }),
+    };
+    // One deep-water cell: a sand overlay on triangle A, a water overlay on triangle B (pair 0 of
+    // transition types 0 and 1).
+    const SAND_PAIR_0 = 0;
+    const WATER_PAIR_0 = TRANSITION_PAIRS;
+    const terrain = {
+      width: 1,
+      height: 1,
+      typeIds: [0],
+      brightness: [127],
+      ground: { patterns: ['block water 01'], a: [0], b: [0] },
+      transitions: {
+        types: ['sand 1', 'water bright 1'],
+        a1: [SAND_PAIR_0],
+        b1: [WATER_PAIR_0],
+        a2: [TRANSITION_NONE],
+        b2: [TRANSITION_NONE],
+      },
+    };
+    const layer = new TerrainLayer();
+    layer.set(terrain, textures);
+    const overlay = layer.container.children[0]?.children[1];
+    if (!(overlay instanceof Mesh)) throw new Error('Missing overlay mesh');
+    const water = overlay.geometry.getBuffer('aWater').data;
+    expect(Array.from(water)).toEqual([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
     layer.destroy();
     source.destroy();
   });

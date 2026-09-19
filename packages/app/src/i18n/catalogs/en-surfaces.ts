@@ -162,7 +162,7 @@ export const enSurfaces = {
         'Softens and deepens every shadow, and casts one from each settler and animal. Applies immediately.',
       environmentMotion: 'Experiment: smoother motion',
       environmentMotionTip:
-        'Interpolates fish, enriches water and smooths the breeze. Settlers and animals keep the original stepping. Does not add frames to original animations.',
+        'Interpolates fish, darkens the water, adds a drifting glint and smooths the breeze. Settlers and animals keep the original stepping. Does not add frames to original animations.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',

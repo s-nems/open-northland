@@ -34,13 +34,16 @@ export const NO_WATER: WaterField = { wave: STILL, surface: STILL, deep: STILL }
  *  'block water shallow …' across the owned corpus). */
 const WATER_PATTERN_NAME = /water/i;
 
-/** The authored shallow-water family (`EditGroups` 'water shallow' / 'water bright'): the map painter's
+/** The authored shallow-water family, keyed by `EditName` ('block water shallow …'): the map painter's
  *  own depth split, drawn with its lighter texture. Every other water pattern counts as deep. */
 const SHALLOW_PATTERN_NAME = /shallow/i;
 
+/** Whether a ground pattern or transition overlay of this name paints water, so takes the water shading. */
+export const paintsWater = (name: string): boolean => WATER_PATTERN_NAME.test(name);
+
 export function makeWaterField(ground: SceneGround | undefined, width: number, height: number): WaterField {
   if (ground === undefined || width <= 0 || height <= 0) return NO_WATER;
-  const waterPattern = ground.patterns.map((name) => (WATER_PATTERN_NAME.test(name) ? 1 : 0));
+  const waterPattern = ground.patterns.map((name) => (paintsWater(name) ? 1 : 0));
   const deepPattern = ground.patterns.map((name, i) =>
     waterPattern[i] === 1 && !SHALLOW_PATTERN_NAME.test(name) ? 1 : 0,
   );

@@ -92,17 +92,17 @@ const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
 export const WAVE_TIME_PERIOD_TICKS = 210;
 
 // Water depth shading. The maps split water into the painter's shallow and deep pattern families, each
-// with its own texture (data/terrain/water.ts); the amounts pushing them further apart are an
-// approximation tuned by eye. All three multiply the lane brightness only.
-/** Brightness gain on shallow water. */
-const WATER_SHALLOW_LIGHTEN = 0.06;
+// with its own texture (data/terrain/water.ts); the amounts deepening both, the deep family more,
+// are an approximation tuned by eye. All three multiply the lane brightness only.
+/** Brightness loss on shallow water. */
+const WATER_SHALLOW_DARKEN = 0.12;
 /** Brightness loss on deep water. */
-const WATER_DEEP_DARKEN = 0.08;
+const WATER_DEEP_DARKEN = 0.18;
 /** Peak brightness gain of the glint band crossing deep water. */
-const WATER_GLINT = 0.1;
+const WATER_GLINT = 0.25;
 /** One glint pass every {@link WAVE_TIME_PERIOD_TICKS} (17.5 s at the 12 Hz sim). */
 const WATER_GLINT_RADIANS_PER_TICK = (2 * Math.PI) / WAVE_TIME_PERIOD_TICKS;
-/** Spatial wavelength of the glint band, world px along its travel. */
+/** Glint phase per world px along `slant * x + y`: one band every 640 px down the screen. */
 const WATER_GLINT_PHASE_PER_PX = (2 * Math.PI) / 640;
 /** The band's travel slants off the swell's diagonal so the two never align. */
 const WATER_GLINT_SLANT = 0.6;
@@ -187,15 +187,15 @@ const FIELD_FRAGMENT = `#version 300 es
     float polishedShimmer = 0.55 * shimmer + 0.3 * crossGlint + 0.15 * shimmer * crossGlint;
     lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
       * mix(shimmer, polishedShimmer, uEnvironmentMotion);
-    // Water depth: shallows read lighter, deep water darker, and a narrow glint band drifts across the
-    // deep water. vWater = (water fraction, deep fraction), zero at land nodes and fading out across
-    // the coast triangle. Gated with the motion enhancement, so the baseline renderer's water is
-    // unchanged.
+    // Water depth: shallows read darker, deep water darker still, and a narrow glint band drifts
+    // across the deep water. vWater = (water fraction, deep fraction), zero on land paint and at land
+    // nodes, so it fades out across the coast triangle. Gated with the motion enhancement, so the
+    // baseline renderer's water is unchanged.
     float shallow = vWater.x - vWater.y;
     float deep = vWater.y;
     float glint = pow(max(sin(uWave.x * ${WATER_GLINT_RADIANS_PER_TICK.toFixed(8)} + vGlintPhase), 0.0),
       ${WATER_GLINT_SHARPNESS.toFixed(1)});
-    lane *= 1.0 + uEnvironmentMotion * (${WATER_SHALLOW_LIGHTEN.toFixed(4)} * shallow
+    lane *= 1.0 + uEnvironmentMotion * (-${WATER_SHALLOW_DARKEN.toFixed(4)} * shallow
       - ${WATER_DEEP_DARKEN.toFixed(4)} * deep + ${WATER_GLINT.toFixed(4)} * uWave.y * deep * glint);
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;

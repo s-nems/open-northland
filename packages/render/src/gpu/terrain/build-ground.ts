@@ -5,6 +5,7 @@ import {
   type ElevationField,
   type NodeXY,
   nodeLaneUV,
+  paintsWater,
   rectTriangleUVs,
   TRANSITION_NONE,
   transitionRef,
@@ -35,8 +36,11 @@ interface ResolvedTransition {
   readonly source: TextureSource;
   readonly coordsA: readonly (readonly number[])[];
   readonly coordsB: readonly (readonly number[])[];
+  readonly paintsWater: boolean;
 }
 
+/** `paintsWater` keeps the water shading off land paint that shares a node with water: a shore
+ *  triangle, or a land transition overlaid on a water triangle. */
 function pushTriangle(
   batch: TerrainBatch,
   nodes: readonly [NodeXY, NodeXY, NodeXY],
@@ -44,6 +48,7 @@ function pushTriangle(
   lift: NodeLiftFn,
   terrain: SceneTerrain,
   lane: LaneShading,
+  paintsWater: boolean,
 ): void {
   const base = batch.positions.length / 2;
   batch.positions.push(...positions(nodes, lift));
@@ -53,7 +58,8 @@ function pushTriangle(
     for (const [hx, hy] of nodes) {
       batch.brightnessUVs.push(...nodeLaneUV(hx, hy, terrain.width, terrain.height, lane.laneTexWidth));
       batch.waves.push(lane.water.wave(hx, hy));
-      batch.water.push(lane.water.surface(hx, hy), lane.water.deep(hx, hy));
+      if (paintsWater) batch.water.push(lane.water.surface(hx, hy), lane.water.deep(hx, hy));
+      else batch.water.push(0, 0);
     }
   }
   batch.indices.push(base, base + 1, base + 2);
@@ -104,6 +110,7 @@ export function buildTextured(
             lift,
             terrain,
             lane,
+            false, // this path has no pattern names, and its water field is empty
           );
         }
       }
@@ -127,14 +134,18 @@ function buildGround(
   lane: LaneShading,
 ): TerrainChunk[] {
   // Resolve the map's compact pattern list once (index-aligned); nulls fall back per triangle.
-  const resolved: ({ source: TextureSource; pageKey: string; pattern: GroundPattern } | null)[] =
-    ground.patterns.map((name) => {
-      const pattern = textures.groundFor?.(name);
-      if (pattern === undefined) return null;
-      const source = textures.pages.get(pattern.pageKey);
-      if (source === undefined) return null;
-      return { source, pageKey: pattern.pageKey, pattern };
-    });
+  const resolved: ({
+    source: TextureSource;
+    pageKey: string;
+    pattern: GroundPattern;
+    paintsWater: boolean;
+  } | null)[] = ground.patterns.map((name) => {
+    const pattern = textures.groundFor?.(name);
+    if (pattern === undefined) return null;
+    const source = textures.pages.get(pattern.pageKey);
+    if (source === undefined) return null;
+    return { source, pageKey: pattern.pageKey, pattern, paintsWater: paintsWater(name) };
+  });
   // Resolve the map's transition dictionary once (index-aligned). A name the IR lacks, or a page that
   // failed to load, resolves null and that overlay is skipped.
   const transitions = terrain.transitions;
@@ -143,7 +154,13 @@ function buildGround(
     if (t === undefined) return null;
     const source = textures.pages.get(t.pageKey);
     if (source === undefined) return null;
-    return { pageKey: t.pageKey, source, coordsA: t.coordsA, coordsB: t.coordsB };
+    return {
+      pageKey: t.pageKey,
+      source,
+      coordsA: t.coordsA,
+      coordsB: t.coordsB,
+      paintsWater: paintsWater(name),
+    };
   });
   const lift = liftFn(terrain, elevation);
   const shaded = lane.brightnessTex !== undefined;
@@ -168,6 +185,7 @@ function buildGround(
         lift,
         terrain,
         lane,
+        t.paintsWater,
       );
     };
     for (let row = r0; row <= r1; row++) {
@@ -202,6 +220,7 @@ function buildGround(
             lift,
             terrain,
             lane,
+            entry.paintsWater,
           );
         }
         if (transitions !== undefined) {

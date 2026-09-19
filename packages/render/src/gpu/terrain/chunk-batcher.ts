@@ -25,12 +25,12 @@ export interface TerrainBatch {
    *  {@link positions} only on a shaded map. */
   readonly brightnessUVs: number[];
   /**
-   * Per-vertex water-wave amplitude, 1 per position pair. The shaded ground program declares both
-   * attributes, so a land map pushes zeros; empty exactly when {@link brightnessUVs} is.
+   * Per-vertex water-wave amplitude, 1 per position pair. The shaded ground program declares every
+   * lane attribute, so a land map pushes zeros; empty exactly when {@link brightnessUVs} is.
    */
   readonly waves: number[];
-  /** Per-vertex water shading pair (the node cell's water fraction, its deep-water fraction), 2 per
-   *  position pair, pushed in lockstep with {@link waves}. */
+  /** Per-vertex water shading pair (the node cell's water fraction, its deep-water fraction; zeros on a
+   *  triangle painting land), 2 per position pair, pushed in lockstep with {@link waves}. */
   readonly water: number[];
 }
 
