@@ -34,6 +34,8 @@ import {
   PLAYER_SWATCHES,
   RESOURCE_ENTRIES,
   unitSpawnCommand,
+  type VehicleEntry,
+  vehicleSpawnCommand,
   WARRIOR_PRESETS,
 } from './spawn-catalog.js';
 
@@ -67,6 +69,8 @@ export interface AdminDebugDeps {
   readonly goods: readonly GoodEntry[];
   /** Wildlife entries, each spawnable as its data-pinned herd. Empty or absent hides the section. */
   readonly animals?: readonly AnimalEntry[];
+  /** The running content's vehicle types. Empty or absent hides the section. */
+  readonly vehicles?: readonly VehicleEntry[];
   /** The sim's live needs-rule state, drawn on the toggle button. */
   readonly needsEnabled?: () => boolean;
   /** The sim's live fog mode. Absent hides the visibility section. */
@@ -163,7 +167,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   }
   header.append(swatchRow);
 
-  // Applied to every spawned unit; a resource ignores them.
+  // Applied to every spawned unit; a vehicle or a resource ignores them.
   const statsRow = el('div', 'display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap');
   statsRow.append(
     numberField('HP', DEFAULT_HITPOINTS, (v) => {
@@ -216,6 +220,14 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     CIVILIAN_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
     false,
   );
+  const vehicles = deps.vehicles ?? [];
+  if (vehicles.length > 0) {
+    addPaletteSection(
+      copy.vehicles,
+      vehicles.map((entry) => ({ label: entry.label, armed: { kind: 'vehicle', entry } })),
+      false,
+    );
+  }
   // A herd is unowned, so the player, HP and armor knobs do not apply to it.
   const animals = deps.animals ?? [];
   if (animals.length > 0) {
@@ -291,6 +303,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     }
     if (armed.kind === 'good') {
       deps.enqueue(goodDropCommand(armed.good, col, row));
+      return;
+    }
+    if (armed.kind === 'vehicle') {
+      const tribe = deps.seatTribeOf(player);
+      deps.enqueue(vehicleSpawnCommand(armed.entry.vehicleType, { player, tribe, x: col, y: row }));
       return;
     }
     deps.enqueue(

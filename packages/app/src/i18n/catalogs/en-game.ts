@@ -588,7 +588,8 @@ export const enGame = {
   admin: {
     toggle: '🛠 Admin / Debug',
     title: 'Admin and debug tools',
-    intro: 'Choose a unit, resource, good or tool, then click the world. Change owner between clicks.',
+    intro:
+      'Choose a unit, vehicle, resource, good or tool, then click the world. Change owner between clicks.',
     playerOwner: 'Player (owner)',
     playerTitle: 'Player {player} ({name})',
     armor: 'Armor',
@@ -596,6 +597,7 @@ export const enGame = {
     geometry: 'Building geometry',
     warriors: 'Warriors',
     civilians: 'Civilians',
+    vehicles: 'Vehicles',
     animals: 'Wildlife',
     resources: 'Resource nodes',
     goods: 'Goods on the ground',
@@ -606,7 +608,7 @@ export const enGame = {
     standingPalisade: 'Palisade (standing)',
     targetSettler: 'unit',
     targetBuilding: 'building',
-    nothingArmed: 'Nothing selected - choose a unit, resource, good or tool above.',
+    nothingArmed: 'Nothing selected - choose a unit, vehicle, resource, good or tool above.',
     armedResource: 'Armed: “{label}” resource - click the world (right click/Esc cancels).',
     armedGood: 'Armed: “{label}” ground pile - click the world (right click/Esc cancels).',
     armedAction: 'Armed: {label} - click a {target} (right click/Esc cancels).',

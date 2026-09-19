@@ -29,6 +29,7 @@ import {
   GOOD_SWORD_LONG,
   GOOD_SWORD_SHORT,
   GOOD_WOOD,
+  VEHICLE_SHIP_SMALL,
   WEAPON_FISTS,
   WEAPON_SWORD,
   weaponEquipmentFor,
@@ -41,6 +42,7 @@ import {
   goodDropCommand,
   RESOURCE_ENTRIES,
   unitSpawnCommand,
+  vehicleSpawnCommand,
   WARRIOR_PRESETS,
 } from '../src/view/admin-debug/spawn-catalog.js';
 
@@ -144,6 +146,19 @@ describe('admin spawn command mapping', () => {
       goods: sandboxGoods,
     });
     expect(cmd).toMatchObject({ tribe: FRANK, owner: 1 });
+  });
+
+  it('a vehicle spawns through createVehicle for the chosen seat and that seat’s tribe', () => {
+    const FRANK = 2;
+    const cmd = vehicleSpawnCommand(VEHICLE_SHIP_SMALL, { player: 1, tribe: FRANK, x: 7, y: 9 });
+    expect(cmd).toEqual({
+      kind: 'createVehicle',
+      vehicleType: VEHICLE_SHIP_SMALL,
+      x: 7,
+      y: 9,
+      tribe: FRANK,
+      owner: 1,
+    });
   });
 
   it('the palette offers every gatherable resource', () => {

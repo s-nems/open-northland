@@ -6,11 +6,13 @@ import {
   PLAYER_SWATCHES,
   RESOURCE_ENTRIES,
   type UnitPreset,
+  type VehicleEntry,
 } from './spawn-catalog.js';
 
 /** What the next map click will do. */
 export type Armed =
   | { readonly kind: 'unit'; readonly preset: UnitPreset }
+  | { readonly kind: 'vehicle'; readonly entry: VehicleEntry }
   | { readonly kind: 'animal'; readonly entry: AnimalEntry }
   | { readonly kind: 'resource'; readonly good: number }
   | { readonly kind: 'good'; readonly good: number }
@@ -19,6 +21,7 @@ export type Armed =
 export function sameArmed(a: Armed, b: Armed | null): boolean {
   if (b === null) return false;
   if (a.kind === 'unit' && b.kind === 'unit') return a.preset.id === b.preset.id;
+  if (a.kind === 'vehicle' && b.kind === 'vehicle') return a.entry.vehicleType === b.entry.vehicleType;
   if (a.kind === 'animal' && b.kind === 'animal') return a.entry.tribe === b.entry.tribe;
   if (a.kind === 'resource' && b.kind === 'resource') return a.good === b.good;
   if (a.kind === 'good' && b.kind === 'good') return a.good === b.good;
@@ -86,9 +89,10 @@ export function createAdminLabels(
         target: targetNoun[armed.action.targetKind],
       });
     }
+    // A vehicle is owned like a unit, so its line names the seat it is dropped for too.
     const who = PLAYER_SWATCHES.find((s) => s.player === player);
     return formatMessage(copy.armedUnit, {
-      label: unitLabel(armed.preset),
+      label: armed.kind === 'vehicle' ? armed.entry.label : unitLabel(armed.preset),
       player,
       name: who === undefined ? '?' : playerName(who.player),
     });

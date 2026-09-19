@@ -3,6 +3,7 @@ import type { Command, Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
+import { vehicleLabel } from '../../game/technology.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
@@ -152,6 +153,11 @@ function mountAdminPalette(
         id: sim.content.tribes.find((t) => t.typeId === a.tribeType)?.id ?? a.id,
       }))
       .sort((a, b) => a.tribe - b.tribe),
+    // The content's own row order, which keeps the carts together ahead of the ships.
+    vehicles: sim.content.vehicles.map((v) => ({
+      vehicleType: v.typeId,
+      label: vehicleLabel(sim.content, v.typeId) ?? v.id,
+    })),
     // Read through the sim's sanctioned accessor, never the live component stores.
     needsEnabled: () => sim.needsEnabled(),
     fogMode: () => sim.fogMode(),

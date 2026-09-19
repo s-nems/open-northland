@@ -106,6 +106,25 @@ export function animalSpawnCommand(tribe: number, x: number, y: number): Command
   return { kind: 'spawnAnimalHerd', tribe, x, y };
 }
 
+/** One spawnable vehicle type from the running content, with its localized name. */
+export interface VehicleEntry {
+  readonly vehicleType: number;
+  readonly label: string;
+}
+
+/** A vehicle owned like a unit: the chosen player and that seat's tribe, whose body it draws. */
+export interface VehicleSpawnOptions {
+  readonly player: number;
+  readonly tribe: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Full hit points, an empty hold and no crew; a ship dropped within its door distance of land moors. */
+export function vehicleSpawnCommand(vehicleType: number, opts: VehicleSpawnOptions): Command {
+  return { kind: 'createVehicle', vehicleType, x: opts.x, y: opts.y, tribe: opts.tribe, owner: opts.player };
+}
+
 /** One spawnable resource node: its good's typeId plus a short material label. */
 export interface ResourceEntry {
   readonly good: number;

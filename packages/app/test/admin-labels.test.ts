@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { VEHICLE_HANDCART, VEHICLE_SHIP_SMALL } from '../src/game/sandbox/ids/index.js';
 import { formatMessage, messages, professionLabel } from '../src/i18n/index.js';
 import { DEBUG_ACTIONS, type DebugAction } from '../src/view/admin-debug/actions-catalog.js';
 import { type Armed, createAdminLabels, sameArmed } from '../src/view/admin-debug/labels.js';
@@ -6,6 +7,7 @@ import {
   CIVILIAN_PRESETS,
   type GoodEntry,
   type UnitPreset,
+  type VehicleEntry,
   WARRIOR_PRESETS,
 } from '../src/view/admin-debug/spawn-catalog.js';
 
@@ -33,6 +35,9 @@ function preset(id: string): UnitPreset {
   return found;
 }
 
+const CART: VehicleEntry = { vehicleType: VEHICLE_HANDCART, label: 'Wózek' };
+const SHIP: VehicleEntry = { vehicleType: VEHICLE_SHIP_SMALL, label: 'Statek' };
+
 function debugAction(id: DebugAction['id']): DebugAction {
   const found = DEBUG_ACTIONS.find((a) => a.id === id);
   if (found === undefined) throw new Error(`missing debug action ${id}`);
@@ -51,6 +56,8 @@ describe('sameArmed', () => {
     expect(sameArmed({ kind: 'resource', good: 1 }, { kind: 'resource', good: 1 })).toBe(true);
     expect(sameArmed({ kind: 'resource', good: 1 }, { kind: 'resource', good: 2 })).toBe(false);
     expect(sameArmed({ kind: 'good', good: 5 }, { kind: 'good', good: 5 })).toBe(true);
+    expect(sameArmed({ kind: 'vehicle', entry: CART }, { kind: 'vehicle', entry: { ...CART } })).toBe(true);
+    expect(sameArmed({ kind: 'vehicle', entry: CART }, { kind: 'vehicle', entry: SHIP })).toBe(false);
     expect(sameArmed(kill, kill)).toBe(true);
     expect(sameArmed(kill, fill)).toBe(false);
   });
@@ -71,6 +78,12 @@ describe('createAdminLabels status line', () => {
     const spear = preset('spear');
     expect(labels.status({ kind: 'unit', preset: spear }, 0)).toBe(
       formatMessage(copy.armedUnit, { label: labels.unit(spear), player: 0, name: labels.player(0) }),
+    );
+  });
+
+  it('names the vehicle arm by its entry label and the seat it is dropped for', () => {
+    expect(labels.status({ kind: 'vehicle', entry: SHIP }, 1)).toBe(
+      formatMessage(copy.armedUnit, { label: SHIP.label, player: 1, name: labels.player(1) }),
     );
   });
 
