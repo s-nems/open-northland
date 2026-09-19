@@ -2,7 +2,6 @@ import { components } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
-import { type ExtrasPaperRow, layoutPaperRows, type PaperFace } from './extras-papers.js';
 import {
   CLOSE_BOX,
   HEADLINE_H,
@@ -13,16 +12,13 @@ import {
 } from './window-family/index.js';
 
 /**
- * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, the papers
- * list, their layout and hit-test. Grants drive the sim's auto-equip, counters its birth and training
- * queues, and a placing paper opens the build menu or placement it pays for.
+ * The extras ("chest") window model: the assistant tab, the counter and grant controls, their layout
+ * and hit-test. Grants drive the sim's auto-equip, counters its birth and training queues. The papers
+ * the original lists on this window's second tab are the construction window's page.
  *
- * The decoded `miscwindow` table carries the original window's labels (500 the title, 501 "Papiery", 502
- * the block header, 503-509 the grant commands); the tab pair, row wording, counter set and geometry are
- * an approximation.
+ * The decoded `miscwindow` table carries the original window's labels (500 the title, 502 the block
+ * header, 503-509 the grant commands); the row wording, counter set and geometry are an approximation.
  */
-
-export type ExtrasTab = 'assistant' | 'plans';
 
 /** The assistant's six production counters: two birth queues and four training queues. */
 export type AssistantCounterId =
@@ -131,7 +127,6 @@ const SWITCH_H = 14;
 const CONTROL_INSET_X = 4;
 
 export interface ExtrasMenuTabRect {
-  readonly tab: ExtrasTab;
   readonly label: string;
   readonly rect: Rect;
   readonly selected: boolean;
@@ -167,25 +162,17 @@ export interface ExtrasMenuLayout {
   readonly titleRect: Rect;
   readonly title: string;
   readonly closeRect: Rect;
+  /** The one tab the window has left, the assistant. */
   readonly tabs: readonly ExtrasMenuTabRect[];
-  /** Empty on the plans tab. */
   readonly counters: readonly ExtrasCounterRow[];
-  /** Empty on the plans tab. */
   readonly grants: readonly ExtrasGrantRow[];
-  /** The plans tab's papers in slot order; empty on the assistant tab. */
-  readonly papers: readonly ExtrasPaperRow[];
-  /** The plans tab's empty-list line; null on the assistant tab and while papers are listed. */
-  readonly plansPlaceholder: { readonly label: string; readonly x: number; readonly y: number } | null;
 }
 
 export interface ExtrasMenuLayoutOptions {
   readonly originX: number;
   readonly originY: number;
   readonly scale: number;
-  readonly tab: ExtrasTab;
   readonly state: AssistantState;
-  /** The player's papers in slot order; omitted lists none. */
-  readonly papers?: readonly PaperFace[];
 }
 
 /** The counter rows in display order. */
@@ -203,7 +190,7 @@ const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
   // Kept fractional, like the text runs, so a long grant label cannot overrun its switch.
   const s = Math.max(MIN_UI_SCALE, opts.scale);
-  const { originX, originY, tab, state } = opts;
+  const { originX, originY, state } = opts;
   const labels = messages().hud.extras;
 
   const width = MENU_WIDTH * s;
@@ -214,16 +201,13 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
   const bodyTop = originY + headlineH + tabH + TAB_CONTENT_GAP * s;
   const controlRight = originX + width - pad - CONTROL_INSET_X * s;
 
-  const tabs: ExtrasMenuTabRect[] = (
-    [
-      { tab: 'assistant', label: labels.assistantTab },
-      { tab: 'plans', label: labels.plansTab },
-    ] as const
-  ).map((t, i) => ({
-    ...t,
-    selected: t.tab === tab,
-    rect: { x: originX + pad + i * TAB_W * s, y: originY + headlineH, w: TAB_W * s, h: tabH },
-  }));
+  const tabs: ExtrasMenuTabRect[] = [
+    {
+      label: labels.assistantTab,
+      selected: true,
+      rect: { x: originX + pad, y: originY + headlineH, w: TAB_W * s, h: tabH },
+    },
+  ];
 
   const counterLabels: Readonly<Record<AssistantCounterId, string>> = {
     extraWomen: labels.extraWomen,
@@ -240,61 +224,51 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
     giveMead: labels.giveMead,
   };
 
-  const counters: ExtrasCounterRow[] =
-    tab !== 'assistant'
-      ? []
-      : COUNTER_IDS.map((id, i) => {
-          const y = bodyTop + i * rowH;
-          const stepper = STEPPER * s;
-          const valueW = VALUE_W * s;
-          const gap = CONTROL_GAP * s;
-          const controlY = y + (rowH - stepper) / 2;
-          const plusX = controlRight - stepper;
-          const valueX = plusX - gap - valueW;
-          const minusX = valueX - gap - stepper;
-          const infinityX = minusX - gap - stepper;
-          return {
-            id,
-            label: counterLabels[id],
-            value: state.counters[id].value,
-            infinite: state.counters[id].infinite,
-            rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
-            infinityRect: INFINITE_COUNTER_IDS.has(id)
-              ? { x: infinityX, y: controlY, w: stepper, h: stepper }
-              : null,
-            minusRect: { x: minusX, y: controlY, w: stepper, h: stepper },
-            valueRect: { x: valueX, y: controlY, w: valueW, h: stepper },
-            plusRect: { x: plusX, y: controlY, w: stepper, h: stepper },
-          };
-        });
+  const counters: ExtrasCounterRow[] = COUNTER_IDS.map((id, i) => {
+    const y = bodyTop + i * rowH;
+    const stepper = STEPPER * s;
+    const valueW = VALUE_W * s;
+    const gap = CONTROL_GAP * s;
+    const controlY = y + (rowH - stepper) / 2;
+    const plusX = controlRight - stepper;
+    const valueX = plusX - gap - valueW;
+    const minusX = valueX - gap - stepper;
+    const infinityX = minusX - gap - stepper;
+    return {
+      id,
+      label: counterLabels[id],
+      value: state.counters[id].value,
+      infinite: state.counters[id].infinite,
+      rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
+      infinityRect: INFINITE_COUNTER_IDS.has(id)
+        ? { x: infinityX, y: controlY, w: stepper, h: stepper }
+        : null,
+      minusRect: { x: minusX, y: controlY, w: stepper, h: stepper },
+      valueRect: { x: valueX, y: controlY, w: valueW, h: stepper },
+      plusRect: { x: plusX, y: controlY, w: stepper, h: stepper },
+    };
+  });
 
   const grantsTop = bodyTop + COUNTER_IDS.length * rowH + BLOCK_GAP * s;
-  const grants: ExtrasGrantRow[] =
-    tab !== 'assistant'
-      ? []
-      : GRANT_IDS.map((id, i) => {
-          const y = grantsTop + i * rowH;
-          const switchW = SWITCH_W * s;
-          const switchH = SWITCH_H * s;
-          return {
-            id,
-            label: grantLabels[id],
-            on: state.grants[id],
-            rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
-            switchRect: {
-              x: controlRight - switchW,
-              y: y + (rowH - switchH) / 2,
-              w: switchW,
-              h: switchH,
-            },
-          };
-        });
+  const grants: ExtrasGrantRow[] = GRANT_IDS.map((id, i) => {
+    const y = grantsTop + i * rowH;
+    const switchW = SWITCH_W * s;
+    const switchH = SWITCH_H * s;
+    return {
+      id,
+      label: grantLabels[id],
+      on: state.grants[id],
+      rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
+      switchRect: {
+        x: controlRight - switchW,
+        y: y + (rowH - switchH) / 2,
+        w: switchW,
+        h: switchH,
+      },
+    };
+  });
 
-  const papers =
-    tab === 'plans' ? layoutPaperRows(opts.papers ?? [], originX + pad, bodyTop, width - 2 * pad, rowH) : [];
-
-  const bodyRows = tab === 'assistant' ? COUNTER_IDS.length + GRANT_IDS.length : Math.max(1, papers.length);
-  const bodyH = bodyRows * rowH + (tab === 'assistant' ? BLOCK_GAP * s : 0);
+  const bodyH = (COUNTER_IDS.length + GRANT_IDS.length) * rowH + BLOCK_GAP * s;
   const height = headlineH + tabH + TAB_CONTENT_GAP * s + bodyH + pad;
 
   const closeSize = CLOSE_BOX * s;
@@ -312,33 +286,22 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
     tabs,
     counters,
     grants,
-    papers,
-    plansPlaceholder:
-      tab === 'plans' && papers.length === 0
-        ? { label: labels.plansEmpty, x: originX + pad + CONTROL_INSET_X * s, y: bodyTop }
-        : null,
   };
 }
 
 /** What the cursor is over inside the open window. */
 export type ExtrasMenuHit =
-  | { readonly kind: 'tab'; readonly tab: ExtrasTab }
   | { readonly kind: 'counter'; readonly id: AssistantCounterId; readonly delta: 1 | -1 }
   | { readonly kind: 'counterInfinity'; readonly id: AssistantCounterId }
   | { readonly kind: 'grant'; readonly id: AssistantGrantId }
-  /** A usable paper row; an inert row reads as the window body. */
-  | { readonly kind: 'paper'; readonly index: number }
   | { readonly kind: 'close' }
   | { readonly kind: 'window' } // over the chrome but not an interactive element
   | null;
 
 /** Resolve a screen point against the open window
- *  (close > tab > infinity > stepper > switch > paper > background > miss). */
+ *  (close > infinity > stepper > switch > background > miss). */
 export function hitTestExtrasMenu(layout: ExtrasMenuLayout, x: number, y: number): ExtrasMenuHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
-  for (const t of layout.tabs) {
-    if (contains(t.rect, x, y)) return { kind: 'tab', tab: t.tab };
-  }
   for (const c of layout.counters) {
     if (c.infinityRect !== null && contains(c.infinityRect, x, y)) {
       return { kind: 'counterInfinity', id: c.id };
@@ -348,9 +311,6 @@ export function hitTestExtrasMenu(layout: ExtrasMenuLayout, x: number, y: number
   }
   for (const g of layout.grants) {
     if (contains(g.switchRect, x, y)) return { kind: 'grant', id: g.id };
-  }
-  for (const p of layout.papers) {
-    if (p.usable && contains(p.rect, x, y)) return { kind: 'paper', index: p.index };
   }
   if (contains(layout.window, x, y)) return { kind: 'window' };
   return null;

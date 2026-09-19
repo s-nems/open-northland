@@ -9,7 +9,7 @@ import { realMapWorld } from './real-map-world.js';
 
 /**
  * Pin the `[specialItems]` starting papers against the real decoded maps: every authored row must name a
- * kind the plans tab can spend and a house the content knows, else a map's opening papers would sit
+ * kind the papers page can spend and a house the content knows, else a map's opening papers would sit
  * inert or place nothing, and the corpus map every player opens with three "any house" papers must
  * hand them out through the same world build the browser runs.
  */

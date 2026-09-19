@@ -2,7 +2,7 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [06-documents](ingame-ui-06-documents.md), [07-residents](ingame-ui-07-residents.md), [10-group-details](ingame-ui-10-group-details.md), [11-assistant](ingame-ui-11-assistant.md), [13-statistics-window](ingame-ui-13-statistics-window.md), [14-mission](ingame-ui-14-mission.md), [15-diplomacy](ingame-ui-15-diplomacy.md), [17-knowledge-dependencies](ingame-ui-17-knowledge-dependencies.md), [18-system-menu](ingame-ui-18-system-menu.md), [19-map-overview](ingame-ui-19-map-overview.md)
+**Blocked by:** [07-residents](ingame-ui-07-residents.md), [10-group-details](ingame-ui-10-group-details.md), [11-assistant](ingame-ui-11-assistant.md), [13-statistics-window](ingame-ui-13-statistics-window.md), [14-mission](ingame-ui-14-mission.md), [15-diplomacy](ingame-ui-15-diplomacy.md), [17-knowledge-dependencies](ingame-ui-17-knowledge-dependencies.md), [18-system-menu](ingame-ui-18-system-menu.md), [19-map-overview](ingame-ui-19-map-overview.md)
 
 Panel-by-panel implementation needs one end-to-end acceptance pass to expose inconsistent styles, remaining functional gaps and obsolete routes before integration.
 

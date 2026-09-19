@@ -253,7 +253,17 @@ export const enGame = {
       gate: 'Gate',
       notInThisVersion: 'Not available in this version of the game',
       papers: 'Papers',
-      papersHint: 'Papers from chests: plans and notes',
+      papersHint: 'Papers from chests: building plans',
+      catalog: 'Catalogue',
+      plans: 'Building plans',
+      tally: '×{count}',
+      paperEffect: {
+        placeAny: 'Choose in the catalogue; it stands at once',
+        placeHouse: 'Stands at once, no construction, no materials',
+        placeStockedHouse: 'Stands at once, its store filled to the brim',
+      },
+      papersEmptyTitle: 'No papers',
+      papersEmptyText: 'Papers are found in the chests on the map.',
       viewLabel: 'View',
       gridView: 'Tiles',
       listView: 'List',
@@ -339,7 +349,6 @@ export const enGame = {
     extras: {
       title: 'Extras window',
       assistantTab: 'Assistant',
-      plansTab: 'Papers',
       extraWomen: 'Extra women',
       extraMen: 'Extra men',
       trainSoldiers: 'Train Soldiers',
@@ -352,7 +361,6 @@ export const enGame = {
       giveMead: 'Give everyone mead',
       on: 'ON',
       off: 'OFF',
-      plansEmpty: 'No papers yet',
       /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes
        *  the named house, trade or good. */
       papers: {

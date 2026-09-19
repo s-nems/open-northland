@@ -243,7 +243,18 @@ export const plGame = {
       gate: 'Brama',
       notInThisVersion: 'Niedostępne w tej wersji gry',
       papers: 'Papiery',
-      papersHint: 'Papiery ze skrzyń: plany i zapiski',
+      papersHint: 'Papiery ze skrzyń: plany budowy',
+      catalog: 'Katalog',
+      plans: 'Plany budowy',
+      tally: '×{count}',
+      /** What spending a plan does, under its name on the papers page. */
+      paperEffect: {
+        placeAny: 'Wybierz w katalogu; stanie od razu',
+        placeHouse: 'Stanie od razu, bez budowy i materiałów',
+        placeStockedHouse: 'Stanie od razu, ze składem pełnym po brzegi',
+      },
+      papersEmptyTitle: 'Brak papierów',
+      papersEmptyText: 'Papiery znajdziesz w skrzyniach na mapie.',
       viewLabel: 'Widok',
       gridView: 'Kafelki',
       listView: 'Lista',
@@ -329,7 +340,6 @@ export const plGame = {
     extras: {
       title: 'Okno dodatków',
       assistantTab: 'Asystent',
-      plansTab: 'Papiery',
       extraWomen: 'Dodatkowe kobiety',
       extraMen: 'Dodatkowi mężczyźni',
       trainSoldiers: 'Trenuj Żołnierzy',
@@ -342,7 +352,6 @@ export const plGame = {
       giveMead: 'Przyznaj wszystkim miód pitny',
       on: 'Wł.',
       off: 'Wył.',
-      plansEmpty: 'Brak papierów',
       papers: {
         indulgence: 'Prolongata',
         placeAny: 'Umieść wybrany przez ciebie budynek',

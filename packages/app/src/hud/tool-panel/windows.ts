@@ -5,21 +5,10 @@ import type { Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import type { ConstructionWindow } from '../dom/construction-window.js';
-import {
-  type BuildingAvailability,
-  type ConstructionWindowState,
-  type MenuBuildingEntry,
-  OPEN_AVAILABILITY,
-} from './building-menu.js';
+import type { ConstructionWindowState, MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
-import type { ExtrasTab } from './extras-menu.js';
-import {
-  createExtrasWindow,
-  type ExtrasCountersSeam,
-  type ExtrasGrantsSeam,
-  type ExtrasPapersSeam,
-} from './extras-window.js';
+import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
 import type { HeldPaperController } from './held-paper.js';
 import {
   createMissionWindow,
@@ -44,12 +33,12 @@ interface ToolWindowEntry {
   readonly perFrame: (hudFor: () => HudLayout) => void;
 }
 
-/** What the registry hands the construction window's factory: the entries as the held paper sees
- *  them and the presses the registry routes. */
+/** What the registry hands the construction window's factory: the entries and the presses the
+ *  registry routes. */
 export interface ConstructionWindowSeam {
   readonly entries: readonly MenuBuildingEntry[];
   readonly onPick: (typeId: number) => void;
-  readonly onPapers: () => void;
+  readonly onPickPaper: (paper: Paper) => void;
   readonly onHelp: (typeId: number) => void;
 }
 
@@ -64,8 +53,6 @@ export interface ToolWindowsDeps {
   readonly buildings: readonly MenuBuildingEntry[];
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
-  readonly papers: ExtrasPapersSeam;
-  readonly paperLabel: (paper: Paper) => string;
   /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A live pay button in the diplomacy window was pressed for the tribute slot. */
@@ -84,9 +71,9 @@ export interface ToolWindowsDeps {
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
-  /** The place-any paper a papers-tab click hands to the construction window. */
+  /** The place-any plan the construction window holds for its next catalogue pick. */
   readonly heldPaper: HeldPaperController;
-  /** A building was picked for placement; `paper` is the paper the placement spends, when one is held. */
+  /** A building was picked for placement; `paper` is the plan the placement spends, when one is held. */
   readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
 }
 
@@ -115,42 +102,15 @@ export interface ToolWindows {
 export interface ToolWindowsState {
   readonly openIds: readonly ToolWindowId[];
   readonly buildings: ConstructionWindowState;
-  readonly extras: ExtrasTab;
   readonly diplomacy: number | null;
-  /** The paper the construction window holds for its next pick, restored with its strip. */
+  /** The plan the construction window holds for its next pick, restored with its strip. */
   readonly heldPaper: Paper | null;
   readonly mission: MissionWindowState;
 }
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container, heldPaper } = deps;
-  const paperAwareBuildings = deps.buildings.map((building) => ({
-    ...building,
-    // A place-any paper opens this same window, but its authorization replaces the technology lock; a
-    // map's ban stands. Other constraints remain in the placement probe after the pick.
-    availability: (): BuildingAvailability => {
-      const own = building.availability?.() ?? OPEN_AVAILABILITY;
-      return heldPaper.held() !== null && own.kind === 'locked' ? OPEN_AVAILABILITY : own;
-    },
-  }));
-  const extras = createExtrasWindow({
-    ctx,
-    container,
-    grants: deps.grants,
-    counters: deps.counters,
-    papers: deps.papers,
-    paperLabel: deps.paperLabel,
-    // A house paper names its house, so it goes straight to placement; a place-any paper opens the
-    // construction window to choose one, as the original's paper window does.
-    onUsePaper: (paper) => {
-      if (paper.kind === 'placeAny') {
-        heldPaper.hold(paper);
-        if (!menu.isOpen()) menu.toggle();
-        return;
-      }
-      deps.onPickBuilding(paper.param, paper);
-    },
-  });
+  const extras = createExtrasWindow({ ctx, container, grants: deps.grants, counters: deps.counters });
   const stats = createStatsWindow({ ctx, container });
   const diplomacy = createDiplomacyWindow({
     ctx,
@@ -180,35 +140,26 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     if (!target.isOpen()) target.toggle();
   };
   const menu = deps.constructionWindow({
-    entries: paperAwareBuildings,
+    entries: deps.buildings,
     onPick: (typeId) => {
       const paper = heldPaper.take();
       if (paper === null) deps.onPickBuilding(typeId);
       else deps.onPickBuilding(typeId, paper);
     },
-    onPapers: () => {
-      extras.restore('plans');
-      openOnly(extras);
+    // A plan naming its house goes straight to placement; a place-any plan is held for the catalogue
+    // pick, as the original's papers window does. The plan pays for the house, and nothing more: the
+    // catalogue keeps its technology locks (the original's selection window keeps them too).
+    onPickPaper: (paper) => {
+      heldPaper.cancel(); // a plan already in hand goes back: one plan at a time
+      if (paper.kind === 'placeAny') heldPaper.hold(paper);
+      else deps.onPickBuilding(paper.param, paper);
     },
     // The building's Knowledge page is the knowledge ticket's; until then the pending note stands in.
     onHelp: () => openOnly(knowledge),
   });
 
-  // The held paper lifts the technology locks outside any tick, so its change is the one per-frame
-  // signal the construction window gets.
-  let paperHeld = false;
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
-    menu: {
-      window: menu,
-      perFrame: () => {
-        menu.place();
-        const held = heldPaper.held() !== null;
-        if (held !== paperHeld) {
-          paperHeld = held;
-          menu.refresh();
-        }
-      },
-    },
+    menu: { window: menu, perFrame: () => menu.place() },
     extras: { window: extras, perFrame: () => extras.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
@@ -248,14 +199,12 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     state: () => ({
       openIds: MOUNT_ORDER.filter((id) => entries[id].window.isOpen()),
       buildings: menu.state(),
-      extras: extras.state(),
       diplomacy: diplomacy.state(),
       heldPaper: heldPaper.held(),
       mission: mission.state(),
     }),
     restore: (state): void => {
       menu.restore(state.buildings);
-      extras.restore(state.extras);
       diplomacy.restore(state.diplomacy);
       if (state.heldPaper === null) heldPaper.cancel();
       else heldPaper.hold(state.heldPaper);

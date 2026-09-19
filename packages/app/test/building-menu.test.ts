@@ -49,8 +49,9 @@ describe('building-menu', () => {
     expect(buildingsInCategory(ENTRIES, 'work').map((entry) => entry.typeId)).toEqual([12]);
   });
 
-  it('opens on the all tab in the grid view with nothing picked', () => {
+  it('opens on the catalogue page, the all tab, in the grid view with nothing picked', () => {
     expect(INITIAL_CONSTRUCTION_STATE).toEqual({
+      page: 'catalog',
       category: 'all',
       view: 'grid',
       scrollTop: 0,

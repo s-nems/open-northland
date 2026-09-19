@@ -19,8 +19,9 @@ export interface PlacementDeps {
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
-  /** A placement was called off (Esc, the right button, a beam entry) with nothing placed. */
-  readonly onCancel?: () => void;
+  /** A placement was called off (Esc, the right button, a beam entry) with nothing placed; `paper`
+   *  is the unspent plan it was to pay with, for the owner to take back into hand. */
+  readonly onCancel?: (paper: Paper | null) => void;
 }
 
 /** Placement mode: pick a building in the window, then one left-click on buildable ground places and
@@ -67,8 +68,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     cancel: (): void => {
       if (placementType === null) return;
+      const paper = placementPaper;
       exitPlacement();
-      deps.onCancel?.();
+      deps.onCancel?.(paper);
     },
     handleClick: (clientX, clientY): boolean => {
       if (placementType === null) return false;

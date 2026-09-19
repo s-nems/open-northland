@@ -76,10 +76,15 @@ export function buildingsInCategory<T extends { readonly kind: string }>(
 
 export type CatalogueView = 'grid' | 'list';
 
-/** What the window keeps between openings, and across a HUD-scale remount: the chosen tab, the grid
- *  or list view (a per-game choice, never browser storage), the scroll, the card last picked, and
- *  whether a pick hid the window for a placement it should come back from. */
+/** The window's two pages: the catalogue, or the papers (the plans a pick spends), which the quick
+ *  row's Papiery button toggles and a back tab leaves. */
+export type ConstructionPage = 'catalog' | 'papers';
+
+/** What the window keeps between openings, and across a HUD-scale remount: the page, the chosen tab,
+ *  the grid or list view (a per-game choice for both pages, never browser storage), the scroll, the
+ *  card last picked, and whether a pick hid the window for a placement it should come back from. */
 export interface ConstructionWindowState {
+  readonly page: ConstructionPage;
   readonly category: BuildingCategory;
   readonly view: CatalogueView;
   readonly scrollTop: number;
@@ -88,6 +93,7 @@ export interface ConstructionWindowState {
 }
 
 export const INITIAL_CONSTRUCTION_STATE: ConstructionWindowState = {
+  page: 'catalog',
   category: 'all',
   view: 'grid',
   scrollTop: 0,

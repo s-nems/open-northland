@@ -29,7 +29,6 @@ export function stubConstructionWindow(seam: ConstructionWindowSeam): Constructi
     claims: () => false,
     handleClick: () => false,
     place: () => undefined,
-    refresh: () => undefined,
     update: (model) => {
       models.push(model);
     },

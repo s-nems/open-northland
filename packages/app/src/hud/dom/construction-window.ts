@@ -1,5 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HudModel } from '@open-northland/render';
+import type { Paper } from '@open-northland/sim';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { AssetSet } from '../../view/settings-store.js';
 import { centralWindowFloor, centralWindowOrigin } from '../regions.js';
@@ -7,6 +8,7 @@ import {
   BUILDING_CATEGORIES,
   type BuildingCategory,
   type CatalogueView,
+  type ConstructionPage,
   type ConstructionWindowState,
   INITIAL_CONSTRUCTION_STATE,
   type MenuBuildingEntry,
@@ -18,6 +20,7 @@ import {
   partitionCatalogue,
   tabCounts,
 } from '../tool-panel/construction-catalog.js';
+import { type PaperCard, paperCards, paperCardsKey, plansCount } from '../tool-panel/paper-cards.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { BuildingThumbs } from './building-thumb.js';
 import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
@@ -43,28 +46,31 @@ export interface ConstructionWindowDeps {
   /** A cost line's good by content type id; `undefined` skips its icon. */
   readonly goodIdOf: (goodType: number) => string | undefined;
   readonly goodLabel: (goodType: number) => string;
-  /** How many papers on hand a pick could spend, for the Papiery button's count. */
-  readonly papersCount: () => number;
+  /** The seat's papers in slot order; the papers page lists the plans among them, once a tick. */
+  readonly papers: () => readonly Paper[];
+  readonly paperLabel: (paper: Paper) => string;
+  /** The house a plan names, for its card's "?" label. */
+  readonly buildingLabel: (typeId: number) => string;
   readonly onPick: (typeId: number) => void;
-  /** The Papiery button: the papers list, which stays the chest window's tab until its own ticket. */
-  readonly onPapers: () => void;
+  /** A plan card was pressed: the owner starts the placement it pays for (a named house), or holds
+   *  it for the catalogue pick (a place-any plan), which the window has already turned to. */
+  readonly onPickPaper: (paper: Paper) => void;
   /** A card's "?": the building's Knowledge page; the pending note until the knowledge ticket. */
   readonly onHelp: (typeId: number) => void;
   readonly cue: (cue: UiCue) => void;
 }
 
 /** The construction window on the DOM plane (FOUNDATION.md, "Construction window"): the quick row,
- *  the category tabs with the grid or list toggle, and the parchment catalogue of permit-like cards
- *  with the locked entries at the end. A pick hides the window for the placement and Esc brings it
- *  back as it was. It takes part in the window registry like a legacy pop-up, but the plane routes its
- *  own pointer input, so it claims no canvas point. */
+ *  then either the catalogue page (the category tabs with the grid or list toggle, the parchment of
+ *  permit-like cards with the locked entries at the end) or the papers page (a back tab, the same
+ *  toggle, the plans as cards). A pick hides the window for the placement and Esc brings it back as
+ *  it was. It takes part in the window registry like a legacy pop-up, but the plane routes its own
+ *  pointer input, so it claims no canvas point. */
 export interface ConstructionWindow extends ToolWindow {
   /** Re-place an open window against the plane's design-px size; call once per frame. */
   place(): void;
-  /** Availability changed outside a tick (a paper taken in hand or dropped): re-sort the cards. */
-  refresh(): void;
-  /** The tick's model: it re-sorts the cards, refreshes the papers count and marks the cost lines the
-   *  seat cannot cover; the same model twice costs nothing. */
+  /** The tick's model: it re-sorts the cards, relists the plans and marks the cost lines the seat
+   *  cannot cover; the same model twice costs nothing. */
   update(model: HudModel): void;
   /** Hide for a placement without closing the window's state; `resume` brings it back. */
   suspend(): void;
@@ -127,6 +133,27 @@ export function buildingCardMarkup(view: BuildingCardView): string {
   return `<button type="button" class="on-bcard__pick"${pressed}><span class="on-bcard__thumb">${view.thumb}</span><span class="on-bcard__body"><strong class="on-bcard__title">${escapeHtml(view.title)}</strong><span class="on-cost">${slots}</span></span></button><button type="button" class="on-medallion on-bcard__help" aria-label="${escapeHtml(view.helpLabel)}">?</button>`;
 }
 
+interface PaperCardView {
+  readonly title: string;
+  /** What spending the plan does, under the name. */
+  readonly effect: string;
+  /** The badge for alike plans held more than once ("×3"); empty for a single one. */
+  readonly tally: string;
+  readonly thumb: string;
+  /** The named house's Knowledge label; absent for a place-any plan, which has no "?". */
+  readonly helpLabel?: string;
+}
+
+/** A plan card's inner markup, in the building card's frame. */
+function paperCardMarkup(view: PaperCardView): string {
+  const tally = view.tally === '' ? '' : `<b class="on-tally">${escapeHtml(view.tally)}</b>`;
+  const help =
+    view.helpLabel === undefined
+      ? ''
+      : `<button type="button" class="on-medallion on-bcard__help" aria-label="${escapeHtml(view.helpLabel)}">?</button>`;
+  return `<button type="button" class="on-bcard__pick"><span class="on-bcard__thumb">${view.thumb}</span><span class="on-bcard__body"><strong class="on-bcard__title">${escapeHtml(view.title)}</strong>${tally}<span class="on-bcard__effect">${escapeHtml(view.effect)}</span></span></button>${help}`;
+}
+
 export function createConstructionWindow(deps: ConstructionWindowDeps): ConstructionWindow {
   const copy = messages().hud.construction;
   const shellCopy = messages().hud.shell;
@@ -167,17 +194,26 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   if (papersLabel === null || !(papersCount instanceof HTMLElement))
     throw new Error('construction: papers button');
   papersLabel.textContent = copy.papers;
-  let shownPapers = -1;
   papers.addEventListener('click', () => {
     deps.cue('confirm');
-    deps.onPapers();
+    showPage(state.page === 'papers' ? 'catalog' : 'papers');
   });
   quick.append(papers);
 
-  // The tabs, with the grid or list toggle at their right end.
+  // The tabs, with the grid or list toggle at their right end; the papers page swaps the category
+  // tabs for one back tab and keeps the toggle.
   const tabs = document.createElement('div');
   tabs.className = 'on-tabs';
   tabs.setAttribute('role', 'tablist');
+  const back = button('on-tab on-tab--back', `${GLYPH.back}<span></span>`);
+  const backLabel = back.querySelector('span');
+  if (backLabel !== null) backLabel.textContent = copy.catalog;
+  back.addEventListener('click', () => {
+    deps.cue('confirm');
+    showPage('catalog');
+    tabButtons.get(state.category)?.button.focus(); // the tab hid itself under the focus
+  });
+  tabs.append(back);
   const tabButtons = new Map<BuildingCategory, { button: HTMLButtonElement; count: HTMLElement }>();
   for (const tab of BUILDING_CATEGORIES) {
     const control = button('on-tab', `<span></span><span class="on-tab__count"></span>`);
@@ -246,7 +282,21 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   parchment.addEventListener('scroll', () => {
     state = { ...state, scrollTop: parchment.scrollTop };
   });
-  window.body.append(quick, tabs, parchment);
+
+  // The papers page: the plans under their own note, or the empty note saying where papers come from.
+  const plans = document.createElement('div');
+  plans.className = 'on-parchment on-catalog';
+  const plansNote = note(copy.plans);
+  const plansGrid = document.createElement('div');
+  plansGrid.className = 'on-build-grid';
+  const plansEmpty = document.createElement('div');
+  plansEmpty.className = 'on-catalog__empty';
+  plansEmpty.innerHTML = `<strong></strong><span></span>`;
+  const [plansEmptyTitle, plansEmptyText] = plansEmpty.children;
+  if (plansEmptyTitle !== undefined) plansEmptyTitle.textContent = copy.papersEmptyTitle;
+  if (plansEmptyText !== undefined) plansEmptyText.textContent = copy.papersEmptyText;
+  plans.append(plansNote.note, plansGrid, plansEmpty);
+  window.body.append(quick, tabs, parchment, plans);
   window.onDismiss(() => {
     state = { ...state, suspended: false };
   });
@@ -304,6 +354,75 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     }
   };
 
+  // A plan card: a named house's picture with the house's "?", or the house glyph for a plan the
+  // catalogue names. A named house goes to placement at once, so the window hides for it; a
+  // place-any plan turns the window to the catalogue, where the next pick spends it.
+  const buildPaperCard = (card: PaperCard): HTMLElement => {
+    const element = document.createElement('article');
+    element.className = 'on-bcard on-bcard--paper';
+    const title = deps.paperLabel(card.paper);
+    const houseLabel = card.house === null ? null : deps.buildingLabel(card.house);
+    element.innerHTML = paperCardMarkup({
+      title,
+      effect: copy.paperEffect[card.paper.kind],
+      tally: card.count > 1 ? formatMessage(copy.tally, { count: card.count }) : '',
+      thumb: card.house === null ? GLYPH.house : '<canvas></canvas>',
+      ...(houseLabel === null ? {} : { helpLabel: formatMessage(copy.help, { name: houseLabel }) }),
+    });
+    const pick = element.querySelector('.on-bcard__pick');
+    if (!(pick instanceof HTMLButtonElement)) throw new Error('construction: plan card markup');
+    const thumb = element.querySelector('canvas');
+    if (thumb !== null && (card.house === null || !deps.thumbs.paint(thumb, card.house, THUMB_BOX_PX))) {
+      thumb.outerHTML = GLYPH.house;
+    }
+    if (card.house === null) element.classList.add('on-bcard--any');
+    const house = card.house;
+    pick.addEventListener('click', () => {
+      deps.cue('confirm');
+      if (house === null) showPage('catalog');
+      else suspend();
+      deps.onPickPaper(card.paper);
+    });
+    const help = element.querySelector('.on-bcard__help');
+    if (help instanceof HTMLButtonElement && house !== null) {
+      help.title = copy.helpHint;
+      help.addEventListener('click', () => {
+        deps.cue('confirm');
+        deps.onHelp(house);
+      });
+    }
+    return element;
+  };
+
+  // The plans follow the tick: a found or spent plan relists the page and recounts the button.
+  let shownPlans: string | null = null;
+  const layoutPapers = (): void => {
+    const listed = paperCards(deps.papers());
+    const key = paperCardsKey(listed);
+    if (key === shownPlans) return;
+    shownPlans = key;
+    plansGrid.replaceChildren(...listed.map(buildPaperCard));
+    const count = plansCount(listed);
+    plansNote.count.textContent = String(count);
+    plansNote.note.hidden = listed.length === 0;
+    plansGrid.hidden = listed.length === 0;
+    plansEmpty.hidden = listed.length > 0;
+    papersCount.textContent = String(count);
+    papersCount.hidden = count === 0;
+  };
+
+  const showPage = (page: ConstructionPage): void => {
+    state = { ...state, page };
+    const onPapers = page === 'papers';
+    papers.setAttribute('aria-pressed', String(onPapers));
+    back.hidden = !onPapers;
+    for (const tab of tabButtons.values()) tab.button.hidden = onPapers;
+    parchment.hidden = onPapers;
+    plans.hidden = !onPapers;
+    // Hidden, the parchment forgot its scroll; the state kept it.
+    if (!onPapers && window.isOpen()) parchment.scrollTop = state.scrollTop;
+  };
+
   // The category filter hides cards; a note goes with its grid when nothing of it is shown.
   const showCategory = (category: BuildingCategory): void => {
     state = { ...state, category };
@@ -330,6 +449,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const showView = (view: CatalogueView): void => {
     state = { ...state, view };
     parchment.dataset.view = view;
+    plans.dataset.view = view;
     for (const [id, control] of viewButtons) control.setAttribute('aria-pressed', String(id === view));
   };
 
@@ -372,14 +492,6 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     return true;
   };
 
-  const refreshPapers = (): void => {
-    const count = deps.papersCount();
-    if (count === shownPapers) return;
-    shownPapers = count;
-    papersCount.textContent = String(count);
-    papersCount.hidden = count === 0;
-  };
-
   const markStocks = (model: HudModel): void => {
     const stock = new Map(model.stocks.map((line) => [line.goodType, line.amount]));
     const stockOf = (goodType: number): number => stock.get(goodType) ?? 0;
@@ -401,7 +513,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   };
 
   // The tick is what moves availability, papers and stocks, so the listing follows the model and
-  // a frame between ticks costs nothing; the held paper is the one change outside a tick.
+  // a frame between ticks costs nothing.
   let model: HudModel | null = null;
   let shownModel: HudModel | null = null;
   const relist = (): void => {
@@ -411,7 +523,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     if (model === shownModel) return;
     shownModel = model;
     relist();
-    refreshPapers();
+    layoutPapers();
     if (model !== null) markStocks(model);
   };
 
@@ -419,7 +531,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const open = (): void => {
     layoutCards();
     showCategory(state.category);
-    refreshPapers();
+    layoutPapers();
     shownModel = null;
     present();
     window.open();
@@ -440,10 +552,11 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     if (!state.suspended) return;
     state = { ...state, suspended: false };
     open();
-    const picked = state.picked === null ? undefined : cards.get(state.picked);
+    const picked = state.page === 'catalog' && state.picked !== null ? cards.get(state.picked) : undefined;
     if (picked !== undefined && !picked.pick.disabled) picked.pick.focus();
   };
   showView(state.view);
+  showPage(state.page);
 
   return {
     isOpen: window.isOpen,
@@ -463,9 +576,6 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       window.place(origin.x, origin.y);
       window.element.style.maxHeight = `${Math.max(0, floor - origin.y)}px`;
     },
-    refresh: () => {
-      if (window.isOpen()) relist();
-    },
     update: (next) => {
       model = next;
       if (window.isOpen()) present();
@@ -476,6 +586,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     restore: (next) => {
       state = next;
       showView(next.view);
+      showPage(next.page);
       if (window.isOpen()) {
         layoutCards();
         showCategory(next.category);

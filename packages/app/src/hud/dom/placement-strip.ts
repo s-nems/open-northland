@@ -2,10 +2,12 @@ import { messages } from '../../i18n/index.js';
 import { WINDOW_REGION_TOP } from '../regions.js';
 import { GLYPH } from './icons.js';
 
-/** What the strip says: the held building (or paper) in bold, then what to do with it. */
+/** What the strip says: the held building (or paper) in bold, then what to do with it. `raised`
+ *  lifts it clear of the central window's head, for a hold the window stays open under. */
 export interface PlacementStripView {
   readonly label: string;
   readonly hint: string;
+  readonly raised?: boolean;
 }
 
 /** The strip at the head of the central region while a building or a paper is held: what is held,
@@ -38,6 +40,7 @@ export function createPlacementStrip(plane: HTMLElement): PlacementStrip {
     show: (view) => {
       label.textContent = view.label;
       hint.textContent = ` · ${view.hint}`;
+      element.classList.toggle('on-strip--raised', view.raised === true);
       element.hidden = false;
     },
     clear: () => {

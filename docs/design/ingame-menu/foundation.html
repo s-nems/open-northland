@@ -16,6 +16,7 @@
 <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h9l4 4v16H6zM15 2v5h4M9 11h7M9 15h7M9 19h4"/></symbol>
 <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h3M10 6h10M4 12h3M10 12h10M4 18h3M10 18h10"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
 <symbol id="i-house" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M5 10v10h14V10M9 20v-6h6v6"/></symbol>
 <symbol id="i-fishhut" viewBox="0 0 24 24"><path d="M3 11 12 5l9 6M5 10v10h12M9 20v-6h6v6M18 8l3-3M18 5h3v3"/></symbol>
 <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9h16v12H4zM3 9l2-5h14l2 5M8 13h3v3H8M14 13h3v3h-3M8 18h3v3M14 18h3v3"/></symbol>
@@ -54,6 +55,8 @@
   <button type="button" data-build="catalog" aria-pressed="true">Katalog</button>
   <button type="button" data-build="placing" aria-pressed="false">Stawianie</button>
   <button type="button" data-build="empty" aria-pressed="false">Pusto</button>
+  <button type="button" data-build="papers" aria-pressed="false">Papiery</button>
+  <button type="button" data-build="papersEmpty" aria-pressed="false">Papiery pusto</button>
   <button type="button" data-build="closed" aria-pressed="false">Zamknięte</button>
   <span>Powiadomienia</span>
   <button type="button" data-notices="mixed" aria-pressed="true">6 kart</button>
@@ -251,7 +254,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
       <button type="button" disabled title="Niedostępne w tej wersji gry"><svg aria-hidden="true" class="icon"><use href="#i-road"/></svg>Droga</button>
       <button type="button" disabled title="Niedostępne w tej wersji gry"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Palisada</button>
       <button type="button" disabled title="Niedostępne w tej wersji gry"><svg aria-hidden="true" class="icon"><use href="#i-wall"/></svg>Brama</button>
-      <button type="button" class="docs" title="Papiery ze skrzyń: plany i zapiski"><svg aria-hidden="true" class="icon"><use href="#i-doc"/></svg>Papiery<span class="count">2</span></button>
+      <button type="button" class="docs" aria-pressed="false" title="Papiery ze skrzyń: plany i zapiski"><svg aria-hidden="true" class="icon"><use href="#i-doc"/></svg>Papiery<span class="count">2</span></button>
     </div>
     <div class="tabs" role="tablist">
       <button type="button" role="tab" aria-selected="true" data-tab="all">Wszystko<span class="count">14</span></button>
@@ -317,11 +320,35 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
         <span>Ta mapa nie pozwala na nowe budynki albo oglądasz cudzą osadę.</span>
       </div>
     </div>
+    <div class="tabs papers-nav" data-papers-nav hidden>
+      <button type="button" class="back" data-build="catalog"><svg aria-hidden="true" class="icon"><use href="#i-back"/></svg>Katalog</button>
+      <fieldset class="view-toggle"><legend class="sr-only">Widok</legend><button type="button" data-view="grid" aria-pressed="true" title="Kafelki"><svg aria-hidden="true" class="icon"><use href="#i-grid"/></svg></button><button type="button" data-view="list" aria-pressed="false" title="Lista"><svg aria-hidden="true" class="icon"><use href="#i-list"/></svg></button></fieldset>
+    </div>
+    <div class="catalog papers" id="papers" hidden>
+      <p class="catalog-note" data-plans-note>Plany budowy · <span data-plans-count>5</span></p>
+      <div class="build-grid" data-plans>
+        <article class="building-card paper" data-kind="placeHouse" data-type="10">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/10.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Umieść 'Studnia'</strong><small>Stanie od razu, bez budowy i materiałów</small></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Studnia">?</button>
+        </article>
+        <article class="building-card paper" data-kind="placeAny">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb any"><svg aria-hidden="true" class="icon"><use href="#i-house"/></svg><b class="tally">×3</b></span><span class="body"><strong>Umieść wybrany przez ciebie budynek</strong><b class="tally tally-row">×3</b><small>Wybierz w katalogu; stanie od razu</small></span></button>
+        </article>
+        <article class="building-card paper" data-kind="placeStockedHouse" data-type="9">
+          <button type="button" class="pick" aria-pressed="false"><span class="thumb"><img src="/review-buildings/9.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb-fallback'}))"></span><span class="body"><strong>Umieść 'Magazyn (poziom 3)' i zapełnij jego skład</strong><small>Stanie od razu, ze składem pełnym po brzegi</small></span></button>
+          <button type="button" class="help medallion" aria-label="Wiedza: Magazyn (poziom 3)">?</button>
+        </article>
+      </div>
+      <div class="catalog-empty" data-papers-empty hidden>
+        <strong>Brak papierów</strong>
+        <span>Papiery znajdziesz w skrzyniach na mapie.</span>
+      </div>
+    </div>
   </section>
   <div class="placement panel" data-placement hidden>
     <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>
-    <span><b data-picked>Farma</b> · wskaż miejsce na mapie</span>
-    <span class="keys"><kbd>Esc</kbd> wraca do katalogu · <kbd>PPM</kbd> anuluje</span>
+    <span><b data-picked>Farma</b> · <span data-placement-hint>wskaż miejsce na mapie</span></span>
+    <span class="keys"><kbd>Esc</kbd> <span data-esc-hint>wraca do katalogu</span> · <kbd>PPM</kbd> anuluje</span>
   </div>
 
   <aside class="selection panel">
@@ -418,7 +445,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
     <h2>Kontrakt</h2>
     <ul>
       <li>Minimum: 1280 × 720 przy skali 90%; skala gracza 90–130% co 5% pozostaje propozycją.</li>
-      <li>Okno centralne 540 px, detal 318 px, kolumna wiadomości 198 px, minimapa 270 × 214 px.</li>
+      <li>Okno centralne 640 px, detal 318 px, kolumna wiadomości 198 px, minimapa 270 × 214 px.</li>
       <li>Alegreya Sans niesie informację; Cinzel, ta sama co w menu głównym, tylko w krótkich tytułach okien.</li>
       <li>Ciemny łupek pod HUD-em, drewno i brąz na krawędziach, pergamin tam, gdzie gracz czyta katalog.</li>
       <li>Kolor nigdy nie jest jedynym nośnikiem stanu: pieczęcie mają etykiety, ostrzeżenia mają słowa.</li>
@@ -432,13 +459,15 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
   <div class="card notes">
     <h2>Okno budowy (ticket 05, do przeglądu)</h2>
     <ul>
-      <li>Buduj / B otwiera katalog od razu; jedno okno centralne, 540 px, przewija się pergamin, nie ekran. Zakładki jak w oryginale: Wszystko, Praca, Magazyn, Dom, Wojsko; liczba na zakładce to budynki dostępne teraz.</li>
+      <li>Buduj / B otwiera katalog od razu; jedno okno centralne, 640 px, przewija się pergamin, nie ekran. Zakładki jak w oryginale: Wszystko, Praca, Magazyn, Dom, Wojsko; liczba na zakładce to budynki dostępne teraz.</li>
       <li>Karta ma stały rozmiar: miniatura z atlasu gry (wysoki, wąski budynek pokazuje górną część zamiast kurczyć się do paska), nazwa, a pod nią koszt jako ikony towarów z liczbą w rogu. Poziom N kosztuje tyle, co cały łańcuch od poziomu 1 (tak liczy sim). Do sześciu towarów mieści się w jednym rzędzie, siedem i osiem (Dom 5) zawijają się w drugi; karta ma na to miejsce. Czerwona ramka i czerwona liczba: w składach jest mniej niż trzeba (najechanie mówi ile); stawiać można mimo to, budowniczy poczekają na dostawy, tak jak w oryginale. „?” zawsze w prawym dolnym rogu karty.</li>
-      <li>Kafelki albo lista: przełącznik po prawej stronie zakładek. Lista to jeden wiersz na budynek, nazwa i koszt, bez miniatur i opisów. Wybór jest pamiętany w tej grze między otwarciami okna.</li>
+      <li>Kafelki albo lista: przełącznik po prawej stronie zakładek, także w widoku papierów (jeden wybór dla obu). Lista to jeden wiersz na budynek, nazwa i koszt, bez miniatur i opisów; wiersz papieru to nazwa, licznik i skutek. Wybór jest pamiętany w tej grze między otwarciami okna.</li>
       <li>Zablokowane budynki idą na koniec listy, wyszarzone z kłódką i wierszem „Wymaga: zawód, towar”, zamiast znikać jak w oryginale, bo gracz widzi, co odkryć. Budynki zakazane na mapie nie pojawiają się wcale.</li>
       <li>„?” na karcie otwiera opis budynku w Wiedzy (ticket 16); do tego czasu pokazuje notę „w przygotowaniu”.</li>
       <li>Klik karty zamyka okno i włącza stawianie: pasek u góry pola gry z nazwą, Esc wraca do katalogu z tą samą zakładką, przewinięciem i zaznaczeniem, prawy klik anuluje bez powrotu. Po postawieniu okno zostaje zamknięte (oryginał), B otwiera je w tym samym stanie.</li>
-      <li>Droga, Palisada, Brama są w oknie, ale wyłączone z podpowiedzią „Niedostępne w tej wersji gry”: symulacja nie ma jeszcze tych komend (osobne zadanie o bramach). Papiery z licznikiem otwierają zakładkę papierów; ich własny widok to ticket 06.</li>
+      <li>Droga, Palisada, Brama są w oknie, ale wyłączone z podpowiedzią „Niedostępne w tej wersji gry”: symulacja nie ma jeszcze tych komend (osobne zadanie o bramach). Papiery z licznikiem przełączają to samo okno na widok papierów (ticket 06, poniżej).</li>
+      <li>Widok Papiery (przycisk Papiery zapala się, zakładki ustępują jednej „‹ Katalog”): u góry „Plany budowy”, karty w tej samej ramce co budynki: miniatura budynku z planu (plan na dowolny budynek ma zarys domu i licznik „×3”, bo takie same papiery są zliczane w jedną kartę), nazwa papieru z oryginalnej tabeli, pod nią skutek. Klik planu na konkretny budynek od razu włącza stawianie (pasek „z planu: wskaż miejsce, budynek stanie gotowy”), Esc wraca do widoku papierów, prawy klik anuluje; papier znika z listy dopiero, gdy budynek stanie. Klik planu na dowolny budynek wraca do katalogu z planem w ręku (pasek „Plan budowy · wybierz budynek z okna”); jak w oryginale plan nie zdejmuje blokad technologii, tylko opłaca budynek. Plan na konkretny budynek jest zawsze aktywny: w oryginale i w silniku papier opłaca budynek także mimo zakazu mapy.</li>
+      <li>Widok pokazuje tylko plany budowy. Cztery pozostałe rodzaje z tabeli silnika (prolongata, zezwolenia na budowę, naukę, produkcję) nie są listowane (decyzja użytkownika): w oryginale klik w nie nic nie robi, a skrzynie i mapy ich nie rozdają. Pusta lista mówi, gdzie szukać papierów. Zakładka Papiery znika z okna skrzyni (Asystent).</li>
       <li>Pusty katalog (mapa bez budynków, cudza osada) pokazuje jedną notę zamiast siatki.</li>
     </ul>
   </div>

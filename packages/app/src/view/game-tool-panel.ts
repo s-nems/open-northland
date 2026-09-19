@@ -17,14 +17,11 @@ import type { KeyBindings } from '../hud/keybindings.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
 import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
-import type {
-  ExtrasCountersSeam,
-  ExtrasGrantsSeam,
-  ExtrasPapersSeam,
-} from '../hud/tool-panel/extras-window.js';
+import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
+import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import { currentLocale } from '../i18n/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -68,7 +65,7 @@ export interface GameToolPanelDeps {
   readonly owner: number;
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
-  readonly papers: ExtrasPapersSeam;
+  readonly papers: PapersSeam;
   /** The diplomacy window's roster: one row per discovered player. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A seat's roster name, for the note about an eliminated player. */

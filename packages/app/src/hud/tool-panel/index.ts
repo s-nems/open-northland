@@ -1,14 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-northland/render';
-import {
-  type DiplomacyState,
-  type Paper,
-  PLACING_PAPER_KINDS,
-  type PlayerCommand,
-  type SimEvent,
-  type WorldSnapshot,
-} from '@open-northland/sim';
+import type { DiplomacyState, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
@@ -38,7 +31,7 @@ import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import type { DiplomacyPanelRow } from './diplomacy/index.js';
-import type { ExtrasCountersSeam, ExtrasGrantsSeam, ExtrasPapersSeam } from './extras-window.js';
+import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
@@ -52,6 +45,7 @@ import {
 } from './messages/index.js';
 import type { MissionHumanLookup } from './mission/index.js';
 import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
+import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
 import { createPlacementController } from './placement.js';
@@ -96,8 +90,8 @@ export interface ToolPanelOptions {
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
   readonly counters: ExtrasCountersSeam;
-  /** The chest window's papers seam (reads the sim's papers list, named for display). */
-  readonly papers: ExtrasPapersSeam;
+  /** The construction window's papers seam (reads the sim's papers list, named for display). */
+  readonly papers: PapersSeam;
   /** The roster of discovered players, one row each: read by the diplomacy window while it is open,
    *  and once a tick by the message centre. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
@@ -302,11 +296,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       canPlaceAt: opts.canPlaceAt,
       tribe: opts.tribe,
       owner: opts.owner,
-      // A pick hid the window for the placement; a cancel brings it back where it was.
-      onCancel: () => windows.byId.menu.resume(),
+      // A pick hid the window for the placement; a cancel brings it back where it was, and a place-any
+      // plan back into the hand it was picked with, so the next pick still spends it.
+      onCancel: (paper) => {
+        windows.byId.menu.resume();
+        if (paper?.kind === 'placeAny') heldPaper.hold(paper);
+      },
     });
     const heldPaper = createHeldPaperController(ctx, strip);
-    const held: readonly HeldMode[] = [placement, heldPaper];
+    // A cancel runs the modes in this order, so the plan a cancelled placement hands back stays held
+    // until the next cancel drops it: one rung per press.
+    const held: readonly HeldMode[] = [heldPaper, placement];
     const cancelHeld = (): void => {
       for (const mode of held) mode.cancel();
     };
@@ -339,9 +339,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           assetSet: opts.assetSet,
           goodIdOf: (goodType) => goodIdByType.get(goodType),
           goodLabel: (goodType) => opts.goodLabel(goodType) ?? `#${goodType}`,
-          papersCount: () => opts.papers.read().filter((paper) => PLACING_PAPER_KINDS.has(paper.kind)).length,
+          papers: () => opts.papers.read(),
+          paperLabel: nameOfPaper,
+          buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
           onPick: seam.onPick,
-          onPapers: seam.onPapers,
+          onPickPaper: seam.onPickPaper,
           onHelp: seam.onHelp,
           cue: ctx.cue,
         });
@@ -351,8 +353,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       buildings: opts.buildings,
       grants: opts.grants,
       counters: opts.counters,
-      papers: opts.papers,
-      paperLabel: nameOfPaper,
       heldPaper,
       diplomacyRows: opts.diplomacyRows,
       onPayTribute: opts.onPayTribute,

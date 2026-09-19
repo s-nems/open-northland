@@ -84,8 +84,6 @@ function mountSurfaces() {
       read: () => defaultAssistantState().counters,
       set: () => true,
     },
-    papers: { read: () => [] },
-    paperLabel: (paper) => `${paper.kind}:${paper.param}`,
     heldPaper: createHeldPaperController(ctx, strip),
     diplomacyRows: () => [],
     art: null,

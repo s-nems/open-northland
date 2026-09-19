@@ -26,7 +26,7 @@ export function createHeldPaperController(ctx: PanelContext, strip: PlacementStr
     hold: (held): void => {
       paper = held;
       const copy = messages().hud.construction;
-      strip.show({ label: copy.heldPaper, hint: copy.heldPaperHint });
+      strip.show({ label: copy.heldPaper, hint: copy.heldPaperHint, raised: true });
     },
     take: (): Paper | null => {
       const taken = paper;

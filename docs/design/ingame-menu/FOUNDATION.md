@@ -89,12 +89,14 @@ they were.
 - Head: the painted build icon and the title alone, no subtitle. The quick row holds Droga, Palisada
   and Brama as line glyphs of their own: a cobbled track bending away, a stake fence, a gate between
   two stakes (no highway markings, no battlements: user rule); disabled with the tooltip "Niedostępne w tej wersji gry" until the sim has a road, wall
-  and gate command, and Papiery at the right with a count of the papers a pick could spend. Papiery
-  shows the papers list, which is the chest window's tab until the documents ticket gives it a view.
+  and gate command, and Papiery at the right with a count of the plans a pick could spend. Papiery
+  lights like a tab and turns the same window to its papers page; the page's one "‹ Katalog" tab
+  turns it back.
 - Tabs: the original's five categories (Wszystko, Praca, Magazyn, Dom, Wojsko; tower and training
   fold into Wojsko), each counting the entries buildable now. At the tabs' right end a two-button
-  toggle switches the catalogue between tiles and a list; the choice is remembered for the game, with
-  the tab, the scroll and the last pick, in the tool-window state (never browser storage).
+  toggle switches the catalogue between tiles and a list; the choice is one for both pages and is
+  remembered for the game, with the page, the tab, the scroll and the last pick, in the tool-window
+  state (never browser storage).
 - Entries: every house kind the content has, minus vehicles, wonders and types with no construction
   cost (the headquarters stands from the map, the wall segment comes from the wall tool). A type the
   map or the tribe bans is never listed; an undiscovered one is listed after the open entries under a
@@ -119,9 +121,34 @@ they were.
 - A pick hides the window and starts the placement with the strip up; Esc, the right button or Buduj
   bring the window back as it was, the picked card lit and focused. A site that lands leaves the
   window away, and so does an informational window opened over the placement (one window at a
-  time): its cancel then returns to no window, and Buduj reopens the catalogue as it was. A place-any paper from the chest opens the window with the paper held, every
-  technology lock lifted for that pick; a map's ban still stands.
+  time): its cancel then returns to no window, and Buduj reopens the catalogue as it was.
 - The "?" opens the building's Knowledge page; until the knowledge ticket it opens the pending note.
+
+### Papers page
+
+The plans the seat found in chests, inside the construction window (ticket 06); the chest window
+keeps the assistant alone.
+
+- Only the three placing kinds are listed (a named house, a named house with its store filled, a
+  house of the player's choice), under a "Plany budowy" note with their count. The other four kinds
+  of the engine's table (the indulgence, the build, learn and produce permits) are not listed: a
+  click on them does nothing in the original, and no chest or map hands them out. With
+  nothing to list the parchment says "Brak papierów" and where papers come from.
+- A plan is a card in the building card's frame: the named house's picture (the house glyph for a
+  place-any plan), the paper's name from the original's `misclogic` table, and under it what
+  spending it does. Alike plans fold into one card with a "×N" tally at the card's corner (inline
+  in the list row). A named house's "?" opens its Knowledge page; a place-any plan has none.
+- A named house's card starts the placement at once, the window hidden and the strip reading "z
+  planu: wskaż miejsce, budynek stanie gotowy"; Esc or the right button bring the papers page back.
+  The plan leaves the list only when the house lands: the sim spends it after every gate has passed.
+  The card is always live: the plan authorizes its house past the technology gate in the original
+  (its selection window lists the named house without it) and past the map's ban too in the sim.
+- A place-any plan turns the window to the catalogue with the plan in hand: the strip sits above the
+  open window ("Plan budowy · wybierz budynek z okna"), the next pick spends it, and Esc, the right
+  button, a world click or closing the window drop it back into the list unspent. The plan pays for
+  the house and lifts no technology lock: the original's selection window keeps its gates for this
+  kind too. A cancelled placement from a place-any plan hands the plan back into the hand with the
+  catalogue, so a second Esc drops it: one rung per press.
 
 ## HUD shell
 

@@ -109,8 +109,8 @@ not authorize replacement world buildings or characters.
 ## Implementation order
 
 Work one panel/ticket at a time in the shared checkout; see [session instructions](AGENTS.md).
-The shell, the notification column, the summary bar and the construction window are in place;
-continue with 06–07 to establish the basic play loop. Continue with details, automation,
+The shell, the notification column, the summary bar and the construction window with its papers
+page are in place; continue with 07 to establish the basic play loop. Continue with details, automation,
 statistics, mission, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
 prerequisites; numbering is the suggested review order, not permission for parallel sessions to edit
 shared files. Ticket 12 separates statistics data from chart rendering because the current popup is
@@ -118,7 +118,6 @@ only diagnostics.
 
 | Ticket | Outcome |
 | --- | --- |
-| [06-documents](../../tickets/app/ingame-ui-06-documents.md) | Integrate permits and other documents into construction |
 | [07-residents](../../tickets/app/ingame-ui-07-residents.md) | Build the direct residents list and actionable filters |
 | [08-settler-details](../../tickets/app/ingame-ui-08-settler-details.md) | Redesign the selected resident panel |
 | [09-building-details](../../tickets/app/ingame-ui-09-building-details.md) | Redesign the selected building panel |

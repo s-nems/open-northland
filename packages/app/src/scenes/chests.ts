@@ -12,8 +12,8 @@ import type { SceneDefinition } from './types.js';
  * magical shoes chest that only a druid or hero may open, so its collector refuses, and a wooden chest
  * holding three long bowmen - while the seat spends a paper it already holds on a well that stands
  * finished at once. Watch four settlers walk to their chests, bend over the lid (the soldier on his own
- * armed body), and the chests vanish; the found-paper note names the well paper, which the extras
- * window's plans tab then lists for a click; the magical chest stays closed with nobody at it; each
+ * armed body), and the chests vanish; the found-paper note names the well paper, which the construction
+ * window's papers page then lists; the magical chest stays closed with nobody at it; each
  * bowman's details panel shows the long bow in its weapon slot; the first well never shows a foundation.
  */
 

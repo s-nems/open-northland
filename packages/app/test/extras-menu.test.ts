@@ -9,7 +9,6 @@ import {
   toggleGrant,
   toggleInfinity,
 } from '../src/hud/tool-panel/extras-menu.js';
-import { PAPER_ROWS_SHOWN } from '../src/hud/tool-panel/extras-papers.js';
 import { messages } from '../src/i18n/index.js';
 
 /** Headless tests for the extras ("chest") window model: state transitions, layout and hit routing. */
@@ -18,7 +17,6 @@ const OPTS = {
   originX: 100,
   originY: 20,
   scale: 1,
-  tab: 'assistant',
   state: defaultAssistantState(),
 } as const;
 
@@ -96,14 +94,14 @@ describe('assistant state', () => {
 });
 
 describe('extras menu layout', () => {
-  it('lays out the headline, the tabs under it and the assistant rows below, grants gapped from counters', () => {
+  it('lays out the headline, the assistant tab under it and the rows below, grants gapped from counters', () => {
     const layout = layoutExtrasMenu(OPTS);
     expect(layout.title).toBe(messages().hud.extras.title);
     expect(layout.titleRect.y).toBe(layout.window.y);
-    expect(layout.tabs.map((t) => t.tab)).toEqual(['assistant', 'plans']);
-    expect(layout.tabs[0]?.selected).toBe(true);
-    // Tabs sit side by side on one line right under the headline band.
-    expect(layout.tabs[1]?.rect.y).toBe(layout.tabs[0]?.rect.y);
+    // The one tab left (the papers are the construction window's page) sits right under the headline.
+    expect(layout.tabs.map((t) => [t.label, t.selected])).toEqual([
+      [messages().hud.extras.assistantTab, true],
+    ]);
     expect(layout.tabs[0]?.rect.y).toBe(layout.window.y + layout.titleRect.h);
 
     expect(layout.counters.map((c) => c.id)).toEqual([...COUNTER_ROW_IDS]);
@@ -113,7 +111,6 @@ describe('extras menu layout', () => {
       'giveIronTools',
       'giveMead',
     ]);
-    expect(layout.plansPlaceholder).toBeNull();
 
     // The grant block starts a visible gap below the last counter row (the requested "lekki odstęp").
     const lastCounterY = layout.counters[5]?.rect.y ?? 0;
@@ -164,64 +161,18 @@ describe('extras menu layout', () => {
     expect(layout.grants[2]?.on).toBe(false);
     expect(layout.grants[0]?.on).toBe(true);
   });
-
-  it('the plans tab shows only the placeholder and shrinks the window', () => {
-    const assistant = layoutExtrasMenu(OPTS);
-    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans' });
-    expect(plans.counters).toEqual([]);
-    expect(plans.grants).toEqual([]);
-    expect(plans.plansPlaceholder?.label).toBe(messages().hud.extras.plansEmpty);
-    expect(plans.window.h).toBeLessThan(assistant.window.h);
-  });
-});
-
-describe('the plans tab', () => {
-  const papers = [
-    { paper: { kind: 'placeHouse', param: 41 }, label: 'Place a tower', usable: true },
-    { paper: { kind: 'buildPermit', param: 41 }, label: 'Permit for a tower', usable: false },
-  ] as const;
-
-  it('lists the papers in slot order, one row each, and drops the placeholder', () => {
-    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans', papers });
-    expect(plans.papers.map((p) => [p.index, p.label, p.usable])).toEqual([
-      [0, 'Place a tower', true],
-      [1, 'Permit for a tower', false],
-    ]);
-    expect(plans.plansPlaceholder).toBeNull();
-    expect(plans.papers[1]?.rect.y).toBeGreaterThan(plans.papers[0]?.rect.y ?? Number.POSITIVE_INFINITY);
-    expect(layoutExtrasMenu({ ...OPTS, papers }).papers).toEqual([]); // the assistant tab lists none
-  });
-
-  it('a usable row is a paper hit; an inert row reads as the window body', () => {
-    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans', papers });
-    const usable = centreOf(plans.papers[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-    expect(hitTestExtrasMenu(plans, usable.x, usable.y)).toEqual({ kind: 'paper', index: 0 });
-    const inert = centreOf(plans.papers[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-    expect(hitTestExtrasMenu(plans, inert.x, inert.y)).toEqual({ kind: 'window' });
-  });
-
-  it('lists the oldest PAPER_ROWS_SHOWN papers and no more, so the window keeps its height', () => {
-    const many = Array.from({ length: PAPER_ROWS_SHOWN + 3 }, (_, i) => ({
-      paper: { kind: 'placeAny' as const, param: 0 },
-      label: `paper ${i}`,
-      usable: true,
-    }));
-    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans', papers: many });
-    expect(plans.papers.map((p) => p.index)).toEqual(many.slice(0, PAPER_ROWS_SHOWN).map((_, i) => i));
-    const last = plans.papers.at(-1)?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-    expect(last.y + last.h).toBeLessThanOrEqual(plans.window.y + plans.window.h);
-  });
 });
 
 describe('extras menu hit-test', () => {
   const layout = layoutExtrasMenu(OPTS);
 
-  it('routes close, tabs, steppers, infinity toggles and switches; the bare chrome is a consumed no-op', () => {
+  it('routes close, steppers, infinity toggles and switches; the bare chrome is a consumed no-op', () => {
     const close = centreOf(layout.closeRect);
     expect(hitTestExtrasMenu(layout, close.x, close.y)).toEqual({ kind: 'close' });
 
-    const plansTab = centreOf(layout.tabs[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
-    expect(hitTestExtrasMenu(layout, plansTab.x, plansTab.y)).toEqual({ kind: 'tab', tab: 'plans' });
+    // The one tab is not a control: a press on it reads as the window body.
+    const tab = centreOf(layout.tabs[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    expect(hitTestExtrasMenu(layout, tab.x, tab.y)).toEqual({ kind: 'window' });
 
     const minus = centreOf(layout.counters[1]?.minusRect ?? { x: 0, y: 0, w: 0, h: 0 });
     expect(hitTestExtrasMenu(layout, minus.x, minus.y)).toEqual({

@@ -39,13 +39,40 @@ function showResource(group, show) {
 }
 // The construction window's review states: the catalogue, the placement strip after a pick (the window
 // yields the map and comes back on Esc with its tab, scroll and pick intact), an empty catalogue, closed.
+// The papers view swaps the tabs and the catalogue for the papers parchment inside the same window;
+// 'held' is the catalogue with a place-any paper in hand (the strip up).
 let buildState = 'catalog';
+const papers = document.querySelector('#papers');
+const papersNav = document.querySelector('[data-papers-nav]');
+const catalogTabs = build.querySelector('.tabs:not(.papers-nav)');
+const docsButton = build.querySelector('.quick .docs');
+const placementHint = document.querySelector('[data-placement-hint]');
+const escHint = document.querySelector('[data-esc-hint]');
+const PLACE_HINT = 'wskaż miejsce na mapie';
+const PLACE_PAPER_HINT = 'z planu: wskaż miejsce, budynek stanie gotowy';
+const HELD_LABEL = 'Plan budowy';
+const HELD_HINT = 'wybierz budynek z okna';
+let placingFromPapers = false;
 function showBuild(state) {
   buildState = state;
-  build.hidden = state !== 'catalog' && state !== 'empty';
-  placement.hidden = state !== 'placing';
+  const papersView = state === 'papers' || state === 'papersEmpty';
+  build.hidden = state === 'closed' || state === 'placing';
+  placement.hidden = state !== 'placing' && state !== 'held';
+  if (state === 'held') {
+    placementName.textContent = HELD_LABEL;
+    placementHint.textContent = HELD_HINT;
+    escHint.textContent = 'odkłada plan';
+  }
+  catalogTabs.hidden = papersView;
+  papersNav.hidden = !papersView;
+  catalog.hidden = papersView;
+  papers.hidden = !papersView;
+  docsButton.setAttribute('aria-pressed', String(papersView));
   catalog.querySelector('[data-empty]').hidden = state !== 'empty';
   for (const part of catalog.querySelectorAll('.catalog-note, .build-grid')) part.hidden = state === 'empty';
+  papers.querySelector('[data-papers-empty]').hidden = state !== 'papersEmpty';
+  for (const part of papers.querySelectorAll('.catalog-note, .build-grid'))
+    part.hidden = state === 'papersEmpty';
   buildNav.setAttribute('aria-pressed', String(state !== 'closed'));
   press('build', state);
 }
@@ -67,6 +94,7 @@ function showTab(tab) {
 /* The grid or list choice is per game, not per opening: it lives with the window state. */
 function showView(view) {
   catalog.dataset.view = view;
+  papers.dataset.view = view;
   for (const button of build.querySelectorAll('[data-view]'))
     button.setAttribute('aria-pressed', String(button.dataset.view === view));
 }
@@ -126,14 +154,33 @@ document.addEventListener('click', (event) => {
     showResource(group, group.querySelector('.resource-tip').hidden);
   if (button.dataset.build) showBuild(button.dataset.build);
   if (button.matches('.build .icon-button')) showBuild('closed');
+  if (button === docsButton)
+    showBuild(buildState === 'papers' || buildState === 'papersEmpty' ? 'catalog' : 'papers');
   if (button === buildNav)
     showBuild(buildState === 'closed' || buildState === 'placing' ? 'catalog' : 'closed');
   if (button.dataset.tab) showTab(button.dataset.tab);
   if (button.dataset.view) showView(button.dataset.view);
-  if (button.matches('.building-card .pick:not(:disabled)')) {
+  if (button.matches('#papers .building-card .pick:not(:disabled)')) {
+    const card = button.closest('.building-card');
+    if (card.dataset.kind === 'placeAny') {
+      showBuild('held');
+      return;
+    }
+    placingFromPapers = true;
+    placementName.textContent = button.querySelector('strong').textContent.match(/'([^']+)'/)?.[1] ?? '';
+    placementHint.textContent = PLACE_PAPER_HINT;
+    escHint.textContent = 'wraca do papierów';
+    showBuild('placing');
+    return;
+  }
+  if (button.matches('#catalog .building-card .pick:not(:disabled)')) {
+    const held = buildState === 'held';
     for (const pick of catalog.querySelectorAll('.building-card .pick'))
       pick.setAttribute('aria-pressed', String(pick === button));
+    placingFromPapers = false;
     placementName.textContent = button.querySelector('strong').textContent;
+    placementHint.textContent = held ? PLACE_PAPER_HINT : PLACE_HINT;
+    escHint.textContent = 'wraca do katalogu';
     showBuild('placing');
   }
 });
@@ -157,8 +204,12 @@ document.addEventListener('keydown', (event) => {
   pinNoticeFull(null, false);
   // One rung per press: placement returns to the catalogue, the catalogue closes.
   if (buildState === 'placing') {
-    showBuild('catalog');
+    showBuild(placingFromPapers ? 'papers' : 'catalog');
     catalog.querySelector('.pick[aria-pressed="true"]')?.focus();
+    return;
+  }
+  if (buildState === 'held') {
+    showBuild('catalog');
     return;
   }
   showBuild('closed');

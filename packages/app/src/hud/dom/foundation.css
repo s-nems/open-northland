@@ -678,6 +678,83 @@
   font: 700 16px var(--font-body);
   color: var(--ink);
 }
+/* The papers page: the quick-row button lights like a tab, one back tab replaces the categories, and
+   a plan is a card in the building frame with what it does under its name; a plan held more than once
+   carries a tally badge at the card's corner. */
+.on-hud .on-toolrow .on-button--accent[aria-pressed="true"] {
+  background: linear-gradient(var(--parchment-hi), var(--parchment));
+  border-color: #8d7549;
+  color: var(--ink);
+  box-shadow: inset 0 2px #fff8;
+}
+.on-hud .on-toolrow .on-button--accent[aria-pressed="true"] .on-glyph {
+  color: var(--bronze-lo);
+}
+.on-hud .on-toolrow .on-button--accent[aria-pressed="true"] .on-count {
+  background: var(--bronze);
+}
+.on-hud .on-tab[hidden] {
+  display: none;
+}
+.on-hud .on-tab--back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+}
+.on-hud .on-tab--back .on-glyph {
+  width: 16px;
+  height: 16px;
+}
+.on-hud .on-bcard--any .on-bcard__thumb .on-glyph {
+  width: 40px;
+  height: 40px;
+  opacity: 0.8;
+}
+.on-hud .on-bcard__effect {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--ink-muted);
+}
+.on-hud .on-tally {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bronze-lo);
+  box-shadow:
+    0 0 0 1.5px #e4d6b4,
+    0 1px 3px #0007;
+  font: 700 11px / 18px var(--font-body);
+  color: #f4e9cf;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* The list row of a plan: the name, the tally inline, then what it does on one line. */
+.on-hud .on-catalog[data-view="list"] .on-tally {
+  position: static;
+  flex: none;
+  box-shadow: none;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard__effect {
+  display: block;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .on-catalog[data-view="list"] .on-bcard--paper .on-bcard__body {
+  margin-right: 28px;
+}
 /* The strip at the head of the central region while a building or a paper is held. */
 .on-hud .on-strip {
   position: absolute;
@@ -698,6 +775,10 @@
 }
 .on-hud .on-strip[hidden] {
   display: none;
+}
+/* A held plan keeps the window open under the strip, so the strip sits above the window's head. */
+.on-hud .on-strip--raised {
+  transform: translate(-50%, calc(-100% - 4px));
 }
 .on-hud .on-strip > .on-glyph {
   width: 18px;
