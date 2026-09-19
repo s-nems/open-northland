@@ -152,6 +152,12 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
   const { world, ctx, terrain } = plan;
   const owner = ownerOf(world, farm);
   if (owner === undefined) return false;
+  // One herd count per species up front: the rows are a fact about the farm, not about each candidate.
+  const room = new Map<number, boolean>();
+  for (const good of breedableSpeciesOf(world, ctx, farm)) {
+    room.set(good, hasRoomForAnother(world, ctx, farm, good));
+  }
+  if (![...room.values()].some(Boolean)) return false;
   const door = interactionCell(world, ctx, terrain, farm);
   const side = terrain.componentOf(door);
   let best: Entity | null = null;
@@ -159,7 +165,7 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
   for (const animal of world.query(Livestock, Position)) {
     if (!isFreeClaimedAnimal(world, animal) || ownerOf(world, animal) !== owner) continue;
     const good = speciesGoodOf(world, ctx, animal);
-    if (good === null || !hasRoomForAnother(world, ctx, farm, good)) continue;
+    if (good === null || room.get(good) !== true) continue;
     const node = entityNode(world, terrain, animal);
     // Across water it could never walk in, and the herding sweep would march it at the farm forever.
     if (terrain.componentOf(node) !== side) continue;
