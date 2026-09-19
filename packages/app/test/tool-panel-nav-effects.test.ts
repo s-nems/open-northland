@@ -96,6 +96,7 @@ function mountSurfaces() {
       placement.enter(typeId);
     },
     onPayTribute: () => undefined,
+    onDeclareDiplomacy: () => undefined,
   });
   if (menu === null) throw new Error('the registry did not mount the construction window');
   const surfaces = { windows: windows.byId, cancelHeld: () => placement.cancel() };
