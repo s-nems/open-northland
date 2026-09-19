@@ -93,8 +93,8 @@ describe('fillTask', () => {
       'No briefing',
     );
     expect(made.map((m) => [m.text, m.px, m.face])).toEqual([
-      ['SANDSTORM', 20, { bold: true, lineHeight: 21 }],
-      ['First', 17, { letterSpacing: 1.25, lineHeight: 18 }],
+      ['SANDSTORM', 18, { bold: true, lineHeight: 21 }],
+      ['First', 15, { letterSpacing: 0.5, lineHeight: 18 }],
     ]);
     expect(sink.placed.map((p) => [p.placement, p.y / SCALE])).toEqual([
       ['center', 20],

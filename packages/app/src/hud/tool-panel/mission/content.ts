@@ -36,13 +36,13 @@ const IDLE_GOAL_COLOR: FontColorName = 'dimmed';
 /**
  * The page faces and the engine's line pitch (`an original routine`): a text line is
  * its font's nominal size × 3/2 tall (font12 → 18, fonthead16bld's 14 → 21) and an empty line 20.
- * Approximations: Tinos at 17 px matches font12's cap and x-height (11 and 8 px) and the letter spacing
- * its advance; bold at 20 px stands in for the condensed fonthead16bld; a justified run spreads without
- * the engine's per-gap cap.
+ * Approximations: the body is Tinos at 15 px, set by eye under the 17 px that matches font12's cap and
+ * x-height (11 and 8 px) but reads larger than the thin bitmap face; the bold title keeps fonthead16bld's
+ * 14:12 ratio to it; a justified run spreads without the engine's per-gap cap.
  */
 const PAGE_FACE: Readonly<Record<HypertextParagraph['style'], { px: number; face: ParagraphFace }>> = {
-  body: { px: 17, face: { letterSpacing: 1.25, lineHeight: 18 } },
-  title: { px: 20, face: { bold: true, lineHeight: 21 } },
+  body: { px: 15, face: { letterSpacing: 0.5, lineHeight: 18 } },
+  title: { px: 18, face: { bold: true, lineHeight: 21 } },
 };
 const BLANK_LINE_H = 20;
 /** A picture's row is this much taller than the picture, which sits at the row's bottom. */
