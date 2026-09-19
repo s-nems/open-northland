@@ -189,6 +189,15 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
 export const STORABLE_EXTENDED_GOODS: readonly CatalogGood[] = EXTENDED_GOODS.filter((g) => g.storable);
 
 /**
+ * `jobtypes.ini` breeder `allowatomic 87 88`, the slaughter clip per species (`setatomic 16 87/88
+ * "<tribe>_breeder_slay_<species>"`). The sim joins a clip to its species by that name.
+ */
+export const SLAY_ATOMIC_BY_GOOD_ID: Readonly<Record<string, number>> = {
+  sheep: 87,
+  cattle: 88,
+};
+
+/**
  * `goodtypes.ini atomicForProduction` per good id, transcribed from the extracted `content/ir.json`: the
  * atomic a worker performs to make that ware, which is also the `setatomic` join key its trade's craft
  * animation hangs on. `coin` (51) and `sausage` (49) are omitted with the goods themselves.

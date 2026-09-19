@@ -274,7 +274,7 @@ describe('extractAnimals', () => {
         getAngry: false,
         angryGameTime: 0,
         hitpointsAdult: 2000,
-        hitpointsBaby: 0,
+        hitpointsBaby: 500,
         maximumGroupSize: 6,
         maximumCadaverSize: 0,
         maximumLeaderDistance: 0,

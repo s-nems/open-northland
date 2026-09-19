@@ -8,7 +8,6 @@ import {
   goodLabel,
   recipeOutputs,
   type UnitPanelModelContext,
-  visibleRecipes,
 } from './context.js';
 
 /** One product row of a workshop's Produkcja section. */
@@ -107,12 +106,12 @@ export function productionModel(
     };
   }
   const bestPct = cycleFrontRunners(ent);
-  const chainRows = livestockChainRows(ctx, def, bestPct);
-  if (chainRows.length > 0) return { kind: 'recipe', rows: chainRows };
+  const herdRows = livestockHerdRows(ctx, def, ent, bestPct);
+  if (herdRows.length > 0) return { kind: 'recipe', rows: herdRows };
   const outputs = recipeOutputs(ctx, def);
   if (outputs.length === 0) return null; // not a producer - no Produkcja window
   const inputsByProduct = new Map<number, string>();
-  for (const recipe of visibleRecipes(ctx, def)) {
+  for (const recipe of def?.recipes ?? []) {
     const product = recipe.outputs[0]?.goodType;
     if (product === undefined || inputsByProduct.has(product)) continue;
     inputsByProduct.set(product, recipeInputsLabel(ctx, recipe.inputs));
@@ -144,39 +143,48 @@ function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
 }
 
 /**
- * A livestock workplace's Produkcja: one row per species chain rather than per good, named after the
- * species, carrying every ware the visit yields as icons, and barred by the chain's front-runner across
- * both stages. Empty at any other workplace, which falls through to the per-good rows.
+ * A livestock workplace's Produkcja: one row per species it breeds, named after the species and carrying
+ * the herd its farm holds against the row's cap, barred by the breeding cycle in flight. Empty at any
+ * other workplace, which falls through to the per-good rows.
  */
-function livestockChainRows(
+function livestockHerdRows(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
+  ent: SnapshotEntity,
   bestPct: ReadonlyMap<number, number>,
 ): ProductionRow[] {
   if (def === undefined || ctx.isLivestockWorkplace?.(def.typeId) !== true) return [];
-  const recipes = visibleRecipes(ctx, def);
-  const meat = ctx.livestockMeatGood ?? null;
+  const held = liveStock(ent);
   const rows: ProductionRow[] = [];
-  for (const feed of recipes) {
-    const token = feed.outputs[0]?.goodType;
-    if (token === undefined || ctx.isLivestockGood?.(token) !== true) continue;
-    const product = recipes.find((r) => r.inputs.some((i) => i.goodType === token))?.outputs[0]?.goodType;
-    const icons = [meat, product ?? null]
-      .filter((g): g is number => g !== null)
-      .map((g) => goodDef(ctx, g)?.id)
-      .filter((id): id is string => id !== undefined);
-    const [goodId, ...extraGoodIds] = icons;
+  for (const recipe of def.recipes) {
+    const species = recipe.outputs[0]?.goodType;
+    if (species === undefined || ctx.isLivestockGood?.(species) !== true) continue;
+    const cap = def.stock.find((slot) => slot.goodType === species)?.capacity;
+    const herd = held.get(species) ?? 0;
+    const goodId = goodDef(ctx, species)?.id;
     rows.push({
-      goodType: token,
-      label: goodLabel(ctx, token),
-      pct: Math.max(bestPct.get(token) ?? 0, product === undefined ? 0 : (bestPct.get(product) ?? 0)),
-      // The requirements hover: the feed recipe's goods, plus the penned animal the batch books.
-      inputs: `${recipeInputsLabel(ctx, feed.inputs)}\n- ${goodLabel(ctx, token)}`,
+      goodType: species,
+      label: `${goodLabel(ctx, species)} ${herd}${cap === undefined ? '' : `/${cap}`}`,
+      pct: bestPct.get(species) ?? 0,
+      // The requirements hover: what one breeding costs.
+      inputs: recipeInputsLabel(ctx, recipe.inputs),
       ...(goodId !== undefined ? { goodId } : {}),
-      ...(extraGoodIds.length > 0 ? { extraGoodIds } : {}),
     });
   }
   return rows;
+}
+
+/** The amounts a building's snapshot stockpile holds right now. */
+function liveStock(ent: SnapshotEntity): ReadonlyMap<number, number> {
+  const amounts = (ent.components.Stockpile as { amounts?: unknown } | undefined)?.amounts;
+  const entries = amounts instanceof Map ? [...amounts.entries()] : [];
+  const live = new Map<number, number>();
+  for (const [good, amount] of entries) {
+    const goodType = num(good);
+    const held = num(amount);
+    if (goodType !== undefined && held !== undefined) live.set(goodType, held);
+  }
+  return live;
 }
 
 /** A recipe's inputs as tooltip ingredient lines, or the no-materials label for an input-less craft. */

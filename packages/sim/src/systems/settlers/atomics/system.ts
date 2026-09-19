@@ -6,6 +6,7 @@ import { applyPendingStaggers, type PendingStagger, resolveAttackHit } from './e
 import { advanceFishingAtomic } from './effects/goods/fishing.js';
 import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
 import { applyAtomicNeedEvents } from './effects/need-events.js';
+import { applyAtomicStockEvents } from './effects/stock-events.js';
 import { emitAtomicSoundCues } from './sound-cue.js';
 
 /** Advance every running `CurrentAtomic` and apply its effect on completion. */
@@ -29,6 +30,7 @@ export const atomicSystem: System = (world, ctx) => {
     }
 
     applyAtomicNeedEvents(world, ctx, e, atomic);
+    applyAtomicStockEvents(world, ctx, e, atomic);
     emitAtomicSoundCues(world, ctx, e, atomic);
 
     if (atomic.elapsed < duration) continue;

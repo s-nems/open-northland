@@ -39,6 +39,7 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
+import { planBreeder } from './husbandry/index.js';
 import { answerNeedInPlace, orderedNeed, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
@@ -189,6 +190,10 @@ function planEconomy(
   // extracted content synthesizes one from `logicproduction`) farms its fields instead of standing
   // at the station minting the good.
   if (planFarmer(plan, pass.farmClaims)) return;
+
+  // The breeder's own cycle, above the producer rung: breeding is one branch of it, and the herd work
+  // around it is nothing a recipe workshop's loop would do.
+  if (planBreeder(plan, pass.seatClaims, pass.spacing)) return;
 
   // A worker bound to a recipe workshop: a carrier ferries, a craftsman produces. A gatherer bound there
   // is not its operator - it runs the gather rung below and banks its harvest into the building, so it

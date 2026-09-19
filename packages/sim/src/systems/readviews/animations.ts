@@ -35,6 +35,23 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 export const ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34;
 
 /**
+ * The `event <at> <type> <good>` type id that puts one unit of the event's good in the worker's work
+ * house, the only way the breeder's slaughter yields anything.
+ *
+ * Source basis: `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_PUT_GOOD_IN_STOCK` (l.747).
+ */
+export const ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK = 27;
+
+/**
+ * The clip frame `elapsed` ticks into an atomic. A clip shorter than the atomic running it replays, so a
+ * multi-stroke harvest or a long crank at a well pays its events once per playthrough. Only frames `1` to
+ * `length` are ever reached, so an event authored outside that window never fires.
+ */
+export function clipFrameAt(elapsed: number, length: number): number {
+  return length > 0 ? ((elapsed - 1) % length) + 1 : elapsed;
+}
+
+/**
  * Resolve an {@link AtomicAnimation} by its exact `name` - the join key a tribe's `setatomic <job> <atomic>
  * "anim"` binding references, not the lowercased `id`. An unresolved name is expected, since the readable
  * mod set is a subset of the base-game animations. The lookup table is first-wins over declaration order.

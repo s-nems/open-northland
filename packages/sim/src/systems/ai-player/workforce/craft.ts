@@ -11,14 +11,13 @@ import { ownedSettlers } from '../seat-roster.js';
 /**
  * Product restrictions per workplace, by stable content ids (authored). One list per operator, handed
  * out in canonical settler order and wrapped when the building holds more operators than lists, so a
- * single list restricts every seat alike. One hide or fleece stands for a whole species line:
- * `craftablePool` pulls the fed-animal token's feed stage in behind it, and the feed cycle mints the
- * meat byproduct either way.
+ * single list restricts every seat alike. At the animal farm the products are the two herds themselves,
+ * so a seat apiece keeps both species tended.
  */
 export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly (readonly string[])[]>> = {
   work_joinery_01: [['tool_iron']],
   work_pottery_01: [['brick', 'tile']],
-  work_animal_farm: [['leather'], ['wool']],
+  work_animal_farm: [['cattle'], ['sheep']],
 };
 
 interface RestrictedCrew {

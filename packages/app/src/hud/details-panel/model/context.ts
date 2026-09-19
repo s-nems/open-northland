@@ -29,12 +29,9 @@ export interface UnitPanelModelContext {
   readonly tribes: readonly TribeDef[];
   /** The sim's livestock-workplace classification. Absent = no filtering. */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
-  /** The sim's livestock-good classification: the internal fed-animal tokens, hidden from every
-   *  player-facing list. */
+  /** The sim's livestock-good classification: the species goods, whose stock row counts a farm's herd
+   *  rather than a ware on a shelf. */
   readonly isLivestockGood?: ((goodType: number) => boolean) | undefined;
-  /** The meat byproduct good every completed feed batch lands, the leading icon of a livestock chain row;
-   *  null or absent without one in content. */
-  readonly livestockMeatGood?: number | null | undefined;
   /** The sim's dish→edible mapping: a gatherer's workplace counts as stocking a dish when it slots the
    *  edible, since the deposit converts. Absent = no conversion. */
   readonly edibleGoodForm?: ((goodType: number) => number) | undefined;
@@ -64,24 +61,13 @@ export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefin
   return ctx.buildings.find((b) => b.typeId === typeId);
 }
 
-/** A building def's recipes minus the slaughter production the sim's own recipe table drops at a
- *  livestock workplace, so no row shows a bar no cycle can move. */
-export function visibleRecipes(
-  ctx: UnitPanelModelContext,
-  def: BuildingDef | undefined,
-): BuildingDef['recipes'] {
-  const recipes = def?.recipes ?? [];
-  if (def === undefined || ctx.isLivestockWorkplace?.(def.typeId) !== true) return recipes;
-  return recipes.filter((r) => r.inputs.length > 0);
-}
-
-/** A building def's production outputs: the visible recipes' outputs minus the internal fed-animal
- *  tokens, else a unit-amount entry per `produces` good, else empty. */
+/** A building def's production outputs: its recipes' outputs minus the species goods, which the herd
+ *  rows carry instead, else a unit-amount entry per `produces` good, else empty. */
 export function recipeOutputs(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
 ): { goodType: number; amount: number }[] {
-  const fromRecipes = visibleRecipes(ctx, def)
+  const fromRecipes = (def?.recipes ?? [])
     .flatMap((r) => r.outputs)
     .filter((o) => ctx.isLivestockGood?.(o.goodType) !== true);
   if (fromRecipes.length > 0) return fromRecipes;

@@ -58,3 +58,33 @@ export const CIVILIST_EXERCISE_XP = 1;
 // The `event <at> <type>` type granting TRAINING experience (`ATOMIC_EVENT_TYPE_GET_TRAINING`,
 // logicdefines.inc l.749) - the schooling the `trainfor*` requirement rows read.
 export const TRAINING_EXPERIENCE_EVENT_TYPE = 29;
+
+// The breeder's own clips (`tribetypes.ini setatomic 16 85..88`), transcribed from the mod's
+// `atomicanimations12/atomicanimations.ini`: each `length 100`. The slay pair carries the wares the
+// slaughter yields on the PUT_GOOD_IN_STOCK channel at the frames below, which is the only way a
+// slaughter lands anything; the produce pair is the breeding cycle's clip.
+export const BREEDER_CLIP_LENGTH = 100;
+export const BREEDER_PRODUCE_ANIMATION_BY_SPECIES: Readonly<Record<string, string>> = {
+  sheep: 'viking_breeder_produce_sheep',
+  cattle: 'viking_breeder_produce_cattle',
+};
+export const BREEDER_SLAY_ANIMATION_BY_SPECIES: Readonly<Record<string, string>> = {
+  sheep: 'viking_breeder_slay_sheep',
+  cattle: 'viking_breeder_slay_cattle',
+};
+/** `event <at> 27 <good>` frames: the sheep yields 1 wool + 2 meat, the cow 2 leather + 2 meat. */
+export const SLAY_DEPOSIT_FRAMES_BY_SPECIES: Readonly<
+  Record<string, readonly (readonly [number, string])[]>
+> = {
+  sheep: [
+    [30, 'wool'],
+    [35, 'meat'],
+    [40, 'meat'],
+  ],
+  cattle: [
+    [30, 'leather'],
+    [31, 'leather'],
+    [40, 'meat'],
+    [50, 'meat'],
+  ],
+};

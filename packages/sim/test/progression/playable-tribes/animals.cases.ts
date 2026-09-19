@@ -68,8 +68,9 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
   it('animalBabyHitpoints returns the juvenile HP pool, distinct from the adult, or null with no record', () => {
     const content = tribeContent();
     expect(animalBabyHitpoints(content, 8)).toBe(8000); // bears - hitpointsBaby, NOT the 15000 adult pool
-    expect(animalBabyHitpoints(content, 10)).toBe(0); // cows - record with no hitpointsBaby → extractor default 0
-    expect(animalBabyHitpoints(content, 9)).toBe(0); // wolves - record with no hitpointsBaby → default 0
+    // A record with no hitpoints_baby reads as the engine's pre-parse default, which is what a calf gets.
+    expect(animalBabyHitpoints(content, 10)).toBe(500); // cows
+    expect(animalBabyHitpoints(content, 9)).toBe(500); // wolves
     expect(animalBabyHitpoints(content, 1)).toBeNull(); // viking - a civilization
   });
 

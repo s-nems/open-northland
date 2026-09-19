@@ -1,8 +1,9 @@
-import { Livestock, ownerOf, Position, Resting } from '../../../components/index.js';
+import { Livestock, Position } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
+import { claimableBy } from '../../livestock/index.js';
 import { seatBaseOf } from '../base.js';
 import { anchorNodeOf } from '../node-geometry.js';
 
@@ -42,8 +43,7 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
 
   const candidates: { entity: Entity; node: HalfCellNode; distance: number }[] = [];
   for (const e of world.query(Livestock, Position)) {
-    if (ownerOf(world, e) === player) continue;
-    if (world.has(e, Resting)) continue;
+    if (!claimableBy(world, e, player)) continue;
     const node = anchorNodeOf(world, e);
     if (node === null || !terrain.inBounds(node.hx, node.hy)) continue;
     const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);

@@ -109,6 +109,11 @@ export function applyEffect(
     case 'water':
       applyWater(world, effect.crop);
       return;
+    // The wares were already banked at the clip's own frames; what lands here is the breeder's
+    // experience, the clip's `GET_EXPERIENCE` frame.
+    case 'slay':
+      grantWorkExperience(world, ctx, settler, effect.species, 1);
+      return;
     case 'drop':
       dropCarriedLoad(world, ctx.terrain, settler);
       return;

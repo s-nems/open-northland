@@ -1,17 +1,24 @@
 export {
+  FARM_HERD_LEASH_NODES,
   LIVESTOCK_ASSIGN_PERIOD_TICKS,
   LIVESTOCK_GRAZE_LEASH_NODES,
   LIVESTOCK_GRAZE_RANGE_NODES,
   livestockAssignmentSystem,
+  livestockLeashOf,
 } from './assignment.js';
-export { LIVESTOCK_CAPTURE_RANGE_NODES, livestockCaptureSystem } from './capture.js';
+export { claimableBy, LIVESTOCK_CAPTURE_RANGE, livestockCaptureSystem } from './capture.js';
+export { ANIMAL_ADULT_AGE_TICKS, livestockGrowthSystem } from './growth.js';
 export {
-  admitLivestockForCycle,
-  feedAnimalsAvailable,
-  LIVESTOCK_MIN_LIFE_DIVISOR,
-  LIVESTOCK_PROCESS_DRAIN_HP,
-  LIVESTOCK_PROCESS_RANGE_NODES,
-  livestockVisitSystem,
-  releaseLivestockVisit,
-} from './processing.js';
-export { LIVESTOCK_REGEN_HP, LIVESTOCK_REGEN_PERIOD_TICKS, livestockRegenSystem } from './regen.js';
+  attachToFarm,
+  birthHerdAnimal,
+  farmStands,
+  herdOf,
+  isAdultAnimal,
+  isFreeClaimedAnimal,
+  recountHerdRows,
+  type SpeciesHerd,
+  speciesGoodOf,
+  speciesHerdOf,
+} from './herd.js';
+export { slayDepositGoods, stockDepositsAt } from './slay-clip.js';
+export { livestockSummonSystem } from './summon.js';

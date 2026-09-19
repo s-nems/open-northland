@@ -1,4 +1,4 @@
-import { BuildingType, DEFAULT_RECIPE_TICKS, VehicleType } from '@open-northland/data';
+import { BuildingType, DEFAULT_RECIPE_TICKS, TribeType, VehicleType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { extractGoods, parseIniSections } from '../src/decoders/ini.js';
 import { fillBuildingRecipes, stripVehicleGoods } from '../src/stages/ir/building-recipes.js';
@@ -15,7 +15,7 @@ describe('fillBuildingRecipes', () => {
     BuildingType.parse({ typeId, id, kind: 'workplace', produces, source: src });
 
   it('joins a workplace output good -> that good`s productionInputs into the product recipe', () => {
-    const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS);
+    const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS, []);
     expect(mint?.recipes).toEqual([
       {
         // guildmark consumes thornreed (22) + palegrain (24), one each - ascending goodType order.
@@ -30,7 +30,7 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('preserves the repeated-input quantity through the join (dusktonic: 2×20, 2×24, 1×22)', () => {
-    const [lab] = fillBuildingRecipes([building(14, 'lab', [31])], GOODS);
+    const [lab] = fillBuildingRecipes([building(14, 'lab', [31])], GOODS, []);
     expect(lab?.recipes[0]?.inputs).toEqual([
       { goodType: 20, amount: 2 },
       { goodType: 22, amount: 1 },
@@ -40,7 +40,7 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('emits one recipe PER produced good, each with only its own inputs, in produces order', () => {
-    const [multi] = fillBuildingRecipes([building(15, 'multi', [27, 31])], GOODS);
+    const [multi] = fillBuildingRecipes([building(15, 'multi', [27, 31])], GOODS, []);
     expect(multi?.recipes).toEqual([
       {
         inputs: [
@@ -63,28 +63,28 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('sums a repeated logicproduction id into one recipe`s output amount', () => {
-    const [twin] = fillBuildingRecipes([building(18, 'twin', [22, 22])], GOODS);
+    const [twin] = fillBuildingRecipes([building(18, 'twin', [22, 22])], GOODS, []);
     expect(twin?.recipes).toEqual([
       { inputs: [], outputs: [{ goodType: 22, amount: 2 }], ticks: DEFAULT_RECIPE_TICKS },
     ]);
   });
 
   it('gives a producer of a raw good an empty-input recipe (still a producer)', () => {
-    const [cutter] = fillBuildingRecipes([building(16, 'cutter', [22])], GOODS);
+    const [cutter] = fillBuildingRecipes([building(16, 'cutter', [22])], GOODS, []);
     expect(cutter?.recipes).toEqual([
       { inputs: [], outputs: [{ goodType: 22, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS },
     ]);
   });
 
   it('leaves a non-producing building (empty produces) with no recipes', () => {
-    const [store] = fillBuildingRecipes([building(1, 'hq', [])], GOODS);
+    const [store] = fillBuildingRecipes([building(1, 'hq', [])], GOODS, []);
     expect(store?.recipes).toEqual([]);
   });
 
   it('gives no recipes to a workplace whose only output is field-farmed (grown, not made)', () => {
     // palegrain (24) carries all three field atomics (plant 64 / cultivate 63 / harvest 62) → grown on
     // the map, so a farm producing only it forms no in-house recipe (the sim field-farms it instead).
-    const [farm] = fillBuildingRecipes([building(12, 'farm', [24])], GOODS);
+    const [farm] = fillBuildingRecipes([building(12, 'farm', [24])], GOODS, []);
     expect(farm?.recipes).toEqual([]);
   });
 
@@ -92,7 +92,7 @@ describe('fillBuildingRecipes', () => {
     // produces [24, 27]: palegrain (24) is field-grown and excluded; guildmark (27) stays, so the
     // recipe list is guildmark alone - with its own inputs thornreed (22) + palegrain (24), a field
     // good being a valid recipe *input* even though it is never a synthesized *output*.
-    const [mixed] = fillBuildingRecipes([building(17, 'mixed', [24, 27])], GOODS);
+    const [mixed] = fillBuildingRecipes([building(17, 'mixed', [24, 27])], GOODS, []);
     expect(mixed?.recipes).toHaveLength(1);
     expect(mixed?.recipes[0]?.outputs).toEqual([{ goodType: 27, amount: 1 }]);
     expect(mixed?.recipes[0]?.inputs).toEqual([
@@ -103,12 +103,50 @@ describe('fillBuildingRecipes', () => {
 
   it('does not mutate the input building records', () => {
     const input = building(13, 'mint', [27]);
-    fillBuildingRecipes([input], GOODS);
+    fillBuildingRecipes([input], GOODS, []);
     expect(input.recipes).toEqual([]);
   });
 
+  it('keeps only the products a worker job enables, as the animal farm keeps only its breeding', () => {
+    const BREEDER = 16;
+    const tribe = TribeType.parse({
+      typeId: 1,
+      id: 'viking',
+      jobEnables: [{ jobType: BREEDER, kind: 'good', targetId: 27 }],
+    });
+    const farm = BuildingType.parse({
+      typeId: 17,
+      id: 'farm',
+      kind: 'workplace',
+      produces: [31, 27],
+      workers: [{ jobType: BREEDER, count: 2 }],
+      source: src,
+    });
+    const [filled] = fillBuildingRecipes([farm], GOODS, [tribe]);
+    expect(filled?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType))).toEqual([27]);
+  });
+
+  it('keeps every product of a house whose workers enable no good', () => {
+    const CARRIER = 24;
+    const tribe = TribeType.parse({
+      typeId: 1,
+      id: 'viking',
+      jobEnables: [{ jobType: 16, kind: 'good', targetId: 27 }],
+    });
+    const well = BuildingType.parse({
+      typeId: 10,
+      id: 'well',
+      kind: 'workplace',
+      produces: [22],
+      workers: [{ jobType: CARRIER, count: 1 }],
+      source: src,
+    });
+    const [filled] = fillBuildingRecipes([well], GOODS, [tribe]);
+    expect(filled?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType))).toEqual([22]);
+  });
+
   it('paces every recipe at the uniform design ticks (15 s at 1×)', () => {
-    const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS);
+    const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS, []);
     expect(mint?.recipes[0]?.ticks).toBe(DEFAULT_RECIPE_TICKS);
     expect(DEFAULT_RECIPE_TICKS).toBe(180); // 15 s × the sim's 12 ticks/s
   });
@@ -136,7 +174,7 @@ describe('stripVehicleGoods', () => {
     const [stripped] = stripVehicleGoods([workshop], GOODS, [cartVehicle]);
     expect(stripped?.stock.map((s) => s.goodType)).toEqual([22]);
     expect(stripped?.produces).toEqual([31]);
-    const [filled] = fillBuildingRecipes([stripped ?? workshop], GOODS);
+    const [filled] = fillBuildingRecipes([stripped ?? workshop], GOODS, []);
     expect(filled?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType))).toEqual([31]);
   });
 

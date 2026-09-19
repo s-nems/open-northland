@@ -35,6 +35,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
   for (const e of pass.settlers) {
+    // The snapshot was taken before the sweep, and a breeder's slaughter removes an animal mid-pass.
+    if (!world.isAlive(e)) continue;
     // A busy settler plays its intent out; the rest shed what the previous plan left before re-planning.
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound)) continue;
     const settler = world.get(e, Settler);

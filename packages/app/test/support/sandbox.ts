@@ -16,7 +16,6 @@ export function ctxOf(sim: Simulation): UnitPanelModelContext {
     tribes: sim.content.tribes,
     isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(sim.content, typeId),
     isLivestockGood: (goodType) => systems.livestockTribeOfGood(sim.content, goodType) !== null,
-    livestockMeatGood: systems.livestockMeatGoodOf(sim.content),
     edibleGoodForm: (goodType) => systems.edibleGoodFormOf(sim.content, goodType),
   };
 }

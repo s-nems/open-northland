@@ -33,7 +33,6 @@ import {
   GOOD_GOLD,
   GOOD_HOLY_OIL,
   GOOD_IRON,
-  GOOD_LEATHER,
   GOOD_MEAT,
   GOOD_MUD,
   GOOD_MUSHROOM,
@@ -1184,8 +1183,8 @@ describe('settler upcoming-unlock rows', () => {
   });
 });
 
-describe('the animal farm panel - fed-animal tokens stay internal', () => {
-  it('hides the token stock rows and folds production into two chain rows with ware icons', () => {
+describe('the animal farm panel - the species rows are its herd', () => {
+  it('keeps the herd rows out of Magazyn and makes them the Produkcja rows, counted', () => {
     const snapshot = snapshotOf([buildingEntity(1, BUILDING_ANIMAL_FARM)]);
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'building') throw new Error('expected a building model');
@@ -1198,13 +1197,13 @@ describe('the animal farm panel - fed-animal tokens stay internal', () => {
     if (model.production?.kind !== 'recipe') throw new Error('expected recipe production');
     expect(model.production.rows.map((r) => r.goodType)).toEqual([GOOD_SHEEP, GOOD_CATTLE]);
     const [sheep, cattle] = model.production.rows;
-    expect(sheep?.goodId).toBe('meat'); // the chain's wares: meat byproduct + the converter's product
-    expect(sheep?.extraGoodIds).toEqual(['wool']);
-    expect(cattle?.extraGoodIds).toEqual(['leather']);
-    expect(sheep?.inputs.split('\n')).toHaveLength(3); // water + wheat + the penned animal itself
+    expect(sheep?.goodId).toBe('sheep'); // the species itself, not a ware its slaughter yields
+    expect(sheep?.label).toContain('0/20'); // an empty herd against the row's cap
+    expect(cattle?.label).toContain('0/20');
+    expect(sheep?.inputs.split('\n')).toHaveLength(2); // what one breeding costs: water + wheat
   });
 
-  it("a breeder's craft toggles offer the chain wares, never the tokens or the slaughter row", () => {
+  it("a breeder's craft toggles offer the two herds it may tend", () => {
     const sim = createSceneSim(sandboxScene);
     const slot = sim.content.buildings.find((b) => b.typeId === BUILDING_ANIMAL_FARM)?.workers[0];
     if (slot === undefined) throw new Error('animal farm has no worker slots');
@@ -1215,7 +1214,7 @@ describe('the animal farm panel - fed-animal tokens stay internal', () => {
 
     const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([GOOD_WOOL, GOOD_LEATHER]);
+    expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([GOOD_SHEEP, GOOD_CATTLE]);
   });
 
   it('offers the defence window only to a building type that takes a garrison', () => {

@@ -109,6 +109,9 @@ export type AtomicEffect =
    *  neighbours one growth stage; nothing else grows a field. Approximation: the reach is not readable. A
    *  target already reaped or gone waters nothing; a ripe field in reach stands. */
   | { readonly kind: 'water'; readonly crop: Entity }
+  /** A breeder's slaughter swing at its farm's door: the animal of `species` is already gone, and the
+   *  clip's own `PUT_GOOD_IN_STOCK` frames put the wares in `farm` as it plays. */
+  | { readonly kind: 'slay'; readonly farm: Entity; readonly species: number }
   /** The settler sets its whole carried load down on its own tile, spilling any remainder over the
    *  `MAX_GROUND_STACK` cap onto the nearest free walkable nodes. No good is lost. */
   | { readonly kind: 'drop' }

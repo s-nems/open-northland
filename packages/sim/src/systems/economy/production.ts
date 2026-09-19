@@ -1,21 +1,15 @@
 import { Building, Person, Position, Production, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
-import { heldSeatCount } from '../livestock/processing.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
-import {
-  anyCycleStartable,
-  depositCycleOutput,
-  startArrivedFeedCycle,
-  startFirstStartable,
-} from './production/cycles.js';
+import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
 import { chargeMilitaryPietyCost } from './production/piety.js';
 import { startCycleFor } from './production/rotation.js';
 
-export { shelfBlockedOutput, startableCycleCount } from './production/cycles.js';
+export { BREEDING_PAIR, shelfBlockedOutput, startableCycleCount } from './production/cycles.js';
 export { craftablePool } from './production/rotation.js';
 
 /**
@@ -87,15 +81,9 @@ export const productionSystem: System = (world, ctx) => {
       if (running < operatorCountOf(staffing)) startFirstStartable(world, ctx, e, recipes);
       continue;
     }
-    // The seats past the running batches: arrived animals first, then each remaining seat's own product
-    // choice, where a failed choice skips just that operator.
-    const spares = staffing.operators.slice(running);
-    let served = 0;
-    while (served < spares.length && startArrivedFeedCycle(world, ctx, e, recipes)) served++;
-    // One seat stays open per summoned animal still walking whose feed remains input-startable, so its batch
-    // begins on arrival instead of finding every operator mid-rotation and parking it at the door.
-    const holdback = Math.min(spares.length - served, heldSeatCount(world, ctx, e, recipes));
-    for (const operator of spares.slice(served, spares.length - holdback)) {
+    // The seats past the running batches, each taking its own product choice; a failed choice skips just
+    // that operator.
+    for (const operator of staffing.operators.slice(running)) {
       startCycleFor(world, ctx, e, operator, recipes);
     }
   }

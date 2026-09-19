@@ -80,15 +80,15 @@ export interface ContentIndex {
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
   /** Hunt-prey rows by the prey's `tribeType` - membership is huntability ({@link HuntPrey}). */
   readonly huntPreyByTribe: ReadonlyMap<number, HuntPrey>;
-  /** Livestock species (`catchable` animal tribeType) → the good stocking one fed animal of that
-   *  species, the animal farm's feed-recipe product. */
+  /** Livestock species (`catchable` animal tribeType) → its species good, the animal farm's breeding
+   *  product and herd row. */
   readonly livestockGoodByTribe: ReadonlyMap<number, number>;
-  /** Reverse of {@link livestockGoodByTribe}: livestock goodType → the species' animal tribeType. */
+  /** Reverse of {@link livestockGoodByTribe}: species goodType → the species' animal tribeType. */
   readonly livestockTribeByGood: ReadonlyMap<number, number>;
-  /** Building types with a feed recipe - the workplaces claimed livestock is herded to. */
+  /** Building types with a breeding recipe - the farms a claimed herd attaches to. */
   readonly livestockWorkplaceTypes: ReadonlySet<number>;
-  /** The `meat` good (slug-resolved) - the feed-cycle byproduct target; null without one. */
-  readonly livestockMeatGood: number | null;
+  /** Species good → the breeder atomic that slaughters one of its adults. */
+  readonly livestockSlayAtomicByGood: ReadonlyMap<number, number>;
   /** Atomic animations by `name` (the `setatomic` join key). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
@@ -212,12 +212,12 @@ function buildIndex(content: ContentSet): ContentIndex {
     livestockGoodByTribe: livestock.goodByTribe,
     livestockTribeByGood: livestock.tribeByGood,
     livestockWorkplaceTypes: livestock.workplaceTypes,
-    livestockMeatGood: livestock.meatGood,
+    livestockSlayAtomicByGood: livestock.slayAtomicByGood,
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobs,
     storedGoodsByBuilding: storedGoodSets(content),
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
-    recipeByProductByBuilding: recipeProductTables(content, livestock.workplaceTypes),
+    recipeByProductByBuilding: recipeProductTables(content),
     mergedRecipeByBuilding: mergedRecipes(content),
     inputlessProducersByGood: inputlessProducerTypes(content),
     atomicBindingsByTribe: atomicBindingTables(content),

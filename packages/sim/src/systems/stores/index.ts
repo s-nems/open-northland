@@ -36,6 +36,7 @@ export {
   buildingProduces,
   buildingWorkerJobs,
   isCarrierJob,
+  isWorkplaceOutput,
   mayFetchGoodFrom,
   mergedRecipeOf,
   producesGoodWithoutInputs,

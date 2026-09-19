@@ -1,6 +1,6 @@
 import { cellAnchorNode, components, type Entity, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_HUNTER, JOB_SCOUT } from '../catalog/jobs.js';
+import { JOB_SCOUT } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { ANIMAL_TRIBE_CATTLE, ANIMAL_TRIBE_SHEEP } from '../game/sandbox/content/catalog/animals.js';
 import {
@@ -17,23 +17,25 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 40;
 const MAP_H = 28;
 const INITIAL_ZOOM = 0.8;
-/** Claim (contact) + the ~50-node march + two 180-tick cycle stages per species, with margin. */
-const RUN_TICKS = 1500;
+/** The claim, the walk home, breeding at 180 ticks a calf, the 3600-tick childhood, and the slaughter
+ *  that follows the first grown calf, with margin. */
+const RUN_TICKS = 5200;
 
 const FARM = { x: 26, y: 8 } as const;
 const BREEDERS = 2;
-/** Leather and meat are `jobEnablesGood` hunter unlocks, so without a hunter alive the feed chain
- *  converts only wool. He stands out of hunt sight (16 nodes) of both wild herds. */
-const HUNTER = { x: 24, y: 6 } as const;
-/** Far enough from the farm that the march to the door is visible. */
+/** Far enough from the farm that the walk home is visible. */
 const SHEEP_BIRTH = { x: 8, y: 20 } as const;
 const CATTLE_BIRTH = { x: 30, y: 21 } as const;
 
-/** Stuffed past the 10-unit slot caps so ~40 feed batches run without a supply chain. */
+/** Each spawned wild herd's size (`maximumgroupsize` for both species), so a bigger herd at the farm can
+ *  only have been bred there. */
+const SPAWNED_HERD_SIZE = 6;
+
+/** Stuffed past the 10-unit slot caps so the breeding never waits on a supply chain. */
 const STARTER_WATER = 40;
 const STARTER_WHEAT = 80;
 
-const { Building, Health, LivestockVisit, Owner, Position, Resting, Settler, StayPoint, Stockpile } =
+const { Building, FarmAnimal, Health, Owner, Position, Settler, StayPoint, Stockpile, YoungAnimal } =
   components;
 
 function build(sim: Simulation): void {
@@ -42,7 +44,6 @@ function build(sim: Simulation): void {
   s.amounts.set(goodBySlug(sim, 'water'), STARTER_WATER);
   s.amounts.set(goodBySlug(sim, 'wheat'), STARTER_WHEAT);
   spawnWorkersAtDoor(sim, farm, BREEDERS);
-  spawnSandboxSettler(sim, JOB_HUNTER, HUNTER.x, HUNTER.y, HUMAN_PLAYER);
 
   for (const herd of [
     { tribe: ANIMAL_TRIBE_SHEEP, at: SHEEP_BIRTH },
@@ -50,7 +51,7 @@ function build(sim: Simulation): void {
   ]) {
     const node = cellAnchorNode(herd.at.x, herd.at.y);
     sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
-    // The claim is contact, so the scout spawns amid the herd and it wanders into him.
+    // The claim reaches two map points, so the scout spawns amid the herd.
     spawnSandboxSettler(sim, JOB_SCOUT, herd.at.x, herd.at.y, HUMAN_PLAYER);
   }
 }
@@ -75,12 +76,28 @@ function animalIds(sim: Simulation): Set<number> {
   return ids;
 }
 
-function farmStock(sim: Simulation, slug: string): number {
+function theFarm(sim: Simulation): Entity | null {
   for (const e of sim.world.query(Building, Stockpile)) {
-    if (sim.world.get(e, Building).buildingType !== BUILDING_ANIMAL_FARM) continue;
-    return sim.world.get(e, Stockpile).amounts.get(goodBySlug(sim, slug)) ?? 0;
+    if (sim.world.get(e, Building).buildingType === BUILDING_ANIMAL_FARM) return e;
   }
-  return 0;
+  return null;
+}
+
+function farmStock(sim: Simulation, slug: string): number {
+  const farm = theFarm(sim);
+  if (farm === null) return 0;
+  return sim.world.get(farm, Stockpile).amounts.get(goodBySlug(sim, slug)) ?? 0;
+}
+
+/** The farm's herd of one species, and how many of them were born there and are still young. */
+function herdOf(sim: Simulation, tribe: number): { all: Entity[]; young: Entity[] } {
+  const farm = theFarm(sim);
+  const all = farm === null ? [] : ownedOf(sim, tribe).filter((e) => holdsFor(sim, e, farm));
+  return { all, young: all.filter((e) => sim.world.has(e, YoungAnimal)) };
+}
+
+function holdsFor(sim: Simulation, animal: Entity, farm: Entity): boolean {
+  return sim.world.tryGet(animal, FarmAnimal)?.farm === farm;
 }
 
 export const livestockScene: SceneDefinition = {
@@ -92,57 +109,63 @@ export const livestockScene: SceneDefinition = {
   initialZoom: INITIAL_ZOOM,
   checks: [
     {
-      label: 'the scouts claimed sheep and cattle by contact',
+      label: 'the scouts claimed sheep and cattle in passing',
       predicate: (sim) =>
         ownedOf(sim, ANIMAL_TRIBE_SHEEP).length >= 1 && ownedOf(sim, ANIMAL_TRIBE_CATTLE).length >= 1,
     },
     {
-      label: 'claimed stock re-anchored its leash onto the grazing ring around the farm',
+      label: 'the breeders took both species into the farm herd and the rows count it',
+      predicate: (sim) => {
+        const farm = theFarm(sim);
+        if (farm === null) return false;
+        const stock = sim.world.get(farm, Stockpile).amounts;
+        return [
+          { tribe: ANIMAL_TRIBE_SHEEP, slug: 'sheep' },
+          { tribe: ANIMAL_TRIBE_CATTLE, slug: 'cattle' },
+        ].every(({ tribe, slug }) => {
+          const herd = herdOf(sim, tribe).all.length;
+          return herd > 0 && (stock.get(goodBySlug(sim, slug)) ?? 0) === herd;
+        });
+      },
+    },
+    {
+      label: 'both herds bred: more animals than the scouts ever claimed, young among them',
+      predicate: (sim) =>
+        [ANIMAL_TRIBE_SHEEP, ANIMAL_TRIBE_CATTLE].every((tribe) => {
+          const herd = herdOf(sim, tribe);
+          // The claim can only ever have taken the spawned herd; anything past it was bred here.
+          return herd.all.length > SPAWNED_HERD_SIZE || herd.young.length > 0;
+        }),
+    },
+    {
+      label: 'a slaughter put wool, leather, and meat in the farm',
+      predicate: (sim) =>
+        farmStock(sim, 'wool') >= 1 && farmStock(sim, 'leather') >= 1 && farmStock(sim, 'meat') >= 1,
+    },
+    {
+      label: 'the herd keeps to its leash around the farm door',
       predicate: (sim) => {
         const terrain = sim.terrain;
         if (terrain === undefined) return false;
         const door = buildingDoorNode(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y);
-        const doorNode = terrain.nodeAtClamped(door.hx, door.hy);
-        const at = terrain.coordsOf(doorNode);
-        // A processing visit pauses the leash, so only the grazing herd is held to the ring.
-        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)].filter(
-          (e) => !sim.world.has(e, LivestockVisit),
-        );
+        const at = terrain.coordsOf(terrain.nodeAtClamped(door.hx, door.hy));
+        const herd = [...herdOf(sim, ANIMAL_TRIBE_SHEEP).all, ...herdOf(sim, ANIMAL_TRIBE_CATTLE).all];
         return (
-          claimed.length > 0 &&
-          claimed.every((e) => {
-            const cell = sim.world.tryGet(e, StayPoint)?.cell;
-            if (cell === undefined) return false;
-            const spot = terrain.coordsOf(cell);
-            const distance = Math.abs(spot.x - at.x) + Math.abs(spot.y - at.y);
-            // Beside the door, never in the doorway, so the entrance stays clickable.
-            return distance > 0 && distance <= systems.LIVESTOCK_GRAZE_RANGE_NODES;
+          herd.length > 0 &&
+          herd.every((e) => {
+            const stay = sim.world.tryGet(e, StayPoint)?.cell;
+            if (stay === undefined) return false;
+            const spot = terrain.coordsOf(stay);
+            // Every farm animal is anchored on the door itself, the original's birth point.
+            return spot.x === at.x && spot.y === at.y;
           })
         );
       },
     },
     {
-      label: 'the feed cycles produced wool, leather, and the meat byproduct',
-      predicate: (sim) =>
-        farmStock(sim, 'wool') >= 1 && farmStock(sim, 'leather') >= 1 && farmStock(sim, 'meat') >= 1,
-    },
-    {
-      label: 'no claimed animal was drained under half its life pool',
-      predicate: (sim) => {
-        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)];
-        return claimed.every((e) => {
-          const h = sim.world.tryGet(e, Health);
-          return h !== undefined && h.hitpoints >= Math.floor(h.max / 2);
-        });
-      },
-    },
-    {
       label: 'the heart projection marks exactly the claimed animals (no wild one) and mirrors their life',
       predicate: (sim) => {
-        // An animal inside the farm (a processing visit's Resting) is not drawn, so no heart either.
-        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)].filter(
-          (e) => !sim.world.has(e, Resting),
-        );
+        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)];
         const poolOf = new Map<number, { hitpoints: number; max: number }>();
         for (const e of claimed) {
           const h = sim.world.tryGet(e, Health);
@@ -166,7 +189,7 @@ export const livestockScene: SceneDefinition = {
       },
     },
     {
-      label: 'animals still wild at run end are unhurt (no drain without a claim)',
+      label: 'animals still wild at run end are unhurt (nothing drains a creature nobody claimed)',
       predicate: (sim) => {
         for (const e of sim.world.query(Settler, Position)) {
           const tribe = sim.world.get(e, Settler).tribe;

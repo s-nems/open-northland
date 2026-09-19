@@ -95,7 +95,7 @@ export function planProducer(
 
   // A craftsman with no seat and no input to fetch carries its own output out, since the workshop's
   // carrier also serves the settlement and may not return before the output stock fills.
-  if (haulWorkplaceOutput(plan, workplace, recipe)) return;
+  if (haulWorkplaceOutput(plan, workplace)) return;
   // A craftsman without a seat adds no production at the door, so it may loiter beside it.
   loiterByDoor(plan, workplace, spacing, false);
 }
@@ -128,7 +128,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     return;
   }
 
-  if (haulWorkplaceOutput(plan, workplace, recipe)) return;
+  if (haulWorkplaceOutput(plan, workplace)) return;
   // A carrier that is itself the workplace's operator keeps standing on the door so the production
   // presence gate still fires; one at a workshop run by other operators drives nothing and may loiter.
   loiterByDoor(plan, workplace, spacing, isWorkplaceOperator(world, ctx, workplace, worker.jobType));
@@ -214,12 +214,8 @@ function startOutputHaul(plan: PlannerContext, workplace: Entity, output: number
   );
 }
 
-function haulWorkplaceOutput(
-  plan: PlannerContext,
-  workplace: Entity,
-  recipe: NonNullable<ReturnType<typeof mergedRecipeOf>>,
-): boolean {
-  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), plan.world, workplace, recipe);
+function haulWorkplaceOutput(plan: PlannerContext, workplace: Entity): boolean {
+  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), plan.world, plan.ctx, workplace);
   if (output === null) return false;
   startOutputHaul(plan, workplace, output);
   return true;

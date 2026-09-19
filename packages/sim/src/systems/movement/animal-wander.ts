@@ -3,9 +3,9 @@ import {
   AttackOrder,
   CurrentAtomic,
   Engagement,
+  FarmAnimal,
   Frightened,
   Livestock,
-  LivestockVisit,
   MoveGoal,
   Owner,
   Position,
@@ -19,7 +19,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { grazeLeashOf } from '../livestock/assignment.js';
+import { livestockLeashOf } from '../livestock/assignment.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
@@ -113,8 +113,8 @@ export const animalWanderSystem: System = (world, ctx) => {
 
   for (const e of animals) {
     if (world.has(e, CurrentAtomic)) continue;
-    // A processing visit owns the creature: no graze leg competing with its walk to the door.
-    if (world.has(e, Resting) || world.has(e, LivestockVisit)) continue;
+    // A summoned animal is walking itself to the farm door: no graze leg competing with that.
+    if (world.has(e, Resting) || world.tryGet(e, FarmAnimal)?.summoner != null) continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
     if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing
@@ -130,11 +130,11 @@ export const animalWanderSystem: System = (world, ctx) => {
       continue;
     }
 
-    // Claimed livestock grazes on the short shared leash at a calm pace; a wild creature keeps its
-    // species' territory radius and the wild cadence.
+    // Claimed livestock grazes at a calm pace on its farm's or its base yard's leash; a wild creature
+    // keeps its species' territory radius and the wild cadence.
     const claimed = world.has(e, Livestock) && world.has(e, Owner);
     const range = claimed
-      ? grazeLeashOf(ctx.content, world.get(e, Settler).tribe)
+      ? livestockLeashOf(world, ctx, e)
       : stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
     if (range <= 0) continue; // no territory to range over: this creature holds its spot
     if (ctx.rng.int(claimed ? LIVESTOCK_WANDER_PERIOD_TICKS : ANIMAL_WANDER_PERIOD_TICKS) !== 0) continue;
@@ -152,6 +152,8 @@ export const animalWanderSystem: System = (world, ctx) => {
 
     // The leash: stay inside the territory, or at least head back toward the anchor.
     const anchor = world.get(e, StayPoint).cell;
+    // A farm's herd is leashed to the door itself, which must stay clear for the player to click.
+    if (target === anchor && world.has(e, FarmAnimal)) continue;
     const reach = manhattan(terrain, target, anchor);
     if (reach > range && reach >= manhattan(terrain, here, anchor)) continue;
 

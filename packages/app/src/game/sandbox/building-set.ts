@@ -302,9 +302,10 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       { goodType: GOOD_MEAD, capacity: TOWER_LARDER_CAPACITY, initial: 0 },
     ],
   },
-  // Extracted shape ("work animal farm"): sheep/cattle are fed-animal goods stocked in-house
-  // (`goodtypes.ini` 57/58 at the catalog offset). The input-less meat recipe mirrors the original's
-  // slaughter production; `sim/core/content-index/production.ts` decides how it is gated.
+  // Extracted shape ("work animal farm"): the sheep and cattle rows count the herd attached to the farm
+  // (`goodtypes.ini` 57/58 at the catalog offset, capacity 20 each), and the two recipes are the
+  // breeding the house's own trade enables. Wool, leather and meat arrive off the breeder's slaughter
+  // clip, which is why they are stocked but never produced by a recipe.
   [BUILDING_ANIMAL_FARM]: {
     stock: [
       {
@@ -359,21 +360,6 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
           { goodType: GOOD_WHEAT, amount: 2 },
         ],
         outputs: [{ goodType: GOOD_CATTLE, amount: 1 }],
-        ticks: DEFAULT_RECIPE_TICKS,
-      },
-      {
-        inputs: [{ goodType: GOOD_SHEEP, amount: 1 }],
-        outputs: [{ goodType: GOOD_WOOL, amount: 1 }],
-        ticks: DEFAULT_RECIPE_TICKS,
-      },
-      {
-        inputs: [{ goodType: GOOD_CATTLE, amount: 1 }],
-        outputs: [{ goodType: GOOD_LEATHER, amount: 1 }],
-        ticks: DEFAULT_RECIPE_TICKS,
-      },
-      {
-        inputs: [],
-        outputs: [{ goodType: GOOD_MEAT, amount: 1 }],
         ticks: DEFAULT_RECIPE_TICKS,
       },
     ],

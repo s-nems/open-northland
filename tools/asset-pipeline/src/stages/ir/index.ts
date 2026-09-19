@@ -85,7 +85,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   );
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
-  const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, goods);
+  const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, goods, tribes);
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { mod: basename(roots.mod) } },
     goods,

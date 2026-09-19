@@ -13,7 +13,6 @@ import {
   isCarrierJob,
   recipeOutputs,
   type UnitPanelModelContext,
-  visibleRecipes,
 } from './context.js';
 
 /** The Praca section's model: the workplace/product line and the gather or craft product menus. */
@@ -202,12 +201,9 @@ function craftChoicesFor(
   const operatorSlots = def.workers.filter((slot) => !isCarrierJob(ctx, slot.jobType));
   const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
   if (!operators.some((slot) => slot.jobType === jobType)) return null;
-  // Fed-animal tokens are excluded: a breeder toggles the chain's real wares, and the sim's rotation
-  // pulls the implied feed stage in itself (`craftablePool`).
-  const choices = visibleRecipes(ctx, def).flatMap((recipe) => {
+  const choices = def.recipes.flatMap((recipe) => {
     const goodType = recipe.outputs[0]?.goodType;
     if (goodType === undefined || !earned(goodType)) return [];
-    if (ctx.isLivestockGood?.(goodType) === true) return [];
     const good = goodDef(ctx, goodType);
     return [
       {

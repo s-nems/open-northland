@@ -74,7 +74,6 @@ export async function createUnitChrome(
       tribes: opts.content.tribes,
       isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
       isLivestockGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType) !== null,
-      livestockMeatGood: systems.livestockMeatGoodOf(opts.content),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),

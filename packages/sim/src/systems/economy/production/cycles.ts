@@ -11,14 +11,14 @@ import {
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import {
-  admitLivestockForCycle,
-  feedAnimalsAvailable,
-  releaseLivestockVisit,
-} from '../../livestock/processing.js';
-import { goodEnabled, recipeOutputsEnabled } from '../../progression/index.js';
-import { livestockMeatGoodOf, livestockTribeOfGood } from '../../readviews/index.js';
+import { birthHerdAnimal, speciesHerdOf } from '../../livestock/index.js';
+import { recipeOutputsEnabled } from '../../progression/index.js';
+import { livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
+
+/** The herd the original breeds from: exactly two grown animals of the species, no more and no fewer
+ *  (the original 0x474bb2). A third adult is slaughtered instead. */
+export const BREEDING_PAIR = 2;
 
 /**
  * How many more cycles of `recipe`'s product the workplace could start right now, beyond the same-product
@@ -44,7 +44,20 @@ export function startableCycleCount(
     outputRoomForCycles(world, ctx, building, recipe),
   );
   if (cycles <= 0) return cycles;
-  return Math.min(cycles, feedAnimalsAvailable(world, ctx, building, recipe));
+  return Math.min(cycles, breedableCycles(world, ctx, building, recipe));
+}
+
+/**
+ * How many cycles of `recipe` the herd allows: every one for an ordinary recipe, none unless the farm
+ * holds exactly the {@link BREEDING_PAIR} of the species it breeds. The output-room half already keeps
+ * the herd under its row cap.
+ */
+function breedableCycles(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): number {
+  const species = recipe.outputs[0]?.goodType;
+  if (species === undefined || livestockTribeOfGood(ctx.content, species) === null) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return speciesHerdOf(world, ctx, building, species).adults === BREEDING_PAIR ? Number.POSITIVE_INFINITY : 0;
 }
 
 /** How many cycles of `recipe` the stocked INPUTS cover - the input half of {@link startableCycleCount}. */
@@ -132,8 +145,7 @@ export function anyCycleStartable(
   return false;
 }
 
-/** Consume `recipe`'s inputs and append the new batch; the caller has verified {@link canStartCycle}. A
- *  feed recipe first admits its arrived animal, and a failed admission starts and consumes nothing.
+/** Consume `recipe`'s inputs and append the new batch; the caller has verified {@link canStartCycle}.
  *  `duration` is clamped to the `>= 1` {@link ProductionCycle} requires. */
 export function beginCycle(
   world: World,
@@ -142,32 +154,11 @@ export function beginCycle(
   recipe: Recipe,
   goodType: number,
 ): void {
-  if (!admitLivestockForCycle(world, ctx, building, recipe)) return;
   consumeGoods(world, building, recipe.inputs);
   const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
   const prod = world.tryMut(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
   else prod.cycles.push(cycle);
-}
-
-/**
- * Start the first feed cycle whose summoned animal has arrived at the door. Consulted before the
- * per-operator rotation, so the seat that summoned an animal takes it now instead of leaving it parked
- * for a whole batch. Content order, so the pick is canonical; the rotation cursor is untouched.
- */
-export function startArrivedFeedCycle(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  recipes: ReadonlyMap<number, Recipe>,
-): boolean {
-  for (const [good, recipe] of recipes) {
-    if (livestockTribeOfGood(ctx.content, good) === null) continue;
-    if (!canStartCycle(world, ctx, building, recipe)) continue; // arrival is part of the start gate
-    beginCycle(world, ctx, building, recipe, good);
-    return true;
-  }
-  return false;
 }
 
 /** Start one cycle of the first startable product in content order - the unstaffed-by-design path, with
@@ -198,6 +189,14 @@ export function depositCycleOutput(
   cycle: ProductionCycle,
   recipes: ReadonlyMap<number, Recipe> | undefined,
 ): void {
+  // A breeding cycle's product is an animal, not a unit on a shelf: it joins the herd, which the species
+  // row counts by itself.
+  if (livestockTribeOfGood(ctx.content, cycle.goodType) !== null) {
+    if (birthHerdAnimal(world, ctx, building, cycle.goodType) !== null) {
+      ctx.events.emit({ kind: 'goodProduced', building, goodType: cycle.goodType, amount: 1 });
+    }
+    return;
+  }
   const stock = world.get(building, Stockpile).amounts;
   const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
   for (const output of outputs) {
@@ -209,26 +208,5 @@ export function depositCycleOutput(
       goodType: output.goodType,
       amount: output.amount,
     });
-  }
-  // A completed feed cycle lets its visiting animal out and also lands one meat, the no-slaughter design's
-  // food output. The shelf slot was never reserved, so a full meat shelf forfeits the unit (approximation).
-  const fedTribe = livestockTribeOfGood(ctx.content, cycle.goodType);
-  if (fedTribe !== null) {
-    releaseLivestockVisit(world, building, fedTribe);
-    const meat = livestockMeatGoodOf(ctx.content);
-    if (meat !== null) {
-      const have = stock.get(meat) ?? 0;
-      const unlocked = goodEnabled(
-        world,
-        ctx,
-        ownerOf(world, building),
-        world.get(building, Building).tribe,
-        meat,
-      );
-      if (unlocked && have < stockCapacity(world, ctx, building, meat)) {
-        setStockAmount(world, building, meat, have + 1);
-        ctx.events.emit({ kind: 'goodProduced', building, goodType: meat, amount: 1 });
-      }
-    }
   }
 }

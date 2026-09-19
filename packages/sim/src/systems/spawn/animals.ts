@@ -34,9 +34,7 @@ const HERD_COUNT_CAP = 100;
  * extracted `animaltypes.ini` params.
  *
  * Approximations: the scatter pattern, pushing a member off blocked ground, spawning adult at
- * `jobType: null` with no weapon binding, the one-shot placement with no respawn or territory upkeep, and
- * reading `movespeed` as a step period so a larger value walks slower, which is the only direction
- * consistent with the source's `runspeed < movespeed`.
+ * `jobType: null` with no weapon binding, and the one-shot placement with no respawn or territory upkeep.
  *
  * Determinism: the leader is the herd's lowest-id member, the scatter offsets are a fixed function of the
  * member index, and the content reads are pure.
@@ -54,10 +52,6 @@ export function spawnAnimalHerd(
   // Approximation: no swarm-effect layer exists yet.
   if (hitpoints <= 0) return;
 
-  const locomotion = locomotionOf(ctx.content, command.tribe);
-  const walkSpeed = locomotion?.walkSpeed ?? 0;
-  const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
-
   // A solitary group still yields one creature, and the floor plus cap keep a malformed external count
   // (fractional, negative, absurd) from minting a map of creatures in one tick.
   const count = Math.min(HERD_COUNT_CAP, Math.max(1, Math.floor(command.count ?? herd.maxGroupSize)));
@@ -70,17 +64,12 @@ export function spawnAnimalHerd(
     const off = herdMemberOffset(i, range);
     const e = world.create();
     world.add(e, Position, positionOfNode(command.x + off.dx, command.y + off.dy));
-    addWildlife(world, e, command.tribe);
-    world.add(e, Health, { hitpoints, max: hitpoints });
-    // The marker mirrors the content flag so the husbandry systems query this small store rather than the
-    // whole population.
-    if (isCatchableAnimal(ctx.content, command.tribe)) world.add(e, Livestock, {});
+    stampAnimalBody(world, ctx, e, command.tribe, hitpoints);
     // Every member of an authored herd answers to the same id: an id names a group, not one creature.
     stampMissionId(world, e, command.missionId);
     // A `setanimal` names the wild slot for game and a real player for a tended herd; only the latter
     // is a valid sim owner, so wildlife stays neutral.
     stampOwner(world, e, command.owner);
-    if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace });
     // The birth point or a scatter offset may name blocked or already-taken ground, and no drive ever
     // re-tasks an idle animal off a blocked cell, so the push has to happen here.
     evictSettlerFromBlockedSpawn(world, ctx, e, claimed);
@@ -98,6 +87,28 @@ export function spawnAnimalHerd(
     const leader = members[0];
     if (leader !== undefined) for (const e of members) world.add(e, HerdMember, { leader });
   }
+}
+
+/**
+ * Stamp the parts every creature of `tribe` carries whatever spawned it: its {@link Settler} identity,
+ * its hitpoint pool, its walking pace, and the {@link Livestock} marker mirroring the content's
+ * `catchable` flag, so the husbandry systems query that small store rather than the whole population.
+ *
+ * Approximation: `movespeed` is read as a step period, so a larger value walks slower - the only
+ * direction consistent with the source's `runspeed < movespeed`.
+ */
+export function stampAnimalBody(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  tribe: number,
+  hitpoints: number,
+): void {
+  addWildlife(world, e, tribe);
+  world.add(e, Health, { hitpoints, max: hitpoints });
+  if (isCatchableAnimal(ctx.content, tribe)) world.add(e, Livestock, {});
+  const walkSpeed = locomotionOf(ctx.content, tribe)?.walkSpeed ?? 0;
+  if (walkSpeed > 0) world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(walkSpeed)) });
 }
 
 /**

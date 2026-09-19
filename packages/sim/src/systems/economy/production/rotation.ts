@@ -3,7 +3,6 @@ import { CraftSelection } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { livestockTribeOfGood } from '../../readviews/index.js';
 import { beginCycle, canStartCycle } from './cycles.js';
 
 /**
@@ -23,26 +22,7 @@ export function craftablePool(
   const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
   const picked =
     world.tryGet(operator, CraftSelection)?.goods.filter((g) => recipes.has(g) && earned(g)) ?? [];
-  return picked.length > 0 ? withFeedStages(ctx, picked, recipes) : [...recipes.keys()].filter(earned);
-}
-
-/** A selected chain product implies its feed stage: crafting wool consumes the fed-sheep token, so the
- *  token's own recipe joins the pool rather than silently starving the selected product. Deliberately
- *  skips the `earned` gate, since a workplace-internal stage is not a `needforgood` ware. */
-function withFeedStages(
-  ctx: SystemContext,
-  picked: readonly number[],
-  recipes: ReadonlyMap<number, Recipe>,
-): readonly number[] {
-  const pool = new Set(picked);
-  for (const good of picked) {
-    for (const input of recipes.get(good)?.inputs ?? []) {
-      if (livestockTribeOfGood(ctx.content, input.goodType) !== null && recipes.has(input.goodType)) {
-        pool.add(input.goodType);
-      }
-    }
-  }
-  return [...pool];
+  return picked.length > 0 ? picked : [...recipes.keys()].filter(earned);
 }
 
 /**

@@ -81,6 +81,7 @@ export { schoolingMet } from './progression/unlocks.js';
 export {
   ATOMIC_EVENT_CHANNEL,
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
+  ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK,
   atomicClipName,
   atomicClipNameAtHome,
   atomicDuration,
@@ -108,13 +109,13 @@ export {
 export { MILITARY_MODE } from './readviews/stances.js';
 // Exported so the app's livestock-heart projection keys on the same content read as the capture drive.
 export { isCatchableAnimal } from './readviews/tribes/animals.js';
-// The livestock join, so the details panel hides the same slaughter recipe the sim's recipe table drops
+// The livestock join, so the details panel names a farm's herds from the same table the sim breeds by
 // and the real-content suite can pin the slug join on the extracted ids.
 export {
   isLivestockWorkplaceType,
   livestockGoodOfTribe,
-  livestockMeatGoodOf,
   livestockTribeOfGood,
+  slayAtomicOfSpecies,
 } from './readviews/tribes/livestock.js';
 // jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
 // drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.

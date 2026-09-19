@@ -21,7 +21,7 @@ import {
   SWORD_HIT_FRAME,
   SWORD_SWING_LENGTH,
 } from '../../combat.js';
-import { GATHERERS } from '../../ids/index.js';
+import { GATHERERS, GOOD_LEATHER, GOOD_MEAT, GOOD_WOOL } from '../../ids/index.js';
 import {
   NEED_CLIPS,
   SOLDIER_SWING_DRAIN_VALUE,
@@ -31,6 +31,9 @@ import {
 } from '../../need-animations.js';
 import { soundCueEvents } from '../../sound-cues.js';
 import {
+  BREEDER_CLIP_LENGTH,
+  BREEDER_PRODUCE_ANIMATION_BY_SPECIES,
+  BREEDER_SLAY_ANIMATION_BY_SPECIES,
   BUILD_GUIDE_ANIMATION,
   BUILD_GUIDE_SWING_LENGTH,
   BUILD_HOUSE_ANIMATION,
@@ -51,6 +54,7 @@ import {
   FARMER_WATER_LENGTH,
   HIVE_DRAW_ANIMATION,
   LISTEN_QUIET_PULSE_VALUE,
+  SLAY_DEPOSIT_FRAMES_BY_SPECIES,
   STORE_EXCHANGE_LENGTH,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
@@ -98,6 +102,22 @@ function swingClip(name: string, length: number, hitFrame: number, drain = SOLDI
 }
 
 const SOCIAL = systems.ATOMIC_EVENT_CHANNEL.LEISURE;
+
+/** The sandbox ids of the wares a slaughter clip names, by their content slug. */
+const SLAY_WARE_BY_SLUG: Readonly<Record<string, number>> = {
+  wool: GOOD_WOOL,
+  leather: GOOD_LEATHER,
+  meat: GOOD_MEAT,
+};
+
+/** A breeder's slaughter clip: its transcribed frames each put one ware in the farm. */
+function slayClip(species: string, name: string) {
+  const deposits = (SLAY_DEPOSIT_FRAMES_BY_SPECIES[species] ?? []).flatMap(([at, ware]) => {
+    const good = SLAY_WARE_BY_SLUG[ware];
+    return good === undefined ? [] : [{ at, type: systems.ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK, value: good }];
+  });
+  return workClip(name, BREEDER_CLIP_LENGTH, deposits);
+}
 
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
@@ -156,5 +176,7 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     workClip(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
     workClip(FARMER_SOW_ANIMATION, FARMER_SOW_LENGTH),
     workClip(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
+    ...Object.values(BREEDER_PRODUCE_ANIMATION_BY_SPECIES).map((name) => workClip(name, BREEDER_CLIP_LENGTH)),
+    ...Object.entries(BREEDER_SLAY_ANIMATION_BY_SPECIES).map(([species, name]) => slayClip(species, name)),
   ];
 }

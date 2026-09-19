@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { Provenance, TypeId } from '../record.js';
 
+/** The engine's juvenile pool for an `[animaltype]` without `hitpoints_baby`. */
+const ANIMAL_BABY_HITPOINTS_DEFAULT = 500;
+
 /**
  * One `[animaltype]` record from the base `Data/logic/animaltypes.ini`: the behaviour of a
  * non-controllable creature tribe (bear, wolf, boar, cow, sheep). Unlike every other type table it keys
@@ -21,8 +24,11 @@ export const AnimalType = z.strictObject({
   angryGameTime: z.number().int().nonnegative().default(0),
   /** `hitpoints_adult` - the adult HP pool (200..20000 in the base data). */
   hitpointsAdult: z.number().int().nonnegative().default(0),
-  /** `hitpoints_baby` - the juvenile HP pool. Not inferred from `hitpointsAdult`; 0 when the source omits it. */
-  hitpointsBaby: z.number().int().nonnegative().default(0),
+  /** `hitpoints_baby` - the juvenile HP pool, not inferred from `hitpointsAdult`. An omitted key reads as
+   *  the engine's pre-parse default 500 (the original 0x411c16), which is what a calf gets: the base
+   *  cow block has none. The adult pool keeps 0 for an omitted key instead of the engine's 1000, since the
+   *  sim reads a pool-less record as a decorative swarm. */
+  hitpointsBaby: z.number().int().nonnegative().default(ANIMAL_BABY_HITPOINTS_DEFAULT),
   /** `maximumgroupsize` - how many of this animal form a herd/pack. */
   maximumGroupSize: z.number().int().nonnegative().default(0),
   /** `maximumcadaversize` - herd-corpse cap. */

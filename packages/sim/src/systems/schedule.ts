@@ -19,8 +19,8 @@ import { needsSystem } from './lifecycle/needs/index.js';
 import {
   livestockAssignmentSystem,
   livestockCaptureSystem,
-  livestockRegenSystem,
-  livestockVisitSystem,
+  livestockGrowthSystem,
+  livestockSummonSystem,
 } from './livestock/index.js';
 import { matchSystem } from './match/index.js';
 import { missionSystem } from './missions/index.js';
@@ -86,13 +86,13 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },
   { name: 'separation', system: separationSystem },
-  // After the walk settles, so a scout's contact claim uses this tick's final nodes; regen then tops
-  // livestock up before the visit summon reads its HP, and the summon runs before production admits
-  // arrived visitors into starting batches.
+  // After the walk settles, so a scout's claim uses this tick's final nodes; the herd then re-anchors
+  // before the summon walks a slaughter candidate to the door, and a calf grows up before the breeder
+  // drive counts the pair next tick.
   { name: 'livestockCapture', system: livestockCaptureSystem },
   { name: 'livestockAssign', system: livestockAssignmentSystem },
-  { name: 'livestockRegen', system: livestockRegenSystem },
-  { name: 'livestockVisit', system: livestockVisitSystem },
+  { name: 'livestockGrowth', system: livestockGrowthSystem },
+  { name: 'livestockSummon', system: livestockSummonSystem },
   { name: 'atomic', system: atomicSystem },
   // Directly after the executor, so an order parked behind a non-interruptible atomic applies the tick
   // that atomic completes, before any drive could see the freed settler.

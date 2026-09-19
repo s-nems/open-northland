@@ -21,9 +21,11 @@ import {
   WELL_DRAW_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
+import { PRODUCE_ATOMIC_BY_GOOD_ID, SLAY_ATOMIC_BY_GOOD_ID } from '../../../../catalog/goods.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_BREEDER,
   JOB_BUILDER,
   JOB_CIVILIST,
   JOB_HUNTER,
@@ -37,7 +39,7 @@ import {
 } from '../../../../catalog/jobs.js';
 import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
-import { GATHERERS, JOB_FARMER_SLOT } from '../../ids/index.js';
+import { GATHERERS, JOB_FARMER_SLOT, rebaseSlotJob } from '../../ids/index.js';
 import {
   CIVILIST_EAT_ANIMATION,
   CIVILIST_PRAY_ANIMATION,
@@ -48,6 +50,8 @@ import {
   WOMAN_SLEEP_ANIMATION,
 } from '../../need-animations.js';
 import {
+  BREEDER_PRODUCE_ANIMATION_BY_SPECIES,
+  BREEDER_SLAY_ANIMATION_BY_SPECIES,
   BUILD_GUIDE_ANIMATION,
   BUILD_HOUSE_ANIMATION,
   CIVILIST_EXERCISE_ANIMATION,
@@ -115,6 +119,24 @@ export function buildSandboxTribes(
         atomicId: gatherer.atomic,
         animation: gatherer.animation,
       })),
+      // The breeder's species actions, the original's `setatomic 16 85..88` rows: the sim reads which
+      // species a slaughter belongs to off the clip name.
+      ...Object.keys(SLAY_ATOMIC_BY_GOOD_ID).flatMap((species) =>
+        [
+          {
+            atomicId: PRODUCE_ATOMIC_BY_GOOD_ID[species],
+            animation: BREEDER_PRODUCE_ANIMATION_BY_SPECIES[species],
+          },
+          {
+            atomicId: SLAY_ATOMIC_BY_GOOD_ID[species],
+            animation: BREEDER_SLAY_ANIMATION_BY_SPECIES[species],
+          },
+        ].flatMap(({ atomicId, animation }) =>
+          atomicId === undefined || animation === undefined
+            ? []
+            : [{ jobType: rebaseSlotJob(JOB_BREEDER), atomicId, animation }],
+        ),
+      ),
       // Bound for the woman and civilist jobs, as the original's `setatomic 5/6` rows do.
       { jobType: JOB_WOMAN, atomicId: KISS_ATOMIC, animation: 'viking_woman_kiss' },
       { jobType: JOB_WOMAN, atomicId: KISSED_ATOMIC, animation: 'viking_woman_kissed' },

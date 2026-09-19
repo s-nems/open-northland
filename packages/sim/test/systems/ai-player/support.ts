@@ -70,6 +70,9 @@ export const HUNTER = 15;
 export const LEATHER = 8;
 export const WOOL = 9;
 const MEAT = 10;
+/** The two herds an animal farm breeds - the products its breeders' craft lines name. */
+export const SHEEP = 11;
+export const CATTLE = 12;
 /** The joinery's iron-tool product (fixture) - the craft restriction's one selected good. */
 export const TOOL_IRON = 7;
 /** The stone-collector XP track (fixture = real track id 5) iron's `needforgood` measures. */
@@ -221,9 +224,9 @@ export function huntingContent(): ContentSet {
   });
 }
 
-/** Content with the two-breeder animal farm the herd split needs. Its recipes carry only the three
- *  products the restriction names - the real feed → token → hide chain is the livestock suite's
- *  concern, not the allocator's. */
+/** Content with the two-breeder animal farm the herd split needs. Its recipes carry only the species the
+ *  restriction names, bred from a stand-in input - the real herd, its slaughter and its wares are the
+ *  livestock suite's concern, not the allocator's. */
 export function husbandryContent(): ContentSet {
   const base = aiContent();
   return parseContentSet({
@@ -233,6 +236,8 @@ export function husbandryContent(): ContentSet {
       { typeId: LEATHER, id: 'leather', weight: 1 },
       { typeId: WOOL, id: 'wool', weight: 1 },
       { typeId: MEAT, id: 'meat', weight: 1 },
+      { typeId: SHEEP, id: 'sheep', weight: 1 },
+      { typeId: CATTLE, id: 'cattle', weight: 1 },
     ],
     jobs: [...base.jobs, { typeId: BREEDER, id: 'breeder' }],
     buildings: [
@@ -246,17 +251,22 @@ export function husbandryContent(): ContentSet {
           { jobType: CARRIER, count: 1 },
         ],
         recipes: [
-          { inputs: [], outputs: [{ goodType: MEAT, amount: 1 }], ticks: 180 },
           {
             inputs: [{ goodType: WOOD, amount: 1 }],
-            outputs: [{ goodType: LEATHER, amount: 1 }],
+            outputs: [{ goodType: CATTLE, amount: 1 }],
             ticks: 180,
           },
-          { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: WOOL, amount: 1 }], ticks: 180 },
+          {
+            inputs: [{ goodType: WOOD, amount: 1 }],
+            outputs: [{ goodType: SHEEP, amount: 1 }],
+            ticks: 180,
+          },
         ],
         construction: [{ goodType: WOOD, amount: 2 }],
         stock: [
           { goodType: WOOD, capacity: 5, initial: 5 },
+          { goodType: SHEEP, capacity: 20, initial: 0 },
+          { goodType: CATTLE, capacity: 20, initial: 0 },
           { goodType: LEATHER, capacity: 5, initial: 0 },
           { goodType: WOOL, capacity: 5, initial: 0 },
           { goodType: MEAT, capacity: 5, initial: 0 },

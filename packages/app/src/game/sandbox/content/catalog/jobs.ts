@@ -10,12 +10,14 @@ import {
   PLANT_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
+import { PRODUCE_ATOMIC_BY_GOOD_ID, SLAY_ATOMIC_BY_GOOD_ID } from '../../../../catalog/goods.js';
 import {
   HOMELESS_JOBS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BABY_FEMALE,
   JOB_BABY_MALE,
+  JOB_BREEDER,
   JOB_BUILDER,
   JOB_CARRIER,
   JOB_CHILD_FEMALE,
@@ -119,6 +121,13 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
   // Shared with the ordinary gatherer worker-slot trades below. The fisher is already declared above
   // with its dedicated shore-work atomics.
   const gathererAtomics = GATHERERS.map((gatherer) => gatherer.atomic);
+  // The breeder's slot is a real trade too: breeding an animal of a species and slaughtering one are the
+  // actions its whole cycle hangs on (`jobtypes.ini` breeder `allowatomic 85..88`).
+  const breederAtomics = Object.keys(SLAY_ATOMIC_BY_GOOD_ID).flatMap((species) =>
+    [PRODUCE_ATOMIC_BY_GOOD_ID[species], SLAY_ATOMIC_BY_GOOD_ID[species]].filter(
+      (atomic): atomic is number => atomic !== undefined,
+    ),
+  );
   for (const slots of Object.values(BUILDING_WORKER_SLOTS)) {
     for (const worker of slots) {
       const jobType = rebaseSlotJob(worker.jobType);
@@ -132,6 +141,8 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
         // building, so it needs the harvest atomics.
         if (EXTRACTED_GATHERER_TRADES.has(worker.jobType)) {
           jobs.set(jobType, { ...job, allowedAtomics: gathererAtomics });
+        } else if (worker.jobType === JOB_BREEDER) {
+          jobs.set(jobType, { ...job, allowedAtomics: breederAtomics });
         } else jobs.set(jobType, job);
       }
     }

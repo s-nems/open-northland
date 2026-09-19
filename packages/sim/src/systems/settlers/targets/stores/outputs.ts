@@ -3,7 +3,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { accessibleStockAmounts, mergedRecipeOf } from '../../../stores/index.js';
+import { accessibleStockAmounts, isWorkplaceOutput, mergedRecipeOf } from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
@@ -16,10 +16,9 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
   for (const e of stockpiles) {
     const stock = accessibleStockAmounts(world, e);
     if (stock === undefined) continue;
-    const recipe = mergedRecipeOf(world, ctx, e);
-    if (recipe === undefined) continue;
+    if (mergedRecipeOf(world, ctx, e) === undefined) continue;
     for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
-      if (amount > 0 && recipe.outputs.some((o) => o.goodType === goodType)) return true;
+      if (amount > 0 && isWorkplaceOutput(world, ctx, e, goodType)) return true;
     }
   }
   return false;
@@ -55,8 +54,8 @@ export function nearestWorkplaceOutput(
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }
 
-/** The lowest-goodType output a workplace stocks that its recipe produces and the carrier could deliver,
- *  or null. Canonical order, and side-effect-free so the ring may re-evaluate it on the fallback scan. */
+/** The lowest-goodType output a workplace stocks and the carrier could deliver, or null. Canonical
+ *  order, and side-effect-free so the ring may re-evaluate it on the fallback scan. */
 function haulableOutputGood(
   world: World,
   ctx: SystemContext,
@@ -67,11 +66,10 @@ function haulableOutputGood(
   // ordinary inventory, so a carrier cannot strip the construction hold.
   const stock = accessibleStockAmounts(world, entity);
   if (stock === undefined) return null;
-  const recipe = mergedRecipeOf(world, ctx, entity);
-  if (recipe === undefined) return null; // not a workplace - passive stores aren't hauled from
+  if (mergedRecipeOf(world, ctx, entity) === undefined) return null; // passive stores aren't hauled from
   for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
     if (amount <= 0) continue;
-    if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
+    if (!isWorkplaceOutput(world, ctx, entity, goodType)) continue; // only haul outputs
     if (!deliverable(goodType)) continue; // no reachable sink
     return goodType;
   }

@@ -6,7 +6,13 @@ import type { SpatialGate } from '../../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
-import { recipesByProductOf, stockCapacity } from '../../../../stores/index.js';
+import {
+  buildingProduces,
+  isWorkplaceOutput,
+  mergedRecipeOf,
+  recipesByProductOf,
+  stockCapacity,
+} from '../../../../stores/index.js';
 import type { InputSourceKind, TargetBands } from '../../../targets/index.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
@@ -114,22 +120,22 @@ export function nearestMissingInputSource(
 
 /**
  * The finished output a producer should haul out of its own workplace to clear room for the next cycle, or
- * null when it holds none another store can accept. Walked in `recipe.outputs` order, so the pick never
- * depends on store insertion history.
+ * null when it holds none another store can accept. Walked in the type's `produces` order, so the pick
+ * never depends on store insertion history.
  */
 export function workplaceOutputToHaul(
   deliverable: (goodType: number) => boolean,
   world: World,
+  ctx: SystemContext,
   workplace: Entity,
-  recipe: Recipe,
 ): number | null {
   const stock = world.get(workplace, Stockpile).amounts;
-  for (const output of recipe.outputs) {
-    if ((stock.get(output.goodType) ?? 0) <= 0) continue;
+  const produces = buildingProduces(world, ctx, workplace);
+  const made = mergedRecipeOf(world, ctx, workplace)?.outputs.map((o) => o.goodType) ?? [];
+  for (const good of produces.length > 0 ? produces : made) {
+    if ((stock.get(good) ?? 0) <= 0 || !isWorkplaceOutput(world, ctx, workplace, good)) continue;
     // The routing itself excludes this producer as a sink.
-    if (deliverable(output.goodType)) {
-      return output.goodType;
-    }
+    if (deliverable(good)) return good;
   }
   return null;
 }

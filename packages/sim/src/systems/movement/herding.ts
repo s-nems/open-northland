@@ -2,7 +2,6 @@ import {
   CurrentAtomic,
   Frightened,
   HerdMember,
-  LivestockVisit,
   MoveGoal,
   Position,
   Resting,
@@ -50,9 +49,8 @@ export const herdingSystem: System = (world, ctx) => {
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Frightened)) continue; // a scattering follower is not pulled back into the scare
-    // A workplace visit owns the creature: no recall out of the building (Resting), and none competing
-    // with the visit system's walk to the door (LivestockVisit).
-    if (world.has(e, Resting) || world.has(e, LivestockVisit)) continue;
+    // Inside a building it is out of the herd's reach until it steps out again.
+    if (world.has(e, Resting)) continue;
     // A reaped leader has no Position, so the follower has no cell to return to and stays where it is.
     if (!world.has(leader, Position)) continue;
 

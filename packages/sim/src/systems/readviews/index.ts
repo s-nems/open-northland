@@ -109,14 +109,14 @@ export {
   isProvokableAnimal,
   isWarrantableAnimal,
   livestockGoodOfTribe,
-  livestockMeatGoodOf,
-  livestockTribeFedBy,
+  livestockSpeciesGoods,
   livestockTribeOfGood,
   locomotionOf,
   mayAttack,
   mayHunt,
   playableTribes,
   settlerHitpoints,
+  slayAtomicOfSpecies,
   stayPointRangeOf,
 } from './tribes/index.js';
 export {

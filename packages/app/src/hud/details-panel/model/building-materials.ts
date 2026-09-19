@@ -81,7 +81,7 @@ export function stockRows(
 ): StockRow[] {
   const live = liveAmounts(stockpile);
   const fractions = bonusFractions(productionBonus);
-  // Fed-animal token slots are workplace-internal to the feed batch, never a Magazyn row.
+  // A species slot counts the herd grazing outside, so it belongs to Produkcja, not Magazyn.
   const slots = (def?.stock ?? []).filter((slot) => ctx.isLivestockGood?.(slot.goodType) !== true);
   return slots.map((slot) => {
     const goodId = goodDef(ctx, slot.goodType)?.id;

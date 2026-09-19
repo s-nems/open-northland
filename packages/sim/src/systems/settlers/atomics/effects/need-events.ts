@@ -8,6 +8,7 @@ import {
   atomicAnimationByName,
   atomicClipName,
   atomicClipNameAtHome,
+  clipFrameAt,
 } from '../../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobIgnoresHomeHouse } from '../../../readviews/index.js';
 import { isInsideOwnHome } from '../../indoors.js';
@@ -77,15 +78,6 @@ export function applyAtomicNeedEvents(
   if (food !== 0) s.hunger = applyNeedUnits(s.hunger, food);
   if (company !== 0) s.enjoyment = applyNeedUnits(s.enjoyment, company);
   if (piety !== 0) s.piety = applyNeedUnits(s.piety, piety);
-}
-
-/**
- * The clip frame `elapsed` ticks into an atomic. A clip shorter than the atomic running it replays, so a
- * multi-stroke harvest or a long crank at a well pays its drain once per playthrough. Only frames `1` to
- * `length` are ever reached, so an event authored outside that window never fires.
- */
-function clipFrameAt(elapsed: number, length: number): number {
-  return length > 0 ? ((elapsed - 1) % length) + 1 : elapsed;
 }
 
 /** The clip whose events count: the at-home twin while the settler is indoors at home, else its own. */

@@ -1,12 +1,4 @@
-import {
-  FamilyDuty,
-  Garrison,
-  LivestockVisit,
-  Position,
-  Residence,
-  Resting,
-  Sheltering,
-} from '../../components/index.js';
+import { FamilyDuty, Garrison, Position, Residence, Resting, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import { atOrWalk } from './atomics/start.js';
@@ -14,8 +6,7 @@ import { atOrWalk } from './atomics/start.js';
 /**
  * Walk `e` to `door`, then step it inside `building` on arrival and run `then`. The `Resting` marker it
  * sets means "inside", which the render draws only through the workplace's own craft choreography; a
- * re-plan sheds it unless a family duty, a livestock visit, a manned post, or an alarm still holds the
- * settler in.
+ * re-plan sheds it unless a family duty, a manned post, or an alarm still holds the settler in.
  */
 export function enterBuilding(
   world: World,
@@ -44,12 +35,7 @@ export function isInside(world: World, e: Entity, building: Entity): boolean {
  * marker alone: shedding it would pop the settler out of cover and back in every tick.
  */
 export function heldIndoors(world: World, e: Entity): boolean {
-  return (
-    world.has(e, FamilyDuty) ||
-    world.has(e, LivestockVisit) ||
-    world.has(e, Garrison) ||
-    world.has(e, Sheltering)
-  );
+  return world.has(e, FamilyDuty) || world.has(e, Garrison) || world.has(e, Sheltering);
 }
 
 /** Whether `e` is indoors in its own house - the state the at-home need rules key on. */

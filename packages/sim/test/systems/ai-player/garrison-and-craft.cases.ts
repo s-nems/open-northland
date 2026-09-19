@@ -23,6 +23,7 @@ import {
   BOW,
   BREEDER,
   BUILDER,
+  CATTLE,
   collectModule,
   ctxOf,
   entityOfBuilding,
@@ -31,17 +32,16 @@ import {
   HQ_Y,
   husbandryContent,
   JOINERY_TYPE,
-  LEATHER,
   makeAiSeat,
   placeHq,
   SEAT,
+  SHEEP,
   SPEAR,
   SWORD,
   spawnMen,
   TOOL_IRON,
   VIKING,
   WOMAN,
-  WOOL,
 } from './support.js';
 
 // The garrison sizing out of the true bachelor surplus, the weapon mix it publishes, and the
@@ -509,23 +509,22 @@ describe('workforce module - the barracks and craft selections', () => {
     for (const c of hires) sim.enqueueSetup(c);
     sim.step();
 
-    // Seats are handed out in canonical settler order: the first breeder takes the hide, the second
-    // the fleece. Each is a whole species line - the feed stage rides behind it and the feed cycle
-    // mints the meat byproduct either way.
+    // Seats are handed out in canonical settler order: the first breeder takes the cattle, the second
+    // the sheep, so both herds are tended at once.
     const breeders = [...sim.world.query(Settler, JobAssignment)]
       .filter((e) => sim.world.get(e, JobAssignment).workplace === farm)
       .filter((e) => sim.world.get(e, Settler).jobType === BREEDER)
       .sort((a, b) => a - b);
     expect(breeders).toHaveLength(2);
     expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setCraftGoods')).toEqual([
-      { kind: 'setCraftGoods', entity: breeders[0], goods: [LEATHER] },
-      { kind: 'setCraftGoods', entity: breeders[1], goods: [WOOL] },
+      { kind: 'setCraftGoods', entity: breeders[0], goods: [CATTLE] },
+      { kind: 'setCraftGoods', entity: breeders[1], goods: [SHEEP] },
     ]);
   });
 
   it('gives a lone breeder both lines rather than letting the sheep line die', () => {
     // The split must not outlive the crew it was written for: with the pool too short to seat two
-    // breeders, restricting the one man to seat 0 would leave wool unmade for as long as he is alone.
+    // breeders, restricting the one man to seat 0 would leave the sheep untended while he is alone.
     const content = husbandryContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
@@ -555,7 +554,7 @@ describe('workforce module - the barracks and craft selections', () => {
     );
     expect(lone).toHaveLength(1);
     expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setCraftGoods')).toEqual([
-      { kind: 'setCraftGoods', entity: lone[0], goods: [LEATHER, WOOL] },
+      { kind: 'setCraftGoods', entity: lone[0], goods: [SHEEP, CATTLE] },
     ]);
   });
 });

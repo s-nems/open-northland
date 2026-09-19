@@ -5,6 +5,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { exportedGoodForm } from '../readviews/food.js';
+import { livestockTribeOfGood } from '../readviews/tribes/livestock.js';
 
 // What a building type declares: its products, job slots, and stored goods. Which slots run the craft
 // and who fills them is ./operators.ts.
@@ -68,6 +69,24 @@ export function buildingProduces(world: World, ctx: SystemContext, building: Ent
 }
 
 const EMPTY_PRODUCES: readonly number[] = [];
+
+/**
+ * Whether `building` turns `goodType` out rather than keeping it: a good its type either produces
+ * (`logicproduction`) or makes by a recipe. The `produces` half is wider than the recipes on purpose -
+ * the animal farm's wool, leather and meat come off the breeder's slaughter clip, not from a recipe of
+ * its own - and the recipe half covers a synthetic catalog that declares recipes alone. A species good
+ * is neither: its row counts the animals grazing outside, so nobody may carry one off a shelf.
+ */
+export function isWorkplaceOutput(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  goodType: number,
+): boolean {
+  if (livestockTribeOfGood(ctx.content, goodType) !== null) return false;
+  if (buildingProduces(world, ctx, building).includes(goodType)) return true;
+  return mergedRecipeOf(world, ctx, building)?.outputs.some((o) => o.goodType === goodType) === true;
+}
 
 /**
  * Whether `buildingType` is an unstaffed shared utility that mints `goodType` from no inputs, a well for
