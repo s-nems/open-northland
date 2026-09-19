@@ -25,8 +25,13 @@ import {
   serializeSaveGame,
 } from '../../src/index.js';
 import { hexDistance } from '../../src/nav/halfcell.js';
+import { AI_HANDLER_ROUND_TICKS } from '../../src/systems/ai-player/cadence.js';
 import { interactionNode, vehicleAnchor } from '../../src/systems/footprint/index.js';
-import { TRADE_CART_HOUSE_DISTANCE } from '../../src/systems/trade/index.js';
+import {
+  AI_STOCK_REFILL_LEVEL,
+  AI_STOCK_REFILL_TURNS,
+  TRADE_CART_HOUSE_DISTANCE,
+} from '../../src/systems/trade/index.js';
 import { createVehicle, VEHICLE_WALK_RANGE_NODES } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -435,5 +440,88 @@ describe('the houses a map agreement applies to', () => {
 
   it('gates nothing in a world that set no match up', () => {
     expect(offersIn([], [], NEIGHBOUR)).toBe(1);
+  });
+});
+
+describe("a computer seat's trade house", () => {
+  const SAWMILL = 2;
+  /** The seat's turn inside a handler round: seat `p` moves on tick `3p` of it. */
+  const NEIGHBOUR_TURN_OFFSET = 3 * NEIGHBOUR;
+  const tickOfTurn = (turn: number): number => turn * AI_HANDLER_ROUND_TICKS + NEIGHBOUR_TURN_OFFSET;
+
+  function partnerWorld(
+    ai: { scripted: boolean } | null,
+    stock: Array<[number, number]> = [],
+    buildingType = HEADQUARTERS,
+  ): { sim: Simulation; post: Entity } {
+    const sim = newSim();
+    const post = houseAt(sim, FAR_X, NEIGHBOUR, stock, TRADING_POST_ID);
+    sim.world.mut(post, Building).buildingType = buildingType;
+    if (ai !== null) {
+      sim.enqueueSetup({ kind: 'setPlayerAi', player: NEIGHBOUR, enabled: true, scripted: ai.scripted });
+    }
+    sim.enqueueSetup({
+      kind: 'addTradeAgreement',
+      missionId: TRADING_POST_ID,
+      giveGood: WOOD,
+      giveAmount: 1,
+      takeGood: PLANK,
+      takeAmount: 2,
+    });
+    return { sim, post };
+  }
+
+  it('has the good it pays out refilled on every sixth handler turn, from the first', () => {
+    const { sim, post } = partnerWorld({ scripted: true });
+
+    sim.run(tickOfTurn(0) + 1);
+    expect(stockOf(sim, post, PLANK)).toBe(AI_STOCK_REFILL_LEVEL);
+
+    sim.world.mut(post, Stockpile).amounts.set(PLANK, 0);
+    sim.run(tickOfTurn(AI_STOCK_REFILL_TURNS - 1) + 1 - sim.tick);
+    expect(stockOf(sim, post, PLANK)).toBe(0);
+
+    sim.run(tickOfTurn(AI_STOCK_REFILL_TURNS) + 1 - sim.tick);
+    expect(stockOf(sim, post, PLANK)).toBe(AI_STOCK_REFILL_LEVEL);
+  });
+
+  it('leaves a fuller shelf and every other good as they are', () => {
+    const { sim, post } = partnerWorld({ scripted: true }, [
+      [PLANK, 9],
+      [WOOD, 2],
+    ]);
+
+    sim.run(tickOfTurn(0) + 1);
+
+    expect(stockOf(sim, post, PLANK)).toBe(9);
+    expect(stockOf(sim, post, WOOD)).toBe(2);
+  });
+
+  it('stays empty for a seat the map switched off, a human seat, and a house that is no warehouse', () => {
+    const worlds = [
+      partnerWorld({ scripted: false }),
+      partnerWorld(null),
+      partnerWorld({ scripted: true }, [], SAWMILL),
+    ];
+    for (const { sim, post } of worlds) {
+      sim.run(tickOfTurn(0) + 1);
+
+      expect(stockOf(sim, post, PLANK)).toBe(0);
+    }
+  });
+
+  it('pays a trader out of a house the map authored empty', () => {
+    const { sim, post } = partnerWorld({ scripted: true });
+    const home = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 6]]);
+    const trader = traderAt(sim, NEAR_X);
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: 'friend' });
+    attach(sim, trader, home);
+    attach(sim, trader, post);
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+
+    sim.run(RUN_TICKS);
+
+    expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBeGreaterThanOrEqual(2);
+    expect(stockOf(sim, home, PLANK) + cartOf(sim, trader, PLANK)).toBeGreaterThan(0);
   });
 });

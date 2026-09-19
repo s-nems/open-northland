@@ -42,7 +42,7 @@ import { technologySystem } from './progression/discoveries.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
-import { traderDisembarkSystem } from './trade/index.js';
+import { tradePartnerStockSystem, traderDisembarkSystem } from './trade/index.js';
 import {
   draughtAnimalSystem,
   riderSystem,
@@ -143,6 +143,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the strategic decision, on the scripted handlers' own round: its one-shots spawn and its
   // orders enqueue like the strategic AI's.
   { name: 'aiProgram', system: aiProgramSystem },
+  // On the same handler turn: the shelves a seat's trade partners pay out of.
+  { name: 'tradePartnerStock', system: tradePartnerStockSystem },
   // The seat's handler turn ends on its diplomacy answer, after the program has run, as the original's
   // manager runs the scripted handler and then the strategic one.
   { name: 'aiDiplomacy', system: aiDiplomacySystem },

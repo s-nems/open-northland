@@ -7,4 +7,5 @@ export { applyTradeCommand, registerTradeAgreement } from './commands.js';
 export { traderDisembarkSystem } from './disembark.js';
 export { planTrader, TRADE_CART_HOUSE_DISTANCE, TRADE_CART_SEARCH_RADIUS } from './drive.js';
 export { sameFoodClass } from './goods.js';
+export { AI_STOCK_REFILL_LEVEL, AI_STOCK_REFILL_TURNS, tradePartnerStockSystem } from './partner-stock.js';
 export { type TradeOffer, type TraderView, type TradeStopView, tradeOffersAt, traderView } from './view.js';
