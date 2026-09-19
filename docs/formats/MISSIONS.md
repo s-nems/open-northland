@@ -450,7 +450,11 @@ Readings unless marked otherwise.
   sight or not, at the vision cadence rather than every tick, and reads everyone as seen with fog
   off (approximation).
 - **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when they
-  want symmetry (corpus). The not-changeable flag is symmetric and silences stance messages; this
+  want symmetry (corpus). After `[playerdata]` loads, the loader sets every pair of declared players
+  still unset to neutral, and each player's own entry to self (byte-level, owned `the original`
+  0x409003), so seats a map never relates neither fight nor ally; map world assembly writes those
+  rows (`withNeutralRosterPairs`), and a world without a roster keeps the sim's everyone-hostile
+  default. The not-changeable flag is symmetric and silences stance messages; this
   build keeps it in `components/relations.ts`, with no seat command yet that would have to respect it.
 - **External flags**: up to 100 condition slots on a seat's AI handler; a slot takes a script's flag
   only when its `ai.inc` condition is the external-activate kind (see [AI data](#ai-data)). This build

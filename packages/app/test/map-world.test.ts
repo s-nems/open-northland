@@ -178,10 +178,32 @@ describe('buildMapWorld', () => {
     });
     expect(sim.diplomacyStance(0, 1)).toBe('friend');
     expect(sim.diplomacyStance(1, 0)).toBe('neutral');
-    expect(sim.diplomacyStance(0, 2)).toBe('enemy'); // an unauthored pair keeps the hostile default
+    expect(sim.diplomacyStance(0, 2)).toBe('enemy'); // no roster: an unauthored pair keeps the hostile default
   });
 
-  it('keeps every pair hostile when the map ships no diplomacy rows', () => {
+  it('starts a roster pair the rows leave unset neutral, as the original loader does', () => {
+    const seat = (player: number) => ({ player, type: 'ai' as const, tribeId: 1, colorId: player });
+    const { sim } = buildMapWorld({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      playerRoster: [seat(0), seat(1), seat(2)],
+      // The session's table: an authored row, then a lobby row.
+      diplomacy: [
+        { from: 0, to: 1, state: 'enemy' },
+        { from: 2, to: 0, state: 'friend' },
+      ],
+    });
+    expect(sim.diplomacyStance(0, 1)).toBe('enemy');
+    expect(sim.diplomacyStance(2, 0)).toBe('friend');
+    expect(sim.diplomacyStance(1, 0)).toBe('neutral');
+    expect(sim.diplomacyStance(1, 2)).toBe('neutral');
+    expect(sim.diplomacyStance(0, 2)).toBe('neutral');
+    // A seat the roster never declares is not filled.
+    expect(sim.diplomacyStance(0, 3)).toBe('enemy');
+  });
+
+  it('keeps every pair hostile when the map ships neither a roster nor diplomacy rows', () => {
     const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),

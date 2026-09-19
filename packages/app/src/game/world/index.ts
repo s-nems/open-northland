@@ -4,7 +4,7 @@ export {
   type AuthoredPlacement,
   resolveAuthoredPlacements,
 } from './authored-placements.js';
-export type { MapScriptWorld } from './build.js';
+export { type MapScriptWorld, withNeutralRosterPairs } from './build.js';
 export { type AuthoredJoinRows, contentJoins } from './content-joins.js';
 export { runAuthoredMap, runBareMap } from './decoded.js';
 export { type DemoWorldOptions, demoWorldBase, runDemoWorld, terrainSceneFor } from './demo.js';

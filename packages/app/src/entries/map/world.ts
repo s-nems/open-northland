@@ -42,6 +42,7 @@ import {
   runAuthoredMap,
   runBareMap,
   runDemoWorld,
+  withNeutralRosterPairs,
 } from '../../game/world/index.js';
 import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 
@@ -73,8 +74,9 @@ export interface MapWorldOptions extends SessionRules {
   readonly matchParticipants?: readonly number[];
   /** The map script's authored `specialItems` rows, the papers each player starts with. */
   readonly specialItems?: readonly MapSpecialItem[];
-  /** What the map's script contributes: the authored `diplomacy` rows (omitted or empty keeps every
-   *  player pair hostile) and the resolved mission triggers, which run unless explicitly disabled. */
+  /** What the map's script contributes: the authored `diplomacy` rows (a roster pair they leave unset
+   *  starts neutral, and a world without a roster keeps every pair hostile) and the resolved mission
+   *  triggers, which run unless explicitly disabled. */
   readonly script?: MapScriptWorld;
   /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
   readonly demoOwner?: number;
@@ -150,10 +152,9 @@ function runWorld(
     const demo = { ...content, ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}) };
     return { sim: runDemoWorld(seed, PLACEMENT_DRAIN_TICKS, undefined, demo), kind: 'demo' };
   }
-  const script = {
-    ...options.script,
-    ...(options.diplomacy !== undefined ? { diplomacy: options.diplomacy } : {}),
-  };
+  const rows = options.diplomacy ?? options.script?.diplomacy ?? [];
+  const roster = (options.playerRoster ?? []).map((row) => row.player);
+  const script = { ...options.script, diplomacy: withNeutralRosterPairs(roster, rows) };
   if (map?.entities !== undefined && ir !== null) {
     const authored = runAuthoredMap(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content, script);
     if (authored !== null) return { sim: authored, kind: 'authored' };

@@ -26,11 +26,32 @@ export interface MapScriptWorld {
   readonly participants?: readonly number[];
 }
 
+/**
+ * A map's start stance table: `rows`, then `neutral` for every ordered pair of roster players they
+ * leave unset. The original's loader fills an unset pair of existing players with neutral after it
+ * reads `[playerdata]` (owned `the original` 0x409003), so two seats a map never names neither fight
+ * nor ally. A world without a roster keeps the sim's everyone-hostile default.
+ */
+export function withNeutralRosterPairs(
+  roster: readonly number[],
+  rows: readonly MapDiplomacy[],
+): readonly MapDiplomacy[] {
+  const players = [...new Set(roster)].filter(components.isValidPlayer);
+  const stated = new Set(rows.map((row) => `${row.from}:${row.to}`));
+  const filled = [...rows];
+  for (const from of players) {
+    for (const to of players) {
+      if (from !== to && !stated.has(`${from}:${to}`)) filled.push({ from, to, state: 'neutral' });
+    }
+  }
+  return filled;
+}
+
 /** Every playable world runs with signpost confinement on, so a civilian acts only within its walk
  *  range and its player's caught network. Each builder enqueues it rather than the sim defaulting
- *  to it, which keeps pre-signpost goldens byte-identical. Authored diplomacy rows are enqueued here
- *  too - before the first tick, so no targeting pass ever runs on the everyone-hostile default - and a
- *  map without rows enqueues none, keeping its command stream byte-identical. */
+ *  to it, which keeps pre-signpost goldens byte-identical. Diplomacy rows are enqueued here too -
+ *  before the first tick, so no targeting pass ever runs on the everyone-hostile default - and a
+ *  world without rows enqueues none, keeping its command stream byte-identical. */
 export function newWorldSim(
   seed: number,
   map: TerrainMap,
