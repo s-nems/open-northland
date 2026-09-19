@@ -115,6 +115,37 @@ describe('script landscape route invalidation', () => {
     expect(sim.world.has(e, PathRequest)).toBe(true);
   });
 
+  it('keeps active paths when a pass removes a blocker and lays the same shape back', () => {
+    // The pressure-plate idiom: every pass removes the plate and sets it again. Nothing a route
+    // could cross before the pass is closed after it, so no walker is sent back to the planner.
+    const sim = fresh();
+    const terrain = terrainOf(sim);
+    const e = sim.world.create();
+    sim.world.add(e, Position, positionOfNode(4, 4));
+    sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(5, 6) });
+    sim.world.add(e, PathFollow, {
+      waypoints: [positionOfNode(5, 6)],
+      index: 0,
+      speed: fx.fromInt(1),
+      hx: fx.fromInt(1),
+      hy: fx.fromInt(1),
+    });
+    const pass = passOf(sim);
+    editScriptedLandscape(pass, 0, { opcode: 'RemoveLandscape', point: POINT });
+    editScriptedLandscape(pass, 0, { opcode: 'SetLandscape', point: POINT, landscape: 1, level: 0, flag: false });
+    expect(sim.world.has(e, PathFollow)).toBe(true);
+    expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(terrain.nodeAt(9, 8))).toBe(true);
+    // The next pass starts afresh: laying the wall one point over closes (10,8), which was open.
+    editScriptedLandscape(passOf(sim), 0, {
+      opcode: 'SetLandscape',
+      point: { hx: 9, hy: 8 },
+      landscape: 1,
+      level: 0,
+      flag: false,
+    });
+    expect(sim.world.has(e, PathFollow)).toBe(false);
+  });
+
   it('clears the plain area removal one ring short of its range, the group removals not', () => {
     // The fixture has the wall at POINT (id 0) and the smoke placement (id 1) some points away.
     const spacing = hexDistance(POINT, { hx: 5, hy: 5 });

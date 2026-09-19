@@ -1,25 +1,30 @@
-import { ResourceFootprint } from '../../components/index.js';
+import type { ContentSet, FootprintCell } from '@open-northland/data';
+import { Position, ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState, writeLandscapeEdits } from '../../components/landscape.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexDistance } from '../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
 import type {
   LandscapeRemovalGroup,
   NodeId,
   ScriptLandscapeType,
   TerrainGraph,
 } from '../../nav/terrain/index.js';
+import { chestFootprint, chestRecord } from '../chests/footprint.js';
 import { createChest } from '../chests/index.js';
 import type { SystemContext } from '../context.js';
 import { createBerryBush } from '../economy/berries.js';
 import { createGroundGoods } from '../economy/ground-goods.js';
+import { translatedCells } from '../footprint/geometry.js';
 import {
   createResourceNode,
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../footprint/resources.js';
-import { landscapeView } from './view.js';
+import { authoredLandscapes, landscapeResources, landscapesWithin, landscapeTypes } from './view.js';
 
+/** Remove every standing placement within `range` of `point`, with their backing resources. Returns
+ *  the walk cells they blocked, for a caller judging whether a later placement closes anything new. */
 export function removeLandscapes(
   world: World,
   terrain: TerrainGraph,
@@ -27,43 +32,41 @@ export function removeLandscapes(
   range: number,
   group?: LandscapeRemovalGroup,
   onResourceRemoved?: (entity: Entity) => void,
-): void {
-  const view = landscapeView(world, terrain);
-  const matches = view.placements.filter(
-    (p) =>
-      hexDistance(p, point) <= range &&
-      (group === undefined || view.types.get(p.typeId)?.groups.includes(group)),
+): NodeId[] {
+  const types = landscapeTypes(terrain);
+  const matches = landscapesWithin(world, terrain, point, range).filter(
+    (p) => group === undefined || types.get(p.typeId)?.groups.includes(group),
   );
-  if (matches.length === 0) return;
+  const freed: NodeId[] = [];
+  if (matches.length === 0) return freed;
   const ids = new Set(matches.map((p) => p.id));
-  for (const id of ids) {
-    for (const entity of view.resources.get(id) ?? []) {
+  const resources = landscapeResources(world);
+  for (const placement of matches) {
+    for (const entity of resources.get(placement.id) ?? []) {
+      const footprint = world.tryGet(entity, ResourceFootprint);
+      const at = world.tryGet(entity, Position);
+      if (footprint !== undefined && at !== undefined) {
+        const anchor = nodeOfPosition(at.x, at.y);
+        freed.push(...translatedCells(terrain, footprint.walk, anchor.hx, anchor.hy));
+      }
       unstampResourceFootprint(world, entity);
       world.destroy(entity);
       onResourceRemoved?.(entity);
     }
+    if (placement.resourceBacked !== true) {
+      const walk = types.get(placement.typeId)?.walk ?? [];
+      freed.push(...translatedCells(terrain, walk, placement.hx, placement.hy));
+    }
   }
+  const authored = authoredLandscapes(terrain).byId;
   writeLandscapeEdits(world, (state) => {
     state.topologyRevision++;
-    const authored = new Set(terrain.landscapes?.placements.map((p) => p.id));
     const removed = new Set(state.removed);
     for (const id of ids) if (authored.has(id)) removed.add(id);
     state.removed = [...removed].sort((a, b) => a - b);
     state.added = state.added.filter((p) => !ids.has(p.id));
   });
-}
-
-const firstFreeIds = new WeakMap<TerrainGraph, number>();
-
-/** One past the highest authored placement id, found once per map. */
-function firstFreeId(terrain: TerrainGraph): number {
-  let id = firstFreeIds.get(terrain);
-  if (id === undefined) {
-    id = 0;
-    for (const placement of terrain.landscapes?.placements ?? []) id = Math.max(id, placement.id + 1);
-    firstFreeIds.set(terrain, id);
-  }
-  return id;
+  return freed;
 }
 
 /**
@@ -108,6 +111,15 @@ function createPlacementBacking(
   return resource;
 }
 
+/** The cells a placement of `type` will block for walking, as {@link createPlacementBacking} and the
+ *  landscape layer stamp them: a chest carries its record's footprint, a goods heap and a bush none. */
+export function placementWalkCells(content: ContentSet, type: ScriptLandscapeType): readonly FootprintCell[] {
+  if (type.chest !== undefined) return chestFootprint(chestRecord(content, type.chest.kind, type.chest.gfxIndex)).walk;
+  if (type.good !== undefined) return [];
+  if (type.resource === undefined && type.bushGfxIndex !== undefined) return [];
+  return type.walk;
+}
+
 export function setLandscape(
   world: World,
   ctx: SystemContext,
@@ -117,10 +129,10 @@ export function setLandscape(
 ): boolean {
   const terrain = ctx.terrain;
   if (terrain?.landscapes === undefined || !terrain.inBounds(point.hx, point.hy)) return false;
-  const type = landscapeView(world, terrain).types.get(typeId);
+  const type = landscapeTypes(terrain).get(typeId);
   if (type === undefined) return false;
   const state = landscapeEditState(world);
-  const id = Math.max(state.nextId, firstFreeId(terrain));
+  const id = Math.max(state.nextId, authoredLandscapes(terrain).nextId);
   const resource = createPlacementBacking(world, ctx, type, point, level, id);
   if (resource === null) return false;
   removeLandscapes(world, terrain, point, 0, undefined, (entity) =>

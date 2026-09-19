@@ -10,7 +10,7 @@ import {
   setLandscape,
   setVertexColors,
 } from '../../src/systems/landscape/edits.js';
-import { landscapeView } from '../../src/systems/landscape/view.js';
+import { landscapeBlocks, landscapesWithin } from '../../src/systems/landscape/view.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -21,14 +21,49 @@ describe('script landscape state and blockers', () => {
   it('does not invalidate collision views for tints or mutate repeated identical writes', () => {
     const sim = fresh();
     const terrain = terrainOf(sim);
-    const before = landscapeView(sim.world, terrain);
+    const before = landscapeBlocks(sim.world, terrain);
     setVertexColors(sim.world, terrain, POINT, 2, 100, false);
-    expect(landscapeView(sim.world, terrain)).toBe(before);
+    expect(landscapeBlocks(sim.world, terrain)).toBe(before);
     const version = sim.world.mutationVersion;
     setVertexColors(sim.world, terrain, POINT, 2, 100, false);
     expect(sim.world.mutationVersion).toBe(version);
     setBuildForbidden(sim.world, terrain, POINT, 1, true);
-    expect(landscapeView(sim.world, terrain)).toBe(before);
+    expect(landscapeBlocks(sim.world, terrain)).toBe(before);
+  });
+
+  it('keeps a cell blocked while another placement still holds it and frees it with the last', () => {
+    const sim = fresh();
+    const terrain = terrainOf(sim);
+    const ctx = ctxOf(sim);
+    // The authored wall at POINT covers (8,8) and (9,8); a wall one point left covers (7,8) and (8,8).
+    const shared = terrain.nodeAt(8, 8);
+    expect(setLandscape(sim.world, ctx, { hx: 7, hy: 8 }, 1, 0)).toBe(true);
+    const doubled = landscapeBlocks(sim.world, terrain);
+    expect(doubled.walk.has(shared)).toBe(true);
+    removeLandscapes(sim.world, terrain, POINT, 0);
+    const halved = landscapeBlocks(sim.world, terrain);
+    expect(halved.walk.has(shared)).toBe(true);
+    expect(halved.walk.has(terrain.nodeAt(9, 8))).toBe(false);
+    removeLandscapes(sim.world, terrain, { hx: 7, hy: 8 }, 0);
+    expect(landscapeBlocks(sim.world, terrain).walk.has(shared)).toBe(false);
+    // Each edit mints its own view over the same counts; an older one keeps the cells it was given.
+    expect(halved).not.toBe(doubled);
+    expect(doubled.walk.has(terrain.nodeAt(9, 8))).toBe(true);
+    expect(dynamicBlockOverlay(sim.world, ctx, terrain).has(shared)).toBe(false);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('finds placements by area in file order and the script additions after them', () => {
+    const sim = fresh();
+    const terrain = terrainOf(sim);
+    expect(landscapesWithin(sim.world, terrain, POINT, 0).map((p) => p.id)).toEqual([0]);
+    expect(landscapesWithin(sim.world, terrain, POINT, 100).map((p) => p.id)).toEqual([0, 1]);
+    expect(landscapesWithin(sim.world, terrain, { hx: 5, hy: 5 }, 2).map((p) => p.id)).toEqual([1]);
+    expect(setLandscape(sim.world, ctxOf(sim), { hx: 6, hy: 6 }, 2, 0)).toBe(true);
+    expect(landscapesWithin(sim.world, terrain, POINT, 100).map((p) => p.id)).toEqual([0, 1, 2]);
+    removeLandscapes(sim.world, terrain, { hx: 5, hy: 5 }, 0);
+    expect(landscapesWithin(sim.world, terrain, POINT, 100).map((p) => p.id)).toEqual([0, 2]);
+    expect(landscapesWithin(sim.world, terrain, POINT, -1)).toEqual([]);
   });
 
   it('rejects a saved map restored against different landscape inputs', () => {
@@ -146,9 +181,9 @@ describe('script landscape state and blockers', () => {
     if (resource === null) throw new Error('fixture resource');
     expect(sim.world.has(resource, LandscapeResource)).toBe(true);
     expect(sim.world.has(resource, Resource)).toBe(true);
-    expect(landscapeView(sim.world, terrainOf(sim)).placements).toHaveLength(1);
+    expect(landscapesWithin(sim.world, terrainOf(sim), POINT, 0)).toHaveLength(1);
     sim.world.destroy(resource);
-    expect(landscapeView(sim.world, terrainOf(sim)).placements).toHaveLength(0);
+    expect(landscapesWithin(sim.world, terrainOf(sim), POINT, 0)).toHaveLength(0);
     expect(sim.landscapeEdits().removed).toEqual([0]);
   });
 

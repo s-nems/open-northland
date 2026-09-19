@@ -1,6 +1,7 @@
 import type { MissionRecord } from '../../components/index.js';
 import type { SubMissionTransition } from '../../core/events.js';
 import type { World } from '../../ecs/world.js';
+import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import type { MissionScript } from './script.js';
 
@@ -24,6 +25,9 @@ export interface MissionPass {
    *  raised it and visits no later one. */
   halted: boolean;
   subMission?: SubMissionTransition;
+  /** Walk cells the pass's landscape removals opened so far: an object laid back over them closes
+   *  nothing a route could not already cross when the pass began. */
+  landscapeFreed?: Set<NodeId>;
 }
 
 /**

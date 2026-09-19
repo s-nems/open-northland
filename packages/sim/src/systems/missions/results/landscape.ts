@@ -1,8 +1,17 @@
 import { landscapeTopologyRevision } from '../../../components/landscape.js';
-import type { LandscapeRemovalGroup, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { dynamicBlockLayers } from '../../footprint/index.js';
-import { removeLandscapes, setBuildForbidden, setLandscape, setVertexColors } from '../../landscape/edits.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
+import type { LandscapeRemovalGroup, NodeId } from '../../../nav/terrain/index.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
+import { translatedCells } from '../../footprint/geometry.js';
+import {
+  placementWalkCells,
+  removeLandscapes,
+  setBuildForbidden,
+  setLandscape,
+  setVertexColors,
+} from '../../landscape/edits.js';
 import { invalidateLandscapeRoutes } from '../../landscape/routes.js';
+import { landscapeTypes } from '../../landscape/view.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 
@@ -56,8 +65,14 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
     return;
   }
   const revision = landscapeTopologyRevision(pass.world);
-  // Resource-backed placements update their footprint cache in place, so retain the old membership.
-  const before = blockedNodes(pass, terrain);
+  // Only the placement being laid can close a node; a removal only opens them. Which of its cells
+  // were open is read before the edit, so replacing an object with one of the same shape closes none,
+  // whether the script replaces it in one result or removes it and lays it again in the same pass.
+  const freed = (pass.landscapeFreed ??= new Set());
+  const openBefore =
+    op.opcode === 'SetLandscape'
+      ? openCellsOf(pass, op.point, op.landscape).filter((node) => !freed.has(node))
+      : [];
   if (op.opcode === 'SetLandscape') {
     if (!setLandscape(pass.world, pass.ctx, op.point, op.landscape, op.level)) {
       pass.reportFailed(mission, op.opcode);
@@ -76,27 +91,31 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
               : op.opcode === 'RemoveFX2LandscapeInArea'
                 ? 'fx2'
                 : undefined;
-    removeLandscapes(pass.world, terrain, op.point, removalRange(op), group, (entity) =>
+    const opened = removeLandscapes(pass.world, terrain, op.point, removalRange(op), group, (entity) =>
       pass.ctx.events.emit({ kind: 'missionLandscapeResourceRemoved', entity }),
     );
+    for (const node of opened) freed.add(node);
   }
   if (revision !== landscapeTopologyRevision(pass.world)) {
     // Freed nodes do not invalidate an existing route. A newly blocked node can cross one, whether
     // it came from the landscape layer or a resource-backed chest/deposit.
-    const after = blockedNodes(pass, terrain);
-    if ([...after].some((node) => !before.has(node))) {
+    const blocked = dynamicBlockOverlay(pass.world, pass.ctx, terrain);
+    if (openBefore.some((node) => blocked.has(node))) {
       invalidateLandscapeRoutes(pass.world, terrain);
     }
     pass.ctx.events.emit({ kind: 'missionLandscapeChanged' });
   }
 }
 
-function blockedNodes(pass: MissionPass, terrain: TerrainGraph): Set<NodeId> {
-  const nodes = new Set<NodeId>();
-  for (const layer of dynamicBlockLayers(pass.world, pass.ctx, terrain)) {
-    for (const node of layer) nodes.add(node);
-  }
-  return nodes;
+/** The walk cells a placement of `typeId` at `point` would stamp that nothing blocks yet. */
+function openCellsOf(pass: MissionPass, point: HalfCellNode, typeId: number): NodeId[] {
+  const terrain = pass.ctx.terrain;
+  const type = terrain === undefined ? undefined : landscapeTypes(terrain).get(typeId);
+  if (terrain === undefined || type === undefined) return [];
+  const blocked = dynamicBlockOverlay(pass.world, pass.ctx, terrain);
+  return translatedCells(terrain, placementWalkCells(pass.ctx.content, type), point.hx, point.hy).filter(
+    (node) => !blocked.has(node),
+  );
 }
 
 /** The hexagon radius a removal clears: `RemoveLandscapesInArea` stops one ring short of its `range`

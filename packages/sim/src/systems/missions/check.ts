@@ -1,6 +1,6 @@
 import { goodsTradedWith, type MissionRecord, tributePaid } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
-import { landscapeView } from '../landscape/view.js';
+import { landscapesWithin } from '../landscape/view.js';
 import {
   animalsGone,
   housesGone,
@@ -110,9 +110,7 @@ function goalHolds(
         pass.report(index, op.opcode);
         return undefined;
       }
-      return landscapeView(pass.world, pass.ctx.terrain).placements.some(
-        (p) => p.hx === op.point.hx && p.hy === op.point.hy,
-      );
+      return landscapesWithin(pass.world, pass.ctx.terrain, op.point, 0).length > 0;
     case 'NumberOfAnimals':
       return (
         countAnimals(pass.world, op.player, op.tribe, neededMatches(op.amount)) >= neededMatches(op.amount)
