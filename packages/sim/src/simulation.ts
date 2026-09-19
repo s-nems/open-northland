@@ -12,6 +12,7 @@ import {
   diplomacyStance,
   type FogMode,
   fogMode,
+  goodsTradedWith,
   type MatchOutcome,
   matchEnded,
   matchOutcome,
@@ -470,6 +471,11 @@ export class Simulation {
    *  the payer's stores hold toward it and whether the `payTribute` command would take it now. */
   openTributes(payer: number): readonly OpenTribute[] {
     return openTributes(this.world, { content: this.content }, payer);
+  }
+
+  /** The units `player`'s traders have loaded out of `partner`'s houses under a trade agreement. */
+  goodsTradedWith(player: number, partner: number): number {
+    return goodsTradedWith(this.world, player, partner);
   }
 
   /** A trader's route, cart and agreement choice as a detached copy; undefined for any other unit. */

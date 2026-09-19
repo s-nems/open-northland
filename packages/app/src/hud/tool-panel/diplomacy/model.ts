@@ -48,6 +48,13 @@ export function tributeTextWidth(scale: number): number {
   return Math.floor(cardW - ROW_INSET_X - PAY_BUTTON_W - 2 * PAY_BUTTON_INSET);
 }
 
+/** The width (design px) a card-wide note wraps to: the card minus the label inset on both sides. */
+export function noteTextWidth(scale: number): number {
+  const s = Math.max(MIN_UI_SCALE, scale);
+  const cardW = standardWindowWidth(scale) / s - 2 * WINDOW_FAMILY_PAD;
+  return Math.floor(cardW - 2 * ROW_INSET_X);
+}
+
 /** One tribute the viewer owes the row's player, as the window lists it. */
 export interface TributePanelRow {
   readonly slot: number;
@@ -91,6 +98,9 @@ export interface DiplomacyPanelRow {
   readonly canDeclare: boolean;
   /** The open tributes the viewer owes this player, ascending by slot. */
   readonly tributes: readonly TributePanelRow[];
+  /** What the viewer's traders brought out of this player's houses; present only while both stances
+   *  are `friend`, the one case the original prints its tally line in (reading). */
+  readonly goodsTraded?: number;
 }
 
 /** The selected tab resolved against the live row set: a selection whose player vanished (or was never
@@ -128,6 +138,12 @@ export interface DiplomacyTributeRect {
   readonly lines: readonly { readonly x: number; readonly y: number }[];
 }
 
+export interface DiplomacyNoteRect {
+  readonly card: Rect;
+  /** Where the wrapped note's top-left lands. */
+  readonly text: { readonly x: number; readonly y: number };
+}
+
 export interface DiplomacyWindowLayout {
   readonly scale: number;
   readonly window: Rect;
@@ -140,6 +156,8 @@ export interface DiplomacyWindowLayout {
   readonly stances: readonly DiplomacyStanceRect[];
   /** The selected player's tribute cards under the readout, in the order they were given. */
   readonly tributes: readonly DiplomacyTributeRect[];
+  /** The traded-goods note at the foot of the window, where the original prints it; null without one. */
+  readonly tradedNote: DiplomacyNoteRect | null;
 }
 
 /** What the layout needs of a tribute: the card grows with the wrapped description and one line per
@@ -164,6 +182,8 @@ export interface DiplomacyLayoutOptions {
   readonly declarable?: DiplomacyState | null;
   /** The selected player's tributes, in listing order. */
   readonly tributes: readonly TributeCardSpec[];
+  /** The wrapped traded-goods note's height (design px); absent or null lays out no note. */
+  readonly tradedNoteH?: number | null;
 }
 
 /** Resolve the window to screen rects; the height follows the tab-grid row count and the tributes. */
@@ -243,6 +263,14 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     };
   });
 
+  const noteH = players.length === 0 ? null : (opts.tradedNoteH ?? null);
+  let tradedNote: DiplomacyNoteRect | null = null;
+  if (noteH !== null) {
+    const card: Rect = { x: contentX, y: nextCardY, w: contentW, h: px(noteH + 2 * TRIBUTE_CARD_PAD_Y) };
+    nextCardY += card.h;
+    tradedNote = { card, text: { x: textX, y: card.y + px(TRIBUTE_CARD_PAD_Y) } };
+  }
+
   const height = nextCardY - originY + pad;
   const closeSize = px(CLOSE_BOX);
   return {
@@ -259,6 +287,7 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     bodyLines,
     stances,
     tributes,
+    tradedNote,
   };
 }
 

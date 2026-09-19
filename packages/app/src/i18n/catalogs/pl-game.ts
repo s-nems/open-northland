@@ -206,6 +206,7 @@ export const plGame = {
     tribute: 'Trybut',
     tributePay: 'Zapłać',
     tributeInStores: 'w składach',
+    diplomacyGoodsTraded: 'Dotychczasowa wymiana handlowa: %d towarów',
     trade: 'Handel',
     tradeAttachHouse: 'Dodaj dom do trasy',
     tradeAttachHouseHint:

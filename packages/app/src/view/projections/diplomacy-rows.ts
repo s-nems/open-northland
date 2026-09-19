@@ -10,6 +10,8 @@ export interface DiplomacySimView {
   diplomacyLocked(a: number, b: number): boolean;
   /** The open tributes `payer` owes, as the sim's probe lists them. */
   openTributes(payer: number): readonly OpenTribute[];
+  /** The units `player`'s traders took out of `partner`'s houses under a trade agreement. */
+  goodsTradedWith(player: number, partner: number): number;
 }
 
 export interface DiplomacyRosterOptions {
@@ -79,12 +81,16 @@ export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterO
     if (other === local || flagged(flags, 'hide', local, other)) continue;
     if (!opts.observer && !sim.hasMetPlayer(local, other)) continue;
     const name = opts.seatNameOf?.(other);
+    const towardYou = sim.diplomacyStance(other, local);
+    const yourStance = sim.diplomacyStance(local, other);
+    const friends = towardYou === 'friend' && yourStance === 'friend';
     rows.push({
       player: other,
       ...(name !== undefined ? { name } : {}),
       colour: PLAYER_SWATCH_COLORS[colourOf(other)] ?? 0,
-      towardYou: sim.diplomacyStance(other, local),
-      yourStance: sim.diplomacyStance(local, other),
+      towardYou,
+      yourStance,
+      ...(friends ? { goodsTraded: sim.goodsTradedWith(local, other) } : {}),
       canDeclare:
         opts.canDeclare !== false &&
         !sim.diplomacyLocked(local, other) &&

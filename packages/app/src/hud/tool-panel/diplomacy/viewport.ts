@@ -75,6 +75,13 @@ export function fitDiplomacyWindow(
       text: { x: tribute.text.x + dx, y: tribute.text.y + dy - scroll },
       lines: tribute.lines.map((line) => ({ x: line.x + dx, y: line.y + dy - scroll })),
     })),
+    tradedNote:
+      layout.tradedNote === null
+        ? null
+        : {
+            card: move(layout.tradedNote.card, scroll),
+            text: { x: layout.tradedNote.text.x + dx, y: layout.tradedNote.text.y + dy - scroll },
+          },
     viewport,
     scrollTabs,
     scroll,

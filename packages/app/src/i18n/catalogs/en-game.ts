@@ -208,6 +208,7 @@ export const enGame = {
     tribute: 'Tribute',
     tributePay: 'Pay',
     tributeInStores: 'in stores',
+    diplomacyGoodsTraded: 'You have traded %d goods so far',
     trade: 'Trade',
     tradeAttachHouse: 'Add a house to the route',
     tradeAttachHouseHint:

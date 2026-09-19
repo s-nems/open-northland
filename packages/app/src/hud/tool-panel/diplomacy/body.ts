@@ -19,6 +19,7 @@ import {
   type DiplomacyPanelRow,
   type DiplomacyWindowLayout,
   diplomacyStanceText,
+  noteTextWidth,
   type TributeCardSpec,
   type TributePanelRow,
   tributeTextWidth,
@@ -34,6 +35,9 @@ const IN_STORES_STRING_ID = 355; // miscwindow 'in stores', the tribute demand's
 const THEIR_STANCE_STRING_ID = 358; // miscwindow 'Relationship to your tribe is'
 const YOUR_STANCE_STRING_ID = 359; // miscwindow 'Your relation to the other tribe'
 const PLAYER_STRING_ID = 361; // miscwindow 'Player'
+const GOODS_TRADED_STRING_ID = 360; // miscwindow 'You have traded %d goods so far'
+/** The count's slot in the decoded string, a C format the original prints the tally through. */
+const COUNT_PLACEHOLDER = '%d';
 /** miscwindow 'Become Friendly', 'Become Neutral', 'Become Hostile': the original's stance buttons. */
 const DECLARE_STRING_ID: Readonly<Record<DiplomacyState, number>> = { friend: 352, neutral: 353, enemy: 354 };
 
@@ -132,6 +136,25 @@ export function createDiplomacyBody(layers: WindowLayers) {
       };
     });
 
+  /** Wrap the traded-goods note ahead of the layout, as the tribute descriptions are; null while the
+   *  row carries no tally. */
+  const measureTradedNote = (row: DiplomacyPanelRow | undefined): ParagraphRun | null => {
+    if (row?.goodsTraded === undefined) return null;
+    const text = ctx
+      .uiString('miscwindow', GOODS_TRADED_STRING_ID, messages().hud.diplomacyGoodsTraded)
+      .replace(COUNT_PLACEHOLDER, String(row.goodsTraded));
+    const note = ctx.makeParagraph(text, 'dimmed', ROW_PX, noteTextWidth(scale));
+    layers.container.addChild(note.container);
+    paragraphs.push(note);
+    return note;
+  };
+
+  const paintTradedNote = (built: DiplomacyWindowLayout, note: ParagraphRun | null): void => {
+    if (built.tradedNote === null || note === null) return;
+    paintRowCard(layers, built.tradedNote.card);
+    note.place(built.tradedNote.text.x, built.tradedNote.text.y);
+  };
+
   /** One card per tribute: the description over one line per demand, each with what the stores
    *  hold, a note when the stores hold it all but no single one does, and the pay button lit only
    *  while the viewer could pay. */
@@ -161,15 +184,18 @@ export function createDiplomacyBody(layers: WindowLayers) {
 
   return {
     measureCards,
+    measureTradedNote,
     paint: (
       built: DiplomacyWindowLayout,
       row: DiplomacyPanelRow | undefined,
       cards: readonly TributeCard[],
+      tradedNote: ParagraphRun | null,
     ) => {
       if (row !== undefined) {
         paintBody(built, row);
         paintStances(built);
         paintTributes(built, cards);
+        paintTradedNote(built, tradedNote);
       } else {
         const line = built.bodyLines[0];
         if (line !== undefined) {

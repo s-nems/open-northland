@@ -651,9 +651,10 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
 
 - `[misc_tradeagreement]` in `misc.inc` holds `tradeagreement <houseId> <give> <n> <take> <m>` rows:
   at every house placed with mission object id `houseId`, a visiting trader hands over `n` of the
-  `GOOD_TYPE_*` `give` for `m` of `take`. A row is kept only for a house whose owner is
-  neither a human nor a computer player (the neutral trading nation), one entry per house the id
-  stamps, and stops at 60 entries. The corpus authors 300 rows over 35 maps; a house can offer several.
+  `GOOD_TYPE_*` `give` for `m` of `take`. A row is kept for every house but one of a `human player`
+  seat (the player types are `none`, `human player` and `ai player`), one entry per house the id
+  stamps, and stops at 60 entries. The corpus authors 300 rows over 35 maps; a house can offer
+  several, and most trade houses belong to ordinary computer seats.
 - A trader (`jobtypes.ini` 25; `trader_sea` 26 has an empty task and never works) commands a cart
   vehicle and holds a route of two houses (`AttachTradeHouse` / `DetachTradeHouse`), each with
   per-good import marks the player toggles, and one chosen agreement. At an own house before a
@@ -671,8 +672,9 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   detaches the trader when no point exists; the goods ride in the cart's hold, booked and stowed one
   unit at a time as the trader carries them between the house and the cart's door.
 - This build registers the rows through the `addTradeAgreement` setup command
-  (`components/trade.ts`), resolves the house by its mission object id at use, gates on a house
-  whose owner is no match participant when a match is set up, and runs the trader through the
+  (`components/trade.ts`), resolves the house by its mission object id at use, refuses a house of a
+  human seat (a match participant without the `AiPlayer` marker) when a match is set up, and runs the
+  trader through the
   planner's trade rung (`systems/trade/`), which sits above the rider rung: the trader moves its cart
   to within `TRADE_CART_HOUSE_DISTANCE` of each stop (`snapVehicleTarget` over
   `TRADE_CART_SEARCH_RADIUS`, no house door), rides inside while it drives, steps out when it stops
@@ -690,7 +692,8 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   delivers regardless; a chosen agreement that stops holding is kept and waited on, where the
   original's merchant drops its choice. The table holds rows and resolves their houses live, so a
   row several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
-  saved with the game.
+  saved with the game; the diplomacy window prints it (`miscwindow` 360) at its foot for a player both
+  sides hold as `friend`, the one case the original's window draws the line in (reading).
 
 ## On-screen info lines
 

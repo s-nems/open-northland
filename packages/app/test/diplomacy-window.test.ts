@@ -241,6 +241,22 @@ describe('diplomacy window model', () => {
     expect(layout.window.h).toBeGreaterThan(locked.window.h);
   });
 
+  it('sets the traded-goods note under the last tribute and grows the window by its card', () => {
+    const NOTE_H = 24;
+    const base = { originX: 10, originY: 20, scale: 1, players: [1], selected: 1, tributes: [card(0, true)] };
+    const bare = layoutDiplomacyWindow(base);
+    const noted = layoutDiplomacyWindow({ ...base, tradedNoteH: NOTE_H });
+    const lastTribute = noted.tributes[0]?.card;
+
+    expect(bare.tradedNote).toBeNull();
+    expect(noted.tradedNote?.card.y).toBe((lastTribute?.y ?? 0) + (lastTribute?.h ?? 0));
+    expect(noted.window.h - bare.window.h).toBe(noted.tradedNote?.card.h);
+    expect(noted.tradedNote?.card.h).toBeGreaterThan(NOTE_H);
+    expect(
+      layoutDiplomacyWindow({ ...base, players: [], selected: null, tradedNoteH: NOTE_H }).tradedNote,
+    ).toBeNull();
+  });
+
   it('hit-tests a live pay button and treats a dead one as window background', () => {
     const layout = layoutDiplomacyWindow({
       originX: 0,
@@ -307,6 +323,24 @@ describe('diplomacy window controller', () => {
     expect(window.handleClick(close.x, close.y)).toBe(true);
     expect(window.isOpen()).toBe(false);
     expect(window.claims(tab.x, tab.y)).toBe(false);
+  });
+
+  it('prints the traded-goods note for a row that carries a tally, and repaints when it grows', () => {
+    const { ctx, texts } = stubContext();
+    let rows = [row(1, { towardYou: 'friend', yourStance: 'friend', goodsTraded: 4 }), row(3)];
+    const window = createDiplomacyWindow({ ctx, container: new Container(), rows: () => rows });
+    window.toggle();
+    expect(texts).toContain('Dotychczasowa wymiana handlowa: 4 towarów');
+
+    texts.length = 0;
+    rows = [row(1, { towardYou: 'friend', yourStance: 'friend', goodsTraded: 6 }), row(3)];
+    window.refresh();
+    expect(texts).toContain('Dotychczasowa wymiana handlowa: 6 towarów');
+
+    texts.length = 0;
+    const tab = centreOf(expectedLayout(ctx, [1, 3], 1).tabs[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    window.handleClick(tab.x, tab.y);
+    expect(texts.some((t) => t.includes('wymiana handlowa'))).toBe(false);
   });
 
   it('rebuilds on refresh only when the rows changed - a stance flip repaints, a quiet frame does not', () => {

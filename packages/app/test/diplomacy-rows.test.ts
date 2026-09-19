@@ -14,6 +14,7 @@ function simView(
   stances: readonly [number, number, 'friend' | 'neutral' | 'enemy'][],
   owed: readonly OpenTribute[] = [],
   locked: readonly [number, number][] = [],
+  traded: readonly [number, number, number][] = [],
 ): DiplomacySimView {
   const metSet = new Set(met.map(([v, o]) => `${v}:${o}`));
   const stanceMap = new Map(stances.map(([f, t, s]) => [`${f}:${t}`, s]));
@@ -22,6 +23,8 @@ function simView(
     diplomacyStance: (from, to) => stanceMap.get(`${from}:${to}`) ?? 'enemy',
     diplomacyLocked: (a, b) => locked.some(([x, y]) => (x === a && y === b) || (x === b && y === a)),
     openTributes: () => owed,
+    goodsTradedWith: (player, partner) =>
+      traded.find(([from, to]) => from === player && to === partner)?.[2] ?? 0,
   };
 }
 
@@ -50,6 +53,33 @@ describe('diplomacyPanelRows', () => {
         canDeclare: true,
         tributes: [],
       },
+    ]);
+  });
+
+  it('carries the traded-goods tally only for a player both sides hold as friend', () => {
+    const met: [number, number][] = [
+      [0, 1],
+      [0, 2],
+    ];
+    const sim = simView(
+      met,
+      [
+        [0, 1, 'friend'],
+        [1, 0, 'friend'],
+        [0, 2, 'friend'],
+        [2, 0, 'neutral'],
+      ],
+      [],
+      [],
+      [
+        [0, 1, 12],
+        [0, 2, 5],
+      ],
+    );
+    const rows = diplomacyPanelRows(sim, { localPlayer: 0, rosterPlayers: [0, 1, 2], observer: false });
+    expect(rows.map((r) => [r.player, r.goodsTraded])).toEqual([
+      [1, 12],
+      [2, undefined],
     ]);
   });
 

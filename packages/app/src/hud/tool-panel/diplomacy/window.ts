@@ -101,6 +101,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
         r.towardYou,
         r.yourStance,
         r.canDeclare,
+        r.goodsTraded ?? null,
         r.tributes.map((t) => [
           t.slot,
           t.text ?? null,
@@ -128,6 +129,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     key = rebuildKey(rows, selected);
     const selectedRow = rows.find((r) => r.player === selected);
     const cards = body.measureCards(selectedRow?.tributes ?? []);
+    const tradedNote = body.measureTradedNote(selectedRow);
     const screen = ctx.screen();
     const origin = ctx.layout.windowOrigin(screen, standardWindowWidth(scale));
     const raw = layoutDiplomacyWindow({
@@ -138,6 +140,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       selected,
       declarable: selectedRow?.canDeclare === true ? selectedRow.yourStance : null,
       tributes: cards.map((c) => c.spec),
+      tradedNoteH: tradedNote?.height ?? null,
     });
     const built = fitDiplomacyWindow(
       raw,
@@ -164,7 +167,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
     mask.rect(built.viewport.x, built.viewport.y, built.viewport.w, built.viewport.h).fill(0xffffff);
     if (built.scrollTabs) paintWindowTabs(bodyLayers, tabs);
-    body.paint(built, selectedRow, cards);
+    body.paint(built, selectedRow, cards, tradedNote);
     if (built.maxScroll > 0) {
       const track = scrollTrack(built, scale);
       const thumbH = Math.max(THUMB_MIN_H * scale, (track.h * track.h) / (track.h + built.maxScroll));
