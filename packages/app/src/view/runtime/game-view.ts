@@ -386,6 +386,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       missionBrief: briefFor,
       missionBriefingHistory: () => sim.missionBriefingHistory(),
       missionReplayPage: () => sim.missionBriefingPage(),
+      missionHuman: (missionId) => sim.missionHuman(missionId),
       // The original stops game time behind its large windows.
       onLargeWindow: (open) => {
         missionWindowOpen = open;

@@ -193,6 +193,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Before the renderer's render: the panel's screen-space sprites carry the canvas resolution in
     // their shader.
     toolPanel.controller.update(() => hudFor(snap));
+    // An open briefing's map pictures, painted over the window during `renderer.update`.
+    renderer.setMapViews(toolPanel.controller.mapViews());
     // Unfiltered: the notes are the seat's own affairs, and its own settler in the fog still starves.
     toolPanel.controller.presentMessages(snap, frameEvents, controls);
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog

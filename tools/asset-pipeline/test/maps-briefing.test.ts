@@ -8,11 +8,16 @@ import { rampPalette } from './fixtures/palette.js';
 import { makeTempDir } from './support/game-tree.js';
 
 /**
- * The per-folder briefing resolution (`stages/maps/briefing.ts`): a block id reads `briefings.txt`,
- * a page id reads `NNNN.hlt` with its includes, per language, the pictures those pages name are
+ * The per-folder briefing resolution (`stages/maps/briefing.ts`): each cutscene id reads its `NNNN.hlt`
+ * page, which includes its text from `briefings.txt`, per language; the pictures those pages name are
  * emitted once, and a folder without briefings yields no sidecar. Fixtures are ASCII; the renderer
  * itself is pinned in `hypertext.test.ts`.
  */
+
+/** The page a map ships for one block: `<block:2>` and the text colour, then the block's lines. */
+function hltPage(label: string): string {
+  return `<block:2>\r\n<color:$local$\\palettes\\font_dark.pcx>\r\n<include:$local$\\briefings.txt,${label},1>`;
+}
 
 async function writeBriefings(dir: string, lang: string, files: Record<string, string>): Promise<void> {
   const briefingsDir = join(dir, 'text', lang, 'briefings');
@@ -42,13 +47,14 @@ describe('cutsceneIdsOf', () => {
 });
 
 describe('resolveMapBriefing', () => {
-  it('renders block ids from briefings.txt and page ids from NNNN.hlt, per language', async () => {
+  it('renders each id from its NNNN.hlt page, per language, and skips an id without one', async () => {
     const { path: dir } = await makeTempDir('map-briefing');
     await writeBriefings(dir, 'pol', {
       'briefings.txt':
         '[blockstart:500]\n<font:$local$\\fonts\\fonthead16bld.fnt>\nTYTUL\n<font:$local$\\fonts\\font12.fnt>\nTresc\n[blockend:500]\n' +
         '[blockstart:00_title]\nPROLOG\n[blockend:00_title]\n',
       '0000.hlt': '<font:$local$\\fonts\\fonthead16bld.fnt>\n<include:$local$\\briefings.txt,00_title,1>\n',
+      '0500.hlt': hltPage('500'),
     });
     await writeBriefings(dir, 'eng', {
       'briefings.txt': '[blockstart:500]\nTITLE\n[blockend:500]\n',
@@ -60,11 +66,12 @@ describe('resolveMapBriefing', () => {
         pol: {
           '0': [{ kind: 'text', style: 'title', text: 'PROLOG' }],
           '500': [
-            { kind: 'text', style: 'title', text: 'TYTUL' },
-            { kind: 'text', style: 'body', text: 'Tresc' },
+            { kind: 'blank', lines: 1 },
+            { kind: 'text', style: 'title', text: 'TYTUL', align: 'center' },
+            { kind: 'blank', lines: 1 },
+            { kind: 'text', style: 'body', text: 'Tresc', align: 'center' },
           ],
         },
-        eng: { '500': [{ kind: 'text', style: 'body', text: 'TITLE' }] },
       },
     });
   });
@@ -74,7 +81,7 @@ describe('resolveMapBriefing', () => {
     const { path: out } = await makeTempDir('map-briefing-picture-out');
     const block = '[blockstart:500]\nOpis\n<picture:$local$\\graphics\\Map.pcx>\n[blockend:500]\n';
     for (const lang of ['pol', 'eng']) {
-      await writeBriefings(dir, lang, { 'briefings.txt': block });
+      await writeBriefings(dir, lang, { 'briefings.txt': block, '0500.hlt': hltPage('500') });
       await mkdir(join(dir, 'text', lang, 'briefings', 'Graphics'), { recursive: true });
       await writeFile(
         join(dir, 'text', lang, 'briefings', 'Graphics', 'map.pcx'),
@@ -94,7 +101,7 @@ describe('resolveMapBriefing', () => {
     const { path: out } = await makeTempDir('map-briefing-empty-out');
     expect(await resolveMapBriefing(dir, out, 'x/map.dat', [])).toBeUndefined();
     expect(await resolveMapBriefing(dir, out, 'x/map.dat', [500])).toBeUndefined();
-    await writeBriefings(dir, 'pol', { 'briefings.txt': '[blockstart:1]\nx\n[blockend:1]\n' });
+    await writeBriefings(dir, 'pol', { 'briefings.txt': '[blockstart:500]\nx\n[blockend:500]\n' });
     expect(await resolveMapBriefing(dir, out, 'x/map.dat', [500])).toBeUndefined();
   });
 });

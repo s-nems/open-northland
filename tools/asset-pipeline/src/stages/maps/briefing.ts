@@ -11,8 +11,8 @@ import { STRING_TABLE_DIR } from './info.js';
 const BRIEFING_LANGS = ['pol', 'eng'] as const;
 const BRIEFINGS_DIR = 'briefings';
 const BRIEFINGS_FILE = 'briefings.txt';
-/** Ids from here up name a `briefings.txt` block; smaller ids name a `NNNN.hlt` page (observed). */
-const FIRST_BLOCK_CUTSCENE_ID = 500;
+/** The window opens cutscene `id` as the page `%4.4d.hlt` (`an original routine`),
+ *  which includes its text from `briefings.txt`. */
 const HLT_PAGE_DIGITS = 4;
 const PLAY_CUTSCENE = 'PlayCutscene';
 
@@ -72,8 +72,7 @@ async function renderLanguage(
   const include: IncludeResolver = (_file, label) => blocks.get(label);
   const texts = new Map<number, string>();
   for (const id of ids) {
-    const page =
-      id >= FIRST_BLOCK_CUTSCENE_ID ? blocks.get(String(id)) : await readPage(mapDir, rel, lang, id);
+    const page = await readPage(mapDir, rel, lang, id);
     if (page !== undefined) texts.set(id, page);
   }
   const picture = await resolvePagePictures(

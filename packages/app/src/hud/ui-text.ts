@@ -1,7 +1,7 @@
-import { Container, Text } from 'pixi.js';
+import { CanvasTextMetrics, Container, Text } from 'pixi.js';
 import type { FontColorName } from '../content/font-gfx.js';
 import { CAP_TOP_RATIO, UI_TEXT_FILL } from '../content/ui-font.js';
-import type { ParagraphRun, TextRun } from './text-run.js';
+import type { ParagraphAlign, ParagraphFace, ParagraphRun, TextRun } from './text-run.js';
 
 /**
  * The HUD's default text face: the bundled vector serif drawn as Pixi `Text`, which rasters crisp at the
@@ -36,6 +36,9 @@ export function makeUiTextRun(
 
 /** Body line height as a multiple of the font size; the wrap keeps the original's airy paragraph rhythm. */
 const PARAGRAPH_LINE_HEIGHT = 1.35;
+/** The bundled face has no bold cut and canvas text synthesises none, so a bold paragraph is stroked in
+ *  its own colour this wide, as a fraction of the font size. */
+const FAUX_BOLD_STROKE = 1 / 16;
 
 /**
  * Build a retained {@link ParagraphRun}: `text` in the vector UI font at `basePx * scale`, word-wrapped to
@@ -48,7 +51,8 @@ export function makeUiParagraph(
   scale: number,
   basePx: number,
   wrapWidth: number,
-  align: 'left' | 'center' = 'left',
+  align: ParagraphAlign = 'left',
+  face: ParagraphFace = {},
 ): ParagraphRun {
   const fontSize = basePx * scale;
   const t = new Text({
@@ -57,7 +61,17 @@ export function makeUiParagraph(
       fill: UI_TEXT_FILL[color],
       fontSize,
       fontFamily: family,
-      lineHeight: fontSize * PARAGRAPH_LINE_HEIGHT,
+      ...(face.bold === true
+        ? {
+            stroke: {
+              color: UI_TEXT_FILL[color],
+              width: fontSize * FAUX_BOLD_STROKE,
+              join: 'round' as const,
+            },
+          }
+        : {}),
+      letterSpacing: (face.letterSpacing ?? 0) * scale,
+      lineHeight: face.lineHeight === undefined ? fontSize * PARAGRAPH_LINE_HEIGHT : face.lineHeight * scale,
       wordWrap: true,
       wordWrapWidth: wrapWidth * scale,
       breakWords: true,
@@ -67,10 +81,15 @@ export function makeUiParagraph(
   const container = new Container();
   container.addChild(t);
   const inv = 1 / Math.max(1e-6, scale);
+  // A set pitch alone spaces the lines: Pixi's own height also covers a tall face's ascent and stroke.
+  const height =
+    face.lineHeight === undefined
+      ? t.height * inv
+      : CanvasTextMetrics.measureText(text, t.style).lines.length * face.lineHeight;
   return {
     container,
     width: t.width * inv,
-    height: t.height * inv,
+    height,
     place: (x, y) => container.position.set(Math.round(x), Math.round(y)),
     destroy: () => container.destroy({ children: true }),
   };

@@ -35,6 +35,8 @@ interface PooledEntityBase {
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. */
   lastSeen: number;
+  /** The `frameId` a map view last drew this entity on while the main frame culled it; −1 = never. */
+  viewSeen: number;
   /** This entity's world-space sprite AABB, restamped in place each frame it's drawn. */
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
@@ -75,6 +77,7 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
     shadowFlags: [],
     attached: false,
     lastSeen: -1,
+    viewSeen: -1,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     reveal: undefined,

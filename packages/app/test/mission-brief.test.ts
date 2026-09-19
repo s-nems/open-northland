@@ -92,11 +92,11 @@ describe('briefingPage and missionBrief', () => {
     expect(briefingPage(null, 'pol', 500)).toBeNull();
   });
 
-  it('heads the brief with the page title and lists the authored goals, then the match rule', () => {
+  it('carries the page as authored and lists the authored goals, then the match rule', () => {
     const goals = [status({})];
     expect(missionBrief(source(null), 500, goals, textOf, 'undecided')).toEqual({
-      title: 'BURZA PIASKOWA',
-      blocks: [{ kind: 'text', style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' }],
+      title: '',
+      blocks: briefing.texts.pol?.['500'],
       goals: [{ text: 'Pokonaj saracenów', rule: 'authored', state: 'open' }],
     });
     expect(missionBrief(source('Pokonaj wszystkich.'), 500, goals, textOf, 'undecided').goals).toEqual([

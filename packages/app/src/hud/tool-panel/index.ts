@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
-import type { HudLayout, SpriteSheet } from '@open-northland/render';
+import type { HudLayout, MapViewFrame, SpriteSheet } from '@open-northland/render';
 import type {
   Command,
   DiplomacyState,
@@ -47,6 +47,7 @@ import {
   type MessageTarget,
   type UnitSelectionView,
 } from './messages/index.js';
+import type { MissionHumanLookup } from './mission/index.js';
 import { paperLabel } from './paper-label.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
@@ -110,6 +111,8 @@ export interface ToolPanelOptions {
   readonly missionBriefingHistory?: () => readonly number[];
   /** The briefing page the mission window opens on from the strip; null before any replayable one. */
   readonly missionReplayPage?: () => number | null;
+  /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
+  readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The map's sprite sheet, which draws a settler standing on its note; absent leaves the note bare. */
   readonly sheet?: SpriteSheet;
@@ -143,6 +146,8 @@ export interface ToolPanelController {
   /** Per-frame hook; the HUD layout arrives as an accessor so a closed window never runs its
    *  `buildHud` scan. */
   update(hudFor: () => HudLayout): void;
+  /** The world views an open briefing's pictures paint this frame; read after {@link update}. */
+  mapViews(): readonly MapViewFrame[];
   /** Per-frame hook for the note strip: this frame's unfiltered sim events and the snapshot after them. */
   presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[], selection: UnitSelectionView): void;
   state(): ToolPanelState;
@@ -240,8 +245,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       layout,
       scale: at,
       makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, at, px),
-      makeParagraph: (text, color, px, wrapWidth, align) =>
-        makeUiParagraph(uiFont.family, text, color, at, px, wrapWidth, align),
+      makeParagraph: (text, color, px, wrapWidth, align, face) =>
+        makeUiParagraph(uiFont.family, text, color, at, px, wrapWidth, align, face),
       bitmaps,
       uiString,
       screen: () => app.screen,
@@ -303,6 +308,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       missionBriefingHistory: opts.missionBriefingHistory ?? (() => []),
       missionReplayPage: opts.missionReplayPage ?? ((): null => null),
       history,
+      ...(opts.missionHuman !== undefined ? { missionHuman: opts.missionHuman } : {}),
       onLargeWindow: (open) => {
         // A briefing must cover the selected unit's details and its worker sprites.
         root.zIndex = open ? 1004 : 1000;
@@ -419,6 +425,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         infoLines.refresh();
         for (const mode of held) mode.placeBanner();
       },
+      mapViews: () => windows.mission.mapViews(),
       presentMessages: (snapshot, events, selection) => messageCenter.present(snapshot, events, selection),
       state: () => ({
         speed: speedButton.state(),

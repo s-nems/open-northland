@@ -10,6 +10,8 @@ import {
   ConstructionPlotLayer,
   type GeometryDebugItem,
   HudLayer,
+  type MapViewFrame,
+  MapViewLayer,
   type PlacementGhost,
   PlacementGhostLayer,
   type PlacementOverlayFrame,
@@ -63,6 +65,7 @@ export class WorldRenderer {
   /** The current map's height field; flat until `setTerrain` loads a map carrying an elevation lane. */
   private elevation: ElevationField = makeElevationField(undefined, 0, 0);
   private readonly portrait: PortraitInsetLayer;
+  private readonly mapViews: MapViewLayer;
 
   private readonly viewSmoothing: boolean;
   private readonly playerColourOf: ((player: number) => number) | undefined;
@@ -79,6 +82,7 @@ export class WorldRenderer {
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
+    this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
     this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
@@ -236,6 +240,37 @@ export class WorldRenderer {
       restore: () => this.terrain.cull(vp),
       backdrop: this.terrain.groundColour(),
     });
+    this.mapViews.draw(
+      {
+        snapshot,
+        tick,
+        alpha,
+        elevation: this.elevation,
+        ...(fogFrame.staticRefs !== undefined ? { staticRefs: fogFrame.staticRefs } : {}),
+        main: { camera, width: this.app.screen.width, height: this.app.screen.height },
+        spriteMargin: SPRITE_CULL_MARGIN + this.elevation.maxLift,
+      },
+      {
+        cullTo: (cam, iw, ih) => {
+          const viewVp = cameraViewport(cam, iw, ih, SPRITE_CULL_MARGIN + this.elevation.maxLift);
+          this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift));
+          this.mapObjects.update(viewVp, tick);
+          this.fog.container.visible = false;
+        },
+        restore: () => {
+          this.terrain.cull(vp);
+          this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
+          this.fog.container.visible = true;
+        },
+        backdrop: this.terrain.groundColour(),
+      },
+    );
+  }
+
+  /** The views a window shows this frame (the briefing's map pictures), drawn after the main render;
+   *  an empty list draws none. */
+  setMapViews(views: readonly MapViewFrame[]): void {
+    this.mapViews.set(views);
   }
 
   setPortraitInset(frame: PortraitInsetFrame | null): void {

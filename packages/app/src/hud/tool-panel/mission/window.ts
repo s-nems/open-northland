@@ -1,14 +1,23 @@
 import type { HypertextBook } from '@open-northland/data';
+import type { MapViewFrame } from '@open-northland/render';
 import { Container, Graphics } from 'pixi.js';
 import type { GuiArt } from '../../../content/gui-art.js';
 import type { MissionBrief } from '../../../game/mission-brief.js';
 import { messages } from '../../../i18n/index.js';
 import { drawCloseX, drawHoverHighlight } from '../../chrome.js';
-import { contains, type Rect } from '../../geometry.js';
+import { contains, insetRect, intersectRect, type Rect } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
 import { addRun, centreRun, clearFills, paintPlate, type WindowLayers } from '../window-family/index.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
-import { type ContentSink, createContentSink, fillGoals, fillHistory, fillTask, pageOf } from './content.js';
+import {
+  type ContentSink,
+  createContentSink,
+  fillGoals,
+  fillHistory,
+  fillTask,
+  pageOf,
+  viewFrameWidth,
+} from './content.js';
 import { type SheetCreep, startCreep } from './creep.js';
 import { type MissionWindowState, ShownPages } from './history.js';
 import {
@@ -26,6 +35,7 @@ import {
 } from './model.js';
 import { paintHistoryButtons, paintScrollButtons, paintSheet, sheetFrame } from './paint.js';
 import { createPictureCache, type PictureLoader } from './pictures.js';
+import { type MissionHumanLookup, userIconBox } from './user-icons.js';
 
 /** The decoded original strings (`miscwindow`) the window prefers over the catalog fallbacks. */
 const STRING_TITLE = 60;
@@ -48,6 +58,8 @@ export interface MissionWindowDeps {
   readonly onOpenChange?: (open: boolean) => void;
   /** Page pictures; the default reads them off the content route. */
   readonly loadPicture?: PictureLoader;
+  /** The human a page's picture of a mission id shows; without it those pictures draw nothing. */
+  readonly missionHuman?: MissionHumanLookup;
   /** Monotonic ms clock the creep is timed against. */
   readonly now?: () => number;
 }
@@ -65,6 +77,8 @@ export interface MissionWindow extends ToolWindow {
   clearHover(): void;
   /** Per-frame hook: reflow when the canvas size changed. */
   refresh(): void;
+  /** The world views the shown page's pictures paint this frame, clipped to the text viewport. */
+  mapViews(): readonly MapViewFrame[];
 }
 
 const sameRect = (a: Rect | null, b: Rect | null): boolean =>
@@ -72,6 +86,9 @@ const sameRect = (a: Rect | null, b: Rect | null): boolean =>
 
 const goalsKeyOf = (brief: MissionBrief | null): string =>
   brief === null ? '' : brief.goals.map((g) => `${g.state}:${g.text}`).join('\n');
+
+const NO_VIEWS: readonly MapViewFrame[] = [];
+const noHuman: MissionHumanLookup = () => null;
 
 export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   const pictures = createPictureCache(deps.loadPicture);
@@ -90,7 +107,10 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   let page = '';
   const shown = new ShownPages();
   let layout: MissionWindowLayout | null = null;
+  /** The shown tab's text viewport: the page fills the content element, the other tabs keep an inset. */
+  let viewport: Rect | null = null;
   let sink: ContentSink | null = null;
+  let views: { scroll: number; frames: readonly MapViewFrame[] } | null = null;
   /** The Up/Down pair shows on the text tabs, and on the goals tab only once the list overflows. */
   let buttonsShown = false;
   /** The prev/next briefing pair shows on the task tab once two pages have been shown. */
@@ -117,17 +137,19 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     mask.clear();
     clearHover();
     layout = null;
+    viewport = null;
+    views = null;
   };
 
   const placeRuns = (): void => {
-    if (layout === null || sink === null) return;
-    const { viewport } = layout;
-    for (const p of sink.placed) p.place(viewport.x + placedLeft(p, viewport.w), viewport.y + p.y - scroll);
+    if (viewport === null || sink === null) return;
+    const { x, y, w } = viewport;
+    for (const p of sink.placed) p.place(x + placedLeft(p, w), y + p.y - scroll);
   };
 
   const scrollTo = (next: number): void => {
-    if (layout === null || sink === null) return;
-    const clamped = clampScroll(next, sink.height(), layout.viewport.h);
+    if (viewport === null || sink === null) return;
+    const clamped = clampScroll(next, sink.height(), viewport.h);
     if (clamped === scroll) return;
     scroll = clamped;
     placeRuns();
@@ -174,12 +196,22 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       centreRun(layers, addRun(layers, label, selected ? 'white' : 'dimmed', MISSION_TAB_PX), t.rect);
     }
 
-    const filled = createContentSink(ctx, content, pictures);
+    const onTask = tab === 'task';
+    const shownViewport = onTask ? built.pageViewport : built.viewport;
+    viewport = shownViewport;
+    const missionHuman = deps.missionHuman ?? noHuman;
+    // Only the briefing hands its pictures a bitmap callback; the history book draws them as nothing.
+    const filled = createContentSink(
+      ctx,
+      content,
+      pictures,
+      onTask ? (icon) => userIconBox(icon, missionHuman) : undefined,
+    );
     const brief = tab === 'history' ? null : deps.brief(shown.page);
     goalsKey = goalsKeyOf(brief);
     switch (tab) {
       case 'task':
-        fillTask(filled, brief, built.wrapWidth, copy.missionNoBriefing);
+        fillTask(filled, brief, built.pageWrapWidth, copy.missionNoBriefing);
         break;
       case 'goals':
         fillGoals(
@@ -194,9 +226,9 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
         break;
     }
     sink = filled;
-    scroll = clampScroll(scroll, filled.height(), built.viewport.h);
-    mask.rect(built.viewport.x, built.viewport.y, built.viewport.w, built.viewport.h).fill(0xffffff);
-    buttonsShown = tab !== 'goals' || filled.height() > built.viewport.h;
+    scroll = clampScroll(scroll, filled.height(), shownViewport.h);
+    mask.rect(shownViewport.x, shownViewport.y, shownViewport.w, shownViewport.h).fill(0xffffff);
+    buttonsShown = tab !== 'goals' || filled.height() > shownViewport.h;
     if (buttonsShown) paintScrollButtons(layers, deps.art, built, screen);
     historyShown = tab === 'task' && shown.walkable;
     if (historyShown) paintHistoryButtons(layers, deps.art, built, screen);
@@ -260,12 +292,12 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
 
   /** The linked run under a viewport point. */
   const linkUnder = (x: number, y: number) =>
-    layout !== null && sink !== null ? linkedRunAt(sink.placed, layout.viewport.w, x, y + scroll) : null;
+    viewport !== null && sink !== null ? linkedRunAt(sink.placed, viewport.w, x, y + scroll) : null;
 
   /** The control under the pointer to light: a tab, a shown arrow, or a link's visible box. */
   const hoverRectAt = (x: number, y: number): Rect | null => {
-    if (layout === null) return null;
-    const hit = hitTestMissionWindow(layout, x, y);
+    if (layout === null || viewport === null) return null;
+    const hit = hitTestMissionWindow(layout, x, y, viewport);
     if (hit === null) return null;
     switch (hit.kind) {
       case 'tab':
@@ -277,7 +309,6 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       case 'text': {
         const run = linkUnder(hit.x, hit.y);
         if (run === null) return null;
-        const { viewport } = layout;
         const top = Math.max(viewport.y, viewport.y + run.y - scroll);
         const bottom = Math.min(viewport.y + viewport.h, viewport.y + run.y - scroll + run.h);
         return {
@@ -301,8 +332,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     restore: (state) => shown.restore(state),
     claims: (x, y) => shell.claims(layout?.sheet ?? null, x, y),
     handleClick(x, y): boolean {
-      if (!shell.isOpen() || layout === null) return false;
-      const hit = hitTestMissionWindow(layout, x, y);
+      if (!shell.isOpen() || layout === null || viewport === null) return false;
+      const hit = hitTestMissionWindow(layout, x, y, viewport);
       if (hit === null) return false;
       // The close box, a tab, a painted arrow or a link is a button; the sheet and plain text are not.
       if (hit.kind === 'close' || hoverRectAt(x, y) !== null) deps.ctx.cue('confirm');
@@ -352,6 +383,31 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       // A mark on the goal list follows the sim; the sheet's text never moves under the reader.
       else if (tab === 'goals' && goalsKeyOf(deps.brief(shown.page)) !== goalsKey) build();
       if (creep !== null && layout !== null) scrollTo(creep.advance(now(), layout.scale));
+    },
+    mapViews(): readonly MapViewFrame[] {
+      if (!shell.isOpen() || layout === null || viewport === null || sink === null) return NO_VIEWS;
+      if (sink.views.length === 0) return NO_VIEWS;
+      if (views?.scroll === scroll) return views.frames;
+      const { scale } = layout;
+      const frameW = viewFrameWidth(scale);
+      const frames: MapViewFrame[] = [];
+      for (const v of sink.views) {
+        if (v.icon.target === null) continue;
+        const box = { x: viewport.x + v.x, y: viewport.y + v.y - scroll, w: v.w, h: v.h };
+        const clip = intersectRect(insetRect(box, frameW), viewport);
+        if (clip === null) continue;
+        frames.push({
+          box,
+          clip,
+          target: v.icon.target,
+          focusX: v.icon.focusX * scale,
+          focusY: v.icon.focusY * scale,
+          scale,
+          ...(v.icon.soloFill !== undefined ? { soloFill: v.icon.soloFill } : {}),
+        });
+      }
+      views = { scroll, frames };
+      return frames;
     },
   };
 }

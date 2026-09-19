@@ -697,14 +697,33 @@ as the original's window rebuilds its lines.
 
 ## Briefings and the mission window
 
-`PlayCutscene id replay` opens `text/<lang>/briefings/<id as 4 digits>.hlt` (ids from 500 up name a
-`briefings.txt` block instead) in the mission window on its briefing tab and adds the id to the
+`PlayCutscene id replay` opens `text/<lang>/briefings/<id as 4 digits>.hlt`, whose
+`<include:$local$\briefings.txt,<label>,1>` splices in the prose, in the mission window on its
+briefing tab (`an original routine`; every id the corpus plays has its page) and adds
+the id to the
 shown-page history, which holds up to 50 distinct ids and drops the oldest past that; when `replay`
 is set the id is also stored as the map's current briefing, the page the window opens on from the
 tool button, and that page joins the history the same way. Once the history holds two pages the
 briefing tab gains a previous and a next button at the ends of the row under the text, which walk
 it (reading). The history is saved with the game in the original; here it lives with the HUD for
 the session.
+
+A page lays its words out in lines (`an original routine`, reading). A line ends at
+a `\n` marker and, inside an include whose third argument is non-zero, at every line end of the block;
+anywhere else a line end is a space, so the history book's `,0` blocks flow as paragraphs. A line is
+its font's nominal size × 3/2 tall (font12: 18 px, fonthead16bld: 21 px) and a line ending with
+nothing on it is an empty 20 px line, which gives the corpus its blank rows around headlines and
+pictures. `<block:N>` aligns the lines that end after it: 0 left, 1 justified (while each gap stays
+within 12 px), 2 centred (the page wrappers set it), 3 right. A `<picture:…>` sits centred on a row of
+its own, 2 px taller than the picture. `<usericon:kind,a,b,c>` is inline like a word and asks the
+window's bitmap callback (`ls_GetUserBitmapCallback`) for its bitmap: kind 1 is a live 280×220 view of
+the map centred on half-cell node (a, b), kind 2 the same view centred 25 px above the first human
+stamped with mission id `a`, kind 0 a 50×80 card of that human alone on a parchment fill with its
+feet 20 px above the bottom, an empty card when no human carries the id; any other kind, or kind 2
+for an id no human carries, draws nothing and leaves the line empty. The view display clears the exploration draw flag, so it ignores the fog. The history book
+passes no callback, so its user icons draw nothing. Here the page text is Tinos sized to font12's
+glyphs (approximation) and a pressed bevel stands in for the frame the callback draws around its
+bitmap.
 
 The goals tab lists every mission whose `visible` flag is set and whose `description` is not `-1`,
 in script order, printing the string from the map's own table under the heading: with an `X` when

@@ -6,4 +6,4 @@ export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';
 export { resolveLayers } from './resolve-layers.js';
 export type { ResolvedLayer } from './resolved-layer.js';
-export { type PoolFrame, type PortraitView, SpritePool } from './sprite-pool.js';
+export { type MapViewPassFrame, type PoolFrame, type PortraitView, SpritePool } from './sprite-pool.js';

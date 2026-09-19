@@ -52,6 +52,7 @@ import {
   infoLines,
   type MissionScript,
   type MissionStatus,
+  missionObjects,
   missionStatus,
   type OpenTribute,
   openTributes,
@@ -408,6 +409,12 @@ export class Simulation {
   /** The briefing page a `PlayCutscene` with the replay flag left as the map's current one, or null. */
   missionBriefingPage(): number | null {
     return missionBriefingPage(this.world);
+  }
+
+  /** The lowest-id human stamped with mission object `id`, or null when no human carries it: the one
+   *  a briefing picture of that id shows (`MissionCheck_GetFirstHumanIdWithMissionCheckId`). */
+  missionHuman(id: number): Entity | null {
+    return missionObjects(this.world, id).find((e) => this.world.has(e, Settler)) ?? null;
   }
 
   /** The player's set on-screen info lines with their live tallies, ascending by line. */

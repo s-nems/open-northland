@@ -7,4 +7,5 @@ export {
   missionWindowScale,
   type SheetFrame,
 } from './model.js';
+export type { MissionHumanLookup } from './user-icons.js';
 export { createMissionWindow, type MissionWindow } from './window.js';

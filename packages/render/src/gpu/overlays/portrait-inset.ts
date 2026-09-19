@@ -1,14 +1,7 @@
-import { type Application, type Container, Rectangle, type RenderOptions, Sprite, Texture } from 'pixi.js';
+import { type Application, type Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
 import type { SpritePool } from '../sprite-pool/index.js';
-import { restoreStash, stashHidden } from '../visibility.js';
-
-/** Pixi's public `RenderOptions` omits `frame`, though the runtime honours it as the viewport region in
- *  the target's logical px. Undocumented API, verified on pixi.js 8.19: re-verify on a Pixi bump, since
- *  a dropped `frame` would paint the re-aimed world over the whole canvas instead of the preview box. */
-interface FramedRenderOptions extends RenderOptions {
-  readonly frame: Rectangle;
-}
+import { renderFramedWorld } from './framed-world-render.js';
 
 /**
  * The details-panel portrait window: a live cutout of the world centred on the selected entity, drawn
@@ -127,40 +120,21 @@ export class PortraitInsetLayer {
     const inset = { camera: insetCamera, width: w, height: h };
     const main = { camera: mainCamera, width: this.app.screen.width, height: this.app.screen.height };
     this.pool.portraitPass(inset, main, (soloKeep) => {
-      const savedScale = this.worldLayer.scale.x;
-      const savedX = this.worldLayer.position.x;
-      const savedY = this.worldLayer.position.y;
-      this.worldLayer.scale.set(scale);
-      this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
-      // An indoor subject renders alone over the panel's backdrop: the pool already hid its sprite-layer
-      // siblings, so blank every world layer but `soloKeep` - otherwise the building it stands in draws
-      // behind it and it reads as standing on the roof.
-      const worldSaved = soloKeep === null ? null : stashHidden(this.worldLayer.children, soloKeep);
       try {
         // Re-cull the ground to the inset frame, so a subject at the screen edge still has terrain around
         // it. Inside the try, so its `restore()` below always pairs.
         terrain?.toInset(insetCamera, w, h);
-        // The region framed past the map edge has no terrain, and the screen pass cannot `clear` just its
-        // frame region, so floor it with a ground-coloured quad under the world. An indoor solo keeps the
-        // panel's backdrop instead.
-        if (terrain !== undefined && soloKeep === null) {
-          this.backdrop.tint = terrain.backdrop;
-          this.backdrop.position.set(-insetCamera.offsetX / scale, -insetCamera.offsetY / scale);
-          this.backdrop.width = w / scale;
-          this.backdrop.height = h / scale;
-          this.worldLayer.addChildAt(this.backdrop, 0);
-        }
-        const pass: FramedRenderOptions = {
-          container: this.worldLayer,
-          clear: false, // the main render already painted this region (the panel's preview backdrop)
+        renderFramedWorld(this.app, this.worldLayer, this.backdrop, {
+          camera: insetCamera,
           frame: new Rectangle(f.rect.x, f.rect.y, w, h),
-        };
-        this.app.renderer.render(pass);
+          // The region framed past the map edge has no terrain, and the screen pass cannot `clear` just its
+          // frame region, so floor it with the ground colour. An indoor solo keeps the panel's backdrop.
+          fill: terrain !== undefined && soloKeep === null ? terrain.backdrop : null,
+          // An indoor subject renders alone: the pool already hid its sprite-layer siblings, and every
+          // other world layer blanks too, or the building it stands in reads as its floor.
+          keep: soloKeep,
+        });
       } finally {
-        this.backdrop.removeFromParent();
-        if (worldSaved !== null) restoreStash(worldSaved);
-        this.worldLayer.scale.set(savedScale);
-        this.worldLayer.position.set(savedX, savedY);
         terrain?.restore();
       }
     });

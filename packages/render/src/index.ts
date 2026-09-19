@@ -126,6 +126,8 @@ export {
   type HudStyle,
   hitsGarrisonFlag,
   type LifeHeart,
+  type MapViewFrame,
+  type MapViewTarget,
   makePlaceholderStack,
   makeSignStack,
   type PlacementGhost,

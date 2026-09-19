@@ -51,6 +51,8 @@ describe('layoutMissionWindow', () => {
     ]);
     expect(layout.viewport).toEqual({ x: x + 9, y: y + 57, w: 482, h: 292 });
     expect(layout.wrapWidth).toBe(482);
+    expect(layout.pageViewport).toEqual({ x: x + 4, y: y + 52, w: 492, h: 302 });
+    expect(layout.pageWrapWidth).toBe(492);
     expect(layout.scrollUp).toEqual({ x: x + 212, y: y + 358, w: 42, h: 58 });
     expect(layout.scrollDown).toEqual({ x: x + 246, y: y + 358, w: 42, h: 58 });
   });
@@ -114,9 +116,10 @@ describe('scroll model', () => {
 
   it('finds the link of the run under a content point, centred runs by their placed span', () => {
     const placed = [
-      { x: 0, width: 400, centred: false, y: 0, h: 20, link: null },
-      { x: 0, width: 100, centred: true, y: 26, h: 14, link: 'mythology_00' },
-      { x: 5, width: 60, centred: false, y: 46, h: 14, link: 'mythology_01' },
+      { x: 0, width: 400, placement: 'left' as const, y: 0, h: 20, link: null },
+      { x: 0, width: 100, placement: 'center' as const, y: 26, h: 14, link: 'mythology_00' },
+      { x: 5, width: 60, placement: 'left' as const, y: 46, h: 14, link: 'mythology_01' },
+      { x: 0, width: 80, placement: 'right' as const, y: 66, h: 14, link: 'mythology_02' },
     ];
     const viewportW = 480;
     const linkAt = (x: number, y: number): string | null =>
@@ -128,5 +131,7 @@ describe('scroll model', () => {
     expect(linkAt(20, 59)).toBe('mythology_01');
     expect(linkAt(70, 59)).toBeNull(); // right of the left-aligned run
     expect(linkAt(20, 60)).toBeNull();
+    expect(linkAt(410, 70)).toBe('mythology_02');
+    expect(linkAt(390, 70)).toBeNull(); // left of the right-aligned run
   });
 });

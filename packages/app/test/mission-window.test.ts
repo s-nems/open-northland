@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import type { HypertextBook } from '@open-northland/data';
+import type { HypertextBlock, HypertextBook } from '@open-northland/data';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { MissionBrief } from '../src/game/mission-brief.js';
@@ -12,6 +12,7 @@ import {
   MAX_CREEP_STEP_MS,
 } from '../src/hud/tool-panel/mission/creep.js';
 import { createMissionWindow, layoutMissionWindow } from '../src/hud/tool-panel/mission/index.js';
+import { BUTTON_SCROLL_STEP } from '../src/hud/tool-panel/mission/model.js';
 
 /**
  * The mission window controller over a stubbed context (no Pixi text): it opens on the task tab and
@@ -160,27 +161,27 @@ describe('createMissionWindow', () => {
     window.handleClick(...middle(historyTab.rect));
     expect(made).toEqual(expect.arrayContaining(['HISTORY', 'Seven wonders']));
     const { viewport } = layout;
-    // The link is the second paragraph: below the title and its gap, centred in the viewport.
+    // The link is the second run: the line under the title, centred in the viewport.
     made.length = 0;
-    window.handleClick(viewport.x + viewport.w / 2, viewport.y + LINE_H + 6 + 5);
+    window.handleClick(viewport.x + viewport.w / 2, viewport.y + LINE_H + 5);
     expect(made).toEqual(expect.arrayContaining(['SEVEN WONDERS', 'Back']));
     // A click beside a left-aligned link's glyphs is not a jump.
     made.length = 0;
-    window.handleClick(viewport.x + RUN_W + 10, viewport.y + LINE_H + 6 + 5);
+    window.handleClick(viewport.x + RUN_W + 10, viewport.y + LINE_H + 5);
     expect(made).toEqual([]);
-    window.handleClick(viewport.x + 5, viewport.y + LINE_H + 6 + 5);
+    window.handleClick(viewport.x + 5, viewport.y + LINE_H + 5);
     expect(made).toEqual(expect.arrayContaining(['HISTORY']));
   });
 
   it('pages through overflowing content with the Down and Up buttons', () => {
-    const blocks = Array.from({ length: 30 }, (_, i) => ({
+    const blocks = Array.from({ length: 60 }, (_, i) => ({
       kind: 'text' as const,
       style: 'body' as const,
       text: `P${i}`,
     }));
     const { window, placedY, layout } = mount({ title: '', blocks, goals: [] });
     window.toggle();
-    const { viewport } = layout;
+    const viewport = layout.pageViewport;
     expect(placedY.get('P0')).toBe(viewport.y);
     window.handleClick(...middle(layout.scrollDown));
     expect(placedY.get('P0')).toBe(viewport.y - 60);
@@ -189,7 +190,7 @@ describe('createMissionWindow', () => {
   });
 
   it('creeps down after the pause and stops for good once the player scrolls', () => {
-    const blocks = Array.from({ length: 30 }, (_, i) => ({
+    const blocks = Array.from({ length: 60 }, (_, i) => ({
       kind: 'text' as const,
       style: 'body' as const,
       text: `P${i}`,
@@ -204,7 +205,7 @@ describe('createMissionWindow', () => {
       }
     };
     window.toggle();
-    const top = layout.viewport.y;
+    const top = layout.pageViewport.y;
     frames(AUTO_SCROLL_DELAY_MS);
     expect(placedY.get('P0')).toBe(top);
     frames(2000);
@@ -313,6 +314,53 @@ describe('createMissionWindow', () => {
     window.handleClick(...middle(layout.historyPrev));
     expect(asked.at(-1)).toBe(500);
     expect(window.state()).toEqual({ page: 500, pages: [500, 501, 502] });
+  });
+
+  it('reports the page map views clipped to its viewport, following the scroll, while open on the task tab', () => {
+    const blocks: HypertextBlock[] = [
+      { kind: 'icons', icons: [[1, 5, 6, 0]], align: 'center' },
+      // A card nobody carries keeps its box but paints no view.
+      { kind: 'icons', icons: [[0, 8, 0, 0]] },
+      ...Array.from(
+        { length: 40 },
+        (_, i): HypertextBlock => ({ kind: 'text', style: 'body', text: `P${i}` }),
+      ),
+    ];
+    const { ctx } = stubContext();
+    const window = createMissionWindow({
+      ctx,
+      container: new Container(),
+      art: null,
+      brief: () => ({ title: '', blocks, goals: [] }),
+      history: BOOK,
+      missionHuman: () => null,
+      now: () => 0,
+    });
+    const layout = layoutMissionWindow(SCREEN, null);
+    expect(window.mapViews()).toEqual([]);
+    window.toggle();
+    const vp = layout.pageViewport;
+    // Centred like the engine: half the column past the box and its trailing word space.
+    const box = { x: vp.x + Math.floor((vp.w - 280 - 5) / 2), y: vp.y, w: 280, h: 220 };
+    expect(window.mapViews()).toEqual([
+      {
+        box,
+        clip: { x: box.x + 2, y: box.y + 2, w: 276, h: 216 },
+        target: { kind: 'node', hx: 5, hy: 6 },
+        focusX: 140,
+        focusY: 110,
+        scale: 1,
+      },
+    ]);
+    expect(window.mapViews()).toBe(window.mapViews());
+    window.handleClick(...middle(layout.scrollDown));
+    const [scrolled] = window.mapViews();
+    expect(scrolled?.box.y).toBe(vp.y - BUTTON_SCROLL_STEP);
+    expect(scrolled?.clip).toEqual({ x: box.x + 2, y: vp.y, w: 276, h: 216 - (BUTTON_SCROLL_STEP - 2) });
+    const goalsTab = layout.tabs.find((t) => t.tab === 'goals');
+    if (goalsTab === undefined) throw new Error('no goals tab');
+    window.handleClick(...middle(goalsTab.rect));
+    expect(window.mapViews()).toEqual([]);
   });
 
   it('rebuilds the goal list when a mark changes and leaves the task tab alone', () => {

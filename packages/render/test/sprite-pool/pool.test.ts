@@ -368,3 +368,71 @@ describe('SpritePool - details-panel portrait subject visibility', () => {
     expect(layer.children.map((c) => c.visible)).toEqual(before);
   });
 });
+
+describe('SpritePool - briefing map view pass', () => {
+  const MAIN = { camera: CAMERA, width: 800, height: 600 };
+  const view = (snapshot: WorldSnapshot, solo?: number) => ({
+    camera: CAMERA,
+    width: 280,
+    height: 220,
+    snapshot,
+    viewport: FRAMES_ALL,
+    tick: 0,
+    alpha: 1,
+    elevation: FLAT,
+    ...(solo !== undefined ? { solo } : {}),
+  });
+
+  it('borrows the entities the main frame culled, fogged ones included, for its render only', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const snapshot = snapshotOf(BUILDINGS);
+    // The main frame shows the first building and fogs the last one's row.
+    pool.reconcile({ ...poolFrame(snapshot, FRAMES_FIRST), fogVisible: (_x, y) => y < 20, fogEpoch: 1 });
+    expect(layer.children).toHaveLength(1);
+
+    let drawn = 0;
+    pool.mapViewPass(view(snapshot), MAIN, (soloKeep) => {
+      expect(soloKeep).toBeNull();
+      drawn = layer.children.length;
+    });
+    expect(drawn).toBe(3);
+    expect(layer.children).toHaveLength(1);
+    // A borrowed entity stays unpickable on the main map.
+    expect(pool.boundsOf(3)).toBeUndefined();
+    expect(pool.boundsOf(1)).toBeDefined();
+  });
+
+  it('solos its subject over the sprite layer and restores every sibling after', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const snapshot = snapshotOf(BUILDINGS);
+    pool.reconcile(poolFrame(snapshot, FRAMES_ALL));
+    const before = layer.children.map((c) => c.visible);
+
+    pool.mapViewPass(view(snapshot, 2), MAIN, (soloKeep) => {
+      expect(soloKeep).toBe(layer);
+      expect(layer.children.filter((c) => c.visible)).toHaveLength(1);
+    });
+    expect(layer.children.map((c) => c.visible)).toEqual(before);
+  });
+
+  it('skips the render of a solo subject that is gone, and undoes a borrow when the render throws', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const snapshot = snapshotOf(BUILDINGS);
+    pool.reconcile(poolFrame(snapshot, FRAMES_FIRST));
+    let rendered = false;
+    pool.mapViewPass(view(snapshot, 99), MAIN, () => {
+      rendered = true;
+    });
+    expect(rendered).toBe(false);
+
+    expect(() =>
+      pool.mapViewPass(view(snapshot), MAIN, () => {
+        throw new Error('render died');
+      }),
+    ).toThrow('render died');
+    expect(layer.children).toHaveLength(1);
+  });
+});

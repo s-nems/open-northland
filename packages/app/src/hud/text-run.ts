@@ -11,6 +11,20 @@ export interface TextRun {
   destroy(): void;
 }
 
+/** How a paragraph's lines sit inside its wrap width; `justify` spreads every line but the last to the
+ *  widest one. */
+export type ParagraphAlign = 'left' | 'center' | 'right' | 'justify';
+
+/** A paragraph's face beyond its size, in native (design) px; each field defaults to the plain HUD text. */
+export interface ParagraphFace {
+  readonly bold?: boolean;
+  /** Extra advance after every character. */
+  readonly letterSpacing?: number;
+  /** The line pitch, which then alone sets the paragraph's height; the default scales with the font
+   *  size. */
+  readonly lineHeight?: number;
+}
+
 /** A retained, word-wrapped block of HUD text; sizes are in native (design) px, screen = native × scale. */
 export interface ParagraphRun {
   readonly container: Container;

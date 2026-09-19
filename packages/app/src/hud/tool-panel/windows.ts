@@ -16,7 +16,12 @@ import {
 } from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import type { HeldPaperController } from './held-paper.js';
-import { createMissionWindow, type MissionWindow, type MissionWindowState } from './mission/index.js';
+import {
+  createMissionWindow,
+  type MissionHumanLookup,
+  type MissionWindow,
+  type MissionWindowState,
+} from './mission/index.js';
 import { createStatsWindow } from './stats-window.js';
 import {
   createTabbedListWindow,
@@ -60,6 +65,8 @@ export interface ToolWindowsDeps {
   readonly missionReplayPage: () => number | null;
   /** The mission window's history book; null shows the tab empty. */
   readonly history: HypertextBook | null;
+  /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
+  readonly missionHuman?: MissionHumanLookup;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The place-any paper a plans-tab click hands to the build menu. */
   readonly heldPaper: HeldPaperController;
@@ -155,6 +162,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     briefingHistory: deps.missionBriefingHistory,
     replayPage: deps.missionReplayPage,
     history: deps.history,
+    ...(deps.missionHuman !== undefined ? { missionHuman: deps.missionHuman } : {}),
     ...(deps.onLargeWindow !== undefined ? { onOpenChange: deps.onLargeWindow } : {}),
   });
 

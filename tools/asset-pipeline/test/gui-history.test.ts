@@ -29,7 +29,8 @@ const BLOCKS = [
   'SEVEN_WONDERS',
   '[blockend:0_überschrift]',
   '[blockstart:0_text_0]',
-  'A list of seven.',
+  'A list',
+  'of seven.\\n',
   '[blockend:0_text_0]',
   '[blockstart:zurücktext]',
   'Back_to_index',
@@ -97,6 +98,7 @@ describe('convertGuiHistory', () => {
       pages: {
         index: [
           { kind: 'text', style: 'title', text: 'HISTORY TABLES', align: 'center' },
+          { kind: 'blank', lines: 1 },
           {
             kind: 'text',
             style: 'body',
@@ -108,8 +110,9 @@ describe('convertGuiHistory', () => {
         ],
         mythology_00: [
           { kind: 'text', style: 'title', text: 'SEVEN WONDERS', align: 'center' },
+          { kind: 'blank', lines: 1 },
           { kind: 'text', style: 'body', text: 'A list of seven.' },
-          { kind: 'picture', file: pictures[0], width: 4, height: 3, align: 'center' },
+          { kind: 'picture', file: pictures[0], width: 4, height: 3 },
           {
             kind: 'text',
             style: 'body',

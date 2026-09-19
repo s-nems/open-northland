@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MissionBehaviour, MissionObjectId } from '../../src/components/index.js';
+import { MissionBehaviour, MissionObjectId, Settler } from '../../src/components/index.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { missionObjectIds, missionObjects } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -67,6 +67,14 @@ describe('mission object ids on placed entities', () => {
     expect([...squad]).toEqual([...squad].sort((a, b) => a - b));
     expect(missionObjects(sim.world, CAMP_ID)).toHaveLength(1);
     expect(missionObjects(sim.world, 4242)).toEqual([]);
+  });
+
+  it('answers the lowest-id human of a group for a briefing picture, never a house or an animal', () => {
+    const sim = placed();
+    const humans = missionObjects(sim.world, SQUAD_ID).filter((e) => sim.world.has(e, Settler));
+    expect(sim.missionHuman(SQUAD_ID)).toBe(Math.min(...humans));
+    expect(sim.missionHuman(CAMP_ID)).toBeNull(); // only the house carries it
+    expect(sim.missionHuman(4242)).toBeNull();
   });
 
   it('drops a removed entity from its group on the next lookup', () => {

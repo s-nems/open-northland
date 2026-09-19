@@ -26,7 +26,8 @@ const TAB_Y = 22;
 const TAB_H = 22;
 const TAB_W = 164;
 const TAB_GAP = 2;
-/** The content element under the tabs, shrunk by its inset to the text viewport. */
+/** The content element under the tabs. The briefing page fills it; the goals and the history book
+ *  keep an inset from its edge. */
 const CONTENT_X = 4;
 const CONTENT_Y = 52;
 const CONTENT_W = 492;
@@ -62,10 +63,9 @@ export type MissionTab = (typeof MISSION_TABS)[number];
 
 export const MISSION_TITLE_PX = 13;
 export const MISSION_TAB_PX = 11;
-export const MISSION_HEADLINE_PX = 16;
 export const MISSION_HEADING_PX = 13;
 export const MISSION_BODY_PX = 12;
-/** Vertical rhythm (design px). */
+/** Vertical rhythm of the text the window writes itself (design px). */
 export const HEADLINE_GAP = 10;
 export const PARAGRAPH_GAP = 6;
 /** One wheel notch scrolls this many design px (approximation), a button press this many (a reading of
@@ -94,10 +94,13 @@ export interface MissionWindowLayout {
   readonly titleRect: Rect;
   readonly closeRect: Rect;
   readonly tabs: readonly MissionTabRect[];
-  /** The scrolling text viewport. */
+  /** The goals and history text viewport. */
   readonly viewport: Rect;
   /** The wrap width the text runs take (design px, pre-scale). */
   readonly wrapWidth: number;
+  /** The briefing page's viewport: the whole content element (`an original routine`). */
+  readonly pageViewport: Rect;
+  readonly pageWrapWidth: number;
   readonly scrollUp: Rect;
   readonly scrollDown: Rect;
   readonly historyPrev: Rect;
@@ -153,6 +156,8 @@ export function layoutMissionWindow(screen: ScreenSize, sheet: SheetFrame | null
       CONTENT_BOTTOM - CONTENT_Y - 2 * CONTENT_INSET,
     ),
     wrapWidth: CONTENT_W - 2 * CONTENT_INSET,
+    pageViewport: at(CONTENT_X, CONTENT_Y, CONTENT_W, CONTENT_BOTTOM - CONTENT_Y),
+    pageWrapWidth: CONTENT_W,
     scrollUp: at(SCROLL_UP_X, BUTTON_Y, BUTTON_W, BUTTON_H),
     scrollDown: at(SCROLL_DOWN_X, BUTTON_Y, BUTTON_W, BUTTON_H),
     historyPrev: at(HISTORY_PREV_X, BUTTON_Y, BUTTON_W, BUTTON_H),
@@ -169,9 +174,15 @@ export type MissionHit =
   | { readonly kind: 'window' }
   | null;
 
-/** What a click lands on; a text hit carries its offset from the viewport origin in screen px, and the
- *  sheet's torn margin counts as the window so a click there never reaches the world. */
-export function hitTestMissionWindow(layout: MissionWindowLayout, x: number, y: number): MissionHit {
+/** What a click lands on; a text hit carries its offset from the origin of `viewport` (the shown tab's)
+ *  in screen px, and the sheet's torn margin counts as the window so a click there never reaches the
+ *  world. */
+export function hitTestMissionWindow(
+  layout: MissionWindowLayout,
+  x: number,
+  y: number,
+  viewport: Rect = layout.viewport,
+): MissionHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   const tab = layout.tabs.find((t) => contains(t.rect, x, y));
   if (tab !== undefined) return { kind: 'tab', tab: tab.tab };
@@ -179,8 +190,7 @@ export function hitTestMissionWindow(layout: MissionWindowLayout, x: number, y: 
   if (contains(layout.scrollUp, x, y)) return { kind: 'scroll', direction: -1 };
   if (contains(layout.historyPrev, x, y)) return { kind: 'history', direction: -1 };
   if (contains(layout.historyNext, x, y)) return { kind: 'history', direction: 1 };
-  if (contains(layout.viewport, x, y))
-    return { kind: 'text', x: x - layout.viewport.x, y: y - layout.viewport.y };
+  if (contains(viewport, x, y)) return { kind: 'text', x: x - viewport.x, y: y - viewport.y };
   if (contains(layout.sheet, x, y)) return { kind: 'window' };
   return null;
 }
@@ -191,12 +201,15 @@ export function clampScroll(offset: number, contentHeight: number, viewportHeigh
   return Math.min(max, Math.max(0, offset));
 }
 
+/** Where a run's box is placed across the viewport: from `x`, or against its middle or right edge. */
+export type RunPlacement = 'left' | 'center' | 'right';
+
 /** Where a run sits, in screen px from the viewport origin (unscrolled), and what it links to. */
 export interface PlacedLink {
-  /** Left edge of a left-aligned run; a centred run is placed from the viewport's middle instead. */
+  /** Left edge of a left-placed run. */
   readonly x: number;
   readonly width: number;
-  readonly centred: boolean;
+  readonly placement: RunPlacement;
   readonly y: number;
   readonly h: number;
   readonly link: string | null;
@@ -204,7 +217,14 @@ export interface PlacedLink {
 
 /** The left edge a run is placed at, for a viewport `viewportW` wide. */
 export function placedLeft(run: PlacedLink, viewportW: number): number {
-  return run.centred ? (viewportW - run.width) / 2 : run.x;
+  switch (run.placement) {
+    case 'left':
+      return run.x;
+    case 'center':
+      return (viewportW - run.width) / 2;
+    case 'right':
+      return viewportW - run.width;
+  }
 }
 
 /** The linked run under (`x`, `y`) (content px), or null off a link. */

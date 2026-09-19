@@ -1,5 +1,6 @@
 import { Container, Sprite, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import type { ParagraphFace } from '../src/hud/text-run.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import {
@@ -11,15 +12,19 @@ import {
 } from '../src/hud/tool-panel/mission/content.js';
 import { GOAL_LIST } from '../src/hud/tool-panel/mission/model.js';
 import { createPictureCache } from '../src/hud/tool-panel/mission/pictures.js';
+import { userIconBox } from '../src/hud/tool-panel/mission/user-icons.js';
 
-/** The mission tabs' content layout: runs stack top-down at the window scale, the goal list keeps the
- *  original's bullet and text columns, and a history link rides its paragraph. */
+/** The mission tabs' content layout: a page stacks in the engine's line pitch at the window scale, its
+ *  pictures centred and its icons in framed boxes, the goal list keeps the original's bullet and text
+ *  columns, and a history link rides its paragraph. */
 
 const SCALE = 2;
 /** Every stub paragraph is this tall (design px), so the stacking is arithmetic. */
 const LINE_H = 10;
 /** The window's text viewport in design px, which the goal columns wrap inside. */
 const VIEWPORT_W = 482;
+/** The briefing page's column. */
+const PAGE_W = 492;
 
 interface Made {
   readonly text: string;
@@ -28,6 +33,7 @@ interface Made {
   readonly color: string;
   /** Design px the run wraps at, so a column that overruns the viewport fails here. */
   readonly wrap: number;
+  readonly face: ParagraphFace | undefined;
 }
 
 function stubContext(): { ctx: PanelContext; made: Made[] } {
@@ -42,8 +48,8 @@ function stubContext(): { ctx: PanelContext; made: Made[] } {
     layout: buildToolPanelLayout(SCALE),
     scale: SCALE,
     makeText: () => run(),
-    makeParagraph: (text, color, px, wrap, align = 'left') => {
-      made.push({ text, px, align, color, wrap });
+    makeParagraph: (text, color, px, wrap, align = 'left', face) => {
+      made.push({ text, px, align, color, wrap, face });
       return { ...run(), height: LINE_H };
     },
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
@@ -56,15 +62,105 @@ function stubContext(): { ctx: PanelContext; made: Made[] } {
 }
 
 /** No page picture ever resolves here, so a picture block is laid out from its declared size alone. */
-const sinkOf = (ctx: PanelContext, container = new Container()): ContentSink =>
+const sinkOf = (ctx: PanelContext, container = new Container(), briefing = false): ContentSink =>
   createContentSink(
     ctx,
     container,
     createPictureCache(() => Promise.resolve(undefined)),
+    // Mission id 7 names entity 70; no other id names a human.
+    briefing ? (icon) => userIconBox(icon, (id) => (id === 7 ? 70 : null)) : undefined,
   );
 
 describe('fillTask', () => {
-  it('centres the headline and stacks the page blocks with their gaps, at the window scale', () => {
+  it('lays a page out in the engine rhythm: blank rows, text lines, a padded picture, an icon box', () => {
+    const { ctx, made } = stubContext();
+    const sink = sinkOf(ctx, new Container(), true);
+    fillTask(
+      sink,
+      {
+        title: '',
+        blocks: [
+          { kind: 'blank', lines: 1 },
+          { kind: 'text', style: 'title', text: 'SANDSTORM', align: 'center' },
+          { kind: 'blank', lines: 2 },
+          { kind: 'text', style: 'body', text: 'First', align: 'right' },
+          { kind: 'picture', file: 'abc.png', width: 100, height: 50 },
+          { kind: 'icons', icons: [[1, 5, 6, 0]], align: 'center' },
+        ],
+        goals: [],
+      },
+      PAGE_W,
+      'No briefing',
+    );
+    expect(made.map((m) => [m.text, m.px, m.face])).toEqual([
+      ['SANDSTORM', 20, { bold: true, lineHeight: 21 }],
+      ['First', 17, { letterSpacing: 1.25, lineHeight: 18 }],
+    ]);
+    expect(sink.placed.map((p) => [p.placement, p.y / SCALE])).toEqual([
+      ['center', 20],
+      ['right', 20 + LINE_H + 40],
+      // A picture sits 2 px down its row.
+      ['center', 20 + LINE_H + 40 + LINE_H + 2],
+      // The map view's frame, left at the engine's centring shift: half the column past it and a word space.
+      ['left', 20 + LINE_H + 40 + LINE_H + 2 + 50],
+    ]);
+    expect(sink.placed[3]?.x).toBe(Math.floor((PAGE_W - 280 - 5) / 2) * SCALE);
+    expect(sink.views).toEqual([
+      {
+        x: Math.floor((PAGE_W - 280 - 5) / 2) * SCALE,
+        y: (20 + LINE_H + 40 + LINE_H + 2 + 50) * SCALE,
+        w: 280 * SCALE,
+        h: 220 * SCALE,
+        icon: {
+          w: 280,
+          h: 220,
+          target: { kind: 'node', hx: 5, hy: 6 },
+          focusX: 140,
+          focusY: 110,
+        },
+      },
+    ]);
+    expect(sink.height()).toBe((20 + LINE_H + 40 + LINE_H + 2 + 50 + 220) * SCALE);
+  });
+
+  it('wraps icons like words, bottom-aligned per line, and leaves an undrawn icon an empty line', () => {
+    const { ctx } = stubContext();
+    const sink = sinkOf(ctx, new Container(), true);
+    const figure = [0, 7, 0, 0] as const;
+    fillTask(
+      sink,
+      {
+        title: '',
+        blocks: [
+          { kind: 'icons', icons: [[2, 8, 0, 0]] },
+          { kind: 'icons', icons: [[1, 0, 0, 0], [...figure], [...figure], [...figure]] },
+        ],
+        goals: [],
+      },
+      PAGE_W,
+      'No briefing',
+    );
+    // Id 8 names nobody: the first row draws nothing and is one empty line.
+    expect(sink.views.map((v) => [v.x / SCALE, v.y / SCALE, v.w / SCALE, v.h / SCALE])).toEqual([
+      [0, 20, 280, 220],
+      [285, 20 + 220 - 80, 50, 80],
+      [340, 20 + 220 - 80, 50, 80],
+      [395, 20 + 220 - 80, 50, 80],
+    ]);
+    expect(sink.views[1]?.icon).toMatchObject({ target: { kind: 'entity', ref: 70 }, soloFill: 0xc4c09f });
+  });
+
+  it('keeps a human card whose id nobody carries, as an empty card', () => {
+    const { ctx } = stubContext();
+    const sink = sinkOf(ctx, new Container(), true);
+    fillTask(sink, { title: '', blocks: [{ kind: 'icons', icons: [[0, 8, 0, 0]] }], goals: [] }, PAGE_W, '');
+    expect(sink.views.map((v) => v.icon)).toEqual([
+      { w: 50, h: 80, target: null, focusX: 25, focusY: 60, soloFill: 0xc4c09f },
+    ]);
+    expect(sink.height()).toBe(80 * SCALE);
+  });
+
+  it('heads fallback text with the brief title and its gap, at the window scale', () => {
     const { ctx, made } = stubContext();
     const sink = sinkOf(ctx);
     fillTask(
@@ -81,13 +177,9 @@ describe('fillTask', () => {
       'No briefing',
     );
     expect(made.map((m) => m.text)).toEqual(['SANDSTORM', 'First', 'Second']);
-    expect(sink.placed.map((p) => p.centred)).toEqual([true, false, true]);
-    expect(sink.placed.map((p) => p.y)).toEqual([
-      0,
-      (LINE_H + 10) * SCALE,
-      (LINE_H + 10 + LINE_H + 6) * SCALE,
-    ]);
-    expect(sink.height()).toBe((3 * LINE_H + 10 + 6 + 6) * SCALE);
+    expect(sink.placed.map((p) => p.placement)).toEqual(['center', 'left', 'center']);
+    expect(sink.placed.map((p) => p.y)).toEqual([0, (LINE_H + 10) * SCALE, (2 * LINE_H + 10) * SCALE]);
+    expect(sink.height()).toBe((3 * LINE_H + 10) * SCALE);
   });
 
   it('says so without a brief or without briefing text', () => {
@@ -164,18 +256,21 @@ describe('fillHistory', () => {
   it('fits a picture to the text column, centres it and leaves it unlinked', () => {
     const { ctx, made } = stubContext();
     const sink = sinkOf(ctx);
-    fillHistory(
-      sink,
-      [{ kind: 'picture', file: 'abc.png', width: 964, height: 482, align: 'center' }],
-      482,
-      'No history',
-    );
+    fillHistory(sink, [{ kind: 'picture', file: 'abc.png', width: 964, height: 482 }], 482, 'No history');
     const picture = sink.placed[0];
     expect(made).toEqual([]);
     expect(picture?.width).toBe(482 * SCALE);
     expect(picture?.h).toBe(241 * SCALE);
-    expect(picture?.centred).toBe(true);
+    expect(picture?.placement).toBe('center');
     expect(picture?.link).toBeNull();
+  });
+
+  it('draws no user icon in the book: each row is an empty line', () => {
+    const { ctx } = stubContext();
+    const sink = sinkOf(ctx);
+    fillHistory(sink, [{ kind: 'icons', icons: [[1, 5, 6, 0]] }], 482, 'No history');
+    expect(sink.views).toEqual([]);
+    expect(sink.height()).toBe(20 * SCALE);
   });
 
   it('shows a picture when its texture arrives and drops one that arrives after the page is gone', async () => {

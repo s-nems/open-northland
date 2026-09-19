@@ -9,6 +9,7 @@ import {
   type Viewport,
 } from '../../data/projection/index.js';
 import {
+  buildSpriteScene,
   collectSpriteScene,
   type DrawItem,
   type LiveRefs,
@@ -20,6 +21,7 @@ import {
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
+import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 import { LayerBinder } from './bind-layers.js';
 import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
@@ -80,6 +82,23 @@ export interface PortraitView {
   readonly width: number;
   readonly height: number;
 }
+
+/** A {@link SpritePool.mapViewPass} render: the entities in `viewport` around another camera, drawn
+ *  whatever the fog, or only `solo` when set. */
+export interface MapViewPassFrame extends PortraitView {
+  readonly snapshot: WorldSnapshot;
+  readonly viewport: Viewport;
+  readonly tick: number;
+  readonly alpha: number;
+  readonly elevation: ElevationField;
+  /** As {@link PoolFrame.staticRefs}: the map-object layer draws these. */
+  readonly staticRefs?: ReadonlySet<number>;
+  readonly solo?: number;
+}
+
+/** A borrowed entity's bounds are reset to this after its bind, so they never count as the frame's and
+ *  it stays unpickable on the main map. */
+const MAP_VIEW_BOUNDS_FRAME = -1;
 
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
@@ -263,6 +282,78 @@ export class SpritePool {
     } finally {
       this.portrait.endSolo();
       this.portrait.hide();
+      this.placePaletted(main.camera, main.width, main.height);
+    }
+  }
+
+  /**
+   * Scope a map view's render: borrow the entities around its camera that this frame's cull left
+   * detached (off screen or in the fog), place everything for the view, render, then detach the borrowed
+   * ones and re-place for the main camera, even if a step throws. A solo view hides every other
+   * sprite-layer child, and `render` then receives the sprite layer as the one world layer to keep. An
+   * entity the main frame draws keeps its main presentation, a fog ghost included (approximation).
+   */
+  mapViewPass(
+    view: MapViewPassFrame,
+    main: PortraitView,
+    render: (soloKeep: Container | null) => void,
+  ): void {
+    const items = buildSpriteScene(view.snapshot, {
+      viewport: view.viewport,
+      elevation: view.elevation,
+      index: this.spatial,
+      staticRefs: view.staticRefs,
+      keepIndoorSettlers: view.solo !== undefined,
+      ...(view.solo !== undefined ? { onlyRefs: new Set([view.solo]) } : {}),
+      ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
+      ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
+    });
+    const frame: PoolFrame = {
+      snapshot: view.snapshot,
+      viewport: view.viewport,
+      tick: view.tick,
+      camera: view.camera,
+      screenW: view.width,
+      screenH: view.height,
+      elevation: view.elevation,
+      alpha: view.alpha,
+      snapResolution: this.snapResolution,
+    };
+    const borrowed: PooledEntity[] = [];
+    let stash: StashedVisibility[] | null = null;
+    try {
+      let solo: Container | null = null;
+      for (const item of items) {
+        let pe = this.pool.get(item.ref);
+        if (pe === undefined) {
+          pe = this.binder.create(item.kind, item);
+          this.pool.set(item.ref, pe);
+        }
+        if (!pe.attached) {
+          // Another view may already have drawn it this frame.
+          const continuous = pe.lastSeen === this.frameId - 1 || pe.viewSeen >= this.frameId - 1;
+          if (!continuous) pe.motion.tick = -1;
+          borrowed.push(pe);
+          this.spriteLayer.addChild(pe.container);
+          const layers = presentEntity(pe, item, frame, this.sheet);
+          this.binder.bind(pe, item, layers, frame, this.frameId);
+          pe.boundsFrame = MAP_VIEW_BOUNDS_FRAME;
+          pe.container.zIndex = screenDepth(
+            pe.motion.drawX,
+            pe.motion.drawY + (item.lift ?? 0),
+            item.kind,
+            item.isFlag === true,
+          );
+          pe.viewSeen = this.frameId;
+        }
+        if (item.ref === view.solo) solo = pe.container;
+      }
+      this.placePaletted(view.camera, view.width, view.height);
+      if (solo !== null) stash = stashHidden(this.spriteLayer.children, solo);
+      if (view.solo === undefined || solo !== null) render(solo === null ? null : this.spriteLayer);
+    } finally {
+      if (stash !== null) restoreStash(stash);
+      for (const pe of borrowed) this.spriteLayer.removeChild(pe.container);
       this.placePaletted(main.camera, main.width, main.height);
     }
   }

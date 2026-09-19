@@ -15,6 +15,7 @@ export interface MissionGoal {
 }
 
 export interface MissionBrief {
+  /** The headline over fallback text; empty over a briefing page, which carries its own. */
   readonly title: string;
   /** The briefing page; a map without one reads its menu description, a scene its summary. */
   readonly blocks: readonly HypertextBlock[];
@@ -76,10 +77,9 @@ export function missionGoals(
 }
 
 /**
- * The brief for `page`: the page's own headline is the title when it opens on one, which is then
- * not repeated in the body; otherwise the fallback name heads the fallback description. The authored
- * goals come first; the skirmish rule follows unless the author already wrote it, ticked once the
- * match is won.
+ * The brief for `page`: the page as authored, headline included; without one, the fallback name heads
+ * the fallback description. The authored goals come first; the skirmish rule follows unless the author
+ * already wrote it, ticked once the match is won.
  */
 export function missionBrief(
   source: MissionBriefSource,
@@ -102,9 +102,7 @@ export function missionBrief(
       goals,
     };
   }
-  const [first, ...rest] = blocks;
-  const headed = first?.kind === 'text' && first.style === 'title';
-  return { title: headed ? first.text : source.fallback.title, blocks: headed ? rest : blocks, goals };
+  return { title: '', blocks, goals };
 }
 
 /** What a live brief reads off the world: the sim's mission flags, the match verdict and the tick. */
