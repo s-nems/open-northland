@@ -193,8 +193,9 @@ own body frame onto the ground under itself, sheared toward the light of the ori
 silhouettes. A character's head overlay casts too, cropped to the rows above its body frame so the two
 projections meet instead of darkening the ground twice where they overlap.
 Flat decor (bushes, mushrooms, dead trees) draws its authored silhouette under every decor body in either
-mode. With the switch on it takes the same strength and colour through its own mesh shader, but keeps
-the silhouette's hard edge: the per-frame soft bakes cannot batch into a decor mesh.
+mode. The per-frame soft bakes cannot batch into a decor mesh, so with the switch on its own mesh shader
+applies the same strength and colour and blurs the silhouette with the bake's kernel, reading only
+inside the frame's own texels.
 `shadows=gain:<n>,max:<n>,tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for
 one session; strength and tint compile into the shader, so a change needs a reload, not a live toggle.
 Enhanced sampling also removes device-pixel snapping from camera/character placement and filters

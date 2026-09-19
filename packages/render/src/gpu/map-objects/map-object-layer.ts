@@ -6,7 +6,13 @@ import { worldShadowStyle } from '../pixel-art-registry.js';
 import type { ShadowStyle } from '../shadow-style.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
-import { buildDecorChunk, type DecorChunk, retireDecorQuad, writeAnimatedQuad } from './decor-batch.js';
+import {
+  buildDecorChunk,
+  type DecorChunk,
+  retireDecorQuad,
+  uploadAnimatedBatch,
+  writeAnimatedQuad,
+} from './decor-batch.js';
 import { makeDecorShadowUniforms, writeDecorShadowStyle } from './decor-shadow-shader.js';
 import type { MapObjectSprite } from './map-object-sprite.js';
 import { TallObjectLayer } from './tall-blocks.js';
@@ -190,8 +196,7 @@ export class MapObjectLayer {
             fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
           writeAnimatedQuad(batch, q, obj, watched ? tick : 0);
         }
-        batch.geometry.getBuffer('aPosition').update();
-        batch.geometry.getBuffer('aUV').update();
+        uploadAnimatedBatch(batch);
       }
     }
     this.tall.update(vp, tick, fogStateOfCell, motionTime);

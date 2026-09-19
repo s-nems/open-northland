@@ -1,9 +1,10 @@
 import { Container, type Mesh, Texture, TextureSource } from 'pixi.js';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AtlasFrame } from '../../src/data/sprites/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/index.js';
 import { setWorldShadowStyle } from '../../src/gpu/pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE } from '../../src/gpu/shadow-style.js';
+import { SHADOW_BLUR_PADDING as PAD } from '../../src/gpu/soft-shadow-cache.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { useHeadlessShaderContext } from '../support/shader-context.js';
 import { decorPositions, FRAME_0, FRAME_1, WIDE } from './support.js';
@@ -14,6 +15,9 @@ import { decorPositions, FRAME_0, FRAME_1, WIDE } from './support.js';
  */
 
 const SHADOW_0: AtlasFrame = { x: 16, y: 0, width: 8, height: 4, offsetX: -2, offsetY: -4 };
+const SHADOW_1: AtlasFrame = { x: 32, y: 8, width: 6, height: 2, offsetX: -1, offsetY: -2 };
+const VERTICES_PER_QUAD = 4;
+const FRAME_BOUND_FLOATS = 4;
 /** A silhouette page of its own, sized unlike the body page so a lane mix-up shows in the UVs. */
 const SHADOW_PAGE = new TextureSource({ width: 64, height: 32 });
 const FLOATS_PER_QUAD = 8;
@@ -48,6 +52,14 @@ function shadowPositions(layer: MapObjectLayer): number[] {
   return [...(onlyShadowMesh(layer).geometry as unknown as { positions: Float32Array }).positions];
 }
 
+/** The texel bounds each vertex of the first shadow quad carries. */
+function shadowFrameBounds(layer: MapObjectLayer): number[][] {
+  const data = onlyShadowMesh(layer).geometry.getBuffer('aFrame').data;
+  return Array.from({ length: VERTICES_PER_QUAD }, (_, v) => [
+    ...data.slice(v * FRAME_BOUND_FLOATS, (v + 1) * FRAME_BOUND_FLOATS),
+  ]);
+}
+
 useHeadlessShaderContext();
 afterEach(() => setWorldShadowStyle(null));
 
@@ -56,11 +68,14 @@ describe('MapObjectLayer cast shadows (flat decor)', () => {
     const layer = new MapObjectLayer(new Container(), new TextureCache());
     layer.set([decor(10, [SHADOW_0])]);
 
-    expect(shadowPositions(layer)).toEqual([8, -4, 16, -4, 16, 0, 8, 0]);
+    const [left, top, right, bottom] = [8 - PAD, -4 - PAD, 16 + PAD, PAD];
+    expect(shadowPositions(layer)).toEqual([left, top, right, top, right, bottom, left, bottom]);
     const mesh = onlyShadowMesh(layer);
     expect((mesh.shader?.resources as { uTexture?: unknown } | undefined)?.uTexture).toBe(SHADOW_PAGE);
     const uvs = (mesh.geometry as unknown as { uvs: Float32Array }).uvs;
-    expect([...uvs.slice(0, 6)]).toEqual([0.25, 0, 0.375, 0, 0.375, 0.125]);
+    const [u0, v0, u1, v1] = [(16 - PAD) / 64, -PAD / 32, (24 + PAD) / 64, (4 + PAD) / 32];
+    expect([...uvs.slice(0, 6)]).toEqual([u0, v0, u1, v0, u1, v1]);
+    expect(shadowFrameBounds(layer)).toEqual(new Array(VERTICES_PER_QUAD).fill([16, 0, 24, 4]));
     expect([...decorPositions(layer).slice(0, 2)]).toEqual([10, 0]);
     expect(layer.decorContainer.children[0]?.children).toHaveLength(1);
   });
@@ -80,7 +95,17 @@ describe('MapObjectLayer cast shadows (flat decor)', () => {
     expect(shadowPositions(layer)).toEqual(COLLAPSED);
 
     layer.update(WIDE, 2);
-    expect(shadowPositions(layer).slice(0, 2)).toEqual([8, -4]);
+    expect(shadowPositions(layer).slice(0, 2)).toEqual([8 - PAD, -4 - PAD]);
+  });
+
+  it("follows an animated silhouette's frame bounds from pose to pose", () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([decor(10, [SHADOW_0, SHADOW_1])]);
+    const upload = vi.spyOn(onlyShadowMesh(layer).geometry.getBuffer('aFrame'), 'update');
+
+    layer.update(WIDE, 1);
+    expect(shadowFrameBounds(layer)).toEqual(new Array(VERTICES_PER_QUAD).fill([32, 8, 38, 10]));
+    expect(upload).toHaveBeenCalledOnce();
   });
 
   it('collapses the shadow quad with its removed object and keeps the sibling', () => {
@@ -91,20 +116,28 @@ describe('MapObjectLayer cast shadows (flat decor)', () => {
     layer.remove(removed);
     const positions = shadowPositions(layer);
     expect(positions.slice(0, FLOATS_PER_QUAD)).toEqual(COLLAPSED);
-    expect(positions[FLOATS_PER_QUAD]).toBe(98);
+    expect(positions[FLOATS_PER_QUAD]).toBe(98 - PAD);
   });
 
-  it('shades the silhouettes in the shadow style while the enhancement is on, and as authored once off', () => {
+  it('shades and softens the silhouettes while the enhancement is on, and draws them as authored once off', () => {
     const layer = new MapObjectLayer(new Container(), new TextureCache());
     layer.set([decor(10, [SHADOW_0])]);
-    const style = (): { alpha: number[]; tint: number[] } => {
+    const style = (): { alpha: number[]; tint: number[]; soft: number | undefined } => {
       const resources = shadowMeshes(layer)[0]?.shader?.resources as
-        | { shadowStyle: { uniforms: { uShadowAlpha: Float32Array; uShadowTint: Float32Array } } }
+        | {
+            shadowStyle: {
+              uniforms: { uShadowAlpha: Float32Array; uShadowTint: Float32Array; uShadowSoft: number };
+            };
+          }
         | undefined;
       const uniforms = resources?.shadowStyle.uniforms;
-      return { alpha: [...(uniforms?.uShadowAlpha ?? [])], tint: [...(uniforms?.uShadowTint ?? [])] };
+      return {
+        alpha: [...(uniforms?.uShadowAlpha ?? [])],
+        tint: [...(uniforms?.uShadowTint ?? [])],
+        soft: uniforms?.uShadowSoft,
+      };
     };
-    const authored = { alpha: [1, 1], tint: [0, 0, 0] };
+    const authored = { alpha: [1, 1], tint: [0, 0, 0], soft: 0 };
 
     layer.update(WIDE, 0);
     expect(style()).toEqual(authored);
@@ -112,6 +145,7 @@ describe('MapObjectLayer cast shadows (flat decor)', () => {
     setWorldShadowStyle({ ...DEFAULT_SHADOW_STYLE, alphaGain: 1.5, maxAlpha: 0.5, tint: 0xff8000 });
     layer.update(WIDE, 0);
     expect(style().alpha).toEqual([1.5, 0.5]);
+    expect(style().soft).toBe(1);
     expect(style().tint.map((v) => Math.round(v * 0xff))).toEqual([0xff, 0x80, 0x00]);
 
     setWorldShadowStyle(null);
