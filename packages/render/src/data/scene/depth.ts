@@ -39,6 +39,39 @@ function paintOrderBias(kind: DrawKind, isFlag: boolean): number {
   return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
 }
 
+/**
+ * The original paints a frame in passes, each finished before the next begins: the still landscape
+ * (`GfxStatic` records), then the fish, then one row-sorted pass of everything else. So a fish never
+ * shows over a hull, and nothing standing on a bridge deck is buried by it. Basis: the `GfxStatic` key
+ * of the readable landscape table, whose records all keep their sprite inside their own blocked area,
+ * so nothing can stand behind one. The pass order itself is a lead from the macOS build's draw routine,
+ * not checked against the running original. The waves' pass between the two is not modelled: they draw
+ * with the flat decor, under all three.
+ */
+export type DrawPass = 'ground' | 'fish' | 'sorted';
+
+/** Wider than any map's depth range in either key (the oracle's tops out at `ROW_STRIDE` squared), so a
+ *  pass keeps its own row order and never interleaves with the next. */
+const PASS_BAND = 2 ** 25;
+
+const PASS_DEPTH: Readonly<Record<DrawPass, number>> = {
+  ground: -2 * PASS_BAND,
+  fish: -PASS_BAND,
+  sorted: 0,
+};
+
+/** The depth offset that files a key into `pass`. */
+export function drawPassDepth(pass: DrawPass): number {
+  return PASS_DEPTH[pass];
+}
+
+/** A depth under every pass, for the ground tiles' own band. */
+export const UNDER_EVERY_PASS = -3 * PASS_BAND;
+
+function kindPassDepth(kind: DrawKind): number {
+  return PASS_DEPTH[kind === 'fish' ? 'fish' : 'sorted'];
+}
+
 /** Row stride of the oracle sort key `tileY * ROW_STRIDE + tileX`, valid only while
  *  `tileX < ROW_STRIDE` (real maps are a few hundred tiles wide). */
 const ROW_STRIDE = 4096;
@@ -48,7 +81,7 @@ const ROW_STRIDE = 4096;
 const PAINT_ORDER_EPS = 1 / 16;
 
 export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag = false): number {
-  return tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
+  return kindPassDepth(kind) + tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
 }
 
 /** Screen-px depth added per paint-order step in the live painter key. Above `depthKey`'s max
@@ -57,7 +90,7 @@ export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag
 const SCREEN_PAINT_EPS = 0.25;
 
 export function screenDepth(x: number, y: number, kind: DrawKind, isFlag = false): number {
-  return depthKey(x, y) + paintOrderBias(kind, isFlag) * SCREEN_PAINT_EPS;
+  return kindPassDepth(kind) + depthKey(x, y) + paintOrderBias(kind, isFlag) * SCREEN_PAINT_EPS;
 }
 
 /**

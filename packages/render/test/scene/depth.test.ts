@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../src/data/projection/index.js';
-import { SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth, spriteDepth } from '../../src/data/scene/depth.js';
+import {
+  drawPassDepth,
+  SHADOW_DEPTH_EPS,
+  SIGN_DEPTH_EPS,
+  screenDepth,
+  spriteDepth,
+  UNDER_EVERY_PASS,
+} from '../../src/data/scene/depth.js';
 import type { DrawKind } from '../../src/data/scene/index.js';
 
 const ALL_KINDS = [
@@ -78,5 +85,30 @@ describe('same-anchor depth keys', () => {
     const oneKindStep = screenDepth(0, 0, 'stockpile') - screenDepth(0, 0, 'building');
     expect(SIGN_DEPTH_EPS).toBeGreaterThan(worstTiebreak);
     expect(SIGN_DEPTH_EPS).toBeLessThan(oneKindStep);
+  });
+});
+
+describe('draw passes', () => {
+  /** A map far taller than any shipped one; the oracle key's row stride bounds real maps below it. */
+  const MAX_MAP_TILE_ROWS = 4096;
+
+  it('paints a fish under a ship anchored on any row above it, in both keys', () => {
+    // The fish swims below the hull's anchor row, where a plain row sort would paint it over the hull.
+    expect(spriteDepth(5, MAX_MAP_TILE_ROWS - 1, 'fish')).toBeLessThan(spriteDepth(5, 0, 'vehicle'));
+    expect(screenDepth(340, MAX_MAP_TILE_ROWS * TILE_HALF_H, 'fish')).toBeLessThan(
+      screenDepth(340, 0, 'vehicle'),
+    );
+  });
+
+  it('keeps row order between two fish', () => {
+    expect(spriteDepth(5, 7, 'fish')).toBeLessThan(spriteDepth(5, 8, 'fish'));
+    expect(screenDepth(340, 133, 'fish')).toBeLessThan(screenDepth(340, 134, 'fish'));
+  });
+
+  it('stacks the passes ground, fish, sorted, all above the tile band', () => {
+    const farthestKey = spriteDepth(MAX_MAP_TILE_COLS, MAX_MAP_TILE_ROWS - 1, 'projectile');
+    expect(UNDER_EVERY_PASS + farthestKey).toBeLessThan(drawPassDepth('ground'));
+    expect(drawPassDepth('ground') + farthestKey).toBeLessThan(drawPassDepth('fish'));
+    expect(drawPassDepth('fish') + farthestKey).toBeLessThan(drawPassDepth('sorted'));
   });
 });

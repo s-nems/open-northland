@@ -8,7 +8,7 @@ import {
   screenToCell,
   type Viewport,
 } from '../../data/projection/index.js';
-import { SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
+import { drawPassDepth, SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { castShadowShear, setVegetationShear, vegetationShear } from '../vegetation-sway.js';
@@ -17,7 +17,7 @@ import { activeSway, type MapObjectSprite, objectFrameIndexAt } from './map-obje
 
 /**
  * The tall landscape objects - anything that occludes a settler: pooled sprites in the renderer's shared
- * entity layer, depth-sorted against entities by their feet anchor or `depthY` override. A member's
+ * entity layer, depth-sorted against entities by their feet anchor inside their draw pass. A member's
  * sprite is minted on first visibility, since most of a map's tall objects never scroll into view.
  */
 
@@ -149,7 +149,7 @@ export class TallObjectLayer {
 
   private mint(po: PooledObject): Sprite {
     const obj = po.obj;
-    const depth = depthKey(obj.x, obj.depthY ?? obj.y);
+    const depth = depthKey(obj.x, obj.y) + drawPassDepth(obj.groundPass === true ? 'ground' : 'sorted');
     const sprite = worldBatched(new Sprite());
     sprite.scale.set(obj.scale);
     sprite.zIndex = depth;

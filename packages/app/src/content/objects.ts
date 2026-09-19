@@ -9,8 +9,8 @@ import {
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
 import {
-  deckFarRow,
   drawsAsFlatDecor,
+  drawsInGroundPass,
   landscapeRecordsByName,
   servedAtlasStem,
   servedShadowStem,
@@ -168,8 +168,7 @@ export async function loadMapObjects(
     readonly shadow: MapObjectSprite['shadow'];
     readonly decor: boolean;
     readonly environmentSway: number | undefined;
-    /** The bridge-deck depth row ({@link deckFarRow}), absent for everything that sorts at its anchor. */
-    readonly farRow: number | undefined;
+    readonly groundPass: boolean;
     /** False for the tree logic types (the measured full-bright exemption). */
     readonly shaded: boolean;
     /** The ground cells the object's walk area covers, relative to its node: what
@@ -186,7 +185,7 @@ export async function loadMapObjects(
     if (layer === undefined) return [];
     // Per record: the full state's areas apply whatever state a list draws.
     const walkFootprint = fullStateBlockAreaCells(record.walkBlockAreas);
-    const farRow = deckFarRow(record);
+    const groundPass = drawsInGroundPass(record);
     return (record.frames ?? []).map((stateList) => {
       const paired = pairedStateFrames(layer, stateList.bobIds);
       if (paired === null) return null;
@@ -202,7 +201,7 @@ export async function loadMapObjects(
         shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
         decor: drawsAsFlatDecor(record),
         environmentSway: stillVegetationSway(record, animated, standingVegetation),
-        farRow,
+        groundPass,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
         walkFootprint,
       };
@@ -246,7 +245,7 @@ export async function loadMapObjects(
       scale: 1,
       ...(type.environmentSway !== undefined ? { environmentSway: type.environmentSway } : {}),
       decor: type.decor,
-      ...(type.farRow !== undefined ? { depthY: halfCellToScreen(hx, hy + type.farRow).y } : {}),
+      ...(type.groundPass ? { groundPass: true } : {}),
       ...(lift !== 0 ? { lift } : {}),
       // The map stores no per-object phase, so this gradient is invented here: neighbouring half-cells
       // stay within one frame of each other while the surface avoids pulsing as one stamp.

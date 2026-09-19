@@ -1,6 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { tileToScreen } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
+import { UNDER_EVERY_PASS } from './depth.js';
 import type { DrawItem } from './draw-item.js';
 import { collectSpriteScene } from './sprite-scene.js';
 
@@ -58,9 +59,9 @@ export interface SceneTerrain {
 
 /**
  * Terrain tiles sort among themselves back-to-front by ascending row, in a band strictly below every
- * sprite depth (sprite depths are ≥ 0 world rows), so ground never paints over a sprite.
+ * sprite pass, so ground never paints over a sprite.
  */
-const TILE_DEPTH_BASE = -1_000_000;
+const TILE_DEPTH_BASE = UNDER_EVERY_PASS;
 
 /**
  * Re-view a loaded cell-resolution terrain map as the render shape, asserting nothing the loader's

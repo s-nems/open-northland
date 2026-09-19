@@ -1,20 +1,21 @@
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { depthKey, TILE_HALF_H } from '../../src/data/projection/index.js';
+import { depthKey } from '../../src/data/projection/index.js';
+import { drawPassDepth, screenDepth } from '../../src/data/scene/index.js';
 import type { AtlasFrame } from '../../src/data/sprites/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { FRAME_0, tallSprites, WIDE } from './support.js';
 
 /**
- * A tall map object sorts at its feet anchor, except one settlers stand on: a bridge deck carries a
- * `depthY` override so everything on the span paints in front of it, and its shadow follows the same row.
+ * A tall map object sorts at its feet anchor, except a still one: it draws in the ground pass, under
+ * every entity whatever its row, so whoever stands on a bridge deck paints over it.
  */
 
 const SHADOW_0: AtlasFrame = { x: 16, y: 0, width: 8, height: 4, offsetX: -2, offsetY: -4 };
 const ANCHOR = { x: 40, y: 200 };
 
-function tallObject(depthY?: number): MapObjectSprite {
+function tallObject(groundPass = false): MapObjectSprite {
   return {
     ...ANCHOR,
     source: Texture.WHITE.source,
@@ -23,7 +24,7 @@ function tallObject(depthY?: number): MapObjectSprite {
     scale: 1,
     decor: false,
     phase: 0,
-    ...(depthY !== undefined ? { depthY } : {}),
+    ...(groundPass ? { groundPass } : {}),
   };
 }
 
@@ -44,14 +45,14 @@ describe('MapObjectLayer sort row (tall objects)', () => {
     expect(shadow).toBeLessThan(body);
   });
 
-  it('sorts a deck object at its override row instead, shadow included', () => {
-    // A deck whose far row sits three half-cell rows behind the anchor.
-    const farRowY = ANCHOR.y - (3 * TILE_HALF_H) / 2;
-    const { body, shadow } = sortedPair(tallObject(farRowY));
-    expect(body).toBe(depthKey(ANCHOR.x, farRowY));
+  it('files a still object under an entity on any row, shadow included, keeping its own row order', () => {
+    const { body, shadow } = sortedPair(tallObject(true));
+    expect(body).toBe(depthKey(ANCHOR.x, ANCHOR.y) + drawPassDepth('ground'));
     expect(shadow).toBeLessThan(body);
-    // Under the body but inside its own row, so no sprite a genuine row apart can slip between them.
-    expect(shadow).toBeGreaterThan(depthKey(ANCHOR.x, farRowY - 1));
+    // A settler far up the map, on the deck's far end, still paints over it.
+    expect(body).toBeLessThan(screenDepth(ANCHOR.x, 0, 'settler'));
+    // Two still objects keep their row order among themselves.
+    expect(body).toBeGreaterThan(depthKey(ANCHOR.x, ANCHOR.y - 1) + drawPassDepth('ground'));
   });
 
   it('draws a hill object at its scaled, offset, lifted feet but sorts it at the pre-lift row', () => {

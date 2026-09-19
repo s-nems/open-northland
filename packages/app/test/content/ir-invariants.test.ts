@@ -9,7 +9,6 @@ import {
   VIKING_TRIBE,
 } from '../../src/content/building-gfx/index.js';
 import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
-import { BRIDGE_EDIT_GROUP } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
@@ -28,6 +27,8 @@ import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './h
 // Goods every playable Cultures economy starts on (stable string ids across mod versions); their
 // absence means the extraction dropped a core table, not that the mod changed.
 const CORE_GOOD_IDS = ['wood', 'stone', 'wheat'] as const;
+/** The `EditName` stem of the original's bridge records (`bridge wood 01`, `bridge stone`). */
+const BRIDGE_NAME_PREFIX = 'bridge ';
 
 // Mushroom gathering remains uncalibrated; any additional zero-balance good must fail.
 const KNOWN_UNCALIBRATED_GOOD_IDS: readonly string[] = ['mushroom'];
@@ -211,17 +212,24 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('still ships bridges in the edit group the draw join keys on', () => {
-    // `deckFarRow` sorts a deck at its far row so settlers crossing it are not buried; a pipeline
-    // rename or a dropped `editGroups` lane would silently paint every span over its traffic, with
-    // the synthetic fixtures still green.
+  it('still ships the bridge decks as still records', () => {
+    // The still-landscape pass draws `GfxStatic` records under every entity, which is what keeps a
+    // deck from burying the settlers crossing it; a pipeline regression in that lane would pass every
+    // synthetic fixture.
     const ir = rawIrUnderTest() as {
-      landscapeGfx?: readonly { editGroups?: readonly string[]; walkBlockAreas?: readonly unknown[] }[];
+      landscapeGfx?: readonly {
+        editName?: string;
+        isStatic?: boolean;
+        walkBlockAreas?: readonly (readonly number[])[];
+      }[];
     };
-    const bridges = (ir.landscapeGfx ?? []).filter((g) => g.editGroups?.includes(BRIDGE_EDIT_GROUP));
-    expect(bridges.length, `no landscapeGfx row in '${BRIDGE_EDIT_GROUP}'`).toBeGreaterThan(0);
-    // Vacuity guard: the sort row is read off the walk area, so a deck with none is not a deck.
-    expect(bridges.some((g) => (g.walkBlockAreas?.length ?? 0) > 0)).toBe(true);
+    const rows = ir.landscapeGfx ?? [];
+    const bridges = rows.filter((g) => g.editName?.startsWith(BRIDGE_NAME_PREFIX) === true);
+    expect(bridges.length, `no landscapeGfx row named '${BRIDGE_NAME_PREFIX}*'`).toBeGreaterThan(0);
+    for (const bridge of bridges) {
+      expect(bridge.isStatic, `${bridge.editName} left the still-landscape pass`).toBe(true);
+      expect(bridge.walkBlockAreas?.length ?? 0, `${bridge.editName} lost its deck`).toBeGreaterThan(0);
+    }
   });
 
   it('the upgradeTarget lane carries the known level chains and never chains a wonder', async () => {

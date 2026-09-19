@@ -4,7 +4,7 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
 /**
  * One placed landscape object from a decoded map's `objects` layer, fully resolved by the app.
  * `decor` objects are flat ground decor batched into per-chunk meshes under the entity sprites; tall
- * objects depth-sort against entities by their feet anchor, or by {@link depthY}.
+ * objects depth-sort against entities by their feet anchor, unless they are {@link groundPass}.
  */
 export interface MapObjectSprite {
   /** World-space feet anchor (px), already projected from the `emla` half-cell by the app. */
@@ -32,10 +32,9 @@ export interface MapObjectSprite {
    * on a flat map or when the app has no elevation lane.
    */
   readonly lift?: number;
-  /** World-`y` (px) this object's sort key uses instead of the feet anchor {@link y}; the drawn
-   *  position, cull and fog lookup still use the anchor. Set for an object settlers stand on rather
-   *  than beside, such as a bridge deck, which must not sort at the row it is anchored to. */
-  readonly depthY?: number;
+  /** Whether a tall object draws in the still-landscape pass: under every entity and animated object,
+   *  in row order among its own kind. A bridge deck is one, so whoever crosses it paints over it. */
+  readonly groundPass?: boolean;
   /**
    * The baked `embr` luminance multiplier over the ground this object covers, 1 being neutral; absent on
    * an unshaded map and for a kind the app exempts. Decor batches apply the full range unclamped; a tall

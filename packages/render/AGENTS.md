@@ -27,6 +27,15 @@ weakening culling.
 Isometric depth decisions must be stable for the same snapshot. Keep projection, pre-lift sorting,
 anchors, and cull extents in pure tested helpers where possible.
 
+The sorted layer paints in passes, each a depth band under the next (`data/scene/depth.ts`): the still
+landscape, then fish, then everything else by feet row. A landscape record joins the still pass on
+`GfxStatic` alone. In CnMod 1.3.2 that is safe for every such record: across the 98 that block walking,
+the sprite's top stays within 19 px (one half-cell row) of the first free row behind its
+`LogicWalkBlockArea`, so nothing can stand behind one, while 227 of the 297 animated blocking records
+rise above theirs. Re-measure that from `ir.json` and the served atlases before trusting a new input.
+A new "what draws over what" case picks a pass or a same-anchor paint step; it does not get its own
+sort-row override.
+
 Team colour is a palette-band remap, not a whole-sprite tint. Keep custom palette rendering limited
 to assets that need it because it can reduce batching.
 

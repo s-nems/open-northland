@@ -1,9 +1,4 @@
-import {
-  type BuildingFootprint,
-  fullStateBlockAreaCells,
-  type GfxInHouseProgram,
-  UNLOADED_GOOD_TYPE,
-} from '@open-northland/data';
+import { type BuildingFootprint, type GfxInHouseProgram, UNLOADED_GOOD_TYPE } from '@open-northland/data';
 import type { HolyFireLookup, InHouseProgramLookup, SpriteAtlas } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { canonicalJobType } from '../../game/sandbox/ids/index.js';
@@ -17,19 +12,6 @@ export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteNa
   if (bmd === undefined || bmd.trim() === '') return undefined;
   if (record.paletteName === undefined || record.paletteName.trim() === '') return undefined;
   return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
-}
-
-/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`). A
- *  name-pinned selector, not a data flag: no extracted lane distinguishes a bridge (`logicType` is `void`
- *  for most records carrying a walk area). `ice bridge` sits in an ice-wall group and is left out by that
- *  same judgement, not by evidence. */
-export const BRIDGE_EDIT_GROUP = 'misc_bridges';
-const BRIDGE_GROUP_KEY = BRIDGE_EDIT_GROUP.toLowerCase();
-
-/** Whether a landscape record is one of the original's bridges. Matched case-insensitively: the lane
- *  ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`). */
-function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
-  return record.editGroups?.some((g) => g.toLowerCase() === BRIDGE_GROUP_KEY) === true;
 }
 
 /** Whether a record draws as flat ground decor, below every entity: it carries no
@@ -50,6 +32,13 @@ export function landscapeTypeIdsNamed(
   return ids;
 }
 
+/** Whether a record draws in the still-landscape pass, under every entity: `GfxStatic`, which the
+ *  original sets only on records whose sprite stays inside their own blocked area (rocks, mine mouths,
+ *  ruins, bridge decks), so nothing can stand behind one and whatever stands on one paints over it. */
+export function drawsInGroundPass(record: Pick<LandscapeGfxRow, 'isStatic'>): boolean {
+  return record.isStatic === true;
+}
+
 /** The `landscapeGfx` rows by `EditName`, the key a map's `objects` lane joins on; the first row of a
  *  repeated name wins. */
 export function landscapeRecordsByName(ir: ContentIr): ReadonlyMap<string, LandscapeGfxRow> {
@@ -58,20 +47,6 @@ export function landscapeRecordsByName(ir: ContentIr): ReadonlyMap<string, Lands
     if (row.editName !== undefined && !byName.has(row.editName)) byName.set(row.editName, row);
   }
   return byName;
-}
-
-/**
- * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
- * deck), `undefined` for every other record. Settlers cross a bridge's span, so sorting at the object's
- * own row buries everyone on the far half of it. Approximation: with one sort row for a deck up to 13
- * half-rows long, anything anchored between the far row and the bridge's own row paints over the deck.
- */
-export function deckFarRow(
-  record: Pick<LandscapeGfxRow, 'walkBlockAreas' | 'editGroups'>,
-): number | undefined {
-  if (!isBridgeRecord(record)) return undefined;
-  const rows = fullStateBlockAreaCells(record.walkBlockAreas).map((c) => c.dy);
-  return rows.length === 0 ? undefined : Math.min(...rows);
 }
 
 /** The served `/bobs/` stem of a shadow `.bmd`'s atlas (`<shadow-basename-minus-.bmd>.shadow`, the

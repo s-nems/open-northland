@@ -1,5 +1,5 @@
 /** The pure scene-building layer: no Pixi, no canvas, no GPU. */
-export { SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth } from './depth.js';
+export { drawPassDepth, SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth } from './depth.js';
 export type {
   DrawItem,
   DrawKind,
