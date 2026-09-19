@@ -336,7 +336,7 @@ describe('createMissionWindow', () => {
       missionHuman: () => null,
       now: () => 0,
     });
-    const layout = layoutMissionWindow(SCREEN, null);
+    const layout = layoutMissionWindow(SCREEN, null, buildToolPanelLayout(1).sheetArea(SCREEN));
     expect(window.mapViews()).toEqual([]);
     window.toggle();
     const vp = layout.pageViewport;
