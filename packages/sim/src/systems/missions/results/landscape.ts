@@ -1,8 +1,8 @@
 import { landscapeTopologyRevision } from '../../../components/landscape.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { LandscapeRemovalGroup, NodeId } from '../../../nav/terrain/index.js';
-import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { translatedCells } from '../../footprint/geometry.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
 import {
   placementWalkCells,
   removeLandscapes,
@@ -68,7 +68,8 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
   // Only the placement being laid can close a node; a removal only opens them. Which of its cells
   // were open is read before the edit, so replacing an object with one of the same shape closes none,
   // whether the script replaces it in one result or removes it and lays it again in the same pass.
-  const freed = (pass.landscapeFreed ??= new Set());
+  pass.landscapeFreed ??= new Set();
+  const freed = pass.landscapeFreed;
   const openBefore =
     op.opcode === 'SetLandscape'
       ? openCellsOf(pass, op.point, op.landscape).filter((node) => !freed.has(node))

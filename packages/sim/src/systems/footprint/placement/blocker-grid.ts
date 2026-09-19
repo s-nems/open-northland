@@ -34,9 +34,9 @@ interface StampedSlots {
   readonly exclusion: readonly number[];
 }
 
-/** The scripted landscape layer the grid currently holds: the blocks object it was stamped from (a script
- *  topology edit mints a new one), plus the forbidden nodes, whose Map is edited in place and so is
- *  captured against its own revision. */
+/** The scripted landscape layer the grid currently holds: the blocks view it last applied (a script
+ *  topology edit mints the next one, naming the cells that changed), plus the forbidden nodes, whose
+ *  Map is edited in place and so is captured against its own revision. */
 interface LandscapeLayer {
   readonly blocks: LandscapeBlocks;
   readonly forbidden: readonly number[];
@@ -47,10 +47,10 @@ const STAMP = 1;
 const WITHDRAW = -1;
 
 /**
- * The per-world incremental grid: the journal-replayed blocker stores plus the landscape layer, which no
- * journal covers and which is re-derived wholesale on a revision change. The grid gates placement commands
- * and AI build decisions, so the registered `verifyCaches` verifier proves the held counts identical to a
- * full {@link stampBlockerGrid}.
+ * The per-world incremental grid: the journal-replayed blocker stores plus the landscape layer, replayed
+ * from the change each landscape view records. The grid gates placement commands and AI build decisions,
+ * so the registered `verifyCaches` verifier proves the held counts identical to a full
+ * {@link stampBlockerGrid}.
  */
 interface IncrementalGrid {
   readonly content: ContentSet;
@@ -85,6 +85,16 @@ function applyLandscapeLayer(grid: PlacementGrid, layer: LandscapeLayer, delta: 
   addCounts(grid.obstacle, layer.blocks.walk, delta);
   addCounts(grid.exclusion, layer.blocks.build, delta);
   addCounts(grid.obstacle, layer.forbidden, delta);
+}
+
+/** Replay the landscape views minted after `held`, cell by cell, so a script edit costs its footprint. */
+function applyLandscapeChanges(grid: PlacementGrid, held: LandscapeBlocks): void {
+  for (let view = held.next; view !== undefined; view = view.next) {
+    for (const change of view.changes) {
+      const counts = change.channel === 'walk' ? grid.obstacle : grid.exclusion;
+      addCounts(counts, [change.node], change.entered ? STAMP : WITHDRAW);
+    }
+  }
 }
 
 function liveLandscapeLayer(world: World, terrain: TerrainGraph): LandscapeLayer {
@@ -141,15 +151,22 @@ function rebuildGrid(
  *  demands a full rebuild (a journal gap). */
 function catchUp(world: World, state: IncrementalGrid): boolean {
   if (!state.journal.catchUp()) return false;
-  if (!landscapeLayerFresh(world, state)) {
-    applyLandscapeLayer(state.grid, state.landscape, WITHDRAW);
-    state.landscape = liveLandscapeLayer(world, state.terrain);
-    applyLandscapeLayer(state.grid, state.landscape, STAMP);
+  if (landscapeLayerFresh(world, state)) return true;
+  const held = state.landscape;
+  const blocks = landscapeBlocks(world, state.terrain);
+  if (blocks !== held.blocks) applyLandscapeChanges(state.grid, held.blocks);
+  const edits = landscapeEditState(world);
+  let forbidden = held.forbidden;
+  if (edits.forbiddenRevision !== held.forbiddenRevision) {
+    addCounts(state.grid.obstacle, held.forbidden, WITHDRAW);
+    forbidden = [...edits.forbidden.keys()];
+    addCounts(state.grid.obstacle, forbidden, STAMP);
   }
+  state.landscape = { blocks, forbidden, forbiddenRevision: edits.forbiddenRevision };
   return true;
 }
 
-/** Whether the landscape layer's two inputs still hold: `landscapeBlocks` mints a new object per script
+/** Whether the landscape layer's two inputs still hold: `landscapeBlocks` mints a new view per script
  *  topology edit, and the forbidden nodes carry their own revision. */
 function landscapeLayerFresh(world: World, state: IncrementalGrid): boolean {
   return (

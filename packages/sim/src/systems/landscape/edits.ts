@@ -114,7 +114,8 @@ function createPlacementBacking(
 /** The cells a placement of `type` will block for walking, as {@link createPlacementBacking} and the
  *  landscape layer stamp them: a chest carries its record's footprint, a goods heap and a bush none. */
 export function placementWalkCells(content: ContentSet, type: ScriptLandscapeType): readonly FootprintCell[] {
-  if (type.chest !== undefined) return chestFootprint(chestRecord(content, type.chest.kind, type.chest.gfxIndex)).walk;
+  if (type.chest !== undefined)
+    return chestFootprint(chestRecord(content, type.chest.kind, type.chest.gfxIndex)).walk;
   if (type.good !== undefined) return [];
   if (type.resource === undefined && type.bushGfxIndex !== undefined) return [];
   return type.walk;

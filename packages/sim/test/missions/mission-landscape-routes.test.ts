@@ -132,7 +132,13 @@ describe('script landscape route invalidation', () => {
     });
     const pass = passOf(sim);
     editScriptedLandscape(pass, 0, { opcode: 'RemoveLandscape', point: POINT });
-    editScriptedLandscape(pass, 0, { opcode: 'SetLandscape', point: POINT, landscape: 1, level: 0, flag: false });
+    editScriptedLandscape(pass, 0, {
+      opcode: 'SetLandscape',
+      point: POINT,
+      landscape: 1,
+      level: 0,
+      flag: false,
+    });
     expect(sim.world.has(e, PathFollow)).toBe(true);
     expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(terrain.nodeAt(9, 8))).toBe(true);
     // The next pass starts afresh: laying the wall one point over closes (10,8), which was open.

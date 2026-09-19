@@ -3,6 +3,7 @@ import { LandscapeResource, Resource, ResourceFootprint, Stockpile } from '../..
 import { landscapeEditState } from '../../src/components/landscape.js';
 import { exportSaveGame, findPath, parseSaveGame, restoreSimulation, Simulation } from '../../src/index.js';
 import { dynamicBlockOverlay, placementProbe, routeRegions } from '../../src/systems/footprint/index.js';
+import { placementGridRebuilds } from '../../src/systems/footprint/placement/blocker-grid.js';
 import { createResourceNode } from '../../src/systems/footprint/resources.js';
 import {
   removeLandscapes,
@@ -37,6 +38,8 @@ describe('script landscape state and blockers', () => {
     const ctx = ctxOf(sim);
     // The authored wall at POINT covers (8,8) and (9,8); a wall one point left covers (7,8) and (8,8).
     const shared = terrain.nodeAt(8, 8);
+    // Built now, so the verifier at the end proves the grid replayed every change below.
+    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(10, 8)).toBe(false);
     expect(setLandscape(sim.world, ctx, { hx: 7, hy: 8 }, 1, 0)).toBe(true);
     const doubled = landscapeBlocks(sim.world, terrain);
     expect(doubled.walk.has(shared)).toBe(true);
@@ -45,11 +48,21 @@ describe('script landscape state and blockers', () => {
     expect(halved.walk.has(shared)).toBe(true);
     expect(halved.walk.has(terrain.nodeAt(9, 8))).toBe(false);
     removeLandscapes(sim.world, terrain, { hx: 7, hy: 8 }, 0);
-    expect(landscapeBlocks(sim.world, terrain).walk.has(shared)).toBe(false);
-    // Each edit mints its own view over the same counts; an older one keeps the cells it was given.
-    expect(halved).not.toBe(doubled);
-    expect(doubled.walk.has(terrain.nodeAt(9, 8))).toBe(true);
+    const cleared = landscapeBlocks(sim.world, terrain);
+    expect(cleared.walk.has(shared)).toBe(false);
+    // Each edit mints a view naming only the cells whose blocking changed, chained from the one before.
+    expect(doubled.next).toBe(halved);
+    expect(halved.next).toBe(cleared);
+    expect(halved.changes.filter((c) => c.channel === 'walk')).toEqual([
+      { node: terrain.nodeAt(9, 8), channel: 'walk', entered: false },
+    ]);
+    expect(cleared.changes.filter((c) => c.channel === 'walk')).toEqual([
+      { node: terrain.nodeAt(7, 8), channel: 'walk', entered: false },
+      { node: shared, channel: 'walk', entered: false },
+    ]);
     expect(dynamicBlockOverlay(sim.world, ctx, terrain).has(shared)).toBe(false);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(10, 8)).toBe(true);
+    expect(placementGridRebuilds(sim.world)).toBe(1);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

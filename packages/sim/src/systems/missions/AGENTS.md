@@ -102,3 +102,9 @@ alone, or it rebuilds the object index and re-clones its matches every pass. A m
 several `CheckMission` goals is evaluated once per probe, which also redraws its `RandomTimeGone`
 spans; the original does the same, so do not add a per-pass memo without saying what it does to the
 RNG stream.
+
+A landscape result costs the placements within its area and their cells, never the map: the live
+placements are looked up by node, the collision layer and the placement grid take each edit as a
+delta, and the route check reads only the laid placement's cells. Maps loop such results every pass
+(a pressure plate is removed and laid again every three seconds), so a map-sized read here is a
+stall the player sees on that cadence.

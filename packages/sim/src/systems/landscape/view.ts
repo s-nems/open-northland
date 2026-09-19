@@ -107,7 +107,6 @@ function removedIds(world: World): ReadonlySet<number> {
 /** Whether the placement still stands: not removed by a script, and its backing resource, if any, not
  *  yet reaped. `resources` is read lazily, so a decor-only query never pays for the resource index. */
 function standing(
-  world: World,
   placement: ScriptLandscapePlacement,
   removed: ReadonlySet<number>,
   resources: () => ReadonlyMap<number, readonly Entity[]>,
@@ -145,7 +144,7 @@ export function landscapesWithin(
       const bucket = authored.atNode.get(terrain.nodeAt(hx, hy));
       if (bucket === undefined || hexDistance({ hx, hy }, point) > range) continue;
       for (const placement of bucket) {
-        if (standing(world, placement, removed, resources)) found.push(placement);
+        if (standing(placement, removed, resources)) found.push(placement);
       }
     }
   }
@@ -153,18 +152,30 @@ export function landscapesWithin(
     found.sort((a, b) => (authored.order.get(a.id) ?? 0) - (authored.order.get(b.id) ?? 0));
   }
   for (const placement of landscapeEditState(world).added) {
-    if (hexDistance(placement, point) <= range && standing(world, placement, removed, resources)) {
+    if (hexDistance(placement, point) <= range && standing(placement, removed, resources)) {
       found.push(placement);
     }
   }
   return found;
 }
 
+export interface LandscapeBlockChange {
+  readonly node: NodeId;
+  readonly channel: 'walk' | 'build';
+  /** True when the cell became blocked, false when its last placement went. */
+  readonly entered: boolean;
+}
+
 export interface LandscapeBlocks {
-  readonly revision: number;
   readonly terrain: TerrainGraph;
+  /** Live: every view of one world shares a set per channel, so a held view reads the current cells. */
   readonly walk: ReadonlySet<NodeId>;
   readonly build: ReadonlySet<NodeId>;
+  /** The cells that entered or left the sets since the previous view. */
+  readonly changes: readonly LandscapeBlockChange[];
+  /** The view the next topology edit minted, so a holder of an older one replays every change since
+   *  rather than re-reading the whole layer. */
+  next?: LandscapeBlocks;
 }
 
 /**
@@ -175,6 +186,8 @@ interface BlockCounts {
   readonly terrain: TerrainGraph;
   readonly walk: Map<NodeId, number>;
   readonly build: Map<NodeId, number>;
+  readonly walkCells: Set<NodeId>;
+  readonly buildCells: Set<NodeId>;
   /** The authored ids already withdrawn, and the script placements already stamped. */
   readonly withdrawn: Set<number>;
   readonly stamped: Map<number, ScriptLandscapePlacement>;
@@ -184,29 +197,34 @@ interface BlockCounts {
 }
 const blockCounts = new WeakMap<World, BlockCounts>();
 
-function addCount(counts: Map<NodeId, number>, node: NodeId, delta: number): void {
-  const next = (counts.get(node) ?? 0) + delta;
-  if (next > 0) counts.set(node, next);
-  else counts.delete(node);
-}
-
 function countPlacement(
   counts: BlockCounts,
   types: ReadonlyMap<number, ScriptLandscapeType>,
   placement: ScriptLandscapePlacement,
-  delta: number,
+  delta: 1 | -1,
+  changes: LandscapeBlockChange[] | null,
 ): void {
   const type = types.get(placement.typeId);
   if (type === undefined) return;
   const terrain = counts.terrain;
-  for (const [cells, target] of [
-    [type.walk, counts.walk],
-    [type.build, counts.build],
+  for (const [channel, cells, held, members] of [
+    ['walk', type.walk, counts.walk, counts.walkCells],
+    ['build', type.build, counts.build, counts.buildCells],
   ] as const) {
     for (const cell of cells) {
       const hx = placement.hx + footprintCellDx(placement.hy, cell);
       const hy = placement.hy + cell.dy;
-      if (terrain.inBounds(hx, hy)) addCount(target, terrain.nodeAt(hx, hy), delta);
+      if (!terrain.inBounds(hx, hy)) continue;
+      const node = terrain.nodeAt(hx, hy);
+      const next = (held.get(node) ?? 0) + delta;
+      if (next > 0) held.set(node, next);
+      else held.delete(node);
+      const entered = next === 1 && delta === 1;
+      const left = next === 0;
+      if (!entered && !left) continue;
+      if (entered) members.add(node);
+      else members.delete(node);
+      changes?.push({ node, channel, entered });
     }
   }
 }
@@ -218,18 +236,22 @@ function countsBlocks(placement: ScriptLandscapePlacement): boolean {
 }
 
 function freshCounts(world: World, terrain: TerrainGraph): BlockCounts {
+  const walkCells = new Set<NodeId>();
+  const buildCells = new Set<NodeId>();
   const counts: BlockCounts = {
     terrain,
     walk: new Map(),
     build: new Map(),
+    walkCells,
+    buildCells,
     withdrawn: new Set(),
     stamped: new Map(),
     revision: -1,
-    view: { revision: -1, terrain, walk: new Set(), build: new Set() },
+    view: { terrain, walk: walkCells, build: buildCells, changes: [] },
   };
   const authored = authoredLandscapes(terrain);
   for (const placement of terrain.landscapes?.placements ?? []) {
-    if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, 1);
+    if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, 1, null);
   }
   blockCounts.set(world, counts);
   return counts;
@@ -241,37 +263,40 @@ function freshCounts(world: World, terrain: TerrainGraph): BlockCounts {
 function catchUpCounts(world: World, counts: BlockCounts): void {
   const state = landscapeEditState(world);
   const authored = authoredLandscapes(counts.terrain);
+  const changes: LandscapeBlockChange[] = [];
   for (const id of state.removed) {
     if (counts.withdrawn.has(id)) continue;
     counts.withdrawn.add(id);
     const placement = authored.byId.get(id);
-    if (placement !== undefined && countsBlocks(placement)) countPlacement(counts, authored.types, placement, -1);
+    if (placement !== undefined && countsBlocks(placement)) {
+      countPlacement(counts, authored.types, placement, -1, changes);
+    }
   }
   const added = new Set<number>();
   for (const placement of state.added) {
     added.add(placement.id);
     if (counts.stamped.has(placement.id)) continue;
     counts.stamped.set(placement.id, placement);
-    if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, 1);
+    if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, 1, changes);
   }
   for (const [id, placement] of counts.stamped) {
     if (added.has(id)) continue;
     counts.stamped.delete(id);
-    if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, -1);
+    if (countsBlocks(placement)) countPlacement(counts, authored.types, placement, -1, changes);
   }
   counts.revision = state.topologyRevision;
-  // A fresh set per revision: the placement grid withdraws the view it stamped before stamping the
-  // next, so a view must keep the cells it was minted with.
-  counts.view = {
-    revision: state.topologyRevision,
+  const view: LandscapeBlocks = {
     terrain: counts.terrain,
-    walk: new Set(counts.walk.keys()),
-    build: new Set(counts.build.keys()),
+    walk: counts.walkCells,
+    build: counts.buildCells,
+    changes,
   };
+  counts.view.next = view;
+  counts.view = view;
 }
 
-/** The nodes the standing landscapes block for walking and building. A new object per script
- *  topology edit, holding only that edit's difference over the previous one. */
+/** The nodes the standing landscapes block for walking and building: a new view per script topology
+ *  edit over one world's live sets, each view naming the cells it changed. */
 export function landscapeBlocks(world: World, terrain: TerrainGraph): LandscapeBlocks {
   const held = blockCounts.get(world);
   const counts = held?.terrain === terrain ? held : freshCounts(world, terrain);
@@ -298,9 +323,7 @@ export function landscapeEdits(world: World, terrain: TerrainGraph | undefined):
   return {
     revision: landscapeRevision(world),
     removed: [...removed].sort((a, b) => a - b),
-    added: state.added
-      .filter((p) => p.resourceBacked !== true || resources.has(p.id))
-      .map((p) => ({ ...p })),
+    added: state.added.filter((p) => p.resourceBacked !== true || resources.has(p.id)).map((p) => ({ ...p })),
     tints: [...state.tints].map(([node, value]) => ({
       hx: terrain.xOf(node),
       hy: terrain.yOf(node),
