@@ -215,10 +215,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     }
   };
 
-  const onContextMenu = (e: MouseEvent): void => {
-    e.preventDefault(); // let the right button be a move order, not the browser menu
-  };
-
   const onKeyDown = (e: KeyboardEvent): void => {
     const groupCommand = isTypingTarget(e.target) ? null : controlGroupCommand(e, opts.bindings);
     if (groupCommand !== null) {
@@ -265,7 +261,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
-  canvas.addEventListener('contextmenu', onContextMenu);
   window.addEventListener('keydown', onKeyDown);
 
   return {
@@ -296,7 +291,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('keydown', onKeyDown);
       orders.dispose();
       marquee.dispose();

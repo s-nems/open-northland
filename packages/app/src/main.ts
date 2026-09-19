@@ -7,5 +7,8 @@ import { runEntry } from './launch.js';
  */
 logBootHeader();
 installCrashCapture();
+// The right button is a game button everywhere, DOM overlays included: a right press that opens the
+// school dialog fires `contextmenu` on the dialog, not the canvas. Capture keeps a stopped event covered.
+window.addEventListener('contextmenu', (e) => e.preventDefault(), { capture: true });
 // Unhandled by design: installCrashCapture's unhandledrejection hook owns the reporting.
 void runEntry(new URLSearchParams(window.location.search));
