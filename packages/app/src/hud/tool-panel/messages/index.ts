@@ -13,6 +13,7 @@ import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
+import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
 import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
@@ -37,7 +38,7 @@ const PLAYER_STRING_ID = 361;
 const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
 /** The building body's canvas box on a note (design px): the thumbnail's content height at rest;
  *  `object-fit: contain` fits it to whatever the padding leaves. */
-const NOTICE_THUMB_BOX_PX = 44;
+const NOTICE_THUMB_BOX_PX = 40;
 
 /** Where a note's press centres the view: the subject while it lives, else the spot it was raised at. */
 export interface MessageTarget {
@@ -168,7 +169,7 @@ function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
     level: m.priority,
     short: m.text.short,
     full: m.text.full,
-    thumb: noticeThumb(m.type, m.subject, buildingTypeIn(snapshot)),
+    thumb: noticeThumb(m, buildingTypeIn(snapshot)),
     canGo: m.subject !== null || m.at !== null,
     fresh: snapshot.tick - m.tick < FRESH_NOTE_TICKS,
   };
@@ -181,11 +182,14 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
   const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
+  const art = createNoticeArt();
   const column = createNoticeColumn({
     plane: deps.plane,
     bottomInset: deps.bottomInset,
     paintBuilding: (canvas, typeId) =>
       deps.buildingThumbs?.paint(canvas, typeId, NOTICE_THUMB_BOX_PX) === true,
+    paintGlyph: (canvas, glyph, seat, onFail) =>
+      art?.paint(canvas, glyph, noticeTint(seat, deps.playerColourOf), onFail) === true,
     onLevel: (level) => {
       ctx.cue('confirm');
       feed.setLevel(level);

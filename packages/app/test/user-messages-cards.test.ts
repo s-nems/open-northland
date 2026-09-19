@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { fanOverlap, noticeThumb, orderNotes } from '../src/hud/tool-panel/messages/cards.js';
 import {
   type MessagePriorityLevel,
+  type MessageSubject,
   USER_MESSAGE_TYPE,
   type UserMessage,
+  type UserMessageType,
 } from '../src/hud/tool-panel/messages/types.js';
 
 function note(id: number, priority: MessagePriorityLevel, tick: number): UserMessage {
@@ -24,6 +26,10 @@ function note(id: number, priority: MessagePriorityLevel, tick: number): UserMes
 
 const noBuilding = (): number | undefined => undefined;
 
+function raised(type: UserMessageType, subject: MessageSubject | null, about: number | null = null) {
+  return { type, subject, about };
+}
+
 describe('notice cards', () => {
   it('orders the weightiest first and the newest within a weight', () => {
     const ordered = orderNotes([note(1, 0, 10), note(2, 2, 5), note(3, 1, 20), note(4, 2, 9), note(5, 2, 9)]);
@@ -33,60 +39,84 @@ describe('notice cards', () => {
 
   it('draws a live settler subject and swaps in the swords for an attacked one', () => {
     const settler = { kind: 'settler', entity: 7 } as const;
-    expect(noticeThumb(USER_MESSAGE_TYPE.hungry, settler, noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.hungry, settler), noBuilding)).toEqual({
       kind: 'settler',
       entity: 7,
     });
-    expect(noticeThumb(USER_MESSAGE_TYPE.humanAttacked, settler, noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanAttacked, settler), noBuilding)).toEqual({
       kind: 'glyph',
       glyph: 'swords',
       dim: false,
+      seat: null,
     });
   });
 
   it('pictures a finished or upgraded building by its body while its type is known, else the house glyph', () => {
     const building = { kind: 'building', entity: 3 } as const;
     const typeOf = (entity: number): number | undefined => (entity === 3 ? 27 : undefined);
-    expect(noticeThumb(USER_MESSAGE_TYPE.houseFinished, building, typeOf)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), typeOf)).toEqual({
       kind: 'building',
       typeId: 27,
     });
-    expect(noticeThumb(USER_MESSAGE_TYPE.houseUpgraded, building, typeOf)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseUpgraded, building), typeOf)).toEqual({
       kind: 'building',
       typeId: 27,
     });
-    expect(noticeThumb(USER_MESSAGE_TYPE.houseFinished, building, noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), noBuilding)).toEqual({
       kind: 'glyph',
       glyph: 'house',
       dim: false,
+      seat: null,
     });
-    expect(noticeThumb(USER_MESSAGE_TYPE.houseAttacked, building, typeOf)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseAttacked, building), typeOf)).toEqual({
       kind: 'glyph',
       glyph: 'swords',
       dim: false,
+      seat: null,
     });
   });
 
   it('shows a glyph for a subjectless row, dim for a death', () => {
-    expect(noticeThumb(USER_MESSAGE_TYPE.humanDied, null, noBuilding)).toEqual({
+    // A death's `about` is the reaped settler's id, never a seat to paint the skull with.
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanDied, null, 41), noBuilding)).toEqual({
       kind: 'glyph',
       glyph: 'skull',
       dim: true,
+      seat: null,
     });
-    expect(noticeThumb(USER_MESSAGE_TYPE.playerSighted, null, noBuilding)).toEqual({
-      kind: 'glyph',
-      glyph: 'banner',
-      dim: false,
-    });
-    expect(noticeThumb(USER_MESSAGE_TYPE.specialItemFound, null, noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.specialItemFound, null), noBuilding)).toEqual({
       kind: 'glyph',
       glyph: 'chest',
       dim: false,
+      seat: null,
     });
-    expect(noticeThumb(USER_MESSAGE_TYPE.experienceUnlocks, null, noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.experienceUnlocks, null), noBuilding)).toEqual({
       kind: 'glyph',
       glyph: 'scroll',
       dim: false,
+      seat: null,
+    });
+  });
+
+  it('names the seat a seat row is about, so its glyph takes that colour', () => {
+    const SEAT = 3;
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.playerSighted, null, SEAT), noBuilding)).toEqual({
+      kind: 'glyph',
+      glyph: 'shield',
+      dim: false,
+      seat: SEAT,
+    });
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.diplomacyChanged, null, SEAT), noBuilding)).toEqual({
+      kind: 'glyph',
+      glyph: 'banner',
+      dim: false,
+      seat: SEAT,
+    });
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.playerDied, null, SEAT), noBuilding)).toEqual({
+      kind: 'glyph',
+      glyph: 'skull',
+      dim: true,
+      seat: SEAT,
     });
   });
 

@@ -40,6 +40,14 @@ describe('ui chrome delivery', () => {
         columns: COLUMNS,
         names: ['build', 'mission', 'knowledge'],
       },
+      notices: {
+        file: 'notices.png',
+        width: 4,
+        height: 4,
+        cell: CELL,
+        columns: COLUMNS,
+        names: ['shield', 'skull', 'chest'],
+      },
       sourceBasis: 'Synthetic fixture',
     };
     await writeJson(join(folder, 'runtime.json'), manifest);
@@ -55,15 +63,22 @@ describe('ui chrome delivery', () => {
       [0, 2],
     ];
     for (const [x, y] of opaque) pixels.fill(255, (y * 4 + x) * 4, (y * 4 + x) * 4 + 4);
-    await sharp(pixels, { raw: { width: 4, height: 4, channels: 4 } })
-      .png()
-      .toFile(join(folder, 'icons.png'));
+    for (const file of ['icons.png', 'notices.png']) {
+      await sharp(pixels, { raw: { width: 4, height: 4, channels: 4 } })
+        .png()
+        .toFile(join(folder, file));
+    }
     await expect(validateDelivery(f.runtime)).resolves.toBeDefined();
+    await writeJson(join(folder, 'runtime.json'), {
+      ...manifest,
+      notices: { ...manifest.notices, names: [...manifest.notices.names, 'scroll'] },
+    });
+    await expect(validateDelivery(f.runtime)).rejects.toThrow(/Empty icon cell: .*:scroll/);
     await writeJson(join(folder, 'runtime.json'), {
       ...manifest,
       icons: { ...manifest.icons, names: [...manifest.icons.names, 'diplomacy'] },
     });
-    await expect(validateDelivery(f.runtime)).rejects.toThrow('Empty icon cell');
+    await expect(validateDelivery(f.runtime)).rejects.toThrow(/Empty icon cell: .*:diplomacy/);
     await writeJson(join(folder, 'runtime.json'), {
       ...manifest,
       surface: { ...manifest.surface, width: 4 },

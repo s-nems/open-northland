@@ -17,6 +17,8 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 4l11 11M20 4 9 15M15 15l3 3M9 15l-3 3M17 13l4 4-2 2-4-4M7 13l-4 4 2 2 4-4"/></svg>',
   skull:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7c0 2.6 1.3 4.2 3 5.4V19h8v-3.6c1.7-1.2 3-2.8 3-5.4a7 7 0 0 0-7-7Z"/><circle cx="9.5" cy="10.5" r="1.4"/><circle cx="14.5" cy="10.5" r="1.4"/><path d="M10 19v2M14 19v2M12 13l-1 2h2Z"/></svg>',
+  shield:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M12 3.5v5.9M12 14.6v5.9M3.5 12h5.9M14.6 12h5.9"/></svg>',
   banner:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 3v18M6 4h12l-3 4.5 3 4.5H6M4 21h4"/></svg>',
   scroll:
@@ -26,7 +28,7 @@ export const GLYPH = {
   forge:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-6h10v6M5 14h14l-2-4H7zM10 10V4h4v6M9 4h6"/></svg>',
   /* A cobbled track bending away, a stake fence, and a gate between two stakes: no highway
-     markings, no battlements (user rule). */
+     markings, no battlements. */
   road: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 21c2-5 2-9 4-12s5-4 8-6M16 21c0-5-1-8 1-11s3-3 4-5"/><path d="M8 17h1M11 17h1M14 17h1M10 12h1M13 12h1M12 8h1M15 8h1"/></svg>',
   palisade:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 21V9l2.5-4 2.5 4v12M9.5 21V7l2.5-4 2.5 4v14M16 21V9l2.5-4 2.5 4v12M2 16h20"/></svg>',

@@ -944,7 +944,9 @@
   background-color: var(--wax-danger);
 }
 /* The column: frameless, so the map shows between the cards; only its controls take the pointer. */
+/* `--thumb-edge`: where a card's thumbnail box ends and its slate begins, from the card's left. */
 .on-hud .on-notices {
+  --thumb-edge: 44px;
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -1093,15 +1095,15 @@
   flex-direction: column;
   justify-content: center;
   width: 100%;
-  min-height: 52px;
-  padding: 7px 10px 7px 57px;
+  min-height: 46px;
+  padding: 6px 4px 6px calc(var(--thumb-edge) + 7px);
   text-align: left;
   border: 0;
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    transparent 0 50px,
-    color-mix(in srgb, var(--deep) 94%, transparent) 54px,
+    transparent 0 var(--thumb-edge),
+    color-mix(in srgb, var(--deep) 94%, transparent) calc(var(--thumb-edge) + 4px),
     color-mix(in srgb, var(--deep) 82%, transparent) 88%,
     transparent
   );
@@ -1111,8 +1113,8 @@
 .on-hud .on-notice__card:hover {
   background: linear-gradient(
     90deg,
-    transparent 0 50px,
-    color-mix(in srgb, var(--fill) 96%, transparent) 54px,
+    transparent 0 var(--thumb-edge),
+    color-mix(in srgb, var(--fill) 96%, transparent) calc(var(--thumb-edge) + 4px),
     color-mix(in srgb, var(--fill) 84%, transparent) 88%,
     transparent
   );
@@ -1120,8 +1122,8 @@
 .on-hud .on-notices--stacked .on-notice__card {
   background: linear-gradient(
     90deg,
-    transparent 0 50px,
-    var(--deep) 54px,
+    transparent 0 var(--thumb-edge),
+    var(--deep) calc(var(--thumb-edge) + 4px),
     color-mix(in srgb, var(--deep) 97%, #000)
   );
   box-shadow: 0 3px 8px #0008;
@@ -1129,8 +1131,8 @@
 .on-hud .on-notices--stacked .on-notice__card:hover {
   background: linear-gradient(
     90deg,
-    transparent 0 50px,
-    var(--fill) 54px,
+    transparent 0 var(--thumb-edge),
+    var(--fill) calc(var(--thumb-edge) + 4px),
     color-mix(in srgb, var(--fill) 97%, #000)
   );
 }
@@ -1162,8 +1164,8 @@
   position: absolute;
   left: -4px;
   bottom: 0;
-  width: 54px;
-  height: 56px;
+  width: 48px;
+  height: 50px;
   pointer-events: none;
   border-radius: 8px;
   border: 1px solid #c9a26233;
@@ -1173,29 +1175,31 @@
 .on-hud .on-notice__preview--settler {
   display: block;
 }
-/* A finished building's body, painted once into the card's canvas and kept whole inside the padding.
-   On a covered card the top padding grows with the cover, so the body shrinks into the visible strip
-   instead of losing its roof to the clip; the cap keeps 21 px of body on the most covered card. */
-.on-hud .on-notice__preview--building {
+/* A finished building's body or a glyph's artwork, painted once into the card's canvas and kept whole
+   inside the padding. On a covered card the top padding follows the cover and clears the clip edge by
+   a few pixels, so the picture shrinks into the visible strip instead of losing its top; the cap
+   keeps 21 px of it on the most covered card. */
+.on-hud .on-notice__preview--building,
+.on-hud .on-notice__preview--art {
   display: block;
-  padding: 5px;
-  padding-top: min(calc(5px + var(--covered) / 2), 28px);
+  padding: 5px 5px 3px;
+  padding-top: clamp(5px, calc(var(--covered) - 2px), 24px);
   object-fit: contain;
   transition: padding-top 0.14s;
 }
-/* A glyph sits in the box's middle, or in the middle of the visible strip on a covered card, like the
-   painted figure does. */
+/* The line glyph that stands in for undelivered artwork sits in the box's middle, or in the middle of
+   the visible strip on a covered card, like the painted figure does. */
 .on-hud .on-notice__preview--glyph {
   display: grid;
   place-items: start center;
-  /* The glyph is 28 px in a 54 px content box: the padding never pushes it past the bottom. */
-  padding-top: min(calc(13px + var(--covered) / 2), calc(54px - 28px));
+  /* The glyph is 26 px in a 48 px content box: the padding never pushes it past the bottom. */
+  padding-top: min(calc(11px + var(--covered) / 2), calc(48px - 26px));
   color: var(--bronze);
   transition: padding-top 0.14s;
 }
 .on-hud .on-notice__preview--glyph .on-glyph {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   stroke-width: 1.6;
 }
 .on-hud .on-notice__preview--dim {
@@ -1208,7 +1212,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  padding-right: 20px;
+  padding-right: 18px;
   font-size: 10.5px;
   line-height: 1.25;
   color: var(--text-hi);
@@ -1225,7 +1229,7 @@
 /* The seal sits on the thumbnail's right edge, on the line of the text and the ×. */
 .on-hud .on-notice__card > .on-seal {
   position: absolute;
-  left: 40px;
+  left: calc(var(--thumb-edge) - 10px);
   top: calc(var(--covered) + (100% - var(--covered)) / 2 - 6px);
   z-index: 1;
   transition: top 0.14s;
@@ -1605,7 +1609,7 @@
   opacity: 0.38;
   cursor: not-allowed;
 }
-/* A beam action shows no focus ring (user rule): the pressed art and the lit key hint are its cues. */
+/* A beam action shows no focus ring: the pressed art and the lit key hint are its cues. */
 .on-hud .on-action:focus-visible {
   outline: none;
 }

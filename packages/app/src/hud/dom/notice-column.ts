@@ -6,7 +6,7 @@ import type { MessagePriorityLevel } from '../tool-panel/messages/types.js';
 import { GLYPH } from './icons.js';
 
 /** Below this visible strip per card (design px) the fan stops and the list scrolls instead. */
-const MIN_CARD_STRIP = 30;
+const MIN_CARD_STRIP = 27;
 /** The gap between unfanned cards (design px); mirrors `.on-notice` in foundation.css. */
 const CARD_GAP = 7;
 /** A card counts as below the fold once more than this much of it (design px) is past the edge. */
@@ -54,7 +54,17 @@ export interface NoticeColumnDeps {
   readonly onDismissAll: () => void;
   /** Paint a building's body into a card's canvas; false leaves the house glyph in its place. */
   readonly paintBuilding: (canvas: HTMLCanvasElement, typeId: number) => boolean;
+  /** Paint a glyph's artwork into a card's canvas, in `seat`'s colour when the card is about one;
+   *  false leaves the line glyph in its place, and `onFail` asks for it after a true return. */
+  readonly paintGlyph: (
+    canvas: HTMLCanvasElement,
+    glyph: NoticeGlyph,
+    seat: number | null,
+    onFail: () => void,
+  ) => boolean;
 }
+
+export type NoticeThumbPainters = Pick<NoticeColumnDeps, 'paintBuilding' | 'paintGlyph'>;
 
 /** The figure canvases inside the list's visible area and their shared size on screen. */
 export interface NoticeFigureSlots {
@@ -72,18 +82,21 @@ export interface NoticeColumn {
   dispose(): void;
 }
 
-/** The line glyphs a card without a live settler shows. */
+/** The line glyphs that stand in for a thumbnail the painters cannot draw. */
 const NOTICE_GLYPH: Readonly<Record<NoticeGlyph, string>> = {
   house: GLYPH.house,
   swords: GLYPH.swords,
   skull: GLYPH.skull,
+  shield: GLYPH.shield,
   banner: GLYPH.banner,
   chest: GLYPH.chest,
   scroll: GLYPH.scroll,
 };
 
+const DIM = ' on-notice__preview--dim';
+
 function glyphMarkup(glyph: NoticeGlyph, dim: boolean): string {
-  return `<span class="on-notice__preview on-notice__preview--glyph${dim ? ' on-notice__preview--dim' : ''}" aria-hidden="true">${NOTICE_GLYPH[glyph]}</span>`;
+  return `<span class="on-notice__preview on-notice__preview--glyph${dim ? DIM : ''}" aria-hidden="true">${NOTICE_GLYPH[glyph]}</span>`;
 }
 
 function previewMarkup(thumb: NoticeThumb): string {
@@ -93,7 +106,22 @@ function previewMarkup(thumb: NoticeThumb): string {
     case 'building':
       return '<canvas class="on-notice__preview on-notice__preview--building" aria-hidden="true"></canvas>';
     case 'glyph':
-      return glyphMarkup(thumb.glyph, thumb.dim);
+      return `<canvas class="on-notice__preview on-notice__preview--art${thumb.dim ? DIM : ''}" aria-hidden="true"></canvas>`;
+  }
+}
+
+/** Paint a new card's building or glyph canvas; one the painters cannot draw becomes a line glyph. */
+export function paintNoticeThumb(li: Element, thumb: NoticeThumb, painters: NoticeThumbPainters): void {
+  if (thumb.kind === 'settler') return;
+  const canvas = li.querySelector('canvas.on-notice__preview');
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  if (thumb.kind === 'building') {
+    if (!painters.paintBuilding(canvas, thumb.typeId)) canvas.outerHTML = glyphMarkup('house', false);
+  } else {
+    const toLineGlyph = (): void => {
+      canvas.outerHTML = glyphMarkup(thumb.glyph, thumb.dim);
+    };
+    if (!painters.paintGlyph(canvas, thumb.glyph, thumb.seat, toLineGlyph)) toLineGlyph();
   }
 }
 
@@ -310,12 +338,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
           if (!(made instanceof HTMLLIElement)) throw new Error('notice column: card markup');
           li = made;
           cardsById.set(card.id, li);
-          if (card.thumb.kind === 'building') {
-            const canvas = li.querySelector('.on-notice__preview--building');
-            if (canvas instanceof HTMLCanvasElement && !deps.paintBuilding(canvas, card.thumb.typeId)) {
-              canvas.outerHTML = glyphMarkup('house', false);
-            }
-          }
+          paintNoticeThumb(li, card.thumb, deps);
           if (card.fresh) {
             // Retire the class once the arrival has played, so a later reorder does not replay it.
             const last = card.level === IMPORTANT_LEVEL ? ARRIVAL_ANIMATION.seal : ARRIVAL_ANIMATION.card;

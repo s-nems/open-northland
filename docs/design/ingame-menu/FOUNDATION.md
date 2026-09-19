@@ -70,7 +70,7 @@ filters are an explicit exception in this mouse/keyboard study.
   card (user rule); content-sized rather than filling the screen vertically; the catalogue scrolls
   inside it once the window would reach the beam.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
-- Notifications: 180 px, no opaque background in unused column space.
+- Notifications: 160 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px, touching the bottom-left corner.
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum
@@ -159,7 +159,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | --- | --- | --- |
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
-| Notifications | left 10, top 18, width 180, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
+| Notifications | left 10, top 18, width 160, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam | one window at a time; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
@@ -243,7 +243,7 @@ lifetime, dedupe and priority table.
   filtered or not, so the filter only hides (the original drops filtered notes). Levels: all,
   notable and important, important only. The tally cannot pass three digits.
 - Order: important first, then notable, then routine; within a weight the newest first.
-- A card is one event line at 10.5 px beside a 54 × 56 thumbnail, 52 px tall when the cards fit; the
+- A card is one event line at 10.5 px beside a 48 × 50 thumbnail, 148 × 46 px when the cards fit; the
   subject (name · trade, the building, seat or paper) is only in the whole message. The event line is
   a short label per message type from the app catalog, capitalised, short enough to fit the card
   without an ellipsis (a good or stance the row is about follows a colon: "Brak: drewno",
@@ -251,8 +251,12 @@ lifetime, dedupe and priority table.
   painted into the card's own canvas, as on the map with its current activity, motion and pace, over
   a translucent backing that shows the map through; a finished or upgraded building is its body as
   the construction card pictures it, painted once; an attacked settler or building, a death, a seat,
-  a paper and a subjectless row show a bronze line glyph instead (swords, house for a building whose
-  type is gone, dim skull, banner, chest, scroll). The seal on the thumbnail's right edge, the event line and the × share one line,
+  a paper and a subjectless row show a flat graphic emblem from the notification atlas instead (sword
+  and axe, house for a building whose type is gone, skull on a dim backing, shield for a first
+  contact, banner for a changed stance, chest, scroll). A card about another seat (first contact,
+  changed stance, a seat out of the game) paints the shield face, the banner cloth or the skull in
+  that seat's colour; an own settler's skull is bone ivory. The bronze line glyphs stand in while the
+  atlas is undelivered or fails to load. The seal on the thumbnail's right edge, the event line and the × share one line,
   centred in the card's visible part; the card carries no hairline, the seal alone tells the weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead. Right click, Delete or the ×
@@ -265,9 +269,10 @@ lifetime, dedupe and priority table.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
   uniform overlap, weightier cards in front, leaving the event line visible with the seal at the top
   of the strip. The covered part of a card is clipped, never drawn over the card in front. A covered
-  card's figure or glyph moves down to the middle of its visible strip. Nothing moves or grows on
+  card's figure moves down to the middle of its visible strip, and its emblem or building shrinks
+  into the strip whole. Nothing moves or grows on
   hover or focus: the whole message opens beside the column instead, so the × stays under the pointer.
-  Below a 30 px strip per card the fan stops, the list scrolls without a scrollbar, the bottom fades
+  Below a 27 px strip per card the fan stops, the list scrolls without a scrollbar, the bottom fades
   and a "jeszcze N" badge counts the cards past the edge.
 - A fresh card slides in and an urgent fresh seal pulses three times. Figures are painted only on
   cards inside the list's visible area; a paused game holds their frame. Reduced motion drops the
@@ -291,13 +296,14 @@ lifetime, dedupe and priority table.
 
 ## Original art and remaining work
 
-The painted action icons and the surface texture are the `ui/foundation` art package
+The painted action icons, the notification emblems and the surface texture are the `ui/foundation` art package
 ([recipe](../../art/ui/foundation/asset.json), [package notes](../../art/ui/foundation/README.md)):
 the 4 × 2 atlas `nordic-icons-v4.png` of simple single-object icons, the game-menu sheet
-`nordic-menu-v1.png` (its oak door is the menu medallion) and the carved wood/leather material study
-`nordic-surface-v1.png`, each with its generation record. The reference page samples the masters
-directly; the runtime uses the package's delivered atlas and texture. The atlas's pawn and door cells and
-the sheet's other candidates are unused.
+`nordic-menu-v1.png` (its oak door is the menu medallion), the 4 × 2 notification emblem sheet
+`nordic-notices-v1.png` (flat emblems whose magenta areas are the seat-colour key) and the carved
+wood/leather material study `nordic-surface-v1.png`, each with its generation record. The reference page samples the masters
+directly; the runtime uses the package's delivered atlas and texture. The atlas's pawn and door cells, the
+menu sheet's other candidates and the emblem sheet's horn are unused.
 
 No original game UI art is copied. Panel contents and illustrative counts are not production
 specifications.

@@ -3,7 +3,8 @@ import { type BuildingCardView, buildingCardMarkup } from '../../hud/dom/constru
 import foundationCss from '../../hud/dom/foundation.css?inline';
 import { goodIconMarkup } from '../../hud/dom/good-art.js';
 import { ACTION_ART_PX, FIGURE, GLYPH, menuArt, paintedIcon, RESIDENTS_TOKEN } from '../../hud/dom/icons.js';
-import { type NoticeCardView, noticeCardMarkup } from '../../hud/dom/notice-column.js';
+import { createNoticeArt, noticeTint } from '../../hud/dom/notice-art.js';
+import { type NoticeCardView, noticeCardMarkup, paintNoticeThumb } from '../../hud/dom/notice-column.js';
 import { createHudPlane } from '../../hud/dom/root.js';
 import { WINDOW_ORNAMENTS } from '../../hud/dom/symbols.js';
 import { NOTICE_COLUMN } from '../../hud/regions.js';
@@ -39,6 +40,8 @@ const ACTIONS: readonly (readonly [icon: string | null, label: string])[] = [
   ['knowledge', 'Wiedza'],
 ];
 
+/** The seat the sample first-contact card is about; its swatch paints the shield. */
+const SAMPLE_SEAT = 1;
 /** The column's states on one board: a settler card (its figure is the Pixi layer's, so the box stays
  *  bare here), a gone subject, a long subjectless row, and the two lower weights. */
 const SAMPLE_NOTICES: readonly NoticeCardView[] = [
@@ -56,7 +59,7 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
     level: 2,
     short: 'Nie żyje',
     full: 'Sigrun (zbieraczka) już nie z nami',
-    thumb: { kind: 'glyph', glyph: 'skull', dim: true },
+    thumb: { kind: 'glyph', glyph: 'skull', dim: true, seat: null },
     canGo: true,
     fresh: false,
   },
@@ -65,7 +68,7 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
     level: 2,
     short: 'Obcy: neutralny',
     full: 'Plemię Ragnara pierwszy kontakt, nastawienie neutralne',
-    thumb: { kind: 'glyph', glyph: 'banner', dim: false },
+    thumb: { kind: 'glyph', glyph: 'shield', dim: false, seat: SAMPLE_SEAT },
     canGo: false,
     fresh: false,
   },
@@ -83,7 +86,7 @@ const SAMPLE_NOTICES: readonly NoticeCardView[] = [
     level: 0,
     short: 'Ukończono',
     full: 'Chata rybaka - budowa zakończona',
-    thumb: { kind: 'glyph', glyph: 'house', dim: false },
+    thumb: { kind: 'glyph', glyph: 'house', dim: false, seat: null },
     canGo: true,
     fresh: false,
   },
@@ -201,6 +204,17 @@ export function renderHudFoundation(main: HTMLElement, initialScale: number): vo
   sheet.textContent = foundationCss;
   const plane = createHudPlane(initialScale);
   plane.element.insertAdjacentHTML('beforeend', boardMarkup());
+  const noticeArt = createNoticeArt();
+  const sampleCards = plane.element.querySelectorAll('.on-notice');
+  SAMPLE_NOTICES.forEach((card, i) => {
+    const li = sampleCards[i];
+    if (li === undefined) return;
+    paintNoticeThumb(li, card.thumb, {
+      paintBuilding: () => false,
+      paintGlyph: (canvas, glyph, seat, onFail) =>
+        noticeArt?.paint(canvas, glyph, noticeTint(seat), onFail) === true,
+    });
+  });
   isolated.append(sheet, plane.element);
   stage.append(frame);
   const applyScale = (scale: number): void => {

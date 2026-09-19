@@ -15,7 +15,7 @@ import { FigureFrames } from './figure-frames.js';
 /** The figure's map-px multiplier on its thumbnail, and how far above the thumbnail's bottom edge its
  *  feet stand (design px): the usual place, and the closest a covered card's lowered figure comes. */
 const THUMB_ZOOM = 1.05;
-const THUMB_FEET_INSET = 8;
+const THUMB_FEET_INSET = 6;
 const THUMB_FEET_INSET_MIN = 2;
 
 /** Where the feet go (canvas px): the usual inset, or lower on a covered card so the figure's middle

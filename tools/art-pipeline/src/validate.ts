@@ -112,15 +112,17 @@ export async function validateDelivery(directory: string, complete = false) {
       claim(identities, `ui:${m.id}`);
       if (folder !== `ui/${m.id}`) throw new Error('UI pack folder and id disagree');
       await inspect(`${folder}/${m.surface.file}`, m.surface.width, m.surface.height, false);
-      await inspect(`${folder}/${m.icons.file}`, m.icons.width, m.icons.height, true);
-      for (const [index, name] of m.icons.names.entries()) {
-        const empty = await regionEmpty(`${folder}/${m.icons.file}`, {
-          left: (index % m.icons.columns) * m.icons.cell,
-          top: Math.floor(index / m.icons.columns) * m.icons.cell,
-          width: m.icons.cell,
-          height: m.icons.cell,
-        });
-        if (empty) throw new Error(`Empty icon cell: ${m.id}:${name}`);
+      for (const atlas of [m.icons, m.notices]) {
+        await inspect(`${folder}/${atlas.file}`, atlas.width, atlas.height, true);
+        for (const [index, name] of atlas.names.entries()) {
+          const empty = await regionEmpty(`${folder}/${atlas.file}`, {
+            left: (index % atlas.columns) * atlas.cell,
+            top: Math.floor(index / atlas.columns) * atlas.cell,
+            width: atlas.cell,
+            height: atlas.cell,
+          });
+          if (empty) throw new Error(`Empty icon cell: ${m.id}:${name}`);
+        }
       }
     } else if (file.startsWith('characters/')) {
       const m = ownCharacterManifest.parse(raw);

@@ -14,6 +14,14 @@ const manifest = {
   id: 'foundation',
   surface: { file: 'surface.png', width: 1024, height: 682 },
   icons,
+  notices: {
+    file: 'notices.png',
+    width: 200,
+    height: 100,
+    cell: 100,
+    columns: 2,
+    names: ['shield', 'skull'],
+  },
   sourceBasis: 'Synthetic fixture',
 };
 
