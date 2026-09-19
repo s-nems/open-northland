@@ -52,6 +52,17 @@ export const DEFAULT_SHADOW_STYLE: ShadowStyle = {
   blob: true,
 };
 
+const CHANNEL_MAX = 0xff;
+
+/** A {@link ShadowStyle.tint} as unit RGB, the form every shadow shader takes it in. */
+export function shadowTintChannels(tint: number): readonly [number, number, number] {
+  return [
+    ((tint >> 16) & CHANNEL_MAX) / CHANNEL_MAX,
+    ((tint >> 8) & CHANNEL_MAX) / CHANNEL_MAX,
+    (tint & CHANNEL_MAX) / CHANNEL_MAX,
+  ];
+}
+
 /**
  * Place `sprite` as the ground projection of its own frame: sheared toward the light and flattened, both
  * about the drawing container's feet origin. `ox`/`oy` are the frame's already-scaled offset from that

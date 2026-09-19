@@ -2,6 +2,7 @@ import type { Container } from 'pixi.js';
 
 export interface WorldSceneLayers {
   readonly terrain: Container;
+  readonly decorShadows: Container;
   readonly decor: Container;
   readonly fog: Container;
   readonly constructionPlots: Container;
@@ -21,6 +22,7 @@ export interface WorldSceneLayers {
 export function mountPainterOrder(world: Container, layers: WorldSceneLayers): void {
   world.addChild(
     layers.terrain,
+    layers.decorShadows,
     layers.decor,
     layers.fog,
     layers.constructionPlots,

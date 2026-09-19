@@ -20,7 +20,7 @@ import {
   pixelArtMagnifyMode,
   worldShadowStyle,
 } from './pixel-art-registry.js';
-import type { ShadowStyle } from './shadow-style.js';
+import { type ShadowStyle, shadowTintChannels } from './shadow-style.js';
 
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
@@ -164,12 +164,12 @@ function defineWorldBatcher(): WorldBatcherClass {
   /** Replaces a silhouette's own pure black with the style's colour, at its gained coverage. */
   function shadowShadingGlsl(shadow: ShadowStyle | null): { declarations: string; output: string } {
     if (shadow === null) return { declarations: '', output: 'finalColor = outColor * vColor;' };
-    const channel = (shift: number): string => glslFloat(((shadow.tint >> shift) & 0xff) / 0xff);
+    const [red, green, blue] = shadowTintChannels(shadow.tint).map(glslFloat);
     return {
       declarations: /* glsl */ `
   const float SHADOW_ALPHA_GAIN = ${glslFloat(shadow.alphaGain)};
   const float SHADOW_MAX_ALPHA = ${glslFloat(shadow.maxAlpha)};
-  const vec3 SHADOW_TINT = vec3(${channel(16)}, ${channel(8)}, ${channel(0)});`,
+  const vec3 SHADOW_TINT = vec3(${red}, ${green}, ${blue});`,
       // A silhouette carries coverage only, so the element's own colour contributes nothing but its
       // alpha. The premultiply is ours except on a straight-alpha page, whose blend does it instead.
       output: /* glsl */ `if (hasFlag(WORLD_FLAG_SHADOW)) {

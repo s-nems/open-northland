@@ -1,15 +1,31 @@
 import { Container, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { makeShadedDecorShader } from '../shading.js';
-import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
+import { type DecorShadowUniforms, makeDecorShadowShader } from './decor-shadow-shader.js';
+import { type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
  * Flat ground decor batched into per-block quad meshes, one draw call per texture page per block, split
  * static/animated. Translucency rides in the atlas texture's own alpha channel; there is no per-object
- * opacity.
+ * opacity. An object's cast shadow batches the same way from its silhouette page, into a container the
+ * layer draws under every decor body.
  */
 
-export function writeObjectQuad(
+/** Which of an object's two index-paired frame lists a batch draws. */
+type DecorLane = 'body' | 'shadow';
+
+function laneSource(obj: MapObjectSprite, lane: DecorLane): TextureSource | undefined {
+  return lane === 'body' ? obj.source : obj.shadow?.source;
+}
+
+/** `undefined` on the shadow lane is a pose that casts no silhouette. */
+function laneFrameAt(obj: MapObjectSprite, lane: DecorLane, tick: number): AtlasFrame | undefined {
+  return lane === 'body' ? objectFrameAt(obj, tick) : obj.shadow?.frames[objectFrameIndexAt(obj, tick)];
+}
+
+const FLOATS_PER_QUAD = 8;
+
+function writeObjectQuad(
   positions: Float32Array | number[],
   uvs: Float32Array | number[],
   quadIndex: number,
@@ -23,7 +39,7 @@ export function writeObjectQuad(
   const y0 = obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale;
   const x1 = x0 + frame.width * obj.scale;
   const y1 = y0 + frame.height * obj.scale;
-  const p = quadIndex * 8;
+  const p = quadIndex * FLOATS_PER_QUAD;
   positions[p] = x0;
   positions[p + 1] = y0;
   positions[p + 2] = x1;
@@ -55,37 +71,43 @@ interface QuadBatch {
   readonly geometry: MeshGeometry;
 }
 
-/** Batch `objects`, which all share `source`, into one mesh of quads written for their tick-0 frame.
- *  A batch with any per-object brightness draws through the shaded ground shader, with the multiplier
- *  constant across a quad's four vertices so an animated rewrite never touches it. */
-function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSource): QuadBatch {
-  const positions = new Float32Array(objects.length * 8);
-  const uvs = new Float32Array(objects.length * 8);
+/** Batch `objects`, which all share `source` on `lane`, into one mesh of quads written for their tick-0
+ *  frame. A body batch with any per-object brightness draws through the shaded ground shader, with the
+ *  multiplier constant across a quad's four vertices so an animated rewrite never touches it. */
+function buildQuadBatch(
+  objects: readonly MapObjectSprite[],
+  source: TextureSource,
+  lane: DecorLane,
+  shadowStyle: DecorShadowUniforms,
+): QuadBatch {
+  const positions = new Float32Array(objects.length * FLOATS_PER_QUAD);
+  const uvs = new Float32Array(objects.length * FLOATS_PER_QUAD);
   const indices = new Uint32Array(objects.length * 6);
-  const shaded = objects.some((obj) => obj.brightness !== undefined);
+  const shaded = lane === 'body' && objects.some((obj) => obj.brightness !== undefined);
   const brightness = shaded ? new Float32Array(objects.length * 4) : null;
   for (let q = 0; q < objects.length; q++) {
+    // Indexed whatever the pose holds: a quad without a frame stays degenerate until a rewrite fills it.
+    indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
     const obj = objects[q];
-    // The caller drops frame-less objects before batching, so frame 0 always resolves; guard rather
-    // than assert so an unfiltered object leaves a degenerate quad instead of a bad cast.
-    const frame = obj === undefined ? undefined : objectFrameAt(obj, 0);
+    const frame = obj === undefined ? undefined : laneFrameAt(obj, lane, 0);
     if (obj === undefined || frame === undefined) continue;
     writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
-    indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
     brightness?.fill(obj.brightness ?? 1, q * 4, q * 4 + 4);
   }
   const geometry = new MeshGeometry({ positions, uvs, indices });
   if (brightness !== null) geometry.addAttribute('aBrightness', { buffer: brightness });
-  const mesh =
-    brightness !== null
-      ? new Mesh({ geometry, texture: new Texture({ source }), shader: makeShadedDecorShader(source) })
-      : new Mesh({ geometry, texture: new Texture({ source }) });
+  // A mesh with a shader of its own never reads a texture, so only the plain batch mints one.
+  let mesh: Mesh<MeshGeometry, Shader>;
+  if (lane === 'shadow') mesh = new Mesh({ geometry, shader: makeDecorShadowShader(source, shadowStyle) });
+  else if (brightness !== null) mesh = new Mesh({ geometry, shader: makeShadedDecorShader(source) });
+  else mesh = new Mesh({ geometry, texture: new Texture({ source }) });
   return { mesh, positions, uvs, geometry };
 }
 
 /** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order.
  *  A removed object's slot is `null` - its quad stays zeroed and the rewrite loop skips it. */
-interface AnimatedDecorBatch {
+export interface AnimatedDecorBatch {
+  readonly lane: DecorLane;
   readonly objects: (MapObjectSprite | null)[];
   readonly positions: Float32Array;
   readonly uvs: Float32Array;
@@ -94,13 +116,41 @@ interface AnimatedDecorBatch {
   readonly pageH: number;
 }
 
-/** Where one decor object's quad lives. */
+/** Rewrite quad `q` of an animated batch for `tick`; a pose without a frame collapses the quad. */
+export function writeAnimatedQuad(
+  batch: AnimatedDecorBatch,
+  q: number,
+  obj: MapObjectSprite,
+  tick: number,
+): void {
+  const frame = laneFrameAt(obj, batch.lane, tick);
+  if (frame === undefined) {
+    batch.positions.fill(0, q * FLOATS_PER_QUAD, (q + 1) * FLOATS_PER_QUAD);
+    return;
+  }
+  writeObjectQuad(batch.positions, batch.uvs, q, obj, frame, batch.pageW, batch.pageH);
+}
+
+/** Where one quad of a decor object lives. */
 interface DecorQuadRef {
   readonly positions: Float32Array;
   readonly geometry: MeshGeometry;
   readonly quadIndex: number;
   /** The rewrite batch the quad belongs to, or null for a still (never-rewritten) batch. */
   readonly animated: AnimatedDecorBatch | null;
+}
+
+/** Collapse a quad for good: zeroed in place, and dropped from its batch's rewrite loop. */
+export function retireDecorQuad(quad: DecorQuadRef): void {
+  quad.positions.fill(0, quad.quadIndex * FLOATS_PER_QUAD, (quad.quadIndex + 1) * FLOATS_PER_QUAD);
+  quad.geometry.getBuffer('aPosition').update();
+  if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null;
+}
+
+/** A decor object's quads: its body, and its cast shadow when it carries one. */
+interface DecorObjectQuads {
+  readonly body: DecorQuadRef;
+  shadow: DecorQuadRef | null;
 }
 
 /**
@@ -110,72 +160,61 @@ interface DecorQuadRef {
  */
 export interface DecorChunk {
   readonly container: Container;
+  /** The chunk's cast shadows, mounted apart so they sit under the bodies of every chunk. */
+  readonly shadowContainer: Container;
   readonly minX: number;
   readonly minY: number;
   readonly maxX: number;
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
-  readonly quads: Map<MapObjectSprite, DecorQuadRef>;
+  readonly quads: Map<MapObjectSprite, DecorObjectQuads>;
   /** The tick the animated buffers were last written for. Per chunk, so a chunk scrolling into view
    *  while the sim is paused still catches up to the current tick's frame. */
   lastWrittenTick: number;
 }
 
-/** Batch one decor block, grouping its objects by texture source into a static and an animated mesh
- *  each. The caller owns attaching the returned chunk's container to its layer. */
-export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
-  const container = new Container();
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  // Batch key = the texture source: quads in one mesh share a page (opacity is per pixel, in the page).
+/** Batch one lane of a block into `container`, a still and an animated mesh per texture source (quads in
+ *  one mesh share a page; opacity is per pixel, in the page). Reports each object's quad to `placed`. */
+function buildLane(
+  block: readonly MapObjectSprite[],
+  lane: DecorLane,
+  container: Container,
+  shadowStyle: DecorShadowUniforms,
+  animated: AnimatedDecorBatch[],
+  placed: (obj: MapObjectSprite, quad: DecorQuadRef) => void,
+): void {
   const bySource = new Map<TextureSource, { still: MapObjectSprite[]; moving: MapObjectSprite[] }>();
   for (const obj of block) {
-    let group = bySource.get(obj.source);
+    const source = laneSource(obj, lane);
+    if (source === undefined) continue;
+    let group = bySource.get(source);
     if (group === undefined) {
       group = { still: [], moving: [] };
-      bySource.set(obj.source, group);
+      bySource.set(source, group);
     }
     (obj.frames.length > 1 ? group.moving : group.still).push(obj);
-    // The AABB covers every frame the object can show (frames differ a little in size/offset).
-    for (const frame of obj.frames) {
-      minX = Math.min(minX, obj.x + frame.offsetX * obj.scale);
-      minY = Math.min(minY, obj.y + frame.offsetY * obj.scale);
-      maxX = Math.max(maxX, obj.x + (frame.offsetX + frame.width) * obj.scale);
-      maxY = Math.max(maxY, obj.y + (frame.offsetY + frame.height) * obj.scale);
-    }
   }
-  const animated: AnimatedDecorBatch[] = [];
-  const quads = new Map<MapObjectSprite, DecorQuadRef>();
   for (const [source, group] of bySource) {
-    if (group.still.length > 0) {
-      const batch = buildQuadBatch(group.still, source);
+    for (const objects of [group.still, group.moving]) {
+      if (objects.length === 0) continue;
+      const batch = buildQuadBatch(objects, source, lane, shadowStyle);
       container.addChild(batch.mesh);
-      for (const [q, obj] of group.still.entries()) {
-        quads.set(obj, {
+      let animBatch: AnimatedDecorBatch | null = null;
+      if (objects === group.moving) {
+        animBatch = {
+          lane,
+          objects,
           positions: batch.positions,
+          uvs: batch.uvs,
           geometry: batch.geometry,
-          quadIndex: q,
-          animated: null,
-        });
+          pageW: source.width,
+          pageH: source.height,
+        };
+        animated.push(animBatch);
       }
-    }
-    if (group.moving.length > 0) {
-      const batch = buildQuadBatch(group.moving, source);
-      container.addChild(batch.mesh);
-      const animBatch: AnimatedDecorBatch = {
-        objects: group.moving,
-        positions: batch.positions,
-        uvs: batch.uvs,
-        geometry: batch.geometry,
-        pageW: source.width,
-        pageH: source.height,
-      };
-      animated.push(animBatch);
-      for (const [q, obj] of group.moving.entries()) {
-        quads.set(obj, {
+      for (const [q, obj] of objects.entries()) {
+        placed(obj, {
           positions: batch.positions,
           geometry: batch.geometry,
           quadIndex: q,
@@ -184,6 +223,39 @@ export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
       }
     }
   }
+}
+
+/** Batch one decor block. The caller owns attaching the returned chunk's containers to its layers. */
+export function buildDecorChunk(
+  block: readonly MapObjectSprite[],
+  shadowStyle: DecorShadowUniforms,
+): DecorChunk {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const obj of block) {
+    // The AABB covers every frame the object can show (frames differ a little in size/offset), its
+    // silhouettes included.
+    for (const frame of [...obj.frames, ...(obj.shadow?.frames ?? [])]) {
+      if (frame === undefined) continue;
+      minX = Math.min(minX, obj.x + frame.offsetX * obj.scale);
+      minY = Math.min(minY, obj.y + frame.offsetY * obj.scale);
+      maxX = Math.max(maxX, obj.x + (frame.offsetX + frame.width) * obj.scale);
+      maxY = Math.max(maxY, obj.y + (frame.offsetY + frame.height) * obj.scale);
+    }
+  }
+  const container = new Container();
+  const shadowContainer = new Container();
+  const animated: AnimatedDecorBatch[] = [];
+  const quads = new Map<MapObjectSprite, DecorObjectQuads>();
+  buildLane(block, 'body', container, shadowStyle, animated, (obj, body) => {
+    quads.set(obj, { body, shadow: null });
+  });
+  buildLane(block, 'shadow', shadowContainer, shadowStyle, animated, (obj, shadow) => {
+    const placed = quads.get(obj);
+    if (placed !== undefined) placed.shadow = shadow;
+  });
   // Animated quads were written for tick 0 at build; the first update rewrites any other tick.
-  return { container, minX, minY, maxX, maxY, animated, quads, lastWrittenTick: 0 };
+  return { container, shadowContainer, minX, minY, maxX, maxY, animated, quads, lastWrittenTick: 0 };
 }

@@ -17,6 +17,7 @@ function stubApp(): Application {
 
 const SLOTS = [
   'terrain',
+  'decorShadows',
   'decor',
   'fog',
   'constructionPlots',

@@ -1,13 +1,13 @@
-# Rysuj cienie płaskich dekoracji z danych mapy
+# Zmiękcz krawędź cieni płaskich dekoracji
 
 **Area:** render · **Focus:** map-objects/decor-batch · **Priority:** P3
 
-Płaskie dekoracje (trawa, kwiaty, kamienie bez blokady chodzenia) mają w danych sylwetki cienia,
-ale ich nie rysują. `MapObjectSprite.shadow` (`packages/render/src/gpu/map-objects/map-object-sprite.ts`)
-nazywa tę lukę wprost: tylko wysokie obiekty rysują cień, `decor-batch.ts` (`writeObjectQuad`) pisze
-sam czworokąt ciała. Wysokie obiekty rysują cień osobnym spritem pod ciałem (`tall-blocks.ts`) i
-przełącznik miękkich cieni już go obejmuje przez `textures.getShadow`. Konsekwencja: przy ziemi cienie
-urywają się na granicy „wysoki/płaski”, co po włączeniu cieni postaci będzie jedyną grupą bez cienia.
+Płaskie dekoracje rysują już sylwetki cienia z danych mapy: osobna partia czworokątów na stronę atlasu
+cieni (`decor-batch.ts`), w kontenerze pod wszystkimi ciałami dekoracji, ze stylem cienia (siła, sufit,
+odcień) w `decor-shadow-shader.ts`. Przy włączonych miękkich cieniach wysokie obiekty dostają rozmyty
+wypiek na klatkę (`SoftShadowCache`), a dekoracje zostają z twardą krawędzią, bo osobna tekstura na klatkę
+nie wejdzie do jednej siatki. Na `magiczny_las` to 20 114 czworokątów, z czego widoczny cień mają głównie
+krzaki (36x24 px), suche drzewa i grzyby; różnicę widać od przybliżenia x2.
 
 Środowisko: worktree `~/Projects/vikings/on-graphics-polish`, gałąź
 `experiment/graphics-polish`, zawartość przez `ON_CONTENT_DIR=~/Projects/vikings/open-northland/content`,
@@ -16,18 +16,15 @@ o zachowaniu należy do użytkownika po sesji.
 
 ## Scope
 
-- Najpierw policzyć na `magiczny_las`, ile rozmieszczeń dekoracji ma klatkę cienia i jak duże są
-  sylwetki; jeśli to pojedyncze rekordy, zamknąć ticket bez zmian.
-- Pisać czworokąt cienia pod czworokątem ciała w tej samej partii dekoracji (klatka cienia sparowana
-  po indeksie z klatką ciała, animowane dekoracje aktualizują obie), z miękkim wariantem przez
-  `textures.getShadow` i unieważnieniem po zmianie przełącznika, jak w `tall-blocks.ts`.
+- Rozmycie w shaderze cienia dekoracji: kilka próbek alfa przyciętych do prostokąta klatki (atrybut na
+  czworokąt), z czworokątem poszerzonym o promień rozmycia, tylko przy włączonym przełączniku. Jądro ma
+  odpowiadać `softenShadowAlpha` na tyle, żeby krzak obok drzewa nie odstawał.
+- Jeśli rozmycie wymaga więcej niż shader i jeden atrybut, zamknąć ticket bez zmian: twarda krawędź
+  przy tych rozmiarach jest akceptowalna.
 - Poza zakresem: wysokie obiekty, własne assety, cienie wymyślane dla rekordów bez sylwetki.
 
 ## Verify
 
-- Test partii dekoracji: obiekt z cieniem daje dwa czworokąty w kolejności cień, ciało; obiekt bez
-  cienia jeden; zmiana przełącznika miękkich cieni przebudowuje partię.
-- Zrzuty A/B tego samego kadru `magiczny_las` z `polish=on` i `polish=off`; różnica pikseli tylko
-  wokół dekoracji.
-- Liczba czworokątów i GPU ms przed/po na mapie testowej; budżet partii bez regresji.
+- Test shadera lub partii: atrybut prostokąta klatki i poszerzony czworokąt przy włączonym przełączniku.
+- Zrzuty A/B tego samego kadru `magiczny_las` (środek 8600,4950) przy x2 i x3, krzak obok wysokiego drzewa.
 - Bramki z [TESTING.md](../../TESTING.md), ocena użytkownika.

@@ -1,11 +1,14 @@
 import { FOG_STATE } from '@open-northland/sim';
-import { Container } from 'pixi.js';
+import { Container, Mesh } from 'pixi.js';
 import { aabbIntersects, screenToCell, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
+import { worldShadowStyle } from '../pixel-art-registry.js';
+import type { ShadowStyle } from '../shadow-style.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
-import { buildDecorChunk, type DecorChunk, writeObjectQuad } from './decor-batch.js';
-import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
+import { buildDecorChunk, type DecorChunk, retireDecorQuad, writeAnimatedQuad } from './decor-batch.js';
+import { makeDecorShadowUniforms, writeDecorShadowStyle } from './decor-shadow-shader.js';
+import type { MapObjectSprite } from './map-object-sprite.js';
 import { TallObjectLayer } from './tall-blocks.js';
 
 /**
@@ -32,6 +35,12 @@ interface UpdateInputs {
 export class MapObjectLayer {
   /** Flat map-object decor (waves, grass, mine stains). */
   readonly decorContainer = new Container();
+  /** The decor's cast shadows, mounted under {@link decorContainer}; its children pair with that
+   *  container's by index. */
+  readonly decorShadowContainer = new Container();
+  private readonly decorShadowStyle = makeDecorShadowUniforms();
+  /** The style {@link decorShadowStyle} holds; it starts as the authored silhouette, which is `null`. */
+  private writtenShadowStyle: ShadowStyle | null = null;
   private readonly decorChunks = new Map<string, DecorChunk>();
   private readonly decorByObject = new Map<MapObjectSprite, string>();
   private readonly objects = new Set<MapObjectSprite>();
@@ -83,12 +92,10 @@ export class MapObjectLayer {
         previous === undefined
           ? this.decorContainer.children.length
           : this.decorContainer.getChildIndex(previous.container);
-      if (previous !== undefined) {
-        destroyMeshChildren(previous.container);
-        previous.container.destroy({ children: true });
-      }
-      const chunk = buildDecorChunk(block);
+      if (previous !== undefined) destroyDecorChunk(previous);
+      const chunk = buildDecorChunk(block, this.decorShadowStyle);
       this.decorContainer.addChildAt(chunk.container, index);
+      this.decorShadowContainer.addChildAt(chunk.shadowContainer, index);
       this.decorChunks.set(key, chunk);
     }
     this.tall.build(tallByBlock);
@@ -107,18 +114,16 @@ export class MapObjectLayer {
     this.decorByObject.delete(obj);
     if (key === undefined) return;
     const chunk = this.decorChunks.get(key);
-    const quad = chunk?.quads.get(obj);
-    if (chunk === undefined || quad === undefined) return;
+    const quads = chunk?.quads.get(obj);
+    if (chunk === undefined || quads === undefined) return;
     chunk.quads.delete(obj);
     if (chunk.quads.size === 0) {
-      destroyMeshChildren(chunk.container);
-      chunk.container.destroy({ children: true });
+      destroyDecorChunk(chunk);
       this.decorChunks.delete(key);
       return;
     }
-    quad.positions.fill(0, quad.quadIndex * 8, quad.quadIndex * 8 + 8);
-    quad.geometry.getBuffer('aPosition').update();
-    if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null;
+    retireDecorQuad(quads.body);
+    if (quads.shadow !== null) retireDecorQuad(quads.shadow);
   }
 
   /**
@@ -133,6 +138,11 @@ export class MapObjectLayer {
     timeTicks: number = tick,
   ): void {
     const motionTime = this.environmentMotion ? timeTicks : tick;
+    const shadowStyle = worldShadowStyle();
+    if (shadowStyle !== this.writtenShadowStyle) {
+      writeDecorShadowStyle(this.decorShadowStyle, shadowStyle);
+      this.writtenShadowStyle = shadowStyle;
+    }
     const shadowRevision = this.textures.shadowRevision;
     // A fog probe without an epoch has no change signal, so such a frame never counts as identical.
     const fogKeyed = fogStateOfCell === undefined || fogEpoch !== undefined;
@@ -166,6 +176,7 @@ export class MapObjectLayer {
     for (const chunk of this.decorChunks.values()) {
       const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
+      chunk.shadowContainer.visible = visible;
       if (!visible || chunk.animated.length === 0 || chunk.lastWrittenTick === tick) continue;
       chunk.lastWrittenTick = tick;
       for (const batch of chunk.animated) {
@@ -177,10 +188,7 @@ export class MapObjectLayer {
           const cell = screenToCell(obj.x, obj.y);
           const watched =
             fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
-          const frame = objectFrameAt(obj, watched ? tick : 0);
-          if (frame !== undefined) {
-            writeObjectQuad(batch.positions, batch.uvs, q, obj, frame, batch.pageW, batch.pageH);
-          }
+          writeAnimatedQuad(batch, q, obj, watched ? tick : 0);
         }
         batch.geometry.getBuffer('aPosition').update();
         batch.geometry.getBuffer('aUV').update();
@@ -191,14 +199,22 @@ export class MapObjectLayer {
 
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */
   destroy(): void {
-    for (const chunk of this.decorChunks.values()) {
-      destroyMeshChildren(chunk.container);
-      chunk.container.destroy({ children: true });
-    }
+    for (const chunk of this.decorChunks.values()) destroyDecorChunk(chunk);
     this.decorChunks.clear();
     this.decorByObject.clear();
     this.objects.clear();
     this.tall.destroy();
     this.lastInputs = null;
+  }
+}
+
+function destroyDecorChunk(chunk: DecorChunk): void {
+  for (const container of [chunk.container, chunk.shadowContainer]) {
+    // A plain batch owns the texture view it draws through; the page source outlives it.
+    for (const child of container.children) {
+      if (child instanceof Mesh && child.shader === null) child.texture.destroy();
+    }
+    destroyMeshChildren(container);
+    container.destroy({ children: true });
   }
 }

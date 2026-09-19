@@ -38,8 +38,8 @@ export interface MapObjectSprite {
   /**
    * The object's cast shadow from the `GfxBobLibs` shadow `.bmd` atlas (pre-baked translucent-black
    * silhouettes), when the record names one and it loaded. `frames[i]` pairs with the body
-   * {@link frames}`[i]`, `undefined` meaning that pose casts none. Only tall objects draw it; flat decor
-   * ignores the field even though the data holds real decor silhouettes - a named gap.
+   * {@link frames}`[i]`, `undefined` meaning that pose casts none. A tall object sorts it just under its
+   * caster; flat decor batches it under every decor body.
    */
   readonly shadow?: {
     readonly source: TextureSource;

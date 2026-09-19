@@ -108,6 +108,7 @@ export class WorldRenderer {
     this.spriteLayer.addChild(this.placementGhost.container);
     mountPainterOrder(this.worldLayer, {
       terrain: this.terrain.container,
+      decorShadows: this.mapObjects.decorShadowContainer,
       decor: this.mapObjects.decorContainer,
       fog: this.fog.container,
       constructionPlots: this.constructionPlots.container,
