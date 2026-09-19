@@ -58,6 +58,14 @@
   <button type="button" data-build="papers" aria-pressed="false">Papiery</button>
   <button type="button" data-build="papersEmpty" aria-pressed="false">Papiery pusto</button>
   <button type="button" data-build="closed" aria-pressed="false">Zamknięte</button>
+  <span>Mieszkańcy</span>
+  <button type="button" data-residents="closed" aria-pressed="true">Zamknięte</button>
+  <button type="button" data-residents="list" aria-pressed="false">Lista</button>
+  <button type="button" data-residents="filtered" aria-pressed="false">Filtry</button>
+  <button type="button" data-residents="can" aria-pressed="false">Może zostać</button>
+  <button type="button" data-residents="nomatch" aria-pressed="false">Brak wyników</button>
+  <button type="button" data-residents="none" aria-pressed="false">Bez ludzi</button>
+  <button type="button" data-residents="long" aria-pressed="false">240 osób</button>
   <span>Powiadomienia</span>
   <button type="button" data-notices="mixed" aria-pressed="true">6 kart</button>
   <button type="button" data-notices="empty" aria-pressed="false">Pusto</button>
@@ -345,6 +353,43 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
       </div>
     </div>
   </section>
+  <section class="residents panel" data-residents-window hidden aria-label="Mieszkańcy">
+    <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
+    <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
+    <header class="window-head">
+      <div class="title">
+        <svg aria-hidden="true" class="people-token" fill="url(#pawn-wood)"><use href="#i-pawns"/></svg>
+        <div><h2 data-copy="peopleTitle">Mieszkańcy</h2></div>
+      </div>
+      <button type="button" class="icon-button medallion" data-residents-close aria-label="Zamknij"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="res-find">
+      <label class="res-search"><svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6"/></svg><input type="search" data-res-query placeholder="Imię, zawód, miejsce pracy" aria-label="Szukaj po imieniu, zawodzie lub miejscu pracy" autocomplete="off"></label>
+      <label class="res-select"><span>Zawód</span><select data-res-job aria-label="Obecny zawód"></select></label>
+      <label class="res-select"><span>Może zostać</span><select data-res-can aria-label="Zawód, który może podjąć"></select></label>
+    </div>
+    <div class="res-chips"><span class="res-chip-label" aria-hidden="true">Kto</span><span class="res-chip-row" role="radiogroup" aria-label="Kto" data-res-who></span></div>
+    <fieldset class="res-chips lacks"><legend class="sr-only">Braki</legend><span class="res-chip-label" aria-hidden="true">Bez</span><span class="res-chip-row" data-res-lacks></span></fieldset>
+    <div class="catalog res-sheet">
+      <p class="catalog-note res-summary"><span data-res-summary></span><button type="button" class="res-clear" data-res-clear hidden>Wyczyść filtry</button></p>
+      <div class="res-head"><span></span><button type="button" data-res-sort="name">Imię</button><button type="button" data-res-sort="job">Zawód</button><button type="button" data-res-sort="place">Miejsce pracy</button><button type="button" data-res-sort="lacks">Braki</button></div>
+      <ul class="res-list" data-res-list></ul>
+      <div class="catalog-empty" data-res-nomatch hidden>
+        <strong>Nikt nie pasuje</strong>
+        <span>Żaden mieszkaniec nie spełnia tych filtrów.</span>
+        <button type="button" class="res-clear" data-res-clear>Wyczyść filtry</button>
+      </div>
+      <div class="catalog-empty" data-res-none hidden>
+        <strong>Nie masz mieszkańców</strong>
+        <span>Lista pokazuje tylko ludzi twojego plemienia.</span>
+      </div>
+    </div>
+    <footer class="res-foot">
+      <span class="res-hint"><kbd>Klik</kbd> zaznacza i pokazuje · <kbd>Shift</kbd> lub <kbd>Ctrl</kbd> dokłada do grupy</span>
+      <span class="res-picked" data-res-picked hidden></span>
+      <button type="button" class="res-all" data-res-all>Zaznacz pokazanych <span class="count" data-res-shown>0</span></button>
+    </footer>
+  </section>
   <div class="placement panel" data-placement hidden>
     <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>
     <span><b data-picked>Farma</b> · <span data-placement-hint>wskaż miejsce na mapie</span></span>
@@ -457,6 +502,21 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
     </ul>
   </div>
   <div class="card notes">
+    <h2>Okno mieszkańców (ticket 07, zaakceptowane)</h2>
+    <ul>
+      <li>Mieszkańcy / 2 albo F7 (klawisz oryginału) otwiera listę od razu: to samo okno centralne co Budowanie, 640 px, przewija się pergamin. Lista obejmuje tylko ludzi lokalnego gracza; zwierzęta, pojazdy i cudzy ludzie nie wchodzą.</li>
+      <li>Filtry jak w oryginalnym oknie poddanych, z tymi samymi warunkami: Mężczyźni i Kobiety to dorośli (kobiety bez bohaterek), Dzieci to wszyscy niedorośli, Pracownicy to dorośli mężczyźni poza żołnierzami, bohaterami i cywilami, a Cywile to dorośli mężczyźni bez zawodu, czyli ci, którym można go nadać. „Bez domu” i „bez pary” pomijają żołnierzy i bohaterów, „bez narzędzi” liczy pracowników bez narzędzia (poza zwiadowcą, któremu asystent go nie daje), „bez butów” dorosłych poza bohaterami, „bez dzieci” dorosłe kobiety, „bez broni” żołnierzy. „Bez pracy” jest nowe: pracownik z zawodem, ale bez miejsca pracy (zastępuje osobne okno z zadania o niezatrudnionych). „Bez miodu” też jest nowe: dorosły bez butelki miodu pitnego w ekwipunku, czyli ci sami ludzie, którym miód rozdaje asystent. „Bez pracy” pomija zawody pracujące w terenie (budowniczy, zwiadowca) i zbieraczy z flagą pracy.</li>
+      <li>Oba paski filtrów to jedna siatka ośmiu równych prostokątnych pól na całą szerokość okna: liczba u góry, podpis pod nią, a w pasku braków ikona przy liczbie. Etykiety „Kto” i „Bez” stoją w tej samej wąskiej kolumnie.</li>
+      <li>Zmiana względem oryginału: tam działał jeden filtr naraz. Tu „Kto” jest jednym wyborem, a braki, zawód, „może zostać” i szukanie łączą się z nim (wszystkie warunki naraz). Szukanie dopasowuje imię, zawód i miejsce pracy, więc „piek” znajduje piekarzy i obsadę piekarni. Liczba na polu to cała osada, nie wynik pozostałych filtrów, więc od razu widać, ilu ludziom czegoś brakuje; pole z zerem jest przygaszone.</li>
+      <li>„Zawód” filtruje po obecnym zawodzie (w nawiasie liczba ludzi). „Może zostać” pokazuje tych, którzy już mają ten zawód, oraz dorosłych mężczyzn, którym gra pozwoliłaby go nadać (szkolenie, doświadczenie, blokady misji).</li>
+      <li>Wiersz: figurka z gry (stojąca klatka, bez animacji, bo lista ma setki wierszy), imię, zawód (dziecko: wiek), miejsce pracy, a po prawej ikony braków, te same co na pasku, z podpowiedzią. Nagłówki kolumn sortują listę, drugi klik odwraca kolejność. Domyślnie lista idzie według zawodu, bo imiona niewiele mówią graczowi; bohaterowie zawsze na górze, jak w oryginale.</li>
+      <li>Klik wiersza zaznacza osobę, centruje kamerę i zamyka okno (oryginał); szczegóły przejmuje panel zaznaczenia. Klik z Shift lub Ctrl dokłada osobę do zaznaczonej grupy i zostawia okno otwarte; wiersze w zaznaczeniu mają brązowy pasek i tło, stopka liczy zaznaczonych. „Zaznacz pokazanych” działa tak samo na całą przefiltrowaną listę.</li>
+      <li>Filtry, szukanie i przewinięcie są pamiętane w tej grze między otwarciami okna. Lista odświeża się na żywo: zmarły znika z listy, nowy wiersz wchodzi w swoje miejsce porządku, przewinięcie i fokus zostają.</li>
+      <li>Stany puste: „Nikt nie pasuje” z przyciskiem czyszczenia filtrów oraz „Nie masz mieszkańców”. Pasek nad listą mówi, ile osób pokazano i przez jakie filtry.</li>
+      <li>Przy skali 125% kolumna „Miejsce pracy” i podpowiedź klawiszy znikają, szukanie dostaje własny wiersz, a podpisy pól są mniejsze.</li>
+    </ul>
+  </div>
+  <div class="card notes">
     <h2>Okno budowy (ticket 05, do przeglądu)</h2>
     <ul>
       <li>Buduj / B otwiera katalog od razu; jedno okno centralne, 640 px, przewija się pergamin, nie ekran. Zakładki jak w oryginale: Wszystko, Praca, Magazyn, Dom, Wojsko; liczba na zakładce to budynki dostępne teraz.</li>
@@ -472,6 +532,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
     </ul>
   </div>
 </section>
+<script type="module" src="residents.js"></script>
 <script type="module" src="foundation.js"></script>
 </body>
 </html>

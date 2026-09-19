@@ -14,11 +14,13 @@ const status = document.querySelector('#asset-status');
 const copy = {
   pl: {
     buildTitle: 'Budowanie',
+    peopleTitle: 'Mieszkańcy',
     buildNav: 'Buduj',
     peopleNav: 'Mieszkańcy',
   },
   en: {
     buildTitle: 'Construction',
+    peopleTitle: 'Residents',
     buildNav: 'Construction',
     peopleNav: 'Population overview',
   },
@@ -423,10 +425,10 @@ const watcher = new IntersectionObserver((entries) => {
     else visible.delete(entry.target);
   }
 });
-function canvasFor(element, kind) {
+function canvasFor(element, kind, size = CANVAS) {
   const canvas = document.createElement('canvas');
-  canvas.width = CANVAS;
-  canvas.height = CANVAS;
+  canvas.width = size;
+  canvas.height = size;
   canvas.className = kind;
   canvas.setAttribute('aria-hidden', 'true');
   element.replaceWith(canvas);
@@ -447,20 +449,28 @@ function feetLine(canvas, frames) {
   for (const frame of frames) if (frame) top = Math.min(top, frame.offsetY * FIGURE_SCALE);
   return Math.min(Math.max(FEET_LINE, CANVAS - visible / 2 - top / 2), FEET_LINE_MAX);
 }
+// A list row holds one standing frame on a small canvas: hundreds of rows must not animate or each
+// carry a full-size backing store.
+const STILL_CANVAS = 64;
 async function mountCharacter(slot) {
-  const canvas = canvasFor(slot, 'settler-preview');
+  const still = slot.dataset.still !== undefined;
+  const size = still ? STILL_CANVAS : CANVAS;
+  const canvas = canvasFor(slot, still ? 'settler-preview still' : 'settler-preview', size);
   const { layers, frames } = await character(Number(slot.dataset.settler));
   const context = canvas.getContext('2d');
   context.imageSmoothingEnabled = false;
-  const scale = FIGURE_SCALE;
+  const scale = (FIGURE_SCALE * size) / CANVAS;
   const paint = (time) => {
     // Review-only walk loop; not the subject's live simulation activity or timing.
     const index = reduced.matches ? 0 : Math.floor(time / (1000 / REVIEW_FPS)) % frames.length;
-    const feetY = feetLine(
-      canvas,
-      layers.map((layer) => layer.frames.get(frames[index])),
-    );
-    context.clearRect(0, 0, CANVAS, CANVAS);
+    const feetY =
+      (feetLine(
+        canvas,
+        layers.map((layer) => layer.frames.get(frames[index])),
+      ) *
+        size) /
+      CANVAS;
+    context.clearRect(0, 0, size, size);
     for (const layer of layers) {
       const frame = layer.frames.get(frames[index]);
       if (!frame) continue;
@@ -471,7 +481,7 @@ async function mountCharacter(slot) {
         r.y,
         r.width,
         r.height,
-        CANVAS / 2 + frame.offsetX * scale,
+        size / 2 + frame.offsetX * scale,
         feetY + frame.offsetY * scale,
         r.width * scale,
         r.height * scale,
@@ -479,6 +489,7 @@ async function mountCharacter(slot) {
     }
   };
   paint(0);
+  if (still) return;
   watcher.observe(canvas);
   animations.push({ canvas, paint });
 }
