@@ -32,9 +32,10 @@ export interface ShadowStyle {
  * character's projection, head included, reads as a directional shadow instead of hiding under the legs.
  *
  * Strength is an approximation chosen by eye, informed by the common 2D sprite practice of a black silhouette at
- * roughly half opacity; no measurement supports it. The original bakes every silhouette pure black at
- * 0x50 alpha, so the gain puts a baked blob at 0.502 and an opaque body frame cast as a silhouette well
- * past it: both land on the 0.50 ceiling. The colour departs from that pure black, sitting just off it
+ * roughly half opacity; no measurement supports it. The pipeline bakes every silhouette pure black at
+ * 0x50 alpha, itself an approximation rather than a byte-level match of the original's blit
+ * (tools/asset-pipeline/src/decoders/atlas/bake.ts), so the gain puts a baked blob at 0.502 and an
+ * opaque body frame cast as a silhouette well past it: both land on the 0.50 ceiling. The colour departs from that pure black, sitting just off it
  * toward violet - the chosen look, following the pixel-art convention of shifting a shadow's hue toward
  * blue-violet rather than anything the original does.
  */

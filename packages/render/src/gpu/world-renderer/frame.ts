@@ -19,7 +19,9 @@ export interface BuildingHighlightItem {
   readonly ok: boolean;
 }
 
-/** The player's graphics enhancements; every one off draws the baseline renderer. */
+/** The player's graphics enhancements. Every one off draws the baseline renderer, save for the two
+ *  authored silhouettes the world now draws either way: flat decor's cast shadow and the `_s` twin
+ *  under settlers and animals. */
 export interface WorldEnhancements {
   /** Filtered original art, subpixel placement, bounded terrain filtering and building detail. */
   readonly enhancedSampling: boolean;

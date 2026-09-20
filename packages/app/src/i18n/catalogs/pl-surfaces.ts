@@ -159,16 +159,16 @@ export const plSurfaces = {
       pixelArtFilterSharp: 'Ostry',
       pixelArtFilterXbr: 'xBR',
       pixelArtFilterTip:
-        'Sposób powiększania oryginalnej grafiki pikselowej. xBR prowadzi skośne krawędzie jako gładkie linie, Ostry zostawia całe piksele i wygładza tylko ich granice, Miękki rozmywa obraz. Każdy filtr usuwa też skoki kamery i postaci o cały piksel, dokładniej filtruje teren i zachowuje detal budynków przy oddaleniu. Wyłączony rysuje grafikę tak jak dotąd. Działa od razu.',
+        'Sposób powiększania oryginalnej grafiki pikselowej. xBR prowadzi skośne krawędzie jako gładkie linie, Ostry zostawia całe piksele i wygładza tylko ich granice, Miękki rozmywa obraz. Każdy filtr usuwa też skoki kamery i postaci o cały piksel, dokładniej filtruje teren i poprawia detal budynków przy oddaleniu. Wyłączony rysuje grafikę bez filtra, w pełnych pikselach.',
       softShadows: 'Ulepszone cienie',
       softShadowsTip:
-        'Pogłębia i zmiękcza cienie budynków, drzew i dekoracji. Osadnicy i zwierzęta rzucają cień własnej sylwetki, pochylony zgodnie ze światłem budynków. Po wyłączeniu zostają cienie oryginału. Działa od razu.',
+        'Pogłębia i zmiękcza cienie budynków, drzew i dekoracji. Osadnicy i zwierzęta rzucają cień własnej sylwetki, pochylony zgodnie ze światłem budynków. Po wyłączeniu zostają cienie oryginału.',
       enhancedWater: 'Ulepszona woda',
       enhancedWaterTip:
-        'Krzyżujące się fale, ciemniejsze płycizny i jeszcze ciemniejsza głębia, chłodniejszy, bardziej niebieski kolor oraz refleks wędrujący po głębokiej wodzie. Po wyłączeniu zostaje woda oryginału. Działa od razu.',
+        'Krzyżujące się fale, ciemniejsze płycizny i jeszcze ciemniejsza głębia, chłodniejszy, bardziej niebieski kolor oraz refleks wędrujący po głębokiej wodzie. Po wyłączeniu zostaje woda oryginału.',
       environmentMotion: 'Ruch otoczenia',
       environmentMotionTip:
-        'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr we własnej roślinności jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. Działa od razu.',
+        'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr w roślinności projektu jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. We wczytanym zapisie drzewa stoją nieruchomo.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',
@@ -254,6 +254,7 @@ export const plSurfaces = {
       restoreDefaults: 'Przywróć domyślne',
       restoreFailed: 'Nie udało się przywrócić ustawień domyślnych. Nic nie zostało zmienione.',
       nextGameTip: 'Zadziała po uruchomieniu następnej gry.',
+      liveTip: 'Działa od razu.',
     },
     credits: {
       intro:

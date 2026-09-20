@@ -43,12 +43,14 @@ export function createWorldRenderer(
   sheet: SpriteSheet | undefined,
   playerColourOf?: (player: number) => number,
 ): WorldRenderer {
+  // One read, so a write landing mid-construction cannot hand the renderer a mixed snapshot.
+  const stored = readStoredSettings();
   return new WorldRenderer(app, {
-    enhancements: enhancementsOf(readStoredSettings()),
+    enhancements: enhancementsOf(stored),
     sheet,
     viewSmoothing: true,
-    spriteSmoothing: readStoredSettings().spriteSmoothing,
-    postFx: postFxParam(params) ?? readStoredSettings().postFxEnabled,
+    spriteSmoothing: stored.spriteSmoothing,
+    postFx: postFxParam(params) ?? stored.postFxEnabled,
     ...(playerColourOf !== undefined ? { playerColourOf } : {}),
   });
 }

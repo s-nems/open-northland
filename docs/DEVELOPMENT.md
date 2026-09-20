@@ -171,10 +171,11 @@ stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reprodu
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
 
-The Graphics tab also owns four enhancements of the world view. They are stored settings, default
-on, apply to a running game without a restart and never enter the URL; with all four off the world
-draws through the previous renderer. For a before/after review keep the map, camera and zoom fixed,
-and include x2 and a zoomed-out pan.
+The Graphics tab also owns four enhancements of the world view. They are stored settings, default on,
+and apply to a running game without a restart. With all four off the world matches the previous
+renderer except for two silhouettes that now draw either way: flat decor casts its authored shadow,
+and settlers and animals draw the authored `_s` twin the original ships. For a before/after review
+keep the map, camera and zoom fixed, and include x2 and a zoomed-out pan.
 
 - **Original art filter** (`enhancedSampling`, `pixelArtScaler`): how original pixel art magnifies.
   `xbr` is an edge-directed pass, so diagonal outlines become straight cuts instead of stairs or
@@ -183,33 +184,35 @@ and include x2 and a zoomed-out pan.
   animals get it in the paletted shader on palette-resolved colours. Buildings, trees, goods and the
   other frames the world's texture cache mints from nearest-loaded atlas pages get it through the
   `world` batcher the world sprites opt into, which also averages a frame-clamped 2x2 footprint
-  below texel size. HUD icons, own art, ground and flat decor batches sample as before. Any filter
-  also removes device-pixel snapping from camera and character placement, magnifies original terrain
-  with a tile-bounded Catmull-Rom bicubic filter and minifies it with four tile-bounded samples.
-  Original terrain pages have no padded mip chain, so the bounded filter reduces aliasing without
-  replacing mipmaps at extreme zoom-out; already mipmapped own terrain keeps its sampling. Finished
-  buildings use isolated native-size frames with mipmaps and similarly bounded interior detail;
-  alpha, anchors and picking bounds stay unchanged. The building cache caps its full mip chains at
-  32 MiB GPU plus CPU canvas copies and falls back when unavailable, oversized or full.
-  Construction, upgrades, shadows and already mipmapped art bypass it. Bakes run synchronously on
-  first use and can add a frame-time spike; cached frames avoid repeat work.
+  below texel size. The filter claims the original's pages only: own art keeps the sampling its
+  sprite-smoothing setting chose, and HUD icons, ground and flat decor batches sample as before. Any
+  filter also removes device-pixel snapping from camera and character placement, magnifies original
+  terrain with a tile-bounded Catmull-Rom bicubic filter and minifies it with four tile-bounded
+  samples. Original terrain pages have no padded mip chain, so the bounded filter reduces aliasing
+  without replacing mipmaps at extreme zoom-out; already mipmapped own terrain keeps its sampling.
+  Finished buildings use isolated native-size frames with mipmaps and similarly bounded interior
+  detail, falling back to the plain frame when the cache is unavailable, the frame oversized or its
+  budget full; alpha, anchors and picking bounds stay unchanged. Construction, upgrades, shadows and
+  already mipmapped art bypass it. Bakes run synchronously on first use and can add a frame-time
+  spike; cached frames avoid repeat work.
 - **Enhanced shadows** (`softShadows`): every silhouette the world draws (buildings, trees, tall
-  blocks, animals, characters) is softened and painted at a multiplied alpha, with the strength and
-  colour compiled into the `world` batch shader. Each settler and animal projects its own body frame
-  onto the ground, sheared toward the light of the original building silhouettes; a character's head
-  overlay casts too, cropped to the rows above its body frame so the two projections meet instead of
-  darkening the ground twice. Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back
-  to the original shadows when unavailable or over budget. Flat decor (bushes, mushrooms, dead
-  trees) draws its authored silhouette under every decor body whatever the setting. The per-frame
-  soft bakes cannot batch into a decor mesh, so with the setting on its own mesh shader applies the
-  same strength and colour and blurs the silhouette with the bake's kernel, reading only inside the
+  blocks, animals, characters) is softened and painted at a multiplied alpha. Each settler and animal
+  projects its own body frame onto the ground, sheared toward the light of the original building
+  silhouettes; a character's head overlay casts too, cropped to the rows above its body frame so the
+  two projections meet instead of darkening the ground twice. A bake falls back to the hard
+  silhouette when the page is unreadable or a budget is full; a bake the per-frame budget defers is
+  picked up on a later frame, so switching the setting on over a town softens progressively rather
+  than stalling one frame. Flat decor (bushes, mushrooms, and the dead trees that block no walking)
+  draws its authored silhouette under every decor body whatever the setting. The per-frame soft bakes
+  cannot batch into a decor mesh, so with the setting on its own mesh shader applies the same
+  strength and colour and blurs the silhouette with the bake's kernel, reading only inside the
   frame's own texels.
 - **Enhanced water** (`enhancedWater`): crossing swells, darker shallows and darker still deep water
   (the map's own two pattern families), a bluer and slightly more saturated colour, stronger on the
   deep family, and a glint band drifting over the deep water.
 - **Environment motion** (`environmentMotion`): interpolates fish, smooths the breeze on own
-  vegetation and adds that breeze to the tall trees the original ships as one still frame (its dead
-  trees), whose cast shadows lean with them. That breeze belongs to the static map layer: a
+  vegetation and adds that breeze to the tall trees the original ships as one still frame (its
+  walk-blocking dead trees), whose cast shadows lean with them. That breeze belongs to the static map layer: a
   harvestable the sprite pool draws, which is every one after a save is restored, stands still.
 
 Original humans and animals keep their tick anchors under every setting: the original engine moves

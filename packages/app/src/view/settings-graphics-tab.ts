@@ -4,10 +4,30 @@ import { messages } from '../i18n/index.js';
 import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './settings-controls.js';
 import type { DisplayMode } from './settings-display-mode.js';
 import type { SettingsPageStore } from './settings-page.js';
-import { type AssetSet, type FpsLimit, RENDER_SCALE_MAX, RENDER_SCALE_MIN } from './settings-store.js';
+import {
+  type AssetSet,
+  type FpsLimit,
+  type MenuSettings,
+  RENDER_SCALE_MAX,
+  RENDER_SCALE_MIN,
+} from './settings-store.js';
 
 type FpsChoice = 'fps30' | 'fps60' | 'screen';
 const RENDER_SCALE_STEP = 0.25;
+
+/** The art filter's four choices: `off` is the enhancement disabled, the other three name its scaler. */
+export type FilterChoice = PixelArtScaler | 'off';
+export const FILTER_CHOICES: readonly FilterChoice[] = ['off', ...PIXEL_ART_SCALERS];
+
+/** The choice a stored pair shows as. */
+export const filterChoiceOf = (
+  settings: Pick<MenuSettings, 'enhancedSampling' | 'pixelArtScaler'>,
+): FilterChoice => (settings.enhancedSampling ? settings.pixelArtScaler : 'off');
+
+/** The patch a choice writes. `off` leaves the stored scaler alone, so turning the filter back on
+ *  returns the player's own choice instead of the default. */
+export const filterPatchFor = (choice: FilterChoice): Partial<MenuSettings> =>
+  choice === 'off' ? { enhancedSampling: false } : { enhancedSampling: true, pixelArtScaler: choice };
 const fpsChoiceOf = (limit: FpsLimit): FpsChoice =>
   limit === 30 ? 'fps30' : limit === 60 ? 'fps60' : 'screen';
 const fpsLimitOf = (choice: FpsChoice): FpsLimit =>
@@ -23,6 +43,9 @@ export function graphicsSettingsRows(
   const text = messages().mainMenu.settings;
   const deferredTip = (tip: string): string =>
     store.bootOwnedChangesDeferred === true ? `${tip} ${text.nextGameTip}` : tip;
+  // The same signal, read the other way: only the in-game page has a world for a change to reach now.
+  const liveTip = (tip: string): string =>
+    store.bootOwnedChangesDeferred === true ? `${tip} ${text.liveTip}` : tip;
   const settings = store.current();
   const displaySeg = segControl<DisplayMode>(
     [
@@ -98,21 +121,17 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(assets.root, 'assets');
-  type FilterChoice = PixelArtScaler | 'off';
   const filterLabels: Readonly<Record<FilterChoice, string>> = {
     off: text.pixelArtFilterOff,
     bilinear: text.pixelArtFilterSoft,
     sharp: text.pixelArtFilterSharp,
     xbr: text.pixelArtFilterXbr,
   };
-  const filterChoices: readonly FilterChoice[] = ['off', ...PIXEL_ART_SCALERS];
   const filter = segControl<FilterChoice>(
-    filterChoices.map((id) => ({ id, label: filterLabels[id] })),
-    settings.enhancedSampling ? settings.pixelArtScaler : 'off',
+    FILTER_CHOICES.map((id) => ({ id, label: filterLabels[id] })),
+    filterChoiceOf(settings),
     (choice) => {
-      void store.update(
-        choice === 'off' ? { enhancedSampling: false } : { enhancedSampling: true, pixelArtScaler: choice },
-      );
+      void store.update(filterPatchFor(choice));
       filter.setActive(choice);
     },
   );
@@ -123,7 +142,7 @@ export function graphicsSettingsRows(
     });
     toggle.setAttribute('aria-label', text[key]);
     toggle.dataset.settingsFocus = key;
-    return settingRow(text[key], toggle, { tip: text[`${key}Tip`] });
+    return settingRow(text[key], toggle, { tip: liveTip(text[`${key}Tip`]) });
   });
   return [
     settingsHeading(text.displayHeading),
@@ -135,7 +154,7 @@ export function graphicsSettingsRows(
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
     settingsHeading(text.worldHeading),
     settingRow(text.assets, assets.root, { tip: deferredTip(text.assetsTip) }),
-    settingRow(text.pixelArtFilter, filter.root, { tip: text.pixelArtFilterTip }),
+    settingRow(text.pixelArtFilter, filter.root, { tip: liveTip(text.pixelArtFilterTip) }),
     ...enhancementToggles,
     settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),
     settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
