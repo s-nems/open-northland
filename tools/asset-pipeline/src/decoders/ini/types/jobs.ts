@@ -114,11 +114,17 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
   return reqs;
 }
 
-// the original WalkSpeed_GetMoveSpeed, 0x1001164ab–0x1001164c5: these are engine
-// constants, not ini fields. logicdefines.inc names tribe 3 Byzantine, 7 Egypt and job 32 wooden spear.
+// The two tribes the engine walks faster, hardcoded in its move-speed rule rather than declared by any
+// ini key. the original WalkSpeed_GetMoveSpeed, 0x1001164ab–0x1001164c5; the ids are
+// `logicdefines.inc` `TRIBE_TYPE_HUMAN_*` and `JOB_TYPE_HUMAN_*`.
+const TRIBE_BYZANTINE = 3;
+const TRIBE_EGYPT = 7;
+const JOB_SOLDIER_SPEAR_WOODEN = 32;
+const WALK_STEP_REDUCTION_TICKS = 2;
+
 const WALK_STEP_REDUCTIONS: Readonly<Record<number, { ticks: number; jobType?: number }>> = {
-  3: { ticks: 2, jobType: 32 },
-  7: { ticks: 2 },
+  [TRIBE_BYZANTINE]: { ticks: WALK_STEP_REDUCTION_TICKS, jobType: JOB_SOLDIER_SPEAR_WOODEN },
+  [TRIBE_EGYPT]: { ticks: WALK_STEP_REDUCTION_TICKS },
 };
 
 /** The readable mod `tribetypes.ini` covers the playable tribes and the animal tribes alike. */

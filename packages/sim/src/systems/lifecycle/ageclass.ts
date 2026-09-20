@@ -62,17 +62,32 @@ export const CHILD_AGE_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
 /** The `Age.ticks` at which a child becomes an adult and stops carrying an {@link Age}. */
 export const ADULT_AGE_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
+/** A settler's life stage, the distinction the engine's `IsAgeBaby`/`IsAgeChild` draw over `JobType`. */
+export type AgeClass = 'adult' | 'baby' | 'child';
+
 /**
- * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult slug.
- * Matched by job `id` slug because a synthetic fixture's adult job id can collide with an age-class id.
+ * The life stage a job row names. Matched by job `id` slug rather than the engine's `JOB_TYPE_HUMAN_*`
+ * ids because a synthetic fixture's adult job id can collide with an age-class id.
  */
-export function spawnAgeTicks(jobId: string | undefined): number | null {
+export function ageClassOfJobId(jobId: string | undefined): AgeClass {
   switch (jobId) {
     case 'baby_female':
     case 'baby_male':
-      return 0;
+      return 'baby';
     case 'child_female':
     case 'child_male':
+      return 'child';
+    default:
+      return 'adult';
+  }
+}
+
+/** The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult. */
+export function spawnAgeTicks(jobId: string | undefined): number | null {
+  switch (ageClassOfJobId(jobId)) {
+    case 'baby':
+      return 0;
+    case 'child':
       return CHILD_AGE_TICKS;
     default:
       return null;

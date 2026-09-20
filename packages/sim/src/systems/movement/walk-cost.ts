@@ -11,7 +11,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { spawnAgeTicks } from '../lifecycle/ageclass.js';
+import { type AgeClass, ageClassOfJobId } from '../lifecycle/ageclass.js';
 import { NEED_DRIVE_THRESHOLD } from '../lifecycle/needs/scale.js';
 import { isHeroJob } from '../readviews/jobs.js';
 
@@ -56,7 +56,7 @@ export interface WalkStepModifiers {
   readonly tired: boolean;
   readonly walksSlowly: boolean;
   readonly walksFast: boolean;
-  readonly age: 'adult' | 'baby' | 'child';
+  readonly age: AgeClass;
   readonly tribeReduction: number;
   /** Combined weapon/armor weight; zero for a hero. */
   readonly equipmentWeight: number;
@@ -118,7 +118,6 @@ export function walkStepModifiersOf(world: World, e: Entity, content: ContentSet
   const fatigue = settler?.fatigue;
   const index = contentIndex(content);
   const job = settler?.jobType ?? null;
-  const ageTicks = spawnAgeTicks(job === null ? undefined : index.jobs.get(job)?.id);
   const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;
   return {
     shoes: hasLiveBoots(world, e),
@@ -126,7 +125,7 @@ export function walkStepModifiersOf(world: World, e: Entity, content: ContentSet
     tired: fatigue !== undefined && fatigue >= NEED_DRIVE_THRESHOLD,
     walksSlowly: (flags & MISSION_BEHAVIOUR.WALKS_SLOWLY) !== 0,
     walksFast: (flags & MISSION_BEHAVIOUR.WALKS_FAST) !== 0,
-    age: ageTicks === null ? 'adult' : ageTicks === 0 ? 'baby' : 'child',
+    age: ageClassOfJobId(job === null ? undefined : index.jobs.get(job)?.id),
     tribeReduction:
       reduction !== undefined && (reduction.jobType === undefined || reduction.jobType === job)
         ? reduction.ticks
