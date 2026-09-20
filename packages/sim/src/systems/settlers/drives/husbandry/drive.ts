@@ -294,7 +294,10 @@ function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: Node
     if (!isAdultAnimal(world, animal) || speciesGoodOf(world, ctx, animal) !== good) continue;
     const summoner = world.get(animal, FarmAnimal).summoner;
     if (summoner === e) return animal; // already in hand - it keeps priority
-    if (summoner !== null) continue; // another breeder's, and no longer part of the herd it counts
+    // Departure: the original prefers the animal already in house-interaction mode, so a farm's second
+    // breeder converges on the one its colleague leads and finds it gone. Passing it over puts that
+    // breeder on the next animal instead, and keeps it out of the count that decides the pair.
+    if (summoner !== null) continue;
     spare += 1;
     const range = hexRange(plan, door, entityNode(world, terrain, animal));
     if (range < bestRange || (range === bestRange && best !== null && animal < best)) {

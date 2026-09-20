@@ -208,6 +208,19 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(sim.world.has(breeder, MoveGoal)).toBe(false);
   });
 
+  it("sets both of a farm's breeders to work, each leading its own animal away", () => {
+    const sim = livestockSim();
+    const { farm, breeder } = farmWithBreeder(sim);
+    const colleague = breederAt(sim, FARM_AT.hx, FARM_AT.hy, farm);
+    const herd = [0, 1, 2, 3].map((i) => cowAt(sim, FARM_AT.hx + 1, FARM_AT.hy + i, { owner: P0, farm }));
+
+    plan(sim);
+
+    // Four grown animals leave two over the pair, and the pair of breeders takes one each.
+    const summoners = herd.map((a) => sim.world.get(a, FarmAnimal).summoner).filter((s) => s !== null);
+    expect(new Set(summoners)).toEqual(new Set([breeder, colleague]));
+  });
+
   it('kills the summoned animal on the door tile and banks the clip’s wares in the farm', () => {
     const sim = livestockSim();
     const { farm, breeder } = farmWithBreeder(sim);
