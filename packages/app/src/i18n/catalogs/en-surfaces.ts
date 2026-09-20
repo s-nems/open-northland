@@ -154,15 +154,24 @@ export const enSurfaces = {
         'Smooths own character edges and zoomed-out world sprites. Does not change text rendering.',
       postFx: 'Post-processing',
       postFxTip: 'A vignette and warm colour grade layered over the world.',
-      enhancedSampling: 'Experiment: texture quality',
-      enhancedSamplingTip:
-        'Edge-aware magnification of the original graphics, smooth camera movement and terrain detail. Applies immediately.',
-      softShadows: 'Experiment: shadows',
+      displayHeading: 'Display',
+      worldHeading: 'Game world',
+      pixelArtFilter: 'Original art filter',
+      pixelArtFilterOff: 'Off',
+      pixelArtFilterSoft: 'Soft',
+      pixelArtFilterSharp: 'Sharp',
+      pixelArtFilterXbr: 'xBR',
+      pixelArtFilterTip:
+        'How the original pixel art is magnified. xBR draws diagonal edges as smooth lines, Sharp keeps whole pixels and smooths only their borders, Soft blurs the image. Every filter also removes whole-pixel jumps of the camera and of characters, filters the terrain more carefully and keeps building detail when zoomed out. Off draws the art as before. Applies immediately.',
+      softShadows: 'Enhanced shadows',
       softShadowsTip:
-        'Softens and deepens every shadow, and casts one from each settler and animal. Applies immediately.',
-      environmentMotion: 'Experiment: smoother motion',
+        'Deepens and softens the shadows of buildings, trees and decorations. Settlers and animals cast a shadow of their own outline, leaning with the light the buildings use. Off keeps the original shadows. Applies immediately.',
+      enhancedWater: 'Enhanced water',
+      enhancedWaterTip:
+        'Crossing swells, darker shallows and darker still deep water, a cooler and bluer colour, and a glint drifting over the deep water. Off keeps the original water. Applies immediately.',
+      environmentMotion: 'Environment motion',
       environmentMotionTip:
-        'Interpolates fish, darkens the water, adds a drifting glint and smooths the breeze. Settlers and animals keep the original stepping. Does not add frames to original animations.',
+        "Trees the original draws as one still frame sway in the wind together with their shadow, fish swim smoothly, and the breeze in the project's own vegetation is smoothed. Settlers and animals keep the original stepping, and original animations gain no extra frames. Applies immediately.",
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',

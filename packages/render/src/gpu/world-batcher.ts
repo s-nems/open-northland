@@ -256,8 +256,8 @@ function defineWorldBatcher(): WorldBatcherClass {
 
   // Pixi uploads a batch shader's own uniforms only on that Shader object's first bind, so the
   // magnification mode and the shadow shading are compile-time constants instead: one program per
-  // combination, shared by every batcher on the page. The shadow values come from a session-fixed
-  // setting, so the map holds one or two programs in practice.
+  // combination, shared by every batcher on the page. The shadow style is one fixed value or absent,
+  // so the map holds at most two programs per magnification mode.
   const shaders = new Map<string, Shader>();
 
   function shadowKey(shadow: ShadowStyle | null): string {

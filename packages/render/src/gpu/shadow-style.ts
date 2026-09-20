@@ -18,10 +18,6 @@ export interface ShadowStyle {
   readonly castShear: number;
   /** How much of the caster's height the projection keeps: 1 would stand the silhouette back up. */
   readonly castFlatten: number;
-  /** Draw the projected cast silhouette of a character or animal body frame. */
-  readonly cast: boolean;
-  /** Draw the authored `_s` twin silhouette of a character or animal - the original's foot blob. */
-  readonly blob: boolean;
 }
 
 /**
@@ -35,7 +31,7 @@ export interface ShadowStyle {
  * lift than its 0.45 - 29 degrees above the screen horizontal at 0.63x the caster's height - so a
  * character's projection, head included, reads as a directional shadow instead of hiding under the legs.
  *
- * Strength is the user's choice, informed by the common 2D sprite practice of a black silhouette at
+ * Strength is an approximation chosen by eye, informed by the common 2D sprite practice of a black silhouette at
  * roughly half opacity; no measurement supports it. The original bakes every silhouette pure black at
  * 0x50 alpha, so the gain puts a baked blob at 0.502 and an opaque body frame cast as a silhouette well
  * past it: both land on the 0.50 ceiling. The colour departs from that pure black, sitting just off it
@@ -48,8 +44,6 @@ export const DEFAULT_SHADOW_STYLE: ShadowStyle = {
   tint: 0x140b1a,
   castShear: 0.55,
   castFlatten: 0.3,
-  cast: true,
-  blob: true,
 };
 
 const CHANNEL_MAX = 0xff;

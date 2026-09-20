@@ -101,6 +101,14 @@ export function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
   return wrap;
 }
 
+/** A group title between the rows of one settings tab. */
+export function settingsHeading(label: string): HTMLHeadingElement {
+  const heading = document.createElement('h3');
+  heading.className = 'main-menu__settings-heading';
+  heading.textContent = label;
+  return heading;
+}
+
 export interface SettingRowOptions {
   readonly tip?: string;
   readonly soon?: { readonly badge: string; readonly tip: string };

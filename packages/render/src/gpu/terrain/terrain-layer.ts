@@ -48,7 +48,7 @@ export class TerrainLayer {
    *  {@link animate} is one write per frame rather than one per chunk. */
   private waveGroup: WaveUniforms | undefined;
   private hasWater = false;
-  private environmentMotion = false;
+  private enhancedWater = false;
   private enhancedSampling = false;
 
   setEnhancedSampling(enabled: boolean): void {
@@ -58,10 +58,10 @@ export class TerrainLayer {
     this.waveGroup.update();
   }
 
-  setEnvironmentMotion(enabled: boolean): void {
-    this.environmentMotion = enabled;
+  setEnhancedWater(enabled: boolean): void {
+    this.enhancedWater = enabled;
     if (this.waveGroup === undefined) return;
-    this.waveGroup.uniforms.uEnvironmentMotion = enabled ? 1 : 0;
+    this.waveGroup.uniforms.uEnhancedWater = enabled ? 1 : 0;
     this.waveGroup.update();
   }
 
@@ -103,7 +103,7 @@ export class TerrainLayer {
     this.hasWater = water !== NO_WATER && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
     this.waveGroup.uniforms.uEnhancedSampling = this.enhancedSampling ? 1 : 0;
-    this.waveGroup.uniforms.uEnvironmentMotion = this.environmentMotion ? 1 : 0;
+    this.waveGroup.uniforms.uEnhancedWater = this.enhancedWater ? 1 : 0;
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
       laneTexWidth: this.laneTexWidth,

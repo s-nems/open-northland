@@ -1,5 +1,3 @@
-import { DEFAULT_SHADOW_STYLE, type PixelArtScaler, type ShadowStyle } from '@open-northland/render';
-
 /**
  * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
  * launch, so no entry re-declares its own parser.
@@ -72,69 +70,6 @@ export function intParam(params: URLSearchParams, name: string, fallback: number
 export function postFxParam(params: URLSearchParams): boolean | null {
   const raw = params.get('postfx');
   return raw === null ? null : raw !== 'off';
-}
-
-/** The `?scaler` diagnostic choice of original pixel-art magnification; `null` when absent or unknown. */
-export function pixelArtScalerParam(params: URLSearchParams): PixelArtScaler | null {
-  const raw = params.get('scaler');
-  return raw === 'bilinear' || raw === 'sharp' || raw === 'xbr' ? raw : null;
-}
-
-/** Which of a character's two silhouettes `?shadows=mode:` draws. */
-const SHADOW_MODES = {
-  both: { cast: true, blob: true },
-  cast: { cast: true, blob: false },
-  blob: { cast: false, blob: true },
-} as const;
-
-/**
- * The `?shadows=` session tuning of the shadow enhancement: `key:value` pairs over
- * `DEFAULT_SHADOW_STYLE`, any subset, unknown or malformed pairs dropped. `gain` and `max` are the
- * silhouette alpha multiplier and its ceiling, `tint` its hex RGB, `shear` and `flatten` the cast
- * projection per px of caster height, and `mode` one of `both`, `cast`, `blob`. The strength values
- * compile into the batch shader, so a change needs a reload rather than a live toggle.
- */
-export function shadowStyleParam(params: URLSearchParams): ShadowStyle | null {
-  const raw = params.get('shadows');
-  if (raw === null) return null;
-  const style: { -readonly [K in keyof ShadowStyle]: ShadowStyle[K] } = { ...DEFAULT_SHADOW_STYLE };
-  for (const pair of raw.split(',')) {
-    const sep = pair.indexOf(':');
-    const key = sep < 0 ? pair : pair.slice(0, sep);
-    const text = sep < 0 ? '' : pair.slice(sep + 1);
-    const value = Number.parseFloat(text);
-    const positive = Number.isFinite(value) && value > 0;
-    switch (key) {
-      case 'gain':
-        if (positive) style.alphaGain = value;
-        break;
-      case 'max':
-        if (positive && value <= 1) style.maxAlpha = value;
-        break;
-      case 'tint': {
-        // Whole hex digits only, so a typo falls back to the default instead of to a partial parse.
-        if (/^[0-9a-f]{1,6}$/i.test(text)) style.tint = Number.parseInt(text, 16);
-        break;
-      }
-      case 'shear':
-        if (Number.isFinite(value) && value >= 0) style.castShear = value;
-        break;
-      case 'flatten':
-        if (positive) style.castFlatten = value;
-        break;
-      case 'mode': {
-        const mode = text in SHADOW_MODES ? SHADOW_MODES[text as keyof typeof SHADOW_MODES] : undefined;
-        if (mode !== undefined) {
-          style.cast = mode.cast;
-          style.blob = mode.blob;
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-  return style;
 }
 
 /**

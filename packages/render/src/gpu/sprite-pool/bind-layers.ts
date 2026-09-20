@@ -110,17 +110,12 @@ export class LayerBinder {
     // only what `pe.sprites` holds and `shadowSlot` what `pe.shadows` does.
     let spriteSlot = 0;
     let shadowSlot = 0;
-    // A character has two shadow candidates - the projected cast and the authored `_s` foot blob - and
-    // the shadow enhancement owns both. A building's authored silhouette is its only shadow, so it draws
-    // whatever the enhancement says.
     const shadowStyle = frame.shadowStyle;
-    const keepBlob = item.kind !== 'settler' || shadowStyle === undefined || shadowStyle.blob;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
       // A cast layer holds unprojected body art, so it draws only with a style to project it by.
-      if (layer.cast === true && shadowStyle?.cast !== true) continue;
-      if (layer.shadow === true && layer.cast !== true && !keepBlob) continue;
+      if (layer.cast === true && shadowStyle === undefined) continue;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own
       // [fromPct,toPct] window, reaches its baked TimeMask threshold (the original's
       // PrintBob_UsingTimeMask construction blit). `null` - no time data or no bake - crops instead.

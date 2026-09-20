@@ -140,7 +140,7 @@ const FIELD_VERTEX = `#version 300 es
   out vec2 vWater;
   out float vGlintPhase;
   uniform vec2 uWave; // x = animation time (sim ticks), y = master amplitude scale (0 = still)
-  uniform float uEnvironmentMotion;
+  uniform float uEnhancedWater;
   ${matrixBlock}
   void main(void) {
     vSampleBounds = aSampleBounds;
@@ -152,7 +152,7 @@ const FIELD_VERTEX = `#version 300 es
     // Artistic approximation: crossing swells retain the same maximum displacement and coast mask.
     float crossedSwell = 0.68 * swell + 0.32 * sin(uWave.x * ${((2 * Math.PI) / 42).toFixed(8)} + crossPhase);
     pos.y -= aWave * uWave.y * ${WAVE_AMPLITUDE_PX.toFixed(4)}
-      * mix(swell, crossedSwell, uEnvironmentMotion);
+      * mix(swell, crossedSwell, uEnhancedWater);
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
     gl_Position = vec4((mvp * vec3(pos, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
@@ -183,7 +183,7 @@ const FIELD_FRAGMENT = `#version 300 es
   uniform sampler2D uBrightnessTex;
   uniform vec4 uColor;
   uniform vec2 uWave;
-  uniform float uEnvironmentMotion;
+  uniform float uEnhancedWater;
 
   out vec4 finalColor;
 
@@ -198,23 +198,23 @@ const FIELD_FRAGMENT = `#version 300 es
     // Softer intersecting glints avoid a uniform whole-surface pulse. UVs stay inside their atlas tile.
     float polishedShimmer = 0.55 * shimmer + 0.3 * crossGlint + 0.15 * shimmer * crossGlint;
     lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
-      * mix(shimmer, polishedShimmer, uEnvironmentMotion);
+      * mix(shimmer, polishedShimmer, uEnhancedWater);
     // Water depth: shallows read darker, deep water darker still, and a narrow glint band drifts
     // across the deep water. vWater = (water fraction, deep fraction), zero on land paint and at land
-    // nodes, so it fades out across the coast triangle. Gated with the motion enhancement, so the
+    // nodes, so it fades out across the coast triangle. Gated with the water enhancement, so the
     // baseline renderer's water is unchanged.
     float shallow = vWater.x - vWater.y;
     float deep = vWater.y;
     float glint = pow(max(sin(uWave.x * ${WATER_GLINT_RADIANS_PER_TICK.toFixed(8)} + vGlintPhase), 0.0),
       ${WATER_GLINT_SHARPNESS.toFixed(1)});
-    lane *= 1.0 + uEnvironmentMotion * (-${WATER_SHALLOW_DARKEN.toFixed(4)} * shallow
+    lane *= 1.0 + uEnhancedWater * (-${WATER_SHALLOW_DARKEN.toFixed(4)} * shallow
       - ${WATER_DEEP_DARKEN.toFixed(4)} * deep + ${WATER_GLINT.toFixed(4)} * uWave.y * deep * glint);
     // Water colour: saturate the surface and tint each depth family. Both are identities at zero
-    // motion enhancement and on land, where vWater is zero.
+    // water enhancement and on land, where vWater is zero.
     float luma = dot(texel.rgb, ${glslVec3(LUMA_WEIGHTS)});
-    float saturation = mix(1.0, ${WATER_SATURATION.toFixed(4)}, vWater.x * uEnvironmentMotion);
-    vec3 tint = mix(vec3(1.0), ${glslVec3(WATER_SHALLOW_TINT)}, shallow * uEnvironmentMotion)
-      * mix(vec3(1.0), ${glslVec3(WATER_DEEP_TINT)}, deep * uEnvironmentMotion);
+    float saturation = mix(1.0, ${WATER_SATURATION.toFixed(4)}, vWater.x * uEnhancedWater);
+    vec3 tint = mix(vec3(1.0), ${glslVec3(WATER_SHALLOW_TINT)}, shallow * uEnhancedWater)
+      * mix(vec3(1.0), ${glslVec3(WATER_DEEP_TINT)}, deep * uEnhancedWater);
     texel.rgb = mix(vec3(luma), texel.rgb, saturation) * tint;
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
@@ -260,14 +260,14 @@ let vertexProgram: GlProgram | undefined;
  *  frame (a `Float32Array`, because a shared program re-uploads only changed contents). One group per
  *  map, shared by every shaded mesh, so the per-frame animation is one write instead of one per chunk. */
 export type WaveUniforms = UniformGroup & {
-  readonly uniforms: { readonly uWave: Float32Array; uEnvironmentMotion: number; uEnhancedSampling: number };
+  readonly uniforms: { readonly uWave: Float32Array; uEnhancedWater: number; uEnhancedSampling: number };
 };
 
 /** Make the map's shared water-animation uniform group (time 0, full amplitude). */
 export function makeWaveUniforms(): WaveUniforms {
   return new UniformGroup({
     uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' },
-    uEnvironmentMotion: { value: 0, type: 'f32' },
+    uEnhancedWater: { value: 0, type: 'f32' },
     uEnhancedSampling: { value: 0, type: 'f32' },
   }) as WaveUniforms;
 }

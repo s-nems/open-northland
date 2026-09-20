@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { uiScaleFor } from '../src/hud/ui-scale.js';
+import { enhancementsOf } from '../src/view/graphics-enhancements.js';
 import { createGameHudScaleCoordinator } from '../src/view/runtime/game-hud-scale.js';
 import {
   createGameSettingsRuntime,
@@ -9,14 +10,22 @@ import {
 import { createGameViewportCoordinator } from '../src/view/runtime/game-viewport.js';
 import { defaultSettings } from '../src/view/settings-store.js';
 
-it('applies a graphics experiment immediately without changing the other two choices', async () => {
+it('applies a graphics enhancement immediately without changing its siblings', async () => {
   const h = harness();
   await h.settings.update({ softShadows: false });
   expect(h.settings.current().softShadows).toBe(false);
   expect(h.setGraphicsEnhancements).toHaveBeenCalledWith({
-    enhancedSampling: true,
+    ...enhancementsOf(defaultSettings()),
     softShadows: false,
-    environmentMotion: true,
+  });
+});
+
+it('hands the renderer a newly picked pixel-art filter', async () => {
+  const h = harness();
+  await h.settings.update({ enhancedSampling: true, pixelArtScaler: 'sharp' });
+  expect(h.setGraphicsEnhancements).toHaveBeenLastCalledWith({
+    ...enhancementsOf(defaultSettings()),
+    pixelArtScaler: 'sharp',
   });
 });
 

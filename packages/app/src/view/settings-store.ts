@@ -1,4 +1,5 @@
 import { DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME } from '@open-northland/audio';
+import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler, parsePixelArtScaler } from '@open-northland/render';
 import { DEFAULT_KEY_BINDINGS, type KeyBindings, parseKeyBindings } from '../hud/keybindings.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
@@ -37,7 +38,9 @@ export interface MenuSettings {
   readonly postFxEnabled: boolean;
   readonly spriteSmoothing: boolean;
   readonly enhancedSampling: boolean;
+  readonly pixelArtScaler: PixelArtScaler;
   readonly softShadows: boolean;
+  readonly enhancedWater: boolean;
   readonly environmentMotion: boolean;
   readonly fpsLimit: FpsLimit;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
@@ -70,7 +73,9 @@ export function defaultSettings(): MenuSettings {
     postFxEnabled: true,
     spriteSmoothing: true,
     enhancedSampling: true,
+    pixelArtScaler: DEFAULT_PIXEL_ART_SCALER,
     softShadows: true,
+    enhancedWater: true,
     environmentMotion: true,
     fpsLimit: null,
     soundEnabled: true,
@@ -136,7 +141,9 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.spriteSmoothing === 'boolean' ? record.spriteSmoothing : defaults.spriteSmoothing,
     enhancedSampling:
       typeof record.enhancedSampling === 'boolean' ? record.enhancedSampling : defaults.enhancedSampling,
+    pixelArtScaler: parsePixelArtScaler(record.pixelArtScaler) ?? defaults.pixelArtScaler,
     softShadows: typeof record.softShadows === 'boolean' ? record.softShadows : defaults.softShadows,
+    enhancedWater: typeof record.enhancedWater === 'boolean' ? record.enhancedWater : defaults.enhancedWater,
     environmentMotion:
       typeof record.environmentMotion === 'boolean' ? record.environmentMotion : defaults.environmentMotion,
     fpsLimit: parseFpsLimit(record.fpsLimit),

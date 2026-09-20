@@ -73,6 +73,24 @@
   padding: 2px calc(var(--u) * 24) calc(var(--u) * 24) 2px;
 }
 
+/* A group title inside one tab; the panel's own gap separates it from the rows around it. */
+.main-menu__settings-heading {
+  margin: 0;
+  font:
+    700 calc(var(--u) * 20) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-bottom: calc(var(--u) * 10);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.main-menu__settings-heading:not(:first-child) {
+  margin-top: calc(var(--u) * 14);
+}
+
 /* The bubble host (menu.css) waits long enough that sweeping the pointer down the list does not
    flash every row's tip. */
 .main-menu__settings-row {

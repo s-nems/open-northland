@@ -1,5 +1,6 @@
 import type { WorldEnhancements } from '@open-northland/render';
 import type { CameraInputSettings } from '../camera/index.js';
+import { ENHANCEMENT_KEYS, enhancementsOf } from '../graphics-enhancements.js';
 import type { MenuSettings } from '../settings-store.js';
 
 export interface GameSettingsRuntime {
@@ -58,16 +59,8 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
       deps.setCameraInputSettings(current);
     }
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
-    if (
-      patch.enhancedSampling !== undefined ||
-      patch.softShadows !== undefined ||
-      patch.environmentMotion !== undefined
-    ) {
-      deps.setGraphicsEnhancements({
-        enhancedSampling: current.enhancedSampling,
-        softShadows: current.softShadows,
-        environmentMotion: current.environmentMotion,
-      });
+    if (ENHANCEMENT_KEYS.some((key) => patch[key] !== undefined)) {
+      deps.setGraphicsEnhancements(enhancementsOf(current));
     }
   };
   return {

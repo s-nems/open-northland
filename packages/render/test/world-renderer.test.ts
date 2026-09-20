@@ -1,8 +1,12 @@
-import { type Application, Container, TextureSource } from 'pixi.js';
+import { type Application, BufferImageSource, Container, Mesh, TextureSource, UniformGroup } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { WorldRenderer } from '../src/gpu/world-renderer/index.js';
+import { pixelArtMagnifyMode, setPixelArtMagnification } from '../src/gpu/pixel-art-registry.js';
+import { BASELINE_ENHANCEMENTS, WorldRenderer } from '../src/gpu/world-renderer/index.js';
 import { mountPainterOrder, type WorldSceneLayers } from '../src/gpu/world-renderer/painter-order.js';
 import { entity, snapshotOf } from './support/fixtures.js';
+import { useHeadlessShaderContext } from './support/shader-context.js';
+
+useHeadlessShaderContext();
 
 /** An {@link Application} stub. Constructing the renderer wires Pixi containers and touches no GL, so
  *  the retained graph is readable here; a field the stub lacks would throw rather than pass. */
@@ -44,7 +48,63 @@ describe('mountPainterOrder', () => {
   });
 });
 
+/** The shared water uniform group of the first shaded terrain mesh under `root`. */
+function waveUniformsUnder(root: Container): UniformGroup {
+  const pending: Container[] = [root];
+  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+    const group = node instanceof Mesh ? node.shader?.resources.waveVars : undefined;
+    if (group instanceof UniformGroup) return group;
+    pending.push(...node.children);
+  }
+  throw new Error('no shaded terrain mesh');
+}
+
 describe('WorldRenderer scene graph', () => {
+  it('routes each enhancement to its own layer', () => {
+    const app = stubApp();
+    const renderer = new WorldRenderer(app);
+    const source = new BufferImageSource({ resource: new Uint8Array(64 * 64 * 4), width: 64, height: 64 });
+    const tile = { pageKey: 'ground', coordsA: [0, 0, 63, 63, 0, 63], coordsB: [0, 0, 63, 0, 63, 63] };
+    renderer.setTerrain(
+      {
+        width: 2,
+        height: 1,
+        typeIds: [0, 0],
+        brightness: [127, 127],
+        ground: { patterns: ['block meadow 00', 'block water 01'], a: [0, 1], b: [0, 1] },
+      },
+      { pages: new Map([['ground', source]]), cellFor: () => undefined, groundFor: () => tile },
+    );
+    const water = waveUniformsUnder(app.stage);
+    const magnifyOff = pixelArtMagnifyMode();
+
+    renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, environmentMotion: true });
+    expect(water.uniforms.uEnhancedWater).toBe(0);
+    expect(pixelArtMagnifyMode()).toBe(magnifyOff);
+
+    renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, enhancedWater: true });
+    expect(water.uniforms.uEnhancedWater).toBe(1);
+
+    renderer.setGraphicsEnhancements({
+      ...BASELINE_ENHANCEMENTS,
+      enhancedSampling: true,
+      pixelArtScaler: 'sharp',
+    });
+    const sharp = pixelArtMagnifyMode();
+    renderer.setGraphicsEnhancements({
+      ...BASELINE_ENHANCEMENTS,
+      enhancedSampling: true,
+      pixelArtScaler: 'xbr',
+    });
+    expect(new Set([magnifyOff, sharp, pixelArtMagnifyMode()]).size).toBe(3);
+
+    renderer.setGraphicsEnhancements(BASELINE_ENHANCEMENTS);
+    expect(pixelArtMagnifyMode()).toBe(magnifyOff);
+    setPixelArtMagnification('off');
+    renderer.dispose();
+    source.destroy();
+  });
+
   it('keeps enhanced camera motion subpixel and restores device alignment when switched off', () => {
     const app = stubApp();
     const renderer = new WorldRenderer(app, { viewSmoothing: true });
@@ -54,19 +114,11 @@ describe('WorldRenderer scene graph', () => {
     renderer.update(frame);
     expect(world.x).toBe(0);
     expect(world.y).toBeCloseTo(0);
-    renderer.setGraphicsEnhancements({
-      enhancedSampling: true,
-      softShadows: false,
-      environmentMotion: false,
-    });
+    renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, enhancedSampling: true });
     renderer.update(frame);
     expect(world.x).toBe(0.25);
     expect(world.y).toBe(-0.25);
-    renderer.setGraphicsEnhancements({
-      enhancedSampling: false,
-      softShadows: false,
-      environmentMotion: false,
-    });
+    renderer.setGraphicsEnhancements(BASELINE_ENHANCEMENTS);
     renderer.update(frame);
     expect(world.x).toBe(0);
     expect(world.y).toBeCloseTo(0);
@@ -96,18 +148,10 @@ describe('WorldRenderer scene graph', () => {
     renderer.update(frame); // register the drawn page
     renderer.update(frame);
     expect(source.scaleMode).toBe('nearest');
-    renderer.setGraphicsEnhancements({
-      enhancedSampling: true,
-      softShadows: false,
-      environmentMotion: false,
-    });
+    renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, enhancedSampling: true });
     renderer.update(frame);
     expect(source.scaleMode).toBe('linear');
-    renderer.setGraphicsEnhancements({
-      enhancedSampling: false,
-      softShadows: false,
-      environmentMotion: false,
-    });
+    renderer.setGraphicsEnhancements(BASELINE_ENHANCEMENTS);
     renderer.update(frame);
     expect(source.scaleMode).toBe('nearest');
     renderer.dispose();

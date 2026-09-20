@@ -151,15 +151,24 @@ export const plSurfaces = {
         'Wygładza krawędzie własnych postaci i pomniejszanych sprite’ów świata. Nie zmienia renderowania napisów.',
       postFx: 'Postprocessing',
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
-      enhancedSampling: 'Eksperyment: jakość tekstur',
-      enhancedSamplingTip:
-        'Wygładza krawędzie oryginalnej grafiki przy powiększeniu, ruch kamery i detal terenu. Działa od razu.',
-      softShadows: 'Eksperyment: cienie',
+      displayHeading: 'Ekran',
+      worldHeading: 'Świat gry',
+      pixelArtFilter: 'Filtr oryginalnej grafiki',
+      pixelArtFilterOff: 'Wyłączony',
+      pixelArtFilterSoft: 'Miękki',
+      pixelArtFilterSharp: 'Ostry',
+      pixelArtFilterXbr: 'xBR',
+      pixelArtFilterTip:
+        'Sposób powiększania oryginalnej grafiki pikselowej. xBR prowadzi skośne krawędzie jako gładkie linie, Ostry zostawia całe piksele i wygładza tylko ich granice, Miękki rozmywa obraz. Każdy filtr usuwa też skoki kamery i postaci o cały piksel, dokładniej filtruje teren i zachowuje detal budynków przy oddaleniu. Wyłączony rysuje grafikę tak jak dotąd. Działa od razu.',
+      softShadows: 'Ulepszone cienie',
       softShadowsTip:
-        'Zmiękcza i pogłębia wszystkie cienie oraz dorzuca rzucany cień osadnikom i zwierzętom. Działa od razu.',
-      environmentMotion: 'Eksperyment: płynniejszy ruch',
+        'Pogłębia i zmiękcza cienie budynków, drzew i dekoracji. Osadnicy i zwierzęta rzucają cień własnej sylwetki, pochylony zgodnie ze światłem budynków. Po wyłączeniu zostają cienie oryginału. Działa od razu.',
+      enhancedWater: 'Ulepszona woda',
+      enhancedWaterTip:
+        'Krzyżujące się fale, ciemniejsze płycizny i jeszcze ciemniejsza głębia, chłodniejszy, bardziej niebieski kolor oraz refleks wędrujący po głębokiej wodzie. Po wyłączeniu zostaje woda oryginału. Działa od razu.',
+      environmentMotion: 'Ruch otoczenia',
       environmentMotionTip:
-        'Interpoluje ruch ryb, przyciemnia wodę, dodaje jej wędrujący refleks i wygładza wiatr. Osadnicy i zwierzęta chodzą krokiem oryginału. Nie dodaje klatek do oryginalnych animacji.',
+        'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr we własnej roślinności jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. Działa od razu.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',

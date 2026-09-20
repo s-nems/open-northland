@@ -2,8 +2,14 @@ import type { Texture, TextureSource } from 'pixi.js';
 import type { ShadowStyle } from './shadow-style.js';
 
 /** How original pixel art magnifies under enhanced sampling; `bilinear` is the sampler's own filter. */
-export type PixelArtScaler = 'bilinear' | 'sharp' | 'xbr';
+export const PIXEL_ART_SCALERS = ['bilinear', 'sharp', 'xbr'] as const;
+export type PixelArtScaler = (typeof PIXEL_ART_SCALERS)[number];
 export const DEFAULT_PIXEL_ART_SCALER: PixelArtScaler = 'xbr';
+
+/** A stored scaler name; `null` for anything else. */
+export function parsePixelArtScaler(raw: unknown): PixelArtScaler | null {
+  return PIXEL_ART_SCALERS.find((scaler) => scaler === raw) ?? null;
+}
 /** `off` is enhanced sampling disabled: world sprites sample exactly as Pixi's default batcher. */
 export type WorldMagnification = PixelArtScaler | 'off';
 const MAGNIFY_MODES: Readonly<Record<WorldMagnification, number>> = { off: 0, bilinear: 1, sharp: 2, xbr: 3 };

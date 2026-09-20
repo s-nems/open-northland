@@ -37,13 +37,17 @@ describe('terrain footprint sampling', () => {
       const group = mesh.shader?.resources.waveVars;
       if (!(group instanceof UniformGroup)) throw new Error('Missing shared sampling uniforms');
       expect(group.uniforms.uEnhancedSampling).toBe(1);
+      expect(group.uniforms.uEnhancedWater).toBe(0);
+      layer.setEnhancedWater(true);
       layer.setEnhancedSampling(false);
       expect(group.uniforms.uEnhancedSampling).toBe(0);
+      expect(group.uniforms.uEnhancedWater).toBe(1);
       expect(meshOf(layer)).toBe(mesh);
       expect(layer.container.children[0]?.children).toHaveLength(1);
       layer.setEnhancedSampling(true);
       layer.set(terrain, textures);
       expect(meshOf(layer).shader?.resources.waveVars.uniforms.uEnhancedSampling).toBe(1);
+      expect(meshOf(layer).shader?.resources.waveVars.uniforms.uEnhancedWater).toBe(1);
       layer.destroy();
       source.destroy();
     });

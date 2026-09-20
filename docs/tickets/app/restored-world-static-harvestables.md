@@ -30,6 +30,6 @@ shows every harvestable tree motionless where a fresh boot of the same map sways
 
 - A numbered before/after on the same map and save, with the interleaved A/B the perf docs require.
 - A loaded world draws each harvestable exactly once, with no resurrected node after felling.
-- Intact trees on a loaded map play their sway loop, and its dead trees lean with the breeze under
-  `polish=on`, as on a fresh boot.
+- Intact trees on a loaded map play their sway loop, and its dead trees lean with the breeze with
+  the environment motion setting on, as on a fresh boot.
 - `npm run check`, `npm run build`, `npm test`, plus a browser pass on a real map.

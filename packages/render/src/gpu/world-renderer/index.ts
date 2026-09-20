@@ -1,4 +1,5 @@
 export {
+  BASELINE_ENHANCEMENTS,
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,
   type WorldEnhancements,

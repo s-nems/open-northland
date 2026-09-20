@@ -10,8 +10,7 @@ import type {
   SettlerBubble,
   WorkAreaRing,
 } from '../overlays/index.js';
-import type { PixelArtScaler } from '../pixel-art-registry.js';
-import type { ShadowStyle } from '../shadow-style.js';
+import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler } from '../pixel-art-registry.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
@@ -20,18 +19,30 @@ export interface BuildingHighlightItem {
   readonly ok: boolean;
 }
 
+/** The player's graphics enhancements; every one off draws the baseline renderer. */
 export interface WorldEnhancements {
+  /** Filtered original art, subpixel placement, bounded terrain filtering and building detail. */
   readonly enhancedSampling: boolean;
+  /** How original pixel art magnifies while `enhancedSampling` is on. */
+  readonly pixelArtScaler: PixelArtScaler;
   readonly softShadows: boolean;
+  /** Crossing swells, depth shading, colour grade and glint on the terrain water. */
+  readonly enhancedWater: boolean;
+  /** Interpolated fish, the smoothed breeze and the sway of trees authored as one still frame. */
   readonly environmentMotion: boolean;
 }
 
+/** The baseline renderer: every enhancement off. */
+export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
+  enhancedSampling: false,
+  pixelArtScaler: DEFAULT_PIXEL_ART_SCALER,
+  softShadows: false,
+  enhancedWater: false,
+  environmentMotion: false,
+};
+
 export interface WorldRendererOptions {
   readonly enhancements?: WorldEnhancements;
-  /** Diagnostic A/B choice for the experiment; `DEFAULT_PIXEL_ART_SCALER` when absent. */
-  readonly pixelArtScaler?: PixelArtScaler | undefined;
-  /** Diagnostic A/B tuning of the shadow enhancement; `DEFAULT_SHADOW_STYLE` when absent. */
-  readonly shadowStyle?: ShadowStyle | undefined;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**

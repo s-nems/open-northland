@@ -171,55 +171,53 @@ stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reprodu
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
 
-The graphics-polish experiment adds three live Graphics switches: texture quality (including
-palette-resolved original characters), shadows, and smoother motion. They default on in this
-experimental branch. `polish=off` restores the previous renderer; `polish=on` enables all three;
-`polish=sampling,shadows,motion` selects a subset for reproducible comparisons. Changing one of
-these switches saves the effective set and clears the URL override. Use the same map, camera and
-zoom for A/B review, including ×2 and zoom-out while panning. Motion interpolates fish, enriches
-water, smooths the breeze on own vegetation and adds that breeze to the tall trees the original
-ships as one still frame (its dead trees), whose cast shadows lean with them. That breeze belongs to
-the static map layer: a harvestable the sprite pool draws, which is every one after a save is
-restored, stands still. The water gains crossing swells, darker shallows and darker still deep water
-(the map's own two pattern families), a bluer and slightly more saturated colour, stronger on the deep
-family, and a glint band drifting over the deep water. Original humans
-and animals keep their tick anchors: the original engine moves a walker only together with its walk
-frame, and moving the body inside a frame hold would drag the planted foot. Original
-work/tree/building clips retain their authored images and durations: a fractional clock does not
-invent additional frames.
-Own-art motion interpolation remains enabled according to its authored binding when the switch is off.
-Projectiles, damage smoke, fades and building collapse already use interpolated presentation clocks.
-Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back to original shadows when
-unavailable or over budget. The shadow switch also does more than soften: every silhouette the world
-draws (buildings, trees, tall blocks, animals, characters) is painted at a multiplied alpha, with the
-strength and colour compiled into the `world` batch shader, and each settler and animal projects its
-own body frame onto the ground under itself, sheared toward the light of the original building
-silhouettes. A character's head overlay casts too, cropped to the rows above its body frame so the two
-projections meet instead of darkening the ground twice where they overlap.
-Flat decor (bushes, mushrooms, dead trees) draws its authored silhouette under every decor body in either
-mode. The per-frame soft bakes cannot batch into a decor mesh, so with the switch on its own mesh shader
-applies the same strength and colour and blurs the silhouette with the bake's kernel, reading only
-inside the frame's own texels.
-`shadows=gain:<n>,max:<n>,tint:<rrggbb>,shear:<n>,flatten:<n>,mode:blob|cast|both` tunes any subset for
-one session; strength and tint compile into the shader, so a change needs a reload, not a live toggle.
-Enhanced sampling also removes device-pixel snapping from camera/character placement and filters
-minified terrain with four tile-bounded samples. Original terrain pages have no padded mip chain;
-the bounded filter reduces aliasing but does not replace mipmaps at extreme zoom-out. Already
-mipmapped own terrain keeps its existing sampling. The HUD and simulation coordinates are unchanged.
-Original pixel art magnifies through an edge-directed xBR pass, so diagonal outlines become straight
-cuts instead of stairs or blur; it converges on plain bilinear as texels reach pixel size. Characters
-and animals get it in the paletted shader on palette-resolved colours; buildings, trees, goods and
-other frames the world's texture cache mints from nearest-loaded atlas pages get it through the `world`
-batcher the world sprites opt into, which also averages a frame-clamped 2x2 footprint below texel size
-while the switch is on. HUD icons, own art, ground and flat decor batches sample as before.
-`scaler=bilinear|sharp|xbr` overrides the magnification for one session: `bilinear` keeps the sampler's
-own filter plus that minification, `sharp` keeps whole texels and anti-aliases only their boundaries.
-At close zoom, original terrain magnifies with a tile-bounded Catmull-Rom bicubic filter instead of the
-sampler's bilinear. Finished buildings use isolated native-size frames with mipmaps
-and similarly bounded interior detail; alpha, anchors and picking bounds stay unchanged. The building
-cache caps its full mip chains at 32 MiB GPU plus CPU canvas copies, falling back when unavailable,
-oversized or full. Construction, upgrades, shadows and already-mipmapped art bypass building detail.
-Bakes occur synchronously on first use and can add a frame-time spike; cached frames avoid repeat work.
+The Graphics tab also owns four enhancements of the world view. They are stored settings, default
+on, apply to a running game without a restart and never enter the URL; with all four off the world
+draws through the previous renderer. For a before/after review keep the map, camera and zoom fixed,
+and include x2 and a zoomed-out pan.
+
+- **Original art filter** (`enhancedSampling`, `pixelArtScaler`): how original pixel art magnifies.
+  `xbr` is an edge-directed pass, so diagonal outlines become straight cuts instead of stairs or
+  blur, and it converges on plain bilinear as texels reach pixel size; `sharp` keeps whole texels
+  and anti-aliases only their boundaries; `bilinear` is the sampler's own filter. Characters and
+  animals get it in the paletted shader on palette-resolved colours. Buildings, trees, goods and the
+  other frames the world's texture cache mints from nearest-loaded atlas pages get it through the
+  `world` batcher the world sprites opt into, which also averages a frame-clamped 2x2 footprint
+  below texel size. HUD icons, own art, ground and flat decor batches sample as before. Any filter
+  also removes device-pixel snapping from camera and character placement, magnifies original terrain
+  with a tile-bounded Catmull-Rom bicubic filter and minifies it with four tile-bounded samples.
+  Original terrain pages have no padded mip chain, so the bounded filter reduces aliasing without
+  replacing mipmaps at extreme zoom-out; already mipmapped own terrain keeps its sampling. Finished
+  buildings use isolated native-size frames with mipmaps and similarly bounded interior detail;
+  alpha, anchors and picking bounds stay unchanged. The building cache caps its full mip chains at
+  32 MiB GPU plus CPU canvas copies and falls back when unavailable, oversized or full.
+  Construction, upgrades, shadows and already mipmapped art bypass it. Bakes run synchronously on
+  first use and can add a frame-time spike; cached frames avoid repeat work.
+- **Enhanced shadows** (`softShadows`): every silhouette the world draws (buildings, trees, tall
+  blocks, animals, characters) is softened and painted at a multiplied alpha, with the strength and
+  colour compiled into the `world` batch shader. Each settler and animal projects its own body frame
+  onto the ground, sheared toward the light of the original building silhouettes; a character's head
+  overlay casts too, cropped to the rows above its body frame so the two projections meet instead of
+  darkening the ground twice. Shadow bakes have an 8 MiB RGBA budget plus CPU copies and fall back
+  to the original shadows when unavailable or over budget. Flat decor (bushes, mushrooms, dead
+  trees) draws its authored silhouette under every decor body whatever the setting. The per-frame
+  soft bakes cannot batch into a decor mesh, so with the setting on its own mesh shader applies the
+  same strength and colour and blurs the silhouette with the bake's kernel, reading only inside the
+  frame's own texels.
+- **Enhanced water** (`enhancedWater`): crossing swells, darker shallows and darker still deep water
+  (the map's own two pattern families), a bluer and slightly more saturated colour, stronger on the
+  deep family, and a glint band drifting over the deep water.
+- **Environment motion** (`environmentMotion`): interpolates fish, smooths the breeze on own
+  vegetation and adds that breeze to the tall trees the original ships as one still frame (its dead
+  trees), whose cast shadows lean with them. That breeze belongs to the static map layer: a
+  harvestable the sprite pool draws, which is every one after a save is restored, stands still.
+
+Original humans and animals keep their tick anchors under every setting: the original engine moves
+a walker only together with its walk frame, and moving the body inside a frame hold would drag the
+planted foot. Original work, tree and building clips retain their authored images and durations: a
+fractional clock does not invent frames. Own-art motion interpolation follows its authored binding
+whatever the settings say. Projectiles, damage smoke, fades and building collapse already use
+interpolated presentation clocks.
 
 Debug modes:
 

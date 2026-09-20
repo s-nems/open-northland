@@ -10,7 +10,6 @@ import { defaultLocale, localeParam } from '../../i18n/index.js';
 import { assetSetFor } from '../asset-settings.js';
 import type { CameraController } from '../camera/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
-import { graphicsEnhancementsFor } from '../graphics-enhancements.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import { type MenuSettings, patchStoredSettings } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
@@ -93,7 +92,6 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
   const settings = createGameSettingsRuntime({
     initial: {
       ...deps.stored,
-      ...graphicsEnhancementsFor(deps.params, deps.stored),
       assets: assetSetFor(deps.params, deps.stored.assets),
       soundEnabled: initialSoundEnabled,
       language: localeParam(deps.params),
@@ -118,13 +116,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setKeyBindings: deps.setKeyBindings,
     setCameraInputSettings: deps.camera.setInputSettings,
     setDebugToolsEnabled: deps.setDebugToolsEnabled,
-    setGraphicsEnhancements: (next) => {
-      // The URL may have overridden all three saved choices. Persist that effective set before
-      // removing it, so changing one switch does not silently change its siblings on reload.
-      patchStoredSettings(next);
-      syncCarriedParam('polish', null);
-      deps.setGraphicsEnhancements(next);
-    },
+    setGraphicsEnhancements: deps.setGraphicsEnhancements,
   });
 
   return {

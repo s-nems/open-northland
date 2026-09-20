@@ -1,6 +1,7 @@
+import { PIXEL_ART_SCALERS, type PixelArtScaler } from '@open-northland/render';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../hud/ui-scale.js';
 import { messages } from '../i18n/index.js';
-import { segControl, settingRow, sliderControl, togglePill } from './settings-controls.js';
+import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './settings-controls.js';
 import type { DisplayMode } from './settings-display-mode.js';
 import type { SettingsPageStore } from './settings-page.js';
 import { type AssetSet, type FpsLimit, RENDER_SCALE_MAX, RENDER_SCALE_MIN } from './settings-store.js';
@@ -97,7 +98,26 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(assets.root, 'assets');
-  const experiments = (['enhancedSampling', 'softShadows', 'environmentMotion'] as const).map((key) => {
+  type FilterChoice = PixelArtScaler | 'off';
+  const filterLabels: Readonly<Record<FilterChoice, string>> = {
+    off: text.pixelArtFilterOff,
+    bilinear: text.pixelArtFilterSoft,
+    sharp: text.pixelArtFilterSharp,
+    xbr: text.pixelArtFilterXbr,
+  };
+  const filterChoices: readonly FilterChoice[] = ['off', ...PIXEL_ART_SCALERS];
+  const filter = segControl<FilterChoice>(
+    filterChoices.map((id) => ({ id, label: filterLabels[id] })),
+    settings.enhancedSampling ? settings.pixelArtScaler : 'off',
+    (choice) => {
+      void store.update(
+        choice === 'off' ? { enhancedSampling: false } : { enhancedSampling: true, pixelArtScaler: choice },
+      );
+      filter.setActive(choice);
+    },
+  );
+  markSegment(filter.root, 'pixel-art-filter');
+  const enhancementToggles = (['softShadows', 'enhancedWater', 'environmentMotion'] as const).map((key) => {
     const toggle = togglePill(settings[key], (enabled) => {
       void store.update({ [key]: enabled });
     });
@@ -106,15 +126,18 @@ export function graphicsSettingsRows(
     return settingRow(text[key], toggle, { tip: text[`${key}Tip`] });
   });
   return [
-    settingRow(text.assets, assets.root, { tip: deferredTip(text.assetsTip) }),
+    settingsHeading(text.displayHeading),
     settingRow(text.displayMode, displaySeg.root),
     settingRow(text.uiScale, uiScale, {
       tip: store.pinnedUiScale === null ? text.uiScaleTip : text.uiScalePinnedTip,
     }),
     settingRow(text.renderScale, renderScale, { tip: deferredTip(text.renderScaleTip) }),
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
+    settingsHeading(text.worldHeading),
+    settingRow(text.assets, assets.root, { tip: deferredTip(text.assetsTip) }),
+    settingRow(text.pixelArtFilter, filter.root, { tip: text.pixelArtFilterTip }),
+    ...enhancementToggles,
     settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),
     settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
-    ...experiments,
   ];
 }

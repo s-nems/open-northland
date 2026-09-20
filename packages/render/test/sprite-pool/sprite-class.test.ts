@@ -2,19 +2,14 @@ import { Container, Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
+import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../../src/gpu/shadow-style.js';
 import { type BindFrame, LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
 import type { PlayerColourLut } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
-import {
-  DEFAULT_SHADOW_STYLE,
-  type DrawItem,
-  type ShadowStyle,
-  type SpriteAtlas,
-  type SpriteSheet,
-} from '../../src/index.js';
+import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
@@ -259,17 +254,6 @@ describe('LayerBinder - a paletted character binds its silhouette on a plain spr
     expect(headBottom).toBeCloseTo(bodyCast.position.y);
     // Columns shear by height alone, so the seam row lands at the same x in both.
     expect(head.localTransform.c).toBeCloseTo(bodyCast.localTransform.c);
-  });
-
-  it('hides the authored blob in cast-only mode and keeps the projection', () => {
-    const binder = new LayerBinder(new TextureCache(), { ...sheet, palette: lut });
-    const pe = paletted();
-    const castOnly = { ...DEFAULT_SHADOW_STYLE, blob: false };
-
-    binder.bind(pe, item, [castLayer, shadowLayer], { ...bindFrame, shadowStyle: castOnly }, 1);
-
-    expect(pe.shadows.length).toBe(1);
-    expect(pe.shadows[0]?.texture.source).toBe(bodySource);
   });
 });
 
