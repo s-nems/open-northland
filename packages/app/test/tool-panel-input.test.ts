@@ -55,6 +55,7 @@ beforeEach(() => {
   vi.stubGlobal('window', windowTarget);
   vi.stubGlobal('HTMLInputElement', TextField);
   vi.stubGlobal('HTMLTextAreaElement', class {});
+  vi.stubGlobal('HTMLSelectElement', Dropdown);
   vi.stubGlobal('HTMLElement', class {});
   vi.stubGlobal('Element', DialogButton);
 });
@@ -65,6 +66,7 @@ afterEach(() => {
 
 /** Stand-ins for the DOM classes the keyboard-owner guard probes. */
 class TextField {}
+class Dropdown {}
 class DialogButton {
   closest(selector: string): object | null {
     return selector === '[aria-modal="true"]' ? this : null;
@@ -244,6 +246,13 @@ describe('tool panel Escape ladder', () => {
     windowTarget.dispatchEvent(key('KeyB'));
     expect(constructionToggled()).toBe(1);
     expect(cues).toEqual([]);
+    // A focused `<select>` keeps its letters: they run its own type-ahead, not a game action.
+    owned = false;
+    const inList = key('KeyB');
+    Object.defineProperty(inList, 'target', { value: new Dropdown() });
+    windowTarget.dispatchEvent(inList);
+    expect(constructionToggled()).toBe(1);
+    expect(inList.defaultPrevented).toBe(false);
     input.dispose();
   });
 

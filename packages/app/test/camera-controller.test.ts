@@ -62,6 +62,7 @@ const install = (
   // The typing-target guard probes these DOM classes, which the node test environment lacks.
   vi.stubGlobal('HTMLInputElement', class {});
   vi.stubGlobal('HTMLTextAreaElement', class {});
+  vi.stubGlobal('HTMLSelectElement', class {});
   vi.stubGlobal('HTMLElement', class {});
   const start: Camera = { offsetX: 0, offsetY: 0 };
   const ctl = createCameraController(canvas, start, () => 1, bindings, inputSettings);
