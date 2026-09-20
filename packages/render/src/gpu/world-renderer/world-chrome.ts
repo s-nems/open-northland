@@ -1,4 +1,5 @@
 import { type Container, Sprite, Texture, type TextureSource } from 'pixi.js';
+import { isPixelArtSource } from '../pixel-art-registry.js';
 import { makeVignetteSprite } from '../post-fx.js';
 import type { TextureCache } from '../texture-cache.js';
 
@@ -54,25 +55,39 @@ export class WorldChrome {
   }
 
   /**
-   * Match the sprite atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
-   * the zoomed-out bobs sparkle while panning, so the texture-cache pages flip to linear; at scale ≥ 1
-   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp.
+   * Match the sprite atlases' sampling to the zoom and to the art filter. Below scale 1 nearest sampling
+   * drops texels and the zoomed-out bobs sparkle while panning, so sprite smoothing flips the
+   * texture-cache pages to linear; at scale ≥ 1 exactly the flipped set restores to nearest, keeping
+   * magnified pixel art crisp. `enhanced` holds the original's own pages linear at every zoom, since the
+   * filter reconstructs from them.
    *
    * Known limit: the portrait inset re-renders the world magnified in the same frame, so while zoomed out
    * its cutout samples the flipped pages linear and slightly soft. A per-render flip would touch every
    * page twice a frame.
    */
   applyWorldSampling(scale: number, enhanced = false): void {
-    if (enhanced || (this.spriteSmoothing && scale < 1)) {
-      for (const source of this.textures.pageSources()) {
-        if (this.linearPages.has(source)) continue;
-        if (source.scaleMode !== 'nearest') continue; // a page someone loaded linear stays theirs
-        source.scaleMode = 'linear';
-        this.linearPages.add(source);
-      }
-    } else if (this.linearPages.size > 0) {
+    const minifying = this.spriteSmoothing && scale < 1;
+    if (!minifying && !enhanced) {
+      if (this.linearPages.size === 0) return;
       for (const source of this.linearPages) source.scaleMode = 'nearest';
       this.linearPages.clear();
+      return;
+    }
+    // Sprite smoothing claims every page it finds nearest, but only while minifying. The art filter
+    // claims the original's pixel-art pages at any zoom and nothing else, so own art keeps the sampling
+    // its loader chose from the sprite-smoothing setting.
+    const claimed = (source: TextureSource): boolean => minifying || (enhanced && isPixelArtSource(source));
+    for (const source of this.textures.pageSources()) {
+      if (this.linearPages.has(source) || !claimed(source)) continue;
+      if (source.scaleMode !== 'nearest') continue; // a page someone loaded linear stays theirs
+      source.scaleMode = 'linear';
+      this.linearPages.add(source);
+    }
+    // A page one condition claimed and neither still wants goes back, rather than waiting for both off.
+    for (const source of this.linearPages) {
+      if (claimed(source)) continue;
+      source.scaleMode = 'nearest';
+      this.linearPages.delete(source);
     }
   }
 

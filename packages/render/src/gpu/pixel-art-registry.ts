@@ -27,6 +27,10 @@ export function markPixelArtSource(source: TextureSource): void {
   pixelArtSources.add(source);
 }
 
+export function isPixelArtSource(source: TextureSource): boolean {
+  return pixelArtSources.has(source);
+}
+
 /** Register a world texture for edge-aware magnification; a no-op unless its page is pixel art. */
 export function markMagnifiedTexture(texture: Texture, page: TextureSource = texture.source): void {
   if (pixelArtSources.has(page)) magnifiedTextures.add(texture);

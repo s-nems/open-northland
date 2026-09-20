@@ -1,10 +1,13 @@
 import { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { markPixelArtSource } from '../src/gpu/pixel-art-registry.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { WorldChrome } from '../src/gpu/world-renderer/world-chrome.js';
 
-function atlas(cache: TextureCache, scaleMode: 'nearest' | 'linear'): TextureSource {
+/** `pixelArt` marks the page the way the original's atlas loader does; own art is never marked. */
+function atlas(cache: TextureCache, scaleMode: 'nearest' | 'linear', pixelArt = true): TextureSource {
   const source = new TextureSource({ width: 8, height: 8, scaleMode });
+  if (pixelArt) markPixelArtSource(source);
   cache.get(source, { x: 0, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 });
   return source;
 }
@@ -24,6 +27,39 @@ describe('world sprite smoothing', () => {
     cache.clear();
     source.destroy();
   });
+  it('leaves own art at the sampling its loader chose, whatever the art filter is set to', () => {
+    const cache = new TextureCache();
+    const ownArt = atlas(cache, 'nearest', false);
+    const originalArt = atlas(cache, 'nearest');
+    // Sprite smoothing off, art filter on: the filter owns the original's pages and nothing else.
+    const chrome = new WorldChrome(cache, false, false);
+    chrome.applyWorldSampling(2, true);
+    expect(ownArt.scaleMode).toBe('nearest');
+    expect(originalArt.scaleMode).toBe('linear');
+    chrome.destroy();
+    cache.clear();
+    ownArt.destroy();
+    originalArt.destroy();
+  });
+
+  it('releases a page as soon as the condition that claimed it lapses', () => {
+    const cache = new TextureCache();
+    const ownArt = atlas(cache, 'nearest', false);
+    const originalArt = atlas(cache, 'nearest');
+    // Sprite smoothing claimed own art while zoomed out; zooming back in must return it even though
+    // the art filter is still on and still holding the original's page.
+    const chrome = new WorldChrome(cache, false, true);
+    chrome.applyWorldSampling(0.5, true);
+    expect(ownArt.scaleMode).toBe('linear');
+    chrome.applyWorldSampling(1, true);
+    expect(ownArt.scaleMode).toBe('nearest');
+    expect(originalArt.scaleMode).toBe('linear');
+    chrome.destroy();
+    cache.clear();
+    ownArt.destroy();
+    originalArt.destroy();
+  });
+
   it('keeps sampling disabled at every zoom', () => {
     const cache = new TextureCache();
     const source = atlas(cache, 'nearest');
