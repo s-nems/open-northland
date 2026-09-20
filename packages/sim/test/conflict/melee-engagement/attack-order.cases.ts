@@ -42,7 +42,7 @@ describe('attackUnit - the explicit attack order', () => {
     expect(travelling).toBe(true);
   });
 
-  it('releases a construction run\'s source and destination promises when combat interrupts it', () => {
+  it("releases a construction run's source and destination promises when combat interrupts it", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const enemy = fighterAt(sim, 4, 0, VIKING, WOODCUTTER, { owner: P1 });

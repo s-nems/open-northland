@@ -79,11 +79,6 @@ function startMaterialFetch(plan: PlannerContext, site: Entity, fetch: Fetchable
   );
 }
 
-/** Whether `site` has a missing material with reachable, unreserved source stock. */
-export function hasFetchableMaterial(plan: PlannerContext, site: Entity): boolean {
-  return constructionMaterialResolver(plan).has(site);
-}
-
 interface FetchableMaterial {
   readonly source: Entity;
   readonly goodType: number;
