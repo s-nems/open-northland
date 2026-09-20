@@ -28,8 +28,14 @@ Decide one encoding for saved experience and apply it to accrual, the curve inpu
 readers (`requirementRepeats`, `rawXpForRepeats`), the cap, and the details-panel rows, so a repeat
 costs `100 / experienceFactor` counted actions. Rewrite the encoding paragraph in
 [PROGRESSION.md](../../formats/PROGRESSION.md), which currently describes the cancelling encoding as
-the contract. The schema default for `experienceFactor` is `0` where the original's is `100`; settle
-that in the same change, including whether a factor-0 track should accrue nothing.
+the contract.
+
+Settle both record defaults in the same change, since the same constructor writes them as one 8-byte
+init at `rec+0x38`: `experienceFactor` defaults to `0` here and to `100` there (decide whether a
+factor-0 track should accrue nothing), and `workRepeatsFor`
+(`packages/sim/src/systems/progression/experience.ts`) falls back to `1` stroke where the record
+default is `10`. Only `hunter general`, `farmer wheat` and `fisher general` state
+`baserepeatcounter`, so the other 67 records take that fallback.
 
 Changing the encoding changes saved experience values and the progression goldens, so bump
 `SAVE_FORMAT_VERSION` and regenerate `packages/sim/test/fixtures/save.golden` in the same commit.

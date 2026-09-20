@@ -108,12 +108,17 @@ describe('extractJobExperience', () => {
     ]);
   });
 
-  it('keeps only the two good slots the record holds', () => {
-    const tracks = extractJobExperience(
+  it("fills the record's two good slots across repeated `good` lines, dropping the rest", () => {
+    const oneLine = extractJobExperience(
       parseIniSections('[humanjobexperiencetype]\ntype 1\njob 30\ngood 44 45 46\n'),
       { file: 'f.ini' },
     );
-    expect(tracks[0]?.goodTypes).toEqual([44, 45]);
+    const perLine = extractJobExperience(
+      parseIniSections('[humanjobexperiencetype]\ntype 1\njob 30\ngood 44\ngood 45\ngood 46\n'),
+      { file: 'f.ini' },
+    );
+    expect(oneLine[0]?.goodTypes).toEqual([44, 45]);
+    expect(perLine[0]?.goodTypes).toEqual([44, 45]);
   });
 
   it('throws on a record missing the required numeric `type`', () => {

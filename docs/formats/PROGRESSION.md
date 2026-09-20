@@ -47,9 +47,10 @@ the general record when the specialized one is absent. `an original routine` cre
 the second when they are the same record.
 
 An experience record belongs to one profession and up to two goods: byte evidence, the record holds
-two good slots and its loader stops filling once both are set, so a longer `good` line loses its extra
-ids. The three druid potion records use the second slot to share one track between a small and a large
-potion.
+two good slots, its loader fills them across every `good` line in the record, and any id past the
+second is read and discarded. The three druid potion records use the second slot to share one track
+between a small and a large potion. The same loader files at most ten records per profession; the
+corrected joiner holds nine.
 
 ### CulturesNation experience corrections
 
@@ -73,7 +74,7 @@ own `collector mushroom` record already specializes that pairing, and no `needfo
 Conversion applies a correction only while the record still matches what the mod ships, then fails the
 content build when any surviving specialization names a profession the tribe table does not enable for
 its good, or when two records claim the same profession and good. Products that deliberately fall back
-to a general track remain: the hunter's hide, meat and prey, the fisher's and sea fisher's fish, and
+to a general track remain: the hunter's leather, meat and prey, the fisher's and sea fisher's fish, and
 the coiner's six amulets.
 
 Saved experience uses a factor-scaled encoding: one counted action contributes its track's

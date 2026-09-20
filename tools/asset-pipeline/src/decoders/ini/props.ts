@@ -41,6 +41,21 @@ export function getIntValues(sec: RuleSection, key: string): number[] {
 }
 
 /**
+ * Every value of every property with this key as base-10 ints (NaN entries dropped), in file order -
+ * for a key that is both repeatable and multi-valued, like a record's `good` slots.
+ */
+export function getAllIntValues(sec: RuleSection, key: string): number[] {
+  const out: number[] = [];
+  for (const p of findProps(sec, key)) {
+    for (const raw of p.values) {
+      const n = Number.parseInt(raw, 10);
+      if (!Number.isNaN(n)) out.push(n);
+    }
+  }
+  return out;
+}
+
+/**
  * All values of the first matching property as ints, only when there are exactly `length` of them, for
  * fixed-arity tuples like a 6-int `GfxCoordsA` UV set or a 3-int `debugcolor`. A wrong-arity line
  * yields `undefined` rather than a partial tuple.

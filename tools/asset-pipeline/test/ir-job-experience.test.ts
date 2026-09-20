@@ -95,8 +95,18 @@ describe('correctJobExperience', () => {
     );
   });
 
-  it('skips the check when a partial mod tree yielded no jobEnablesGood edges', () => {
+  it('skips the owner check when a partial mod tree yielded no jobEnablesGood edges', () => {
     const tracks = [track(29, SMITH, [IRON_TOOL], 'smith iron tool')];
     expect(correctJobExperience(tracks, [tribe([])])).toHaveLength(1);
+  });
+
+  it('still rejects a duplicate pairing without a tribe table to compare owners against', () => {
+    const tracks = [
+      track(80, CARPENTER, [IRON_TOOL], 'carpenter iron tool'),
+      track(81, CARPENTER, [IRON_TOOL], 'carpenter iron tool again'),
+    ];
+    expect(() => correctJobExperience(tracks, [tribe([])])).toThrow(
+      /repeats the job 9 \/ good 32 specialization type 80 already owns/,
+    );
   });
 });

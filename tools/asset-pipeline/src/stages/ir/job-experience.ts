@@ -19,17 +19,9 @@ interface JobExperienceCorrection {
 }
 
 /**
- * CulturesNation moved three products to other workshops and left their experience records on the base
- * game's owner in `humanjobexperiencetypes.ini`; mushroom gathering became the collector's alone and
- * left the herbalist record behind. The mod's authors confirm these are authoring mistakes, so
- * conversion repairs them rather than shipping them.
- *
- * Nothing in the original rescues such a record: its loader files each one under the `job` the record
- * names and never reads `jobEnablesGood`, so a moved product would train and read its new profession's
- * general track instead of a specialization. `houses.ini` agrees with `jobEnablesGood` on the new
- * owner - the joinery's recipes make both tool goods, the armoury's the wooden spear.
- *
- * The record keeps its `type` id, so no technology requirement and no saved experience bucket moves.
+ * Records CulturesNation left on a profession that no longer makes their good, and the one the
+ * collector's own record superseded. `docs/formats/PROGRESSION.md` holds the evidence and the
+ * consequence of shipping them as written.
  */
 const CULTURESNATION_CORRECTIONS: readonly JobExperienceCorrection[] = [
   {
@@ -59,7 +51,7 @@ export function correctJobExperience(
   tribes: readonly TribeType[],
 ): HumanJobExperienceType[] {
   const corrected = applyCorrections(tracks);
-  assertSpecializationsMatchEnabledGoods(corrected, tribes);
+  assertSpecializationsAreConsistent(corrected, tribes);
   return corrected;
 }
 
@@ -102,31 +94,33 @@ function producersByGood(tribes: readonly TribeType[]): Map<number, Set<number>>
   return producers;
 }
 
-function assertSpecializationsMatchEnabledGoods(
+function assertSpecializationsAreConsistent(
   tracks: readonly HumanJobExperienceType[],
   tribes: readonly TribeType[],
 ): void {
   const producers = producersByGood(tribes);
-  // A partial mod tree may resolve the experience table without the tribe table; there is then
-  // nothing to check against, and `resolveIniSources` promises such a run still yields an IR.
-  if (producers.size === 0) return;
-
+  // A partial mod tree may resolve the experience table without the tribe table; there is then nothing
+  // to compare an owner against, and `resolveIniSources` promises such a run still yields an IR.
+  const ownersAreKnown = producers.size > 0;
   const problems: string[] = [];
   const ownerOfPairing = new Map<string, number>();
   for (const track of tracks) {
     for (const good of track.goodTypes) {
       const jobs = producers.get(good);
-      if (jobs === undefined || !jobs.has(track.jobType)) {
-        const owners = jobs === undefined ? [] : [...jobs].sort((a, b) => a - b);
+      if (ownersAreKnown && (jobs === undefined || !jobs.has(track.jobType))) {
+        const owners = [...(jobs ?? [])].sort((a, b) => a - b);
         problems.push(
           `"${track.id}" (type ${track.typeId}) specializes job ${track.jobType} on good ${good}, ` +
-            (owners.length === 0 ? 'which no job enables' : `which only job ${owners.join('/')} enables`),
+            (owners.length === 0
+              ? 'which no jobEnablesGood row enables'
+              : `which only job ${owners.join('/')} enables`),
         );
       }
       const pairing = `${track.jobType}:${good}`;
       const owner = ownerOfPairing.get(pairing);
       if (owner === undefined) ownerOfPairing.set(pairing, track.typeId);
       else {
+        // `trackFor` would resolve the pairing by table position, so two records may never claim it.
         problems.push(
           `"${track.id}" (type ${track.typeId}) repeats the job ${track.jobType} / good ${good} ` +
             `specialization type ${owner} already owns`,
@@ -135,8 +129,6 @@ function assertSpecializationsMatchEnabledGoods(
     }
   }
   if (problems.length > 0) {
-    throw new Error(
-      `ir: job experience records contradict the tribes' jobEnablesGood table:\n  ${problems.join('\n  ')}`,
-    );
+    throw new Error(`ir: job experience records are inconsistent:\n  ${problems.join('\n  ')}`);
   }
 }

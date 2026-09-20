@@ -24,8 +24,8 @@ export const JobType = z.strictObject({
 });
 export type JobType = z.infer<typeof JobType>;
 
-/** Good slots a `[humanjobexperiencetype]` record carries; the original's record has two and its
- *  loader stops filling once both are set. */
+/** Good slots a `[humanjobexperiencetype]` record carries; the original's record has two, filled
+ *  across every `good` line in the record, and it drops any id past the second. */
 export const GOOD_SLOTS_PER_TRACK = 2;
 
 /**
@@ -42,8 +42,7 @@ export const HumanJobExperienceType = z.strictObject({
   name: z.string().optional(),
   /** The owning job (`job`), cross-checked against the job table at load. */
   jobType: TypeId,
-  /** The specialization's `good` ids; empty on profession-general tracks. Byte evidence: the record
-   *  holds exactly two good slots and the loader drops any further id on the line. */
+  /** The specialization's `good` ids; empty on profession-general tracks. */
   goodTypes: z.array(TypeId).max(GOOD_SLOTS_PER_TRACK).default([]),
   /** `experiencefactor` - how fast XP accrues on this track; the runtime curve is the ProgressionSystem's. */
   experienceFactor: z.number().int().nonnegative().default(0),

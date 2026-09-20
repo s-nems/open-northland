@@ -270,4 +270,32 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     expect(masts.size).toBeGreaterThan(0);
     expect(masts.size).toBeLessThan(flagPointByType(rawIrUnderTest() as ContentIr, VIKING_TRIBE).size);
   });
+
+  it('specializes only pairings a tribe enables, at most once each', async () => {
+    // The pipeline's `correctJobExperience` repairs the records CulturesNation left on a profession
+    // that no longer makes their good and then asserts this law; re-checking it on the shipped rows
+    // is what proves the stage is still wired into `buildIr`. A specialization the tribe table
+    // contradicts trains nobody and silently hands its product to the profession-general track, and
+    // a repeated pairing makes `trackFor` pick by table position.
+    const { real } = await loadContentUnderTest();
+    const goods = new Map(real.goods.map((g) => [g.typeId, g.id]));
+    const jobs = new Map(real.jobs.map((j) => [j.typeId, j.id]));
+    const producers = new Map<number, Set<number>>();
+    for (const tribe of real.tribes) {
+      for (const edge of tribe.jobEnables) {
+        if (edge.kind !== 'good') continue;
+        producers.set(edge.targetId, (producers.get(edge.targetId) ?? new Set()).add(edge.jobType));
+      }
+    }
+    expect(producers.size).toBeGreaterThan(0); // the law is vacuous without the tribe edges
+    const seen = new Set<string>();
+    for (const track of real.jobExperience) {
+      for (const good of track.goodTypes) {
+        const pairing = `${jobs.get(track.jobType) ?? track.jobType} / ${goods.get(good) ?? good}`;
+        expect(producers.get(good), `${track.id} specializes ${pairing}`).toContain(track.jobType);
+        expect(seen, `${track.id} repeats ${pairing}`).not.toContain(pairing);
+        seen.add(pairing);
+      }
+    }
+  });
 });
