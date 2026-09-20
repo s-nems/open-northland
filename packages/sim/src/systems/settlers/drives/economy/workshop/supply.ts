@@ -67,16 +67,16 @@ export function workSeatCount(
 /**
  * Where a producer worker should go for a missing recipe input, or null when every input is stocked and
  * nothing reachable can supply one. For the first input the workplace is short of it returns the nearest
- * source of either kind: a `fetch` from a store that holds the good, carrying exactly the shortfall, or a
- * `draw` from a built utility that mints the good from no inputs, cranked in place for one unit. Both kinds
- * compete in one canonical scan, so a bakery beside a well draws there rather than trek to a distant HQ
- * that also holds water. Source basis: authored.
+ * source of either kind: a `fetch` from a store that holds the good, or a `draw` from a built utility that
+ * mints the good from no inputs, cranked in place for one unit. Both kinds compete in one canonical scan,
+ * so a bakery beside a well draws there rather than trek to a distant HQ that also holds water. Either way
+ * the trip brings one unit, so a shortfall of two is two trips. Source basis: authored.
  *
  * `restockToCapacity` raises each input's fetch target from the recipe amount to the workplace's declared
  * input-slot capacity, the bound carrier's shape (observed original behaviour). It does not affect a draw.
  */
 export type MissingInputSource =
-  | { readonly kind: 'fetch'; readonly store: Entity; readonly goodType: number; readonly amount: number }
+  | { readonly kind: 'fetch'; readonly store: Entity; readonly goodType: number }
   | { readonly kind: 'draw'; readonly utility: Entity; readonly goodType: number };
 
 const FETCH: { readonly payload: 'fetch' } = { payload: 'fetch' };
@@ -113,7 +113,7 @@ export function nearestMissingInputSource(
     if (winner === null) continue;
     return winner.payload === 'draw'
       ? { kind: 'draw', utility: winner.entity, goodType: input.goodType }
-      : { kind: 'fetch', store: winner.entity, goodType: input.goodType, amount: target - have };
+      : { kind: 'fetch', store: winner.entity, goodType: input.goodType };
   }
   return null;
 }

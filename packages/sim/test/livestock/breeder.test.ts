@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   FarmAnimal,
   MoveGoal,
+  Position,
   Production,
   Settler,
   Stockpile,
@@ -107,6 +108,25 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
 
     expect(herdRow(sim, farm)).toBe(0);
     expect(pair.every((cow) => sim.world.get(cow, FarmAnimal).farm === neighbour)).toBe(true);
+  });
+
+  it('fetches the feed one unit per trip, however many a cycle eats', () => {
+    const sim = livestockSim();
+    // Water covered, so the shortfall is the cycle's two wheat - and the trip still brings one.
+    const { farm, breeder } = farmWithBreeder(sim, [[WATER, 1]]);
+    const hq = farmAt(sim, 24, 24, { owner: P0, buildingType: HEADQUARTERS, stock: [[WHEAT, 8]] });
+    sim.world.mut(breeder, Position).x = sim.world.get(hq, Position).x; // standing on the store
+    sim.world.mut(breeder, Position).y = sim.world.get(hq, Position).y;
+    for (let i = 0; i < 2; i++) cowAt(sim, 21 + i, 20, { owner: P0, farm });
+
+    plan(sim);
+
+    expect(sim.world.get(breeder, CurrentAtomic).effect).toEqual({
+      kind: 'pickup',
+      goodType: WHEAT,
+      amount: 1,
+      from: hq,
+    });
   });
 
   it('breeds while exactly the pair stands, and carries the calf into the herd', () => {

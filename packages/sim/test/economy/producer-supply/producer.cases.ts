@@ -242,23 +242,20 @@ describe('producer self-service - fetching a missing recipe input', () => {
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 2, 0));
   });
 
-  it('fetches ONE cycle’s worth of a shared input, not the sum over every product', () => {
+  it('measures the shortfall against ONE cycle, not the sum over every product', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     // The forge's two products both eat wood, so the merged target is 2 where the pinned ware needs 1.
-    // Narrowing has to right-size the amount as well as pick the good.
-    const forge = buildingAt(sim, FORGE, 0, 0);
-    const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
-    const smith = settlerAt(sim, 3, 0, CARPENTER, forge); // standing on the source, so it lifts this tick
+    // That single wood on the shelf covers this smith's pick, so it crafts; the whole-shop view would
+    // send it out to the HQ for a second one.
+    const forge = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(smith, CurrentAtomic).effect).toEqual({
-      kind: 'pickup',
-      goodType: WOOD,
-      amount: 1,
-      from: hq,
-    });
+    expect(sim.world.has(smith, MoveGoal)).toBe(false);
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: forge });
   });
 
   it('falls back to the whole shop’s view for an operator that has earned NOTHING here', () => {

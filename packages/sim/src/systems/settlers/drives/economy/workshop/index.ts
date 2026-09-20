@@ -89,7 +89,7 @@ export function planProducer(
     unreachableGoalVeto(world, ctx, plan.entity),
   );
   if (source !== null) {
-    routeToInputSource(plan, source, false);
+    routeToInputSource(plan, source);
     return;
   }
 
@@ -124,7 +124,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     unreachableGoalVeto(world, ctx, plan.entity),
   );
   if (source !== null) {
-    routeToInputSource(plan, source, true);
+    routeToInputSource(plan, source);
     return;
   }
 
@@ -135,21 +135,18 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
 }
 
 /**
- * Send the worker to a chosen input source: a fetch lifts the good out of a store, a draw cranks a shared
- * utility in place for one unit. `capFetchToCarry` limits a fetch to one carry-load, the bound carrier's
- * per-trip cap; a craftsman fetches the exact shortfall.
+ * Send the worker to a chosen input source: a fetch lifts one carry-load out of a store, a draw cranks a
+ * shared utility in place for one unit. A trip carries a single unit whoever makes it, craftsman or bound
+ * carrier: the original reserves exactly one against both ends of the walk before it sets off
+ * (`an original routine` reserves `an original routine(+1)` at the work house and
+ * `-1` at the source), so a recipe wanting two of a good is two walks.
  */
-function routeToInputSource(
-  plan: PlannerContext,
-  source: MissingInputSource,
-  capFetchToCarry: boolean,
-): void {
+function routeToInputSource(plan: PlannerContext, source: MissingInputSource): void {
   const { world, ctx, terrain, entity, here } = plan;
   const worker = plan;
   if (source.kind === 'fetch') {
-    const amount = capFetchToCarry ? Math.min(source.amount, CARRY_CAPACITY) : source.amount;
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
-      startPickup(world, ctx, entity, worker, source.store, source.goodType, amount),
+      startPickup(world, ctx, entity, worker, source.store, source.goodType, CARRY_CAPACITY),
     );
     return;
   }
