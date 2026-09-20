@@ -301,7 +301,7 @@ export const enGame = {
       close: 'Close',
       pending: 'In preparation',
       knowledgePending:
-        'Knowledge (production and development, encyclopedia, how to play) is being built. Building requirements still show in the construction window.',
+        'Knowledge (production and development, encyclopedia, how to play) is being built. What a locked building still waits for will be read here.',
     },
     residentsWindow: {
       title: 'Residents',

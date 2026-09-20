@@ -165,8 +165,8 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
     body.classList.toggle('body--wide', state.tab === 'hud');
     if (state.tab === 'hud') {
       aside.hidden = true;
-      renderHudFoundation(main, HUD_FOUNDATION_SCALE);
       status.textContent = 'HUD foundation primitives; drag the scale to check the shipped range.';
+      renderHudFoundation(main, HUD_FOUNDATION_SCALE, status);
       save();
       return;
     }
@@ -257,7 +257,7 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
         if (request !== revision) return;
         preview.update(state);
         status.textContent = [
-          `${shown.map((entry) => entry.name).join(' · ')} — zoom ×${state.zoom}`,
+          `${shown.map((entry) => entry.name).join(' · ')}, zoom ×${state.zoom}`,
           ...notes,
         ].join(' · ');
       })

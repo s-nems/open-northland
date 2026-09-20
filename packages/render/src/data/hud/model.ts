@@ -55,6 +55,10 @@ interface HalfCellNode {
   readonly hy: number;
 }
 
+/** The anchor bucket a node falls in: one square of `WALK_RANGE_NODES` on the half-cell lattice. */
+const bucketKey = (hx: number, hy: number): string =>
+  `${Math.floor(hx / WALK_RANGE_NODES)}:${Math.floor(hy / WALK_RANGE_NODES)}`;
+
 /** The half-cell node under an entity's `Position`, or null for one that stands nowhere. */
 function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | null {
   const p = readPosition(components);
@@ -64,9 +68,9 @@ function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | n
 /**
  * Build one player's {@link HudModel} from a frame {@link WorldSnapshot}. Membership is `Owner.player`,
  * not `tribe`: a seat routinely fields several tribes and a tribe is routinely split across seats, so
- * only the owner answers "what do I command". A neutral entity carries no `Owner` and counts for nobody,
- * which is stricter than the sim's `ownersCompatible` side rule - a neutral store every seat may draw
- * from would show in none of their totals. No decoded map authors one.
+ * only the owner answers "what do I command". An entity with no `Owner` counts for nobody unless it is
+ * a heap on the ground, which the anchors below hand to whoever can reach it; a neutral store standing
+ * in reach of two seats would therefore count for both. No decoded map authors one.
  *
  * Stock is every unit the seat holds, wherever it sits: the piles of its buildings and boat hulls, the
  * inventory a building keeps aside while it upgrades, the unit in a settler's hands, and every heap on
@@ -123,32 +127,34 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
     const carriedAmount = readNumField(components, 'Carrying', 'amount');
     if (carriedGood !== undefined && carriedAmount !== undefined) addPairs([[carriedGood, carriedAmount]]);
   }
-  // A hexagon of range r spans r columns and r rows each way, so the box around every anchor bounds
-  // the reach; only the heaps inside it pay for the per-anchor distance test.
-  let minHx = Number.POSITIVE_INFINITY;
-  let maxHx = Number.NEGATIVE_INFINITY;
-  let minHy = Number.POSITIVE_INFINITY;
-  let maxHy = Number.NEGATIVE_INFINITY;
+  // A hexagon of range r spans at most r columns and r rows each way, so an anchor within reach of a
+  // heap sits in the heap's own `WALK_RANGE_NODES` bucket or one of its eight neighbours. Bucketing
+  // the anchors once keeps the cost on the heaps beside a settlement; a seat spread across the map
+  // would otherwise pay one distance test per anchor for every heap between its far corners.
+  const anchorBuckets = new Map<string, HalfCellNode[]>();
   for (const anchor of anchors) {
-    if (anchor.hx < minHx) minHx = anchor.hx;
-    if (anchor.hx > maxHx) maxHx = anchor.hx;
-    if (anchor.hy < minHy) minHy = anchor.hy;
-    if (anchor.hy > maxHy) maxHy = anchor.hy;
+    const key = bucketKey(anchor.hx, anchor.hy);
+    const bucket = anchorBuckets.get(key);
+    if (bucket === undefined) anchorBuckets.set(key, [anchor]);
+    else bucket.push(anchor);
   }
-  const inReachBox = (node: HalfCellNode): boolean =>
-    node.hx > minHx - WALK_RANGE_NODES &&
-    node.hx < maxHx + WALK_RANGE_NODES &&
-    node.hy > minHy - WALK_RANGE_NODES &&
-    node.hy < maxHy + WALK_RANGE_NODES;
+  const inReach = (node: HalfCellNode): boolean => {
+    const bx = Math.floor(node.hx / WALK_RANGE_NODES);
+    const by = Math.floor(node.hy / WALK_RANGE_NODES);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const bucket = anchorBuckets.get(`${bx + dx}:${by + dy}`);
+        if (bucket === undefined) continue;
+        for (const anchor of bucket) {
+          if (hexDistanceBetween(anchor.hx, anchor.hy, node.hx, node.hy) < WALK_RANGE_NODES) return true;
+        }
+      }
+    }
+    return false;
+  };
   for (const heap of heaps) {
     const node = nodeOf(heap);
-    if (
-      node !== null &&
-      inReachBox(node) &&
-      anchors.some((anchor) => hexDistanceBetween(anchor.hx, anchor.hy, node.hx, node.hy) < WALK_RANGE_NODES)
-    ) {
-      addPairs(readStockpileAmounts(heap));
-    }
+    if (node !== null && inReach(node)) addPairs(readStockpileAmounts(heap));
   }
 
   // Sort explicitly: these maps are filled in entity-iteration order, not by key.

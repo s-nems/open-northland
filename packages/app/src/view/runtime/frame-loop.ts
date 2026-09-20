@@ -131,8 +131,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     rosterPlayers: deps.rosterPlayers ?? [],
     observer: deps.observer === true,
   };
-  // Bound once and pulled by the sound driver only once a map has handed over its music, so a scene, a
-  // muted session, or a map without music never pays the head-count's O(entities) tally.
+  // Bound once; the model behind it is the summary bar's too, memoised per snapshot, so the mood costs
+  // the stance read alone.
   const musicStanding = (snap: WorldSnapshot): MusicStanding => ({
     population: hudModelFor(snap).population,
     stance: harshestStance(sim, musicRoster),

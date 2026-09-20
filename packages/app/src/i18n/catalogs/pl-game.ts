@@ -292,7 +292,7 @@ export const plGame = {
       close: 'Zamknij',
       pending: 'W przygotowaniu',
       knowledgePending:
-        'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. Wymagania budynków nadal widać w oknie budowy.',
+        'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. To, na co czeka zablokowany budynek, przeczytasz tutaj.',
     },
     residentsWindow: {
       title: 'Mieszkańcy',

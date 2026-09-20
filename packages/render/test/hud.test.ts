@@ -1,4 +1,10 @@
-import { fx, type WorldSnapshot } from '@open-northland/sim';
+import {
+  fx,
+  hexDistanceBetween,
+  nodeOfPosition,
+  WALK_RANGE_NODES,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { IDLE_JOB } from '../src/data/hud/model.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
@@ -247,6 +253,36 @@ describe('buildHud', () => {
     expect(buildHud(snapshotOf([...entities, signpost(2, 0, 70, 70)]), 0).stocks).toEqual([
       { goodType: 2, amount: 10 },
     ]);
+  });
+
+  it('finds the same heaps as a plain scan when the seat is spread across the map', () => {
+    // The anchors sit far apart, so a box drawn around all of them spans the whole field between
+    // them. This pins the bucketed lookup against the distance test it stands in for.
+    const posts = [
+      { x: 10, y: 10 },
+      { x: 200, y: 200 },
+    ];
+    const heaps: { readonly x: number; readonly y: number }[] = [];
+    for (let x = 0; x <= 220; x += 7) for (let y = 0; y <= 220; y += 11) heaps.push({ x, y });
+    const node = (x: number, y: number) => nodeOfPosition(fx.fromInt(x), fx.fromInt(y));
+    const inRange = heaps.filter((heap) => {
+      const h = node(heap.x, heap.y);
+      return posts.some((post) => {
+        const p = node(post.x, post.y);
+        return hexDistanceBetween(p.hx, p.hy, h.hx, h.hy) < WALK_RANGE_NODES;
+      });
+    }).length;
+    expect(inRange).toBeGreaterThan(0);
+    expect(inRange).toBeLessThan(heaps.length);
+
+    const hud = buildHud(
+      snapshotOf([
+        ...posts.map((post, i) => signpost(i + 1, 0, post.x, post.y)),
+        ...heaps.map((heap, i) => looseHeap(100 + i, heap.x, heap.y, 2, 1)),
+      ]),
+      0,
+    );
+    expect(hud.stocks).toEqual([{ goodType: 2, amount: inRange }]);
   });
 
   it('anchors the reach on an own building too, the collector radius of a seat without posts', () => {

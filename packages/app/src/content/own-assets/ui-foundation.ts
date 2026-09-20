@@ -21,9 +21,16 @@ export interface UiFoundationArt {
   readonly noticesUrl: string;
 }
 
+/** The delivery is a build-time constant, so it is parsed once and handed to every caller. */
+let art: UiFoundationArt | null | undefined;
+
 export function uiFoundationArt(): UiFoundationArt | null {
+  if (art !== undefined) return art;
   const entry = Object.entries(manifests)[0];
-  if (entry === undefined) return null;
+  if (entry === undefined) {
+    art = null;
+    return art;
+  }
   const [path, raw] = entry;
   const manifest = ownUiManifest.parse(raw);
   const folder = path.slice(0, path.lastIndexOf('/') + 1);
@@ -32,7 +39,8 @@ export function uiFoundationArt(): UiFoundationArt | null {
   const noticesUrl = images[`${folder}${manifest.notices.file}`];
   if (surfaceUrl === undefined || iconsUrl === undefined || noticesUrl === undefined)
     throw new Error('UI foundation manifest names an image that is not delivered');
-  return { manifest, surfaceUrl, iconsUrl, noticesUrl };
+  art = { manifest, surfaceUrl, iconsUrl, noticesUrl };
+  return art;
 }
 
 /** CSS background geometry that shows one named cell of the icon atlas in a box of `size` px. */

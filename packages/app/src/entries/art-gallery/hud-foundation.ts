@@ -170,7 +170,7 @@ function boardMarkup(): string {
 }
 
 /** The gallery's HUD foundation tab: the primitives at a chosen HUD scale, with the delivery state. */
-export function renderHudFoundation(main: HTMLElement, initialScale: number): void {
+export function renderHudFoundation(main: HTMLElement, initialScale: number, status: HTMLElement): void {
   const art = uiFoundationArt();
   const detail = element('div');
   detail.className = 'detail';
@@ -225,5 +225,5 @@ export function renderHudFoundation(main: HTMLElement, initialScale: number): vo
   };
   applyScale(initialScale);
   slider.addEventListener('input', () => applyScale(Number(slider.value)));
-  main.replaceChildren(detail, stage);
+  main.replaceChildren(detail, stage, status);
 }
