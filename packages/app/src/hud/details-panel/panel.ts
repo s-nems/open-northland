@@ -2,6 +2,7 @@ import type { UiCue } from '@open-northland/audio';
 import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
+import { animalGoodIcons } from '../../content/animal-gfx/icons.js';
 import { ownGoodIcons } from '../../content/own-assets/goods.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
@@ -75,6 +76,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     ...(await loadDetailsPanelArt(opts.lang)),
     previews: buildingPreviews(opts.sheet),
     ownGoods: ownGoodIcons(opts.sheet),
+    animalGoods: animalGoodIcons(opts.sheet, opts.goods, opts.livestockTribeOfGood),
   };
   const stage = createPanelStage({ app, assets, scale });
   const workerField = createWorkerField({

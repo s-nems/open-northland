@@ -82,7 +82,7 @@ export function stockRows(
   const live = liveAmounts(stockpile);
   const fractions = bonusFractions(productionBonus);
   // A species slot counts the herd grazing outside, so it belongs to Produkcja, not Magazyn.
-  const slots = (def?.stock ?? []).filter((slot) => ctx.isLivestockGood?.(slot.goodType) !== true);
+  const slots = (def?.stock ?? []).filter((slot) => ctx.livestockTribeOfGood?.(slot.goodType) == null);
   return slots.map((slot) => {
     const goodId = goodDef(ctx, slot.goodType)?.id;
     return {

@@ -29,9 +29,9 @@ export interface UnitPanelModelContext {
   readonly tribes: readonly TribeDef[];
   /** The sim's livestock-workplace classification. Absent = no filtering. */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
-  /** The sim's livestock-good classification: the species goods, whose stock row counts a farm's herd
-   *  rather than a ware on a shelf. */
-  readonly isLivestockGood?: ((goodType: number) => boolean) | undefined;
+  /** The sim's species-good seam: the animal tribe a good is a herd of, null for an ordinary ware whose
+   *  stock row holds goods rather than counting a farm's animals. */
+  readonly livestockTribeOfGood?: ((goodType: number) => number | null) | undefined;
   /** The sim's dish→edible mapping: a gatherer's workplace counts as stocking a dish when it slots the
    *  edible, since the deposit converts. Absent = no conversion. */
   readonly edibleGoodForm?: ((goodType: number) => number) | undefined;
@@ -69,7 +69,7 @@ export function recipeOutputs(
 ): { goodType: number; amount: number }[] {
   const fromRecipes = (def?.recipes ?? [])
     .flatMap((r) => r.outputs)
-    .filter((o) => ctx.isLivestockGood?.(o.goodType) !== true);
+    .filter((o) => ctx.livestockTribeOfGood?.(o.goodType) == null);
   if (fromRecipes.length > 0) return fromRecipes;
   return def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
 }
