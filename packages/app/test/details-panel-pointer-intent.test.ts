@@ -251,6 +251,24 @@ describe('details panel click intents', () => {
     });
   });
 
+  it('keeps global home-equipment controls inert on a foreign home', () => {
+    const local = viewOfKind(panelModelOf(buildingEntity(5, BUILDING_HOME_00)), 'building');
+    const foreign = viewOfKind(
+      panelModelOf(buildingEntity(6, BUILDING_HOME_00, { components: { Owner: { player: 1 } } })),
+      'building',
+    );
+    const localCooking = local.layout.homeQualityRows.find((row) => row.effect === 'cooking');
+    const foreignCooking = foreign.layout.homeQualityRows.find((row) => row.effect === 'cooking');
+    if (localCooking === undefined || foreignCooking === undefined) {
+      throw new Error('expected crockery policy buttons');
+    }
+
+    expect(localCooking.button.enabled).toBe(true);
+    expect(foreignCooking.button.enabled).toBe(false);
+    const p = center(foreignCooking.button.rect);
+    expect(panelClickAt(foreign, p.x, p.y, NO_TOGGLE)).toBeNull();
+  });
+
   it('resolves nothing for a disabled button or a point on inert chrome', () => {
     const view = viewOfKind(panelModelOf(buildingEntity(1, BUILDING_HEADQUARTERS)), 'building');
     const help = view.layout.buttons.find((b) => b.action === 'help');

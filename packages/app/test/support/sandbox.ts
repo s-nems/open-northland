@@ -8,6 +8,7 @@ import { sandboxScene } from '../../src/scenes/sandbox/index.js';
  *  `buildUnitPanelModel` assertion runs against, livestock seams wired like `unit-controls`. */
 export function ctxOf(sim: Simulation): UnitPanelModelContext {
   return {
+    localPlayer: HUMAN_PLAYER,
     buildings: sim.content.buildings,
     goods: sim.content.goods,
     jobs: sim.content.jobs,

@@ -12,6 +12,8 @@ export type JobExperienceDef = ContentSet['jobExperience'][number];
 export type TribeDef = ContentSet['tribes'][number];
 
 export interface UnitPanelModelContext {
+  /** The seat allowed to issue player-scoped orders from this panel. */
+  readonly localPlayer?: number | undefined;
   readonly goodAllowed?: ((good: number, tribe: number, player?: number) => boolean) | undefined;
   readonly technologyReason?:
     | ((kind: 'job' | 'house' | 'good', typeId: number, tribe: number, player?: number) => string | null)

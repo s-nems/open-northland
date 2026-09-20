@@ -293,7 +293,7 @@ export function layoutBuilding(
             text: { ...row, w: row.w - buttonW - gap },
             button: {
               action: homeQualityAction(quality.effect),
-              enabled: true,
+              enabled: model.canSetHouseholdGoodPolicy,
               rect: {
                 x: row.x + row.w - buttonW,
                 y: row.y + Math.round((row.h - 16 * s) / 2),

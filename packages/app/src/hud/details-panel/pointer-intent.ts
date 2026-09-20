@@ -111,7 +111,9 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
               : null;
       if (homeEffect !== null) {
         const row = view.model.homeQuality.find((quality) => quality.effect === homeEffect);
-        return row === undefined || view.model.ownerPlayer === undefined
+        return row === undefined ||
+          view.model.ownerPlayer === undefined ||
+          !view.model.canSetHouseholdGoodPolicy
           ? null
           : {
               kind: 'setHouseholdGoodUse',
