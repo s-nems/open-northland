@@ -1,7 +1,7 @@
 import { isWildlife, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { DEFAULT_NODE_ROUGHNESS, type TerrainGraph } from '../../nav/terrain/index.js';
+import { DEFAULT_NODE_ROUGHNESS, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { HALF_COLUMN, HALF_ROW, worldDistance } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
@@ -71,8 +71,8 @@ export const movementSystem: System = (world, ctx) => {
       ? stepTowardPoint(p, target, creaturePace(world, e))
       : walkHumanLeg(world, ctx, e, pf, p, target);
     if (!arrived) continue;
-    if (!paced) chargeStep(world, ctx, e, pf);
     if (pf.index + 1 >= pf.waypoints.length) {
+      if (!paced) chargeNode(world, ctx, e, roughnessAt(ctx.terrain, target));
       world.remove(e, PathFollow);
     } else {
       pf.index += 1;
@@ -92,22 +92,26 @@ export const movementSystem: System = (world, ctx) => {
 
 type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 
-/** What leaving a node costs a human besides ticks: its roughness off the boots, or off the food bar when
- *  there is no live pair (the empty-path drop above is not a walk, and a creature has no boots). */
-function chargeStep(world: World, ctx: SystemContext, e: Entity, pf: FollowState): void {
-  const roughness = departureRoughness(ctx.terrain, pf);
+/** Original node callback: after pace is read at departure, and once at the terminal destination.
+ *  the original AI_DoNewMapPositionReached (an original address) updates pace before spending shoe/food points;
+ *  DoOneGameTick_Human calls it before a new step and for its destination-reached branch. */
+function chargeNode(world: World, ctx: SystemContext, e: Entity, roughness: number): void {
   const carrying = isCarryingGood(world, e);
   if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, roughness, carrying);
   else chargeBarefootStep(world, ctx, e, roughness, carrying);
+}
+
+function roughnessAt(terrain: TerrainGraph | undefined, waypoint: { node: NodeId } | undefined): number {
+  return terrain === undefined || waypoint === undefined
+    ? DEFAULT_NODE_ROUGHNESS
+    : terrain.roughnessAt(waypoint.node);
 }
 
 /** The roughness of the node the current leg leaves, which paces and shoes it: the previous stop, or on
  *  a route's first leg the stop itself (the walker stands beside it). A mapless sim walks the default. */
 function departureRoughness(terrain: TerrainGraph | undefined, pf: FollowState): number {
   const from = pf.waypoints[pf.index > 0 ? pf.index - 1 : 0];
-  return terrain === undefined || from === undefined
-    ? DEFAULT_NODE_ROUGHNESS
-    : terrain.roughnessAt(from.node);
+  return roughnessAt(terrain, from);
 }
 
 /** One tick of a human's leg; true once it stands on `target`. */
@@ -120,7 +124,11 @@ function walkHumanLeg(
   target: { x: Fixed; y: Fixed },
 ): boolean {
   if (pf.legCost === 0) {
-    pf.legCost = walkStepTicks(departureRoughness(ctx.terrain, pf), walkStepModifiersOf(world, e));
+    // A same-node request has only its destination callback, not an extra departure.
+    if (p.x === target.x && p.y === target.y) return true;
+    const roughness = departureRoughness(ctx.terrain, pf);
+    pf.legCost = walkStepTicks(roughness, walkStepModifiersOf(world, e));
+    chargeNode(world, ctx, e, roughness);
   }
   pf.legTicks += 1;
   const remaining = pf.legCost - pf.legTicks;

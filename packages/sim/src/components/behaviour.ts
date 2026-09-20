@@ -28,6 +28,8 @@ export const MISSION_BEHAVIOUR = {
   IMPORTED: 1 << 7,
   /** Earns no experience for the work it does. */
   NO_JOB_EXPERIENCE: 1 << 11,
+  /** Walking does not consume shoe condition; barefoot food drain is independent. */
+  SHOES_DO_NOT_WEAR: 1 << 12,
   /** Walks at half pace. */
   WALKS_SLOWLY: 1 << 9,
   /** Walks faster than its trade would. */

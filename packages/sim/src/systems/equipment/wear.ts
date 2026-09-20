@@ -1,5 +1,11 @@
 import type { EquipCategory } from '@open-northland/data';
-import { Equipment, equipSlotValue, writeEquipSlot } from '../../components/index.js';
+import {
+  Equipment,
+  equipSlotValue,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
+  writeEquipSlot,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -7,7 +13,7 @@ import type { SystemContext } from '../context.js';
 
 // Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one production cycle
 // for tools, one sip for consumables) and breaks at ONE, so the slot clears and the unit leaves the
-// economy. Boots spend theirs by the roughness of every node they leave.
+// economy. Boots spend theirs at a walking node callback, including the terminal destination.
 
 /** One use's wear step for `goodType`: `divCeil(ONE, uses)`, so an item never outlives its rating
  *  (truncation would give a 5-use bottle a 6th sip). ZERO for a non-wearing or unrated good. */
@@ -17,8 +23,8 @@ export function wearStepOf(ctx: SystemContext, goodType: number): Fixed {
   return fx.divCeil(ONE, fx.fromInt(equip.uses));
 }
 
-/** The whole rated uses a slot's `degreeOfUse` stands for, recovered exactly: {@link usesToDegree} spaces
- *  consecutive counts at least six ulps apart for any rating under ONE/2, so rounding back is lossless. */
+/** The whole rated uses a slot's `degreeOfUse` stands for. At ratings <= ONE/2, truncation loses less
+ *  than half a use, so nearest-integer recovery of {@link usesToDegree} is lossless. */
 function degreeToUses(degreeOfUse: Fixed, uses: number): number {
   const half = fx.div(ONE, fx.fromInt(2));
   return fx.toInt(fx.add(fx.mulDiv(degreeOfUse, fx.fromInt(uses), ONE), half));
@@ -58,8 +64,8 @@ export function applyEquipWear(
  * The wear of one step off a node of `roughness`, doubled while hauling a good, on the walker's boots. The
  * original keeps a pair's condition as whole points, the good's rated `uses` (10000, byte-verified
  * `cHumanInventoryMaximumCondition_Shoe`), and takes `roughness << carrying` off it every time a human
- * leaves a node; the pair is gone at zero. The slot's fraction is that count in the shared `degreeOfUse`
- * scale, converted both ways without loss so the pair lasts exactly its points.
+ * starts a step or reaches the terminal destination; the pair is gone at zero. The slot's fraction
+ * recovers these counts exactly for the original 10000-point rating.
  */
 export function wearWornBoots(
   world: World,
@@ -68,12 +74,19 @@ export function wearWornBoots(
   roughness: number,
   carrying: boolean,
 ): void {
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.SHOES_DO_NOT_WEAR)) return;
   const boots = world.tryGet(e, Equipment)?.boots;
   if (boots == null || boots.degreeOfUse >= ONE) return;
   const equip = contentIndex(ctx.content).goods.get(boots.goodType)?.equip;
   if (equip === undefined || !equip.wears || equip.uses === undefined) return;
   const wear = carrying ? roughness * CARRYING_WEAR_FACTOR : roughness;
   if (wear === 0) return;
+  // Authored ratings beyond the lossless count range use the same rounded-up fractional wear as tools.
+  // Otherwise a sub-ULP point can round back to zero forever and make the pair indestructible.
+  if (equip.uses > ONE / 2) {
+    applyEquipWear(world, e, 'boots', 0, fx.divCeil(fx.fromInt(wear), fx.fromInt(equip.uses)));
+    return;
+  }
   const spent = degreeToUses(boots.degreeOfUse, equip.uses) + wear;
   writeEquipSlot(
     world.mut(e, Equipment),

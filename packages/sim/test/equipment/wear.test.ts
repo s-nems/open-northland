@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Equipment, type EquipmentSlot, MISC_EQUIP_SLOTS } from '../../src/components/index.js';
-import { fx, ONE, ZERO } from '../../src/core/fixed.js';
+import { fx, ONE, ULP, ZERO } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
-import { applyEquipWear, wearStepOf } from '../../src/systems/equipment/index.js';
+import { applyEquipWear, wearStepOf, wearWornBoots } from '../../src/systems/equipment/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 // The wear seam: a wearing item spends its content-rated `uses` in divCeil steps and breaks (slot
-// clears) at ONE. Fixture goods: shoes 8 (6000 uses), tool_wooden 11 (100), mead 13 (2 sips),
+// clears) at ONE. Fixture goods: shoes 8 (10000 uses), tool_wooden 11 (100), mead 13 (2 sips),
 // sword 9 (permanent - no uses).
 
 const SHOES = 8;
@@ -30,6 +30,31 @@ function simWithWearer(): { sim: Simulation; e: Entity } {
 }
 
 describe('equipment wear', () => {
+  it('keeps wearing an authored boot rating whose individual points are smaller than one ULP', () => {
+    const { sim, e } = simWithWearer();
+    const content = testContent();
+    const ctx = {
+      ...ctxOf(sim),
+      content: {
+        ...content,
+        goods: content.goods.map((good) =>
+          good.typeId === SHOES
+            ? { ...good, equip: { ...good.equip, category: 'boots' as const, wears: true, uses: 100000 } }
+            : good,
+        ),
+      },
+    };
+    sim.world.mut(e, Equipment).boots = { goodType: SHOES, degreeOfUse: ZERO };
+    for (let i = 0; i < 1000; i++) wearWornBoots(sim.world, ctx, e, 1, false);
+    expect(sim.world.get(e, Equipment).boots?.degreeOfUse).toBeGreaterThan(ZERO);
+    sim.world.mut(e, Equipment).boots = {
+      goodType: SHOES,
+      degreeOfUse: fx.sub(ONE, ULP),
+    };
+    wearWornBoots(sim.world, ctx, e, 1, false);
+    expect(sim.world.get(e, Equipment).boots).toBeNull();
+  });
+
   it('mints divCeil wear steps so an item never outlives its rated uses', () => {
     const ctx = ctxOf(simWithWearer().sim);
     // 2 uses divide ONE exactly; 100 do not (655.36) - divCeil rounds up so the 100th use lands >= ONE.

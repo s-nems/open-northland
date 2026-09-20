@@ -13,6 +13,7 @@ import { fx, ONE, Simulation } from '../../../src/index.js';
 import { HALF_COLUMN, worldDistance } from '../../../src/nav/world-metric.js';
 import { MAX_STEP_PER_TICK, MIN_STEP_TICKS } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { roughNodeMap } from '../../fixtures/terrain.js';
 
 import { followerAt, grassMap, LAND_STEP_TICKS, pos, ticksToArrive } from './support.js';
 
@@ -32,6 +33,18 @@ function paceTrace(sim: Simulation, e: Entity): number[] {
 }
 
 describe('movementSystem - constant pace: no ramp, corner loss or brake', () => {
+  it('finishes minimum-cost horizontal steps in exactly three ticks in both directions', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(4, 1, () => 0) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0 },
+      { x: 0, y: 0 },
+    ]);
+    sim.world.add(e, MissionBehaviour, { flags: MISSION_BEHAVIOUR.WALKS_FAST });
+    expect(ticksToArrive(sim, e)).toBe(6);
+    expect(pos(sim, e).x).toBe(0);
+  });
+
   it('advances the same share every tick of a straight run, corner and last leg included', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     // East two steps, then the half-row edge down (the original's SE step, a quarter column sideways

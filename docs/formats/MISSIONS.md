@@ -404,7 +404,7 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 | 7 | 128 | import marker (drawn on the human) |
 | 9 | 512 | walks at half speed |
 | 11 | 2048 | earns no job experience |
-| 12 | 4096 | stamina does not drain while walking |
+| 12 | 4096 | shoes do not wear while walking; does not protect barefoot food reserves |
 | 13 | 8192 | aggressive target search; also hidden from animal aggression |
 | 14 | 16384 | leaves no cadaver |
 | 15 | 32768 | a hit does not spread to nearby units |
@@ -413,6 +413,10 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 
 Bit 0 is read twice: the urgent-needs check skips such a human, and the animation-event applier
 refuses every change to its four need bars, so they neither fall nor refill.
+
+Bit 12's shoe-only gate is byte-verified in the owned macOS `the original`,
+`an original routine` at `an original address`; the barefoot branch separately tests bit 0
+at `an original address`.
 
 Bits 8, 10, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) without a located
 reader. The engine sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs

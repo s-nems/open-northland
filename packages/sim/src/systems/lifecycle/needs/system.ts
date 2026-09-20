@@ -49,12 +49,13 @@ export function chargeMilitaryPiety(world: World, settler: Entity, units: number
 }
 
 /**
- * A barefoot step's hunger: the walker leaves a node of `roughness` with no live pair of boots, and its
+ * A barefoot node callback's hunger, at departure or terminal arrival: without live boots, the walker's
  * food bar loses that many reserve units, twice as many while hauling a good. The shoes' other promise
  * in the manual ("uses up less energy"). Source basis: macOS `the original`
  * `an original routine`, where a spent or absent shoe condition sends
  * `roughness << carrying` off the food field instead of the pair, on the same 10000-unit bar the level
- * table names, for an adult whose needs are not frozen; the same gate {@link carriesNeeds} reads.
+ * table names, for an adult whose needs are not frozen. The sim also retains {@link carriesNeeds}'s
+ * hero and non-settler-tribe exemptions, beyond that original callback's age and script gates.
  */
 export function chargeBarefootStep(
   world: World,
