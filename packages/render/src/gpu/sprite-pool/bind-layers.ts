@@ -238,7 +238,7 @@ export class LayerBinder {
     if (pe.placeholder.tint !== tint) pe.placeholder.tint = tint;
     // Rotation is about the graphic's own origin, so the flight-height offset above is not rotated with
     // it: the arrow stays level over its ground anchor and only aims.
-    if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
+    if (pe.kind === 'projectile') pe.placeholder.rotation = pe.motion.drawRotation;
     if (item.ghost === true) return;
     const box = placeholderBounds(pe.kind);
     const drawX = pe.motion.drawX;

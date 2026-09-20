@@ -19,19 +19,29 @@ describe('the arrow marker points where it flies', () => {
     expect(Math.max(...behind)).toBeLessThan(head.tipX); // nothing else reaches as far forward
   });
 
-  it('makes the head the brightest part, so the eye is led by the nose', () => {
+  it('uses restrained natural materials while keeping the iron head readable', () => {
     expect(luma(head.colour)).toBeGreaterThan(luma(shaft.colour));
     expect(luma(head.colour)).toBeGreaterThan(luma(fletching.colour));
+    expect(luma(head.edgeColour)).toBeLessThan(luma(head.colour));
   });
 
   it('sweeps the feathers back from their apex, so the tail cannot read as a head', () => {
     expect(fletching.endX).toBeLessThan(fletching.apexX); // the arms trail behind the apex
     expect(fletching.apexX).toBeLessThan(0); // and the whole tuft sits behind the arrow's middle
     expect(fletching.halfSpan).toBeGreaterThan(0); // it fans out rather than doubling back on the shaft
+    expect(fletching.innerX).toBeGreaterThan(fletching.endX); // each feather tapers back into the shaft
   });
 
   it('keeps the shaft spanning tail to head, with no gap either end', () => {
     expect(shaft.tailX).toBeLessThanOrEqual(fletching.endX); // the feathers end no further back
     expect(head.baseX).toBeGreaterThan(shaft.tailX); // and the shaft runs forward into the head
+  });
+
+  it('stays slim and actor-scale instead of reading as an oversized icon', () => {
+    const length = head.tipX - shaft.tailX;
+    expect(length).toBeLessThanOrEqual(24); // the fallback settler body is 24 px tall
+    expect(head.halfSpan * 2).toBeLessThanOrEqual(length / 8);
+    expect(fletching.halfSpan).toBeLessThanOrEqual(head.halfSpan);
+    expect(shaft.width).toBeLessThan(head.halfSpan);
   });
 });

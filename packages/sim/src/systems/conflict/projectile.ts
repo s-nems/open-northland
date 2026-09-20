@@ -24,8 +24,8 @@ import { canonicalById } from '../spatial/nodes.js';
 export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8)); // ⅛ tile/tick per speed unit
 
 /**
- * ProjectileSystem - advance every in-flight {@link Projectile} one tick: home it on its target's current
- * position, and either land its blow on contact or bring it down in the dirt once the target is gone. The
+ * ProjectileSystem - advance every in-flight {@link Projectile} one tick along its release-time chord, and
+ * either land its blow on contact or bring it down in the dirt once the target is gone. The
  * launch is the AtomicSystem's `attack` effect at the shooter's release frame; the hit runs the same
  * {@link resolveCombatHit} a melee swing does.
  *
@@ -43,8 +43,8 @@ export const projectileSystem: System = (world, ctx) => {
   applyPendingStaggers(world, pendingStaggers);
 };
 
-/** Advance one projectile: a true shot homes on its live mark and lands its blow on arrival; one with no
- *  live mark left flies its frozen aim ({@link freezeAim}) into the dirt. */
+/** Advance one projectile: a true shot follows its frozen aim and lands its blow on arrival; one with no
+ *  live mark left follows the same chord into the dirt. */
 function advanceProjectile(
   world: World,
   ctx: SystemContext,
@@ -56,16 +56,16 @@ function advanceProjectile(
   // sub-tick release instant is unreadable). It still settles its aim below, because the cleanupSystem reaps
   // a mark that fell this tick and a shot that waited would find nowhere to come down.
   const restsAtBow = proj.launchTick === ctx.tick;
+  const aim = { x: proj.aimX, y: proj.aimY };
   const targetPos = proj.missAim === null ? liveMark(world, proj.target) : null;
   if (targetPos === null) {
-    const aim = proj.missAim ?? freezeAim(world, p, proj.target);
-    if (aim === null) return; // nothing left to aim at - the shot was destroyed
+    if (proj.missAim === null && !freezeMiss(world, p, proj.target, aim)) return;
     if (!restsAtBow) flyToDirt(world, ctx, p, proj, aim);
     return;
   }
   if (restsAtBow) return;
 
-  if (flightStep(world, p, targetPos.x, targetPos.y, proj.speed)) {
+  if (flightStep(world, p, aim.x, aim.y, proj.speed)) {
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
     resolveCombatHit(world, ctx, proj.source, proj.target, proj, pendingStaggers, 'projectile');
     ctx.events.emit({
@@ -74,7 +74,7 @@ function advanceProjectile(
       shooter: proj.source,
       target: proj.target,
       munitionType: proj.munitionType,
-      at: eventAt(targetPos.x, targetPos.y),
+      at: eventAt(aim.x, aim.y),
       ...(proj.hitSoundType !== null ? { soundType: proj.hitSoundType } : {}),
       ...(world.has(proj.target, Building) ? { structure: true } : {}),
     });
@@ -111,29 +111,34 @@ function flyToDirt(
   world.destroy(p);
 }
 
-/** Freeze a stranded shot's aim on the spot its fallen mark last stood, and return it: the shot flies on and
- *  lands there dealing nothing. No re-target - the original's homing-vs-ballistic behaviour is unreadable
- *  (source basis), so picking a new victim after release would be a different mechanic. */
-function freezeAim(world: World, p: Entity, target: Entity): { x: Fixed; y: Fixed } | null {
-  const last = world.tryGet(target, Position);
-  if (last === undefined) {
+/** Mark a stranded shot as a miss while preserving its release-time chord. A target removed outright still
+ *  leaves no impact owner, retaining the established expiry behavior; a fallen positioned target lets the
+ *  arrow continue into the dirt. */
+function freezeMiss(world: World, p: Entity, target: Entity, aim: { x: Fixed; y: Fixed }): boolean {
+  if (world.tryGet(target, Position) === undefined) {
     world.destroy(p);
-    return null;
+    return false;
   }
-  const aim = { x: last.x, y: last.y };
-  world.mut(p, Projectile).missAim = aim;
-  return aim;
+  world.mut(p, Projectile).missAim = { x: aim.x, y: aim.y };
+  return true;
 }
 
-/** Step projectile `p` one tick straight toward `(ax, ay)`; true when this tick's step reaches it. The
- *  in-flight unit-vector division is safe: `dist > step > 0` on the stepping branch. */
+/** Step projectile `p` one tick straight toward `(ax, ay)`; true when it began this tick at the aim. The
+ *  arrival is held for one snapshot before contact resolution, so presentation can interpolate the final
+ *  segment instead of removing the arrow up to one full step short. The in-flight unit-vector division is
+ *  safe: `dist > step > 0` on the stepping branch. */
 function flightStep(world: World, p: Entity, ax: Fixed, ay: Fixed, speed: number): boolean {
   const pos = world.mut(p, Position);
   const dx = fx.sub(ax, pos.x);
   const dy = fx.sub(ay, pos.y);
   const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
   const step = projectileStep(speed);
-  if (dist <= step) return true;
+  if (dist === 0) return true;
+  if (dist <= step) {
+    pos.x = ax;
+    pos.y = ay;
+    return false;
+  }
   const ux = fx.div(dx, dist);
   const uy = fx.div(dy, dist);
   pos.x = fx.add(pos.x, fx.mul(ux, step));

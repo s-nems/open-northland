@@ -39,17 +39,6 @@ describe('targetPositionsOf', () => {
     expect(index.get(2)).toEqual({ x: 2 * ONE, y: 1 * ONE });
   });
 
-  it('indexes a projectile target', () => {
-    const snap = snapshotOf([
-      entity(1, 1, 1, { Projectile: { target: 2, originX: ONE, originY: ONE } }),
-      entity(2, 2, 2, { Settler: { tribe: 1 } }),
-      entity(3, 3, 3, { Settler: { tribe: 0 } }),
-    ]);
-    const index = targetPositionsOf(snap);
-    expect(index.size).toBe(1);
-    expect(index.get(2)).toEqual({ x: 2 * ONE, y: 2 * ONE });
-  });
-
   it('returns the shared empty index for a snapshot with no target-facing actor', () => {
     const quietA = snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } })]);
     const quietB = snapshotOf([entity(2, 2, 2, { Resource: { level: 3 } })]);

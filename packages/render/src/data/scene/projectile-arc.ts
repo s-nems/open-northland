@@ -1,7 +1,8 @@
 import { clamp01 } from '../math.js';
+import { tileToScreen } from '../projection/index.js';
 
 /**
- * A render-only presentation over the sim's straight homing flight: the drawn arrow is lifted off that
+ * A render-only presentation over the sim's frozen release-time chord: the drawn arrow is lifted off that
  * line and tilted along the arc's tangent. Source basis: observed original behaviour (arrows visibly
  * lob); the lob and the fall are tuned by eye.
  */
@@ -25,6 +26,9 @@ export const COVER_LAUNCH_HEIGHT_PX = 140;
 /** Height above the ground in screen px, riding the lift draw channel and never the depth key, plus the
  *  arrow's rotation in radians, tangent to the arc. */
 export interface ProjectileArc {
+  /** Stable projected point on the release-time chord, before ballistic lift. */
+  readonly x: number;
+  readonly y: number;
   readonly lift: number;
   readonly rotation: number;
 }
@@ -37,33 +41,51 @@ interface ArcSample {
 }
 
 /**
- * The lob height and tangent rotation for a projectile drawn at `current`, loosed from `origin`
- * `launchHeight` px above the ground - all in screen space. Without a readable `origin`, or on a
- * degenerate chord, the arrow points straight at the target and flies flat. Homing can stretch the path
- * past the launch chord, so the fraction flown is clamped to `[0, 1]` and a shot chasing a fleeing mark
- * reads back up its own shape.
+ * The projected anchor, lob height and tangent rotation for a projectile at map-space `current`, loosed
+ * from `origin` toward the release-time `aim`. Progress is measured in map space, then applied to the
+ * single projected origin-to-aim chord. Projecting every fractional row independently would add the
+ * staggered raster's row-parity triangle wave to a straight diagonal shot.
+ *
+ * Without a readable `origin`, or on a degenerate chord, the arrow points straight at the aim and flies
+ * flat from its ordinarily projected current point.
  */
 export function projectileArc(
   current: { x: number; y: number },
-  target: { x: number; y: number },
+  aim: { x: number; y: number },
   origin: { x: number; y: number } | null,
   launchHeight = 0,
 ): ProjectileArc {
-  const dx = target.x - current.x;
-  const dy = target.y - current.y;
-  let rotation = Math.atan2(dy, dx);
-  let lift = 0;
-  if (origin !== null) {
-    const chord = Math.hypot(target.x - origin.x, target.y - origin.y);
-    const remaining = Math.hypot(dx, dy);
-    if (chord > 0 && remaining > 0) {
-      const p = clamp01(1 - remaining / chord);
-      const arc = launchHeight > 0 ? coverFall(launchHeight, p) : groundLob(chord, p);
-      lift = arc.height;
-      rotation = Math.atan2(dy / remaining - arc.rise / chord, dx / remaining);
-    }
+  const currentScreen = tileToScreen(current.x, current.y);
+  const aimScreen = tileToScreen(aim.x, aim.y);
+  if (origin === null) {
+    return {
+      ...currentScreen,
+      lift: 0,
+      rotation: Math.atan2(aimScreen.y - currentScreen.y, aimScreen.x - currentScreen.x),
+    };
   }
-  return { lift, rotation };
+
+  const mapDx = aim.x - origin.x;
+  const mapDy = aim.y - origin.y;
+  const mapLengthSq = mapDx * mapDx + mapDy * mapDy;
+  if (mapLengthSq === 0) return { ...currentScreen, lift: 0, rotation: 0 };
+
+  // Orthogonal projection tolerates fixed-point rounding that puts an intermediate sim anchor a hair
+  // off its ideal line without letting that error bend the displayed chord.
+  const p = clamp01(((current.x - origin.x) * mapDx + (current.y - origin.y) * mapDy) / mapLengthSq);
+  const originScreen = tileToScreen(origin.x, origin.y);
+  const screenDx = aimScreen.x - originScreen.x;
+  const screenDy = aimScreen.y - originScreen.y;
+  const chord = Math.hypot(screenDx, screenDy);
+  if (chord === 0) return { ...currentScreen, lift: 0, rotation: 0 };
+
+  const arc = launchHeight > 0 ? coverFall(launchHeight, p) : groundLob(chord, p);
+  return {
+    x: originScreen.x + screenDx * p,
+    y: originScreen.y + screenDy * p,
+    lift: arc.height,
+    rotation: Math.atan2(screenDy - arc.rise, screenDx),
+  };
 }
 
 /** A shot loosed at ground level: the symmetric lob `4·peak·p·(1−p)`, zero at the bow and at the impact. */

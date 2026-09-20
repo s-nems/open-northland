@@ -11,7 +11,15 @@ describe('buildScene - projectile arc & aim', () => {
   it('classifies an in-flight Projectile and aims its rotation at the target', () => {
     // A target one column east makes the screen heading (+x, 0), which is 0 rad.
     const shot = entity(1, 1, 1, {
-      Projectile: { target: 2, source: 3, damage: 34, speed: 8, munitionType: 1 },
+      Projectile: {
+        target: 2,
+        source: 3,
+        damage: 34,
+        speed: 8,
+        munitionType: 1,
+        aimX: 2 * ONE,
+        aimY: ONE,
+      },
     });
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
@@ -20,7 +28,7 @@ describe('buildScene - projectile arc & aim', () => {
     expect(arrow?.rotation).toBeCloseTo(0);
   });
 
-  it('a projectile whose target left the snapshot draws with no rotation (never a throw)', () => {
+  it('a projectile with no readable frozen aim draws with no rotation (never a throw)', () => {
     const shot = entity(1, 1, 1, {
       Projectile: { target: 99, source: 3, damage: 34, speed: 8, munitionType: 1 },
     });
@@ -28,7 +36,7 @@ describe('buildScene - projectile arc & aim', () => {
     expect(scene.find((d) => d.kind === 'projectile')?.rotation).toBeUndefined();
   });
 
-  function projectileFrom(target: number, ox: number, oy: number): Record<string, unknown> {
+  function projectileFrom(target: number, ox: number, oy: number, ax = 2, ay = 1): Record<string, unknown> {
     return {
       Projectile: {
         target,
@@ -38,6 +46,8 @@ describe('buildScene - projectile arc & aim', () => {
         munitionType: 1,
         originX: ox * ONE,
         originY: oy * ONE,
+        aimX: ax * ONE,
+        aimY: ay * ONE,
       },
     };
   }
@@ -64,7 +74,7 @@ describe('buildScene - projectile arc & aim', () => {
   it('caps the lob peak on a long chord (a max-range shot must not leave the screen)', () => {
     // A 12-cell chord of 816 px has a fractional peak of ~98 px, over the cap, and the shot sits at
     // mid-flight.
-    const shot = entity(1, 6, 1, projectileFrom(2, 0, 1));
+    const shot = entity(1, 6, 1, projectileFrom(2, 0, 1, 12, 1));
     const target = entity(2, 12, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
     const chord = tileToScreen(12, 1).x - tileToScreen(0, 1).x;
@@ -128,5 +138,25 @@ describe('buildScene - projectile arc & aim', () => {
     const arrow = scene.find((d) => d.kind === 'projectile');
     expect(arrow?.rotation ?? 0).toBeGreaterThan(0);
     expect(arrow?.lift ?? 0).toBeGreaterThan(0); // still airborne
+  });
+
+  it('keeps a multi-row diagonal on one projected chord instead of following the stagger wave', () => {
+    const aim = entity(2, 4, 4, { Settler: { tribe: 0 } });
+    const drawAt = (x: number, y: number) => {
+      const shot = entity(1, x, y, projectileFrom(2, 0, 0, 4, 4));
+      return buildScene(snapshotOf([shot, aim]), FLAT_3x2).find((d) => d.kind === 'projectile');
+    };
+    const quarter = drawAt(1, 1);
+    const half = drawAt(2, 2);
+    const threeQuarters = drawAt(3, 3);
+    const start = tileToScreen(0, 0);
+    const end = tileToScreen(4, 4);
+
+    // Raw projection at the odd rows would shift x by +34 px. The flight path instead samples the
+    // stable projected release chord at equal map-space progress.
+    expect(quarter?.x).toBeCloseTo(start.x + (end.x - start.x) * 0.25);
+    expect(half?.x).toBeCloseTo(start.x + (end.x - start.x) * 0.5);
+    expect(threeQuarters?.x).toBeCloseTo(start.x + (end.x - start.x) * 0.75);
+    expect((half?.x ?? 0) - (quarter?.x ?? 0)).toBeCloseTo((threeQuarters?.x ?? 0) - (half?.x ?? 0));
   });
 });

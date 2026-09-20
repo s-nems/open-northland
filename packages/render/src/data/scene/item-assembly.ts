@@ -81,7 +81,7 @@ export function assembleItem(
       );
       break;
     case 'projectile':
-      arcLift = assignProjectileArc(item, components, screen, build.posByRef);
+      arcLift = assignProjectileArc(item, components, { x: tileX, y: tileY });
       break;
     case 'stockpile':
     case 'grounddrop':

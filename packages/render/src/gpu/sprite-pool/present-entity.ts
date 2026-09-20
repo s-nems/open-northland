@@ -26,6 +26,7 @@ export function presentEntity(
     item.y - (item.lift ?? 0),
     alpha,
     characterGaitRate(sheet?.characters, item, pe.lastFacing),
+    pe.kind === 'projectile' ? (item.rotation ?? 0) : undefined,
   );
   pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
   if (item.facing !== undefined) pe.lastFacing = item.facing;

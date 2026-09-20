@@ -26,6 +26,9 @@ function fresh(snapDistance = SNAP_DISTANCE): MotionTrack {
     prevY: 0,
     drawX: 0,
     drawY: 0,
+    rotation: 0,
+    prevRotation: 0,
+    drawRotation: 0,
     gaitPhase: 0,
     prevGaitPhase: 0,
     stillTicks: 0,
@@ -134,6 +137,38 @@ describe('projectile snap policy', () => {
     const m = fresh(snapDistanceForKind('projectile'));
     trackMotion(m, 7, 400, 300, 0.5);
     expect({ x: m.drawX, y: m.drawY }).toEqual({ x: 400, y: 300 });
+  });
+});
+
+describe('projectile rotation interpolation', () => {
+  it('tracks the angle with the same alpha as the position', () => {
+    const m = fresh(snapDistanceForKind('projectile'));
+    trackMotion(m, 0, 0, 0, 0, undefined, 0);
+    trackMotion(m, 1, 10, 0, 0.25, undefined, Math.PI / 2);
+
+    expect(m.drawX).toBeCloseTo(2.5);
+    expect(m.drawRotation).toBeCloseTo(Math.PI / 8);
+  });
+
+  it('takes the shortest path across the +/-PI wrap', () => {
+    const m = fresh(snapDistanceForKind('projectile'));
+    const degrees = (value: number) => (value * Math.PI) / 180;
+    trackMotion(m, 0, 0, 0, 0, undefined, degrees(170));
+    trackMotion(m, 1, 10, 0, 0.5, undefined, degrees(-170));
+
+    expect(m.drawRotation).toBeCloseTo(Math.PI);
+    expect(m.rotation - m.prevRotation).toBeCloseTo(degrees(20));
+  });
+
+  it('snaps rotation on first sight and leaves an unrotated actor inert', () => {
+    const arrow = fresh(snapDistanceForKind('projectile'));
+    trackMotion(arrow, 7, 400, 300, 0.5, undefined, Math.PI / 3);
+    expect(arrow.drawRotation).toBeCloseTo(Math.PI / 3);
+
+    const actor = fresh();
+    trackMotion(actor, 0, 0, 0, 0);
+    trackMotion(actor, 1, 10, 0, 0.5);
+    expect(actor.drawRotation).toBe(0);
   });
 });
 

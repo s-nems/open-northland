@@ -24,10 +24,9 @@ import {
   readJobType,
   readOwnerPlayer,
   readProducing,
+  readProjectileAim,
   readProjectileCover,
-  readProjectileMissAim,
   readProjectileOrigin,
-  readProjectileTarget,
   readSettlerTribe,
   readUpgradePct,
 } from './snapshot-readers/index.js';
@@ -193,28 +192,25 @@ export function pushCraftFxItems(
 }
 
 /**
- * Point a projectile along its flight and return its ballistic height in screen px. A frozen miss aim
- * ends the chord where the shot was aimed rather than at the live target: tracking the runner would
- * bend the nose and stall the lob. With neither a live target nor an aim the shot keeps `rotation`
- * unset and flies flat.
+ * Put a projectile on its stable projected release chord, point it along the arc, and return its
+ * ballistic height in screen px.
  */
 export function assignProjectileArc(
   item: MutableDrawItem,
   components: Readonly<Record<string, unknown>>,
-  screen: ReturnType<typeof tileToScreen>,
-  posByRef: ReadonlyMap<number, { x: number; y: number }>,
+  current: { x: number; y: number },
 ): number {
-  const missAim = readProjectileMissAim(components);
-  const targetRef = missAim === null ? readProjectileTarget(components) : null;
-  const to = missAim ?? (targetRef !== null ? posByRef.get(targetRef) : undefined);
-  if (to === undefined) return 0;
+  const to = readProjectileAim(components);
+  if (to === null) return 0;
   const origin = readProjectileOrigin(components);
   const arc = projectileArc(
-    screen,
-    tileToScreen(to.x / ONE, to.y / ONE),
-    origin === null ? null : tileToScreen(origin.x / ONE, origin.y / ONE),
+    current,
+    { x: to.x / ONE, y: to.y / ONE },
+    origin === null ? null : { x: origin.x / ONE, y: origin.y / ONE },
     readProjectileCover(components) === null ? 0 : COVER_LAUNCH_HEIGHT_PX,
   );
+  item.x = arc.x;
+  item.y = arc.y;
   item.rotation = arc.rotation;
   return arc.lift;
 }

@@ -62,6 +62,12 @@ export interface MotionTrack {
   /** The anchor to draw at this frame - `prev` lerped toward `curr` by the frame alpha. */
   drawX: number;
   drawY: number;
+  /** Projectile angle at the current and previous tick anchors, plus the angle drawn this frame. Other
+   *  kinds never supply a rotation, so these remain inert. Angles may unwrap past +/-PI to preserve the
+   *  shortest path across the branch cut. */
+  rotation: number;
+  prevRotation: number;
+  drawRotation: number;
   /** Clip clock in tick units, advanced by measured travel or the original gait calibration. */
   gaitPhase: number;
   prevGaitPhase: number;
@@ -89,6 +95,7 @@ export function trackMotion(
   y: number,
   alpha: number,
   gaitTicksPerPixel?: number,
+  rotation?: number,
 ): void {
   if (m.tick === -1 || Math.abs(x - m.x) > m.snapDistance || Math.abs(y - m.y) > m.snapDistance) {
     m.tick = tick;
@@ -98,6 +105,10 @@ export function trackMotion(
     m.prevY = y;
     m.stillTicks = 0;
     m.prevGaitPhase = m.gaitPhase;
+    if (rotation !== undefined) {
+      m.rotation = rotation;
+      m.prevRotation = rotation;
+    }
   } else if (m.tick !== tick) {
     const dt = tick - m.tick;
     const dist = Math.hypot(x - m.x, y - m.y);
@@ -113,8 +124,13 @@ export function trackMotion(
     m.x = x;
     m.y = y;
     m.tick = tick;
+    if (rotation !== undefined) {
+      m.prevRotation = m.rotation;
+      m.rotation += Math.atan2(Math.sin(rotation - m.rotation), Math.cos(rotation - m.rotation));
+    }
   }
   const a = clamp01(alpha);
   m.drawX = lerp(m.prevX, m.x, a);
   m.drawY = lerp(m.prevY, m.y, a);
+  m.drawRotation = lerp(m.prevRotation, m.rotation, a);
 }

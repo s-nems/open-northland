@@ -43,6 +43,8 @@ describe('save a projectile in flight', () => {
       speed: 8,
       originX: positionOfNode(10, 10).x,
       originY: positionOfNode(10, 10).y,
+      aimX: aim.x,
+      aimY: aim.y,
       cover: null,
       missAim: { x: aim.x, y: aim.y },
       launchTick: original.tick + 1,

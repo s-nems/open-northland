@@ -12,8 +12,8 @@ import { entityNode } from '../../../../../spatial/nodes.js';
  * `projectileSystem` then flies it and lands the same `resolveCombatHit` on contact.
  *
  * A garrison shot leaves the shelter, not the shooter's cell: a civilian manning one still stands on the
- * door node it entered by ({@link mannedShelter}). A `missed` launch freezes its aim at the target's current
- * position instead, so the arrow flies there ballistically and lands in the dirt.
+ * door node it entered by ({@link mannedShelter}). Every launch freezes the target's current position;
+ * `missed` marks the same ballistic flight to land in the dirt without applying its payload.
  */
 export function launchProjectile(
   world: World,
@@ -46,6 +46,9 @@ export function launchProjectile(
     // The render's ballistic-arc origin, frozen at release and never read in flight.
     originX: from.x,
     originY: from.y,
+    // Both the sim and render follow this release-time chord; a runner cannot bend an arrow in flight.
+    aimX: targetPos.x,
+    aimY: targetPos.y,
     cover,
     missAim: missed ? { x: targetPos.x, y: targetPos.y } : null,
     launchTick: ctx.tick,

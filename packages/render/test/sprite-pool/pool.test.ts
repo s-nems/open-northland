@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { type Camera, tileToScreen, type Viewport } from '../../src/data/projection/index.js';
+import { type Camera, ONE, tileToScreen, type Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { SNAP_DISTANCE } from '../../src/gpu/sprite-pool/motion.js';
@@ -171,6 +171,14 @@ function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
   return anchor;
 }
 
+function firstPlaceholderRotation(layer: Container): number {
+  const entityContainer = layer.children[0];
+  if (!(entityContainer instanceof Container)) throw new Error('projectile container was not drawn');
+  const placeholder = entityContainer.children[0];
+  if (placeholder === undefined) throw new Error('projectile placeholder was not drawn');
+  return placeholder.rotation;
+}
+
 /**
  * A pooled entity keeps its motion track while it is not drawn (indoors, fogged, culled), so the pool
  * must reset the track at re-entry without disturbing anything drawn continuously. An arrow is the
@@ -257,6 +265,41 @@ describe('SpritePool - a projectile glides across a catch-up frame', () => {
     const to = anchorAt(pool, 2);
     expect(Math.abs(to.x - from.x)).toBeGreaterThan(SNAP_DISTANCE); // travel the default band rejects
     expect(anchorAt(pool, 1)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
+  });
+});
+
+describe('SpritePool - a projectile turns between tick anchors', () => {
+  function arcingProjectile(id: number, col: number): ReturnType<typeof entity> {
+    return entity(id, col, 0, {
+      Projectile: {
+        target: 99,
+        source: 3,
+        damage: 34,
+        speed: 8,
+        munitionType: 1,
+        originX: 0,
+        originY: 0,
+        aimX: 2 * ONE,
+        aimY: 0,
+      },
+    });
+  }
+
+  it('binds the angle at the same frame fraction as the flying anchor', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    pool.reconcile({ ...poolFrame(snapshotOf([arcingProjectile(1, 0)]), FRAMES_EVERYTHING), tick: 0 });
+    const launchRotation = firstPlaceholderRotation(layer);
+    expect(launchRotation).toBeLessThan(0); // the first half of the lob points uphill
+
+    pool.reconcile({
+      ...poolFrame(snapshotOf([arcingProjectile(1, 1)]), FRAMES_EVERYTHING),
+      tick: 1,
+      alpha: 0.5,
+    });
+    // The tick-1 tangent is level at the apex; midway through the visual tick it must be halfway there,
+    // rather than snapping level while its position and lift are still interpolating.
+    expect(firstPlaceholderRotation(layer)).toBeCloseTo(launchRotation / 2);
   });
 });
 

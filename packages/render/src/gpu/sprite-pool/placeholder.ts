@@ -12,13 +12,14 @@ type BoxKind = Exclude<SpriteKind, 'projectile'>;
  * The in-flight munition marker's authored parts, in feet-local px pointing screen-east (+x) so the pool
  * can rotate the whole graphic to the flight heading; `halfSpan` is a part's half-height off the shaft
  * line. Only the head reaches the forward extreme and it is the palest part, so a player reads which way
- * the shot travels; 32 px tip to tail beside a 24 px settler body. Approximation: no arrow bob exists in
- * the extracted `[bobseq]` lanes, so this is the fallback until the effects bmds are decoded.
+ * the shot travels. Its narrow 24 px silhouette stays subordinate to the actor art while surviving the
+ * ×2 world view. Approximation: no arrow bob exists in the extracted `[bobseq]` lanes, so this is the
+ * fallback until the effects bmds are decoded.
  */
 export const ARROW = {
-  shaft: { colour: 0x7a4a24, tailX: -16, width: 2 },
-  head: { colour: 0xd6dee8, tipX: 16, baseX: 8, halfSpan: 2 },
-  fletching: { colour: 0x9c3b2e, apexX: -8, endX: -16, halfSpan: 2, width: 2 },
+  shaft: { colour: 0x765038, tailX: -12, width: 1.25 },
+  head: { colour: 0x9ba3a0, edgeColour: 0x5f6663, tipX: 12, baseX: 8.5, halfSpan: 1.5 },
+  fletching: { colour: 0x8e8172, apexX: -7, endX: -11, innerX: -10, halfSpan: 1.25 },
 } as const;
 
 const KIND_COLOURS: Record<BoxKind, number> = {
@@ -47,17 +48,28 @@ export const PROJECTILE_FLIGHT_HEIGHT = 14;
 /** Paint {@link ARROW}, rotated by the pool to the flight heading. */
 function drawArrow(g: Graphics): Graphics {
   const { shaft, head, fletching } = ARROW;
-  g.moveTo(shaft.tailX, 0).lineTo(head.baseX, 0).stroke({ color: shaft.colour, width: shaft.width });
+
+  // Two slim swept vanes read as feathering instead of the bright V of a map marker. Paint them under
+  // the shaft so the wooden spine remains continuous through the tail at normal play scale.
+  g.moveTo(fletching.apexX, 0)
+    .lineTo(fletching.endX, -fletching.halfSpan)
+    .lineTo(fletching.innerX, -0.25)
+    .closePath()
+    .fill({ color: fletching.colour });
+  g.moveTo(fletching.apexX, 0)
+    .lineTo(fletching.endX, fletching.halfSpan)
+    .lineTo(fletching.innerX, 0.25)
+    .closePath()
+    .fill({ color: fletching.colour });
+  g.moveTo(shaft.tailX, 0)
+    .lineTo(head.baseX, 0)
+    .stroke({ color: shaft.colour, width: shaft.width, cap: 'round' });
   g.moveTo(head.tipX, 0)
     .lineTo(head.baseX, -head.halfSpan)
     .lineTo(head.baseX, head.halfSpan)
     .closePath()
-    .fill({ color: head.colour });
-  g.moveTo(fletching.apexX, 0)
-    .lineTo(fletching.endX, -fletching.halfSpan)
-    .moveTo(fletching.apexX, 0)
-    .lineTo(fletching.endX, fletching.halfSpan)
-    .stroke({ color: fletching.colour, width: fletching.width });
+    .fill({ color: head.colour })
+    .stroke({ color: head.edgeColour, width: 0.5, join: 'round' });
   return g;
 }
 

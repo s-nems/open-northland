@@ -2,14 +2,14 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Projectile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, Simulation } from '../../src/index.js';
+import { fx, nodeOfPosition, Simulation } from '../../src/index.js';
 import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
 import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Ranged-combat (projectile) tests - the flight half of combat: a bow shot LAUNCHES a projectile entity
- * at the shooter's ATTACK-event (release) frame, the projectile HOMES on its target and deals damage on
+ * at the shooter's ATTACK-event (release) frame, the projectile freezes its aim and deals damage on
  * CONTACT (not instantly), a lost target makes it EXPIRE, and an enemy inside the weapon's dead zone
  * (< minRange) is never shot. Deterministic: fixed-point straight-line homing, no RNG.
  *
@@ -171,7 +171,7 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
   });
 });
 
-describe('projectiles - homing flight + on-contact damage', () => {
+describe('projectiles - frozen flight chord + on-contact damage', () => {
   it('travels straight toward the target at the mapped speed (fixed-point, exact on a same-row shot)', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     fighterAt(sim, 0, 0, VIKING, ARCHER);
@@ -186,6 +186,8 @@ describe('projectiles - homing flight + on-contact damage', () => {
     // cell (0,0), where the shot also still rests on its launch tick.
     expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0));
     expect(sim.world.get(shot, Projectile).originY).toBe(fx.fromInt(0));
+    expect(sim.world.get(shot, Projectile).aimX).toBe(fx.fromInt(8));
+    expect(sim.world.get(shot, Projectile).aimY).toBe(fx.fromInt(0));
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP); // in flight, not yet landed
 
     sim.step();
@@ -195,6 +197,36 @@ describe('projectiles - homing flight + on-contact damage', () => {
     expect(after.y).toBe(y0);
     expect(after.y).toBe(sim.world.get(target, Position).y);
     expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0)); // origin stays frozen mid-flight
+  });
+
+  it('keeps the release-time aim when the selected target moves', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+    fighterAt(sim, 0, 1, VIKING, ARCHER);
+    const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    const releaseAim = { x: fx.fromInt(8), y: fx.fromInt(1) };
+    expect(sim.world.get(shot, Projectile)).toMatchObject({
+      aimX: releaseAim.x,
+      aimY: releaseAim.y,
+    });
+
+    // The combat payload still belongs to the originally selected target (the bounded approximation),
+    // but the runner does not bend the visible/simulated arrow away from its release chord.
+    const moved = sim.world.mut(target, Position);
+    moved.x = fx.fromInt(11);
+    moved.y = fx.fromInt(2);
+    let hitAt: ReturnType<typeof nodeOfPosition> | undefined;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      const event = sim.snapshot().events.find((candidate) => candidate.kind === 'projectileHit');
+      if (event?.kind === 'projectileHit') hitAt = event.at;
+    }
+
+    expect(sim.world.isAlive(shot)).toBe(false);
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
+    expect(hitAt).toEqual(nodeOfPosition(releaseAim.x, releaseAim.y));
   });
 
   it('deals damage only AFTER a multi-tick flight (no instant hit), then the projectile is spent', () => {
@@ -220,6 +252,24 @@ describe('projectiles - homing flight + on-contact damage', () => {
     // A projectileHit was announced for render/audio, carrying the impact the bow lists for a bare target.
     expect(hitEvent?.soundType).toBe(BOW_HIT_SOUND);
     expect(projectiles(sim)).toHaveLength(0); // the spent arrow was destroyed on impact
+  });
+
+  it('snapshots the arrow at its aim before resolving contact', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE);
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    for (let i = 0; i < 20 && sim.world.get(shot, Position).x !== fx.fromInt(8); i++) sim.step();
+
+    expect(sim.world.isAlive(shot)).toBe(true);
+    expect(sim.world.get(shot, Position)).toEqual({ x: fx.fromInt(8), y: fx.fromInt(0) });
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+
+    sim.step();
+    expect(sim.world.isAlive(shot)).toBe(false);
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
   });
 });
 

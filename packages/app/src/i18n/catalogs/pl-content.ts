@@ -168,6 +168,10 @@ export const plContent = {
       title: 'Bitwa masowa',
       summary: 'Dwie armie walczą na dużą skalę z użyciem czterech rodzajów broni.',
     },
+    'bow-flight': {
+      title: 'Lot strzały',
+      summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',
+    },
     siege: {
       title: 'Oblężenie',
       summary:

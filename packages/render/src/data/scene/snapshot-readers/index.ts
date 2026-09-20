@@ -2,10 +2,9 @@ export { readPosition } from '../../snapshot/index.js';
 export { classify } from './classify.js';
 export { facingTowardTile, readFacing } from './facing.js';
 export {
+  readProjectileAim,
   readProjectileCover,
-  readProjectileMissAim,
   readProjectileOrigin,
-  readProjectileTarget,
 } from './projectile-readers.js';
 export {
   assignStaticFields,

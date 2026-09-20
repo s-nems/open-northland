@@ -109,11 +109,13 @@ export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y:
 export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder', 'combat');
 
 /**
- * A projectile in flight - a first-class entity carrying a `Position` advanced each tick, homing on
- * `target`'s live position. The payload is resolved once at launch, so a shooter that died meanwhile still
- * lands its arrow.
+ * A projectile in flight - a first-class entity carrying a `Position` advanced each tick toward the aim
+ * frozen at release. The payload is resolved once at launch, so a shooter that died meanwhile still lands
+ * its arrow.
  *
- * Approximated: homing rather than ballistic flight, the drawn arc height, and the sub-tick release instant.
+ * Freezing the aim is informed by reverse-engineering evidence that the original projectile particle owns
+ * start/target points rather than a target entity. Applying the payload to the originally selected target
+ * remains an approximation; spatial impact resolution is outside this component's combat contract.
  */
 export const Projectile = defineComponent<{
   source: Entity;
@@ -135,10 +137,13 @@ export const Projectile = defineComponent<{
   /** The render's ballistic-arc start, frozen at release and never read in flight. */
   originX: Fixed;
   originY: Fixed;
+  /** The target point frozen at release. Sim flight and render presentation share this one chord. */
+  aimX: Fixed;
+  aimY: Fixed;
   /** The defence-mode shelter a manning shooter loosed from, read only by the render. */
   cover: Entity | null;
   /** The frozen aim of a shot that missed at release or lost its mark mid-flight; it lands there dealing
-   *  nothing. `null` while the shot still homes. */
+   *  nothing. `null` while the shot is still eligible to hit its selected target. */
   missAim: { x: Fixed; y: Fixed } | null;
   /** The tick the string was loosed on; the flight rests at the bow through it, so a shot is observable at
    *  its launch point. */

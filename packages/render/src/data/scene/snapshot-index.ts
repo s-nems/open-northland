@@ -5,7 +5,6 @@ import {
   readBuiltPct,
   readCraftPerformance,
   readPosition,
-  readProjectileTarget,
   readStoreExchangeRef,
 } from './snapshot-readers/index.js';
 
@@ -134,10 +133,6 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
     const acting = readActingAtomic(components);
     if (acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) {
       const target = readAtomicTargetEntity(components);
-      if (target !== null) wanted.add(target);
-    }
-    if ('Projectile' in components) {
-      const target = readProjectileTarget(components);
       if (target !== null) wanted.add(target);
     }
     // A worker performing its craft is drawn against its workplace's own anchor, not its doorstep.
