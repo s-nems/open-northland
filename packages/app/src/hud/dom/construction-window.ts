@@ -3,7 +3,6 @@ import type { HudModel } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { AssetSet } from '../../view/settings-store.js';
-import { centralWindowFloor, centralWindowOrigin } from '../regions.js';
 import {
   BUILDING_CATEGORIES,
   type BuildingCategory,
@@ -25,7 +24,7 @@ import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { BuildingThumbs } from './building-thumb.js';
 import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
 import { GLYPH, paintedIcon } from './icons.js';
-import { createHudWindow } from './window.js';
+import { centralWindowPlacer, createHudWindow } from './window.js';
 
 /** Design px (FOUNDATION.md): the window width, sized so the widest bill in the content (eight goods,
  *  the top house) sits in one row beside the picture; the head's painted icon, a card's picture box
@@ -527,7 +526,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     if (model !== null) markStocks(model);
   };
 
-  let placed = '';
+  const placeWindow = centralWindowPlacer(window, deps.plane, CONSTRUCTION_WINDOW_W);
   const open = (): void => {
     layoutCards();
     showCategory(state.category);
@@ -535,6 +534,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     shownModel = null;
     present();
     window.open();
+    placeWindow(); // the catalogue needs its height bound before a kept scroll can land
     parchment.scrollTop = state.scrollTop;
   };
   // A close from any path also forgets a pending resume: another window opened over a placement
@@ -564,18 +564,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     close,
     claims: () => false,
     handleClick: () => false,
-    place: () => {
-      if (!window.isOpen()) return;
-      // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
-      const size = { width: deps.plane.clientWidth, height: deps.plane.clientHeight };
-      const origin = centralWindowOrigin(size, 1, CONSTRUCTION_WINDOW_W);
-      const floor = centralWindowFloor(size, 1);
-      const key = `${origin.x},${origin.y},${floor}`;
-      if (key === placed) return;
-      placed = key;
-      window.place(origin.x, origin.y);
-      window.element.style.maxHeight = `${Math.max(0, floor - origin.y)}px`;
-    },
+    place: placeWindow,
     update: (next) => {
       model = next;
       if (window.isOpen()) present();

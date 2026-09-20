@@ -44,6 +44,18 @@ export function minimapPanelWidth(uiscale: number): number {
   return FRAME_NATIVE.w * minimapArtScale(uiscale);
 }
 
+/**
+ * The framed window's box in HUD design px, for DOM regions laid out on the plane: the native frame
+ * at the art scale, pinned flush to the plane's bottom-left corner. The frame scales with the HUD, so
+ * the design-px box holds at every HUD scale the settings can reach; a `?uiscale=` under
+ * `MIN_UI_SCALE` draws it larger than this, since `minimapArtScale` floors the scale.
+ */
+export function minimapDesignBox(planeHeight: number): Rect {
+  const w = FRAME_NATIVE.w * MINIMAP_ART_SCALE;
+  const h = FRAME_NATIVE.h * MINIMAP_ART_SCALE;
+  return { x: 0, y: planeHeight - h, w, h };
+}
+
 /** The minimap window's screen layout, all rects in absolute screen px. */
 export interface MinimapLayout {
   /** The whole framed window (the braided frame's outer box), pinned to the bottom-left corner. */

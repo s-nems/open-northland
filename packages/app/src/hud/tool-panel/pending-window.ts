@@ -1,5 +1,4 @@
-import { createHudWindow, type HudWindow } from '../dom/window.js';
-import { centralWindowOrigin } from '../regions.js';
+import { centralWindowPlacer, createHudWindow, type HudWindow } from '../dom/window.js';
 import type { ToolWindow } from './window-shell.js';
 
 /** Width of a pending note window, design px: the central window width of the reference. */
@@ -37,23 +36,14 @@ export function createPendingWindow(plane: HTMLElement, spec: PendingWindowSpec)
   note.style.fontSize = '14px';
   note.textContent = spec.text;
   window.body.append(note);
-  let placed = '';
+  const placeWindow = centralWindowPlacer(window, plane, PENDING_WINDOW_W);
   return {
     isOpen: window.isOpen,
     toggle: () => (window.isOpen() ? window.close() : window.open()),
     close: window.close,
     claims: () => false,
     handleClick: () => false,
-    place: () => {
-      if (!window.isOpen()) return;
-      // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
-      const size = { width: plane.clientWidth, height: plane.clientHeight };
-      const origin = centralWindowOrigin(size, 1, PENDING_WINDOW_W);
-      const key = `${origin.x},${origin.y}`;
-      if (key === placed) return;
-      placed = key;
-      window.place(origin.x, origin.y);
-    },
+    place: placeWindow,
     onDismiss: window.onDismiss,
     dispose: window.dispose,
   };

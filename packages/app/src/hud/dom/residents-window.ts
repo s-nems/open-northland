@@ -1,6 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
 import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
-import { centralWindowFloor, centralWindowOrigin } from '../regions.js';
 import type { ResidentFigureBox, ResidentFigureSlot } from '../tool-panel/residents/figures.js';
 import {
   filtersActive,
@@ -23,7 +22,7 @@ import {
 } from '../tool-panel/residents/rows.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import { GLYPH, RESIDENTS_TOKEN } from './icons.js';
-import { createHudWindow } from './window.js';
+import { centralWindowPlacer, createHudWindow } from './window.js';
 
 /** Design px (FOUNDATION.md): the central window width shared with the construction window. */
 const RESIDENTS_WINDOW_W = 640;
@@ -550,18 +549,10 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     if (box !== null && box.pixelScale > 0) deps.paintFigures(slots, box);
   };
 
-  let placed = '';
+  const placeWindow = centralWindowPlacer(window, deps.plane, RESIDENTS_WINDOW_W);
   const place = (): void => {
-    // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
-    const size = { width: deps.plane.clientWidth, height: deps.plane.clientHeight };
-    const origin = centralWindowOrigin(size, 1, RESIDENTS_WINDOW_W);
-    const floor = centralWindowFloor(size, 1);
-    const key = `${origin.x},${origin.y},${floor}`;
-    if (key === placed) return;
-    placed = key;
-    window.place(origin.x, origin.y);
-    window.element.style.maxHeight = `${Math.max(0, floor - origin.y)}px`;
-    figuresStale = true; // a resized plane shows other rows, at another pixel scale
+    // A moved plane shows other rows, at another pixel scale.
+    if (placeWindow()) figuresStale = true;
   };
 
   const open = (): void => {

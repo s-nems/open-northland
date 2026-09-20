@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { panelBottomInset, panelRect } from '../src/hud/details-panel/layout/shared.js';
-import { minimapPanelWidth } from '../src/hud/minimap/model.js';
+import { minimapDesignBox, minimapPanelWidth } from '../src/hud/minimap/model.js';
 import { NAV_BEAM_H, NAV_BEAM_W, navBeamRect } from '../src/hud/nav-beam.js';
 import {
   bottomReserveFor,
   centralRegion,
+  centralWindowBox,
   centralWindowFloor,
   centralWindowOrigin,
   liftedTop,
@@ -49,6 +50,34 @@ describe('central window region', () => {
     expect(liftedTop(WINDOW_REGION_TOP, 200, floor, 0)).toBe(WINDOW_REGION_TOP);
     expect(liftedTop(WINDOW_REGION_TOP, 600, floor, 0)).toBe(floor - 600);
     expect(liftedTop(WINDOW_REGION_TOP, 5000, floor, 40)).toBe(40);
+  });
+
+  it('slides a central window clear of the minimap instead of covering its presses', () => {
+    // The DOM plane takes every press inside a window, so a window over the corner kills the minimap.
+    const box = (screen: { width: number; height: number }, width: number) =>
+      centralWindowBox(screen, 1, width, minimapDesignBox(screen.height));
+    const minimapRight = Math.ceil(minimapDesignBox(SCREEN.height).w);
+
+    // Wide enough to reach the corner when centred: it starts at the minimap's right edge instead.
+    expect(box(SCREEN, 900).x).toBe(minimapRight);
+    // The reachable narrow planes: 1280x720 at the slider's 1.5 maximum, and 1280x1024 by default.
+    expect(box({ width: 910, height: 512 }, 640).x).toBe(minimapRight);
+    expect(box({ width: 1024, height: 819 }, 640).x).toBe(minimapRight);
+    // A window the centre already clears stays centred.
+    expect(box(SCREEN, 640)).toEqual(centralWindowBox(SCREEN, 1, 640, null));
+    expect(box(SCREEN, 640).x).toBe(320);
+    // One too wide for the free space keeps its right edge on screen rather than clearing the corner.
+    expect(box(SCREEN, 1100).x).toBe(SCREEN.width - 1100);
+    expect(box({ width: 400, height: 720 }, 640).x).toBe(0);
+    // A minimap that sits wholly below the region's floor never moves a window.
+    const belowFloor = { x: 0, y: centralWindowFloor(SCREEN, 1) + 1, w: 400, h: 10 };
+    expect(centralWindowBox(SCREEN, 1, 1100, belowFloor).x).toBe(centralWindowOrigin(SCREEN, 1, 1100).x);
+  });
+
+  it('gives a central window the region height to grow into', () => {
+    const box = centralWindowBox(SCREEN, 1, 640, null);
+    expect(box.y).toBe(WINDOW_REGION_TOP);
+    expect(box.y + box.maxHeight).toBe(centralWindowFloor(SCREEN, 1));
   });
 
   it('names the reserve a window must keep clear of: the beam, the minimap, or the taller of both', () => {

@@ -223,7 +223,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
-| Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam | one window at a time; Wiedza shows a framed pending note |
+| Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam, slid right of the minimap when a narrow screen would put it over the corner | one window at a time; Wiedza shows a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
 
@@ -247,6 +247,10 @@ Rules the shell enforces:
   select independently, with the details panel in its own corner.
 - A legacy window that cannot fit above the beam shortens its list or lifts toward the top bar; a
   window wider than the region centres on the screen and yields to the minimap as before.
+- The DOM plane takes every press inside a window, so a central window never stands over the minimap:
+  on a screen too narrow for the centred window to miss the corner it starts at the minimap's right
+  edge instead, and only a window too wide for the free space stays put, with its right edge on
+  screen. Height is not the test, so a window keeps one place while its content grows.
 
 ### Summary bar
 

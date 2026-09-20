@@ -34,6 +34,33 @@ export function centralWindowOrigin(
   return { x: Math.round(Math.max(0, (screen.width - width) / 2)), y: Math.round(region.y) };
 }
 
+/**
+ * Where a central window `width` design px wide opens and how tall it may grow: on the screen's
+ * vertical axis, at the region's top, its foot above the navigation beam. A window whose span would
+ * cross `overlay` (the minimap) slides right until it clears it, because the DOM plane takes every
+ * press inside whatever it covers and the corner below is the minimap's; it never leaves the screen
+ * to do so.
+ */
+export function centralWindowBox(
+  screen: ScreenSize,
+  scale: number,
+  width: number,
+  overlay: Rect | null,
+): { readonly x: number; readonly y: number; readonly maxHeight: number } {
+  const region = centralRegion(screen, scale);
+  const floor = region.y + region.h;
+  const drawn = width * scale;
+  const centred = centralWindowOrigin(screen, scale, drawn).x;
+  const clear =
+    overlay !== null && overlay.y < floor ? Math.max(centred, Math.ceil(overlay.x + overlay.w)) : centred;
+  const y = Math.round(region.y);
+  return {
+    x: Math.round(Math.min(clear, Math.max(0, screen.width - drawn))),
+    y,
+    maxHeight: Math.max(0, floor - y),
+  };
+}
+
 /** The lowest y a central window may reach before the navigation beam. */
 export function centralWindowFloor(screen: ScreenSize, scale: number): number {
   const region = centralRegion(screen, scale);

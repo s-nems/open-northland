@@ -1,3 +1,5 @@
+import { minimapDesignBox } from '../minimap/model.js';
+import { centralWindowBox } from '../regions.js';
 import { GLYPH } from './icons.js';
 import { WINDOW_ORNAMENTS } from './symbols.js';
 
@@ -82,5 +84,26 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
       listeners.push(listener);
     },
     dispose: () => element.remove(),
+  };
+}
+
+/**
+ * The one placement every central window uses, applied only when the box moved. The caller runs it
+ * per frame and on open; it answers whether the window moved, for an owner that repaints against the
+ * new box.
+ */
+export function centralWindowPlacer(window: HudWindow, plane: HTMLElement, width: number): () => boolean {
+  let placed = '';
+  return () => {
+    if (!window.isOpen()) return false;
+    // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
+    const screen = { width: plane.clientWidth, height: plane.clientHeight };
+    const box = centralWindowBox(screen, 1, width, minimapDesignBox(screen.height));
+    const key = `${box.x},${box.y},${box.maxHeight}`;
+    if (key === placed) return false;
+    placed = key;
+    window.place(box.x, box.y);
+    window.element.style.maxHeight = `${box.maxHeight}px`;
+    return true;
   };
 }
