@@ -121,8 +121,12 @@ function setValue(control: HTMLSelectElement | HTMLInputElement, value: string):
 const gestureOf = (event: MouseEvent): PickGesture =>
   pickGestureOf({ range: event.shiftKey, toggle: event.ctrlKey || event.metaKey });
 
+/** A chip caption: every word opens with a capital, as the panel's "Miejsce Pracy" labels do. */
 function capitalized(text: string, locale: string): string {
-  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+  return text
+    .split(' ')
+    .map((word) => word.charAt(0).toLocaleUpperCase(locale) + word.slice(1))
+    .join(' ');
 }
 
 export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindow {

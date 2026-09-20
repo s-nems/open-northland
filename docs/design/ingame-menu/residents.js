@@ -91,7 +91,7 @@ const WHO = [
 ];
 const LACKS = [
   ['home', 'domu', 'M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6'],
-  ['post', 'pracy', 'M4 20h16M7 20v-7h10v7M9 13V9h6v4M12 9V4M9 4h6'],
+  ['post', 'miejsca pracy', 'M4 20h16M7 20v-7h10v7M9 13V9h6v4M12 9V4M9 4h6'],
   ['tool', 'narzędzi', 'M14 4l6 6-3 3-6-6ZM12.5 8.5 4 17l3 3 8.5-8.5'],
   ['shoes', 'butów', 'M6 4h5v9l7 3q2 1 2 4H6Z M6 16h8'],
   ['partner', 'pary', 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z'],
@@ -385,7 +385,7 @@ function buildControls() {
   ).join('');
   lackBar.innerHTML = LACKS.map(([id, label, path]) => {
     const n = count(LACK_TEST[id]);
-    return `<button type="button" data-lack="${id}" title="Bez ${label}" aria-label="Bez ${label}: ${n}"${n === 0 ? ' class="zero"' : ''}><span class="count">${glyph(path)}${n}</span><span class="label">${label[0].toLocaleUpperCase('pl')}${label.slice(1)}</span></button>`;
+    return `<button type="button" data-lack="${id}" title="Bez ${label}" aria-label="Bez ${label}: ${n}"${n === 0 ? ' class="zero"' : ''}><span class="count">${glyph(path)}${n}</span><span class="label">${label.replace(/(^| )(\p{L})/gu, (_, gap, first) => gap + first.toLocaleUpperCase('pl'))}</span></button>`;
   }).join('');
   const options = (rows, empty, tally) =>
     `<option value="">${empty}</option>${rows

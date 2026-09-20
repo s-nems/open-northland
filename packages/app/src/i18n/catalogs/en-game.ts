@@ -327,7 +327,7 @@ export const enGame = {
       },
       lacks: {
         home: 'home',
-        post: 'post',
+        post: 'workplace',
         tool: 'tools',
         shoes: 'shoes',
         partner: 'partner',

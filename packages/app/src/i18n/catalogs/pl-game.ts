@@ -318,7 +318,7 @@ export const plGame = {
       },
       lacks: {
         home: 'domu',
-        post: 'pracy',
+        post: 'miejsca pracy',
         tool: 'narzędzi',
         shoes: 'butów',
         partner: 'pary',
