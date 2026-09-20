@@ -52,8 +52,8 @@ describe('spawnAnimalHerd command', () => {
       expect(sim.world.get(e, Health)).toEqual({ hitpoints: 15000, max: 15000 });
       expect(sim.world.has(e, Age)).toBe(false); // spawned adult - no growth bookkeeping
     }
-    // One settlerBorn announced per creature for render/audio.
-    expect(sim.events.current().filter((ev) => ev.kind === 'settlerBorn')).toHaveLength(3);
+    // No settlerBorn: that event rings the settlement's birth jingle, which is for its people.
+    expect(sim.events.current().filter((ev) => ev.kind === 'settlerBorn')).toHaveLength(0);
   });
 
   it('scatters the herd within maximumDistanceToBirthPoint (no two stacked, all in range)', () => {

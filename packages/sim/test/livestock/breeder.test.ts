@@ -118,7 +118,13 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     for (let i = 0; i < 2; i++) cowAt(sim, 21 + i, 20, { owner: P0, farm });
 
     // The breeder takes its seat, the cycle runs out, and the completed batch bears a calf.
-    for (let i = 0; i < 40; i++) sim.step();
+    const births: string[] = [];
+    for (let i = 0; i < 40; i++) {
+      sim.step();
+      for (const ev of sim.events.current()) if (ev.kind === 'settlerBorn') births.push(ev.kind);
+    }
+    // A calf is not a settler being born, so the settlement's birth jingle stays quiet.
+    expect(births).toEqual([]);
 
     const calves = [...sim.world.query(YoungAnimal)];
     expect(calves.length).toBeGreaterThanOrEqual(1);

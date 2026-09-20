@@ -79,7 +79,6 @@ export function spawnAnimalHerd(
       world.add(e, StayPoint, { cell: entityNode(world, ctx.terrain, e) });
     }
     members.push(e);
-    ctx.events.emit({ kind: 'settlerBorn', entity: e });
   }
 
   // `members[0]` is the lowest-id member because `create()` ids are monotonic; the leader points at itself.

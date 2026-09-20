@@ -173,7 +173,9 @@ export function birthHerdAnimal(
   if (anchor !== undefined) world.add(calf, StayPoint, { cell: anchor.cell });
   world.add(calf, YoungAnimal, { adultAt: ctx.tick + ANIMAL_ADULT_AGE_TICKS });
   attachToFarm(world, calf, farm);
-  ctx.events.emit({ kind: 'settlerBorn', entity: calf });
+  // No `settlerBorn`: that event rings the settlement's birth jingle
+  // (`DM_MUSIC_TYPE_JINGLE_BIRTH`), which the original keeps for its people. A calf arrives with the
+  // sounds its breeder's clip names and nothing else.
   recountHerdRows(world, ctx, farm);
   return calf;
 }
