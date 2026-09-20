@@ -2,6 +2,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
+import { liveAmounts } from './building-materials.js';
 import {
   type BuildingDef,
   goodDef,
@@ -154,11 +155,11 @@ function livestockHerdRows(
   bestPct: ReadonlyMap<number, number>,
 ): ProductionRow[] {
   if (def === undefined || ctx.isLivestockWorkplace?.(def.typeId) !== true) return [];
-  const held = liveStock(ent);
+  const held = liveAmounts(ent.components.Stockpile);
   const rows: ProductionRow[] = [];
   for (const recipe of def.recipes) {
     const species = recipe.outputs[0]?.goodType;
-    if (species === undefined || ctx.isLivestockGood?.(species) !== true) continue;
+    if (species === undefined || ctx.livestockTribeOfGood?.(species) == null) continue;
     const cap = def.stock.find((slot) => slot.goodType === species)?.capacity;
     const herd = held.get(species) ?? 0;
     const goodId = goodDef(ctx, species)?.id;
@@ -172,19 +173,6 @@ function livestockHerdRows(
     });
   }
   return rows;
-}
-
-/** The amounts a building's snapshot stockpile holds right now. */
-function liveStock(ent: SnapshotEntity): ReadonlyMap<number, number> {
-  const amounts = (ent.components.Stockpile as { amounts?: unknown } | undefined)?.amounts;
-  const entries = amounts instanceof Map ? [...amounts.entries()] : [];
-  const live = new Map<number, number>();
-  for (const [good, amount] of entries) {
-    const goodType = num(good);
-    const held = num(amount);
-    if (goodType !== undefined && held !== undefined) live.set(goodType, held);
-  }
-  return live;
 }
 
 /** A recipe's inputs as tooltip ingredient lines, or the no-materials label for an input-less craft. */

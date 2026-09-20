@@ -1185,7 +1185,10 @@ describe('settler upcoming-unlock rows', () => {
 
 describe('the animal farm panel - the species rows are its herd', () => {
   it('keeps the herd rows out of Magazyn and makes them the Produkcja rows, counted', () => {
-    const snapshot = snapshotOf([buildingEntity(1, BUILDING_ANIMAL_FARM)]);
+    const snapshot = snapshotOf([
+      // The snapshot's stockpile is the sim's Map flattened to pairs, which is what the rows must read.
+      buildingEntity(1, BUILDING_ANIMAL_FARM, { components: { Stockpile: { amounts: [[GOOD_SHEEP, 3]] } } }),
+    ]);
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'building') throw new Error('expected a building model');
 
@@ -1198,8 +1201,8 @@ describe('the animal farm panel - the species rows are its herd', () => {
     expect(model.production.rows.map((r) => r.goodType)).toEqual([GOOD_SHEEP, GOOD_CATTLE]);
     const [sheep, cattle] = model.production.rows;
     expect(sheep?.goodId).toBe('sheep'); // the species itself, not a ware its slaughter yields
-    expect(sheep?.label).toContain('0/20'); // an empty herd against the row's cap
-    expect(cattle?.label).toContain('0/20');
+    expect(sheep?.label).toContain('3/20'); // the herd attached to the farm against the row's cap
+    expect(cattle?.label).toContain('0/20'); // no cattle attached yet
     expect(sheep?.inputs.split('\n')).toHaveLength(2); // what one breeding costs: water + wheat
   });
 
