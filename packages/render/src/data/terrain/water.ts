@@ -35,7 +35,9 @@ export const NO_WATER: WaterField = { wave: STILL, surface: STILL, deep: STILL }
 const WATER_PATTERN_NAME = /water/i;
 
 /** The authored shallow-water family, keyed by `EditName` ('block water shallow …'): the map painter's
- *  own depth split, drawn with its lighter texture. Every other water pattern counts as deep. */
+ *  own depth split, drawn with its lighter texture. Every other water pattern counts as deep. The name
+ *  is the only signal a `SceneGround` carries; the `water bright` edit group the IR also records would
+ *  additionally catch `water Bright 01`, which no shipped map's ground dictionary uses. */
 const SHALLOW_PATTERN_NAME = /shallow/i;
 
 /** Whether a ground pattern or transition overlay of this name paints water, so takes the water shading. */

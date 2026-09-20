@@ -57,7 +57,7 @@ export function buildFlat(
       const mesh = new Mesh({
         geometry: meshGeometry(batch),
         texture: Texture.WHITE,
-        shader: makeTintedTerrainShader(Texture.WHITE.source),
+        shader: makeTintedTerrainShader(Texture.WHITE.source, undefined),
       });
       mesh.tint = colour;
       children.push(mesh);

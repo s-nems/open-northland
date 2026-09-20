@@ -30,16 +30,18 @@ const MINIFY_MAX_FOOTPRINT = 4;
 // Original terrain gets bicubic magnification and four-tap minification, not a full mipmap substitute.
 // Existing mipmapped materials retain their hardware filtering.
 const TERRAIN_SAMPLE = `
-  in vec4 vSampleBounds;
+  flat in vec4 vSampleBounds;
   uniform float uEnhancedSampling;
   uniform float uManualSampling;
   vec4 sampleTerrain() {
+    // Both gates are uniforms, so this branch is uniform across the draw and the derivatives below
+    // stay well defined. Returning first keeps the baseline path to a single sampler fetch.
+    if (uEnhancedSampling < 0.5 || uManualSampling < 0.5)
+      return texture(uTexture, vUV);
     vec2 size = vec2(textureSize(uTexture, 0));
     vec2 dx = dFdx(vUV);
     vec2 dy = dFdy(vUV);
     float footprint = max(length(dx * size), length(dy * size));
-    if (uEnhancedSampling < 0.5 || uManualSampling < 0.5)
-      return texture(uTexture, vUV);
     vec2 centre = (vSampleBounds.xy + vSampleBounds.zw) * 0.5;
     vec2 low = min(vSampleBounds.xy + 0.5 / size, centre);
     vec2 high = max(vSampleBounds.zw - 0.5 / size, centre);
@@ -96,11 +98,14 @@ const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
 const WAVE_SHIMMER = 0.08;
 /** The shimmer's own angular speed - off the swell's so glints don't pulse in lockstep. */
 const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
+/** The shimmer's spatial phase runs faster than the swell's, so its bands stay finer than the swell
+ *  carrying them and the two never lock into one pulse. Tuned by eye. */
+const WAVE_SHIMMER_PHASE_SCALE = 1.7;
 // The enhanced water's crossing waves: a second swell and a second glint travelling across the first
 // pair, an artistic approximation tuned by eye.
 /** How much steeper than the main swell's diagonal the crossing swell travels (y weight per x). */
 const CROSS_SWELL_SLANT = 1.3;
-/** Spatial phase gradient of the crossing swell, radians per world px. */
+/** Spatial phase gradient of the crossing swell, radians per world px: one swell every 251 px. */
 const CROSS_SWELL_PHASE_PER_PX = 0.025;
 const CROSS_SWELL_RADIANS_PER_TICK = (2 * Math.PI) / 42;
 /** The crossing swell's share of the displacement; the main swell keeps the rest, so the peak holds. */
@@ -123,7 +128,8 @@ export const WAVE_TIME_PERIOD_TICKS = 210;
 const WATER_SHALLOW_DARKEN = 0.12;
 /** Brightness loss on deep water. */
 const WATER_DEEP_DARKEN = 0.18;
-/** Peak brightness gain of the glint band crossing deep water. */
+/** Peak brightness gain of the glint band crossing deep water. Deep only by intent: the band reads as
+ *  sun off open water, so a map painted wholly in the shallow family shows none. */
 const WATER_GLINT = 0.25;
 /** One glint pass every {@link WAVE_TIME_PERIOD_TICKS} (17.5 s at the 12 Hz sim). */
 const WATER_GLINT_RADIANS_PER_TICK = (2 * Math.PI) / WAVE_TIME_PERIOD_TICKS;
@@ -148,7 +154,7 @@ const glslVec3 = (rgb: readonly [number, number, number]): string =>
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec4 aSampleBounds;
-  out vec4 vSampleBounds;
+  flat out vec4 vSampleBounds;
   in vec2 aUV;
   in vec2 aBrightnessUV;
   in vec3 aVertexColor;
@@ -219,32 +225,37 @@ const FIELD_FRAGMENT = `#version 300 es
     vec4 texel = sampleTerrain();
     float lane = texture(uBrightnessTex, vBrightnessUV).r * ${(255 / BRIGHTNESS_NEUTRAL).toFixed(8)};
     // Water shimmer: a second travelling wave glints the shaded water surface (0 on land).
-    float shimmer = sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
-    float crossGlint = sin(uWave.x * ${CROSS_GLINT_RADIANS_PER_TICK.toFixed(8)}
-      - vCrossWavePhase * ${CROSS_GLINT_PHASE_SCALE.toFixed(4)});
-    // Softer intersecting glints avoid a uniform whole-surface pulse. UVs stay inside their atlas tile.
-    float crossedShimmer = ${CROSSED_SHIMMER_WEIGHTS.shimmer.toFixed(4)} * shimmer
-      + ${CROSSED_SHIMMER_WEIGHTS.crossGlint.toFixed(4)} * crossGlint
-      + ${CROSSED_SHIMMER_WEIGHTS.product.toFixed(4)} * shimmer * crossGlint;
-    lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
-      * mix(shimmer, crossedShimmer, uEnhancedWater);
+    float shimmer = sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)}
+      + vWavePhase * ${WAVE_SHIMMER_PHASE_SCALE.toFixed(4)});
+    // Every enhanced-water term sits under its uniform, so the baseline pays for none of it and keeps
+    // the arithmetic it had before the enhancement existed. No derivative is taken inside either gate.
+    if (uEnhancedWater > 0.5) {
+      float crossGlint = sin(uWave.x * ${CROSS_GLINT_RADIANS_PER_TICK.toFixed(8)}
+        - vCrossWavePhase * ${CROSS_GLINT_PHASE_SCALE.toFixed(4)});
+      // Softer intersecting glints avoid a uniform whole-surface pulse.
+      shimmer = ${CROSSED_SHIMMER_WEIGHTS.shimmer.toFixed(4)} * shimmer
+        + ${CROSSED_SHIMMER_WEIGHTS.crossGlint.toFixed(4)} * crossGlint
+        + ${CROSSED_SHIMMER_WEIGHTS.product.toFixed(4)} * shimmer * crossGlint;
+    }
+    lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)} * shimmer;
     // Water depth: shallows read darker, deep water darker still, and a narrow glint band drifts
     // across the deep water. vWater = (water fraction, deep fraction), zero on land paint and at land
-    // nodes, so it fades out across the coast triangle. Gated with the water enhancement, so the
-    // baseline renderer's water is unchanged.
-    float shallow = vWater.x - vWater.y;
-    float deep = vWater.y;
-    float glint = pow(max(sin(uWave.x * ${WATER_GLINT_RADIANS_PER_TICK.toFixed(8)} + vGlintPhase), 0.0),
-      ${WATER_GLINT_SHARPNESS.toFixed(1)});
-    lane *= 1.0 + uEnhancedWater * (-${WATER_SHALLOW_DARKEN.toFixed(4)} * shallow
-      - ${WATER_DEEP_DARKEN.toFixed(4)} * deep + ${WATER_GLINT.toFixed(4)} * uWave.y * deep * glint);
-    // Water colour: saturate the surface and tint each depth family. Both are identities at zero
-    // water enhancement and on land, where vWater is zero.
-    float luma = dot(texel.rgb, ${glslVec3(LUMA_WEIGHTS)});
-    float saturation = mix(1.0, ${WATER_SATURATION.toFixed(4)}, vWater.x * uEnhancedWater);
-    vec3 tint = mix(vec3(1.0), ${glslVec3(WATER_SHALLOW_TINT)}, shallow * uEnhancedWater)
-      * mix(vec3(1.0), ${glslVec3(WATER_DEEP_TINT)}, deep * uEnhancedWater);
-    texel.rgb = mix(vec3(luma), texel.rgb, saturation) * tint;
+    // nodes, so it fades out across the coast triangle. A fragment with no water takes neither the
+    // depth shading nor the colour grade, both of which are identities there.
+    if (uEnhancedWater > 0.5 && vWater.x > 0.0) {
+      float shallow = vWater.x - vWater.y;
+      float deep = vWater.y;
+      float glint = pow(max(sin(uWave.x * ${WATER_GLINT_RADIANS_PER_TICK.toFixed(8)} + vGlintPhase), 0.0),
+        ${WATER_GLINT_SHARPNESS.toFixed(1)});
+      lane *= 1.0 + (-${WATER_SHALLOW_DARKEN.toFixed(4)} * shallow
+        - ${WATER_DEEP_DARKEN.toFixed(4)} * deep + ${WATER_GLINT.toFixed(4)} * uWave.y * deep * glint);
+      // Water colour: saturate the surface and tint each depth family; the painted green moves blue.
+      float luma = dot(texel.rgb, ${glslVec3(LUMA_WEIGHTS)});
+      float saturation = mix(1.0, ${WATER_SATURATION.toFixed(4)}, vWater.x);
+      vec3 tint = mix(vec3(1.0), ${glslVec3(WATER_SHALLOW_TINT)}, shallow)
+        * mix(vec3(1.0), ${glslVec3(WATER_DEEP_TINT)}, deep);
+      texel.rgb = mix(vec3(luma), texel.rgb, saturation) * tint;
+    }
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
   }
@@ -341,7 +352,7 @@ export function makeShadedDecorShader(source: TextureSource): Shader {
 const COLOR_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec4 aSampleBounds;
-  out vec4 vSampleBounds;
+  flat out vec4 vSampleBounds;
   in vec2 aUV;
   in vec3 aVertexColor;
   out vec2 vUV;
@@ -370,23 +381,26 @@ const COLOR_FRAGMENT = `#version 300 es
 `;
 let colorProgram: GlProgram | undefined;
 
+/** A mipmapped page keeps its hardware filtering, and a single texel (the flat-colour path's white
+ *  pixel) has nothing to reconstruct, so neither takes the manual filter. */
 function terrainSamplingUniforms(source: TextureSource): UniformGroup {
-  return new UniformGroup({
-    uManualSampling: {
-      value: source.autoGenerateMipmaps || source.mipLevelCount > 1 ? 0 : 1,
-      type: 'f32',
-    },
-  });
+  const manual =
+    source.autoGenerateMipmaps || source.mipLevelCount > 1 || (source.width <= 1 && source.height <= 1)
+      ? 0
+      : 1;
+  return new UniformGroup({ uManualSampling: { value: manual, type: 'f32' } });
 }
 
-export function makeTintedTerrainShader(source: TextureSource, wave = makeWaveUniforms()): Shader {
+/** `wave` is the terrain layer's shared group. A caller passing `undefined` gets a private one that no
+ *  enhancement setting can ever reach, which suits the flat-colour placeholder and nothing else. */
+export function makeTintedTerrainShader(source: TextureSource, wave: WaveUniforms | undefined): Shader {
   colorProgram ??= new GlProgram({ vertex: COLOR_VERTEX, fragment: COLOR_FRAGMENT });
   return new Shader({
     glProgram: colorProgram,
     resources: {
       uTexture: source,
       uSampler: source.style,
-      waveVars: wave,
+      waveVars: wave ?? makeWaveUniforms(),
       sampling: terrainSamplingUniforms(source),
     },
   });

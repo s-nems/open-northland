@@ -39,7 +39,7 @@ interface ResolvedTransition {
   readonly paintsWater: boolean;
 }
 
-/** `paintsWater` keeps the water shading off land paint that shares a node with water: a shore
+/** `shadesWater` keeps the water shading off land paint that shares a node with water: a shore
  *  triangle, or a land transition overlaid on a water triangle. */
 function pushTriangle(
   batch: TerrainBatch,
@@ -48,7 +48,7 @@ function pushTriangle(
   lift: NodeLiftFn,
   terrain: SceneTerrain,
   lane: LaneShading,
-  paintsWater: boolean,
+  shadesWater: boolean,
 ): void {
   const base = batch.positions.length / 2;
   batch.positions.push(...positions(nodes, lift));
@@ -58,7 +58,7 @@ function pushTriangle(
     for (const [hx, hy] of nodes) {
       batch.brightnessUVs.push(...nodeLaneUV(hx, hy, terrain.width, terrain.height, lane.laneTexWidth));
       batch.waves.push(lane.water.wave(hx, hy));
-      if (paintsWater) batch.water.push(lane.water.surface(hx, hy), lane.water.deep(hx, hy));
+      if (shadesWater) batch.water.push(lane.water.surface(hx, hy), lane.water.deep(hx, hy));
       else batch.water.push(0, 0);
     }
   }
@@ -110,7 +110,7 @@ export function buildTextured(
             lift,
             terrain,
             lane,
-            false, // this path has no pattern names, and its water field is empty
+            false, // no pattern names on this path, so nothing here can mark a triangle as water
           );
         }
       }

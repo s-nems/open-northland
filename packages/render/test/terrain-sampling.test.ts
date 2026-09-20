@@ -12,6 +12,31 @@ function meshOf(layer: TerrainLayer): Mesh {
   return mesh;
 }
 
+describe('terrain shader gating', () => {
+  it('branches on the water enhancement instead of multiplying by it, and samples before it filters', () => {
+    const source = new BufferImageSource({ resource: new Uint8Array(64 * 64 * 4), width: 64, height: 64 });
+    const layer = new TerrainLayer();
+    layer.set(
+      { width: 1, height: 1, typeIds: [0], brightness: [127] },
+      {
+        pages: new Map([['ground', source]]),
+        cellFor: () => ({ pageKey: 'ground', rect: { x: 0, y: 0, w: 63, h: 63 } }),
+      },
+    );
+    const fragment = meshOf(layer).shader?.glProgram?.fragment ?? '';
+    // The baseline must not pay for the enhancement, so the flag may gate a branch but never multiply
+    // into an expression: a `mix(..., uEnhancedWater)` evaluates the enhanced terms on every fragment,
+    // on land and with the setting off.
+    expect(fragment).toContain('if (uEnhancedWater > 0.5)');
+    expect(fragment).not.toMatch(/[,*+-]\s*uEnhancedWater/);
+    expect(fragment).not.toMatch(/uEnhancedWater\s*[*+]/);
+    // The sampling gate has to return before the derivatives, or the baseline pays for them anyway.
+    expect(fragment.indexOf('uEnhancedSampling < 0.5')).toBeLessThan(fragment.indexOf('dFdx('));
+    layer.destroy();
+    source.destroy();
+  });
+});
+
 describe('terrain footprint sampling', () => {
   for (const shaded of [false, true]) {
     it(`keeps triangle bounds and shared live setting across rebuilds (${shaded ? 'shaded' : 'unshaded'})`, () => {
