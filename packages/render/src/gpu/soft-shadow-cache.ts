@@ -11,6 +11,10 @@ export const SHADOW_BLUR_PADDING = SHADOW_BLUR_RADIUS + 1;
 export const SHADOW_BLUR_KERNEL_SUM = SHADOW_BLUR_KERNEL.reduce((sum, tap) => sum + tap, 0);
 const MAX_PIXELS = 2 * 1024 * 1024;
 const MAX_FRAME_PIXELS = 512 * 512;
+/** Pixels one frame may bake. A bake is synchronous, so without a ceiling, switching the enhancement on
+ *  over a settled town softens every visible caster inside that one frame. One frame of the largest
+ *  allowed silhouette still fits, so a backlog always drains. */
+const MAX_PIXELS_PER_FRAME = MAX_FRAME_PIXELS;
 
 /** Artistic approximation: a one-source-pixel Gaussian softens the existing black silhouette.
  * Padding isolates its edge from atlas neighbours; alpha is never amplified. */
@@ -49,6 +53,23 @@ export class SoftShadowCache {
   private readonly textures = new Map<AtlasFrame, Texture>();
   private unavailable = new WeakSet<AtlasFrame>();
   private pixels = 0;
+  private framePixels = 0;
+  private deferred = false;
+  /** The per-frame ceiling binds only an owner that opens frames. A cache driven outside a draw loop,
+   *  such as an art-gallery preview, would otherwise spend its one budget and never bake again. */
+  private framed = false;
+
+  /** Whether the frame just drawn ran out of bake budget, so some callers still hold hard silhouettes
+   *  and need to ask again. */
+  get deferredBakes(): boolean {
+    return this.deferred;
+  }
+
+  beginFrame(): void {
+    this.framed = true;
+    this.framePixels = 0;
+    this.deferred = false;
+  }
 
   get(source: TextureSource, frame: AtlasFrame): Texture | null {
     const cached = this.textures.get(frame);
@@ -58,6 +79,10 @@ export class SoftShadowCache {
     const height = frame.height + SHADOW_BLUR_PADDING * 2;
     const pixels = width * height;
     if (pixels > MAX_FRAME_PIXELS || this.pixels + pixels > MAX_PIXELS) return null;
+    if (this.framed && this.framePixels > 0 && this.framePixels + pixels > MAX_PIXELS_PER_FRAME) {
+      this.deferred = true;
+      return null;
+    }
     const resource: unknown = source.resource;
     if (!isDrawableResource(resource)) {
       this.unavailable.add(frame);
@@ -91,6 +116,7 @@ export class SoftShadowCache {
       });
       this.textures.set(frame, texture);
       this.pixels += pixels;
+      this.framePixels += pixels;
       return texture;
     } catch {
       this.unavailable.add(frame);
@@ -103,5 +129,8 @@ export class SoftShadowCache {
     this.textures.clear();
     this.unavailable = new WeakSet();
     this.pixels = 0;
+    this.framePixels = 0;
+    this.deferred = false;
+    this.framed = false;
   }
 }

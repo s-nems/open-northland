@@ -52,6 +52,13 @@ export class TextureCache {
     return this.shadowVersion;
   }
 
+  /** Opens a frame. A bake the last frame's budget turned away bumps the revision, so the layers still
+   *  holding hard silhouettes rebind and the backlog drains a frame at a time. */
+  beginFrame(): void {
+    if (this.softShadows.deferredBakes) this.shadowVersion++;
+    this.softShadows.beginFrame();
+  }
+
   setSoftShadows(enabled: boolean): void {
     if (this.useSoftShadows === enabled) return;
     this.useSoftShadows = enabled;

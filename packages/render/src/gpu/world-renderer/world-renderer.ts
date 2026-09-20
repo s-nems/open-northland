@@ -108,7 +108,9 @@ export class WorldRenderer {
     this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true, opts?.spriteSmoothing);
     this.chrome.attach(app.stage);
     app.stage.addChild(this.hud.container);
-    if (opts?.enhancements !== undefined) this.setGraphicsEnhancements(opts.enhancements);
+    // Always routed, never only assigned: the magnification mode and shadow style are page globals a
+    // previous renderer may have left set, so the baseline has to claim them back.
+    this.setGraphicsEnhancements(opts?.enhancements ?? BASELINE_ENHANCEMENTS);
   }
 
   setGraphicsEnhancements(next: WorldEnhancements): void {
@@ -190,6 +192,7 @@ export class WorldRenderer {
   }
 
   update(frame: WorldFrame): void {
+    this.textureCache.beginFrame();
     const {
       snapshot,
       tick = 0,

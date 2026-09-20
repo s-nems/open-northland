@@ -1,12 +1,34 @@
-import { type Application, BufferImageSource, Container, Mesh, TextureSource, UniformGroup } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
-import { pixelArtMagnifyMode, setPixelArtMagnification } from '../src/gpu/pixel-art-registry.js';
+import {
+  type Application,
+  BufferImageSource,
+  Container,
+  Mesh,
+  Sprite,
+  TextureSource,
+  UniformGroup,
+} from 'pixi.js';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { MapObjectSprite } from '../src/gpu/map-objects/index.js';
+import {
+  markPixelArtSource,
+  pixelArtMagnifyMode,
+  setPixelArtMagnification,
+  setWorldShadowStyle,
+  worldShadowStyle,
+} from '../src/gpu/pixel-art-registry.js';
 import { BASELINE_ENHANCEMENTS, WorldRenderer } from '../src/gpu/world-renderer/index.js';
 import { mountPainterOrder, type WorldSceneLayers } from '../src/gpu/world-renderer/painter-order.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 import { useHeadlessShaderContext } from './support/shader-context.js';
 
 useHeadlessShaderContext();
+
+// The magnification mode and the shadow style are page globals and the suite shares a process, so a
+// test that leaves one set would poison every file after it.
+afterEach(() => {
+  setPixelArtMagnification('off');
+  setWorldShadowStyle(null);
+});
 
 /** An {@link Application} stub. Constructing the renderer wires Pixi containers and touches no GL, so
  *  the retained graph is readable here; a field the stub lacks would throw rather than pass. */
@@ -48,6 +70,17 @@ describe('mountPainterOrder', () => {
   });
 });
 
+/** Every {@link Sprite} in the retained graph under `root`. */
+function spritesUnder(root: Container): Sprite[] {
+  const found: Sprite[] = [];
+  const pending: Container[] = [root];
+  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+    if (node instanceof Sprite) found.push(node);
+    pending.push(...node.children);
+  }
+  return found;
+}
+
 /** The shared water uniform group of the first shaded terrain mesh under `root`. */
 function waveUniformsUnder(root: Container): UniformGroup {
   const pending: Container[] = [root];
@@ -75,21 +108,59 @@ describe('WorldRenderer scene graph', () => {
       },
       { pages: new Map([['ground', source]]), cellFor: () => undefined, groundFor: () => tile },
     );
+    const treeSource = new BufferImageSource({ resource: new Uint8Array(8 * 8 * 4), width: 8, height: 8 });
+    const tree: MapObjectSprite = {
+      x: 200,
+      y: 200,
+      source: treeSource,
+      frames: [{ x: 0, y: 0, width: 8, height: 8, offsetX: -4, offsetY: -7 }],
+      scale: 0.5,
+      decor: false,
+      phase: 0,
+      sway: 0.01,
+    };
+    renderer.setMapObjects([tree]);
+    const frame = {
+      snapshot: snapshotOf([]),
+      camera: { offsetX: 0, offsetY: 0, scale: 1 },
+      tick: 20,
+      alpha: 0.5,
+    };
+    renderer.update(frame);
+    const swayed = spritesUnder(app.stage).find((sprite) => sprite.texture.source === treeSource);
+    if (swayed === undefined) throw new Error('no swaying tree');
+    const stillX = swayed.x;
+
     const water = waveUniformsUnder(app.stage);
     const magnifyOff = pixelArtMagnifyMode();
 
+    // Each enhancement drives one layer, so every other observable has to hold still beside it.
     renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, environmentMotion: true });
+    renderer.update(frame);
+    expect(swayed.x).not.toBe(stillX);
     expect(water.uniforms.uEnhancedWater).toBe(0);
+    expect(water.uniforms.uEnhancedSampling).toBe(0);
+    expect(worldShadowStyle()).toBeNull();
     expect(pixelArtMagnifyMode()).toBe(magnifyOff);
 
     renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, enhancedWater: true });
+    renderer.update(frame);
     expect(water.uniforms.uEnhancedWater).toBe(1);
+    expect(water.uniforms.uEnhancedSampling).toBe(0);
+    expect(swayed.x).toBe(stillX);
+
+    renderer.setGraphicsEnhancements({ ...BASELINE_ENHANCEMENTS, softShadows: true });
+    expect(worldShadowStyle()).not.toBeNull();
+    expect(water.uniforms.uEnhancedWater).toBe(0);
+    expect(pixelArtMagnifyMode()).toBe(magnifyOff);
 
     renderer.setGraphicsEnhancements({
       ...BASELINE_ENHANCEMENTS,
       enhancedSampling: true,
       pixelArtScaler: 'sharp',
     });
+    expect(water.uniforms.uEnhancedSampling).toBe(1);
+    expect(worldShadowStyle()).toBeNull();
     const sharp = pixelArtMagnifyMode();
     renderer.setGraphicsEnhancements({
       ...BASELINE_ENHANCEMENTS,
@@ -100,9 +171,10 @@ describe('WorldRenderer scene graph', () => {
 
     renderer.setGraphicsEnhancements(BASELINE_ENHANCEMENTS);
     expect(pixelArtMagnifyMode()).toBe(magnifyOff);
-    setPixelArtMagnification('off');
+    expect(water.uniforms.uEnhancedSampling).toBe(0);
     renderer.dispose();
     source.destroy();
+    treeSource.destroy();
   });
 
   it('keeps enhanced camera motion subpixel and restores device alignment when switched off', () => {
@@ -129,6 +201,7 @@ describe('WorldRenderer scene graph', () => {
   it('toggles enhanced RGBA sampling independently of the legacy view-smoothing option', () => {
     const app = stubApp();
     const source = new TextureSource({ width: 8, height: 8, scaleMode: 'nearest' });
+    markPixelArtSource(source); // the original's loader marks its pages; the art filter claims those
     const renderer = new WorldRenderer(app, {
       viewSmoothing: false,
       sheet: {
