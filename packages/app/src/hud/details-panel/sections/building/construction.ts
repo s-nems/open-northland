@@ -1,3 +1,4 @@
+import { formatMessage, messages } from '../../../../i18n/index.js';
 import type { Rect } from '../../../geometry.js';
 import type { Chrome } from '../../chrome.js';
 import { BAR_H, type BuildingLayout, ROW_TEXT_PAD, STOCK_PLATE_H, STOCK_ROW_H } from '../../layout/index.js';
@@ -16,8 +17,9 @@ export function drawConstructionSection(
   s: number,
 ): void {
   if (layout.construction === null || model.construction === null) return;
+  const copy = messages().hud.construction;
   chrome.window(layout.construction.frame);
-  chrome.headline(layout.construction.title, 'Construction');
+  chrome.headline(layout.construction.title, copy.title);
   const body = layout.construction.body;
   const rowH = Math.round(STOCK_ROW_H * s);
   chrome.textAt(`${model.builtPct}%`, body.x, body.y + ROW_TEXT_PAD * s, 'white');
@@ -31,8 +33,12 @@ export function drawConstructionSection(
     },
     model.builtPct,
   );
+  const statusRows = model.construction.status === null ? 0 : 1;
+  if (model.construction.status !== null) {
+    chrome.textAt(copy.status[model.construction.status], body.x, body.y + rowH + ROW_TEXT_PAD * s, 'white');
+  }
   model.construction.rows.forEach((row, i) => {
-    const rowY = body.y + (i + 1) * rowH;
+    const rowY = body.y + (i + 1 + statusRows) * rowH;
     const icon: Rect = {
       x: body.x,
       y: rowY + Math.round(s),
@@ -47,8 +53,9 @@ export function drawConstructionSection(
     };
     chrome.stockField(plate);
     if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
+    const inbound = row.inbound > 0 ? formatMessage(copy.inbound, { count: row.inbound }) : '';
     chrome.textLeftMiddle(
-      stockAmount(row.delivered, row.needed),
+      `${stockAmount(row.delivered, row.needed)}${inbound}`,
       plate.x + Math.round(STOCK_AMOUNT_INSET * s),
       plate.y + plate.h / 2,
       'white',

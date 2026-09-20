@@ -183,9 +183,10 @@ export function layoutBuilding(
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
   const underConstruction = model.construction !== null;
-  // The Construction window's body is one gauge row plus one row per material line.
+  // The Construction window's body is a gauge row, an optional proven-stall row, then the materials.
   const constructionBodyH = underConstruction
-    ? (1 + (model.construction?.rows.length ?? 0)) * Math.round(STOCK_ROW_H * s)
+    ? (1 + (model.construction?.status === null ? 0 : 1) + (model.construction?.rows.length ?? 0)) *
+      Math.round(STOCK_ROW_H * s)
     : 0;
   const showDefence = model.showDefense && !underConstruction;
   const showProduction = model.production !== null && !underConstruction;

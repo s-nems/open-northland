@@ -15,6 +15,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { constructionWorkCell } from '../../../footprint/index.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -147,7 +148,8 @@ function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict 
   const { world, ctx, entity, tribe, owner, inbound } = plan;
   const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
   if (crew === undefined) return null;
-  return constructionSiteNeeds(world, ctx, crew, tribe, owner, goodType, inbound) ? crew : null;
+  if (!constructionSiteNeeds(world, ctx, crew, tribe, owner, goodType, inbound)) return null;
+  return constructionSiteCanReceive(plan, crew) ? crew : 'no-sink';
 }
 
 /** Construction material flows to the nearest site of the settler's own player that still has room in its
@@ -163,12 +165,20 @@ function toNeedingConstructionSite(
     targets.constructionSiteCells.nearest(
       here,
       (e) =>
-        constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound) && area.avoidSite?.(e) !== true
+        constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound) &&
+        constructionSiteCanReceive(plan, e) &&
+        area.avoidSite?.(e) !== true
           ? QUALIFIES
           : null,
       area.gate,
     )?.entity ?? null
   );
+}
+
+/** Whether a site's material can physically land on a legal perimeter cell. */
+function constructionSiteCanReceive(plan: PlannerContext, site: Entity): boolean {
+  const { world, ctx, terrain, here, targets } = plan;
+  return constructionWorkCell(world, ctx, terrain, site, targets.yard.blocked, here) !== null;
 }
 
 /**

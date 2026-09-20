@@ -4,14 +4,24 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { Building, Chat, Owner, Position, Settler, SiteAssignment, UnderConstruction } = components;
+const {
+  Building,
+  Chat,
+  CurrentAtomic,
+  MoveGoal,
+  Owner,
+  Position,
+  Settler,
+  SiteAssignment,
+  SupplyRun,
+  UnderConstruction,
+} = components;
 
 const MAP_ID = 'magiczny_las';
 const HUMAN_SEAT = 0;
 /** Long enough for the seat's idle builders to have paired off into chatter before the order arrives. */
 const IDLE_TICKS = 50;
-/** The planner pass that sees the site sends the first half of each chatting pair; a partner planned
- *  earlier in that pass follows on the next. */
+/** Enough for the command and the planner pass that sees the new site. */
 const CREW_TICKS = 2;
 /** Half-cell nodes scanned around the headquarters for legal ground. */
 const PLOT_SEARCH_NODES = 16;
@@ -68,8 +78,17 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
         (e) => sim.world.tryGet(e, Owner)?.player === HUMAN_SEAT,
       );
       expect(site).toBeDefined();
-      for (const builder of builders) {
-        expect(sim.world.tryGet(builder, SiteAssignment)?.site).toBe(site);
+      if (site === undefined) throw new Error('placed site was not found');
+      const crew = builders.filter((builder) => sim.world.tryGet(builder, SiteAssignment)?.site === site);
+      expect(crew.length).toBeGreaterThan(0);
+      for (const builder of crew) {
+        const atomic = sim.world.tryGet(builder, CurrentAtomic)?.effect;
+        const usefulIntent =
+          sim.world.tryGet(builder, SupplyRun)?.site === site ||
+          (atomic?.kind === 'construct' && atomic.site === site) ||
+          sim.world.has(builder, MoveGoal);
+        expect(usefulIntent).toBe(true);
+        expect(sim.world.tryGet(builder, Chat)?.kind).not.toBe('pastime');
       }
     });
   },

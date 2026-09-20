@@ -19,8 +19,11 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
 import { plannerSystem } from '../../../src/systems/index.js';
+import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
+import { deliveredConstructionFraction } from '../../../src/systems/stores/index.js';
 
 import {
+  BUILD_HOUSE_ATOMIC,
   BUILDER,
   builderAt,
   builtBuildingAt,
@@ -196,6 +199,53 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(minWarehouseStone).toBe(2);
   });
 
+  it('reserves the chosen SOURCE across different sites, including against an unrelated pickup', () => {
+    const sim = new Simulation({ seed: 17, content: constructionContent(), map: grassMap(40, 4) });
+    const left = siteAt(sim, HOUSE, 4, 1);
+    const right = siteAt(sim, HOUSE, 34, 1);
+    const warehouse = builtBuildingAt(sim, HEADQUARTERS, 20, 1, [[STONE, 1]]);
+    const first = builderAt(sim, 2, 1);
+    const second = builderAt(sim, 36, 1);
+    sim.world.add(first, SiteAssignment, { site: left, pinned: true });
+    sim.world.add(second, SiteAssignment, { site: right, pinned: true });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const runners = [first, second].filter((builder) => sim.world.has(builder, SupplyRun));
+    expect(runners).toHaveLength(1);
+    const runner = runners[0];
+    if (runner === undefined) throw new Error('expected one reserved construction pickup');
+    expect(sim.world.get(runner, SupplyRun)).toMatchObject({ source: warehouse, goodType: STONE });
+
+    // A producer/carrier pickup finishing before the builder may not consume the promised last unit.
+    const unrelated = sim.world.create();
+    pickupFromStore(sim.world, ctxOf(sim), unrelated, warehouse, STONE, 1);
+    expect(sim.world.has(unrelated, Carrying)).toBe(false);
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE)).toBe(1);
+  });
+
+  it('drops once and does not re-fetch when a pinned site has no legal delivery perimeter', () => {
+    const sim = new Simulation({ seed: 19, content: constructionContent(), map: grassMap(1, 1) });
+    const site = siteAt(sim, HOUSE, 0, 0);
+    const builder = builderAt(sim, 0, 0);
+    sim.world.add(builder, Carrying, { goodType: STONE, amount: 1 });
+    sim.world.add(builder, SiteAssignment, { site, pinned: true });
+
+    let pickupSeen = false;
+    for (let tick = 0; tick < 80; tick++) {
+      sim.step();
+      if (sim.world.tryGet(builder, CurrentAtomic)?.effect.kind === 'pickup') pickupSeen = true;
+    }
+
+    expect(sim.world.has(builder, Carrying)).toBe(false);
+    expect(sim.world.has(builder, SupplyRun)).toBe(false);
+    expect(pickupSeen).toBe(false);
+    const looseStone = [...sim.world.query(Stockpile)]
+      .filter((entity) => entity !== site)
+      .reduce((sum, entity) => sum + (sim.world.get(entity, Stockpile).amounts.get(STONE) ?? 0), 0);
+    expect(looseStone).toBe(1);
+  });
+
   it('a builder COHORT self-supplying one site never over-fetches - the inbound tally sums concurrent runs', () => {
     // Four builders, one foundation needing 2 stone + 1 wood, one warehouse holding a big surplus of both.
     // Each tick several builders replan at once and read the shared inbound tally: it must fold every
@@ -235,13 +285,11 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(8); // 9 − 1 spent
   });
 
-  it('overlaps a fetch with the hammering: the lead builder hammers while exactly one peels off for the missing good', () => {
+  it('keeps a real hammer worker active while an older stale crew member fetches the missing good', () => {
     // A hammer-ready site (2 of its 2 stone already on hand) still short ONE wood, three builders on it,
     // and a warehouse holding the wood. The whole crew COULD hammer the delivered stone up to the 2/3 cap,
-    // but that would stall on one late fetch trip. Instead only the lead (lowest-id) builder is pinned to
-    // the hammer; the other two try to fetch first, and the SupplyRun reservation lets exactly ONE claim
-    // the single missing wood - so the deficit closes in parallel with the hammering (the user's rule:
-    // "4 build, 1 goes for the last resource").
+    // but that would stall on one late fetch trip. The higher-id builder already swinging is the real
+    // hammer worker; an older crew membership with no live intent must not displace it merely by id.
     const sim = new Simulation({ seed: 21, content: constructionContent(), map: grassMap(12, 3) });
     const site = siteAt(sim, HOUSE, 6, 1); // cost 2 stone + 1 wood
     sim.world.mut(site, Stockpile).amounts.set(STONE, 2); // stone fully on hand → hammerable, wood missing
@@ -249,19 +297,111 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(1) });
     sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
     sim.world.add(warehouse, Stockpile, { amounts: new Map<number, number>([[WOOD, 3]]) });
-    const lead = builderAt(sim, 5, 1); // lowest id - the pinned hammerer
-    const second = builderAt(sim, 7, 1);
+    const stale = builderAt(sim, 5, 1); // lowest id, but no active hammer intent
+    const active = builderAt(sim, 7, 1);
     const third = builderAt(sim, 6, 2);
+    for (const builder of [stale, active, third]) {
+      sim.world.add(builder, SiteAssignment, { site, pinned: false });
+    }
+    sim.world.add(active, CurrentAtomic, {
+      atomicId: BUILD_HOUSE_ATOMIC,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 10,
+      effect: { kind: 'construct', site },
+      targetEntity: site,
+      targetTile: null,
+    });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Exactly one builder peeled off to fetch the wood, and it is not the lead.
-    const runners = [lead, second, third].filter((b) => sim.world.has(b, SupplyRun));
+    expect([stale, active, third].filter((b) => sim.world.has(b, SupplyRun))).toEqual([stale]);
+    expect(sim.world.get(stale, SupplyRun)).toMatchObject({ site, goodType: WOOD });
+    expect(sim.world.get(active, CurrentAtomic).effect).toEqual({ kind: 'construct', site });
+  });
+
+  it('sends one of eight builders for the last material and redistributes the surplus to a ready site', () => {
+    const sim = new Simulation({ seed: 22, content: constructionContent(), map: grassMap(24, 5) });
+    const stalled = siteAt(sim, HOUSE, 6, 1);
+    sim.world.mut(stalled, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(stalled, UnderConstruction).labor = deliveredConstructionFraction(
+      sim.world,
+      ctxOf(sim),
+      stalled,
+    );
+    const ready = siteAt(sim, HOUSE, 18, 1);
+    sim.world.mut(ready, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(ready, Stockpile).amounts.set(WOOD, 1);
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [[WOOD, 1]]);
+    const builders = Array.from({ length: 8 }, (_, i) => builderAt(sim, 4 + (i % 4), 3 + (i % 2)));
+    for (const builder of builders) sim.world.add(builder, SiteAssignment, { site: stalled, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const runners = builders.filter((builder) => sim.world.has(builder, SupplyRun));
     expect(runners).toHaveLength(1);
-    expect(sim.world.has(lead, SupplyRun)).toBe(false); // the lead stays on the hammer
-    for (const runner of runners) {
-      expect(sim.world.get(runner, SupplyRun)).toMatchObject({ site, goodType: WOOD });
+    const runner = runners[0];
+    expect(runner).toBeDefined();
+    if (runner === undefined) throw new Error('one construction runner expected');
+    expect(sim.world.get(runner, SupplyRun)).toMatchObject({ site: stalled, goodType: WOOD });
+    expect(
+      builders.filter((builder) => sim.world.tryGet(builder, SiteAssignment)?.site === ready),
+    ).toHaveLength(7);
+  });
+
+  it('lets a fully supplied site reserve parallel hammer work for its whole crew', () => {
+    const sim = new Simulation({ seed: 23, content: constructionContent(), map: grassMap(12, 5) });
+    const site = siteAt(sim, HOUSE, 6, 1);
+    sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+    const builders = Array.from({ length: 8 }, (_, i) => builderAt(sim, 4 + (i % 4), 3 + (i % 2)));
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(builders.every((builder) => sim.world.tryGet(builder, SiteAssignment)?.site === site)).toBe(true);
+    expect(builders.filter((builder) => sim.world.has(builder, SupplyRun))).toHaveLength(0);
+    expect(
+      builders.filter(
+        (builder) =>
+          sim.world.has(builder, MoveGoal) ||
+          sim.world.tryGet(builder, CurrentAtomic)?.effect.kind === 'construct',
+      ),
+    ).toHaveLength(8);
+  });
+
+  it('releases surplus automatic crew at a blocked site while a manual pin stays strict', () => {
+    const sim = new Simulation({ seed: 25, content: constructionContent(), map: grassMap(12, 5) });
+    const site = siteAt(sim, HOUSE, 6, 1);
+    sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(site, UnderConstruction).labor = deliveredConstructionFraction(sim.world, ctxOf(sim), site);
+    const automatic = Array.from({ length: 4 }, (_, i) => builderAt(sim, 3 + i, 3));
+    const pinned = builderAt(sim, 7, 3);
+    for (const builder of automatic) sim.world.add(builder, SiteAssignment, { site, pinned: false });
+    sim.world.add(pinned, SiteAssignment, { site, pinned: true });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(automatic.every((builder) => !sim.world.has(builder, SiteAssignment))).toBe(true);
+    expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site, pinned: true });
+  });
+
+  it('keeps a useful automatic assignment stable and a manual pin strict', () => {
+    const sim = new Simulation({ seed: 24, content: constructionContent(), map: grassMap(16, 5) });
+    const near = siteAt(sim, HOUSE, 3, 1);
+    const far = siteAt(sim, HOUSE, 12, 1);
+    for (const site of [near, far]) {
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
     }
+    const automatic = builderAt(sim, 2, 3);
+    const pinned = builderAt(sim, 2, 4);
+    sim.world.add(automatic, SiteAssignment, { site: far, pinned: false });
+    sim.world.add(pinned, SiteAssignment, { site: far, pinned: true });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(automatic, SiteAssignment)).toEqual({ site: far, pinned: false });
+    expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site: far, pinned: true });
   });
 
   it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {

@@ -38,6 +38,16 @@ export const plGame = {
     craftTarget: 'Wytwarzaj',
     craftToggleHint: 'Klik wybiera jeden produkt; Ctrl/Cmd+klik dodaje lub usuwa z wyboru.',
     recipeNoInputs: 'bez surowców',
+    construction: {
+      title: 'Budowa',
+      assignedSite: 'Przydzielony fundament',
+      inbound: ' (+{count})',
+      status: {
+        'missing-materials': 'Oczekuje na materiały',
+        'delivery-en-route': 'Dostawa w drodze',
+        'no-builder': 'Oczekuje na budowniczego',
+      },
+    },
     stockAllTab: 'Wszystkie',
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',

@@ -290,7 +290,7 @@ export const enContent = {
     construction: {
       title: 'Raising buildings',
       summary:
-        'Foundations rise the normal way (carriers haul wood and stone, builders hammer) while the scaffolding stays up until the roof grows over it and comes down at completion.',
+        'Carriers and future staff haul materials while builders hammer; the animal farm shows a breeder helping before taking up the finished workplace.',
     },
     'farm-construction': {
       title: 'Farm construction',

@@ -11,7 +11,12 @@ import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
 import { depositHomeQuality, homeQualityUseFor, spendHomeQuality } from '../../../../family/home-quality.js';
 import { isFood } from '../../../../readviews/index.js';
-import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../../../../stores/index.js';
+import {
+  accessibleStockAmounts,
+  bankedSlot,
+  reservedSourceSupplyInWorld,
+  setAccessibleStockAmount,
+} from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
@@ -46,7 +51,8 @@ export function pickupFromStore(
   const stock = accessibleStockAmounts(world, from);
   if (stock === undefined) return;
   const have = stock.get(goodType) ?? 0;
-  const moved = Math.min(amount, have);
+  const promisedToOthers = reservedSourceSupplyInWorld(world, from, goodType, settler);
+  const moved = Math.min(amount, Math.max(0, have - promisedToOthers));
   if (moved <= 0) return;
   setAccessibleStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);

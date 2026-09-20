@@ -16,6 +16,7 @@ import {
   Position,
   Settler,
   Stance,
+  SupplyRun,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -92,6 +93,7 @@ export function attackUnit(
   // Unlike moveUnit and setJob this still cancels a non-interruptible atomic, a remaining member of that
   // class.
   world.remove(e, CurrentAtomic);
+  world.remove(e, SupplyRun); // cancel both the construction source promise and its inbound site claim
   world.remove(e, DeferredOrder); // an attack order executing now supersedes any earlier parked order
   clearNavState(world, e);
   world.remove(e, PlayerOrder);

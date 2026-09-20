@@ -24,16 +24,14 @@ import { ctxOf, grassMap } from './support.js';
 /**
  * A building takes its workers from the moment its foundation is placed: the same slots and per-slot limits
  * a finished one offers, filled by the same `assignWorker` order. What that staff DOES while the building
- * goes up is `planSiteStaff` - a carrier hauls the site's construction bill, every other trade waits at the
- * site until its workhouse stands.
+ * goes up is `planSiteStaff`: future staff help carry the new site's construction bill.
  *
  * An upgrade is the one asymmetry the player feels: the site reports the slots of the tier it currently IS
  * (the target tier is adopted only on completion), so the extra seats a higher tier brings cannot be filled
  * until the upgrade finishes.
  *
  * source-basis: user rule ("obowiązuje taki sam limit pracowników jak w budynku … limit
- * jest poziomu podstawowego a nie ulepszonego"). The original never staffs before completion, so there is
- * no oracle for the timing - only the slot counts and the tier chain behind it are extracted.
+ * jest poziomu podstawowego a nie ulepszonego"). Helping with a new workplace is a remaster rule.
  */
 
 const VIKING = 1;
@@ -236,12 +234,15 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
     expect(boundTo(sim, mason)).toBe(site); // the posting survives the build
   });
 
-  it('sends a posted carrier for the site’s outstanding material, and the load lands on the site', () => {
+  it.each([
+    CARRIER,
+    MASON,
+  ])('posted trade %s supplies its own site without changing profession', (jobType) => {
     const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
     const store = buildingAt(sim, STORE, 0, 0, { stock: [[STONE, 5]] });
     const site = buildingAt(sim, SMITHY_L0, 5, 0, { site: true }); // needs 2 stone
-    const carrier = settlerAt(sim, 2, 0, CARRIER);
-    post(sim, carrier, site, [CARRIER]);
+    const carrier = settlerAt(sim, 2, 0, jobType);
+    post(sim, carrier, site, [jobType]);
 
     let lifted: Entity | null = null;
     for (let i = 0; i < 400 && lifted === null; i++) {
@@ -257,5 +258,47 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
       delivered = sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0;
     }
     expect(delivered).toBeGreaterThan(0); // and banked it into its own site, not back into the store
+    expect(sim.world.get(carrier, Settler).jobType).toBe(jobType);
+    expect(boundTo(sim, carrier)).toBe(site);
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
+  });
+
+  it('a future craftsman supplies only its workplace, then starts production without reassignment', () => {
+    const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
+    buildingAt(sim, STORE, 0, 0, { stock: [[STONE, 5]] });
+    const other = buildingAt(sim, SMITHY_L0, 2, 0, { site: true });
+    const site = buildingAt(sim, SMITHY_L0, 6, 0, { site: true });
+    const mason = settlerAt(sim, 1, 0, MASON);
+    post(sim, mason, site, [MASON]);
+    for (let i = 0; i < 1600; i++) sim.step();
+    expect(sim.world.get(site, Stockpile).amounts.get(STONE)).toBe(2);
+    expect(sim.world.get(other, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
+
+    forceFinishConstruction(sim.world, ctxOf(sim), site);
+    sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+    let produced = false;
+    for (let i = 0; i < 1600; i++) {
+      sim.step();
+      if ((sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0) > 0) produced = true;
+    }
+    expect(sim.world.get(site, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
+    expect(produced).toBe(true);
+    expect(sim.world.get(mason, Settler).jobType).toBe(MASON);
+    expect(boundTo(sim, mason)).toBe(site);
+  });
+
+  it('an incumbent craftsman does not acquire carrier duties during an upgrade', () => {
+    const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
+    const store = buildingAt(sim, STORE, 0, 0, { stock: [[STONE, 5]] });
+    const site = buildingAt(sim, SMITHY_L0, 6, 0);
+    const mason = settlerAt(sim, 1, 0, MASON);
+    post(sim, mason, site, [MASON]);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: site });
+    for (let i = 0; i < 800; i++) sim.step();
+    expect(sim.world.has(site, UnderConstruction)).toBe(true);
+    expect(sim.world.get(store, Stockpile).amounts.get(STONE)).toBe(5);
+    expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
+    expect(boundTo(sim, mason)).toBe(site);
   });
 });

@@ -184,6 +184,28 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
  */
 const STRIKES_PER_UNIT = 26;
 
+/** Labor installed by one hammer strike at `site`. */
+function constructionLaborPerStrike(world: World, ctx: SystemContext, site: Entity): Fixed {
+  const totalStrikes = constructionTotalUnits(world, ctx, site) * STRIKES_PER_UNIT;
+  // At least 1 ULP per strike so a huge-cost building still finishes: `trunc(ONE / totalStrikes)` floors
+  // to 0 once `totalStrikes > ONE`.
+  return totalStrikes > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalStrikes))) as Fixed) : ONE;
+}
+
+/**
+ * Hammer strikes which can still install already-delivered material. Planner-tick claims subtract from
+ * this count so a crew can work in parallel without assigning more builders than the current material cap
+ * can use.
+ */
+export function remainingConstructionStrikes(world: World, ctx: SystemContext, site: Entity): number {
+  const labor = world.tryGet(site, UnderConstruction)?.labor;
+  if (labor === undefined) return 0;
+  const delivered = deliveredConstructionFraction(world, ctx, site);
+  const cap = delivered < ONE ? delivered : ONE;
+  if (labor >= cap) return 0;
+  return Math.ceil((cap - labor) / constructionLaborPerStrike(world, ctx, site));
+}
+
 /**
  * Advance a site's builder-work `labor` by one hammer strike - the `construct` atomic's effect. A free
  * (empty-cost) type has nothing to install, so a single swing completes it.
@@ -192,10 +214,7 @@ export function advanceConstructionLabor(world: World, ctx: SystemContext, site:
   const uc = world.tryMut(site, UnderConstruction);
   if (uc === undefined) return false;
   const before = uc.labor;
-  const totalStrikes = constructionTotalUnits(world, ctx, site) * STRIKES_PER_UNIT;
-  // At least 1 ULP per strike so a huge-cost building still finishes: `trunc(ONE / totalStrikes)` floors
-  // to 0 once `totalStrikes > ONE`.
-  const quantum = totalStrikes > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalStrikes))) as Fixed) : ONE;
+  const quantum = constructionLaborPerStrike(world, ctx, site);
   // Cap the swing at the delivered-material fraction, so `built = min(labor, delivered)` moves as swings
   // land rather than jumping when the next material arrives.
   const delivered = deliveredConstructionFraction(world, ctx, site);

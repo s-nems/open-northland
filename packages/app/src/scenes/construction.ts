@@ -4,6 +4,7 @@ import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_BUILDER, JOB_CARRIER } from '../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
+  BUILDING_ANIMAL_FARM,
   BUILDING_BAKERY,
   BUILDING_HOME_00,
   BUILDING_WAREHOUSE_00,
@@ -26,14 +27,16 @@ const SITES: readonly { ref: number; x: number; y: number }[] = [
   { ref: BUILDING_BAKERY, x: 21, y: 7 },
   { ref: BUILDING_HOME_00, x: 9, y: 15 },
   { ref: BUILDING_HOME_00, x: 21, y: 15 },
+  { ref: BUILDING_ANIMAL_FARM, x: 15, y: 4 },
 ];
-/** Loose crew beside the depot; each builder hammers whichever site is nearest. */
+/** Loose crew beside the depot; idle builders move between sites with available work. */
 const BUILDERS = 8;
 const CREW = { x: 15, y: 13 } as const;
 /** Posted to each bakery foundation before it stands; a home employs nobody. */
 const SITE_BAKERS = 1;
 const SITE_CARRIERS = 1;
-/** Headroom over the measured rise: seed 7 raises all four foundations by tick 3409. */
+const SITE_BREEDERS = 1;
+/** Includes the longer northern supply route to the animal farm. */
 const RUN_TICKS = 8_000;
 
 const { Building, JobAssignment, Settler, UnderConstruction } = components;
@@ -57,6 +60,7 @@ function build(sim: Simulation): void {
   });
   for (const s of SITES) {
     const site = placeSandboxSite(sim, s.ref, s.x, s.y, HUMAN_PLAYER);
+    if (s.ref === BUILDING_ANIMAL_FARM) spawnWorkersAtDoor(sim, site, SITE_BREEDERS);
     if (s.ref !== BUILDING_BAKERY) continue;
     spawnWorkersAtDoor(sim, site, SITE_BAKERS);
     spawnWorkersAtDoor(sim, site, SITE_CARRIERS, { jobType: JOB_CARRIER });
@@ -101,16 +105,16 @@ export const constructionScene: SceneDefinition = {
       label: 'every worker posted to a foundation still staffs the building it became',
       predicate: (sim) =>
         staffOnFinished(sim) ===
-        SITES.filter((s) => s.ref === BUILDING_BAKERY).length * (SITE_BAKERS + SITE_CARRIERS),
+        SITES.filter((s) => s.ref === BUILDING_BAKERY).length * (SITE_BAKERS + SITE_CARRIERS) + SITE_BREEDERS,
     },
     {
-      label: 'all four sites are present as finished buildings',
+      label: 'all five sites are present as finished buildings',
       predicate: (sim) => {
         let built = 0;
         for (const e of sim.world.query(Building)) {
           if (sim.world.get(e, Building).built >= ONE) built++;
         }
-        // the four sites + the depot warehouse
+        // the sites + the depot warehouse
         return built === SITES.length + 1;
       },
     },

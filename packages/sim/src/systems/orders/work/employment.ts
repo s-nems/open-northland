@@ -9,6 +9,7 @@ import {
   PlayerOrder,
   Settler,
   SiteAssignment,
+  SupplyRun,
   sameSide,
   UnderConstruction,
 } from '../../../components/index.js';
@@ -184,6 +185,7 @@ function cancelActionAndRoute(world: World, e: Entity): void {
   // setJob vets interruptibility before reaching here; the employment orders still cancel unconditionally,
   // a remaining member of the uninterruptible-atomic class.
   world.remove(e, CurrentAtomic);
+  world.remove(e, SupplyRun); // releasing an interrupted construction pickup frees its source immediately
   world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   clearNavState(world, e);

@@ -88,10 +88,6 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
     return;
   }
 
-  // Stamp the site errand so later-planned settlers count it as inbound and do not re-fetch the same unit.
-  if (world.has(store, UnderConstruction)) {
-    stampSupplyRun(world, entity, inbound, { site: store, goodType: load.goodType, amount: load.amount });
-  }
   // A route naming a different flag or good than the sink just chosen is spent; the flag branch re-stamps.
   const toFlag = world.has(store, DeliveryFlag);
   const priorYard = world.tryGet(entity, YardDeliveryRoute);
@@ -122,7 +118,21 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
   } else {
     cell = interactionCell(world, ctx, terrain, store, here);
   }
-  if (cell === null) return;
+  if (cell === null) {
+    // A construction site with no legal perimeter cannot receive this load. Keeping it reserved would make
+    // the bill look covered forever, so return the material to the ground and let another route recover it.
+    if (world.has(store, UnderConstruction)) startDrop(world, ctx, entity);
+    return;
+  }
+  // Stamp only after proving the site has a delivery stand, so an impossible route never covers its bill.
+  if (world.has(store, UnderConstruction)) {
+    stampSupplyRun(world, entity, inbound, {
+      site: store,
+      goodType: load.goodType,
+      amount: load.amount,
+      source: null,
+    });
+  }
   if (toFlag) {
     world.add(entity, YardDeliveryRoute, { flag: store, goodType: load.goodType, goal: cell, failed: false });
   }

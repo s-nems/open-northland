@@ -289,7 +289,7 @@ export const plContent = {
     construction: {
       title: 'Wznoszenie budynków',
       summary:
-        'Fundamenty rosną normalnym trybem: tragarze znoszą drewno i kamień, budowniczowie pracują młotkami, a rusztowanie stoi, aż przerośnie je dach, i znika przy ukończeniu.',
+        'Tragarze i przyszli pracownicy znoszą materiały, a budowniczowie pracują młotkami; hodowca przy farmie pomaga przed objęciem gotowego miejsca pracy.',
     },
     'farm-construction': {
       title: 'Budowa farmy',

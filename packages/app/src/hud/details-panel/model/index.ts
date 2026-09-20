@@ -234,7 +234,7 @@ export function buildUnitPanelModel(
         defenseEnabled ? { sheltered, capacity: shelterCapacity } : null,
       ),
       production: productionModel(ctx, snapshot, def, ent),
-      construction: constructionModel(ctx, def, ent),
+      construction: constructionModel(ctx, snapshot, def, ent),
       upgradable,
       cancelable: ent.components.Upgrading !== undefined,
       upgradeBlockedReason:

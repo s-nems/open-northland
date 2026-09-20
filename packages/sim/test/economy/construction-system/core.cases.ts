@@ -146,16 +146,16 @@ describe('constructionSystem', () => {
     // Another settler is already fetching one stone → stone is half covered, wood untouched - the
     // next fetch takes the LEAST-covered line (wood), not a second stone.
     const runner = sim.world.create();
-    sim.world.add(runner, SupplyRun, { site: e, goodType: STONE, amount: 1 });
+    sim.world.add(runner, SupplyRun, { site: e, goodType: STONE, amount: 1, source: null });
     expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))[0]).toEqual({
       goodType: WOOD,
       amount: 1,
     });
     // Every line held or inbound → nothing left to fetch.
     const second = sim.world.create();
-    sim.world.add(second, SupplyRun, { site: e, goodType: STONE, amount: 1 });
+    sim.world.add(second, SupplyRun, { site: e, goodType: STONE, amount: 1, source: null });
     const third = sim.world.create();
-    sim.world.add(third, SupplyRun, { site: e, goodType: WOOD, amount: 1 });
+    sim.world.add(third, SupplyRun, { site: e, goodType: WOOD, amount: 1, source: null });
     expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))).toEqual([]);
   });
 

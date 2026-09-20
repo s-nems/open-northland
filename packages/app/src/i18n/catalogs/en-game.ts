@@ -38,6 +38,16 @@ export const enGame = {
     craftTarget: 'Craft',
     craftToggleHint: 'Click picks one product; Ctrl/Cmd+click adds or removes it.',
     recipeNoInputs: 'no materials',
+    construction: {
+      title: 'Construction',
+      assignedSite: 'Assigned foundation',
+      inbound: ' (+{count})',
+      status: {
+        'missing-materials': 'Waiting for materials',
+        'delivery-en-route': 'Delivery en route',
+        'no-builder': 'Waiting for a builder',
+      },
+    },
     stockAllTab: 'All',
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',

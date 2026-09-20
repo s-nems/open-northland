@@ -9,14 +9,16 @@ import {
   accessibleStockAmounts,
   bankedSlot,
   buildingProduces,
+  type InboundSupplyTally,
   isYardHeap,
   MAX_GROUND_STACK,
   mayFetchGoodFrom,
   mergedRecipeOf,
+  reservedSourceSupplyOf,
 } from '../../../stores/index.js';
 import type { TargetBands } from '../bands.js';
 import type { YardTargets } from '../candidates.js';
-import { ACCEPT_ALL } from '../cell-index.js';
+import { ACCEPT_ALL, QUALIFIES } from '../cell-index.js';
 
 /**
  * The nearest store that can stock `goodType`, by Manhattan distance from `here` with the shared
@@ -169,9 +171,21 @@ export function nearestStoreHolding(
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
+  /** Construction pickups already promised from candidate stores during this planner pass. */
+  inbound?: InboundSupplyTally,
 ): Entity | null {
   return (
-    bands.holding(goodType).nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))?.entity ?? null
+    bands.holding(goodType).nearest(
+      here,
+      (e) => {
+        if (inbound === undefined) return QUALIFIES;
+        const held = accessibleStockAmounts(world, e)?.get(goodType) ?? 0;
+        return held > reservedSourceSupplyOf(inbound, e, goodType) ? QUALIFIES : null;
+      },
+      gate,
+      avoid,
+      sameSideAs(world, owner),
+    )?.entity ?? null
   );
 }
 

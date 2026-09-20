@@ -1,6 +1,12 @@
 import { CARRY_CAPACITY } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { neededConstructionGoods, stampSupplyRun } from '../../../stores/index.js';
+import { constructionWorkCell } from '../../../footprint/index.js';
+import {
+  accessibleStockAmounts,
+  neededConstructionGoods,
+  reservedSourceSupplyOf,
+  stampSupplyRun,
+} from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, nearestStoreHolding } from '../../targets/index.js';
@@ -14,8 +20,37 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
  * instead of racing to the same unit.
  */
 export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
-  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  const fetch = fetchableMaterial(plan, site);
+  if (fetch === null) return false;
+  const { world, ctx, terrain, entity: e, here } = plan;
   const settler = plan;
+  stampSupplyRun(world, e, plan.inbound, {
+    site,
+    goodType: fetch.goodType,
+    amount: fetch.amount,
+    source: fetch.source,
+  });
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, fetch.source, here), () =>
+    startPickup(world, ctx, e, settler, fetch.source, fetch.goodType, fetch.amount),
+  );
+  return true;
+}
+
+/** Whether `site` has a missing material with reachable, unreserved source stock. */
+export function hasFetchableMaterial(plan: PlannerContext, site: Entity): boolean {
+  return fetchableMaterial(plan, site) !== null;
+}
+
+interface FetchableMaterial {
+  readonly source: Entity;
+  readonly goodType: number;
+  readonly amount: number;
+}
+
+/** Pick without claiming, so site allocation and the claiming drive ask exactly the same question. */
+function fetchableMaterial(plan: PlannerContext, site: Entity): FetchableMaterial | null {
+  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  if (constructionWorkCell(world, ctx, terrain, site, targets.yard.blocked, here) === null) return null;
   const avoid = unreachableGoalVeto(world, ctx, e);
   for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
     const src = nearestStoreHolding(
@@ -26,14 +61,13 @@ export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean
       plan.owner,
       plan.limit ?? undefined,
       avoid,
+      plan.inbound,
     );
     if (src == null) continue;
-    const batch = Math.min(need.amount, CARRY_CAPACITY);
-    stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>
-      startPickup(world, ctx, e, settler, src, need.goodType, batch),
-    );
-    return true;
+    const stock = accessibleStockAmounts(world, src)?.get(need.goodType) ?? 0;
+    const available = stock - reservedSourceSupplyOf(plan.inbound, src, need.goodType);
+    const amount = Math.min(need.amount, available, CARRY_CAPACITY);
+    if (amount > 0) return { source: src, goodType: need.goodType, amount };
   }
-  return false;
+  return null;
 }

@@ -85,6 +85,22 @@ export function settlerWork(
     const goods = harvestableGoodsFor(ctx, jobType).filter((good) => earned(good.typeId));
     return gatherWork(ctx, messages().hud.workFlag, goods, selectedGood);
   }
+  const siteAssignment = comps.SiteAssignment as { site?: unknown; pinned?: unknown } | undefined;
+  const pinnedSiteId = siteAssignment?.pinned === true ? num(siteAssignment.site) : undefined;
+  const pinnedSite = pinnedSiteId === undefined ? undefined : entityById(snapshot, pinnedSiteId);
+  const pinnedType = num(
+    (pinnedSite?.components.Building as { buildingType?: unknown } | undefined)?.buildingType,
+  );
+  if (pinnedSite !== undefined && pinnedType !== undefined) {
+    return {
+      place: buildingTitle(ctx, pinnedType),
+      product: carried ?? messages().hud.construction.assignedSite,
+      gatherChoices: [],
+      selectedGood: null,
+      craftChoices: [],
+      selectedCraftGoods: [],
+    };
+  }
   const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);
   if (workplaceId === undefined) {

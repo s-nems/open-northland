@@ -1,5 +1,5 @@
-import { constructionBillForType, type Fixed, fx } from '@open-northland/sim';
-import { num, type SnapshotEntity } from '../../../game/snapshot.js';
+import { constructionBillForType, type Fixed, fx, type WorldSnapshot } from '@open-northland/sim';
+import { actorsOf, isSettler, num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 
@@ -23,8 +23,12 @@ export interface ConstructionRow {
   readonly label: string;
   /** Units already in the site's hold, capped at the line's need (surplus never reads over-full). */
   readonly delivered: number;
+  /** Units reserved by live construction-supply errands for this site and good. */
+  readonly inbound: number;
   readonly needed: number;
 }
+
+export type ConstructionStatus = 'missing-materials' | 'delivery-en-route' | 'no-builder';
 
 /** One material line of the Upgrade button's cost preview: the bill shown before the upgrade starts, so
  *  it carries only the amount, nothing being delivered yet. */
@@ -37,6 +41,8 @@ export interface UpgradeCostRow {
 /** The Construction section's content - present only while the building carries `UnderConstruction`. */
 export interface ConstructionModel {
   readonly rows: readonly ConstructionRow[];
+  /** The site's current, evidence-backed bottleneck; null while no stall is proven. */
+  readonly status: ConstructionStatus | null;
 }
 
 /** The current holdings of a building's `Stockpile`, as a goodType→amount map. */
@@ -119,6 +125,7 @@ function upgradeTargetBill(
  */
 export function constructionModel(
   ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
 ): ConstructionModel | null {
@@ -131,17 +138,116 @@ export function constructionModel(
       : upgrading
         ? upgradeTargetBill(ctx, def)
         : constructionBillForType(ctx.buildings, def.typeId);
+  const activity = constructionActivity(snapshot, ent.id);
   const rows = bill.map((line) => {
     const goodId = goodDef(ctx, line.goodType)?.id;
+    const delivered = Math.min(live.get(line.goodType) ?? 0, line.amount);
     return {
       goodType: line.goodType,
       label: goodLabel(ctx, line.goodType),
-      delivered: Math.min(live.get(line.goodType) ?? 0, line.amount),
+      delivered,
+      inbound: Math.min(activity.inbound.get(line.goodType) ?? 0, Math.max(0, line.amount - delivered)),
       needed: line.amount,
       ...(goodId !== undefined ? { goodId } : {}),
     };
   });
-  return { rows };
+  return { rows, status: constructionStatus(ent, rows, activity.hasBuilder) };
+}
+
+/** One bounded actor pass collects the two live facts the selected site's construction status needs. */
+function constructionActivity(
+  snapshot: WorldSnapshot,
+  siteId: number,
+): { readonly inbound: ReadonlyMap<number, number>; readonly hasBuilder: boolean } {
+  const inbound = new Map<number, number>();
+  let hasBuilder = false;
+  for (const actor of actorsOf(snapshot)) {
+    if (!isSettler(actor)) continue;
+    const assignment = actor.components.SiteAssignment as { readonly site?: unknown } | undefined;
+    if (num(assignment?.site) === siteId) hasBuilder = true;
+    const run = actor.components.SupplyRun as
+      | {
+          readonly site?: unknown;
+          readonly goodType?: unknown;
+          readonly amount?: unknown;
+          readonly source?: unknown;
+        }
+      | undefined;
+    if (run === undefined || num(run.site) !== siteId) continue;
+    const goodType = num(run?.goodType);
+    const amount = num(run?.amount);
+    if (goodType === undefined || amount === undefined || amount <= 0) continue;
+    if (!supplyRunIsLive(actor, run, goodType)) continue;
+    inbound.set(goodType, (inbound.get(goodType) ?? 0) + amount);
+  }
+  return { inbound, hasBuilder };
+}
+
+/** Mirror the sim tally's observable liveness rule so a SupplyRun awaiting planner cleanup never appears
+ * as a delivery. Every positive branch is visible in the snapshot; route accessibility is deliberately
+ * not inferred here. */
+function supplyRunIsLive(
+  actor: SnapshotEntity,
+  run: { readonly site?: unknown; readonly goodType?: unknown; readonly source?: unknown },
+  goodType: number,
+): boolean {
+  const carrying = actor.components.Carrying as
+    | { readonly goodType?: unknown; readonly amount?: unknown }
+    | undefined;
+  if (num(carrying?.goodType) === goodType && (num(carrying?.amount) ?? 0) > 0) return true;
+  if (
+    actor.components.MoveGoal !== undefined ||
+    actor.components.PathRequest !== undefined ||
+    actor.components.PathFollow !== undefined
+  ) {
+    return true;
+  }
+  const atomic = actor.components.CurrentAtomic as
+    | {
+        readonly effect?: {
+          readonly kind?: unknown;
+          readonly from?: unknown;
+          readonly store?: unknown;
+          readonly goodType?: unknown;
+        };
+      }
+    | undefined;
+  const effect = atomic?.effect;
+  return (
+    (effect?.kind === 'pickup' &&
+      num(effect.from) === num(run.source) &&
+      num(effect.goodType) === goodType) ||
+    (effect?.kind === 'pileup' && num(effect.store) === num(run.site))
+  );
+}
+
+function constructionStatus(
+  ent: SnapshotEntity,
+  rows: readonly ConstructionRow[],
+  hasBuilder: boolean,
+): ConstructionStatus | null {
+  const needed = rows.reduce((sum, row) => sum + row.needed, 0);
+  const delivered = rows.reduce((sum, row) => sum + row.delivered, 0);
+  const inbound = rows.reduce(
+    (sum, row) => sum + Math.min(row.inbound, Math.max(0, row.needed - row.delivered)),
+    0,
+  );
+  const materialFraction = needed <= 0 ? fx.fromInt(1) : fx.div(fx.fromInt(delivered), fx.fromInt(needed));
+  const labor = (num((ent.components.UnderConstruction as { readonly labor?: unknown } | undefined)?.labor) ??
+    0) as Fixed;
+
+  // A free site finishes in the construction system without either gate; a transient pre-system snapshot
+  // therefore has no player-actionable stall to report.
+  if (needed <= 0) return null;
+
+  // Material is the live bottleneck only once the hammers have caught up with what is already on site.
+  if (delivered < needed && labor >= materialFraction) {
+    return inbound > 0 ? 'delivery-en-route' : 'missing-materials';
+  }
+  // A site with material ahead of labor can prove that builder work is needed. SiteAssignment is the
+  // builder drive's persistent crew membership; no route inference is involved.
+  if (labor < materialFraction && !hasBuilder) return 'no-builder';
+  return null;
 }
 
 /** The Upgrade button's pre-commit cost rows: the same level-difference bill a running upgrade shows. */

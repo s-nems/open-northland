@@ -2,10 +2,12 @@
 // settler is spoken for this tick, false to let the next rung try; planDelivery and planProducer always own
 // their settler once entered, so they report nothing.
 
-export { planBuilder, SiteLeads } from './builder.js';
+export { planBuilder } from './builder.js';
+export { ConstructionTaskClaims } from './construction-task-claims.js';
 export { planDelivery, reconcileYardRoute } from './delivery.js';
 export { planFisher } from './fishing.js';
 export { planGatherer } from './gatherer.js';
 export { planCarrierHaul, planPorter } from './hauling.js';
 export { planSiteStaff } from './site-staff.js';
+export { hasFetchableMaterial } from './site-supply.js';
 export { planProducer, planWorkshopSupplier, type WorkSeatClaims } from './workshop/index.js';

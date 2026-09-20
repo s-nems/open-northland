@@ -21,6 +21,7 @@ import {
   Settler,
   Stance,
   Stranded,
+  SupplyRun,
   TrainingOrder,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -130,6 +131,7 @@ function startPlayerWalk(
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
   world.remove(e, CurrentAtomic);
+  world.remove(e, SupplyRun); // cancel both the construction source promise and its inbound site claim
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, Stranded); // a fresh order ends a stranded park - the next strand re-paces from zero

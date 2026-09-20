@@ -1,4 +1,4 @@
-import { Building, JobAssignment, UnderConstruction } from '../../../../components/index.js';
+import { Building, JobAssignment, UnderConstruction, Upgrading } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { isCarrierJob } from '../../../stores/index.js';
 import { atOrWalk } from '../../atomics/start.js';
@@ -8,12 +8,8 @@ import { claimWorkCell, deStackIdle } from '../spacing.js';
 import { fetchNeededMaterial } from './site-supply.js';
 
 /**
- * SITE STAFF - a worker posted to a building that is still going up hauls its construction bill (a carrier)
- * or waits at it (every other trade). Waiting reads off `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`,
- * applied as a blanket because the flag is not extracted into the IR; that over-applies to its 0 rows, so a
- * hunter posted to a store's gatherer slot stops hunting while the store is upgraded.
- *
- * Source basis: authored, since the original has no pre-completion staff to observe.
+ * Remaster rule: future staff help supply their own new workplace without changing trade or employment.
+ * Upgrades retain the carrier-only supply policy; incumbent workers' upgrade duties are unchanged.
  */
 export function planSiteStaff(
   plan: PlannerContext,
@@ -24,7 +20,9 @@ export function planSiteStaff(
   const { world, ctx, terrain, entity: e, here } = plan;
   const site = boundConstructionSite(plan);
   if (site === null) return false;
-  if (isCarrierJob(ctx, plan.jobType) && fetchNeededMaterial(plan, site)) return true;
+  if ((!world.has(site, Upgrading) || isCarrierJob(ctx, plan.jobType)) && fetchNeededMaterial(plan, site)) {
+    return true;
+  }
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);
   if (stand === null) deStackIdle(world, terrain, e, hx, hy, spacing);
   else atOrWalk(world, e, here, stand, () => {});

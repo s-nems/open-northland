@@ -9,12 +9,18 @@ import {
   PathFollow,
   PathRequest,
   Position,
+  SupplyRun,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
 import type { TerrainMap } from '../../../src/nav/terrain/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
 import { attackUnit } from '../../../src/systems/orders/index.js';
+import {
+  collectInboundSupply,
+  inboundSupplyOf,
+  reservedSourceSupplyOf,
+} from '../../../src/systems/stores/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
@@ -34,6 +40,25 @@ describe('attackUnit - the explicit attack order', () => {
     const travelling =
       sim.world.has(a, MoveGoal) || sim.world.has(a, PathRequest) || sim.world.has(a, PathFollow);
     expect(travelling).toBe(true);
+  });
+
+  it('releases a construction run\'s source and destination promises when combat interrupts it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
+    const enemy = fighterAt(sim, 4, 0, VIKING, WOODCUTTER, { owner: P1 });
+    const source = sim.world.create();
+    const site = sim.world.create();
+    sim.world.add(a, SupplyRun, { source, site, goodType: 1, amount: 2 });
+    const before = collectInboundSupply(sim.world);
+    expect(reservedSourceSupplyOf(before, source, 1)).toBe(2);
+    expect(inboundSupplyOf(before, site, 1)).toBe(2);
+
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: a, target: enemy });
+
+    expect(sim.world.has(a, SupplyRun)).toBe(false);
+    const after = collectInboundSupply(sim.world);
+    expect(reservedSourceSupplyOf(after, source, 1)).toBe(0);
+    expect(inboundSupplyOf(after, site, 1)).toBe(0);
   });
 
   it('drops the order and disengages once the target dies', () => {

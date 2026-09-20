@@ -121,13 +121,15 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 
 /**
  * A settler's live construction-supply errand, cleared and re-stamped at the top of its own next planning
- * pass. Settlers planned later subtract these from a site's outstanding need, so two builders don't race
- * for the same last unit.
+ * pass. Settlers planned later subtract these from a site's outstanding need and, while the pickup leg is
+ * live, from the chosen source's available stock. `source` is null after pickup, on the delivery leg.
  */
-export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>(
-  'SupplyRun',
-  'settlers',
-);
+export const SupplyRun = defineComponent<{
+  site: Entity;
+  goodType: number;
+  amount: number;
+  source: Entity | null;
+}>('SupplyRun', 'settlers');
 
 /**
  * The specific `Building` a settler is employed at, so two same-type workplaces staff independently.

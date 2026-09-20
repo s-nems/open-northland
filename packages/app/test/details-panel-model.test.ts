@@ -1,8 +1,9 @@
-import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import { fx, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { shelterCapacityById } from '../src/catalog/defence.js';
 import {
   JOB_BABY_MALE,
+  JOB_BUILDER,
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
   JOB_HERO_AXE,
@@ -180,7 +181,7 @@ describe('selection details panel model', () => {
     ]);
   });
 
-  it('models a construction site: delivered/needed material rows + the health ramp', () => {
+  it('models a construction site: delivered/needed/inbound materials, stall reason, and health ramp', () => {
     const snapshot = snapshotOf(
       [
         buildingEntity(1, BUILDING_FARM, {
@@ -191,6 +192,22 @@ describe('selection details panel model', () => {
             Stockpile: { amounts: [[GOOD_WOOD, 2]] }, // 2 of the farm's 3 wood delivered, no stone yet
           },
         }),
+        {
+          id: 2,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_BUILDER },
+            SupplyRun: { site: 1, goodType: GOOD_STONE, amount: 1, source: 9 },
+            MoveGoal: { cell: 3 },
+          },
+        },
+        {
+          id: 3,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_BUILDER },
+            // No route, load, or atomic: the sim's inbound tally treats this as awaiting cleanup.
+            SupplyRun: { site: 1, goodType: GOOD_STONE, amount: 1, source: 9 },
+          },
+        },
       ],
       1,
     );
@@ -201,11 +218,13 @@ describe('selection details panel model', () => {
     // A site carries the health gauge too: the sim ramps its hitpoints with `built`, so the bar fills as
     // the foundation rises (user rule - a house under construction shows its HP growing).
     expect(model.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '25/100' });
-    // One row per construction cost line (the farm's wood+stone parcel), delivered read off the hold.
+    // One row per construction cost line (the farm's wood+stone parcel): delivered reads off the hold,
+    // while inbound is the live SupplyRun reservation and remains separate from delivered stock.
     expect(model.construction?.rows).toEqual([
-      expect.objectContaining({ goodType: GOOD_WOOD, delivered: 2, needed: 3 }),
-      expect.objectContaining({ goodType: GOOD_STONE, delivered: 0, needed: 2 }),
+      expect.objectContaining({ goodType: GOOD_WOOD, delivered: 2, inbound: 0, needed: 3 }),
+      expect.objectContaining({ goodType: GOOD_STONE, delivered: 0, inbound: 1, needed: 2 }),
     ]);
+    expect(model.construction?.status).toBe('no-builder');
     // A finished building carries no construction model (the marker is gone).
     const finished = buildUnitPanelModel(
       snapshotOf([buildingEntity(1, BUILDING_FARM)], 1),
@@ -213,6 +232,88 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     expect(finished.kind === 'building' && finished.construction).toBeNull();
+  });
+
+  it('reports only construction blockers the snapshot proves', () => {
+    const site = (labor: number, stock: readonly (readonly [number, number])[] = []) =>
+      buildingEntity(1, BUILDING_FARM, {
+        components: { UnderConstruction: { labor }, Stockpile: { amounts: stock } },
+      });
+    const modelOf = (entities: Parameters<typeof snapshotOf>[0], ctx = sandboxCtx()) => {
+      const model = buildUnitPanelModel(snapshotOf(entities), new Set([1]), ctx);
+      if (model.kind !== 'building' || model.construction === null) {
+        throw new Error('expected a construction model');
+      }
+      return model.construction;
+    };
+
+    expect(modelOf([site(0)]).status).toBe('missing-materials');
+    expect(
+      modelOf([
+        site(0),
+        {
+          id: 2,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_BUILDER },
+            SupplyRun: { site: 1, goodType: GOOD_WOOD, amount: 1, source: 9 },
+            MoveGoal: { cell: 3 },
+          },
+        },
+      ]).status,
+    ).toBe('delivery-en-route');
+    expect(modelOf([site(0, [[GOOD_WOOD, 3]])]).status).toBe('no-builder');
+    expect(
+      modelOf([
+        site(0, [[GOOD_WOOD, 3]]),
+        {
+          id: 2,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_BUILDER },
+            SiteAssignment: { site: 1, pinned: false },
+          },
+        },
+      ]).status,
+    ).toBeNull();
+
+    const base = sandboxCtx();
+    const thirds = {
+      ...base,
+      buildings: base.buildings.map((building) =>
+        building.typeId === BUILDING_FARM
+          ? { ...building, construction: [{ goodType: GOOD_WOOD, amount: 3 }] }
+          : building,
+      ),
+    };
+    expect(modelOf([site(fx.div(fx.fromInt(1), fx.fromInt(3)), [[GOOD_WOOD, 1]])], thirds).status).toBe(
+      'missing-materials',
+    );
+  });
+
+  it('names a manually pinned foundation as the builder actual site, ignoring automatic crew membership', () => {
+    const builder = (pinned: boolean) => ({
+      id: 2,
+      components: {
+        Settler: { tribe: 1, jobType: JOB_BUILDER },
+        SiteAssignment: { site: 1, pinned },
+      },
+    });
+    const foundation = buildingEntity(1, BUILDING_HOME_00, {
+      built: 0,
+      components: { UnderConstruction: { labor: 0 }, Stockpile: { amounts: [] } },
+    });
+
+    const pinned = buildUnitPanelModel(snapshotOf([foundation, builder(true)]), new Set([2]), sandboxCtx());
+    if (pinned.kind !== 'settler') throw new Error('expected a settler model');
+    expect(pinned.work.place).toContain('Dom');
+    expect(pinned.work.product).toBe('Przydzielony fundament');
+
+    const automatic = buildUnitPanelModel(
+      snapshotOf([foundation, builder(false)]),
+      new Set([2]),
+      sandboxCtx(),
+    );
+    if (automatic.kind !== 'settler') throw new Error('expected a settler model');
+    expect(automatic.work.place).toBe('Brak miejsca pracy');
   });
 
   it('gives a building the settler Zdrowie bar off its Health pool', () => {

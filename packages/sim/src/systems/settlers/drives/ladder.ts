@@ -232,7 +232,7 @@ function planEconomy(
     return;
   }
 
-  if (planBuilder(plan, pass.spacing, pass.siteLeads)) return;
+  if (planBuilder(plan, pass.spacing, pass.constructionClaims)) return;
 
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 

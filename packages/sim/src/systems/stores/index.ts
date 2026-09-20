@@ -30,6 +30,8 @@ export {
   type InboundSupplyTally,
   inboundSupplyOf,
   releaseSupplyRun,
+  reservedSourceSupplyInWorld,
+  reservedSourceSupplyOf,
   stampSupplyRun,
 } from './supply-tally.js';
 export {

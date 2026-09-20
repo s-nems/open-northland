@@ -6,6 +6,7 @@ import {
   PathRequest,
   Resource,
   SiteAssignment,
+  Stockpile,
   Stranded,
   UnreachableGoals,
 } from '../../src/components/index.js';
@@ -20,7 +21,14 @@ import {
   unreachableGoals,
 } from '../../src/systems/settlers/unreachable-goals.js';
 import { ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
-import { builderAt, constructionContent, HOUSE, siteAt } from '../economy/construction-system/support.js';
+import {
+  builderAt,
+  constructionContent,
+  HOUSE,
+  STONE,
+  siteAt,
+  WOOD,
+} from '../economy/construction-system/support.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -176,10 +184,14 @@ describe('the builder re-plan after a failed stand route', () => {
     const s = new Simulation({ seed: 1, content: constructionContent(), map: grassNodeMap(24, 4) });
     const near = siteAt(s, HOUSE, 2, 0);
     const far = siteAt(s, HOUSE, 8, 0);
+    for (const site of [near, far]) {
+      s.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      s.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+    }
     const builder = builderAt(s, 0, 0);
 
-    // With nothing to fetch, the builder heads for the nearer site's stand to wait there; fail exactly
-    // that route (a really-failed walk leaves a failed request and no path to follow).
+    // The builder heads for the nearer site's stand to work there; fail exactly that route (a
+    // really-failed walk leaves a failed request and no path to follow).
     stepUntil(s, 20, () => s.world.has(builder, MoveGoal));
     expect(s.world.get(builder, SiteAssignment).site).toBe(near);
     const doomed = s.world.get(builder, MoveGoal).cell;

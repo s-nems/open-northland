@@ -37,6 +37,8 @@ export function nearestConstructionSite(
   gate?: SpatialGate,
   /** The builder's failed-goal veto at the site's perimeter stand. */
   avoidSite?: (site: Entity) => boolean,
+  /** Additional side-effect-free task qualification for builder allocation. */
+  acceptsSite: (site: Entity) => boolean = () => true,
 ): Entity | null {
   // `gate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt.
   return (
@@ -45,7 +47,8 @@ export function nearestConstructionSite(
       (e) =>
         world.get(e, Building).tribe === tribe &&
         ownersCompatible(owner, ownerOf(world, e)) &&
-        avoidSite?.(e) !== true
+        avoidSite?.(e) !== true &&
+        acceptsSite(e)
           ? QUALIFIES
           : null,
       gate,

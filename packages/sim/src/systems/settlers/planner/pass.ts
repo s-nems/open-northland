@@ -11,7 +11,7 @@ import { canonicalById } from '../../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
 import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
-import { SiteLeads, type WorkSeatClaims } from '../drives/economy/index.js';
+import { ConstructionTaskClaims, type WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
 import { PlannerSpacing } from './spacing.js';
@@ -43,7 +43,7 @@ export interface PlannerPass {
   readonly harvestClaims: HarvestClaims;
   readonly gossipCandidates: GossipCandidates;
   readonly front: BattleFront;
-  readonly siteLeads: SiteLeads;
+  readonly constructionClaims: ConstructionTaskClaims;
   readonly seatDoors: SeatDoors;
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
@@ -55,6 +55,7 @@ export interface PlannerPass {
 /** Snapshot the shared pass state at the top of a planner tick. */
 export function beginPlannerPass(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerPass {
   const targets = collectTargets(world, ctx, terrain);
+  const spacing = PlannerSpacing.forTick(world, ctx, terrain);
   return {
     world,
     ctx,
@@ -64,14 +65,14 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     anyHaulable: hasHaulableOutput(world, ctx, targets.stockpiles),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
     externalQuality: new ExternalQualityIndex(world, ctx, terrain),
-    spacing: PlannerSpacing.forTick(world, ctx, terrain),
+    spacing,
     farmClaims: collectFarmClaims(world),
     seatClaims: new Map(),
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     front: new BattleFront(world, ctx),
-    siteLeads: new SiteLeads(world),
+    constructionClaims: new ConstructionTaskClaims(world, ctx, spacing),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),
     standing: new Set(),
