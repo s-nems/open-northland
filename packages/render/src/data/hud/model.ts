@@ -59,7 +59,12 @@ interface HalfCellNode {
 const bucketKey = (hx: number, hy: number): string =>
   `${Math.floor(hx / WALK_RANGE_NODES)}:${Math.floor(hy / WALK_RANGE_NODES)}`;
 
-/** The half-cell node under an entity's `Position`, or null for one that stands nowhere. */
+/**
+ * The half-cell node under an entity's `Position`, or null for one that stands nowhere. The cast is
+ * the one place `render` names the snapshot's positions as fixed-point: `PositionValue` redeclares
+ * the shape as plain numbers so this package does not reach into sim internals, and the sim writes
+ * nothing but `Fixed` into it.
+ */
 function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | null {
   const p = readPosition(components);
   return p === null ? null : nodeOfPosition(p.x as Fixed, p.y as Fixed);

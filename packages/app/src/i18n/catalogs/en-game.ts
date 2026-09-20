@@ -257,6 +257,7 @@ export const enGame = {
       catalog: 'Catalogue',
       plans: 'Building plans',
       tally: '×{count}',
+      /** What spending a plan does, under its name on the papers page. */
       paperEffect: {
         placeAny: 'Choose in the catalogue; it stands at once',
         placeHouse: 'Stands at once, no construction, no materials',

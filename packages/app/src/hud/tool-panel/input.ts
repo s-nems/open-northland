@@ -95,8 +95,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
 
   // Escape steps back one level per press: a held mode, then the open central window. It runs in the
   // capture phase so the unit controls' own ladder (job list, armed order, selection) only sees a
-  // press the shell left alone, whichever listener registered first. A text field, a modal dialog and
-  // the system menu keep their own keys.
+  // press the shell left alone, whichever listener registered first. Those two rungs outrank a DOM
+  // surface's own Escape too, so a pinned note or an open breakdown waits for the press after the
+  // window's. A text field, a modal dialog and the system menu keep their own keys.
   const modalOwned = (e: KeyboardEvent): boolean =>
     (e.target instanceof Element && e.target.closest('[aria-modal="true"]') !== null) ||
     deps.keyboardOwned?.() === true;
@@ -148,9 +149,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     }
   };
 
-  // The game menu is the ladder's last rung when Escape is its key: it opens in the bubble phase, after
-  // every DOM surface with an Escape of its own (a counter's breakdown, a pinned note, the admin
-  // palette) had the press and stopped it, and only when the unit controls were not going to take it.
+  // The game menu is the ladder's last rung when Escape is its key: it opens in the bubble phase, so a
+  // DOM surface with an Escape of its own (a counter's breakdown, a pinned note, the admin palette)
+  // takes the press first once the rungs above are clear, and only when the unit controls did not.
   const onEscapeMenu = (e: KeyboardEvent): void => {
     if (e.code !== 'Escape' || e.defaultPrevented || !isActionHotkey(e, deps.bindings, 'gameMenu')) return;
     if (keyboardOwned(e) || escapeClaimed) return;

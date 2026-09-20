@@ -247,7 +247,6 @@ export const plGame = {
       catalog: 'Katalog',
       plans: 'Plany budowy',
       tally: '×{count}',
-      /** What spending a plan does, under its name on the papers page. */
       paperEffect: {
         placeAny: 'Wybierz w katalogu; stanie od razu',
         placeHouse: 'Stanie od razu, bez budowy i materiałów',
