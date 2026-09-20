@@ -649,11 +649,20 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
     // The larder holds one full child fund: the couples must conceive one AFTER the other.
     sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
-    runUntil(sim, () => sim.world.get(wifeA, Marriage).child !== null, 4000, 'first birth');
-    expect(sim.world.get(wifeB, Marriage).child).toBeNull(); // one fund, one session - B still waits
+    runUntil(
+      sim,
+      () => women.some((wife) => sim.world.get(wife, Marriage).child !== null),
+      4000,
+      'first birth',
+    );
+    // Arrival order includes turning: either couple may reach the home first.
+    const waiting = women.filter((wife) => sim.world.get(wife, Marriage).child === null);
+    expect(waiting).toHaveLength(1); // one fund, one session
+    const second = waiting[0];
+    if (second === undefined) throw new Error('expected one waiting couple');
     // Restock: the second couple's turn.
     sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
-    runUntil(sim, () => sim.world.get(wifeB, Marriage).child !== null, 4000, 'second birth');
+    runUntil(sim, () => sim.world.get(second, Marriage).child !== null, 4000, 'second birth');
     expect(sim.world.get(wifeA, Marriage).child).not.toBeNull();
     expect(sim.world.get(wifeB, Marriage).child).not.toBeNull();
   });

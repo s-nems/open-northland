@@ -31,6 +31,15 @@ export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint', 'movemen
  */
 export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed', 'movement');
 
+/** Original direction vocabulary: E, SE, SW, W, NW, NE, N, S. */
+export type WalkDirection = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** Retained between routes; turning is simulation state, not a render interpolation. */
+export const WalkFacing = defineComponent<{ direction: WalkDirection; target: WalkDirection }>(
+  'WalkFacing',
+  'movement',
+);
+
 /** One stop of a route: a fixed-point position and the lattice node the walker stands on there, whose
  *  roughness paces and shoes the step that leaves it. A diagonal lattice edge carries its midpoint as a
  *  stop of its own, the original's intermediate node on that edge. */
@@ -42,9 +51,9 @@ export interface Waypoint {
 
 /**
  * A path the entity is following: its stops and the index of the one it walks toward. `legTicks` counts
- * the ticks spent on the current leg and `legCost` the ticks it takes, fixed when the leg starts and 0
- * until then, so the walker reaches each stop after exactly its step cost like the original's per-step
- * accumulator. A creature paced by {@link MoveSpeed} leaves both at 0 and walks its constant pace.
+ * movement ticks spent on the current leg (excluding held turn ticks) and `legCost` its movement cost,
+ * fixed when the leg starts and 0 until then. A creature paced by {@link MoveSpeed} leaves both at 0
+ * and walks its constant pace.
  */
 export const PathFollow = defineComponent<{
   waypoints: Waypoint[];

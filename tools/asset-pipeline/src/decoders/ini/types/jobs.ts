@@ -114,6 +114,13 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
   return reqs;
 }
 
+// the original WalkSpeed_GetMoveSpeed, 0x1001164ab–0x1001164c5: these are engine
+// constants, not ini fields. logicdefines.inc names tribe 3 Byzantine, 7 Egypt and job 32 wooden spear.
+const WALK_STEP_REDUCTIONS: Readonly<Record<number, { ticks: number; jobType?: number }>> = {
+  3: { ticks: 2, jobType: 32 },
+  7: { ticks: 2 },
+};
+
 /** The readable mod `tribetypes.ini` covers the playable tribes and the animal tribes alike. */
 export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
   const tribes: TribeType[] = [];
@@ -135,6 +142,7 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         id: name ? slug(name) : `tribe_${typeId}`,
         name,
         atomicBindings,
+        walkStepReduction: WALK_STEP_REDUCTIONS[typeId],
         permissions: {
           job: getIntList(sec, 'allowjob'),
           house: getIntList(sec, 'allowhouse'),

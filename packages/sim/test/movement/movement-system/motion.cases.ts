@@ -33,7 +33,7 @@ function paceTrace(sim: Simulation, e: Entity): number[] {
 }
 
 describe('movementSystem - constant pace: no ramp, corner loss or brake', () => {
-  it('finishes minimum-cost horizontal steps in exactly three ticks in both directions', () => {
+  it('finishes minimum-cost horizontal steps in three move ticks, plus the reversal turn', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(4, 1, () => 0) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
@@ -41,7 +41,7 @@ describe('movementSystem - constant pace: no ramp, corner loss or brake', () => 
       { x: 0, y: 0 },
     ]);
     sim.world.add(e, MissionBehaviour, { flags: MISSION_BEHAVIOUR.WALKS_FAST });
-    expect(ticksToArrive(sim, e)).toBe(6);
+    expect(ticksToArrive(sim, e)).toBe(9); // two three-tick steps and three held turn ticks
     expect(pos(sim, e).x).toBe(0);
   });
 
@@ -69,14 +69,14 @@ describe('movementSystem - constant pace: no ramp, corner loss or brake', () => 
       expect(Math.abs(d - row)).toBeLessThanOrEqual(row / 100);
   });
 
-  it('a reversal (180° re-target) costs nothing: the way back paces like the way out', () => {
+  it('a reversal adds three turn ticks to the same movement pace', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
       { x: 0.5, y: 0 },
       { x: 0, y: 0 },
     ]);
-    expect(ticksToArrive(sim, e)).toBe(2 * LAND_STEP_TICKS);
+    expect(ticksToArrive(sim, e)).toBe(2 * LAND_STEP_TICKS + 3);
   });
 
   it('fixes a leg cost when the leg starts: a good picked up mid-leg slows the NEXT step', () => {

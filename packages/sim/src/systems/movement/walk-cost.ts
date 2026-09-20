@@ -1,7 +1,19 @@
-import { Carrying, Equipment, MISSION_BEHAVIOUR, MissionBehaviour, Settler } from '../../components/index.js';
+import type { ContentSet } from '@open-northland/data';
+import {
+  Armor,
+  Carrying,
+  Equipment,
+  MISSION_BEHAVIOUR,
+  MissionBehaviour,
+  Settler,
+  Weapon,
+} from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { NEED_DRIVE_THRESHOLD } from '../lifecycle/needs/scale.js';
+import { isHeroJob } from '../readviews/jobs.js';
 
 /**
  * How many ticks a human's step from one lattice node to the next takes, the original's per-step move
@@ -13,17 +25,10 @@ import { NEED_DRIVE_THRESHOLD } from '../lifecycle/needs/scale.js';
  *   cost = cost * 2 when the script's slow bit is set, then cost - 2 when its fast bit is set
  *   cost = max(3, cost)
  *
- * The stamina gate is the need table's drive level: a settler still rested above it walks two ticks a
- * step faster than one due for sleep. The shoes term is boolean until the pair is spent. Terms the
- * engine adds for a speed amulet (-2), a baby (x2) or child (+2), a hero's exemption from gear, the
- * `(armor weight + weapon weight) >> 1` encumbrance of everyone else, and two tribe/job constants are
- * not modelled here; the sim's amulet, age and gear rules stay as they are.
- *
- * Deviation, bounded: the original also turns before a step that changes heading, one hex direction a
- * tick, and only a turn of two or more directions holds the accumulator (a k-direction turn adds k-1
- * ticks). Whether the straight N/S headings sit in that ring is a per-moveable flag whose writer is not
- * located (`an original routine` +0x50, zeroed at init), and this lattice's pathfinder does not reproduce the
- * original's corners, so no turn tick is charged: a route pays exactly its steps.
+ * Before script flags: subtract the tribe/job reduction, double for a baby or add two for a child,
+ * then add floor(combined equipment weight / 2), except for heroes. the original bytes at
+ * 0x1001164ab–0x10011653a confirm that order. Speed amulets remain unimplemented (see amulet ticket).
+ * Turning is paced separately; navigation still chooses this sim's routes, not the original's paths.
  */
 export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
   let cost =
@@ -32,6 +37,10 @@ export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
     (m.shoes ? 0 : BAREFOOT_STEP_TICKS) +
     (m.carrying ? CARRYING_STEP_TICKS : 0) +
     (m.tired ? TIRED_STEP_TICKS : 0);
+  cost -= m.tribeReduction;
+  if (m.age === 'baby') cost *= 2;
+  else if (m.age === 'child') cost += 2;
+  cost += Math.floor(m.equipmentWeight / 2);
   if (m.walksSlowly) cost *= SCRIPT_SLOW_FACTOR;
   if (m.walksFast) cost -= SCRIPT_FAST_TICKS;
   return cost < MIN_STEP_TICKS ? MIN_STEP_TICKS : cost;
@@ -47,6 +56,10 @@ export interface WalkStepModifiers {
   readonly tired: boolean;
   readonly walksSlowly: boolean;
   readonly walksFast: boolean;
+  readonly age: 'adult' | 'baby' | 'child';
+  readonly tribeReduction: number;
+  /** Combined weapon/armor weight; zero for a hero. */
+  readonly equipmentWeight: number;
 }
 
 const ROUGHNESS_TICKS_PER_LEVEL = 2;
@@ -69,6 +82,9 @@ export const MAX_STEP_TICKS = walkStepTicks(ROUGHNESS_MAX_ON_MAPS, {
   tired: true,
   walksSlowly: true,
   walksFast: false,
+  age: 'adult',
+  tribeReduction: 0,
+  equipmentWeight: 0,
 });
 
 /** The modifiers of an ordinary walker with nothing on: the one every test map's default step reads. */
@@ -78,6 +94,9 @@ export const UNMODIFIED_STEP: WalkStepModifiers = {
   tired: false,
   walksSlowly: false,
   walksFast: false,
+  age: 'adult',
+  tribeReduction: 0,
+  equipmentWeight: 0,
 };
 
 /** Whether `e` wears a live pair of boots: a boots slot holding a good not yet worn to ONE. The original's
@@ -93,14 +112,57 @@ export function isCarryingGood(world: World, e: Entity): boolean {
 }
 
 /** Read `e`'s step modifiers for the step about to start. */
-export function walkStepModifiersOf(world: World, e: Entity): WalkStepModifiers {
+export function walkStepModifiersOf(world: World, e: Entity, content: ContentSet): WalkStepModifiers {
   const flags = world.tryGet(e, MissionBehaviour)?.flags ?? 0;
-  const fatigue = world.tryGet(e, Settler)?.fatigue;
+  const settler = world.tryGet(e, Settler);
+  const fatigue = settler?.fatigue;
+  const index = contentIndex(content);
+  const job = settler?.jobType ?? null;
+  const ageTicks = spawnAgeTicks(job === null ? undefined : index.jobs.get(job)?.id);
+  const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;
   return {
     shoes: hasLiveBoots(world, e),
     carrying: isCarryingGood(world, e),
     tired: fatigue !== undefined && fatigue >= NEED_DRIVE_THRESHOLD,
     walksSlowly: (flags & MISSION_BEHAVIOUR.WALKS_SLOWLY) !== 0,
     walksFast: (flags & MISSION_BEHAVIOUR.WALKS_FAST) !== 0,
+    age: ageTicks === null ? 'adult' : ageTicks === 0 ? 'baby' : 'child',
+    tribeReduction:
+      reduction !== undefined && (reduction.jobType === undefined || reduction.jobType === job)
+        ? reduction.ticks
+        : 0,
+    equipmentWeight:
+      settler === undefined || isHeroJob(content, job)
+        ? 0
+        : equipmentWeight(world, e, content, settler.tribe, job),
   };
+}
+
+function equipmentWeight(
+  world: World,
+  e: Entity,
+  content: ContentSet,
+  tribe: number,
+  job: number | null,
+): number {
+  const index = contentIndex(content);
+  const equipment = world.tryGet(e, Equipment);
+  const weaponType = world.tryGet(e, Weapon)?.weaponTypeId;
+  const classWeapon = job === null ? undefined : index.weaponsByTribeAndJob.get(tribe)?.get(job);
+  // Several weapon classes share a good (sword/saber). Preserve the equipped combat identity;
+  // a good lookup alone loses the class's weight. A spawned class may have no explicit Weapon yet.
+  const weapon =
+    weaponType !== undefined
+      ? index.weaponsByTribeAndTypeId.get(tribe)?.get(weaponType)
+      : equipment?.weapon == null || equipment.weapon.goodType === classWeapon?.goodType
+        ? classWeapon
+        : index.weaponByTribeAndGoodType.get(tribe)?.get(equipment.weapon.goodType);
+  const armorClass = world.tryGet(e, Armor)?.armorClass;
+  const armor =
+    equipment?.armor != null
+      ? index.armorByGoodType.get(equipment.armor.goodType)
+      : armorClass === undefined
+        ? undefined
+        : index.armor.get(armorClass);
+  return (weapon?.weight ?? 0) + (armor?.weight ?? 0);
 }

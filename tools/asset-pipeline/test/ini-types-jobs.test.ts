@@ -3,6 +3,17 @@ import { extractJobExperience, extractJobs, extractTribes, parseIniSections } fr
 import { JOBTYPES_INI, JOBXP_INI, TRIBETYPES_INI } from './fixtures/ini-sources.js';
 
 describe('extractJobs', () => {
+  it('attaches byte-evidenced movement exceptions only to their engine tribe ids', () => {
+    const tribes = extractTribes(
+      parseIniSections('[tribetype]\ntype 3\n[tribetype]\ntype 7\n[tribetype]\ntype 1\n'),
+      { file: 'tribes.ini' },
+    );
+    expect(tribes.map((t) => t.walkStepReduction)).toEqual([
+      { ticks: 2, jobType: 32 },
+      { ticks: 2 },
+      undefined,
+    ]);
+  });
   it('collects repeated allow/forbid atomic lines into ordered arrays, and baseatomics as one base job', () => {
     const jobs = extractJobs(parseIniSections(JOBTYPES_INI), { file: 'Data/logic/jobtypes.ini' });
     const src = { file: 'Data/logic/jobtypes.ini', block: 'jobtype', layer: 'base' };

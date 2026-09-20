@@ -61,6 +61,13 @@ export const TribeType = z.strictObject({
    * to its `DEFAULT_SETTLER_HITPOINTS`.
    */
   hitpoints: z.number().int().nonnegative().default(0),
+  /** Engine walk-cost reduction, optionally restricted to one profession. */
+  walkStepReduction: z
+    .strictObject({
+      ticks: z.number().int().positive(),
+      jobType: TypeId.optional(),
+    })
+    .optional(),
   /** `setatomic` bindings in file order - a tribe's atomic→animation vocabulary, per job. */
   atomicBindings: z.array(AtomicBinding).default([]),
   /** `jobEnables*` tech-graph edges in file order, repeated triples included. */

@@ -1,5 +1,6 @@
 import { ONE, tileToScreen } from '../../projection/index.js';
 import { readPosition } from '../../snapshot/index.js';
+import { GFX_DIR_TO_FACING } from '../../sprites/settler.js';
 
 /**
  * Settler facing: the 8 `CR_Hum_Body` direction blocks, quantized from a projected screen heading.
@@ -48,11 +49,15 @@ export function facingTowardTile(
 }
 
 /**
- * A settler's facing block (0..7) from its live heading - the projected step from its position toward
- * the `PathFollow` waypoint it walks to. `undefined` when there is no heading to read (no path, or
- * already standing on the waypoint), and the binding falls back to a default facing.
+ * A human's persisted turn heading, including its last idle heading. Other movers derive facing from
+ * their projected path; without either source the sprite binding supplies its default.
  */
 export function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
+  const facing = components.WalkFacing as { direction?: unknown } | undefined;
+  if (typeof facing?.direction === 'number' && Number.isInteger(facing.direction)) {
+    const block = GFX_DIR_TO_FACING[facing.direction];
+    if (block !== undefined) return block;
+  }
   const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
   const pos = readPosition(components);
   if (pf === undefined || pos === null || !Array.isArray(pf.waypoints)) return undefined;

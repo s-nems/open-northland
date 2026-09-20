@@ -57,17 +57,17 @@ describe('movementSystem - path following', () => {
     expect(legs).toEqual([6, 10, 14]); // roads (1) are the fast lane, snow (5) the slow one
   });
 
-  it('keeps the same tick cost on every heading: a step is a step, whatever its world length', () => {
+  it('adds heading changes to the same per-step cost on a bent route', () => {
     // The E/W half column (34 px), the half-row edge and a diagonal edge's half (each an original
     // 25.5 px step under the stagger) all cost one step of ticks, like the original's accumulator.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 6) });
     const e = followerAt(sim, 1, 1, [
       { x: 1, y: 1 },
       { x: 1.5, y: 1 }, // E half column
-      { x: 1.5, y: 1.5 }, // S half row
-      { x: 1.75, y: 2 }, // a diagonal edge's midpoint (SE from odd half-row 3 to row 4)
+      { x: 1.5, y: 1.5 }, // SW under the stagger
+      { x: 1.75, y: 2 }, // S: world X stays constant
     ]);
-    expect(ticksToArrive(sim, e)).toBe(3 * LAND_STEP_TICKS);
+    expect(ticksToArrive(sim, e)).toBe(3 * LAND_STEP_TICKS + 2); // E → SW: three sectors, two held ticks
   });
 
   it('a route with a lone stop walks onto its centre in one step', () => {
@@ -75,7 +75,7 @@ describe('movementSystem - path following', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromFloat(0.25), y: fx.fromInt(0) });
     sim.world.add(e, PathFollow, { waypoints: [waypointAt(sim, 0.5, 0)], index: 0, legTicks: 0, legCost: 0 });
-    expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS);
+    expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS + 2); // initial SW → E
     expect(pos(sim, e)).toEqual({ x: 0.5, y: 0 });
   });
 

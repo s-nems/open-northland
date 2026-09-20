@@ -1,7 +1,7 @@
-import { Obstructed, PathFollow, Position } from '../../../../components/index.js';
-import { type Fixed, fx } from '../../../../core/fixed.js';
+import { Obstructed, PathFollow, Position, WalkFacing } from '../../../../components/index.js';
+import { type Fixed, fx, ULP } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { worldDistance } from '../../../../nav/world-metric.js';
+import { HALF_ROW, worldDistance } from '../../../../nav/world-metric.js';
 import { clearNavState } from '../../nav-state.js';
 import { SLOWEST_PACE_PER_TICK } from '../../system.js';
 
@@ -11,8 +11,7 @@ export const OBSTRUCTED_REROUTE_TICKS = 4;
 /** Reroutes without reaching the goal before a walker stands down entirely. */
 export const OBSTRUCTED_MAX_REROUTES = 4;
 
-/** Minimum total progress per tick of the obstruction window: a third of the slowest on-schedule walk, so
- *  no legitimately paced leg reads as a grind. */
+/** Baseline progress threshold; slow captured step costs lower it further. */
 export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(SLOWEST_PACE_PER_TICK, fx.fromInt(3));
 
 /** End the current grind window while preserving a non-zero reroute tally for this walk. */
@@ -44,6 +43,12 @@ export function updateObstruction(
   firmMovers: ReadonlySet<Entity>,
 ): void {
   if (!isFirm) return;
+  const cost = world.tryGet(entity, PathFollow)?.legCost ?? 0;
+  const facing = world.tryGet(entity, WalkFacing);
+  if (cost > 0 && facing !== undefined && facing.direction !== facing.target) {
+    clearGrind(world, entity);
+    return;
+  }
   const firmNear = nearPosts.length > 0 || nearMovers.some((neighbor) => firmMovers.has(neighbor));
   if (ghost || !firmNear) {
     clearGrind(world, entity);
@@ -61,7 +66,10 @@ export function updateObstruction(
     });
   obstruction.ticks += 1;
   const sinceAnchor = worldDistance(obstruction.x, obstruction.y, position.x, position.y);
-  if (sinceAnchor >= fx.mul(OBSTRUCTED_PROGRESS_FLOOR, fx.fromInt(obstruction.ticks))) {
+  const pacedFloor = cost > 0 ? fx.div(HALF_ROW, fx.fromInt(cost * 3)) : OBSTRUCTED_PROGRESS_FLOOR;
+  const floor =
+    pacedFloor < ULP ? ULP : pacedFloor < OBSTRUCTED_PROGRESS_FLOOR ? pacedFloor : OBSTRUCTED_PROGRESS_FLOOR;
+  if (sinceAnchor >= fx.mul(floor, fx.fromInt(obstruction.ticks))) {
     obstruction.ticks = 0;
     obstruction.x = position.x;
     obstruction.y = position.y;

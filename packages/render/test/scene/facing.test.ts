@@ -3,6 +3,17 @@ import { buildScene, ONE } from '../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
 describe('buildScene - settler facing derivation', () => {
+  it('renders the intermediate sim turn heading, retaining it without a path', () => {
+    const turning = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      WalkFacing: { direction: 7, target: 3 },
+      PathFollow: { waypoints: [{ x: 0, y: ONE }], index: 0 },
+    });
+    const idle = entity(2, 1, 1, { Settler: { tribe: 0 }, WalkFacing: { direction: 6, target: 6 } });
+    const scene = buildScene(snapshotOf([turning, idle]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(6);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 2)?.facing).toBe(7);
+  });
   it('derives a settler facing from its PROJECTED screen heading toward the next waypoint', () => {
     // Facing quantizes the projected (tileToScreen) heading, so under the staggered raster the same grid
     // step reads differently per row parity. Tile (1,1) is an odd, half-shifted row.

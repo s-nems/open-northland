@@ -7,6 +7,7 @@ import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
 import { chargeBarefootStep } from '../lifecycle/needs/index.js';
 import { stepTowardPoint } from './stepping.js';
+import { beginWalkTurn, finishWalkTurn } from './turning.js';
 import {
   hasLiveBoots,
   isCarryingGood,
@@ -36,18 +37,18 @@ export const REFERENCE_PACE_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(REF
 const DEFAULT_ANIMAL_TICKS_PER_CELL = 18;
 const DEFAULT_ANIMAL_PACE_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(DEFAULT_ANIMAL_TICKS_PER_CELL));
 
-/** The least a human on schedule advances in one tick: the short N/S half-row edge at the longest step
- *  cost. Keeping this true minimum prevents a legitimate slow vertical leg reading as an obstruction. */
+/** Baseline obstruction pace for an unencumbered adult. Obstruction scales this down for a longer
+ *  captured leg cost and excludes held turn ticks. */
 export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP_TICKS));
 
 /**
  * Advances entity positions one tick. A {@link PathFollow} takes precedence over any {@link Velocity}, and
  * dropping it at the last waypoint is what the planner reads as arrived.
  *
- * A human walks each leg in exactly its step cost (`walkStepTicks`): the cost is fixed when the leg starts
+ * A human walks each leg in its step cost (`walkStepTicks`) plus held turn ticks: the cost is fixed when the leg starts
  * from the roughness of the node it leaves and the walker's state then, the position closes the remaining
- * distance in equal shares of the ticks left, and the last tick lands on the stop. The original moves at
- * a constant pace with no ramp, corner loss or brake, so none is modelled. A creature keeps its
+ * distance in equal shares of the movement ticks left, and the last tick lands on the stop. Turning
+ * holds progress for all but its final tick; no acceleration or braking is modelled. A creature keeps its
  * content-paced constant {@link MoveSpeed}.
  */
 export const movementSystem: System = (world, ctx) => {
@@ -127,9 +128,11 @@ function walkHumanLeg(
     // A same-node request has only its destination callback, not an extra departure.
     if (p.x === target.x && p.y === target.y) return true;
     const roughness = departureRoughness(ctx.terrain, pf);
-    pf.legCost = walkStepTicks(roughness, walkStepModifiersOf(world, e));
+    pf.legCost = walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content));
+    // Use the planned edge: collision separation can push the actual position off its axis.
+    beginWalkTurn(world, e, pf.waypoints[pf.index - 1] ?? p, target);
     chargeNode(world, ctx, e, roughness);
-  }
+  } else if (!finishWalkTurn(world, e)) return false;
   pf.legTicks += 1;
   const remaining = pf.legCost - pf.legTicks;
   const dist = worldDistance(p.x, p.y, target.x, target.y);

@@ -47,6 +47,14 @@ function parseWith(overrides: Record<string, unknown>): void {
 }
 
 describe('validateCrossReferences', () => {
+  it('validates an optional tribe walk-reduction profession', () => {
+    expect(() =>
+      parseWith({ tribes: [{ typeId: 1, id: 'test', walkStepReduction: { ticks: 2, jobType: 99 } }] }),
+    ).toThrow(/walkStepReduction has unknown jobType 99/);
+    expect(() =>
+      parseWith({ tribes: [{ typeId: 1, id: 'test', walkStepReduction: { ticks: 2, jobType: 1 } }] }),
+    ).not.toThrow();
+  });
   /**
    * One dangling-reference case per row: `overrides` replaces the named tables in `base()` so the set
    * exercises exactly one rule, and `error` is the message that rule must throw. Grouped by the entity

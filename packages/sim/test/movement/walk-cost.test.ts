@@ -14,6 +14,14 @@ const TIRED = { ...UNMODIFIED_STEP, tired: true };
 const TIRED_SHOD = { ...TIRED, shoes: true };
 
 describe('walkStepTicks', () => {
+  it('applies tribe reduction, age, combined gear rounding and script flags in engine order', () => {
+    const m = { ...UNMODIFIED_STEP, tribeReduction: 2, equipmentWeight: 5 };
+    expect(walkStepTicks(2, { ...m, age: 'baby' })).toBe(14); // (8-2)*2 + floor(5/2)
+    expect(walkStepTicks(2, { ...m, age: 'child' })).toBe(10);
+    expect(walkStepTicks(2, { ...m, age: 'adult' })).toBe(8);
+    expect(walkStepTicks(2, { ...m, age: 'baby', walksSlowly: true, walksFast: true })).toBe(26);
+    expect(walkStepTicks(0, { ...m, shoes: true, walksFast: true })).toBe(3);
+  });
   it('costs 2·roughness + 4 barefoot and 2·roughness + 2 shod for a rested walker, floored at 3', () => {
     // roughness: road/water 1, land 2, sand/beach/desert stone 3, mountain 4, snow 5 (and 0 on the maps).
     expect([0, 1, 2, 3, 4, 5].map((r) => walkStepTicks(r, UNMODIFIED_STEP))).toEqual([4, 6, 8, 10, 12, 14]);

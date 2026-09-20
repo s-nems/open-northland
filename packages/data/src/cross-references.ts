@@ -121,6 +121,9 @@ function checkTribes(set: ContentSet, ids: IdSets): string[] {
   const { jobIds } = ids;
   const errors: string[] = [];
   for (const t of set.tribes) {
+    const walkJob = t.walkStepReduction?.jobType;
+    if (walkJob !== undefined && !jobIds.has(walkJob))
+      errors.push(`tribe "${t.id}" walkStepReduction has unknown jobType ${walkJob}`);
     // Atomic ids resolve against no extracted table (see `AtomicId`), so only the binding's job is checked.
     for (const b of t.atomicBindings) {
       if (!jobIds.has(b.jobType))

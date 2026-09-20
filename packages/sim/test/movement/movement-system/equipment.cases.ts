@@ -9,6 +9,7 @@ import {
   MissionBehaviour,
   PathFollow,
   Settler,
+  WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
@@ -127,6 +128,7 @@ describe('movementSystem - worn boots', () => {
   it('reads pace before spending the last shoe point and charges the destination as barefoot', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const e = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(0), y: fx.fromInt(0) } });
+    sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
     sim.world.add(e, PathFollow, {
       waypoints: WALK.slice(0, 2).map((w) => waypointAt(sim, w.x, w.y)),
       index: 1,
