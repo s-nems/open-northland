@@ -38,7 +38,7 @@ export const enGame = {
     craftTarget: 'Craft',
     craftToggleHint: 'Click picks one product; Ctrl/Cmd+click adds or removes it.',
     recipeNoInputs: 'no materials',
-    construction: {
+    buildSite: {
       title: 'Construction',
       assignedSite: 'Assigned foundation',
       inbound: ' (+{count})',

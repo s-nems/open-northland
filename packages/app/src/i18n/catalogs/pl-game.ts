@@ -38,7 +38,7 @@ export const plGame = {
     craftTarget: 'Wytwarzaj',
     craftToggleHint: 'Klik wybiera jeden produkt; Ctrl/Cmd+klik dodaje lub usuwa z wyboru.',
     recipeNoInputs: 'bez surowców',
-    construction: {
+    buildSite: {
       title: 'Budowa',
       assignedSite: 'Przydzielony fundament',
       inbound: ' (+{count})',

@@ -17,7 +17,7 @@ export function drawConstructionSection(
   s: number,
 ): void {
   if (layout.construction === null || model.construction === null) return;
-  const copy = messages().hud.construction;
+  const copy = messages().hud.buildSite;
   chrome.window(layout.construction.frame);
   chrome.headline(layout.construction.title, copy.title);
   const body = layout.construction.body;
