@@ -88,6 +88,8 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       stock: layout.stock ? sec(layout.stock) : null,
       stockTabHits: layout.stockTabHits.map(fn),
       workers: sec(layout.workers),
+      homeQuality: layout.homeQuality ? sec(layout.homeQuality) : null,
+      homeQualityRows: layout.homeQualityRows.map(fn),
       offers: layout.offers ? sec(layout.offers) : null,
       offerRows: layout.offerRows.map(fn),
     };

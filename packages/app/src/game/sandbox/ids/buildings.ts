@@ -23,10 +23,12 @@ export const BUILDING_ANIMAL_FARM = 17;
 export const BUILDING_TAILOR = 18;
 /** The pottery (`work_pottery_00`). */
 export const BUILDING_POTTERY = 20;
-/** The joinery's three levels (`work_joinery_00/01/02`). */
+export const BUILDING_POTTERY_01 = 21;
+/** The joinery's four levels (`work_joinery_00/01/02/03`). */
 export const BUILDING_JOINERY = 23;
 export const BUILDING_JOINERY_01 = 24;
 export const BUILDING_JOINERY_02 = 25;
+export const BUILDING_JOINERY_03 = 26;
 /** The armory (`work_armory_00`). */
 export const BUILDING_ARMORY = 27;
 /** The mason's hut (`work_mason_hut_00`). */

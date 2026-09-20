@@ -26,6 +26,10 @@ export const GOOD_FLOUR = 111;
 export const GOOD_HERB = 113;
 export const GOOD_HOLY_OIL = 115;
 export const GOOD_BREAD = 119;
+export const GOOD_BRICK = 124;
+export const GOOD_TILE = 125;
+export const GOOD_CROCKERY = 128;
+export const GOOD_FURNITURE = 129;
 /** The `food_` slug prefix is what the sim's `isFood` recognizes as edible. */
 export const GOOD_FOOD_SIMPLE = 116;
 export const GOOD_FOOD_EXTRA = 117;
@@ -112,16 +116,56 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     productionBonusPct: IRON_TOOL_BONUS_PCT,
     uses: TOOL_USES,
   },
-  { typeId: GOOD_ARMOR_WOOL, id: 'armor_wool', category: 'armor', wears: false },
-  { typeId: GOOD_ARMOR_LEATHER, id: 'armor_leather', category: 'armor', wears: false },
-  { typeId: GOOD_ARMOR_CHAIN, id: 'armor_chain', category: 'armor', wears: false },
-  { typeId: GOOD_ARMOR_PLATE, id: 'armor_plate', category: 'armor', wears: false },
+  {
+    typeId: GOOD_ARMOR_WOOL,
+    id: 'armor_wool',
+    category: 'armor',
+    wears: false,
+  },
+  {
+    typeId: GOOD_ARMOR_LEATHER,
+    id: 'armor_leather',
+    category: 'armor',
+    wears: false,
+  },
+  {
+    typeId: GOOD_ARMOR_CHAIN,
+    id: 'armor_chain',
+    category: 'armor',
+    wears: false,
+  },
+  {
+    typeId: GOOD_ARMOR_PLATE,
+    id: 'armor_plate',
+    category: 'armor',
+    wears: false,
+  },
   { typeId: GOOD_BOW_SHORT, id: 'bow_short', category: 'weapon', wears: false },
   { typeId: GOOD_BOW_LONG, id: 'bow_long', category: 'weapon', wears: false },
-  { typeId: GOOD_SPEAR_WOODEN, id: 'spear_wooden', category: 'weapon', wears: false },
-  { typeId: GOOD_SPEAR_IRON, id: 'spear_iron', category: 'weapon', wears: false },
-  { typeId: GOOD_SWORD_SHORT, id: 'sword_shord', category: 'weapon', wears: false },
-  { typeId: GOOD_SWORD_LONG, id: 'sword_long', category: 'weapon', wears: false },
+  {
+    typeId: GOOD_SPEAR_WOODEN,
+    id: 'spear_wooden',
+    category: 'weapon',
+    wears: false,
+  },
+  {
+    typeId: GOOD_SPEAR_IRON,
+    id: 'spear_iron',
+    category: 'weapon',
+    wears: false,
+  },
+  {
+    typeId: GOOD_SWORD_SHORT,
+    id: 'sword_shord',
+    category: 'weapon',
+    wears: false,
+  },
+  {
+    typeId: GOOD_SWORD_LONG,
+    id: 'sword_long',
+    category: 'weapon',
+    wears: false,
+  },
   {
     typeId: GOOD_MEAD,
     id: 'mead',
@@ -180,7 +224,12 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
   },
   { typeId: 150, id: 'amulet_food', category: 'misc', wears: false },
   { typeId: 151, id: 'amulet_stamina', category: 'misc', wears: false },
-  { typeId: GOOD_AMULET_STRENGTH, id: 'amulet_strength', category: 'misc', wears: false },
+  {
+    typeId: GOOD_AMULET_STRENGTH,
+    id: 'amulet_strength',
+    category: 'misc',
+    wears: false,
+  },
   { typeId: 153, id: 'amulet_defense', category: 'misc', wears: false },
   { typeId: 154, id: 'amulet_crithit', category: 'misc', wears: false },
   { typeId: 155, id: 'amulet_speed', category: 'misc', wears: false },

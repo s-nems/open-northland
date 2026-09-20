@@ -1,5 +1,6 @@
 import type { System } from '../context.js';
 import { driveChildOrders } from './children/index.js';
+import { drainHolyOil } from './home-quality.js';
 import { driveWeddings } from './weddings.js';
 
 export { findPartnerFor, isAdultSettler, isOnMission, mayMarry } from './eligibility.js';
@@ -18,6 +19,7 @@ export { KISS_ATOMIC_ID, KISSED_ATOMIC_ID, startWedding } from './weddings.js';
  * issues route the same tick and its duty fences are fresh when the planner reads them.
  */
 export const familySystem: System = (world, ctx) => {
+  drainHolyOil(world, ctx);
   driveWeddings(world, ctx, ctx.terrain);
   driveChildOrders(world, ctx, ctx.terrain);
 };

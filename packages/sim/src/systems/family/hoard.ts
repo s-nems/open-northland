@@ -10,12 +10,13 @@ import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { deliverHome, fetchFrom } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
+import { demandedHomeQualityGoods, homeQualityUse } from './home-quality.js';
 import { builtHomeType, storedFoodUnits } from './households.js';
+import type { ExternalQualityIndex } from './quality-search.js';
 
 /**
- * The housewife's hoarding drive - a woman with a home hauls loose and stored food into the home larder
- * until its food stock is full (`houses.ini` `logicstock` capacities), independent of any standing child
- * order. Authored: women stock the pantry continuously, not only to conceive.
+ * The housewife's hoarding drive - a woman with a home hauls food into its larder and the configured
+ * durable household wares into its quality pools.
  */
 
 /**
@@ -29,6 +30,7 @@ export function planWomanHoard(
   terrain: TerrainGraph | undefined,
   e: Entity,
   externalFood: ExternalFoodIndex,
+  externalQuality: ExternalQualityIndex,
   limit: NavigationLimit | null,
 ): boolean {
   const home = world.tryGet(e, Residence)?.home;
@@ -43,21 +45,47 @@ export function planWomanHoard(
     (sum, slot) => (isFood(ctx, slot.goodType) ? sum + slot.capacity : sum),
     0,
   );
-  if (storedFoodUnits(world, ctx, home) >= capacity) return false;
   const settler = world.get(e, Settler);
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
   const load = world.tryGet(e, Carrying);
   if (load !== undefined && load.amount > 0) {
-    if (!isFood(ctx, load.goodType)) {
+    if (!isFood(ctx, load.goodType) && homeQualityUse(ctx, load.goodType) === undefined) {
       startDrop(world, ctx, e); // free her hands of a non-food load first
       return true;
     }
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);
     return true;
   }
-  const source = externalFood.nearest(hereNode, ownerOf(world, e), limit, unreachableGoalVeto(world, ctx, e));
+  const owner = ownerOf(world, e);
+  const avoid = unreachableGoalVeto(world, ctx, e);
+  const foodSource =
+    storedFoodUnits(world, ctx, home) < capacity ? externalFood.nearest(hereNode, owner, limit, avoid) : null;
+  const demanded = demandedHomeQualityGoods(world, ctx, e, home);
+  const qualitySource =
+    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, limit, avoid) : null;
+  const source = nearerSource(world, hereNode, foodSource, qualitySource);
   if (source === null) return false; // nothing to hoard, so fall through to idling
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;
+}
+
+/** The original searches one candidate set containing food and household goods. Reproduce its observable
+ * nearest-source result; entity id breaks an exact distance tie. */
+function nearerSource(
+  world: World,
+  from: { hx: number; hy: number },
+  a: { store: Entity; goodType: number } | null,
+  b: { store: Entity; goodType: number } | null,
+): { store: Entity; goodType: number } | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  const rank = (source: { store: Entity }): readonly [number, number] => {
+    const p = world.get(source.store, Position);
+    const node = nodeOfPosition(p.x, p.y);
+    return [Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy), source.store];
+  };
+  const ar = rank(a);
+  const br = rank(b);
+  return ar[0] < br[0] || (ar[0] === br[0] && ar[1] <= br[1]) ? a : b;
 }

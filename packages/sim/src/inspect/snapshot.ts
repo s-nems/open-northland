@@ -22,6 +22,21 @@ export interface EntitySnapshot {
   readonly components: Readonly<Record<string, unknown>>;
 }
 
+export interface HomeQualityView {
+  readonly cooking: number;
+  readonly rest: number;
+  readonly piety: number;
+}
+
+/** Decode one home's detached quality pools from a snapshot. */
+export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQualityView | null {
+  const raw = entityById(snapshot, home)?.components.HomeQuality;
+  if (!isPlainRecord(raw)) return null;
+  const { cooking, rest, piety } = raw;
+  if (typeof cooking !== 'number' || typeof rest !== 'number' || typeof piety !== 'number') return null;
+  return { cooking, rest, piety };
+}
+
 /**
  * Per-world cache of cloned entity snapshots. Untouched entities reuse the whole entry; touched entities
  * reuse every component whose per-entity revision still matches. A registered cache verifier re-clones

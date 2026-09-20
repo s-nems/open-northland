@@ -4,6 +4,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { collectShelters, type ShelterSites } from '../../defence/index.js';
 import { ExternalFoodIndex } from '../../family/food-search.js';
+import { ExternalQualityIndex } from '../../family/quality-search.js';
 import { GossipCandidates } from '../../social/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
@@ -33,6 +34,7 @@ export interface PlannerPass {
    *  fallback scan. */
   readonly anyHaulable: boolean;
   readonly externalFood: ExternalFoodIndex;
+  readonly externalQuality: ExternalQualityIndex;
   readonly spacing: PlannerSpacing;
   readonly farmClaims: FarmClaims;
   readonly seatClaims: WorkSeatClaims;
@@ -59,6 +61,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     targets,
     anyHaulable: hasHaulableOutput(world, ctx, targets.stockpiles),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
+    externalQuality: new ExternalQualityIndex(world, ctx, terrain),
     spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
     seatClaims: new Map(),

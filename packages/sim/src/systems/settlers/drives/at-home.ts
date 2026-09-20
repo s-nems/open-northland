@@ -8,15 +8,22 @@ import {
 import { type Fixed, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { homeQualityActive } from '../../family/home-quality.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { atomicClipNameAtHome, atomicEventChannelDelta } from '../../readviews/animations.js';
-import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
-import { atHomeDuration, EAT_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
+import {
+  atHomeDuration,
+  EAT_ATOMIC_ID,
+  PRAY_ATOMIC_ID,
+  SLEEP_ATOMIC_ID,
+  startAtomic,
+} from '../atomics/start.js';
 import { heldIndoors, isInsideOwnHome } from '../indoors.js';
 import { storedFoodGood } from '../targets/index.js';
 
-const { REST, HUNGER } = ATOMIC_EVENT_CHANNEL;
+const { REST, HUNGER, PIETY } = ATOMIC_EVENT_CHANNEL;
 
 // The at-home top-up: a settler that came home for one need serves the rest before going back out, so it
 // leaves rested and fed rather than making a second trip for each bar. Approximation: the data authors the
@@ -40,10 +47,18 @@ export function topsUpAtHome(world: World, ctx: SystemContext, e: Entity): boole
   const settler = world.tryGet(e, Settler);
   if (settler === undefined) return false;
   if (settler.fatigue > NEED_SATED_THRESHOLD && restores(ctx, settler, SLEEP_ATOMIC_ID, REST)) return true;
-  return (
+  if (
     settler.hunger > NEED_SATED_THRESHOLD &&
     restores(ctx, settler, EAT_ATOMIC_ID, HUNGER) &&
     larderGoodFor(world, ctx, e) !== null
+  )
+    return true;
+  const home = world.get(e, Residence).home;
+  return (
+    settler.piety > NEED_SATED_THRESHOLD &&
+    jobNeedsReligion(ctx.content, settler.jobType) &&
+    restores(ctx, settler, PRAY_ATOMIC_ID, PIETY) &&
+    homeQualityActive(world, ctx, home, 'piety')
   );
 }
 
@@ -63,7 +78,7 @@ export function planHomeTopUp(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: SettlerIdentity & { fatigue: Fixed; hunger: Fixed; enjoyment: Fixed },
+  settler: SettlerIdentity & { fatigue: Fixed; hunger: Fixed; piety: Fixed; enjoyment: Fixed },
 ): boolean {
   if (!topsUpAtHome(world, ctx, e)) return false;
   if (world.has(e, Marriage) && settler.enjoyment !== ZERO) world.mut(e, Settler).enjoyment = ZERO;
@@ -80,14 +95,31 @@ export function planHomeTopUp(
     return true;
   }
   const goodType = larderGoodFor(world, ctx, e);
-  if (goodType === null) return false;
-  startAtomic(
-    world,
-    e,
-    EAT_ATOMIC_ID,
-    { kind: 'eat', goodType, from: home },
-    atHomeDuration(ctx, settler, EAT_ATOMIC_ID),
-    home,
-  );
-  return true;
+  if (goodType !== null && settler.hunger > NEED_SATED_THRESHOLD) {
+    startAtomic(
+      world,
+      e,
+      EAT_ATOMIC_ID,
+      { kind: 'eat', goodType, from: home },
+      atHomeDuration(ctx, settler, EAT_ATOMIC_ID),
+      home,
+    );
+    return true;
+  }
+  if (
+    settler.piety > NEED_SATED_THRESHOLD &&
+    jobNeedsReligion(ctx.content, settler.jobType) &&
+    homeQualityActive(world, ctx, home, 'piety')
+  ) {
+    startAtomic(
+      world,
+      e,
+      PRAY_ATOMIC_ID,
+      { kind: 'pray' },
+      atHomeDuration(ctx, settler, PRAY_ATOMIC_ID),
+      home,
+    );
+    return true;
+  }
+  return false;
 }

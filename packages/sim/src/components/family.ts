@@ -53,6 +53,16 @@ export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty',
 export const FoodReserve = defineComponent<{ amount: number }>('FoodReserve', 'settlers');
 
 /**
+ * Durable household supplies held by a home. Values use the original house-quality scale rather than
+ * ware units: one delivered item can add many points, while an individual use spends only a few.
+ */
+export const HomeQuality = defineComponent<{
+  cooking: number;
+  rest: number;
+  piety: number;
+}>('HomeQuality', 'settlers');
+
+/**
  * A home where a resident couple is currently making love - both parents inside, hearts over the house (the
  * original's `HOUSE_ACTION_OVERLAY_TYPE_MAKE_LOVE = 2` overlay and `PARTICEL_EFFECT_HOUSE_BASE_POINT` in
  * the make_love animations, `logicdefines.inc`). `wife` names the couple whose order advances or cancels

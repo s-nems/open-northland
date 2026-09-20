@@ -14,6 +14,18 @@ export interface HomeResidentsModel {
   readonly capacity: number;
 }
 
+export interface HomeQualityRow {
+  readonly effect: 'cooking' | 'rest' | 'piety';
+  readonly goodId: string;
+  readonly label: string;
+  readonly value: number;
+  readonly capacity: number;
+  /** Remaining household actions; omitted for holy oil, whose pool drains continuously. */
+  readonly uses?: number;
+  /** Only the holy-oil row carries this live finished-home status. */
+  readonly holyFireActive?: boolean;
+}
+
 export interface BuildingPanelModel {
   readonly kind: 'building';
   readonly entityId: number;
@@ -33,6 +45,8 @@ export interface BuildingPanelModel {
   readonly workerSlots: readonly WorkerSlotRow[];
   /** Non-null for a `home`-kind building: the workers window becomes the residents window. */
   readonly home: HomeResidentsModel | null;
+  /** Durable household wares available at this home tier, in cooking/rest/piety order. */
+  readonly homeQuality: readonly HomeQualityRow[];
   /** Whether the type offers the Obrona window, that is whether content gives it a `shelterCapacity`. */
   readonly showDefense: boolean;
   /** Whether the alarm is currently up (the sim's `DefenceMode` marker). */

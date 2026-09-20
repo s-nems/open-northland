@@ -272,6 +272,11 @@ export const plContent = {
       summary:
         'Druid warzy święty olej z grzybów w małej chacie, a dwóch druidów mikstury z wody, grzybów, ziół i monet w dużej.',
     },
+    'household-goods': {
+      title: 'Wyposażenie domu',
+      summary:
+        'Garncarze, stolarze i druid zaopatrują rozbudowany dom w naczynia, meble i święty olej, wspomagające posiłki, odpoczynek i modlitwę.',
+    },
     warehouse: {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',

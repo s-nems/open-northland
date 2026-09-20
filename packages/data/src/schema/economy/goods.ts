@@ -100,6 +100,26 @@ export const GoodFarming = z.strictObject({
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;
 
+export const HomeQualityEffect = z.enum(['cooking', 'rest', 'piety']);
+export type HomeQualityEffect = z.infer<typeof HomeQualityEffect>;
+
+/** A durable good delivered to a family's home and used there to improve one household activity. */
+export const HomeQuality = z.strictObject({
+  effect: HomeQualityEffect,
+  /** Quality points credited when one carried unit reaches the home. */
+  deliveryValue: z.number().int().positive(),
+  /** Maximum quality points retained by one home. */
+  capacity: z.number().int().positive(),
+  /** Quality points spent by one matching household action. */
+  useCost: z.number().int().positive(),
+  /** A home requests another unit while its stored quality is below this value. */
+  fetchBelow: z.number().int().nonnegative(),
+  /** Zero-based home upgrade level required to request and use this good. */
+  minimumHomeLevel: z.number().int().nonnegative(),
+});
+export type HomeQuality = z.infer<typeof HomeQuality>;
+export type HomeQualityUse = HomeQuality;
+
 export const GoodType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
@@ -118,6 +138,8 @@ export const GoodType = z.strictObject({
   /** Field-cultivation parameters when this good is field-farmed (wheat); such a good also carries the
    *  plant/cultivate/harvest {@link atomics}. */
   farming: GoodFarming.optional(),
+  /** Household use calibrated from the owned engine; absent for ordinary wares. */
+  homeQuality: HomeQuality.optional(),
   /** Input goods and per-cycle amounts consumed to produce this good (`goodtypes`
    *  `productionInputGoods`); empty for a raw good. */
   productionInputs: z.array(ProductionInput).default([]),

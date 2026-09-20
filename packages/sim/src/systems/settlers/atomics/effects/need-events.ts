@@ -1,7 +1,8 @@
-import { needsEnabled, Settler, type SettlerIdentity } from '../../../../components/index.js';
+import { needsEnabled, Residence, Settler, type SettlerIdentity } from '../../../../components/index.js';
 import type { AtomicEffect } from '../../../../core/atomic-effect.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
+import { homeQualityUseFor, spendHomeQuality } from '../../../family/home-quality.js';
 import { applyNeedUnits, carriesNeeds } from '../../../lifecycle/needs/index.js';
 import {
   atomicAnimationByName,
@@ -59,6 +60,16 @@ export function applyAtomicNeedEvents(
   // Only rest gained counts half: a swing costs its worker the same wherever it is swung.
   if (rest > 0 && !atHome && !jobIgnoresHomeHouse(ctx.content, settler.jobType)) {
     rest = Math.trunc(rest / 2);
+  }
+  if (rest > 0 && atHome) {
+    const home = world.tryGet(e, Residence)?.home;
+    const furnishing = homeQualityUseFor(ctx, 'rest');
+    if (
+      home !== undefined &&
+      furnishing !== undefined &&
+      spendHomeQuality(world, home, 'rest', furnishing.useCost)
+    )
+      rest *= 2;
   }
 
   const s = world.mut(e, Settler);

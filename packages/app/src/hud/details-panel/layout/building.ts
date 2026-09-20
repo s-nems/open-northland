@@ -93,6 +93,9 @@ export interface BuildingLayout {
   readonly stockTabHits: readonly Rect[];
   /** Always present: a construction site keeps its workers window. */
   readonly workers: SectionRect;
+  /** Household durability pools, only for a finished home with configured household goods. */
+  readonly homeQuality: SectionRect | null;
+  readonly homeQualityRows: readonly Rect[];
   /** The trade agreements window, only for a house that offers any. */
   readonly offers: SectionRect | null;
   readonly offerRows: readonly Rect[];
@@ -183,6 +186,7 @@ export function layoutBuilding(
     (stockCompact ? 0 : Math.round(STOCK_TAB_H * s) + Math.round(STOCK_TAB_GAP * s)) +
     stockRows * Math.round(STOCK_ROW_H * s);
   const workersBodyH = MAX_WORKER_ROWS * Math.round(ROW_H * s);
+  const homeQualityBodyH = model.homeQuality.length * Math.round(ROW_H * s);
   const offersBodyH = model.tradeOffers.length * Math.round(ROW_H * s);
 
   const heights = [
@@ -192,6 +196,7 @@ export function layoutBuilding(
     showProduction ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
     stockRowCount > 0 ? sectionAt(0, 0, w, stockBodyH, s).frame.h : 0,
     sectionAt(0, 0, w, workersBodyH, s).frame.h,
+    homeQualityBodyH > 0 ? sectionAt(0, 0, w, homeQualityBodyH, s).frame.h : 0,
     offersBodyH > 0 ? sectionAt(0, 0, w, offersBodyH, s).frame.h : 0,
   ];
   const gaps = gap * (heights.filter((h) => h > 0).length - 1);
@@ -256,6 +261,16 @@ export function layoutBuilding(
     stockTabHits = stockTabRects(stockTabStrip, s, DETAILS_STOCK_TAB_COUNT);
   }
   const workers = next(workersBodyH);
+  const homeQuality = homeQualityBodyH > 0 ? next(homeQualityBodyH) : null;
+  const homeQualityRows: Rect[] =
+    homeQuality === null
+      ? []
+      : model.homeQuality.map((_, i) => ({
+          x: homeQuality.body.x,
+          y: homeQuality.body.y + i * Math.round(ROW_H * s),
+          w: homeQuality.body.w,
+          h: Math.round(ROW_H * s),
+        }));
   const offers = offersBodyH > 0 ? next(offersBodyH) : null;
   const offerRows: Rect[] =
     offers === null
@@ -285,6 +300,8 @@ export function layoutBuilding(
     stockRows,
     stockTabHits,
     workers,
+    homeQuality,
+    homeQualityRows,
     offers,
     offerRows,
   };

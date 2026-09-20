@@ -33,7 +33,12 @@ import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { mapFingerprint } from './inspect/map-fingerprint.js';
-import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
+import {
+  type HomeQualityView,
+  homeQualityView,
+  takeSnapshot,
+  type WorldSnapshot,
+} from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
 import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
@@ -156,6 +161,11 @@ export class Simulation {
 
   missionPresentation(): MissionPresentationView {
     return missionPresentation(this.world);
+  }
+
+  /** Detached household-quality pools for a home, or null before it has received a household good. */
+  homeQuality(home: Entity): HomeQualityView | null {
+    return homeQualityView(this.snapshot(), home);
   }
 
   landscapeEdits(): LandscapeEditView {

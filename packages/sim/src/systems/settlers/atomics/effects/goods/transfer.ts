@@ -9,6 +9,8 @@ import {
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
+import { depositHomeQuality, homeQualityUseFor, spendHomeQuality } from '../../../../family/home-quality.js';
+import { isFood } from '../../../../readviews/index.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
@@ -68,6 +70,11 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   }
   const load = world.tryGet(settler, Carrying);
   if (load === undefined || load.amount <= 0) return 0;
+  const qualityMoved = depositHomeQuality(world, ctx, store, load.goodType, load.amount);
+  if (qualityMoved > 0) {
+    shrinkCarry(world, settler, load, qualityMoved);
+    return qualityMoved;
+  }
   const stock = world.tryGet(store, Stockpile);
   if (stock === undefined) return 0;
 
@@ -76,7 +83,18 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   const moved = Math.min(load.amount, Math.max(0, slot.capacity - have));
   if (moved <= 0) return 0;
 
-  setStockAmount(world, store, slot.goodType, have + moved);
+  let deposited = moved;
+  // A stocked home with crockery turns each delivered food unit into two before it reaches the larder.
+  // Crockery spends one durability use per delivery batch, matching an original routine.
+  const cooking = homeQualityUseFor(ctx, 'cooking');
+  if (
+    moved > 0 &&
+    isFood(ctx, slot.goodType) &&
+    cooking !== undefined &&
+    spendHomeQuality(world, store, 'cooking', cooking.useCost)
+  )
+    deposited += 1;
+  setStockAmount(world, store, slot.goodType, Math.min(slot.capacity, have + deposited));
   shrinkCarry(world, settler, load, moved);
   return moved;
 }

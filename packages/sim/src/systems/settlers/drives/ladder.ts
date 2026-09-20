@@ -137,7 +137,11 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   }
   // The housewife rung: a woman takes no trade - her work is stocking the family larder. Above the
   // carry-delivery rung so food she lifted for the pantry goes home, not to the nearest store.
-  if (world.has(e, Female) && planWomanHoard(world, ctx, terrain, e, pass.externalFood, limit)) return;
+  if (
+    world.has(e, Female) &&
+    planWomanHoard(world, ctx, terrain, e, pass.externalFood, pass.externalQuality, limit)
+  )
+    return;
 
   const plan: PlannerContext = {
     world,

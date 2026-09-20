@@ -22,12 +22,16 @@ import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
+  BUILDING_HOME_02,
   BUILDING_JOINERY,
   BUILDING_MILL,
   BUILDING_WATCHTOWER,
   GOOD_CATTLE,
+  GOOD_CROCKERY,
   GOOD_FLOUR,
+  GOOD_FURNITURE,
   GOOD_GOLD,
+  GOOD_HOLY_OIL,
   GOOD_IRON,
   GOOD_LEATHER,
   GOOD_MEAT,
@@ -275,6 +279,96 @@ describe('selection details panel model', () => {
     });
     expect(model.kind === 'building' && model.upgradable).toBe(true);
     expect(model.kind === 'building' && model.upgradeBlockedReason).toBe('Requires collector');
+  });
+
+  it('shows exact household durability, remaining uses, and the mature home holy fire', () => {
+    const quality = { cooking: 240, rest: 75, piety: 2000 };
+    const mature = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_HOME_02, {
+          components: {
+            Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
+            HomeQuality: quality,
+          },
+        }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (mature.kind !== 'building') throw new Error('expected a building panel');
+    expect(mature.homeQuality).toEqual([
+      expect.objectContaining({
+        effect: 'cooking',
+        goodId: 'crockery',
+        value: 240,
+        capacity: 500,
+        uses: 48,
+      }),
+      expect.objectContaining({
+        effect: 'rest',
+        goodId: 'furniture',
+        value: 75,
+        capacity: 500,
+        uses: 15,
+      }),
+      expect.objectContaining({
+        effect: 'piety',
+        goodId: 'holy_oil',
+        value: 2000,
+        capacity: 5000,
+        holyFireActive: true,
+      }),
+    ]);
+    expect(mature.homeQuality.find((row) => row.effect === 'piety')?.uses).toBeUndefined();
+    expect(mature.homeQuality.map((row) => row.goodId)).toEqual([
+      sandboxCtx().goods.find((good) => good.typeId === GOOD_CROCKERY)?.id,
+      sandboxCtx().goods.find((good) => good.typeId === GOOD_FURNITURE)?.id,
+      sandboxCtx().goods.find((good) => good.typeId === GOOD_HOLY_OIL)?.id,
+    ]);
+
+    const young = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_HOME_00, {
+          components: { HomeQuality: quality },
+        }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (young.kind !== 'building') throw new Error('expected a building panel');
+    expect(young.homeQuality.map((row) => row.effect)).toEqual(['cooking', 'rest']);
+
+    const dry = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_HOME_02, {
+          components: {
+            Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
+            HomeQuality: { ...quality, piety: 0 },
+          },
+        }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (dry.kind !== 'building') throw new Error('expected a building panel');
+    expect(dry.homeQuality.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
+
+    const site = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_HOME_02, {
+          built: 0,
+          components: {
+            Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: 0, level: 2 },
+            HomeQuality: quality,
+            UnderConstruction: { labor: 0 },
+          },
+        }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (site.kind !== 'building') throw new Error('expected a building panel');
+    expect(site.homeQuality).toEqual([]);
   });
 
   it('offers Upgrade on a built chained home and Cancel on a running upgrade site - never both', () => {

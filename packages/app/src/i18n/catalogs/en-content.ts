@@ -273,6 +273,11 @@ export const enContent = {
       summary:
         'A druid brews holy oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and coin in the large one.',
     },
+    'household-goods': {
+      title: 'Household goods',
+      summary:
+        'Potters, joiners and druids supply a mature home with crockery, furniture and holy oil for better meals, rest and prayer.',
+    },
     warehouse: {
       title: 'Warehouse logistics',
       summary: 'Carriers collect loose goods until each warehouse capacity is reached.',

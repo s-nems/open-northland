@@ -20,6 +20,14 @@ export interface CatalogGood {
   /** False for the animal, vehicle and special tokens, which are herded, driven or sentinel rather than
    *  carried. Which carried wares a store slots is the sandbox store set's call, not this flag's. */
   readonly storable: boolean;
+  readonly homeQuality?: {
+    readonly effect: 'cooking' | 'rest' | 'piety';
+    readonly deliveryValue: number;
+    readonly capacity: number;
+    readonly useCost: number;
+    readonly fetchBelow: number;
+    readonly minimumHomeLevel: number;
+  };
 }
 
 /** The extended goods in ir.json typeId order. */
@@ -31,7 +39,20 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 111, id: 'flour', name: 'Flour', storable: true },
   { typeId: 112, id: 'honey', name: 'Honey', storable: true },
   { typeId: 113, id: 'herb', name: 'Herb', storable: true },
-  { typeId: 115, id: 'holy_oil', name: 'Holy Oil', storable: true },
+  {
+    typeId: 115,
+    id: 'holy_oil',
+    name: 'Holy Oil',
+    storable: true,
+    homeQuality: {
+      effect: 'piety',
+      deliveryValue: 1000,
+      capacity: 5000,
+      useCost: 3,
+      fetchBelow: 3000,
+      minimumHomeLevel: 2,
+    },
+  },
   { typeId: 116, id: 'food_simple', name: 'Simple Food', storable: true },
   { typeId: 117, id: 'food_extra', name: 'Fine Food', storable: true },
   // Fruit (118) is curated out of this catalog, not the IR: its `goods all` record reuses bread's frames,
@@ -46,8 +67,34 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
   { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },
   { typeId: 127, id: 'ornament', name: 'Ornament', storable: true },
-  { typeId: 128, id: 'crockery', name: 'Crockery', storable: true },
-  { typeId: 129, id: 'furniture', name: 'Furniture', storable: true },
+  {
+    typeId: 128,
+    id: 'crockery',
+    name: 'Crockery',
+    storable: true,
+    homeQuality: {
+      effect: 'cooking',
+      deliveryValue: 100,
+      capacity: 500,
+      useCost: 5,
+      fetchBelow: 100,
+      minimumHomeLevel: 0,
+    },
+  },
+  {
+    typeId: 129,
+    id: 'furniture',
+    name: 'Furniture',
+    storable: true,
+    homeQuality: {
+      effect: 'rest',
+      deliveryValue: 100,
+      capacity: 500,
+      useCost: 5,
+      fetchBelow: 100,
+      minimumHomeLevel: 0,
+    },
+  },
   { typeId: 130, id: 'shoes', name: 'Shoes', storable: true },
   { typeId: 131, id: 'tool_wooden', name: 'Wooden Tool', storable: true },
   { typeId: 132, id: 'tool_iron', name: 'Iron Tool', storable: true },
@@ -63,17 +110,67 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 141, id: 'sword_shord', name: 'Short Sword', storable: true },
   { typeId: 142, id: 'sword_long', name: 'Long Sword', storable: true },
   { typeId: 143, id: 'mead', name: 'Mead', storable: true },
-  { typeId: 144, id: 'potion_food_small', name: 'Small Food Potion', storable: true },
-  { typeId: 145, id: 'potion_food_big', name: 'Large Food Potion', storable: true },
-  { typeId: 146, id: 'potion_stamina_small', name: 'Small Stamina Potion', storable: true },
-  { typeId: 147, id: 'potion_stamina_big', name: 'Large Stamina Potion', storable: true },
-  { typeId: 148, id: 'potion_heal_small', name: 'Small Healing Potion', storable: true },
-  { typeId: 149, id: 'potion_heal_big', name: 'Large Healing Potion', storable: true },
+  {
+    typeId: 144,
+    id: 'potion_food_small',
+    name: 'Small Food Potion',
+    storable: true,
+  },
+  {
+    typeId: 145,
+    id: 'potion_food_big',
+    name: 'Large Food Potion',
+    storable: true,
+  },
+  {
+    typeId: 146,
+    id: 'potion_stamina_small',
+    name: 'Small Stamina Potion',
+    storable: true,
+  },
+  {
+    typeId: 147,
+    id: 'potion_stamina_big',
+    name: 'Large Stamina Potion',
+    storable: true,
+  },
+  {
+    typeId: 148,
+    id: 'potion_heal_small',
+    name: 'Small Healing Potion',
+    storable: true,
+  },
+  {
+    typeId: 149,
+    id: 'potion_heal_big',
+    name: 'Large Healing Potion',
+    storable: true,
+  },
   { typeId: 150, id: 'amulet_food', name: 'Amulet of Plenty', storable: true },
-  { typeId: 151, id: 'amulet_stamina', name: 'Amulet of Stamina', storable: true },
-  { typeId: 152, id: 'amulet_strength', name: 'Amulet of Strength', storable: true },
-  { typeId: 153, id: 'amulet_defense', name: 'Amulet of Defense', storable: true },
-  { typeId: 154, id: 'amulet_crithit', name: 'Amulet of the Critical Blow', storable: true },
+  {
+    typeId: 151,
+    id: 'amulet_stamina',
+    name: 'Amulet of Stamina',
+    storable: true,
+  },
+  {
+    typeId: 152,
+    id: 'amulet_strength',
+    name: 'Amulet of Strength',
+    storable: true,
+  },
+  {
+    typeId: 153,
+    id: 'amulet_defense',
+    name: 'Amulet of Defense',
+    storable: true,
+  },
+  {
+    typeId: 154,
+    id: 'amulet_crithit',
+    name: 'Amulet of the Critical Blow',
+    storable: true,
+  },
   { typeId: 155, id: 'amulet_speed', name: 'Amulet of Speed', storable: true },
   // Real goodtypes, but herded, driven or sentinel rather than warehoused, so no stock slot and no icon.
   { typeId: 156, id: 'prey', name: 'Game', storable: false },

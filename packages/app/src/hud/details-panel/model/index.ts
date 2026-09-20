@@ -1,4 +1,4 @@
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, homeQualityView, systems, type WorldSnapshot } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { JOB_IDLE } from '../../../catalog/jobs.js';
 import { characterName } from '../../../game/character-names/index.js';
@@ -34,6 +34,7 @@ import {
   buildingDef,
   buildingTitle,
   type Comp,
+  goodLabel,
   heroFallbackName,
   jobDisplayName,
   type UnitPanelModelContext,
@@ -55,6 +56,7 @@ export type {
   BuildingPanelModel,
   ConstructionModel,
   ConstructionRow,
+  HomeQualityRow,
   HomeResidentsModel,
   ProductionModel,
   StockRow,
@@ -163,6 +165,32 @@ export function buildUnitPanelModel(
     const shelterCapacity = def?.shelterCapacity ?? 0;
     const defenseEnabled = ent.components.DefenceMode !== undefined;
     const sheltered = shelterClaimCount(snapshot, entityId);
+    const level = num(b.level) ?? 0;
+    const finished = ent.components.UnderConstruction === undefined && pct(num(b.built)) >= 100;
+    const pools = homeQualityView(snapshot, entityId) ?? { cooking: 0, rest: 0, piety: 0 };
+    const effectOrder = { cooking: 0, rest: 1, piety: 2 } as const;
+    const homeQuality =
+      def?.kind === 'home' && finished
+        ? ctx.goods
+            .flatMap((good) => {
+              const use = good.homeQuality;
+              if (use === undefined || level < use.minimumHomeLevel) return [];
+              const value = pools[use.effect];
+              return [
+                {
+                  effect: use.effect,
+                  goodId: good.id,
+                  label: goodLabel(ctx, good.typeId),
+                  value,
+                  capacity: use.capacity,
+                  ...(use.effect === 'piety'
+                    ? { holyFireActive: value > 0 }
+                    : { uses: Math.floor(value / use.useCost) }),
+                },
+              ];
+            })
+            .sort((a, b) => effectOrder[a.effect] - effectOrder[b.effect])
+        : [];
     return {
       kind: 'building',
       entityId,
@@ -172,7 +200,7 @@ export function buildUnitPanelModel(
       owner: `#${ownerPlayerOf(ent) ?? '-'}`,
       tribe: tribeName(num(b.tribe), contentTribeName(ctx, num(b.tribe))),
       tribeId: num(b.tribe),
-      level: num(b.level) ?? 0,
+      level,
       builtPct: pct(num(b.built)),
       health: healthBar(ent),
       stock: stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
@@ -184,6 +212,7 @@ export function buildUnitPanelModel(
               capacity: def.homeSize,
             }
           : null,
+      homeQuality,
       showDefense: shelterCapacity > 0,
       defenseEnabled,
       garrison: sheltered > 0 ? { sheltered, capacity: shelterCapacity } : null,

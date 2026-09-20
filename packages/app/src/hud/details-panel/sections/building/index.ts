@@ -5,6 +5,7 @@ import type { BuildingPanelModel } from '../../model/index.js';
 import { drawConstructionSection } from './construction.js';
 import { drawDefenceSection } from './defence.js';
 import { drawGeneralSection } from './general.js';
+import { drawHomeQualitySection } from './home-quality.js';
 import { drawOffersSection } from './offers.js';
 import { drawProductionSection } from './production.js';
 import { drawStockSection } from './stock.js';
@@ -26,5 +27,6 @@ export function drawBuilding(
   drawProductionSection(chrome, layout, model, s);
   drawStockSection(chrome, layout, model, ui, activeTab, s);
   drawWorkersSection(chrome, layout, model, ui, s);
+  drawHomeQualitySection(chrome, layout, model, s);
   drawOffersSection(chrome, layout, model, s);
 }

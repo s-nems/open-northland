@@ -105,6 +105,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
         name: extras.goodNames?.get(good.id) ?? good.name,
         weight: 1,
         ...(equip !== undefined ? { equip } : {}),
+        ...(good.homeQuality !== undefined ? { homeQuality: good.homeQuality } : {}),
         ...(Object.keys(atomics).length > 0 ? { atomics } : {}),
         ...(good.typeId === GOOD_WHEAT ? { farming: FARMING_BALANCE_BY_ID.wheat } : {}),
       };
