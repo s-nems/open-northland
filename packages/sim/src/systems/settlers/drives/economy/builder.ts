@@ -16,7 +16,9 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { claimWorkCell } from '../spacing.js';
 import type { ConstructionTaskClaims } from './construction-task-claims.js';
 import { boundConstructionSite } from './site-staff.js';
-import { fetchNeededMaterial, hasFetchableMaterial } from './site-supply.js';
+import { constructionMaterialResolver } from './site-supply.js';
+
+type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
  * BUILD - keep a useful automatic crew assignment stable, otherwise move the builder to the nearest
@@ -34,6 +36,7 @@ export function planBuilder(
     world.remove(e, SiteAssignment);
     return false;
   }
+  const materials = constructionMaterialResolver(plan);
 
   const assigned = world.tryGet(e, SiteAssignment);
   const pinned =
@@ -42,7 +45,7 @@ export function planBuilder(
   const locked = pinned ?? bound;
   if (locked !== null) {
     stampAssignment(plan, locked, pinned !== null);
-    if (!workAtSite(plan, spacing, claims, locked)) waitAtSite(plan, spacing, locked);
+    if (!workAtSite(plan, spacing, claims, materials, locked)) waitAtSite(plan, spacing, locked);
     return true;
   }
 
@@ -57,14 +60,14 @@ export function planBuilder(
   const isReachable = (site: Entity): boolean =>
     automaticSiteMatches(plan, spacing, site) && avoidSite?.(site) !== true;
   const hasTask = (site: Entity): boolean =>
-    isReachable(site) && (claims.hasHammerWork(site) || hasFetchableMaterial(plan, site));
+    isReachable(site) && (claims.hasHammerWork(site) || materials.has(site));
 
   // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
   // equally valid sites every time one hammer atomic completes.
   const current = assigned?.pinned === false && hasTask(assigned.site) ? assigned.site : null;
   if (current !== null) {
     stampAssignment(plan, current, false);
-    if (workAtSite(plan, spacing, claims, current)) return true;
+    if (workAtSite(plan, spacing, claims, materials, current)) return true;
   }
 
   const site = nearestConstructionSite(
@@ -79,7 +82,7 @@ export function planBuilder(
   );
   if (site !== null) {
     stampAssignment(plan, site, false);
-    if (workAtSite(plan, spacing, claims, site)) return true;
+    if (workAtSite(plan, spacing, claims, materials, site)) return true;
   }
 
   // Automatic crew membership represents useful work rather than a parking place. Releasing it here
@@ -93,6 +96,7 @@ function workAtSite(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   claims: ConstructionTaskClaims,
+  materials: MaterialResolver,
   site: Entity,
 ): boolean {
   if (
@@ -102,7 +106,7 @@ function workAtSite(
   ) {
     return true;
   }
-  if (fetchNeededMaterial(plan, site)) return true;
+  if (materials.fetch(site)) return true;
   return startHammer(plan, spacing, claims, site);
 }
 

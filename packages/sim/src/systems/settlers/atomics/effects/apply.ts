@@ -12,6 +12,7 @@ import {
   grantWorkExperience,
 } from '../../../progression/index.js';
 import { erectSignpost } from '../../../signposts/index.js';
+import type { SourceSupplyReservations } from '../../../stores/index.js';
 import { loadCart, unloadCart } from '../../../trade/index.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
@@ -40,6 +41,7 @@ export function applyEffect(
   ctx: SystemContext,
   settler: Entity,
   atomic: CompletedAtomic,
+  sourceReservations: SourceSupplyReservations,
 ): number | undefined {
   const effect = atomic.effect;
   switch (effect.kind) {
@@ -59,7 +61,7 @@ export function applyEffect(
     case 'fish':
       return;
     case 'pickup':
-      pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
+      pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount, sourceReservations);
       return;
     case 'draw':
       drawUtilityGood(world, settler, effect.goodType);

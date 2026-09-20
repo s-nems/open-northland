@@ -108,6 +108,11 @@ export class InteractionCellIndex {
     }
   }
 
+  /** Whether the seeker-independent candidate filter admitted anything. */
+  hasCandidates(): boolean {
+    return this.candidates.length > 0;
+  }
+
   /**
    * The nearest candidate to `here` that `accept` qualifies, by the `(distance, cell-id, entity-id)` order,
    * or null when none does. `accept` must be side-effect-free: a ring miss re-runs it on the linear

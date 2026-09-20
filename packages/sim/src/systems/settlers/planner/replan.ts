@@ -127,6 +127,9 @@ export function releaseStaleIntent(
   // settler across the map.
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (atomicHoldsSettler(world, e)) return false;
+  // A non-atomic owner has diverted this settler from its construction errand. Release both promises
+  // before a combat, flight, family or player-order route hits the travel early-out below.
+  if (anotherSystemOwns(world, e)) releaseSupplyRun(world, e, inbound);
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {

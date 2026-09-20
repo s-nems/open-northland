@@ -20,8 +20,52 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
  * instead of racing to the same unit.
  */
 export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
-  const fetch = fetchableMaterial(plan, site);
-  if (fetch === null) return false;
+  return constructionMaterialResolver(plan).fetch(site);
+}
+
+/** A one-builder resolver: site selection shares one source lookup per good, then consumes the chosen
+ * site's cached payload. Reachability and failed-goal state are constant for this resolver's lifetime. */
+export function constructionMaterialResolver(plan: PlannerContext): {
+  has(site: Entity): boolean;
+  fetch(site: Entity): boolean;
+} {
+  const bySite = new Map<Entity, FetchableMaterial | null>();
+  const needsBySite = new Map<
+    Entity,
+    ReadonlyArray<{ readonly goodType: number; readonly amount: number }>
+  >();
+  const sourceByGood = new Map<number, MaterialSource | null>();
+  const sourceFor = (goodType: number): MaterialSource | null => {
+    const cached = sourceByGood.get(goodType);
+    if (cached !== undefined || sourceByGood.has(goodType)) return cached ?? null;
+    const source = materialSource(plan, goodType);
+    sourceByGood.set(goodType, source);
+    return source;
+  };
+  const resolve = (site: Entity): FetchableMaterial | null => {
+    const cached = bySite.get(site);
+    if (cached !== undefined || bySite.has(site)) return cached ?? null;
+    let needs = needsBySite.get(site);
+    if (needs === undefined) {
+      needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.inbound);
+      needsBySite.set(site, needs);
+    }
+    const fetch = fetchableMaterial(plan, site, needs, sourceFor);
+    bySite.set(site, fetch);
+    return fetch;
+  };
+  return {
+    has: (site) => resolve(site) !== null,
+    fetch: (site) => {
+      const fetch = resolve(site);
+      if (fetch === null) return false;
+      startMaterialFetch(plan, site, fetch);
+      return true;
+    },
+  };
+}
+
+function startMaterialFetch(plan: PlannerContext, site: Entity, fetch: FetchableMaterial): void {
   const { world, ctx, terrain, entity: e, here } = plan;
   const settler = plan;
   stampSupplyRun(world, e, plan.inbound, {
@@ -33,12 +77,11 @@ export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, fetch.source, here), () =>
     startPickup(world, ctx, e, settler, fetch.source, fetch.goodType, fetch.amount),
   );
-  return true;
 }
 
 /** Whether `site` has a missing material with reachable, unreserved source stock. */
 export function hasFetchableMaterial(plan: PlannerContext, site: Entity): boolean {
-  return fetchableMaterial(plan, site) !== null;
+  return constructionMaterialResolver(plan).has(site);
 }
 
 interface FetchableMaterial {
@@ -47,27 +90,45 @@ interface FetchableMaterial {
   readonly amount: number;
 }
 
+interface MaterialSource {
+  readonly source: Entity;
+  readonly available: number;
+}
+
 /** Pick without claiming, so site allocation and the claiming drive ask exactly the same question. */
-function fetchableMaterial(plan: PlannerContext, site: Entity): FetchableMaterial | null {
-  const { world, ctx, terrain, entity: e, here, targets } = plan;
+function fetchableMaterial(
+  plan: PlannerContext,
+  site: Entity,
+  needs: ReadonlyArray<{ readonly goodType: number; readonly amount: number }>,
+  sourceFor: (goodType: number) => MaterialSource | null,
+): FetchableMaterial | null {
+  const { world, ctx, terrain, here, targets } = plan;
   if (constructionWorkCell(world, ctx, terrain, site, targets.yard.blocked, here) === null) return null;
-  const avoid = unreachableGoalVeto(world, ctx, e);
-  for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
-    const src = nearestStoreHolding(
-      targets.bands,
-      world,
-      here,
-      need.goodType,
-      plan.owner,
-      plan.limit ?? undefined,
-      avoid,
-      plan.inbound,
-    );
-    if (src == null) continue;
-    const stock = accessibleStockAmounts(world, src)?.get(need.goodType) ?? 0;
-    const available = stock - reservedSourceSupplyOf(plan.inbound, src, need.goodType);
-    const amount = Math.min(need.amount, available, CARRY_CAPACITY);
-    if (amount > 0) return { source: src, goodType: need.goodType, amount };
+  for (const need of needs) {
+    const source = sourceFor(need.goodType);
+    if (source === null) continue;
+    const amount = Math.min(need.amount, source.available, CARRY_CAPACITY);
+    if (amount > 0) return { source: source.source, goodType: need.goodType, amount };
   }
   return null;
+}
+
+function materialSource(plan: PlannerContext, goodType: number): MaterialSource | null {
+  const { world, ctx, entity: e, here, targets } = plan;
+  const band = targets.bands.holding(goodType);
+  if (!band.hasCandidates()) return null;
+  const source = nearestStoreHolding(
+    targets.bands,
+    world,
+    here,
+    goodType,
+    plan.owner,
+    plan.limit ?? undefined,
+    unreachableGoalVeto(world, ctx, e),
+    plan.inbound,
+  );
+  if (source === null) return null;
+  const stock = accessibleStockAmounts(world, source)?.get(goodType) ?? 0;
+  const available = stock - reservedSourceSupplyOf(plan.inbound, source, goodType);
+  return available > 0 ? { source, available } : null;
 }

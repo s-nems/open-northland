@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  Fleeing,
   JobAssignment,
   MoveGoal,
   Owner,
@@ -20,7 +21,12 @@ import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
-import { deliveredConstructionFraction } from '../../../src/systems/stores/index.js';
+import {
+  collectInboundSupply,
+  deliveredConstructionFraction,
+  inboundSupplyOf,
+  reservedSourceSupplyOf,
+} from '../../../src/systems/stores/index.js';
 
 import {
   BUILD_HOUSE_ATOMIC,
@@ -222,6 +228,48 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     pickupFromStore(sim.world, ctxOf(sim), unrelated, warehouse, STONE, 1);
     expect(sim.world.has(unrelated, Carrying)).toBe(false);
     expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE)).toBe(1);
+  });
+
+  it('releases a drained source and retargets the construction run instead of covering the bill forever', () => {
+    const sim = new Simulation({ seed: 18, content: constructionContent(), map: grassMap(40, 3) });
+    const site = siteAt(sim, HOUSE, 36, 1);
+    const drained = builtBuildingAt(sim, HEADQUARTERS, 8, 1, [[STONE, 1]]);
+    const replacement = builtBuildingAt(sim, HEADQUARTERS, 28, 1, [[STONE, 1]]);
+    const builder = builderAt(sim, 2, 1);
+    sim.world.add(builder, SiteAssignment, { site, pinned: true });
+
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(builder, SupplyRun).source).toBe(drained);
+    sim.world.mut(drained, Stockpile).amounts.set(STONE, 0);
+
+    let retargeted = false;
+    for (let tick = 0; tick < 600 && !retargeted; tick++) {
+      sim.step();
+      retargeted = sim.world.tryGet(builder, SupplyRun)?.source === replacement;
+    }
+
+    expect(retargeted).toBe(true);
+    const tally = collectInboundSupply(sim.world);
+    expect(reservedSourceSupplyOf(tally, drained, STONE)).toBe(0);
+    expect(reservedSourceSupplyOf(tally, replacement, STONE)).toBe(1);
+    expect(inboundSupplyOf(tally, site, STONE)).toBe(1);
+  });
+
+  it('releases source and destination promises when flight diverts a travelling construction runner', () => {
+    const sim = new Simulation({ seed: 20, content: constructionContent(), map: grassMap(8, 2) });
+    const site = siteAt(sim, HOUSE, 6, 0);
+    const source = builtBuildingAt(sim, HEADQUARTERS, 4, 0, [[STONE, 1]]);
+    const builder = builderAt(sim, 0, 0);
+    sim.world.add(builder, SupplyRun, { site, source, goodType: STONE, amount: 1 });
+    sim.world.add(builder, Fleeing, { repathAt: 0, calmUntil: null });
+    sim.world.add(builder, MoveGoal, { cell: 1 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(builder, SupplyRun)).toBe(false);
+    const tally = collectInboundSupply(sim.world);
+    expect(reservedSourceSupplyOf(tally, source, STONE)).toBe(0);
+    expect(inboundSupplyOf(tally, site, STONE)).toBe(0);
   });
 
   it('drops once and does not re-fetch when a pinned site has no legal delivery perimeter', () => {

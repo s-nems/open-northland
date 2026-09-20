@@ -9,5 +9,8 @@ export { planFisher } from './fishing.js';
 export { planGatherer } from './gatherer.js';
 export { planCarrierHaul, planPorter } from './hauling.js';
 export { planSiteStaff } from './site-staff.js';
-export { hasFetchableMaterial } from './site-supply.js';
+export {
+  constructionMaterialResolver,
+  hasFetchableMaterial,
+} from './site-supply.js';
 export { planProducer, planWorkshopSupplier, type WorkSeatClaims } from './workshop/index.js';

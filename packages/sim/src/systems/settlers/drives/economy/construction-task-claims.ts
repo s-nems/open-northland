@@ -19,6 +19,7 @@ import type { PlannerSpacing } from '../../planner/spacing.js';
  */
 export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
+  private readonly strikeCapacityBySite = new Map<Entity, number>();
 
   constructor(
     private readonly world: World,
@@ -47,7 +48,7 @@ export class ConstructionTaskClaims {
 
   /** Whether at least one already-delivered strike remains unclaimed. */
   hasHammerWork(site: Entity): boolean {
-    return (this.hammerBySite.get(site) ?? 0) < remainingConstructionStrikes(this.world, this.ctx, site);
+    return (this.hammerBySite.get(site) ?? 0) < this.strikeCapacity(site);
   }
 
   /** Whether an active, in-flight, or newly planned builder already holds a hammer strike here. */
@@ -64,5 +65,15 @@ export class ConstructionTaskClaims {
 
   private reserveHammer(site: Entity): void {
     this.hammerBySite.set(site, (this.hammerBySite.get(site) ?? 0) + 1);
+  }
+
+  /** Labor and deliveries cannot change during the planner system, so one demand read serves the pass. */
+  private strikeCapacity(site: Entity): number {
+    let capacity = this.strikeCapacityBySite.get(site);
+    if (capacity === undefined) {
+      capacity = remainingConstructionStrikes(this.world, this.ctx, site);
+      this.strikeCapacityBySite.set(site, capacity);
+    }
+    return capacity;
   }
 }

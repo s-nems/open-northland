@@ -61,6 +61,9 @@ describe('the full strategic registry - determinism and replay', () => {
     timeout: 60_000,
   }, () => {
     const sim = aiSim(21);
+    // This strategic fixture has no restorative sleep clips; personal needs would eventually park the
+    // whole crew forever. Exercise the opening order independently of that missing fixture content.
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HQ_TYPE,

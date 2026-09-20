@@ -27,6 +27,7 @@ import {
   ownedWoodcutter,
   sim,
   VIKING,
+  WOOD,
   WOODCUTTER,
   woodAt,
 } from './support.js';
@@ -45,7 +46,7 @@ describe('moveUnit order', () => {
     expect(s.world.has(e, PlayerOrder)).toBe(false);
   });
 
-  it('releases a construction run\'s source and destination promises when the player interrupts it', () => {
+  it("releases a construction run's source and destination promises when the player interrupts it", () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     const source = s.world.create();

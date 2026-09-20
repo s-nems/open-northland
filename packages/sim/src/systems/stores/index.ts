@@ -27,11 +27,14 @@ export {
 } from './operators.js';
 export {
   collectInboundSupply,
+  collectSourceSupplyReservations,
   type InboundSupplyTally,
   inboundSupplyOf,
+  releaseSourceSupplyReservation,
   releaseSupplyRun,
-  reservedSourceSupplyInWorld,
   reservedSourceSupplyOf,
+  type SourceSupplyReservations,
+  sourceSupplyReservationOf,
   stampSupplyRun,
 } from './supply-tally.js';
 export {
