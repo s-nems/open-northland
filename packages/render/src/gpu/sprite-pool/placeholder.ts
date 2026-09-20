@@ -17,9 +17,9 @@ type BoxKind = Exclude<SpriteKind, 'projectile'>;
  * fallback until the effects bmds are decoded.
  */
 export const ARROW = {
-  shaft: { colour: 0x765038, tailX: -12, width: 1.25 },
+  shaft: { colour: 0x946d49, tailX: -12, width: 1.25 },
   head: { colour: 0x9ba3a0, edgeColour: 0x5f6663, tipX: 12, baseX: 8.5, halfSpan: 1.5 },
-  fletching: { colour: 0x8e8172, apexX: -7, endX: -11, innerX: -10, halfSpan: 1.25 },
+  fletching: { colour: 0x9a8e7f, apexX: -7, endX: -11, innerX: -10, halfSpan: 1.25 },
 } as const;
 
 const KIND_COLOURS: Record<BoxKind, number> = {
