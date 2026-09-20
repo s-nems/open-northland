@@ -928,8 +928,8 @@
 /* ---------- seals, notices ---------- */
 .on-hud .on-seal {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: var(--seal-size);
+  height: var(--seal-size);
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), var(--wax-ok);
   box-shadow:
@@ -944,9 +944,12 @@
   background-color: var(--wax-danger);
 }
 /* The column: frameless, so the map shows between the cards; only its controls take the pointer. */
-/* `--thumb-edge`: where a card's thumbnail box ends and its slate begins, from the card's left. */
+/* `--thumb-edge`: where a card's thumbnail box ends and its slate begins, from the card's left.
+   `--seal-gap`: the clear space on either side of a card's seal, between the thumbnail and the text. */
 .on-hud .on-notices {
   --thumb-edge: 44px;
+  --seal-size: 12px;
+  --seal-gap: 4px;
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -1096,7 +1099,7 @@
   justify-content: center;
   width: 100%;
   min-height: 46px;
-  padding: 6px 4px 6px calc(var(--thumb-edge) + 7px);
+  padding: 6px 4px 6px calc(var(--thumb-edge) + var(--seal-size) + 2 * var(--seal-gap));
   text-align: left;
   border: 0;
   border-radius: 4px;
@@ -1226,11 +1229,11 @@
 .on-hud .on-notices--stacked .on-notice + .on-notice .on-notice__event {
   transform: translateY(calc(var(--covered) / 2));
 }
-/* The seal sits on the thumbnail's right edge, on the line of the text and the ×. */
+/* The seal sits midway between the thumbnail and the text, on the line of the text and the ×. */
 .on-hud .on-notice__card > .on-seal {
   position: absolute;
-  left: calc(var(--thumb-edge) - 10px);
-  top: calc(var(--covered) + (100% - var(--covered)) / 2 - 6px);
+  left: calc(var(--thumb-edge) + var(--seal-gap));
+  top: calc(var(--covered) + (100% - var(--covered)) / 2 - var(--seal-size) / 2);
   z-index: 1;
   transition: top 0.14s;
 }

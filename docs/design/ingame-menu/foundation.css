@@ -555,7 +555,7 @@ button.medallion:hover {
   top: 18px;
   left: 10px;
   bottom: 230px;
-  width: 180px;
+  width: 193px;
   display: flex;
   flex-direction: column;
 }
@@ -719,7 +719,7 @@ button.medallion:hover {
   justify-content: center;
   width: 100%;
   min-height: 52px;
-  padding: 7px 10px 7px 57px;
+  padding: 7px 10px 7px 70px;
   text-align: left;
   border: 0;
   border-radius: 4px;
@@ -840,10 +840,11 @@ button.medallion:hover {
   color: var(--text-hi);
   transition: transform 0.14s;
 }
-/* The seal sits on the thumbnail's right edge, on the line of the text and the ×. */
+/* The seal sits midway between the thumbnail (ends at 50 px) and the text (starts at 70 px), on the
+   line of the text and the ×. */
 .seal {
   position: absolute;
-  left: 40px;
+  left: 54px;
   top: calc(var(--covered) + (100% - var(--covered)) / 2 - 6px);
   width: 12px;
   height: 12px;

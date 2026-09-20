@@ -49,7 +49,7 @@ labels, so colour is never the only carrier of state.
   pause / ×1 / ×3 control and the menu medallion. Categories reveal a parchment breakdown on
   hover/focus with dotted leaders.
 - Notifications are frameless cards down the left edge with the settler on a translucent backing, a
-  wax seal on the thumbnail's corner for priority and a go-to chevron on hover. Three seal filters
+  wax seal between the thumbnail and the text for priority and a go-to chevron on hover. Three seal filters
   above the list carry the tally of each weight.
 - Selection details use ledger rows with dotted leaders, small-caps section titles with rules,
   quarter ticks on meters and icon buttons for orders.
@@ -70,7 +70,7 @@ filters are an explicit exception in this mouse/keyboard study.
   card (user rule); content-sized rather than filling the screen vertically; the catalogue scrolls
   inside it once the window would reach the beam.
 - Selection placeholder: 318 px; its contents await the separate panel ticket.
-- Notifications: 160 px, no opaque background in unused column space.
+- Notifications: 173 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px, touching the bottom-left corner.
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum
@@ -220,7 +220,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | --- | --- | --- |
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
-| Notifications | left 10, top 18, width 160, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
+| Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam | one window at a time; Mieszkańcy and Wiedza show a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
@@ -317,7 +317,7 @@ lifetime, dedupe and priority table.
   contact, banner for a changed stance, chest, scroll). A card about another seat (first contact,
   changed stance, a seat out of the game) paints the shield face, the banner cloth or the skull in
   that seat's colour; an own settler's skull is bone ivory. The bronze line glyphs stand in while the
-  atlas is undelivered or fails to load. The seal on the thumbnail's right edge, the event line and the × share one line,
+  atlas is undelivered or fails to load. The seal stands midway between the thumbnail and the event line, 4 px clear of each, and the seal, the event line and the × share one line,
   centred in the card's visible part; the card carries no hairline, the seal alone tells the weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead. Right click, Delete or the ×
