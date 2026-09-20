@@ -23,8 +23,8 @@ import { CYCLE_TICKS, ctxOf, PLANK, sawmill, spawnSettler, WOOD } from './suppor
 const TOOL_WOODEN = 11;
 const TOOL_IRON = 12;
 const CARRIER = 24;
-const CARPENTER_GENERAL_TRACK = 3;
-const CARPENTER_XP_PER_BATCH = 100;
+const CARPENTER_PLANK_TRACK = 4;
+const PLANK_XP_PER_BATCH = 7;
 
 /** The tool's credit fraction, minted exactly as the effects read does (integer percent / 100). */
 const toolFraction = (pct: number) => fx.div(fx.fromInt(pct), fx.fromInt(100));
@@ -63,7 +63,7 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    sim.world.mut(worker, Settler).experience.set(CARPENTER_GENERAL_TRACK, 4 * CARPENTER_XP_PER_BATCH);
+    sim.world.mut(worker, Settler).experience.set(CARPENTER_PLANK_TRACK, 4 * PLANK_XP_PER_BATCH);
     wearTool(sim, worker, TOOL_WOODEN);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(

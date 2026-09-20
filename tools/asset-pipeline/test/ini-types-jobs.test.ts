@@ -70,6 +70,7 @@ describe('extractJobExperience', () => {
         id: 'gatherer_basic',
         name: 'gatherer basic',
         jobType: 33,
+        goodTypes: [],
         experienceFactor: 110,
         source: src,
       },
@@ -79,7 +80,7 @@ describe('extractJobExperience', () => {
         id: 'gatherer_reed',
         name: 'gatherer reed',
         jobType: 33,
-        goodType: 22,
+        goodTypes: [22],
         experienceFactor: 260,
         source: src,
       },
@@ -89,12 +90,30 @@ describe('extractJobExperience', () => {
         id: 'tiller_grain',
         name: 'tiller grain',
         jobType: 34,
-        goodType: 24,
+        goodTypes: [24],
         experienceFactor: 115,
         baseRepeatCounter: 3,
         source: src,
       },
+      // One track can deliberately group several product variants.
+      {
+        typeId: 59,
+        id: 'healer_potions',
+        name: 'healer potions',
+        jobType: 30,
+        goodTypes: [44, 45],
+        experienceFactor: 100,
+        source: src,
+      },
     ]);
+  });
+
+  it('keeps only the two good slots the record holds', () => {
+    const tracks = extractJobExperience(
+      parseIniSections('[humanjobexperiencetype]\ntype 1\njob 30\ngood 44 45 46\n'),
+      { file: 'f.ini' },
+    );
+    expect(tracks[0]?.goodTypes).toEqual([44, 45]);
   });
 
   it('throws on a record missing the required numeric `type`', () => {

@@ -36,7 +36,10 @@ export function accrueBonusOutput(
       if (op === undefined) return;
       // Credit before wearing: the cycle that breaks the tool is still a cycle the tool worked, so a tool
       // rated `uses: N` credits N cycles, not N - 1.
-      const bonus = fx.add(operatorProductionBonus(world, ctx, op), toolProductionBonus(world, ctx, op));
+      const bonus = fx.add(
+        operatorProductionBonus(world, ctx, op, cycle.goodType),
+        toolProductionBonus(world, ctx, op),
+      );
       if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
       if (bonus <= ZERO) return;
       const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
@@ -66,7 +69,7 @@ export function accrueDepositBonus(
   goodType: number,
 ): void {
   const bonus = fx.add(
-    operatorProductionBonus(world, ctx, operator),
+    operatorProductionBonus(world, ctx, operator, goodType),
     toolProductionBonus(world, ctx, operator),
   );
   if (bonus <= ZERO) return;

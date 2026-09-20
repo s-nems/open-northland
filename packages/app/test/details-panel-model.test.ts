@@ -1151,10 +1151,10 @@ describe('selection details panel model', () => {
           typeId: 3,
           id: 'collector_wood',
           jobType: JOB_COLLECTOR,
-          goodType: GOOD_WOOD,
+          goodTypes: [GOOD_WOOD],
           experienceFactor: 10,
         },
-        { typeId: 9, id: 'collector_general', jobType: JOB_COLLECTOR, experienceFactor: 100 },
+        { typeId: 9, id: 'collector_general', jobType: JOB_COLLECTOR, goodTypes: [], experienceFactor: 100 },
       ],
     };
     const snapshot = snapshotOf([
@@ -1217,7 +1217,7 @@ describe('settler upcoming-unlock rows', () => {
           typeId: WOOD_TRACK,
           id: 'collector_wood',
           jobType: JOB_COLLECTOR,
-          goodType: GOOD_WOOD,
+          goodTypes: [GOOD_WOOD],
           experienceFactor: 10,
         },
       ],

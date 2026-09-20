@@ -38,6 +38,18 @@ Completed gathering and production credit both the general and matching speciali
 Construction swings that actually advance labor credit the builder's general track. Carrying and
 combat retain their existing grant triggers. A requirement sums only its explicitly named tracks.
 The no-job-experience mission behavior suppresses accrual through the common grant seam.
+Work speed and production efficiency both read the matching product specialization when one exists
+and fall back to the profession-general track otherwise. Byte evidence:
+`Tool_Human_GetExperienceType_GainedViaWorking` returns the job's general and matching specialized
+record, and every caller (`JobEfficiency_GetBaseRetryCounter`,
+`JobEfficiency_CalculateExperienceFactor`, `an original routine`) substitutes
+the general record when the specialized one is absent. `an original routine` credits both, skipping
+the second when they are the same record.
+
+An experience record belongs to one profession and up to two goods: byte evidence, the record holds
+two good slots and its loader stops filling once both are set, so a longer `good` line loses its extra
+ids. The three druid potion records use the second slot to share one track between a small and a large
+potion.
 
 Saved experience uses a factor-scaled encoding: one counted action contributes its track's
 `experienceFactor`. Requirement readers divide by that factor. This encoding is an internal

@@ -23,7 +23,15 @@ import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
-import { CARRIER, CARRIER_TRACK, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
+import {
+  CARPENTER,
+  CARPENTER_GENERAL_TRACK,
+  CARRIER,
+  CARRIER_TRACK,
+  WOOD,
+  WOOD_TRACK,
+  WOODCUTTER,
+} from './support.js';
 
 describe('experienceBonus - the repeats → bonus curve', () => {
   it('matches the reference table within 2 points at repeats 1..11', () => {
@@ -136,17 +144,40 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
   });
 });
 
-describe('operatorProductionBonus - the transport trade never boosts output', () => {
+describe('operatorProductionBonus - product-specific track with a general fallback', () => {
+  it('uses general trade experience for a product without its own specialization', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const carpenter = settlerAt(sim, { jobType: CARPENTER });
+    sim.world.mut(carpenter, Settler).experience.set(CARPENTER_GENERAL_TRACK, 500);
+    expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
+  });
+
+  it('uses one specialization for every product variant listed on its track', () => {
+    const base = testContent();
+    const sharedTrack = base.jobExperience.find((track) => track.typeId === 4);
+    if (sharedTrack === undefined) throw new Error('fixture lacks its carpenter product track');
+    const content = {
+      ...base,
+      jobExperience: base.jobExperience.map((track) =>
+        track.typeId === sharedTrack.typeId ? { ...track, goodTypes: [...track.goodTypes, WOOD] } : track,
+      ),
+    };
+    const sim = new Simulation({ seed: 1, content });
+    const carpenter = settlerAt(sim, { jobType: CARPENTER });
+    sim.world.mut(carpenter, Settler).experience.set(sharedTrack.typeId, sharedTrack.experienceFactor * 5);
+    expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
+  });
+
   it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = settlerAt(sim, { jobType: CARRIER });
     sim.world.mut(carrier, Settler).experience.set(CARRIER_TRACK, 100_000);
-    expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier)).toBe(ZERO);
+    expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier, WOOD)).toBe(ZERO);
   });
 });
 
 describe('experienceRepeats - raw XP back to completed-work repeats', () => {
-  const track = { typeId: 1, id: 't', jobType: 1, experienceFactor: 100 };
+  const track = { typeId: 1, id: 't', jobType: 1, goodTypes: [], experienceFactor: 100 };
 
   it('divides the accrual rate back out, truncating partial credit', () => {
     expect(experienceRepeats(0, track)).toBe(0);

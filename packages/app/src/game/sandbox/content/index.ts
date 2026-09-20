@@ -31,7 +31,7 @@ const FARMER_WHEAT_XP_TRACK = {
   id: 'farmer_wheat',
   name: 'farmer wheat',
   jobType: JOB_FARMER_SLOT,
-  goodType: GOOD_WHEAT,
+  goodTypes: [GOOD_WHEAT],
   experienceFactor: 0,
   baseRepeatCounter: WHEAT_WORK_REPEATS,
 } as const;
