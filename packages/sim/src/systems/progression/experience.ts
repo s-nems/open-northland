@@ -20,8 +20,8 @@ export function trackFor(
   let general: HumanJobExperienceType | undefined;
   for (const t of ctx.content.jobExperience) {
     if (t.jobType !== jobType) continue;
-    if (t.goodTypes.includes(goodType)) return t;
-    if (t.goodTypes.length === 0 && general === undefined) general = t;
+    if (t.goodType === goodType) return t;
+    if (t.goodType === undefined && general === undefined) general = t;
   }
   return general;
 }
@@ -85,7 +85,7 @@ function accrueTrack(world: World, settler: Entity, track: HumanJobExperienceTyp
 /** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
  *  {@link trackFor} it never resolves a good-specific track. */
 export function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobExperienceType | undefined {
-  return ctx.content.jobExperience.find((t) => t.jobType === jobType && t.goodTypes.length === 0);
+  return ctx.content.jobExperience.find((t) => t.jobType === jobType && t.goodType === undefined);
 }
 
 export function grantProfessionExperience(world: World, ctx: SystemContext, entity: Entity): void {

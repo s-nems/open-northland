@@ -344,8 +344,8 @@ export function aiContent(): ContentSet {
     // The collector's per-good XP tracks (real track ids 4/5 back iron's `needforgood` below; the
     // factors mirror the base data - one completed dig clears the threshold).
     jobExperience: [
-      { typeId: 4, id: 'collector_mud', jobType: 8, goodTypes: [2], experienceFactor: 100 },
-      { typeId: 5, id: 'collector_stone', jobType: 8, goodTypes: [4], experienceFactor: 100 },
+      { typeId: 4, id: 'collector_mud', jobType: 8, goodType: 2, experienceFactor: 100 },
+      { typeId: 5, id: 'collector_stone', jobType: 8, goodType: 4, experienceFactor: 100 },
     ],
     // The civilist's barracks drill: job 6 bound to EXERCISE (atomic 89), whose GET_TRAINING event
     // (type 29) banks the extracted `+1` per repetition. The seat reads this chain to decide whether its

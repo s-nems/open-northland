@@ -300,10 +300,8 @@ function checkJobExperience(set: ContentSet, { goodIds, jobIds }: IdSets): strin
   for (const x of set.jobExperience) {
     if (!jobIds.has(x.jobType))
       errors.push(`jobExperience "${x.id}" references unknown jobType ${x.jobType}`);
-    for (const goodType of x.goodTypes) {
-      if (!goodIds.has(goodType))
-        errors.push(`jobExperience "${x.id}" references unknown goodType ${goodType}`);
-    }
+    if (x.goodType !== undefined && !goodIds.has(x.goodType))
+      errors.push(`jobExperience "${x.id}" references unknown goodType ${x.goodType}`);
   }
   return errors;
 }

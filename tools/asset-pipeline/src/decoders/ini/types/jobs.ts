@@ -10,7 +10,7 @@ import {
 } from '@open-northland/data';
 import type { RuleSection } from '../grammar.js';
 import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
-import { findProps, getInt, getIntList, getIntValues, getStr } from '../props.js';
+import { findProps, getInt, getIntList, getStr } from '../props.js';
 
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
   const jobs: JobType[] = [];
@@ -46,7 +46,6 @@ export function extractJobExperience(
     const typeId = requireTypeId(sec, 'humanjobexperiencetype', src);
     const name = getStr(sec, 'name');
     const jobType = getInt(sec, 'job');
-    const baseRepeatCounter = getInt(sec, 'baserepeatcounter');
     if (jobType === undefined) {
       throw new Error(`ini: [humanjobexperiencetype] without a numeric \`job\` in ${src.file}`);
     }
@@ -56,9 +55,9 @@ export function extractJobExperience(
         id: name ? slug(name) : `jobxp_${typeId}`,
         name,
         jobType,
-        goodTypes: getIntValues(sec, 'good'),
+        goodType: getInt(sec, 'good'),
         experienceFactor: getInt(sec, 'experiencefactor') ?? 0,
-        ...(baseRepeatCounter === undefined ? {} : { baseRepeatCounter }),
+        baseRepeatCounter: getInt(sec, 'baserepeatcounter'),
         source: makeSource(src, 'humanjobexperiencetype'),
       }),
     );

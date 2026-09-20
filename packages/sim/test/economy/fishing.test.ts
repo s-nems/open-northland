@@ -65,7 +65,7 @@ function fishingContent(): ContentSet {
         typeId: 900,
         id: 'fisher_fish',
         jobType: FISHER,
-        goodTypes: [FISH],
+        goodType: FISH,
         experienceFactor: 150,
         baseRepeatCounter: 5,
       },

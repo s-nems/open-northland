@@ -121,11 +121,10 @@ export function experienceLabel(
   track: JobExperienceDef | undefined,
 ): string {
   if (track !== undefined) {
-    if (track.goodTypes.length === 0) return jobDisplayName(ctx, track.jobType);
+    if (track.goodType === undefined) return jobDisplayName(ctx, track.jobType);
     const trackLabels: Readonly<Record<string, string | undefined>> = messages().hud.trackLabels;
     return (
-      trackLabels[track.id] ??
-      `${jobDisplayName(ctx, track.jobType)} - ${track.goodTypes.map((good) => goodLabel(ctx, good)).join(' / ')}`
+      trackLabels[track.id] ?? `${jobDisplayName(ctx, track.jobType)} - ${goodLabel(ctx, track.goodType)}`
     );
   }
   const weaponKey = WEAPON_XP_KEY.get(spec);

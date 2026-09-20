@@ -26,9 +26,8 @@ export type JobType = z.infer<typeof JobType>;
 
 /**
  * One `[humanjobexperiencetype]` record (`Data/logic/humanjobexperiencetypes.ini`): a per-specialization
- * experience track. The original grants experience within a narrow `(job, goods)` pairing ("collector
- * wood" = job 8 + good 5), not per job alone; a "general" track has no goods. Most specializations name
- * one good, while the druid potion tracks each group their small and large variants.
+ * experience track. The original grants experience within a narrow `(job, good)` pair ("collector wood"
+ * = job 8 + good 5), not per job alone; a "general" track omits the good.
  */
 export const HumanJobExperienceType = z.strictObject({
   /** The track's `type` id (unique within this table). */
@@ -38,8 +37,8 @@ export const HumanJobExperienceType = z.strictObject({
   name: z.string().optional(),
   /** The owning job (`job`), cross-checked against the job table at load. */
   jobType: TypeId,
-  /** The specialization's `good` ids; empty on profession-general tracks. */
-  goodTypes: z.array(TypeId).default([]),
+  /** The specialization's good (`good`), when the track is good-specific; absent on "general" tracks. */
+  goodType: TypeId.optional(),
   /** `experiencefactor` - how fast XP accrues on this track; the runtime curve is the ProgressionSystem's. */
   experienceFactor: z.number().int().nonnegative().default(0),
   /** `baserepeatcounter` - strokes per completed work action on the track; the sim's `workRepeatsFor`

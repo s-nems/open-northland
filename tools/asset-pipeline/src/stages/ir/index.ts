@@ -16,7 +16,6 @@ import { applyBuildingGraphicsOverlays } from './building-overlays.js';
 import { fillBuildingRecipes, stripVehicleGoods } from './building-recipes.js';
 import { loadCifTable, loadIniTable } from './cif-tables.js';
 import { buildGatheringPipeline } from './gathering-pipeline.js';
-import { rebindMovedJobExperience } from './job-experience.js';
 import { loadJobGraphics } from './job-graphics.js';
 import { resolveIniSources } from './sources.js';
 import { extractIniTables } from './tables.js';
@@ -87,12 +86,11 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
   const buildingsWithRecipes = fillBuildingRecipes(buildingsSansVehicles, goods);
-  const alignedJobExperience = rebindMovedJobExperience(jobExperience, tribes);
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { mod: basename(roots.mod) } },
     goods,
     jobs,
-    jobExperience: alignedJobExperience,
+    jobExperience,
     buildings: buildingsWithRecipes,
     weapons,
     armor,

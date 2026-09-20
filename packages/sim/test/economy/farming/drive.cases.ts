@@ -45,7 +45,7 @@ function contentWithStrokes(strokes: number): ReturnType<typeof testContent> {
         id: 'farmer_wheat',
         name: 'farmer wheat',
         jobType: FARMER,
-        goodTypes: [WHEAT],
+        goodType: WHEAT,
         experienceFactor: 1,
         baseRepeatCounter: strokes,
       },

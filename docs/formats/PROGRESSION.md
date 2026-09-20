@@ -42,13 +42,6 @@ Production efficiency reads the matching product specialization when one exists 
 profession-general track otherwise, matching `Tool_Human_GetExperienceType_GainedViaWorking` and the
 callers that calculate experience factor and output amount in the the original.
 
-An experience record belongs to one profession and a list of goods. Most specialized records list one
-good, but the three druid potion records each share one track between the small and large potion. During
-content conversion, a specialization left on its base-game profession after CNMod moved its good is
-rebound to the single profession owning that good in `jobEnablesGood`. This repairs iron tools and
-catapults moved to the joiner and wooden spears moved to the armorer. The obsolete herbalist-mushroom
-record remains inert because the collector already has its own mushroom specialization.
-
 Saved experience uses a factor-scaled encoding: one counted action contributes its track's
 `experienceFactor`. Requirement readers divide by that factor. This encoding is an internal
 representation, not a claim about the original's in-memory values. Work counters cap at 10,000 counted

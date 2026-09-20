@@ -45,7 +45,7 @@ describe('jobUnlockedFor', () => {
   const content = {
     tribes: [VIKING_TRIBE],
     jobExperience: [
-      { typeId: WOOD_TRACK, id: 'collector_wood', jobType: COLLECTOR, goodTypes: [5], experienceFactor: 10 },
+      { typeId: WOOD_TRACK, id: 'collector_wood', jobType: COLLECTOR, goodType: 5, experienceFactor: 10 },
     ],
     // The fighter carve-out reads its role off the job id slug, so the rows carry the real vocabulary.
     jobs: [
