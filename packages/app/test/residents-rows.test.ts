@@ -3,6 +3,8 @@ import {
   filtersActive,
   listResidents,
   NO_RESIDENT_FILTERS,
+  pickedGroup,
+  pickGestureOf,
   type ResidentRow,
   sortResidents,
 } from '../src/hud/tool-panel/residents/rows.js';
@@ -181,5 +183,39 @@ describe('residents list order', () => {
 
   it('opens the lacks key with the neediest', () => {
     expect(ids('lacks')).toEqual([3, 2, 4, 1]);
+  });
+});
+
+describe('residents row picks', () => {
+  const shown = [10, 11, 12, 13, 14];
+
+  it('reads the press as a file list does', () => {
+    expect(pickGestureOf({ range: false, toggle: false })).toBe('show');
+    expect(pickGestureOf({ range: false, toggle: true })).toBe('toggle');
+    expect(pickGestureOf({ range: true, toggle: false })).toBe('range');
+    expect(pickGestureOf({ range: true, toggle: true })).toBe('add-range');
+  });
+
+  it('shows one person on a plain press, whatever was selected', () => {
+    expect(pickedGroup('show', 12, new Set([10, 99]), shown, 10)).toEqual([12]);
+  });
+
+  it('toggles a row in and out of the group', () => {
+    expect(pickedGroup('toggle', 12, new Set([10]), shown, null)).toEqual([10, 12]);
+    expect(pickedGroup('toggle', 10, new Set([10, 12]), shown, null)).toEqual([12]);
+  });
+
+  it('picks the rows between the anchor and the press, in either direction', () => {
+    expect(pickedGroup('range', 13, new Set([99]), shown, 11)).toEqual([11, 12, 13]);
+    expect(pickedGroup('range', 10, new Set(), shown, 12)).toEqual([10, 11, 12]);
+  });
+
+  it('starts the range at the top while the anchor is unset or filtered out', () => {
+    expect(pickedGroup('range', 12, new Set(), shown, null)).toEqual([10, 11, 12]);
+    expect(pickedGroup('range', 11, new Set(), shown, 77)).toEqual([10, 11]);
+  });
+
+  it('adds the range to the group under both modifiers', () => {
+    expect(pickedGroup('add-range', 13, new Set([10, 12]), shown, 12)).toEqual([10, 12, 13]);
   });
 });

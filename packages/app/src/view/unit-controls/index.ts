@@ -269,7 +269,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectEntity: (id) => applySelection([id], false),
     overviewPress,
     select: (ids) => applySelection(ids, false),
-    extendSelection: (ids) => applySelection(ids, true),
     portrait: () => chrome.panel().portrait(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     workAreaRings: () => workArea.rings(opts.snapshot()),

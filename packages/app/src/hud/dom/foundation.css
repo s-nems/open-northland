@@ -2010,14 +2010,18 @@
   font-weight: 700;
 }
 .on-hud .on-res-picked {
+  flex-shrink: 0;
   color: var(--bronze-hi);
   font-weight: 700;
+  white-space: nowrap;
 }
 .on-hud .on-res-picked[hidden] {
   display: none;
 }
 .on-hud .on-res-all {
+  flex-shrink: 0;
   margin-left: auto;
+  white-space: nowrap;
   color: var(--bronze-hi);
   font-weight: 600;
 }

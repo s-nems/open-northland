@@ -177,15 +177,15 @@ F-row is outside the rebindable set, and works from inside the search field too.
   dzieci, broni, miodu. Home and partner skip soldiers and heroes, children counts the women, weapon
   the soldiers. The worn lacks (tools, shoes, weapon, mead) ask only a man whose equipment may
   change, the sim's `mayChangeEquipment`: a woman, a child and a hero wear nothing the player hands
-  out, so the settler panel shows a woman and a child no Ekwipunek section either. Tools counts the
-  workers other than the scout, which is narrower than the original's every grown man who is no
-  soldier or hero: it is whom the assistant hands a tool. A child lacks nothing: it is housed and
-  dressed through its parents. Two lacks are this project's own. "Bez pracy" is a worker whose trade
-  some workplace employs, posted at none and tied to no work flag, so a builder or a scout never
-  shows; it replaces a separate roster of unposted tradesmen. "Bez miodu" is such a man with a job
-  and no mead bottle in the misc slots: the people the assistant's mead grant reaches.
-  Approximation: the sim tracks a couple's one growing child, so "bez dzieci" means none growing
-  now, not a family history.
+  out, so the settler panel shows a woman and a child no Ekwipunek section either, nor a
+  Doświadczenie section, since they hold no trade to train in. Tools counts the workers other than
+  the scout, which is narrower than the original's every grown man who is no soldier or hero: it is
+  whom the assistant hands a tool. A child lacks nothing: it is housed and dressed through its
+  parents. Two lacks are this project's own. "Bez pracy" is a worker whose trade some workplace
+  employs, posted at none and tied to no work flag, so a builder or a scout never shows; it replaces
+  a separate roster of unposted tradesmen. "Bez miodu" is such a man with a job and no mead bottle
+  in the misc slots: the people the assistant's mead grant reaches. Approximation: the sim tracks a
+  couple's one growing child, so "bez dzieci" means none growing now, not a family history.
 - The parchment: a summary line naming the active filters with "Wyczyść filtry", sortable column
   heads (Imię, Zawód, Miejsce pracy, Braki; a second press reverses), and 34 px rows: the map's own
   settler standing still (a list runs to hundreds of rows, so nothing animates and only the rows on
@@ -195,9 +195,14 @@ F-row is outside the rebindable set, and works from inside the search field too.
   little; heroes lead under every order, as the original keeps them; unposted rows follow the posted
   ones in both directions; the lacks order opens with the neediest.
 - A row press selects the person alone, centres the view and closes the window; the details panel
-  takes over. With Shift, Ctrl or Cmd the person joins the selected group and the window stays
-  (user ruling), its rows lit for whatever the unit controls hold selected and the footer counting
-  them. "Zaznacz pokazanych" does the same with the whole filtered list, without moving the view.
+  takes over. The modifiers work as in a file list and keep the window (user ruling): Ctrl, or Cmd
+  where a Ctrl click opens the context menu, puts the row in the selected group or takes it out;
+  Shift replaces the selection with the rows from the last row pressed without Shift to the pressed
+  one, from the top while that row is not listed; both together add that range to the group. The
+  rows are lit for whatever the unit controls hold selected and the footer counts them. "Zaznacz
+  pokazanych" selects the whole filtered list and closes, or with a modifier adds it to the group.
+- Chip captions and list options open with a capital letter; the lack names stay lower case in the
+  catalog, since the summary and the tooltips set them into "bez ..." phrases.
 - Filters, order and scroll are kept for the game in the tool-window state (never browser storage).
   A tick rewrites only the rows that changed: a dead settler leaves, a new one enters at its place
   in the order, and focus and scroll stay put. Esc closes the window; in the search field the first

@@ -354,10 +354,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
     // reach them through these slots.
     let selectEntity: ((id: number) => void) | null = null;
-    let unitSelection: Pick<
-      UnitControls,
-      'select' | 'extendSelection' | 'selectedIds' | 'selectionVersion'
-    > | null = null;
+    let unitSelection: Pick<UnitControls, 'select' | 'selectedIds' | 'selectionVersion'> | null = null;
     const NO_SELECTION: ReadonlySet<number> = new Set();
     const residentsFor = memoBySnapshot((snapshot: WorldSnapshot) =>
       residentRows(snapshot, {
@@ -391,14 +388,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,
           version: () => unitSelection?.selectionVersion() ?? 0,
         },
-        onSelect: (ids, extend) => {
-          if (extend) {
-            unitSelection?.extendSelection(ids);
-            return;
-          }
+        onSelect: (ids, show) => {
           unitSelection?.select(ids);
           const [only] = ids;
-          if (ids.length !== 1 || only === undefined) return;
+          if (!show || ids.length !== 1 || only === undefined) return;
           const at = entityAnchor(sim.snapshot(), only, deps.elevation);
           if (at !== null) jumpToWorld(at.x, at.y);
         },

@@ -12,7 +12,6 @@ export interface ResidentsSeam {
   readonly canBecome: (id: number, jobType: number) => boolean;
   /** The unit controls' selection; `version` moves with every change. */
   readonly selection: { readonly ids: () => ReadonlySet<number>; readonly version: () => number };
-  /** Replace the selection with `ids` and show a single one on the map, or with `extend` add them
-   *  to the selected group. */
-  readonly onSelect: (ids: readonly number[], extend: boolean) => void;
+  /** Replace the selection with `ids`; with `show` the map also centres on a single one. */
+  readonly onSelect: (ids: readonly number[], show: boolean) => void;
 }

@@ -180,6 +180,40 @@ export function listResidents(
 }
 
 /**
+ * How a row press changes the selection, as a file list does: a plain press shows that one person, a
+ * toggle press (Ctrl or Cmd) puts the row in the group or takes it out, a range press (Shift) picks
+ * every row from the anchor to the pressed one, and both at once add that range to the group.
+ */
+export type PickGesture = 'show' | 'toggle' | 'range' | 'add-range';
+
+export function pickGestureOf(press: { readonly range: boolean; readonly toggle: boolean }): PickGesture {
+  if (press.range) return press.toggle ? 'add-range' : 'range';
+  return press.toggle ? 'toggle' : 'show';
+}
+
+/**
+ * The selection a press on `id` leaves. `shown` is the list as ordered on screen; the range runs
+ * from `anchor`, the last row pressed without Shift, or from the top while that row is not listed.
+ */
+export function pickedGroup(
+  gesture: PickGesture,
+  id: number,
+  selected: ReadonlySet<number>,
+  shown: readonly number[],
+  anchor: number | null,
+): readonly number[] {
+  if (gesture === 'show') return [id];
+  if (gesture === 'toggle') {
+    return selected.has(id) ? [...selected].filter((other) => other !== id) : [...selected, id];
+  }
+  const from = Math.max(0, anchor === null ? 0 : shown.indexOf(anchor));
+  const to = shown.indexOf(id);
+  const range = to < 0 ? [id] : shown.slice(Math.min(from, to), Math.max(from, to) + 1);
+  if (gesture === 'range') return range;
+  return [...selected, ...range.filter((other) => !selected.has(other))];
+}
+
+/**
  * The list order: heroes lead under every key, as the original list keeps them; a row without a
  * workplace follows the posted ones in both directions; the lacks key opens with the neediest; ties fall back to the
  * name and then the id, so the order never depends on the snapshot's.

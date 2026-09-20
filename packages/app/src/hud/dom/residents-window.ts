@@ -7,6 +7,9 @@ import {
   INITIAL_RESIDENTS_STATE,
   listResidents,
   NO_RESIDENT_FILTERS,
+  type PickGesture,
+  pickedGroup,
+  pickGestureOf,
   RESIDENT_GROUPS,
   RESIDENT_LACKS,
   type ResidentFilters,
@@ -51,7 +54,7 @@ export interface ResidentsWindowDeps {
   /** A row or the whole shown list was picked: `extend` adds to the selected group and the window
    *  stays; without it the pick replaces the selection, a single one is shown on the map, and the
    *  window has already closed. */
-  readonly onSelect: (ids: readonly number[], extend: boolean) => void;
+  readonly onSelect: (ids: readonly number[], show: boolean) => void;
   /** Paint the standing figures of the rows on screen. */
   readonly paintFigures: (slots: readonly ResidentFigureSlot[], box: ResidentFigureBox) => void;
   readonly cue: (cue: UiCue) => void;
@@ -114,7 +117,13 @@ function setValue(control: HTMLSelectElement | HTMLInputElement, value: string):
   if (control.value !== value) control.value = value;
 }
 
-const extendsGroup = (event: MouseEvent): boolean => event.shiftKey || event.ctrlKey || event.metaKey;
+/** Cmd stands in for Ctrl, whose click opens the context menu on macOS. */
+const gestureOf = (event: MouseEvent): PickGesture =>
+  pickGestureOf({ range: event.shiftKey, toggle: event.ctrlKey || event.metaKey });
+
+function capitalized(text: string, locale: string): string {
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+}
 
 export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindow {
   const copy = messages().hud.residentsWindow;
@@ -194,7 +203,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   lackRow.classList.add('on-res-chips--lacks');
   const lackChips = new Map<ResidentLack, { button: HTMLButtonElement; count: HTMLElement }>();
   for (const id of RESIDENT_LACKS) {
-    const view = chip(copy.lacks[id], LACK_GLYPH[id]);
+    const view = chip(capitalized(copy.lacks[id], locale), LACK_GLYPH[id]);
     view.button.title = formatMessage(copy.lackTitle, { what: copy.lacks[id] });
     view.button.addEventListener('click', () => {
       deps.cue('confirm');
@@ -251,12 +260,12 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   const foot = element(
     'footer',
     'on-res-foot',
-    `<span class="on-res-hint"><kbd></kbd> <span></span> · <kbd>Shift</kbd> <span></span> <kbd>Ctrl</kbd> <span></span></span><span class="on-res-picked"></span>`,
+    `<span class="on-res-hint"><kbd></kbd> <span></span> · <kbd>Ctrl</kbd> <span></span> · <kbd>Shift</kbd> <span></span></span><span class="on-res-picked"></span>`,
   );
-  const [hintClick, , , ,] = foot.querySelectorAll('kbd');
+  const [hintClick] = foot.querySelectorAll('kbd');
   const hintTexts = foot.querySelectorAll('.on-res-hint > span');
   if (hintClick !== undefined) hintClick.textContent = copy.hintClick;
-  [copy.hintClickDoes, copy.hintOr, copy.hintModifierDoes].forEach((text, index) => {
+  [copy.hintClickDoes, copy.hintToggleDoes, copy.hintRangeDoes].forEach((text, index) => {
     const node = hintTexts[index];
     if (node !== undefined) node.textContent = text;
   });
@@ -277,14 +286,24 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   let shownSelection = -1;
   let figuresStale = true;
 
-  const pick = (ids: readonly number[], event: MouseEvent): void => {
-    if (ids.length === 0) return;
+  /** The last row pressed without Shift, where a range press starts. */
+  let anchor: number | null = null;
+  const select = (ids: readonly number[], show: boolean): void => {
     deps.cue('confirm');
-    const extend = extendsGroup(event);
-    if (!extend) window.close();
-    deps.onSelect(ids, extend);
+    if (show) window.close();
+    deps.onSelect(ids, show);
   };
-  selectShown.addEventListener('click', (event) => pick(shownIds, event));
+  const pickRow = (id: number, event: MouseEvent): void => {
+    const gesture = gestureOf(event);
+    if (gesture === 'show' || gesture === 'toggle') anchor = id;
+    select(pickedGroup(gesture, id, deps.selection.ids(), shownIds, anchor), gesture === 'show');
+  };
+  // Pressed plain, the button selects the listed people and closes; with a modifier it adds them.
+  selectShown.addEventListener('click', (event) => {
+    if (shownIds.length === 0) return;
+    if (gestureOf(event) === 'show') select(shownIds, true);
+    else select([...new Set([...deps.selection.ids(), ...shownIds])], false);
+  });
 
   const buildRow = (id: number): RowView => {
     const item = element('li', '');
@@ -303,7 +322,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     ) {
       throw new Error('residents: row markup');
     }
-    control.addEventListener('click', (event) => pick([id], event));
+    control.addEventListener('click', (event) => pickRow(id, event));
     item.append(control);
     return { item, pick: control, canvas, cells: [name, profession, workplace, lacks], shown: '' };
   };

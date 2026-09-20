@@ -385,7 +385,7 @@ function buildControls() {
   ).join('');
   lackBar.innerHTML = LACKS.map(([id, label, path]) => {
     const n = count(LACK_TEST[id]);
-    return `<button type="button" data-lack="${id}" title="Bez ${label}" aria-label="Bez ${label}: ${n}"${n === 0 ? ' class="zero"' : ''}><span class="count">${glyph(path)}${n}</span><span class="label">${label}</span></button>`;
+    return `<button type="button" data-lack="${id}" title="Bez ${label}" aria-label="Bez ${label}: ${n}"${n === 0 ? ' class="zero"' : ''}><span class="count">${glyph(path)}${n}</span><span class="label">${label[0].toLocaleUpperCase('pl')}${label.slice(1)}</span></button>`;
   }).join('');
   const options = (rows, empty, tally) =>
     `<option value="">${empty}</option>${rows
@@ -396,12 +396,12 @@ function buildControls() {
       .join('')}`;
   jobSelect.innerHTML = options(
     [...TRADES, ...SOLDIERS].filter(([job]) => count((p) => p.job === job) > 0),
-    'każdy',
+    'Każdy',
     true,
   );
   canSelect.innerHTML = options(
     TRADES.filter(([job]) => job !== 'idle'),
-    'dowolny',
+    'Dowolny',
     false,
   );
 }
@@ -452,7 +452,11 @@ list.innerHTML = Object.values(POOLS)
   .map((pool) => pool.map(rowMarkup).join(''))
   .join('');
 
-const extendsGroup = (event) => event.shiftKey || event.ctrlKey || event.metaKey;
+// As a file list: Ctrl (or Cmd) puts a row in the group or takes it out, Shift picks the rows from
+// the last row pressed without it, both together add that range.
+const togglesRow = (event) => event.ctrlKey || event.metaKey;
+let anchor = null;
+const shownIds = () => [...list.children].filter((item) => !item.hidden).map((item) => item.dataset.id);
 win.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
@@ -470,14 +474,21 @@ win.addEventListener('click', (event) => {
   if (button.dataset.resClose !== undefined) return show('closed');
   if (button.matches('.res-row')) {
     const id = button.parentElement.dataset.id;
-    // Shift or Ctrl builds a group without leaving the list; a plain click picks one and shows them.
-    if (!extendsGroup(event)) return show('closed');
-    selection.add(id);
+    if (!event.shiftKey) anchor = id;
+    // A plain click picks one and shows them; a modifier builds a group without leaving the list.
+    if (!event.shiftKey && !togglesRow(event)) return show('closed');
+    if (event.shiftKey) {
+      const shown = shownIds();
+      const from = Math.max(0, shown.indexOf(anchor));
+      const to = shown.indexOf(id);
+      if (!togglesRow(event)) selection.clear();
+      for (const other of shown.slice(Math.min(from, to), Math.max(from, to) + 1)) selection.add(other);
+    } else if (selection.has(id)) selection.delete(id);
+    else selection.add(id);
   }
   if (button === selectAll) {
-    const shown = [...list.children].filter((item) => !item.hidden).map((item) => item.dataset.id);
-    if (!extendsGroup(event)) return show('closed');
-    for (const id of shown) selection.add(id);
+    if (!event.shiftKey && !togglesRow(event)) return show('closed');
+    for (const id of shownIds()) selection.add(id);
   }
   refresh();
 });
