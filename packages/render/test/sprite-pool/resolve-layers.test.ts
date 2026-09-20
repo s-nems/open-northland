@@ -260,14 +260,12 @@ describe('resolveLayers - wildlife species resolution', () => {
   };
   const settler = (tribe: number): DrawItem => ({ kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe });
 
-  it('draws a bound animal tribe as shadow + species body on the plain path (no atlasW/H)', () => {
+  it('draws a bound animal tribe as its cast, its silhouette and the species body', () => {
     const layers = resolveLayers(sheet, settler(BOUND_TRIBE), 0) ?? [];
-    expect(
-      layers.map((l) => [l.frame.x, l.source === shadowSource, l.shadow ?? false, l.atlasW ?? null]),
-    ).toEqual([
-      [ANIMAL_BOB, false, true, null],
-      [ANIMAL_BOB, true, true, null],
-      [ANIMAL_BOB, false, false, null],
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource, l.shadow ?? false])).toEqual([
+      [ANIMAL_BOB, false, true],
+      [ANIMAL_BOB, true, true],
+      [ANIMAL_BOB, false, false],
     ]);
   });
 
@@ -471,5 +469,53 @@ describe('complete character appearances', () => {
     expect(other?.source).toBe(first);
     expect(other?.frame.x).toBe(1);
     expect(other?.scale).toBe(0.75);
+  });
+});
+
+describe('resolveLayers - one scale rule for every settler path', () => {
+  const KIND_SCALE = 2;
+  const OWN_SCALE = 0.5;
+  const BOB = 1;
+  const WALK_START = 10;
+  const WALK_FRAMES = 4;
+  const atlas: SpriteAtlas = {
+    width: 64,
+    height: 10,
+    frames: new Map([frame(BOB), ...Array.from({ length: WALK_FRAMES }, (_, i) => frame(WALK_START + i))]),
+  };
+  const body = { source, atlas };
+  const bare: SpriteSheet = {
+    source,
+    atlas,
+    bindings: { settler: BOB, resource: BOB, building: BOB },
+    kindScales: { settler: KIND_SCALE },
+  };
+  const idle: DrawItem = { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, state: 'idle' };
+  const scales = (sheet: SpriteSheet) => resolveLayers(sheet, idle, 0)?.map((l) => l.scale);
+
+  it('draws a character with no scale of its own at the settler kind scale, its cast included', () => {
+    const sheet = { ...bare, characters: { byJob: {}, default: { body, binding: { idle: BOB } } } };
+    expect(scales(sheet)).toEqual([KIND_SCALE, KIND_SCALE]);
+  });
+
+  it('lets the scale authored with a character win over the kind scale', () => {
+    const sheet = {
+      ...bare,
+      characters: { byJob: {}, default: { body, binding: { idle: BOB }, scale: OWN_SCALE } },
+    };
+    expect(scales(sheet)).toEqual([OWN_SCALE, OWN_SCALE]);
+  });
+
+  it('draws the shared body atlas at the kind scale too', () => {
+    expect(scales(bare)).toEqual([KIND_SCALE]);
+  });
+
+  it('steps the shared body walk on the gait clock, as a character does', () => {
+    const moving = { start: WALK_START, dirs: 1, stride: WALK_FRAMES };
+    const sheet = { ...bare, bindings: { ...bare.bindings, settler: { idle: BOB, moving } } };
+    const walker: DrawItem = { ...idle, state: 'moving', facing: 0 };
+    const FREE_TICK = 0;
+    const GAIT_CLOCK = 3;
+    expect(resolveLayers(sheet, walker, FREE_TICK, GAIT_CLOCK)?.[0]?.frame.x).toBe(WALK_START + GAIT_CLOCK);
   });
 });

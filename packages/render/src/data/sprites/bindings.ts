@@ -41,3 +41,12 @@ export type SpriteBindings = Readonly<{
   /** The effects an in-house program stages beside its worker (a cauldron's fire and smoke). */
   craftfx?: CraftFxBinding;
 }>;
+
+/** The decor kinds with no shared kind layer, each bound under its own key. A ground drop's kind and
+ *  binding key differ. */
+export const DECOR_BINDING_KEY = {
+  grounddrop: 'trunk',
+  stump: 'stump',
+  berrybush: 'berrybush',
+  chest: 'chest',
+} as const satisfies Partial<Record<SpriteKind, keyof SpriteBindings>>;

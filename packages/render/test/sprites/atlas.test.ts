@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { indexAtlasFrames, resolveSpriteFrame } from '../../src/data/sprites/index.js';
+import { indexAtlasFrames } from '../../src/data/sprites/index.js';
 import {
   type AtlasManifest,
   atlasFromManifest,
   type SpriteAtlas,
   type SpriteBindings,
 } from '../../src/index.js';
-import { drawItem } from '../support/fixtures.js';
+import { drawItem, resolveSpriteFrame } from '../support/fixtures.js';
 
 /** A tiny atlas: a settler frame (bob 10), a building frame (bob 20), and an empty 0×0 bob (30). */
 function atlas(): SpriteAtlas {

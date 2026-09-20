@@ -1,9 +1,9 @@
 import type { TextureSource } from 'pixi.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import { type AtlasFrame, lookupFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
+import { type AtlasFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
 import { DEFAULT_FACING, movingFrameRef } from '../../data/sprites/settler.js';
-import type { SettlerCharacter, SettlerCharacterSet } from '../sprite-sheet.js';
-import { shadowLayerFor } from './layered-layers.js';
+import type { SettlerCharacter, SettlerCharacterSet, SpriteSheet } from '../sprite-sheet.js';
+import { layerScale, resolveFromLayer, shadowLayerFor } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
@@ -40,67 +40,46 @@ function headCastRows(bodyFrame: AtlasFrame, headFrame: AtlasFrame): number {
   return Math.min(headFrame.height, Math.max(0, bodyFrame.offsetY - headFrame.offsetY));
 }
 
-/** Appearance variants use stable entity ids; optional head layers may use a separate motion binding. */
+/**
+ * Appearance variants use stable entity ids; optional head layers may use a separate motion binding. A
+ * wildlife species is a character with no head overlay, so it takes the same path.
+ */
 export function resolveCharacterLayers(
+  sheet: SpriteSheet,
   characters: SettlerCharacterSet,
   item: DrawItem,
   tick: number,
   gaitClock: number,
 ): ResolvedLayer[] | null {
-  // A wildlife entity resolves only through the species table: a listed-but-unbound tribe draws nothing,
-  // while a bound tribe whose resolved bob has no frame is a real gap and falls to the placeholder.
-  if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) {
-    const animal = characterForItem(characters, item);
-    if (animal === undefined) return [];
-    const bob = resolveSettlerBobId(animal.binding, item, tick, gaitClock);
-    const frame = lookupFrame(animal.body.atlas, bob);
-    if (frame === null) return null;
-    const body: ResolvedLayer = { source: animal.body.source, frame, scale: 1 };
-    const shadow = shadowLayerFor(animal.body, bob, 1);
-    const layers: ResolvedLayer[] = [castLayerFor(animal.body.source, frame, 1)];
-    if (shadow !== null) layers.push(shadow);
-    layers.push(body);
-    return layers;
-  }
+  // No look at all is a listed-but-unbound wildlife tribe, which draws nothing. A look whose resolved bob
+  // has no frame is a real gap and falls to the placeholder.
   const char = characterForItem(characters, item);
   if (char === undefined) return [];
-  const body = char.body;
-  const scale = char.scale ?? 1;
+  const scale = characterScale(sheet, char);
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
-  const bodyFrame = lookupFrame(body.atlas, bob);
+  const body = resolveFromLayer(char.body, bob, scale);
   const heads = char.heads;
-  const head = heads !== undefined && heads.length > 0 ? heads[item.ref % heads.length] : undefined;
+  const headLayer = heads !== undefined && heads.length > 0 ? heads[item.ref % heads.length] : undefined;
   const headBob =
     char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
-  const headFrame = head === undefined ? null : lookupFrame(head.atlas, headBob);
+  const head = headLayer === undefined ? null : resolveFromLayer(headLayer, headBob, scale);
   const layers: ResolvedLayer[] = [];
-  if (bodyFrame !== null) {
-    layers.push(castLayerFor(body.source, bodyFrame, scale));
-    if (head !== undefined && headFrame !== null) {
-      const rows = headCastRows(bodyFrame, headFrame);
-      if (rows > 0) layers.push(castLayerFor(head.source, headFrame, scale, rows));
+  if (body !== null) {
+    layers.push(castLayerFor(body.source, body.frame, scale));
+    if (head !== null) {
+      const rows = headCastRows(body.frame, head.frame);
+      if (rows > 0) layers.push(castLayerFor(head.source, head.frame, scale, rows));
     }
-    const shadow = shadowLayerFor(body, bob, scale);
+    const shadow = shadowLayerFor(char.body, bob, scale);
     if (shadow !== null) layers.push(shadow);
-    layers.push({
-      source: body.source,
-      frame: bodyFrame,
-      scale,
-      atlasW: body.atlas.width,
-      atlasH: body.atlas.height,
-    });
+    layers.push(body);
   }
-  if (head !== undefined && headFrame !== null) {
-    layers.push({
-      source: head.source,
-      frame: headFrame,
-      scale,
-      atlasW: head.atlas.width,
-      atlasH: head.atlas.height,
-      head: true,
-    });
-  }
+  if (head !== null) layers.push({ ...head, head: true });
   return layers.length > 0 ? layers : null;
+}
+
+function characterScale(sheet: Pick<SpriteSheet, 'kindScales'>, char: SettlerCharacter): number {
+  return layerScale(sheet, 'settler', char.scale);
 }
 
 function characterForItem(characters: SettlerCharacterSet, item: DrawItem): SettlerCharacter | undefined {
@@ -114,12 +93,12 @@ function characterForItem(characters: SettlerCharacterSet, item: DrawItem): Sett
 
 /** Converts measured foot travel to the selected clip's tick clock without changing movement. */
 export function characterGaitRate(
-  characters: SettlerCharacterSet | undefined,
+  sheet: Pick<SpriteSheet, 'characters' | 'kindScales'> | undefined,
   item: DrawItem,
   lastFacing?: number,
 ): number | undefined {
-  if (characters === undefined || item.kind !== 'settler') return undefined;
-  const char = characterForItem(characters, item);
+  if (sheet?.characters === undefined || item.kind !== 'settler') return undefined;
+  const char = characterForItem(sheet.characters, item);
   if (char === undefined) return undefined;
   const clip = movingFrameRef(char.binding, item);
   if (typeof clip === 'number' || 'frameLists' in clip) return undefined;
@@ -129,7 +108,7 @@ export function characterGaitRate(
   const ticks =
     clip.frameDurations?.reduce((sum, hold) => sum + hold, 0) ??
     (clip.frames ?? clip.stride) * (clip.ticksPerFrame ?? 1);
-  return ticks / (travel * (char.scale ?? 1));
+  return ticks / (travel * characterScale(sheet, char));
 }
 
 export function characterInterpolatesMotion(

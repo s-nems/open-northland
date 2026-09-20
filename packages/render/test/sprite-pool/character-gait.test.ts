@@ -46,7 +46,7 @@ function fresh(): MotionTrack {
 describe('measured walk travel', () => {
   it('keeps phase tied to distance across speed changes, turns and catch-up ticks', () => {
     const track = fresh();
-    const rate = characterGaitRate(characters, item);
+    const rate = characterGaitRate({ characters }, item);
     trackMotion(track, 0, 0, 0, 1, rate);
     trackMotion(track, 1, 3, 0, 1, rate);
     expect(resolveSettlerBobId(binding, item, 1, track.gaitPhase)).toBe(2);
@@ -54,7 +54,7 @@ describe('measured walk travel', () => {
     expect(resolveSettlerBobId(binding, item, 7, track.gaitPhase)).toBe(8);
     expect(track.drawX).toBe(7.5);
     const turned = { ...item, facing: 1 };
-    trackMotion(track, 8, 12, 6, 1, characterGaitRate(characters, turned));
+    trackMotion(track, 8, 12, 6, 1, characterGaitRate({ characters }, turned));
     expect(track.gaitPhase).toBe(12);
     expect(resolveSettlerBobId(binding, turned, 8, track.gaitPhase)).toBe(16);
     trackMotion(track, 9, 12, 6, 1, rate);
@@ -76,9 +76,13 @@ describe('measured walk travel', () => {
   });
   it('uses the held facing and leaves uncalibrated jobs on their existing clock', () => {
     expect(
-      characterGaitRate(characters, { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, state: 'moving' }, 1),
+      characterGaitRate(
+        { characters },
+        { kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, state: 'moving' },
+        1,
+      ),
     ).toBe(1);
-    expect(characterGaitRate(characters, { ...item, jobType: 7 })).toBeUndefined();
+    expect(characterGaitRate({ characters }, { ...item, jobType: 7 })).toBeUndefined();
     expect(characterGaitRate(undefined, item)).toBeUndefined();
   });
   it('uses a carrying clip calibration when a good changes the stride', () => {
@@ -92,8 +96,17 @@ describe('measured walk travel', () => {
         },
       },
     };
-    expect(characterGaitRate(loaded, { ...item, carrying: true })).toBe(1);
-    expect(characterGaitRate(loaded, item)).toBe(0.5);
+    expect(characterGaitRate({ characters: loaded }, { ...item, carrying: true })).toBe(1);
+    expect(characterGaitRate({ characters: loaded }, item)).toBe(0.5);
+  });
+
+  it('paces a character with no scale of its own by the settler kind scale', () => {
+    const unscaled: SettlerCharacterSet = { default: { body, binding }, byJob: {} };
+    const native = characterGaitRate({ characters: unscaled }, item);
+    const KIND_SCALE = 2;
+    const scaled = characterGaitRate({ characters: unscaled, kindScales: { settler: KIND_SCALE } }, item);
+    expect(native).toBeDefined();
+    expect(scaled).toBe((native ?? 0) / KIND_SCALE);
   });
 });
 
@@ -111,8 +124,8 @@ describe('character motion ownership', () => {
   };
 
   it('uses each appearance scale for its gait calibration', () => {
-    expect(characterGaitRate(mixed, { ...item, ref: 2 })).toBe(0.5);
-    expect(characterGaitRate(mixed, { ...item, ref: 3 })).toBe(0.25);
+    expect(characterGaitRate({ characters: mixed }, { ...item, ref: 2 })).toBe(0.5);
+    expect(characterGaitRate({ characters: mixed }, { ...item, ref: 3 })).toBe(0.25);
   });
 
   it('keeps interpolation local to the selected appearance, including jobs and wildlife', () => {

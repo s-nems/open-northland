@@ -1,13 +1,13 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import {
-  lookupFrame,
+  DECOR_BINDING_KEY,
   resolveCraftFxDraw,
   resolveResourceDraw,
   resolveSignpostDraw,
   resolveSpriteBobId,
   resolveStockpileDraw,
 } from '../../data/sprites/index.js';
-import type { SpriteLayer, SpriteSheet } from '../sprite-sheet.js';
+import type { SpriteSheet } from '../sprite-sheet.js';
 import { vegetationShear } from '../vegetation-sway.js';
 import { resolveBuildingLayers } from './building-layers.js';
 import { resolveCharacterLayers } from './character-layers.js';
@@ -15,6 +15,8 @@ import {
   hasLoadedFamily,
   layeredLayerFor,
   layeredLayersWithShadow,
+  layerScale,
+  resolveFromLayer,
   shadowLayerFor,
 } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
@@ -50,8 +52,8 @@ export function resolveLayers(
       // Per-job settler character (the `[jobbasegraphics]` join), resolved in that body's own frame-id
       // space. A sheet with no characters falls through to the sheet-global settler path.
       if (sheet.characters !== undefined)
-        return resolveCharacterLayers(sheet.characters, item, tick, gaitClock);
-      bobId = resolveSpriteBobId(item, sheet.bindings, tick);
+        return resolveCharacterLayers(sheet, sheet.characters, item, tick, gaitClock);
+      bobId = resolveSpriteBobId(item, sheet.bindings, tick, gaitClock);
       break;
     case 'fish': {
       const binding = sheet.bindings.fish;
@@ -116,29 +118,24 @@ export function resolveLayers(
   }
   if (bobId === null) return null;
 
+  const scale = layerScale(sheet, item.kind, undefined);
   const kindLayer = sheet.kindLayers?.[item.kind];
   if (kindLayer !== undefined) {
-    const frame = lookupFrame(kindLayer.atlas, bobId);
-    if (frame === null) return null;
-    const scale = sheet.kindScales?.[item.kind] ?? 1;
+    const body = resolveFromLayer(kindLayer, bobId, scale);
+    if (body === null) return null;
     const shadow = shadowLayerFor(kindLayer, bobId, scale);
     const layers: ResolvedLayer[] = shadow === null ? [] : [shadow];
-    layers.push({ source: kindLayer.source, frame, scale });
+    layers.push(body);
     layers.push(...buildingExtras);
     return layers;
   }
 
   // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.
-  const id = bobId;
   const layers: ResolvedLayer[] = [];
-  const add = (layer: SpriteLayer): void => {
-    const frame = lookupFrame(layer.atlas, id);
-    if (frame !== null) {
-      layers.push({ source: layer.source, frame, scale: 1 });
-    }
-  };
-  add({ source: sheet.source, atlas: sheet.atlas });
-  for (const overlay of sheet.overlays ?? []) add(overlay);
+  for (const layer of [{ source: sheet.source, atlas: sheet.atlas }, ...(sheet.overlays ?? [])]) {
+    const resolved = resolveFromLayer(layer, bobId, scale);
+    if (resolved !== null) layers.push(resolved);
+  }
   return layers.length > 0 ? layers : null;
 }
 
@@ -196,14 +193,6 @@ function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem, tick: number
   if (draw.layer === undefined) return null;
   return layeredLayersWithShadow(sheet, 'stockpile', draw);
 }
-
-/** The decor kinds with no shared `kindLayers` layer, each bound under its own key. */
-const DECOR_BINDING_KEY = {
-  grounddrop: 'trunk',
-  stump: 'stump',
-  berrybush: 'berrybush',
-  chest: 'chest',
-} as const;
 
 /**
  * A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG), a

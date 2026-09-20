@@ -14,7 +14,7 @@ export function layeredLayersWithShadow(
 ): ResolvedLayer[] | null {
   const layer = sourceLayerFor(sheet, kind, draw);
   if (layer === undefined) return null;
-  const body = resolveFromLayer(layer, sheet, kind, draw);
+  const body = resolveFromLayer(layer, draw.bob, layeredScale(sheet, kind, draw));
   if (body === null) return null;
   const shadow = shadowLayerFor(layer, draw.bob, body.scale);
   return shadow === null ? [body] : [shadow, body];
@@ -31,7 +31,7 @@ export function layeredLayerFor(
   draw: BuildingDraw,
 ): ResolvedLayer | null {
   const layer = sourceLayerFor(sheet, kind, draw);
-  return layer === undefined ? null : resolveFromLayer(layer, sheet, kind, draw);
+  return layer === undefined ? null : resolveFromLayer(layer, draw.bob, layeredScale(sheet, kind, draw));
 }
 
 export function hasLoadedFamily(sheet: SpriteSheet, draw: BuildingDraw): boolean {
@@ -46,22 +46,32 @@ function sourceLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw
   return draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.[kind];
 }
 
-function resolveFromLayer(
-  layer: SpriteLayer,
-  sheet: SpriteSheet,
+/**
+ * The render scale of one draw, applied about the feet anchor: the scale authored with its own art (a
+ * family's, a character's) wins over its kind's, and absent both it draws native bob pixels.
+ */
+export function layerScale(
+  sheet: Pick<SpriteSheet, 'kindScales'>,
   kind: SpriteKind,
-  draw: BuildingDraw,
-): ResolvedLayer | null {
-  const frame = lookupFrame(layer.atlas, draw.bob);
+  own: number | undefined,
+): number {
+  return own ?? sheet.kindScales?.[kind] ?? 1;
+}
+
+function layeredScale(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): number {
+  return layerScale(sheet, kind, draw.layer !== undefined ? sheet.familyScales?.[draw.layer] : undefined);
+}
+
+/** One bob of one atlas layer, or null for a missing or empty frame. */
+export function resolveFromLayer(layer: SpriteLayer, bob: number, scale: number): ResolvedLayer | null {
+  const frame = lookupFrame(layer.atlas, bob);
   if (frame === null) return null;
-  const scale =
-    (draw.layer !== undefined ? sheet.familyScales?.[draw.layer] : undefined) ??
-    sheet.kindScales?.[kind] ??
-    1;
   return {
     source: layer.source,
     frame,
     scale,
+    atlasW: layer.atlas.width,
+    atlasH: layer.atlas.height,
     ...(layer.times !== undefined ? { times: layer.times } : {}),
   };
 }

@@ -80,7 +80,7 @@ export function presentItem(
     item.x,
     item.y - (item.lift ?? 0),
     alpha,
-    characterGaitRate(sheet?.characters, item, track.lastFacing),
+    characterGaitRate(sheet, item, track.lastFacing),
     track.kind === 'projectile' ? (item.rotation ?? 0) : undefined,
   );
   if (item.facing !== undefined) track.lastFacing = item.facing;

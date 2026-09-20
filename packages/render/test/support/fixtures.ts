@@ -8,8 +8,9 @@ import {
 } from '@open-northland/sim';
 import { ONE } from '../../src/data/projection/index.js';
 import type { SpriteState } from '../../src/data/scene/index.js';
+import { lookupFrame, resolveSpriteBobId } from '../../src/data/sprites/index.js';
 import type { DrawnGeometry } from '../../src/gpu/sprite-pool/index.js';
-import type { DrawItem, SceneTerrain } from '../../src/index.js';
+import type { AtlasFrame, DrawItem, SceneTerrain, SpriteAtlas, SpriteBindings } from '../../src/index.js';
 
 /**
  * Shared snapshot fixtures for the render tests. A `WorldSnapshot` is plain data with no class
@@ -20,6 +21,18 @@ import type { DrawItem, SceneTerrain } from '../../src/index.js';
  *  resolver test reads. */
 export function drawItem(kind: DrawItem['kind'], fields: Partial<DrawItem> = {}): DrawItem {
   return { kind, ref: 1, x: 0, y: 0, depth: 0, ...fields };
+}
+
+/** The atlas rect a draw item selects from one atlas, or `null` for a terrain tile, an unbound kind or a
+ *  bob id the atlas has no frame for. */
+export function resolveSpriteFrame(
+  item: DrawItem,
+  bindings: SpriteBindings,
+  atlas: SpriteAtlas,
+  tick = 0,
+): AtlasFrame | null {
+  const bobId = resolveSpriteBobId(item, bindings, tick);
+  return bobId === null ? null : lookupFrame(atlas, bobId);
 }
 
 /** Each field takes `| undefined` so a caller can forward its own optional argument through;

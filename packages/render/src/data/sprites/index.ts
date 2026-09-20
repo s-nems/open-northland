@@ -9,6 +9,7 @@ export {
   type SpriteAtlas,
 } from './atlas.js';
 export type { FishBinding, SpriteBindings, SpriteKind } from './bindings.js';
+export { DECOR_BINDING_KEY } from './bindings.js';
 export {
   bobKey,
   buildTimeThreshold,
@@ -37,7 +38,7 @@ export type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
-export { resolveSpriteBobId, resolveSpriteFrame } from './resolve.js';
+export { resolveSpriteBobId } from './resolve.js';
 export { DEFAULT_FACING, GFX_DIR_TO_FACING, pickByJob, resolveSettlerBobId, subClipKey } from './settler.js';
 export type {
   ByJobTable,

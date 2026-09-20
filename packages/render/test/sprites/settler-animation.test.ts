@@ -4,7 +4,6 @@ import {
   indexAtlasFrames,
   resolveSettlerBobId,
   resolveSpriteBobId,
-  resolveSpriteFrame,
   subClipKey,
 } from '../../src/data/sprites/index.js';
 import type {
@@ -15,7 +14,7 @@ import type {
   SpriteAtlas,
   SpriteBindings,
 } from '../../src/index.js';
-import { drawItem, settlerItem } from '../support/fixtures.js';
+import { drawItem, resolveSpriteFrame, settlerItem } from '../support/fixtures.js';
 
 describe('subtick character clips', () => {
   it('plays a held turn and reuses poses on the return without allocating more atlas frames', () => {
