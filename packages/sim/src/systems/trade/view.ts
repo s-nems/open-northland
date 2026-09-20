@@ -1,4 +1,4 @@
-import { ownerOf, Settler, tradeRouteOf } from '../../components/index.js';
+import { Building, MissionObjectId, ownerOf, Settler, tradeRouteOf } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
@@ -52,6 +52,19 @@ function offerOf(offer: HouseAgreement): TradeOffer {
 /** The agreements `house` offers a visiting trader, as detached copies; empty for any other house. */
 export function tradeOffersAt(world: World, house: Entity): TradeOffer[] {
   return agreementsAt(world, house).map(offerOf);
+}
+
+/**
+ * Every agreement `partner`'s houses offer, each listed once in table order however many houses carry
+ * it; what a window tells a player about a tribe it could trade with.
+ */
+export function tradeOffersOf(world: World, partner: number): TradeOffer[] {
+  const offered = new Map<number, TradeOffer>();
+  for (const house of world.query(MissionObjectId, Building)) {
+    if (ownerOf(world, house) !== partner) continue;
+    for (const offer of agreementsAt(world, house)) offered.set(offer.index, offerOf(offer));
+  }
+  return [...offered.values()].sort((a, b) => a.index - b.index);
 }
 
 /** The route of a trader, as a detached copy; undefined for anything that is no trader. */

@@ -702,7 +702,11 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   economy runs on what it produces. The table holds rows and resolves their houses live, so a row
   several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
   saved with the game; the diplomacy window prints it (`miscwindow` 360) at its foot for a player
-  both sides hold as `friend`, the one case the original's window draws the line in (reading).
+  both sides hold as `friend`, the one case the original's window draws the line in (reading). Above
+  that line the window lists what the selected player's houses trade, each agreement once
+  (`Simulation.tradeOffersOf`), with a reminder that a trader deals only with a friendly tribe while
+  the viewer's stance toward the player is not `friend`; authored, since the original names a
+  tribe's agreements only in a trader's own window.
 
 ## On-screen info lines
 

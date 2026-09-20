@@ -12,6 +12,7 @@ import {
   resolveSelectedPlayer,
   type TributeCardSpec,
   type TributePanelRow,
+  tradeSectionRows,
 } from '../src/hud/tool-panel/diplomacy/index.js';
 import { fitDiplomacyWindow } from '../src/hud/tool-panel/diplomacy/viewport.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
@@ -54,6 +55,7 @@ const row = (player: number, over: Partial<DiplomacyPanelRow> = {}): DiplomacyPa
   yourStance: 'enemy',
   canDeclare: false,
   tributes: [],
+  tradeOffers: [],
   ...over,
 });
 
@@ -241,6 +243,28 @@ describe('diplomacy window model', () => {
     expect(layout.window.h).toBeGreaterThan(locked.window.h);
   });
 
+  it('stacks the trade section between the tributes and the traded-goods note', () => {
+    const base = { originX: 10, originY: 20, scale: 1, players: [1], selected: 1, tributes: [card(0, true)] };
+    const bare = layoutDiplomacyWindow(base);
+    const listed = layoutDiplomacyWindow({ ...base, offerRows: 2, tradedNoteH: 12 });
+    const lastTribute = listed.tributes[0]?.card;
+    const rows = listed.offers?.rows ?? [];
+
+    expect(bare.offers).toBeNull();
+    expect(listed.offers?.title.y).toBe((lastTribute?.y ?? 0) + (lastTribute?.h ?? 0));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.y).toBe((listed.offers?.title.y ?? 0) + (listed.offers?.title.h ?? 0));
+    expect(listed.tradedNote?.card.y).toBe((rows[1]?.y ?? 0) + (rows[1]?.h ?? 0));
+    expect(layoutDiplomacyWindow({ ...base, players: [], selected: null, offerRows: 2 }).offers).toBeNull();
+  });
+
+  it('counts a reminder row under the offers only while the viewer is no friend', () => {
+    const offers = ['1 Meble za 2 Monety', '3 Zboże za 1 Mikstura'];
+    expect(tradeSectionRows({ tradeOffers: offers, yourStance: 'friend' })).toBe(2);
+    expect(tradeSectionRows({ tradeOffers: offers, yourStance: 'neutral' })).toBe(3);
+    expect(tradeSectionRows({ tradeOffers: [], yourStance: 'neutral' })).toBe(0);
+  });
+
   it('sets the traded-goods note under the last tribute and grows the window by its card', () => {
     const NOTE_H = 24;
     const base = { originX: 10, originY: 20, scale: 1, players: [1], selected: 1, tributes: [card(0, true)] };
@@ -323,6 +347,25 @@ describe('diplomacy window controller', () => {
     expect(window.handleClick(close.x, close.y)).toBe(true);
     expect(window.isOpen()).toBe(false);
     expect(window.claims(tab.x, tab.y)).toBe(false);
+  });
+
+  it("lists the selected player's trade agreements, with the friend-only reminder for a stranger", () => {
+    const { ctx, texts } = stubContext();
+    const rows = [
+      row(1, { towardYou: 'friend', yourStance: 'friend', tradeOffers: ['1 Meble za 2 Monety'] }),
+      row(3, { yourStance: 'neutral', tradeOffers: ['3 Zboże za 1 Mikstura'] }),
+    ];
+    const window = createDiplomacyWindow({ ctx, container: new Container(), rows: () => rows });
+    window.toggle();
+    expect(texts).toContain('Umowy handlowe');
+    expect(texts).toContain('1 Meble za 2 Monety');
+    expect(texts).not.toContain('Handluje tylko z przyjaznym plemieniem');
+
+    texts.length = 0;
+    const tab = centreOf(expectedLayout(ctx, [1, 3], 1).tabs[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    window.handleClick(tab.x, tab.y);
+    expect(texts).toContain('3 Zboże za 1 Mikstura');
+    expect(texts).toContain('Handluje tylko z przyjaznym plemieniem');
   });
 
   it('prints the traded-goods note for a row that carries a tally, and repaints when it grows', () => {

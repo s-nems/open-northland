@@ -98,6 +98,8 @@ export interface DiplomacyPanelRow {
   readonly canDeclare: boolean;
   /** The open tributes the viewer owes this player, ascending by slot. */
   readonly tributes: readonly TributePanelRow[];
+  /** What this player's houses trade, one "give for take" line per map agreement. */
+  readonly tradeOffers: readonly string[];
   /** What the viewer's traders brought out of this player's houses; present only while both stances
    *  are `friend`, the one case the original prints its tally line in (reading). */
   readonly goodsTraded?: number;
@@ -138,6 +140,18 @@ export interface DiplomacyTributeRect {
   readonly lines: readonly { readonly x: number; readonly y: number }[];
 }
 
+/** The rows the trade section lists for `row`: its offers, and under them the reminder that a trader
+ *  deals only with a tribe the viewer holds as friend while it does not. None without an offer. */
+export function tradeSectionRows(row: Pick<DiplomacyPanelRow, 'tradeOffers' | 'yourStance'>): number {
+  if (row.tradeOffers.length === 0) return 0;
+  return row.tradeOffers.length + (row.yourStance === 'friend' ? 0 : 1);
+}
+
+export interface DiplomacyOffersRect {
+  readonly title: Rect;
+  readonly rows: readonly Rect[];
+}
+
 export interface DiplomacyNoteRect {
   readonly card: Rect;
   /** Where the wrapped note's top-left lands. */
@@ -156,6 +170,9 @@ export interface DiplomacyWindowLayout {
   readonly stances: readonly DiplomacyStanceRect[];
   /** The selected player's tribute cards under the readout, in the order they were given. */
   readonly tributes: readonly DiplomacyTributeRect[];
+  /** The selected player's trade agreements under the tributes, a title over its rows; null without
+   *  any. Authored: the original lists a tribe's agreements only in a trader's own window. */
+  readonly offers: DiplomacyOffersRect | null;
   /** The traded-goods note at the foot of the window, where the original prints it; null without one. */
   readonly tradedNote: DiplomacyNoteRect | null;
 }
@@ -182,6 +199,8 @@ export interface DiplomacyLayoutOptions {
   readonly declarable?: DiplomacyState | null;
   /** The selected player's tributes, in listing order. */
   readonly tributes: readonly TributeCardSpec[];
+  /** The rows of the trade section ({@link tradeSectionRows}); absent or 0 lays out no section. */
+  readonly offerRows?: number;
   /** The wrapped traded-goods note's height (design px); absent or null lays out no note. */
   readonly tradedNoteH?: number | null;
 }
@@ -263,6 +282,20 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     };
   });
 
+  const offerRows = players.length === 0 ? 0 : (opts.offerRows ?? 0);
+  let offers: DiplomacyOffersRect | null = null;
+  if (offerRows > 0) {
+    const slot = (): Rect => {
+      const rect: Rect = { x: contentX, y: nextCardY, w: contentW, h: lineH };
+      nextCardY += lineH;
+      return rect;
+    };
+    const title = slot();
+    const rows: Rect[] = [];
+    for (let i = 0; i < offerRows; i++) rows.push(slot());
+    offers = { title, rows };
+  }
+
   const noteH = players.length === 0 ? null : (opts.tradedNoteH ?? null);
   let tradedNote: DiplomacyNoteRect | null = null;
   if (noteH !== null) {
@@ -287,6 +320,7 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     bodyLines,
     stances,
     tributes,
+    offers,
     tradedNote,
   };
 }

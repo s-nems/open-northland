@@ -438,6 +438,29 @@ describe('the houses a map agreement applies to', () => {
     expect(offersIn([HUMAN, NEIGHBOUR], [], NEIGHBOUR)).toBe(0);
   });
 
+  it("lists a partner's agreements once each, however many of its houses carry the row", () => {
+    const sim = newSim();
+    houseAt(sim, NEAR_X, NEIGHBOUR, [], TRADING_POST_ID);
+    houseAt(sim, FAR_X, NEIGHBOUR, [], TRADING_POST_ID);
+    for (const takeAmount of [2, 3]) {
+      sim.enqueueSetup({
+        kind: 'addTradeAgreement',
+        missionId: TRADING_POST_ID,
+        giveGood: WOOD,
+        giveAmount: 1,
+        takeGood: PLANK,
+        takeAmount,
+      });
+    }
+    sim.run(1);
+
+    expect(sim.tradeOffersOf(NEIGHBOUR).map((offer) => [offer.index, offer.takeAmount])).toEqual([
+      [0, 2],
+      [1, 3],
+    ]);
+    expect(sim.tradeOffersOf(OUTSIDER)).toEqual([]);
+  });
+
   it('gates nothing in a world that set no match up', () => {
     expect(offersIn([], [], NEIGHBOUR)).toBe(1);
   });

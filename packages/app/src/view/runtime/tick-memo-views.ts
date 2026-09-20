@@ -1,4 +1,4 @@
-import type { OpenTribute, Simulation } from '@open-northland/sim';
+import type { OpenTribute, Simulation, TradeOffer } from '@open-northland/sim';
 import { type BuildingAvailability, OPEN_AVAILABILITY } from '../../hud/tool-panel/building-menu.js';
 import type { DiplomacySimView } from '../projections/diplomacy-rows.js';
 
@@ -25,6 +25,8 @@ export function createTickMemoViews(
     readonly payer: number;
     readonly owed: readonly OpenTribute[];
   } | null = null;
+  let offersMemo: { readonly tick: number; readonly byPartner: Map<number, readonly TradeOffer[]> } | null =
+    null;
   let reasonMemo: { readonly tick: number; readonly reasons: Map<string, BuildingAvailability> } | null =
     null;
   return {
@@ -33,6 +35,17 @@ export function createTickMemoViews(
       diplomacyStance: (from, to) => sim.diplomacyStance(from, to),
       diplomacyLocked: (a, b) => sim.diplomacyLocked(a, b),
       goodsTradedWith: (player, partner) => sim.goodsTradedWith(player, partner),
+      tradeOffersOf: (partner) => {
+        if (offersMemo === null || offersMemo.tick !== sim.tick) {
+          offersMemo = { tick: sim.tick, byPartner: new Map() };
+        }
+        let offers = offersMemo.byPartner.get(partner);
+        if (offers === undefined) {
+          offers = sim.tradeOffersOf(partner);
+          offersMemo.byPartner.set(partner, offers);
+        }
+        return offers;
+      },
       openTributes: (payer) => {
         if (owedMemo === null || owedMemo.tick !== sim.tick || owedMemo.payer !== payer) {
           owedMemo = { tick: sim.tick, payer, owed: sim.openTributes(payer) };

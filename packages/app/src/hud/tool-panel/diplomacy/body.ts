@@ -149,6 +149,22 @@ export function createDiplomacyBody(layers: WindowLayers) {
     return note;
   };
 
+  /** The trade section: a title over one card per agreement, and the friend-only reminder last. */
+  const paintOffers = (built: DiplomacyWindowLayout, row: DiplomacyPanelRow): void => {
+    if (built.offers === null) return;
+    const title = paintRowCard(layers, built.offers.title);
+    placeOnCard(layers, addRun(layers, messages().hud.tradeOffers, 'dimmed', ROW_PX), title);
+    built.offers.rows.forEach((slot, i) => {
+      const card = paintRowCard(layers, slot);
+      const offer = row.tradeOffers[i];
+      const run =
+        offer !== undefined
+          ? addRun(layers, offer, 'white', ROW_PX)
+          : addRun(layers, messages().hud.tradeNotFriends, 'dimmed', ROW_PX);
+      placeOnCard(layers, run, card);
+    });
+  };
+
   const paintTradedNote = (built: DiplomacyWindowLayout, note: ParagraphRun | null): void => {
     if (built.tradedNote === null || note === null) return;
     paintRowCard(layers, built.tradedNote.card);
@@ -195,6 +211,7 @@ export function createDiplomacyBody(layers: WindowLayers) {
         paintBody(built, row);
         paintStances(built);
         paintTributes(built, cards);
+        paintOffers(built, row);
         paintTradedNote(built, tradedNote);
       } else {
         const line = built.bodyLines[0];

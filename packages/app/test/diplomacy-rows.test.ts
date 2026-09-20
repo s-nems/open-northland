@@ -1,4 +1,4 @@
-import type { OpenTribute } from '@open-northland/sim';
+import type { OpenTribute, TradeOffer } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
@@ -15,6 +15,7 @@ function simView(
   owed: readonly OpenTribute[] = [],
   locked: readonly [number, number][] = [],
   traded: readonly [number, number, number][] = [],
+  offers: ReadonlyMap<number, readonly TradeOffer[]> = new Map(),
 ): DiplomacySimView {
   const metSet = new Set(met.map(([v, o]) => `${v}:${o}`));
   const stanceMap = new Map(stances.map(([f, t, s]) => [`${f}:${t}`, s]));
@@ -25,6 +26,7 @@ function simView(
     openTributes: () => owed,
     goodsTradedWith: (player, partner) =>
       traded.find(([from, to]) => from === player && to === partner)?.[2] ?? 0,
+    tradeOffersOf: (partner) => offers.get(partner) ?? [],
   };
 }
 
@@ -52,6 +54,7 @@ describe('diplomacyPanelRows', () => {
         yourStance: 'neutral',
         canDeclare: true,
         tributes: [],
+        tradeOffers: [],
       },
     ]);
   });
@@ -81,6 +84,26 @@ describe('diplomacyPanelRows', () => {
       [1, 12],
       [2, undefined],
     ]);
+  });
+
+  it("lists what each player trades in the goods' own names, numbered where a label is missing", () => {
+    const FURNITURE = 29;
+    const COIN = 8;
+    const sim = simView(
+      [[0, 1]],
+      [],
+      [],
+      [],
+      [],
+      new Map([[1, [{ index: 0, giveGood: FURNITURE, giveAmount: 1, takeGood: COIN, takeAmount: 2 }]]]),
+    );
+    const rows = diplomacyPanelRows(sim, {
+      localPlayer: 0,
+      rosterPlayers: [0, 1],
+      observer: false,
+      goodLabelOf: (good) => (good === FURNITURE ? 'Meble' : undefined),
+    });
+    expect(rows[0]?.tradeOffers).toEqual([`1 Meble za 2 ${COIN}`]);
   });
 
   it('drops a pair the map hides and takes the stance buttons off a locked pair or a page it closes', () => {

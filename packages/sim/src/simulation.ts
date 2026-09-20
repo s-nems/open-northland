@@ -79,7 +79,13 @@ import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
-import { type TradeOffer, type TraderView, tradeOffersAt, traderView } from './systems/trade/index.js';
+import {
+  type TradeOffer,
+  type TraderView,
+  tradeOffersAt,
+  tradeOffersOf,
+  traderView,
+} from './systems/trade/index.js';
 import {
   canAttachToVehicle,
   type MooringProbe,
@@ -486,6 +492,11 @@ export class Simulation {
   /** The map agreements a house offers a visiting trader, as detached copies. */
   tradeOffersAt(house: Entity): readonly TradeOffer[] {
     return tradeOffersAt(this.world, house);
+  }
+
+  /** Every map agreement `partner`'s houses offer, each once, as detached copies. */
+  tradeOffersOf(partner: number): readonly TradeOffer[] {
+    return tradeOffersOf(this.world, partner);
   }
 
   /** A vehicle's type, crew, hold and standing as a detached copy; undefined for anything else. */

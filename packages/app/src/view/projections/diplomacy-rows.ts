@@ -1,7 +1,8 @@
 import type { MapRelationFlag } from '@open-northland/data';
-import type { DiplomacyState, OpenTribute } from '@open-northland/sim';
+import type { DiplomacyState, OpenTribute, TradeOffer } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/diplomacy/index.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 
 /** The sim reads the roster projection needs; `Simulation` satisfies it structurally. */
 export interface DiplomacySimView {
@@ -12,6 +13,8 @@ export interface DiplomacySimView {
   openTributes(payer: number): readonly OpenTribute[];
   /** The units `player`'s traders took out of `partner`'s houses under a trade agreement. */
   goodsTradedWith(player: number, partner: number): number;
+  /** The map agreements `partner`'s houses offer a visiting trader, each once. */
+  tradeOffersOf(partner: number): readonly TradeOffer[];
 }
 
 export interface DiplomacyRosterOptions {
@@ -96,9 +99,20 @@ export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterO
         !sim.diplomacyLocked(local, other) &&
         !flagged(flags, 'hideDetails', local, other),
       tributes: owed.filter((t) => t.receiver === other).map((t) => tributeRow(t, opts)),
+      tradeOffers: sim.tradeOffersOf(other).map((offer) => tradeOfferLine(offer, opts)),
     });
   }
   return rows;
+}
+
+/** "give N X for M Y", the wording the trader's own window lists an agreement in. */
+function tradeOfferLine(offer: TradeOffer, opts: DiplomacyRosterOptions): string {
+  return formatMessage(messages().hud.tradeOffer, {
+    giveAmount: offer.giveAmount,
+    give: opts.goodLabelOf?.(offer.giveGood) ?? String(offer.giveGood),
+    takeAmount: offer.takeAmount,
+    take: opts.goodLabelOf?.(offer.takeGood) ?? String(offer.takeGood),
+  });
 }
 
 function tributeRow(tribute: OpenTribute, opts: DiplomacyRosterOptions): TributePanelRow {

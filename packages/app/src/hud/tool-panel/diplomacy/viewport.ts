@@ -75,6 +75,13 @@ export function fitDiplomacyWindow(
       text: { x: tribute.text.x + dx, y: tribute.text.y + dy - scroll },
       lines: tribute.lines.map((line) => ({ x: line.x + dx, y: line.y + dy - scroll })),
     })),
+    offers:
+      layout.offers === null
+        ? null
+        : {
+            title: move(layout.offers.title, scroll),
+            rows: layout.offers.rows.map((row) => move(row, scroll)),
+          },
     tradedNote:
       layout.tradedNote === null
         ? null

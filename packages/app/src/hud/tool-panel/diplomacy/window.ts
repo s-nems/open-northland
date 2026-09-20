@@ -18,6 +18,7 @@ import {
   hitTestDiplomacyWindow,
   layoutDiplomacyWindow,
   resolveSelectedPlayer,
+  tradeSectionRows,
 } from './model.js';
 import { type FittedDiplomacyWindow, fitDiplomacyWindow } from './viewport.js';
 
@@ -102,6 +103,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
         r.yourStance,
         r.canDeclare,
         r.goodsTraded ?? null,
+        r.tradeOffers,
         r.tributes.map((t) => [
           t.slot,
           t.text ?? null,
@@ -140,6 +142,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       selected,
       declarable: selectedRow?.canDeclare === true ? selectedRow.yourStance : null,
       tributes: cards.map((c) => c.spec),
+      offerRows: selectedRow === undefined ? 0 : tradeSectionRows(selectedRow),
       tradedNoteH: tradedNote?.height ?? null,
     });
     const built = fitDiplomacyWindow(
