@@ -68,10 +68,10 @@ export {
 export {
   type EntitySnapshot,
   entityById,
-  type HomeQualityPolicyView,
   type HomeQualityView,
-  homeQualityPolicyView,
+  type HouseholdGoodPolicyView,
   homeQualityView,
+  householdGoodPolicyView,
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';

@@ -4,6 +4,7 @@ import {
   craftFxAtlasStems,
   resolveCraftFxRefs,
 } from '../src/content/building-gfx/craft-fx.js';
+import { HOLY_FIRE_EFFECT_NAME, holyFireLookup } from '../src/content/ir/joins.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
 
 /**
@@ -18,6 +19,14 @@ const SMITH = 13;
 function fixtureIr(): ContentIr {
   return {
     landscapeGfx: [
+      {
+        index: 651,
+        editName: 'fx fire incense',
+        logicType: 1,
+        bmd: 'data/engine2d/bin/bobs/ls_smoke.bmd',
+        paletteName: 'fire_incense',
+        frames: [{ state: 1, bobIds: [66, 67, 68] }],
+      },
       {
         index: 649,
         editName: 'fx smoke',
@@ -36,6 +45,11 @@ function fixtureIr(): ContentIr {
       },
       // Names no atlas: stages nothing rather than a wrong family.
       { index: 700, editName: 'fx bare', logicType: 1, frames: [{ state: 1, bobIds: [5] }] },
+    ],
+    buildingHolyFirePoints: [
+      { tribeId: VIKING, typeId: 4, level: 2, x: -80, y: 24 },
+      { tribeId: VIKING, typeId: 5, level: 3, x: -79, y: 25 },
+      { tribeId: VIKING, typeId: 5, level: 3, x: -3, y: 45 },
     ],
     gfxInHousePrograms: [
       {
@@ -79,5 +93,22 @@ describe('the staged craft effects', () => {
     const binding = buildCraftFxBinding(refs, new Set(['ls_smoke.smoke']));
     expect(binding).toEqual({ byName: { 'fx smoke': { layer: 'ls_smoke.smoke', frames: [0, 1, 2] } } });
     expect(buildCraftFxBinding(refs, new Set())).toBeUndefined();
+  });
+
+  it('loads the engine-pinned incense loop and preserves every authored home anchor', () => {
+    expect(resolveCraftFxRefs(fixtureIr(), [HOLY_FIRE_EFFECT_NAME])).toContainEqual({
+      name: HOLY_FIRE_EFFECT_NAME,
+      loop: { layer: 'ls_smoke.fire_incense', frames: [66, 67, 68] },
+    });
+    const lookup = holyFireLookup(fixtureIr());
+    expect(lookup(VIKING, 4, 2)).toEqual({
+      name: HOLY_FIRE_EFFECT_NAME,
+      points: [{ x: -80, y: 24 }],
+    });
+    expect(lookup(VIKING, 5, 3)?.points).toEqual([
+      { x: -79, y: 25 },
+      { x: -3, y: 45 },
+    ]);
+    expect(lookup(VIKING, 3, 1)).toBeUndefined();
   });
 });

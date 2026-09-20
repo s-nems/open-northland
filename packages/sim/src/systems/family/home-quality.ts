@@ -2,7 +2,8 @@ import type { HomeQualityEffect, HomeQualityUse } from '@open-northland/data';
 import {
   Building,
   HomeQuality,
-  HomeQualityPolicy,
+  HouseholdGoodPolicy,
+  isValidPlayer,
   ownerOf,
   Residence,
   Settler,
@@ -38,7 +39,19 @@ export function homeQualityValue(world: World, home: Entity, effect: HomeQuality
 }
 
 export function homeQualityAllowed(world: World, home: Entity, effect: HomeQualityEffect): boolean {
-  return world.tryGet(home, HomeQualityPolicy)?.[effect] ?? true;
+  const owner = ownerOf(world, home);
+  if (owner === undefined) return true;
+  const carrier = householdGoodPolicyEntity(world, owner);
+  return carrier === null ? true : world.get(carrier, HouseholdGoodPolicy)[effect];
+}
+
+export function householdGoodPolicyEntity(world: World, player: number): Entity | null {
+  let best: Entity | null = null;
+  for (const e of world.query(HouseholdGoodPolicy)) {
+    if (world.get(e, HouseholdGoodPolicy).player !== player) continue;
+    if (best === null || e < best) best = e;
+  }
+  return best;
 }
 
 /** Whether a finished home may currently use this quality role. */
@@ -150,25 +163,33 @@ export function occupiedHome(world: World, settler: Entity): Entity | null {
 const EMPTY_GOODS: ReadonlySet<number> = new Set<number>();
 
 /**
- * Toggle one finished home's use policy. The original flag blocks demand and delivery only; the player-facing
- * control intentionally also pauses consumption and effects while preserving the stored pool.
+ * Toggle one player's settlement-wide policy, including homes built later. The original per-home flag blocks
+ * demand and delivery only; this player-facing control also pauses consumption and effects while preserving
+ * every stored pool.
  */
-export function setHomeQualityUse(
+export function setHouseholdGoodUse(
   world: World,
   ctx: SystemContext,
-  command: { readonly home: Entity; readonly effect: HomeQualityEffect; readonly allowed: boolean },
+  command: { readonly player: number; readonly effect: HomeQualityEffect; readonly allowed: boolean },
 ): void {
-  const building = world.tryGet(command.home, Building);
-  if (building === undefined || building.built < ONE) return;
-  const type = contentIndex(ctx.content).buildings.get(building.buildingType);
+  if (!isValidPlayer(command.player)) return;
   const policy = homeQualityUseFor(ctx, command.effect);
-  if (type?.kind !== 'home' || policy === undefined || building.level < policy.minimumHomeLevel) return;
+  if (policy === undefined) return;
 
-  const current = world.tryGet(command.home, HomeQualityPolicy) ?? DEFAULT_POLICY;
+  const carrier = householdGoodPolicyEntity(world, command.player);
+  const current = carrier === null ? DEFAULT_POLICY : world.get(carrier, HouseholdGoodPolicy);
   if (current[command.effect] === command.allowed) return;
-  const next = { ...current, [command.effect]: command.allowed };
-  if (next.cooking && next.rest && next.piety) world.remove(command.home, HomeQualityPolicy);
-  else world.add(command.home, HomeQualityPolicy, next);
+  const next = {
+    player: command.player,
+    cooking: current.cooking,
+    rest: current.rest,
+    piety: current.piety,
+    [command.effect]: command.allowed,
+  };
+  if (next.cooking && next.rest && next.piety) {
+    if (carrier !== null) world.destroy(carrier);
+  } else if (carrier === null) world.add(world.create(), HouseholdGoodPolicy, next);
+  else Object.assign(world.mut(carrier, HouseholdGoodPolicy), next);
 }
 
 const DEFAULT_POLICY: Readonly<Record<HomeQualityEffect, boolean>> = {

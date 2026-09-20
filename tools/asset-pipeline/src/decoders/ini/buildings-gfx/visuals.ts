@@ -6,13 +6,14 @@ import {
   BuildingBob,
   BuildingConstructionLayer,
   BuildingFlagPoint,
+  BuildingHolyFirePoint,
   BuildingOverlay,
 } from '@open-northland/data';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
 import type { RuleSection } from '../grammar.js';
 import { makeSource, normalizePaletteName, type SourceRef } from '../ir-fields.js';
 import { findProps, getStr } from '../props.js';
-import { gfxHouseGraphicsRecords, gfxHouseRecords } from './shared.js';
+import { gfxHouseGraphicsRecords, gfxHouseLogicRecords, gfxHouseRecords } from './shared.js';
 
 /**
  * Extracts the construction-stage layers, `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
@@ -146,6 +147,36 @@ export function extractBuildingSoldierFlagPoints(
   src: SourceRef,
 ): BuildingFlagPoint[] {
   return extractHousePoints(sections, src, 'gfxsoldierflagpoint');
+}
+
+/** Extracts every `GfxHolyFirePoint <level> <x> <y>` in file order. Repeated points at one level are
+ * distinct flame anchors and must not use the singular flag-point extractor's last-wins policy. */
+export function extractBuildingHolyFirePoints(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): BuildingHolyFirePoint[] {
+  const points: BuildingHolyFirePoint[] = [];
+  for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
+    if (!Number.isFinite(tribeType)) continue;
+    for (const p of findProps(rec, 'GfxHolyFirePoint')) {
+      const [level, x, y] = p.values.map((v) => Number.parseInt(v, 10));
+      if (level === undefined || x === undefined || y === undefined) continue;
+      if ([level, x, y].some((n) => Number.isNaN(n))) continue;
+      const typeId = typeByLevel.get(level);
+      if (typeId === undefined) continue;
+      points.push(
+        BuildingHolyFirePoint.parse({
+          tribeId: tribeType,
+          typeId,
+          level,
+          x,
+          y,
+          source: makeSource(src, 'GfxHouse'),
+        }),
+      );
+    }
+  }
+  return points;
 }
 
 /** The shared `<level> <x> <y>` anchor read behind both point keys. */

@@ -3,6 +3,7 @@ import {
   extractBuildingBobs,
   extractBuildingFlagPoints,
   extractBuildingGraphics,
+  extractBuildingHolyFirePoints,
   extractBuildingOverlays,
   extractBuildingSoldierFlagPoints,
   extractConstructionLayers,
@@ -166,6 +167,43 @@ describe('extractBuildingSoldierFlagPoints', () => {
     const points = extractBuildingSoldierFlagPoints(parseIniSections(GFXHOUSE_FLAGPOINTS_INI), src);
     expect(points.some((p) => p.editName === 'Egypt Tower')).toBe(false);
     expect(extractBuildingSoldierFlagPoints(parseIniSections(HOUSES_INI), src)).toEqual([]);
+  });
+});
+
+describe('extractBuildingHolyFirePoints', () => {
+  const src = { file: 'budynki12/houses/houses.ini', layer: 'mod' as const };
+
+  it('joins every repeated flame anchor to its level-specific building type in source order', () => {
+    const points = extractBuildingHolyFirePoints(
+      parseIniSections(`[GfxHouse]
+EditName "viking home"
+LogicTribeType 1
+LogicType 0 2
+LogicType 2 4
+LogicType 3 5
+LogicType 4 6
+GfxHolyFirePoint 2 -80 24
+GfxHolyFirePoint 3 -79 25
+GfxHolyFirePoint 3 -3 45
+GfxHolyFirePoint 4 -100 40
+GfxHolyFirePoint 4 -11 66
+GfxHolyFirePoint 1 99 99
+`),
+      src,
+    );
+
+    expect(points).toEqual([
+      { tribeId: 1, typeId: 4, level: 2, x: -80, y: 24, source: { ...src, block: 'GfxHouse' } },
+      { tribeId: 1, typeId: 5, level: 3, x: -79, y: 25, source: { ...src, block: 'GfxHouse' } },
+      { tribeId: 1, typeId: 5, level: 3, x: -3, y: 45, source: { ...src, block: 'GfxHouse' } },
+      { tribeId: 1, typeId: 6, level: 4, x: -100, y: 40, source: { ...src, block: 'GfxHouse' } },
+      { tribeId: 1, typeId: 6, level: 4, x: -11, y: 66, source: { ...src, block: 'GfxHouse' } },
+      // Level 1 has no LogicType row in this fixture, so the orphan anchor is omitted.
+    ]);
+  });
+
+  it('returns an empty array for logic-only house tables', () => {
+    expect(extractBuildingHolyFirePoints(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
 });
 

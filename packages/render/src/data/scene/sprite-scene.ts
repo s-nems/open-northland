@@ -3,9 +3,10 @@ import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
-import { pushCraftFxItems, pushGhostItems } from './collect-fields.js';
+import { pushBuildingFxItems, pushCraftFxItems, pushGhostItems } from './collect-fields.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
 import { emitEntities } from './entity-source.js';
+import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose } from './settler-pose.js';
@@ -62,6 +63,8 @@ export interface SpriteSceneOptions {
   /** The indoor craft choreography. A worker whose `(tribe, job, action)` it does not choreograph - or
    *  every worker, when it is absent - stays hidden inside its house. */
   readonly inHousePrograms?: InHouseProgramLookup | undefined;
+  /** Source-authored home anchors and the resolved looping flame effect. */
+  readonly holyFire?: HolyFireLookup | undefined;
 }
 
 /**
@@ -101,6 +104,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     portraitRef,
     playerColourOf,
     inHousePrograms,
+    holyFire,
   } = opts;
   const items: MutableSpriteDrawItem[] = [];
   const collected = new Set<number>();
@@ -159,6 +163,16 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     }
     // Only a kept or forced settler gets this far indoors without a craft to show.
     else if (indoorSettler) item.frozen = true;
+    if (kind === 'building') {
+      pushBuildingFxItems(
+        items,
+        collected,
+        item,
+        holyFireOverlays(snapshot, entity.id, components, holyFire),
+        tileX,
+        tileY,
+      );
+    }
     items.push(item);
   };
 

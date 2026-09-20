@@ -164,9 +164,9 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setDiplomacy: { required: { from: 'integer', to: 'integer', state: { oneOf: DIPLOMACY_STATES } } },
   setFogMode: { required: { mode: 'integer' } },
   setGatherGood: { required: { entity: 'integer', goodType: { nullOr: 'integer' } } },
-  setHomeQualityUse: {
+  setHouseholdGoodUse: {
     required: {
-      home: 'integer',
+      player: 'integer',
       effect: { oneOf: HomeQualityEffect.options },
       allowed: 'boolean',
     },

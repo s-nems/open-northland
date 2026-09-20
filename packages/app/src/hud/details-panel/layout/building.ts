@@ -280,7 +280,7 @@ export function layoutBuilding(
       ? []
       : model.homeQuality.map((quality, i) => {
           const rowH = Math.round(HOME_QUALITY_ROW_H * s);
-          const buttonW = Math.round(62 * s);
+          const buttonW = Math.round(100 * s);
           const gap = Math.round(4 * s);
           const row: Rect = {
             x: homeQuality.body.x,

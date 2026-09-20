@@ -8,6 +8,7 @@ import {
   extractBuildingBobs,
   extractBuildingFlagPoints,
   extractBuildingFootprints,
+  extractBuildingHolyFirePoints,
   extractBuildingOverlays,
   extractBuildingSoldierFlagPoints,
   extractBuildings,
@@ -62,6 +63,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const buildingOverlays = [];
   const buildingFlagPoints = [];
   const buildingSoldierFlagPoints = [];
+  const buildingHolyFirePoints = [];
   const buildingGraphicsOverlays = {
     constructionCosts: new Map<number, GoodQuantity[]>(),
     hitpoints: new Map<number, number>(),
@@ -92,6 +94,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
     buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
     buildingSoldierFlagPoints.push(...extractBuildingSoldierFlagPoints(sections, src));
+    buildingHolyFirePoints.push(...extractBuildingHolyFirePoints(sections, src));
     foldOverlay(buildingGraphicsOverlays.constructionCosts, extractConstructionCosts(sections));
     foldOverlay(buildingGraphicsOverlays.hitpoints, extractHouseHitpoints(sections));
     foldOverlay(buildingGraphicsOverlays.upgradeTargets, extractUpgradeTargets(sections));
@@ -119,6 +122,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     buildingOverlays,
     buildingFlagPoints,
     buildingSoldierFlagPoints,
+    buildingHolyFirePoints,
     buildingGraphicsOverlays,
   };
 }

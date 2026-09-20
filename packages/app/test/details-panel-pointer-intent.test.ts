@@ -9,7 +9,7 @@ import {
   GOOD_SHOES,
   GOOD_STONE,
 } from '../src/game/sandbox/ids/index.js';
-import type { UnitPanelModel } from '../src/hud/details-panel/index.js';
+import { buildUnitPanelModel, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import {
   NO_PANEL_HOVER,
   panelClickAt,
@@ -18,7 +18,7 @@ import {
 } from '../src/hud/details-panel/pointer-intent.js';
 import type { PanelView } from '../src/hud/details-panel/selection-view.js';
 import { center, panelModelOf, viewOfKind } from './support/details-panel.js';
-import { buildingEntity } from './support/sandbox.js';
+import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 const NO_TOGGLE = false;
 const TOGGLE = true;
@@ -223,23 +223,29 @@ describe('details panel click intents', () => {
     if (cooking === undefined) throw new Error('expected a crockery policy button');
     const p = center(cooking.button.rect);
     expect(panelClickAt(allowed, p.x, p.y, NO_TOGGLE)).toEqual({
-      kind: 'setHomeQualityUse',
-      entityId: 5,
+      kind: 'setHouseholdGoodUse',
+      player: 0,
       effect: 'cooking',
       allowed: false,
     });
 
     const forbidden = viewOfKind(
-      panelModelOf(
-        buildingEntity(5, BUILDING_HOME_00, {
-          components: { HomeQualityPolicy: { cooking: false, rest: true, piety: true } },
-        }),
+      buildUnitPanelModel(
+        snapshotOf([
+          buildingEntity(5, BUILDING_HOME_00),
+          {
+            id: 99,
+            components: { HouseholdGoodPolicy: { player: 0, cooking: false, rest: true, piety: true } },
+          },
+        ]),
+        new Set([5]),
+        sandboxCtx(),
       ),
       'building',
     );
     expect(panelClickAt(forbidden, p.x, p.y, NO_TOGGLE)).toEqual({
-      kind: 'setHomeQualityUse',
-      entityId: 5,
+      kind: 'setHouseholdGoodUse',
+      player: 0,
       effect: 'cooking',
       allowed: true,
     });

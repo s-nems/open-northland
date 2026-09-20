@@ -24,6 +24,7 @@ export {
   extractBuildingFlagPoints,
   extractBuildingFootprints,
   extractBuildingGraphics,
+  extractBuildingHolyFirePoints,
   extractBuildingOverlays,
   extractBuildingSoldierFlagPoints,
   extractConstructionCosts,

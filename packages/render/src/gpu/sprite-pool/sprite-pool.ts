@@ -209,6 +209,7 @@ export class SpritePool {
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
       ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
+      ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
@@ -306,6 +307,7 @@ export class SpritePool {
       keepIndoorSettlers: view.solo !== undefined,
       ...(view.solo !== undefined ? { onlyRefs: new Set([view.solo]) } : {}),
       ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
+      ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
     const frame: PoolFrame = {

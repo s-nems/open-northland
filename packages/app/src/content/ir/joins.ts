@@ -4,7 +4,7 @@ import {
   type GfxInHouseProgram,
   UNLOADED_GOOD_TYPE,
 } from '@open-northland/data';
-import type { InHouseProgramLookup, SpriteAtlas } from '@open-northland/render';
+import type { HolyFireLookup, InHouseProgramLookup, SpriteAtlas } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { canonicalJobType } from '../../game/sandbox/ids/index.js';
 import type { GoodRef } from '../settler-gfx/index.js';
@@ -250,6 +250,24 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
     });
   }
   return (tribe, job, action) => byTribe.get(tribe)?.get(`${canonicalJobType(job)}/${action}`);
+}
+
+/** The original selects this one landscape loop for every tribe's holy-fire table entry. The house
+ * records own only the repeated anchor points; engine table evidence pins the shared effect name. */
+export const HOLY_FIRE_EFFECT_NAME = 'fx fire incense';
+
+export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
+  const byKey = new Map<string, { x: number; y: number }[]>();
+  for (const row of ir?.buildingHolyFirePoints ?? []) {
+    const key = `${row.tribeId}/${row.typeId}/${row.level}`;
+    const points = byKey.get(key);
+    if (points === undefined) byKey.set(key, [{ x: row.x, y: row.y }]);
+    else points.push({ x: row.x, y: row.y });
+  }
+  return (tribe, buildingType, level) => {
+    const points = byKey.get(`${tribe}/${buildingType}/${level}`);
+    return points === undefined ? undefined : { name: HOLY_FIRE_EFFECT_NAME, points };
+  };
 }
 
 /** One `[gfxanimatomic]` record as a clip candidate: the body bobseq it names and its own frame lists. */

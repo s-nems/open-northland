@@ -1,5 +1,6 @@
 import type {
   BuildingFootprint,
+  BuildingHolyFirePoint,
   GfxInHouseProgram,
   GfxPattern,
   GfxPatternTransition,
@@ -198,6 +199,7 @@ export interface ContentIr {
   /** `gfxsoldierflagpoint` - the mast a manned post flies its garrison flag from; observed only on the
    *  tower records. */
   readonly buildingSoldierFlagPoints?: readonly BuildingFlagPointRow[];
+  readonly buildingHolyFirePoints?: readonly BuildingHolyFirePoint[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
   /** The `[landscapetype]` logic table - `LandscapeGfxRow.logicType` joins onto it. */

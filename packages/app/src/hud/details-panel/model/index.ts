@@ -1,7 +1,7 @@
 import {
   entityById,
-  homeQualityPolicyView,
   homeQualityView,
+  householdGoodPolicyView,
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -174,7 +174,8 @@ export function buildUnitPanelModel(
     const level = num(b.level) ?? 0;
     const finished = ent.components.UnderConstruction === undefined && pct(num(b.built)) >= 100;
     const pools = homeQualityView(snapshot, entityId) ?? { cooking: 0, rest: 0, piety: 0 };
-    const policy = homeQualityPolicyView(snapshot, entityId) ?? { cooking: true, rest: true, piety: true };
+    const ownerPlayer = ownerPlayerOf(ent);
+    const policy = householdGoodPolicyView(snapshot, ownerPlayer ?? -1);
     const effectOrder = { cooking: 0, rest: 1, piety: 2 } as const;
     const homeQuality =
       def?.kind === 'home' && finished
@@ -206,6 +207,7 @@ export function buildUnitPanelModel(
       title: buildingTitle(ctx, rawType),
       category,
       owner: `#${ownerPlayerOf(ent) ?? '-'}`,
+      ownerPlayer,
       tribe: tribeName(num(b.tribe), contentTribeName(ctx, num(b.tribe))),
       tribeId: num(b.tribe),
       level,

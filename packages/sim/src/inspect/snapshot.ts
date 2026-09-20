@@ -28,7 +28,7 @@ export interface HomeQualityView {
   readonly piety: number;
 }
 
-export interface HomeQualityPolicyView {
+export interface HouseholdGoodPolicyView {
   readonly cooking: boolean;
   readonly rest: boolean;
   readonly piety: boolean;
@@ -43,16 +43,16 @@ export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQual
   return { cooking, rest, piety };
 }
 
-/** Decode one home's use policy. An absent policy is the default-allowed state. */
-export function homeQualityPolicyView(snapshot: WorldSnapshot, home: number): HomeQualityPolicyView | null {
-  const entity = entityById(snapshot, home);
-  if (entity === undefined) return null;
-  const raw = entity.components.HomeQualityPolicy;
-  if (raw === undefined) return { cooking: true, rest: true, piety: true };
-  if (!isPlainRecord(raw)) return null;
-  const { cooking, rest, piety } = raw;
-  if (typeof cooking !== 'boolean' || typeof rest !== 'boolean' || typeof piety !== 'boolean') return null;
-  return { cooking, rest, piety };
+/** Decode one player's settlement-wide household-good policy. An absent policy is default-allowed. */
+export function householdGoodPolicyView(snapshot: WorldSnapshot, player: number): HouseholdGoodPolicyView {
+  for (const entity of snapshot.entities) {
+    const raw = entity.components.HouseholdGoodPolicy;
+    if (!isPlainRecord(raw) || raw.player !== player) continue;
+    const { cooking, rest, piety } = raw;
+    if (typeof cooking !== 'boolean' || typeof rest !== 'boolean' || typeof piety !== 'boolean') continue;
+    return { cooking, rest, piety };
+  }
+  return { cooking: true, rest: true, piety: true };
 }
 
 /**

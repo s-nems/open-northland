@@ -27,8 +27,8 @@ export type PanelClick =
   | { readonly kind: 'demolish'; readonly entityId: number }
   | { readonly kind: 'setDefenceMode'; readonly entityId: number; readonly enabled: boolean }
   | {
-      readonly kind: 'setHomeQualityUse';
-      readonly entityId: number;
+      readonly kind: 'setHouseholdGoodUse';
+      readonly player: number;
       readonly effect: 'cooking' | 'rest' | 'piety';
       readonly allowed: boolean;
     }
@@ -111,9 +111,14 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
               : null;
       if (homeEffect !== null) {
         const row = view.model.homeQuality.find((quality) => quality.effect === homeEffect);
-        return row === undefined
+        return row === undefined || view.model.ownerPlayer === undefined
           ? null
-          : { kind: 'setHomeQualityUse', entityId, effect: homeEffect, allowed: !row.allowed };
+          : {
+              kind: 'setHouseholdGoodUse',
+              player: view.model.ownerPlayer,
+              effect: homeEffect,
+              allowed: !row.allowed,
+            };
       }
       return action === 'demolish' ? { kind: 'demolish', entityId } : null;
     }

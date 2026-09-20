@@ -14,7 +14,7 @@ import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
-import { setHomeQualityUse } from '../family/home-quality.js';
+import { setHouseholdGoodUse } from '../family/home-quality.js';
 import { payTribute } from '../missions/tributes.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
 // `ai-player/assistant-counters.js` for the published-counter map, and routing that through the
@@ -154,8 +154,8 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'setGatherGood':
       setGatherGood(world, ctx, command);
       return;
-    case 'setHomeQualityUse':
-      setHomeQualityUse(world, ctx, command);
+    case 'setHouseholdGoodUse':
+      setHouseholdGoodUse(world, ctx, command);
       return;
     case 'placeSignpost':
       placeSignpost(world, ctx, command);

@@ -6,7 +6,6 @@ import {
   Carrying,
   CurrentAtomic,
   HomeQuality,
-  HomeQualityPolicy,
   Owner,
   Position,
   Residence,
@@ -18,8 +17,8 @@ import type { Entity } from '../../src/ecs/world.js';
 import {
   exportSaveGame,
   fx,
-  homeQualityPolicyView,
   homeQualityView,
+  householdGoodPolicyView,
   ONE,
   parseCommandEnvelope,
   playerCommand,
@@ -32,6 +31,7 @@ import {
   demandedHomeQualityGoods,
   drainHolyOil,
   homeQualityActive,
+  homeQualityAllowed,
   spendHomeQuality,
 } from '../../src/systems/family/home-quality.js';
 import { ExternalQualityIndex } from '../../src/systems/family/quality-search.js';
@@ -117,12 +117,17 @@ function content() {
 
 function setup(): { sim: Simulation; home: Entity; carrier: Entity } {
   const sim = new Simulation({ seed: 1, content: content() });
-  const home = sim.world.create();
-  sim.world.add(home, Building, { buildingType: HOME, tribe: TRIBE, built: ONE, level: 2 });
-  sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 0]]) });
-  sim.world.add(home, Owner, { player: 0 });
+  const home = addHome(sim, 0, 2);
   const carrier = sim.world.create();
   return { sim, home, carrier };
+}
+
+function addHome(sim: Simulation, player: number, level: number): Entity {
+  const home = sim.world.create();
+  sim.world.add(home, Building, { buildingType: HOME, tribe: TRIBE, built: ONE, level });
+  sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 0]]) });
+  sim.world.add(home, Owner, { player });
+  return home;
 }
 
 function deliver(sim: Simulation, carrier: Entity, home: Entity, goodType: number): number {
@@ -130,14 +135,8 @@ function deliver(sim: Simulation, carrier: Entity, home: Entity, goodType: numbe
   return pileupIntoStore(sim.world, ctxOf(sim), carrier, home);
 }
 
-function toggle(
-  sim: Simulation,
-  home: Entity,
-  effect: 'cooking' | 'rest' | 'piety',
-  allowed: boolean,
-  player = 0,
-): void {
-  sim.enqueue(playerCommand(player, { kind: 'setHomeQualityUse', home, effect, allowed }));
+function toggle(sim: Simulation, effect: 'cooking' | 'rest' | 'piety', allowed: boolean, player = 0): void {
+  sim.enqueue(playerCommand(player, { kind: 'setHouseholdGoodUse', player, effect, allowed }));
   sim.step();
 }
 
@@ -258,10 +257,10 @@ describe('household quality goods', () => {
     deliver(sim, carrier, home, FURNITURE);
     deliver(sim, carrier, home, OIL);
 
-    toggle(sim, home, 'cooking', false);
-    toggle(sim, home, 'rest', false);
-    toggle(sim, home, 'piety', false);
-    expect(homeQualityPolicyView(sim.snapshot(), home)).toEqual({
+    toggle(sim, 'cooking', false);
+    toggle(sim, 'rest', false);
+    toggle(sim, 'piety', false);
+    expect(householdGoodPolicyView(sim.snapshot(), 0)).toEqual({
       cooking: false,
       rest: false,
       piety: false,
@@ -300,37 +299,34 @@ describe('household quality goods', () => {
     expect(deliver(sim, blocked, home, CROCKERY)).toBe(0);
     expect(sim.world.get(blocked, Carrying)).toEqual({ goodType: CROCKERY, amount: 1 });
 
-    toggle(sim, home, 'cooking', true);
+    toggle(sim, 'cooking', true);
     expect(deliver(sim, blocked, home, CROCKERY)).toBe(1);
     expect(sim.world.get(home, HomeQuality).cooking).toBe(200);
   });
 
-  it('persists policy and rejects foreign, unfinished, and non-home targets', () => {
+  it('persists one player policy across their existing and future homes while isolating other players', () => {
     const { sim, home } = setup();
-    toggle(sim, home, 'rest', false);
+    const existing = addHome(sim, 0, 0);
+    const otherPlayer = addHome(sim, 1, 2);
+    toggle(sim, 'rest', false);
+    const future = addHome(sim, 0, 1);
+    expect(homeQualityAllowed(sim.world, home, 'rest')).toBe(false);
+    expect(homeQualityAllowed(sim.world, existing, 'rest')).toBe(false);
+    expect(homeQualityAllowed(sim.world, future, 'rest')).toBe(false);
+    expect(homeQualityAllowed(sim.world, otherPlayer, 'rest')).toBe(true);
+
     const saved = exportSaveGame(sim);
     const restored = restoreSimulation(saved, { content: content() });
-    expect(homeQualityPolicyView(restored.snapshot(), home)?.rest).toBe(false);
+    expect(householdGoodPolicyView(restored.snapshot(), 0).rest).toBe(false);
 
-    toggle(sim, home, 'rest', true, 1);
-    expect(sim.world.get(home, HomeQualityPolicy).rest).toBe(false);
-
-    const unfinished = sim.world.create();
-    sim.world.add(unfinished, Building, { buildingType: HOME, tribe: TRIBE, built: fx.fromInt(0), level: 2 });
-    sim.world.add(unfinished, Owner, { player: 0 });
-    toggle(sim, unfinished, 'cooking', false);
-    expect(sim.world.has(unfinished, HomeQualityPolicy)).toBe(false);
-
-    const nonHome = sim.world.create();
-    sim.world.add(nonHome, Building, { buildingType: 999, tribe: TRIBE, built: ONE, level: 2 });
-    sim.world.add(nonHome, Owner, { player: 0 });
-    toggle(sim, nonHome, 'cooking', false);
-    expect(sim.world.has(nonHome, HomeQualityPolicy)).toBe(false);
+    sim.enqueue(playerCommand(1, { kind: 'setHouseholdGoodUse', player: 0, effect: 'rest', allowed: true }));
+    sim.step();
+    expect(householdGoodPolicyView(sim.snapshot(), 0).rest).toBe(false);
   });
 
   it('drops a forbidden in-flight household good and does not immediately fetch it again', () => {
     const { sim, home } = setup();
-    toggle(sim, home, 'rest', false);
+    toggle(sim, 'rest', false);
     const woman = sim.world.create();
     addPerson(sim.world, woman, {
       tribe: TRIBE,
@@ -382,7 +378,7 @@ describe('household quality goods', () => {
         v: 1,
         origin: 'player',
         player: 0,
-        command: { kind: 'setHomeQualityUse', home: 1, effect: 'lighting', allowed: false },
+        command: { kind: 'setHouseholdGoodUse', player: 0, effect: 'lighting', allowed: false },
       }),
     ).toThrow('envelope.command.effect: expected one of cooking, rest, piety');
   });

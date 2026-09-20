@@ -276,8 +276,8 @@ export type UnitOrderCommand =
     }
   | {
       /** Allow or forbid consumption of one durable household quality in an owned finished home. */
-      readonly kind: 'setHomeQualityUse';
-      readonly home: Entity;
+      readonly kind: 'setHouseholdGoodUse';
+      readonly player: number;
       readonly effect: HomeQualityEffect;
       readonly allowed: boolean;
     };

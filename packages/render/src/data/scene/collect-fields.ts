@@ -191,6 +191,35 @@ export function pushCraftFxItems(
   }
 }
 
+/** Append persistent effects anchored to a building. They reuse the same looping landscape-effect kind
+ * as in-house craft overlays, but their synthetic refs belong to the building itself. */
+export function pushBuildingFxItems(
+  items: MutableSpriteDrawItem[],
+  liveRefs: Set<number>,
+  building: MutableSpriteDrawItem,
+  overlays: readonly InHouseOverlay[],
+  tileX: number,
+  tileY: number,
+): void {
+  for (let slot = 0; slot < overlays.length && slot < EXTRA_ITEM_SLOTS; slot++) {
+    const overlay = overlays[slot];
+    if (overlay === undefined) continue;
+    const ref = extraItemRef(building.ref, slot);
+    liveRefs.add(ref);
+    const fx: MutableSpriteDrawItem = {
+      kind: 'craftfx',
+      ref,
+      x: building.x + overlay.dx,
+      y: building.y + overlay.dy,
+      depth: spriteDepth(tileX, tileY, 'craftfx'),
+      state: 'idle',
+      fxName: overlay.name,
+    };
+    if (building.lift !== undefined) fx.lift = building.lift;
+    items.push(fx);
+  }
+}
+
 /**
  * Put a projectile on its stable projected release chord, point it along the arc, and return its
  * ballistic height in screen px.

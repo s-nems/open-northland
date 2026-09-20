@@ -108,7 +108,7 @@ export const COMMAND_ISSUER: {
   setDiplomacy: 'trusted',
   setFogMode: 'trusted',
   setGatherGood: 'seat',
-  setHomeQualityUse: 'seat',
+  setHouseholdGoodUse: 'seat',
   setJob: 'seat',
   setMatchParticipants: 'trusted',
   setMissionsEnabled: 'trusted',

@@ -147,4 +147,6 @@ export interface SpriteSheet {
   readonly palette?: PlayerColourLut;
   /** The indoor craft choreography the scene draws a working craftsman from. */
   readonly inHousePrograms?: InHouseProgramLookup;
+  /** Persistent holy-fire effects anchored to mature homes. */
+  readonly holyFire?: import('../data/scene/holy-fire.js').HolyFireLookup;
 }

@@ -34,10 +34,10 @@ import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { mapFingerprint } from './inspect/map-fingerprint.js';
 import {
-  type HomeQualityPolicyView,
   type HomeQualityView,
-  homeQualityPolicyView,
+  type HouseholdGoodPolicyView,
   homeQualityView,
+  householdGoodPolicyView,
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
@@ -170,8 +170,8 @@ export class Simulation {
     return homeQualityView(this.snapshot(), home);
   }
 
-  homeQualityPolicy(home: Entity): HomeQualityPolicyView | null {
-    return homeQualityPolicyView(this.snapshot(), home);
+  householdGoodPolicy(player: number): HouseholdGoodPolicyView {
+    return householdGoodPolicyView(this.snapshot(), player);
   }
 
   landscapeEdits(): LandscapeEditView {

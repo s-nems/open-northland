@@ -4,6 +4,8 @@ import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_WOMAN } from '../catalog/jobs.js';
 import {
   BUILDING_DRUID_HUT,
+  BUILDING_HOME_00,
+  BUILDING_HOME_01,
   BUILDING_HOME_02,
   BUILDING_JOINERY_01,
   BUILDING_POTTERY_01,
@@ -16,10 +18,12 @@ import type { SceneDefinition } from './types.js';
 
 const MAP_W = 42;
 const MAP_H = 26;
-const HOME = { x: 21, y: 13 } as const;
+const HOME_1 = { x: 21, y: 6 } as const;
+const HOME_2 = { x: 21, y: 20 } as const;
+const HOME_3 = { x: 28, y: 13 } as const;
 const POTTERY = { x: 8, y: 8 } as const;
 const JOINERY = { x: 8, y: 18 } as const;
-const DRUID_HUT = { x: 33, y: 13 } as const;
+const DRUID_HUT = { x: 36, y: 13 } as const;
 const RUN_TICKS = 3600;
 
 const { Building, HomeQuality, Residence, Stockpile, setStockAmount } = components;
@@ -43,7 +47,10 @@ function build(sim: Simulation): void {
   const potteryEntity = placeBuiltSandboxBuilding(sim, BUILDING_POTTERY_01, POTTERY.x, POTTERY.y);
   const joineryEntity = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY_01, JOINERY.x, JOINERY.y);
   const druidEntity = placeBuiltSandboxBuilding(sim, BUILDING_DRUID_HUT, DRUID_HUT.x, DRUID_HUT.y);
-  const homeEntity = placeBuiltSandboxBuilding(sim, BUILDING_HOME_02, HOME.x, HOME.y);
+  placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, HOME_1.x, HOME_1.y);
+  const home2Entity = placeBuiltSandboxBuilding(sim, BUILDING_HOME_01, HOME_2.x, HOME_2.y);
+  sim.world.mut(home2Entity, Building).level = 1;
+  const homeEntity = placeBuiltSandboxBuilding(sim, BUILDING_HOME_02, HOME_3.x, HOME_3.y);
   sim.world.mut(homeEntity, Building).level = 2;
 
   seed(sim, potteryEntity, 'mud', 10);
@@ -54,7 +61,7 @@ function build(sim: Simulation): void {
   spawnWorkersAtDoor(sim, joineryEntity, 2);
   spawnWorkersAtDoor(sim, druidEntity, 1);
 
-  const homemaker = spawnSettlerDirect(sim, JOB_WOMAN, HOME.x - 2, HOME.y + 2);
+  const homemaker = spawnSettlerDirect(sim, JOB_WOMAN, HOME_3.x - 2, HOME_3.y + 2);
   sim.world.add(homemaker, Residence, { home: homeEntity });
 }
 

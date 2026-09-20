@@ -18,22 +18,26 @@ function loopFrames(record: LandscapeGfxRow): WaveLoop<number> | undefined {
 
 /** Every effect the extracted in-house programs stage, resolved to its record once per distinct name;
  *  a name no record carries, or one naming no drawable atlas, stages nothing. */
-export function resolveCraftFxRefs(ir: ContentIr | null): CraftFxRef[] {
+export function resolveCraftFxRefs(ir: ContentIr | null, extraNames: readonly string[] = []): CraftFxRef[] {
   const out: CraftFxRef[] = [];
   if (ir === null) return out;
   const records = landscapeRecordsByName(ir);
   const seen = new Set<string>();
-  for (const program of ir.gfxInHousePrograms ?? []) {
-    for (const entry of program.entries) {
-      if (entry.kind !== 'landscape' || seen.has(entry.name)) continue;
-      seen.add(entry.name);
-      const record = records.get(entry.name);
-      if (record === undefined) continue;
-      const stem = servedAtlasStem(record);
-      const frames = loopFrames(record);
-      if (stem === undefined || frames === undefined) continue;
-      out.push({ name: entry.name, loop: { layer: stem, frames } });
-    }
+  const names = [
+    ...extraNames,
+    ...(ir.gfxInHousePrograms ?? []).flatMap((program) =>
+      program.entries.flatMap((entry) => (entry.kind === 'landscape' ? [entry.name] : [])),
+    ),
+  ];
+  for (const name of names) {
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const record = records.get(name);
+    if (record === undefined) continue;
+    const stem = servedAtlasStem(record);
+    const frames = loopFrames(record);
+    if (stem === undefined || frames === undefined) continue;
+    out.push({ name, loop: { layer: stem, frames } });
   }
   return out;
 }

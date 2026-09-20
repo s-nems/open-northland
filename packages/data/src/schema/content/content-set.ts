@@ -14,6 +14,7 @@ import {
   BuildingBob,
   BuildingConstructionLayer,
   BuildingFlagPoint,
+  BuildingHolyFirePoint,
   BuildingOverlay,
 } from '../graphics/building-bobs.js';
 import { GfxInHouseProgram } from '../graphics/inhouse-anims.js';
@@ -83,6 +84,8 @@ export const ContentSet = z.strictObject({
   buildingFlagPoints: z.array(BuildingFlagPoint).default([]),
   /** `[GfxHouse]` `gfxsoldierflagpoint` anchors: where a manned post flies its garrison flag. */
   buildingSoldierFlagPoints: z.array(BuildingFlagPoint).default([]),
+  /** `[GfxHouse]` `GfxHolyFirePoint` anchors, including repeated flames on one building tier. */
+  buildingHolyFirePoints: z.array(BuildingHolyFirePoint).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

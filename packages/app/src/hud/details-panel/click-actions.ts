@@ -11,8 +11,8 @@ export interface PanelClickActions {
   readonly onDemolishSignpost: (entityId: number) => void;
   /** Raise or lower the alarm on the selected garrison building - the Obrona window's shield toggle. */
   readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
-  readonly onSetHomeQualityUse: (
-    entityId: number,
+  readonly onSetHouseholdGoodUse: (
+    player: number,
     effect: 'cooking' | 'rest' | 'piety',
     allowed: boolean,
   ) => void;
@@ -78,8 +78,8 @@ export function applyPanelClick(
     case 'setDefenceMode':
       actions.onSetDefenceMode(click.entityId, click.enabled);
       return;
-    case 'setHomeQualityUse':
-      actions.onSetHomeQualityUse(click.entityId, click.effect, click.allowed);
+    case 'setHouseholdGoodUse':
+      actions.onSetHouseholdGoodUse(click.player, click.effect, click.allowed);
       return;
     case 'demolishSignpost':
       actions.onDemolishSignpost(click.entityId);

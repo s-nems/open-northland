@@ -32,6 +32,8 @@ export {
   buildScene,
   buildSpriteScene,
   type DrawItem,
+  type HolyFireBinding,
+  type HolyFireLookup,
   type InHouseProgramLookup,
   isIndoorSettler,
   type SceneGround,

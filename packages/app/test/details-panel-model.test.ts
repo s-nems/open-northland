@@ -344,9 +344,12 @@ describe('selection details panel model', () => {
           components: {
             Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
             HomeQuality: { ...quality, piety: 0 },
-            HomeQualityPolicy: { cooking: true, rest: false, piety: false },
           },
         }),
+        {
+          id: 99,
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: false, piety: false } },
+        },
       ]),
       new Set([1]),
       sandboxCtx(),
@@ -361,9 +364,12 @@ describe('selection details panel model', () => {
           components: {
             Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
             HomeQuality: quality,
-            HomeQualityPolicy: { cooking: true, rest: true, piety: false },
           },
         }),
+        {
+          id: 99,
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: true, piety: false } },
+        },
       ]),
       new Set([1]),
       sandboxCtx(),

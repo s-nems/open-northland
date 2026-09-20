@@ -1,3 +1,3 @@
 /** Current IR schema version and the only stamp {@link IrManifest} accepts. Bump on any schema change,
  *  a new lane included: generated content is regenerated, never read with a lane defaulted. */
-export const IR_VERSION = 23 as const;
+export const IR_VERSION = 24 as const;

@@ -62,12 +62,13 @@ export const HomeQuality = defineComponent<{
   piety: number;
 }>('HomeQuality', 'settlers');
 
-/** Per-home permission to consume each durable quality pool. Absent means every use is allowed. */
-export const HomeQualityPolicy = defineComponent<{
+/** Settlement-wide permission to supply and consume each household good. Absent means all are allowed. */
+export const HouseholdGoodPolicy = defineComponent<{
+  player: number;
   cooking: boolean;
   rest: boolean;
   piety: boolean;
-}>('HomeQualityPolicy', 'settlers');
+}>('HouseholdGoodPolicy', 'players');
 
 /**
  * A home where a resident couple is currently making love - both parents inside, hearts over the house (the

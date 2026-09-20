@@ -8,6 +8,7 @@ export {
   extractBuildingBobs,
   extractBuildingFlagPoints,
   extractBuildingGraphics,
+  extractBuildingHolyFirePoints,
   extractBuildingOverlays,
   extractBuildingSoldierFlagPoints,
   extractConstructionLayers,

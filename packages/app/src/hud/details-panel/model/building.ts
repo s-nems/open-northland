@@ -34,6 +34,8 @@ export interface BuildingPanelModel {
   readonly title: string;
   readonly category: string;
   readonly owner: string;
+  /** Player whose global household-good policy the selected home follows. */
+  readonly ownerPlayer: number | undefined;
   /** The building's civilization, named for the player. */
   readonly tribe: string;
   /** The same civilization as the `Building.tribe` code, the per-tribe art join key. */

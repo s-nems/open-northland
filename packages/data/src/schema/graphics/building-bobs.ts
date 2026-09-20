@@ -73,6 +73,19 @@ export const BuildingFlagPoint = z.strictObject({
 });
 export type BuildingFlagPoint = z.infer<typeof BuildingFlagPoint>;
 
+/** One `GfxHolyFirePoint <level> <x> <y>` anchor. A level may carry several flames, so rows retain
+ * source order rather than collapsing to one point per `(tribeId, typeId, level)`. */
+export const BuildingHolyFirePoint = z.strictObject({
+  tribeId: TypeId,
+  typeId: TypeId,
+  level: z.number().int().nonnegative(),
+  /** Pixel offset from the building bob's draw anchor (+y down/toward the viewer). */
+  x: z.number().int(),
+  y: z.number().int(),
+  source: Provenance.optional(),
+});
+export type BuildingHolyFirePoint = z.infer<typeof BuildingHolyFirePoint>;
+
 /**
  * One `[GfxHouse]` animated state overlay: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>` - a
  * sprite drawn on top of the finished body, with one frame list per state. The source uses it for the

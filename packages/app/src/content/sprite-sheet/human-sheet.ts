@@ -12,7 +12,13 @@ import {
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
-import { inHouseProgramLookup, sequencesFor, shadowStemsByAtlasStem } from '../ir/joins.js';
+import {
+  HOLY_FIRE_EFFECT_NAME,
+  holyFireLookup,
+  inHouseProgramLookup,
+  sequencesFor,
+  shadowStemsByAtlasStem,
+} from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
 import {
@@ -132,7 +138,7 @@ export async function loadHumanSpriteSheet(
   const berryBushRefs = resolveBerryBushRefs(ir);
   const chestRefs = resolveChestRefs(ir);
   // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too.
-  const craftFxRefs = resolveCraftFxRefs(ir);
+  const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME]);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
@@ -215,6 +221,7 @@ export async function loadHumanSpriteSheet(
     kindScales: { building: BUILDING_SCALE },
     // What a worker performs inside its workplace; an unchoreographed trade stays hidden in there.
     inHousePrograms: inHouseProgramLookup(ir, goods),
+    ...(craftFxBinding?.byName[HOLY_FIRE_EFFECT_NAME] !== undefined ? { holyFire: holyFireLookup(ir) } : {}),
     ...(characters !== undefined ? { characters } : {}),
     // Team-colour LUT: present ⇒ the characters are the indexed atlas and the pool paints each per its
     // player; absent ⇒ the baked characters draw as plain sprites. The armor recolor axis rides along.
