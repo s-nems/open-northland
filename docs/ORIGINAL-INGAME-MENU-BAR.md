@@ -5,6 +5,11 @@ order, the actions each button actually triggers, and the contents of the window
 the reference for correcting the current implementation and for the later Open Northland redesign.
 It does not cover the main menu shown before a map starts.
 
+This document is scaffolding for that redesign, not a durable format or behavior reference. It is
+deleted with `docs/design/ingame-menu/` once
+[ticket 20](tickets/app/ingame-ui-20-final-acceptance.md) accepts the new HUD. Move anything still
+worth keeping into the owning reference or a test before then.
+
 ## Executive summary
 
 The original creates nine window buttons, a game-speed button, and a separate message-priority
@@ -81,8 +86,8 @@ The message-priority button is outside the vertical stack. It sits on the plaque
 Original windows have a draggable title bar and an `X` button. A window can be closed with
 `Esc`, its `X`, or another click on the same menu-bar button.
 
-Eight main windows—Options, Extras, Diplomacy, Subjects, Statistics, Mission, Technology Tree, and
-Help—belong to the “large windows” group. Opening one:
+Options, Extras, Diplomacy, Subjects, Statistics, Mission, Technology Tree and Help are the eight
+main windows, and they belong to the “large windows” group. Opening one:
 
 1. closes every other large window;
 2. removes contextual selection buttons;
@@ -99,7 +104,7 @@ confidence and should ultimately be checked against a running copy of the origin
 
 ## Buttons and windows
 
-### 1. Construction — `CConstructionSelectionWindow`
+### 1. Construction: `CConstructionSelectionWindow`
 
 **Shortcut:** `B`. **Status:** confirmed.
 
@@ -125,7 +130,7 @@ confirmed with the right mouse button. A current implementation comment describe
 placement. This detail **requires observation** because the manual and the current assumption
 disagree.
 
-### 2. Extras — `CGlobalGameSettingsWindow`
+### 2. Extras: `CGlobalGameSettingsWindow`
 
 **Shortcuts:** `E` opens the window, `Shift+A` opens Assistant, and `Shift+B` opens Papers.
 **Status:** the division and primary actions are confirmed; exact counter layout requires
@@ -144,21 +149,21 @@ The window has two functions:
 Assistant interactions send the network command `Update assistant` (`133`). They change
 simulation state rather than a local interface preference.
 
-### 3. Mission — `CMissionInfoWindow`
+### 3. Mission: `CMissionInfoWindow`
 
 **Menu shortcut:** the manual lists no dedicated shortcut. **Status:** confirmed.
 
 The window has three tabs:
 
-- **Task** — the current or replayed briefing, including images and recorded speech;
-- **Objectives** — mission objectives, with completed entries crossed out;
-- **History** — navigation through story and briefing pages.
+- **Task**: the current or replayed briefing, including images and recorded speech;
+- **Objectives**: mission objectives, with completed entries crossed out;
+- **History**: navigation through story and briefing pages.
 
 It has up/down scrolling and previous/next task controls for the history. Briefing history is stored
 in the saved game. Opening the window from the bar uses `missionId = -1`, meaning the current
 mission context; scripts can instead open a specific page.
 
-### 4. Diplomacy — `CDiplomacyWindow`
+### 4. Diplomacy: `CDiplomacyWindow`
 
 **Shortcut:** `F5`. **Status:** confirmed.
 
@@ -177,26 +182,26 @@ The manual also describes an overview map with nation positions in this window. 
 still needs visual confirmation in the running original; the classes and strings confirm the other
 actions.
 
-### 5. Statistics — `CStatisticsWindow`
+### 5. Statistics: `CStatisticsWindow`
 
 **Shortcut:** `F6`. **Status:** confirmed.
 
 The top tabs choose the data set:
 
-- People — population development;
-- Professions — numbers practicing each profession;
-- Buildings — development of the building count;
-- Building List — existing buildings, with buildings under construction in parentheses;
-- Goods — production history, including food;
-- Miscellaneous — including marriages, births, and deaths;
-- Cemetery — deceased heroes.
+- People: population development;
+- Professions: numbers practicing each profession;
+- Buildings: development of the building count;
+- Building List: existing buildings, with buildings under construction in parentheses;
+- Goods: production history, including food;
+- Miscellaneous: including marriages, births, and deaths;
+- Cemetery: deceased heroes.
 
 Individual chart series can be enabled or disabled. An entry's color matches its plotted line, and
 its current value appears beside it. The window shows elapsed game time and supports chart ranges
 of 1, 2, 5, or 10 hours, as confirmed by `timeScaleArray` in `an original routine`. Statistics data
 and the window setting are persisted by `IO_Savegame_Save/Load`.
 
-### 6. Subjects — `an original routine`
+### 6. Subjects: `an original routine`
 
 **Shortcut:** `F7`. **Status:** confirmed.
 
@@ -214,7 +219,7 @@ window can also select everyone on the filtered list. A separate profession-sele
 supports the “Profession” and “Possible profession” filters. The selected filter and list state
 participate in saved games.
 
-### 7. Technology Tree — `CTechTreeWindow`
+### 7. Technology Tree: `CTechTreeWindow`
 
 **Shortcut:** `F8`. **Status:** confirmed.
 
@@ -227,25 +232,25 @@ a required profession, item, preceding profession, or experience level in a part
 Clicking a building, item, or profession displays its description. The information button opens
 the corresponding Help page.
 
-### 8. Options — `COptionsWindow`
+### 8. Options: `COptionsWindow`
 
 **Shortcut:** `F2`; `F3` opens Load directly, and `F4` opens Save directly. **Status:**
 confirmed.
 
 This is more than a pause menu. The original window has six tabs:
 
-- **General** — quit the game or restart the map;
-- **GUI** — scrolling speed, middle-button/edge/arrow-key scrolling, old or new input mode, expert
+- **General**: quit the game or restart the map;
+- **GUI**: scrolling speed, middle-button/edge/arrow-key scrolling, old or new input mode, expert
   mode, and tooltips;
-- **Video** — resolution and color depth, detail level, and software or hardware cursor;
-- **Music** — sound quality, jingles, music source, volume, and CD Audio settings;
-- **Load** — saved-game list sortable by date, map name, and type;
-- **Save** — regular, quick, and automatic saves, including the autosave interval.
+- **Video**: resolution and color depth, detail level, and software or hardware cursor;
+- **Music**: sound quality, jingles, music source, volume, and CD Audio settings;
+- **Load**: saved-game list sortable by date, map name, and type;
+- **Save**: regular, quick, and automatic saves, including the autosave interval.
 
 Some hardware options are historical. A redesign can map them to settings supported by the modern
 engine, but the button's functional scope includes settings, save/load, restart, and quit.
 
-### 9. Help — `CHyperLinkTextWindow`
+### 9. Help: `CHyperLinkTextWindow`
 
 **Shortcut:** `F1`. **Status:** confirmed.
 
@@ -277,9 +282,9 @@ The tooltip is dynamic: it contains the original “Game Speed” label and curr
 
 The envelope button cycles through three levels:
 
-1. show all messages — graphic `0x40`, tooltip `main:14`;
-2. hide unimportant messages — graphic `0x41`, tooltip `main:15`;
-3. show important messages only — graphic `0x42`, tooltip `main:16`.
+1. show all messages: graphic `0x40`, tooltip `main:14`;
+2. hide unimportant messages: graphic `0x41`, tooltip `main:15`;
+3. show important messages only: graphic `0x42`, tooltip `main:16`.
 
 Messages appear as small notes along the upper-left edge. Hovering shows the text. A left click
 centers and selects the referenced person or building and opens its panel. A right click removes

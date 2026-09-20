@@ -5,7 +5,7 @@
 `hud/tool-panel/stats-window.ts` exposes diagnostic summaries rather than the original historical series and building lists.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -20,5 +20,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test known event sequences, sampling boundaries, x1/x3 equivalent sim-time results, retention bounds, owner separation and save/load. Verify production is not confused with stock.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

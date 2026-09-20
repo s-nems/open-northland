@@ -28,10 +28,10 @@ tokens below are the shared language for every screen, including a future main-m
 | Keyboard focus | `--focus` | `#f3e3bb` |
 
 Nominal contrast of the solid pairs: `--text` on `--fill` 10.0:1, `--muted` 6.4:1, `--ink` on
-`--parchment` 9.5:1, `--ink-muted` 5.0:1, `--paper-error` 5.6:1. Solid-token ratios do not certify textured or translucent
-pixels; inspect overlays against both terrain variants. Amber marks selected actions and warnings;
-ordinary text is neutral. Warnings also state the problem in words, and wax seals carry accessible
-labels, so colour is never the only carrier of state.
+`--parchment` 9.5:1, `--ink-muted` 5.0:1, `--paper-error` 5.6:1. Solid-token ratios do not certify
+textured or translucent pixels; inspect overlays against both terrain variants. Amber marks selected
+actions and warnings; ordinary text is neutral. Warnings also state the problem in words, and wax
+seals carry accessible labels, so colour is never the only carrier of state.
 
 ## Materials and chrome
 
@@ -43,10 +43,11 @@ labels, so colour is never the only carrier of state.
 - Catalogue interiors are parchment with a faint SVG grain. Entries look like permits: parchment
   cards, ink text, cost slots with a corner badge, a lit rim on the card last picked, a lock badge on
   locked entries.
-- Bottom navigation: seven bronze medallions on the carved beam, persistent labels, hotkey badge
-  1–7, lit medallion and marker for the active entry.
+- Bottom navigation: seven bronze medallions on the carved beam, persistent labels, lit medallion
+  and marker for the active entry. The beam carries no digit hotkeys: digits 1-9 and 0 are the
+  control-group keys.
 - Top bar: one beam carrying population symbols, goods counters, the simulation clock, the segmented
-  pause / ×1 / ×3 control and the menu medallion. Categories reveal a parchment breakdown on
+  pause / ×1 / ×2 / ×3 control and the menu medallion. Categories reveal a parchment breakdown on
   hover/focus with dotted leaders.
 - Notifications are frameless cards down the left edge with the settler on a translucent backing, a
   wax seal between the thumbnail and the text for priority and a go-to chevron on hover. Three seal filters
@@ -54,8 +55,7 @@ labels, so colour is never the only carrier of state.
 - Selection details use ledger rows with dotted leaders, small-caps section titles with rules,
   quarter ticks on meters and icon buttons for orders.
 - A held building or paper shows as a dark strip at the head of the central region, not inside the
-  window (the window is away while placing). The digit badges on the beam are dropped: digits 1-9 and 0
-  are the control-group keys, so the runtime beam carries no digit hotkeys.
+  window (the window is away while placing).
 
 ## Components and geometry
 
@@ -67,11 +67,13 @@ filters are an explicit exception in this mouse/keyboard study.
 - Main action art: 36 px; resource art: 29 px; gallery art: 44 px.
 - Bottom actions: 56 × 64 px on a 44 px medallion, with persistent labels and a selected marker.
 - Construction: 640 px wide, so the widest bill in the content (eight goods) sits in one row on a
-  card (user rule); content-sized rather than filling the screen vertically; the catalogue scrolls
+  card; content-sized rather than filling the screen vertically; the catalogue scrolls
   inside it once the window would reach the beam.
-- Selection placeholder: 318 px; its contents await the separate panel ticket.
+- Selection placeholder: 318 px in the study; the runtime keeps the legacy 322 px panel until the
+  selection ticket replaces it.
 - Notifications: 173 px, no opaque background in unused column space.
-- Minimap: 270 × 214 px, touching the bottom-left corner.
+- Minimap: 270 × 214 px in the study, touching the bottom-left corner; the runtime keeps the legacy
+  224 × 200 until ticket 19.
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum
 is 1280 × 720 at 90%; a 90–130% range in 5% steps remains proposed, not a verified runtime capability.
@@ -88,10 +90,10 @@ they were.
 
 - Head: the painted build icon and the title alone, no subtitle. The quick row holds Droga, Palisada
   and Brama as line glyphs of their own: a cobbled track bending away, a stake fence, a gate between
-  two stakes (no highway markings, no battlements: user rule); disabled with the tooltip "Niedostępne w tej wersji gry" until the sim has a road, wall
-  and gate command, and Papiery at the right with a count of the plans a pick could spend. Papiery
-  lights like a tab and turns the same window to its papers page; the page's one "‹ Katalog" tab
-  turns it back.
+  two stakes, without highway markings or battlements; disabled with the tooltip "Niedostępne w tej
+  wersji gry" until the sim has a road, wall and gate command, and Papiery at the right with a count
+  of the plans a pick could spend. Papiery lights like a tab and turns the same window to its papers
+  page; the page's one "‹ Katalog" tab turns it back.
 - Tabs: the original's five categories (Wszystko, Praca, Magazyn, Dom, Wojsko; tower and training
   fold into Wojsko), each counting the entries buildable now. At the tabs' right end a two-button
   toggle switches the catalogue between tiles and a list; the choice is one for both pages and is
@@ -101,7 +103,7 @@ they were.
   cost (the headquarters stands from the map, the wall segment comes from the wall tool). A type the
   map or the tribe bans is never listed; an undiscovered one is listed after the open entries under a
   "Zablokowane" note with their count, faded, with a lock badge, its "?" still live. No requirement
-  text on the card or under the note (user rule): the "?" page is where the discoveries are read.
+  text on the card or under the note: the "?" page is where the discoveries are read.
   With nothing to list at all the parchment says "Nic do zbudowania" (a banned map, a spectator seat).
 - A card is one fixed size in both views (120 px tile, 36 px list row), so the grid stays symmetric
   and the "?" medallion sits at the same bottom-right spot of every card. The picture is the finished
@@ -165,15 +167,15 @@ F-row is outside the rebindable set, and works from inside the search field too.
   trade lock on a unit is not mirrored).
 - Two chip rows share one grid of eight equal rectangular cells across the window, the count on top
   and the caption under it, "Kto" and "Bez" in one narrow label column. A count narrows to the
-  other filters (user ruling): a cell counts what its own pick would list, so a Kto cell swaps the
+  other filters: a cell counts what its own pick would list, so a Kto cell swaps the
   group and a Bez cell adds its lack to the picked ones, and the Zawód list counts the same way. A
   cell at zero is dimmed.
-- Kto is one choice at a time (user ruling): Wszyscy, Mężczyźni, Kobiety, Dzieci, Pracownicy,
+- Kto is one choice at a time: Wszyscy, Mężczyźni, Kobiety, Dzieci, Pracownicy,
   Cywile, Żołnierze, Bohaterowie. The groups follow the original subjects window: men and women are
   adults, heroines stay out of the women, workers are adult men with a trade that is no soldier or
   hero class. Cywile, adult men without a trade, is this project's addition: they are whom the player
   opens the list to find.
-- Bez combines, and combines with everything else (user ruling): domu, miejsca pracy, narzędzi,
+- Bez combines, and combines with everything else: domu, miejsca pracy, narzędzi,
   butów, pary, dzieci, broni, miodu. Home and partner skip soldiers and heroes, children counts the
   women, weapon the soldiers. The worn lacks (tools, shoes, weapon, mead) ask only a man whose
   equipment may change, the sim's `mayChangeEquipment`: a woman, a child and a hero wear nothing the
@@ -196,7 +198,7 @@ F-row is outside the rebindable set, and works from inside the search field too.
   little; heroes lead under every order, as the original keeps them; unposted rows follow the posted
   ones in both directions; the lacks order opens with the neediest.
 - A row press selects the person alone, centres the view and closes the window; the details panel
-  takes over. The modifiers work as in a file list and keep the window (user ruling): Ctrl, or Cmd
+  takes over. The modifiers work as in a file list and keep the window: Ctrl, or Cmd
   where a Ctrl click opens the context menu, puts the row in the selected group or takes it out;
   Shift replaces the selection with the rows from the last row pressed without Shift to the pressed
   one, from the top while that row is not listed; both together add that range to the group. The
@@ -221,13 +223,13 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | Navigation beam | bottom centre, 420 × 72, seven 56 × 64 actions | Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja, Wiedza |
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
-| Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam | one window at a time; Mieszkańcy and Wiedza show a framed pending note |
+| Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam | one window at a time; Wiedza shows a framed pending note |
 | Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
 
 Rules the shell enforces:
 
-- A beam action shows no focus ring (user rule): its pressed art and the lit key hint are the cues.
+- A beam action shows no focus ring: its pressed art and its label are the cues.
 - One central window at a time. A beam entry closes the other window and toggles its own; the same
   entry pressed again closes it. Buduj, Asystent and Misja drop a held placement or paper first;
   Statystyki, Dyplomacja, Mieszkańcy and Wiedza leave a running placement alone.
@@ -270,8 +272,9 @@ medallion, with no divider frame between them.
   sim's `countsAsOwnStock`).
 - Five categories with fixed rows (`hud/summary/model.ts`, keyed by good string id): Żywność (wheat,
   flour, food, cake, honey, mead; a dish still in its bakery or farm counts as the edible it leaves
-  as, the sim's `EDIBLE_FORM_BY_DISH`, so bread and meat are food and candy is cake), Materiały (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick,
-  tile, stone block, marble, holy oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,
+  as, the sim's `EDIBLE_FORM_BY_DISH`, so bread and meat are food and candy is cake), Materiały
+  (wood, stone, clay, iron, gold, mushrooms, leather, wool | brick, tile, stone block, marble, holy
+  oil), Uzbrojenie (six weapons | four armours), Wyposażenie (shoes,
   wooden and iron tools, crockery, furniture), Inne (herbs, six potions | coin, six amulets). A listed
   good with nothing on hand stays listed as a muted zero; a stocked good outside every list is
   appended to the shorter Inne column, so nothing on hand goes unreported. Water is the one exception:
@@ -317,14 +320,16 @@ lifetime, dedupe and priority table.
   contact, banner for a changed stance, chest, scroll). A card about another seat (first contact,
   changed stance, a seat out of the game) paints the shield face, the banner cloth or the skull in
   that seat's colour; an own settler's skull is bone ivory. The bronze line glyphs stand in while the
-  atlas is undelivered or fails to load. The seal stands midway between the thumbnail and the event line, 4 px clear of each, and the seal, the event line and the × share one line,
-  centred in the card's visible part; the card carries no hairline, the seal alone tells the weight.
+  atlas is undelivered or fails to load. The seal stands midway between the thumbnail and the event
+  line, 4 px clear of each, and the seal, the event line and the × share one line, centred in the
+  card's visible part; the card carries no hairline, the seal alone tells the weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
-  no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead. Right click, Delete or the ×
-  dismisses one card; Shift with any of them, or the bin button beside the seal filters, dismisses
-  every shown card. The × stays on every card, so a covered card closes without parting the fan. Nothing else the player does removes a card: selecting or
-  deselecting its subject leaves it (the original clears a human's notes on deselect; dropped as a
-  user rule), so a card goes only by dismissal, when its cause ends or when its lifetime runs out.
+  no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead.
+  Right click, Delete or the × dismisses one card; Shift with any of them, or the bin button beside
+  the seal filters, dismisses every shown card. The × stays on every card, so a covered card closes
+  without parting the fan. Nothing else the player does removes a card: selecting or deselecting its
+  subject leaves it, against the original, which clears a human's notes on deselect. A card goes only
+  by dismissal, when its cause ends or when its lifetime runs out.
 - The whole message in the original's wording unfolds in a box to the right of the column on hover
   or focus of any card, and a press pins it when the card has no target.
 - When the cards do not fit above the minimap they fan: each slides under the one before it by one
@@ -351,8 +356,9 @@ lifetime, dedupe and priority table.
   motion and removed targets, and animate only visible previews.
 - Residents navigation uses stylized wooden figures, not realistic faces. Top population counters
   use compact female/male/child symbols. Goods reuse the active game's art.
-- Construction must display the actual game building. The current catalogue uses vector mock
-  thumbnails. Character and building artwork is not redesigned here.
+- Construction displays the actual game building, cut from the loaded sheet into the card's canvas
+  (`building-thumb.ts`); a type without a sheet frame falls back to the house glyph. Character and
+  building artwork is not redesigned here.
 - Runtime UI must support both original and own asset sets; decoded original data stays outside Git.
 
 ## Original art and remaining work
@@ -362,23 +368,23 @@ The painted action icons, the notification emblems and the surface texture are t
 the 4 × 2 atlas `nordic-icons-v4.png` of simple single-object icons, the game-menu sheet
 `nordic-menu-v1.png` (its oak door is the menu medallion), the 4 × 2 notification emblem sheet
 `nordic-notices-v1.png` (flat emblems whose magenta areas are the seat-colour key) and the carved
-wood/leather material study `nordic-surface-v1.png`, each with its generation record. The reference page samples the masters
-directly; the runtime uses the package's delivered atlas and texture. The atlas's pawn and door cells, the
-menu sheet's other candidates and the emblem sheet's horn are unused.
+wood/leather material study `nordic-surface-v1.png`, each with its generation record. The reference
+page samples the masters directly; the runtime uses the package's delivered atlas and texture. The
+atlas's pawn and door cells, the menu sheet's other candidates and the emblem sheet's horn are
+unused.
 
 No original game UI art is copied. Panel contents and illustrative counts are not production
 specifications.
 
 ## Resume the local review
 
-Continue in `~/Projects/vikings/on-ingame-ui`, branch `design/ingame-ui`. Serve the
-reference with
+Serve the reference from any checkout of this repository with
 
 ```sh
-node docs/design/ingame-menu/serve.mjs 5188 /private/tmp/ingame-foundation
+node docs/design/ingame-menu/serve.mjs 5187 /private/tmp/ingame-foundation
 ```
 
-and open `http://127.0.0.1:5188/`. The server reads repository files first and falls back to the
+and open `http://127.0.0.1:5187/`. The server reads repository files first and falls back to the
 local review directory for fonts, `world.png` and the decoded review inputs, so nothing is copied
 into the temporary directory. Do not use `python3 -m http.server`: it drops parallel connections on
 this page and previews load randomly. `index.html` in the repository is the architecture wireframe,

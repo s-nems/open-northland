@@ -7,7 +7,7 @@
 `hud/details-panel/sections/building/` has distinct stock, production, worker, defence and construction views whose functions need a coherent replacement.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -21,5 +21,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test model/action paths for each supported family, construction progression, empty/full stock and foreign ownership. Inspect long names and all relevant sections without minimap/menu overlap.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

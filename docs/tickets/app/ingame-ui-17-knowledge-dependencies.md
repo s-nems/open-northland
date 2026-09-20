@@ -7,7 +7,7 @@
 `game/technology.ts` and the progression data supply potential evidence, but the original Technology Tree action is not connected. A mock diagram is not a gameplay dependency model.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -22,5 +22,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test known and unmet requirements, map locks, cyclic/large data, live unlocks and direct links. Inspect real content and run applicable content tests for new joins.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

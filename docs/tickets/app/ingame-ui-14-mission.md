@@ -5,7 +5,7 @@
 `hud/tool-panel/mission/` already contains briefing/history surfaces; the old menu path forces pause although the checked original path did not establish that behavior.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -19,5 +19,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test active/completed goals, long history, narration lifecycle, reopen, save/load and single/multiplayer pause behavior. Review a real scripted mission.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

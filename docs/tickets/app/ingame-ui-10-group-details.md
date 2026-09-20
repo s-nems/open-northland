@@ -7,7 +7,7 @@
 `hud/details-panel/selection-view.ts` and `view/unit-controls/` own selection behavior; the wireframe's eight-person grid is only a spatial example.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -21,5 +21,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test single-to-multiple transitions, mixed professions/owners, large groups, select-one-from-group and live removals. Review orders and camera behavior, not just the grid.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

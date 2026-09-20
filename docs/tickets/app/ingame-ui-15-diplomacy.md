@@ -5,7 +5,7 @@
 `hud/tool-panel/diplomacy/` shows relations/tribute but the reference identifies missing attitude changes and nation-map presentation.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -19,5 +19,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test unmet nations, asymmetric relations, locks, insufficient tribute, repeated payment and stock scope. Inspect ownership and command results in the diplomacy scene/real map.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

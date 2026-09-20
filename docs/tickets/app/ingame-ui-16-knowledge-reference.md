@@ -2,10 +2,10 @@
 
 **Area:** app, data · **Focus:** in-game UI redesign · **Priority:** P2
 
-`button-effects.ts` maps Help to an administrative item-spawning palette. The accepted replacement is one Knowledge window, not two menu buttons.
+The beam's Wiedza entry opens a pending note. Encyclopedia, rules and shortcut help have no player surface; the administrative item palette the old Help button opened is gone and spawning stays in `view/admin-debug/`.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -20,5 +20,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test direct vs contextual open, selected-tab memory, missing entries, links/back navigation, localization and keyboard access. Confirm reading Help never submits a world-mutating command.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

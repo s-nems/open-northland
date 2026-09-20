@@ -5,7 +5,7 @@
 `hud/minimap/` owns the lower-left map; the reference requires a separate large overview entry and object filters. The wireframe map is decorative, not this implementation.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -19,5 +19,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test camera movement/drag/zoom, viewport bounds, map filters, fog, selected/event markers, high-DPI and UI scales. Review on a real map with busy notifications.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

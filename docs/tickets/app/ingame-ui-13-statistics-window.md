@@ -7,7 +7,7 @@
 The diagnostic stats popup cannot answer the player's economic questions. Ticket 12 supplies the real series contract and initial reviewed view definitions.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -21,5 +21,5 @@ against this checkout before starting; the reference document describes an earli
 
 Test series/range selection, sparse history, long sessions, names and units; inspect charts at supported UI scales and confirm plotted values against controlled data.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

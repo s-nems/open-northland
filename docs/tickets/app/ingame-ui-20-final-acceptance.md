@@ -7,7 +7,7 @@
 Panel-by-panel implementation needs one end-to-end acceptance pass to expose inconsistent styles, remaining functional gaps and obsolete routes before integration.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -16,11 +16,12 @@ against this checkout before starting; the reference document describes an earli
 - Review all panels together for shared style, density, icon treatment, labels, focus, tooltip placement and open/close rules. Remove dead legacy toolbar/help-admin paths only after replacements cover their player functions.
 - Exercise economical play across construction, needs, inhabitants, assistant, statistics, missions, diplomacy and Knowledge with notifications and selection simultaneously.
 - Verify supported window sizes/UI scales, Polish/English text, ownership/spectator restrictions, pause/speed, saves and multiplayer command boundaries.
-- Prepare the concrete branch diff and verified game preview for user acceptance. The shared-worktree instruction does not authorize automatic merge or removal; integrate only on explicit instruction, following linear history.
+- Delete `docs/design/ingame-menu/` and `docs/ORIGINAL-INGAME-MENU-BAR.md` once the redesign is accepted, after moving any surviving rule, style or behavior fact to its owner. Drop the incoming links in the same commit.
+- Prepare the concrete branch diff and verified game preview for user acceptance. Integrate only on explicit instruction, following linear history.
 
 ## Verify
 
 Run relevant complete gates from docs/TESTING.md, asset/docs checks and the final review required by AGENTS.md. Report actual functional/visual evidence and missing checks; get user visual acceptance of the real game.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

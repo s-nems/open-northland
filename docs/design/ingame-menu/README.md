@@ -1,5 +1,12 @@
 # In-game UI redesign
 
+This directory is scaffolding for one project and is deleted when that project ends. It holds the
+design contract, the written specification, the wireframe and its local server, none of which ship
+or run in the game. [Ticket 20](../../tickets/app/ingame-ui-20-final-acceptance.md) removes it
+together with [Original in-game menu bar](../../ORIGINAL-INGAME-MENU-BAR.md). What has to outlive the
+redesign moves first: durable rules into the nearest `AGENTS.md`, runtime style into
+`packages/app/src/hud/dom/foundation.css`, behavior into tests.
+
 The user approved the navigation/layout direction in [the interactive wireframe](index.html).
 This approval covers information architecture, not final panel designs, production artwork,
 placeholder values or gameplay behavior. The functional baseline is
@@ -20,8 +27,8 @@ See [resume instructions](FOUNDATION.md#resume-the-local-review).
   subordinate to gameplay information; match the world without copying original GUI art.
 - Seven direct bottom-bar entries: **Buduj, Mieszkańcy, Asystent, Statystyki, Misja, Dyplomacja,
   Wiedza**. No intermediate Osada/Wyprawa menus and no second navigation row.
-- Buduj opens the catalog immediately. Roads, stockades, gates and Documents are reachable inside
-  construction. Documents retain all paper types, not only building permits.
+- Buduj opens the catalog immediately. Roads, stockades, gates and Papiery are reachable inside
+  construction. Papiery retains all paper types, not only building permits.
 - Mieszkańcy opens the residents list immediately. Selecting an object has a separate bottom-right
   detail panel for a person, building or group.
 - Main content windows occupy the space between the side regions, have their own close control and
@@ -96,7 +103,7 @@ Convenience alone is not grounds for separately billed generation. Do not ask ag
 an image skill describes approval for users without that authorization.
 
 Read the primary checkout's .env by absolute path only into the process needing it, using a dotenv
-parser or Node --env-file. Never source it as shell code, print values, copy it into this worktree,
+parser or Node --env-file. Never source it as shell code, print values, copy it into a task worktree,
 embed secrets in prompts/browser code or commit credentials. A present key is not proof of access.
 
 Keep exact prompts, model/tool/settings, ordered references and hashes, selected masters and export
@@ -108,7 +115,7 @@ not authorize replacement world buildings or characters.
 
 ## Implementation order
 
-Work one panel/ticket at a time in the shared checkout; see [session instructions](AGENTS.md).
+Work one panel/ticket at a time from current main; see [session instructions](AGENTS.md).
 The shell, the notification column, the summary bar, the construction window with its papers page
 and the residents window are in place. Continue with details, automation,
 statistics, mission, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical

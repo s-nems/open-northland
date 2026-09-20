@@ -3,11 +3,11 @@
 // Usage: node docs/design/ingame-menu/serve.mjs [port] [local-review-dir]
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { dirname, extname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_DIR = dirname(fileURLToPath(import.meta.url));
-const port = Number(process.argv[2] ?? 5188);
+const port = Number(process.argv[2] ?? 5187);
 const localDir = process.argv[3] ?? '/private/tmp/ingame-foundation';
 const ART_SOURCE_DIR = join(REPO_DIR, '../../art/ui/foundation/source');
 const roots = [REPO_DIR, ART_SOURCE_DIR, localDir];
@@ -26,7 +26,7 @@ function locate(pathname) {
   const relative = pathname === '/' ? '/foundation.html' : pathname;
   for (const root of roots) {
     const file = normalize(join(root, relative));
-    if (!file.startsWith(root)) continue;
+    if (!file.startsWith(root + sep)) continue;
     try {
       const stat = statSync(file);
       if (stat.isFile()) return { file, size: stat.size };

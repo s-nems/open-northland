@@ -5,7 +5,7 @@
 `view/system-menu.ts` and `view/save-panels/` own settings/save flow separately from the old toolbar; their visual language must match the redesigned game HUD.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -19,5 +19,5 @@ against this checkout before starting; the reference document describes an earli
 
 Exercise both save stores where supported, confirmation cancel, failure feedback, settings persistence, pause restoration and session exit. Review normal, empty and failed-save states.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.

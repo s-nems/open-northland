@@ -5,7 +5,7 @@
 `hud/details-panel/layout/settler.ts` stacks general, work, experience and equipment sections in the bottom-right; the current model/actions must survive the new presentation.
 
 Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[shared-worktree instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
+[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
 ## Scope
@@ -19,5 +19,5 @@ against this checkout before starting; the reference document describes an earli
 
 Exercise work/home assignment, training/equipment actions, ownership, dead/removed targets and long content. Reuse model, hit-test, pointer-intent and click-action coverage; review representative real-map selections.
 
-For player-visible work, provide the verified preview from this worktree. A mockup is design evidence,
+For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
 not proof of runtime behavior. Apply the shared design-review step before implementation.
