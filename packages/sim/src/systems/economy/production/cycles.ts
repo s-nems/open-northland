@@ -11,7 +11,7 @@ import {
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { birthHerdAnimal, speciesHerdOf } from '../../livestock/index.js';
+import { birthHerdAnimal, herdRoom, speciesHerdOf } from '../../livestock/index.js';
 import { recipeOutputsEnabled } from '../../progression/index.js';
 import { livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
@@ -49,15 +49,16 @@ export function startableCycleCount(
 
 /**
  * How many cycles of `recipe` the herd allows: every one for an ordinary recipe, none unless the farm
- * holds exactly the {@link BREEDING_PAIR} of the species it breeds. The output-room half already keeps
- * the herd under its row cap.
+ * holds exactly the {@link BREEDING_PAIR} of the species it breeds, and then only as many calves as the
+ * whole herd still has room for.
  */
 function breedableCycles(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): number {
   const species = recipe.outputs[0]?.goodType;
   if (species === undefined || livestockTribeOfGood(ctx.content, species) === null) {
     return Number.POSITIVE_INFINITY;
   }
-  return speciesHerdOf(world, ctx, building, species).adults === BREEDING_PAIR ? Number.POSITIVE_INFINITY : 0;
+  if (speciesHerdOf(world, ctx, building, species).adults !== BREEDING_PAIR) return 0;
+  return Math.max(0, herdRoom(world, ctx, building, species));
 }
 
 /** How many cycles of `recipe` the stocked INPUTS cover - the input half of {@link startableCycleCount}. */

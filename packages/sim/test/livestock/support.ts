@@ -33,9 +33,14 @@ export const COW_HP = 1000;
 export const CALF_HP = 500;
 /** An animal tribe that is NOT catchable (the aggressive bear) - the capture counter-case. */
 export const BEAR_TRIBE = 10;
+/** The societies fixture's second catchable tribe (14, `test_deer`), the farm's other species: what a
+ *  herd of one species leaves room for is what the shared cap is about. */
+export const DEER_TRIBE = 14;
 /** The species good - its id `test_cow` is the slug join to {@link COW_TRIBE}, and the farm's row of it
  *  counts the herd. */
 export const COW_GOOD = 57;
+/** The second species good - its id `test_deer` is the slug join to {@link DEER_TRIBE}. */
+export const DEER_GOOD = 56;
 export const WOOL = 58;
 /** The economy fixture's meat. */
 export const MEAT = 21;
@@ -59,8 +64,10 @@ export const MEAT_CAPACITY = 3;
 /** The breeder's two species actions (`jobtypes.ini` breeder `allowatomic`), and the clips they play.
  *  The slay clip's name carries the species slug, which is the only link content gives the two. */
 export const BREED_ATOMIC = 85;
+export const DEER_BREED_ATOMIC = 86;
 export const SLAY_ATOMIC = 87;
 export const BREED_CLIP = 'test_breeder_produce_test_cow';
+const DEER_BREED_CLIP = 'test_breeder_produce_test_deer';
 export const SLAY_CLIP = 'test_breeder_slay_test_cow';
 export const SLAY_CLIP_TICKS = 10;
 /** The frames the slay clip banks its wares on: one fleece, then two cuts of meat. */
@@ -85,6 +92,7 @@ export function livestockContent(): ContentSet {
             atomicBindings: [
               ...(t.atomicBindings ?? []),
               { jobType: BREEDER, atomicId: BREED_ATOMIC, animation: BREED_CLIP },
+              { jobType: BREEDER, atomicId: DEER_BREED_ATOMIC, animation: DEER_BREED_CLIP },
               { jobType: BREEDER, atomicId: SLAY_ATOMIC, animation: SLAY_CLIP },
             ],
           }
@@ -95,6 +103,7 @@ export function livestockContent(): ContentSet {
     atomicAnimations: [
       ...societyContent.atomicAnimations,
       { id: BREED_CLIP, name: BREED_CLIP, length: SLAY_CLIP_TICKS, events: [] },
+      { id: DEER_BREED_CLIP, name: DEER_BREED_CLIP, length: SLAY_CLIP_TICKS, events: [] },
       {
         id: SLAY_CLIP,
         name: SLAY_CLIP,
@@ -106,11 +115,16 @@ export function livestockContent(): ContentSet {
       ...economyContent.goods,
       { typeId: WATER, id: 'test_water' },
       { typeId: COW_GOOD, id: 'test_cow', atomics: { produce: BREED_ATOMIC } },
+      { typeId: DEER_GOOD, id: 'test_deer', atomics: { produce: DEER_BREED_ATOMIC } },
       { typeId: WOOL, id: 'test_wool' },
     ],
     jobs: [
       ...economyContent.jobs,
-      { typeId: BREEDER, id: 'breeder', allowedAtomics: [BREED_ATOMIC, SLAY_ATOMIC] },
+      {
+        typeId: BREEDER,
+        id: 'breeder',
+        allowedAtomics: [BREED_ATOMIC, DEER_BREED_ATOMIC, SLAY_ATOMIC],
+      },
     ],
     jobExperience: [
       ...societyContent.jobExperience,
@@ -146,10 +160,11 @@ export function livestockContent(): ContentSet {
           { goodType: WATER, capacity: 10, initial: 0 },
           { goodType: WHEAT, capacity: 10, initial: 0 },
           { goodType: COW_GOOD, capacity: HERD_CAPACITY, initial: 0 },
+          { goodType: DEER_GOOD, capacity: HERD_CAPACITY, initial: 0 },
           { goodType: WOOL, capacity: WOOL_CAPACITY, initial: 0 },
           { goodType: MEAT, capacity: MEAT_CAPACITY, initial: 0 },
         ],
-        produces: [COW_GOOD, WOOL, MEAT],
+        produces: [COW_GOOD, DEER_GOOD, WOOL, MEAT],
         recipes: [
           {
             inputs: [
@@ -157,6 +172,14 @@ export function livestockContent(): ContentSet {
               { goodType: WHEAT, amount: 2 },
             ],
             outputs: [{ goodType: COW_GOOD, amount: 1 }],
+            ticks: BREED_TICKS,
+          },
+          {
+            inputs: [
+              { goodType: WATER, amount: 1 },
+              { goodType: WHEAT, amount: 2 },
+            ],
+            outputs: [{ goodType: DEER_GOOD, amount: 1 }],
             ticks: BREED_TICKS,
           },
         ],

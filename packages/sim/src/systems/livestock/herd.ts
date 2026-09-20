@@ -6,6 +6,7 @@ import {
   Owner,
   ownerOf,
   Position,
+  Production,
   Settler,
   StayPoint,
   Stockpile,
@@ -22,6 +23,7 @@ import {
   isLivestockWorkplaceType,
   livestockGoodOfTribe,
   livestockSpeciesGoods,
+  livestockTribeOfGood,
 } from '../readviews/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import { stampAnimalBody } from '../spawn/animals.js';
@@ -87,6 +89,24 @@ export function speciesHerdOf(
     if (isAdultAnimal(world, e)) adults += 1;
   }
   return { all, adults };
+}
+
+/**
+ * How many more animals `farm` may take in while breeding or adopting `speciesGood`: its row cap less the
+ * whole herd, every species together, and less the calves its running cycles will bear.
+ *
+ * The caps are per row (`housetypes.ini` gives the animal farm 20 sheep and 20 cattle), but the house is
+ * described as holding "20 oxen and sheep" (manual p. 53), and a breeder set to tend both species would
+ * otherwise keep twice the herd one tending a single species keeps. The room a species has therefore
+ * shrinks as the other one grows.
+ */
+export function herdRoom(world: World, ctx: SystemContext, farm: Entity, speciesGood: number): number {
+  let held = 0;
+  for (const _ of herdOf(world, farm)) held += 1;
+  for (const cycle of world.tryGet(farm, Production)?.cycles ?? []) {
+    if (livestockTribeOfGood(ctx.content, cycle.goodType) !== null) held += 1; // a calf on its way
+  }
+  return stockCapacity(world, ctx, farm, speciesGood) - held;
 }
 
 /** Attach `animal` to `farm`'s herd, dropping whatever summon its previous farm held it under. */

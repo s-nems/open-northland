@@ -18,14 +18,17 @@ import {
   productionSystem,
 } from '../../src/systems/index.js';
 import {
+  BREED_TICKS,
   BREEDER_TRACK,
   BREEDER_XP_PER_REPEAT,
   breederAt,
   COW_GOOD,
   cowAt,
   ctxOf,
+  DEER_TRIBE,
   farmAt,
   HEADQUARTERS,
+  HERD_CAPACITY,
   livestockSim,
   MEAT,
   MEAT_CAPACITY,
@@ -125,6 +128,27 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(herdRow(sim, farm)).toBeGreaterThanOrEqual(3);
     // The species row counts the herd, never a good on a shelf: nothing is stocked past the animals.
     expect(herdRow(sim, farm)).toBe([...sim.world.query(FarmAnimal)].length);
+  });
+
+  it('weighs both herds against one room, so a full farm breeds neither species', () => {
+    const sim = livestockSim();
+    const stock: Array<[number, number]> = [
+      [WATER, 10],
+      [WHEAT, 10],
+    ];
+    const { farm } = farmWithBreeder(sim, stock);
+    // A pair of deer to breed from, and calves of the other species filling the house to one short of
+    // its cap. Calves, so no grown animal is over the pair and the cycle reaches the breeding branch.
+    for (let i = 0; i < 2; i++) cowAt(sim, 21, 20 + i, { owner: P0, farm, tribe: DEER_TRIBE });
+    for (let i = 0; i < HERD_CAPACITY - 3; i++) cowAt(sim, 4, 4, { owner: P0, farm, young: true });
+
+    plan(sim);
+    for (let i = 0; i < BREED_TICKS + 2; i++) sim.step();
+    expect([...sim.world.query(FarmAnimal)]).toHaveLength(HERD_CAPACITY); // the last place taken
+
+    plan(sim);
+    for (let i = 0; i < BREED_TICKS + 2; i++) sim.step();
+    expect([...sim.world.query(FarmAnimal)]).toHaveLength(HERD_CAPACITY); // and no calf past it
   });
 
   it('never breeds with a lone animal, nor once a third has grown up', () => {

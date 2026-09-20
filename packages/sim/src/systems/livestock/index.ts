@@ -13,6 +13,7 @@ export {
   birthHerdAnimal,
   farmStands,
   herdOf,
+  herdRoom,
   isAdultAnimal,
   isFreeClaimedAnimal,
   recountHerdRows,

@@ -23,6 +23,7 @@ import {
   attachToFarm,
   farmStands,
   herdOf,
+  herdRoom,
   isAdultAnimal,
   isFreeClaimedAnimal,
   recountHerdRows,
@@ -142,7 +143,7 @@ function tendedSpecies(plan: PlannerContext, farm: Entity): readonly number[] {
 }
 
 /**
- * Adopt the player's nearest unheld animal of either species into this herd, while its own row has room.
+ * Adopt the player's nearest unheld animal of either species into this herd, while the herd has room.
  * Instant, as the original's attachment is: the animal then walks itself to the farm on the herding sweep.
  *
  * Approximation: the original gates the adoption on the row of the breeder's own production species; with
@@ -308,14 +309,14 @@ function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: Node
   return spare > BREEDING_PAIR ? best : null;
 }
 
-/** Whether the pair stands and the row has room for what it would bear. */
+/** Whether the pair stands and the herd has room for what it would bear. */
 function breedableNow(world: World, ctx: SystemContext, farm: Entity, good: number): boolean {
   const herd = speciesHerdOf(world, ctx, farm, good);
   return herd.adults === BREEDING_PAIR && hasRoomForAnother(world, ctx, farm, good);
 }
 
 function hasRoomForAnother(world: World, ctx: SystemContext, farm: Entity, good: number): boolean {
-  return speciesHerdOf(world, ctx, farm, good).all < stockCapacity(world, ctx, farm, good);
+  return herdRoom(world, ctx, farm, good) > 0;
 }
 
 /** Map-point distance between two nodes, the metric the original's ranges are measured in. */
