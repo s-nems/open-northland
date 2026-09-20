@@ -97,6 +97,7 @@ export const HUNTER_GENERAL_XP_TRACK = {
   id: 'hunter_general',
   name: 'hunter general',
   jobType: JOB_HUNTER,
+  goodTypes: [],
   experienceFactor: 200,
   baseRepeatCounter: 5,
 } as const;

@@ -306,4 +306,10 @@ job 34
 good 24
 experiencefactor 115
 baserepeatcounter 3
+[humanjobexperiencetype]
+type 59
+name "healer potions"
+job 30
+good 44 45
+experiencefactor 100
 `;

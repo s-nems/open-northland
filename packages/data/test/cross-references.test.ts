@@ -293,12 +293,12 @@ describe('validateCrossReferences', () => {
     // job experience
     {
       name: 'an experience track naming an unknown job',
-      overrides: { jobExperience: [{ typeId: 1, id: 'chop_xp', jobType: UNKNOWN }] },
+      overrides: { jobExperience: [{ typeId: 1, id: 'chop_xp', jobType: UNKNOWN, goodTypes: [] }] },
       error: /jobExperience "chop_xp" references unknown jobType 99/,
     },
     {
       name: 'a good-specific experience track naming an unknown good',
-      overrides: { jobExperience: [{ typeId: 1, id: 'chop_xp', jobType: 1, goodType: UNKNOWN }] },
+      overrides: { jobExperience: [{ typeId: 1, id: 'chop_xp', jobType: 1, goodTypes: [UNKNOWN] }] },
       error: /jobExperience "chop_xp" references unknown goodType 99/,
     },
     // huntPrey
