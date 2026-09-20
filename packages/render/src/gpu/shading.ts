@@ -93,7 +93,8 @@ export const WAVE_TIME_PERIOD_TICKS = 210;
 
 // Water depth shading. The maps split water into the painter's shallow and deep pattern families, each
 // with its own texture (data/terrain/water.ts); the amounts deepening both, the deep family more,
-// are an approximation tuned by eye. All three multiply the lane brightness only.
+// are an approximation tuned by eye and multiply the lane brightness only. The tints and the
+// saturation grade the water texel itself, also by eye: the painted green moves toward blue.
 /** Brightness loss on shallow water. */
 const WATER_SHALLOW_DARKEN = 0.12;
 /** Brightness loss on deep water. */
@@ -108,6 +109,17 @@ const WATER_GLINT_PHASE_PER_PX = (2 * Math.PI) / 640;
 const WATER_GLINT_SLANT = 0.6;
 /** Exponent narrowing the sine into a band about a seventh of the wavelength wide. */
 const WATER_GLINT_SHARPNESS = 6;
+/** RGB multiplier on shallow water: a mild pull from green toward blue. */
+const WATER_SHALLOW_TINT = [0.86, 1.0, 1.126] as const;
+/** RGB multiplier on deep water: a stronger pull toward blue than the shallows take. */
+const WATER_DEEP_TINT = [0.734, 0.944, 1.21] as const;
+/** Saturation gain on the water surface (1 = the painted texture's own). */
+const WATER_SATURATION = 1.1;
+/** Rec. 601 luma weights, the published grey the saturation grade pivots on. */
+const LUMA_WEIGHTS = [0.299, 0.587, 0.114] as const;
+
+const glslVec3 = (rgb: readonly [number, number, number]): string =>
+  `vec3(${rgb.map((channel) => channel.toFixed(4)).join(', ')})`;
 
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
@@ -197,6 +209,13 @@ const FIELD_FRAGMENT = `#version 300 es
       ${WATER_GLINT_SHARPNESS.toFixed(1)});
     lane *= 1.0 + uEnvironmentMotion * (-${WATER_SHALLOW_DARKEN.toFixed(4)} * shallow
       - ${WATER_DEEP_DARKEN.toFixed(4)} * deep + ${WATER_GLINT.toFixed(4)} * uWave.y * deep * glint);
+    // Water colour: saturate the surface and tint each depth family. Both are identities at zero
+    // motion enhancement and on land, where vWater is zero.
+    float luma = dot(texel.rgb, ${glslVec3(LUMA_WEIGHTS)});
+    float saturation = mix(1.0, ${WATER_SATURATION.toFixed(4)}, vWater.x * uEnvironmentMotion);
+    vec3 tint = mix(vec3(1.0), ${glslVec3(WATER_SHALLOW_TINT)}, shallow * uEnvironmentMotion)
+      * mix(vec3(1.0), ${glslVec3(WATER_DEEP_TINT)}, deep * uEnvironmentMotion);
+    texel.rgb = mix(vec3(luma), texel.rgb, saturation) * tint;
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
   }

@@ -181,7 +181,8 @@ water, smooths the breeze on own vegetation and adds that breeze to the tall tre
 ships as one still frame (its dead trees), whose cast shadows lean with them. That breeze belongs to
 the static map layer: a harvestable the sprite pool draws, which is every one after a save is
 restored, stands still. The water gains crossing swells, darker shallows and darker still deep water
-(the map's own two pattern families) and a glint band drifting over the deep water. Original humans
+(the map's own two pattern families), a bluer and slightly more saturated colour, stronger on the deep
+family, and a glint band drifting over the deep water. Original humans
 and animals keep their tick anchors: the original engine moves a walker only together with its walk
 frame, and moving the body inside a frame hold would drag the planted foot. Original
 work/tree/building clips retain their authored images and durations: a fractional clock does not
