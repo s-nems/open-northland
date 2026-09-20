@@ -64,6 +64,9 @@ export interface UnitControlsOptions {
   /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent leaves the equipment
    *  panel's plus/swap buttons inert. */
   readonly equipPickList?: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
+  /** The sim's battle-alert read seam (`Simulation.standsTo`); absent leaves a unit holding its ground
+   *  under fire captioned as idle. */
+  readonly standsTo?: (entity: number) => boolean;
   /** The sim's trader read seams (`Simulation.traderView` / `tradeOffersAt`); absent hides trade. */
   readonly traderView?: (entity: number) => TraderView | undefined;
   readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];

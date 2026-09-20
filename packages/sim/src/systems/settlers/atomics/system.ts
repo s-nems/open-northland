@@ -2,7 +2,11 @@ import { CurrentAtomic, DeferredOrder } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { System } from '../../context.js';
 import { applyEffect } from './effects/apply.js';
-import { applyPendingStaggers, type PendingStagger, resolveAttackHit } from './effects/combat/index.js';
+import {
+  applyPendingHitReactions,
+  type PendingHitReaction,
+  resolveAttackHit,
+} from './effects/combat/index.js';
 import { advanceFishingAtomic } from './effects/goods/fishing.js';
 import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
 import { applyAtomicNeedEvents } from './effects/need-events.js';
@@ -11,9 +15,9 @@ import { emitAtomicSoundCues } from './sound-cue.js';
 
 /** Advance every running `CurrentAtomic` and apply its effect on completion. */
 export const atomicSystem: System = (world, ctx) => {
-  // Staggers are collected so the loop never adds to the CurrentAtomic store it iterates; self-removal on
-  // completion stays the only membership change, which Map iteration tolerates.
-  const pendingStaggers: PendingStagger[] = [];
+  // A blow's reaction is collected so the loop never touches the CurrentAtomic store it iterates;
+  // self-removal on completion stays the only membership change, which Map iteration tolerates.
+  const pendingReactions: PendingHitReaction[] = [];
   for (const e of world.query(CurrentAtomic)) {
     const atomic = world.mut(e, CurrentAtomic);
     const duration = Math.max(1, atomic.duration);
@@ -25,7 +29,7 @@ export const atomicSystem: System = (world, ctx) => {
     if (atomic.effect.kind === 'attack') {
       const hitFrame = eventFrameWithin(atomic.effect.hitAt ?? duration, duration);
       if (atomic.elapsed === hitFrame) {
-        resolveAttackHit(world, ctx, e, atomic, atomic.effect, pendingStaggers);
+        resolveAttackHit(world, ctx, e, atomic, atomic.effect, pendingReactions);
       }
     }
 
@@ -76,7 +80,7 @@ export const atomicSystem: System = (world, ctx) => {
     world.remove(e, CurrentAtomic);
   }
 
-  applyPendingStaggers(world, pendingStaggers);
+  applyPendingHitReactions(world, pendingReactions);
 };
 
 /** Clamp an animation's event frame into the `[1, duration]` ticks the atomic actually runs, so a blow the

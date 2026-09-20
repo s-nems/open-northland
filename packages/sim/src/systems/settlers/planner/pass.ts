@@ -1,7 +1,7 @@
 import { Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { ThreatPresence } from '../../conflict/battle-alert.js';
+import { BattleFront } from '../../conflict/battle-alert.js';
 import type { SystemContext } from '../../context.js';
 import { collectShelters, type ShelterSites } from '../../defence/index.js';
 import { ExternalFoodIndex } from '../../family/food-search.js';
@@ -42,7 +42,7 @@ export interface PlannerPass {
   readonly inbound: InboundSupplyTally;
   readonly harvestClaims: HarvestClaims;
   readonly gossipCandidates: GossipCandidates;
-  readonly threats: ThreatPresence;
+  readonly front: BattleFront;
   readonly siteLeads: SiteLeads;
   readonly seatDoors: SeatDoors;
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
@@ -70,7 +70,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
-    threats: new ThreatPresence(world, ctx),
+    front: new BattleFront(world, ctx),
     siteLeads: new SiteLeads(world),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),

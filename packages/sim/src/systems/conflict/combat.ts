@@ -2,7 +2,7 @@ import { Health, Position, Settler } from '../../components/index.js';
 import type { System } from '../context.js';
 import { garrisonSeats } from '../defence/index.js';
 import { canonicalById } from '../spatial/nodes.js';
-import { EngagedUnits } from './battle-alert.js';
+import { BattleFront } from './battle-alert.js';
 import { CombatIndex } from './combat-index.js';
 import { attackableBuildings, combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
@@ -45,7 +45,7 @@ export const combatSystem: System = (world, ctx) => {
     slots: new MeleeSlots(world, ctx, terrain),
     seats: garrisonSeats(world),
     bands: new Map(),
-    engaged: new EngagedUnits(world),
+    front: new BattleFront(world, ctx),
   };
   for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
 };

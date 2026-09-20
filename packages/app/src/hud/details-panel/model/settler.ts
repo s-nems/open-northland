@@ -175,7 +175,12 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   return rows.map(({ label, repeats, bonusPct }) => ({ label, repeats, bonusPct }));
 }
 
-export function settlerStatus(snapshot: WorldSnapshot, components: Comp): string {
+export function settlerStatus(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  entityId: number,
+  components: Comp,
+): string {
   const statuses = messages().hud.statuses;
   // The sim retires PlayerOrder the tick the unit reaches its commanded destination, so a settler
   // carrying it is still walking there.
@@ -184,6 +189,9 @@ export function settlerStatus(snapshot: WorldSnapshot, components: Comp): string
   if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
   // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
   if (awaitsItsWorkplace(snapshot, components)) return statuses.awaitingWorkplace;
+  // A unit holding its ground under the battle alert takes no work and no rest, which without its own
+  // caption reads as a soldier that has simply stopped caring about its empty bars.
+  if (ctx.standsTo?.(entityId) === true) return statuses.standingTo;
   return statuses.idle;
 }
 

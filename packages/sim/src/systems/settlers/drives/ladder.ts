@@ -1,8 +1,8 @@
 import {
   Carrying,
   Chat,
+  Engagement,
   Female,
-  HuntFocus,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   ownerOf,
@@ -12,10 +12,11 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { holdsGround } from '../../conflict/battle-alert.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
-import { isFisherJob, MILITARY_MODE, stanceFights, stanceMode } from '../../readviews/index.js';
+import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
@@ -84,10 +85,20 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // A pressing need on a fighting unit is answered from what it carries or what its post holds, never by
   // walking to food, a bed or a temple and never by lying down. Under the alarm, which still outranks
   // combat. Departure: the manual gives the need rule no combat exemption and carves a soldier out only for
-  // sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice.
+  // sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice. A need the
+  // player ordered is the exception: the fight is broken off for it and the full ladder below runs, so
+  // ordering a meal is how a player feeds an army that would otherwise starve in the line.
   if (combatOwnsFeet(world, e)) {
-    answerNeedInPlace(world, ctx, e, settler);
-    return;
+    if (orderedNeed(world, e) === undefined) {
+      answerNeedInPlace(world, ctx, e, settler);
+      return;
+    }
+    // Breaking off here rather than in the CombatSystem, which runs later in the tick, so the rungs below
+    // plan the errand into a unit the fight no longer holds. Only the engagement goes: the route is left
+    // for whatever rung replaces it, and an attack order the player gave is the player's to cancel -
+    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is re-engaged
+    // by the CombatSystem this same tick, which beats standing in the line doing nothing.
+    world.remove(e, Engagement);
   }
 
   // A player "talk" order ranks with the other need orders rather than with the idle chatter below: the
@@ -103,7 +114,11 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // errand again for each bar.
   if (planHomeTopUp(world, ctx, e, settler)) return;
 
-  const alert = (): boolean => holdsGround(pass, e, settler);
+  // The battle alert: a rear rank neither lies down nor wanders off while the front rank fights. Asked at
+  // most once per settler per tick, and only by a rung whose answer it changes, which each rung does after
+  // its own cheap refusals - the presence sweep behind it is the pass's one expensive read.
+  let alerted: boolean | undefined;
+  const alert = (): boolean => (alerted ??= holdsGround(world, ctx, e, pass.front));
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing, alert)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -
     // unless it is the bed the sleep rung just put it in, or a garrison that served its need on the
@@ -131,10 +146,13 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // without dropping its stance.
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) return;
   // The company rung: a lonely settler leaves its work to find a partner, above the economy rungs on
-  // purpose - the "worker downs tools to socialize" beat.
+  // purpose - the "worker downs tools to socialize" beat. Nobody walks off to chat while a battle is on
+  // nearby: the fighting trades never reach this rung at all (`social/gossip/plan.ts` bars them), so the
+  // alert passed down holds the civilian trade a player or a script put into a fighting stance. Its work
+  // is left alone - the alert governs rest and company, not a settler's trade.
   if (
     !staysPut(world, e) &&
-    planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates)
+    planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates, false, alert)
   ) {
     return;
   }
@@ -161,7 +179,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     limit,
     gossipCandidates: pass.gossipCandidates,
   };
-  planEconomy(plan, pass, settler, load, hereNode.hx, hereNode.hy);
+  planEconomy(plan, pass, settler, load, hereNode.hx, hereNode.hy, alert);
 }
 
 /**
@@ -175,6 +193,7 @@ function planEconomy(
   load: { goodType: number; amount: number } | undefined,
   hx: number,
   hy: number,
+  alert: () => boolean,
 ): void {
   const { world, ctx, terrain, entity: e } = plan;
 
@@ -229,21 +248,8 @@ function planEconomy(
   reconcileCutOff(plan, pass.seatDoors);
   if (world.has(e, Chat) || staysPut(world, e)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
-    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);
+    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, alert);
   }
-}
-
-/**
- * Whether an idle unit whose stance fights holds its ground against a pressing need because a fight is on
- * inside the rest clearance, so a rear rank does not lie down while the front rank fights. A player's need
- * order is obeyed regardless, and a hunter on a hunt is at work, not at war.
- */
-function holdsGround(pass: PlannerPass, e: Entity, settler: SettlerView): boolean {
-  const { world, ctx } = pass;
-  if (orderedNeed(world, e) !== undefined || world.has(e, HuntFocus)) return false;
-  const player = ownerOf(world, e);
-  if (player === undefined || !stanceFights(stanceMode(world, ctx.content, e, settler.jobType))) return false;
-  return pass.threats.fightNear(e, player);
 }
 
 /** A script may pin a settler where it was left: it still works, shelters and answers its needs, but

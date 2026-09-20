@@ -1,5 +1,5 @@
 import type { Entity } from '../../ecs/world.js';
-import type { EngagedUnits } from './battle-alert.js';
+import type { BattleFront } from './battle-alert.js';
 import type { CombatIndex } from './combat-index.js';
 import type { MeleeSlots } from './melee-slots.js';
 
@@ -12,5 +12,5 @@ export interface CombatPass {
    *  one: the band is handed out, never edited. */
   readonly bands: Map<string, ReturnType<CombatIndex['nearestFew']>>;
   /** The fights a sleeper gets up for, bucketed on its first question. */
-  readonly engaged: EngagedUnits;
+  readonly front: BattleFront;
 }

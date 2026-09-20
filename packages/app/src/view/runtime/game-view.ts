@@ -512,6 +512,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       doorBadges: () => pickableDoorBadges?.() ?? [],
       equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
+      standsTo: (entity) => sim.standsTo(entity as Entity),
       traderView: (entity) => sim.traderView(entity as Entity),
       tradeOffersAt: (house) => sim.tradeOffersAt(house as Entity),
       boundsOf: (ref) => renderer.entityBounds(ref),

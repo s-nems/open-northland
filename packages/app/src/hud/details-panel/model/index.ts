@@ -299,7 +299,7 @@ export function buildUnitPanelModel(
       canAssignHome: !young,
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
-      statusCaption: settlerStatus(snapshot, comps),
+      statusCaption: settlerStatus(ctx, snapshot, entityId, comps),
       bars: satisfactionBars(
         ent,
         needsRuleEnabled(snapshot),

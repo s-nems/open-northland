@@ -146,9 +146,13 @@ export function planGossipSeek(
   candidates: GossipCandidates,
   /** A player "talk" order, which seeks a partner whatever the company bar reads. */
   ordered = false,
+  /** Whether a battle nearby holds this settler where it stands (`conflict/battle-alert.ts`). Asked after
+   *  the cheap bars above, so a settlement at peace never pays for the answer. */
+  holdsGround?: () => boolean,
 ): boolean {
   if (!ordered && settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
+  if (holdsGround?.() === true) return false;
   // Already in company: the chat it stands in becomes the one it sought, held against work like any
   // company-need chat, rather than a second pair that would orphan the first.
   if (world.has(e, Chat)) {
@@ -188,9 +192,12 @@ export function planGossipIdle(
   hx: number,
   hy: number,
   candidates: GossipCandidates,
+  /** As {@link planGossipSeek}'s, and asked as late. */
+  holdsGround?: () => boolean,
 ): boolean {
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   if (world.has(e, Chat) || chatCooldownActive(world, ctx.tick, e)) return false;
+  if (holdsGround?.() === true) return false;
   // The owner gate sits before the wander roll below, so unowned fixtures consume no RNG and stay
   // byte-identical.
   const owner = ownerOf(world, e);

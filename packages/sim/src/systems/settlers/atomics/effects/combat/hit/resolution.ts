@@ -24,8 +24,8 @@ import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { hunterShotMisses } from './aim.js';
 import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
+import { collectHitReaction, type PendingHitReaction } from './reaction.js';
 import { provokeAnger, provokeHostility } from './reactions.js';
-import { collectStagger, type PendingStagger } from './stagger.js';
 
 /**
  * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit. A ranged swing launches a
@@ -38,7 +38,7 @@ export function resolveAttackHit(
   attacker: Entity,
   atomic: SoundingAtomic,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
-  pendingStaggers: PendingStagger[],
+  pendingReactions: PendingHitReaction[],
 ): void {
   // A miss is decided at release, not on contact: the arrow still flies, aimed where the target stood.
   if (effect.projectile !== undefined) {
@@ -58,7 +58,7 @@ export function resolveAttackHit(
   ) {
     return;
   }
-  resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingStaggers, 'melee');
+  resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingReactions, 'melee');
 }
 
 /** The blow a melee swing or a landing projectile delivers: its resolved damage, the striker's weapon
@@ -108,7 +108,7 @@ export function resolveCombatHit(
   attacker: Entity,
   target: Entity,
   blow: LandingBlow,
-  pendingStaggers: PendingStagger[],
+  pendingReactions: PendingHitReaction[],
   source: 'melee' | 'projectile',
 ): void {
   const health = world.tryMut(target, Health);
@@ -158,7 +158,7 @@ export function resolveCombatHit(
       if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
     }
   } else {
-    collectStagger(world, ctx, target, pendingStaggers); // applied after the caller's loop
+    collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
   }
 }
 

@@ -4,8 +4,8 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import {
-  applyPendingStaggers,
-  type PendingStagger,
+  applyPendingHitReactions,
+  type PendingHitReaction,
   resolveCombatHit,
 } from '../settlers/atomics/effects/combat/index.js';
 import { canonicalById } from '../spatial/nodes.js';
@@ -29,18 +29,18 @@ export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.f
  * launch is the AtomicSystem's `attack` effect at the shooter's release frame; the hit runs the same
  * {@link resolveCombatHit} a melee swing does.
  *
- * Projectiles are visited in canonical ascending-id order and staggers are deferred past the loop, so a
- * stagger tie-break is order-independent. Cost scales with the count of active projectiles: nothing else
- * scans them, and a spent one is destroyed the instant it lands.
+ * Projectiles are visited in canonical ascending-id order and a victim's reaction is deferred past the
+ * loop, so a flinch tie-break is order-independent. Cost scales with the count of active projectiles:
+ * nothing else scans them, and a spent one is destroyed the instant it lands.
  */
 export const projectileSystem: System = (world, ctx) => {
-  // Deferred flinches from any lethal-miss survivor struck this tick, so a stagger added mid-loop cannot
-  // perturb a later projectile's hit decision.
-  const pendingStaggers: PendingStagger[] = [];
+  // Deferred reactions from any survivor struck this tick, so a flinch added mid-loop cannot perturb a
+  // later projectile's hit decision.
+  const pendingReactions: PendingHitReaction[] = [];
   for (const p of canonicalById(world.query(Projectile, Position))) {
-    advanceProjectile(world, ctx, p, pendingStaggers);
+    advanceProjectile(world, ctx, p, pendingReactions);
   }
-  applyPendingStaggers(world, pendingStaggers);
+  applyPendingHitReactions(world, pendingReactions);
 };
 
 /** Advance one projectile: a true shot follows its frozen aim and lands its blow on arrival; one with no
@@ -49,7 +49,7 @@ function advanceProjectile(
   world: World,
   ctx: SystemContext,
   p: Entity,
-  pendingStaggers: PendingStagger[],
+  pendingReactions: PendingHitReaction[],
 ): void {
   const proj = world.get(p, Projectile);
   // Loosed this tick: it does not move, so a shot is observable at its launch point (approximated - the
@@ -67,7 +67,7 @@ function advanceProjectile(
 
   if (flightStep(world, p, aim.x, aim.y, proj.speed)) {
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
-    resolveCombatHit(world, ctx, proj.source, proj.target, proj, pendingStaggers, 'projectile');
+    resolveCombatHit(world, ctx, proj.source, proj.target, proj, pendingReactions, 'projectile');
     ctx.events.emit({
       kind: 'projectileHit',
       projectile: p,

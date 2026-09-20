@@ -45,6 +45,7 @@ import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/ter
 import { hashSimState } from './simulation/hash.js';
 import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
 import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js';
+import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 import type { SystemContext } from './systems/context.js';
 import {
@@ -216,12 +217,10 @@ export class Simulation {
     this.commands.enqueue(setupCommand(command));
   }
 
-  /** Advance exactly one tick by running every system in order. */
-  step(): void {
-    this.currentTick++;
-    this.events.clear(); // events for tick N are a pure function of this tick's systems
-    this.digest?.beginTick();
-    const ctx: SystemContext = {
+  /** The resources every system of this tick reads. Rebuilt per call rather than cached, so a read seam
+   *  cannot hand a system a context from another tick. */
+  private context(): SystemContext {
+    return {
       content: this.content,
       rng: this.rng,
       tick: this.currentTick,
@@ -233,6 +232,25 @@ export class Simulation {
       ...(this.missions !== undefined ? { missions: this.missions } : {}),
       ...(this.aiScript !== undefined ? { aiScript: this.aiScript } : {}),
     };
+  }
+
+  /**
+   * Whether the battle alert holds `entity` where it stands - no rest, no meal it would have to walk to,
+   * no company - because fighting is going on around it (`systems/conflict/battle-alert.ts`). The drive
+   * ladder's own rule, for a HUD that would otherwise caption such a unit as idle. Reads the world as it
+   * stands; the index it builds lives for the call.
+   */
+  standsTo(entity: Entity): boolean {
+    const ctx = this.context();
+    return holdsGround(this.world, ctx, entity, new BattleFront(this.world, ctx));
+  }
+
+  /** Advance exactly one tick by running every system in order. */
+  step(): void {
+    this.currentTick++;
+    this.events.clear(); // events for tick N are a pure function of this tick's systems
+    this.digest?.beginTick();
+    const ctx = this.context();
     const instrument = this.instrument;
     for (const { name, system } of SYSTEM_ORDER) {
       if (instrument === null) {

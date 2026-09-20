@@ -90,6 +90,11 @@ function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: N
  * The in-place half of the needs ladder, for a settler that must hold its ground: {@link planNeeds}'s rung
  * order with every tail that walks or lies down removed, a tower's bed included, so fatigue waits for a
  * stamina draught or the end of the fight.
+ *
+ * What is left to answer with is thin on purpose, and thinner still on extracted content, which binds no
+ * equipment class to a good and so offers no draught at all: a garrison eats from its tower, and a field
+ * unit eats only what it happens to carry. A unit locked in a fight it cannot win before its hunger kills
+ * it is the player's to pull out, with a move order or an ordered meal; both break the fight off.
  */
 export function answerNeedInPlace(
   world: World,
@@ -148,7 +153,9 @@ function eatCarried(
  *
  * A settler on alert answers a need in place, as {@link answerNeedInPlace} does, except that it walks to
  * food once its hunger turns critical: hunger alone costs hitpoints, so a standoff that never comes to
- * blows cannot starve an army. `onAlert` is asked only where its answer decides a walk, a bed or a prayer.
+ * blows cannot starve a unit that is free to go. One the fight itself holds is answered in place at any
+ * level, which is where an army can still starve. `onAlert` is asked only where its answer decides a walk,
+ * a bed or a prayer.
  */
 export function planNeeds(
   world: World,

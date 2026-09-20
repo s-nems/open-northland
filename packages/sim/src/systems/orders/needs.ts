@@ -1,4 +1,5 @@
 import {
+  AttackOrder,
   CurrentAtomic,
   DeferredOrder,
   NeedOrder,
@@ -32,6 +33,9 @@ export function orderNeed(
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // the need executing now supersedes any earlier parked order
   world.remove(e, PlayerOrder); // and any walk the settler was on
+  // And any standing attack order, which would otherwise pull the settler back into the fight the drive
+  // ladder breaks off for the errand, leaving the order looking ignored.
+  world.remove(e, AttackOrder);
   clearNavState(world, e);
 }
 

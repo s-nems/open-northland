@@ -27,7 +27,7 @@ Two consequences, verified against the owned copy:
 - **The sandbox binds no animal atomics at all** (`packages/app/src/game/sandbox/content/catalog/tribes.ts`
   registers animal tribes with `typeId`/`id` only), so the scene cannot exercise the fix.
 - **A struck working trade never flinches.** The stagger gate
-  (`packages/sim/src/systems/settlers/atomics/effects/combat/hit/stagger.ts`) requires the trade's own
+  (`packages/sim/src/systems/settlers/atomics/effects/combat/hit/reaction.ts`) requires the trade's own
   `attacked` (82) row, which only jobs 5-6 carry; under the chain a builder or carrier would resolve the
   civilist's. Whether the original issues 82 to a hit civilian trade still needs observation.
 - The sandbox binds the store pick-up and pile-up (22/23) for every job, unlike the real data (22 on
