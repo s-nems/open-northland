@@ -201,16 +201,26 @@ export function createSettingsPage(opts: {
         },
       );
       markSegment(language.root, 'language');
-      const scrollSpeed = sliderControl(text.scrollSpeed, {
-        min: SCROLL_SPEED_MIN,
-        max: SCROLL_SPEED_MAX,
-        step: SCROLL_SPEED_STEP,
-        value: settings.scrollSpeed,
-        onCommit: (scrollSpeed) => {
-          void opts.settings.update({ scrollSpeed });
-        },
-        live: true,
-      });
+      const scrollSpeed = (
+        label: string,
+        value: number,
+        patch: (value: number) => Partial<MenuSettings>,
+        focusKey: string,
+      ): HTMLDivElement => {
+        const control = sliderControl(label, {
+          min: SCROLL_SPEED_MIN,
+          max: SCROLL_SPEED_MAX,
+          step: SCROLL_SPEED_STEP,
+          value,
+          onCommit: (next) => {
+            void opts.settings.update(patch(next));
+          },
+          live: true,
+        });
+        const input = control.querySelector<HTMLInputElement>('input');
+        if (input !== null) input.dataset.settingsFocus = focusKey;
+        return control;
+      };
       const edgeScroll = togglePill(settings.edgeScrollEnabled, (edgeScrollEnabled) => {
         void opts.settings.update({ edgeScrollEnabled });
       });
@@ -232,8 +242,34 @@ export function createSettingsPage(opts: {
           language.root,
           opts.settings.bootOwnedChangesDeferred === true ? { tip: text.nextGameTip } : undefined,
         ),
-        settingRow(text.scrollSpeed, scrollSpeed),
+        settingRow(
+          text.keyboardScrollSpeed,
+          scrollSpeed(
+            text.keyboardScrollSpeed,
+            settings.keyboardScrollSpeed,
+            (keyboardScrollSpeed) => ({ keyboardScrollSpeed }),
+            'keyboard-scroll-speed',
+          ),
+        ),
+        settingRow(
+          text.edgeScrollSpeed,
+          scrollSpeed(
+            text.edgeScrollSpeed,
+            settings.edgeScrollSpeed,
+            (edgeScrollSpeed) => ({ edgeScrollSpeed }),
+            'edge-scroll-speed',
+          ),
+        ),
         settingRow(text.edgeScroll, edgeScroll),
+        settingRow(
+          text.dragScrollSpeed,
+          scrollSpeed(
+            text.dragScrollSpeed,
+            settings.dragScrollSpeed,
+            (dragScrollSpeed) => ({ dragScrollSpeed }),
+            'drag-scroll-speed',
+          ),
+        ),
         settingRow(text.invertDragScroll, invertDragScroll, { tip: text.invertDragScrollTip }),
         settingRow(text.debugTools, debugTools, { tip: text.debugToolsTip }),
       ];

@@ -47,7 +47,9 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.language !== undefined) deps.setLanguage(patch.language);
     if (patch.keyBindings !== undefined) deps.setKeyBindings(patch.keyBindings);
     if (
-      patch.scrollSpeed !== undefined ||
+      patch.keyboardScrollSpeed !== undefined ||
+      patch.edgeScrollSpeed !== undefined ||
+      patch.dragScrollSpeed !== undefined ||
       patch.edgeScrollEnabled !== undefined ||
       patch.invertDragScroll !== undefined
     ) {

@@ -39,7 +39,9 @@ describe('parseStoredSettings', () => {
       soundVolume: 0.35,
       musicVolume: 0.6,
       language: 'eng',
-      scrollSpeed: 2.25,
+      keyboardScrollSpeed: 1.25,
+      edgeScrollSpeed: 2.25,
+      dragScrollSpeed: 1.75,
       edgeScrollEnabled: false,
       invertDragScroll: true,
       keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
@@ -79,19 +81,33 @@ describe('parseStoredSettings', () => {
   it('defaults, validates, and clamps persisted camera input settings', () => {
     const defaults = defaultSettings();
     expect(parseStoredSettings('{}')).toMatchObject({
-      scrollSpeed: defaults.scrollSpeed,
+      keyboardScrollSpeed: defaults.keyboardScrollSpeed,
+      edgeScrollSpeed: defaults.edgeScrollSpeed,
+      dragScrollSpeed: defaults.dragScrollSpeed,
       edgeScrollEnabled: true,
       invertDragScroll: false,
     });
     expect(
-      parseStoredSettings('{"scrollSpeed":2.25,"edgeScrollEnabled":false,"invertDragScroll":true}'),
-    ).toMatchObject({ scrollSpeed: 2.25, edgeScrollEnabled: false, invertDragScroll: true });
-    expect(parseStoredSettings('{"scrollSpeed":99}').scrollSpeed).toBe(SCROLL_SPEED_MAX);
-    expect(parseStoredSettings('{"scrollSpeed":0}').scrollSpeed).toBe(SCROLL_SPEED_MIN);
-    expect(
-      parseStoredSettings('{"scrollSpeed":"fast","edgeScrollEnabled":"off","invertDragScroll":"yes"}'),
+      parseStoredSettings(
+        '{"keyboardScrollSpeed":1.25,"edgeScrollSpeed":2.25,"dragScrollSpeed":1.75,"edgeScrollEnabled":false,"invertDragScroll":true}',
+      ),
     ).toMatchObject({
-      scrollSpeed: defaults.scrollSpeed,
+      keyboardScrollSpeed: 1.25,
+      edgeScrollSpeed: 2.25,
+      dragScrollSpeed: 1.75,
+      edgeScrollEnabled: false,
+      invertDragScroll: true,
+    });
+    expect(parseStoredSettings('{"keyboardScrollSpeed":99}').keyboardScrollSpeed).toBe(SCROLL_SPEED_MAX);
+    expect(parseStoredSettings('{"edgeScrollSpeed":0}').edgeScrollSpeed).toBe(SCROLL_SPEED_MIN);
+    expect(
+      parseStoredSettings(
+        '{"scrollSpeed":3,"keyboardScrollSpeed":"fast","edgeScrollEnabled":"off","invertDragScroll":"yes"}',
+      ),
+    ).toMatchObject({
+      keyboardScrollSpeed: defaults.keyboardScrollSpeed,
+      edgeScrollSpeed: defaults.edgeScrollSpeed,
+      dragScrollSpeed: defaults.dragScrollSpeed,
       edgeScrollEnabled: defaults.edgeScrollEnabled,
       invertDragScroll: defaults.invertDragScroll,
     });

@@ -17,7 +17,9 @@ const CANVAS_H = 600;
 const LEFT_BAND_X = EDGE_SCROLL_MARGIN / 2;
 const CENTRE_Y = CANVAS_H / 2;
 const DEFAULT_INPUT_SETTINGS: CameraInputSettings = {
-  scrollSpeed: 1.5,
+  keyboardScrollSpeed: 1,
+  edgeScrollSpeed: 1,
+  dragScrollSpeed: 1,
   edgeScrollEnabled: true,
   invertDragScroll: false,
 };
@@ -215,27 +217,37 @@ describe('createCameraController input settings', () => {
     const { ctl, move, startMiddleDrag } = install();
     startMiddleDrag(100, 100);
     move(120, 100);
-    expect(ctl.camera().offsetX).toBe(30);
+    expect(ctl.camera().offsetX).toBe(20);
 
-    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 2, invertDragScroll: true });
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, dragScrollSpeed: 2, invertDragScroll: true });
     startMiddleDrag(120, 100);
     move(130, 100);
-    expect(ctl.camera().offsetX).toBe(10);
+    expect(ctl.camera().offsetX).toBe(0);
     ctl.dispose();
   });
 
   it('scales, disables, and re-enables edge scrolling live', () => {
     const { ctl, move } = install();
     move(LEFT_BAND_X, CENTRE_Y);
-    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 1 });
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, edgeScrollSpeed: 1 });
     const baseStep = panStep(ctl);
-    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 2 });
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, edgeScrollSpeed: 2 });
     expect(panStep(ctl)).toBeCloseTo(baseStep * 2);
 
     ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, edgeScrollEnabled: false });
     expect(panStep(ctl)).toBe(0);
-    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 3 });
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, edgeScrollSpeed: 3 });
     expect(panStep(ctl)).toBeGreaterThan(0);
+    ctl.dispose();
+  });
+
+  it('scales keyboard scrolling independently from drag and edge speeds', () => {
+    const { ctl, press, release } = install();
+    press('ArrowLeft');
+    const baseStep = panStep(ctl);
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, keyboardScrollSpeed: 2 });
+    expect(panStep(ctl)).toBeCloseTo(baseStep * 2);
+    release('ArrowLeft');
     ctl.dispose();
   });
 });

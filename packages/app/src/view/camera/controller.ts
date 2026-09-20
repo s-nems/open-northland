@@ -51,7 +51,9 @@ export interface CameraController {
 }
 
 export interface CameraInputSettings {
-  readonly scrollSpeed: number;
+  readonly keyboardScrollSpeed: number;
+  readonly edgeScrollSpeed: number;
+  readonly dragScrollSpeed: number;
   readonly edgeScrollEnabled: boolean;
   readonly invertDragScroll: boolean;
 }
@@ -107,8 +109,8 @@ export function createCameraController(
     const direction = activeInputSettings.invertDragScroll ? -1 : 1;
     cam = panCamera(
       cam,
-      (e.clientX - lastX) * sx * activeInputSettings.scrollSpeed * direction,
-      (e.clientY - lastY) * sy * activeInputSettings.scrollSpeed * direction,
+      (e.clientX - lastX) * sx * activeInputSettings.dragScrollSpeed * direction,
+      (e.clientY - lastY) * sy * activeInputSettings.dragScrollSpeed * direction,
     );
     lastX = e.clientX;
     lastY = e.clientY;
@@ -216,10 +218,11 @@ export function createCameraController(
       // looking right slides the world left and shrinks the offset.
       let desiredX = 0;
       let desiredY = 0;
-      if (held.has('panLeft')) desiredX += tuning.arrowPanSpeed;
-      if (held.has('panRight')) desiredX -= tuning.arrowPanSpeed;
-      if (held.has('panUp')) desiredY += tuning.arrowPanSpeed;
-      if (held.has('panDown')) desiredY -= tuning.arrowPanSpeed;
+      const keyboardSpeed = tuning.arrowPanSpeed * activeInputSettings.keyboardScrollSpeed;
+      if (held.has('panLeft')) desiredX += keyboardSpeed;
+      if (held.has('panRight')) desiredX -= keyboardSpeed;
+      if (held.has('panUp')) desiredY += keyboardSpeed;
+      if (held.has('panDown')) desiredY -= keyboardSpeed;
       // Edge scroll is suppressed mid middle-drag, while the window is unfocused, and wherever a HUD
       // surface claims the point. A left-drag marquee is deliberately not suppressed, so dragging a
       // selection box into the margin pans under it.
@@ -238,11 +241,9 @@ export function createCameraController(
           rect.height,
           tuning.edgeScrollSpeed,
         );
-        desiredX += edge.vx * sx; // CSS px/s to screen px/s
-        desiredY += edge.vy * sy;
+        desiredX += edge.vx * sx * activeInputSettings.edgeScrollSpeed; // CSS px/s to screen px/s
+        desiredY += edge.vy * sy * activeInputSettings.edgeScrollSpeed;
       }
-      desiredX *= activeInputSettings.scrollSpeed;
-      desiredY *= activeInputSettings.scrollSpeed;
       if (desiredX !== 0 || desiredY !== 0) {
         cam = panCamera(cam, (desiredX * dt) / 1000, (desiredY * dt) / 1000);
       }

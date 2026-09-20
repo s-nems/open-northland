@@ -21,7 +21,7 @@ const DEFAULT_RENDER_SCALE = 1;
 
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
-export const DEFAULT_SCROLL_SPEED = 1.5;
+export const DEFAULT_SCROLL_SPEED = 1;
 
 export interface MenuSettings {
   readonly assets: AssetSet;
@@ -44,8 +44,9 @@ export interface MenuSettings {
   /** Music volume, 0..1 (the original `dm_volume`). */
   readonly musicVolume: number;
   readonly language: Locale;
-  /** Multiplier shared by drag, edge, and keyboard camera panning. */
-  readonly scrollSpeed: number;
+  readonly keyboardScrollSpeed: number;
+  readonly edgeScrollSpeed: number;
+  readonly dragScrollSpeed: number;
   readonly edgeScrollEnabled: boolean;
   /** Reverse only middle-button drag; directional edge and keyboard input keep their meaning. */
   readonly invertDragScroll: boolean;
@@ -70,7 +71,9 @@ export function defaultSettings(): MenuSettings {
     soundVolume: DEFAULT_SFX_VOLUME,
     musicVolume: DEFAULT_MUSIC_VOLUME,
     language: defaultLocale(),
-    scrollSpeed: DEFAULT_SCROLL_SPEED,
+    keyboardScrollSpeed: DEFAULT_SCROLL_SPEED,
+    edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
+    dragScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollEnabled: true,
     invertDragScroll: false,
     keyBindings: DEFAULT_KEY_BINDINGS,
@@ -130,7 +133,9 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),
     language: isLocale(record.language) ? record.language : defaults.language,
-    scrollSpeed: clampScrollSpeed(record.scrollSpeed),
+    keyboardScrollSpeed: clampScrollSpeed(record.keyboardScrollSpeed),
+    edgeScrollSpeed: clampScrollSpeed(record.edgeScrollSpeed),
+    dragScrollSpeed: clampScrollSpeed(record.dragScrollSpeed),
     edgeScrollEnabled:
       typeof record.edgeScrollEnabled === 'boolean' ? record.edgeScrollEnabled : defaults.edgeScrollEnabled,
     invertDragScroll:

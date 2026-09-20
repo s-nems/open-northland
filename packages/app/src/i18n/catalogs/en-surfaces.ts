@@ -164,7 +164,9 @@ export const enSurfaces = {
       language: 'Language',
       // Endonyms: each language names itself and is not translated per locale.
       languageNames: { pol: 'Polski', eng: 'English' },
-      scrollSpeed: 'Map scroll speed',
+      keyboardScrollSpeed: 'Keyboard scroll speed',
+      edgeScrollSpeed: 'Edge scroll speed',
+      dragScrollSpeed: 'Mouse drag scroll speed',
       edgeScroll: 'Edge scrolling',
       invertDragScroll: 'Invert drag scrolling',
       invertDragScrollTip: 'When enabled, dragging right moves the map left, and vice versa.',
