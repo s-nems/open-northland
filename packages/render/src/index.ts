@@ -149,7 +149,6 @@ export {
 } from './gpu/overlays/index.js';
 export {
   type GuiColorKey,
-  type PalettedSampling,
   PalettedSprite,
 } from './gpu/paletted-sprite/index.js';
 export {

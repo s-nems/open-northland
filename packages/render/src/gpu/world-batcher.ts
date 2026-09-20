@@ -130,7 +130,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   out vec2 vUV;
   out float vTextureId;
   flat out float vFlags;
-  out vec4 vFrame;
+  flat out vec4 vFrame;
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
   uniform vec4 uWorldColorAlpha;
@@ -190,7 +190,7 @@ function defineWorldBatcher(): WorldBatcherClass {
   in vec2 vUV;
   in float vTextureId;
   flat in float vFlags;
-  in vec4 vFrame;
+  flat in vec4 vFrame;
   out vec4 finalColor;
   uniform sampler2D uTextures[${maxTextures}];
   // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
@@ -224,7 +224,11 @@ function defineWorldBatcher(): WorldBatcherClass {
   }
 
   #define MAGNIFY_FETCH(px) frameTexel(px)
-  ${PIXEL_ART_MAGNIFY_GLSL}
+  /** Each of the four minification taps sits a quarter of the footprint out from the sample point, and
+ *  they average evenly: four taps cannot cover more, so the spread stops there. */
+const float MINIFY_TAP_OFFSET = 0.25;
+const float MINIFY_TAP_WEIGHT = 0.25;
+${PIXEL_ART_MAGNIFY_GLSL}
 
   void main(void) {
     texSize = vec2(textureSizeOf());
@@ -242,10 +246,10 @@ function defineWorldBatcher(): WorldBatcherClass {
     } else {
       // Minified: a 2x2 footprint over the sampler's own filter reduces sparkle, clamped to the frame.
       // Not a mipmap substitute at extreme zoom-out: sampling cost is deliberately bounded.
-      vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * 0.25;
+      vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
       vec2 low = vFrame.xy + 0.5 / texSize;
       vec2 high = vFrame.zw - 0.5 / texSize;
-      outColor = 0.25 * (sampleTexture(clamp(vUV - footprint, low, high))
+      outColor = MINIFY_TAP_WEIGHT * (sampleTexture(clamp(vUV - footprint, low, high))
                        + sampleTexture(clamp(vUV + vec2(footprint.x, -footprint.y), low, high))
                        + sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
                        + sampleTexture(clamp(vUV + footprint, low, high)));
@@ -372,11 +376,6 @@ function defineWorldBatcher(): WorldBatcherClass {
       write(maxX, minY, uvs.x1, uvs.y1);
       write(maxX, maxY, uvs.x2, uvs.y2);
       write(minX, maxY, uvs.x3, uvs.y3);
-    }
-
-    /** The shaders are shared across batchers and outlive any one of them. */
-    override destroy(): void {
-      super.destroy();
     }
   }
 

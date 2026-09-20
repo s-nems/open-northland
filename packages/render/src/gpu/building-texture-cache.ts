@@ -7,10 +7,21 @@ const PADDING = 2;
 const MAX_GPU_BYTES = 32 * 1024 * 1024;
 const MAX_FRAME_PIXELS = 1024 * 1024;
 
+/** Side of the opaque neighbourhood a pixel must fill before it is sharpened at all. */
+const SHARPEN_WINDOW = 5;
+const SHARPEN_WINDOW_PIXELS = SHARPEN_WINDOW * SHARPEN_WINDOW;
+/** Side of the mean the pixel is sharpened against, inside that neighbourhood. */
+const SHARPEN_MEAN_WINDOW = 3;
+const SHARPEN_MEAN_PIXELS = SHARPEN_MEAN_WINDOW * SHARPEN_MEAN_WINDOW;
+/** Share of the local contrast added back, tuned by eye. */
+const SHARPEN_STRENGTH = 0.2;
+/** Ceiling on the shift in 8-bit levels, so the filter lifts contrast without inventing an edge. */
+const MAX_SHARPEN_SHIFT = 8;
+
 /** Artistic approximation: restore a little native-size interior contrast without sharpening
  * silhouettes. The two-pixel opaque neighbourhood excludes both alpha edges and their neighbours. */
 export function sharpenBuildingInterior(data: Uint8ClampedArray, width: number, height: number): void {
-  if (width < 5 || height < 5) return;
+  if (width < SHARPEN_WINDOW || height < SHARPEN_WINDOW) return;
   const original = data.slice();
   // RGB columns cover three rows; alpha columns count fully opaque pixels across five rows.
   // Rolling both windows keeps work constant per pixel without allocating full-image sum tables.
@@ -23,7 +34,7 @@ export function sharpenBuildingInterior(data: Uint8ClampedArray, width: number, 
         (original[(2 * width + x) * 4 + channel] ?? 0) +
         (original[(3 * width + x) * 4 + channel] ?? 0);
     }
-    for (let y = 0; y < 5; y++) {
+    for (let y = 0; y < SHARPEN_WINDOW; y++) {
       if (original[(y * width + x) * 4 + 3] === 255) columns[col + 3] = (columns[col + 3] ?? 0) + 1;
     }
   }
@@ -34,14 +45,15 @@ export function sharpenBuildingInterior(data: Uint8ClampedArray, width: number, 
         (columns[4 + channel] ?? 0) + (columns[8 + channel] ?? 0) + (columns[12 + channel] ?? 0);
     }
     let opaque = 0;
-    for (let x = 0; x < 5; x++) opaque += columns[x * 4 + 3] ?? 0;
+    for (let x = 0; x < SHARPEN_WINDOW; x++) opaque += columns[x * 4 + 3] ?? 0;
     for (let x = 2; x < width - 2; x++) {
       const i = (y * width + x) * 4;
       for (let channel = 0; channel < 3; channel++) {
         const sum = sums[channel] ?? 0;
-        if (opaque === 25) {
+        if (opaque === SHARPEN_WINDOW_PIXELS) {
           const value = original[i + channel] ?? 0;
-          data[i + channel] = value + Math.max(-8, Math.min(8, (value - sum / 9) * 0.2));
+          const shift = (value - sum / SHARPEN_MEAN_PIXELS) * SHARPEN_STRENGTH;
+          data[i + channel] = value + Math.max(-MAX_SHARPEN_SHIFT, Math.min(MAX_SHARPEN_SHIFT, shift));
         }
         sums[channel] = sum - (columns[(x - 1) * 4 + channel] ?? 0) + (columns[(x + 2) * 4 + channel] ?? 0);
       }

@@ -5,8 +5,8 @@ import { PALETTED_SAMPLING_MODES } from '../src/gpu/paletted-sprite/shader.js';
 // uniform contract the shader reads.
 describe('paletted sampling modes', () => {
   it('keeps the exact original path at 0 and gives every magnification mode its own value', () => {
-    expect(PALETTED_SAMPLING_MODES.nearest).toBe(0);
-    expect(PALETTED_SAMPLING_MODES.bilinear).toBe(1);
-    expect(new Set(Object.values(PALETTED_SAMPLING_MODES)).size).toBe(4);
+    // The shader branches on these thresholds, so a swapped pair silently trades one filter for
+    // another on characters while the world batcher keeps its own correct table.
+    expect(PALETTED_SAMPLING_MODES).toEqual({ nearest: 0, bilinear: 1, sharp: 2, xbr: 3 });
   });
 });

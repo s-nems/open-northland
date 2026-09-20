@@ -1,6 +1,7 @@
 import {
   type BatchableSprite,
   type DefaultBatchableQuadElement,
+  Rectangle,
   Sprite,
   Texture,
   TextureSource,
@@ -71,6 +72,25 @@ describe('world batcher element flags', () => {
     batcher.destroy();
     return floats[WORLD_ATTRIBUTE_OFFSETS.aFlags / 4] ?? -1;
   }
+
+  it('packs the frame as its own uv box, which bounds every magnify and minify tap', () => {
+    const source = new TextureSource({ width: 8, height: 8 });
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: 1 });
+    const floats = new Float32Array(WORLD_VERTEX_SIZE * 4);
+    const element = {
+      texture: new Texture({ source, frame: new Rectangle(2, 4, 4, 2) }),
+      transform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+      color: 0xffffffff,
+      roundPixels: 0,
+    } as unknown as DefaultBatchableQuadElement;
+    batcher.packQuadAttributes(element, floats, new Uint32Array(floats.buffer), 0, 0);
+    const at = WORLD_ATTRIBUTE_OFFSETS.aFrame / 4;
+    expect(Array.from(floats.slice(at, at + 4))).toEqual([2 / 8, 4 / 8, 6 / 8, 6 / 8]);
+    batcher.destroy();
+    source.destroy();
+  });
 
   it('flags a shadow only under a style, and marks a straight-alpha page for its own blend', () => {
     const premultiplied = new TextureSource({ width: 8, height: 8 });

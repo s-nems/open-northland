@@ -1,6 +1,7 @@
 import { Texture, TextureSource } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  DEFAULT_PIXEL_ART_SCALER,
   isMagnifiedTexture,
   isShadowTexture,
   markMagnifiedTexture,
@@ -20,6 +21,10 @@ afterEach(() => {
 });
 
 describe('pixel-art registry', () => {
+  it('ships xBR as the default scaler', () => {
+    expect(DEFAULT_PIXEL_ART_SCALER).toBe('xbr');
+  });
+
   it('magnifies only textures minted from a marked page', () => {
     const page = new TextureSource({ width: 8, height: 8 });
     const other = new TextureSource({ width: 8, height: 8 });
