@@ -38,6 +38,9 @@ Completed gathering and production credit both the general and matching speciali
 Construction swings that actually advance labor credit the builder's general track. Carrying and
 combat retain their existing grant triggers. A requirement sums only its explicitly named tracks.
 The no-job-experience mission behavior suppresses accrual through the common grant seam.
+Production efficiency reads the matching product specialization when one exists and falls back to the
+profession-general track otherwise, matching `Tool_Human_GetExperienceType_GainedViaWorking` and the
+callers that calculate experience factor and output amount in the the original.
 
 Saved experience uses a factor-scaled encoding: one counted action contributes its track's
 `experienceFactor`. Requirement readers divide by that factor. This encoding is an internal
