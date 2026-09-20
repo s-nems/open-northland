@@ -23,15 +23,7 @@ import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
-import {
-  CARPENTER,
-  CARPENTER_GENERAL_TRACK,
-  CARRIER,
-  CARRIER_TRACK,
-  WOOD,
-  WOOD_TRACK,
-  WOODCUTTER,
-} from './support.js';
+import { CARRIER, CARRIER_TRACK, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
 describe('experienceBonus - the repeats → bonus curve', () => {
   it('matches the reference table within 2 points at repeats 1..11', () => {
@@ -144,19 +136,12 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
   });
 });
 
-describe('operatorProductionBonus - product-specific track with a general fallback', () => {
-  it('uses general trade experience for a product without its own specialization', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const carpenter = settlerAt(sim, { jobType: CARPENTER });
-    sim.world.mut(carpenter, Settler).experience.set(CARPENTER_GENERAL_TRACK, 500);
-    expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
-  });
-
+describe('operatorProductionBonus - the transport trade never boosts output', () => {
   it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = settlerAt(sim, { jobType: CARRIER });
     sim.world.mut(carrier, Settler).experience.set(CARRIER_TRACK, 100_000);
-    expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier, WOOD)).toBe(ZERO);
+    expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier)).toBe(ZERO);
   });
 });
 

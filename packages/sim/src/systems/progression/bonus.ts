@@ -4,7 +4,7 @@ import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isCarrierJob } from '../stores/index.js';
-import { fightExperienceTypeFor, SCOUT_EXPERIENCE_TYPE, trackFor } from './experience.js';
+import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFor } from './experience.js';
 
 /**
  * The shared experience curve, mapping completed-work repeats rather than raw XP to a bonus fraction:
@@ -67,20 +67,14 @@ export function rawXpForRepeats(track: HumanJobExperienceType | undefined, repea
 }
 
 /**
- * A production operator's current bonus fraction for `goodType`, read on the product-specific track when
- * one exists and the job-general fallback otherwise. ZERO for a gone or jobless operator, a pairing with
- * no track, or a carrier operator: a carrier's delivery-earned XP is display-only and must not leak into
- * output.
+ * A production operator's current bonus fraction, read on the job-general track production XP accrues
+ * into. ZERO for a gone or jobless operator, a profession with no general track, or a carrier operator:
+ * authored, a carrier's delivery-earned XP is display-only and must not leak into output.
  */
-export function operatorProductionBonus(
-  world: World,
-  ctx: SystemContext,
-  operator: Entity,
-  goodType: number,
-): Fixed {
+export function operatorProductionBonus(world: World, ctx: SystemContext, operator: Entity): Fixed {
   const s = world.tryGet(operator, Settler);
   if (s === undefined || s.jobType === null || isCarrierJob(ctx, s.jobType)) return ZERO;
-  const track = trackFor(ctx, s.jobType, goodType);
+  const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return ZERO;
   return experienceBonus(experienceRepeats(s.experience.get(track.typeId) ?? 0, track));
 }
