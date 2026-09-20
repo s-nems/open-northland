@@ -1,17 +1,29 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import { ownerOf, Position, Settler, Stockpile, sameSideAs } from '../../components/index.js';
+import { Age, Female, ownerOf, Position, Settler, Stockpile, sameSideAs } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { equipFetchLimitFor } from '../signposts/index.js';
 import { accessibleStockAmounts, mayFetchGoodFrom } from '../stores/index.js';
-import { isFighterJob } from './jobs.js';
+import { isFighterJob, isHeroJob } from './jobs.js';
 
 /** One equip pick-menu row: an equippable good for the slot and how many units the settler can reach. */
 export interface EquipPickEntry {
   readonly goodType: number;
   readonly available: number;
+}
+
+/**
+ * Whether the settler's equipment may change at all: only a grown man who is no hero. A woman and a
+ * child wear nothing, and a hero keeps the fixed arms its job carries. Source basis: reading the macOS
+ * build, which fills a human's can-equip table only for an adult male non-hero and leaves it zeroed
+ * otherwise; not re-checked against the owned Windows build.
+ */
+export function mayChangeEquipment(world: World, content: ContentSet, entity: Entity): boolean {
+  const settler = world.tryGet(entity, Settler);
+  if (settler === undefined || world.has(entity, Age) || world.has(entity, Female)) return false;
+  return !isHeroJob(content, settler.jobType);
 }
 
 /** Whether the trade may wear this equipment category in the original change-equipment window. */
@@ -37,7 +49,8 @@ export function equipPickList(
   entity: Entity,
   group: EquipCategory,
 ): EquipPickEntry[] {
-  if (!canEquipCategory(content, world.tryGet(entity, Settler)?.jobType ?? null, group)) return [];
+  if (!mayChangeEquipment(world, content, entity)) return [];
+  if (!canEquipCategory(content, world.get(entity, Settler).jobType, group)) return [];
   const available = new Map<number, number>(); // insertion = content order, the menu's row order
   for (const good of content.goods) {
     if (good.equip?.category === group) available.set(good.typeId, 0);

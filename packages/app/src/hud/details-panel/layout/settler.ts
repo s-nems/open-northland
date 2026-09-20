@@ -93,7 +93,8 @@ export interface SettlerLayout {
   readonly experience: SectionRect;
   /** One row per trained specialization, then one per upcoming unlock. */
   readonly expRows: readonly Rect[];
-  readonly equipment: SectionRect;
+  /** Null when the settler wears nothing by rule, so the section is not drawn. */
+  readonly equipment: SectionRect | null;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
   readonly equipRows: readonly EquipRowRect[];
   /** The per-slot action buttons (equip/swap + take-off), flat across every equipment row. */
@@ -146,7 +147,8 @@ export function layoutSettler(
   const { slotsPerLine } = equipSlotMetrics(bodyW, s);
   const equipBodyH = equipRowLines(model.equipmentRows, slotsPerLine).reduce((a, b) => a + b, 0) * equipRowH;
 
-  const heights = [generalBodyH, workBodyH, expBodyH, equipBodyH].map(
+  const hasEquipment = model.equipmentRows.length > 0;
+  const heights = [generalBodyH, workBodyH, expBodyH, ...(hasEquipment ? [equipBodyH] : [])].map(
     (bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h,
   );
   if (model.trade !== null) heights.push(sectionAt(0, 0, w, tradeBodyH, s).frame.h);
@@ -229,8 +231,9 @@ export function layoutSettler(
     h: rowH,
   }));
 
-  const equipment = next(equipBodyH);
-  const { rects: equipRows, hits: equipActionHits } = layoutEquipRows(model.equipmentRows, equipment.body, s);
+  const equipment = hasEquipment ? next(equipBodyH) : null;
+  const { rects: equipRows, hits: equipActionHits } =
+    equipment === null ? { rects: [], hits: [] } : layoutEquipRows(model.equipmentRows, equipment.body, s);
 
   return {
     kind: 'settler',

@@ -9,6 +9,7 @@ import {
   Equipment,
   type EquipmentSlot,
   EquipOrder,
+  Female,
   MISC_EQUIP_SLOTS,
   Owner,
   Position,
@@ -24,6 +25,7 @@ import type { Fixed } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
+import { WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { equipGood, unequipGood } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { combatant } from '../conflict/stances/support.js';
@@ -854,6 +856,23 @@ describe('enlisting - a fighter trade keeps no tool', () => {
 
     expect(sim.world.has(hero, EquipOrder)).toBe(false);
     expect(sim.world.get(hero, Equipment).weapon?.goodType).toBe(SWORD);
+  });
+
+  it('refuses every equip order on a woman and offers her no pick list', () => {
+    const sim = freshSim();
+    const woman = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, woman, WOMAN_JOB);
+    sim.world.add(woman, Female, { female: true });
+    pileAt(sim, 12, 2, SHOES, 1);
+    pileAt(sim, 12, 4, MEAD, 1);
+
+    sim.enqueueSetup(equip(woman, SHOES));
+    sim.enqueueSetup(equip(woman, MEAD, 'misc'));
+    sim.step();
+
+    expect(sim.world.has(woman, EquipOrder)).toBe(false);
+    expect(sim.equipPickList(woman, 'boots')).toEqual([]);
+    expect(sim.equipPickList(woman, 'misc')).toEqual([]);
   });
 });
 

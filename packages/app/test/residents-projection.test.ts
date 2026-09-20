@@ -134,11 +134,11 @@ describe('residents projection', () => {
       person(14, JOB_COLLECTOR, { Marriage: { spouse: 99, child: null } }),
     ]);
     expect(rows.get(2)?.lacks).toEqual([]);
-    expect(rows.get(3)?.lacks).toEqual(['home', 'shoes', 'mead']);
+    expect(rows.get(3)?.lacks).toEqual(['home']); // a woman wears nothing, so she lacks no worn good
     expect(rows.get(4)?.lacks).toEqual([]); // a child is housed and dressed through its parents
-    expect(rows.get(5)?.lacks).toEqual(['home', 'shoes', 'partner', 'children', 'mead']);
+    expect(rows.get(5)?.lacks).toEqual(['home', 'partner', 'children']);
     expect(rows.get(6)?.lacks).toEqual(['shoes', 'weapon', 'mead']);
-    expect(rows.get(7)?.lacks).toEqual(['mead']);
+    expect(rows.get(7)?.lacks).toEqual([]); // a hero keeps the fixed gear of its class
     expect(rows.get(8)?.lacks).not.toContain('tool');
     expect(rows.get(10)?.lacks).toContain('tool');
     expect(rows.get(11)?.lacks).toContain('children'); // her child grew up: the id lingers, the lack returns

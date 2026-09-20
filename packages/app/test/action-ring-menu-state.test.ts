@@ -166,10 +166,10 @@ describe('allowedActions - one settler', () => {
     expect(drilling.has('removeLearningPlace')).toBe(true);
   });
 
-  it('keeps the trade orders from a woman', () => {
+  it('keeps the trade and the equipment orders from a woman', () => {
     const snapshot = snapshotOf([settler(1, JOB_WOMAN, { female: true })]);
     expect(allowed(snapshot, [1])).toEqual(
-      ['assignHome', 'assignVehicle', 'attackInhabitants', 'changeEquipment', 'eat', 'goTo', 'sleep'].sort(),
+      ['assignHome', 'assignVehicle', 'attackInhabitants', 'eat', 'goTo', 'sleep'].sort(),
     );
   });
 

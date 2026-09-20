@@ -9,6 +9,7 @@ import {
   equipActionKey,
   ROW_H,
   ROW_TEXT_PAD,
+  type SectionRect,
   type SettlerLayout,
   type WorkControlAction,
 } from '../layout/index.js';
@@ -53,7 +54,9 @@ export function drawSettler(
     drawTradeSection(chrome, layout.trade, model.trade, hoverAction, hoveredTrade, s);
   }
   drawExperienceSection(chrome, layout, model, ui, s);
-  drawEquipmentSection(chrome, layout, model, ui, hoveredEquipAction, s);
+  if (layout.equipment !== null) {
+    drawEquipmentSection(chrome, layout, layout.equipment, model, ui, hoveredEquipAction, s);
+  }
 }
 
 /**
@@ -222,13 +225,14 @@ function drawExperienceSection(
 function drawEquipmentSection(
   chrome: Chrome,
   layout: SettlerLayout,
+  section: SectionRect,
   model: SettlerPanelModel,
   ui: UiString,
   hoveredEquipAction: string | null,
   s: number,
 ): void {
-  chrome.window(layout.equipment.frame);
-  chrome.headline(layout.equipment.title, ui('humanwindow', HUMANWINDOW.equip, messages().hud.equipment));
+  chrome.window(section.frame);
+  chrome.headline(section.title, ui('humanwindow', HUMANWINDOW.equip, messages().hud.equipment));
   const iconOverflow = Math.round(SLOT_ICON_OVERFLOW * s);
   // Vertically centre a body line against the taller equipment row (and the sockets in it).
   const labelPadY = Math.round(((EQUIP_ROW_H - ROW_H) / 2 + ROW_TEXT_PAD) * s);

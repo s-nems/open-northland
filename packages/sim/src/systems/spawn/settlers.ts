@@ -31,7 +31,13 @@ import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
-import { isAnimalTribe, isHeroJob, isSoldierJob, settlerHitpoints } from '../readviews/index.js';
+import {
+  isAnimalTribe,
+  isHeroJob,
+  isSoldierJob,
+  mayChangeEquipment,
+  settlerHitpoints,
+} from '../readviews/index.js';
 import { attachAuthoredBuildings } from './attach.js';
 
 /**
@@ -129,7 +135,8 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
         ...(fixedHeroArmorGood !== undefined ? { armor: { goodType: fixedHeroArmorGood } } : {}),
       }),
     );
-  } else if (!heroJob) {
+  } else if (mayChangeEquipment(world, content, e)) {
+    // A woman and a child wear nothing, so a payload's equipment for them is dropped.
     const equipment = withSoldierClassWeapon(content, spec);
     if (equipment !== undefined) world.add(e, Equipment, equipmentFromCommand(equipment));
   }

@@ -119,7 +119,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       craftChoiceHits: layout.craftChoiceHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
       experience: sec(layout.experience),
       expRows: layout.expRows.map(fn),
-      equipment: sec(layout.equipment),
+      equipment: layout.equipment === null ? null : sec(layout.equipment),
       equipRows: layout.equipRows.map((r) => ({ label: fn(r.label), slots: r.slots.map(fn) })),
       equipActionHits: layout.equipActionHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
       trade: layout.trade === null ? null : mapTradeLayout(layout.trade, fn),

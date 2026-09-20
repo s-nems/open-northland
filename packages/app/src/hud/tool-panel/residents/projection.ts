@@ -71,11 +71,12 @@ function kindOf(content: ContentSet, ent: SnapshotEntity, jobType: number | null
 
 /**
  * What the resident goes without. The groups follow the original subjects window: no home and no
- * partner skip soldiers and heroes, no shoes skips heroes, no children counts the women, no weapon the
- * soldiers. Two are this project's own: no post is a worker whose trade a workplace employs, standing
- * at none and tied to no work flag; no mead is an adult with a job and no bottle, the people the
- * assistant's mead grant reaches. Approximation: the sim tracks a couple's one growing child, so "no
- * children" means none growing now, not a family history.
+ * partner skip soldiers and heroes, no children counts the women, no weapon the soldiers. The worn
+ * lacks ask only a man whose equipment may change (the sim's `mayChangeEquipment`), so a woman and a
+ * hero lack no shoes, tool, weapon or mead. Two are this project's own: no post is a worker whose trade
+ * a workplace employs, standing at none and tied to no work flag; no mead is such a man with a job and
+ * no bottle, the people the assistant's mead grant reaches. Approximation: the sim tracks a couple's
+ * one growing child, so "no children" means none growing now, not a family history.
  */
 function lacksOf(
   ctx: ResidentsProjectionContext,
@@ -101,11 +102,12 @@ function lacksOf(
   }
   // The assistant hands no tool to a scout, so the list asks none of one.
   if (kind === 'worker' && !systems.isScoutJob(ctx.content, jobType) && !worn.tool) lacks.push('tool');
-  if (kind !== 'hero' && !worn.boots) lacks.push('shoes');
+  const dressable = kind !== 'hero' && kind !== 'woman';
+  if (dressable && !worn.boots) lacks.push('shoes');
   if (!fighter && !isBoundByMarriage(snapshot, ent) && !isMarrying(ent)) lacks.push('partner');
   if (kind === 'woman' && !hasGrowingChild(snapshot, ent)) lacks.push('children');
   if (kind === 'soldier' && !worn.weapon) lacks.push('weapon');
-  if (ctx.meadGood !== undefined && jobType !== null && !worn.misc.includes(ctx.meadGood)) {
+  if (dressable && ctx.meadGood !== undefined && jobType !== null && !worn.misc.includes(ctx.meadGood)) {
     lacks.push('mead');
   }
   return lacks;

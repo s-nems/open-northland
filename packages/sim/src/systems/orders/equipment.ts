@@ -1,6 +1,5 @@
 import type { EquipCategory } from '@open-northland/data';
 import {
-  Age,
   CurrentAtomic,
   Equipment,
   EquipOrder,
@@ -21,7 +20,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { canEquipCategory, isHeroJob } from '../readviews/index.js';
+import { canEquipCategory, mayChangeEquipment } from '../readviews/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
@@ -37,14 +36,14 @@ function isValidSlotAddress(group: EquipCategory, slot: number): boolean {
   return slot === 0;
 }
 
-/** The shared issuer guard: a living owned adult settler with a trade, standing somewhere. A still-growing
- *  child is the GrowthSystem's to dress, not the player's, and a jobless settler is refused because the
- *  planner ladder never plans one, so its errand would sit inert forever. */
-function isEquipOrderable(world: World, e: Entity): boolean {
+/** The shared issuer guard: a living owned settler whose equipment may change, with a trade, standing
+ *  somewhere. A jobless settler is refused because the planner ladder never plans one, so its errand
+ *  would sit inert forever. */
+function isEquipOrderable(world: World, ctx: SystemContext, e: Entity): boolean {
   return (
     isOrderableSettler(world, e) &&
     world.has(e, Position) &&
-    !world.has(e, Age) &&
+    mayChangeEquipment(world, ctx.content, e) &&
     world.get(e, Settler).jobType !== null
   );
 }
@@ -108,9 +107,8 @@ export function equipGood(
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no stores to fetch from
   const e = command.entity;
-  if (!isEquipOrderable(world, e)) return;
+  if (!isEquipOrderable(world, ctx, e)) return;
   const jobType = world.get(e, Settler).jobType;
-  if (isHeroJob(ctx.content, jobType)) return;
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined || good.equip.category !== command.group) return;
@@ -135,8 +133,7 @@ export function unequipGood(
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   const e = command.entity;
-  if (!isEquipOrderable(world, e)) return;
-  if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
+  if (!isEquipOrderable(world, ctx, e)) return;
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const eq = world.tryGet(e, Equipment);
   if (eq === undefined || equipSlotValue(eq, command.group, command.slot) === null) return;

@@ -4,6 +4,7 @@ import { Armor, Equipment } from '../../src/components/index.js';
 import type { SettlerEquipment } from '../../src/core/commands/index.js';
 import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
+import { CHILD_FEMALE, CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { createSettler } from '../../src/systems/spawn/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -12,6 +13,7 @@ const HERO_SABER = 45;
 const HERO_SABER_GOOD = 17;
 const HERO_ARMOR = 3;
 const HERO_ARMOR_GOOD = 18;
+const SHOES_GOOD = 8;
 
 describe('createSettler hero equipment', () => {
   it('derives the permanent weapon from the hero class for mission/map spawns', () => {
@@ -117,5 +119,37 @@ describe('createSettler soldier class weapon', () => {
   it('keeps an explicitly empty weapon slot, and a class with no weapon good carries no equipment', () => {
     expect(spawn(SWORDSMAN_LONG, { weapon: null })?.weapon).toBeNull();
     expect(spawn(SOLDIER_UNARMED)).toBeUndefined();
+  });
+});
+
+describe('createSettler equipment of a woman and a child', () => {
+  it('drops the equipment a spawn payload hands a woman or a child', () => {
+    const world = new World();
+    const base = testContent();
+    // The shared fixture lists no sex-tagged or child trade; the slugs are what stamp `Female` and `Age`.
+    const content = {
+      ...base,
+      jobs: [
+        ...base.jobs,
+        { typeId: CHILD_FEMALE, id: 'child_female', allowedAtomics: [], forbiddenAtomics: [] },
+        { typeId: WOMAN_JOB, id: 'woman', allowedAtomics: [], forbiddenAtomics: [] },
+      ],
+    };
+    const spawn = (jobType: number) =>
+      createSettler(world, content, new Rng(1), {
+        x: 0,
+        y: 0,
+        tribe: VIKING,
+        jobType,
+        equipment: { boots: { goodType: SHOES_GOOD } },
+      });
+    const woman = spawn(WOMAN_JOB);
+    const girl = spawn(CHILD_FEMALE);
+    const man = spawn(CIVILIST_JOB);
+    if (woman === null || girl === null || man === null) throw new Error('spawn failed');
+
+    expect(world.has(woman, Equipment)).toBe(false);
+    expect(world.has(girl, Equipment)).toBe(false);
+    expect(world.get(man, Equipment).boots?.goodType).toBe(SHOES_GOOD);
   });
 });

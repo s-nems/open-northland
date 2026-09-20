@@ -51,7 +51,12 @@ export {
   weaponKey,
 } from './combat.js';
 export { houseBow, shelterCapacityOf, sheltersOnAlarm } from './defence.js';
-export { canEquipCategory, type EquipPickEntry, equipPickList } from './equip-pick.js';
+export {
+  canEquipCategory,
+  type EquipPickEntry,
+  equipPickList,
+  mayChangeEquipment,
+} from './equip-pick.js';
 export { edibleGoodFormOf, exportedGoodForm, isFood } from './food.js';
 export {
   baseSoldierJobType,

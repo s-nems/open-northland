@@ -163,6 +163,7 @@ describe('details panel layout', () => {
     expect(hitOf('tool:0:equip')?.label).toBeUndefined();
 
     // Every socket and button stays inside the Ekwipunek body.
+    if (layout.equipment === null) throw new Error('expected an equipment section');
     const body = layout.equipment.body;
     const rects = [
       ...layout.equipRows.flatMap((r) => [...r.slots]),
@@ -179,6 +180,26 @@ describe('details panel layout', () => {
     const bootsSwap = hitOf('boots:0:swap');
     if (bootsSocket === undefined || bootsSwap === undefined) throw new Error('expected the boots cell');
     expect(bootsSwap.rect.x - (bootsSocket.x + bootsSocket.w)).toBeLessThanOrEqual(4);
+  });
+
+  it('drops the Ekwipunek section for a woman, ending the panel at Doświadczenie', () => {
+    const settler = (extra: Record<string, unknown>) =>
+      settlerLayoutOf(
+        buildUnitPanelModel(
+          snapshotOf([{ id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, ...extra } }]),
+          new Set([1]),
+          sandboxCtx(),
+        ),
+      );
+    const man = settler({});
+    const woman = settler({ Female: { female: true } });
+    expect(woman.equipment).toBeNull();
+    expect(woman.equipRows).toEqual([]);
+    expect(woman.equipActionHits).toEqual([]);
+    expect(woman.panel.h).toBeLessThan(man.panel.h);
+    expect(woman.experience.frame.y + woman.experience.frame.h).toBeLessThanOrEqual(
+      woman.panel.y + woman.panel.h,
+    );
   });
 
   it('keeps the four misc cells on one Ekwipunek line at every menu uiscale', () => {

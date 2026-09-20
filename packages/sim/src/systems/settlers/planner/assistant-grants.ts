@@ -1,6 +1,5 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
-  Age,
   AssistantGrants,
   Carrying,
   Equipment,
@@ -18,8 +17,8 @@ import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
-import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
-import { isFighterJob, isScoutJob, MILITARY_MODE } from '../../readviews/index.js';
+import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
+import { isFighterJob, isScoutJob, MILITARY_MODE, mayChangeEquipment } from '../../readviews/index.js';
 import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
@@ -45,17 +44,12 @@ export const ASSISTANT_MAX_IN_FLIGHT = 4;
 
 /**
  * Whether the assistant hands `jobType` a tool. Authored: a working trade takes one, a fighter sheds it
- * on enlisting, and the scout, the civilist and the woman are passed over so scarce tools go to the
- * trades that work with them, neither of the latter two ever operating a workplace. It binds only the
- * assistant; the player may still equip a scout by hand.
+ * on enlisting, and the scout and the civilist are passed over so scarce tools go to the trades that
+ * work with them, a civilist never operating a workplace. It binds only the assistant; the player may
+ * still equip a scout by hand.
  */
 function toolHelpsJob(content: ContentSet, jobType: number): boolean {
-  return (
-    !isFighterJob(content, jobType) &&
-    !isScoutJob(content, jobType) &&
-    jobType !== CIVILIST_JOB &&
-    jobType !== WOMAN_JOB
-  );
+  return !isFighterJob(content, jobType) && !isScoutJob(content, jobType) && jobType !== CIVILIST_JOB;
 }
 
 /** One granted good, its slot group pre-resolved from content. */
@@ -86,7 +80,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (wanted === undefined) continue;
     const tally = tallyFor(inFlight, owner);
     if (tally.total >= ASSISTANT_MAX_IN_FLIGHT) continue;
-    if (world.has(e, EquipOrder) || world.has(e, Age) || anotherSystemOwns(world, e)) continue;
+    if (world.has(e, EquipOrder) || anotherSystemOwns(world, e)) continue;
+    if (!mayChangeEquipment(world, ctx.content, e)) continue; // a woman, a child and a hero take no gear
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue; // the ladder never plans a jobless settler
     // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would dump

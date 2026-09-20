@@ -131,8 +131,8 @@ function allows(
     case 'changeProfession':
       return tradeAssignable(e);
     case 'changeEquipment':
-      // Approximation: the original keys this on a per-settler equipment flag the snapshot does not carry.
-      return isAdult(e) && !systems.isHeroJob(content, job);
+      // The sim's `mayChangeEquipment`: a grown man who is no hero.
+      return isAdult(e) && !isFemale(e) && !systems.isHeroJob(content, job);
     case 'assignWorkArea':
       return worksAnArea(content, e, job);
     case 'showWorkArea':

@@ -69,7 +69,9 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
  * settler without one shows every base slot empty. Which rows a trade offers follows the job: Broń/Zbroja
  * are the original's soldier-only equip slots (`tribetypes` `allowequip`) and a fighter keeps no tool.
  * Two escapes keep worn gear reachable: a row the job would not offer still shows while something is
- * worn in it, and a settler carrying the combat `Weapon` component keeps its arms rows.
+ * worn in it, and a settler carrying the combat `Weapon` component keeps its arms rows. A woman and a
+ * child get no rows at all: the sim's `mayChangeEquipment` lets them wear nothing, where a hero still
+ * shows the fixed arms of its class.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   const slots = messages().hud.equipmentSlots;
@@ -80,6 +82,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   const job = jobType === undefined ? undefined : ctx.jobs.find((j) => j.typeId === jobType);
   const fighter = job !== undefined && systems.isFighterJobRow(job);
   const hero = job !== undefined && systems.isHeroJobRow(job);
+  if (!hero && ('Female' in comps || 'Age' in comps)) return [];
   if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
     rows.push({
       titleId: HUMANWINDOW.weapon,

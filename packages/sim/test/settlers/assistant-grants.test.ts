@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Age,
   AssistantGrants,
   addPerson,
   Building,
@@ -8,6 +9,7 @@ import {
   Equipment,
   type EquipmentSlot,
   EquipOrder,
+  Female,
   MISC_EQUIP_SLOTS,
   Owner,
   Position,
@@ -18,7 +20,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
+import { CHILD_MALE, CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/settlers/planner/assistant-grants.js';
 import { testContent } from '../fixtures/content.js';
@@ -42,6 +44,8 @@ const WOODCUTTER = 1;
 const FIGHTER_JOB = 31;
 /** The fixture's scout trade (`jobtypes.ini` 27). */
 const SCOUT_JOB = 27;
+/** The fixture's hero trade. */
+const HERO_JOB = 45;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 /** Appended by this suite alone, out of the 10..19 band the shared fixture reserves for that. */
@@ -482,17 +486,15 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(sim.world.get(live, Equipment).boots?.goodType).toBe(SHOES);
   });
 
-  it('hands tools to the working trades only, and boots to everyone', () => {
+  it('hands tools to the working trades only, and boots to every man', () => {
     const sim = freshSim();
-    // The four the tool hand-out passes over, and one trade that takes it.
+    // The three the tool hand-out passes over, and one trade that takes it.
     const fighter = ownedSettler(sim, 2, 2);
     setSettlerJob(sim.world, fighter, FIGHTER_JOB);
     const scout = ownedSettler(sim, 2, 3);
     setSettlerJob(sim.world, scout, SCOUT_JOB);
     const civilist = ownedSettler(sim, 2, 4); // the "Cywil" row's trade-less settler
     setSettlerJob(sim.world, civilist, CIVILIST_JOB);
-    const woman = ownedSettler(sim, 2, 6);
-    setSettlerJob(sim.world, woman, WOMAN_JOB);
     const woodcutter = ownedSettler(sim, 2, 5);
     pileAt(sim, 12, 2, TOOL_IRON, 5); // more than enough: only the woodcutter may take one
     pileAt(sim, 12, 4, SHOES, 5); // one pair per settler - boots are not trade-gated
@@ -501,11 +503,38 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
 
     sim.run(6 * ERRAND_TICKS);
 
-    for (const e of [fighter, scout, civilist, woman]) {
+    for (const e of [fighter, scout, civilist]) {
       expect(sim.world.get(e, Equipment).tool).toBeNull(); // no tool spent on a trade that won't use it
       expect(sim.world.get(e, Equipment).boots?.goodType).toBe(SHOES); // the other grants still land
     }
     expect(sim.world.get(woodcutter, Equipment).tool?.goodType).toBe(TOOL_IRON);
+  });
+
+  it('hands nothing to a woman, a child or a hero', () => {
+    const sim = freshSim();
+    const woman = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, woman, WOMAN_JOB);
+    sim.world.add(woman, Female, { female: true });
+    const child = ownedSettler(sim, 2, 3);
+    setSettlerJob(sim.world, child, CHILD_MALE);
+    sim.world.add(child, Age, { ticks: 0 });
+    const hero = ownedSettler(sim, 2, 4);
+    setSettlerJob(sim.world, hero, HERO_JOB);
+    const man = ownedSettler(sim, 2, 5);
+    pileAt(sim, 12, 2, SHOES, 5);
+    pileAt(sim, 12, 4, MEAD, 5);
+    grant(sim, SHOES);
+    grant(sim, MEAD);
+
+    sim.run(2 * ERRAND_TICKS); // short of the childhood, so the boy is still a child at the end
+
+    expect(sim.world.get(man, Equipment).boots?.goodType).toBe(SHOES);
+    expect(sim.world.has(child, Age)).toBe(true);
+
+    for (const [who, e] of Object.entries({ woman, child, hero })) {
+      expect(sim.world.has(e, EquipOrder), who).toBe(false);
+      expect(sim.world.tryGet(e, Equipment)?.boots ?? null, who).toBeNull();
+    }
   });
 
   it('hands a grant to a settler whose job is exempt from confinement only from the network at his feet', () => {
