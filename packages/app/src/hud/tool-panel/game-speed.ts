@@ -10,18 +10,15 @@ export interface GameSpeedStateSpec {
   readonly state: GameSpeedState;
   /** The original speed factor (`DAT_1003a6488 / 12`): 1/2/3 = ×1/×2/×3, 0 = paused. */
   readonly factor: number;
-  /** The atlas gfx id (== frame id) the button shows in this state. */
-  readonly gfx: number;
   /** Real-time → sim-time multiplier fed to the fixed-timestep accumulator (0 pauses the sim). */
   readonly tickMultiplier: number;
 }
 
-/** The gfx ids are the frames `MiscButtons_SpeedButton_Update` selects per speed factor. */
 export const GAME_SPEED_STATES: readonly GameSpeedStateSpec[] = [
-  { state: 'normal', factor: 1, gfx: 0x31, tickMultiplier: 1 },
-  { state: 'fast', factor: 2, gfx: 0x34, tickMultiplier: 2 },
-  { state: 'faster', factor: 3, gfx: 0x35, tickMultiplier: 3 },
-  { state: 'paused', factor: 0, gfx: 0x36, tickMultiplier: 0 },
+  { state: 'normal', factor: 1, tickMultiplier: 1 },
+  { state: 'fast', factor: 2, tickMultiplier: 2 },
+  { state: 'faster', factor: 3, tickMultiplier: 3 },
+  { state: 'paused', factor: 0, tickMultiplier: 0 },
 ];
 
 const SPEC_BY_STATE: ReadonlyMap<GameSpeedState, GameSpeedStateSpec> = new Map(

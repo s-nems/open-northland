@@ -65,15 +65,6 @@ export function categoryOfKind(kind: string): BuildingCategory {
   return KIND_TO_CATEGORY[kind] ?? 'work';
 }
 
-/** Preserves input order. */
-export function buildingsInCategory<T extends { readonly kind: string }>(
-  entries: readonly T[],
-  category: BuildingCategory,
-): readonly T[] {
-  if (category === 'all') return entries;
-  return entries.filter((e) => categoryOfKind(e.kind) === category);
-}
-
 export type CatalogueView = 'grid' | 'list';
 
 /** The window's two pages: the catalogue, or the papers (the plans a pick spends), which the quick

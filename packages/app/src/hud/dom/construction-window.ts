@@ -97,11 +97,6 @@ function button(className: string, html: string): HTMLButtonElement {
   return element;
 }
 
-/** A cost slot: the good's icon on a small parchment square with the amount as a corner badge. */
-export function costSlotMarkup(amount: number): string {
-  return `<i class="on-cost__slot">${goodIconMarkup(COST_ICON_BOX_PX)}<b>${amount}</b></i>`;
-}
-
 const escapeHtml = (text: string): string =>
   text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
 

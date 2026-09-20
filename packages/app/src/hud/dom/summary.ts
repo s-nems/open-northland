@@ -36,6 +36,10 @@ const TIP_EDGE_MARGIN_PX = 6;
 /** The counters near the screen's right edge hang their breakdown to the left instead. */
 const FLIPPED_CATEGORIES: ReadonlySet<SummaryCategoryId> = new Set(['armament', 'equipment', 'other']);
 
+/** Tip ids run across mounts, not within one: a HUD-scale change builds the next bar before disposing
+ *  the last, so for that moment two bars share the plane and their `aria-describedby` must not collide. */
+let nextTipId = 0;
+
 interface CountButton {
   readonly button: HTMLButtonElement;
   readonly figure: HTMLElement;
@@ -120,14 +124,12 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     return { button, figure, name, shown: Number.NaN };
   };
 
-  let tips = 0;
-
   const group = (buttons: readonly CountButton[], title: string, flip: boolean): Group => {
     const root = document.createElement('div');
     root.className = flip ? 'on-resource on-resource--flip' : 'on-resource';
     const tip = document.createElement('div');
     tip.className = 'on-tip';
-    tip.id = `on-summary-tip-${tips++}`;
+    tip.id = `on-summary-tip-${nextTipId++}`;
     tip.setAttribute('role', 'tooltip');
     tip.hidden = true;
     for (const { button } of buttons) button.setAttribute('aria-describedby', tip.id);

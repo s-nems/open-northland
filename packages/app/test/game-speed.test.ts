@@ -36,7 +36,6 @@ describe('game-speed', () => {
     const paused = toggleGameSpeedPause({ running: 'fast', paused: false });
     expect(paused).toEqual({ running: 'fast', paused: true });
     expect(effectiveGameSpeedSpec(paused).tickMultiplier).toBe(0);
-    expect(effectiveGameSpeedSpec(paused).gfx).toBe(0x36);
     const resumed = toggleGameSpeedPause(paused);
     expect(resumed).toEqual({ running: 'fast', paused: false });
     expect(effectiveGameSpeedSpec(resumed).tickMultiplier).toBe(2);
@@ -52,11 +51,8 @@ describe('game-speed', () => {
     expect(clock.state).toEqual({ paused: false, speed: 2 });
   });
 
-  it('maps each state to the pinned gfx family and tick multiplier', () => {
-    expect(gameSpeedSpec('normal').gfx).toBe(0x31);
-    expect(gameSpeedSpec('fast').gfx).toBe(0x34);
-    expect(gameSpeedSpec('faster').gfx).toBe(0x35);
-    expect(gameSpeedSpec('paused').gfx).toBe(0x36);
+  it('maps each state to the original speed factor and its tick multiplier', () => {
+    expect(GAME_SPEED_STATES.map((spec) => spec.factor)).toEqual([1, 2, 3, 0]);
     for (const spec of GAME_SPEED_STATES) expect(spec.tickMultiplier).toBe(spec.factor);
     expect(gameSpeedSpec('paused').tickMultiplier).toBe(0);
     expect(gameSpeedSpec('faster').tickMultiplier).toBe(3);

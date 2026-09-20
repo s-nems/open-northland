@@ -1612,7 +1612,8 @@
   opacity: 0.38;
   cursor: not-allowed;
 }
-/* A beam action shows no focus ring: the pressed art and the lit key hint are its cues. */
+/* A beam action shows no focus ring: its pressed art and its label are the cues. The beam carries no
+   key badge, since the digits belong to the control groups. */
 .on-hud .on-action:focus-visible {
   outline: none;
 }
@@ -1687,26 +1688,6 @@
 .on-hud .on-action[aria-pressed="true"] .on-action__label {
   color: var(--bronze-hi);
 }
-.on-hud .on-action .on-key {
-  position: absolute;
-  right: 4px;
-  top: 3px;
-  width: 14px;
-  height: 14px;
-  padding: 0;
-  border: 1px solid var(--bronze-lo);
-  border-bottom-width: 1px;
-  background: var(--deep);
-  font-size: 8px;
-  z-index: 2;
-  opacity: 0.75;
-}
-.on-hud .on-action:hover .on-key,
-.on-hud .on-action:focus-visible .on-key {
-  opacity: 1;
-  color: var(--bronze-hi);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .on-hud * {
     transition: none;
