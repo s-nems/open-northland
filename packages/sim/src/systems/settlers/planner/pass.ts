@@ -55,7 +55,6 @@ export interface PlannerPass {
 /** Snapshot the shared pass state at the top of a planner tick. */
 export function beginPlannerPass(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerPass {
   const targets = collectTargets(world, ctx, terrain);
-  const spacing = PlannerSpacing.forTick(world, ctx, terrain);
   return {
     world,
     ctx,
@@ -65,14 +64,14 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     anyHaulable: hasHaulableOutput(world, ctx, targets.stockpiles),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
     externalQuality: new ExternalQualityIndex(world, ctx, terrain),
-    spacing,
+    spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
     seatClaims: new Map(),
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     front: new BattleFront(world, ctx),
-    constructionClaims: new ConstructionTaskClaims(world, ctx, spacing),
+    constructionClaims: new ConstructionTaskClaims(world, ctx),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),
     standing: new Set(),

@@ -8,6 +8,7 @@ import {
 import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
+import { hasInboundSupply } from '../../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
@@ -22,8 +23,9 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
  * BUILD - keep a useful automatic crew assignment stable, otherwise move the builder to the nearest
- * reachable site with material to fetch or delivered labor to install. Player pins and unfinished
- * workplace bindings are strict: their builders stay with that site even while it waits for material.
+ * reachable site with material to fetch or delivered labor to install, and with no task anywhere wait
+ * beside a site. Player pins and unfinished workplace bindings are strict: their builders stay with that
+ * site even while another has work. Source basis: authored remaster rule.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -36,7 +38,7 @@ export function planBuilder(
     world.remove(e, SiteAssignment);
     return false;
   }
-  const materials = constructionMaterialResolver(plan);
+  const materials = constructionMaterialResolver(plan, spacing);
 
   const assigned = world.tryGet(e, SiteAssignment);
   const pinned =
@@ -57,36 +59,41 @@ export function planBuilder(
     here,
     unreachableGoalVeto(world, ctx, e),
   );
-  const isReachable = (site: Entity): boolean =>
-    automaticSiteMatches(plan, spacing, site) && avoidSite?.(site) !== true;
+  const canStandAt = (site: Entity): boolean => automaticSiteMatches(plan, spacing, site);
   const hasTask = (site: Entity): boolean =>
-    isReachable(site) && (claims.hasHammerWork(site) || materials.has(site));
+    canStandAt(site) && (claims.hasHammerWork(site) || materials.has(site));
+  const nearestSite = (accepts: (site: Entity) => boolean): Entity | null =>
+    nearestConstructionSite(
+      targets.constructionSiteCells,
+      world,
+      here,
+      settler.tribe,
+      settler.owner,
+      plan.limit ?? undefined,
+      avoidSite,
+      accepts,
+    );
 
   // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
   // equally valid sites every time one hammer atomic completes.
-  const current = assigned?.pinned === false && hasTask(assigned.site) ? assigned.site : null;
-  if (current !== null) {
-    stampAssignment(plan, current, false);
-    if (workAtSite(plan, spacing, claims, materials, current)) return true;
-  }
-
-  const site = nearestConstructionSite(
-    targets.constructionSiteCells,
-    world,
-    here,
-    settler.tribe,
-    settler.owner,
-    plan.limit ?? undefined,
-    avoidSite,
-    hasTask,
-  );
-  if (site !== null) {
+  const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
+  const site = crewSite !== null && hasTask(crewSite) ? crewSite : nearestSite(hasTask);
+  if (site !== null && workAtSite(plan, spacing, claims, materials, site)) {
     stampAssignment(plan, site, false);
-    if (workAtSite(plan, spacing, claims, materials, site)) return true;
+    return true;
   }
 
-  // Automatic crew membership represents useful work rather than a parking place. Releasing it here
-  // lets surplus builders use the normal idle drives and makes a fresh delivery wake allocation cleanly.
+  // No site has a task this pass, so stand ready where the next one will appear: a site with a delivery
+  // already walking in, else the current crew site, else the nearest. A builder has no other trade to
+  // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
+  const staging =
+    nearestSite((candidate) => canStandAt(candidate) && hasInboundSupply(plan.inbound, candidate)) ??
+    (crewSite !== null && canStandAt(crewSite) ? crewSite : nearestSite(canStandAt));
+  if (staging !== null) {
+    stampAssignment(plan, staging, false);
+    waitAtSite(plan, spacing, staging);
+    return true;
+  }
   world.remove(e, SiteAssignment);
   return false;
 }

@@ -8,8 +8,13 @@ import { claimWorkCell, deStackIdle } from '../spacing.js';
 import { fetchNeededMaterial } from './site-supply.js';
 
 /**
- * Remaster rule: future staff help supply their own new workplace without changing trade or employment.
- * Upgrades retain the carrier-only supply policy; incumbent workers' upgrade duties are unchanged.
+ * SITE STAFF - a worker posted to a building that is still going up hauls its construction bill, then
+ * waits at it, without changing trade or employment. At an upgrade only a carrier hauls; every other
+ * trade waits. Waiting reads off `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, applied as a blanket
+ * because the flag is not extracted into the IR; that over-applies to its 0 rows, so a hunter posted to a
+ * store's gatherer slot stops hunting while the store is upgraded.
+ *
+ * Source basis: authored remaster rule, since the original has no pre-completion staff to observe.
  */
 export function planSiteStaff(
   plan: PlannerContext,
@@ -20,7 +25,10 @@ export function planSiteStaff(
   const { world, ctx, terrain, entity: e, here } = plan;
   const site = boundConstructionSite(plan);
   if (site === null) return false;
-  if ((!world.has(site, Upgrading) || isCarrierJob(ctx, plan.jobType)) && fetchNeededMaterial(plan, site)) {
+  if (
+    (!world.has(site, Upgrading) || isCarrierJob(ctx, plan.jobType)) &&
+    fetchNeededMaterial(plan, spacing, site)
+  ) {
     return true;
   }
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);

@@ -1,4 +1,11 @@
-import { Building, GroundDrop, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
+import {
+  Building,
+  GroundDrop,
+  Position,
+  Stockpile,
+  sameSideAs,
+  UnderConstruction,
+} from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
@@ -26,7 +33,8 @@ import { ACCEPT_ALL, QUALIFIES } from '../cell-index.js';
  *
  * A workplace that produces `goodType` is never a delivery target for it: goods are hauled out of a
  * producer to a store, never back into it, or a carrier would deposit its load where it picked it up
- * and livelock. A workplace consuming the good as an input, or a passive store, is a valid sink.
+ * and livelock. A workplace consuming the good as an input, or a passive store, is a valid sink. A
+ * construction site is not: see {@link canStoreGood}.
  */
 export function nearestStoreFor(
   bands: TargetBands,
@@ -66,6 +74,10 @@ export function canStoreGood(
   if (!world.has(entity, Stockpile) || !world.has(entity, Position)) return false;
   if (world.has(entity, GroundDrop)) return false;
   if (isYardHeap(world, entity)) return false;
+  // A site takes material only through the delivery rules that count inbound errands. As a general sink
+  // it would accept a distant load against a bill line a nearer fetch already covers, and that fetch
+  // would then stand down.
+  if (world.has(entity, UnderConstruction)) return false;
   const slot = bankedSlot(world, ctx, entity, goodType);
   if (excludeProducers && buildingProduces(world, ctx, entity).includes(slot.goodType)) return false;
   const recipe = mergedRecipeOf(world, ctx, entity);

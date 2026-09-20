@@ -5,15 +5,15 @@ import type { Entity, World } from '../../ecs/world.js';
  * Tick-local tallies of construction material committed by live {@link SupplyRun} errands. `inbound` is
  * keyed by destination site and `reservedAtSource` by the store the pickup leg is walking to. Every stamp
  * and release folds into both in lockstep, so a mid-pass read matches a full store scan.
+ *
+ * The source side only steers construction fetchers apart when they choose a store. The pickup itself
+ * stays first come, first served: no other trade reads the reservation, so refusing a unit at the counter
+ * would leave that settler retrying the same store until the promised builder arrived.
  */
 export interface InboundSupplyTally {
   readonly inbound: Map<Entity, Map<number, number>>;
-  readonly reservedAtSource: SourceSupplyReservations;
+  readonly reservedAtSource: Map<Entity, Map<number, number>>;
 }
-
-/** Source-side subset used by the atomic pass. It is mutable so completed pickups update later pickups
- * in the same pass without rescanning every live construction run. */
-export type SourceSupplyReservations = Map<Entity, Map<number, number>>;
 
 /** Seed the tally from every live SupplyRun - errands still in flight from earlier ticks. */
 export function collectInboundSupply(world: World): InboundSupplyTally {
@@ -28,59 +28,19 @@ export function collectInboundSupply(world: World): InboundSupplyTally {
   return tally;
 }
 
-/** Seed only the source-side reservation index for one atomic pass. */
-export function collectSourceSupplyReservations(world: World): SourceSupplyReservations {
-  const reservations: SourceSupplyReservations = new Map();
-  for (const entity of world.query(SupplyRun)) {
-    const run = world.get(entity, SupplyRun);
-    if (sourceReservationIsLive(world, entity, run)) {
-      addAmount(reservations, run.source, run.goodType, run.amount);
-    }
-  }
-  return reservations;
-}
-
 /** Units of `goodType` inbound to `site`. */
 export function inboundSupplyOf(tally: InboundSupplyTally, site: Entity, goodType: number): number {
   return tally.inbound.get(site)?.get(goodType) ?? 0;
 }
 
+/** Whether any live errand is bringing material to `site`. */
+export function hasInboundSupply(tally: InboundSupplyTally, site: Entity): boolean {
+  return tally.inbound.has(site);
+}
+
 /** Units of `goodType` already promised from `source` to construction pickups. */
 export function reservedSourceSupplyOf(tally: InboundSupplyTally, source: Entity, goodType: number): number {
   return tally.reservedAtSource.get(source)?.get(goodType) ?? 0;
-}
-
-/** Units promised from a source in the atomic pass's shared reservation index. */
-export function sourceSupplyReservationOf(
-  reservations: SourceSupplyReservations,
-  source: Entity,
-  goodType: number,
-): number {
-  return reservations.get(source)?.get(goodType) ?? 0;
-}
-
-/** End one construction runner's source promise at its pickup attempt and return the released amount.
- * The destination promise stays live for a successful carrying leg and is reconciled on the next plan
- * after a failed pickup. */
-export function releaseSourceSupplyReservation(
-  world: World,
-  entity: Entity,
-  reservations: SourceSupplyReservations,
-  source: Entity,
-  goodType: number,
-): number {
-  const run = world.tryGet(entity, SupplyRun);
-  if (
-    run === undefined ||
-    !sourceReservationIsLive(world, entity, run) ||
-    run.source !== source ||
-    run.goodType !== goodType
-  ) {
-    return 0;
-  }
-  addAmount(reservations, run.source, run.goodType, -run.amount);
-  world.add(entity, SupplyRun, { ...run, source: null });
-  return run.amount;
 }
 
 /** Stamp a settler's supply errand and fold its amount into the tally, so a settler planned later this

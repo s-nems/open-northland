@@ -118,13 +118,8 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
   } else {
     cell = interactionCell(world, ctx, terrain, store, here);
   }
-  if (cell === null) {
-    // A construction site with no legal perimeter cannot receive this load. Keeping it reserved would make
-    // the bill look covered forever, so return the material to the ground and let another route recover it.
-    if (world.has(store, UnderConstruction)) startDrop(world, ctx, entity);
-    return;
-  }
-  // Stamp only after proving the site has a delivery stand, so an impossible route never covers its bill.
+  if (cell === null) return;
+  // Stamp the site errand so later-planned settlers count it as inbound and do not re-fetch the same unit.
   if (world.has(store, UnderConstruction)) {
     stampSupplyRun(world, entity, inbound, {
       site: store,

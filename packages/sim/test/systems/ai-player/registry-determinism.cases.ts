@@ -61,8 +61,9 @@ describe('the full strategic registry - determinism and replay', () => {
     timeout: 60_000,
   }, () => {
     const sim = aiSim(21);
-    // This strategic fixture has no restorative sleep clips; personal needs would eventually park the
-    // whole crew forever. Exercise the opening order independently of that missing fixture content.
+    // Needs are off because this fixture cannot restore them: a tired or lonely settler parks for good,
+    // so with them on the list closes only if the crew happens to outrun that. The run budget is the
+    // construction throughput guard instead.
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -79,12 +80,12 @@ describe('the full strategic registry - determinism and replay', () => {
     // The crew covers the ladder's essentials - the collectors (with top-ups), the scout, the
     // minimum staffing of every workshop the list raises, and the eight-builder reserve that
     // actually raises it - with enough left over to reach the first target-tier posts. The rest
-    // waits for grown sons, which this run doesn't simulate. The list closes by ~5000 ticks; 6000
+    // waits for grown sons, which this run doesn't simulate. The list closes by ~4200 ticks; 5000
     // keeps slack without dragging the suite (per-tick cost here is dominated by the settler
     // micro-planner, not the strategic AI).
     spawnMen(sim, 26);
     sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
-    sim.run(6000);
+    sim.run(5000);
     const built = [...sim.world.query(Building)].filter(
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,
     );

@@ -1,7 +1,6 @@
 import { CurrentAtomic, DeferredOrder } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { System } from '../../context.js';
-import { collectSourceSupplyReservations } from '../../stores/index.js';
 import { applyEffect } from './effects/apply.js';
 import {
   applyPendingHitReactions,
@@ -19,7 +18,6 @@ export const atomicSystem: System = (world, ctx) => {
   // A blow's reaction is collected so the loop never touches the CurrentAtomic store it iterates;
   // self-removal on completion stays the only membership change, which Map iteration tolerates.
   const pendingReactions: PendingHitReaction[] = [];
-  const sourceReservations = collectSourceSupplyReservations(world);
   for (const e of world.query(CurrentAtomic)) {
     const atomic = world.mut(e, CurrentAtomic);
     const duration = Math.max(1, atomic.duration);
@@ -66,7 +64,7 @@ export const atomicSystem: System = (world, ctx) => {
       world.remove(e, CurrentAtomic);
       continue;
     }
-    const extracted = applyEffect(world, ctx, e, atomic, sourceReservations);
+    const extracted = applyEffect(world, ctx, e, atomic);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });
     // A multi-swing harvest holds the settler across swings, re-arming in place so this iteration stays
     // safe; only the swing that extracts hands it back to the planner. "Non-interruptible" protects the

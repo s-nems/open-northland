@@ -17,10 +17,12 @@ import {
 } from '../../../src/components/index.js';
 import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
+import { type Fixed, fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
+import { remainingConstructionStrikes } from '../../../src/systems/economy/construction.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
+import { PlannerSpacing } from '../../../src/systems/settlers/planner/spacing.js';
 import {
   collectInboundSupply,
   deliveredConstructionFraction,
@@ -205,7 +207,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(minWarehouseStone).toBe(2);
   });
 
-  it('reserves the chosen SOURCE across different sites, including against an unrelated pickup', () => {
+  it("sends only one builder for a store's last unit, but never refuses it to a settler at the counter", () => {
     const sim = new Simulation({ seed: 17, content: constructionContent(), map: grassMap(40, 4) });
     const left = siteAt(sim, HOUSE, 4, 1);
     const right = siteAt(sim, HOUSE, 34, 1);
@@ -223,11 +225,33 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     if (runner === undefined) throw new Error('expected one reserved construction pickup');
     expect(sim.world.get(runner, SupplyRun)).toMatchObject({ source: warehouse, goodType: STONE });
 
-    // A producer/carrier pickup finishing before the builder may not consume the promised last unit.
+    // No other trade reads the reservation, so a refusal would leave that settler retrying this store
+    // until the builder arrived. It takes the unit, and the builder finds the store empty and stands down.
     const unrelated = sim.world.create();
     pickupFromStore(sim.world, ctxOf(sim), unrelated, warehouse, STONE, 1);
-    expect(sim.world.has(unrelated, Carrying)).toBe(false);
-    expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE)).toBe(1);
+    expect(sim.world.get(unrelated, Carrying)).toMatchObject({ goodType: STONE, amount: 1 });
+
+    for (let tick = 0; tick < 400 && sim.world.has(runner, SupplyRun); tick++) sim.step();
+    expect(sim.world.has(runner, SupplyRun)).toBe(false);
+    expect(sim.world.has(runner, Carrying)).toBe(false);
+  });
+
+  it('keeps a passing load off a site whose bill line a live fetch already covers', () => {
+    const sim = new Simulation({ seed: 28, content: constructionContent(), map: grassMap(40, 4) });
+    const site = siteAt(sim, HOUSE, 4, 1);
+    const warehouse = builtBuildingAt(sim, HEADQUARTERS, 30, 1, [[WOOD, 1]]);
+    const fetcher = builderAt(sim, 28, 3);
+    sim.world.add(fetcher, SiteAssignment, { site, pinned: true });
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(fetcher, SupplyRun)).toMatchObject({ site, goodType: WOOD, source: warehouse });
+
+    // The site is the nearest stockpile with room for wood, but its one wood unit is already on its way.
+    // Taking this load too would cover the line from farther off and stand the fetcher down at the door.
+    const passing = loadedCarrierAt(sim, 6, 3, WOOD, 1);
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(passing, SupplyRun)).toBe(false);
+    expect(inboundSupplyOf(collectInboundSupply(sim.world), site, WOOD)).toBe(1);
   });
 
   it('releases a drained source and retargets the construction run instead of covering the bill forever', () => {
@@ -417,20 +441,75 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     ).toHaveLength(8);
   });
 
-  it('releases surplus automatic crew at a blocked site while a manual pin stays strict', () => {
+  it('parks surplus automatic crew beside a site with no task instead of releasing it to idle', () => {
     const sim = new Simulation({ seed: 25, content: constructionContent(), map: grassMap(12, 5) });
     const site = siteAt(sim, HOUSE, 6, 1);
     sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
     sim.world.mut(site, UnderConstruction).labor = deliveredConstructionFraction(sim.world, ctxOf(sim), site);
     const automatic = Array.from({ length: 4 }, (_, i) => builderAt(sim, 3 + i, 3));
     const pinned = builderAt(sim, 7, 3);
-    for (const builder of automatic) sim.world.add(builder, SiteAssignment, { site, pinned: false });
     sim.world.add(pinned, SiteAssignment, { site, pinned: true });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(automatic.every((builder) => !sim.world.has(builder, SiteAssignment))).toBe(true);
+    // Nothing to hammer and no wood to fetch: the crew still gathers at the perimeter, so the next
+    // delivery is hammered at once rather than after a walk back from wherever idling took it.
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const perimeter = PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain).workCells(site);
+    for (const builder of automatic) {
+      expect(sim.world.get(builder, SiteAssignment)).toEqual({ site, pinned: false });
+      const goal = sim.world.tryGet(builder, MoveGoal)?.cell;
+      expect(goal === undefined || perimeter.includes(goal)).toBe(true);
+    }
     expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site, pinned: true });
+  });
+
+  it('moves parked automatic crew to another site as soon as that one has a task', () => {
+    const sim = new Simulation({ seed: 26, content: constructionContent(), map: grassMap(20, 5) });
+    const starved = siteAt(sim, HOUSE, 3, 1);
+    const supplied = siteAt(sim, HOUSE, 14, 1);
+    const builder = builderAt(sim, 2, 3);
+
+    for (let tick = 0; tick < 200; tick++) sim.step();
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: starved, pinned: false });
+    expect(sim.world.has(builder, MoveGoal)).toBe(false); // parked at the starved perimeter
+
+    sim.world.mut(supplied, Stockpile).amounts.set(STONE, 2);
+    sim.step();
+
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: supplied, pinned: false });
+  });
+
+  it('lets the crew at the site take the last strikes while another builder is still walking in', () => {
+    const sim = new Simulation({ seed: 27, content: constructionContent(), map: grassMap(30, 5) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const site = siteAt(sim, HOUSE, 24, 1);
+    sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+    // One quantum short of the delivered cap: exactly one strike is left to claim.
+    sim.world.mut(site, UnderConstruction).labor = (deliveredConstructionFraction(
+      sim.world,
+      ctxOf(sim),
+      site,
+    ) - 1) as Fixed;
+    expect(remainingConstructionStrikes(sim.world, ctxOf(sim), site)).toBe(1);
+    const perimeter = PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain).workCells(site);
+    const walkGoal = perimeter[0];
+    if (walkGoal === undefined) throw new Error('site perimeter expected');
+    const walker = builderAt(sim, 1, 3);
+    sim.world.add(walker, SiteAssignment, { site, pinned: false });
+    sim.world.add(walker, MoveGoal, { cell: walkGoal });
+    const atSite = builderAt(sim, 24, 3);
+
+    let struck = false;
+    for (let tick = 0; tick < 200 && !struck; tick++) {
+      sim.step();
+      struck = sim.world.tryGet(atSite, CurrentAtomic)?.effect.kind === 'construct';
+    }
+
+    expect(struck).toBe(true);
+    expect(sim.world.has(walker, MoveGoal)).toBe(true); // the walker was still on its way
   });
 
   it('keeps a useful automatic assignment stable and a manual pin strict', () => {

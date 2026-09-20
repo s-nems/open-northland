@@ -1,21 +1,13 @@
-import {
-  Carrying,
-  CurrentAtomic,
-  MoveGoal,
-  PathRequest,
-  SiteAssignment,
-  SupplyRun,
-  UnderConstruction,
-} from '../../../../components/index.js';
+import { CurrentAtomic, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { remainingConstructionStrikes } from '../../../economy/construction.js';
 import { atomicHoldsSettler } from '../../atomics/busy.js';
-import type { PlannerSpacing } from '../../planner/spacing.js';
 
 /**
- * Planner-tick reservations for hammer strikes. Existing work and routes seed the tally; idle builders
- * then claim only strikes that already-delivered material can absorb.
+ * Planner-tick reservations for hammer strikes. Swings in progress seed the tally; idle builders then
+ * claim only strikes that already-delivered material can absorb. A builder still walking in holds no
+ * strike: it would keep the crew already standing at the site off the last swings until it arrived.
  */
 export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
@@ -24,7 +16,6 @@ export class ConstructionTaskClaims {
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
-    spacing: PlannerSpacing,
   ) {
     for (const e of world.query(CurrentAtomic)) {
       const effect = world.get(e, CurrentAtomic).effect;
@@ -36,14 +27,6 @@ export class ConstructionTaskClaims {
         this.reserveHammer(effect.site);
       }
     }
-    for (const e of world.query(SiteAssignment, MoveGoal)) {
-      if (world.has(e, CurrentAtomic) || world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
-      if (world.tryGet(e, PathRequest)?.failed === true) continue;
-      const site = world.get(e, SiteAssignment).site;
-      if (!world.has(site, UnderConstruction)) continue;
-      const goal = world.get(e, MoveGoal).cell;
-      if (spacing.workCells(site).includes(goal)) this.reserveHammer(site);
-    }
   }
 
   /** Whether at least one already-delivered strike remains unclaimed. */
@@ -51,7 +34,7 @@ export class ConstructionTaskClaims {
     return (this.hammerBySite.get(site) ?? 0) < this.strikeCapacity(site);
   }
 
-  /** Whether an active, in-flight, or newly planned builder already holds a hammer strike here. */
+  /** Whether a swinging or newly planned builder already holds a hammer strike here. */
   hasHammerClaim(site: Entity): boolean {
     return (this.hammerBySite.get(site) ?? 0) > 0;
   }

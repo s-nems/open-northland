@@ -11,15 +11,7 @@ import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
 import { depositHomeQuality, homeQualityUseFor, spendHomeQuality } from '../../../../family/home-quality.js';
 import { isFood } from '../../../../readviews/index.js';
-import {
-  accessibleStockAmounts,
-  bankedSlot,
-  collectSourceSupplyReservations,
-  releaseSourceSupplyReservation,
-  type SourceSupplyReservations,
-  setAccessibleStockAmount,
-  sourceSupplyReservationOf,
-} from '../../../../stores/index.js';
+import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
@@ -45,20 +37,16 @@ export function pickupFromStore(
   from: Entity | null,
   goodType: number,
   amount: number,
-  sourceReservations: SourceSupplyReservations = collectSourceSupplyReservations(world),
 ): void {
   const carried = carriedGoodForm(world, ctx, settler, goodType);
   if (from === null) {
     addCarry(world, settler, carried, amount);
     return;
   }
-  const reserved = sourceSupplyReservationOf(sourceReservations, from, goodType);
-  const ownReservation = releaseSourceSupplyReservation(world, settler, sourceReservations, from, goodType);
   const stock = accessibleStockAmounts(world, from);
   if (stock === undefined) return;
   const have = stock.get(goodType) ?? 0;
-  const promisedToOthers = Math.max(0, reserved - ownReservation);
-  const moved = Math.min(amount, Math.max(0, have - promisedToOthers));
+  const moved = Math.min(amount, have);
   if (moved <= 0) return;
   setAccessibleStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);

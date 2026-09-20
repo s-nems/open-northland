@@ -1,6 +1,5 @@
 import { CARRY_CAPACITY } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { constructionWorkCell } from '../../../footprint/index.js';
 import {
   accessibleStockAmounts,
   neededConstructionGoods,
@@ -9,6 +8,7 @@ import {
 } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, nearestStoreHolding } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
@@ -19,13 +19,16 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
  * supply errands and this fetch stamps its own, so a crew spreads over the still-unclaimed materials
  * instead of racing to the same unit.
  */
-export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
-  return constructionMaterialResolver(plan).fetch(site);
+export function fetchNeededMaterial(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
+  return constructionMaterialResolver(plan, spacing).fetch(site);
 }
 
 /** A one-builder resolver: site selection shares one source lookup per good, then consumes the chosen
  * site's cached payload. Reachability and failed-goal state are constant for this resolver's lifetime. */
-export function constructionMaterialResolver(plan: PlannerContext): {
+export function constructionMaterialResolver(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+): {
   has(site: Entity): boolean;
   fetch(site: Entity): boolean;
 } {
@@ -50,7 +53,7 @@ export function constructionMaterialResolver(plan: PlannerContext): {
       needs = neededConstructionGoods(plan.world, plan.ctx, site, plan.inbound);
       needsBySite.set(site, needs);
     }
-    const fetch = fetchableMaterial(plan, site, needs, sourceFor);
+    const fetch = fetchableMaterial(spacing, site, needs, sourceFor);
     bySite.set(site, fetch);
     return fetch;
   };
@@ -92,13 +95,13 @@ interface MaterialSource {
 
 /** Pick without claiming, so site allocation and the claiming drive ask exactly the same question. */
 function fetchableMaterial(
-  plan: PlannerContext,
+  spacing: PlannerSpacing,
   site: Entity,
   needs: ReadonlyArray<{ readonly goodType: number; readonly amount: number }>,
   sourceFor: (goodType: number) => MaterialSource | null,
 ): FetchableMaterial | null {
-  const { world, ctx, terrain, here, targets } = plan;
-  if (constructionWorkCell(world, ctx, terrain, site, targets.yard.blocked, here) === null) return null;
+  // A site with no legal perimeter cell cannot take a delivery, so nothing is fetched for it.
+  if (spacing.workCells(site).length === 0) return null;
   for (const need of needs) {
     const source = sourceFor(need.goodType);
     if (source === null) continue;

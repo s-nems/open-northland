@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Owner, Stockpile } from '../../src/components/index.js';
-import { Simulation } from '../../src/index.js';
-import * as construction from '../../src/systems/economy/construction.js';
+import { Owner, Stockpile, UnderConstruction } from '../../src/components/index.js';
+import { type Fixed, Simulation } from '../../src/index.js';
 import { ConstructionTaskClaims } from '../../src/systems/settlers/drives/economy/construction-task-claims.js';
-import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { plannerSystem } from '../../src/systems/settlers/planner/system.js';
 import * as targets from '../../src/systems/settlers/targets/index.js';
+import { deliveredConstructionFraction } from '../../src/systems/stores/index.js';
 import {
   builderAt,
   builtBuildingAt,
@@ -16,27 +15,23 @@ import {
   HOUSE,
   STONE,
   siteAt,
-  WOOD,
 } from './construction-system/support.js';
 
 describe('construction task claims', () => {
-  it('reads a site hammer budget once per planner pass', () => {
+  it('hands out no more hammer strikes than the delivered material can absorb', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent(), map: grassMap(12, 4) });
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('mapped sim expected');
     const site = siteAt(sim, HOUSE, 6, 1);
     sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
-    sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
-    const demandReads = vi.spyOn(construction, 'remainingConstructionStrikes');
-    const claims = new ConstructionTaskClaims(
-      sim.world,
-      ctxOf(sim),
-      PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain),
-    );
+    const delivered = deliveredConstructionFraction(sim.world, ctxOf(sim), site);
+    // One quantum short of the delivered cap leaves exactly one strike.
+    sim.world.mut(site, UnderConstruction).labor = (delivered - 1) as Fixed;
+    const claims = new ConstructionTaskClaims(sim.world, ctxOf(sim));
 
-    for (let i = 0; i < 32; i++) expect(claims.hasHammerWork(site)).toBe(true);
-
-    expect(demandReads).toHaveBeenCalledTimes(1);
+    expect(claims.hasHammerClaim(site)).toBe(false);
+    expect(claims.claimHammer(site)).toBe(true);
+    expect(claims.hasHammerClaim(site)).toBe(true);
+    expect(claims.hasHammerWork(site)).toBe(false);
+    expect(claims.claimHammer(site)).toBe(false);
   });
 
   it('searches a material source once per good while rejecting many sites with no eligible source', () => {

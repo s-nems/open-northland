@@ -183,9 +183,9 @@ function constructionActivity(
   return { inbound, hasBuilder };
 }
 
-/** Mirror the sim tally's observable liveness rule so a SupplyRun awaiting planner cleanup never appears
- * as a delivery. Every positive branch is visible in the snapshot; route accessibility is deliberately
- * not inferred here. */
+/** Whether the errand is visibly under way: a SupplyRun outlives its errand until the settler's next
+ * planner pass, so one with no load, no route and no matching atomic is awaiting cleanup and is not
+ * shown as a delivery. Route accessibility is deliberately not inferred here. */
 function supplyRunIsLive(
   actor: SnapshotEntity,
   run: { readonly site?: unknown; readonly goodType?: unknown; readonly source?: unknown },
