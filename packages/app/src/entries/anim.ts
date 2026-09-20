@@ -176,11 +176,13 @@ async function startGallery(
   const content = gallery.contentSize();
   const fitZoom = Math.max(MIN_ZOOM, Math.min(1, (app.screen.width - 2 * GRID_MARGIN) / content.width));
   const zoom = floatParam(params, 'zoom', fitZoom);
+  const cameraSettings = readStoredSettings();
   const cameraCtl = createCameraController(
     canvas,
     { offsetX: GRID_MARGIN, offsetY: GRID_MARGIN, scale: zoom },
     () => app.renderer.resolution,
-    readStoredSettings().keyBindings,
+    cameraSettings.keyBindings,
+    cameraSettings,
   );
 
   // The direction buttons drive `setDirection` live; the character and view buttons navigate, so the

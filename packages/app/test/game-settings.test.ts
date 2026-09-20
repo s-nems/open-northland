@@ -17,6 +17,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setMusicVolume = vi.fn();
   const setLanguage = vi.fn();
   const setKeyBindings = vi.fn();
+  const setCameraInputSettings = vi.fn();
   const setDebugToolsEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
@@ -34,6 +35,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setMusicVolume,
     setLanguage,
     setKeyBindings,
+    setCameraInputSettings,
     setDebugToolsEnabled,
     ...overrides,
   });
@@ -46,6 +48,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setMusicVolume,
     setLanguage,
     setKeyBindings,
+    setCameraInputSettings,
     setDebugToolsEnabled,
   };
 }
@@ -59,6 +62,7 @@ describe('createGameSettingsRuntime', () => {
     await h.settings.update({ soundVolume: 0.35 });
     await h.settings.update({ musicVolume: 0.45 });
     await h.settings.update({ debugToolsEnabled: true });
+    await h.settings.update({ scrollSpeed: 2.5, edgeScrollEnabled: false, invertDragScroll: true });
     const keyBindings = { ...defaultSettings().keyBindings, controlGroup1Replace: 'Alt+Digit1' };
     await h.settings.update({ keyBindings });
 
@@ -68,6 +72,9 @@ describe('createGameSettingsRuntime', () => {
       soundVolume: 0.35,
       musicVolume: 0.45,
       debugToolsEnabled: true,
+      scrollSpeed: 2.5,
+      edgeScrollEnabled: false,
+      invertDragScroll: true,
       keyBindings,
     });
     expect(h.persist.mock.calls).toEqual([
@@ -76,6 +83,7 @@ describe('createGameSettingsRuntime', () => {
       [{ soundVolume: 0.35 }],
       [{ musicVolume: 0.45 }],
       [{ debugToolsEnabled: true }],
+      [{ scrollSpeed: 2.5, edgeScrollEnabled: false, invertDragScroll: true }],
       [{ keyBindings }],
     ]);
     expect(h.setUiScaleFactor).toHaveBeenCalledWith(1.2);
@@ -83,6 +91,9 @@ describe('createGameSettingsRuntime', () => {
     expect(h.setSfxVolume).toHaveBeenCalledWith(0.35);
     expect(h.setMusicVolume).toHaveBeenCalledWith(0.45);
     expect(h.setDebugToolsEnabled).toHaveBeenCalledWith(true);
+    expect(h.setCameraInputSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ scrollSpeed: 2.5, edgeScrollEnabled: false, invertDragScroll: true }),
+    );
     expect(h.setKeyBindings).toHaveBeenCalledWith(keyBindings);
   });
 

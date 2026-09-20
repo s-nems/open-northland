@@ -107,11 +107,13 @@ export async function presentMapWorld(
   const initialCamera =
     centerTile(params.get('center'), initialViewport.width, initialViewport.height, zoom) ??
     cameraCenteredOnTile(focus.x, focus.y, zoom, initialViewport.width, initialViewport.height);
+  const cameraSettings = readStoredSettings();
   const cameraCtl = createCameraController(
     canvas,
     initialCamera,
     () => app.renderer.resolution,
-    readStoredSettings().keyBindings,
+    cameraSettings.keyBindings,
+    cameraSettings,
   );
 
   // Averaged from the real texture pages the map's ground lanes point at: the shipped `minimap.pcx` is

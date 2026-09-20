@@ -109,6 +109,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
       syncCarriedParam('lang', language === defaultLocale() ? null : language);
     },
     setKeyBindings: deps.setKeyBindings,
+    setCameraInputSettings: deps.camera.setInputSettings,
     setDebugToolsEnabled: deps.setDebugToolsEnabled,
   });
 

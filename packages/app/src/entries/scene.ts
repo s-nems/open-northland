@@ -170,6 +170,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   }
   const snapshot = sim.snapshot();
   const initialViewport = { width: app.screen.width, height: app.screen.height };
+  const cameraSettings = readStoredSettings();
   const cameraCtl = createCameraController(
     canvas,
     cameraFor(
@@ -179,7 +180,8 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
       initialViewport.height,
     ),
     () => app.renderer.resolution,
-    readStoredSettings().keyBindings,
+    cameraSettings.keyBindings,
+    cameraSettings,
   );
 
   // Scenes have no authored map roster, so the diplomacy window's roster is read off the first tick's

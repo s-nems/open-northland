@@ -166,6 +166,8 @@ export const enSurfaces = {
       languageNames: { pol: 'Polski', eng: 'English' },
       scrollSpeed: 'Map scroll speed',
       edgeScroll: 'Edge scrolling',
+      invertDragScroll: 'Invert drag scrolling',
+      invertDragScrollTip: 'When enabled, dragging right moves the map left, and vice versa.',
       debugTools: 'Debug tools',
       debugToolsTip:
         'Shows the statistics strip along the bottom of the game screen (tick, frames, CPU) and the Admin / Debug button in the top-right corner. The panel is available in single-player games only.',

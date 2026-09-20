@@ -162,6 +162,8 @@ export const plSurfaces = {
       languageNames: { pol: 'Polski', eng: 'English' },
       scrollSpeed: 'Prędkość przewijania mapy',
       edgeScroll: 'Przewijanie przy krawędzi ekranu',
+      invertDragScroll: 'Odwróć przewijanie przeciąganiem',
+      invertDragScrollTip: 'Po włączeniu przeciągnięcie w prawo przesuwa mapę w lewo i odwrotnie.',
       debugTools: 'Narzędzia debugowania',
       debugToolsTip:
         'Pokazuje pasek statystyk u dołu ekranu gry (krok, klatki, procesor) oraz przycisk Admin / Debug w prawym górnym rogu. Panel jest dostępny tylko w grze jednoosobowej.',

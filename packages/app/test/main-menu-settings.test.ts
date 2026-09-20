@@ -10,6 +10,8 @@ import {
   persistSettings,
   RENDER_SCALE_MAX,
   RENDER_SCALE_MIN,
+  SCROLL_SPEED_MAX,
+  SCROLL_SPEED_MIN,
 } from '../src/view/settings-store.js';
 
 // The default language, and so the param the URL elides, comes from the browser rather than a constant.
@@ -37,6 +39,9 @@ describe('parseStoredSettings', () => {
       soundVolume: 0.35,
       musicVolume: 0.6,
       language: 'eng',
+      scrollSpeed: 2.25,
+      edgeScrollEnabled: false,
+      invertDragScroll: true,
       keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
       netNick: 'Ania',
       debugToolsEnabled: true,
@@ -69,6 +74,27 @@ describe('parseStoredSettings', () => {
     expect(parseStoredSettings('{}').debugToolsEnabled).toBe(false);
     expect(parseStoredSettings('{"debugToolsEnabled":true}').debugToolsEnabled).toBe(true);
     expect(parseStoredSettings('{"debugToolsEnabled":"on"}').debugToolsEnabled).toBe(false);
+  });
+
+  it('defaults, validates, and clamps persisted camera input settings', () => {
+    const defaults = defaultSettings();
+    expect(parseStoredSettings('{}')).toMatchObject({
+      scrollSpeed: defaults.scrollSpeed,
+      edgeScrollEnabled: true,
+      invertDragScroll: false,
+    });
+    expect(
+      parseStoredSettings('{"scrollSpeed":2.25,"edgeScrollEnabled":false,"invertDragScroll":true}'),
+    ).toMatchObject({ scrollSpeed: 2.25, edgeScrollEnabled: false, invertDragScroll: true });
+    expect(parseStoredSettings('{"scrollSpeed":99}').scrollSpeed).toBe(SCROLL_SPEED_MAX);
+    expect(parseStoredSettings('{"scrollSpeed":0}').scrollSpeed).toBe(SCROLL_SPEED_MIN);
+    expect(
+      parseStoredSettings('{"scrollSpeed":"fast","edgeScrollEnabled":"off","invertDragScroll":"yes"}'),
+    ).toMatchObject({
+      scrollSpeed: defaults.scrollSpeed,
+      edgeScrollEnabled: defaults.edgeScrollEnabled,
+      invertDragScroll: defaults.invertDragScroll,
+    });
   });
 
   it('clamps an out-of-range stored factor instead of dropping it', () => {

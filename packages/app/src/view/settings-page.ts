@@ -4,7 +4,7 @@ import { segControl, settingRow, sliderControl, togglePill } from './settings-co
 import { createControlsTab } from './settings-controls-tab.js';
 import { createSettingsDisplayMode, type DisplayMode } from './settings-display-mode.js';
 import { graphicsSettingsRows } from './settings-graphics-tab.js';
-import { defaultSettings, type MenuSettings } from './settings-store.js';
+import { defaultSettings, type MenuSettings, SCROLL_SPEED_MAX, SCROLL_SPEED_MIN } from './settings-store.js';
 
 export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
 
@@ -29,13 +29,10 @@ export interface SettingsPageHandle {
 
 const SETTINGS_TABS: readonly SettingsTab[] = ['graphics', 'audio', 'gameplay', 'controls'];
 const LANGUAGE_CHOICES: readonly Locale[] = ['pol', 'eng'];
-const PLACEHOLDER_SCROLL_SPEED = 1;
-const PLACEHOLDER_STEP = 0.05;
+const SCROLL_SPEED_STEP = 0.05;
 const VOLUME_MIN = 0;
 const VOLUME_MAX = 1;
 const VOLUME_STEP = 0.01;
-const SCROLL_SPEED_MIN = 0.5;
-const SCROLL_SPEED_MAX = 2;
 
 export function initialSettingsMemory(): SettingsMemory {
   return { tab: 'graphics' };
@@ -94,7 +91,6 @@ export function createSettingsPage(opts: {
     renderVersion++;
     const copy = messages().mainMenu;
     const text = copy.settings;
-    const soon = { badge: copy.comingSoon, tip: copy.comingSoonTip };
 
     const nav = document.createElement('nav');
     nav.className = 'main-menu__settings-nav';
@@ -208,10 +204,23 @@ export function createSettingsPage(opts: {
       const scrollSpeed = sliderControl(text.scrollSpeed, {
         min: SCROLL_SPEED_MIN,
         max: SCROLL_SPEED_MAX,
-        step: PLACEHOLDER_STEP,
-        value: PLACEHOLDER_SCROLL_SPEED,
+        step: SCROLL_SPEED_STEP,
+        value: settings.scrollSpeed,
+        onCommit: (scrollSpeed) => {
+          void opts.settings.update({ scrollSpeed });
+        },
+        live: true,
       });
-      const edgeScroll = togglePill(true, () => undefined);
+      const edgeScroll = togglePill(settings.edgeScrollEnabled, (edgeScrollEnabled) => {
+        void opts.settings.update({ edgeScrollEnabled });
+      });
+      edgeScroll.setAttribute('aria-label', text.edgeScroll);
+      edgeScroll.dataset.settingsFocus = 'edge-scroll';
+      const invertDragScroll = togglePill(settings.invertDragScroll, (enabled) => {
+        void opts.settings.update({ invertDragScroll: enabled });
+      });
+      invertDragScroll.setAttribute('aria-label', text.invertDragScroll);
+      invertDragScroll.dataset.settingsFocus = 'invert-drag-scroll';
       const debugTools = togglePill(settings.debugToolsEnabled, (enabled) => {
         void opts.settings.update({ debugToolsEnabled: enabled });
       });
@@ -223,8 +232,9 @@ export function createSettingsPage(opts: {
           language.root,
           opts.settings.bootOwnedChangesDeferred === true ? { tip: text.nextGameTip } : undefined,
         ),
-        settingRow(text.scrollSpeed, scrollSpeed, { soon }),
-        settingRow(text.edgeScroll, edgeScroll, { soon }),
+        settingRow(text.scrollSpeed, scrollSpeed),
+        settingRow(text.edgeScroll, edgeScroll),
+        settingRow(text.invertDragScroll, invertDragScroll, { tip: text.invertDragScrollTip }),
         settingRow(text.debugTools, debugTools, { tip: text.debugToolsTip }),
       ];
     };

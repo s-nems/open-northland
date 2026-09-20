@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_KEY_BINDINGS, type KeyBindings } from '../src/hud/keybindings.js';
 import {
   type CameraController,
+  type CameraInputSettings,
   createCameraController,
   EDGE_SCROLL_MARGIN,
 } from '../src/view/camera/index.js';
@@ -15,6 +16,11 @@ const CANVAS_H = 600;
 /** A pointer x inside the left edge band, so an armed probe pans on the next `update`. */
 const LEFT_BAND_X = EDGE_SCROLL_MARGIN / 2;
 const CENTRE_Y = CANVAS_H / 2;
+const DEFAULT_INPUT_SETTINGS: CameraInputSettings = {
+  scrollSpeed: 1.5,
+  edgeScrollEnabled: true,
+  invertDragScroll: false,
+};
 
 type Listener = (event: unknown) => void;
 
@@ -36,7 +42,10 @@ const eventTarget = () => {
   };
 };
 
-const install = (bindings: KeyBindings = DEFAULT_KEY_BINDINGS) => {
+const install = (
+  bindings: KeyBindings = DEFAULT_KEY_BINDINGS,
+  inputSettings: CameraInputSettings = DEFAULT_INPUT_SETTINGS,
+) => {
   const win = eventTarget();
   const canvasEvents = eventTarget();
   const canvas = {
@@ -53,7 +62,7 @@ const install = (bindings: KeyBindings = DEFAULT_KEY_BINDINGS) => {
   vi.stubGlobal('HTMLTextAreaElement', class {});
   vi.stubGlobal('HTMLElement', class {});
   const start: Camera = { offsetX: 0, offsetY: 0 };
-  const ctl = createCameraController(canvas, start, () => 1, bindings);
+  const ctl = createCameraController(canvas, start, () => 1, bindings, inputSettings);
   return {
     ctl,
     win,
@@ -197,6 +206,36 @@ describe('createCameraController pan bindings', () => {
     expect(panStep(ctl)).toBeGreaterThan(0);
     release('MetaLeft');
     expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+});
+
+describe('createCameraController input settings', () => {
+  it('scales middle-button dragging and can invert its direction live', () => {
+    const { ctl, move, startMiddleDrag } = install();
+    startMiddleDrag(100, 100);
+    move(120, 100);
+    expect(ctl.camera().offsetX).toBe(30);
+
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 2, invertDragScroll: true });
+    startMiddleDrag(120, 100);
+    move(130, 100);
+    expect(ctl.camera().offsetX).toBe(10);
+    ctl.dispose();
+  });
+
+  it('scales, disables, and re-enables edge scrolling live', () => {
+    const { ctl, move } = install();
+    move(LEFT_BAND_X, CENTRE_Y);
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 1 });
+    const baseStep = panStep(ctl);
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 2 });
+    expect(panStep(ctl)).toBeCloseTo(baseStep * 2);
+
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, edgeScrollEnabled: false });
+    expect(panStep(ctl)).toBe(0);
+    ctl.setInputSettings({ ...DEFAULT_INPUT_SETTINGS, scrollSpeed: 3 });
+    expect(panStep(ctl)).toBeGreaterThan(0);
     ctl.dispose();
   });
 });

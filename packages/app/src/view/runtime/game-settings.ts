@@ -1,3 +1,4 @@
+import type { CameraInputSettings } from '../camera/index.js';
 import type { MenuSettings } from '../settings-store.js';
 
 export interface GameSettingsRuntime {
@@ -19,6 +20,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setMusicVolume: (volume: number) => void;
   readonly setLanguage: (language: MenuSettings['language']) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
+  readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
 }
 
@@ -44,6 +46,13 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.musicVolume !== undefined) deps.setMusicVolume(patch.musicVolume);
     if (patch.language !== undefined) deps.setLanguage(patch.language);
     if (patch.keyBindings !== undefined) deps.setKeyBindings(patch.keyBindings);
+    if (
+      patch.scrollSpeed !== undefined ||
+      patch.edgeScrollEnabled !== undefined ||
+      patch.invertDragScroll !== undefined
+    ) {
+      deps.setCameraInputSettings(current);
+    }
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
   };
   return {

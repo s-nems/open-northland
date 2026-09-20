@@ -19,6 +19,10 @@ export const RENDER_SCALE_MIN = 0.5;
 export const RENDER_SCALE_MAX = 2;
 const DEFAULT_RENDER_SCALE = 1;
 
+export const SCROLL_SPEED_MIN = 0.5;
+export const SCROLL_SPEED_MAX = 3;
+export const DEFAULT_SCROLL_SPEED = 1.5;
+
 export interface MenuSettings {
   readonly assets: AssetSet;
   /** Fullscreen preference, written by whatever changes the window; `view/fullscreen.ts` owns how a
@@ -40,6 +44,11 @@ export interface MenuSettings {
   /** Music volume, 0..1 (the original `dm_volume`). */
   readonly musicVolume: number;
   readonly language: Locale;
+  /** Multiplier shared by drag, edge, and keyboard camera panning. */
+  readonly scrollSpeed: number;
+  readonly edgeScrollEnabled: boolean;
+  /** Reverse only middle-button drag; directional edge and keyboard input keep their meaning. */
+  readonly invertDragScroll: boolean;
   /** A launching game resolves its hotkeys from here, like the HUD scale factor. */
   readonly keyBindings: KeyBindings;
   /** The display name shown to other players over a relay; null until one was chosen. */
@@ -61,6 +70,9 @@ export function defaultSettings(): MenuSettings {
     soundVolume: DEFAULT_SFX_VOLUME,
     musicVolume: DEFAULT_MUSIC_VOLUME,
     language: defaultLocale(),
+    scrollSpeed: DEFAULT_SCROLL_SPEED,
+    edgeScrollEnabled: true,
+    invertDragScroll: false,
     keyBindings: DEFAULT_KEY_BINDINGS,
     netNick: null,
     debugToolsEnabled: false,
@@ -77,6 +89,11 @@ function clampFactor(value: unknown): number {
 function clampRenderScale(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_RENDER_SCALE;
   return Math.min(RENDER_SCALE_MAX, Math.max(RENDER_SCALE_MIN, value));
+}
+
+function clampScrollSpeed(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_SCROLL_SPEED;
+  return Math.min(SCROLL_SPEED_MAX, Math.max(SCROLL_SPEED_MIN, value));
 }
 
 function parseFpsLimit(value: unknown): FpsLimit {
@@ -113,6 +130,11 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),
     language: isLocale(record.language) ? record.language : defaults.language,
+    scrollSpeed: clampScrollSpeed(record.scrollSpeed),
+    edgeScrollEnabled:
+      typeof record.edgeScrollEnabled === 'boolean' ? record.edgeScrollEnabled : defaults.edgeScrollEnabled,
+    invertDragScroll:
+      typeof record.invertDragScroll === 'boolean' ? record.invertDragScroll : defaults.invertDragScroll,
     keyBindings: parseKeyBindings(record.keyBindings),
     netNick: optionalText(record.netNick),
     debugToolsEnabled:

@@ -27,6 +27,8 @@ const PAN_ACTIONS: readonly PanAction[] = ['panLeft', 'panRight', 'panUp', 'panD
 
 export interface CameraController {
   camera(): Camera;
+  /** Apply camera input preferences immediately, including to an in-flight middle drag. */
+  setInputSettings(settings: CameraInputSettings): void;
   /** Apply changed shortcuts immediately and release any key held under the previous mapping. */
   setBindings(bindings: KeyBindings): void;
   /** Apply held-arrow-key panning for a wall-clock delta in ms; call once per frame. */
@@ -48,6 +50,12 @@ export interface CameraController {
   dispose(): void;
 }
 
+export interface CameraInputSettings {
+  readonly scrollSpeed: number;
+  readonly edgeScrollEnabled: boolean;
+  readonly invertDragScroll: boolean;
+}
+
 /** `resolution` reads the owning renderer's live device px per screen px, needed to map mouse deltas on
  *  a HiDPI canvas; a captured value would go stale when a DPR change re-sizes the renderer. */
 export function createCameraController(
@@ -55,9 +63,11 @@ export function createCameraController(
   initial: Camera,
   resolution: () => number,
   bindings: KeyBindings,
+  inputSettings: CameraInputSettings,
 ): CameraController {
   let cam: Camera = initial;
   let activeBindings = bindings;
+  let activeInputSettings = inputSettings;
   const tuning: CameraTuning = DEFAULT_CAMERA_TUNING;
   const panActionFor = (event: KeyboardEvent): PanAction | undefined => {
     const binding = bindingFromKeyboardEvent(event);
@@ -94,7 +104,12 @@ export function createCameraController(
     pointerSample = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
     if (!dragging) return;
     const { sx, sy } = screenScale(canvas, resolution());
-    cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
+    const direction = activeInputSettings.invertDragScroll ? -1 : 1;
+    cam = panCamera(
+      cam,
+      (e.clientX - lastX) * sx * activeInputSettings.scrollSpeed * direction,
+      (e.clientY - lastY) * sy * activeInputSettings.scrollSpeed * direction,
+    );
     lastX = e.clientX;
     lastY = e.clientY;
   };
@@ -164,6 +179,9 @@ export function createCameraController(
 
   return {
     camera: () => cam,
+    setInputSettings: (next) => {
+      activeInputSettings = next;
+    },
     setBindings: (next) => {
       activeBindings = next;
       held.clear();
@@ -206,6 +224,7 @@ export function createCameraController(
       // surface claims the point. A left-drag marquee is deliberately not suppressed, so dragging a
       // selection box into the margin pans under it.
       if (
+        activeInputSettings.edgeScrollEnabled &&
         pointerSample &&
         !dragging &&
         document.hasFocus() &&
@@ -222,6 +241,8 @@ export function createCameraController(
         desiredX += edge.vx * sx; // CSS px/s to screen px/s
         desiredY += edge.vy * sy;
       }
+      desiredX *= activeInputSettings.scrollSpeed;
+      desiredY *= activeInputSettings.scrollSpeed;
       if (desiredX !== 0 || desiredY !== 0) {
         cam = panCamera(cam, (desiredX * dt) / 1000, (desiredY * dt) / 1000);
       }
