@@ -9,6 +9,7 @@ import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './pr
 import { chargeMilitaryPietyCost } from './production/piety.js';
 import { startCycleFor } from './production/rotation.js';
 
+export { accrueDepositBonus } from './production/bonus-output.js';
 export { BREEDING_PAIR, shelfBlockedOutput, startableCycleCount } from './production/cycles.js';
 export { craftablePool } from './production/rotation.js';
 

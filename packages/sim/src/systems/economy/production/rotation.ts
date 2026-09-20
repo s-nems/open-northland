@@ -47,7 +47,7 @@ export function startCycleFor(
     const recipe = good !== undefined ? recipes.get(good) : undefined;
     if (good === undefined || recipe === undefined) continue;
     if (!canStartCycle(world, ctx, building, recipe)) continue;
-    beginCycle(world, ctx, building, recipe, good);
+    beginCycle(world, building, recipe, good);
     if (selection === undefined) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
     world.mut(operator, CraftSelection).cursor = (cursor + i + 1) % pool.length;
     return;

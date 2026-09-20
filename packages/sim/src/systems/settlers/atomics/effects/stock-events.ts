@@ -2,6 +2,7 @@ import { Settler, Stockpile, setStockAmount } from '../../../../components/index
 import type { AtomicEffect } from '../../../../core/atomic-effect.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
+import { accrueDepositBonus } from '../../../economy/production.js';
 import { stockDepositsAt } from '../../../livestock/index.js';
 import { stockCapacity } from '../../../stores/index.js';
 
@@ -11,7 +12,9 @@ import { stockCapacity } from '../../../stores/index.js';
  * discovered, so a settlement with no hunter still gets leather off its own cattle.
  *
  * A unit past the shelf's capacity is lost (approximation): the breeder's cycle carries a full ware out
- * before it slaughters, so a full shelf here means something else filled it mid-clip.
+ * before it slaughters, so a full shelf here means something else filled it mid-clip. Each unit that does
+ * land earns the slaughterer's experience share on top, as the original scales the deposit by his job
+ * efficiency.
  */
 export function applyAtomicStockEvents(
   world: World,
@@ -30,5 +33,6 @@ export function applyAtomicStockEvents(
     if (have >= stockCapacity(world, ctx, farm, good)) continue;
     setStockAmount(world, farm, good, have + 1);
     ctx.events.emit({ kind: 'goodProduced', building: farm, goodType: good, amount: 1 });
+    accrueDepositBonus(world, ctx, farm, e, good);
   }
 }

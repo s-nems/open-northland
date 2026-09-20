@@ -48,6 +48,9 @@ export const SCOUT = 27;
 export const FARM = 30;
 /** The economy fixture's headquarters (typeId 1, id `headquarters`). */
 export const HEADQUARTERS = 1;
+/** The breeder's general experience track: the job efficiency the original scales a clip's deposit by. */
+export const BREEDER_TRACK = 64;
+export const BREEDER_XP_PER_REPEAT = 100;
 export const BREED_TICKS = 10;
 export const HERD_CAPACITY = 20;
 export const WOOL_CAPACITY = 3;
@@ -108,6 +111,16 @@ export function livestockContent(): ContentSet {
     jobs: [
       ...economyContent.jobs,
       { typeId: BREEDER, id: 'breeder', allowedAtomics: [BREED_ATOMIC, SLAY_ATOMIC] },
+    ],
+    jobExperience: [
+      ...societyContent.jobExperience,
+      {
+        typeId: BREEDER_TRACK,
+        id: 'breeder_general',
+        name: 'breeder general',
+        jobType: BREEDER,
+        experienceFactor: BREEDER_XP_PER_REPEAT,
+      },
     ],
     buildings: [
       // The headquarters doubles as the warehouse a farm's wares are carried out to, so the flush has

@@ -147,13 +147,7 @@ export function anyCycleStartable(
 
 /** Consume `recipe`'s inputs and append the new batch; the caller has verified {@link canStartCycle}.
  *  `duration` is clamped to the `>= 1` {@link ProductionCycle} requires. */
-export function beginCycle(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  recipe: Recipe,
-  goodType: number,
-): void {
+export function beginCycle(world: World, building: Entity, recipe: Recipe, goodType: number): void {
   consumeGoods(world, building, recipe.inputs);
   const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
   const prod = world.tryMut(building, Production);
@@ -171,7 +165,7 @@ export function startFirstStartable(
 ): void {
   for (const [good, recipe] of recipes) {
     if (!canStartCycle(world, ctx, building, recipe)) continue;
-    beginCycle(world, ctx, building, recipe, good);
+    beginCycle(world, building, recipe, good);
     return;
   }
 }

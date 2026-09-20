@@ -5,6 +5,7 @@ import {
   FarmAnimal,
   MoveGoal,
   Production,
+  Settler,
   Stockpile,
   YoungAnimal,
 } from '../../src/components/index.js';
@@ -17,6 +18,8 @@ import {
   productionSystem,
 } from '../../src/systems/index.js';
 import {
+  BREEDER_TRACK,
+  BREEDER_XP_PER_REPEAT,
   breederAt,
   COW_GOOD,
   cowAt,
@@ -25,6 +28,7 @@ import {
   HEADQUARTERS,
   livestockSim,
   MEAT,
+  MEAT_CAPACITY,
   SLAY_ATOMIC,
   WATER,
   WHEAT,
@@ -221,6 +225,23 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     const stock = sim.world.get(farm, Stockpile).amounts;
     expect(stock.get(WOOL)).toBe(1);
     expect(stock.get(MEAT)).toBe(2);
+  });
+
+  it("pays the slaughterer's experience into the wares the clip banks", () => {
+    const sim = livestockSim();
+    const { farm, breeder } = farmWithBreeder(sim);
+    const doomed = cowAt(sim, FARM_AT.hx, FARM_AT.hy, { owner: P0, farm });
+    for (let i = 0; i < 2; i++) cowAt(sim, 4 + i, 4, { owner: P0, farm });
+    sim.world.mut(doomed, FarmAnimal).summoner = breeder;
+    // Far past mastery, so the curve tops out and every ware the clip banks comes twice.
+    sim.world.mut(breeder, Settler).experience.set(BREEDER_TRACK, 200 * BREEDER_XP_PER_REPEAT);
+
+    plan(sim);
+    for (let i = 0; i < 20; i++) sim.step();
+
+    const stock = sim.world.get(farm, Stockpile).amounts;
+    expect(stock.get(WOOL)).toBe(2); // one fleece off the animal, one off the hand that skinned it
+    expect(stock.get(MEAT)).toBe(MEAT_CAPACITY); // 4 cuts earned, the shelf holds 3 and banks the rest
   });
 
   it('carries a full ware out before it slaughters again', () => {
