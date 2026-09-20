@@ -164,23 +164,28 @@ F-row is outside the rebindable set, and works from inside the search field too.
   would let take it (`Simulation.canChooseJob`, asked only while that filter is set; a script's
   trade lock on a unit is not mirrored).
 - Two chip rows share one grid of eight equal rectangular cells across the window, the count on top
-  and the caption under it, "Kto" and "Bez" in one narrow label column. A count is the whole
-  settlement, whatever else is filtered; a lacks cell at zero is dimmed.
+  and the caption under it, "Kto" and "Bez" in one narrow label column. A count narrows to the
+  other filters (user ruling): a cell counts what its own pick would list, so a Kto cell swaps the
+  group and a Bez cell adds its lack to the picked ones, and the Zawód list counts the same way. A
+  cell at zero is dimmed.
 - Kto is one choice at a time (user ruling): Wszyscy, Mężczyźni, Kobiety, Dzieci, Pracownicy,
   Cywile, Żołnierze, Bohaterowie. The groups follow the original subjects window: men and women are
   adults, heroines stay out of the women, workers are adult men with a trade that is no soldier or
   hero class. Cywile, adult men without a trade, is this project's addition: they are whom the player
   opens the list to find.
 - Bez combines, and combines with everything else (user ruling): domu, pracy, narzędzi, butów, pary,
-  dzieci, broni, miodu. Home and partner skip soldiers and heroes, shoes skip heroes, children
-  counts the women, weapon the soldiers. Tools counts the workers other than the scout, which is
-  narrower than the original's every grown man who is no soldier or hero: it is whom the assistant
-  hands a tool. A child lacks nothing: it is housed and dressed through its parents. Two lacks are
-  this project's own. "Bez pracy" is a worker whose trade some workplace employs, posted at none and tied
-  to no work flag, so a builder or a scout never shows; it replaces a separate roster of unposted
-  tradesmen. "Bez miodu" is an adult with a job and no mead bottle in the misc slots: the people
-  the assistant's mead grant reaches. Approximation: the sim tracks a couple's one growing child, so
-  "bez dzieci" means none growing now, not a family history.
+  dzieci, broni, miodu. Home and partner skip soldiers and heroes, children counts the women, weapon
+  the soldiers. The worn lacks (tools, shoes, weapon, mead) ask only a man whose equipment may
+  change, the sim's `mayChangeEquipment`: a woman, a child and a hero wear nothing the player hands
+  out, so the settler panel shows a woman and a child no Ekwipunek section either. Tools counts the
+  workers other than the scout, which is narrower than the original's every grown man who is no
+  soldier or hero: it is whom the assistant hands a tool. A child lacks nothing: it is housed and
+  dressed through its parents. Two lacks are this project's own. "Bez pracy" is a worker whose trade
+  some workplace employs, posted at none and tied to no work flag, so a builder or a scout never
+  shows; it replaces a separate roster of unposted tradesmen. "Bez miodu" is such a man with a job
+  and no mead bottle in the misc slots: the people the assistant's mead grant reaches.
+  Approximation: the sim tracks a couple's one growing child, so "bez dzieci" means none growing
+  now, not a family history.
 - The parchment: a summary line naming the active filters with "Wyczyść filtry", sortable column
   heads (Imię, Zawód, Miejsce pracy, Braki; a second press reverses), and 34 px rows: the map's own
   settler standing still (a list runs to hundreds of rows, so nothing animates and only the rows on

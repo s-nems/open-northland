@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   filtersActive,
-  matchesResident,
+  listResidents,
   NO_RESIDENT_FILTERS,
-  professionTally,
   type ResidentRow,
-  residentCounts,
   sortResidents,
 } from '../src/hud/tool-panel/residents/rows.js';
 
@@ -42,9 +40,7 @@ describe('residents list filters', () => {
     row(8, { name: 'Ulf', kind: 'soldier', jobType: 31, profession: 'Żołnierz', lacks: ['weapon'] }),
   ];
   const shown = (filters: Partial<typeof NO_RESIDENT_FILTERS>, can = nobodyRetrains): number[] =>
-    people
-      .filter((p) => matchesResident(p, { ...NO_RESIDENT_FILTERS, ...filters }, LOCALE, can))
-      .map((p) => p.id);
+    listResidents(people, { ...NO_RESIDENT_FILTERS, ...filters }, LOCALE, can).shown.map((p) => p.id);
 
   it('groups people as the original subjects window does', () => {
     expect(shown({ group: 'all' })).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -88,8 +84,11 @@ describe('residents list filters', () => {
     expect(filtersActive({ ...NO_RESIDENT_FILTERS, canBecome: JOB_SMITH })).toBe(true);
   });
 
-  it('counts the whole settlement on every chip', () => {
-    const counts = residentCounts(people);
+  const listing = (filters: Partial<typeof NO_RESIDENT_FILTERS>) =>
+    listResidents(people, { ...NO_RESIDENT_FILTERS, ...filters }, LOCALE, nobodyRetrains);
+
+  it('counts the whole settlement on every chip while nothing is filtered', () => {
+    const { counts } = listing({});
     expect(counts.groups).toEqual({
       all: 8,
       men: 5,
@@ -104,11 +103,50 @@ describe('residents list filters', () => {
     expect(counts.lacks.partner).toBe(0);
   });
 
-  it('tallies the professions present in label order', () => {
-    expect(professionTally(people, LOCALE).slice(0, 3)).toEqual([
+  it('narrows the lack chips to the picked group and the group chips to the picked lacks', () => {
+    const civilians = listing({ group: 'civilians' }).counts;
+    expect(civilians.lacks.home).toBe(1);
+    expect(civilians.lacks.shoes).toBe(0);
+    expect(civilians.groups.workers).toBe(2); // the group row swaps its own pick, so it stays whole
+
+    const shoeless = listing({ lacks: ['shoes'] }).counts;
+    expect(shoeless.groups).toMatchObject({ all: 2, workers: 2, civilians: 0 });
+    expect(shoeless.lacks.shoes).toBe(2); // a picked lack counts the list it made
+    expect(shoeless.lacks.post).toBe(1); // what adding this lack would leave
+    expect(shoeless.lacks.home).toBe(0);
+  });
+
+  it('narrows every chip to the search text', () => {
+    const { counts } = listing({ query: 'kowal' });
+    expect(counts.groups).toMatchObject({ all: 1, workers: 1, heroes: 0 });
+    expect(counts.lacks).toMatchObject({ post: 1, shoes: 1, mead: 1, home: 0 });
+  });
+
+  it('narrows the group chips to a picked profession and every chip to a can-become pick', () => {
+    const smiths = listing({ profession: 'Kowal' }).counts;
+    expect(smiths.groups).toMatchObject({ all: 1, workers: 1, heroes: 0 });
+
+    const canSmith = (id: number, jobType: number): boolean => jobType === JOB_SMITH && id === 7;
+    const { counts } = listResidents(
+      people,
+      { ...NO_RESIDENT_FILTERS, canBecome: JOB_SMITH },
+      LOCALE,
+      canSmith,
+    );
+    expect(counts.groups).toMatchObject({ all: 2, workers: 1, civilians: 1, women: 0 });
+    expect(counts.lacks).toMatchObject({ home: 1, shoes: 1, weapon: 0 });
+  });
+
+  it('tallies the professions the other filters keep, in label order', () => {
+    expect(listing({}).professions.slice(0, 3)).toEqual([
       { profession: 'Bohater', count: 2 },
       { profession: 'Cywil', count: 1 },
       { profession: 'Dziewczynka', count: 1 },
+    ]);
+    // The picked profession does not narrow its own options.
+    expect(listing({ group: 'workers', profession: 'Kowal' }).professions).toEqual([
+      { profession: 'Kowal', count: 1 },
+      { profession: 'Piekarz', count: 1 },
     ]);
   });
 });

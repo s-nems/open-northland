@@ -263,12 +263,13 @@ const LACK_TEST = {
   home: (p) => !p.home && !fighter(p),
   post: (p) => worker(p) && !p.posted,
   tool: (p) => worker(p) && !p.tool,
-  shoes: (p) => p.adult && !p.hero && !p.shoes,
+  // Only a grown man who is no hero wears anything, so a woman lacks no worn good.
+  shoes: (p) => p.adult && p.male && !p.hero && !p.shoes,
   partner: (p) => p.adult && !fighter(p) && !p.spouse,
   childless: (p) => p.adult && !p.male && !p.hero && !p.child,
   weapon: (p) => p.adult && p.soldier === true && !p.weapon,
-  // The assistant's mead grant reaches every adult, one bottle each.
-  mead: (p) => p.adult && !p.mead,
+  // The assistant's mead grant reaches every such man, one bottle each.
+  mead: (p) => p.adult && p.male && !p.hero && !p.mead,
 };
 
 const glyph = (path) => `<svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><path d="${path}"/></svg>`;
@@ -291,12 +292,14 @@ function rowMarkup(p) {
   return `<li data-id="${p.id}"><button type="button" class="res-row" aria-pressed="false"><span class="res-fig"><span data-settler="${p.look}" data-still></span></span><strong title="${p.name}">${p.name}</strong><span title="${p.label}">${p.label}</span><span title="${p.place}">${p.place || '-'}</span><span class="res-lacks">${lacks}</span></button></li>`;
 }
 
-function matches(p) {
-  if (!WHO_TEST[filters.who](p)) return false;
-  for (const id of filters.lacks) if (!LACK_TEST[id](p)) return false;
-  if (filters.job && p.job !== filters.job) return false;
-  if (filters.can && !p.can.has(filters.can)) return false;
-  const needle = filters.query.trim().toLocaleLowerCase('pl');
+// `over` swaps single filters, which is how a chip counts what its own pick would list.
+function matches(p, over = {}) {
+  const f = { ...filters, ...over };
+  if (!WHO_TEST[f.who](p)) return false;
+  for (const id of f.lacks) if (!LACK_TEST[id](p)) return false;
+  if (f.job && p.job !== f.job) return false;
+  if (f.can && !p.can.has(f.can)) return false;
+  const needle = f.query.trim().toLocaleLowerCase('pl');
   return [p.name, p.label, p.place].some((text) => text.toLocaleLowerCase('pl').includes(needle));
 }
 
@@ -329,10 +332,28 @@ function refresh() {
     if (!item.hidden) shown++;
     item.firstElementChild.setAttribute('aria-pressed', String(selection.has(item.dataset.id)));
   }
-  for (const chip of whoBar.children)
+  // Every count narrows to the other filters: a group cell swaps the group, a lack cell adds its lack.
+  const tally = (over, test = () => true) => people.filter((p) => matches(p, over) && test(p)).length;
+  for (const chip of whoBar.children) {
+    const n = tally({ who: chip.dataset.who });
     chip.setAttribute('aria-checked', String(chip.dataset.who === filters.who));
-  for (const chip of lackBar.children)
-    chip.setAttribute('aria-pressed', String(filters.lacks.has(chip.dataset.lack)));
+    chip.querySelector('.count').textContent = n;
+    chip.classList.toggle('zero', n === 0);
+  }
+  for (const chip of lackBar.children) {
+    const id = chip.dataset.lack;
+    const n = tally({}, LACK_TEST[id]);
+    chip.setAttribute('aria-pressed', String(filters.lacks.has(id)));
+    chip.setAttribute('aria-label', `${chip.title}: ${n}`);
+    chip.querySelector('.count').lastChild.textContent = n;
+    chip.classList.toggle('zero', n === 0);
+  }
+  for (const option of jobSelect.options) {
+    if (option.value === '') continue;
+    const n = tally({ job: option.value });
+    option.textContent = `${option.dataset.label} (${n})`;
+    option.hidden = n === 0 && option.value !== filters.job;
+  }
   const active = [
     filters.who !== 'all' && WHO.find(([id]) => id === filters.who)[1],
     ...LACKS.filter(([id]) => filters.lacks.has(id)).map(([, label]) => `bez ${label}`),

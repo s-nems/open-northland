@@ -5,18 +5,17 @@ import type { ResidentFigureBox, ResidentFigureSlot } from '../tool-panel/reside
 import {
   filtersActive,
   INITIAL_RESIDENTS_STATE,
-  matchesResident,
+  listResidents,
   NO_RESIDENT_FILTERS,
-  professionTally,
   RESIDENT_GROUPS,
   RESIDENT_LACKS,
   type ResidentFilters,
   type ResidentGroup,
   type ResidentLack,
+  type ResidentListing,
   type ResidentRow,
   type ResidentSortKey,
   type ResidentsWindowState,
-  residentCounts,
   sortResidents,
 } from '../tool-panel/residents/rows.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
@@ -377,23 +376,24 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   };
 
   let shownProfessions = '';
-  const showCounts = (all: readonly ResidentRow[]): void => {
-    const counts = residentCounts(all);
-    for (const [id, view] of groupChips) write(view.count, String(counts.groups[id]));
+  const showCounts = ({ counts, professions }: ResidentListing): void => {
+    for (const [id, view] of groupChips) {
+      write(view.count, String(counts.groups[id]));
+      view.button.classList.toggle('on-res-chip--zero', counts.groups[id] === 0);
+    }
     for (const [id, view] of lackChips) {
       const count = counts.lacks[id];
       write(view.count, String(count));
       view.button.classList.toggle('on-res-chip--zero', count === 0);
       setAttribute(view.button, 'aria-label', formatMessage(copy.lackCount, { what: copy.lacks[id], count }));
     }
-    // The profession filter lists the trades present; one that died out while picked stays listed,
-    // so the filter never clears itself under the player.
-    const tally = professionTally(all, locale);
+    // The profession filter lists the trades the other filters keep; the picked one stays listed
+    // when they keep nobody of it, so the filter never clears itself under the player.
     const held = state.filters.profession;
     const entries =
-      tally.some((entry) => entry.profession === held) || held === ''
-        ? tally
-        : [...tally, { profession: held, count: 0 }];
+      professions.some((entry) => entry.profession === held) || held === ''
+        ? professions
+        : [...professions, { profession: held, count: 0 }];
     const key = entries.map((entry) => `${entry.profession}:${entry.count}`).join('|');
     if (shownProfessions !== key) {
       shownProfessions = key;
@@ -427,11 +427,8 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   /** Filter, order and write the list from the rows in hand; focus and scroll stay where they were. */
   const relist = (): void => {
     const all = rows ?? [];
-    const listed = sortResidents(
-      all.filter((row) => matchesResident(row, state.filters, locale, deps.canBecome)),
-      state.sort,
-      locale,
-    );
+    const listing = listResidents(all, state.filters, locale, deps.canBecome);
+    const listed = sortResidents(listing.shown, state.sort, locale);
     const alive = new Set<number>();
     for (const row of all) alive.add(row.id);
     for (const id of views.keys()) if (!alive.has(id)) views.delete(id);
@@ -469,7 +466,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     write(shownCount, String(ids.length));
     selectShown.disabled = ids.length === 0;
     showFilters();
-    showCounts(all);
+    showCounts(listing);
     showSummary(all, ids.length);
     showSelection();
     shownSelection = deps.selection.version();

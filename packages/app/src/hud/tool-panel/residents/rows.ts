@@ -95,61 +95,88 @@ export function filtersActive(filters: ResidentFilters): boolean {
   );
 }
 
-/**
- * Whether the row passes every filter at once. `canBecome` answers the job filter for a row: the sim's
- * own rule, asked only while that filter is set and only of a grown man, since the sim's trade orders
- * refuse a child and a woman before that rule is read. Approximation: a script's trade lock on a unit
- * is not mirrored, so a locked man may still be listed.
- */
-export function matchesResident(
-  row: ResidentRow,
-  filters: ResidentFilters,
-  locale: string,
-  canBecome: (id: number, jobType: number) => boolean,
-): boolean {
-  if (!inGroup(row, filters.group)) return false;
-  for (const lack of filters.lacks) if (!row.lacks.includes(lack)) return false;
-  if (filters.profession !== '' && row.profession !== filters.profession) return false;
-  if (
-    filters.canBecome !== null &&
-    row.jobType !== filters.canBecome &&
-    (row.kind === 'child' || row.female || !canBecome(row.id, filters.canBecome))
-  ) {
-    return false;
-  }
-  const needle = filters.query.trim().toLocaleLowerCase(locale);
-  if (needle === '') return true;
-  return [row.name, row.profession, row.workplace].some((text) =>
-    text.toLocaleLowerCase(locale).includes(needle),
-  );
+/** A row's answer to each filter on its own: a chip counts the rows its pick would list, which means
+ *  every other filter held and its own swapped. */
+interface FilterVerdict {
+  readonly lacks: boolean;
+  readonly profession: boolean;
+  /** The can-become pick and the search text, which no chip or option swaps. */
+  readonly rest: boolean;
 }
 
-/** How many people each chip stands for: the whole settlement, whatever else is filtered. */
+/**
+ * `canBecome` answers the job filter for a row: the sim's own rule, asked only while that filter is
+ * set and only of a grown man, since the sim's trade orders refuse a child and a woman before that
+ * rule is read. Approximation: a script's trade lock on a unit is not mirrored, so a locked man may
+ * still be listed.
+ */
+function verdictOf(
+  row: ResidentRow,
+  filters: ResidentFilters,
+  needle: string,
+  locale: string,
+  canBecome: (id: number, jobType: number) => boolean,
+): FilterVerdict {
+  const takesJob =
+    filters.canBecome === null ||
+    row.jobType === filters.canBecome ||
+    (row.kind !== 'child' && !row.female && canBecome(row.id, filters.canBecome));
+  const named =
+    needle === '' ||
+    [row.name, row.profession, row.workplace].some((text) => text.toLocaleLowerCase(locale).includes(needle));
+  return {
+    lacks: filters.lacks.every((lack) => row.lacks.includes(lack)),
+    profession: filters.profession === '' || row.profession === filters.profession,
+    rest: takesJob && named,
+  };
+}
+
 export interface ResidentCounts {
   readonly groups: Readonly<Record<ResidentGroup, number>>;
   readonly lacks: Readonly<Record<ResidentLack, number>>;
 }
 
-export function residentCounts(rows: readonly ResidentRow[]): ResidentCounts {
-  const groups = Object.fromEntries(RESIDENT_GROUPS.map((id) => [id, 0])) as Record<ResidentGroup, number>;
-  const lacks = Object.fromEntries(RESIDENT_LACKS.map((id) => [id, 0])) as Record<ResidentLack, number>;
-  for (const row of rows) {
-    for (const id of RESIDENT_GROUPS) if (inGroup(row, id)) groups[id] += 1;
-    for (const id of row.lacks) lacks[id] += 1;
-  }
-  return { groups, lacks };
+export interface ResidentListing {
+  /** The rows passing every filter at once, in the given order. */
+  readonly shown: readonly ResidentRow[];
+  /** What each chip would list under the other filters: a group chip swaps the group, a lack chip
+   *  adds its lack to the picked ones. */
+  readonly counts: ResidentCounts;
+  /** The professions among the rows the other filters keep, in label order: the Zawód options. */
+  readonly professions: readonly { readonly profession: string; readonly count: number }[];
 }
 
-/** The professions present, each with its head count, in label order: the Zawód filter's options. */
-export function professionTally(
+export function listResidents(
   rows: readonly ResidentRow[],
+  filters: ResidentFilters,
   locale: string,
-): readonly { readonly profession: string; readonly count: number }[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) counts.set(row.profession, (counts.get(row.profession) ?? 0) + 1);
-  return [...counts]
-    .map(([profession, count]) => ({ profession, count }))
-    .sort((a, b) => a.profession.localeCompare(b.profession, locale));
+  canBecome: (id: number, jobType: number) => boolean,
+): ResidentListing {
+  const groups = Object.fromEntries(RESIDENT_GROUPS.map((id) => [id, 0])) as Record<ResidentGroup, number>;
+  const lacks = Object.fromEntries(RESIDENT_LACKS.map((id) => [id, 0])) as Record<ResidentLack, number>;
+  const professions = new Map<string, number>();
+  const shown: ResidentRow[] = [];
+  const needle = filters.query.trim().toLocaleLowerCase(locale);
+  for (const row of rows) {
+    const verdict = verdictOf(row, filters, needle, locale, canBecome);
+    if (!verdict.rest || !verdict.lacks) continue;
+    const grouped = inGroup(row, filters.group);
+    if (verdict.profession) {
+      for (const id of RESIDENT_GROUPS) if (inGroup(row, id)) groups[id] += 1;
+    }
+    if (!grouped) continue;
+    professions.set(row.profession, (professions.get(row.profession) ?? 0) + 1);
+    if (!verdict.profession) continue;
+    for (const id of row.lacks) lacks[id] += 1;
+    shown.push(row);
+  }
+  return {
+    shown,
+    counts: { groups, lacks },
+    professions: [...professions]
+      .map(([profession, count]) => ({ profession, count }))
+      .sort((a, b) => a.profession.localeCompare(b.profession, locale)),
+  };
 }
 
 /**
