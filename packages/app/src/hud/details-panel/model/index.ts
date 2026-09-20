@@ -261,6 +261,8 @@ export function buildUnitPanelModel(
             years: Math.floor(ageTicks / systems.TICKS_PER_AGE_YEAR),
           })}`
         : '';
+    const experience = experienceRows(ctx, comps);
+    const hero = ctx.jobs.some((job) => job.typeId === num(s.jobType) && systems.isHeroJobRow(job));
     return {
       kind: 'settler',
       entityId,
@@ -277,14 +279,11 @@ export function buildUnitPanelModel(
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(ctx, snapshot, entityId, comps),
-      bars: satisfactionBars(
-        ent,
-        needsRuleEnabled(snapshot),
-        !ctx.jobs.some((job) => job.typeId === num(s.jobType) && systems.isHeroJobRow(job)),
-      ),
+      bars: satisfactionBars(ent, needsRuleEnabled(snapshot), !hero),
       work: settlerWork(ctx, snapshot, comps, progressionGated),
       trade: tradePanelModel(ctx, snapshot, entityId),
-      experience: experienceRows(ctx, comps),
+      showsExperience: hero || (!young && !isFemale(ent)) || experience.length > 0,
+      experience,
       upcomingUnlocks: unlockProgressRows(ctx, comps, progressionGated),
       equipmentRows: equipmentRows(ctx, comps),
     };

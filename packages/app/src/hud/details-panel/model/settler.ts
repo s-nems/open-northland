@@ -49,6 +49,9 @@ export interface SettlerPanelModel {
   readonly work: SettlerWorkModel;
   /** The Handel section: non-null for a trader. */
   readonly trade: TradePanelModel | null;
+  /** Whether the Doświadczenie section shows: not for a woman or a child, who hold no trade and so
+   *  train nothing, unless rows exist anyway. */
+  readonly showsExperience: boolean;
   /** Every specialization the settler has trained, most-trained first; empty when it has none. */
   readonly experience: readonly ExperienceRowModel[];
   /** Progress toward the professions this settler's current work unlocks next; empty while progression

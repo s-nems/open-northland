@@ -1035,15 +1035,21 @@ describe('selection details panel model', () => {
     expect(rowsFor(JOB_COLLECTOR)).toEqual(['boots', 'tool', 'misc']);
   });
 
-  it('gives a woman and a child no equipment rows: they wear nothing', () => {
-    const rowsFor = (jobType: number, extra: Record<string, unknown>): number => {
+  it('gives a woman and a child no equipment rows and no experience section', () => {
+    const modelFor = (jobType: number, extra: Record<string, unknown>) => {
       const snapshot = snapshotOf([{ id: 1, components: { Settler: { tribe: 1, jobType }, ...extra } }]);
       const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
       if (model.kind !== 'settler') throw new Error('expected a settler model');
-      return model.equipmentRows.length;
+      return model;
     };
-    expect(rowsFor(JOB_WOMAN, { Female: { female: true } })).toBe(0);
-    expect(rowsFor(JOB_COLLECTOR, { Age: { ticks: 0 } })).toBe(0);
+    for (const model of [
+      modelFor(JOB_WOMAN, { Female: { female: true } }),
+      modelFor(JOB_COLLECTOR, { Age: { ticks: 0 } }),
+    ]) {
+      expect(model.equipmentRows).toEqual([]);
+      expect(model.showsExperience).toBe(false);
+    }
+    expect(modelFor(JOB_COLLECTOR, {}).showsExperience).toBe(true);
   });
 
   it('shows a hero without need bars and with a read-only permanent loadout', () => {

@@ -182,7 +182,7 @@ describe('details panel layout', () => {
     expect(bootsSwap.rect.x - (bootsSocket.x + bootsSocket.w)).toBeLessThanOrEqual(4);
   });
 
-  it('drops the Ekwipunek section for a woman, ending the panel at Doświadczenie', () => {
+  it('drops Doświadczenie and Ekwipunek for a woman, ending the panel at Praca', () => {
     const settler = (extra: Record<string, unknown>) =>
       settlerLayoutOf(
         buildUnitPanelModel(
@@ -193,13 +193,14 @@ describe('details panel layout', () => {
       );
     const man = settler({});
     const woman = settler({ Female: { female: true } });
+    expect(man.experience).not.toBeNull();
+    expect(man.equipment).not.toBeNull();
+    expect(woman.experience).toBeNull();
+    expect(woman.expRows).toEqual([]);
     expect(woman.equipment).toBeNull();
     expect(woman.equipRows).toEqual([]);
     expect(woman.equipActionHits).toEqual([]);
-    expect(woman.panel.h).toBeLessThan(man.panel.h);
-    expect(woman.experience.frame.y + woman.experience.frame.h).toBeLessThanOrEqual(
-      woman.panel.y + woman.panel.h,
-    );
+    expect(woman.work.frame.y + woman.work.frame.h).toBe(woman.panel.y + woman.panel.h);
   });
 
   it('keeps the four misc cells on one Ekwipunek line at every menu uiscale', () => {

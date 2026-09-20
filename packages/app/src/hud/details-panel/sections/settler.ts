@@ -53,7 +53,7 @@ export function drawSettler(
   if (layout.trade !== null && model.trade !== null) {
     drawTradeSection(chrome, layout.trade, model.trade, hoverAction, hoveredTrade, s);
   }
-  drawExperienceSection(chrome, layout, model, ui, s);
+  if (layout.experience !== null) drawExperienceSection(chrome, layout, layout.experience, model, ui, s);
   if (layout.equipment !== null) {
     drawEquipmentSection(chrome, layout, layout.equipment, model, ui, hoveredEquipAction, s);
   }
@@ -193,15 +193,13 @@ function workControlLabel(action: WorkControlAction, ui: UiString): string {
 function drawExperienceSection(
   chrome: Chrome,
   layout: SettlerLayout,
+  section: SectionRect,
   model: SettlerPanelModel,
   ui: UiString,
   s: number,
 ): void {
-  chrome.window(layout.experience.frame);
-  chrome.headline(
-    layout.experience.title,
-    ui('humanwindow', HUMANWINDOW.experience, messages().hud.experience),
-  );
+  chrome.window(section.frame);
+  chrome.headline(section.title, ui('humanwindow', HUMANWINDOW.experience, messages().hud.experience));
   layout.expRows.forEach((r, i) => {
     const row = model.experience[i];
     if (row !== undefined) {

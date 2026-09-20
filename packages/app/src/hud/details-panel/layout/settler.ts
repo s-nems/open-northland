@@ -90,7 +90,8 @@ export interface SettlerLayout {
   readonly workControls: readonly WorkControlRow[];
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
   readonly craftChoiceHits: readonly CraftChoiceHit[];
-  readonly experience: SectionRect;
+  /** Null when the model shows no Doświadczenie section. */
+  readonly experience: SectionRect | null;
   /** One row per trained specialization, then one per upcoming unlock. */
   readonly expRows: readonly Rect[];
   /** Null when the settler wears nothing by rule, so the section is not drawn. */
@@ -148,9 +149,12 @@ export function layoutSettler(
   const equipBodyH = equipRowLines(model.equipmentRows, slotsPerLine).reduce((a, b) => a + b, 0) * equipRowH;
 
   const hasEquipment = model.equipmentRows.length > 0;
-  const heights = [generalBodyH, workBodyH, expBodyH, ...(hasEquipment ? [equipBodyH] : [])].map(
-    (bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h,
-  );
+  const heights = [
+    generalBodyH,
+    workBodyH,
+    ...(model.showsExperience ? [expBodyH] : []),
+    ...(hasEquipment ? [equipBodyH] : []),
+  ].map((bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h);
   if (model.trade !== null) heights.push(sectionAt(0, 0, w, tradeBodyH, s).frame.h);
   const gaps = gap * (heights.length - 1);
   const panel = panelRect(heights.reduce((a, b) => a + b, 0) + gaps, screen, s);
@@ -223,13 +227,16 @@ export function layoutSettler(
 
   const trade = model.trade === null ? null : layoutTrade(model.trade, next(tradeBodyH), s);
 
-  const experience = next(expBodyH);
-  const expRows: Rect[] = Array.from({ length: expRowCount }, (_unused, i) => ({
-    x: experience.body.x,
-    y: experience.body.y + i * rowH,
-    w: experience.body.w,
-    h: rowH,
-  }));
+  const experience = model.showsExperience ? next(expBodyH) : null;
+  const expRows: Rect[] =
+    experience === null
+      ? []
+      : Array.from({ length: expRowCount }, (_unused, i) => ({
+          x: experience.body.x,
+          y: experience.body.y + i * rowH,
+          w: experience.body.w,
+          h: rowH,
+        }));
 
   const equipment = hasEquipment ? next(equipBodyH) : null;
   const { rects: equipRows, hits: equipActionHits } =
