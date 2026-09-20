@@ -32,6 +32,12 @@ export function creatureTribe(components: Readonly<Record<string, unknown>>): nu
   return typeof s?.tribe === 'number' ? s.tribe : undefined;
 }
 
+/** A person's current job from its plain-snapshot `Settler` component. */
+export function settlerJob(components: Readonly<Record<string, unknown>>): number | null | undefined {
+  const s = components.Settler as { jobType?: unknown } | undefined;
+  return s?.jobType === null || typeof s?.jobType === 'number' ? s.jobType : undefined;
+}
+
 /** Whether the creature is a person: a `Settler` carrying the `Person` marker, not wildlife. */
 export function isPerson(components: Readonly<Record<string, unknown>>): boolean {
   return components.Person !== undefined;

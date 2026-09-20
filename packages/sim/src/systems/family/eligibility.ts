@@ -22,7 +22,12 @@ import { isMinor } from './households.js';
  * The job `id` slugs that carry the female sex in `jobtypes.ini`. Matched by slug, not numeric id: a
  * synthetic fixture may reuse a low numeric id for an adult trade, and a slug cannot collide that way.
  */
-const FEMALE_JOB_IDS: ReadonlySet<string> = new Set(['baby_female', 'child_female', 'woman']);
+const FEMALE_JOB_IDS: ReadonlySet<string> = new Set([
+  'baby_female',
+  'child_female',
+  'woman',
+  'heroine_bow_xena',
+]);
 
 export function isFemaleJobId(id: string | undefined): boolean {
   return id !== undefined && FEMALE_JOB_IDS.has(id);

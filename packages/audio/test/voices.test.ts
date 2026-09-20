@@ -25,6 +25,7 @@ const bank: SoundBank = {
     { name: 'Viking male ok 01', sfx: [{ file: 'humantalk/m1ok01.wav', params: [80] }] },
     { name: 'Viking male ok 02', sfx: [{ file: 'humantalk/m2ok01.wav', params: [80] }] },
     { name: 'Viking female ok 01', sfx: [{ file: 'humantalk/f1ok01.wav', params: [80] }] },
+    { name: 'Viking female ok 02', sfx: [{ file: 'humantalk/f2ok01.wav', params: [80] }] },
     { name: 'Generic Viking Male', sfx: [{ file: 'generic/m 01.wav', params: [40] }] },
     { name: 'Generic Viking Children', sfx: [{ file: 'generic/c 01.wav', params: [40] }] },
     { name: 'Bear Sounds', sfx: [{ file: 'generic/bear01.wav', params: [80] }] },
@@ -40,7 +41,12 @@ const bank: SoundBank = {
       respondOk: ['Viking male ok 01', 'Viking male ok 02'],
       respondNo: [],
     },
-    { tribe: 1, voiceClass: 'female', respondOk: ['Viking female ok 01'], respondNo: [] },
+    {
+      tribe: 1,
+      voiceClass: 'female',
+      respondOk: ['Viking female ok 01', 'Viking female ok 02'],
+      respondNo: [],
+    },
     { tribe: 1, voiceClass: 'child', generic: 'Generic Viking Children', respondOk: [], respondNo: [] },
   ],
   animalCalls: [
@@ -48,7 +54,7 @@ const bank: SoundBank = {
     { tribe: 19, minCount: 3, probability: 10, group: 'Sheep Sounds' },
   ],
 };
-const index = buildSoundIndex(bank, [], []);
+const index = buildSoundIndex(bank, [], [], [{ typeId: 47, id: 'heroine_bow_xena' }]);
 const bindings = defaultBindings();
 
 const CANVAS_W = 800;
@@ -148,6 +154,39 @@ describe('order responses', () => {
     }
     // The same settler asked again answers with the same voice: id 2 is always pool 0.
     expect(direct({ responses: [2] })[0]?.files).toEqual(['humantalk/m1ok01.wav']);
+  });
+
+  it('gives every hero the first response recording rather than an entity-id-selected voice', () => {
+    // Byte evidence in owned `the original` `PlayRespondingSound` at an original address..an original address:
+    // load HumanArrayIndex, call `IsJobHero` (an original address), then conditionally move that index over zero.
+    // Job 47 is the heroine in readable `jobtypes.ini`.
+    const heroSnapshot: WorldSnapshot = {
+      tick: 10,
+      entities: [
+        {
+          id: 3,
+          components: {
+            Position: here,
+            Settler: { tribe: 1, jobType: 47 },
+            Person: person,
+            Female: { female: true },
+            Owner: { player: LOCAL },
+          },
+        },
+      ],
+      events: [],
+    };
+    const frame = directAudio({
+      events: [],
+      responses: [3],
+      snapshot: heroSnapshot,
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+    });
+    expect(frame.oneShots[0]?.files).toEqual(['humantalk/f1ok01.wav']);
   });
 
   it('pans an off-screen settler hard to its side instead of culling it', () => {

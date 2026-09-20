@@ -1,8 +1,10 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Marriage, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { populationModule } from '../../../src/systems/ai-player/index.js';
+import { aiContent } from '../../fixtures/ai-content.js';
 import {
   aiSim,
   ctxOf,
@@ -90,5 +92,39 @@ describe('population module (homeExpansion)', () => {
     expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([
       { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 2, infinite: false },
     ]);
+  });
+
+  it('does not count a heroine as daughter stock for a family slot', () => {
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      jobs: [...base.jobs, { typeId: 47, id: 'heroine_bow_xena' }],
+      buildings: base.buildings.map((building) =>
+        building.typeId === HOME_TYPE ? { ...building, homeSize: 1 } : building,
+      ),
+    });
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: 36,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 47, x: 8, y: 8, tribe: VIKING, owner: SEAT });
+    sim.step();
+
+    const counters = [...populationModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)].filter(
+      (command) => command.kind === 'setAssistantCounter',
+    );
+    expect(counters).toContainEqual({
+      kind: 'setAssistantCounter',
+      player: SEAT,
+      counter: 'extraWomen',
+      value: 1,
+      infinite: false,
+    });
   });
 });

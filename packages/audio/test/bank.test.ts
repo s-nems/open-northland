@@ -51,7 +51,11 @@ const terrainPatterns = [
 ] as unknown as TerrainPattern[];
 
 describe('buildSoundIndex', () => {
-  const index = buildSoundIndex(bank, gfxPatterns, terrainPatterns);
+  const index = buildSoundIndex(bank, gfxPatterns, terrainPatterns, [
+    { typeId: 42, id: 'hero_unarmed' },
+    { typeId: 47, id: 'heroine_bow_xena' },
+    { typeId: 6, id: 'civilist' },
+  ]);
 
   it('indexes static groups by lower-cased name and skips nameless groups', () => {
     expect(index.groupsByName.get('hammer wood')).toEqual(['static/hammer01.wav']);
@@ -92,5 +96,9 @@ describe('buildSoundIndex', () => {
     expect(index.humanVoices.get(5)?.get('male')?.scream).toBe('Weresnake Get Hit');
     expect(index.animalCalls.get(8)?.group).toBe('Bear Sounds');
     expect(index.animalCalls.get(9)).toBeUndefined();
+  });
+
+  it('indexes both hero and heroine job slugs for the authored hero response rule', () => {
+    expect(index.heroJobs).toEqual(new Set([42, 47]));
   });
 });

@@ -114,6 +114,35 @@ describe('mergeRealContent', () => {
     }
   });
 
+  it('binds the mis-keyed Byzantine and Egyptian hero fist to the unarmed hero job', () => {
+    const raw = rawRealLike();
+    const fist = raw.weapons.find((weapon) => weapon.mainType === 1);
+    if (fist === undefined) throw new Error('fixture: no fist weapon');
+    const rows = [3, 7].flatMap((tribeType) => [
+      { ...fist, typeId: 3, id: 'hero_fist', tribeType, jobType: 32, damage: { '0': 400 } },
+      { ...fist, typeId: 4, id: 'wooden_spear', tribeType, jobType: 32, damage: { '0': 500 } },
+    ]);
+    const realLike = parseContentSet({
+      ...raw,
+      jobs: [...raw.jobs, { typeId: 32, id: 'soldier_spear_wood' }, { typeId: 42, id: 'hero_unarmed' }],
+      weapons: [...raw.weapons, ...rows],
+    });
+
+    const { content } = mergeRealContent(realLike);
+
+    for (const tribeType of [3, 7]) {
+      const heroWeapon = content.weapons.find(
+        (weapon) => weapon.tribeType === tribeType && weapon.jobType === 42,
+      );
+      expect(heroWeapon?.id).toBe('hero_fist');
+      expect(heroWeapon?.damage['0']).toBeGreaterThan(0);
+      // Removing the stray binding exposes the following class row to the first-wins combat lookup.
+      expect(
+        content.weapons.find((weapon) => weapon.tribeType === tribeType && weapon.jobType === 32)?.id,
+      ).toBe('wooden_spear');
+    }
+  });
+
   it('pins the clean-room felling/mining balance into the zeroed gathering blocks', () => {
     const raw = rawRealLike();
     // Precondition: the stand-in ships dead gathering, like real ir.json.

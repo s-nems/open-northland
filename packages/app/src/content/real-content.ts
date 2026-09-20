@@ -103,6 +103,15 @@ function withHeroArmor(job: JobType): JobType {
   return fixedArmorType === undefined ? job : { ...job, fixedArmorType };
 }
 
+/** Repair the Byzantine and Egyptian `hero fist` rows whose readable `weapons.ini` anomalously binds job
+ * 32: the same named type-3 row with the same stats binds unarmed-hero job 42 for all three other playable
+ * tribes. This inferred correction keeps the raw pipeline faithful and closes the runtime join here. */
+function withHeroFistJob(weapon: WeaponType): WeaponType {
+  return weapon.id === 'hero_fist' && weapon.typeId === 3 && weapon.jobType === 32
+    ? { ...weapon, jobType: 42 }
+    : weapon;
+}
+
 /** Give WOOL the carcass-harvest atomic. In the source wool is purely a husbandry product (no harvest
  *  atomic, no gathering pipeline), so the hunter's wool-off-a-sheep-kill yield and this atomic are a
  *  named approximation mirroring leather/meat's extracted `atomicForHarvesting 33`. */
@@ -186,7 +195,7 @@ export function mergeRealContent(
   const tribes = real.tribes.map((t) =>
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
-  const weapons = real.weapons.map(withCivilianBowBalance);
+  const weapons = real.weapons.map((weapon) => withCivilianBowBalance(withHeroFistJob(weapon)));
   // Wool's pipeline row is leather's whole row re-keyed: the cadaver stage (landscape 79 / gfx 847), its
   // footprint, and the store-pile stage, so a wool heap draws the hide pile's decal. The same named
   // approximation as the harvest atomic.

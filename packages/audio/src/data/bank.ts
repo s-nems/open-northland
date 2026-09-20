@@ -31,6 +31,8 @@ export interface SoundIndex {
   readonly groundLogicTypeByTerrainType: ReadonlyMap<number, number>;
   /** Settler tribe → voice class → the groups that tribe's settlers of that class speak with. */
   readonly humanVoices: ReadonlyMap<number, ReadonlyMap<VoiceClass, HumanVoices>>;
+  /** Job ids whose authored slug identifies a hero; heroes always use response pool zero. */
+  readonly heroJobs: ReadonlySet<number>;
   /** Animal tribe → its unprompted call and the roll that gates it. */
   readonly animalCalls: ReadonlyMap<number, AnimalCall>;
 }
@@ -63,6 +65,7 @@ export function buildSoundIndex(
   sounds: SoundBank,
   gfxPatterns: readonly GfxPattern[],
   terrainPatterns: readonly TerrainPattern[],
+  jobs: readonly { readonly typeId?: number; readonly id?: string }[] = [],
 ): SoundIndex {
   const groupsByName = new Map<string, readonly string[]>();
   const groupsByLogicSoundType = new Map<number, readonly string[]>();
@@ -126,6 +129,10 @@ export function buildSoundIndex(
   }
   const animalCalls = new Map<number, AnimalCall>();
   for (const call of sounds.animalCalls) animalCalls.set(call.tribe, call);
+  const heroJobs = new Set<number>();
+  for (const job of jobs) {
+    if (job.typeId !== undefined && job.id?.startsWith('hero') === true) heroJobs.add(job.typeId);
+  }
 
   return {
     groupsByName,
@@ -135,6 +142,7 @@ export function buildSoundIndex(
     ambientByTerrainType,
     groundLogicTypeByTerrainType,
     humanVoices,
+    heroJobs,
     animalCalls,
   };
 }

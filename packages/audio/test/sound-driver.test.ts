@@ -35,6 +35,7 @@ const index: SoundIndex = {
   ambientByTerrainType: new Map([[1, ['Meadow Green']]]),
   groundLogicTypeByTerrainType: new Map(),
   humanVoices: new Map([[1, new Map<VoiceClass, HumanVoices>([['male', VIKING_MAN]])]]),
+  heroJobs: new Set(),
   animalCalls: new Map(),
 };
 

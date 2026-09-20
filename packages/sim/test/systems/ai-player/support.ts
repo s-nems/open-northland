@@ -103,8 +103,8 @@ export const RESOURCE_SPOTS = {
   iron: { x: 10, y: 26, good: IRON, harvest: IRON_HARVEST },
 } as const;
 
-export function aiSim(seed = 1): Simulation {
-  const sim = new Simulation({ seed, content: aiContent(), map: grassNodeMap(64, 32) });
+export function aiSim(seed = 1, content: ContentSet = aiContent()): Simulation {
+  const sim = new Simulation({ seed, content, map: grassNodeMap(64, 32) });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
   return sim;
 }

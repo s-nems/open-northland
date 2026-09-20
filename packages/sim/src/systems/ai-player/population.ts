@@ -5,12 +5,13 @@ import {
   Female,
   Marriage,
   Residence,
+  Settler,
 } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { isAdultSettler, mayMarry } from '../family/eligibility.js';
+import { isAdultSettler, isOnMission, mayMarry } from '../family/eligibility.js';
 import { familiesOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
@@ -63,7 +64,10 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   // Both breeding counters are absolute re-sets, issued only when the wanted state differs.
   let femaleStock = 0;
   for (const e of settlers) {
-    if (world.has(e, Female)) femaleStock++; // women, girls, and baby girls alike
+    const job = world.get(e, Settler).jobType;
+    // Women, girls and baby girls fill future family slots. Female mission units do not: their job
+    // permanently excludes them from family life, just as it excludes them from `singleWomen` above.
+    if (world.has(e, Female) && !isOnMission(ctx.content, job)) femaleStock++;
     // A pending non-assistant daughter order still becomes a female; an assistant-booked order is
     // already accounted inside the counter itself.
     if (world.tryGet(e, ChildOrder)?.child === 'female' && !world.has(e, AssistantChildOrder)) femaleStock++;

@@ -28,6 +28,7 @@ function ageClassContent(): ContentSet {
       { typeId: 2, id: 'baby_male' },
       { typeId: 3, id: 'child_female' },
       { typeId: 4, id: 'child_male' },
+      { typeId: 47, id: 'heroine_bow_xena' },
     ],
     buildings: [],
   });
@@ -65,6 +66,14 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     const adult = createSettler(world, collidingContent(), new Rng(1), spec(1)); // woodcutter
     if (adult === null) throw new Error('spawn failed');
     expect(world.has(adult, Age)).toBe(false);
+  });
+
+  it('stamps the female marker on the heroine so her voice and hit reactions use the female pools', () => {
+    const world = new World();
+    const heroine = createSettler(world, ageClassContent(), new Rng(1), spec(47));
+    if (heroine === null) throw new Error('spawn failed');
+    expect(world.has(heroine, Female)).toBe(true);
+    expect(world.has(heroine, Age)).toBe(false);
   });
 
   it('a map-spawned girl grows into the adult woman role after her remaining childhood', () => {
