@@ -68,7 +68,6 @@ export const enGame = {
       collector_gold: 'Gold Gatherer',
       collector_mushroom: 'Mushroom Gatherer',
       farmer_wheat: 'Wheat Farmer',
-      herb_mushroom: 'Herbalist - Mushrooms',
       herb_herb: 'Herbalist - Herbs',
     },
     noWorkplace: 'No workplace',

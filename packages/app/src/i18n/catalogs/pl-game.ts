@@ -68,7 +68,6 @@ export const plGame = {
       collector_gold: 'Zbieracz Złota',
       collector_mushroom: 'Zbieracz Grzybów',
       farmer_wheat: 'Farmer Pszenicy',
-      herb_mushroom: 'Zielarz - Grzyby',
       herb_herb: 'Zielarz - Zioła',
     },
     noWorkplace: 'Brak miejsca pracy',

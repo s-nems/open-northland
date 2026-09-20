@@ -40,7 +40,7 @@ export {
   iniBytesToSections,
   parseIniSections,
 } from './ini/grammar.js';
-export { makeSource, normalizeAssetPath, type SourceRef } from './ini/ir-fields.js';
+export { makeSource, normalizeAssetPath, type SourceRef, slug } from './ini/ir-fields.js';
 export { extractMusicType } from './ini/map-music.js';
 export { extractMapScript } from './ini/map-script.js';
 export { extractMapTypes, type MapTypeHeader } from './ini/map-type.js';

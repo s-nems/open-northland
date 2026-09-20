@@ -51,6 +51,31 @@ two good slots and its loader stops filling once both are set, so a longer `good
 ids. The three druid potion records use the second slot to share one track between a small and a large
 potion.
 
+### CulturesNation experience corrections
+
+The original files each record under the `job` it names and never consults `jobEnablesGood`, so a
+product moved to another workshop silently trains and reads its new profession's general track. Three
+records CulturesNation moved and one it superseded are corrected during content conversion, confirmed
+with the mod's authors as authoring mistakes. Each keeps its `type` id, so no requirement row and no
+saved experience bucket moves.
+
+| Record | Ships as | Converted to |
+| --- | --- | --- |
+| 29 | smith iron tool (job 13, good 32) | carpenter iron tool (job 9) |
+| 20 | armorer balista (job 10, good 63) | carpenter catapult (job 9) |
+| 12 | carpenter wooden spear (job 9, good 39) | armorer wooden spear (job 10) |
+| 55 | herb mushroom (job 29, good 14) | dropped |
+
+`jobEnablesGood` and the `houses.ini` recipes agree on the new owners: the joinery makes both tool
+goods, the armoury the wooden spear. Record 55 is dropped rather than re-owned because the collector's
+own `collector mushroom` record already specializes that pairing, and no `needfor*` row names 55.
+
+Conversion applies a correction only while the record still matches what the mod ships, then fails the
+content build when any surviving specialization names a profession the tribe table does not enable for
+its good, or when two records claim the same profession and good. Products that deliberately fall back
+to a general track remain: the hunter's hide, meat and prey, the fisher's and sea fisher's fish, and
+the coiner's six amulets.
+
 Saved experience uses a factor-scaled encoding: one counted action contributes its track's
 `experienceFactor`. Requirement readers divide by that factor. This encoding is an internal
 representation, not a claim about the original's in-memory values. Work counters cap at 10,000 counted
