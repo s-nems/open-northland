@@ -34,7 +34,9 @@ import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { mapFingerprint } from './inspect/map-fingerprint.js';
 import {
+  type HomeQualityPolicyView,
   type HomeQualityView,
+  homeQualityPolicyView,
   homeQualityView,
   takeSnapshot,
   type WorldSnapshot,
@@ -166,6 +168,10 @@ export class Simulation {
   /** Detached household-quality pools for a home, or null before it has received a household good. */
   homeQuality(home: Entity): HomeQualityView | null {
     return homeQualityView(this.snapshot(), home);
+  }
+
+  homeQualityPolicy(home: Entity): HomeQualityPolicyView | null {
+    return homeQualityPolicyView(this.snapshot(), home);
   }
 
   landscapeEdits(): LandscapeEditView {

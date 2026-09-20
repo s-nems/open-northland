@@ -344,6 +344,7 @@ describe('selection details panel model', () => {
           components: {
             Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
             HomeQuality: { ...quality, piety: 0 },
+            HomeQualityPolicy: { cooking: true, rest: false, piety: false },
           },
         }),
       ]),
@@ -352,6 +353,27 @@ describe('selection details panel model', () => {
     );
     if (dry.kind !== 'building') throw new Error('expected a building panel');
     expect(dry.homeQuality.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
+    expect(dry.homeQuality.find((row) => row.effect === 'rest')?.allowed).toBe(false);
+
+    const retainedOil = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_HOME_02, {
+          components: {
+            Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
+            HomeQuality: quality,
+            HomeQualityPolicy: { cooking: true, rest: true, piety: false },
+          },
+        }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (retainedOil.kind !== 'building') throw new Error('expected a building panel');
+    expect(retainedOil.homeQuality.find((row) => row.effect === 'piety')).toMatchObject({
+      value: 2000,
+      allowed: false,
+      holyFireActive: false,
+    });
 
     const site = buildUnitPanelModel(
       snapshotOf([

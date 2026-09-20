@@ -11,6 +11,11 @@ export interface PanelClickActions {
   readonly onDemolishSignpost: (entityId: number) => void;
   /** Raise or lower the alarm on the selected garrison building - the Obrona window's shield toggle. */
   readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
+  readonly onSetHomeQualityUse: (
+    entityId: number,
+    effect: 'cooking' | 'rest' | 'piety',
+    allowed: boolean,
+  ) => void;
   /** Enter "assign a workplace" pick mode for the selected settler. */
   readonly onAssignWorkplace?: (settlerId: number) => void;
   /** Take the selected settler off its workplace at once, with no pick mode. */
@@ -72,6 +77,9 @@ export function applyPanelClick(
       return;
     case 'setDefenceMode':
       actions.onSetDefenceMode(click.entityId, click.enabled);
+      return;
+    case 'setHomeQualityUse':
+      actions.onSetHomeQualityUse(click.entityId, click.effect, click.allowed);
       return;
     case 'demolishSignpost':
       actions.onDemolishSignpost(click.entityId);

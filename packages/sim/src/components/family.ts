@@ -62,6 +62,13 @@ export const HomeQuality = defineComponent<{
   piety: number;
 }>('HomeQuality', 'settlers');
 
+/** Per-home permission to consume each durable quality pool. Absent means every use is allowed. */
+export const HomeQualityPolicy = defineComponent<{
+  cooking: boolean;
+  rest: boolean;
+  piety: boolean;
+}>('HomeQualityPolicy', 'settlers');
+
 /**
  * A home where a resident couple is currently making love - both parents inside, hearts over the house (the
  * original's `HOUSE_ACTION_OVERLAY_TYPE_MAKE_LOVE = 2` overlay and `PARTICEL_EFFECT_HOUSE_BASE_POINT` in

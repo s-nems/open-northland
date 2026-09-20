@@ -1,4 +1,10 @@
-import { entityById, homeQualityView, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  entityById,
+  homeQualityPolicyView,
+  homeQualityView,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { JOB_IDLE } from '../../../catalog/jobs.js';
 import { characterName } from '../../../game/character-names/index.js';
@@ -168,6 +174,7 @@ export function buildUnitPanelModel(
     const level = num(b.level) ?? 0;
     const finished = ent.components.UnderConstruction === undefined && pct(num(b.built)) >= 100;
     const pools = homeQualityView(snapshot, entityId) ?? { cooking: 0, rest: 0, piety: 0 };
+    const policy = homeQualityPolicyView(snapshot, entityId) ?? { cooking: true, rest: true, piety: true };
     const effectOrder = { cooking: 0, rest: 1, piety: 2 } as const;
     const homeQuality =
       def?.kind === 'home' && finished
@@ -183,8 +190,9 @@ export function buildUnitPanelModel(
                   label: goodLabel(ctx, good.typeId),
                   value,
                   capacity: use.capacity,
+                  allowed: policy[use.effect],
                   ...(use.effect === 'piety'
-                    ? { holyFireActive: value > 0 }
+                    ? { holyFireActive: value > 0 && policy.piety }
                     : { uses: Math.floor(value / use.useCost) }),
                 },
               ];

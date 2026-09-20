@@ -8,6 +8,8 @@ type BuildingModel = Extract<UnitPanelModel, { kind: 'building' }>;
 
 /** A stock cell row (icon + amount plate) - ≈22 px in the original. */
 export const STOCK_ROW_H = 22;
+/** Two text lines plus one compact policy button. */
+export const HOME_QUALITY_ROW_H = 30;
 /** Height of the stock body's category-tab strip, matching the decoded tab plate. */
 const STOCK_TAB_H = 18;
 /** Gap under the tab strip before the first stock row. */
@@ -52,6 +54,9 @@ export type ButtonAction =
   | 'workers'
   | 'help'
   | 'toggle-defence'
+  | 'toggle-home-cooking'
+  | 'toggle-home-rest'
+  | 'toggle-home-piety'
   | 'assign-workplace'
   | 'unassign-workplace'
   | 'assign-home'
@@ -95,11 +100,20 @@ export interface BuildingLayout {
   readonly workers: SectionRect;
   /** Household durability pools, only for a finished home with configured household goods. */
   readonly homeQuality: SectionRect | null;
-  readonly homeQualityRows: readonly Rect[];
+  readonly homeQualityRows: readonly HomeQualityLayoutRow[];
   /** The trade agreements window, only for a house that offers any. */
   readonly offers: SectionRect | null;
   readonly offerRows: readonly Rect[];
 }
+
+export interface HomeQualityLayoutRow {
+  readonly effect: 'cooking' | 'rest' | 'piety';
+  readonly text: Rect;
+  readonly button: ButtonHit;
+}
+
+const homeQualityAction = (effect: HomeQualityLayoutRow['effect']): ButtonAction =>
+  effect === 'cooking' ? 'toggle-home-cooking' : effect === 'rest' ? 'toggle-home-rest' : 'toggle-home-piety';
 
 /**
  * The stock body's cell rects (icon + amount plate together), column-major: the left column top→bottom,
@@ -186,7 +200,7 @@ export function layoutBuilding(
     (stockCompact ? 0 : Math.round(STOCK_TAB_H * s) + Math.round(STOCK_TAB_GAP * s)) +
     stockRows * Math.round(STOCK_ROW_H * s);
   const workersBodyH = MAX_WORKER_ROWS * Math.round(ROW_H * s);
-  const homeQualityBodyH = model.homeQuality.length * Math.round(ROW_H * s);
+  const homeQualityBodyH = model.homeQuality.length * Math.round(HOME_QUALITY_ROW_H * s);
   const offersBodyH = model.tradeOffers.length * Math.round(ROW_H * s);
 
   const heights = [
@@ -195,8 +209,8 @@ export function layoutBuilding(
     showDefence ? sectionAt(0, 0, w, defenceBodyH, s).frame.h : 0,
     showProduction ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
     stockRowCount > 0 ? sectionAt(0, 0, w, stockBodyH, s).frame.h : 0,
-    sectionAt(0, 0, w, workersBodyH, s).frame.h,
     homeQualityBodyH > 0 ? sectionAt(0, 0, w, homeQualityBodyH, s).frame.h : 0,
+    sectionAt(0, 0, w, workersBodyH, s).frame.h,
     offersBodyH > 0 ? sectionAt(0, 0, w, offersBodyH, s).frame.h : 0,
   ];
   const gaps = gap * (heights.filter((h) => h > 0).length - 1);
@@ -260,17 +274,36 @@ export function layoutBuilding(
     };
     stockTabHits = stockTabRects(stockTabStrip, s, DETAILS_STOCK_TAB_COUNT);
   }
-  const workers = next(workersBodyH);
   const homeQuality = homeQualityBodyH > 0 ? next(homeQualityBodyH) : null;
-  const homeQualityRows: Rect[] =
+  const homeQualityRows: HomeQualityLayoutRow[] =
     homeQuality === null
       ? []
-      : model.homeQuality.map((_, i) => ({
-          x: homeQuality.body.x,
-          y: homeQuality.body.y + i * Math.round(ROW_H * s),
-          w: homeQuality.body.w,
-          h: Math.round(ROW_H * s),
-        }));
+      : model.homeQuality.map((quality, i) => {
+          const rowH = Math.round(HOME_QUALITY_ROW_H * s);
+          const buttonW = Math.round(62 * s);
+          const gap = Math.round(4 * s);
+          const row: Rect = {
+            x: homeQuality.body.x,
+            y: homeQuality.body.y + i * rowH,
+            w: homeQuality.body.w,
+            h: rowH,
+          };
+          return {
+            effect: quality.effect,
+            text: { ...row, w: row.w - buttonW - gap },
+            button: {
+              action: homeQualityAction(quality.effect),
+              enabled: true,
+              rect: {
+                x: row.x + row.w - buttonW,
+                y: row.y + Math.round((row.h - 16 * s) / 2),
+                w: buttonW,
+                h: Math.round(16 * s),
+              },
+            },
+          };
+        });
+  const workers = next(workersBodyH);
   const offers = offersBodyH > 0 ? next(offersBodyH) : null;
   const offerRows: Rect[] =
     offers === null

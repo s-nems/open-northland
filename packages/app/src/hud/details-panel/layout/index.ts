@@ -10,6 +10,7 @@ export {
   type ButtonAction,
   type ButtonHit,
   DEFENCE_LABEL_GAP,
+  HOME_QUALITY_ROW_H,
   layoutBuilding,
   MAX_STOCK_ROWS,
   PREVIEW_INSET,
@@ -89,7 +90,11 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       stockTabHits: layout.stockTabHits.map(fn),
       workers: sec(layout.workers),
       homeQuality: layout.homeQuality ? sec(layout.homeQuality) : null,
-      homeQualityRows: layout.homeQualityRows.map(fn),
+      homeQualityRows: layout.homeQualityRows.map((row) => ({
+        ...row,
+        text: fn(row.text),
+        button: { ...row.button, rect: fn(row.button.rect) },
+      })),
       offers: layout.offers ? sec(layout.offers) : null,
       offerRows: layout.offerRows.map(fn),
     };

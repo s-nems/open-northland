@@ -68,7 +68,9 @@ export {
 export {
   type EntitySnapshot,
   entityById,
+  type HomeQualityPolicyView,
   type HomeQualityView,
+  homeQualityPolicyView,
   homeQualityView,
   takeSnapshot,
   type WorldSnapshot,

@@ -20,6 +20,7 @@ export interface HomeQualityRow {
   readonly label: string;
   readonly value: number;
   readonly capacity: number;
+  readonly allowed: boolean;
   /** Remaining household actions; omitted for holy oil, whose pool drains continuously. */
   readonly uses?: number;
   /** Only the holy-oil row carries this live finished-home status. */

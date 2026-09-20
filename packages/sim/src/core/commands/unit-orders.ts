@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@open-northland/data';
+import type { EquipCategory, HomeQualityEffect } from '@open-northland/data';
 import type { NeedKind } from '../../components/needs.js';
 import type { Entity } from '../../ecs/world.js';
 import type { Command } from './index.js';
@@ -273,6 +273,13 @@ export type UnitOrderCommand =
       readonly kind: 'setDefenceMode';
       readonly building: Entity;
       readonly enabled: boolean;
+    }
+  | {
+      /** Allow or forbid consumption of one durable household quality in an owned finished home. */
+      readonly kind: 'setHomeQualityUse';
+      readonly home: Entity;
+      readonly effect: HomeQualityEffect;
+      readonly allowed: boolean;
     };
 
 /**

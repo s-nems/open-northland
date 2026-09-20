@@ -217,6 +217,34 @@ describe('details panel click intents', () => {
     });
   });
 
+  it('resolves each home-equipment button into the inverse use policy', () => {
+    const allowed = viewOfKind(panelModelOf(buildingEntity(5, BUILDING_HOME_00)), 'building');
+    const cooking = allowed.layout.homeQualityRows.find((row) => row.effect === 'cooking');
+    if (cooking === undefined) throw new Error('expected a crockery policy button');
+    const p = center(cooking.button.rect);
+    expect(panelClickAt(allowed, p.x, p.y, NO_TOGGLE)).toEqual({
+      kind: 'setHomeQualityUse',
+      entityId: 5,
+      effect: 'cooking',
+      allowed: false,
+    });
+
+    const forbidden = viewOfKind(
+      panelModelOf(
+        buildingEntity(5, BUILDING_HOME_00, {
+          components: { HomeQualityPolicy: { cooking: false, rest: true, piety: true } },
+        }),
+      ),
+      'building',
+    );
+    expect(panelClickAt(forbidden, p.x, p.y, NO_TOGGLE)).toEqual({
+      kind: 'setHomeQualityUse',
+      entityId: 5,
+      effect: 'cooking',
+      allowed: true,
+    });
+  });
+
   it('resolves nothing for a disabled button or a point on inert chrome', () => {
     const view = viewOfKind(panelModelOf(buildingEntity(1, BUILDING_HEADQUARTERS)), 'building');
     const help = view.layout.buttons.find((b) => b.action === 'help');

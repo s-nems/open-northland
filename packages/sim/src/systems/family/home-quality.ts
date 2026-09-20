@@ -1,5 +1,12 @@
 import type { HomeQualityEffect, HomeQualityUse } from '@open-northland/data';
-import { Building, HomeQuality, ownerOf, Residence, Settler } from '../../components/index.js';
+import {
+  Building,
+  HomeQuality,
+  HomeQualityPolicy,
+  ownerOf,
+  Residence,
+  Settler,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
@@ -30,6 +37,10 @@ export function homeQualityValue(world: World, home: Entity, effect: HomeQuality
   return world.tryGet(home, HomeQuality)?.[effect] ?? 0;
 }
 
+export function homeQualityAllowed(world: World, home: Entity, effect: HomeQualityEffect): boolean {
+  return world.tryGet(home, HomeQualityPolicy)?.[effect] ?? true;
+}
+
 /** Whether a finished home may currently use this quality role. */
 export function homeQualityActive(
   world: World,
@@ -44,6 +55,7 @@ export function homeQualityActive(
   return (
     type?.kind === 'home' &&
     building.level >= policy.minimumHomeLevel &&
+    homeQualityAllowed(world, home, effect) &&
     homeQualityValue(world, home, effect) > 0
   );
 }
@@ -56,6 +68,7 @@ export function spendHomeQuality(
   effect: HomeQualityEffect,
   amount: number,
 ): boolean {
+  if (!homeQualityAllowed(world, home, effect)) return false;
   const quality = world.tryGet(home, HomeQuality);
   if (quality === undefined || quality[effect] < amount) return false;
   world.mut(home, HomeQuality)[effect] -= amount;
@@ -74,7 +87,13 @@ export function depositHomeQuality(
   if (building === undefined || amount <= 0) return 0;
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
   const use = homeQualityUse(ctx, goodType);
-  if (type?.kind !== 'home' || use === undefined || building.level < use.minimumHomeLevel) return 0;
+  if (
+    type?.kind !== 'home' ||
+    use === undefined ||
+    building.level < use.minimumHomeLevel ||
+    !homeQualityAllowed(world, home, use.effect)
+  )
+    return 0;
 
   const existing = world.tryGet(home, HomeQuality) ?? EMPTY_QUALITY;
   if (existing[use.effect] >= use.capacity) return 0;
@@ -107,7 +126,12 @@ export function demandedHomeQualityGoods(
   const out = new Set<number>();
   for (const good of ctx.content.goods) {
     const use = good.homeQuality;
-    if (use === undefined || homeQualityValue(world, home, use.effect) >= use.fetchBelow) continue;
+    if (
+      use === undefined ||
+      !homeQualityAllowed(world, home, use.effect) ||
+      homeQualityValue(world, home, use.effect) >= use.fetchBelow
+    )
+      continue;
     // Oil starts serving the mature home. The source field is only structurally identified as house
     // level, so the threshold is content-owned beside the rest of the policy.
     if (level < use.minimumHomeLevel) continue;
@@ -124,6 +148,34 @@ export function occupiedHome(world: World, settler: Entity): Entity | null {
 }
 
 const EMPTY_GOODS: ReadonlySet<number> = new Set<number>();
+
+/**
+ * Toggle one finished home's use policy. The original flag blocks demand and delivery only; the player-facing
+ * control intentionally also pauses consumption and effects while preserving the stored pool.
+ */
+export function setHomeQualityUse(
+  world: World,
+  ctx: SystemContext,
+  command: { readonly home: Entity; readonly effect: HomeQualityEffect; readonly allowed: boolean },
+): void {
+  const building = world.tryGet(command.home, Building);
+  if (building === undefined || building.built < ONE) return;
+  const type = contentIndex(ctx.content).buildings.get(building.buildingType);
+  const policy = homeQualityUseFor(ctx, command.effect);
+  if (type?.kind !== 'home' || policy === undefined || building.level < policy.minimumHomeLevel) return;
+
+  const current = world.tryGet(command.home, HomeQualityPolicy) ?? DEFAULT_POLICY;
+  if (current[command.effect] === command.allowed) return;
+  const next = { ...current, [command.effect]: command.allowed };
+  if (next.cooking && next.rest && next.piety) world.remove(command.home, HomeQualityPolicy);
+  else world.add(command.home, HomeQualityPolicy, next);
+}
+
+const DEFAULT_POLICY: Readonly<Record<HomeQualityEffect, boolean>> = {
+  cooking: true,
+  rest: true,
+  piety: true,
+};
 
 /** Burn the sacred fire once per game second in every eligible finished home. A remainder smaller than
  * one use stays in the pool, matching an original routine. */

@@ -85,6 +85,8 @@ export async function createUnitChrome(
       onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
       onSetDefenceMode: (id, enabled) =>
         opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
+      onSetHomeQualityUse: (id, effect, allowed) =>
+        opts.enqueue({ kind: 'setHomeQualityUse', home: id as Entity, effect, allowed }),
       onAssignWorkplace: callbacks.assignWorkplace,
       onAssignHome: callbacks.assignHome,
       onUnassignWorkplace: (id) => opts.enqueue({ kind: 'unassignWorker', entity: id as Entity }),

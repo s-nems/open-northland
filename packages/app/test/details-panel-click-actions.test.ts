@@ -24,6 +24,7 @@ function requiredActions(calls: Call[]): PanelClickActions {
     onCancelUpgrade: record('onCancelUpgrade'),
     onDemolishSignpost: record('onDemolishSignpost'),
     onSetDefenceMode: record('onSetDefenceMode'),
+    onSetHomeQualityUse: record('onSetHomeQualityUse'),
     onSetGatherGood: record('onSetGatherGood'),
     onSetCraftGoods: record('onSetCraftGoods'),
     onCenterOnEntity: record('onCenterOnEntity'),
@@ -53,6 +54,10 @@ const ROUTES: readonly (readonly [PanelClick, Call])[] = [
   [{ kind: 'cancelUpgrade', entityId: ENTITY }, ['onCancelUpgrade', ENTITY]],
   [{ kind: 'demolish', entityId: ENTITY }, ['onDemolish', ENTITY]],
   [{ kind: 'setDefenceMode', entityId: ENTITY, enabled: true }, ['onSetDefenceMode', ENTITY, true]],
+  [
+    { kind: 'setHomeQualityUse', entityId: ENTITY, effect: 'cooking', allowed: false },
+    ['onSetHomeQualityUse', ENTITY, 'cooking', false],
+  ],
   [{ kind: 'demolishSignpost', entityId: ENTITY }, ['onDemolishSignpost', ENTITY]],
   [{ kind: 'assignWorkplace', entityId: ENTITY }, ['onAssignWorkplace', ENTITY]],
   [{ kind: 'unassignWorkplace', entityId: ENTITY }, ['onUnassignWorkplace', ENTITY]],

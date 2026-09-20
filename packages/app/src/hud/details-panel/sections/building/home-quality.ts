@@ -1,6 +1,6 @@
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import type { Chrome } from '../../chrome.js';
-import { type BuildingLayout, ROW_TEXT_PAD } from '../../layout/index.js';
+import type { BuildingLayout, ButtonAction } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
 
 /** Household wares show their remaining activity charges; holy oil drains continuously and instead
@@ -9,6 +9,7 @@ export function drawHomeQualitySection(
   chrome: Chrome,
   layout: BuildingLayout,
   model: BuildingPanelModel,
+  hover: ButtonAction | null,
   s: number,
 ): void {
   if (layout.homeQuality === null) return;
@@ -24,6 +25,17 @@ export function drawHomeQualitySection(
         : quality.holyFireActive
           ? messages().hud.holyFireActive
           : messages().hud.holyFireInactive;
-    chrome.textAt(`${quality.label}: ${percent}% · ${status}`, row.x, row.y + ROW_TEXT_PAD * s, 'white');
+    chrome.textAt(`${quality.label}: ${percent}% · ${status}`, row.text.x, row.text.y + 2 * s, 'white');
+    chrome.textAt(
+      quality.allowed ? messages().hud.homeUseAllowed : messages().hud.homeUseForbidden,
+      row.text.x,
+      row.text.y + 15 * s,
+      'white',
+    );
+    chrome.button(
+      row.button,
+      quality.allowed ? messages().hud.homeForbidUse : messages().hud.homeAllowUse,
+      hover === row.button.action,
+    );
   });
 }

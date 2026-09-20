@@ -26,6 +26,12 @@ export type PanelClick =
   | { readonly kind: 'cancelUpgrade'; readonly entityId: number }
   | { readonly kind: 'demolish'; readonly entityId: number }
   | { readonly kind: 'setDefenceMode'; readonly entityId: number; readonly enabled: boolean }
+  | {
+      readonly kind: 'setHomeQualityUse';
+      readonly entityId: number;
+      readonly effect: 'cooking' | 'rest' | 'piety';
+      readonly allowed: boolean;
+    }
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'assignWorkplace'; readonly entityId: number }
   | { readonly kind: 'unassignWorkplace'; readonly entityId: number }
@@ -94,6 +100,20 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
       if (action === 'center') return { kind: 'centerOnEntity', entityId };
       if (action === 'toggle-defence') {
         return { kind: 'setDefenceMode', entityId, enabled: !view.model.defenseEnabled };
+      }
+      const homeEffect =
+        action === 'toggle-home-cooking'
+          ? 'cooking'
+          : action === 'toggle-home-rest'
+            ? 'rest'
+            : action === 'toggle-home-piety'
+              ? 'piety'
+              : null;
+      if (homeEffect !== null) {
+        const row = view.model.homeQuality.find((quality) => quality.effect === homeEffect);
+        return row === undefined
+          ? null
+          : { kind: 'setHomeQualityUse', entityId, effect: homeEffect, allowed: !row.allowed };
       }
       return action === 'demolish' ? { kind: 'demolish', entityId } : null;
     }

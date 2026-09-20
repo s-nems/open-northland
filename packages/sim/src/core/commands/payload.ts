@@ -1,4 +1,4 @@
-import { EQUIP_CATEGORIES } from '@open-northland/data';
+import { EQUIP_CATEGORIES, HomeQualityEffect } from '@open-northland/data';
 import { AI_MODULE_IDS } from '../../components/ai-player.js';
 import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import type { NeedKind } from '../../components/needs.js';
@@ -164,6 +164,13 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setDiplomacy: { required: { from: 'integer', to: 'integer', state: { oneOf: DIPLOMACY_STATES } } },
   setFogMode: { required: { mode: 'integer' } },
   setGatherGood: { required: { entity: 'integer', goodType: { nullOr: 'integer' } } },
+  setHomeQualityUse: {
+    required: {
+      home: 'integer',
+      effect: { oneOf: HomeQualityEffect.options },
+      allowed: 'boolean',
+    },
+  },
   setJob: { required: { entity: 'integer', jobType: 'integer' } },
   setMatchParticipants: {
     required: { players: { arrayOf: 'integer' } },

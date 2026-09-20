@@ -26,7 +26,7 @@ export function drawBuilding(
   drawDefenceSection(chrome, layout, model, ui, hover, s);
   drawProductionSection(chrome, layout, model, s);
   drawStockSection(chrome, layout, model, ui, activeTab, s);
+  drawHomeQualitySection(chrome, layout, model, hover, s);
   drawWorkersSection(chrome, layout, model, ui, s);
-  drawHomeQualitySection(chrome, layout, model, s);
   drawOffersSection(chrome, layout, model, s);
 }

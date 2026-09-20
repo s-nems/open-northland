@@ -79,6 +79,7 @@ function assetTargetOf(command: PlayerCommand): Entity | undefined {
   if ('building' in command) return command.building;
   if ('site' in command) return command.site;
   if ('house' in command) return command.house;
+  if ('home' in command) return command.home;
   if ('signpost' in command) return command.signpost;
   return undefined;
 }

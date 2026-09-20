@@ -10,7 +10,7 @@ import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { deliverHome, fetchFrom } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
-import { demandedHomeQualityGoods, homeQualityUse } from './home-quality.js';
+import { demandedHomeQualityGoods, homeQualityAllowed, homeQualityUse } from './home-quality.js';
 import { builtHomeType, storedFoodUnits } from './households.js';
 import type { ExternalQualityIndex } from './quality-search.js';
 
@@ -50,8 +50,12 @@ export function planWomanHoard(
   const hereNode = nodeOfPosition(p.x, p.y);
   const load = world.tryGet(e, Carrying);
   if (load !== undefined && load.amount > 0) {
-    if (!isFood(ctx, load.goodType) && homeQualityUse(ctx, load.goodType) === undefined) {
-      startDrop(world, ctx, e); // free her hands of a non-food load first
+    const quality = homeQualityUse(ctx, load.goodType);
+    if (
+      (!isFood(ctx, load.goodType) && quality === undefined) ||
+      (quality !== undefined && !homeQualityAllowed(world, home, quality.effect))
+    ) {
+      startDrop(world, ctx, e); // free her hands without consuming a forbidden in-flight household good
       return true;
     }
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);

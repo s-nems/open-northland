@@ -5,6 +5,7 @@ import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
+  BUILDING_HOME_02,
   GOOD_MEAD,
   GOOD_SHOES,
   GOOD_STONE,
@@ -349,6 +350,32 @@ describe('details panel layout', () => {
       // The section sets the status text on the toggle's own centre line, so the pair is level by
       // construction; what the layout owes is a toggle centred in the row (within the integer-px round).
       expect(Math.abs(toggle.y + toggle.h / 2 - (body.y + body.h / 2)), at).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('places three compact home-equipment controls above residents without text overlap', () => {
+    const model = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_HOME_02, {
+          components: {
+            Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
+          },
+        }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    for (const s of SWEEP_UISCALES) {
+      const layout = viewOfKind(model, 'building', s).layout;
+      const section = layout.homeQuality;
+      if (section === null) throw new Error('expected the home equipment section');
+      expect(layout.homeQualityRows).toHaveLength(3);
+      expect(section.frame.y + section.frame.h).toBeLessThanOrEqual(layout.workers.frame.y);
+      for (const row of layout.homeQualityRows) {
+        expect(row.text.x + row.text.w).toBeLessThanOrEqual(row.button.rect.x);
+        expect(row.button.rect.x + row.button.rect.w).toBeLessThanOrEqual(section.body.x + section.body.w);
+        expect(row.button.rect.y + row.button.rect.h).toBeLessThanOrEqual(section.body.y + section.body.h);
+      }
     }
   });
 

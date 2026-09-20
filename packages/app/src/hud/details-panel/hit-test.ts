@@ -21,9 +21,11 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
     case 'building':
       // The defence toggle lives inside the defence window, not the general button column, so it
       // carries its own layout slot and joins the routing list here.
-      return view.layout.defenceToggle === null
-        ? view.layout.buttons
-        : [...view.layout.buttons, view.layout.defenceToggle];
+      return [
+        ...view.layout.buttons,
+        ...(view.layout.defenceToggle === null ? [] : [view.layout.defenceToggle]),
+        ...view.layout.homeQualityRows.map((row) => row.button),
+      ];
     case 'settler':
       return [...view.layout.workControls.map((c) => c.button), ...tradeButtons(view.layout.trade)];
     case 'signpost':

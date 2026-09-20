@@ -28,12 +28,30 @@ export interface HomeQualityView {
   readonly piety: number;
 }
 
+export interface HomeQualityPolicyView {
+  readonly cooking: boolean;
+  readonly rest: boolean;
+  readonly piety: boolean;
+}
+
 /** Decode one home's detached quality pools from a snapshot. */
 export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQualityView | null {
   const raw = entityById(snapshot, home)?.components.HomeQuality;
   if (!isPlainRecord(raw)) return null;
   const { cooking, rest, piety } = raw;
   if (typeof cooking !== 'number' || typeof rest !== 'number' || typeof piety !== 'number') return null;
+  return { cooking, rest, piety };
+}
+
+/** Decode one home's use policy. An absent policy is the default-allowed state. */
+export function homeQualityPolicyView(snapshot: WorldSnapshot, home: number): HomeQualityPolicyView | null {
+  const entity = entityById(snapshot, home);
+  if (entity === undefined) return null;
+  const raw = entity.components.HomeQualityPolicy;
+  if (raw === undefined) return { cooking: true, rest: true, piety: true };
+  if (!isPlainRecord(raw)) return null;
+  const { cooking, rest, piety } = raw;
+  if (typeof cooking !== 'boolean' || typeof rest !== 'boolean' || typeof piety !== 'boolean') return null;
   return { cooking, rest, piety };
 }
 
