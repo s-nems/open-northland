@@ -19,9 +19,9 @@ function slot(player: number, hidden = false): MapsIndexPlayerSlot {
 describe('map filter tabs', () => {
   it('keeps every live filter clickable and parks the coming-soon modes next to "all"', () => {
     const filters = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'filter' ? [tab.filter] : []));
-    expect(filters).toEqual(['all', 'free', 'multiplayer', 'scenes']);
+    expect(filters).toEqual(['all', 'tutorial', 'free', 'multiplayer', 'scenes']);
     const comingSoon = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'comingSoon' ? [tab.id] : []));
-    expect(comingSoon).toEqual(['campaign', 'tutorial']);
+    expect(comingSoon).toEqual(['campaign']);
     expect(SINGLE_PLAYER_TABS[0]).toEqual({ kind: 'filter', filter: 'all' });
     expect(ROOM_TABS).toEqual([]);
   });
@@ -58,6 +58,18 @@ describe('mapItem', () => {
   it('falls back to the id stem when the map ships no display name', () => {
     expect(mapItem({ id: 'bare_map', minimap: false }).title).toBe('bare_map');
   });
+
+  it('recognizes and orders tutorial lessons from campaign metadata instead of the map id', () => {
+    const lesson = mapItem({
+      id: 'renamed_lesson',
+      name: 'Sterowanie',
+      minimap: false,
+      campaign: { campaignId: 100, missionId: 2 },
+      mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+    });
+    expect(lesson.tutorialStep).toBe(2);
+    expect(mapCategory(lesson)).toBe('tutorial');
+  });
 });
 
 describe('listedIn', () => {
@@ -76,19 +88,43 @@ describe('listedIn', () => {
     multiplayerOnly: true,
   });
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
+  const tutorial = mapItem({
+    id: 'lesson',
+    minimap: false,
+    campaign: { campaignId: 100, missionId: 1 },
+    mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+  });
 
   it('takes the multiplayer types and an untyped map into a room, like the original list', () => {
-    const room = [campaign, free, userFree, multi, userMulti, demo, untyped, multiOnly, scene].filter(
-      (item) => listedIn(item, 'multiplayer'),
-    );
+    const room = [
+      campaign,
+      tutorial,
+      free,
+      userFree,
+      multi,
+      userMulti,
+      demo,
+      untyped,
+      multiOnly,
+      scene,
+    ].filter((item) => listedIn(item, 'multiplayer'));
     expect(room).toEqual([multi, userMulti, untyped, multiOnly]);
   });
 
   it('takes the free types and unrestricted multiplayer maps into New Game, never a campaign map', () => {
-    const single = [campaign, free, userFree, multi, userMulti, demo, untyped, multiOnly, scene].filter(
-      (item) => listedIn(item, 'single'),
-    );
-    expect(single).toEqual([free, userFree, multi, untyped, scene]);
+    const single = [
+      campaign,
+      tutorial,
+      free,
+      userFree,
+      multi,
+      userMulti,
+      demo,
+      untyped,
+      multiOnly,
+      scene,
+    ].filter((item) => listedIn(item, 'single'));
+    expect(single).toEqual([tutorial, free, userFree, multi, untyped, scene]);
   });
 });
 
@@ -113,12 +149,31 @@ describe('filterItems', () => {
     mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
   });
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
-  const items = [subMission, free, arena, scene];
+  const secondLesson = mapItem({
+    id: 'renamed_second',
+    name: 'Każdy Wiking jest unikalny',
+    minimap: false,
+    campaign: { campaignId: 100, missionId: 2 },
+    mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+  });
+  const firstLesson = mapItem({
+    id: 'renamed_first',
+    name: 'Sterowanie',
+    minimap: false,
+    campaign: { campaignId: 100, missionId: 1 },
+    mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
+  });
+  const items = [subMission, secondLesson, free, arena, firstLesson, scene];
 
   it('lists every root map under "all" and keeps test scenes to their own filter', () => {
-    expect(filterItems(items, 'single', 'all', '')).toEqual([free, arena]);
+    expect(filterItems(items, 'single', 'all', '')).toEqual([secondLesson, free, arena, firstLesson]);
     expect(filterItems(items, 'single', 'scenes', '')).toEqual([scene]);
     expect(filterItems(items, 'multiplayer', 'all', '')).toEqual([arena]);
+  });
+
+  it('keeps tutorial lessons in authored mission order and out of multiplayer rooms', () => {
+    expect(filterItems(items, 'single', 'tutorial', '')).toEqual([firstLesson, secondLesson]);
+    expect(filterItems(items, 'multiplayer', 'tutorial', '')).toEqual([]);
   });
 
   it('splits the tabs by maptype and keeps a multiplayer-only map off the New Game multiplayer tab', () => {

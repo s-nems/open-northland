@@ -9,11 +9,11 @@ import { MAP_TYPE } from '@open-northland/data';
 /** The two menus of the original, each with its own reading of a map's `maptype` codes. */
 export type MapListing = 'single' | 'multiplayer';
 
-export type MapFilter = 'all' | 'free' | 'multiplayer' | 'scenes';
+export type MapFilter = 'all' | 'tutorial' | 'free' | 'multiplayer' | 'scenes';
 
 /** A mode of the original this build cannot launch yet (its maps are `SINGLE_PLAYER_CAMPAIGN`,
  *  which no list takes); its tab renders greyed out with a coming-soon tooltip. */
-export type ComingSoonTab = 'campaign' | 'tutorial';
+export type ComingSoonTab = 'campaign';
 
 export type MapFilterTab =
   | { readonly kind: 'filter'; readonly filter: MapFilter }
@@ -24,7 +24,7 @@ export type MapFilterTab =
 export const SINGLE_PLAYER_TABS: readonly MapFilterTab[] = [
   { kind: 'filter', filter: 'all' },
   { kind: 'comingSoon', id: 'campaign' },
-  { kind: 'comingSoon', id: 'tutorial' },
+  { kind: 'filter', filter: 'tutorial' },
   { kind: 'filter', filter: 'free' },
   { kind: 'filter', filter: 'multiplayer' },
   { kind: 'filter', filter: 'scenes' },
@@ -37,7 +37,7 @@ export interface MapSeat {
 }
 
 export interface MapSelectItem {
-  /** A decoded map (opens the lobby) or a registered test scene (starts directly). */
+  /** A decoded map (tutorials start directly) or a registered test scene. */
   readonly kind: 'map' | 'scene';
   readonly id: string;
   readonly title: string;
@@ -51,6 +51,8 @@ export interface MapSelectItem {
   readonly players: readonly MapsIndexPlayerSlot[];
   /** `[multiplayer]` `playerfixcolors` - the lobby locks its team-colour pickers. */
   readonly fixedColors: boolean;
+  /** Mission number inside the authored tutorial campaign; absent for every other map and scene. */
+  readonly tutorialStep?: number;
   readonly description?: string;
   /** `/maps/<id>.png` exists, so rows and the preview can use the decoded minimap. */
   readonly minimap: boolean;
@@ -58,6 +60,9 @@ export interface MapSelectItem {
 
 export function mapItem(entry: MapsIndexEntry): MapSelectItem {
   const listed = entry.players?.filter((slot) => !slot.hidden) ?? [];
+  // The converted mod identifies its tutorial as campaign 100. Using campaign metadata keeps the
+  // menu stable when a source folder or generated id is renamed.
+  const tutorialStep = entry.campaign?.campaignId === 100 ? entry.campaign.missionId : undefined;
   return {
     kind: 'map',
     id: entry.id,
@@ -67,6 +72,7 @@ export function mapItem(entry: MapsIndexEntry): MapSelectItem {
     seats: listed.map((slot) => ({ tribeId: slot.tribeId, colorId: slot.colorId })),
     players: entry.players ?? [],
     fixedColors: entry.fixedColors === true,
+    ...(tutorialStep !== undefined ? { tutorialStep } : {}),
     ...(entry.description !== undefined ? { description: entry.description } : {}),
     minimap: entry.minimap,
   };
@@ -104,6 +110,7 @@ const untyped = (item: MapSelectItem): boolean => item.kind === 'map' && item.ty
 /** The label a map row and card carry; the highest-ranking of its codes names it. */
 export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
   if (item.kind === 'scene') return 'scenes';
+  if (item.tutorialStep !== undefined) return 'tutorial';
   if (has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE))
     return 'multiplayer';
   return 'free';
@@ -123,6 +130,7 @@ export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
  */
 export function listedIn(item: MapSelectItem, listing: MapListing): boolean {
   if (item.kind === 'scene') return listing === 'single';
+  if (item.tutorialStep !== undefined) return listing === 'single';
   if (untyped(item)) return true;
   if (listing === 'multiplayer')
     return has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE);
@@ -139,6 +147,8 @@ function matchesFilter(item: MapSelectItem, filter: MapFilter): boolean {
       return item.kind === 'map';
     case 'scenes':
       return item.kind === 'scene';
+    case 'tutorial':
+      return item.kind === 'map' && item.tutorialStep !== undefined;
     case 'free':
       return (
         untyped(item) || has(item, MAP_TYPE.SINGLE_PLAYER_FREE) || has(item, MAP_TYPE.USER_SINGLE_PLAYER_FREE)
@@ -164,11 +174,13 @@ export function filterItems(
   query: string,
 ): readonly MapSelectItem[] {
   const needle = query.trim().toLowerCase();
-  return items.filter((item) => {
+  const matches = items.filter((item) => {
     if (!listedIn(item, listing) || !matchesFilter(item, filter)) return false;
     if (needle === '') return true;
     return item.title.toLowerCase().includes(needle) || item.id.toLowerCase().includes(needle);
   });
+  if (filter !== 'tutorial') return matches;
+  return matches.sort((a, b) => (a.tutorialStep ?? 0) - (b.tutorialStep ?? 0));
 }
 
 export interface PluralForms {

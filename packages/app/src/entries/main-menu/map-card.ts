@@ -20,6 +20,8 @@ export interface MapDetailsCard {
 export function metaLine(item: MapSelectItem): string {
   const select = messages().mainMenu.mapSelect;
   const category = select.categoryNames[mapCategory(item)];
+  if (item.tutorialStep !== undefined)
+    return `${category} · ${formatMessage(select.tutorialStep, { step: item.tutorialStep })}`;
   if (item.seats.length === 0) return category;
   const players = formatMessage(pluralForm(item.seats.length, select.players, bcp47Tag()), {
     count: item.seats.length,
@@ -110,8 +112,11 @@ export function createMapDetailsCard(): MapDetailsCard {
       card.hidden = false;
       name.textContent = item.title;
       meta.textContent = metaLine(item);
-      seats.replaceChildren(...item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)));
-      seats.hidden = item.seats.length === 0;
+      const showSeats = item.tutorialStep === undefined && item.seats.length > 0;
+      seats.replaceChildren(
+        ...(showSeats ? item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)) : []),
+      );
+      seats.hidden = !showSeats;
       description.textContent = item.description ?? '';
       description.hidden = item.description === undefined || item.description === '';
       showPreview(item);

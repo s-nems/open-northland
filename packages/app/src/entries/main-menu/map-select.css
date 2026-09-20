@@ -35,6 +35,31 @@
   border-color: rgba(99, 196, 160, 0.6);
 }
 
+.main-menu__tutorial-intro {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  margin-bottom: calc(var(--u) * 16);
+  padding: calc(var(--u) * 14) calc(var(--u) * 18);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(99, 196, 160, 0.1);
+  font:
+    400 calc(var(--u) * 19) / 1.25 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-muted);
+}
+
+.main-menu__tutorial-intro[hidden] {
+  display: none;
+}
+
+.main-menu__tutorial-intro strong {
+  font-size: calc(var(--u) * 22);
+  color: var(--accent-bright);
+}
+
 .main-menu__map-body {
   flex: 1;
   display: flex;
@@ -154,6 +179,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.main-menu__tutorial-start {
+  display: inline-block;
+  margin-left: calc(var(--u) * 12);
+  padding: calc(var(--u) * 3) calc(var(--u) * 9);
+  border-radius: 999px;
+  background: rgba(99, 196, 160, 0.18);
+  font-size: calc(var(--u) * 16);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--accent-bright);
+  vertical-align: 0.12em;
 }
 
 .main-menu__map-row.is-selected .main-menu__map-row-name {

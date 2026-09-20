@@ -93,6 +93,14 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   body.className = 'main-menu__map-body';
   const listCol = document.createElement('div');
   listCol.className = 'main-menu__map-list-col';
+  const tutorialIntro = document.createElement('div');
+  tutorialIntro.className = 'main-menu__tutorial-intro';
+  tutorialIntro.hidden = true;
+  const tutorialIntroTitle = document.createElement('strong');
+  tutorialIntroTitle.textContent = select.tutorialIntroTitle;
+  const tutorialIntroBody = document.createElement('span');
+  tutorialIntroBody.textContent = select.tutorialIntroBody;
+  tutorialIntro.append(tutorialIntroTitle, tutorialIntroBody);
   const search = document.createElement('input');
   search.type = 'search';
   search.className = 'main-menu__map-search';
@@ -107,7 +115,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   listScroll.append(list, fade);
   const count = document.createElement('div');
   count.className = 'main-menu__map-count';
-  listCol.append(search, listScroll, count);
+  listCol.append(tutorialIntro, search, listScroll, count);
 
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
@@ -204,6 +212,12 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     const rowName = document.createElement('div');
     rowName.className = 'main-menu__map-row-name';
     rowName.textContent = item.title;
+    if (item.tutorialStep === 1) {
+      const recommended = document.createElement('span');
+      recommended.className = 'main-menu__tutorial-start';
+      recommended.textContent = select.tutorialRecommended;
+      rowName.append(recommended);
+    }
     const rowMeta = document.createElement('div');
     rowMeta.className = 'main-menu__map-row-meta';
     rowMeta.textContent = item.kind === 'scene' ? (item.description ?? '') : metaLine(item);
@@ -221,11 +235,20 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
 
   const renderList = (): void => {
     const rows = filterItems(items, options.listing, memory.filter, search.value);
-    const countForms = memory.filter === 'scenes' ? select.scenes : select.maps;
+    tutorialIntro.hidden = memory.filter !== 'tutorial';
+    const countForms =
+      memory.filter === 'scenes'
+        ? select.scenes
+        : memory.filter === 'tutorial'
+          ? select.tutorials
+          : select.maps;
     const mapsText = formatMessage(pluralForm(rows.length, countForms, bcp47Tag()), {
       count: rows.length,
     });
-    count.textContent = formatMessage(select.countLine, { maps: mapsText });
+    count.textContent = formatMessage(
+      memory.filter === 'tutorial' ? select.tutorialCountLine : select.countLine,
+      { maps: mapsText },
+    );
     rowButtons.clear();
     // The old rows leave the DOM below, so stop watching their thumbs.
     thumbObserver.disconnect();
