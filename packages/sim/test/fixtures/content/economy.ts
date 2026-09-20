@@ -64,7 +64,7 @@ export const economyContent = {
       typeId: 8,
       id: 'shoes',
       weight: 1,
-      equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 6000 },
+      equip: { category: 'boots', wears: true, uses: 10000 },
     },
     { typeId: 9, id: 'sword', weight: 1, equip: { category: 'weapon' } },
     // A second boots good, so a swap test can order different gear into an occupied slot (rated like
@@ -73,7 +73,7 @@ export const economyContent = {
       typeId: 10,
       id: 'fur_boots',
       weight: 1,
-      equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 6000 },
+      equip: { category: 'boots', wears: true, uses: 10000 },
     },
     // The equipment-effects goods: tools (additive production credit) and the draughts (auto-drunk).
     {

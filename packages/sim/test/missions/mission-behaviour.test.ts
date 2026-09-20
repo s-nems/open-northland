@@ -58,6 +58,10 @@ function nodeOf(sim: Simulation, e: Entity): { hx: number; hy: number } {
   return nodeOfPosition(at.x, at.y);
 }
 
+function nodesEqual(a: { hx: number; hy: number }, b: { hx: number; hy: number }): boolean {
+  return a.hx === b.hx && a.hy === b.hy;
+}
+
 /** A world with no script results, running long enough for the settler drives to have their say. */
 function plainSim(): Simulation {
   return firingSim([{ opcode: 'None' }]);
@@ -170,9 +174,15 @@ describe('the bits the sim reads', () => {
     if (pinned === undefined || drifter === undefined) throw new Error('expected two humans');
     const pinnedAt = nodeOf(sim, pinned);
     const drifterAt = nodeOf(sim, drifter);
-    sim.run(200);
-    expect(nodeOf(sim, pinned)).toEqual(pinnedAt);
-    expect(nodeOf(sim, drifter)).not.toEqual(drifterAt);
+    // Sampled every tick from the spawn tick on: an idle drifter walks off (and may stand still or pass
+    // back over its start later), the pinned one never leaves.
+    let drifted = !nodesEqual(drifterAt, { hx: POINT.hx, hy: POINT.hy });
+    for (let i = 0; i < 200; i++) {
+      sim.step();
+      expect(nodeOf(sim, pinned)).toEqual(pinnedAt);
+      if (!drifted && !nodesEqual(nodeOf(sim, drifter), drifterAt)) drifted = true;
+    }
+    expect(drifted).toBe(true);
   });
 
   // The flight half of the passive bit. Its retaliation half needs an armed pair, which the fixture

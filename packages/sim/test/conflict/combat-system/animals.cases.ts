@@ -236,7 +236,7 @@ describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
     const viking = fighterAt(sim, 3, 0, VIKING, WOODCUTTER);
 
     // Full ticks (pathfinding + movement + combat + atomic): the bear walks its ~2-cell approach at the
-    // default pace (18 ticks/cell) and lands at least one test_bearfist hit.
+    // source-default animal pace (18 ticks/cell) and lands at least one test_bearfist hit.
     for (let i = 0; i < 120 && sim.world.get(viking, Health).hitpoints >= 1000; i++) sim.step();
 
     expect(sim.world.get(viking, Health).hitpoints).toBeLessThan(1000);

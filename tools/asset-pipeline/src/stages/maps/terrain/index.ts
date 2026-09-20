@@ -14,6 +14,7 @@ import { type GroundLayer, groundFromMapDat } from './ground.js';
 import type { DecodedMap } from './lane.js';
 import { type ObjectsLayer, objectsFromMapDat } from './objects.js';
 import { brightnessFromMapDat, elevationFromMapDat } from './per-cell.js';
+import { roughnessFromMapDat } from './roughness.js';
 import { shoreFromMapDat } from './shore.js';
 import { type TransitionsLayer, transitionsFromMapDat } from './transitions.js';
 
@@ -33,6 +34,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   readonly shore?: number[];
   /** Raw `lmco` continent id per half-cell node. */
   readonly continents?: number[];
+  /** `lmpr` walking roughness per half-cell node, 0..5 across the owned corpus (every owned map). */
+  readonly roughness?: number[];
   /** Populated authored fish-swarm slots (`lafm`). */
   readonly fishSwarms?: Array<{ hx: number; hy: number; count: number; continent: number }>;
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs). */
@@ -88,6 +91,7 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     ...layer('brightness', 'brightness lane', () => brightnessFromMapDat(decoded)),
     ...layer('shore', 'shore lane', () => shoreFromMapDat(decoded)),
     ...(continents === undefined ? {} : { continents }),
+    ...layer('roughness', 'roughness lane', () => roughnessFromMapDat(decoded)),
     ...(fishSwarms === undefined ? {} : { fishSwarms }),
   };
 }

@@ -49,6 +49,29 @@ export function chargeMilitaryPiety(world: World, settler: Entity, units: number
 }
 
 /**
+ * A barefoot step's hunger: the walker leaves a node of `roughness` with no live pair of boots, and its
+ * food bar loses that many reserve units, twice as many while hauling a good. The shoes' other promise
+ * in the manual ("uses up less energy"). Source basis: macOS `the original`
+ * `an original routine`, where a spent or absent shoe condition sends
+ * `roughness << carrying` off the food field instead of the pair, on the same 10000-unit bar the level
+ * table names, for an adult whose needs are not frozen; the same gate {@link carriesNeeds} reads.
+ */
+export function chargeBarefootStep(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  roughness: number,
+  carrying: boolean,
+): void {
+  if (roughness === 0 || !needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return;
+  const s = world.mut(e, Settler);
+  s.hunger = applyNeedUnits(s.hunger, -(carrying ? roughness * CARRYING_HUNGER_FACTOR : roughness));
+}
+
+/** A hauled good doubles a barefoot step's hunger (`roughness << 1`). */
+const CARRYING_HUNGER_FACTOR = 2;
+
+/**
  * Ticks a pinned hunger takes to empty a full `Health` pool, and ticks a fed settler takes to refill an
  * empty one. Byte evidence: the owned copy's `the original` gives a human a flat 5000-point pool, spends 2 a
  * tick while its food sits at zero and returns 1 a tick below the pool. Approximation: reading those two

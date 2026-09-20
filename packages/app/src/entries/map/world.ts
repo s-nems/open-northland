@@ -139,6 +139,7 @@ function collisionTerrain(
     ? halfCellMapFromCells({
         ...map,
         ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
+        ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
       })
     : buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
 }

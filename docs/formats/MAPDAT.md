@@ -70,6 +70,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
 | `lmms` | half-cell | max moveable-unit size per the CulturesNation docs: distance from blocked nodes capped at 7 (range verified); collapsed to the cell `shore` lane |
 | `lmco` | half-cell | original continent id per node; retained for water-edge jobs to match authored fish swarms |
+| `lmpr` | half-cell | walking roughness 0..5 per node: a human's step off a node costs `2·lmpr + 2` ticks shod and `2·lmpr + 4` barefoot (rested; two more once due for sleep, one more hauling), and the same value wears its shoes or, barefoot, its food bar. The engine reads it back as `(word >> 3) & 0xf` of the node's packed word (`the original` `an original routine`, `WalkSpeed_GetMoveSpeed`); every owned map carries it and every `lmro` road node holds 1 |
 | `lafm` | fixed records | authored fish swarms: populated position/count/continent records become persistent sim stocks |
 
 ### Verified `lafm` fish table
@@ -98,7 +99,6 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | `lmpa`, `lmpb` | derivable | pattern `LogicType` per triangle (water = 1, void = {0, 5, 6}, land = rest) |
 | `laco` | derivable | continent table (type, anchor, size); `lmco` node ids are imported |
 | `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions (derivation verified below) |
-| `lmpr` | derivable | roughness 0..5 slowing movement; 1 on water and road nodes |
 | `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas (derivation verified below) |
 | `lmro`, `lmsb`, `lmhf`, `emm1` | derivable | road presence, walk-sector point marks, zeros, road-overlay visibility |
 | `lmao` | derivable | attach-point vector per node, encoded `(-dx - (dy << 8)) & 0xffff` |

@@ -67,9 +67,9 @@ export type EquipGoodSpec = EquipClass & {
 // The balance magnitudes below are authored, not extracted, except where marked manual-pinned: the
 // engine hardcodes its own values and no readable source carries them.
 
-/** Rated waypoint-arrivals for a pair of shoes, a named approximation of ~1% per 30 walked cells at
- *  ~2 route waypoints per cell. */
-const SHOE_USES = 6000;
+/** A pair of shoes' condition points, byte-verified (`the original` `cHumanInventoryMaximumCondition_Shoe`):
+ *  every node walked off spends its roughness, doubled while hauling. */
+const SHOE_USES = 10000;
 /** Rated production cycles for a tool (~1% per completed cycle). */
 const TOOL_USES = 100;
 /** Manual-pinned: "Small potions can be used twice, large ones can be used five times". Mead is sized
@@ -79,9 +79,6 @@ const BIG_BOTTLE_USES = 5;
 /** One sip's restore percents. Mead matches one meal on both bars, a potion restores half of its one. */
 const MEAD_RESTORE = { hunger: 40, fatigue: 40 } as const;
 const POTION_RESTORE_PCT = 50;
-/** Boots are speed-only here, a named deviation: the manual's second promise that shoes "uses up less
- *  energy" is dropped. */
-const SHOE_SPEED_BONUS_PCT = 40;
 /** Percent of the recipe outputs, added to the experience bonus rather than multiplied with it. */
 const WOODEN_TOOL_BONUS_PCT = 30;
 const IRON_TOOL_BONUS_PCT = 60;
@@ -97,7 +94,6 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     id: 'shoes',
     category: 'boots',
     wears: true,
-    speedBonusPct: SHOE_SPEED_BONUS_PCT,
     uses: SHOE_USES,
   },
   {

@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
-import { fx, positionOfNode, Simulation } from '../../src/index.js';
+import { positionOfNode, Simulation } from '../../src/index.js';
 import { hexDistance } from '../../src/nav/halfcell.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { invalidateLandscapeRoutes } from '../../src/systems/landscape/routes.js';
 import type { MissionPass } from '../../src/systems/missions/pass.js';
 import { editScriptedLandscape } from '../../src/systems/missions/results/landscape.js';
 import { ctxOf } from '../fixtures/context.js';
+import { stopAt } from '../fixtures/waypoints.js';
 import { fresh, map, POINT, terrainOf, WALL } from './landscape-support.js';
 import { houseContent } from './support.js';
 
@@ -32,11 +33,10 @@ describe('script landscape route invalidation', () => {
     sim.world.add(e, Position, positionOfNode(4, 8));
     sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(12, 8) });
     sim.world.add(e, PathFollow, {
-      waypoints: [positionOfNode(8, 8), positionOfNode(12, 8)],
+      waypoints: [stopAt(terrain, 8, 8), stopAt(terrain, 12, 8)],
       index: 0,
-      speed: fx.fromInt(1),
-      hx: fx.fromInt(1),
-      hy: fx.fromInt(0),
+      legTicks: 0,
+      legCost: 0,
     });
     invalidateLandscapeRoutes(sim.world, terrain);
     expect(sim.world.has(e, PathFollow)).toBe(false);
@@ -67,11 +67,10 @@ describe('script landscape route invalidation', () => {
     sim.world.add(e, Position, positionOfNode(4, 4));
     sim.world.add(e, MoveGoal, { cell: goal });
     sim.world.add(e, PathFollow, {
-      waypoints: [positionOfNode(5, 6)],
+      waypoints: [stopAt(terrainOf(sim), 5, 6)],
       index: 0,
-      speed: fx.fromInt(1),
-      hx: fx.fromInt(1),
-      hy: fx.fromInt(1),
+      legTicks: 0,
+      legCost: 0,
     });
     const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
     expect(blocked.has(start)).toBe(false);
@@ -88,11 +87,10 @@ describe('script landscape route invalidation', () => {
     sim.world.add(e, Position, positionOfNode(4, 4));
     sim.world.add(e, MoveGoal, { cell: terrainOf(sim).nodeAt(5, 6) });
     sim.world.add(e, PathFollow, {
-      waypoints: [positionOfNode(5, 6)],
+      waypoints: [stopAt(terrainOf(sim), 5, 6)],
       index: 0,
-      speed: fx.fromInt(1),
-      hx: fx.fromInt(1),
-      hy: fx.fromInt(1),
+      legTicks: 0,
+      legCost: 0,
     });
     editScriptedLandscape(passOf(sim), 0, {
       opcode: 'SetLandscape',
@@ -124,11 +122,10 @@ describe('script landscape route invalidation', () => {
     sim.world.add(e, Position, positionOfNode(4, 4));
     sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(5, 6) });
     sim.world.add(e, PathFollow, {
-      waypoints: [positionOfNode(5, 6)],
+      waypoints: [stopAt(terrainOf(sim), 5, 6)],
       index: 0,
-      speed: fx.fromInt(1),
-      hx: fx.fromInt(1),
-      hy: fx.fromInt(1),
+      legTicks: 0,
+      legCost: 0,
     });
     const pass = passOf(sim);
     editScriptedLandscape(pass, 0, { opcode: 'RemoveLandscape', point: POINT });

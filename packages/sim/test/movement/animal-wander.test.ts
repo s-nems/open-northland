@@ -14,7 +14,14 @@ import {
   Stranded,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
+import {
+  cellAnchorNode,
+  fx,
+  type NodeId,
+  nodeOfPosition,
+  positionOfNode,
+  Simulation,
+} from '../../src/index.js';
 import {
   ANIMAL_SPACING_NODES,
   ANIMAL_WANDER_PERIOD_TICKS,
@@ -316,9 +323,13 @@ describe('animalWanderSystem: the grazing drive', () => {
     // It closed on the leader instead of grazing off. The steady state is the cohesion radius plus one
     // graze step: herding recalls the follower inside the radius, and a later step can carry it back
     // out by at most the step budget before the next recall.
-    const p = sim.world.get(follower, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    expect(manhattan(terrain, terrain.nodeAtClamped(n.hx, n.hy), terrain.nodeAt(10, 10))).toBeLessThanOrEqual(
+    const nodeUnder = (e: Entity): NodeId => {
+      const p = sim.world.get(e, Position);
+      const n = nodeOfPosition(p.x, p.y);
+      return terrain.nodeAtClamped(n.hx, n.hy);
+    };
+    // Against the leader where it stands: it grazes off its own anchor too.
+    expect(manhattan(terrain, nodeUnder(follower), nodeUnder(leader))).toBeLessThanOrEqual(
       LEADER_DISTANCE + STEP_BUDGET,
     );
   });

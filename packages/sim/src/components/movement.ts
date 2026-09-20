@@ -23,28 +23,34 @@ export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint', 'movemen
 
 /**
  * How far this entity advances toward its current {@link PathFollow} waypoint each tick, in fixed-point
- * tile units; an entity without one walks at the universal settler pace (`MOVE_SPEED_PER_TICK`).
- * `spawnAnimalHerd` stamps it from the `animaltypes.ini` `movespeed` param, where a creature with
- * `movespeed` N walks `ONE / N` tile/tick, so a larger `movespeed` is a slower step. It is the entity's one
- * pace: no run/sprint gait is modelled, and the `animaltypes.ini` `runspeed` param stays extracted but
- * unconsumed.
+ * tile units. Only a creature carries one: `spawnAnimalHerd` stamps it from the `animaltypes.ini`
+ * `movespeed` param, where a creature with `movespeed` N walks `ONE / N` tile/tick, so a larger
+ * `movespeed` is a slower step. It is the entity's one pace: no run/sprint gait is modelled, and the
+ * `animaltypes.ini` `runspeed` param stays extracted but unconsumed. A walker without one is a human and
+ * is paced per step by `walkStepTicks`.
  */
 export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed', 'movement');
 
+/** One stop of a route: a fixed-point position and the lattice node the walker stands on there, whose
+ *  roughness paces and shoes the step that leaves it. A diagonal lattice edge carries its midpoint as a
+ *  stop of its own, the original's intermediate node on that edge. */
+export interface Waypoint {
+  x: Fixed;
+  y: Fixed;
+  node: NodeId;
+}
+
 /**
- * A path the entity is following: fixed-point waypoints and index, plus the follower's live gait state.
- * `speed` is the current per-tick world-metric pace - 0 at rest, ramped toward the entity's gait, braked
- * into the final waypoint. `hx`/`hy` are the current leg's unit world-metric heading, carrying momentum
- * through corners and across a reroute's splice; (0,0) means no established heading.
- *
- * Approximation: the inertia ramp departs from the original's observed constant pace, for movement feel.
+ * A path the entity is following: its stops and the index of the one it walks toward. `legTicks` counts
+ * the ticks spent on the current leg and `legCost` the ticks it takes, fixed when the leg starts and 0
+ * until then, so the walker reaches each stop after exactly its step cost like the original's per-step
+ * accumulator. A creature paced by {@link MoveSpeed} leaves both at 0 and walks its constant pace.
  */
 export const PathFollow = defineComponent<{
-  waypoints: Array<{ x: Fixed; y: Fixed }>;
+  waypoints: Waypoint[];
   index: number;
-  speed: Fixed;
-  hx: Fixed;
-  hy: Fixed;
+  legTicks: number;
+  legCost: number;
 }>('PathFollow', 'movement');
 
 /**

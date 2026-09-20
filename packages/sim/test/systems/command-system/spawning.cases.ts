@@ -146,9 +146,9 @@ describe('CommandSystem - spawning', () => {
 
   it('spawnSettler with a positive moveSpeed stamps a MoveSpeed pace (ticks-per-tile, larger = slower)', () => {
     const sim = fresh();
-    // A settler given an explicit walk pace carries a `MoveSpeed{perTick = ONE/moveSpeed}` - the same
-    // ONE/ticks-per-tile form as MOVE_SPEED_PER_TICK (= ONE/4), so moveSpeed 8 is exactly half pace. Used
-    // to slow a scene's settler visually without retuning the global default.
+    // A settler given an explicit walk pace carries a `MoveSpeed{perTick = ONE/moveSpeed}`, the creature
+    // form, so moveSpeed 8 crosses a tile in 8 ticks. Used to pace a scene's settler without the human
+    // step cost.
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING, moveSpeed: 8 });
     sim.step();
     expect(sim.world.get(nthEntity(sim, 0), MoveSpeed)).toEqual({
@@ -159,7 +159,7 @@ describe('CommandSystem - spawning', () => {
   it('spawnSettler with no/non-positive moveSpeed walks the universal default (no MoveSpeed - golden path)', () => {
     const sim = fresh();
     // The default (omitted) and the non-positive (0) paths both stamp NO MoveSpeed - the separate-optional-
-    // component pattern (like Health/Armor/Weapon): a bare settler walks at MOVE_SPEED_PER_TICK, hash untouched.
+    // component pattern (like Health/Armor/Weapon): a bare settler walks the human step cost, hash untouched.
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING, moveSpeed: 0 });
     sim.step();

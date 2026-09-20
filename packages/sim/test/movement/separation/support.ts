@@ -3,7 +3,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 export { grassMap };
 
 import { addPerson, MoveGoal, Owner, PathFollow, Position } from '../../../src/components/index.js';
-import { fx, ZERO } from '../../../src/core/fixed.js';
+import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -50,12 +50,13 @@ export function orderTo(simulation: Simulation, entity: Entity, x: number, y: nu
 }
 
 export function walkStraightTo(simulation: Simulation, entity: Entity, x: number, y: number): void {
+  const terrain = simulation.terrain;
+  if (terrain === undefined) throw new Error('walkStraightTo needs a mapped sim');
   simulation.world.add(entity, PathFollow, {
-    waypoints: [positionOfNode(x, y)],
+    waypoints: [{ ...positionOfNode(x, y), node: terrain.nodeAt(x, y) }],
     index: 0,
-    speed: ZERO,
-    hx: ZERO,
-    hy: ZERO,
+    legTicks: 0,
+    legCost: 0,
   });
 }
 

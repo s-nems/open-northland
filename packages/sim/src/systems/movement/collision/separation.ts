@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
-import { MOVE_SPEED_PER_TICK } from '../system.js';
+import { REFERENCE_PACE_PER_TICK } from '../system.js';
 import { collectColliders } from './separation/colliders.js';
 import { SeparationGates } from './separation/gates.js';
 import { separationGridPoint, separationWorldPoint } from './separation/geometry.js';
@@ -24,18 +24,19 @@ export { OBSTRUCTED_MAX_REROUTES, OBSTRUCTED_PROGRESS_FLOOR, OBSTRUCTED_REROUTE_
  * half the E/W node pitch (0.25), so posts on horizontally adjacent nodes leave no slip line and a
  * one-per-node line is a closed wall, and below the N/S node pitch (19/68 ~ 0.2794), so a post never covers
  * a neighbouring node's centre and every free node stays exactly reachable. Impassability holds because a
- * mover advances at most its gait plus {@link SEPARATION_PUSH_CAP} per tick, always less than this radius.
+ * mover advances at most `MAX_STEP_PER_TICK` plus {@link SEPARATION_PUSH_CAP} per tick, always less than
+ * this radius.
  */
 const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
 
 /**
- * The per-tick cap on the soft mover-vs-mover push, deliberately below the arrival brake floor
- * (`gait / ARRIVAL_SPEED_DIV` in `movement/system.ts`): a walker brushed by passing traffic still makes net
- * progress every tick, so soft separation can delay an arrival but never prevent one. The one bounded
- * exception is a from-rest walker's first acceleration-ramp tick, which advances only gait/3 and so can
- * regress for that single tick. Approximation: two fifths of the gait, just under the half floor.
+ * The per-tick cap on the soft mover-vs-mover push, below the reference walker's per-tick advance so a
+ * walker brushed by passing traffic still makes net progress every tick; the slowest legs (snow, laden,
+ * script-slowed) can lose ground for a tick. Either way soft separation only delays an arrival: a leg
+ * pushed behind schedule keeps closing at up to `MAX_STEP_PER_TICK` until it lands. Approximation: two
+ * fifths of the reference pace.
  */
-const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
+const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(REFERENCE_PACE_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
 /**
  * Minimum unit-heading dot product for two overlapping movers to count as a convoy rather than crossing

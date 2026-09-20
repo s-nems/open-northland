@@ -21,8 +21,10 @@ export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
 /**
  * A good's equipment classification. The manual pins the wear split ("Partly used items (potions,
  * shoes, ...) you drop are lost", while weapons, armour and amulets "can be used again") and potion
- * `uses` ("Small potions can be used twice, large ones can be used five times"). Every other magnitude
- * is authored balance: no readable `.ini` carries a numeric field for it.
+ * `uses` ("Small potions can be used twice, large ones can be used five times"); the boots' rating is
+ * the engine's byte-verified shoe condition. Every other magnitude is authored balance: no readable
+ * `.ini` carries a numeric field for it. What boots do for the walk is not a field: the engine's step
+ * cost drops by a fixed two ticks while a live pair is worn (`sim` `walkStepTicks`).
  */
 export const EquipClass = z
   .strictObject({
@@ -30,13 +32,12 @@ export const EquipClass = z
     /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
      *  (weapons/armour/amulets). */
     wears: z.boolean().default(false),
-    /** Walk-gait bonus while worn, whole percent (boots +40). */
-    speedBonusPct: z.number().int().positive().optional(),
     /** Additive per-cycle production credit, whole percent of the recipe outputs (wooden tool 30,
      *  iron 60). It adds to the operator's experience bonus fraction, never multiplies it. */
     productionBonusPct: z.number().int().positive().optional(),
-    /** Rated uses before a wearing item breaks: one use = one walked waypoint (boots), one completed
-     *  production cycle (tools), or one sip (consumables). */
+    /** Rated uses before a wearing item breaks: one roughness point of a node walked off (boots, whose
+     *  10000 is the engine's shoe condition), one completed production cycle (tools), or one sip
+     *  (consumables). */
     uses: z.number().int().positive().optional(),
     /** What one sip restores - present only on drinkable goods (mead, potions). */
     restorePct: EquipRestorePct.optional(),

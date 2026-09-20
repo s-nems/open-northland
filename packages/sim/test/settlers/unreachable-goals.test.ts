@@ -107,9 +107,11 @@ describe('the gatherer re-plan after a failed route', () => {
     const far = woodAt(s, 8, 0, UNTOUCHED);
 
     // Let the planner make its own nearest-first pick, then fail exactly that route - the state
-    // routing leaves behind when a goal turns out to be walled off by standing bodies.
+    // routing leaves behind when a goal turns out to be walled off by standing bodies: a flagged
+    // request and no route to play out.
     stepUntil(s, 20, () => s.world.has(e, MoveGoal));
     const doomed = s.world.get(e, MoveGoal).cell;
+    s.world.remove(e, PathFollow);
     s.world.add(e, PathRequest, { start: s.world.get(e, MoveGoal).cell, goal: doomed, failed: true });
 
     stepUntil(s, 400, () => harvestedResource(s, e) !== null);

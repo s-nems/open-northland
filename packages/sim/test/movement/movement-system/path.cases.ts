@@ -1,146 +1,103 @@
 import { describe, expect, it } from 'vitest';
 import { PathFollow, Position, Velocity } from '../../../src/components/index.js';
-import { fx, ONE, Simulation } from '../../../src/index.js';
-import { MOVE_SPEED_PER_TICK, movementSystem, WALK_TICKS_PER_CELL } from '../../../src/systems/index.js';
+import { fx, Simulation } from '../../../src/index.js';
+import { movementSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { roughNodeMap } from '../../fixtures/terrain.js';
 
-import { ACCEL_STEP, FX_ZERO, followerAt, grassMap, pos, ticksToArrive } from './support.js';
+import { followerAt, grassMap, LAND_STEP_TICKS, pos, ticksToArrive, waypointAt } from './support.js';
+
+/** A cell-long E/W walk east from node column 0: two half-column stops per cell. */
+const halfSteps = (cells: number): Array<{ x: number; y: number }> =>
+  Array.from({ length: cells * 2 + 1 }, (_, i) => ({ x: i / 2, y: 0 }));
 
 describe('movementSystem - path following', () => {
-  it('consumes the start waypoint (its own cell) on the first tick, then heads to the next', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-    ]);
-
-    // One target per tick: tick 1 reaches waypoint 0 (already standing on it) and advances the index
-    // to 1 - no movement toward waypoint 1 yet, but the gait ramp is already one accel-step warm.
-    sim.step();
-    expect(pos(sim, e).x).toBeCloseTo(0, 6);
-    expect(sim.world.get(e, PathFollow).index).toBe(1);
-    expect(sim.world.get(e, PathFollow).speed).toBe(ACCEL_STEP);
-    sim.step();
-    // Second tick: the ramp reaches 2·A = 2428 and the E/W step is bit-exact that speed.
-    expect(sim.world.get(e, Position).x).toBe(fx.add(ACCEL_STEP, ACCEL_STEP));
-  });
-
-  it('accelerates from rest to the full gait, then cruises at exactly MOVE_SPEED_PER_TICK', () => {
+  it('walks a half-column step in exactly its step cost, closing equal shares each tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 5, y: 0 }, // long enough that the brake horizon stays far away during the ramp
-    ]);
-    sim.step(); // consume wp0; speed = A
-    // Ramp: A per tick until the gait is reached - 2A, then 3A overshoots and clamps onto G on the
-    // third tick (the divCeil accel step makes a from-rest ramp exactly ACCEL_TICKS long).
-    const speeds: number[] = [];
-    for (let i = 0; i < 6; i++) {
+    const e = followerAt(sim, 0, 0, halfSteps(1));
+    for (let tick = 1; tick < LAND_STEP_TICKS; tick++) {
       sim.step();
-      speeds.push(sim.world.get(e, PathFollow).speed);
+      // Each tick covers an eighth of the half column, to the ulp the equal-share division truncates.
+      expect(pos(sim, e).x).toBeCloseTo(0.5 * (tick / LAND_STEP_TICKS), 4);
+      expect(sim.world.get(e, PathFollow).index).toBe(1);
     }
-    const A = ACCEL_STEP;
-    const G = MOVE_SPEED_PER_TICK;
-    expect(speeds).toEqual([2 * A, G, G, G, G, G]);
-    // At cruise an E/W step advances bit-exactly G per tick (the fused mulDiv guarantee).
-    const before = sim.world.get(e, Position).x;
     sim.step();
-    expect(sim.world.get(e, Position).x).toBe(fx.add(before, G));
+    expect(sim.world.get(e, Position).x).toBe(fx.fromFloat(0.5)); // the last tick lands exactly
+    expect(sim.world.get(e, PathFollow).index).toBe(2);
+    expect(sim.world.get(e, PathFollow).legTicks).toBe(0); // the next leg's cost is read when it starts
+    expect(sim.world.get(e, PathFollow).legCost).toBe(0);
   });
 
-  it('reaches a one-tile-away waypoint in 21 ticks: consume + ramp-up + cruise + brake ease-out', () => {
-    expect(MOVE_SPEED_PER_TICK).toBe(fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL)));
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    // Start already on waypoint 0, so the run is purely wp0 -> wp1 (one tile east).
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-    ]);
-    // The calibrated 18-tick cruise plus the initial consume, ramp and final brake takes 21 ticks.
-    expect(ticksToArrive(sim, e)).toBe(21);
-    expect(pos(sim, e).x).toBeCloseTo(1, 6);
-  });
-
-  it('walks an interior cruise cell in exactly WALK_TICKS_PER_CELL ticks (no skate, no hitch)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-      { x: 2, y: 0 },
-      { x: 3, y: 0 },
-    ]);
-    // Advance until the follower has just arrived on cell 1 (index points at cell 2's waypoint and
-    // the position sits exactly on x=1): from here to x=2 is a pure cruise leg - no ramp (already at
-    // full gait; the headings of collinear legs are bit-identical, so no corner projection), no brake
-    // (not the last leg).
-    while (sim.world.get(e, PathFollow).index < 2) sim.step();
-    expect(pos(sim, e).x).toBeCloseTo(1, 6);
-    let ticks = 0;
-    while (sim.world.get(e, PathFollow).index < 3) {
-      sim.step();
-      ticks++;
-    }
-    expect(pos(sim, e).x).toBeCloseTo(2, 6);
-    expect(ticks).toBe(WALK_TICKS_PER_CELL); // 11 bit-exact G steps + the short snap step
-  });
-
-  it('walks a multi-cell path to its end cell-centre (ramp + cruise cells + final ease-out)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-      { x: 2, y: 0 },
-      { x: 3, y: 0 },
-    ]);
-    // 1 consume + 19 (first cell, ramping) + 18 (cruise cell) + 19 (last cell, braking) = 57.
-    expect(ticksToArrive(sim, e)).toBe(57);
+  it('crosses a cell (two steps) in 16 ticks bare on land, every cell the same', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const e = followerAt(sim, 0, 0, halfSteps(3));
+    expect(ticksToArrive(sim, e)).toBe(3 * 2 * LAND_STEP_TICKS);
     expect(pos(sim, e).x).toBeCloseTo(3, 6);
   });
 
-  it('paces a row-crossing lattice leg by its WORLD length (¾ of a column)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 0, y: 1 }, // the SE lattice edge from an even row: one row down, world length ≈ 0.75
-    ]);
-    sim.step(); // consume wp0 (already on it); no move toward (0,1) yet
-    sim.step(); // first move toward (0,1) at 2·A
-    const p1 = pos(sim, e);
-    // The leg's world length is ≈0.75 of a column (49143 ulp), so a 2·A = 2428 world-step advances
-    // the row coordinate by 2428/49143 ≈ 0.0494 - the grid delta scaled to the world metric. This is
-    // what keeps the ON-SCREEN pace identical in every heading (51 px vs 68 px legs).
-    expect(p1.x).toBeCloseTo(0, 9); // the grid delta is pure +row; the stagger lives in the render
-    expect(p1.y).toBeCloseTo(2428 / 49143, 3);
-    let moveTicks = 1; // the first move above
+  it('paces every step by the roughness of the node it LEAVES', () => {
+    // Nodes 0..3 along row 0 carry roughness 1, 3, 5, 0: the step off each costs 2r + 4 ticks.
+    const roughness = [1, 3, 5, 0];
+    const map = roughNodeMap(8, 1, (hx) => roughness[hx] ?? 2);
+    const sim = new Simulation({ seed: 1, content: testContent(), map });
+    const e = followerAt(sim, 0, 0, halfSteps(1.5));
+    const legs: number[] = [];
+    let ticks = 0;
+    let index = 1;
     while (sim.world.has(e, PathFollow)) {
       sim.step();
-      moveTicks++;
-      if (moveTicks > 50) throw new Error('leg never completed');
+      ticks++;
+      const pf = sim.world.tryGet(e, PathFollow);
+      if (pf === undefined || pf.index !== index) {
+        legs.push(ticks);
+        ticks = 0;
+        index++;
+      }
     }
-    expect(moveTicks).toBe(15);
-    expect(pos(sim, e).y).toBeCloseTo(1, 6);
+    expect(legs).toEqual([6, 10, 14]); // roads (1) are the fast lane, snow (5) the slow one
+  });
+
+  it('keeps the same tick cost on every heading: a step is a step, whatever its world length', () => {
+    // The E/W half column (34 px), the half-row edge and a diagonal edge's half (each an original
+    // 25.5 px step under the stagger) all cost one step of ticks, like the original's accumulator.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 6) });
+    const e = followerAt(sim, 1, 1, [
+      { x: 1, y: 1 },
+      { x: 1.5, y: 1 }, // E half column
+      { x: 1.5, y: 1.5 }, // S half row
+      { x: 1.75, y: 2 }, // a diagonal edge's midpoint (SE from odd half-row 3 to row 4)
+    ]);
+    expect(ticksToArrive(sim, e)).toBe(3 * LAND_STEP_TICKS);
+  });
+
+  it('a route with a lone stop walks onto its centre in one step', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromFloat(0.25), y: fx.fromInt(0) });
+    sim.world.add(e, PathFollow, { waypoints: [waypointAt(sim, 0.5, 0)], index: 0, legTicks: 0, legCost: 0 });
+    expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS);
+    expect(pos(sim, e)).toEqual({ x: 0.5, y: 0 });
   });
 
   it('drops the PathFollow when the final waypoint is reached', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(2, 1) });
-    const e = followerAt(sim, 0, 0, [{ x: 0, y: 0 }]); // single waypoint = start cell
+    const e = followerAt(sim, 0, 0, [{ x: 0, y: 0 }]); // single waypoint = the node stood on
     sim.step();
     expect(sim.world.has(e, PathFollow)).toBe(false);
     expect(pos(sim, e)).toEqual({ x: 0, y: 0 });
   });
 
-  it('walks a vertical leg dead straight on screen: worldX constant through the seam waypoint', () => {
-    // The two sub-legs of a vertical S step (cell centre -> seam -> cell centre, as routing.ts
-    // splices them): grid x bends half a column left and back, EXACTLY cancelling the stagger's
-    // triangle wave - so the world x (what the render projects) never moves. This is the sim-side
-    // guarantee behind "ordered straight down, walks straight down".
+  it('walks a vertical leg dead straight on screen: worldX constant through the midpoint stop', () => {
+    // The two halves of a vertical S step (cell centre -> midpoint -> cell centre, as routing.ts splices
+    // them): grid x bends half a column left and back, EXACTLY cancelling the stagger's triangle wave -
+    // so the world x (what the render projects) never moves. This is the sim-side guarantee behind
+    // "ordered straight down, walks straight down".
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 5) });
     const e = followerAt(sim, 2, 0, [
       { x: 2, y: 0 },
-      { x: 1.5, y: 1 }, // the seam (routing writes fractional waypoints; followerAt scales floats)
+      { x: 1.5, y: 1 }, // the midpoint (routing writes fractional waypoints; followerAt scales floats)
       { x: 2, y: 2 },
     ]);
-    sim.step(); // consume wp0
     let guard = 0;
     while (sim.world.has(e, PathFollow)) {
       sim.step();
@@ -151,27 +108,6 @@ describe('movementSystem - path following', () => {
     }
     expect(pos(sim, e)).toEqual({ x: 2, y: 2 });
   });
-
-  it('paces an off-lattice re-path leg by the world metric too (no lurch)', () => {
-    // (0,0) -> (1,1) is NOT a lattice edge (a re-path can still aim anywhere): its world length is
-    // √(1.5² + 0.5588²) ≈ 1.6 columns (104905 ulp). The point is the pace stays the same
-    // world-distance-per-tick as every other heading despite the calibrated slowdown.
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 1, y: 1 },
-    ]);
-    sim.step(); // consume wp0
-    let moveTicks = 0;
-    while (sim.world.has(e, PathFollow)) {
-      sim.step();
-      moveTicks++;
-      if (moveTicks > 50) throw new Error('leg never completed');
-    }
-    expect(moveTicks).toBe(31);
-    expect(pos(sim, e).x).toBeCloseTo(1, 6);
-    expect(pos(sim, e).y).toBeCloseTo(1, 6); // lands EXACTLY on the waypoint (the arrival snap)
-  });
 });
 
 describe('movementSystem - precedence: PathFollow over Velocity', () => {
@@ -181,20 +117,15 @@ describe('movementSystem - precedence: PathFollow over Velocity', () => {
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) }); // would push +1/tick east
     sim.world.add(e, PathFollow, {
-      waypoints: [
-        { x: fx.fromInt(0), y: fx.fromInt(0) },
-        { x: fx.fromInt(1), y: fx.fromInt(0) },
-      ],
-      index: 0,
-      speed: FX_ZERO,
-      hx: FX_ZERO,
-      hy: FX_ZERO,
+      waypoints: [waypointAt(sim, 0, 0), waypointAt(sim, 0.5, 0)],
+      index: 1,
+      legTicks: 0,
+      legCost: 0,
     });
-    sim.step(); // consume wp0 (already on it); no move yet
-    sim.step(); // first move toward wp1
-    // If Velocity had also applied, x would jump by +1/tick; the ramping path-follow alone gives
-    // the two-accel-steps advance.
-    expect(sim.world.get(e, Position).x).toBe(fx.add(ACCEL_STEP, ACCEL_STEP));
+    sim.step();
+    // If Velocity had also applied, x would jump by +1/tick; the paced path-follow alone gives one
+    // eighth of the half column.
+    expect(sim.world.get(e, Position).x).toBe(fx.div(fx.fromFloat(0.5), fx.fromInt(LAND_STEP_TICKS)));
   });
 
   it('does not velocity-integrate on the same tick the path completes (no double-move)', () => {
@@ -202,14 +133,8 @@ describe('movementSystem - precedence: PathFollow over Velocity', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    // Single-waypoint path on the entity's own cell: it completes (PathFollow removed) THIS tick.
-    sim.world.add(e, PathFollow, {
-      waypoints: [{ x: fx.fromInt(0), y: fx.fromInt(0) }],
-      index: 0,
-      speed: FX_ZERO,
-      hx: FX_ZERO,
-      hy: FX_ZERO,
-    });
+    // Single-waypoint path on the entity's own node: it completes (PathFollow removed) THIS tick.
+    sim.world.add(e, PathFollow, { waypoints: [waypointAt(sim, 0, 0)], index: 0, legTicks: 0, legCost: 0 });
     sim.step();
     // The path was handled this tick, so Velocity must NOT also apply - position stays at the cell.
     expect(pos(sim, e).x).toBeCloseTo(0, 6);
@@ -234,14 +159,8 @@ describe('movementSystem - determinism', () => {
     // Each sim owns its stores, so two same-seed runs are independent; compare the final hashes -
     // same seed + same path must yield byte-identical state.
     const runOne = (): string => {
-      const s = new Simulation({ seed: 5, content: testContent(), map: grassMap(5, 1) });
-      followerAt(s, 0, 0, [
-        { x: 0, y: 0 },
-        { x: 1, y: 0 },
-        { x: 2, y: 0 },
-        { x: 3, y: 0 },
-        { x: 4, y: 0 },
-      ]);
+      const s = new Simulation({ seed: 5, content: testContent(), map: grassMap(10, 1) });
+      followerAt(s, 0, 0, halfSteps(4));
       for (let i = 0; i < 20; i++) s.step();
       return s.hashState();
     };

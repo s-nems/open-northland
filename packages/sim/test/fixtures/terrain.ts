@@ -31,3 +31,16 @@ export function waterColumnMap(width: number, height: number, column: number): T
   for (let row = 0; row < height; row++) typeIds[row * width + column] = WATER;
   return halfCellMapFromCells({ width, height, typeIds });
 }
+
+/** {@link grassNodeMap} with an `lmpr`-style roughness lane, `roughnessAt(hx, hy)` sampled per node. */
+export function roughNodeMap(
+  width: number,
+  height: number,
+  roughnessAt: (hx: number, hy: number) => number,
+): TerrainMap {
+  const roughness = new Array<number>(width * height);
+  for (let hy = 0; hy < height; hy++) {
+    for (let hx = 0; hx < width; hx++) roughness[hy * width + hx] = roughnessAt(hx, hy);
+  }
+  return { ...grassNodeMap(width, height), roughness };
+}

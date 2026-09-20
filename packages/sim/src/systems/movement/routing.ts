@@ -1,5 +1,5 @@
-import { MoveGoal, Owner, PathFollow, PathRequest, Position } from '../../components/index.js';
-import { type Fixed, fx, ZERO } from '../../core/fixed.js';
+import { MoveGoal, Owner, PathFollow, PathRequest, type Waypoint } from '../../components/index.js';
+import { fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
@@ -10,7 +10,6 @@ import type { System, SystemContext } from '../context.js';
 import { dynamicBlockLayers, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial/nodes.js';
 import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
-import { turnOntoNextLeg } from './stepping.js';
 
 /**
  * The pathfinder's per-tick work budget, in A*-settled nodes: what search time is proportional to.
@@ -103,57 +102,41 @@ export function drainPathRequests(
       continue;
     }
 
-    // A reroute carries the walking entity's gait and heading over onto the new first leg.
-    const prior = world.tryGet(e, PathFollow);
     const waypoints = pathToWaypoints(terrain, path);
-    // A route issued mid-tile starts at the centre of the cell the entity already occupies, so following it
-    // verbatim backs the entity up before it turns. Drop that leading waypoint; an entity standing on a
-    // centre keeps the full path.
-    const head = waypoints[0];
-    const p = world.tryGet(e, Position);
-    if (
-      waypoints.length >= 2 &&
-      head !== undefined &&
-      p !== undefined &&
-      (p.x !== head.x || p.y !== head.y)
-    ) {
-      waypoints.shift();
-    }
-    const follow = {
-      waypoints,
-      index: 0,
-      speed: prior?.speed ?? ZERO,
-      hx: prior?.hx ?? ZERO,
-      hy: prior?.hy ?? ZERO,
-    };
-    // Turn any carried momentum onto the first leg; from rest the (0, 0) sentinel only records the heading.
-    if (p !== undefined) turnOntoNextLeg(follow, p);
-    world.add(e, PathFollow, follow);
+    // The route opens with the stop the walker stands at or beside, which its first leg leaves: walking
+    // to it first would back a mid-tile walker up before it turns. A one-stop route walks onto its centre.
+    world.add(e, PathFollow, { waypoints, index: waypoints.length >= 2 ? 1 : 0, legTicks: 0, legCost: 0 });
     world.remove(e, PathRequest);
   }
 }
 
 /**
- * Turn a node path into half-cell waypoint positions in fixed-point tile units, splicing a seam waypoint
- * into every diagonal leg that leaves an odd half-row. Such a leg crosses the integer row where the
- * stagger's triangle wave kinks, so interpolating the grid delta linearly would swing the mover a
- * quarter-column sideways; the seam is the world-straight midpoint of the edge at that row. Every other
- * edge stays inside one row interval, where linear grid motion is straight on screen.
+ * Turn a node path into the stops a walker steps between, each with the lattice node whose roughness
+ * paces the step that leaves it. A diagonal lattice edge is two of the original's steps through the
+ * node between its rows, so it gets its midpoint as a stop: the edge's world-straight middle, which is
+ * also where the stagger's triangle wave kinks for a leg leaving an odd half-row, so interpolating each
+ * half linearly in grid coordinates stays straight on screen. The midpoint's node is the original's own
+ * neighbour there, an odd-row node half a column to +x of this lattice's (`hexNeighboursOf`).
  */
-function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Array<{ x: Fixed; y: Fixed }> {
-  const waypoints: Array<{ x: Fixed; y: Fixed }> = [];
+function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Waypoint[] {
+  const waypoints: Waypoint[] = [];
   let prev: { x: number; y: number } | undefined;
-  for (const cell of path) {
-    const c = terrain.coordsOf(cell);
-    if (prev !== undefined && Math.abs(c.y - prev.y) === 2 && (prev.y & 1) === 1) {
-      // (hy₁+hy₂)/4 is the integer row the leg crosses; the edge midpoint's world x is (hx₁+hx₂)/4
-      // columns, a quarter and so exact in fixed point.
+  for (const node of path) {
+    const c = terrain.coordsOf(node);
+    if (prev !== undefined && Math.abs(c.y - prev.y) === 2) {
+      // (hy₁+hy₂)/4 is the row the leg's middle lies on; the middle's world x is (hx₁+hx₂)/4 columns, a
+      // quarter and so exact in fixed point.
       const rowY = fx.fromInt((prev.y + c.y) / 4);
       const midWorldX = fx.div(fx.fromInt(prev.x + c.x), fx.fromInt(4));
-      waypoints.push({ x: positionXOfWorld(midWorldX, rowY), y: rowY });
+      const midX = c.x > prev.x ? prev.x + (prev.y & 1) : prev.x + (prev.y & 1) - 1;
+      waypoints.push({
+        x: positionXOfWorld(midWorldX, rowY),
+        y: rowY,
+        node: terrain.nodeAt(midX, (prev.y + c.y) / 2),
+      });
     }
     const p = positionOfNode(c.x, c.y);
-    waypoints.push({ x: p.x, y: p.y });
+    waypoints.push({ x: p.x, y: p.y, node });
     prev = c;
   }
   return waypoints;

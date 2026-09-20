@@ -17,7 +17,6 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { combatSystem } from '../../src/systems/index.js';
-import { MOVE_SPEED_PER_TICK } from '../../src/systems/movement/system.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { dropCarriedLoad } from '../../src/systems/settlers/atomics/effects/goods/index.js';
 import { DROP_ATOMIC_ID } from '../../src/systems/settlers/atomics/start.js';
@@ -67,6 +66,13 @@ function carryingWoodcutter(sim: Simulation, x: number, y: number, amount = 1): 
 }
 
 /** The tile Position a settler at (x,y) drops onto - its half-cell node snapped to the lattice. */
+/** The lattice node id of the visual tile `(x, y)`'s centre. */
+function anchorNodeId(sim: Simulation, x: number, y: number): number {
+  const n = cellAnchorNode(x, y);
+  if (sim.terrain === undefined) throw new Error('mapped sim expected');
+  return sim.terrain.nodeAt(n.hx, n.hy);
+}
+
 function dropTileOf(x: number, y: number): { x: number; y: number } {
   const node = nodeOfPosition(fx.fromInt(x), fx.fromInt(y));
   return positionOfNode(node.hx, node.hy);
@@ -171,14 +177,13 @@ describe('a move order on a carrying settler - drop first, then walk', () => {
   it('halts a settler already walking - it stops to drop, not drops on the move', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
-    // Simulate a porter mid-haul: a live walk route at full gait toward tile 9 (the drop must interrupt this,
-    // not run alongside it - the non-zero speed means a surviving PathFollow would advance the settler this tick).
+    // Simulate a porter mid-haul: a live walk route toward tile 9 (the drop must interrupt this, not run
+    // alongside it - a surviving PathFollow would advance the settler this tick).
     sim.world.add(e, PathFollow, {
-      waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(1) }],
+      waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(1), node: anchorNodeId(sim, 9, 1) }],
       index: 0,
-      speed: MOVE_SPEED_PER_TICK,
-      hx: fx.fromInt(0),
-      hy: fx.fromInt(0),
+      legTicks: 0,
+      legCost: 0,
     });
     const startX = sim.world.get(e, Position).x;
 

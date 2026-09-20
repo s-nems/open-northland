@@ -188,63 +188,72 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
   // its WORK FLAG (auto-planted at its feet when it spawns - a gatherer is never free; it carries no
   // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
-  // wood into the mill and hauls finished planks back out). Cadence notes: a default settler walks a
-  // cell in 18 ticks, the inter-swing breather lands after every 2nd swing of a worker's burst, and a
-  // trained swing advances a tree by more than one chop (the woodcutter's second tree).
+  // wood into the mill and hauls finished planks back out). Cadence notes: a rested barefoot settler
+  // walks a land cell in 16 ticks (a laden one in 18), the inter-swing breather lands after every 2nd
+  // swing of a worker's burst, and a trained swing advances a tree by more than one chop (the
+  // woodcutter's second tree).
   const GOLDEN_TRACE: readonly string[] = [
-    '27:8:22',
-    '43:5:24',
-    '46:5:24',
-    '53:8:23',
-    '64:5:24',
-    '68:5:22',
-    '90:7:22',
-    '99:8:22',
-    '112:5:23',
-    '125:8:23',
-    '152:7:23',
-    '156:5:22',
-    '172:8:22',
-    '198:8:23',
-    '200:5:23',
-    '214:7:22',
-    '244:8:22',
-    '265:5:24',
-    '268:5:24',
-    '271:8:23',
-    '277:7:23',
-    '286:5:24',
-    '290:5:22',
-    '317:8:22',
-    '342:8:23',
-    '352:5:23',
-    '377:7:22',
-    '388:8:22',
-    '414:5:22',
-    '414:8:23',
-    '460:8:22',
-    '476:5:23',
-    '476:7:23',
-    '486:8:23',
-    '532:8:22',
-    '558:8:23',
-    '574:7:22',
-    '604:8:22',
-    '630:8:23',
-    '672:7:23',
-    '678:8:22',
-    '704:8:23',
-    '750:8:22',
-    '770:7:22',
-    '776:8:23',
-    '822:8:22',
-    '853:8:23',
-    '870:7:23',
-    '900:8:22',
-    '926:8:23',
-    '969:7:22',
+    '22:8:22',
+    '36:5:24',
+    '39:5:24',
+    '45:8:23',
+    '57:5:24',
+    '61:5:22',
+    '78:7:22',
+    '86:8:22',
+    '102:5:23',
+    '109:8:23',
+    '137:7:23',
+    '139:5:22',
+    '150:8:22',
+    '173:8:23',
+    '180:5:23',
+    '190:7:22',
+    '214:8:22',
+    '233:5:24',
+    '236:5:24',
+    '237:8:23',
+    '249:7:23',
+    '254:5:24',
+    '258:5:22',
+    '278:8:22',
+    '301:8:23',
+    '317:5:23',
+    '334:7:22',
+    '342:8:22',
+    '365:8:23',
+    '370:5:22',
+    '406:8:22',
+    '429:5:23',
+    '429:7:23',
+    '429:8:23',
+    '470:8:22',
+    '493:8:23',
+    '514:7:22',
+    '534:8:22',
+    '557:8:23',
+    '598:8:22',
+    '609:7:23',
+    '621:8:23',
+    '662:8:22',
+    '685:8:23',
+    '694:7:22',
+    '726:8:22',
+    '749:8:23',
+    '789:7:23',
+    '790:8:22',
+    '813:8:23',
+    '854:8:22',
+    '874:7:22',
+    '877:8:23',
+    '881:8:22',
+    '904:8:23',
+    '945:8:22',
+    '968:8:23',
+    '969:7:23',
     '972:8:22',
-    '998:8:23',
+    '990:7:22',
+    '995:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -256,16 +265,16 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('e5704207');
+    expect(run.hash).toBe('1274c921');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    // The slower journeys leave 13 completed batches inside this fixed 1000-tick observation window;
-    // the carpenter's growing experience banks ~7.1 planks of bonus fractions over them, so 7 whole
-    // bonus units land on top (see the production-bonus cases).
-    expect(run.produced).toBe(20);
+    // Whole planks out of the mill inside this fixed 1000-tick observation window: the batches its
+    // journeys complete plus the whole bonus units the carpenter's growing experience banks over them
+    // (see the production-bonus cases).
+    expect(run.produced).toBe(21);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

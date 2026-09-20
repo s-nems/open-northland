@@ -1,58 +1,54 @@
-import {
-  MISSION_BEHAVIOUR,
-  MissionBehaviour,
-  MoveSpeed,
-  PathFollow,
-  Position,
-  Velocity,
-} from '../../components/index.js';
-import { type Fixed, fx, ONE, ULP, ZERO } from '../../core/fixed.js';
+import { isWildlife, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
+import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { worldDistance } from '../../nav/world-metric.js';
-import type { System } from '../context.js';
-import { bootsSpeedBonus, wearWornBoots } from '../equipment/index.js';
-import { legHeading, stepTowardPoint, turnOntoNextLeg } from './stepping.js';
+import { DEFAULT_NODE_ROUGHNESS, type TerrainGraph } from '../../nav/terrain/index.js';
+import { HALF_COLUMN, HALF_ROW, worldDistance } from '../../nav/world-metric.js';
+import type { System, SystemContext } from '../context.js';
+import { wearWornBoots } from '../equipment/index.js';
+import { chargeBarefootStep } from '../lifecycle/needs/index.js';
+import { stepTowardPoint } from './stepping.js';
+import {
+  hasLiveBoots,
+  isCarryingGood,
+  MAX_STEP_TICKS,
+  MIN_STEP_TICKS,
+  walkStepModifiersOf,
+  walkStepTicks,
+} from './walk-cost.js';
 
 /**
- * How many ticks a full walking gait spends crossing one E/W cell, one 68 px column. Observation: a route
- * taking 21 s in the original took 14 s at 12 ticks per cell, so the duration is scaled by 1.5 to 18.
+ * The most a human advances in one tick, in world-metric column units: the E/W half-column step, the
+ * longest lattice edge a single step covers, over the engine's floor on a step cost. A leg paced under it
+ * never touches it, so it only bounds the catch-up after a separation push, keeping the unit-separation
+ * impassability bound (`collision/separation.ts`) below the body radius.
  */
-export const WALK_TICKS_PER_CELL = 18;
+export const MAX_STEP_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(MIN_STEP_TICKS));
 
 /**
- * How far a path follower advances per tick at full walking gait, in world-metric units where one unit is a
- * full 68 px cell width. Approximation: no readable human `movespeed` exists (`animaltypes.ini` and the
- * `logicwalkspeed` animation field are animal-only), so the magnitude hangs on the walk-cycle anchor above.
- * Minted with `divCeil` so the truncated remainder cannot cost every cell leg a 19th, nearly-stationary tick.
+ * The reference human pace the separation approximations scale their caps by: a rested, barefoot,
+ * unladen walker crossing land (roughness 2), 8 ticks a half-column step.
  */
-export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
+export const REFERENCE_STEP_TICKS = 8;
+export const REFERENCE_PACE_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(REFERENCE_STEP_TICKS));
 
-/** Ticks from rest to full gait, and the recovery rate after a corner sheds speed. Authored: no
- *  acceleration parameter is readable in the source data. */
-export const ACCEL_TICKS = 3;
+/** The pre-existing fallback for an animal whose source `movespeed` is 0 (the engine default is not
+ *  decoded). It remains independent of the human terrain/shoes cost until that animal default is pinned. */
+const DEFAULT_ANIMAL_TICKS_PER_CELL = 18;
+const DEFAULT_ANIMAL_PACE_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(DEFAULT_ANIMAL_TICKS_PER_CELL));
 
-/** The final-approach brake horizon: a path's last leg caps target speed at `remaining / this`. */
-const BRAKE_HORIZON_TICKS = 2;
-
-/**
- * The brake floor: the ease-out never drops below `gait / ARRIVAL_SPEED_DIV`, so arrival closes in a few
- * ticks instead of a Zeno crawl.
- */
-export const ARRIVAL_SPEED_DIV = 2;
-
-/** The script slow bit halves the gait, which is exactly what doubling the original's per-step cost
- *  does. */
-const SCRIPT_SLOW_DIVISOR = 2;
-
-/** The script fast bit as a fraction of the ordinary gait. Approximation: the original takes 2 ticks
- *  off a per-step cost whose unencumbered civilian value is about 6 (reading), landing near a half
- *  again as fast. */
-const SCRIPT_FAST_NUMERATOR = 3;
-const SCRIPT_FAST_DIVISOR = 2;
+/** The least a human on schedule advances in one tick: the short N/S half-row edge at the longest step
+ *  cost. Keeping this true minimum prevents a legitimate slow vertical leg reading as an obstruction. */
+export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP_TICKS));
 
 /**
  * Advances entity positions one tick. A {@link PathFollow} takes precedence over any {@link Velocity}, and
  * dropping it at the last waypoint is what the planner reads as arrived.
+ *
+ * A human walks each leg in exactly its step cost (`walkStepTicks`): the cost is fixed when the leg starts
+ * from the roughness of the node it leaves and the walker's state then, the position closes the remaining
+ * distance in equal shares of the ticks left, and the last tick lands on the stop. The original moves at
+ * a constant pace with no ramp, corner loss or brake, so none is modelled. A creature keeps its
+ * content-paced constant {@link MoveSpeed}.
  */
 export const movementSystem: System = (world, ctx) => {
   // A path can complete within this pass, so the velocity pass below cannot re-derive membership from
@@ -67,56 +63,21 @@ export const movementSystem: System = (world, ctx) => {
       world.remove(e, PathFollow);
       continue;
     }
-
-    // A content pace can truncate to 0 ulps, which never makes progress; one ULP keeps such a pace
-    // terminating.
-    const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
-    const floored = rawGait > ULP ? rawGait : ULP;
-    // Worn boots raise the cruise gait by their content-rated fraction (the manual: "A Viking wearing shoes
-    // can walk much faster"; the magnitude is an approximation). The > ZERO guard keeps every bootless
-    // walker's arithmetic byte-identical.
-    const bootBonus = bootsSpeedBonus(world, ctx, e);
-    const gait = scriptedPace(world, e, bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored);
     const p = world.mut(e, Position);
-
-    // The tick's target speed: the cruise gait, capped on the last leg so the approach eases out.
-    let targetSpeed = gait;
+    // Wildlife with source `movespeed = 0` has no MoveSpeed component, but it must stay on the animal
+    // fallback rather than inheriting human terrain, fatigue, equipment and hunger rules.
+    const paced = world.has(e, MoveSpeed) || isWildlife(world, e);
+    const arrived = paced
+      ? stepTowardPoint(p, target, creaturePace(world, e))
+      : walkHumanLeg(world, ctx, e, pf, p, target);
+    if (!arrived) continue;
+    if (!paced) chargeStep(world, ctx, e, pf);
     if (pf.index + 1 >= pf.waypoints.length) {
-      const remaining = worldDistance(p.x, p.y, target.x, target.y);
-      const braked = fx.div(remaining, fx.fromInt(BRAKE_HORIZON_TICKS));
-      const floor = fx.divCeil(gait, fx.fromInt(ARRIVAL_SPEED_DIV)); // ceil: ≥ 1 ulp for any gait
-      const eased = braked > floor ? braked : floor;
-      targetSpeed = eased < gait ? eased : gait;
-    }
-
-    // Accelerating is gradual, decelerating immediate: the ease-out's smoothness comes from the target
-    // curve itself, and the clamp absorbs the ulp a truncated corner projection can add.
-    if (pf.speed < targetSpeed) {
-      const accelerated = fx.add(pf.speed, fx.divCeil(gait, fx.fromInt(ACCEL_TICKS)));
-      pf.speed = accelerated < targetSpeed ? accelerated : targetSpeed;
+      world.remove(e, PathFollow);
     } else {
-      pf.speed = targetSpeed;
-    }
-
-    // A fresh or rerouted path carries the (0, 0) heading sentinel; recording this leg's heading before the
-    // first step lets the first corner project momentum across it.
-    if (pf.hx === ZERO && pf.hy === ZERO) {
-      const h = legHeading(p, target);
-      if (h !== null) {
-        pf.hx = h.x;
-        pf.hy = h.y;
-      }
-    }
-
-    if (stepTowardPoint(p, target, pf.speed)) {
-      // Reaching a waypoint wears the walker's boots one step; the empty-path drop above is not a walk.
-      wearWornBoots(world, ctx, e);
-      if (pf.index + 1 >= pf.waypoints.length) {
-        world.remove(e, PathFollow);
-      } else {
-        pf.index += 1;
-        turnOntoNextLeg(pf, p);
-      }
+      pf.index += 1;
+      pf.legTicks = 0;
+      pf.legCost = 0;
     }
   }
 
@@ -129,18 +90,50 @@ export const movementSystem: System = (world, ctx) => {
   }
 };
 
-/** Apply a script's pace bits to the cruise gait. Both bits set compound, as they do in the original's
- *  cost arithmetic; neither set leaves the gait byte-identical. */
-function scriptedPace(world: World, e: Entity, gait: Fixed): Fixed {
-  const flags = world.tryGet(e, MissionBehaviour)?.flags ?? 0;
-  if (flags === 0) return gait; // every ordinary walker's arithmetic stays byte-identical
-  let paced = gait;
-  if ((flags & MISSION_BEHAVIOUR.WALKS_SLOWLY) !== 0) {
-    paced = fx.div(paced, fx.fromInt(SCRIPT_SLOW_DIVISOR));
+type FollowState = NonNullable<(typeof PathFollow)['__value']>;
+
+/** What leaving a node costs a human besides ticks: its roughness off the boots, or off the food bar when
+ *  there is no live pair (the empty-path drop above is not a walk, and a creature has no boots). */
+function chargeStep(world: World, ctx: SystemContext, e: Entity, pf: FollowState): void {
+  const roughness = departureRoughness(ctx.terrain, pf);
+  const carrying = isCarryingGood(world, e);
+  if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, roughness, carrying);
+  else chargeBarefootStep(world, ctx, e, roughness, carrying);
+}
+
+/** The roughness of the node the current leg leaves, which paces and shoes it: the previous stop, or on
+ *  a route's first leg the stop itself (the walker stands beside it). A mapless sim walks the default. */
+function departureRoughness(terrain: TerrainGraph | undefined, pf: FollowState): number {
+  const from = pf.waypoints[pf.index > 0 ? pf.index - 1 : 0];
+  return terrain === undefined || from === undefined
+    ? DEFAULT_NODE_ROUGHNESS
+    : terrain.roughnessAt(from.node);
+}
+
+/** One tick of a human's leg; true once it stands on `target`. */
+function walkHumanLeg(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  pf: FollowState,
+  p: { x: Fixed; y: Fixed },
+  target: { x: Fixed; y: Fixed },
+): boolean {
+  if (pf.legCost === 0) {
+    pf.legCost = walkStepTicks(departureRoughness(ctx.terrain, pf), walkStepModifiersOf(world, e));
   }
-  if ((flags & MISSION_BEHAVIOUR.WALKS_FAST) !== 0) {
-    paced = fx.mulDiv(paced, fx.fromInt(SCRIPT_FAST_NUMERATOR), fx.fromInt(SCRIPT_FAST_DIVISOR));
-  }
-  // Re-floored because halving truncates: a gait of zero ulps would never finish its path.
-  return paced > ULP ? paced : ULP;
+  pf.legTicks += 1;
+  const remaining = pf.legCost - pf.legTicks;
+  const dist = worldDistance(p.x, p.y, target.x, target.y);
+  // The equal share of what is left; on the last tick the whole of it, so the walker lands exactly. A
+  // push can leave more than the cap to cover, which then delays the arrival but never prevents it.
+  const share = remaining > 0 ? fx.div(dist, fx.fromInt(remaining + 1)) : dist;
+  return stepTowardPoint(p, target, share < MAX_STEP_PER_TICK ? share : MAX_STEP_PER_TICK);
+}
+
+/** A creature's constant pace; a content pace that truncates to 0 ulps never makes progress, so one ULP
+ *  keeps such a pace terminating. */
+function creaturePace(world: World, e: Entity): Fixed {
+  const pace = world.tryGet(e, MoveSpeed)?.perTick ?? DEFAULT_ANIMAL_PACE_PER_TICK;
+  return pace > ULP ? pace : ULP;
 }

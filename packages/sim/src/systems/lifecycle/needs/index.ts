@@ -12,6 +12,7 @@ export {
 export {
   AI_NEED_REFILL_TURNS,
   carriesNeeds,
+  chargeBarefootStep,
   chargeMilitaryPiety,
   HEALING_TICKS_TO_FULL,
   NEED_INIT_SPREAD_UNITS,

@@ -5,12 +5,21 @@ import type { NodeId } from './node-id.js';
 import { StepBuffer } from './step-buffer.js';
 
 /**
+ * The roughness every node of a map without an `lmpr` lane reads: the owned corpus's `land` value
+ * (`trianglepatterntypes` land = 2, the ground most of a map is). A decoded map always carries its lane;
+ * this only paces synthetic and scene terrain.
+ */
+export const DEFAULT_NODE_ROUGHNESS = 2;
+
+/**
  * The sim's navigation model: the half-cell node lattice with its 8-direction edge set and each node's
  * static connectivity label. Distinct from the render's triangle tessellation. Construct through
  * {@link buildTerrainGraph}.
  */
 export class TerrainGraph extends TerrainEdges {
   private readonly components: Int32Array;
+  /** Per-node `lmpr` roughness, or undefined for the uniform default. */
+  private readonly roughness: Uint8Array | undefined;
 
   constructor(
     width: number,
@@ -20,12 +29,27 @@ export class TerrainGraph extends TerrainEdges {
     readonly landscapes?: LandscapeMapInput,
     readonly landVertices?: readonly boolean[],
     readonly waterContinents?: readonly number[],
+    roughness?: readonly number[],
   ) {
     super(width, height, typeIds, props);
     if (waterContinents !== undefined && waterContinents.length !== this.nodeCount) {
       throw new Error(`water continent lane has ${waterContinents.length} nodes, expected ${this.nodeCount}`);
     }
+    if (roughness !== undefined && roughness.length !== this.nodeCount) {
+      throw new Error(`roughness lane has ${roughness.length} nodes, expected ${this.nodeCount}`);
+    }
+    this.roughness = roughness === undefined ? undefined : Uint8Array.from(roughness);
     this.components = this.computeComponents();
+  }
+
+  /** The walking roughness a step off `node` is paced and shod by (the map's `lmpr` value, 0..5 on the
+   *  owned corpus). Throws on an id outside the grid. */
+  roughnessAt(node: NodeId): number {
+    const v = this.roughness === undefined ? DEFAULT_NODE_ROUGHNESS : this.roughness[node];
+    if (v === undefined || node < 0 || node >= this.nodeCount) {
+      throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
+    }
+    return v;
   }
 
   /**

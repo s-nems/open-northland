@@ -13,7 +13,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
 import { worldDistance } from '../../../src/nav/world-metric.js';
-import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
+import { MAX_STEP_PER_TICK } from '../../../src/systems/index.js';
 import {
   HEADQUARTERS,
   HUMAN_PLAYER,
@@ -30,7 +30,7 @@ describe('moveUnit order', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     orderMove(s, e, 5, 0);
-    s.run(105); // 5 tiles at 18 ticks/tile plus ramp/brake; the civilian hold is zero
+    s.run(105); // 5 tiles at 16 ticks/tile, with room to spare; the civilian hold is zero
 
     const p = s.world.get(e, Position);
     expect([p.x, p.y]).toEqual([fx.fromInt(5), fx.fromInt(0)]); // arrived at the ordered spot
@@ -104,29 +104,26 @@ describe('moveUnit order', () => {
     expect(released).toBe(true);
   });
 
-  it('carries momentum through a mid-walk redirect (no dead stop, no full-speed flip)', () => {
+  it('keeps walking through a mid-walk redirect: the new route replaces the path the same tick', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     orderMove(s, e, 9, 0);
-    s.run(20); // cruising east at full gait, mid-tile
-    expect(s.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
+    s.run(20); // walking east, mid-tile
+    const before = { ...s.world.get(e, Position) };
 
-    // Redirect around a corner: the splice must keep PART of the pace (a turn sheds cos(angle),
-    // never all of it, and never keeps a reversal's full pace). Before the fix moveUnit dropped the
-    // PathFollow, so every redirect re-accelerated from rest.
+    // Redirect around a corner: the spliced route starts at once from where the walker stands.
     orderMove(s, e, 3, 3);
     s.step();
-    const spliced = s.world.get(e, PathFollow).speed;
-    const accelStep = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
-    expect(spliced).toBeGreaterThan(accelStep); // more than a from-rest ramp tick - momentum survived
-    expect(spliced).toBeLessThanOrEqual(MOVE_SPEED_PER_TICK); // and never above the cruise gait
+    const pf = s.world.get(e, PathFollow);
+    expect(pf.index).toBe(1);
+    const cur = s.world.get(e, Position);
+    expect(worldDistance(before.x, before.y, cur.x, cur.y)).toBeGreaterThan(0);
   });
 
-  it('never moves faster than the cruise gait, even under rapid flip-flopping orders', () => {
-    // The reported floor slide: spam-clicking opposite directions rerouted the walker at FULL
-    // carried speed with no corner projection at the splice, so it flipped 180° without slowing.
-    // Speed must stay ≤ the walk gait every single tick; the only variation allowed is the light
-    // ease-in/out of the movement-inertia approximation (movement/routing.ts / movement/system.ts).
+  it('never moves faster than the per-tick cap, even under rapid flip-flopping orders', () => {
+    // The reported floor slide: spam-clicking opposite directions once rerouted the walker into a
+    // long spliced first leg it closed at a sprint. A leg's per-tick advance is bounded whatever its
+    // length (movement/system.ts `MAX_STEP_PER_TICK`).
     const s = sim();
     const e = ownedWoodcutter(s, 5, 0);
     let prev = { ...s.world.get(e, Position) };
@@ -135,7 +132,7 @@ describe('moveUnit order', () => {
       if (t % 3 === 0) orderMove(s, e, t % 2 === 0 ? 0 : 11, 0);
       s.step();
       const cur = s.world.get(e, Position);
-      expect(worldDistance(prev.x, prev.y, cur.x, cur.y)).toBeLessThanOrEqual(MOVE_SPEED_PER_TICK);
+      expect(worldDistance(prev.x, prev.y, cur.x, cur.y)).toBeLessThanOrEqual(MAX_STEP_PER_TICK);
       prev = { ...cur };
     }
   });

@@ -3,13 +3,13 @@ import { TypeId } from '../../record.js';
 import { TerrainEntities } from '../entities.js';
 import { TRANSITION_NONE, TRANSITION_PAIRS } from './encoding.js';
 import { MapFishSwarm } from './fish.js';
-import { CellLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
+import { CellLane, RoughnessLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
 
 /**
  * A decoded terrain grid file (`content/maps/<id>.json`), the validating loader boundary in front of
  * the sim's structurally typed `TerrainMap`. `typeIds` is the `map.dat` `lmlt` half-cell lane reduced
- * to one 1-based IR landscape typeId per cell, with raw 0 (no object) mapped to `void`. The optional
- * terrain lanes are render-only; the sim reads only the grid.
+ * to one 1-based IR landscape typeId per cell, with raw 0 (no object) mapped to `void`. The sim reads
+ * the grid, the `continents` lane and the `roughness` lane; the other lanes are render-only.
  */
 const TerrainMapFields = z.strictObject({
   /** Map width in cells. */
@@ -45,6 +45,14 @@ const TerrainMapFields = z.strictObject({
   shore: CellLane.optional(),
   /** Raw `lmco` continent id at every half-cell node (`2W x 2H`), used by water-edge jobs. */
   continents: CellLane.optional(),
+  /**
+   * `lmpr` walking roughness at every half-cell node (`2W x 2H`): what a human's step off the node
+   * costs in ticks is linear in it (`sim` `walkStepTicks`), and the same value wears its shoes or,
+   * barefoot, its food bar. The
+   * pipeline always writes it (every owned map carries it); a synthetic map may omit it and walks at
+   * the sim's land default.
+   */
+  roughness: RoughnessLane.optional(),
   /** Populated `map.dat` `lafm` fish-swarm slots, in authored slot order. */
   fishSwarms: z.array(MapFishSwarm).optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
@@ -63,7 +71,7 @@ function fishSwarmsInRange(m: TerrainMapValue): boolean {
   return m.fishSwarms?.every((swarm) => swarm.hx < m.width * 2 && swarm.hy < m.height * 2) ?? true;
 }
 
-function halfCellLaneLength(field: 'continents'): TerrainMapInvariant {
+function halfCellLaneLength(field: 'continents' | 'roughness'): TerrainMapInvariant {
   return {
     ok: (m) => {
       const lane = m[field];
@@ -170,6 +178,7 @@ const INVARIANTS: readonly TerrainMapInvariant[] = [
   cellLaneLength('brightness'),
   cellLaneLength('shore'),
   halfCellLaneLength('continents'),
+  halfCellLaneLength('roughness'),
   {
     ok: (m) => (m.fishSwarms?.length ?? 0) === 0 || m.continents !== undefined,
     message: () => 'terrain map populated fish swarms require a continent lane',

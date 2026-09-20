@@ -18,13 +18,6 @@ function liveEquipOf(ctx: SystemContext, slot: EquipmentSlot | null) {
   return contentIndex(ctx.content).goods.get(slot.goodType)?.equip;
 }
 
-/** The mover's worn-boots gait bonus in [0, ONE] - ZERO without Equipment, boots, or a rated bonus. */
-export function bootsSpeedBonus(world: World, ctx: SystemContext, e: Entity): Fixed {
-  const boots = world.tryGet(e, Equipment)?.boots ?? null;
-  const pct = liveEquipOf(ctx, boots)?.speedBonusPct;
-  return pct === undefined ? ZERO : pctFraction(pct);
-}
-
 /** Whether `operator` crafts for itself: a non-carrier with a trade. The shared gate for the tool credit
  *  and tool wear, since a carrier-run utility's delivery work is not crafting. */
 export function isCraftingOperator(world: World, ctx: SystemContext, operator: Entity): boolean {

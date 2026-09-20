@@ -101,6 +101,22 @@ describe('mapDatToTerrain', () => {
     expect(mapDatToTerrain(bytes).continents).toEqual([1, 1, 7, 7, 1, 1, 7, 7]);
   });
 
+  it('carries the raw lmpr roughness per half-cell node, and drops a wrong-length lane with a warning', () => {
+    const lane = [1, 2, 3, 4, 5, 0, 1, 2];
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      { tag: 'lmpr', version: 1, payload: packMapLayer(Uint8Array.from(lane)) },
+    ]);
+    expect(mapDatToTerrain(bytes).roughness).toEqual(lane);
+    const short = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      { tag: 'lmpr', version: 1, payload: packMapLayer(new Uint8Array(7)) },
+    ]);
+    expect(mapDatToTerrain(short).roughness).toBeUndefined();
+  });
+
   it('throws on a map.dat with no lmlt landscape-type chunk', () => {
     const noLmlt = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },

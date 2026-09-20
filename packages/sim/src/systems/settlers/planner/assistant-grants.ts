@@ -137,8 +137,9 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   }
 }
 
-/** Each granting player's specs, strongest gear first by content bonus rather than good id, with
- *  ascending good id as the tie-break. A granted id whose content lost its `equip` class is dropped. */
+/** Each granting player's specs, strongest gear first by content production bonus rather than good id,
+ *  with ascending good id as the tie-break (boots carry no rated bonus and sort by id). A granted id
+ *  whose content lost its `equip` class is dropped. */
 function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]> {
   const { world, ctx } = pass;
   const byPlayer = new Map<number, readonly GrantSpec[]>();
@@ -153,7 +154,7 @@ function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]>
       specs.push({
         goodType,
         category: equip.category,
-        strength: Math.max(equip.speedBonusPct ?? 0, equip.productionBonusPct ?? 0),
+        strength: equip.productionBonusPct ?? 0,
       });
     }
     specs.sort((a, b) => b.strength - a.strength || a.goodType - b.goodType);

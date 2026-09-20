@@ -29,6 +29,7 @@ export * from './movement/nav-state.js';
 export * from './movement/routing.js';
 export * from './movement/spacing.js';
 export * from './movement/system.js';
+export * from './movement/walk-cost.js';
 export * from './orders/index.js';
 export * from './progression/index.js';
 export * from './readviews/index.js';

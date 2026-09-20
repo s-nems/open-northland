@@ -14,9 +14,7 @@ describe('EquipClass', () => {
     });
     expect(parsed.uses).toBe(5);
     expect(parsed.restorePct).toEqual({ hunger: 50 });
-    expect(
-      EquipClass.parse({ category: 'boots', wears: true, speedBonusPct: 40, uses: 6000 }).speedBonusPct,
-    ).toBe(40);
+    expect(EquipClass.parse({ category: 'boots', wears: true, uses: 10000 }).uses).toBe(10000);
     expect(
       EquipClass.parse({ category: 'tool', wears: true, productionBonusPct: 60, uses: 100 })
         .productionBonusPct,
@@ -33,7 +31,8 @@ describe('EquipClass', () => {
     expect(() => EquipClass.parse({ ...bottle, restorePct: { fatigue: 101 } })).toThrow();
     expect(() => EquipClass.parse({ ...bottle, restorePct: { healthMax: 50.5 } })).toThrow();
     expect(() => EquipClass.parse({ category: 'tool', uses: 0 })).toThrow();
-    expect(() => EquipClass.parse({ category: 'boots', speedBonusPct: -40 })).toThrow();
+    expect(() => EquipClass.parse({ category: 'tool', productionBonusPct: -40 })).toThrow();
+    expect(() => EquipClass.parse({ category: 'boots', speedBonusPct: 40 })).toThrow(); // no such field
   });
 
   it('rejects a wearing item without rated uses (it would never break)', () => {

@@ -49,7 +49,7 @@ export function stepTowardPoint(
 
 /**
  * The unit-length world-metric heading from `p` toward `target`, or `null` for a zero-length leg. A component
- * can run a few ulps past ONE where the isqrt-truncated distance under-reads, which the ramp clamp bounds.
+ * can run a few ulps past ONE where the isqrt-truncated distance under-reads.
  */
 export function legHeading(
   p: { x: Fixed; y: Fixed },
@@ -60,28 +60,4 @@ export function legHeading(
   const dwx = fx.sub(worldX(target.x, target.y), worldX(p.x, p.y));
   const dwy = fx.mul(fx.sub(target.y, p.y), ROW_STEP);
   return { x: fx.div(dwx, dist), y: fx.div(dwy, dist) };
-}
-
-/**
- * Turn a path follower onto the leg at `pf.index`, projecting its momentum onto the new leg's world heading
- * as `speed × cos(turn)`: straight through costs nothing, a 45° lattice turn keeps about 71%, and a right
- * angle or reversal stops the gait dead. A player redirect turns the body through this same rule as a path
- * corner. A zero-length next leg keeps the old heading, and the (0, 0) sentinel stores the new heading
- * without projecting. Part of the movement-inertia approximation.
- */
-export function turnOntoNextLeg(
-  pf: { waypoints: Array<{ x: Fixed; y: Fixed }>; index: number; speed: Fixed; hx: Fixed; hy: Fixed },
-  p: { x: Fixed; y: Fixed },
-): void {
-  const next = pf.waypoints[pf.index];
-  if (next === undefined) return;
-  const h = legHeading(p, next);
-  if (h === null) return;
-  const hasHeading = pf.hx !== ZERO || pf.hy !== ZERO;
-  if (hasHeading && (h.x !== pf.hx || h.y !== pf.hy)) {
-    const dot = fx.add(fx.mul(pf.hx, h.x), fx.mul(pf.hy, h.y));
-    pf.speed = dot > ZERO ? fx.mul(pf.speed, dot) : ZERO;
-  }
-  pf.hx = h.x;
-  pf.hy = h.y;
 }

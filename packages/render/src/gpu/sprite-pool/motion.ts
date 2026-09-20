@@ -1,15 +1,17 @@
 /** How a pooled sprite is drawn between two 12 Hz sim steps: per-kind anchors, snap bands, and gait. */
-import { WALK_TICKS_PER_CELL } from '@open-northland/sim';
 import { clamp01, lerp } from '../../data/math.js';
 import { TILE_HALF_W } from '../../data/projection/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 
 /** Frames in one authored human walk cycle per facing (`mapmoveableanimations/animations.ini`). */
 const WALK_CYCLE_FRAMES = 12;
-/** Tick-locked cadence: one authored frame per sim tick at full cruise. Observation: slower
- *  cadences read as foot-skating next to the original. */
+/** The travel the clip clock calls one frame per tick: a cell in 18 ticks. Observation of the original's
+ *  cadence against its walk; a faster sim walk (a shod walker on a road covers a cell in 12) turns the
+ *  clip proportionally faster, slower cadences read as foot-skating next to the original. */
+const WALK_CLOCK_TICKS_PER_CELL = 18;
+/** Tick-locked cadence: one authored frame per sim tick at the calibrated travel. */
 const WALK_ANIMATION_TICKS_PER_CYCLE = WALK_CYCLE_FRAMES;
-const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE;
+const WALK_ANIMATION_RATE = WALK_CLOCK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE;
 
 /**
  * World-px jump between two consecutive tick anchors past which the motion track snaps instead of
@@ -37,7 +39,7 @@ export function drawAlphaForKind(kind: SpriteKind, frameAlpha: number, interpola
 const WALK_FRAME_TRAVEL_PX = (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
 
 /** Cap on the gait-clock rate in frames per tick. It clears the fastest legit case - a data-paced animal
- *  whose `movespeed` beats the universal 18-ticks-per-cell walk (the movespeed-6 hare reads 3.0) - while
+ *  whose `movespeed` beats the calibrated 18-ticks-per-cell walk (the movespeed-6 hare reads 3.0) - while
  *  keeping a mistracked jump below the snap threshold from spinning the legs. */
 const MAX_GAIT_RATE = 3.5;
 

@@ -1,7 +1,9 @@
 import { Obstructed, PathFollow, Position, Settler } from '../../../../components/index.js';
+import { ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { canonicalById, NodeBuckets } from '../../../spatial/nodes.js';
+import { legHeading } from '../../stepping.js';
 import { hasBodyCollision, hasSoftCollision, isStanding } from '../bodies.js';
 import type { MoverSnapshot, SeparationScratch } from './scratch.js';
 
@@ -11,9 +13,9 @@ export interface TickColliders {
   readonly movers: readonly Entity[];
   readonly firmMovers: ReadonlySet<Entity>;
   /**
-   * Pre-separation positions and headings, so a pair's two halves read the same state whatever the
-   * processing order. A live heading read would be order-dependent and can throw, since the grind
-   * bookkeeping drops an earlier-processed mover's PathFollow mid-loop.
+   * Pre-separation positions and unit world headings toward the current stop, so a pair's two halves read
+   * the same state whatever the processing order. A live heading read would be order-dependent and can
+   * throw, since the grind bookkeeping drops an earlier-processed mover's PathFollow mid-loop.
    */
   readonly before: ReadonlyMap<Entity, Readonly<MoverSnapshot>>;
   readonly moverIndex: NodeBuckets;
@@ -55,11 +57,13 @@ export function collectColliders(
   for (const e of movers) {
     const p = world.get(e, Position);
     const f = world.get(e, PathFollow); // present by the movers query above
-    const snapshot = snapshotPool.pop() ?? { x: p.x, y: p.y, hx: f.hx, hy: f.hy };
+    const target = f.waypoints[f.index];
+    const heading = target === undefined ? null : legHeading(p, target);
+    const snapshot = snapshotPool.pop() ?? { x: p.x, y: p.y, hx: ZERO, hy: ZERO };
     snapshot.x = p.x;
     snapshot.y = p.y;
-    snapshot.hx = f.hx;
-    snapshot.hy = f.hy;
+    snapshot.hx = heading?.x ?? ZERO;
+    snapshot.hy = heading?.y ?? ZERO;
     before.set(e, snapshot);
   }
 

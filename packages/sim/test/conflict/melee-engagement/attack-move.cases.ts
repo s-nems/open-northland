@@ -36,10 +36,10 @@ describe('attackMoveUnit - a march that fights everything on the way', () => {
     const enemy = fighterAt(sim, 2, 0, VIKING, WOODCUTTER, { owner: P1 }); // adjacent to the march route
 
     orderAttackMove(sim, a, 9, 0);
-    // The direct inverse of the "does not re-engage under a move order" case. It takes two more ticks to
-    // land the first blow than a standing soldier: a swing needs a standstill (inReachAndStanding), so the
-    // marcher brakes onto its contact cell first.
-    sim.run(3);
+    // The direct inverse of the "does not re-engage under a move order" case. A swing needs a standstill
+    // (inReachAndStanding): the march's first tick is already a step begun, and turning back onto the
+    // contact cell is a step of its own, eight ticks on land, so the blow lands on the ninth tick.
+    sim.run(9);
 
     expect(sim.world.get(a, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: enemy });
     expect(sim.world.has(a, PlayerOrder)).toBe(true); // and the march is still standing behind the fight
@@ -96,7 +96,7 @@ describe('attackMoveUnit - a march that fights everything on the way', () => {
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
 
     orderAttackMove(sim, a, 5, 0);
-    sim.run(105); // 5 tiles at 18 ticks/tile plus the gait ramp
+    sim.run(105); // 5 tiles at 16 ticks/tile, with room to spare
 
     expect(sim.world.get(a, Position).x).toBe(fx.fromInt(5)); // arrived at the ordered spot
     expect(sim.world.has(a, PlayerOrder)).toBe(false); // and was handed straight back to the economy

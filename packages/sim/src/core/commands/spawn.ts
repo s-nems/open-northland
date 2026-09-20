@@ -54,8 +54,8 @@ export type SpawnCommand =
       /**
        * The settler's walk pace as ticks to cross one tile (the animal `movespeed` semantics: a
        * `MoveSpeed{perTick = ONE/moveSpeed}` is stamped, so a larger value walks a slower step). Omit
-       * (or a non-positive value) and the settler carries no `MoveSpeed` and walks at the universal
-       * `MOVE_SPEED_PER_TICK`.
+       * (or a non-positive value) and the settler carries no `MoveSpeed` and walks the original's
+       * per-step cost (`walkStepTicks`).
        */
       readonly moveSpeed?: number;
       /** The player that owns this settler (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). An explicit

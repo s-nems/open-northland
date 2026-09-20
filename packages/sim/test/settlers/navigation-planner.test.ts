@@ -69,13 +69,12 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
     sim.world.add(e, PathFollow, {
       waypoints: [
-        { x: fx.fromInt(1), y: fx.fromInt(0) },
-        { x: fx.fromInt(3), y: fx.fromInt(0) }, // destination === the goal centre
+        { x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) },
+        { x: fx.fromInt(3), y: fx.fromInt(0), node: anchorCell(sim, 3, 0) }, // destination === the goal centre
       ],
       index: 0,
-      speed: fx.fromInt(0),
-      hx: fx.fromInt(0),
-      hy: fx.fromInt(0),
+      legTicks: 0,
+      legCost: 0,
     });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, PathRequest)).toBe(false);
@@ -85,11 +84,10 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
     sim.world.add(e, PathFollow, {
-      waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0) }], // a stale route to somewhere else
+      waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) }], // a stale route elsewhere
       index: 0,
-      speed: fx.fromInt(0),
-      hx: fx.fromInt(0),
-      hy: fx.fromInt(0),
+      legTicks: 0,
+      legCost: 0,
     });
     plannerSystem(sim.world, ctxOf(sim));
     // A fresh request is issued right away; the stale path keeps the walker moving until the

@@ -3,7 +3,7 @@ import { type Fixed, fx } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { worldDistance } from '../../../../nav/world-metric.js';
 import { clearNavState } from '../../nav-state.js';
-import { MOVE_SPEED_PER_TICK } from '../../system.js';
+import { SLOWEST_PACE_PER_TICK } from '../../system.js';
 
 /** Consecutive low-progress ticks before a walker drops its path and asks the planner to reroute. */
 export const OBSTRUCTED_REROUTE_TICKS = 4;
@@ -11,8 +11,9 @@ export const OBSTRUCTED_REROUTE_TICKS = 4;
 /** Reroutes without reaching the goal before a walker stands down entirely. */
 export const OBSTRUCTED_MAX_REROUTES = 4;
 
-/** Minimum total progress per tick of the obstruction window - one third of walking gait. */
-export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(3));
+/** Minimum total progress per tick of the obstruction window: a third of the slowest on-schedule walk, so
+ *  no legitimately paced leg reads as a grind. */
+export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(SLOWEST_PACE_PER_TICK, fx.fromInt(3));
 
 /** End the current grind window while preserving a non-zero reroute tally for this walk. */
 export function clearGrind(world: World, entity: Entity): void {
