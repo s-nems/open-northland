@@ -17,6 +17,16 @@ const matrixBlock = `
   uniform mat3 uTransformMatrix;
 `;
 
+/** Texels per screen pixel below which the bicubic magnification runs unblended; it fades into the
+ *  sampler's bilinear by one texel per pixel. Approximation tuned by eye. */
+const BICUBIC_FULL_FOOTPRINT = 0.5;
+/** Texels per screen pixel from which the four-tap minification runs unblended. Tuned by eye. */
+const MINIFY_FULL_FOOTPRINT = 1.5;
+/** Tap offset in screen pixels: four taps a quarter pixel out cover one pixel's footprint. */
+const MINIFY_TAP_RADIUS_PX = 0.25;
+/** Footprint in texels beyond which the taps stop spreading, since four cannot cover more. */
+const MINIFY_MAX_FOOTPRINT = 4;
+
 // Original terrain gets bicubic magnification and four-tap minification, not a full mipmap substitute.
 // Existing mipmapped materials retain their hardware filtering.
 const TERRAIN_SAMPLE = `
@@ -58,10 +68,10 @@ const TERRAIN_SAMPLE = `
       }
       vec4 bicubic = clamp(sum, vec4(0.0), vec4(1.0));
       bicubic.rgb = min(bicubic.rgb, vec3(bicubic.a));
-      return mix(bicubic, texture(uTexture, vUV), smoothstep(0.5, 1.0, footprint));
+      return mix(bicubic, texture(uTexture, vUV), smoothstep(${BICUBIC_FULL_FOOTPRINT.toFixed(4)}, 1.0, footprint));
     }
     // Bound the footprint at strong minification: the four taps cannot represent arbitrarily many texels.
-    float radius = 0.25 * min(1.0, 4.0 / footprint);
+    float radius = ${MINIFY_TAP_RADIUS_PX.toFixed(4)} * min(1.0, ${MINIFY_MAX_FOOTPRINT.toFixed(4)} / footprint);
     vec2 a = (dx + dy) * radius;
     vec2 b = (dx - dy) * radius;
     vec4 filtered = 0.25 * (
@@ -69,8 +79,8 @@ const TERRAIN_SAMPLE = `
       textureLod(uTexture, clamp(vUV - a, low, high), 0.0) +
       textureLod(uTexture, clamp(vUV + b, low, high), 0.0) +
       textureLod(uTexture, clamp(vUV - b, low, high), 0.0));
-    if (footprint >= 1.5) return filtered;
-    return mix(texture(uTexture, vUV), filtered, smoothstep(1.0, 1.5, footprint));
+    if (footprint >= ${MINIFY_FULL_FOOTPRINT.toFixed(4)}) return filtered;
+    return mix(texture(uTexture, vUV), filtered, smoothstep(1.0, ${MINIFY_FULL_FOOTPRINT.toFixed(4)}, footprint));
   }
 `;
 
@@ -86,6 +96,20 @@ const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
 const WAVE_SHIMMER = 0.08;
 /** The shimmer's own angular speed - off the swell's so glints don't pulse in lockstep. */
 const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
+// The enhanced water's crossing waves: a second swell and a second glint travelling across the first
+// pair, an artistic approximation tuned by eye.
+/** How much steeper than the main swell's diagonal the crossing swell travels (y weight per x). */
+const CROSS_SWELL_SLANT = 1.3;
+/** Spatial phase gradient of the crossing swell, radians per world px. */
+const CROSS_SWELL_PHASE_PER_PX = 0.025;
+const CROSS_SWELL_RADIANS_PER_TICK = (2 * Math.PI) / 42;
+/** The crossing swell's share of the displacement; the main swell keeps the rest, so the peak holds. */
+const CROSS_SWELL_SHARE = 0.32;
+const CROSS_GLINT_RADIANS_PER_TICK = (2 * Math.PI) / 35;
+/** Spatial frequency of the crossing glint relative to the crossing swell's phase. */
+const CROSS_GLINT_PHASE_SCALE = 2.1;
+/** The crossed shimmer's mix: both glints and their product, summing to one so the peak holds. */
+const CROSSED_SHIMMER_WEIGHTS = { shimmer: 0.55, crossGlint: 0.3, product: 0.15 } as const;
 /** The waves' common period (lcm of 30, 21, 42 and 35 ticks; the glint is defined to take one pass per
  *  period): the clock wraps modulo this, so the f32 `uWave.x` never grows into `sin` precision loss
  *  over a long session. */
@@ -147,10 +171,12 @@ const FIELD_VERTEX = `#version 300 es
     float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
     vec2 pos = aPosition;
     // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/terrain/water.ts).
-    float crossPhase = (aPosition.x - aPosition.y * 1.3) * 0.025;
+    float crossPhase = (aPosition.x - aPosition.y * ${CROSS_SWELL_SLANT.toFixed(4)})
+      * ${CROSS_SWELL_PHASE_PER_PX.toFixed(4)};
     float swell = sin(uWave.x * ${WAVE_RADIANS_PER_TICK.toFixed(8)} + phase);
     // Artistic approximation: crossing swells retain the same maximum displacement and coast mask.
-    float crossedSwell = 0.68 * swell + 0.32 * sin(uWave.x * ${((2 * Math.PI) / 42).toFixed(8)} + crossPhase);
+    float crossedSwell = ${(1 - CROSS_SWELL_SHARE).toFixed(4)} * swell
+      + ${CROSS_SWELL_SHARE.toFixed(4)} * sin(uWave.x * ${CROSS_SWELL_RADIANS_PER_TICK.toFixed(8)} + crossPhase);
     pos.y -= aWave * uWave.y * ${WAVE_AMPLITUDE_PX.toFixed(4)}
       * mix(swell, crossedSwell, uEnhancedWater);
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
@@ -194,11 +220,14 @@ const FIELD_FRAGMENT = `#version 300 es
     float lane = texture(uBrightnessTex, vBrightnessUV).r * ${(255 / BRIGHTNESS_NEUTRAL).toFixed(8)};
     // Water shimmer: a second travelling wave glints the shaded water surface (0 on land).
     float shimmer = sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
-    float crossGlint = sin(uWave.x * ${((2 * Math.PI) / 35).toFixed(8)} - vCrossWavePhase * 2.1);
+    float crossGlint = sin(uWave.x * ${CROSS_GLINT_RADIANS_PER_TICK.toFixed(8)}
+      - vCrossWavePhase * ${CROSS_GLINT_PHASE_SCALE.toFixed(4)});
     // Softer intersecting glints avoid a uniform whole-surface pulse. UVs stay inside their atlas tile.
-    float polishedShimmer = 0.55 * shimmer + 0.3 * crossGlint + 0.15 * shimmer * crossGlint;
+    float crossedShimmer = ${CROSSED_SHIMMER_WEIGHTS.shimmer.toFixed(4)} * shimmer
+      + ${CROSSED_SHIMMER_WEIGHTS.crossGlint.toFixed(4)} * crossGlint
+      + ${CROSSED_SHIMMER_WEIGHTS.product.toFixed(4)} * shimmer * crossGlint;
     lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
-      * mix(shimmer, polishedShimmer, uEnhancedWater);
+      * mix(shimmer, crossedShimmer, uEnhancedWater);
     // Water depth: shallows read darker, deep water darker still, and a narrow glint band drifts
     // across the deep water. vWater = (water fraction, deep fraction), zero on land paint and at land
     // nodes, so it fades out across the coast triangle. Gated with the water enhancement, so the
