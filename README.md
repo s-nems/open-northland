@@ -28,23 +28,24 @@ It can load decoded maps and render terrain, buildings, settlers, effects, and t
 - For playable content, the pinned CulturesNation archive (`CnMod 1.3.2.zip`, about 570 MB), which
   `npm run build:content` downloads and converts.
 
-## Build and test
+## Starting the project
 
+#### Installing dependencies 
 ```bash
 npm ci
 npm run build
-npm test
-npm run check
 ```
 
-The source, tests, and headless scene checks work without the mod. `npm run build` typechecks the
-workspaces and creates the browser bundle in `packages/app/dist/`.
-
-## Local content
-
+#### Generating local content and starting dev server 
 ```bash
 npm run build:content
 npm run dev
+```
+
+#### Running local tests
+```bash
+npm test
+npm run check
 ```
 
 `build:content` verifies the archive's SHA-256, unpacks it, replaces `content/`, and runs the
