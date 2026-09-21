@@ -9,36 +9,18 @@ Open Northland is an independent, cross-platform engine for *Cultures - 8th Wond
 Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
 an offline asset pipeline.
 
-The repository never contains original game files or decoded content; `npm run check:assets`
-rejects both in CI. The maps, graphics, and audio a build plays come from the free
-[CulturesNation](https://culturesnation.pl) community mod, whose archive is a build input: a release
-downloads the pinned `cnmod.zip` from `game.opennorthland.org`, converts it into `content/`, and packs
-that tree into the desktop installers and the web image. Those two artifacts contain decoded
-original data; [`docs/LEGAL.md`](docs/LEGAL.md) says where they may go.
+The repository never contains original game files or decoded content. 
+The maps, graphics, and audio come from the original game.
 
-The original assets are a stand-in while the project's own are made ([`docs/art/`](docs/art/AGENTS.md));
-replacing them is the goal.
+You can play-test it from: [game.opennorthland.org](https://game.opennorthland.org)
 
 ![A settlement rendered by Open Northland from decoded game data](docs/images/settlement.webp)
-
-## Builds
-
-The game ships as a desktop app and as a web app, both built from the same `packages/app`. The
-`Release` workflow, dispatched from the Actions tab against `main`, publishes a `build-<short-sha>`
-prerelease with unsigned desktop installers for Windows and Apple Silicon macOS, adds the Linux
-AppImage and the Intel mac dmg when the dispatch asks for them, and pushes the web app image
-`ghcr.io/s-nems/open-northland-web`. Both need a GitHub login with access to the repository.
-[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) describes the workflow and the local equivalents.
 
 ## Status
 
 Open Northland is pre-alpha. The current build has a playable settlement economy, building,
 gathering, production, progression, combat, fog, population systems, and a basic computer player.
 It can load decoded maps and render terrain, buildings, settlers, effects, and the HUD.
-
-Campaign scripting, save games, and multiplayer are not complete. Releases are unsigned development
-builds named after their commit; there is no versioned release train. Current actionable work lives
-in [`docs/tickets/`](docs/tickets/).
 
 ## Requirements
 
@@ -56,8 +38,7 @@ npm run check
 ```
 
 The source, tests, and headless scene checks work without the mod. `npm run build` typechecks the
-workspaces and creates the browser bundle in `packages/app/dist/`. The playable browser entries need
-converted content (next section); without it they show a notice.
+workspaces and creates the browser bundle in `packages/app/dist/`.
 
 ## Local content
 
@@ -73,16 +54,6 @@ unpacked mod (see `docs/DEVELOPMENT.md`).
 
 Converted content is ignored by Git. Never commit it, and never share it or a build that carries it
 outside the channel `docs/LEGAL.md` allows.
-
-The development server opens on the main menu. Useful direct entries are:
-
-- `?scene=sandbox` for the main acceptance scene
-- `?map=<id>` for a decoded map
-- `?anim` for character animations
-- `?icons` for decoded sprite frames
-- `?sounds` for the sound gallery
-
-See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for commands, diagnostics, and local content tests.
 
 ## Repository layout
 
@@ -118,7 +89,7 @@ read [`AGENTS.md`](AGENTS.md).
 ## License and trademarks
 
 Open Northland's code is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE). The project's
-own artwork, sounds and models are not: their terms are in [`LICENSE-ASSETS`](LICENSE-ASSETS).
+own artwork, sounds, and models are not: their terms are in [`LICENSE-ASSETS`](LICENSE-ASSETS).
 
 This is an independent project. It is not affiliated with or endorsed by Funatics Software, Daedalic
 Entertainment, or another rights holder of the *Cultures* series. Game names are used only to

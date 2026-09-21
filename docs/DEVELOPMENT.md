@@ -88,15 +88,18 @@ desktop installers and the web image; nothing is converted on a player's machine
 does it locally:
 
 ```bash
-npm run build:content                               # downloads https://game.opennorthland.org/cnmod.zip
-npm run build:content -- --zip "../CnMod 1.3.2.zip" # or takes a local copy of the archive
+npm run build:content
+npm run build:content -- --zip "../CnMod 1.3.2.zip"
 ```
 
-It verifies the archive's SHA-256, unpacks it into a temporary directory with `scripts/unzip.mjs`,
-empties `content/` except for the rendered music and runs the pipeline. The music stage re-renders
-only the tracks its own manifest no longer covers, so a rebuild from an unchanged archive keeps them
-and saves most of the run; `--zip` saves the 570 MB download on top. While working on the pipeline
-itself, run it directly against an unpacked mod, the directory that holds `DataCnmd/`:
+It keeps a cached `content/cnmod.zip` plus an unpacked `content/.cnmod-unpacked/`, verifies the
+archive's SHA-256 on every run, downloads it only when the archive cache is missing or invalid,
+shows download progress, reuses the unpacked cache when it already matches the pinned archive, and
+empties `content/` except for the rendered music and the cached source data before running the
+pipeline. The music stage re-renders only the tracks its own manifest no longer covers, so a rebuild
+from an unchanged archive keeps them and saves most of the run; `--zip` still bypasses the archive
+cache and uses the given file directly. While working on the pipeline itself, run it directly
+against an unpacked mod, the directory that holds `DataCnmd/`:
 
 ```bash
 npm run pipeline -- --mod-root "../CNMod-1.3.2" --out content

@@ -13,8 +13,8 @@ This license covers the project's own artwork, sounds, models and their sources 
 - any file in a build of Open Northland that is derived from the files above.
 
 The Assets are not covered by the GNU Affero General Public License in LICENSE, which applies to
-the program code only. Files decoded from the CulturesNation mod or from a Cultures installation
-are not the Assets; they remain the property of their rights holders as described in docs/LEGAL.md.
+the program code only. Files decoded from the original game installation are not the Assets;
+they remain the property of their rights holders as described in docs/LEGAL.md.
 
 2. What you may do
 
