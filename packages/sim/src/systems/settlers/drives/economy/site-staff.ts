@@ -14,7 +14,7 @@ import { fetchNeededMaterial } from './site-supply.js';
  * because the flag is not extracted into the IR; that over-applies to its 0 rows, so a hunter posted to a
  * store's gatherer slot stops hunting while the store is upgraded.
  *
- * Source basis: authored remaster rule, since the original has no pre-completion staff to observe.
+ * Source basis: authored project rule, since the original has no pre-completion staff to observe.
  */
 export function planSiteStaff(
   plan: PlannerContext,

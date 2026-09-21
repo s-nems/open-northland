@@ -31,7 +31,7 @@ import { ctxOf, grassMap } from './support.js';
  * until the upgrade finishes.
  *
  * source-basis: user rule ("obowiązuje taki sam limit pracowników jak w budynku … limit
- * jest poziomu podstawowego a nie ulepszonego"). Helping with a new workplace is a remaster rule.
+ * jest poziomu podstawowego a nie ulepszonego"). Helping with a new workplace is a project rule.
  */
 
 const VIKING = 1;

@@ -25,7 +25,7 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * BUILD - keep a useful automatic crew assignment stable, otherwise move the builder to the nearest
  * reachable site with material to fetch or delivered labor to install, and with no task anywhere wait
  * beside a site. Player pins and unfinished workplace bindings are strict: their builders stay with that
- * site even while another has work. Source basis: authored remaster rule.
+ * site even while another has work. Source basis: authored project rule.
  */
 export function planBuilder(
   plan: PlannerContext,
