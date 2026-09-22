@@ -1,6 +1,4 @@
-# Packaging for the desktop shell. Builds stay unsigned until
-# docs/tickets/tooling/desktop-code-signing.md is complete. Release CI lives in
-# .github/workflows/release.yml.
+# Packaging for the desktop shell. Builds are unsigned.
 appId: org.opennorthland.desktop
 productName: OpenNorthland
 # electron-builder needs an exact Electron release to fetch platform binaries; keep in lockstep
