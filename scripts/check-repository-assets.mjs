@@ -45,7 +45,7 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/icon-512.png',
   'packages/app/public/icon-512-maskable.png',
   'packages/app/public/og-image.png',
-  'packages/app/src/assets/brand/logo-stacked-muted.webp',
+  'packages/app/src/assets/brand/logo-stacked.webp',
   'packages/desktop/build/icon.icns',
   'packages/desktop/build/icon.ico',
   'packages/desktop/build/icon.png',

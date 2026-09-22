@@ -1,6 +1,6 @@
 import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
-import { BRAND_LOGO_STACKED_MUTED } from '../../view/brand-art.js';
+import { BRAND_LOGO_STACKED } from '../../view/brand-art.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
 import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { initialSettingsMemory } from '../../view/settings-page.js';
@@ -57,7 +57,7 @@ function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
   const logo = document.createElement('h1');
   logo.className = 'main-menu__logo';
   const logoArt = document.createElement('img');
-  logoArt.src = BRAND_LOGO_STACKED_MUTED;
+  logoArt.src = BRAND_LOGO_STACKED;
   logoArt.alt = 'Open Northland';
   logoArt.decoding = 'async';
   logo.append(logoArt);

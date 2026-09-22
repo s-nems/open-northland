@@ -7,6 +7,5 @@
 
 export const BRAND_BACKDROP = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
 
-/** The stacked lockup (emblem, ribbon and wordmark) in the muted tone the main menu uses. */
-export const BRAND_LOGO_STACKED_MUTED = new URL('../assets/brand/logo-stacked-muted.webp', import.meta.url)
-  .href;
+/** The stacked logo lockup (emblem, ribbon and wordmark) that heads the main menu. */
+export const BRAND_LOGO_STACKED = new URL('../assets/brand/logo-stacked.webp', import.meta.url).href;

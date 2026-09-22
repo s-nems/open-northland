@@ -19,11 +19,11 @@ const GROUND = '#1a1410';
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
 /**
- * Below this edge the painted emblem turns to mud, so the flat glyph stands in for it. The glyph is
- * drawn on a 16 px grid, so 16 and 32 px land on whole pixels.
+ * Below this edge the painted longship turns to mud, so the N monogram stands in for it. Browsers on
+ * high-density screens draw a 16 px favicon slot at 32 px, which is the monogram's native grid.
  */
-const FLAT_MAX_SIZE = 32;
-const FLAT_SVG_VIEWBOX = 16;
+const MONOGRAM_MAX_SIZE = 32;
+const MONOGRAM_SVG_VIEWBOX = 32;
 
 const ICO_SIZES = [16, 32, 48, 64, 128, 256];
 /**
@@ -53,27 +53,21 @@ const ICON_PADDING = 0.04;
 const OG_IMAGE = { width: 1200, height: 630, logoWidth: 1000 };
 const README_LOGO_WIDTH = 1600;
 const MENU_LOGO_WIDTH = 1200;
-/**
- * The main menu's "polar night" palette is cold and desaturated, so the full-colour gold lockup
- * glares there. The menu gets a cold-brass tone: the CSS chain
- * `saturate(0.5) brightness(0.85) sepia(0.2) hue-rotate(-15deg)` folded into one colour matrix.
- */
-const MENU_LOGO_TONE = { saturate: 0.5, brightness: 0.85, sepia: 0.2, hueRotate: -15 };
 const WEBP = { quality: 90, alphaQuality: 100 };
 
 const emblemRaster = await trimmedMaster('emblem.png');
 const lockupHorizontal = await trimmedMaster('lockup-horizontal.png');
 const lockupStacked = await trimmedMaster('lockup-stacked.png');
-const emblemFlatSvg = await readFile(join(SOURCE, 'emblem-flat.svg'));
+const monogramSvg = await readFile(join(SOURCE, 'monogram.svg'));
 
 /** The raster masters carry generous transparent margins; each target fits the trimmed motif instead. */
 async function trimmedMaster(name) {
   return sharp(join(SOURCE, name)).trim().png().toBuffer();
 }
 
-async function flatEmblem(size) {
-  const density = (72 * size) / FLAT_SVG_VIEWBOX;
-  return sharp(emblemFlatSvg, { density }).resize(size, size).png().toBuffer();
+async function monogram(size) {
+  const density = (72 * size) / MONOGRAM_SVG_VIEWBOX;
+  return sharp(monogramSvg, { density }).resize(size, size).png().toBuffer();
 }
 
 /** The painted emblem fitted into a `size` square with `padding` (fraction of `size`) on each side. */
@@ -88,7 +82,7 @@ async function paintedEmblem(size, padding, background = TRANSPARENT) {
 }
 
 async function iconPng(size) {
-  return size <= FLAT_MAX_SIZE ? flatEmblem(size) : paintedEmblem(size, ICON_PADDING);
+  return size <= MONOGRAM_MAX_SIZE ? monogram(size) : paintedEmblem(size, ICON_PADDING);
 }
 
 /** ICO container with PNG-encoded entries; a 256 px entry is written as size 0 per the format. */
@@ -171,42 +165,6 @@ function icns(slots) {
   return Buffer.concat([head, ...chunks]);
 }
 
-/** The `saturate()`, `sepia()` and `hue-rotate()` matrices of the CSS Filter Effects spec. */
-const filterMatrix = {
-  saturate: (s) => [
-    [0.213 + 0.787 * s, 0.715 - 0.715 * s, 0.072 - 0.072 * s],
-    [0.213 - 0.213 * s, 0.715 + 0.285 * s, 0.072 - 0.072 * s],
-    [0.213 - 0.213 * s, 0.715 - 0.715 * s, 0.072 + 0.928 * s],
-  ],
-  sepia: (amount) => {
-    const t = 1 - amount;
-    return [
-      [0.393 + 0.607 * t, 0.769 - 0.769 * t, 0.189 - 0.189 * t],
-      [0.349 - 0.349 * t, 0.686 + 0.314 * t, 0.168 - 0.168 * t],
-      [0.272 - 0.272 * t, 0.534 - 0.534 * t, 0.131 + 0.869 * t],
-    ];
-  },
-  hueRotate: (degrees) => {
-    const c = Math.cos((degrees * Math.PI) / 180);
-    const s = Math.sin((degrees * Math.PI) / 180);
-    return [
-      [0.213 + c * 0.787 - s * 0.213, 0.715 - c * 0.715 - s * 0.715, 0.072 - c * 0.072 + s * 0.928],
-      [0.213 - c * 0.213 + s * 0.143, 0.715 + c * 0.285 + s * 0.14, 0.072 - c * 0.072 - s * 0.283],
-      [0.213 - c * 0.213 - s * 0.787, 0.715 - c * 0.715 + s * 0.715, 0.072 + c * 0.928 + s * 0.072],
-    ];
-  },
-};
-
-function multiply(a, b) {
-  return a.map((row, i) => b[0].map((_, j) => row.reduce((sum, _, k) => sum + a[i][k] * b[k][j], 0)));
-}
-
-/** One matrix equal to the CSS filter chain `saturate() brightness() sepia() hue-rotate()`, applied in that order. */
-function toneMatrix({ saturate, brightness, sepia, hueRotate }) {
-  const saturated = filterMatrix.saturate(saturate).map((row) => row.map((v) => v * brightness));
-  return multiply(filterMatrix.hueRotate(hueRotate), multiply(filterMatrix.sepia(sepia), saturated));
-}
-
 async function ogImage() {
   const logo = await sharp(lockupHorizontal).resize({ width: OG_IMAGE.logoWidth }).png().toBuffer();
   return sharp({
@@ -257,7 +215,7 @@ const icnsSlots = await Promise.all(
 );
 
 await emit(APP_PUBLIC, 'favicon.ico', ico(icoEntries.filter((e) => e.size <= 48)));
-await emit(APP_PUBLIC, 'favicon.svg', emblemFlatSvg);
+await emit(APP_PUBLIC, 'favicon.svg', monogramSvg);
 await emit(
   APP_PUBLIC,
   'apple-touch-icon.png',
@@ -279,10 +237,6 @@ await emit(
 );
 await emit(
   APP_BRAND,
-  'logo-stacked-muted.webp',
-  await sharp(lockupStacked)
-    .resize({ width: MENU_LOGO_WIDTH })
-    .recomb(toneMatrix(MENU_LOGO_TONE))
-    .webp(WEBP)
-    .toBuffer(),
+  'logo-stacked.webp',
+  await sharp(lockupStacked).resize({ width: MENU_LOGO_WIDTH }).webp(WEBP).toBuffer(),
 );

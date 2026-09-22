@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-  <title>Open Northland</title>
-  <circle cx="8" cy="8" r="8" fill="#2a2119"/>
-  <rect x="3" y="2" width="10" height="7" fill="#e2b04a"/>
-  <rect x="6" y="2" width="1" height="7" fill="#2a2119"/>
-  <rect x="9" y="2" width="1" height="7" fill="#2a2119"/>
-  <path d="M1 10 Q8 11.5 15 10 L13 13 Q8 14 3 13 Z" fill="#e2b04a"/>
-  <path d="M15 10 L16 6.5 L14 9 Z M1 10 L0 6.5 L2 9 Z" fill="#e2b04a"/>
-</svg>

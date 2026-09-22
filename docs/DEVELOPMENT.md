@@ -400,10 +400,9 @@ npm run brand
 Regenerates every committed icon and logo from the masters in `tools/brand/source/`: the favicon,
 web manifest icons, Open Graph image, desktop `icon.png`/`icon.ico`/`icon.icns`, the README logo and
 the main menu lockup. Edit a master, run the command and commit the outputs together. Sizes up to
-32 px come from `emblem-flat.svg`, a glyph drawn on a 16 px grid because the painted emblem turns to
-mud that small; `emblem-mono.svg` is the single-colour variant for badges and print. The lockup is
-gold everywhere except the main menu, which gets a muted cold-brass tone derived in the script so
-the logo sits in the menu's cold palette.
+32 px, including the favicon, come from `monogram.svg`, an N on a disc in the sail's oxblood, because
+the painted longship turns to mud that small; `emblem-mono.svg` is the single-colour ship for badges
+and print.
 
 ## Web image
 
