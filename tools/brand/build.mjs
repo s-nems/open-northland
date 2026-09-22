@@ -17,6 +17,8 @@ const DOCS_IMAGES = join(ROOT, 'docs/images');
 /** The page and menu ground; also the manifest theme colour. Mirrors the body background in index.html. */
 const GROUND = '#1a1410';
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
+/** Alpha above this counts as drawn when checking a master's edges. */
+const EDGE_ALPHA_THRESHOLD = 16;
 
 /**
  * Below this edge the painted longship turns to mud, so the N monogram stands in for it. Browsers on
@@ -60,8 +62,27 @@ const lockupHorizontal = await trimmedMaster('lockup-horizontal.png');
 const lockupStacked = await trimmedMaster('lockup-stacked.png');
 const monogramSvg = await readFile(join(SOURCE, 'monogram.svg'));
 
-/** The raster masters carry generous transparent margins; each target fits the trimmed motif instead. */
+/**
+ * The raster masters carry generous transparent margins; each target fits the trimmed motif instead.
+ * A master drawn up to its canvas edge was cropped by the generator, so it fails the build.
+ */
 async function trimmedMaster(name) {
+  const { data, info } = await sharp(join(SOURCE, name))
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const alpha = (x, y) => data[(y * info.width + x) * info.channels + 3];
+  const last = { x: info.width - 1, y: info.height - 1 };
+  for (let x = 0; x < info.width; x++) {
+    if (alpha(x, 0) > EDGE_ALPHA_THRESHOLD || alpha(x, last.y) > EDGE_ALPHA_THRESHOLD) {
+      throw new Error(`${name} is drawn up to its top or bottom edge; the motif is cropped`);
+    }
+  }
+  for (let y = 0; y < info.height; y++) {
+    if (alpha(0, y) > EDGE_ALPHA_THRESHOLD || alpha(last.x, y) > EDGE_ALPHA_THRESHOLD) {
+      throw new Error(`${name} is drawn up to its left or right edge; the motif is cropped`);
+    }
+  }
   return sharp(join(SOURCE, name)).trim().png().toBuffer();
 }
 
