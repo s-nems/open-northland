@@ -29,7 +29,7 @@ win:
       arch: [x64]
     - target: portable
       arch: [x64]
-# Space-free artifact names: these become GitHub release asset URLs (.github/workflows/release.yml).
+# Space-free artifact names, so they work as download URLs.
 nsis:
   # A game install: let the player pick the directory, real shortcuts, no one-click surprise.
   oneClick: false
