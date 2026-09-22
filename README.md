@@ -1,5 +1,8 @@
 <h1 align="center">
-  <img src="docs/images/logo.webp" alt="Open Northland" width="520">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo.webp">
+    <img src="docs/images/logo-light.webp" alt="Open Northland" width="520">
+  </picture>
 </h1>
 
 [![CI](https://github.com/s-nems/open-northland/actions/workflows/ci.yml/badge.svg)](https://github.com/s-nems/open-northland/actions/workflows/ci.yml)

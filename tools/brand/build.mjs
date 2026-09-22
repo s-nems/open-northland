@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { BRAND_LOGO_STACKED_SIZE } from '../../packages/app/src/view/brand-art.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -14,18 +15,18 @@ const APP_BRAND = join(ROOT, 'packages/app/src/assets/brand');
 const DESKTOP_BUILD = join(ROOT, 'packages/desktop/build');
 const DOCS_IMAGES = join(ROOT, 'docs/images');
 
-/** The page and menu ground; also the manifest theme colour. Mirrors the body background in index.html. */
-const GROUND = '#1a1410';
+/** The menu's night ground; also the manifest theme colour. Mirrors the body background in index.html. */
+const GROUND = '#0c1420';
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 /** Alpha above this counts as drawn when checking a master's edges. */
 const EDGE_ALPHA_THRESHOLD = 16;
 
 /**
- * Below this edge the painted longship turns to mud, so the N monogram stands in for it. Browsers on
- * high-density screens draw a 16 px favicon slot at 32 px, which is the monogram's native grid.
+ * Below this edge the painted longship turns to mud, so a flat drawing of the same shield stands in
+ * for it. Browsers on high-density screens draw a 16 px favicon slot at 32 px, the drawing's grid.
  */
-const MONOGRAM_MAX_SIZE = 32;
-const MONOGRAM_SVG_VIEWBOX = 32;
+const SMALL_EMBLEM_MAX_SIZE = 32;
+const SMALL_EMBLEM_SVG_VIEWBOX = 32;
 
 const ICO_SIZES = [16, 32, 48, 64, 128, 256];
 /**
@@ -52,15 +53,36 @@ const DESKTOP_ICON_SIZE = 1024;
 /** Maskable icons must keep their motif inside the central 80 % safe zone. */
 const MASKABLE_PADDING = 0.1;
 const ICON_PADDING = 0.04;
-const OG_IMAGE = { width: 1200, height: 630, logoWidth: 1000 };
+/**
+ * macOS draws app icons as a rounded square on Apple's 1024 px grid (an 824 px body, about 185 px
+ * corner radius); a free-standing round shield gets shrunk into a grey frame instead.
+ */
+const MAC_TILE = { grid: 1024, body: 824, radius: 185, top: '#27313f', bottom: '#111822', motif: 0.84 };
+/** The emblem stays whole in a centre square crop, which chat apps use for compact link previews. */
+const OG_IMAGE = {
+  width: 1200,
+  height: 630,
+  logoHeight: 560,
+  dim: 0.55,
+  tint: '#2a3a52',
+  veil: 'rgba(12, 20, 32, 0.4)',
+  jpeg: { quality: 86, mozjpeg: true },
+};
 const README_LOGO_WIDTH = 1600;
-const MENU_LOGO_WIDTH = 1200;
+/** The light-theme README logo sets the wordmark on its own plaque, so ivory letters never meet white. */
+const README_LIGHT_EMBLEM_SCALE = 1.2;
+const README_LIGHT_GAP = 0.06;
+/** The Chrome install dialog shows wide screenshots up to a 2.3:1 ratio. */
+const SCREENSHOT_WIDTH = 1280;
 const WEBP = { quality: 90, alphaQuality: 100 };
 
 const emblemRaster = await trimmedMaster('emblem.png');
 const lockupHorizontal = await trimmedMaster('lockup-horizontal.png');
 const lockupStacked = await trimmedMaster('lockup-stacked.png');
-const monogramSvg = await readFile(join(SOURCE, 'monogram.svg'));
+const wordmark = await trimmedMaster('wordmark.png');
+const smallEmblemSvg = await readFile(join(SOURCE, 'emblem-small.svg'));
+/** Open Northland's own renderer, never the original game (docs/LEGAL.md); the menu shows it too. */
+const SETTLEMENT = join(ROOT, 'docs/images/settlement.webp');
 
 /**
  * The raster masters carry generous transparent margins; each target fits the trimmed motif instead.
@@ -86,9 +108,9 @@ async function trimmedMaster(name) {
   return sharp(join(SOURCE, name)).trim().png().toBuffer();
 }
 
-async function monogram(size) {
-  const density = (72 * size) / MONOGRAM_SVG_VIEWBOX;
-  return sharp(monogramSvg, { density }).resize(size, size).png().toBuffer();
+async function smallEmblem(size) {
+  const density = (72 * size) / SMALL_EMBLEM_SVG_VIEWBOX;
+  return sharp(smallEmblemSvg, { density }).resize(size, size).png().toBuffer();
 }
 
 /** The painted emblem fitted into a `size` square with `padding` (fraction of `size`) on each side. */
@@ -103,7 +125,29 @@ async function paintedEmblem(size, padding, background = TRANSPARENT) {
 }
 
 async function iconPng(size) {
-  return size <= MONOGRAM_MAX_SIZE ? monogram(size) : paintedEmblem(size, ICON_PADDING);
+  return size <= SMALL_EMBLEM_MAX_SIZE ? smallEmblem(size) : paintedEmblem(size, ICON_PADDING);
+}
+
+/** The emblem on a night-blue rounded square laid out on Apple's icon grid, rendered at `size`. */
+async function macTile(size) {
+  const scale = size / MAC_TILE.grid;
+  const body = Math.round(MAC_TILE.body * scale);
+  const inset = Math.round((size - body) / 2);
+  const radius = MAC_TILE.radius * scale;
+  const tile = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">` +
+      `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">` +
+      `<stop offset="0" stop-color="${MAC_TILE.top}"/><stop offset="1" stop-color="${MAC_TILE.bottom}"/>` +
+      `</linearGradient></defs>` +
+      `<rect x="${inset}" y="${inset}" width="${body}" height="${body}" rx="${radius}" fill="url(#g)"/></svg>`,
+  );
+  const motifSize = Math.round(body * MAC_TILE.motif);
+  const motif =
+    motifSize <= SMALL_EMBLEM_MAX_SIZE ? await smallEmblem(motifSize) : await paintedEmblem(motifSize, 0);
+  return sharp(tile)
+    .composite([{ input: motif, gravity: 'centre' }])
+    .png()
+    .toBuffer();
 }
 
 /** ICO container with PNG-encoded entries; a 256 px entry is written as size 0 per the format. */
@@ -186,24 +230,57 @@ function icns(slots) {
   return Buffer.concat([head, ...chunks]);
 }
 
+/** The stacked lockup centred on the settlement backdrop, dimmed and tinted like the main menu's night. */
 async function ogImage() {
-  const logo = await sharp(lockupHorizontal).resize({ width: OG_IMAGE.logoWidth }).png().toBuffer();
-  return sharp({
-    create: { width: OG_IMAGE.width, height: OG_IMAGE.height, channels: 4, background: GROUND },
-  })
-    .composite([{ input: logo, gravity: 'centre' }])
+  const backdrop = await sharp(SETTLEMENT)
+    .resize(OG_IMAGE.width, OG_IMAGE.height, { fit: 'cover' })
+    .modulate({ brightness: OG_IMAGE.dim })
+    .tint(OG_IMAGE.tint)
     .png()
+    .toBuffer();
+  const veil = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_IMAGE.width}" height="${OG_IMAGE.height}">` +
+      `<rect width="100%" height="100%" fill="${OG_IMAGE.veil}"/></svg>`,
+  );
+  const logo = await sharp(lockupStacked).resize({ height: OG_IMAGE.logoHeight }).png().toBuffer();
+  return sharp(backdrop)
+    .composite([{ input: veil }, { input: logo, gravity: 'centre' }])
+    .jpeg(OG_IMAGE.jpeg)
     .toBuffer();
 }
 
-function webManifest() {
+/** The emblem beside the plaque wordmark, for the README on GitHub's light theme. */
+async function readmeLightLogo() {
+  const text = await sharp(wordmark).resize({ width: README_LOGO_WIDTH }).png().toBuffer();
+  const { height: textHeight } = await sharp(text).metadata();
+  const emblemHeight = Math.round(textHeight * README_LIGHT_EMBLEM_SCALE);
+  const emblem = await sharp(emblemRaster).resize({ height: emblemHeight }).png().toBuffer();
+  const { width: emblemWidth } = await sharp(emblem).metadata();
+  const gap = Math.round(README_LOGO_WIDTH * README_LIGHT_GAP);
+  const width = emblemWidth + gap + README_LOGO_WIDTH;
+  const combined = await sharp({
+    create: { width, height: emblemHeight, channels: 4, background: TRANSPARENT },
+  })
+    .composite([
+      { input: emblem, left: 0, top: 0 },
+      { input: text, left: emblemWidth + gap, top: Math.round((emblemHeight - textHeight) / 2) },
+    ])
+    .png()
+    .toBuffer();
+  return sharp(combined).resize({ width: README_LOGO_WIDTH }).webp(WEBP).toBuffer();
+}
+
+function webManifest(screenshot) {
   return `${JSON.stringify(
     {
       name: 'Open Northland',
       short_name: 'Northland',
       description: 'An open-source engine for Cultures - 8th Wonder of the World.',
+      id: '/',
       start_url: '/',
-      display: 'standalone',
+      display: 'fullscreen',
+      orientation: 'landscape',
+      categories: ['games'],
       background_color: GROUND,
       theme_color: GROUND,
       icons: [
@@ -213,6 +290,15 @@ function webManifest() {
           type: 'image/png',
         })),
         { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+      screenshots: [
+        {
+          src: '/screenshot-wide.webp',
+          sizes: `${screenshot.width}x${screenshot.height}`,
+          type: 'image/webp',
+          form_factor: 'wide',
+          label: 'A Viking settlement',
+        },
       ],
     },
     null,
@@ -230,13 +316,13 @@ const pwaIcons = await Promise.all(PWA_ICON_SIZES.map(async (size) => [size, awa
 const icoEntries = await Promise.all(ICO_SIZES.map(async (size) => ({ size, png: await iconPng(size) })));
 const icnsSlots = await Promise.all(
   ICNS_SLOTS.map(async ([type, size, encoding]) => {
-    const png = await iconPng(size);
+    const png = await macTile(size);
     return [type, encoding === 'argb' ? await icnsArgb(png) : png];
   }),
 );
 
 await emit(APP_PUBLIC, 'favicon.ico', ico(icoEntries.filter((e) => e.size <= 48)));
-await emit(APP_PUBLIC, 'favicon.svg', monogramSvg);
+await emit(APP_PUBLIC, 'favicon.svg', smallEmblemSvg);
 await emit(
   APP_PUBLIC,
   'apple-touch-icon.png',
@@ -244,8 +330,12 @@ await emit(
 );
 for (const [size, png] of pwaIcons) await emit(APP_PUBLIC, `icon-${size}.png`, png);
 await emit(APP_PUBLIC, 'icon-512-maskable.png', await paintedEmblem(512, MASKABLE_PADDING, GROUND));
-await emit(APP_PUBLIC, 'og-image.png', await ogImage());
-await emit(APP_PUBLIC, 'site.webmanifest', webManifest());
+await emit(APP_PUBLIC, 'og-image.jpg', await ogImage());
+const screenshot = await sharp(SETTLEMENT).resize({ width: SCREENSHOT_WIDTH }).webp(WEBP).toBuffer({
+  resolveWithObject: true,
+});
+await emit(APP_PUBLIC, 'screenshot-wide.webp', screenshot.data);
+await emit(APP_PUBLIC, 'site.webmanifest', webManifest(screenshot.info));
 
 await emit(DESKTOP_BUILD, 'icon.png', await paintedEmblem(DESKTOP_ICON_SIZE, ICON_PADDING));
 await emit(DESKTOP_BUILD, 'icon.ico', ico(icoEntries));
@@ -256,8 +346,12 @@ await emit(
   'logo.webp',
   await sharp(lockupHorizontal).resize({ width: README_LOGO_WIDTH }).webp(WEBP).toBuffer(),
 );
+await emit(DOCS_IMAGES, 'logo-light.webp', await readmeLightLogo());
 await emit(
   APP_BRAND,
   'logo-stacked.webp',
-  await sharp(lockupStacked).resize({ width: MENU_LOGO_WIDTH }).webp(WEBP).toBuffer(),
+  await sharp(lockupStacked)
+    .resize({ ...BRAND_LOGO_STACKED_SIZE, fit: 'contain', background: TRANSPARENT })
+    .webp(WEBP)
+    .toBuffer(),
 );

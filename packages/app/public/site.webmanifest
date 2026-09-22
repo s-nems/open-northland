@@ -2,10 +2,15 @@
   "name": "Open Northland",
   "short_name": "Northland",
   "description": "An open-source engine for Cultures - 8th Wonder of the World.",
+  "id": "/",
   "start_url": "/",
-  "display": "standalone",
-  "background_color": "#1a1410",
-  "theme_color": "#1a1410",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "categories": [
+    "games"
+  ],
+  "background_color": "#0c1420",
+  "theme_color": "#0c1420",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -22,6 +27,15 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.webp",
+      "sizes": "1280x652",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "A Viking settlement"
     }
   ]
 }
