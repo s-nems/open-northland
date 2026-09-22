@@ -18,7 +18,7 @@ evidence, published format specifications, or observation of the running game. S
 
 ## Set up the repository
 
-Use Node.js `^20.19.0` or `>=22.12.0`.
+Use Node.js `>=22.12.0`.
 
 ```bash
 npm ci

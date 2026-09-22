@@ -56,14 +56,14 @@
     "@biomejs/biome": "^2.5.14",
     "playwright": "^1.63.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.1"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=22.12.0"
   },
   "allowScripts": {
     "electron-winstaller@5.4.0": true,
     "esbuild@0.28.2": true,
-    "electron@43.7.3": true
+    "electron@44.4.3": true
   }
 }

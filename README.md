@@ -24,7 +24,7 @@ It can load decoded maps and render terrain, buildings, settlers, effects, and t
 
 ## Requirements
 
-- Node.js `^20.19.0` or `>=22.12.0`
+- Node.js `>=22.12.0`
 - For playable content, the pinned CulturesNation archive (`CnMod 1.3.2.zip`, about 570 MB), which
   `npm run build:content` downloads and converts.
 
