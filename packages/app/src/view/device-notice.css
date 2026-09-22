@@ -1,0 +1,79 @@
+/* The touch-device notice (device-notice.ts). It must fit a 320 px wide portrait phone and scroll
+   rather than clip on a short landscape one; the card's auto margin centres it only while it fits.
+   The faces come from the menu's sheet. */
+.device-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 24px 20px;
+  color-scheme: dark;
+  color: #dbe8e3;
+  font-family: "Alegreya Sans", system-ui, sans-serif;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 35%, #1a2738 0%, #0c1420 70%);
+}
+
+.device-notice__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 30em;
+  margin: auto;
+}
+
+.device-notice__logo {
+  width: min(240px, 60vw, 38vh);
+  height: auto;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+}
+
+.device-notice__title {
+  margin: 0;
+  font:
+    600 clamp(20px, 6vw, 28px) / 1.2 "Cinzel",
+    Georgia,
+    serif;
+  color: #f0dcb8;
+}
+
+.device-notice__body {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.device-notice__proceed {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: rgba(180, 205, 200, 0.7);
+  font: inherit;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* A phone held sideways: tighter, so the way into the game stays on screen without scrolling. */
+@media (max-height: 440px) {
+  .device-notice {
+    padding-block: 16px;
+  }
+
+  .device-notice__card {
+    gap: 10px;
+  }
+
+  .device-notice__logo {
+    width: min(240px, 60vw, 30vh);
+  }
+
+  .device-notice__title {
+    font-size: 20px;
+  }
+}

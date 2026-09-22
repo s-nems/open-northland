@@ -280,6 +280,11 @@ export const plSurfaces = {
       legal: 'projekt niekomercyjny, niezwiązany z posiadaczami praw do serii',
     },
   },
+  deviceNotice: {
+    title: 'Open Northland wymaga komputera',
+    body: 'Do gry potrzebne są mysz, klawiatura i większy ekran. Telefony i tablety nie są obsługiwane. Otwórz tę stronę na komputerze, żeby zagrać.',
+    proceed: 'Mam mysz i klawiaturę, uruchom mimo to',
+  },
   loading: {
     graphics: 'Uruchamianie grafiki…',
     map: 'Wczytywanie mapy…',

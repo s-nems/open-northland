@@ -283,6 +283,11 @@ export const enSurfaces = {
       legal: 'a non-commercial project, unaffiliated with the series rights holders',
     },
   },
+  deviceNotice: {
+    title: 'Open Northland needs a computer',
+    body: 'The game needs a mouse, a keyboard and a larger screen. Phones and tablets are not supported. Open this page on a computer to play.',
+    proceed: 'I have a mouse and keyboard, start anyway',
+  },
   // One label per `BootPhase`.
   loading: {
     graphics: 'Starting the graphics…',

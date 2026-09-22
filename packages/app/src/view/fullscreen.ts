@@ -1,3 +1,4 @@
+import { servedByBrowser } from './host.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from './settings-store.js';
 
 /**
@@ -7,15 +8,12 @@ import { type MenuSettings, persistSettings, readStoredSettings } from './settin
 
 type DisplayMode = MenuSettings['displayMode'];
 
-/** The schemes a browser serves the app from; the desktop shell serves its own. */
-const BROWSER_PROTOCOLS: readonly string[] = ['http:', 'https:'];
-
 /**
  * A document whose window mode this module manages. The desktop shell is out of scope: it records a
  * change like any other document, but nothing puts its window back.
  */
 export function fullscreenControllable(): boolean {
-  return BROWSER_PROTOCOLS.includes(window.location.protocol) && document.fullscreenEnabled;
+  return servedByBrowser() && document.fullscreenEnabled;
 }
 
 export function isFullscreen(): boolean {
