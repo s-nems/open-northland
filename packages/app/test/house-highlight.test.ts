@@ -1,12 +1,16 @@
-import { ONE } from '@open-northland/sim';
+import { type Command, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
+import { BUILDING_HOME_00, sandboxContent } from '../src/game/sandbox/index.js';
+import type { Pickable } from '../src/view/picking.js';
 import {
   computeHouseHighlight,
   familyIdsOf,
   type HouseInfo,
   houseAssignableAt,
 } from '../src/view/unit-controls/highlights/index.js';
+import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
+import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
@@ -81,8 +85,8 @@ describe('familyIdsOf - the household a home assignment moves as one', () => {
 describe('computeHouseHighlight / houseAssignableAt', () => {
   it('greens an empty own home and the click resolver agrees', () => {
     const snap = snapshotOf([person(1), home(10)]);
-    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([{ id: 10, ok: true }]);
-    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(true);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: true }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
   });
 
   it('greens an own home under construction and reserves its family slot', () => {
@@ -95,8 +99,8 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
       },
     };
     const snap = snapshotOf([person(1), site]);
-    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([{ id: 10, ok: true }]);
-    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(true);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: true }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
   });
 
   it('reds a home already holding homeSize other families', () => {
@@ -106,28 +110,28 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
       person(2, { home: 10 }), // two unrelated households fill a homeSize-2 home
       person(3, { home: 10 }),
     ]);
-    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([{ id: 10, ok: false }]);
-    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: false }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
   });
 
   it('keeps a resident family green in its own home (the mover keeps its slot on a re-assign)', () => {
     // Home holds the mover's own family + one other: only the OTHER household consumes a slot.
     const snap = snapshotOf([person(1, { home: 10 }), home(10), person(2, { home: 10 })]);
-    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(true);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
   });
 
   it('skips a non-home building and another player’s home', () => {
     const snap = snapshotOf([person(1), home(11, HUMAN_PLAYER, MILL_TYPE), home(14, ENEMY_PLAYER)]);
-    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([]); // never tinted, not even red
-    for (const id of [11, 14]) expect(houseAssignableAt(snap, id, 1, HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([]); // never tinted, not even red
+    for (const id of [11, 14]) expect(houseAssignableAt(snap, id, [1], HOUSES)).toBe(false);
   });
 
   it('reds an own home of ANOTHER TRIBE, which the sim’s assignHouse refuses', () => {
     // A seat can field several tribes, so its own settlement holds homes this settler may not move
     // into. Tinting one green would enqueue an order the sim silently drops.
     const snap = snapshotOf([person(1), home(10, HUMAN_PLAYER, HOME_TYPE, OTHER_TRIBE)]);
-    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([{ id: 10, ok: false }]);
-    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: false }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
   });
 
   it('verdicts stay in lockstep with the click resolver across a mixed world', () => {
@@ -138,8 +142,53 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
       person(2, { home: 20 }),
       person(3, { home: 20 }),
     ]);
-    const items = computeHouseHighlight(snap, 1, HOUSES);
+    const items = computeHouseHighlight(snap, [1], HOUSES);
     expect(items.length).toBe(2);
-    for (const item of items) expect(item.ok).toBe(houseAssignableAt(snap, item.id, 1, HOUSES));
+    for (const item of items) expect(item.ok).toBe(houseAssignableAt(snap, item.id, [1], HOUSES));
+  });
+});
+
+const NO_TARGETS: UnitTargets = {
+  owned: () => [],
+  buildings: () => [],
+  enemies: () => [],
+  flags: () => [],
+  signposts: () => [],
+  chests: () => [],
+  goods: () => [],
+  resources: () => [],
+  wildlife: () => [],
+  ownedSettlersIn: () => [],
+};
+
+describe('a home pick armed for a group', () => {
+  it('greens a home one member may move into, though another member may not', () => {
+    const snap = snapshotOf([person(1), person(2, { player: ENEMY_PLAYER }), home(10)]);
+    expect(computeHouseHighlight(snap, [1, 2], HOUSES)).toEqual([{ id: 10, ok: true }]);
+    expect(computeHouseHighlight(snap, [2], HOUSES)).toEqual([]);
+  });
+
+  it('sends the whole group to the clicked home as one order', () => {
+    const homes = [home(10, HUMAN_PLAYER, BUILDING_HOME_00), home(20, HUMAN_PLAYER, BUILDING_HOME_00)];
+    const snap = snapshotOf([person(1), person(2), person(3, { home: 20 }), ...homes]);
+    const issued: Command[] = [];
+    const house: Pickable = { ref: 10, x: 0, y: 0 };
+    const pick = createPickModeController({
+      snapshot: () => snap,
+      targets: { ...NO_TARGETS, owned: (kind) => (kind === 'building' ? [house] : []) },
+      content: sandboxContent(),
+      mapSize: { width: 8, height: 8 },
+      toWorld: () => ({ x: 0, y: 0 }),
+      nodeAt: () => ({ col: 0, row: 0 }),
+      enqueue: (command) => issued.push(command),
+      orders: () => {
+        throw new Error('no order controller in this test');
+      },
+      setArmedCursor: () => undefined,
+    });
+
+    pick.arm({ kind: 'home', settlers: [1, 2, 3] });
+    expect(pick.handleMouseDown({ clientX: 0, clientY: 0, button: 0 } as MouseEvent)).toBe('ordered');
+    expect(issued).toEqual([{ kind: 'assignHouseGroup', entities: [1, 2, 3], house: 10 }]);
   });
 });

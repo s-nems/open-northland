@@ -29,6 +29,7 @@ import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
+import { groupPlacementOrder } from '../group-placement.js';
 import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable, mayChangeTrade } from '../guards.js';
 
 /**
@@ -114,6 +115,31 @@ export function assignWorker(
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
   reidleAsJob(world, ctx, e, jobType);
   bindEmployment(world, e, b);
+}
+
+/**
+ * Employ the group at one building - see the command doc. Unemployed members are tried first, so a
+ * second click on another building staffs the rest instead of moving the first ones again.
+ */
+export function assignWorkerGroup(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'assignWorkerGroup' }>,
+): void {
+  const building = command.building;
+  const jobPriorityOf = new Map<Entity, readonly number[]>();
+  for (const worker of command.workers) {
+    if (!jobPriorityOf.has(worker.entity)) jobPriorityOf.set(worker.entity, worker.jobPriority);
+  }
+  const workplaceOf = (e: Entity): Entity | undefined => world.tryGet(e, JobAssignment)?.workplace;
+  for (const e of groupPlacementOrder(world, ctx, [...jobPriorityOf.keys()], building, workplaceOf)) {
+    assignWorker(world, ctx, {
+      kind: 'assignWorker',
+      entity: e,
+      building,
+      jobPriority: jobPriorityOf.get(e) ?? [],
+    });
+  }
 }
 
 /**

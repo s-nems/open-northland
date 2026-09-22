@@ -24,7 +24,9 @@ import { learn } from '../orders/education.js';
 import {
   assignBuilder,
   assignHouse,
+  assignHouseGroup,
   assignWorker,
+  assignWorkerGroup,
   attackMoveUnit,
   attackUnit,
   cancelTraining,
@@ -121,6 +123,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'assignWorker':
       assignWorker(world, ctx, command);
       return;
+    case 'assignWorkerGroup':
+      assignWorkerGroup(world, ctx, command);
+      return;
     case 'unassignWorker':
       unassignWorker(world, ctx, command);
       return;
@@ -183,6 +188,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'assignHouse':
       assignHouse(world, ctx, command);
+      return;
+    case 'assignHouseGroup':
+      assignHouseGroup(world, ctx, command);
       return;
     case 'unassignHouse':
       unassignHouse(world, ctx, command);

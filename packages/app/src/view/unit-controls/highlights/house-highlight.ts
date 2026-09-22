@@ -55,40 +55,66 @@ function houseFitsFamily(
   return others + 1 <= size;
 }
 
-/** Known gap: signpost confinement is not mirrored, so an out-of-area home can still wash green. */
+interface Mover {
+  readonly settler: SnapshotEntity;
+  readonly family: readonly number[];
+}
+
+function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Mover[] {
+  const movers: Mover[] = [];
+  for (const id of settlerIds) {
+    const settler = entityById(snapshot, id);
+    if (settler !== undefined && isSettler(settler))
+      movers.push({ settler, family: familyIdsOf(snapshot, id) });
+  }
+  return movers;
+}
+
+/** Whether `house` is a candidate for any mover (an own home), and whether one mover's family fits it. */
+function houseVerdict(
+  house: SnapshotEntity,
+  movers: readonly Mover[],
+  families: ReadonlyMap<number, readonly HomeFamily[]>,
+  housesByType: ReadonlyMap<number, HouseInfo>,
+): { readonly candidate: boolean; readonly ok: boolean } {
+  if (!isHome(house, housesByType)) return { candidate: false, ok: false };
+  const owned = movers.filter(({ settler }) => ownerPlayerOf(house) === ownerPlayerOf(settler));
+  const ok = owned.some(
+    ({ settler, family }) =>
+      buildingTribeOf(house) === settlerTribeOf(settler) &&
+      houseFitsFamily(house, family, families.get(house.id), housesByType),
+  );
+  return { candidate: owned.length > 0, ok };
+}
+
+/**
+ * The highlight verdicts for a selected group over every own home: green when one member's family fits.
+ * Known gap: signpost confinement is not mirrored, so an out-of-area home can still wash green.
+ */
 export function computeHouseHighlight(
   snapshot: WorldSnapshot,
-  settlerId: number,
+  settlerIds: readonly number[],
   housesByType: ReadonlyMap<number, HouseInfo>,
 ): BuildingHighlightItem[] {
-  const settler = entityById(snapshot, settlerId);
-  if (settler === undefined || !isSettler(settler)) return [];
-  const family = familyIdsOf(snapshot, settlerId);
+  const movers = moversOf(snapshot, settlerIds);
+  if (movers.length === 0) return [];
   const families = familiesByHome(snapshot);
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
-    if (!isHome(e, housesByType)) continue;
-    if (ownerPlayerOf(e) !== ownerPlayerOf(settler)) continue;
-    const ok =
-      buildingTribeOf(e) === settlerTribeOf(settler) &&
-      houseFitsFamily(e, family, families.get(e.id), housesByType);
-    items.push({ id: e.id, ok });
+    const { candidate, ok } = houseVerdict(e, movers, families, housesByType);
+    if (candidate) items.push({ id: e.id, ok });
   }
   return items;
 }
 
+/** The click-resolution twin of {@link computeHouseHighlight}: whether one member's family fits `buildingId`. */
 export function houseAssignableAt(
   snapshot: WorldSnapshot,
   buildingId: number,
-  settlerId: number,
+  settlerIds: readonly number[],
   housesByType: ReadonlyMap<number, HouseInfo>,
 ): boolean {
-  const settler = entityById(snapshot, settlerId);
   const house = entityById(snapshot, buildingId);
-  if (settler === undefined || !isSettler(settler) || house === undefined) return false;
-  if (!isHome(house, housesByType)) return false;
-  if (ownerPlayerOf(house) !== ownerPlayerOf(settler)) return false;
-  if (buildingTribeOf(house) !== settlerTribeOf(settler)) return false;
-  const families = familiesByHome(snapshot).get(buildingId);
-  return houseFitsFamily(house, familyIdsOf(snapshot, settlerId), families, housesByType);
+  if (house === undefined) return false;
+  return houseVerdict(house, moversOf(snapshot, settlerIds), familiesByHome(snapshot), housesByType).ok;
 }

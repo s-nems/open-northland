@@ -6,6 +6,12 @@ import type { Command } from './index.js';
 /** The sexes a `makeChild` order may ask for. */
 export const CHILD_SEXES = ['female', 'male'] as const;
 
+/** One member of an `assignWorkerGroup` order, with the job list a lone `assignWorker` would carry. */
+export interface GroupWorker {
+  readonly entity: Entity;
+  readonly jobPriority: readonly number[];
+}
+
 /** Commands that direct existing settlers and their work. Coordinates are half-cell nodes. */
 export type UnitOrderCommand =
   | {
@@ -79,6 +85,16 @@ export type UnitOrderCommand =
       /** Ordered candidate worker jobs to try (highest preference first); the first one open for this
        *  settler wins. Entries only filter candidates - each still passes the sim's staffing gate. */
       readonly jobPriority: readonly number[];
+    }
+  | {
+      /**
+       * Employ a group of owned settlers at `building`: unemployed members first, then members employed
+       * elsewhere, each nearest the building first. Every member is tried as its own `assignWorker`, so
+       * the building's staffing gate decides who still fits. Authored group order.
+       */
+      readonly kind: 'assignWorkerGroup';
+      readonly building: Entity;
+      readonly workers: readonly GroupWorker[];
     }
   | {
       /**
@@ -222,6 +238,16 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * House a group of owned adult settlers' families in `house`: homeless families first, then
+       * families housed elsewhere, each nearest the house first, while it has a free family slot. Every
+       * member is tried as its own `assignHouse`. Authored group order.
+       */
+      readonly kind: 'assignHouseGroup';
+      readonly entities: readonly Entity[];
+      readonly house: Entity;
+    }
+  | {
+      /**
        * Move one owned adult settler's whole family out of its home, freeing the family slot. Authored:
        * the original has no readable "remove from home" primitive; this mirrors the housed-as-one family.
        */
@@ -283,12 +309,22 @@ export type UnitOrderCommand =
     };
 
 /**
- * The settler a player's order addresses, or undefined for a command aimed at a building, the map or
- * the seat itself. `entity` is the unit-order vocabulary's addressee field alone (an order's other party
- * rides as `chest`, `target`, `house`...), so its presence is the test - the original's `AddHumanCommand`
- * family, which the client answers with the settler's voice. That covers the panel pickers too: the
- * job, equipment, produced-good, learn and trader windows are among `PlayRespondingSound`'s callers.
+ * The settlers a player's order addresses: none for a command aimed at a building, the map or the seat
+ * itself. `entity` is the unit-order vocabulary's addressee field (an order's other party rides as
+ * `chest`, `target`, `house`...), and a group order names its members instead.
+ */
+export function orderedSettlers(command: Command): readonly Entity[] {
+  if ('entity' in command) return [command.entity];
+  if (command.kind === 'assignHouseGroup') return command.entities;
+  if (command.kind === 'assignWorkerGroup') return command.workers.map((worker) => worker.entity);
+  return [];
+}
+
+/**
+ * The settler that answers a player's order with its voice: the addressee, or a group order's first
+ * member - the original's `AddHumanCommand` family. That covers the panel pickers too: the job,
+ * equipment, produced-good, learn and trader windows are among `PlayRespondingSound`'s callers.
  */
 export function orderedSettler(command: Command): Entity | undefined {
-  return 'entity' in command ? command.entity : undefined;
+  return orderedSettlers(command)[0];
 }

@@ -104,6 +104,31 @@ describe('CommandSystem - command authority', () => {
     expect(sim.world.get(mine, JobAssignment).workplace).toBe(myShop);
   });
 
+  it('refuses a whole group order when one member is another player`s settler', () => {
+    const sim = fresh();
+    const mine = settlerFor(sim, MINE, 2);
+    const theirs = settlerFor(sim, THEIRS, 3);
+    const myShop = buildingFor(sim, MINE, 8);
+    const workers = (members: readonly Entity[]) =>
+      members.map((entity) => ({ entity, jobPriority: HQ_JOBS }));
+
+    sim.enqueue(
+      playerCommand(MINE, { kind: 'assignWorkerGroup', building: myShop, workers: workers([mine, theirs]) }),
+    );
+    sim.step();
+    expect(sim.world.has(mine, JobAssignment)).toBe(false);
+    expect(sim.world.has(theirs, JobAssignment)).toBe(false);
+
+    const houseGroup: PlayerCommand = { kind: 'assignHouseGroup', entities: [mine, theirs], house: myShop };
+    expect(isAuthorized(sim.world, playerCommand(MINE, houseGroup))).toBe(false);
+
+    sim.enqueue(
+      playerCommand(MINE, { kind: 'assignWorkerGroup', building: myShop, workers: workers([mine]) }),
+    );
+    sim.step();
+    expect(sim.world.get(mine, JobAssignment).workplace).toBe(myShop);
+  });
+
   it('lets a seat post its own unit to a neutral workplace', () => {
     const sim = fresh();
     const mine = settlerFor(sim, MINE, 2);

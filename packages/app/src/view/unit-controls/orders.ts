@@ -6,6 +6,7 @@ import {
   type Entity,
   type EquipPickEntry,
   entityById,
+  type GroupWorker,
   nodeOfPosition,
   type PlayerCommand,
   systems,
@@ -63,14 +64,15 @@ export interface UnitOrderController {
    *  gathering filter to that resource's good. */
   issueSetWorkFlagAt(event: MouseEvent): boolean;
   /** The ground orders name a half-cell node rather than a cursor, so the map overview can issue them
-   *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. */
-  issueSetWorkFlag(target: Tile): boolean;
-  issueMoveTo(target: Tile): boolean;
-  issueAttackMove(target: Tile): boolean;
+   *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. `units`, when given,
+   *  narrows these orders to the selected settlers an armed order was issued for. */
+  issueSetWorkFlag(target: Tile, units?: readonly number[]): boolean;
+  issueMoveTo(target: Tile, units?: readonly number[]): boolean;
+  issueAttackMove(target: Tile, units?: readonly number[]): boolean;
   /** Strike one enemy of `kind` under the cursor; a click that hits none of them orders nothing. */
-  issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): boolean;
+  issueAttackTarget(event: MouseEvent, kind: UnitTargetKind, units?: readonly number[]): boolean;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
-  issueAttackAnimal(event: MouseEvent): boolean;
+  issueAttackAnimal(event: MouseEvent, units?: readonly number[]): boolean;
   dispose(): void;
 }
 
@@ -174,6 +176,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const employsTrade = (jobType: number | undefined): boolean =>
         jobType !== undefined &&
         (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
+      // Homes and workplaces have limited room, so each goes out as one group order and the sim seats
+      // the homeless and the unemployed first.
+      const movers: Entity[] = [];
+      const workers: GroupWorker[] = [];
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
@@ -189,7 +195,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         }
         // A home may be reserved before it stands; its household drives wait for completed construction.
         if (def?.kind === 'home') {
-          deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
+          movers.push(target.ref as Entity);
           continue;
         }
         // Drilling needs the building standing, so a foundation falls through to employment, whose slots
@@ -202,13 +208,13 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         }
         // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
         const jobPriority = assignmentPriorityFor(currentJob, slots);
-        if (jobPriority.length === 0) continue;
-        deps.enqueue({
-          kind: 'assignWorker',
-          entity: target.ref as Entity,
-          building: building as Entity,
-          jobPriority,
-        });
+        if (jobPriority.length > 0) workers.push({ entity: target.ref as Entity, jobPriority });
+      }
+      if (movers.length > 0) {
+        deps.enqueue({ kind: 'assignHouseGroup', entities: movers, house: building as Entity });
+      }
+      if (workers.length > 0) {
+        deps.enqueue({ kind: 'assignWorkerGroup', building: building as Entity, workers });
       }
       return true;
     }
@@ -262,6 +268,14 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return commands.length > 0;
   };
 
+  /** The selected settlers an order goes to: all of them, or only `units` among them. */
+  const commandedAmong = (units?: readonly number[]): FormationUnit[] => {
+    const commanded = deps.targets.ownedSettlersIn(deps.selected());
+    if (units === undefined) return commanded;
+    const eligible = new Set(units);
+    return commanded.filter((unit) => eligible.has(unit.ref));
+  };
+
   const strike = (commanded: readonly FormationUnit[], enemy: number): boolean => {
     for (const unit of commanded) {
       deps.enqueue({ kind: 'attackUnit', entity: unit.ref as Entity, target: enemy as Entity });
@@ -269,34 +283,30 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return commanded.length > 0;
   };
 
-  const issueAttackTarget = (event: MouseEvent, kind: UnitTargetKind): boolean => {
+  const issueAttackTarget = (event: MouseEvent, kind: UnitTargetKind, units?: readonly number[]): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const enemy = pickTopAt(
       deps.targets.enemies().filter((p) => p.kind === kind),
       world.x,
       world.y,
     );
-    return enemy !== null && strike(deps.targets.ownedSettlersIn(deps.selected()), enemy);
+    return enemy !== null && strike(commandedAmong(units), enemy);
   };
 
-  const issueAttackAnimal = (event: MouseEvent): boolean => {
+  const issueAttackAnimal = (event: MouseEvent, units?: readonly number[]): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const prey = pickTopAt(deps.targets.wildlife(), world.x, world.y);
-    return prey !== null && strike(deps.targets.ownedSettlersIn(deps.selected()), prey);
+    return prey !== null && strike(commandedAmong(units), prey);
   };
 
-  const issueMoveTo = (target: Tile): boolean => {
-    const selected = deps.selected();
-    return issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
-  };
+  const issueMoveTo = (target: Tile, units?: readonly number[]): boolean =>
+    issueWalkOrder(target, commandedAmong(units), deps.selected(), 'moveUnit');
 
-  const issueAttackMove = (target: Tile): boolean => {
-    const selected = deps.selected();
-    return issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
-  };
+  const issueAttackMove = (target: Tile, units?: readonly number[]): boolean =>
+    issueWalkOrder(target, commandedAmong(units), deps.selected(), 'attackMoveUnit');
 
-  const issueSetWorkFlag = (target: Tile, goodType?: number): boolean => {
-    const movers = deps.targets.ownedSettlersIn(deps.selected());
+  const issueSetWorkFlag = (target: Tile, units?: readonly number[], goodType?: number): boolean => {
+    const movers = commandedAmong(units);
     if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const flag = clampTile(target, width, height);
@@ -322,7 +332,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const resource = pickNearestAt(resources, world.x, world.y);
     const goodType =
       resource === null ? undefined : resources.find((target) => target.ref === resource)?.goodType;
-    return issueSetWorkFlag(worldToTile(world.x, world.y, deps.elevation), goodType);
+    return issueSetWorkFlag(worldToTile(world.x, world.y, deps.elevation), undefined, goodType);
   };
 
   return {

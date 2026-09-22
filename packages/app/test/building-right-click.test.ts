@@ -1,5 +1,5 @@
 import { type ContentSet, lastByTypeId } from '@open-northland/data';
-import type { Command, Entity, Fixed, WorldSnapshot } from '@open-northland/sim';
+import type { Command, Entity, Fixed, GroupWorker, WorldSnapshot } from '@open-northland/sim';
 import { components, fx, ONE, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { BUILD_HOUSE_ATOMIC } from '../src/catalog/atomics.js';
@@ -55,11 +55,11 @@ function settlerAt(sim: Simulation, jobType: number | null): Entity {
   return e;
 }
 
-/** Right-click `building` with `settler` selected and return the commands it enqueued. `content` overrides
+/** Right-click `building` with `settlers` selected and return the commands it enqueued. `content` overrides
  *  the sim's own content set - the routing decision is a pure function of (snapshot, content). */
 function rightClick(
   sim: Simulation,
-  settler: Entity,
+  settlers: readonly Entity[],
   building: Entity,
   content: ContentSet = sim.content,
 ): Command[] {
@@ -76,10 +76,10 @@ function rightClick(
     goods: () => [],
     resources: () => [],
     wildlife: () => [],
-    ownedSettlersIn: () => [{ ref: settler, x: 0, y: 0 }],
+    ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
   createUnitOrderController({
-    selected: () => new Set<number>([settler]),
+    selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
     content,
@@ -119,13 +119,23 @@ function workplace(sim: Simulation, id: string): { typeId: number; craftJob: num
 
 const bakery = (sim: Simulation): { typeId: number; craftJob: number } => workplace(sim, BAKERY);
 
+/** The members of the one group order a right-click posted at `building`. */
+function postedWorkers(issued: readonly Command[], building: Entity): readonly GroupWorker[] {
+  expect(issued).toHaveLength(1);
+  const order = issued[0];
+  if (order?.kind !== 'assignWorkerGroup' || order.building !== building) {
+    throw new Error(`expected one worker group order at ${building}, got ${JSON.stringify(issued)}`);
+  }
+  return order.workers;
+}
+
 describe('right-clicking a construction site', () => {
   it('puts a builder on the foundation', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, bakery(sim).typeId);
     const builder = settlerAt(sim, JOB_BUILDER);
 
-    expect(rightClick(sim, builder, site)).toEqual([{ kind: 'assignBuilder', entity: builder, site }]);
+    expect(rightClick(sim, [builder], site)).toEqual([{ kind: 'assignBuilder', entity: builder, site }]);
   });
 
   it('puts ANY trade that may raise a foundation on it, not just the builder id', () => {
@@ -133,7 +143,7 @@ describe('right-clicking a construction site', () => {
     const site = siteAt(sim, bakery(sim).typeId); // a bakery employs no joiner - nothing to post him into
     const joiner = settlerAt(sim, JOB_JOINER);
 
-    expect(rightClick(sim, joiner, site, alsoBuilds(sim, JOB_JOINER))).toEqual([
+    expect(rightClick(sim, [joiner], site, alsoBuilds(sim, JOB_JOINER))).toEqual([
       { kind: 'assignBuilder', entity: joiner, site },
     ]);
   });
@@ -146,10 +156,9 @@ describe('right-clicking a construction site', () => {
     const site = siteAt(sim, typeId);
     const joiner = settlerAt(sim, craftJob);
 
-    const issued = rightClick(sim, joiner, site, alsoBuilds(sim, craftJob));
-    expect(issued).toHaveLength(1);
-    expect(issued[0]).toMatchObject({ kind: 'assignWorker', entity: joiner, building: site });
-    expect((issued[0] as Extract<Command, { kind: 'assignWorker' }>).jobPriority[0]).toBe(craftJob);
+    const [posted] = postedWorkers(rightClick(sim, [joiner], site, alsoBuilds(sim, craftJob)), site);
+    expect(posted?.entity).toBe(joiner);
+    expect(posted?.jobPriority[0]).toBe(craftJob);
   });
 
   it('employs a builder at a STANDING building - the crew rung belongs to the foundation alone', () => {
@@ -157,9 +166,9 @@ describe('right-clicking a construction site', () => {
     const standing = buildingAt(sim, bakery(sim).typeId, ONE);
     const builder = settlerAt(sim, JOB_BUILDER);
 
-    const issued = rightClick(sim, builder, standing);
-    expect(issued).toHaveLength(1);
-    expect(issued[0]).toMatchObject({ kind: 'assignWorker', entity: builder, building: standing });
+    expect(postedWorkers(rightClick(sim, [builder], standing), standing).map((w) => w.entity)).toEqual([
+      builder,
+    ]);
   });
 
   it('hires any other trade into the building the foundation will become', () => {
@@ -168,11 +177,10 @@ describe('right-clicking a construction site', () => {
     const site = siteAt(sim, typeId);
     const idle = settlerAt(sim, null);
 
-    const issued = rightClick(sim, idle, site);
-    expect(issued).toHaveLength(1);
-    expect(issued[0]).toMatchObject({ kind: 'assignWorker', entity: idle, building: site });
+    const [posted] = postedWorkers(rightClick(sim, [idle], site), site);
+    expect(posted?.entity).toBe(idle);
     // The craft slot leads the priority list - the carrier slot is only the fallback (assignmentPriority).
-    expect((issued[0] as Extract<Command, { kind: 'assignWorker' }>).jobPriority[0]).toBe(craftJob);
+    expect(posted?.jobPriority[0]).toBe(craftJob);
   });
 
   it('staffs a barracks foundation instead of sending the settler to drill in it', () => {
@@ -182,9 +190,7 @@ describe('right-clicking a construction site', () => {
     const site = siteAt(sim, BUILDING_BARRACKS);
     const idle = settlerAt(sim, null);
 
-    const issued = rightClick(sim, idle, site);
-    expect(issued).toHaveLength(1);
-    expect(issued[0]).toMatchObject({ kind: 'assignWorker', entity: idle, building: site });
+    expect(postedWorkers(rightClick(sim, [idle], site), site).map((w) => w.entity)).toEqual([idle]);
   });
 
   it('reserves a home foundation for the selected family', () => {
@@ -192,7 +198,9 @@ describe('right-clicking a construction site', () => {
     const site = siteAt(sim, BUILDING_HOME_00);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, idle, site)).toEqual([{ kind: 'assignHouse', entity: idle, house: site }]);
+    expect(rightClick(sim, [idle], site)).toEqual([
+      { kind: 'assignHouseGroup', entities: [idle], house: site },
+    ]);
   });
 });
 
@@ -202,7 +210,27 @@ describe('right-clicking a standing building', () => {
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, idle, home)).toEqual([{ kind: 'assignHouse', entity: idle, house: home }]);
+    expect(rightClick(sim, [idle], home)).toEqual([
+      { kind: 'assignHouseGroup', entities: [idle], house: home },
+    ]);
+  });
+
+  it('sends a whole group to a home as one order, so the sim houses the homeless first', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const group = [settlerAt(sim, null), settlerAt(sim, null), settlerAt(sim, null)];
+
+    expect(rightClick(sim, group, home)).toEqual([
+      { kind: 'assignHouseGroup', entities: group, house: home },
+    ]);
+  });
+
+  it('posts a whole group to a workplace as one order, so the sim seats the unemployed first', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const standing = buildingAt(sim, bakery(sim).typeId, ONE);
+    const group = [settlerAt(sim, null), settlerAt(sim, null)];
+
+    expect(postedWorkers(rightClick(sim, group, standing), standing).map((w) => w.entity)).toEqual(group);
   });
 
   it('sends a trade the barracks does not employ to drill there', () => {
@@ -210,7 +238,7 @@ describe('right-clicking a standing building', () => {
     const barracks = buildingAt(sim, BUILDING_BARRACKS, ONE);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, idle, barracks)).toEqual([
+    expect(rightClick(sim, [idle], barracks)).toEqual([
       { kind: 'trainSoldier', entity: idle, house: barracks },
     ]);
   });

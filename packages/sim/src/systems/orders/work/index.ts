@@ -1,6 +1,7 @@
 export {
   assignBuilder,
   assignWorker,
+  assignWorkerGroup,
   reidleAsJob,
   setJob,
   unassignBuilder,

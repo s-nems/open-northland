@@ -1,5 +1,5 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { type Entity, entityById, type GroupWorker, type WorldSnapshot } from '@open-northland/sim';
 import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import {
   buildingTribeOf,
@@ -81,42 +81,69 @@ export function currentTradeSlotAt(
 }
 
 /**
- * The highlight verdicts for a selected settler over every own building: green when the building offers
- * the settler's current trade with a free slot, red otherwise. Non-candidates are skipped, not tinted.
+ * The highlight verdicts for a selected group over every own building: green when the building offers
+ * one member's current trade with a free slot, red otherwise. Buildings no member is a candidate for are
+ * skipped, not tinted.
  */
 export function computeAssignHighlight(
   snapshot: WorldSnapshot,
-  settlerId: number,
+  settlerIds: readonly number[],
   buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
 ): BuildingHighlightItem[] {
-  const settler = entityById(snapshot, settlerId);
-  if (settler === undefined || !isSettler(settler)) return [];
-  const currentJob = settlerJobType(settler);
+  const settlers = settlersIn(snapshot, settlerIds);
+  if (settlers.length === 0) return [];
   const staffing = buildStaffing(snapshot);
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
-    const slots = candidateSlots(e, settler, buildingsByType);
-    if (slots === null) continue; // not a candidate - skipped, never tinted
-    const ok = currentTradeSlotAt(currentJob, slots, staffing.get(e.id)) !== null;
-    items.push({ id: e.id, ok });
+    if (!isBuilding(e)) continue;
+    let candidate = false;
+    let ok = false;
+    for (const settler of settlers) {
+      const slots = candidateSlots(e, settler, buildingsByType);
+      if (slots === null) continue;
+      candidate = true;
+      if (currentTradeSlotAt(settlerJobType(settler), slots, staffing.get(e.id)) !== null) {
+        ok = true;
+        break;
+      }
+    }
+    if (candidate) items.push({ id: e.id, ok });
   }
   return items;
 }
 
 /**
- * The job the button would bind the settler to at one building, or null when that building does not
- * offer the trade. The click-resolution twin of the highlight, so a red building cancels the click.
+ * The members a click on one building posts, each with the building's slot for its trade, or null when
+ * no member has a free slot there: the click-resolution twin of the highlight, so a red building cancels
+ * the click. A member whose slot already looks full still goes along, because the sim seats the group
+ * in its own priority order against its current staffing.
  */
-export function assignableJobForBuilding(
+export function workerGroupAt(
   snapshot: WorldSnapshot,
   buildingId: number,
-  settlerId: number,
+  settlerIds: readonly number[],
   buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
-): number | null {
-  const settler = entityById(snapshot, settlerId);
+): GroupWorker[] | null {
   const building = entityById(snapshot, buildingId);
-  if (settler === undefined || !isSettler(settler) || building === undefined) return null;
-  const slots = candidateSlots(building, settler, buildingsByType);
-  if (slots === null) return null; // not a candidate - the click cancels
-  return currentTradeSlotAt(settlerJobType(settler), slots, buildStaffing(snapshot).get(buildingId));
+  if (building === undefined) return null;
+  const staffed = buildStaffing(snapshot).get(buildingId);
+  const workers: GroupWorker[] = [];
+  let seated = false;
+  for (const settler of settlersIn(snapshot, settlerIds)) {
+    const slots = candidateSlots(building, settler, buildingsByType);
+    const job = currentTradeSlotAt(settlerJobType(settler), slots ?? undefined, undefined);
+    if (job === null) continue;
+    workers.push({ entity: settler.id as Entity, jobPriority: [job] });
+    seated ||= currentTradeSlotAt(settlerJobType(settler), slots ?? undefined, staffed) !== null;
+  }
+  return seated ? workers : null;
+}
+
+function settlersIn(snapshot: WorldSnapshot, ids: readonly number[]): SnapshotEntity[] {
+  const settlers: SnapshotEntity[] = [];
+  for (const id of ids) {
+    const e = entityById(snapshot, id);
+    if (e !== undefined && isSettler(e)) settlers.push(e);
+  }
+  return settlers;
 }

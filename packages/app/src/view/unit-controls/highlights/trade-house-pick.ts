@@ -23,16 +23,17 @@ function isStandingHouse(e: { readonly components: Readonly<Record<string, unkno
 
 /**
  * The "add a house to the trade route" pick: every finished building on the map is a candidate, lit
- * green unless the route already names it. Ownership is no gate, since the exchange happens at another
- * tribe's house; the sim's authority check admits the foreign house for these orders alone.
+ * green unless every selected trader's route already names it. Ownership is no gate, since the exchange
+ * happens at another tribe's house; the sim's authority check admits the foreign house for these orders
+ * alone.
  */
 export const tradeHousePick = {
-  highlight(snapshot: WorldSnapshot, settler: number): BuildingHighlightItem[] {
-    const taken = routeHousesOf(snapshot, settler);
+  highlight(snapshot: WorldSnapshot, settlers: readonly number[]): BuildingHighlightItem[] {
+    const routes = settlers.map((settler) => routeHousesOf(snapshot, settler));
     const items: BuildingHighlightItem[] = [];
     for (const e of snapshot.entities) {
       if (!isStandingHouse(e)) continue;
-      items.push({ id: e.id, ok: !taken.has(e.id) });
+      items.push({ id: e.id, ok: routes.some((taken) => !taken.has(e.id)) });
     }
     return items;
   },

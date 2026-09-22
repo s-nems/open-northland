@@ -13,6 +13,7 @@ import {
 } from '../family/index.js';
 import { interactionNode } from '../footprint/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
+import { groupPlacementOrder } from './group-placement.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
@@ -57,6 +58,23 @@ export function assignHouse(
     }
   }
   moveFamilyInto(world, ctx, e, house);
+}
+
+/**
+ * House the group's families in one home - see the command doc. Homeless families move in first, so
+ * a second click on another home places the rest instead of moving the first ones again.
+ */
+export function assignHouseGroup(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'assignHouseGroup' }>,
+): void {
+  const house = command.house;
+  const homeOf = (e: Entity): Entity | undefined => world.tryGet(e, Residence)?.home;
+  for (const e of groupPlacementOrder(world, ctx, command.entities, house, homeOf)) {
+    if (homeOf(e) === house) continue; // moved in with an earlier member's family
+    assignHouse(world, ctx, { kind: 'assignHouse', entity: e, house });
+  }
 }
 
 /**

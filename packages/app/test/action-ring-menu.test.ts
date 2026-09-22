@@ -70,7 +70,8 @@ describe('action-ring command table', () => {
   it('keeps the orders that name one settler out of a group', () => {
     const single = ACTION_COMMANDS.filter((c) => !c.multi).map((c) => c.id);
     expect(single).toContain('goTo');
-    expect(single).toContain('assignHome');
+    expect(single).toContain('explore');
+    expect(single).not.toContain('assignHome');
     expect(single).not.toContain('marry');
     expect(single).not.toContain('attackMode');
   });

@@ -15,12 +15,12 @@ import {
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { hasEligiblePartner } from '../src/game/snapshot.js';
 import type { ActionCommandId } from '../src/hud/action-ring/index.js';
-import { allowedActions } from '../src/view/unit-controls/action-ring/menu-state.js';
+import { actionTargets, allowedActions } from '../src/view/unit-controls/action-ring/menu-state.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * Which orders the ring offers a selection: the per-settler gates mirror what each simulation command
- * accepts, and a selection of several intersects them and keeps only the group orders.
+ * accepts, and a selection of several keeps the group orders any member allows.
  */
 
 /** One per process: every case here reads the same session content. */
@@ -295,7 +295,7 @@ describe('allowedActions - family orders', () => {
 });
 
 describe('allowedActions - several settlers', () => {
-  it('drops the single-settler orders and keeps what every member allows', () => {
+  it('drops the single-settler orders and keeps what any member allows', () => {
     const snapshot = snapshotOf([
       settler(1, JOB_SOLDIER, { stance: systems.MILITARY_MODE.ATTACK }),
       settler(2, JOB_SOLDIER, { stance: systems.MILITARY_MODE.DEFEND }),
@@ -304,6 +304,9 @@ describe('allowedActions - several settlers', () => {
     expect(allowed(snapshot, [1, 2])).toEqual(
       [
         'allowRegeneration',
+        'assignHome',
+        'assignLearningPlace',
+        'assignWorkPlace',
         'attackAnimal',
         'attackBuilding',
         'attackInhabitants',
@@ -321,14 +324,47 @@ describe('allowedActions - several settlers', () => {
     );
   });
 
-  it('withholds an order one member refuses', () => {
+  it('keeps an order one member refuses and sends it to the members that allow it', () => {
     const snapshot = snapshotOf([settler(1, JOB_SOLDIER), settler(2, JOB_COLLECTOR)]);
     const set = allowedActions(content, snapshot, [1, 2]);
-    expect(set.has('attackPosition')).toBe(false);
-    expect(set.has('defenceMode')).toBe(false);
-    // Both are adult men, so the strikes every adult may run survive the intersection.
-    expect(set.has('attackInhabitants')).toBe(true);
-    expect(set.has('changeProfession')).toBe(true);
+    expect(set.has('attackPosition')).toBe(true);
+    expect(set.has('defenceMode')).toBe(true);
+    expect(actionTargets(content, snapshot, [1, 2], 'attackPosition')).toEqual([1]);
+    expect(actionTargets(content, snapshot, [1, 2], 'defenceMode')).toEqual([1]);
+    expect(actionTargets(content, snapshot, [1, 2], 'changeProfession')).toEqual([1, 2]);
+  });
+
+  it('sends a marriage order to the unmarried members only', () => {
+    const snapshot = snapshotOf([
+      settler(1, JOB_WOMAN, { female: true }),
+      settler(2, JOB_WOMAN, { female: true }),
+      settler(3, JOB_WOMAN, { female: true }),
+      settler(4, JOB_COLLECTOR, { spouse: 7 }),
+      settler(5, JOB_COLLECTOR, { spouse: 8 }),
+      settler(6, JOB_COLLECTOR),
+      settler(7, JOB_WOMAN, { female: true, spouse: 4 }),
+      settler(8, JOB_WOMAN, { female: true, spouse: 5 }),
+    ]);
+    const group = [1, 2, 3, 4, 5, 6];
+    expect(allowedActions(content, snapshot, group).has('marry')).toBe(true);
+    expect(actionTargets(content, snapshot, group, 'marry')).toEqual([1, 2, 3, 6]);
+  });
+
+  it('sends a home order to every adult and a release only to the housed', () => {
+    const snapshot = snapshotOf([
+      settler(1, JOB_WOMAN, { female: true, home: true }),
+      settler(2, JOB_WOMAN, { female: true }),
+      settler(3, JOB_CHILD_MALE, { child: true }),
+    ]);
+    expect(actionTargets(content, snapshot, [1, 2, 3], 'assignHome')).toEqual([1, 2]);
+    expect(actionTargets(content, snapshot, [1, 2, 3], 'removeHome')).toEqual([1]);
+  });
+
+  it('sends a single-settler order to nobody in a group', () => {
+    const snapshot = snapshotOf([settler(1, JOB_SCOUT), settler(2, JOB_SCOUT)]);
+    expect(allowedActions(content, snapshot, [1, 2]).has('explore')).toBe(false);
+    expect(actionTargets(content, snapshot, [1, 2], 'explore')).toEqual([]);
+    expect(actionTargets(content, snapshot, [1], 'explore')).toEqual([1]);
   });
 });
 

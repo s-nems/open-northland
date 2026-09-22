@@ -71,7 +71,9 @@ export const COMMAND_ISSUER: {
 } = {
   assignBuilder: 'seat',
   assignHouse: 'seat',
+  assignHouseGroup: 'seat',
   assignWorker: 'seat',
+  assignWorkerGroup: 'seat',
   attachTradeHouse: 'seat',
   addTradeAgreement: 'trusted',
   attackMoveUnit: 'seat',

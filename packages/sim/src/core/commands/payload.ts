@@ -96,8 +96,17 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   unassignBuilder: { required: { entity: 'integer' } },
   assignBuilder: { required: { entity: 'integer', site: 'integer' } },
   assignHouse: { required: { entity: 'integer', house: 'integer' } },
+  assignHouseGroup: { required: { entities: { arrayOf: 'integer' }, house: 'integer' } },
   assignWorker: {
     required: { entity: 'integer', building: 'integer', jobPriority: { arrayOf: 'integer' } },
+  },
+  assignWorkerGroup: {
+    required: {
+      building: 'integer',
+      workers: {
+        arrayOf: { fields: { required: { entity: 'integer', jobPriority: { arrayOf: 'integer' } } } },
+      },
+    },
   },
   attackMoveUnit: { required: { entity: 'integer', ...NODE } },
   attackUnit: { required: { entity: 'integer', target: 'integer' } },

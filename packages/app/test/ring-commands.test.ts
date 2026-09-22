@@ -54,32 +54,42 @@ describe('issueRingCommand', () => {
     expect(h.armed).toEqual([]);
   });
 
-  it('arms a place pick for the one settler and refuses it for several', () => {
+  it('arms a place pick for the whole group and a scout pick for one scout only', () => {
     const h = harness();
     issueRingCommand('assignHome', [4], h);
     issueRingCommand('assignLearningPlace', [4], h);
     issueRingCommand('erectSignpost', [7], h);
     issueRingCommand('assignWorkPlace', [4, 9], h);
+    issueRingCommand('erectSignpost', [7, 8], h);
     expect(h.armed).toEqual([
-      { kind: 'home', settler: 4 },
-      { kind: 'learning-place', settler: 4 },
+      { kind: 'home', settlers: [4] },
+      { kind: 'learning-place', settlers: [4] },
       { kind: 'signpost', scout: 7 },
+      { kind: 'workplace', settlers: [4, 9] },
     ]);
     expect(h.issued).toEqual([]);
   });
 
-  it('arms the selection-wide picks without naming a settler', () => {
+  it('arms the selection-wide picks for the settlers the order was allowed for', () => {
     const h = harness();
     issueRingCommand('goTo', [4, 9], h);
     issueRingCommand('attackBuilding', [4, 9], h);
     issueRingCommand('attackAnimal', [4, 9], h);
-    issueRingCommand('attackPosition', [4, 9], h);
-    expect(h.armed.map((m) => m.kind)).toEqual([
-      'destination',
-      'attack-building',
-      'attack-animal',
-      'attack-move',
+    issueRingCommand('attackPosition', [4], h);
+    expect(h.armed).toEqual([
+      { kind: 'destination', units: [4, 9] },
+      { kind: 'attack-building', units: [4, 9] },
+      { kind: 'attack-animal', units: [4, 9] },
+      { kind: 'attack-move', units: [4] },
     ]);
+  });
+
+  it('orders nobody once the order`s gate shut on every settler', () => {
+    const h = harness();
+    issueRingCommand('marry', [], h);
+    issueRingCommand('assignHome', [], h);
+    expect(h.issued).toEqual([]);
+    expect(h.armed).toEqual([]);
   });
 
   it('orders each of the four needs by the bar it answers', () => {

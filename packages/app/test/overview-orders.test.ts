@@ -134,7 +134,7 @@ describe('orders named on the map overview', () => {
 
   it('resolves an armed attack-move without scrolling the view to the target', () => {
     const { press, pickMode, issued } = harness();
-    pickMode.arm({ kind: 'attack-move' });
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id] });
 
     expect(pressOn(press, FAR_NODE, { button: 0 })).toBe(true);
 
@@ -142,9 +142,18 @@ describe('orders named on the map overview', () => {
     expect(pickMode.isArmed()).toBe(false);
   });
 
+  it('orders only the settlers the armed order was allowed for', () => {
+    const { press, pickMode, issued } = harness();
+    pickMode.arm({ kind: 'attack-move', units: [] });
+
+    expect(pressOn(press, FAR_NODE, { button: 0 })).toBe(true);
+
+    expect(issued).toEqual([]);
+  });
+
   it('leaves a mode that needs a picked building armed, so the press only scrolls the view', () => {
     const { press, pickMode, issued } = harness();
-    pickMode.arm({ kind: 'workplace', settler: SCOUT.id });
+    pickMode.arm({ kind: 'workplace', settlers: [SCOUT.id] });
 
     expect(pressOn(press, FAR_NODE, { button: 0 })).toBe(false);
 
@@ -154,7 +163,7 @@ describe('orders named on the map overview', () => {
 
   it('calls an armed mode off on the right button instead of ordering a walk', () => {
     const { press, pickMode, issued } = harness();
-    pickMode.arm({ kind: 'attack-move' });
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id] });
 
     expect(pressOn(press, FAR_NODE, { button: 2 })).toBe(true);
 
@@ -168,15 +177,15 @@ describe('orders named on the map overview', () => {
     pressOn(press, FAR_NODE, { button: 2 }); // the scout walks
     expect(cues).toEqual(['confirm']);
 
-    pickMode.arm({ kind: 'attack-move' });
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id] });
     pressOn(press, FAR_NODE, { button: 0 }); // resolves the armed spot pick
     expect(cues).toEqual(['confirm', 'confirm']);
 
-    pickMode.arm({ kind: 'attack-move' });
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id] });
     pressOn(press, FAR_NODE, { button: 2 }); // called off
     expect(cues).toEqual(['confirm', 'confirm', 'fail']);
 
-    pickMode.arm({ kind: 'workplace', settler: SCOUT.id });
+    pickMode.arm({ kind: 'workplace', settlers: [SCOUT.id] });
     pressOn(press, FAR_NODE, { button: 0 }); // stays armed: the press only scrolls the view
     expect(cues).toHaveLength(3);
     pickMode.cancel();
@@ -194,15 +203,15 @@ describe('a world press on an armed pick mode', () => {
     const { pickMode, issued } = harness();
     expect(pickMode.handleMouseDown(click(0))).toBeNull();
 
-    pickMode.arm({ kind: 'attack-move' });
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id] });
     expect(pickMode.handleMouseDown(click(0))).toBe('ordered');
     expect(issued).toHaveLength(1);
 
-    pickMode.arm({ kind: 'workplace', settler: SCOUT.id });
+    pickMode.arm({ kind: 'workplace', settlers: [SCOUT.id] });
     expect(pickMode.handleMouseDown(click(0))).toBe('missed'); // no building under the press
     expect(pickMode.isArmed()).toBe(false);
 
-    pickMode.arm({ kind: 'attack-move' });
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id] });
     expect(pickMode.handleMouseDown(click(2))).toBe('calledOff');
     expect(issued).toHaveLength(1);
   });

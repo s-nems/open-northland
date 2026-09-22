@@ -9,6 +9,7 @@ import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
+import { actionTargets } from './action-ring/menu-state.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { UnitSelection } from './selection.js';
 import type { UnitControlsOptions } from './types.js';
@@ -123,6 +124,13 @@ export async function createUnitChrome(
       ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 
+  /** The selection's settlers a profession change may reach: grown men, as the ring's gate allows. */
+  const professionTargets = (ids: readonly number[]): number[] =>
+    actionTargets(opts.content, opts.snapshot(), ids, 'changeProfession');
+  /** Of those, the ones that have earned `jobType`; the picker offers a job when any of them has. */
+  const professionTakers = (ids: readonly number[], jobType: number): number[] =>
+    professionTargets(ids).filter((id) => opts.canChooseJob(id, jobType));
+
   const mountActions = (uiscale: number): Promise<SettlerActions> =>
     mountSettlerActions({
       app: opts.app,
@@ -134,9 +142,9 @@ export async function createUnitChrome(
       ),
       professions: opts.professions,
       content: opts.content,
-      jobUnlocked: (ids, jobType) => ids.every((id) => opts.canChooseJob(id, jobType)),
+      jobUnlocked: (ids, jobType) => professionTakers(ids, jobType).length > 0,
       jobBlockedReason: (ids, jobType) => {
-        for (const id of ids) {
+        for (const id of professionTargets(ids)) {
           const ent = entityById(opts.snapshot(), id);
           if (ent === undefined) continue;
           const tribe = num((ent.components.Settler as { tribe?: unknown } | undefined)?.tribe);
@@ -150,7 +158,9 @@ export async function createUnitChrome(
         return messages().hud.technologyExperience;
       },
       onSetJob: (ids, jobType) => {
-        for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
+        for (const id of professionTakers(ids, jobType)) {
+          opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
+        }
       },
       onCommand: callbacks.ringCommand,
       cue: callbacks.cue,

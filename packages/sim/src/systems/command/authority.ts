@@ -8,7 +8,7 @@ import type {
   PlaceBuildingCommand,
   PlayerCommand,
 } from '../../core/commands/index.js';
-import { COMMAND_ISSUER } from '../../core/commands/index.js';
+import { COMMAND_ISSUER, orderedSettlers } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 
 /**
@@ -32,8 +32,8 @@ function ownerFieldsValid(command: Command): boolean {
 }
 
 function beyondPlayerControl(world: World, command: PlayerCommand): boolean {
-  return (
-    'entity' in command && hasMissionBehaviour(world, command.entity, MISSION_BEHAVIOUR.NOT_CONTROLLABLE)
+  return orderedSettlers(command).some((e) =>
+    hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE),
   );
 }
 
@@ -48,9 +48,9 @@ function seatMayIssue(world: World, seat: number, command: PlayerCommand): boole
   if ('player' in command && command.player !== seat) return false;
   if ('owner' in command && command.owner !== seat) return false;
 
-  // The ordered unit must be the seat's own: a neutral animal and an ally's settler are both off limits,
+  // Every ordered unit must be the seat's own: a neutral animal and an ally's settler are both off limits,
   // so diplomacy stays a relationship between players rather than shared control of their entities.
-  if ('entity' in command && ownerOf(world, command.entity) !== seat) return false;
+  if (orderedSettlers(command).some((e) => ownerOf(world, e) !== seat)) return false;
 
   const asset = assetTargetOf(command);
   return asset === undefined || ownersCompatible(seat, ownerOf(world, asset));

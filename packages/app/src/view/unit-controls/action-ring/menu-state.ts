@@ -30,29 +30,48 @@ import {
 import { ACTION_COMMANDS, type ActionCommandId } from '../../../hud/action-ring/index.js';
 
 /**
- * Which orders a selection may issue. Every selected settler must allow an order for the ring to draw
- * it, as the original intersects its selection, and a selection of several drops the single-settler
- * orders entirely. Each gate follows the original's row as far as the simulation honours it, and
- * otherwise what the command accepts, so a lit button never issues an order the next tick sheds.
+ * Which orders a selection may issue: the ones at least one selected settler allows, and a selection of
+ * several drops the single-settler orders entirely. Deliberate deviation from the original, which draws
+ * an order only when every selected settler allows it; here a mixed group keeps the order and
+ * {@link actionTargets} sends it to the settlers that allow it. Each gate follows the original's row as
+ * far as the simulation honours it, and otherwise what the command accepts, so a lit button never
+ * issues an order the next tick sheds.
  */
 export function allowedActions(
   content: ContentSet,
   snapshot: WorldSnapshot,
   ids: readonly number[],
 ): ReadonlySet<ActionCommandId> {
+  const settlers = selectedSettlers(snapshot, ids);
+  const several = settlers.length > 1;
+  const allowed = new Set<ActionCommandId>();
+  for (const command of ACTION_COMMANDS) {
+    if (several && !command.multi) continue;
+    if (settlers.some((e) => allows(content, snapshot, e, command.id, several))) allowed.add(command.id);
+  }
+  return allowed;
+}
+
+/** The selected settlers order `id` goes to: the ones that allow it, in selection order. */
+export function actionTargets(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  ids: readonly number[],
+  id: ActionCommandId,
+): number[] {
+  const settlers = selectedSettlers(snapshot, ids);
+  const several = settlers.length > 1;
+  if (several && ACTION_COMMANDS.find((command) => command.id === id)?.multi !== true) return [];
+  return settlers.filter((e) => allows(content, snapshot, e, id, several)).map((e) => e.id);
+}
+
+function selectedSettlers(snapshot: WorldSnapshot, ids: readonly number[]): SnapshotEntity[] {
   const settlers: SnapshotEntity[] = [];
   for (const id of ids) {
     const e = entityById(snapshot, id);
     if (e !== undefined && isSettler(e)) settlers.push(e);
   }
-  const allowed = new Set<ActionCommandId>();
-  if (settlers.length === 0) return allowed;
-  const several = settlers.length > 1;
-  for (const command of ACTION_COMMANDS) {
-    if (several && !command.multi) continue;
-    if (settlers.every((e) => allows(content, snapshot, e, command.id, several))) allowed.add(command.id);
-  }
-  return allowed;
+  return settlers;
 }
 
 /** A settler the player may re-trade or post: the simulation refuses both for a child and for a woman. */

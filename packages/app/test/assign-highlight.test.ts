@@ -9,9 +9,9 @@ import { isBuilding, isSettler, ownerPlayerOf, settlerJobType } from '../src/gam
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import {
   type AssignBuildingInfo,
-  assignableJobForBuilding,
   computeAssignHighlight,
   currentTradeSlotAt,
+  workerGroupAt,
 } from '../src/view/unit-controls/highlights/index.js';
 import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { countingSnapshot, snapshotOf } from './support/snapshot.js';
@@ -70,11 +70,11 @@ describe('currentTradeSlotAt - the current-trade green/red verdict', () => {
 /**
  * The snapshot-level projection over real sandbox content - the functions the view actually calls. The
  * key invariant: the highlight verdict (`computeAssignHighlight`, what the player sees green) and the click
- * resolver (`assignableJobForBuilding`, what a click binds) must agree building-for-building, so a green
+ * resolver (`workerGroupAt`, what a click posts) must agree building-for-building, so a green
  * building never silently cancels the click and a red one never binds. Both share one `candidateSlots`
  * gate; this proves they stay in lockstep over a live world.
  */
-describe('computeAssignHighlight / assignableJobForBuilding over sandbox content', () => {
+describe('computeAssignHighlight / workerGroupAt over sandbox content', () => {
   it('highlights own candidate buildings and the green/red verdict matches what a click would bind', () => {
     const scene = getScene('sandbox');
     if (scene === undefined) throw new Error('sandbox scene missing');
@@ -93,19 +93,21 @@ describe('computeAssignHighlight / assignableJobForBuilding over sandbox content
     );
     if (settler === undefined) throw new Error('no owned collector in the sandbox');
 
-    const items = computeAssignHighlight(snapshot, settler.id, buildingsByType);
+    const items = computeAssignHighlight(snapshot, [settler.id], buildingsByType);
     expect(items.length).toBeGreaterThan(0); // some own building employs someone
 
-    // Lockstep: for every highlighted building, `ok` iff the click resolver would bind a job there.
+    // Lockstep: for every highlighted building, `ok` iff the click resolver would post the settler there.
     for (const item of items) {
-      const job = assignableJobForBuilding(snapshot, item.id, settler.id, buildingsByType);
-      expect(item.ok).toBe(job !== null);
+      const workers = workerGroupAt(snapshot, item.id, [settler.id], buildingsByType);
+      expect(item.ok).toBe(workers !== null);
     }
     // At least one candidate is green (the settler's trade has an open slot somewhere) and the resolver
-    // returns a real job id for it.
+    // posts the settler there under a real job id.
     const green = items.find((i) => i.ok);
     expect(green).toBeDefined();
-    expect(assignableJobForBuilding(snapshot, green?.id ?? -1, settler.id, buildingsByType)).not.toBeNull();
+    expect(workerGroupAt(snapshot, green?.id ?? -1, [settler.id], buildingsByType)).toEqual([
+      { entity: settler.id, jobPriority: [expect.any(Number)] },
+    ]);
 
     // Every highlighted building is one the player owns (a candidate), never an enemy/neutral building.
     const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
@@ -141,8 +143,10 @@ describe('a building still under construction', () => {
 
   it('is a candidate, greened for the trade it will employ', () => {
     const snapshot = world();
-    expect(computeAssignHighlight(snapshot, 1, byType)).toEqual([{ id: 2, ok: true }]);
-    expect(assignableJobForBuilding(snapshot, 2, 1, byType)).toBe(rebaseSlotJob(COIN_MAKER));
+    expect(computeAssignHighlight(snapshot, [1], byType)).toEqual([{ id: 2, ok: true }]);
+    expect(workerGroupAt(snapshot, 2, [1], byType)).toEqual([
+      { entity: 1, jobPriority: [rebaseSlotJob(COIN_MAKER)] },
+    ]);
   });
 });
 
@@ -197,20 +201,20 @@ describe('pick-mode highlight cost', () => {
     let current: WorldSnapshot = first.snapshot;
     const pick = pickController(() => current, sim.content);
 
-    pick.arm({ kind: 'workplace', settler: settler.id });
+    pick.arm({ kind: 'workplace', settlers: [settler.id] });
     const frame = (): readonly BuildingHighlightItem[] | null => pick.highlight();
     const wash = frame();
     const afterFirst = first.scans();
     expect(afterFirst).toBeGreaterThan(0);
-    expect(wash).toEqual(computeAssignHighlight(source, settler.id, buildingsByType));
+    expect(wash).toEqual(computeAssignHighlight(source, [settler.id], buildingsByType));
     // The next frames reuse the memo: no rescan, and the very same array the renderer already holds.
     expect(frame()).toBe(wash);
     expect(frame()).toBe(wash);
     expect(first.scans()).toBe(afterFirst);
 
     // A new arm re-colours for the newly armed settler, on the same snapshot.
-    pick.arm({ kind: 'workplace', settler: other.id });
-    expect(frame()).toEqual(computeAssignHighlight(source, other.id, buildingsByType));
+    pick.arm({ kind: 'workplace', settlers: [other.id] });
+    expect(frame()).toEqual(computeAssignHighlight(source, [other.id], buildingsByType));
     expect(first.scans()).toBeGreaterThan(afterFirst);
 
     // A fresh snapshot (a tick that may have changed the world) re-scans.

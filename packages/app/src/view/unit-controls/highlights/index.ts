@@ -1,8 +1,8 @@
 export {
   type AssignBuildingInfo,
-  assignableJobForBuilding,
   computeAssignHighlight,
   currentTradeSlotAt,
+  workerGroupAt,
 } from './assign-highlight.js';
 export {
   computeHouseHighlight,

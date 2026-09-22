@@ -17,13 +17,14 @@ import {
 type BuildingInfo = Pick<BuildingType, 'kind' | 'workers'>;
 
 /**
- * A pick over the player's own buildings: every candidate lights up, green when it is the settler's
- * tribe and accepts it, red otherwise. The simulation command re-checks the walk on arrival.
+ * A pick over the player's own buildings: every candidate of a selected member's owner lights up, green
+ * when it is one member's tribe and accepts that member, red otherwise. The simulation command re-checks
+ * the walk on arrival.
  */
 export interface OwnBuildingPick {
   highlight(
     snapshot: WorldSnapshot,
-    settlerId: number,
+    settlerIds: readonly number[],
     byType: ReadonlyMap<number, BuildingInfo>,
   ): BuildingHighlightItem[];
   assignableAt(
@@ -45,13 +46,18 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
   const fits = (building: SnapshotEntity, settler: SnapshotEntity): boolean =>
     buildingTribeOf(building) === settlerTribeOf(settler) && rule.accepts(building, settler);
   return {
-    highlight(snapshot, settlerId, byType) {
-      const settler = entityById(snapshot, settlerId);
-      if (settler === undefined || !isSettler(settler)) return [];
+    highlight(snapshot, settlerIds, byType) {
+      const settlers: SnapshotEntity[] = [];
+      for (const id of settlerIds) {
+        const settler = entityById(snapshot, id);
+        if (settler !== undefined && isSettler(settler)) settlers.push(settler);
+      }
       const items: BuildingHighlightItem[] = [];
+      if (settlers.length === 0) return items;
       for (const e of snapshot.entities) {
-        if (!rule.candidate(e, byType) || ownerPlayerOf(e) !== ownerPlayerOf(settler)) continue;
-        items.push({ id: e.id, ok: fits(e, settler) });
+        if (!rule.candidate(e, byType)) continue;
+        const owned = settlers.filter((settler) => ownerPlayerOf(e) === ownerPlayerOf(settler));
+        if (owned.length > 0) items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler)) });
       }
       return items;
     },

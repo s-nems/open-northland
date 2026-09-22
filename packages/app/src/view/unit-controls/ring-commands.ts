@@ -20,18 +20,19 @@ const NEED_OF: Readonly<Record<'eat' | 'sleep' | 'talk' | 'pray', NeedKind>> = {
 };
 
 /**
- * Turn one action-ring click into simulation orders for `targets`: an order that needs a world click
- * arms the matching pick mode, the rest issue at once. A single-settler order arrives with one target,
- * because the ring hides it from a larger selection.
+ * Turn one action-ring click into simulation orders for `targets`, the selected settlers that allow the
+ * order: an order that needs a world click arms the matching pick mode, the rest issue at once. A
+ * single-settler order arrives with one target, because the ring hides it from a larger selection.
  */
 export function issueRingCommand(id: ActionOrderId, targets: readonly number[], deps: RingCommandDeps): void {
+  if (targets.length === 0) return; // the order's gate shut on every settler since the ring opened
   const single = targets.length === 1 ? targets[0] : undefined;
   const each = (order: (entity: Entity) => PlayerCommand): void => {
     for (const target of targets) deps.enqueue(order(target as Entity));
   };
   switch (id) {
     case 'goTo':
-      deps.pickMode.arm({ kind: 'destination' });
+      deps.pickMode.arm({ kind: 'destination', units: targets });
       return;
     case 'eat':
     case 'sleep':
@@ -58,13 +59,13 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       each((entity) => ({ kind: 'makeChild', entity, child: 'female' }));
       return;
     case 'assignWorkArea':
-      deps.pickMode.arm({ kind: 'work-area' });
+      deps.pickMode.arm({ kind: 'work-area', units: targets });
       return;
     case 'erectSignpost':
       if (single !== undefined) deps.pickMode.arm({ kind: 'signpost', scout: single });
       return;
     case 'assignBuildingSite':
-      if (single !== undefined) deps.pickMode.arm({ kind: 'building-site', settler: single });
+      deps.pickMode.arm({ kind: 'building-site', settlers: targets });
       return;
     case 'removeBuildingSite':
       each((entity) => ({ kind: 'unassignBuilder', entity }));
@@ -73,31 +74,31 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       each((entity) => ({ kind: 'cancelTraining', entity }));
       return;
     case 'assignLearningPlace':
-      if (single !== undefined) deps.pickMode.arm({ kind: 'learning-place', settler: single });
+      deps.pickMode.arm({ kind: 'learning-place', settlers: targets });
       return;
     case 'removeWorkPlace':
       each((entity) => ({ kind: 'unassignWorker', entity }));
       return;
     case 'assignWorkPlace':
-      if (single !== undefined) deps.pickMode.arm({ kind: 'workplace', settler: single });
+      deps.pickMode.arm({ kind: 'workplace', settlers: targets });
       return;
     case 'removeHome':
       each((entity) => ({ kind: 'unassignHouse', entity }));
       return;
     case 'assignHome':
-      if (single !== undefined) deps.pickMode.arm({ kind: 'home', settler: single });
+      deps.pickMode.arm({ kind: 'home', settlers: targets });
       return;
     case 'attackInhabitants':
-      deps.pickMode.arm({ kind: 'attack-settler' });
+      deps.pickMode.arm({ kind: 'attack-settler', units: targets });
       return;
     case 'attackBuilding':
-      deps.pickMode.arm({ kind: 'attack-building' });
+      deps.pickMode.arm({ kind: 'attack-building', units: targets });
       return;
     case 'attackAnimal':
-      deps.pickMode.arm({ kind: 'attack-animal' });
+      deps.pickMode.arm({ kind: 'attack-animal', units: targets });
       return;
     case 'attackPosition':
-      deps.pickMode.arm({ kind: 'attack-move' });
+      deps.pickMode.arm({ kind: 'attack-move', units: targets });
       return;
     case 'attackMode':
       each((entity) => ({ kind: 'setStance', entity, mode: systems.MILITARY_MODE.ATTACK }));
