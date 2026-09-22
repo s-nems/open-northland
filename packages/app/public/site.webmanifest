@@ -6,9 +6,7 @@
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "landscape",
-  "categories": [
-    "games"
-  ],
+  "categories": ["games"],
   "background_color": "#0c1420",
   "theme_color": "#0c1420",
   "icons": [

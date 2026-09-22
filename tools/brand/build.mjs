@@ -1,6 +1,7 @@
 // Derives every committed brand asset from the masters in source/. Run `npm run brand` from the root
 // after changing a master; the outputs are committed so the app, the desktop build and the README
 // need no image tooling.
+import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -315,6 +316,14 @@ const screenshot = await sharp(SETTLEMENT).resize({ width: SCREENSHOT_WIDTH }).w
 });
 await emit(APP_PUBLIC, 'screenshot-wide.webp', screenshot.data);
 await emit(APP_PUBLIC, 'site.webmanifest', webManifest(screenshot.info));
+// JSON.stringify expands every array; the repository formatter owns the committed layout.
+execFileSync(
+  join(ROOT, 'node_modules/.bin/biome'),
+  ['format', '--write', join(APP_PUBLIC, 'site.webmanifest')],
+  {
+    stdio: 'ignore',
+  },
+);
 
 await emit(DESKTOP_RESOURCES, 'icon.png', await paintedEmblem(DESKTOP_ICON_SIZE, ICON_PADDING));
 await emit(DESKTOP_RESOURCES, 'icon.ico', ico(icoEntries));
