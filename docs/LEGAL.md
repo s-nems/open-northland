@@ -1,8 +1,7 @@
 # Legal notice
 
-Open Northland's program code is licensed under the GNU Affero General Public License, version 3 or
-later. The complete license is in [`../LICENSE`](../LICENSE). The project's own assets are licensed
-separately; see [Project assets](#project-assets).
+Open Northland's program code and [project assets](#project-assets) are licensed under the GNU Affero
+General Public License, version 3 or later. The complete license is in [`../LICENSE`](../LICENSE).
 
 ## Repository
 
