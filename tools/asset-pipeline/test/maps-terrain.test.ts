@@ -367,18 +367,15 @@ describe('mapDatToTerrain', () => {
     },
   ];
 
-  it.each(
-    DEGRADE_CASES,
-  )('degrades a $lane lane that $why to a grid-only artifact (warn, keep the nav grid)', ({
-    chunks,
-    layer,
-    warns,
-  }) => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const terrain = mapDatToTerrain(encodeMapDat(chunks));
-    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
-    expect(terrain[layer]).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(warns));
-    warn.mockRestore();
-  });
+  it.each(DEGRADE_CASES)(
+    'degrades a $lane lane that $why to a grid-only artifact (warn, keep the nav grid)',
+    ({ chunks, layer, warns }) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const terrain = mapDatToTerrain(encodeMapDat(chunks));
+      expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+      expect(terrain[layer]).toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(warns));
+      warn.mockRestore();
+    },
+  );
 });

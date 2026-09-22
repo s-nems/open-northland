@@ -14,9 +14,9 @@
     "test:e2e": "node scripts/bundle.mjs && vitest run --config vitest.e2e.ts"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.6.2",
     "electron": "^43.1.1",
-    "electron-builder": "^26.15.3",
-    "esbuild": "^0.28.1"
+    "electron-builder": "^26.16.1",
+    "esbuild": "^0.28.2"
   }
 }

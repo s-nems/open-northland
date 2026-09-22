@@ -26,22 +26,21 @@ const NO_SESSION_FLAGS = {
 const AUTHORED_IR = AUTHORED_ROWS as ContentIr;
 
 describe('buildMapWorld', () => {
-  it.each([
-    null,
-    FOG_MODE.OFF,
-    FOG_MODE.RECON_FOG_OF_WAR,
-  ])('starts enabled scripts under classic fog unless overridden (%s)', (fog) => {
-    const { sim } = buildMapWorld({
-      ...NO_SESSION_FLAGS,
-      map: authoredMapFile(AUTHORED_ENTITIES),
-      ir: AUTHORED_IR,
-      script: { missions: { missions: [] }, participants: [0, 2] },
-      missions: null,
-      fog,
-    });
-    expect(sim.fogMode()).toBe(fog ?? FOG_MODE.CLASSIC);
-    expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
-  });
+  it.each([null, FOG_MODE.OFF, FOG_MODE.RECON_FOG_OF_WAR])(
+    'starts enabled scripts under classic fog unless overridden (%s)',
+    (fog) => {
+      const { sim } = buildMapWorld({
+        ...NO_SESSION_FLAGS,
+        map: authoredMapFile(AUTHORED_ENTITIES),
+        ir: AUTHORED_IR,
+        script: { missions: { missions: [] }, participants: [0, 2] },
+        missions: null,
+        fog,
+      });
+      expect(sim.fogMode()).toBe(fog ?? FOG_MODE.CLASSIC);
+      expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
+    },
+  );
 
   it('keeps disabled scripts from changing fog and the elimination match defaults', () => {
     const { sim } = buildMapWorld({
@@ -118,22 +117,22 @@ describe('buildMapWorld', () => {
     expect([...world.sim.world.query(components.Position)]).toHaveLength(0);
   });
 
-  it.each([
-    'authored',
-    'bare',
-  ] as const)('initializes fog before the %s map can pause for briefing', (kind) => {
-    const map = authoredMapFile(kind === 'authored' ? AUTHORED_ENTITIES : undefined);
-    const { sim } = buildMapWorld({
-      ...NO_SESSION_FLAGS,
-      map: { ...map, width: 32, height: 32, typeIds: new Array(32 * 32).fill(map.typeIds[0]) },
-      ir: AUTHORED_IR,
-      fog: FOG_MODE.CLASSIC,
-    });
-    const fog = sim.fogView(0);
-    expect(fog?.mode).toBe(FOG_MODE.CLASSIC);
-    expect(fog?.stateAt(31, 31)).toBe(FOG_STATE.UNEXPLORED);
-    if (kind === 'authored') expect(fog?.stateAt(4, 2)).toBe(FOG_STATE.VISIBLE);
-  });
+  it.each(['authored', 'bare'] as const)(
+    'initializes fog before the %s map can pause for briefing',
+    (kind) => {
+      const map = authoredMapFile(kind === 'authored' ? AUTHORED_ENTITIES : undefined);
+      const { sim } = buildMapWorld({
+        ...NO_SESSION_FLAGS,
+        map: { ...map, width: 32, height: 32, typeIds: new Array(32 * 32).fill(map.typeIds[0]) },
+        ir: AUTHORED_IR,
+        fog: FOG_MODE.CLASSIC,
+      });
+      const fog = sim.fogView(0);
+      expect(fog?.mode).toBe(FOG_MODE.CLASSIC);
+      expect(fog?.stateAt(31, 31)).toBe(FOG_STATE.UNEXPLORED);
+      if (kind === 'authored') expect(fog?.stateAt(4, 2)).toBe(FOG_STATE.VISIBLE);
+    },
+  );
 
   it('carries the session rules into the built world', () => {
     const { sim } = buildMapWorld({

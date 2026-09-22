@@ -370,17 +370,12 @@ describe('server messages', () => {
 });
 
 describe('terminal result validation', () => {
-  it.each([
-    '',
-    '0123456',
-    '012345678',
-    '0123ABCd',
-    'notahash',
-    12,
-    null,
-  ])('rejects invalid result hash %s', (hash) => {
-    expect(() => parseClientMessage({ kind: 'finish', tick: 12, hash, world: 0 })).toThrow(/finish.hash/);
-  });
+  it.each(['', '0123456', '012345678', '0123ABCd', 'notahash', 12, null])(
+    'rejects invalid result hash %s',
+    (hash) => {
+      expect(() => parseClientMessage({ kind: 'finish', tick: 12, hash, world: 0 })).toThrow(/finish.hash/);
+    },
+  );
   it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])('rejects invalid terminal tick %s', (tick) => {
     expect(() => parseServerMessage({ kind: 'ended', tick }, () => session)).toThrow();
   });

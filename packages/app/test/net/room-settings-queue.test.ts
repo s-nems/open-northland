@@ -77,34 +77,32 @@ describe('lobby settings replacement queue', () => {
     expect(sent[1]).toEqual({ ...original, speed: 2 });
   });
 
-  it.each([
-    'offline',
-    'otherRoom',
-    'running',
-    'disposed',
-  ] as const)('discards pending edits on %s', (exit) => {
-    const { queue, send, sent } = setup();
-    queue.change({ rules: { fog: 0 } });
-    queue.change({ rules: { needs: false } });
-    if (exit === 'disposed') queue.dispose();
-    else
-      queue.update(
-        {
-          ...view(),
-          id: exit === 'otherRoom' ? 'second' : 'first',
-          state: exit === 'running' ? 'running' : 'lobby',
-        },
-        exit !== 'offline',
-      );
-    queue.update(view(sent[0]), true);
-    expect(send).toHaveBeenCalledOnce();
-    queue.change({ speed: 3 });
-    if (exit === 'disposed') {
+  it.each(['offline', 'otherRoom', 'running', 'disposed'] as const)(
+    'discards pending edits on %s',
+    (exit) => {
+      const { queue, send, sent } = setup();
+      queue.change({ rules: { fog: 0 } });
+      queue.change({ rules: { needs: false } });
+      if (exit === 'disposed') queue.dispose();
+      else
+        queue.update(
+          {
+            ...view(),
+            id: exit === 'otherRoom' ? 'second' : 'first',
+            state: exit === 'running' ? 'running' : 'lobby',
+          },
+          exit !== 'offline',
+        );
+      queue.update(view(sent[0]), true);
       expect(send).toHaveBeenCalledOnce();
-      return;
-    }
-    expect(sent[1]?.rules).toEqual({ fog: 0, needs: null, progression: null });
-  });
+      queue.change({ speed: 3 });
+      if (exit === 'disposed') {
+        expect(send).toHaveBeenCalledOnce();
+        return;
+      }
+      expect(sent[1]?.rules).toEqual({ fog: 0, needs: null, progression: null });
+    },
+  );
 
   it('does not wait for no-op echoes and can reset fallout to the authored policy', () => {
     const { queue, send, sent } = setup();

@@ -83,23 +83,21 @@ describe('harvestable static-draw handover', () => {
     expect([...spy.refs()]).toEqual([10, 11]);
   });
 
-  it.each(WORKED)('hands a $kind harvestable to the pool once, keeping its fog ghost', ({
-    event,
-    node,
-    sprite,
-    remaining,
-  }) => {
-    const spy = surfaceSpy();
-    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
-    if (onEvents === null) throw new Error('expected a handover for bound sprites');
+  it.each(WORKED)(
+    'hands a $kind harvestable to the pool once, keeping its fog ghost',
+    ({ event, node, sprite, remaining }) => {
+      const spy = surfaceSpy();
+      const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+      if (onEvents === null) throw new Error('expected a handover for bound sprites');
 
-    onEvents([event(node)]);
-    onEvents([event(node)]);
+      onEvents([event(node)]);
+      onEvents([event(node)]);
 
-    expect(spy.removed).toEqual([sprite]);
-    expect(spy.ghosts).toEqual([node]);
-    expect([...spy.refs()]).toEqual([remaining]);
-  });
+      expect(spy.removed).toEqual([sprite]);
+      expect(spy.ghosts).toEqual([node]);
+      expect([...spy.refs()]).toEqual([remaining]);
+    },
+  );
 
   it('drops a razed bush without leaving a fog ghost', () => {
     const spy = surfaceSpy();

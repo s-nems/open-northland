@@ -53,8 +53,8 @@
     "test:desktop": "npm run build && npm run test:e2e --workspace @open-northland/desktop"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.3",
-    "playwright": "^1.61.1",
+    "@biomejs/biome": "^2.5.14",
+    "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
@@ -62,8 +62,8 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "allowScripts": {
-    "electron@43.1.1": true,
-    "esbuild@0.28.1": true,
-    "electron-winstaller@5.4.0": true
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true,
+    "electron@43.7.3": true
   }
 }

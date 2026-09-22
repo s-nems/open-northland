@@ -19,7 +19,7 @@
     "build": "tsc --build"
   },
   "dependencies": {
-    "@noble/hashes": "2.2.0",
-    "zod": "^4.4.3"
+    "@noble/hashes": "2.4.0",
+    "zod": "^4.6.5"
   }
 }

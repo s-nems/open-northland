@@ -28,33 +28,33 @@ function buildings(sim: Simulation): Entity[] {
 }
 
 describe('roster-authorized placement tribes', () => {
-  it.each([
-    playerCommand,
-    aiCommand,
-  ])('refuses undeclared seats for both human and AI envelopes', (envelope) => {
-    const sim = fresh();
-    sim.enqueue(envelope(0, placement));
-    sim.step();
-    expect(playerPlacementTribes(sim.world, 0)).toBeNull();
-    expect(buildings(sim)).toEqual([]);
-    expect(sim.commands.log).toHaveLength(1);
-  });
+  it.each([playerCommand, aiCommand])(
+    'refuses undeclared seats for both human and AI envelopes',
+    (envelope) => {
+      const sim = fresh();
+      sim.enqueue(envelope(0, placement));
+      sim.step();
+      expect(playerPlacementTribes(sim.world, 0)).toBeNull();
+      expect(buildings(sim)).toEqual([]);
+      expect(sim.commands.log).toHaveLength(1);
+    },
+  );
 
-  it.each([
-    playerCommand,
-    aiCommand,
-  ])('admits declared tribes and rejects foreign and unknown ones', (envelope) => {
-    const sim = fresh();
-    declare(sim, [1]);
-    sim.enqueue(envelope(0, placement));
-    sim.enqueue(envelope(0, { ...placement, tribe: 13 }));
-    sim.enqueue(envelope(0, { ...placement, tribe: 999 }));
-    sim.enqueue(envelope(1, placement));
-    sim.step();
-    expect(buildings(sim)).toHaveLength(1);
-    expect(sim.commands.log).toHaveLength(5);
-    expect(sim.checkInvariants()).toEqual([]);
-  });
+  it.each([playerCommand, aiCommand])(
+    'admits declared tribes and rejects foreign and unknown ones',
+    (envelope) => {
+      const sim = fresh();
+      declare(sim, [1]);
+      sim.enqueue(envelope(0, placement));
+      sim.enqueue(envelope(0, { ...placement, tribe: 13 }));
+      sim.enqueue(envelope(0, { ...placement, tribe: 999 }));
+      sim.enqueue(envelope(1, placement));
+      sim.step();
+      expect(buildings(sim)).toHaveLength(1);
+      expect(sim.commands.log).toHaveLength(5);
+      expect(sim.checkInvariants()).toEqual([]);
+    },
+  );
 
   it('keeps list preference while deduplicating and permits an explicit empty list', () => {
     const sim = fresh();

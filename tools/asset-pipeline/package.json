@@ -13,10 +13,10 @@
   "dependencies": {
     "@open-northland/data": "*",
     "@open-northland/render": "*",
-    "spessasynth_core": "4.3.17",
+    "spessasynth_core": "4.3.22",
     "wasm-media-encoders": "0.7.0"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1"
+    "@types/node": "^26.6.2"
   }
 }

@@ -14,41 +14,39 @@ const TICKS = 108;
 const PAYMENT_TICK = 40;
 
 describe('scripted worlds over lockstep', () => {
-  it.each([
-    'tribute',
-    'terrain-edits',
-    'presentation',
-    'school',
-  ])('keeps %s mutations and restore deterministic', (id) => {
-    const scene = getScene(id);
-    if (scene === undefined) throw new Error(`Missing scene ${id}`);
-    const first = createSceneSim(scene);
-    const second = createSceneSim(scene);
-    first.setSyncDigest(true);
-    second.setSyncDigest(true);
-    const drivers = [first, second].map(
-      (sim) => new LockstepDriver({ sim, transport: new LoopbackTransport() }),
-    );
-    for (let tick = 0; tick < TICKS; tick++) {
-      if (id === 'tribute' && tick === PAYMENT_TICK) {
-        const envelope = playerCommand(0, { kind: 'payTribute', player: 0, slot: TIMBER_TRIBUTE });
-        for (const driver of drivers)
-          driver.submit(parseCommandEnvelope(JSON.parse(JSON.stringify(envelope))));
+  it.each(['tribute', 'terrain-edits', 'presentation', 'school'])(
+    'keeps %s mutations and restore deterministic',
+    (id) => {
+      const scene = getScene(id);
+      if (scene === undefined) throw new Error(`Missing scene ${id}`);
+      const first = createSceneSim(scene);
+      const second = createSceneSim(scene);
+      first.setSyncDigest(true);
+      second.setSyncDigest(true);
+      const drivers = [first, second].map(
+        (sim) => new LockstepDriver({ sim, transport: new LoopbackTransport() }),
+      );
+      for (let tick = 0; tick < TICKS; tick++) {
+        if (id === 'tribute' && tick === PAYMENT_TICK) {
+          const envelope = playerCommand(0, { kind: 'payTribute', player: 0, slot: TIMBER_TRIBUTE });
+          for (const driver of drivers)
+            driver.submit(parseCommandEnvelope(JSON.parse(JSON.stringify(envelope))));
+        }
+        for (const driver of drivers) expect(driver.runTick()).toBe(true);
+        expect(first.syncDigest()).toEqual(second.syncDigest());
       }
-      for (const driver of drivers) expect(driver.runTick()).toBe(true);
-      expect(first.syncDigest()).toEqual(second.syncDigest());
-    }
-    expect(first.hashState()).toBe(second.hashState());
-    if (id === 'tribute') expect(first.diplomacyStance(0, 1)).toBe('friend');
-    const driver = drivers[0];
-    if (driver === undefined) throw new Error('Missing driver');
-    const save = parseSaveGame(JSON.parse(serializeSaveGame(driver.captureSave())));
-    const restored = restoreSceneSim(scene, save);
-    expect(restored.hashState()).toBe(first.hashState());
-    first.run(TICKS);
-    restored.run(TICKS);
-    expect(restored.hashState()).toBe(first.hashState());
-  });
+      expect(first.hashState()).toBe(second.hashState());
+      if (id === 'tribute') expect(first.diplomacyStance(0, 1)).toBe('friend');
+      const driver = drivers[0];
+      if (driver === undefined) throw new Error('Missing driver');
+      const save = parseSaveGame(JSON.parse(serializeSaveGame(driver.captureSave())));
+      const restored = restoreSceneSim(scene, save);
+      expect(restored.hashState()).toBe(first.hashState());
+      first.run(TICKS);
+      restored.run(TICKS);
+      expect(restored.hashState()).toBe(first.hashState());
+    },
+  );
 
   it('retains a paid-tribute command accepted before saving and refuses another seat as payer', () => {
     const scene = getScene('tribute');

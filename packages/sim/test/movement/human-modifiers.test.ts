@@ -102,24 +102,24 @@ describe('human turning', () => {
     expect(sim.world.has(e, PathFollow)).toBe(false);
     expect(sim.world.get(e, Obstructed).reroutes).toBe(1);
   });
-  it.each([
-    false,
-    true,
-  ])('does not turn diagonally after a nudge (single-stop recovery: %s)', (singleStop) => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 2) });
-    const e = followerAt(sim, 0, 0, [
-      { x: 0, y: 0 },
-      { x: 0.5, y: 0 },
-    ]);
-    sim.world.mut(e, Position).y = fx.fromFloat(0.001);
-    if (singleStop) {
-      const pf = sim.world.mut(e, PathFollow);
-      pf.waypoints.shift();
-      pf.index = 0;
-    }
-    sim.step();
-    expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 0, target: 0 });
-  });
+  it.each([false, true])(
+    'does not turn diagonally after a nudge (single-stop recovery: %s)',
+    (singleStop) => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 2) });
+      const e = followerAt(sim, 0, 0, [
+        { x: 0, y: 0 },
+        { x: 0.5, y: 0 },
+      ]);
+      sim.world.mut(e, Position).y = fx.fromFloat(0.001);
+      if (singleStop) {
+        const pf = sim.world.mut(e, PathFollow);
+        pf.waypoints.shift();
+        pf.index = 0;
+      }
+      sim.step();
+      expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 0, target: 0 });
+    },
+  );
   it('uses eight sectors, shortest turns and the original opposite-heading ties', () => {
     expect(nextWalkDirection(0, 3)).toBe(1); // E → W via south
     expect(nextWalkDirection(3, 0)).toBe(2); // W → E via south

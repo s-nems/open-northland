@@ -79,33 +79,34 @@ function orderTogether(client: HeadlessClient, tick: number): void {
 }
 
 describe('a relayed session', () => {
-  it.each(
-    JITTER_SEEDS,
-  )('leaves two clients on different links with one state and one log (seed %i)', async (seed) => {
-    const stage = stageFor(seed);
-    const ania = client('Ania');
-    const bartek = client('Bartek');
-    stage.network.link(ania, FAST_LINK);
-    stage.network.link(bartek, SLOW_LINK);
-    await assembleRoom(stage, [ania, bartek], {
-      settings: SETTINGS,
-      seats: SEATS,
-      seatOf: (i) => i,
-      settleMs: 400,
-    });
+  it.each(JITTER_SEEDS)(
+    'leaves two clients on different links with one state and one log (seed %i)',
+    async (seed) => {
+      const stage = stageFor(seed);
+      const ania = client('Ania');
+      const bartek = client('Bartek');
+      stage.network.link(ania, FAST_LINK);
+      stage.network.link(bartek, SLOW_LINK);
+      await assembleRoom(stage, [ania, bartek], {
+        settings: SETTINGS,
+        seats: SEATS,
+        seatOf: (i) => i,
+        settleMs: 400,
+      });
 
-    const captures = await runUntil(stage, [ania, bartek], RUN_TICKS, { onTick: orderAt });
-    const a = captures.get(ania);
-    const b = captures.get(bartek);
-    expect(a?.hash).toBe(b?.hash);
-    expect(a?.log).toEqual(b?.log);
-    expect(a?.log.length).toBeGreaterThanOrEqual((RUN_TICKS / ORDER_EVERY_TICKS) * 2 - 4);
-    expect(ania.rejections).toEqual([]);
-    expect(bartek.rejections).toEqual([]);
-    expect(ania.dropped).toEqual([]);
-    // The slower link earns the longer input delay; the outcome above did not depend on it.
-    expect(bartek.delayTicks).toBeGreaterThan(ania.delayTicks ?? Number.POSITIVE_INFINITY);
-  });
+      const captures = await runUntil(stage, [ania, bartek], RUN_TICKS, { onTick: orderAt });
+      const a = captures.get(ania);
+      const b = captures.get(bartek);
+      expect(a?.hash).toBe(b?.hash);
+      expect(a?.log).toEqual(b?.log);
+      expect(a?.log.length).toBeGreaterThanOrEqual((RUN_TICKS / ORDER_EVERY_TICKS) * 2 - 4);
+      expect(ania.rejections).toEqual([]);
+      expect(bartek.rejections).toEqual([]);
+      expect(ania.dropped).toEqual([]);
+      // The slower link earns the longer input delay; the outcome above did not depend on it.
+      expect(bartek.delayTicks).toBeGreaterThan(ania.delayTicks ?? Number.POSITIVE_INFINITY);
+    },
+  );
 
   it('orders two seats competing for one tick the same way on both clients', async () => {
     const stage = stageFor(3);

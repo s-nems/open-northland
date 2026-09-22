@@ -234,34 +234,34 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
     expect(boundTo(sim, mason)).toBe(site); // the posting survives the build
   });
 
-  it.each([
-    CARRIER,
-    MASON,
-  ])('posted trade %s supplies its own site without changing profession', (jobType) => {
-    const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
-    const store = buildingAt(sim, STORE, 0, 0, { stock: [[STONE, 5]] });
-    const site = buildingAt(sim, SMITHY_L0, 5, 0, { site: true }); // needs 2 stone
-    const carrier = settlerAt(sim, 2, 0, jobType);
-    post(sim, carrier, site, [jobType]);
+  it.each([CARRIER, MASON])(
+    'posted trade %s supplies its own site without changing profession',
+    (jobType) => {
+      const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
+      const store = buildingAt(sim, STORE, 0, 0, { stock: [[STONE, 5]] });
+      const site = buildingAt(sim, SMITHY_L0, 5, 0, { site: true }); // needs 2 stone
+      const carrier = settlerAt(sim, 2, 0, jobType);
+      post(sim, carrier, site, [jobType]);
 
-    let lifted: Entity | null = null;
-    for (let i = 0; i < 400 && lifted === null; i++) {
-      sim.step();
-      const effect = sim.world.tryGet(carrier, CurrentAtomic)?.effect;
-      if (effect?.kind === 'pickup') lifted = effect.from;
-    }
-    expect(lifted).toBe(store); // it fetched the site's bill from the store that holds it
+      let lifted: Entity | null = null;
+      for (let i = 0; i < 400 && lifted === null; i++) {
+        sim.step();
+        const effect = sim.world.tryGet(carrier, CurrentAtomic)?.effect;
+        if (effect?.kind === 'pickup') lifted = effect.from;
+      }
+      expect(lifted).toBe(store); // it fetched the site's bill from the store that holds it
 
-    let delivered = 0;
-    for (let i = 0; i < 600 && delivered === 0; i++) {
-      sim.step();
-      delivered = sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0;
-    }
-    expect(delivered).toBeGreaterThan(0); // and banked it into its own site, not back into the store
-    expect(sim.world.get(carrier, Settler).jobType).toBe(jobType);
-    expect(boundTo(sim, carrier)).toBe(site);
-    expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
-  });
+      let delivered = 0;
+      for (let i = 0; i < 600 && delivered === 0; i++) {
+        sim.step();
+        delivered = sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0;
+      }
+      expect(delivered).toBeGreaterThan(0); // and banked it into its own site, not back into the store
+      expect(sim.world.get(carrier, Settler).jobType).toBe(jobType);
+      expect(boundTo(sim, carrier)).toBe(site);
+      expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
+    },
+  );
 
   it('a future craftsman supplies only its workplace, then starts production without reassignment', () => {
     const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
