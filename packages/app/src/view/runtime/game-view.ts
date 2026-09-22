@@ -75,7 +75,11 @@ import { chestTooltipLines, createWorldTooltip } from '../world-tooltip.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
-import { createLiveGameSettings, perfCornerForUiScale } from './game-live-settings.js';
+import {
+  createLiveGameSettings,
+  debugPaletteTopForUiScale,
+  perfCornerForUiScale,
+} from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
 import type { NetReadout } from './net-readout.js';
 import { createPauseHolds } from './pause-holds.js';
@@ -367,6 +371,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     );
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
+    // Assigned once every HUD part it hides has mounted.
+    let toggleHud: (() => void) | null = null;
+    let hudHidden = false;
     let missionWindowOpen = false;
     // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
     const hudDom = mountHudDomRoot(uiscale);
@@ -421,6 +428,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
       overlayReserve: () => minimap?.panelRect() ?? null,
       onSystemMenu: () => systemMenu?.toggle(),
+      onToggleHud: () => toggleHud?.(),
       systemMenuOpen: () => systemMenu?.isOpen() === true,
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
@@ -631,6 +639,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       sim,
       perf,
       initialToolsEnabled: storedSettings.debugToolsEnabled,
+      paletteTop: debugPaletteTopForUiScale(uiscale),
       allowWorldEdits: !sharedClock,
       // The admin palette is a dev channel rather than part of the seat's HUD, so a read-only spectator
       // still pokes with it.
@@ -648,6 +657,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     cleanup.push(() => debugMounts.dispose());
 
+    // For screenshots and recordings: the always-on HUD hides, the world and its markers stay.
+    toggleHud = () => {
+      hudHidden = !hudHidden;
+      hudDom.setChromeHidden(hudHidden);
+      toolPanel.controller.setHudHidden(hudHidden);
+      mountedMinimap.setHidden(hudHidden);
+      controls.setHudHidden(hudHidden);
+      debugMounts.setHudHidden(hudHidden);
+    };
+
     // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.
     const worldTooltip = createWorldTooltip({
       renderer,
@@ -657,6 +676,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...chestTooltipLines(sim.content, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
+        hudHidden ||
         toolPanel.controller.placementType() !== null ||
         toolPanel.claimPointer(clientX, clientY) ||
         controls.claimsPointer(clientX, clientY),
@@ -676,6 +696,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       controls,
       hudDom,
       perf,
+      placeDebugPalette: debugMounts.placePalette,
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,
       setGraphicsEnhancements: (next) => renderer.setGraphicsEnhancements(next),

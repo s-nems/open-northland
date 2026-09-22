@@ -50,6 +50,10 @@
 .on-hud * {
   box-sizing: border-box;
 }
+/* The HUD toggle hides the always-on regions; a window the player or a script opens still shows. */
+.on-hud[data-chrome="hidden"] :is(.on-bar, .on-beam, .on-notices) {
+  display: none;
+}
 .on-hud button {
   font: inherit;
   color: inherit;

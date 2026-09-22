@@ -38,6 +38,7 @@ export const KEYBINDING_ACTIONS = [
   'professionPicker',
   'attackMove',
   'workFlagOrder',
+  'hudToggle',
   ...CONTROL_GROUP_BINDING_ACTIONS,
 ] as const;
 
@@ -68,6 +69,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   professionPicker: 'KeyC',
   attackMove: 'KeyA',
   workFlagOrder: 'Primary+Mouse2',
+  hudToggle: 'KeyH',
   ...controlGroupDefaults,
 };
 

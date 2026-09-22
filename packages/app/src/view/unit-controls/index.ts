@@ -133,7 +133,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const applySelection = (ids: Iterable<number>, add: boolean): void => {
     const changed = selection.apply(ids, add);
     if (changed) pickMode.cancel();
-    chrome.panel().render(opts.snapshot(), selection.ids());
+    chrome.renderPanel(opts.snapshot());
     // Only a changed set closes the ring, so it never lingers on a stale unit while re-selecting the
     // same set leaves an open menu alone.
     if (changed) chrome.actions().close();
@@ -327,6 +327,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // Re-anchors the ring on the selection's on-screen centroid; a no-op while it is closed.
       chrome.actions().update(opts.camera(), snapshot);
     },
+    setHudHidden: chrome.setHudHidden,
     setUiScale: chrome.setUiScale,
     dispose: () => {
       pickMode.cancel(); // an armed mode owns the canvas cursor, which teardown must not leave set

@@ -5,6 +5,7 @@ import { panelSpanFromRight } from '../../hud/details-panel/layout/shared.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { minimapPanelWidth } from '../../hud/minimap/model.js';
 import { NAV_BEAM_H } from '../../hud/nav-beam.js';
+import { TOP_BAR_HEIGHT } from '../../hud/regions.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { defaultLocale, localeParam } from '../../i18n/index.js';
 import type { CameraController } from '../camera/index.js';
@@ -16,7 +17,7 @@ import { createGameHudScaleCoordinator, type HudScaleTarget } from './game-hud-s
 import { createGameSettingsRuntime, type GameSettingsRuntime, gameSoundEnabled } from './game-settings.js';
 import { createGameViewportCoordinator } from './game-viewport.js';
 
-const PERF_HUD_GAP = 8;
+const DEBUG_HUD_GAP = 8;
 
 /** The debug readout's span along the bottom edge: from just right of the minimap window to just left of
  *  where the details panel stands, above the navigation beam. */
@@ -26,10 +27,15 @@ export function perfCornerForUiScale(scale: number): {
   readonly bottom: number;
 } {
   return {
-    left: minimapPanelWidth(scale) + PERF_HUD_GAP,
-    right: panelSpanFromRight(scale) + PERF_HUD_GAP,
-    bottom: NAV_BEAM_H * scale + PERF_HUD_GAP,
+    left: minimapPanelWidth(scale) + DEBUG_HUD_GAP,
+    right: panelSpanFromRight(scale) + DEBUG_HUD_GAP,
+    bottom: NAV_BEAM_H * scale + DEBUG_HUD_GAP,
   };
+}
+
+/** The admin chip's top edge: under the top-right bar, clear of the summary counters. */
+export function debugPaletteTopForUiScale(scale: number): number {
+  return TOP_BAR_HEIGHT * scale + DEBUG_HUD_GAP;
 }
 
 export interface LiveGameSettingsDeps {
@@ -45,6 +51,7 @@ export interface LiveGameSettingsDeps {
   /** The DOM HUD plane, scaled with the Pixi parts. */
   readonly hudDom: HudScaleTarget;
   readonly perf: PerfOverlayHandle;
+  readonly placeDebugPalette: (top: number) => void;
   readonly sound: SoundDriver | null;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
@@ -64,9 +71,10 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
   const hudScale = createGameHudScaleCoordinator({
     initialScale: initialUiScale,
     targets: [deps.toolPanel, deps.minimap, deps.controls, deps.hudDom],
-    placePerf: (scale) => {
+    placeDebugOverlays: (scale) => {
       const corner = perfCornerForUiScale(scale);
       deps.perf.place(corner.left, corner.right, corner.bottom);
+      deps.placeDebugPalette(debugPaletteTopForUiScale(scale));
     },
     onError: (error) => diag.warn('ui', `HUD scale rebuild failed: ${String(error)}`),
   });

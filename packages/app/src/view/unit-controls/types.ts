@@ -105,6 +105,9 @@ export interface UnitControls {
   readonly claimsEscape: () => boolean;
   readonly tick: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
+  /** Hide the details panel with the rest of the HUD and close the ring; a ring opened while hidden
+   *  shows. The selection itself stays. */
+  readonly setHudHidden: (hidden: boolean) => void;
   readonly setUiScale: (uiscale: number) => Promise<void>;
   readonly dispose: () => void;
 }

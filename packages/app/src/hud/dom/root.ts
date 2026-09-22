@@ -17,6 +17,8 @@ export interface HudPlane {
 }
 
 export interface HudDomRoot extends HudPlane {
+  /** Hide the always-on regions (foundation.css lists them); windows keep showing. */
+  setChromeHidden(hidden: boolean): void;
   dispose(): void;
 }
 
@@ -67,5 +69,12 @@ export function mountHudDomRoot(initialScale: number): HudDomRoot {
   const plane = createHudPlane(initialScale);
   host.append(plane.element);
   document.body.append(host);
-  return { ...plane, dispose: () => host.remove() };
+  return {
+    ...plane,
+    setChromeHidden: (hidden) => {
+      if (hidden) plane.element.dataset.chrome = 'hidden';
+      else delete plane.element.dataset.chrome;
+    },
+    dispose: () => host.remove(),
+  };
 }

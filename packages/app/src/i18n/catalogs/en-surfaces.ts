@@ -197,6 +197,7 @@ export const enSurfaces = {
         actionRing: 'Unit action ring',
         professionPicker: 'Settler profession list',
         attackMove: 'Attack-move',
+        hudToggle: 'Hide/show interface',
         controlGroup1: 'Recall group 1',
         controlGroup1Replace: 'Replace group 1 with selection',
         controlGroup1Add: 'Add/move selection to group 1',
@@ -249,6 +250,8 @@ export const enSurfaces = {
       escapeBindingRebindTip:
         'Click, then press the new key or combination; Esc can be assigned here. Clicking elsewhere cancels. Esc first closes whatever is open and opens the menu once nothing is left to close.',
       recallSelectedTip: 'Pressed while the group is already selected, it centres the view on the group.',
+      hudToggleTip:
+        'Hides the interface for screenshots and recordings. A window opened while it is hidden still shows.',
       pointerBindingRebindTip:
         'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to or remove from selection. Esc cancels.',
       autosaveNote: 'Changes are saved immediately.',

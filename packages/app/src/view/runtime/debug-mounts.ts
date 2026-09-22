@@ -25,6 +25,8 @@ export interface DebugMountsOptions {
   readonly cameraCtl: CameraController;
   readonly perf: PerfOverlayHandle;
   readonly initialToolsEnabled: boolean;
+  /** The admin chip's top edge in client px, under the HUD's top-right bar. */
+  readonly paletteTop: number;
   readonly elevation?: ElevationField;
   readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
@@ -45,6 +47,9 @@ export interface DebugMounts {
   /** Shows or hides the stats readout, the admin palette and its geometry grid together, as the one
    *  settings toggle. */
   setToolsEnabled(enabled: boolean): void;
+  /** Hide the readout and the palette with the rest of the HUD, leaving the tools switched on. */
+  setHudHidden(hidden: boolean): void;
+  placePalette(top: number): void;
   /** Tear the palette's listeners and DOM down with the world that mounted it. */
   dispose(): void;
 }
@@ -68,8 +73,12 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
 
   // Built on the first enable, so a player who never turns the tools on pays nothing for it.
   let admin: AdminDebugHandle | null = null;
+  let toolsEnabled = false;
+  let hudHidden = false;
+  let paletteTop = opts.paletteTop;
   const setToolsEnabled = (enabled: boolean): void => {
-    opts.perf.setVisible(enabled);
+    toolsEnabled = enabled;
+    opts.perf.setVisible(enabled && !hudHidden);
     if (!enabled) {
       admin?.setVisible(false);
       // The grid's only switch is on the palette, so it must not outlive it.
@@ -77,14 +86,23 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
       return;
     }
     if (opts.allowWorldEdits === false) return;
-    if (admin === null) admin = mountAdminPalette(opts, geometryDebug, setGeometryEnabled);
-    else admin.setVisible(true);
+    admin ??= mountAdminPalette(opts, geometryDebug, setGeometryEnabled, paletteTop);
+    admin.setVisible(!hudHidden);
   };
   setToolsEnabled(opts.initialToolsEnabled);
 
   return {
     geometryDebug,
     setToolsEnabled,
+    setHudHidden: (hidden) => {
+      hudHidden = hidden;
+      opts.perf.setVisible(toolsEnabled && !hidden);
+      admin?.setVisible(toolsEnabled && !hidden);
+    },
+    placePalette: (top) => {
+      paletteTop = top;
+      admin?.place(top);
+    },
     dispose: () => {
       admin?.dispose();
       admin = null;
@@ -96,6 +114,7 @@ function mountAdminPalette(
   opts: DebugMountsOptions,
   geometryDebug: GeometryDebugOverlay,
   setGeometryEnabled: (enabled: boolean) => void,
+  top: number,
 ): AdminDebugHandle {
   const { app, canvas, sim, renderer } = opts;
   return mountAdminDebug({
@@ -135,5 +154,6 @@ function mountAdminPalette(
     fogMode: () => sim.fogMode(),
     geometryEnabled: geometryDebug.enabled,
     setGeometryEnabled,
+    top,
   });
 }

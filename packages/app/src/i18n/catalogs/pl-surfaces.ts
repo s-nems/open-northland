@@ -194,6 +194,7 @@ export const plSurfaces = {
         actionRing: 'Pierścień akcji jednostki',
         professionPicker: 'Lista zawodów osadnika',
         attackMove: 'Atak w marszu',
+        hudToggle: 'Ukryj/pokaż interfejs',
         controlGroup1: 'Wybierz grupę 1',
         controlGroup1Replace: 'Zastąp grupę 1 zaznaczeniem',
         controlGroup1Add: 'Dodaj/przenieś zaznaczenie do grupy 1',
@@ -246,6 +247,8 @@ export const plSurfaces = {
       escapeBindingRebindTip:
         'Kliknij, potem naciśnij nowy klawisz lub kombinację; Esc też można tu przypisać. Kliknięcie obok anuluje. Esc najpierw zamyka to, co otwarte, a menu otwiera, gdy nie ma już nic do zamknięcia.',
       recallSelectedTip: 'Naciśnięty, gdy grupa jest już zaznaczona, wyśrodkowuje widok na grupie.',
+      hudToggleTip:
+        'Ukrywa interfejs do zrzutów ekranu i nagrań. Okno otwarte, gdy interfejs jest ukryty, nadal się pokazuje.',
       pointerBindingRebindTip:
         'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia i usuwaniem z niego. Esc anuluje.',
       autosaveNote: 'Zmiany zapisują się od razu.',

@@ -14,5 +14,5 @@ export {
   HUMANWINDOW,
   remainingPct,
 } from './model/index.js';
-export type { PortraitBox, UnitPanel } from './panel.js';
+export type { PortraitBox, UnitPanel, UnitPanelState } from './panel.js';
 export { mountUnitPanel } from './panel.js';

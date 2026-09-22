@@ -1,9 +1,9 @@
 import type { UiCue } from '@open-northland/audio';
-import { type Entity, entityById, systems } from '@open-northland/sim';
+import { type Entity, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
-import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
+import { mountUnitPanel, type UnitPanel, type UnitPanelState } from '../../hud/details-panel/index.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
@@ -12,6 +12,8 @@ import { mountSettlerActions, type SettlerActions, selectionCentre } from './act
 import type { EquipPickController } from './equip-picker.js';
 import type { UnitSelection } from './selection.js';
 import type { UnitControlsOptions } from './types.js';
+
+const NO_SELECTION: ReadonlySet<number> = new Set();
 
 interface MountedUnitChrome {
   readonly panel: UnitPanel;
@@ -32,6 +34,9 @@ export interface UnitChromeCallbacks {
 export interface UnitChromeHandle {
   panel(): UnitPanel;
   actions(): SettlerActions;
+  /** Show the selection on the panel, or nothing while the HUD is hidden. */
+  renderPanel(snapshot: WorldSnapshot): void;
+  setHudHidden(hidden: boolean): void;
   setUiScale(uiscale: number): Promise<void>;
   dispose(): void;
 }
@@ -170,9 +175,13 @@ export async function createUnitChrome(
     };
   };
 
+  let hudHidden = false;
+  const panelIds = (): ReadonlySet<number> => (hudHidden ? NO_SELECTION : selection.ids());
+  /** The stock tab the hide found, given back on show while the selection is the same one. */
+  let keptPanel: { readonly state: UnitPanelState; readonly version: number } | null = null;
   const mounts = createReplaceableMount(await mount(opts.uiscale ?? 1), mount, (next, previous) => {
     const snapshot = opts.snapshot();
-    next.panel.render(snapshot, selection.ids());
+    next.panel.render(snapshot, panelIds());
     next.panel.restore(previous.panel.state());
     next.actions.restore(previous.actions.state());
     next.actions.update(opts.camera(), snapshot);
@@ -180,6 +189,18 @@ export async function createUnitChrome(
   return {
     panel: () => mounts.current().panel,
     actions: () => mounts.current().actions,
+    renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
+    setHudHidden: (hidden) => {
+      hudHidden = hidden;
+      const { panel, actions } = mounts.current();
+      if (hidden) {
+        keptPanel = { state: panel.state(), version: selection.version() };
+        actions.close();
+      }
+      panel.render(opts.snapshot(), panelIds());
+      if (!hidden && keptPanel?.version === selection.version()) panel.restore(keptPanel.state);
+      if (!hidden) keptPanel = null;
+    },
     setUiScale: (uiscale) => mounts.replace(uiscale),
     dispose: mounts.dispose,
   };

@@ -120,6 +120,8 @@ export interface ToolPanelOptions {
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
+  /** The HUD-toggle hotkey was pressed. */
+  readonly onToggleHud?: () => void;
   /** True while the system menu owns the keyboard, so Escape is not the shell's to take. */
   readonly systemMenuOpen?: () => boolean;
   /** True while the unit controls would take an Escape (a job list, an armed pick, a selection); the
@@ -154,6 +156,9 @@ export interface ToolPanelController {
   openMission(page?: number): void;
   /** The on-screen info lines a map script writes for the seat, top to bottom. */
   setInfoLines(lines: readonly string[]): void;
+  /** Hide the info lines with the rest of the HUD. Hiding closes the open windows, so none is left
+   *  taking presses unseen; a window opened while hidden shows. */
+  setHudHidden(hidden: boolean): void;
   /** True when a client point should be claimed by the HUD (over an open window or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
@@ -184,6 +189,7 @@ export interface ToolPanelState {
   readonly placementType: number | null;
   readonly placementPaper: Paper | null;
   readonly messages: MessageFeedState;
+  readonly hudHidden: boolean;
 }
 
 interface ToolPanelAssets {
@@ -457,6 +463,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     domParts.push(messageCenter);
 
     const infoLines = createInfoLinesOverlay(ctx, infoContainer);
+    let hudHidden = false;
+    const applyHudHidden = (hidden: boolean): void => {
+      hudHidden = hidden;
+      infoContainer.visible = !hidden;
+    };
 
     // Esc closes the open window and hands focus back to its beam entry.
     const closeWindow = (): boolean => {
@@ -491,6 +502,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         nav.focus('residents');
       },
       togglePause: () => speed.togglePause(),
+      toggleHud: () => opts.onToggleHud?.(),
       cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => {
         const { x, y } = toCanvas(clientX, clientY);
@@ -516,6 +528,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         else if (!windows.mission.isOpen()) applyNavEntry(surfaces, 'mission');
       },
       setInfoLines: (lines) => infoLines.set(lines),
+      setHudHidden: (hidden) => {
+        if (hidden) windows.closeAll();
+        applyHudHidden(hidden);
+      },
       claimsPointer,
       claimsWheel,
       placementType: () => placement.activeType(),
@@ -536,6 +552,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         placementType: placement.activeType(),
         placementPaper: placement.activePaper(),
         messages: messageCenter.state(),
+        hudHidden,
       }),
       syncSpeed(control): void {
         speed.restore(control);
@@ -546,6 +563,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         if (state.placementType !== null)
           placement.enter(state.placementType, state.placementPaper ?? undefined);
         messageCenter.restore(state.messages);
+        applyHudHidden(state.hudHidden);
       },
       dispose(): void {
         infoLines.dispose();

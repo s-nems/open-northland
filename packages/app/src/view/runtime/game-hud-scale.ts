@@ -13,7 +13,7 @@ export interface GameHudScaleCoordinatorDeps {
   /** Applied one at a time in this order; the stage sorts by nothing, so a rebuild's `addChild`
    *  sequence is the HUD stacking order and must match the boot mounts. */
   readonly targets: readonly HudScaleTarget[];
-  readonly placePerf: (scale: number) => void;
+  readonly placeDebugOverlays: (scale: number) => void;
   readonly onError: (error: unknown) => void;
 }
 
@@ -46,14 +46,14 @@ export function createGameHudScaleCoordinator(deps: GameHudScaleCoordinatorDeps)
     if (disposed) return false;
     if (failure === null) {
       currentScale = scale;
-      deps.placePerf(scale);
+      deps.placeDebugOverlays(scale);
       return true;
     }
 
     // Roll every target back in mount order, so the stacking order survives the error path too.
     const rollbackFailure = await applyAll(previousScale, false);
     if (!disposed) {
-      deps.placePerf(previousScale);
+      deps.placeDebugOverlays(previousScale);
       deps.onError(failure.reason);
       if (rollbackFailure !== null) {
         // Some target is stuck at the new scale; NaN never equals a request, so the next one retries.

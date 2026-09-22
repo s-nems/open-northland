@@ -88,6 +88,7 @@ export interface ToolWindows {
   readonly mission: MissionWindow;
   /** The open central window, or null; the beam lights its entry. */
   openId(): ToolWindowId | null;
+  closeAll(): void;
   claims(x: number, y: number): boolean;
   /** Offer a click to the top-drawn open pop-up over the point; true when it consumed it. */
   handleClick(x: number, y: number, mods?: ClickModifiers): boolean;
@@ -183,6 +184,10 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     byId: { menu, extras, stats, diplomacy, residents, knowledge, mission },
     mission,
     openId: () => MOUNT_ORDER.find((id) => entries[id].window.isOpen()) ?? null,
+    // A suspended construction window reports closed and keeps its placement's resume.
+    closeAll: (): void => {
+      for (const e of mounted) if (e.window.isOpen()) e.window.close();
+    },
     claims: (x, y) => topAt(x, y) !== null,
     handleClick: (x, y, mods): boolean => topAt(x, y)?.handleClick(x, y, mods) ?? false,
     handleWheel: (x, y, deltaY): boolean => {

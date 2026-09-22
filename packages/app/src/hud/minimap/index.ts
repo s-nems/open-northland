@@ -67,6 +67,8 @@ export interface MinimapHandle {
   panelRect(): Rect | null;
   /** Per-frame refresh; `fog` is the viewer's fog view, or null when fog is off. */
   update(snapshot: WorldSnapshot, fog?: FogView | null): void;
+  /** Hidden with the rest of the HUD: nothing drawn, no press claimed, no per-frame refresh. */
+  setHidden(hidden: boolean): void;
   setUiScale(uiscale: number): Promise<void>;
   dispose(): void;
 }
@@ -74,13 +76,19 @@ export interface MinimapHandle {
 /** Mount the minimap onto `app.stage` (screen-space, above the world layer). */
 export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle> {
   const mountAtScale = (uiscale: number) => mountMinimapAtScale({ ...opts, uiscale });
-  const mounts = createReplaceableMount(await mountAtScale(opts.uiscale), mountAtScale, (next) =>
-    next.activate(),
-  );
+  let hidden = false;
+  const mounts = createReplaceableMount(await mountAtScale(opts.uiscale), mountAtScale, (next) => {
+    next.activate();
+    next.setHidden(hidden);
+  });
   return {
     claimsPointer: (clientX, clientY) => mounts.current().claimsPointer(clientX, clientY),
     panelRect: () => mounts.current().panelRect(),
     update: (snapshot, fog) => mounts.current().update(snapshot, fog),
+    setHidden: (next) => {
+      hidden = next;
+      mounts.current().setHidden(next);
+    },
     setUiScale: (uiscale) => mounts.replace(uiscale),
     dispose: () => mounts.dispose(),
   };
@@ -158,6 +166,8 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
     container.addChild(dots, viewRect);
 
     let dragging = false;
+    // `visible` is the settled-placement flag below; the HUD toggle owns `renderable`.
+    let hidden = false;
     /** The world spot a screen point depicts, clamped into the map picture so a drag that wanders off
      *  keeps scrolling along the map edge. */
     const spotAt = (sx: number, sy: number): { x: number; y: number } => {
@@ -166,7 +176,7 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
       return minimapToWorld(layout, bounds, cx, cy);
     };
     const onMouseDown = (e: MouseEvent): void => {
-      if (!container.visible) return;
+      if (hidden || !container.visible) return;
       const p = opts.toScreenPx(e.clientX, e.clientY);
       // Only the map hole answers a press; the braid still claims it so it never orders units.
       if (!pointOverMinimapHole(layout, p.x, p.y)) return;
@@ -225,13 +235,14 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
         lastHeight = app.screen.height;
       },
       claimsPointer: (clientX, clientY) => {
-        if (!container.visible) return false;
+        if (hidden || !container.visible) return false;
         const p = opts.toScreenPx(clientX, clientY);
         return pointOverMinimap(layout, p.x, p.y);
       },
       panelRect: () =>
-        container.visible ? minimapLayout(bounds, app.screen.height, opts.uiscale).panel : null,
+        container.visible && !hidden ? minimapLayout(bounds, app.screen.height, opts.uiscale).panel : null,
       update: (snapshot, fog = null) => {
+        if (hidden) return;
         const h = app.screen.height;
         layout = minimapLayout(bounds, h, opts.uiscale);
         if (!container.visible) {
@@ -266,6 +277,11 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
             lastViewRect = [vpl.x, vpl.y, vpl.w, vpl.h];
           }
         }
+      },
+      setHidden: (next) => {
+        hidden = next;
+        container.renderable = !next;
+        dragging = false;
       },
       dispose: () => {
         removeListeners();

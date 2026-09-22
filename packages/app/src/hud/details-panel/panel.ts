@@ -106,7 +106,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     rebuildGate.rebuilt();
     view = panelViewFor(model, app.screen, scale);
     stage.paint(view, hover, activeStockTab);
-    if (view.kind === 'empty') return;
+    if (view.kind === 'empty') {
+      opts.tooltip?.hide();
+      return;
+    }
     // A rebuild changes what a held cursor hovers, and the cursor itself won't move to fire a mousemove.
     if (lastPointer !== null) updateTooltip(lastPointer.clientX, lastPointer.clientY);
   };

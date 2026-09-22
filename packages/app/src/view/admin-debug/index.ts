@@ -14,6 +14,7 @@ import {
   HEADER_STYLE,
   type LabelledButton,
   numberField,
+  PANEL_BELOW_CHIP_PX,
   ROW_STYLE,
   rowOf,
   SECTION_TITLE_STYLE,
@@ -69,10 +70,14 @@ export interface AdminDebugDeps {
   readonly fogMode?: () => FogMode;
   readonly geometryEnabled: () => boolean;
   readonly setGeometryEnabled: (enabled: boolean) => void;
+  /** The chip's top edge in client px, under the HUD's top-right bar. */
+  readonly top: number;
 }
 
 export interface AdminDebugHandle {
   setVisible(visible: boolean): void;
+  /** Move the chip, and the panel under it, to `top` client px. */
+  place(top: number): void;
   dispose(): void;
 }
 
@@ -238,6 +243,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   );
 
   panel.append(header, body, status);
+  const place = (top: number): void => {
+    toggle.style.top = `${top}px`;
+    panel.style.top = `${top + PANEL_BELOW_CHIP_PX}px`;
+  };
+  place(deps.top);
   document.body.append(toggle, panel);
   refresh();
 
@@ -326,6 +336,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
       toggle.style.display = visible ? '' : 'none';
       if (!visible && open) setOpen(false);
     },
+    place,
     dispose(): void {
       window.removeEventListener('mousedown', onPointerDown, { capture: true });
       window.removeEventListener('keydown', onKeyDown, { capture: true });

@@ -52,6 +52,7 @@ it.each([false, true])(
         setUiScale: () => Promise.resolve(),
         currentScale: () => 1,
         claims: () => false,
+        setChromeHidden() {},
         dispose() {
           release();
           if (cleanupThrows) throw new Error('hud dom cleanup failed');

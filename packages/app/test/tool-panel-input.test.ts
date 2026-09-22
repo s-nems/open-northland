@@ -79,6 +79,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
   let menuOpened = 0;
   let constructionToggled = 0;
   let residentsToggled = 0;
+  let hudToggled = 0;
   const held = heldMode();
   const arm = (): void => {
     held.active = true;
@@ -109,6 +110,9 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
       residentsToggled++;
     },
     togglePause: () => undefined,
+    toggleHud: () => {
+      hudToggled++;
+    },
     cue: (cue) => {
       cues.push(cue);
     },
@@ -127,6 +131,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     menuOpened: (): number => menuOpened,
     constructionToggled: (): number => constructionToggled,
     residentsToggled: (): number => residentsToggled,
+    hudToggled: (): number => hudToggled,
   };
 }
 
@@ -217,6 +222,7 @@ describe('tool panel Escape ladder', () => {
       toggleConstruction: () => undefined,
       toggleResidents: () => undefined,
       togglePause: () => undefined,
+      toggleHud: () => undefined,
       cue: () => undefined,
     });
     let opened = 0;
@@ -253,6 +259,22 @@ describe('tool panel Escape ladder', () => {
     windowTarget.dispatchEvent(inList);
     expect(constructionToggled()).toBe(1);
     expect(inList.defaultPrevented).toBe(false);
+    input.dispose();
+  });
+
+  it('toggles the HUD on its key, unless a text field or another surface owns the keyboard', () => {
+    let owned = false;
+    const { input, windowTarget, hudToggled } = mount(() => owned);
+    const hide = key('KeyH');
+    windowTarget.dispatchEvent(hide);
+    expect(hudToggled()).toBe(1);
+    expect(hide.defaultPrevented).toBe(true);
+    const typed = key('KeyH');
+    Object.defineProperty(typed, 'target', { value: new TextField() });
+    windowTarget.dispatchEvent(typed);
+    owned = true;
+    windowTarget.dispatchEvent(key('KeyH'));
+    expect(hudToggled()).toBe(1);
     input.dispose();
   });
 

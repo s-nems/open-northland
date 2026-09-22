@@ -118,6 +118,7 @@ export function createControlsTab(opts: {
               ? text.escapeBindingRebindTip
               : text.bindingRebindTip,
           ...(RECALL_ACTIONS.has(action) ? [text.recallSelectedTip] : []),
+          ...(action === 'hudToggle' ? [text.hudToggleTip] : []),
           ...(opts.deferredTip === undefined ? [] : [opts.deferredTip]),
         ].join(' '),
       });

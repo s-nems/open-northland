@@ -33,6 +33,7 @@ export interface ToolPanelInputDeps {
   readonly toggleConstruction: () => void;
   readonly toggleResidents: () => void;
   readonly togglePause: () => void;
+  readonly toggleHud: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
    *  the mouse cancel is original behavior). */
   readonly cue: (cue: UiCue) => void;
@@ -128,6 +129,12 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       if (keyboardOwned(e)) return;
       consume(e);
       deps.openMenu();
+      return;
+    }
+    if (isActionHotkey(e, deps.bindings, 'hudToggle')) {
+      if (keyboardOwned(e)) return;
+      consume(e);
+      deps.toggleHud();
       return;
     }
     if (isActionHotkey(e, deps.bindings, 'construction')) {

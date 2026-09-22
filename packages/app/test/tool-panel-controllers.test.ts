@@ -299,6 +299,19 @@ describe('tool windows registry', () => {
     expect(heldPaper.held()).toEqual(anyPlan);
   });
 
+  it("closes every open window at once, keeping a placement's pending return to the catalogue", () => {
+    const { windows, menu } = mountWindows();
+    windows.byId.stats.toggle();
+    windows.closeAll();
+    expect(windows.openId()).toBeNull();
+
+    menu.toggle();
+    menu.suspend();
+    windows.closeAll();
+    menu.resume();
+    expect(menu.isOpen()).toBe(true);
+  });
+
   it("a card's help opens the knowledge note in place of the catalogue", () => {
     const { windows, menu } = mountWindows();
     menu.toggle();
