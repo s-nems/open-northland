@@ -185,8 +185,8 @@ runs in it play a few hundred ticks by default; `ON_RELAY_TICKS=10000` lengthens
 change to the relay or the lockstep seams.
 
 `ON_RELAY_PARITY=off` skips `relay-map-parity.test.ts`, which is more than half of the suite's
-runtime. The release content job sets it; a local `npm run test:content` always runs the file, so a
-change to the relay or the lockstep seams still needs one.
+runtime, for a quicker content check. A change to the relay or the lockstep seams still needs a run
+with the file.
 
 `test:pipeline` performs a fresh conversion into a temporary directory and runs the real-content
 checks against that result. Use it for source parsing, schemas, decoders, map conversion, and output

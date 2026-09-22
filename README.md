@@ -49,12 +49,12 @@ npm run check
 ```
 
 `build:content` verifies the archive's SHA-256, unpacks it, replaces `content/`, and runs the
-pipeline, exactly as the release does; `-- --zip <file>` converts a local copy of the archive instead
+pipeline; `-- --zip <file>` converts a local copy of the archive instead
 of downloading it. While working on the pipeline itself, run `npm run pipeline` directly against an
 unpacked mod (see `docs/DEVELOPMENT.md`).
 
-Converted content is ignored by Git. Never commit it, and never share it or a build that carries it
-outside the channel `docs/LEGAL.md` allows.
+Converted content is ignored by Git. Never commit it; it remains the property of its rights holders
+(see `docs/LEGAL.md`).
 
 ## Repository layout
 
@@ -75,7 +75,7 @@ tools/
   asset-pipeline/    Converts the CulturesNation mod into the served content tree
 deploy/web/          nginx image of the built app and the converted content
 scripts/             Repository checks, content build, benchmarks
-content/             Converted locally or by the release, ignored by Git
+content/             Converted locally, ignored by Git
 docs/                Design notes, format research, and open tickets
 ```
 

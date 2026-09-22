@@ -38,9 +38,8 @@ nsis:
 portable:
   artifactName: ${productName}-${version}-portable.exe
 mac:
-  # arm64 pinned for the same reason as win x64: the default is the build host's arch. An Intel dmg
-  # costs a whole extra mac build, so the release adds it on request with
-  # `--mac dmg:x64 dmg:arm64`, which replaces this list.
+  # arm64 pinned because the default is the build host's arch. An Intel dmg costs a whole extra mac
+  # build; `--mac dmg:x64 dmg:arm64` adds it and replaces this list.
   target:
     - target: dmg
       arch: [arm64]
