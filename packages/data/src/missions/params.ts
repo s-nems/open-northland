@@ -66,7 +66,7 @@ interface MissionParamDef {
 }
 
 /**
- * The parameter kinds a goal or result signature is built from, named after the engine's own kinds
+ * The parameter kinds a goal or result signature is built from, named after the original's own kinds
  * (`MISSIONS.md` lists them with their kind ids). `point` covers the adjacent x and y kinds, which
  * no signature separates.
  */
@@ -107,7 +107,7 @@ export const MISSION_PARAMS = {
   seconds: { field: 'seconds', tokens: 1, decode: intAt },
   /** Info line, bit index, or a renumbering target, depending on the opcode. */
   index: { field: 'index', tokens: 1, decode: intAt },
-  /** Opcode-specific in the engine's table; the opcode's own row says what it means. */
+  /** Opcode-specific in the original's table; the opcode's own row says what it means. */
   extra: { field: 'extra', tokens: 1, decode: intAt },
 } as const satisfies Record<string, MissionParamDef>;
 

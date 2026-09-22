@@ -19,8 +19,8 @@ import type { SpriteAtlas, SpriteSheet } from '../src/index.js';
 
 /**
  * A razed building sinks over a short window: the body's lowest pixel rows are clipped at the ground line
- * and the graphic shifts down by the same amount, mirroring the construction rise (the original's
- * `PrintBob_UsingCollapseTimeMask`). The fixture sheet's fake TextureSource is never sampled.
+ * and the graphic shifts down by the same amount, mirroring the construction rise (as in the
+ * original). The fixture sheet's fake TextureSource is never sampled.
  */
 
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };

@@ -1,6 +1,6 @@
 /**
  * Which rendered segments each `DM_MUSIC_TYPE_*` map code may play. Codes from the owned copy's
- * `logicdefines.inc`. The variant sets follow the original's segment-name table: it
+ * `logicdefines.inc`. The variant sets follow the original, which
  * gives every `Theme_*` and `Mission_*` code three mood slots and one `Attack_*` code a single slot,
  * and repeats the `Standard` name in all three slots of a mission that authored no other segment.
  */
@@ -25,8 +25,8 @@ function theme(tribe: string): MusicVariants {
   };
 }
 
-/** `'standardOnly'` collapses all three moods onto the Standard stem, the way the original's table
- *  repeats that one pointer for a mission with no Wealthy or Danger segment. */
+/** `'standardOnly'` collapses all three moods onto the Standard stem, the way the original
+ *  repeats that one segment for a mission with no Wealthy or Danger segment. */
 function mission(base: string, variants: 'all' | 'standardOnly'): MusicVariants {
   const standard = `${base}_standard`;
   return {

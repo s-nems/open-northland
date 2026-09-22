@@ -19,7 +19,7 @@ import { hasRealIr, loadContentUnderTest } from './helpers.js';
  * The field-farming loop (sow → water → reap → bank) over the MERGED REAL content - the twin
  * of the sim fixture's end-to-end run (`packages/sim/test/economy/farming/coordination.cases.ts`),
  * with each farmed good, its trade, its workplace, and the tribe all resolved from the pipeline's
- * output: wheat on the farm and herb on the herb hut, which the original runs through one routine.
+ * output: wheat on the farm and herb on the herb hut, which the original farms the same way.
  * The workplace/worker are built component-directly like that proven sim e2e (bound crew mid-life, not
  * a construction saga), the worker standing on the door cell as a staffed crew does; what real content
  * contributes is the id joins, the extracted footprints and the overlaid `farming` block - the pieces a

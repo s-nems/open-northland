@@ -8,8 +8,8 @@ import {
 } from './types.js';
 
 /**
- * Byte evidence: the per-type priority switch of the owned game and of the owned CulturesNation mod
- * select the same three groups; `goodNotFound` alone branches on the settler's trade.
+ * Original behavior: the base game and the CulturesNation mod give each message type the same one of
+ * three groups; `goodNotFound` alone branches on the settler's trade.
  */
 const IMPORTANT: readonly UserMessageTypeName[] = [
   'lostWithoutSignposts',

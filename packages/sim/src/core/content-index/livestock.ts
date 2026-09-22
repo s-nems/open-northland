@@ -22,7 +22,7 @@ export interface LivestockTables {
  * the original lets a scout claim (cow 10, sheep 19). First-wins per key on both sides.
  *
  * The slaughter atomic rides the same slug: the breeder binds `setatomic 16 87 "<tribe>_breeder_slay_sheep"`
- * and `88 "..._slay_cattle"`, and the engine picks 87 or 88 by species in code, so the clip name is the
+ * and `88 "..._slay_cattle"`, and the original picks 87 or 88 by species itself, so the clip name is the
  * only readable link (approximation).
  */
 export function livestockTables(content: ContentSet): LivestockTables {

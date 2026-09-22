@@ -10,7 +10,7 @@ import { decorInReservedZone } from './reserved-decor.js';
  * Ticks a bare {@link BerryBush} takes to regrow its fruit; 100 s of game time at 12 ticks per second.
  *
  * Approximation: the original regrows a bush over the `landscapetypes.ini` growth trigger (`transition 7 …`,
- * `bush naked -> flowering -> with fruits`) whose real period is not decoded, so this whole-cycle duration
+ * `bush naked -> flowering -> with fruits`) whose real period is unknown, so this whole-cycle duration
  * stands in for the two-step flowering cycle, tuned so a foraged patch recovers within a settler's hunger
  * cadence.
  */
@@ -28,7 +28,7 @@ export const BERRY_STAGE_TICKS = BERRY_REGROW_TICKS / 2;
  * 64 half-cell nodes, about 32 tiles, so a lone bush across the map cannot drag a starving settler on a
  * suicidal march.
  *
- * Approximation: the original's food-search extent is not decoded. This flat radius caps only the wild-bush
+ * Approximation: the original's food-search extent is unknown. This flat radius caps only the wild-bush
  * fallback; under signpost navigation the settler's `NavigationLimit` gates both paths further.
  */
 export const BERRY_FORAGE_RADIUS = 64;

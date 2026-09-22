@@ -42,20 +42,20 @@ export const EXPLORE_RADIUS_NODES = 40;
  * How far a civilian plans a walk without signposts, in hex node distance (`nav/hex-distance.ts`) from
  * where it stands: the original's pathfinder range, re-measured from the current position on every leg,
  * so there is no fixed anchor. A goal may lie exactly the range away, but a signpost is caught, and
- * covers a goal, only strictly inside it: the walk compares with `<=`, the guide search with `<`. Byte
- * evidence: the original's normal and carrier walk ranges and its range searches.
+ * covers a goal, only strictly inside it: the walk compares with `<=`, the guide search with `<`.
+ * Original behavior: the normal and carrier walk ranges and the range searches.
  */
 export const WALK_RANGE_NODES = 50;
 export const CARRIER_WALK_RANGE_NODES = 63;
 
 /**
  * Two same-player signposts link when their hex distance is under this and walkable ground joins them
- * within it. Byte evidence: the original's guide connection flood radius.
+ * within it. Original behavior: the guide connection radius.
  */
 export const SIGNPOST_LINK_RANGE_NODES = 40;
 
-/** No second same-player signpost may rise inside this hex distance of a standing one (byte evidence
- *  from the original's placement check). */
+/** No second same-player signpost may rise inside this hex distance of a standing one (original
+ *  placement rule). */
 export const SIGNPOST_SPACING_NODES = 16;
 
 /** The post's standing fog eye, in nodes on the world metric. Authored, no original counterpart. */

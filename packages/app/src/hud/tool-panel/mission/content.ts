@@ -51,7 +51,7 @@ const PICTURE_ROW_PAD = 2;
 const ICON_GAP = 5;
 /** Justified lines spread their gaps only while each stays within this many px. */
 const MAX_JUSTIFY_GAP = 12;
-/** The frame the callback draws around its bitmap (`DrawTool_DrawFrame`, style 2), design px.
+/** The frame the original draws around the view's bitmap, design px.
  *  Approximation: a pressed bevel stands in for the frame's bob strips. */
 const VIEW_FRAME_W = 2;
 
@@ -106,7 +106,7 @@ function placementOf(align: ParagraphAlign): RunPlacement {
 }
 
 /** Each entity's shift across a line with `slack` px left over.
- *  A line overfull by its trailing gap stays put, where the engine's unsigned shift would throw it off
+ *  A line overfull by its trailing gap stays put, where the original would throw it off
  *  the column. */
 function lineShifts(align: HypertextAlign | undefined, slack: number, count: number): number[] {
   const shifts = new Array<number>(count).fill(0);
@@ -217,7 +217,7 @@ export function createContentSink(
   /** The row's icons inline, wrapped at the column like words, each line aligned as the row says. */
   const iconRow = (row: HypertextIconRow, wrapWidth: number): void => {
     const boxes = row.icons.flatMap((icon) => icons(icon) ?? []);
-    // The engine skips an icon its callback draws nothing for, which leaves the line empty.
+    // The original skips an icon that draws nothing, which leaves the line empty.
     if (boxes.length === 0) {
       cursor += Math.round(BLANK_LINE_H * scale);
       return;

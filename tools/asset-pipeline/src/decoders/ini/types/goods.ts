@@ -9,7 +9,7 @@ import { makeSource, requireTypeId, type SourceRef, slug, tallyIds } from '../ir
 import { getInt, getIntValues, getStr } from '../props.js';
 
 /** Effects are described in the owned English tutorial; values are clean-room observations of the
- * owned engine's house demand, delivery and per-use arithmetic. The readable good rows name no fields
+ * original's house demand, delivery and per-use arithmetic. The readable good rows name no fields
  * for this policy, so it stays beside extraction as explicit calibrated content. */
 const HOME_QUALITY_BY_GOOD_ID = {
   holy_oil: {

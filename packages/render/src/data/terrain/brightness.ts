@@ -5,8 +5,7 @@ import { makeCellSampler } from './cell-field.js';
  * modelled as lighting.
  *
  * Ground and non-exempt landscape objects take the lane; buildings and settlers draw unshaded as in the
- * original, whose bob-print core (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) takes no
- * brightness argument.
+ * original, which applies no brightness to them.
  */
 
 /**

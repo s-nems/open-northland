@@ -84,8 +84,8 @@ export function stopPlayerHumans(pass: MissionPass, player: number): void {
  * That order carries a player walk's whole teardown: a guard's post moves to the destination, and a
  * carrier sets its load down where it lands rather than where it was lifted. `claimed` threads one
  * line's batch so a group fans out instead of stacking. The destination needs no explicit reveal: the
- * moved unit's own eye covers it on the next vision pass, which is what the original's explore call
- * achieves. Approximation: a unit inside a non-interruptible clip finishes it where it no longer
+ * moved unit's own eye covers it on the next vision pass, which is what the original's explore
+ * result achieves. Approximation: a unit inside a non-interruptible clip finishes it where it no longer
  * stands, because the walk order parks behind that clip rather than cancelling it.
  */
 function teleportAndSettle(pass: MissionPass, e: Entity, point: HalfCellNode, claimed: Set<NodeId>): void {

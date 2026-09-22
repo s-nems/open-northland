@@ -81,7 +81,7 @@ const DESERTED: WorkplaceOperators = { kind: 'staffed', operators: Object.freeze
 /**
  * How many operators a {@link presentOperators} result is worth to the production rate: one anonymous
  * operator when the type is unstaffed-by-design, else the settlers on station, and zero pauses the craft.
- * Approximation: one batch advances per operator per tick; the original's staffing rule is not decoded.
+ * Approximation: one batch advances per operator per tick; the original's staffing rule is unknown.
  */
 export function operatorCountOf(operators: WorkplaceOperators): number {
   switch (operators.kind) {

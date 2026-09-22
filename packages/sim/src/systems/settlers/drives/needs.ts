@@ -279,8 +279,8 @@ export function planNeeds(
 /**
  * A computer seat's answer to a need its settler went looking to serve and could not - nothing to eat
  * in reach, no bed, no temple: the bar goes back to the level a served need sits at instead of
- * pinning. Byte evidence: the original's failed need task writes the sated level over the failed
- * need's bar when the human's player is of the computer type, where a human player's settler gets the
+ * pinning. Original behavior: a failed need seek sets the failed need's bar to the sated
+ * level when the human's player is of the computer type, where a human player's settler gets the
  * warning message instead. A seek the seat
  * forbade starts no task there, so that bar falls to the seat's refill (`lifecycle/needs`).
  */

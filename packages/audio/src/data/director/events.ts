@@ -184,8 +184,8 @@ function missSoundType(
 
 /**
  * A weapon's listed impact or thud, named by a `logicSoundType` id like an animation's cue. A blow on a
- * body is exclusive, a blow on a building or a shot into the ground layers freely: the original's
- * callback passes its "skip while running" flag for the body hit alone. Approximation: the original
+ * body is exclusive, a blow on a building or a shot into the ground layers freely: the original
+ * skips only a body hit while the previous one is still sounding. Approximation: the original
  * sounds a body blow only when it did damage, this every landed one.
  */
 function weaponSoundPending(

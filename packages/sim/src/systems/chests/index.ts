@@ -59,7 +59,7 @@ export function createChest(world: World, content: ContentSet, spec: ChestSpec):
 }
 
 /**
- * Whether a settler of `jobType` may open a `kind` chest (`Item_IsAbleToOpenChest`): a wooden chest takes
+ * Whether a settler of `jobType` may open a `kind` chest: a wooden chest takes
  * any adult trade, a magical one only the druid or a hero. Adulthood is the caller's `Age` check.
  */
 export function jobCanOpenChest(content: ContentSet, jobType: number | null, kind: ChestKind): boolean {
@@ -133,7 +133,7 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
   }
 }
 
-/** `Tool_TechTree_EnableGoodProduction`: each workshop reward permanently enables its producing trade
+/** As in the original, each workshop reward permanently enables its producing trade
  * and every named product for the player's Viking technology table. */
 function unlockWorkshopProduction(
   world: World,

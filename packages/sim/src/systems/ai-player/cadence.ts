@@ -3,14 +3,13 @@ import type { World } from '../../ecs/world.js';
 
 /**
  * Ticks between one seat's decision passes - 2 s at the 12 ticks/s base clock. Approximation: a
- * genre-convention seconds-scale strategy cadence, not a decoded value.
+ * genre-convention seconds-scale strategy cadence, not an original value.
  */
 export const AI_DECISION_INTERVAL_TICKS = 24;
 
 /**
- * The scripted handlers' round-robin. Byte evidence: the original's AI manager gives each seat's
- * handler one turn per 60 ticks, seat `p` on tick `3p` of the round, and hands it the round's index as its
- * turn number.
+ * The scripted handlers' round-robin. Original behavior: each seat's handler gets one
+ * turn per 60 ticks, seat `p` on tick `3p` of the round, with the round's index as its turn number.
  */
 export const AI_HANDLER_ROUND_TICKS = 60;
 const AI_SEAT_TURN_TICKS = 3;

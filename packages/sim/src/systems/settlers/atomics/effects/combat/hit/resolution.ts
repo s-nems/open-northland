@@ -146,7 +146,7 @@ export function resolveCombatHit(
   provokeAnger(world, ctx, target);
   provokeHostility(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
-  // the original's damage callback fires on the computed damage, before the pool is touched.
+  // the original marks it on the computed damage, before the pool is touched.
   if (dealtDamage && world.has(target, Person)) {
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }

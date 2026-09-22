@@ -132,7 +132,7 @@ keeps the assistant alone.
 
 - Only the three placing kinds are listed (a named house, a named house with its store filled, a
   house of the player's choice), under a "Plany budowy" note with their count. The other four kinds
-  of the engine's table (the indulgence, the build, learn and produce permits) are not listed: a
+  the original knows (the indulgence, the build, learn and produce permits) are not listed: a
   click on them does nothing in the original, and no chest or map hands them out. With
   nothing to list the parchment says "Brak papierów" and where papers come from.
 - A plan is a card in the building card's frame: the named house's picture (the house glyph for a
@@ -367,7 +367,7 @@ lifetime, dedupe and priority table.
 ## Original art and remaining work
 
 The painted action icons, the notification emblems and the surface texture are the `ui/foundation` art package,
-whose recipe and package notes live with the art sources in the custom art fork:
+whose art sources live outside this repository:
 the 4 × 2 atlas `nordic-icons-v4.png` of simple single-object icons, the game-menu sheet
 `nordic-menu-v1.png` (its oak door is the menu medallion), the 4 × 2 notification emblem sheet
 `nordic-notices-v1.png` (flat emblems whose magenta areas are the seat-colour key) and the carved
@@ -384,7 +384,7 @@ specifications.
 Serve the reference from any checkout of this repository with
 
 ```sh
-node docs/design/ingame-menu/serve.mjs 5187 /private/tmp/ingame-foundation
+node docs/design/ingame-menu/serve.mjs 5187 <review-dir>
 ```
 
 and open `http://127.0.0.1:5187/`. The server reads repository files first and falls back to the
@@ -393,7 +393,7 @@ into the temporary directory. Do not use `python3 -m http.server`: it drops para
 this page and previews load randomly. `index.html` in the repository is the architecture wireframe,
 not this visual reference.
 
-Local-only review inputs in `/private/tmp/ingame-foundation` (never add these to Git):
+Local-only review inputs in `<review-dir>` (never add these to Git):
 
 - `alegreya-400/500/700.woff2`, `alegreya-latinext-400/500/700.woff2`, `cinzel.woff2`, `cinzel-latinext.woff2`: the
   review fonts, copies of the runtime subsets in `packages/app/public/fonts/`; the repository page falls back to

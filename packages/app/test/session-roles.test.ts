@@ -31,7 +31,7 @@ describe('sessionRoles', () => {
   });
 
   it('matches the map’s own computer seats too, unless the script exempts them', () => {
-    // The engine's per-tick check counts every seat in use, claimable or not; `playerneverdies`
+    // The original's per-tick check counts every seat in use, claimable or not; `playerneverdies`
     // is the only exemption. A scenario seat the lobby never lists therefore has to fall (or be
     // exempt) before the person wins.
     const roster = [...ROSTER, { player: 6, colorId: 9, type: 'ai', claimable: false }] as const;

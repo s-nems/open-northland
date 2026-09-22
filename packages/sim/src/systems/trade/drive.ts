@@ -138,7 +138,7 @@ function decide(
 /**
  * At the player's own house before a foreign trip: clear the cart of everything but the give good into
  * the house, then load give goods while the cart has room for the whole exchange and the house has
- * spare; leave once a batch is aboard. Reading of `an original routine`: the room test keeps
+ * spare; leave once a batch is aboard. Original behavior (reading): the room test keeps
  * space for the take goods every aboard batch will bring back.
  */
 function decidePreparation(

@@ -7,7 +7,7 @@ Every field carries `Crop.farm`, the drive counts and picks only `targets.cropsB
 keep two disjoint plots on the same ground, and a demolished farm's fields stand untended within another
 farm's reach.
 
-The original has no owner on a field. Byte evidence from the owned copy, in the task the farmer and
+The original has no owner on a field. Original behavior, in the task the farmer and
 the herb guy share: a worker searches 10 map points out
 from its work centre for every point of its good's growing landscape, whoever sowed it, stops counting
 at 25, plants only while it counted fewer, else reaps a ripe one or waters the lowest. The cap

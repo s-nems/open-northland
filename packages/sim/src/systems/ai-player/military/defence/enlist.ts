@@ -11,7 +11,7 @@ import { isFighterJob } from '../../../readviews/index.js';
 import { ownedSettlers } from '../../seat-roster.js';
 
 /**
- * Enlist the seat's fighters as the scripted handler's soldiers. Byte evidence: the original's handler
+ * Enlist the seat's fighters as the scripted handler's soldiers. Original behavior: the handler
  * lists every soldier of the seat that mans no workhouse, rides no vehicle and stands within the
  * player's control (`MISSIONS.md`, behaviour bit 5), and a man joining the list gets two commands,
  * the hold stance and a cleared regenerate-in-world flag. Only the flag is issued here: a listed man

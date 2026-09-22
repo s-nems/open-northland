@@ -36,7 +36,7 @@ const VBR_QUALITY = 3;
  * Brings the mix back inside full scale: 12 of the 64 segments peak above it once the reverb's wet
  * sum is added, and this scaling is what keeps them from clipping rather than a spare margin over
  * one. Uniform, so relative track loudness survives - the original applies no per-track gain
- * either (byte evidence: the engine's driver call surface carries only the master volume and the
+ * either (original behavior: music level follows only the master volume and the
  * jingle duck). The runtime music bus undoes this file headroom. Anything that raises levels here
  * lands on 0 dBFS.
  */

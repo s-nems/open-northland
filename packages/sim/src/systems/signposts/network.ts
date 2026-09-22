@@ -225,7 +225,7 @@ export function navigationLimitFor(
 /**
  * The area an equipment fetch may shop in: the settler's own confinement, or for a job that walks the
  * map unconfined (a fighter, a scout) the network at its feet. Source basis: the original's
- * `FindEquipment_Complex_Nearby` floods 40 nodes around the human, whatever its job, and then asks the
+ * equipment search floods 40 nodes around the human, whatever its job, and then asks the
  * guide link systems that flood reached; without a bound a soldier would cross the whole map for a sword
  * lying in a far field. Approximation: the feet network reuses the 50-node walk range as a hex
  * distance, not a 40-node walkable flood. Null only when nothing confines anyone (navigation off, an

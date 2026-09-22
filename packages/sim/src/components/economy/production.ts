@@ -28,7 +28,7 @@ export const Production = defineComponent<{
  * command. An empty `goods` - or an absent component - means every product the workplace offers. With
  * several selected, each started cycle takes the one at `cursor`, skipping any whose inputs or room don't
  * allow a start, and advances past it. Authored: the 1:1 alternation over a multi-pick is a design choice,
- * since the original's per-worker product scheduling is not decoded.
+ * since the original's per-worker product scheduling is unknown.
  */
 export const CraftSelection = defineComponent<{
   /** Selected product goodTypes, ascending (deduped); empty = all the workplace's products. */

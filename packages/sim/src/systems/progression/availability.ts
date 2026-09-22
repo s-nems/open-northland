@@ -152,8 +152,8 @@ export function tribeShipsUnlocked(
 }
 
 /** A script's `Allow*` overrides authored bans; otherwise the map's permission table, then the tribe's
- *  initial allow table, is authoritative. `Enable*` never lifts a ban (reading: the original's readers
- *  require the allowed byte beside the enabled one). */
+ *  initial allow table, is authoritative. `Enable*` never lifts a ban (reading: the original
+ *  requires the allowed flag beside the enabled one). */
 export function typeAllowed(
   world: World,
   ctx: ContentContext,

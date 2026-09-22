@@ -13,7 +13,7 @@ import type { SystemContext } from '../context.js';
 
 // Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one production cycle
 // for tools, one sip for consumables) and breaks at ONE, so the slot clears and the unit leaves the
-// economy. Boots spend theirs at a walking node callback, including the terminal destination.
+// economy. Boots spend theirs at each walked node, including the terminal destination.
 
 /** One use's wear step for `goodType`: `divCeil(ONE, uses)`, so an item never outlives its rating
  *  (truncation would give a 5-use bottle a 6th sip). ZERO for a non-wearing or unrated good. */
@@ -62,8 +62,8 @@ export function applyEquipWear(
 
 /**
  * The wear of one step off a node of `roughness`, doubled while hauling a good, on the walker's boots. The
- * original keeps a pair's condition as whole points, the good's rated `uses` (10000, byte-verified
- * `cHumanInventoryMaximumCondition_Shoe`), and takes `roughness << carrying` off it every time a human
+ * original keeps a pair's condition as whole points, the good's rated `uses` (10000, the original's
+ * shoe maximum), and takes `roughness << carrying` off it every time a human
  * starts a step or reaches the terminal destination; the pair is gone at zero. The slot's fraction
  * recovers these counts exactly for the original 10000-point rating.
  */

@@ -3,7 +3,7 @@ import { extractJobExperience, extractJobs, extractTribes, parseIniSections } fr
 import { JOBTYPES_INI, JOBXP_INI, TRIBETYPES_INI } from './fixtures/ini-sources.js';
 
 describe('extractJobs', () => {
-  it('attaches byte-evidenced movement exceptions only to their engine tribe ids', () => {
+  it('attaches the original movement exceptions only to their tribe ids', () => {
     const tribes = extractTribes(
       parseIniSections('[tribetype]\ntype 3\n[tribetype]\ntype 7\n[tribetype]\ntype 1\n'),
       { file: 'tribes.ini' },

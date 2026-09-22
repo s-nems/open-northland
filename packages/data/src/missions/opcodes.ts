@@ -1,10 +1,10 @@
 import type { MissionArgs, MissionParamKind } from './params.js';
 
-/** One opcode: its name, then its parameter kinds in the order the engine reads them. */
+/** One opcode: its name, then its parameter kinds in the order the original reads them. */
 export type OpcodeRow = readonly [name: string, ...params: readonly MissionParamKind[]];
 
 /**
- * The goal table, indexed as the engine indexes it. Names and parameter kinds are a reading of the
+ * The goal table, indexed as the original indexes it. Names and parameter kinds are a reading of the
  * original cross-checked against the goal reference shipped in the installation's `Tools/` folder,
  * which names the same 63 goals and gives every one an example of the same arity.
  * `docs/formats/MISSIONS.md` records what each goal tests.
@@ -77,7 +77,7 @@ export const MISSION_GOALS = [
 
 /**
  * The result table, same conventions. The reference lists 102 of the 103 and matches every arity;
- * `SetMapAreaMarker` (101) is absent there and no map uses it. Two names carry the engine's own
+ * `SetMapAreaMarker` (101) is absent there and no map uses it. Two names carry the original's own
  * spelling, spaces included.
  */
 export const MISSION_RESULTS = [

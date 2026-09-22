@@ -23,7 +23,7 @@ action, `BuildingType.collectAtomic`.)
 - Give the craft lookup a rule that reaches the trade's own atomic when the good's disagrees, keyed on
   extracted data rather than on a list of these three ids.
 - The rule is the deliverable: state it, and name it an approximation if the original's own resolution
-  order stays undecoded.
+  order stays unknown.
 
 ## Verify
 

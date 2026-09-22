@@ -39,15 +39,15 @@ Construction swings that actually advance labor credit the builder's general tra
 combat retain their existing grant triggers. A requirement sums only its explicitly named tracks.
 The no-job-experience mission behavior suppresses accrual through the common grant seam.
 Work speed and production efficiency both read the matching product specialization when one exists
-and fall back to the profession-general track otherwise. Byte evidence: the original looks up the
-job's general and matching specialized record, and its retry counter, experience factor and output
+and fall back to the profession-general track otherwise. Original behavior: a lookup takes the
+job's general and matching specialized record, and the retry counter, experience factor and output
 amount each substitute the general record when the specialized one is absent. Experience gain
 credits both, skipping the second when they are the same record.
 
-An experience record belongs to one profession and up to two goods: byte evidence, the record holds
-two good slots, its loader fills them across every `good` line in the record, and any id past the
-second is read and discarded. The three druid potion records use the second slot to share one track
-between a small and a large potion. The same loader files at most ten records per profession; the
+An experience record belongs to one profession and up to two goods: in the original the record holds
+two good slots, filled across every `good` line in the record, and any id past the second is
+discarded. The three druid potion records use the second slot to share one track
+between a small and a large potion. The original files at most ten records per profession; the
 corrected joiner holds nine.
 
 ### CulturesNation experience corrections
@@ -113,10 +113,10 @@ Remaining approximations:
 - Gathering XP counts extracted units; production XP counts completed batches. Exact original atomic
   triggers and the efficiency curve still require observational comparison. Existing work, combat
   and scout bonus curves remain the documented approximations in the progression helpers.
-- Saved natural discoveries use the same monotonic lifetime suggested by the inspected writes.
+- Saved natural discoveries use a monotonic lifetime (reading).
   Reset behavior across every original map transition has not been observed.
 - The original distinguishes additional individual equipment qualifications. The military and
   equipment rules stand apart from this model.
 
 Tests establish the implemented contract, deterministic continuation and integration. They are not a
-claim of complete parity with the original executable.
+claim of complete parity with the original game.

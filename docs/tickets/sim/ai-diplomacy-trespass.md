@@ -7,16 +7,16 @@ seat ever reacting. `aiDiplomacySystem` (`packages/sim/src/systems/ai-player/dip
 only another player's stance: a neutral seat turns enemy toward a player that holds it as enemy, and a
 friendly seat drops to the other's stance.
 
-Original (a hypothesis, unconfirmed against the owned copy): on the look at a neutral slot that does
-not hold the seat as enemy, the handler walks that player's humans (a filtered subset, flag 1) and
+Original (a hypothesis, unconfirmed): on the look at a neutral slot that does
+not hold the seat as enemy, the seat walks that player's humans (a filtered subset, flag 1) and
 looks up the seat's village at each one's position. A human inside one of the seat's villages
 raises a per-slot counter and ends the look; the seat turns enemy once the counter passes 5, so on the
 sixth look in a row. A look that finds nobody inside resets the counter, and so does a mutual
-friendship. The strategic handler also skips its whole turn, this look included, until
+friendship. The strategic AI also skips its whole turn, this look included, until
 it has laid out the seat's villages.
 
 This build's AI has no village areas, so the work starts with what a village covers and which
-humans the iterator's flag 1 selects.
+humans flag 1 selects.
 
 ## Scope
 

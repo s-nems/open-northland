@@ -14,8 +14,8 @@ component. Two readers then disagree about what that settler holds:
   `weaponByTribeAndGoodType`, so the same wearer is encumbered by the weapon it cannot swing.
 
 In the original, equipping a weapon sets the human's weapon type unconditionally and only
-*additionally* flips its job when the human is inside the soldier bands (`job - 31 < 11` or
-`job - 42 < 6`). Walk speed and combat both read that one weapon type. So the engine has a single
+*additionally* flips its job when the human is inside the soldier bands (jobs 31-41 or 42-47).
+Walk speed and combat both read that one weapon type. So the original has a single
 weapon identity for every wearer, and the job flip is the soldier-only part.
 
 ## Scope

@@ -446,7 +446,7 @@ export class Simulation {
   }
 
   /** The lowest-id human stamped with mission object `id`, or null when no human carries it: the one
-   *  a briefing picture of that id shows (`MissionCheck_GetFirstHumanIdWithMissionCheckId`). */
+   *  a briefing picture of that id shows. */
   missionHuman(id: number): Entity | null {
     return missionObjects(this.world, id).find((e) => this.world.has(e, Settler)) ?? null;
   }

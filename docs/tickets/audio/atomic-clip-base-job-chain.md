@@ -3,14 +3,14 @@
 **Area:** sim, app · **Focus:** clip join · **Priority:** P2
 
 `atomicClipName` and `atomicDuration` (`packages/sim/src/systems/readviews/animations.ts`) resolve an
-atomic's animation as "the settler's own `setatomic` row, else the tribe's civilist row". The engine's
+atomic's animation as "the settler's own `setatomic` row, else the tribe's civilist row". The original's
 rule is a per-job parent chain: `jobtypes.ini` `baseatomics` is 6 only for the civilian trades, 31 for
 armed soldiers, 33-41 for the hero bodies, and **48 (`adult_animal`) for wildlife**. The IR already
 carries it as `JobType.baseJob`, `@open-northland/data` already walks it (`resolveJobAtomics`,
 covered by `packages/app/test/content/job-atomics.test.ts`), and the render-side clip join walks it too
 (`tribeJobSeqs` in `packages/app/src/content/ir/joins.ts`).
 
-Original behavior (byte evidence): the tribe table is
+Original behavior: the tribe table is
 read for `(tribe, job, atomic)`; on a miss the job record's base job is loaded, its allow flag for the
 atomic is required, and the lookup retries up the chain. A chain that never resolves starts no
 animation at all, where the sim runs `DEFAULT_ATOMIC_DURATION` instead.

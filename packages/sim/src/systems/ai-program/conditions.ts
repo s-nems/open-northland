@@ -27,7 +27,7 @@ export const CONDITION_NEVER = 100001;
 /** The player a range condition names to mean any player. */
 export const ANY_PLAYER = 20;
 
-/** The `Diplomacy_GetState` codes the script writes; the enemies-only range tests compare against
+/** The diplomacy codes the script writes; the enemies-only range tests compare against
  *  the third. */
 const DIPLOMACY_BY_CODE: Readonly<Record<number, DiplomacyState>> = { 1: 'friend', 2: 'neutral', 3: 'enemy' };
 

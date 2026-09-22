@@ -21,7 +21,7 @@ const WINDOW_BITMAP_RECOLORS: ReadonlyArray<{ bitmap: string; palette: string; s
 ];
 
 /**
- * Shadow floor for the window-body bake (luma points, 0–255). A cosmetic approximation, not decoded engine
+ * Shadow floor for the window-body bake (luma points, 0–255). A cosmetic approximation, not original
  * behaviour: sampled off a native 1024×768 screenshot, the original body's luma percentiles are
  * ≈ [18, 23, 31, 38, 45, 55, 63] (p1…p99), while a straight `bg_normal` swap leaves the marble veins at
  * 0–9 (p1–p5), the "cracked black" look.

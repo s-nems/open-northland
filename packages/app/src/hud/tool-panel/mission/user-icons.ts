@@ -2,7 +2,7 @@ import type { HypertextUserIcon } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 
 /**
- * What the mission window's bitmap callback draws for one `<usericon:kind,a,b,c>`: kind 1 the map
+ * What the mission window draws for one `<usericon:kind,a,b,c>`: kind 1 the map
  * around half-cell node (a, b), kind 2 the map around the first human stamped with mission id `a`,
  * kind 0 that human alone on a card, which stays an empty card when nobody carries the id. Any other
  * kind, or kind 2 for an id nobody carries, draws nothing.
@@ -11,7 +11,7 @@ import type { MapViewTarget } from '@open-northland/render';
 const ICON_FIGURE = 0;
 const ICON_MAP_AT_NODE = 1;
 const ICON_MAP_AT_HUMAN = 2;
-/** The callback's bitmaps, as the original's mission window allocates them (design px). */
+/** The icon bitmaps, as the original's mission window sizes them (design px). */
 const MAP_VIEW_W = 280;
 const MAP_VIEW_H = 220;
 const FIGURE_CARD_W = 50;

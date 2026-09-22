@@ -16,7 +16,7 @@ import { gatherMasteryExperience } from './mastery.js';
 const { DeliveryFlag, Position, WorkFlag } = components;
 
 /** Work radius in node-distance, a named approximation: the original's collector work-area size is
- *  not decoded. */
+ *  unknown. */
 export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 
 /** Turns the app's felling and deposit balance into a node spec; `x`/`y` are half-cell node coords. */

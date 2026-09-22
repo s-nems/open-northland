@@ -7,7 +7,7 @@ counted action no matter what the data says. `accrueTrack` (`packages/sim/src/sy
 experience.ts`) stores `experienceFactor * units`, and `experienceRepeats`
 (`packages/sim/src/systems/progression/bonus.ts`) divides the same factor back out before the curve.
 
-The original treats the field as a speed multiplier. Byte evidence: experience gain adds a flat
+The original treats the field as a speed multiplier. Original behavior: experience gain adds a flat
 `+1` to the raw counter, and every reader (experience factor, output amount, needed work repeats)
 computes the curve input as `(record.experiencefactor * rawCounter) / 100`, truncated to a multiple
 of 100. The record's default `experiencefactor` is `100`, which is the rate the repository's
@@ -18,7 +18,7 @@ works per repeat and needs 1; `soldier general` (factor 1) should need 100 hits 
 1; `carrier general` (factor 50) should need 2 deliveries and needs 1; `collector wood` (factor 250)
 and `hunter general` (factor 200) should level 2.5x and 2x faster than a factor-100 track and do not.
 `requirementRepeats` divides the same factor out, so every `needfor*` gate shifts with the encoding;
-which value the original compares a gate against is not yet read out and must be settled first.
+which value the original compares a gate against is not yet established and must be settled first.
 
 ## Scope
 

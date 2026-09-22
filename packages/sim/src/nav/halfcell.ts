@@ -69,7 +69,7 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
 }
 
 /**
- * The cell any lattice node `(hx, hy)` belongs to, the original's own node-to-cell rule (byte evidence):
+ * The cell any lattice node `(hx, hy)` belongs to, the original's own node-to-cell rule:
  * the row halves, and the column halves after a nudge that depends on the node row's place in the
  * four-row cycle - one right on the between row below an even cell row, one left on an odd cell row's
  * anchor row, none otherwise. On a centre node it agrees with {@link cellOfAnchorNode}; between centres it
@@ -114,7 +114,7 @@ export function hexNeighboursOf(hx: number, hy: number): HalfCellNode[] {
  *
  * The six nodes this makes adjacent are not the eight a unit walks (`nav/terrain/edges.ts`), and the
  * lean is not this lattice's geometry, which carries no stagger: both belong to the original's own
- * map-point grid. Byte evidence: the original's hexagon-direction distance, which every range test calls
+ * map-point grid. Original behavior: the hexagon-direction distance every range test uses
  * (`docs/formats/MISSIONS.md`, "Tokens and parameter kinds").
  */
 export function hexDistance(a: HalfCellNode, b: HalfCellNode): number {

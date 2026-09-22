@@ -115,9 +115,8 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
   return reqs;
 }
 
-// The two tribes the engine walks faster, hardcoded in its move-speed rule rather than declared by any
-// ini key. The ids are
-// `logicdefines.inc` `TRIBE_TYPE_HUMAN_*` and `JOB_TYPE_HUMAN_*`.
+// The two tribes the original walks faster, a fixed rule rather than one declared by any ini key.
+// The ids are `logicdefines.inc` `TRIBE_TYPE_HUMAN_*` and `JOB_TYPE_HUMAN_*`.
 const TRIBE_BYZANTINE = 3;
 const TRIBE_EGYPT = 7;
 const JOB_SOLDIER_SPEAR_WOODEN = 32;

@@ -36,7 +36,7 @@ export const PACKED_X_SHIFT = 22; // high 10 bits = xMin (first non-transparent 
 export const BOB_TYPE_EMPTY = 0;
 /** 8-bit bob: each raw-run byte is a palette index. */
 export const BOB_TYPE_8BIT = 1;
-/** 1-bit mask bob (`TBobType.Bob1Bit`) - the shadow silhouettes: a raw run carries no pixel bytes
+/** 1-bit mask bob - the shadow silhouettes: a raw run carries no pixel bytes
  *  (the run itself is the coverage); set pixels draw as index 0xFF. */
 export const BOB_TYPE_1BIT = 2;
 /**
@@ -201,8 +201,8 @@ function writeCMemory(w: ByteWriter, body: Uint8Array): void {
 }
 
 /**
- * Inverse of {@link decodeBmd}, faithful to the original's `Storable_SaveData` so a decode can be
- * round-tripped without committing copyrighted assets. When `bobCount === 0` no CMemory blocks are
+ * Inverse of {@link decodeBmd}, faithful to the original's own save layout so a decode can be
+ * round-tripped without committing copyrighted assets. When `bobCount === 0` no raw blocks are
  * written, matching the original, and the packed-line `used-bytes` header equals the array's length
  * (a freshly-saved file has no slack).
  */

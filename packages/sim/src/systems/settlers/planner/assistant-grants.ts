@@ -31,7 +31,7 @@ import { anotherSystemOwns } from './replan.js';
 // goods. The manual states the intent ("you want to have shoes given out to all civilians - if there are
 // shoes available in your village"), which the dispatch matches against the player's store stock, and the
 // extras window ships per-good hoard commands (decoded `miscwindow` 503-509). Approximation: the pacing
-// and the caps are not decoded.
+// and the caps are unknown.
 
 /** One settler's grant consideration beat, staggered by entity id, so the per-tick scan costs
  *  `settlers / period` and a freshly-freed slot is re-dressed within seconds. Approximation, shared

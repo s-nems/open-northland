@@ -269,7 +269,7 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
 }
 
 /** The original selects this one landscape loop for every tribe's holy-fire table entry. The house
- * records own only the repeated anchor points; engine table evidence pins the shared effect name. */
+ * records own only the repeated anchor points; the effect name is the original's shared one. */
 export const HOLY_FIRE_EFFECT_NAME = 'fx fire incense';
 
 export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
@@ -308,8 +308,7 @@ export interface TribeJobSeqs {
 /**
  * The jobs a `(tribe, job)` clip lookup falls through, in order: each of `jobs`, then its `jobtypes.ini`
  * `baseJob` chain (hero → soldier class → unarmed soldier → civilist). That is the parent walk the
- * original's bob update takes when a job authors no record of its own (byte evidence from the
- * original). A repeated job stops the walk.
+ * original takes when a job authors no record of its own. A repeated job stops the walk.
  */
 function clipLookupChain(ir: ContentIr | null, jobs: readonly number[]): number[] {
   const baseOf = new Map<number, number>();

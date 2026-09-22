@@ -1,8 +1,8 @@
 /**
  * The descent an opened mission sheet reads itself with: after a pause it walks down at a fixed rate
- * until the player takes the scroll. Byte evidence from the owned copy: the only 7.2f constant is
- * passed with a 1000 ms delay, behind the flag that arms the hypertext element. That the element then
- * positions the page at `rate * (elapsed - delay)` is unconfirmed against the running original.
+ * until the player takes the scroll. Original behavior: arming the sheet's hypertext element sets a
+ * 7.2 rate and a 1000 ms delay. That the element then positions the page at
+ * `rate * (elapsed - delay)` is unconfirmed against the running original.
  */
 
 export const AUTO_SCROLL_DELAY_MS = 1000;

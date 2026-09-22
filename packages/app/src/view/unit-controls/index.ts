@@ -35,9 +35,9 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   // The GUI click: a press that takes a selection or commands someone confirms, one that calls an armed
-  // pick off fails. Byte evidence (the original's world click handler in `gui_main_mode 1`): the
-  // confirming right click and a single selecting click play `click_confirm`, a cancel plays
-  // `click_fail`, and a drag select or a click on empty ground plays nothing.
+  // pick off fails. Original behavior: the confirming right click and a single selecting click play
+  // `click_confirm`, a cancel plays `click_fail`, and a drag select or a click on empty ground plays
+  // nothing.
   const cue: (kind: UiCue) => void = opts.onUiCue ?? ((): void => undefined);
   const selection = createUnitSelection();
   const controlGroups = createControlGroups();

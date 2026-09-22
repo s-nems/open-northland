@@ -71,7 +71,7 @@ export type SecondByteMode = 'alpha' | 'time';
  *
  * Throws a `bmd:`-prefixed error on an out-of-range `bobIndex`. A structurally corrupt packed-line
  * stream is tolerated instead: the walker stops at the buffer end and at any column outside the frame,
- * like the original's clipped `Draw_SetPixel`.
+ * like the original's clipped drawing.
  */
 export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByteMode = 'alpha'): BobFrame {
   if (bobIndex < 0 || bobIndex >= bmd.bobs.length) {

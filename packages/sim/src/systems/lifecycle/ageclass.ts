@@ -62,12 +62,12 @@ export const CHILD_AGE_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
 /** The `Age.ticks` at which a child becomes an adult and stops carrying an {@link Age}. */
 export const ADULT_AGE_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
-/** A settler's life stage, the distinction the engine's `IsAgeBaby`/`IsAgeChild` draw over `JobType`. */
+/** A settler's life stage, the distinction the original draws over `JobType`. */
 export type AgeClass = 'adult' | 'baby' | 'child';
 
 /**
- * The life stage a job row names. Matched by job `id` slug rather than the engine's `JOB_TYPE_HUMAN_*`
- * ids because a synthetic fixture's adult job id can collide with an age-class id.
+ * The life stage a job row names. Matched by job `id` slug rather than the `logicdefines.inc`
+ * `JOB_TYPE_HUMAN_*` ids because a synthetic fixture's adult job id can collide with an age-class id.
  */
 export function ageClassOfJobId(jobId: string | undefined): AgeClass {
   switch (jobId) {

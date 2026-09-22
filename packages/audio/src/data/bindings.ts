@@ -46,7 +46,7 @@ export const JINGLE_DUCK_HOLD_MS: ReadonlyMap<number, number> = new Map([
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
 /** Construction hammering; house builders cue it from their animation, while boat placement binds it here. */
 export const GROUP_HAMMER_WOOD = 'Hammer Wood';
-/** The two lid sounds the chest callback selects by landscape kind before ringing the common jingle. */
+/** The two lid sounds the original picks by chest landscape kind before ringing the common jingle. */
 export const GROUP_OPEN_WOODEN_CHEST = 'Open Wooden Chest';
 export const GROUP_OPEN_MAGICAL_CHEST = 'Open Magical Chest';
 /** Sawing - a workshop producing (bound to `goodProduced`). */

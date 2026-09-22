@@ -15,7 +15,7 @@ an input trip that cannot unblock production.
 - When its own workshop has a shelf-blocking output, let the supplier drive win over general porter
   work and call the existing `shelfBlockedOutput`/`startOutputHaul` path before the input scan.
 - Keep a carrier available to the wider settlement when its workshop has no blocking work. The
-  priority is an approximation because trip scheduling is not decoded.
+  priority is an approximation because the original's trip scheduling is not established.
 
 ## Verify
 

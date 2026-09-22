@@ -8,7 +8,7 @@ victory and defeat, weather, and sub-missions all run through this one mechanism
 This page records the format and the execution semantics needed to reimplement it. Evidence classes,
 strongest first:
 
-- **corpus**: read from the owned installation with CnMod 1.3.1 (the readable `.inc` files of
+- **corpus**: read from the owned installation with the CulturesNation mod (the readable `.inc` files of
   118 map folders and the 124 generated `content/maps/*.script.json` sidecars). Counts below come
   from that baseline.
 - **docs**: the CulturesNation goal and result references shipped in the installation's `Tools/`
@@ -18,7 +18,7 @@ strongest first:
   mechanism to test, not a fact.
 - **observation**: confirmed on the running original.
 
-Nothing here is copied from the engine. Constants and semantics are described, never its code.
+Constants and semantics are described as behavior; nothing here is copied from the original.
 
 ## Files and sections
 
@@ -32,7 +32,7 @@ prose in a sibling `briefings.txt` (`[blockstart:N]` .. `[blockend:N]`).
 
 One `[MissionData]` section is one mission. Its index is its position in the file, counted from
 zero; every `ActivateMission`, `CheckMission`, and `SetVisible` argument is such an index (corpus,
-reading). Keys (corpus; defaults from the loader, reading):
+reading). Keys (corpus; defaults are a reading):
 
 | Key | Meaning | Default |
 | --- | --- | --- |
@@ -50,16 +50,16 @@ below is over that same set.
 
 ## Tokens and parameter kinds
 
-A goal or result line is an opcode name followed by positional tokens. The engine reads exactly as
-many tokens as the opcode's signature declares; extra tokens are ignored and a missing token reads as
-zero (reading; the corpus has `SetLandscape` lines with 5 to 8 tokens and the engine declares 5).
+A goal or result line is an opcode name followed by positional tokens. The original reads exactly as
+many tokens as the opcode takes; extra tokens are ignored and a missing token reads as
+zero (reading; the corpus has `SetLandscape` lines with 5 to 8 tokens and the opcode takes 5).
 Opcode matching ignores case (reading; the corpus mixes `explorearea` and `ExploreArea`). An
 unknown opcode maps to index 0: goal `True` or result `None` (reading). Corpus misspellings such as
 `setlandspace` and `missionmissionfailed` therefore load silently as no-ops or always-true goals.
 
 Every parameter has a kind. A quoted name is resolved to an id for the kinds marked *name*; an
 integer token is accepted for any kind, including name kinds (corpus: `EnableHouse 0 "viking" 41`
-beside `AllowHouse 0 "viking" "work druid 01"`). Kind ids are the engine's own table (reading), the
+beside `AllowHouse 0 "viking" "work druid 01"`). Kind ids follow the original's own numbering (reading), the
 descriptions match the docs.
 
 | Kind | Meaning | Kind | Meaning |
@@ -90,13 +90,13 @@ half-cell nodes of the `2W x 2H` lattice that `TerrainEntities` already stores a
 with a diagonal walk carrying one column per two rows for free, so the distance is
 `rows + max(0, columns - floor(rows / 2))`. Over an odd row span one further column step is free, in
 the direction the destination row's parity picks, which makes the selected region lean to one side
-(reading, from the engine's own hexagon-direction distance, which every range test calls; the lean is
-unconfirmed against the running game).
+(reading, the same distance every range test uses; the lean is unconfirmed against the running
+game).
 
 ## Mission object ids
 
 Placed objects carry an id that goals and results address. The columns below are the corpus layout
-and match the format the engine itself writes when it exports a `[StaticObjects]` section (reading):
+and match the format the original itself writes when it exports a `[StaticObjects]` section (reading):
 
 | Line | Columns |
 | --- | --- |
@@ -116,8 +116,8 @@ distinct values, `69` and `1000` to `1002` the most common), 35,279 settlers and
 the readable `staticobjects.inc` files, 4,578 of 34,650 `sethuman` lines carry an id (135 distinct,
 `200` alone on 1,385 of them) and 21,730 carry a nonzero behaviour mask, against 47 of 592
 `setvehicle` and 43 of 26,451 `setanimal` lines with an id; the 2,027 `setguide` lines have no id
-column at all. Ids are not unique: one id names a group, and every lookup walks the whole entity
-array (reading), which is why a reimplementation wants an id-to-entities index. Ids are also assigned
+column at all. Ids are not unique: one id names a group, and every lookup scans every entity
+(reading), which is why a reimplementation wants an id-to-entities index. Ids are also assigned
 at runtime by `SetHuman`, `SetHouse`, `SetAnimal`, `SetVehicle`, the `ChangeMissionId*` results, and,
 as a side effect, by the `BuildHumans`, `BuildHouses`, and `BuildVehicles` goals.
 
@@ -125,10 +125,9 @@ as a side effect, by the `BuildHumans`, `BuildHouses`, and `BuildVehicles` goals
 
 All of this section is a reading unless marked otherwise.
 
-- The manager runs on the per-tick callback and evaluates when the tick count is a multiple of 36.
-  At the original's 12 logic ticks per second that is every 3 seconds. `TimeGone n` holds once the
-  current tick reaches `activationTick + 12 * n`. The tick counter is reset to 1 before the script
-  loads and incremented before the callback, so the first pass runs at tick 36, never on the load
+- Evaluation runs when the tick count is a multiple of 36. At the original's 12 logic ticks per
+  second that is every 3 seconds. `TimeGone n` holds once the current tick reaches `activationTick + 12 * n`. The tick counter is reset to 1 before the script
+  loads and incremented before each tick's check, so the first pass runs at tick 36, never on the load
   tick; missions active at load carry activation tick 1. Here: a load pass also runs on the tick the
   script is enabled, the map's first live tick, so the opening briefing shows as the map opens
   instead of three seconds in (a deliberate deviation); the cadence passes are unchanged.
@@ -166,7 +165,7 @@ All of this section is a reading unless marked otherwise.
   answer is known.
 - `RemoveHumans` and `RemoveAnimals` raise a "silent removal" flag around the removal so the deaths do
   not count in the player statistics; `RemoveHumans` also skips the cadaver.
-- Results that only affect presentation reach the display through callbacks: open briefing, play a
+- Results that only affect presentation reach the display: open briefing, play a
   sound at a position, notification (won, lost), camera, selection, marker, explored area, player
   died, load and leave sub map, map point changed. For the reimplementation these are simulation
   events consumed by the app; the simulation never touches the display. What outlives the frame
@@ -174,13 +173,13 @@ All of this section is a reading unless marked otherwise.
 
 ## Goals
 
-Index and name from the engine table (reading). The goal reference shipped in the installation's
+Index and name follow the original's numbering (reading). The goal reference shipped in the installation's
 `Tools/` folder names the same 63 goals and gives each an example with the same number of arguments,
 so the names and arities below are corroborated (docs); the semantics stay readings. Parameters list
 kinds in order. A goal that counts what a player has (`BuildVehicles`, `BuildHumans`, `BuildHouses`,
 `GoodsInVehicles`, `GoodsInHouses`, `GoodsGlobal`, `HumansWithHome`, `NumberOfSoldiers`,
 `Population`, `HumanAttachedToWorkHouse`, `CheckNumberOfWildAnimals`, `NumberOfAnimals`,
-`NumberOfAnimalsInArea`) compares inside its match loop, so an `amount` of 0 still needs one match
+`NumberOfAnimalsInArea`) compares as it counts, so an `amount` of 0 still needs one match
 (for the goods goals, one house that carries the id or can hold the good). The area goods and house
 goals, the near-point goals and the death tallies compare once after counting, so 0 holds there.
 
@@ -252,7 +251,7 @@ trade ledger); the rest no map writes.
 | 58 | `NumberOfAnimalsInArea` | 1, 3, 7, 16, 17, 9 | the player has at least `amount` animals of the species within `range` | 11 |
 | 59 | `CheckHumanJob` | 10, 4 | any human with the id has the job | 10 |
 | 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount` | 0 \* |
-| 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point's kind byte says landscape and its type byte is set, which a good lying there or a large landscape covering the point also satisfies. Here: a live landscape placement anchored on the point, when the map provides the mutable landscape catalog (approximation) | 0 |
+| 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point is marked as holding a landscape, which a good lying there or a large landscape covering the point also satisfies. Here: a live landscape placement anchored on the point, when the map provides the mutable landscape catalog (approximation) | 0 |
 | 62 | `IsLandscapePlayer10ConstructionSignOnPoint` | 16, 17 | the point carries the `player10 construction sign` landscape | 0 \* |
 
 Range tests use the original's hexagonal map-point distance. "Explored" is the per-player seen bit
@@ -280,13 +279,13 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
 | 10 | `ActivateMission` | 21 | set the active flag (records the activation tick on the transition) | sim | 4665 |
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
-| 12 | `MissionWon` | 1 | set the mission manager's won flag, send the "won" message and the notification with the player; in multiplayer also trigger the multiplayer goal manager. Here: the player's script verdict, announced like the skirmish rule's | both | 120 |
+| 12 | `MissionWon` | 1 | set the map's won flag, send the "won" message and the notification with the player; in multiplayer also notify the multiplayer goals. Here: the player's script verdict, announced like the skirmish rule's | both | 120 |
 | 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
 | 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 \* |
 | 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 \* |
 | 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, set as fully visible as ground an own eye covers and kept so under every fog mode, for every player sharing the player's vision; nothing with fog off, and a house or landscape reveals only what its own eye sees (approximation) | sim | 1412 |
-| 17 | `Exit` | | leave the map (restart callback) | app | 70 |
-| 18 | `SetExternalFlag` | 1, 24, 32 | set or clear condition slot `n` (below 100) of the player's AI handler, accepted only when that slot is an external-activate condition of its `ai.inc`; a seat without a handler drops it. Here: kept per player with no reader (see below) | sim | 67 |
+| 17 | `Exit` | | leave the map (restart) | app | 70 |
+| 18 | `SetExternalFlag` | 1, 24, 32 | set or clear condition slot `n` (below 100) of the player's scripted AI, accepted only when that slot is an external-activate condition of its `ai.inc`; a seat without one drops it. Here: kept per player with no reader (see below) | sim | 67 |
 | 19 | `SetDiplomacy` | 1, 2, 25 | set the first player's stance toward the second (one direction only, both slots in use), through any lock on the pair; the original sends a message unless the pair is hidden (`relationhide`) | sim | 632 |
 | 20 | `SetVisible` | 21, 32 | show or hide mission `n` in the mission window | app | 506 |
 | 21 | `ChangeHumanPlayerId` | 10, 1 | hand every human with the id to the player (detached from houses) | sim | 266 |
@@ -311,9 +310,9 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 40 | `AddGoodsToVehicle` | 12, 6, 7 | add goods to vehicles with the id that can carry the good | sim | 14 \* |
 | 41 | `AddGoodsToAnyStock` | 1, 6, 7 | fill the player's warehouses that store the good, spilling to the next until the amount is placed | sim | 29 |
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
-| 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it, `Tool_TechTree_EnableGoodProduction`) | sim | 101 |
+| 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it) | sim | 101 |
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
-| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (byte-level, owned copy), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
+| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (original behavior), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 \* |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
@@ -331,7 +330,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 60 | `SetHumanName` | 10, 27 | name the first human with the id after the string in the map's own table (reading). Here: the `ScriptedName` component, resolved by the app in the player's language | both | 138 |
 | 61 | `SetWeather` | 16, 17, 9, 32, 7 | set the rain (flag 0) or snow (flag 1) density of every 10-point weather sector under the square of half-side `range` to `amount` times 100, clamped to 10000, where 0 clears it; the map's `[misc_weather]` `setrainrectangle`, `setsnowrectangle` and `setsandrectangle` write the same fields (reading). Here: the `missionWeather` event and a screen wash by the density at the view's centre (approximation) | both | 207 |
 | 62 | `StartEarthQuake` | 35 | shake the display until `seconds` have passed, with `earthquak.wav` (reading). Here: the `missionEarthquake` event and a camera jitter; the sound is not in the decoded bank | app | 122 |
-| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading; a later edition of the original never reads the flag and follows without selecting for any nonzero id, which may be build drift). Here: the `missionSelectHuman` event honouring the flag; the view centres once instead of following (approximation) | app | 7 |
+| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading; a later edition of the original ignores the flag and follows without selecting for any nonzero id, which may be build drift). Here: the `missionSelectHuman` event honouring the flag; the view centres once instead of following (approximation) | app | 7 |
 | 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed; with the flag, the player's finished house standing on a point takes its fill first | sim | 206 |
 | 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up the same way; with the flag, out of the player's houses' own stock first | sim | 31 |
 | 66 | `ChangeMissionIdOfHumanInRange` | 1, 10, 16, 17, 9 | give the player's humans within `range` the id | sim | 39 |
@@ -391,16 +390,16 @@ and the results `MissionMissionFailed` (8), `DisableMission` (4), `SetLandspace`
 
 `sethuman`'s last column, `SetHuman`'s seventh parameter, and the two `*BehaviourFlag` results share
 one 32-bit mask stored on the human (reading; the `SetImportHumanFlag` result sets bit 7, which pins
-the encoding). Bits with a located reader (reading; each is a hypothesis to confirm on the original):
+the encoding). Bits with a known effect (reading; each is a hypothesis to confirm on the original):
 
 | Bit | Value | Effect |
 | --- | --- | --- |
-| 0 | 1 | needs never grow and are never serviced (the engine sets it on player 0 in one game mode) |
+| 0 | 1 | needs never grow and are never serviced (the original sets it on player 0 in one game mode) |
 | 1 | 2 | stays put when idle instead of drifting back to its anchor |
 | 2 | 4 | passive: a soldier does not retaliate when hit, a civilian does not flee |
 | 3 | 8 | invulnerable: a hit-point event that would take life off is refused while healing still lands; animals ignore the human |
 | 4 | 16 | user messages about the human are suppressed |
-| 5 | 32 | not player-controllable: no command set, ignored by send-to; the scripted AI handler never lists it as a soldier |
+| 5 | 32 | not player-controllable: no command set, ignored by send-to; the scripted AI never lists it as a soldier |
 | 6 | 64 | cannot change job |
 | 7 | 128 | import marker (drawn on the human) |
 | 9 | 512 | walks at half speed |
@@ -412,39 +411,38 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 | 16 | 65536 | for the two non-settler tribes: alert military mode instead of the default |
 | 17 | 131072 | walks faster |
 
-Bit 0 is read twice: the urgent-needs check skips such a human, and the animation-event applier
-refuses every change to its four need bars, so they neither fall nor refill.
+Bit 0 acts twice: urgent needs skip such a human, and animation events never change its four need
+bars, so they neither fall nor refill.
 
-Bit 12's shoe-only gate is byte-verified in the original's step handling; the barefoot branch
-separately tests bit 0.
+Original behavior: bit 12 stops only shoe wear; a barefoot step checks bit 0 instead.
 
-Bits 8, 10, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) without a located
-reader. The engine sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs
+Bits 8, 10, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) with no known
+effect. The original sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs
 it spawns. Corpus masks: `sethuman` mostly 0, then 272507, 8315, 64; `SetPlayerBehaviourFlag` mostly
 512, 131200, 16384, 8192; `SetHumanBehaviourFlag` mostly 32, 512, 33, 128, 8.
 
-Houses keep their own mask; only bit 0 has a reader: an indestructible house ignores weapon hits and
+Houses keep their own mask; only bit 0 has a known effect: an indestructible house ignores weapon hits and
 script damage (reading). `SetHouseBehaviourFlag` takes a bit index, not a mask. The animal behaviour
-value is stored on the animal; its readers were not examined.
+value is stored on the animal; its effect is unknown.
 
 ## Player state the goals read
 
 Readings unless marked otherwise.
 
-- **Humans died, soldiers died**: incremented per owner when a human object exits, except during a
-  script removal. Dying humans drop their carried good and worn equipment and leave a cadaver
+- **Humans died, soldiers died**: incremented per owner when a human is removed from the world, except
+  during a script removal. Dying humans drop their carried good and worn equipment and leave a cadaver
   landscape unless bit 14 is set.
 - **Humans killed**: two counters per player (soldiers, civilians), incremented for the attacker when
   a hit takes a victim below one hit point. Houses destroyed have a third counter that no goal reads.
-- **Attacked by**: the damage callback of a human whose computed damage is above zero, shield or no
-  shield, marks the attacker in the victim's row, one direction. The same callback escalates the
+- **Attacked by**: a hit on a human whose computed damage is above zero, shield or no shield, marks
+  the attacker in the victim's row, one direction. The same hit escalates the
   victim's stance to enemy when the attacker already treats the victim as an enemy and the victim
   still treats the attacker as friend or neutral, with no regard to the not-changeable flag. This
   build keeps the row in `components/relations.ts`, written by the hit resolution.
 - **Player dead**: every 125 ticks after tick 720, a player with no living adult male human is marked
-  dead (a died callback and a message follow) unless `playerneverdies` is set in `[playermisc]`. The
+  dead (with a message) unless `playerneverdies` is set in `[playermisc]`. The
   flag is permanent. `MissionFailed` does not set it. This build reads the match rule's dead flag.
-- **Won, lost**: `MissionWon` and `MissionFailed` set one won and one lost flag on the mission manager,
+- **Won, lost**: `MissionWon` and `MissionFailed` set one won and one lost flag for the whole map,
   not per player, and hand the player to the notification. This build records the verdict per player
   (`components/match.ts`), which the match outcome and the end-of-match panel read.
 - **Seen**: every tick, each attached human, animal, vehicle and house of a player below 16 marks
@@ -454,31 +452,30 @@ Readings unless marked otherwise.
   sight or not, at the vision cadence rather than every tick, and reads everyone as seen with fog
   off (approximation).
 - **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when
-  they want symmetry (corpus). After `[playerdata]` loads, the loader sets every pair of declared
-  players still unset to neutral, and each player's own entry to self (byte-level, owned
-  copy), so seats a map never relates neither fight nor ally; map world assembly
+  they want symmetry (corpus). After `[playerdata]` loads, every pair of declared players still unset
+  becomes neutral, and each player's own entry becomes self (original behavior), so seats a map never relates neither fight nor ally; map world assembly
   writes those rows (`withNeutralRosterPairs`), and a world without a roster keeps the sim's
-  everyone-hostile default. `[playermisc]` rows flag a pair in both directions (byte-level, owned
-  copy's loader, a missing second slot read as 0):
+  everyone-hostile default. `[playermisc]` rows flag a pair in both directions (original behavior,
+  a missing second slot read as 0):
   `relationnotchangeable` sets the not-changeable flag, `relationhide` sets it and the hidden flag,
   `relationhidedetails` the no-details flag. The diplomacy window lists no hidden player, gives a
-  no-details one no page, and shows a player's three stance buttons (command 0x7f) only for a pair
-  without the not-changeable flag; the command and every other writer ignore that flag,
-  and the setter silences its stance message for a hidden pair. This build locks a pair
+  no-details one no page, and shows a player's three stance buttons only for a pair without the
+  not-changeable flag; the stance command and every other change ignore that flag, and a hidden pair
+  gets no stance message. This build locks a pair
   (`components/relations.ts`) for the first two rows and for `SetDiplomacyNotChangeableFlag`, and
   refuses a locked pair at the seat's `declareDiplomacy` command rather than in the window alone.
   Its window drops a hidden player, and with it the messages about that player, and keeps a
   no-details player's readout but gives it no stance buttons, having no overview page to list it on.
-- **Computer diplomacy**: a computer seat's strategic handler ends its turn with a look at one slot
+- **Computer diplomacy**: a computer seat's strategic AI ends its turn with a look at one slot
   of 20, in turn (reading), so `AI_Disable`, `HAI_Disable`
   and a monster tribe silence it: a neutral seat turns enemy toward a player that holds it as enemy,
   and a friendly seat drops to the other's stance; an enemy seat never makes peace. It also turns a
   neutral seat enemy toward a player whose people stood in its villages on six looks in a row, which
   this build leaves out (`systems/ai-player/diplomacy.ts`).
-- **External flags**: up to 100 condition slots on a seat's AI handler; a slot takes a script's flag
+- **External flags**: up to 100 condition slots on a seat's scripted AI; a slot takes a script's flag
   only when its `ai.inc` condition is the external-activate kind (see [AI data](#ai-data)). This build
   keeps the raised slots per player (`components/ai-flags.ts`), whatever the slot's kind, and the
-  scripted handler's `OnExternal` slots read them.
+  scripted program's `OnExternal` slots read them.
 - **Allowed and enabled tables**: per player and tribe: 56 job, 66 good and 55 house-type slots,
   one byte each in an allowed table and an enabled table (produceable for goods). Allowed is the
   map's permission: the per-human update that opens a trade, a good or a house type for a settler
@@ -491,7 +488,7 @@ Readings unless marked otherwise.
   (`forbid*` / `allow*`) are saved in `MapPermissions`. Owned `tutorial_008/player.inc` forbids good 14
   for player 0, tribe 1; `StraznicyPolnocy/player.inc` forbids good 63. A `forbid*` line clears both
   bytes; an `allow*` line writes the enabled byte, for a job or good only when the tribe's own table
-  allows the type (reading of the `[allowedthings]` loader). This build reads an `allow*` line as a
+  allows the type (reading). This build reads an `allow*` line as a
   permission grant instead (approximation; no corpus map writes one). The `Allow*` results remove
   the restriction without granting progress. `Enable*` grants availability and leaves a ban in place: a forbidden
   type stays unusable however often a script enables it. A synthetic catalog without permission tables
@@ -513,30 +510,29 @@ Readings unless marked otherwise.
 ## AI data
 
 The `[AIData]` section (`ai.inc` in the plaintext skin; the corpus spells the header both `AIData`
-and `aidata`) configures the two AI handlers every existing player owns. Readings of the AI manager's
-loader and tick unless marked otherwise:
+and `aidata`) configures the two AI layers every existing player owns. Readings unless marked otherwise:
 
-- The **scripted handler** runs the authored tasks and conditions below. It is enabled for a seat of
+- The **scripted AI** runs the authored tasks and conditions below. It is enabled for a seat of
   player type AI only (this build: `isMapComputerSeat`, which `?ai=` cannot switch off; that the
   multiplayer lobby's `playeroption` choice sets the type of the seats it offers is inferred from
   the table, unverified); `AI_Disable <player>` switches it off together with the strategic one. Each
   seat takes a turn every 60 ticks (seat `p` on tick `3p` of the round). Every turn it lists the
   seat's soldiers that man no workhouse and carry no [behaviour bit 5](#human-behaviour-flags), and
   a soldier joining the list gets the hold stance and its regenerate-in-world flag cleared, so it
-  never starts a need task and never walks off to eat or sleep; on every twelfth turn the handler
+  never starts a need task and never walks off to eat or sleep; on every twelfth turn it
   writes a full bar over every food and stamina bar of the seat's soldiers, heroes and vehicle
   commanders that has fallen below the critical mark (the refill walks the seat's soldiers and heroes),
   which is all that feeds a listed man; a civilian of the
   seat seeks food and sleep like anyone's. Needs themselves run for every human as
   [behaviour bit 0](#human-behaviour-flags) allows, and two rules of the human itself apply to every
-  computer-type player, handlers or not: a need task that fails (nothing to eat within 40 nodes, no
+  computer-type player, AI enabled or not: a need task that fails (nothing to eat within 40 nodes, no
   bed, no temple) writes the sated level over that need's bar, and no message the human raises
   reaches the player, so a computer seat shows no need icons. This build keeps all four: the list
   (its flag written over a posted garrison again, since this build's posting order lifts it) and the
-  refill on the scripted handler's turn (`ai-player/military/defence`, `systems/lifecycle/needs`),
+  refill on the scripted AI's turn (`ai-player/military/defence`, `systems/lifecycle/needs`),
   the reset in the needs drives and the silence in the HUD, for every seat carrying the `AiPlayer`
-  marker, which `AI_Disable` leaves in place with both handlers off.
-- The **strategic handler** (HAI) builds the economy and army. It is enabled for a player-type-AI
+  marker, which `AI_Disable` leaves in place with both AI layers off.
+- The **strategic AI** (HAI) builds the economy and army. It is enabled for a player-type-AI
   seat whose tribe is not one of the two monster tribes; `HAI_Disable <player>` switches it off and
   `HAI_Disable{CollectResources,GuideBuild,HomeExpansion,HouseBuild,HouseUpgrade,Military,RoadBuild}`
   one module each (the house build and upgrade forms take a category index below 8). This build maps
@@ -544,17 +540,17 @@ loader and tick unless marked otherwise:
   (`MapAiSeat` in the script sidecar), and world assembly applies the monster-tribe rule from the
   roster row's tribe; the corpus authors only `HAI_Disable` (339 lines) and `AI_Disable` (115).
 
-The rest of the section is the scripted handler's program, extracted as typed rows (`MapAiSeat` in
+The rest of the section is the scripted AI's program, extracted as typed rows (`MapAiSeat` in
 the script sidecar) and run by `systems/ai-program` for a computer seat whose strategic military
-module is off (approximation: the original runs both handlers side by side; this build's campaign
+module is off (approximation: the original runs both AI layers side by side; this build's campaign
 and the program would order the same men against each other). Corpus counts are over the 121 mod
 maps that carry the section (91 author a program; `//` comment lines occur). Positions are map
 points; a range test holds strictly inside the range. Where a field is a player, 20 means any
-player. Readings of the original's loader, condition pass, task pass and soldier passes:
+player. Readings:
 
 | Line | Uses | Parameters after `<player>` |
 | --- | --- | --- |
-| `AI_UnitLimit`, `AI_MaxUnitLimit` | 280, 39 | `<n>`: the population the handler breeds towards, and the one it stops at (0 for none). Read by its women pass, which this build does not run; extracted as `unitLimit` and `maxUnitLimit` |
+| `AI_UnitLimit`, `AI_MaxUnitLimit` | 280, 39 | `<n>`: the population the scripted AI breeds towards, and the one it stops at (0 for none). Used only for its breeding, which this build does not run; extracted as `unitLimit` and `maxUnitLimit` |
 | `AI_SoldiersDefaultPosition` | 248 | `<x> <y> <range>`: where the men no task takes stand; without one, or with one in the border band or on water, the seat's centre with range 15 |
 | `AI_MainTask_Defend` | 962 | `<priority> <condition> <x> <y> <range> <min> <max>` |
 | `AI_MainTask_Attack` | 41 | `<priority> <condition> <x> <y> <range> <min> <max> <rallyX> <rallyY> <stance>` |
@@ -562,7 +558,7 @@ player. Readings of the original's loader, condition pass, task pass and soldier
 | `AI_MainTask_ChangeDiplomacy` | 0 | `<priority> <condition> <player> <state>` (1 friend, 2 neutral, 3 enemy), once |
 | `AI_MainTask_SelfDestroyPlayer` | 0 | `<condition>`: frees every human of the seat, once, at priority 1 |
 | `AI_MainTask_BuildHouse` | 0 | `<priority> <condition> <houseType name> <n> <x> <y> <n>`, not extracted |
-| `AI_MainTask_ClearTributes`, `BuildMilestone`, `AI_AddTribute`, `AI_SetTributeHireling` | 0 | in the token table, but the loader reads none of them |
+| `AI_MainTask_ClearTributes`, `BuildMilestone`, `AI_AddTribute`, `AI_SetTributeHireling` | 0 | recognized keywords, but the original ignores all of them |
 | `AI_SetCondition_True` | 22 | `<slot>` |
 | `AI_SetCondition_OnTime` | 1 | `<slot> <minutes>` (stored as `720 * minutes` ticks) |
 | `AI_SetCondition_OnConditions` | 232 | `<slot> <flag> <mode> <slot>...` up to ten slots; mode 1 all of, 2 any of, 3 not the first, 4 either of the first two; any other mode never judges |
@@ -578,17 +574,17 @@ player. Readings of the original's loader, condition pass, task pass and soldier
 
 The `<flag>` makes a slot sticky: once it has held it stays held. `True`, `OnTime` and
 `OnPlayerDead` are always sticky, `OnExternal` and `OnTimer` never. A slot is judged on every turn
-of the handler, the two range scans on every tenth, and a turn repeats the pass while a slot
+of the scripted AI, the two range scans on every tenth, and a turn repeats the pass while a slot
 changed, ten passes at most. The first declaration of a slot wins; a slot at or past 100 is
 refused.
 
-Tasks are rechecked on the handler's first turn and on every turn a condition changed. A task
+Tasks are rechecked on the scripted AI's first turn and on every turn a condition changed. A task
 whose condition slot holds gets its priority (slot 100000 always holds, 100001 never, and a slot at
 or past 100 or left unset never); the one-shot kinds run in the recheck, and the Defend and Attack
 tasks go to the soldier assignment. A seat that authored no task at all defends its centre (its
 first storage building, else the mean of what it owns) with range 40 and no bounds.
 
-The handler lists the seat's soldiers and heroes that man no workhouse and carry no behaviour bit
+The scripted AI lists the seat's soldiers and heroes that man no workhouse and carry no behaviour bit
 5. On every second turn it hands them out: the active Defend and Attack tasks become groups (Attack
 tasks on one point pool into a group that sums their priority and bounds and averages their rally
 points), sorted by priority. A first pass serves the Attack groups and the Defend groups bounded on
@@ -596,7 +592,7 @@ both sides: each takes its priority's share of the men still free, at most its `
 that is under its `min`; a second pass serves the rest from their share of the pooled priority. A
 group takes the nearest men, preferring the ones already on it, then the armed and armoured; a hero
 never takes an Attack. A man keeps his task until the task's condition drops; the men no task takes
-hold the default position. On every turn the handler then orders them: a Defend post's man walks
+hold the default position. On every turn it then orders them: a Defend post's man walks
 back when farther than half the range (and more than 10) from the post and guards there; an Attack
 band's man goes for the enemy house on the target, else to within half the range of it, unless the
 band is regrouping, when he gathers within the group's regroup range of the rally point. A band is
@@ -612,19 +608,19 @@ defence beside the program).
 
 ## Tributes
 
-A reading of the tribute manager, which the goal `PayTribute` and results 27, 28, and 58 drive.
+A reading of the original's tributes, which the goal `PayTribute` and results 27, 28, and 58 drive.
 
 - 44 slots (the corpus addresses 0 to 39). A slot holds: active flag, paid flag, payer, receiver,
   description string id, and up to 5 demands (good, amount). `CreateTribute` initialises the slot as
   active and paid with no demands and the string id from the fourth parameter. `AddTributeGoods` adds
-  to an existing demand or appends a new one, drops a sixth kind, and clears the paid flag; the
-  manager skips it on an inactive slot. `ClearTribute` clears the active flag and nothing else.
+  to an existing demand or appends a new one, drops a sixth kind, and clears the paid flag; it is
+  skipped on an inactive slot. `ClearTribute` clears the active flag and nothing else.
 - Where it shows: the diplomacy window, under the selected player's tab, lists every active unpaid
   slot from the viewer to that player as one button: the description from the map's string table
   (`"<MISSION STRINGS NOT LOADED>"` without one), then each demand as `amount good (have "in stores")`,
   where "have" is the payer's warehouses and workplaces summed. The button is disabled unless the
-  slot is payable, and pressing it sends the pay network command for the slot. The window iterator
-  walks slots 0 to 39 only.
+  slot is payable, and pressing it sends the pay network command for the slot. The window
+  lists slots 0 to 39 only.
 - Payable: the demand amounts are copied once, then every warehouse and workplace of the payer
   subtracts what it holds from each copy, counted like the goal counts (a workplace's product slots,
   never its inputs); the slot is payable when the running sums cover every demand, so several
@@ -651,11 +647,11 @@ A reading of the tribute manager, which the goal `PayTribute` and results 27, 28
 
 ## Trade agreements
 
-A reading of the merchant array and the trader task, which the goal `NumberOfGoodsTraded` reads.
+A reading of the original's trade agreements and trader work, which the goal `NumberOfGoodsTraded` reads.
 
 - `[misc_tradeagreement]` in `misc.inc` holds `tradeagreement <houseId> <give> <n> <take> <m>` rows:
   at every house placed with mission object id `houseId`, a visiting trader hands over `n` of the
-  `GOOD_TYPE_*` `give` for `m` of `take`. The loader keeps a row only for a house whose owner is
+  `GOOD_TYPE_*` `give` for `m` of `take`. A row is kept only for a house whose owner is
   neither a human nor a computer player (the neutral trading nation), one entry per house the id
   stamps, and stops at 60 entries. The corpus authors 300 rows over 35 maps; a house can offer several.
 - A trader (`jobtypes.ini` 25; `trader_sea` 26 has an empty task and never works) commands a cart
@@ -715,14 +711,14 @@ its font's nominal size × 3/2 tall (font12: 18 px, fonthead16bld: 21 px) and a 
 nothing on it is an empty 20 px line, which gives the corpus its blank rows around headlines and
 pictures. `<block:N>` aligns the lines that end after it: 0 left, 1 justified (while each gap stays
 within 12 px), 2 centred (the page wrappers set it), 3 right. A `<picture:…>` sits centred on a row of
-its own, 2 px taller than the picture. `<usericon:kind,a,b,c>` is inline like a word and asks the
-window's bitmap callback for its bitmap: kind 1 is a live 280×220 view of
+its own, 2 px taller than the picture. `<usericon:kind,a,b,c>` is inline like a word and draws a
+bitmap: kind 1 is a live 280×220 view of
 the map centred on half-cell node (a, b), kind 2 the same view centred 25 px above the first human
 stamped with mission id `a`, kind 0 a 50×80 card of that human alone on a parchment fill with its
 feet 20 px above the bottom, an empty card when no human carries the id; any other kind, or kind 2
-for an id no human carries, draws nothing and leaves the line empty. The view display clears the exploration draw flag, so it ignores the fog. The history book
-passes no callback, so its user icons draw nothing. Here the page text is Tinos sized to font12's
-glyphs (approximation) and a pressed bevel stands in for the frame the callback draws around its
+for an id no human carries, draws nothing and leaves the line empty. The map view ignores the fog. The history book
+draws no user icons. Here the page text is Tinos sized to font12's
+glyphs (approximation) and a pressed bevel stands in for the frame the original draws around the
 bitmap.
 
 The goals tab lists every mission whose `visible` flag is set and whose `description` is not `-1`,
@@ -760,7 +756,7 @@ delivery, not whether the player read the text.
 
 `misc.inc` may carry `[misc_humannames]` with `setname <humanId> <stringId>` rows. After the
 `StaticObjects` placements load, each row names the first human carrying the mission object id
-after the string in the map's table, through the same call the `SetHumanName` result makes; a row
+after the string in the map's table, the same way the `SetHumanName` result does; a row
 naming an id no human carries does nothing (reading). Here the row becomes the settler's
 `ScriptedName` at spawn and the app resolves the string in the player's language.
 
@@ -777,7 +773,7 @@ footprints and indices. `Data/logic/landscapetypes.ini` provides logic classific
 The shipped `Tools/result list EN.pdf` supplies these memberships, interpreted against actual
 `EditName` spellings. Its `fx fire2`, `fx fire house0` and `fx fx waterfall` spellings are normalized
 to the corresponding source names below. This interpretation remains unconfirmed in the running game.
-A reading of the original's result handler disagrees: FX1 excludes small fire/smoke, while Smoke additionally
+A reading of the original's behavior disagrees: FX1 excludes small fire/smoke, while Smoke additionally
 includes small fire and land waves. The implementation follows the readable reference pending an
 owned-game observation that resolves this conflict.
 
@@ -853,14 +849,14 @@ Navigation and spacing radii use the existing signpost approximations.
 
 The owned `CnModMaps/Polski_Mlyn_1.1/mission.inc` uses the goal for players 0, 1 and 2 at
 point (130, 130), range 200, alongside worker goals to identify human-controlled seats. This confirms
-the argument use, but does not establish exact range boundaries. Readings of the original's goal
-check and signpost iteration suggest owner filtering and inclusive hex distance. This build shares the existing mission area metric; the boundary remains unconfirmed
+the argument use, but does not establish exact range boundaries. Readings suggest owner filtering and inclusive hex
+distance. This build shares the existing mission area metric; the boundary remains unconfirmed
 by observation of the running original. Negative ranges match nothing, rather than reproducing
-unsigned conversion suggested by the iterator reading.
+the unsigned wraparound a reading suggests.
 
 ## Multiplayer goals
 
-`[misc_multiplayer_goals]` (9 corpus maps) feeds a separate manager checked every 120 ticks
+`[misc_multiplayer_goals]` (9 corpus maps) feeds a separate check every 120 ticks
 (reading): goal type 1 loses when the player's dead flag is set, type 2 wins on good counts, type 3 on
 an inhabitant or soldier count, type 4 wins when `MissionWon` fires for the player, type 5 loses when
 `MissionFailed` fires. This build does not read the table: a network match ends by elimination or by
@@ -869,9 +865,8 @@ the script verdicts described under "Multiplayer integration".
 ## Open questions
 
 - Behaviour bits 8, 10, 18, 19 and the animal behaviour value.
-- Every reading above comes from a later edition of the original; the owned 2001 build has not
-  been checked for the check period, the tick reset, `SelectHuman`'s flag or the load-time job
-  seeding.
+- Readings above may not match the owned 2001 build; it has not been checked for the check period,
+  the tick reset, `SelectHuman`'s flag or the load-time job seeding.
 
 ## Multiplayer integration
 

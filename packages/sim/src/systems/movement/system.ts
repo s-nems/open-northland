@@ -32,8 +32,8 @@ export const MAX_STEP_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(MIN_STEP_
 export const REFERENCE_STEP_TICKS = 8;
 export const REFERENCE_PACE_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(REFERENCE_STEP_TICKS));
 
-/** The pre-existing fallback for an animal whose source `movespeed` is 0 (the engine default is not
- *  decoded). It remains independent of the human terrain/shoes cost until that animal default is pinned. */
+/** The pre-existing fallback for an animal whose source `movespeed` is 0 (the original's default is
+ *  unknown). It remains independent of the human terrain/shoes cost until that animal default is pinned. */
 const DEFAULT_ANIMAL_TICKS_PER_CELL = 18;
 const DEFAULT_ANIMAL_PACE_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(DEFAULT_ANIMAL_TICKS_PER_CELL));
 
@@ -93,9 +93,9 @@ export const movementSystem: System = (world, ctx) => {
 
 type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 
-/** Original node callback: after pace is read at departure, and once at the terminal destination.
- *  The original updates pace before spending shoe/food points, and runs the callback before a new step
- *  and when the destination is reached. */
+/** The per-node charge: after pace is read at departure, and once at the terminal destination.
+ *  Original behavior: pace updates before shoe/food points are spent, and the charge lands before a
+ *  new step and when the destination is reached. */
 function chargeNode(world: World, ctx: SystemContext, e: Entity, roughness: number): void {
   const carrying = isCarryingGood(world, e);
   if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, roughness, carrying);

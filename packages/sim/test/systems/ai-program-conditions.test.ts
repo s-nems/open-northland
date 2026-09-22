@@ -23,7 +23,7 @@ import type { SystemContext } from '../../src/systems/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
-/** Every condition kind of a seat's program, judged the way the original's handler judges it. */
+/** Every condition kind of a seat's program, judged the way the original judges it. */
 
 const VIKING = 1;
 const SEAT = 2;

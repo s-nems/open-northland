@@ -57,9 +57,8 @@ export interface MapViewScene {
 /**
  * Renders the map views after the main stage render, overpainting each clip region like the details
  * portrait (`portrait-inset.ts`): `worldLayer` re-aimed at the target, the retained layers re-culled to
- * the view, and the pool's culled entities borrowed for it. The original's view display clears the
- * exploration draw flag (`an original routine(4, false)` in the `CMissionInfoWindow` constructor), so the
- * view ignores the fog.
+ * the view, and the pool's culled entities borrowed for it. The original's mission map view
+ * ignores the fog, so this view does too.
  */
 export class MapViewLayer {
   private views: readonly MapViewFrame[] = [];

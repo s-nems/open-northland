@@ -39,7 +39,7 @@ export type WorkSeatClaims = Map<Entity, WorkSeats>;
  *
  * Source basis: a workshop stopping on a full product slot and resuming once a unit leaves is observed
  * original behavior, and every craft trade carries `jobtypes.ini` `baseatomics 6`, which grants the
- * pickup/pileup atomics 22/23, so a craftsman may make its own trip. Trip scheduling is not decoded, so the
+ * pickup/pileup atomics 22/23, so a craftsman may make its own trip. Trip scheduling is unknown, so the
  * rung order here, and sending out a craftsman whose ware the shelf cannot start, are approximations.
  */
 export function planProducer(

@@ -132,7 +132,7 @@ export const MapHumanName = z.strictObject({
 export type MapHumanName = z.infer<typeof MapHumanName>;
 
 /**
- * A strategic-AI concern a map's `[AIData]` may switch off, named after the engine's own
+ * A strategic-AI concern a map's `[AIData]` may switch off, named after the original's own
  * `HAI_Disable<Module>` keywords. The sim's AI player runs one module per name.
  */
 export const MapAiModule = z.enum([
@@ -252,7 +252,7 @@ const soldierTask = {
 /**
  * One `AI_MainTask_*` line of a seat's `[AIData]` program (`docs/formats/MISSIONS.md`, AI data).
  * `condition` is the slot that switches the task on. `AI_MainTask_BuildHouse` names its house by
- * an engine string the corpus never writes, and is not extracted.
+ * a string the corpus never writes, and is not extracted.
  */
 export const MapAiTask = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('defend'), ...soldierTask }),

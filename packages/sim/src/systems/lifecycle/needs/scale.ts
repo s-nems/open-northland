@@ -5,8 +5,8 @@ import { type Fixed, fx, ONE } from '../../../core/fixed.js';
 
 /**
  * One full need bar in `atomicanimations.ini` event units - the span every `event <at> <channel> <delta>`
- * tuple moves a need against. Byte evidence: the original carries a four-row level table, one column per
- * need, whose maximum row reads 10000.
+ * tuple moves a need against. Original behavior: four levels per need, the maximum at
+ * 10000.
  */
 export const NEED_RESERVE_UNITS = 10000;
 
@@ -19,16 +19,16 @@ export const NEED_RESERVE_UNITS = 10000;
 export const NEED_DRAIN_UNITS_PER_TICK = 1;
 
 /**
- * The three levels the drives read off the reserve, the table's remaining rows. Byte evidence: the original
- * drops a settler's work below 2001, tops a bar up at home below 8001, and marks a need
+ * The three levels the drives read off the reserve, below the maximum. Original behavior: a settler
+ * drops its work below 2001, tops a bar up at home below 8001, and marks a need
  * for the player below 1001.
  */
 export const NEED_DRIVE_UNITS = 2000;
 export const NEED_SATED_UNITS = 8000;
 export const NEED_CRITICAL_UNITS = 1000;
 
-/** The reserve a bar banks above full. Byte evidence: the original caps each need at its own maximum plus
- *  half again, computed off the table rather than authored as a level of its own. */
+/** The reserve a bar banks above full. Original behavior: each need caps at its own maximum plus
+ *  half again, derived from the maximum rather than authored as a level of its own. */
 export const NEED_OVERFILL_UNITS = NEED_RESERVE_UNITS / 2;
 
 /** Reserve units as a fraction of a full bar. */

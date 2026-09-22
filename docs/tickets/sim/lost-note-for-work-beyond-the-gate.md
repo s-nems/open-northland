@@ -6,7 +6,7 @@
 settler's signpost gate, so a construction site placed beyond every range the builder can reach is
 never chosen: the builder idles at home and the player hears nothing. The original plans the walk
 regardless and, once its guided pathfinder has failed five times, raises message 3 "is lost. Your scout
-may have to erect more signposts" (`an original routine`, reason 1). The cut-off mark
+may have to erect more signposts". The cut-off mark
 (`drives/cut-off.ts`, `LostWay` with `cutOff`) covers only a settler that itself stands outside its
 seat's reach, not a site placed outside it. Verified headlessly: a builder beside its built
 headquarters with the seat's only site 200 nodes away, four check cadences, no `settlerLost`.

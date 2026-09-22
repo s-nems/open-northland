@@ -25,8 +25,7 @@ flag 1), so the two are not interchangeable to the consumer.
 ## Scope
 
 - Find a source that states the binding rather than implying it: the eat-slot atomic table in the
-  tribetypes `setatomic` block, the `.cif`-encoded help/strings for goods 16/17, or byte-level evidence
-  from the engine's good table. Document what was checked even if it comes back empty.
+  tribetypes `setatomic` block or the `.cif`-encoded help/strings for goods 16/17. Document what was checked even if it comes back empty.
 - If evidence lands, correct `EDIBLE_FORM_BY_DISH` and replace the "by elimination" wording in its
   source-basis comment with the real basis.
 - If no evidence exists, observe the original: feed a settlement only sausage and watch whether a

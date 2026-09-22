@@ -25,8 +25,8 @@ import { isHeroJob } from '../readviews/jobs.js';
  *   cost = max(3, cost)
  *
  * Before script flags: subtract the tribe/job reduction, double for a baby or add two for a child,
- * then add floor(combined equipment weight / 2), except for heroes. Byte evidence
- * confirms that order. Speed amulets remain unimplemented (see amulet ticket).
+ * then add floor(combined equipment weight / 2), except for heroes. The original applies
+ * them in that order. Speed amulets remain unimplemented (see amulet ticket).
  * Turning is paced separately; navigation still chooses this sim's routes, not the original's paths.
  */
 export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
@@ -68,7 +68,7 @@ const CARRYING_STEP_TICKS = 1;
 const TIRED_STEP_TICKS = 2;
 const SCRIPT_SLOW_FACTOR = 2;
 const SCRIPT_FAST_TICKS = 2;
-/** The engine's floor on any step cost. */
+/** The original's floor on any step cost. */
 export const MIN_STEP_TICKS = 3;
 
 /** The highest roughness the owned corpus writes (`lmpr` snow). */
@@ -98,14 +98,14 @@ export const UNMODIFIED_STEP: WalkStepModifiers = {
   equipmentWeight: 0,
 };
 
-/** Whether `e` wears a live pair of boots: a boots slot holding a good not yet worn to ONE. The original's
- *  `HasEquippedShoes` reads the same two facts, a shoe type set and a condition above zero. */
+/** Whether `e` wears a live pair of boots: a boots slot holding a good not yet worn to ONE. The original
+ *  checks the same two facts, a shoe type set and a condition above zero. */
 export function hasLiveBoots(world: World, e: Entity): boolean {
   const boots = world.tryGet(e, Equipment)?.boots ?? null;
   return boots !== null && boots.degreeOfUse < ONE;
 }
 
-/** Whether `e` hauls a good, the original's carried-good-type field being non-zero. */
+/** Whether `e` hauls a good: in the original, a carried good type is set. */
 export function isCarryingGood(world: World, e: Entity): boolean {
   return world.has(e, Carrying);
 }

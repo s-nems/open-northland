@@ -74,7 +74,7 @@ const FUZZ_PAPERS: readonly Paper[] = [
   { kind: 'placeStockedHouse', param: FOOTPRINTED_TYPE },
   { kind: 'indulgence', param: 0 },
 ];
-/** Chest types (`Tool_MapChest_UseChest` rows): a food heap, a place-any paper, three civilists. */
+/** Chest types: a food heap, a place-any paper, three civilists. */
 const FOOD_CHEST = 20;
 const ANY_HOUSE_CHEST = 50;
 const CIVILISTS_CHEST = 92;

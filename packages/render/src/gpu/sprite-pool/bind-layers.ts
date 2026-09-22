@@ -118,7 +118,7 @@ export class LayerBinder {
       if (layer.cast === true && shadowStyle === undefined) continue;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own
       // [fromPct,toPct] window, reaches its baked TimeMask threshold (the original's
-      // PrintBob_UsingTimeMask construction blit). `null` - no time data or no bake - crops instead.
+      // construction reveal). `null` - no time data or no bake - crops instead.
       const revealTexture =
         layer.reveal !== undefined &&
         displayReveal !== undefined &&

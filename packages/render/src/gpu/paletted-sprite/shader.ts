@@ -40,8 +40,8 @@ uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw)
 uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
 uniform vec2 uSampling;     // .x: world magnification mode (0 nearest / 1 bilinear / 2 sharp / 3 xbr)
 
-// GUI transparent key, a floating-HUD deviation with no original mechanism behind it (the engine blitter
-// has no colour key; source basis "Left tool panel"). The in-game GUI palettes reserve palette index 0 as a
+// GUI transparent key, a floating-HUD deviation with no original mechanism behind it (the original's GUI
+// drawing has no colour key; source basis "Left tool panel"). The in-game GUI palettes reserve palette index 0 as a
 // magenta sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255) as element background.
 // The two classes key independently because they are not both background for every element: panel elements
 // treat the near-black band as a removable backdrop, while the round order buttons paint their bevel rim and

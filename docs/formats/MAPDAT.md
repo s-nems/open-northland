@@ -70,7 +70,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
 | `lmms` | half-cell | max moveable-unit size per the CulturesNation docs: distance from blocked nodes capped at 7 (range verified); collapsed to the cell `shore` lane |
 | `lmco` | half-cell | original continent id per node; retained for water-edge jobs to match authored fish swarms |
-| `lmpr` | half-cell | walking roughness 0..5 per node: a human's step off a node costs `2·lmpr + 2` ticks shod and `2·lmpr + 4` barefoot (rested; two more once due for sleep, one more hauling), and the same value wears its shoes or, barefoot, its food bar. The engine reads it back as `(word >> 3) & 0xf` of the node's packed word in the original's step and walk-speed handling; every owned map carries it and every `lmro` road node holds 1 |
+| `lmpr` | half-cell | walking roughness 0..5 per node: a human's step off a node costs `2·lmpr + 2` ticks shod and `2·lmpr + 4` barefoot (rested; two more once due for sleep, one more hauling), and the same value wears its shoes or, barefoot, its food bar. Every owned map carries it and every `lmro` road node holds 1 |
 | `lafm` | fixed records | authored fish swarms: populated position/count/continent records become persistent sim stocks |
 
 ### Verified `lafm` fish table
@@ -131,7 +131,7 @@ verified stamp rule, per placement at half-cell `(x, y)` and per block-area row 
   visually against the running original.
 
 `lmbb` follows the same rule; it replays byte-identically on most maps, with residues consistent with
-stale sections (several maps carry an empty or outdated `lmbb`). The engine's runtime stamping is what
+stale sections (several maps carry an empty or outdated `lmbb`). The original's runtime stamping is what
 the sim mirrors (`footprintCellDx` in `packages/data`); the conservative full-state collapse
 (`fullStateBlockAreaCells`) remains a named approximation of the valency gate.
 

@@ -22,7 +22,7 @@ import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 
-/** `Item_IsAbleToOpenChest` is a human predicate: owned livestock and children open nothing. */
+/** Only a human opens a chest, as in the original: owned livestock and children open nothing. */
 function canOpenChest(world: World, ctx: SystemContext, settler: Entity, chest: Entity): boolean {
   if (!world.isAlive(chest) || !world.has(chest, Chest)) return false;
   if (!world.has(settler, Person) || world.has(settler, Age)) return false;

@@ -13,8 +13,7 @@ worth keeping into the owning reference or a test before then.
 ## Executive summary
 
 The original creates nine window buttons, a game-speed button, and a separate message-priority
-button. The mapping is unambiguous: the original assigns the buttons messages `0xf3c` through
-`0xf47` and dispatches each one to a specific window.
+button. The mapping from buttons to actions is unambiguous.
 
 The largest functional differences in Open Northland are:
 
@@ -49,18 +48,18 @@ checked in a running copy of the original.
 Coordinates use the original GUI design space. The bar background occupies
 `(x=0, y=10, w=50, h=433)` and uses graphic `0x33`. Every main button is `40×35`.
 
-| Top-to-bottom | Function | `y` position | Graphic | `main` tooltip | Message |
-| ---: | --- | ---: | ---: | ---: | ---: |
-| 1 | Construction | `41` | `0x2a` | `2` | `0xf3e` |
-| 2 | Extras | `73` | `0x2d` | `5` | `0xf3d` |
-| 3 | Mission | `117` | `0x2e` | `3` | `0xf42` |
-| 4 | Diplomacy | `151` | `0x2c` | `4` | `0xf3f` |
-| 5 | Statistics | `176` | `0x32` | `7` | `0xf41` |
-| 6 | Subjects | `204` | `0x2b` | `6` | `0xf40` |
-| 7 | Technology Tree | `238` | `0x38` | `8` | `0xf43` |
-| 8 | Options | `295` | `0x2f` | `1` | `0xf3c` |
-| 9 | Help | `329` | `0x30` | `0` | `0xf44` |
-| 10 | Game speed | `373` | `0x31` | `13` | `0xf46` |
+| Top-to-bottom | Function | `y` position | Graphic | `main` tooltip |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | Construction | `41` | `0x2a` | `2` |
+| 2 | Extras | `73` | `0x2d` | `5` |
+| 3 | Mission | `117` | `0x2e` | `3` |
+| 4 | Diplomacy | `151` | `0x2c` | `4` |
+| 5 | Statistics | `176` | `0x32` | `7` |
+| 6 | Subjects | `204` | `0x2b` | `6` |
+| 7 | Technology Tree | `238` | `0x38` | `8` |
+| 8 | Options | `295` | `0x2f` | `1` |
+| 9 | Help | `329` | `0x30` | `0` |
+| 10 | Game speed | `373` | `0x31` | `13` |
 
 The original Polish tooltips name these actions directly, including “Open the building menu,”
 “Open the subjects window,” and “Open the technology tree.” The `options` and `help` labels are
@@ -69,7 +68,7 @@ therefore definitive: graphic `0x2f` is **Options**, and `0x30` is **Help**.
 The message-priority button is outside the vertical stack. It sits on the plaque at the top:
 
 - frame: `(24, 0, 126, 41)`, graphic `0x3f`;
-- button: `(106, 3, 37, 31)`, initial graphic `0x40`, message `0xf47`.
+- button: `(106, 3, 37, 31)`, initial graphic `0x40`.
 
 ## Shared window behavior
 
@@ -84,9 +83,8 @@ main windows, and they belong to the “large windows” group. Opening one:
 3. resets the active input mode;
 4. creates one instance of the selected window.
 
-The original's large-window group has ten window identifiers: `0x7d8`, `0x7d9`,
-`0x7e3`–`0x7e9`, and `0x7da`, the network window. The construction selector has the separate
-identifier `0x7db` and is not part of this array.
+The original's large-window group has ten members, the network window among them. The
+construction selector is not part of it.
 
 The original's mission window is not known to pause the game when it opens. Opening a regular
 menu window should not itself pause the simulation. This finding is **unconfirmed** and should
@@ -108,8 +106,7 @@ The window lists buildings the player can currently construct. It has five filte
 
 Selecting a building row enters placement mode for that building type. The original shows the
 required materials and has an information button that opens the building's Help page. The bottom
-row starts separate construction modes for roads, stockades, and gates. The original binds these
-to input modes `0x0e`, `0x10`, and `0x12`, respectively.
+row starts separate construction modes for roads, stockades, and gates.
 
 The same window has a **Use Permit** variant. The owned paper limits the list in this mode, and a
 selection starts the prepaid construction. The regular variant also links to the Papers tab in
@@ -136,8 +133,8 @@ The window has two functions:
   production. A construction paper opens the construction selector or enters placement directly
   for the specified type.
 
-Assistant interactions send the network command `Update assistant` (`133`). They change
-simulation state rather than a local interface preference.
+Assistant interactions are network commands. They change simulation state rather than a local
+interface preference.
 
 ### 3. Mission
 
@@ -150,8 +147,8 @@ The window has three tabs:
 - **History**: navigation through story and briefing pages.
 
 It has up/down scrolling and previous/next task controls for the history. Briefing history is stored
-in the saved game. Opening the window from the bar uses `missionId = -1`, meaning the current
-mission context; scripts can instead open a specific page.
+in the saved game. Opening the window from the bar shows the current mission
+context; scripts can instead open a specific page.
 
 ### 4. Diplomacy
 
@@ -257,8 +254,8 @@ and Technology Tree use this behavior.
 
 **Shortcuts:** `L` increases speed; `P` toggles pause. **Status:** confirmed.
 
-Clicking the button cycles `×1 → ×2 → ×3 → ×1`. The network command stores internal values
-`12`, `24`, and `36`. Pause is a separate state and changes the graphic to `0x36`; graphics
+Clicking the button cycles `×1 → ×2 → ×3 → ×1`. The three speeds run 12, 24 and 36
+ticks per second. Pause is a separate state and changes the graphic to `0x36`; graphics
 `0x31`, `0x34`, and `0x35` represent the three active speeds. Clicking the button while paused
 makes the original select `×1`, rather than restoring the previous speed.
 
@@ -282,8 +279,8 @@ automatically removed after two minutes.
 ## Minimap and large overview map
 
 The large overview map is not an eleventh vertical-bar button. The original permanently creates
-a small overview window in the lower-left corner. Its globe button sends `0xf45` and opens the
-large overview map.
+a small overview window in the lower-left corner. Its globe button opens the large overview
+map.
 
 The minimap:
 

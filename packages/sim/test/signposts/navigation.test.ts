@@ -28,7 +28,7 @@ import { stampPost } from './support.js';
  * Signpost navigation confinement (`setSignpostNavigation`): a civilian may only work/walk within its
  * walk range of where it stands, plus that range around every post of a signpost group it catches;
  * scouts and fighters roam globally; the rule defaults OFF so every pre-signpost world (and golden) is
- * untouched. Source basis: the original's guided pathfinder, ranges byte-verified in the owned exe.
+ * untouched. Source basis: the original's guided pathfinding and its ranges.
  * Distances below are hex node distances: two nodes per tile E/W.
  */
 

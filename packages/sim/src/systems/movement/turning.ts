@@ -3,7 +3,7 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { ROW_STEP, worldX } from '../../nav/world-metric.js';
 
-// The original enables eight-direction turning for humans; byte evidence confirms the ring and the
+// The original enables eight-direction turning for humans, with this ring and these
 // opposite-heading ties.
 const TURN_RING: readonly WalkDirection[] = [0, 1, 7, 2, 3, 4, 6, 5];
 

@@ -36,7 +36,7 @@ export { WAVE_GATHER_TICKS } from './plan.js';
  * takes the rest of it, and the campaign gets what neither claimed.
  *
  * The home half runs with the module off too: the original's scripted handler, which the `HAI_Disable`
- * toggles do not reach, lists the soldiers, mans the towers and answers an attack (byte evidence). The
+ * toggles do not reach, lists the soldiers, mans the towers and answers an attack (original behavior). The
  * shape and radii of the defence here are approximations. The home half also runs for a seat whose scripted
  * handler is off while the module is on, a pairing no map produces: `AI_Disable` switches the modules off
  * with the handler.

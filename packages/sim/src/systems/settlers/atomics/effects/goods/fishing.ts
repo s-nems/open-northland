@@ -51,7 +51,7 @@ export function advanceFishingAtomic(
       : null;
   const caught = caughtFrom !== null;
   if (caught) {
-    // The original catch callback puts good 16 (`food_simple`) in the fisher's hands, while the raw fish
+    // The original catch puts good 16 (`food_simple`) in the fisher's hands, while the raw fish
     // id remains the work/experience specialization. Resolve by slug so modded numeric ids stay valid.
     world.add(fisher, Carrying, { goodType: edibleGoodFormOf(ctx.content, effect.goodType), amount: 1 });
     grantWorkExperience(world, ctx, fisher, effect.goodType, 1);

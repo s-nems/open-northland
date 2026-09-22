@@ -63,7 +63,7 @@ const UNRESOLVED_HOUSE: MissionHouseRef = { typeId: UNRESOLVED_NAME, tribe: UNRE
 /** What a map's script cost on the way into the simulation, for one summary line in the log. */
 export interface MissionScriptJoin {
   readonly script: MissionScript;
-  /** Lines whose opcode name is not in the engine's table; each loads as `True` or `None`. */
+  /** Lines whose opcode name is not in the original's table; each loads as `True` or `None`. */
   readonly unknownOpcodes: number;
   /** Lines that carry more or fewer tokens than their opcode declares. */
   readonly tokenMismatches: number;

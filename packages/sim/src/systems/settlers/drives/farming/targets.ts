@@ -53,10 +53,9 @@ export function nearestFarmSheaf(
  *  cell from its entity's anchor, so the prefilter never drops a sheaf the exact check would accept. */
 const SHEAF_PREFILTER_SLACK = 2;
 
-/** Free nodes nearest the anchor a sow draws among, uniformly. Byte evidence:
- *  the original's map search
- *  stops at the first five plantable points out from the work centre and rolls one of them.
- *  Approximation: its search order and the packing onto every lattice node are not decoded; a plot here
+/** Free nodes nearest the anchor a sow draws among, uniformly. Original behavior:
+ *  a sow stops at the first five plantable points out from the work centre and rolls one of them.
+ *  Approximation: its search order and the packing onto every lattice node are unknown; a plot here
  *  grows as a compact patch with a ragged edge, its plants a node apart, which is what puts them in one
  *  another's watering ring. */
 const SOW_CANDIDATES = 5;

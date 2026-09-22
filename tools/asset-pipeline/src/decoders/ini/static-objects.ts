@@ -73,7 +73,7 @@ const EMPTY_COLUMN = 0;
  * typeId kept verbatim as its digit string.
  *
  * `setproducedgood` belongs to the enclosing `sethuman`: the original scopes that pick to the settler
- * rather than its hut, and its own UI names the window `CSelectedSingleHumanChangeProducedGood`. It is
+ * rather than its hut, and its own UI offers the change on the selected settler. It is
  * not only a gatherer's resource, since workshop trades author their product the same way
  * (`baker` -> `bread`). Names stay verbatim, the join key the loader resolves against the IR.
  *

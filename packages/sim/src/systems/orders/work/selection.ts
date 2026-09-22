@@ -29,7 +29,7 @@ import { isOrderableSettler } from '../guards.js';
 /**
  * How far {@link setWorkFlag} snaps a click that landed on a blocked node, in half-cell nodes. Past this
  * the click counts as "not workable ground" rather than silently relocating the gatherer's yard.
- * Approximation: the original's click tolerance is not decoded, and 3 tiles sits well inside the default
+ * Approximation: the original's click tolerance is unknown, and 3 tiles sits well inside the default
  * work-flag radius.
  */
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;

@@ -3,8 +3,8 @@
  * `(+-1, +-2)` for the 51 px lattice edge, and N/S `(0, +-1)`. Source basis: `THexagonDirection` in the
  * shipped `Data/GameSourceIncludes/logicdefines.inc`, with NORTH = 6 and SOUTH = 7.
  *
- * Approximation: that the original walks this lattice rather than only blocking on it. No movement code
- * survives readable, but the direction set, edge geometry, and half-cell collision are data-pinned and
+ * Approximation: that the original walks this lattice rather than only blocking on it. No readable source
+ * covers movement, but the direction set, edge geometry, and half-cell collision are data-pinned and
  * the observed unit packing density matches.
  *
  * Neighbours are emitted in a fixed canonical order so traversal is byte-identical across runs.

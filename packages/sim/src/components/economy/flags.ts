@@ -48,7 +48,7 @@ export const YardDeliveryRoute = defineComponent<{
 
 /**
  * The default work radius a newly placed gatherer flag gets: 24 half-cell nodes, about 12 tiles. A named
- * approximation - the original's collector work-area size is not decoded - sized so a gatherer reaches a
+ * approximation - the original's collector work-area size is unknown - sized so a gatherer reaches a
  * decent patch around its flag without roaming the whole map.
  */
 export const DEFAULT_WORK_FLAG_RADIUS = 24;
@@ -56,7 +56,7 @@ export const DEFAULT_WORK_FLAG_RADIUS = 24;
 /**
  * The hunter's work radius in the same node-distance, wider than the gatherer default because a hunter
  * ranges after mobile game that scatters on every shot. Hunter-only; every other gatherer keeps the
- * default. A named approximation - the original's hunter range is not decoded - calibrated against kills
+ * default. A named approximation - the original's hunter range is unknown - calibrated against kills
  * taken per sweep and how far the crew ends up standing from its flag.
  */
 export const HUNTER_WORK_FLAG_RADIUS = 48;

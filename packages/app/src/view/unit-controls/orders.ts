@@ -216,9 +216,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   };
 
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as
-   *  the original's default click gates on `Item_IsAbleToOpenChest`, and so a settler the sim would refuse
-   *  never lands in the replay log; the sim re-checks each on arrival, so two senders race and the loser
-   *  walks back into autonomy. */
+   *  the original's default click offers it only to a settler that may open it, and so a settler the
+   *  sim would refuse never lands in the replay log; the sim re-checks each on arrival, so two senders
+   *  race and the loser walks back into autonomy. */
   const openChest = (commanded: readonly FormationUnit[], chest: number): boolean => {
     const snapshot = deps.snapshot();
     const target = entityById(snapshot, chest);
@@ -236,8 +236,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   /**
    * Send every commanded settler that may wear the clicked good to put it on; true when anyone was sent.
-   * The original's default click on a good lying on the ground (`UserControl_GetDefaultInteractionCommand`
-   * over a landscape of a good's `landscapetype`): each selected human who can equip the good now and does
+   * The original's default click on a good lying on the ground (a landscape
+   * of a good's `landscapetype`): each selected human who can equip the good now and does
    * not already wear that item type gets the equip order by good type, so the sim fetches its nearest
    * reachable unit rather than this exact heap. A misc good (mead, potions, amulets) skips the worn
    * check, as its slots stack. The gate is the sim's pick list, the same read the equip window shows.

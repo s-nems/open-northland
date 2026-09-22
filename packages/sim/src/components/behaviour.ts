@@ -12,7 +12,7 @@ export const HouseBehaviour = defineComponent<{ flags: number }>('HouseBehaviour
 
 /**
  * The human bits this build acts on. Each is a reading of the original that names a mechanic the sim
- * has; the values are the engine's own bit positions, so an unread bit still round-trips.
+ * has; the values are the original's own bit positions, so an unread bit still round-trips.
  */
 export const MISSION_BEHAVIOUR = {
   NEEDS_FROZEN: 1 << 0,

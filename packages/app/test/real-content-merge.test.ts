@@ -172,7 +172,7 @@ describe('mergeRealContent', () => {
     expect(goodById(raw, 'herb').farming).toBeUndefined();
     const { content } = mergeRealContent(raw);
     expect(goodById(content, 'wheat').farming).toEqual(FARMING_BALANCE_BY_ID.wheat);
-    // The herb hut runs the farm's loop: the original reaches one routine from both job entries.
+    // The herb hut runs the farm's loop: the original farms the same way for both jobs.
     expect(goodById(content, 'herb').farming).toEqual(FARMING_BALANCE_BY_ID.herb);
   });
 

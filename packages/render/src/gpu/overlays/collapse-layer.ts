@@ -21,8 +21,8 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 /**
  * A razed building sinks into the ground instead of blinking out: the body is re-resolved from the
  * `buildingDestroyed` event's building type (the entity left the snapshot the same tick), then shifted
- * down while its lowest pixel rows are cropped at the ground line - the original's
- * `PrintBob_UsingCollapseTimeMask`. Cast-shadow layers are skipped, because a sinking body's ground
+ * down while its lowest pixel rows are cropped at the ground line, as in the
+ * original. Cast-shadow layers are skipped, because a sinking body's ground
  * shadow would crop nonsensically.
  */
 export class CollapseLayer {

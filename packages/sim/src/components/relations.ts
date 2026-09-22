@@ -42,7 +42,7 @@ const playerAttacks = defineWorldSingleton<{
 
 /**
  * Who has struck whom: a damaging blow on a player's human marks the attacker in the victim's row, one
- * direction only, and the mark never clears (reading of the original's damage callback). The
+ * direction only, and the mark never clears (reading of the original). The
  * `PlayerAttackedByPlayer` goal reads it.
  */
 export const PlayerAttacks = playerAttacks.component;

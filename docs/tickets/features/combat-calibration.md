@@ -8,7 +8,7 @@ Every approximated combat constant is greppable in code (`calibration`/`APPROXIM
 session swaps them for observed values while the user runs the original (`../Cultures 8th Wonder`)
 side by side and answers probes.
 
-Human base HP has since left that set: the owned copy gives an adult a flat 5000-point
+Human base HP has since left that set: the original gives an adult a flat 5000-point
 pool, which `packages/sim/src/systems/lifecycle/needs/system.ts` already reads the starve and heal spans
 against. What stays open is the child ratio below and whether `DEFAULT_SETTLER_HITPOINTS` and the tribe
 records should carry 5000 rather than 300, which moves every damage constant with it.

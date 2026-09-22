@@ -2,7 +2,7 @@ import { MIN_UI_SCALE } from '../../ui-scale.js';
 
 /**
  * Design-px metrics of the titled pop-up window family, scaled by uiscale. Approximation: the original's
- * window metrics are not decoded, so these are the build menu's proportions adopted as the shared set,
+ * window metrics are unknown, so these are the build menu's proportions adopted as the shared set,
  * and only the label widths they must clear are measured.
  */
 

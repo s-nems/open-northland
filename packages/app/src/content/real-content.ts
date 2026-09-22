@@ -96,8 +96,8 @@ function withEquipClass(good: GoodType): GoodType {
   return equip !== undefined ? { ...good, equip } : good;
 }
 
-/** Add the engine-authored armor a hero is born with. Extracted `jobtypes.ini` has no field for it: the
- * original hard-codes it per job, so it belongs in this runtime overlay. */
+/** Add the armor a hero is born with in the original. Extracted `jobtypes.ini` has no field for it: the
+ * original fixes it per job, so it belongs in this runtime overlay. */
 function withHeroArmor(job: JobType): JobType {
   const fixedArmorType = HERO_ARMOR_BY_JOB_ID[job.id];
   return fixedArmorType === undefined ? job : { ...job, fixedArmorType };

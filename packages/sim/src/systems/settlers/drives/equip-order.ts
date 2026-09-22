@@ -46,7 +46,7 @@ const EXCLUDE_PRODUCERS = false;
 
 /** An errand shops inside its settler's own confinement, or, for a job with none (a soldier) and for a
  *  recruit being armed, inside the settlement network at his feet - the original's
- *  `FindEquipment_Complex_Nearby` bound. The store is re-picked every tick, so without a gate an
+ *  equipment-search bound. The store is re-picked every tick, so without a gate an
  *  unconfined settler would re-target across the map the moment his store ran dry. */
 function errandGate(
   world: World,

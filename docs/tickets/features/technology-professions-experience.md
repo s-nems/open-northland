@@ -5,8 +5,7 @@
 Player discoveries, individual work qualifications, civilian schooling and script grants now share
 one saved progression model. The implemented contract and source evidence live in
 [PROGRESSION.md](../../formats/PROGRESSION.md). Readable tables establish thresholds, but several
-runtime details remain approximations; readings of a later edition alone do not establish the
-owned build's behavior.
+runtime details remain approximations or unconfirmed readings.
 
 ## Scope
 

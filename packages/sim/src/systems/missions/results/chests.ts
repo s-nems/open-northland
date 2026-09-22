@@ -6,7 +6,7 @@ import { invalidateLandscapeRoutes } from '../../landscape/routes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 
-/** `TMapChestRandomType` bit order and the half-open chest-type spans selected by the original. */
+/** The original's random-chest bit order and the half-open chest-type spans it selects. */
 const RANDOM_CHEST_GROUPS = [
   { bit: 1, first: 94, end: 96 }, // soldiers
   { bit: 2, first: 52, end: 53 }, // tower

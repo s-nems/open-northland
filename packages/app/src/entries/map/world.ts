@@ -98,7 +98,7 @@ export interface MapWorld {
  *  0-tick snapshot would not, while leaving the spawned settlers at their start. */
 const PLACEMENT_DRAIN_TICKS = 1;
 
-/** The tribes whose computer seats get the scripted handler alone: the original's AI manager
+/** The tribes whose computer seats get the scripted handler alone: the original
  *  withholds the strategic handler from a `PLAYER_TYPE_AI` seat of either. */
 const TRIBES_WITHOUT_STRATEGIC_AI: ReadonlySet<number> = new Set([WERESNAKE_TRIBE, WEREWOLF_TRIBE]);
 

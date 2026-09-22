@@ -142,7 +142,7 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
         }
       }
       expect(chests).toBeGreaterThan(0);
-      // Ten mod-map chests author type 13, a row the original's dispatch lacks as well: they open empty
+      // Ten mod-map chests author type 13, a row the original lacks as well: they open empty
       // there too. Any other unknown type is a table gap.
       expect([...unknown], 'chest types the table does not know').toEqual([UNASSIGNED_MOD_CHEST_TYPE]);
     },

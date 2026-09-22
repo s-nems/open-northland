@@ -34,7 +34,7 @@ export interface ToolPanelInputDeps {
   readonly toggleResidents: () => void;
   readonly togglePause: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
-   *  the mouse cancel is byte-verified). */
+   *  the mouse cancel is original behavior). */
   readonly cue: (cue: UiCue) => void;
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
 }

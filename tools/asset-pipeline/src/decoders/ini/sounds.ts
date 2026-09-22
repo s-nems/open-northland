@@ -136,7 +136,7 @@ const RESPOND_NO = 1;
  * Extracts the decoded `humans/sounds.cif` `[sounds]` blocks into one {@link HumanVoices} row per
  * `(logictribe, class)` that names at least one group: `scream <class> "<group>"`, `generic <class>
  * "<group>"` and the repeated `respond <class> <0|1> "<group>"` answer pools. A block without a
- * `logictribe` belongs to tribe 0, as in the engine's reader.
+ * `logictribe` belongs to tribe 0, as in the original.
  */
 export function extractHumanVoices(sections: readonly RuleSection[]): HumanVoices[] {
   const rows = new Map<string, HumanVoices>();

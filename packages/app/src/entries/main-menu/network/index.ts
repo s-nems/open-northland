@@ -252,7 +252,7 @@ export function networkScreen(
       case 'chat':
         room?.observeChat(message.from, message.text);
         // Another player's line rings, as the original lobby does; our own echo stays silent (a choice:
-        // the original's handler does not separate the two).
+        // the original does not separate the two).
         if (message.from !== current.client.nick) sound.cue('chat');
         break;
       case 'rejected':

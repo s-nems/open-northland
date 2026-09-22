@@ -11,7 +11,7 @@ import { type GuiArt, makeGuiSprite } from '../content/gui-art.js';
 /**
  * The markers a map script puts on the ground: the ten GUI marker slots, the area rings and the
  * import markers. Drawn as a screen overlay over the world at each point's projected position, the
- * way the original's cursor callback draws the GUI markers (reading: it cycles six bobs of the GUI
+ * way the original draws the GUI markers (reading: it cycles six bobs of the GUI
  * sheet at 150 ms in the player's palette). Approximations: the bobs draw in the GUI's context palette
  * rather than the player's, and the area and import markers, the original's own map entities with
  * their own art, draw with the first of those bobs.

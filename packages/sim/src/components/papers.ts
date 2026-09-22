@@ -2,7 +2,7 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import { isValidPlayer } from './ownership.js';
 
 /**
- * The seven special-item kinds a player's papers list can hold (the original's `TSpecialItemTypes`,
+ * The seven special-item kinds a player's papers list can hold (the original's kinds,
  * named by `misclogic` strings 180-186). `param` is the house, job or good `typeId` the paper names,
  * and 0 for the two kinds that name nothing.
  */
@@ -29,12 +29,12 @@ export const PLACING_PAPER_KINDS: ReadonlySet<PaperKind> = new Set<PaperKind>([
   'placeStockedHouse',
 ]);
 
-/** Slots per player: the original's special-item table walks a fixed 100 entries (byte evidence). */
+/** Slots per player: the original keeps a fixed 100 special-item entries. */
 export const PAPER_SLOTS = 100;
 
 /**
  * The per-player papers table: at most one carrier entity per player, created on the first paper and
- * destroyed when the last slot empties. `slots` keeps the original's slot semantics (byte evidence: an
+ * destroyed when the last slot empties. `slots` keeps the original's slot semantics (original behavior: an
  * add takes the first empty entry, a use clears its entry), so a spent paper leaves a hole the next one
  * fills and the list order survives spending; trailing holes are trimmed.
  */

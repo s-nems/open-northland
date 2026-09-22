@@ -138,7 +138,7 @@ export const GoodType = z.strictObject({
   /** Field-cultivation parameters when this good is field-farmed (wheat); such a good also carries the
    *  plant/cultivate/harvest {@link atomics}. */
   farming: GoodFarming.optional(),
-  /** Household use calibrated from the owned engine; absent for ordinary wares. */
+  /** Household use calibrated from the original; absent for ordinary wares. */
   homeQuality: HomeQuality.optional(),
   /** Input goods and per-cycle amounts consumed to produce this good (`goodtypes`
    *  `productionInputGoods`); empty for a raw good. */

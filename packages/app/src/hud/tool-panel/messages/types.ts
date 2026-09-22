@@ -2,12 +2,11 @@ import type { HalfCellNode } from '@open-northland/sim';
 import type { MessageText } from './text.js';
 
 /**
- * The original's `TToUserMessage` ids (`ingameguimessages.cif` rows 15-134 spell out each one). The
- * id is the key of the byte-verified priority table and of the string-id map, so it is pinned here.
+ * The original's message ids (`ingameguimessages.cif` rows 15-134 spell out each one). The
+ * id is the key of the original's priority table and of the string-id map, so it is pinned here.
  *
- * Seven have no raise site in the 2022 build: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`,
- * `cannotAttachVehicle`, and the two `gaveBirth` ids whose wrapper the compiler dropped. Nothing here
- * raises them either.
+ * The original never raises seven of them: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`,
+ * `cannotAttachVehicle`, and the two `gaveBirth` ids. Nothing here raises them either.
  */
 export const USER_MESSAGE_TYPE = {
   taskCompleted: 0x01,
@@ -78,7 +77,7 @@ export const USER_MESSAGE_TYPE = {
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;
 export type UserMessageType = (typeof USER_MESSAGE_TYPE)[UserMessageTypeName];
 
-/** The original's `TMessagePriorityLevel`: 0 routine, 1 notable, 2 important. */
+/** The original's message priority levels: 0 routine, 1 notable, 2 important. */
 export type MessagePriorityLevel = 0 | 1 | 2;
 
 export const MESSAGE_PRIORITY_LEVELS: readonly MessagePriorityLevel[] = [0, 1, 2];

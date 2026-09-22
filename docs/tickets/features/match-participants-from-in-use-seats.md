@@ -2,21 +2,21 @@
 
 **Area:** sim, app · **Focus:** `packages/sim/src/systems/match` · **Priority:** P2
 **Needs user:** confirm that campaign maps may start announcing defeat and victory, which follows from
-the engine's own rule but changes 96 of the 124 decoded maps.
+the original's own rule but changes 96 of the 124 decoded maps.
 
 `matchParticipants` (`packages/app/src/game/match-participants.ts`) builds the participant list from the
 session's human and AI seats. A map's own computer seats (authored `ai`, offered to nobody) are AI
 seats in every session now, so they count; a claimable seat left idle by the lobby still does not,
 although the map puts its people in use.
 
-Byte evidence from the owned copy: the engine's per-tick check loops every one of the 20 slots,
+Original behavior: the per-tick check loops every one of the 20 slots,
 skipping only "not in use", "already dead" and the `playerneverdies` exemption flag. Claimability is a
 lobby concept the check never sees.
 
 ## Scope
 
 - Declare the match over every seat the map puts in use, idle claimable seats included, minus the
-  `playerneverdies` exemptions, so the defeat half matches the engine.
+  `playerneverdies` exemptions, so the defeat half matches the original.
 - Keep the mutual-friends victory rule as the named approximation it is, and do not let it fire while a
   seat outside the winning group still holds a living adult man.
 - Keep `playerneverdies` seats out of both halves, and keep a spectator seat out of the sheet's goal.
@@ -24,8 +24,8 @@ lobby concept the check never sees.
   nothing promises nothing.
 - A counted seat that starts with no adult man is dead at the first check, and in this build stays
   dead: the mark never lifts, the authority gate refuses the seat's orders and both AI handlers skip
-  it (`systems/ai-player`, `systems/ai-program`). The original's handlers keep working for a dead seat
-  (they test only the handler's enabled flag), and the
+  it (`systems/ai-player`, `systems/ai-program`). In the original a dead seat's AI keeps working
+  (only its enabled flag matters), and the
   corpus relies on it: on script-victory maps the counted seats without an adult man are
   `cn_2_dni_sub` 2, 3, 4, `zdradziecka_mielizna_sub2` 2 and `specjalna_forteca` 5 (one woman). Let
   a dead seat's program and orders run, or lift the mark when the seat gains an adult man.

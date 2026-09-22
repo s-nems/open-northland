@@ -18,7 +18,7 @@ import type { ContentIr } from './ir/rows.js';
  * binds each landscape typeId to one representative pattern (a recorded deviation).
  *
  * All ground pages load linear-filtered against the original's bilinear terrain sampling. That reading
- * comes from a community renderer used as an oracle, not from byte evidence, so it is an approximation.
+ * comes from a community renderer used as an oracle, not from the original, so it is an approximation.
  * The sprite atlases stay `nearest`.
  */
 

@@ -152,8 +152,8 @@ export class TextureCache {
   }
 
   /**
-   * The mirror of {@link cropped}, for the building-collapse sink (the original's
-   * `PrintBob_UsingCollapseTimeMask` removes rows bottom-up). Same caching and bounds discipline.
+   * The mirror of {@link cropped}, for the building-collapse sink (the original
+   * removes rows bottom-up). Same caching and bounds discipline.
    */
   croppedBottom(source: TextureSource, frame: AtlasFrame, hiddenBottom: number): Texture {
     const bottom = clamp(Math.round(hiddenBottom), 0, frame.height);

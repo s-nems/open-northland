@@ -3,7 +3,7 @@
 **Area:** sim, app · **Priority:** P2
 
 The roster currently reduces every unclaimed seat to Idle or AI. That cannot represent the map's own
-HAI configuration, and `PLAYER_TYPE_NONE` seats still spawn their authored entities. The `[AIData]`
+AI configuration, and `PLAYER_TYPE_NONE` seats still spawn their authored entities. The `[AIData]`
 toggles are imported (`MapAiSeat` in the script sidecar) and applied to every AI-driven seat at
 setup, so the states have distinct behavior: Script follows the map's module flags, AI enables the
 full strategic player, Idle keeps the seat's entities without strategic commands, and Closed removes
@@ -22,6 +22,6 @@ the seat from setup.
 ## Verify
 
 - Menu: the three states cycle with correct authored defaults and round-trip through setup.
-- Headless: Script applies the imported HAI flags, AI enables every available module, Idle issues no
+- Headless: Script applies the imported `[AIData]` flags, AI enables every available module, Idle issues no
   strategic commands, and Closed spawns no owned entities.
 - `npm test`, `npm run check`, `npm run build`; browser pass over the menu + an AI-vs-AI start.

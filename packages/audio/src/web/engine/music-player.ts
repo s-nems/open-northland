@@ -21,8 +21,8 @@ export const MENU_MUSIC_TIMING: MusicTiming = { fadeS: 2, gapS: 1.5 };
 
 /**
  * Replacing the track: the original starts the new segment immediately as the primary segment and
- * lets the old one's note releases and reverb ring under it (byte evidence: `PlaySegmentEx` with no
- * boundary flags). A rendered file cannot ring its tail out, so a short fade stands in for it.
+ * lets the old one's note releases and reverb ring under it (original behavior: no wait for a
+ * segment boundary). A rendered file cannot ring its tail out, so a short fade stands in for it.
  */
 export const MUSIC_SWITCH_TIMING: MusicTiming = { fadeS: 1.5, gapS: 0 };
 

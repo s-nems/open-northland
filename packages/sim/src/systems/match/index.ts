@@ -19,7 +19,7 @@ import { isAdultSettler } from '../family/eligibility.js';
 
 /**
  * Death-check cadence in ticks: the first check lands on the cadence tick past the grace period.
- * Approximation modelled on a reading of the engine build's per-tick player check, unconfirmed against
+ * Approximation modelled on a reading of the original's per-tick player check, unconfirmed against
  * the running original; the counts assume the approximated 12 Hz clock.
  */
 export const MATCH_DEATH_GRACE_TICKS = 720;

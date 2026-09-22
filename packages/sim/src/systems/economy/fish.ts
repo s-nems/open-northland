@@ -11,13 +11,13 @@ export const FISH_CAST_ATOMIC = 36;
 export const FISH_CAUGHT_ATOMIC = 37;
 export const FISH_FAILED_ATOMIC = 38;
 export const FISH_SHORE_SEARCH_RADIUS = 20;
-/** The original callback's tick permutation fires exactly once per 2160 game ticks. */
+/** The original's fish reproduction fires exactly once per 2160 game ticks. */
 export const FISH_REPRODUCTION_TICKS = 2160;
 
 /**
  * Add authored swarms before tick zero, retaining source order as entity order. Original
  * behavior: a swarm stores at most 30 fish, the fisher's shore search covers 20 nodes, and reproduction
- * increments each positive non-full swarm on its 2160-tick callback.
+ * increments each positive non-full swarm once every 2160 ticks.
  */
 export function addFishSwarms(
   world: World,

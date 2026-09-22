@@ -29,7 +29,7 @@ export function playerSeenHolds(
   return playerHasMet(pass.world, pass.ctx.fog, op.player, op.otherPlayer);
 }
 
-/** The line's first token names the victim and its second the striker, the order the engine's table
+/** The line's first token names the victim and its second the striker, the order the original
  *  binds them in. */
 export function playerAttackedHolds(
   world: World,

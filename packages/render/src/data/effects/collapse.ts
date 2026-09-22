@@ -8,8 +8,8 @@ import type { SmokePuffPose } from './smoke.js';
  * The pure half of the building-collapse transient: `buildingDestroyed` events fold into a list of
  * collapsing buildings the GPU layer draws sinking into the ground behind a dust cloud. Progress is
  * measured in sim ticks, not wall-clock, so a paused game and a `?shot` capture reproduce exactly.
- * Source basis: the original removes a destroyed house's pixel rows bottom-up over time
- * (`PrintBob_UsingCollapseTimeMask`); the constant-rate sink and the procedural dust are approximated.
+ * Source basis: the original removes a destroyed house's pixel rows bottom-up over time;
+ * the constant-rate sink and the procedural dust are approximated.
  */
 
 export interface BuildingCollapse {

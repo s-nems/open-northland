@@ -10,7 +10,7 @@ production tools, restoration and death-save consumables, not wearable amulet be
 
 ## Scope
 
-Verify each effect and its combination rules against the owned engine. Encode classification
+Verify each effect and its combination rules against the original. Encode classification
 and magnitudes in content, and consume equipped amulets in needs, combat and movement.
 Check removal, duplicate amulets and interaction with other modifiers. Do not infer magnitudes
 from display names. In the original, the speed amulet subtracts two from step cost before age,

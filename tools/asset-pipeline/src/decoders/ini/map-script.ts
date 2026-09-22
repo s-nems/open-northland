@@ -51,8 +51,8 @@ const MACRO_CODES: Readonly<Record<string, number>> = {
   DIPLOMACY_STATE_FRIEND: 1,
   DIPLOMACY_STATE_NEUTRAL: 2,
   DIPLOMACY_STATE_ENEMY: 3,
-  // The shipped file names six kinds where the engine's string table has seven (its 4 is "place the
-  // house and fill its store"); the engine resolves a plaintext macro through this same file, so the
+  // The shipped file names six kinds where the original knows seven (its 4 is "place the
+  // house and fill its store"); the original resolves a plaintext macro through this same file, so the
   // codes stay as written.
   SPECIAL_ITEM_TYPE_NONE: 0,
   SPECIAL_ITEM_TYPE_LETTER_OF_INDULGENCE: 1,
@@ -226,7 +226,7 @@ class AiLineReader {
   }
 }
 
-/** The `AI_SetCondition_*` keywords, lower-cased, each reading its line the way the loader does. */
+/** The `AI_SetCondition_*` keywords, lower-cased, each reading its line the way the original does. */
 const AI_CONDITION_LINES: Readonly<Record<string, (slot: number, r: AiLineReader) => MapAiCondition>> = {
   ai_setcondition_true: (slot) => ({ kind: 'true', slot }),
   ai_setcondition_ontime: (slot, r) => ({ kind: 'onTime', slot, ticks: r.int() * TICKS_PER_MINUTE }),
@@ -312,7 +312,7 @@ const AI_CONDITION_LINES: Readonly<Record<string, (slot: number, r: AiLineReader
   },
 };
 
-/** The `AI_MainTask_*` keywords, lower-cased, each reading its line the way the loader does. */
+/** The `AI_MainTask_*` keywords, lower-cased, each reading its line the way the original does. */
 const AI_TASK_LINES: Readonly<Record<string, (r: AiLineReader) => MapAiTask>> = {
   ai_maintask_defend: (r) => {
     const priority = r.int();
@@ -368,7 +368,7 @@ const AI_TASK_LINES: Readonly<Record<string, (r: AiLineReader) => MapAiTask>> = 
 
 /**
  * Folds one `[AIData]` section into `out`, one row per player, keyed case-insensitively like the
- * engine's token table: the seat toggles, the unit limits, the soldiers' default position and the
+ * original: the seat toggles, the unit limits, the soldiers' default position and the
  * scripted handler's condition and task program.
  */
 function aiSection(sec: RuleSection, out: MapAiSeat[]): void {
@@ -449,7 +449,7 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
 }
 
 /** `tradeagreement <houseId> <giveGood> <giveAmount> <takeGood> <takeAmount>`; a row short of five
- *  resolvable numbers is dropped, as the engine's own reader skips it. */
+ *  resolvable numbers is dropped, as the original skips it. */
 function tradeAgreementRow(p: RuleProp): MapScript['tradeAgreements'][number] | undefined {
   if (p.key !== 'tradeagreement') return undefined;
   const [missionId, giveGood, giveAmount, takeGood, takeAmount] = p.values.map(code);

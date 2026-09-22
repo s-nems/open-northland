@@ -114,7 +114,7 @@ function stageDraw(l: ConstructionLayerRef): ConstructionDraw {
  * `upgrade === 1` rows, revealed across their window like a construction stage. Unlike
  * {@link resolveConstructionDraws} there is no lowest-stage fallback, since outside every window the
  * old body alone is the correct draw. The rows are extracted; composing them over the old body is a
- * named approximation, as the original's upgrade-pass compositing is not decoded.
+ * named approximation, as the original's upgrade-pass compositing is unknown.
  */
 export function resolveUpgradeDraws(
   binding: number | BuildingTypeBinding,

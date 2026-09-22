@@ -12,8 +12,8 @@ import type { MissionPass } from './pass.js';
 import type { MissionScript } from './script.js';
 
 /**
- * Ticks between two evaluation passes: the original's mission manager runs on the per-tick callback
- * and evaluates when the tick count is a multiple of this, 3 seconds at 12 ticks per second. A
+ * Ticks between two evaluation passes: the original evaluates missions
+ * when the tick count is a multiple of this, 3 seconds at 12 ticks per second. A
  * reading of the original, not yet timed against the running game.
  */
 export const MISSION_EVALUATION_TICKS = 36;

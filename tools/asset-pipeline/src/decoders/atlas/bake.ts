@@ -76,8 +76,8 @@ function expandBobFrameTime(frame: BobFrame): RgbaImage {
 }
 
 /**
- * The baked alpha of a shadow-atlas pixel. An approximation: the original's shadow blit is not pinned
- * byte-level, so this adopts the value another reimplementation matched against the running original.
+ * The baked alpha of a shadow-atlas pixel. An approximation: the original's shadow alpha is not
+ * established, so this adopts the value another reimplementation matched against the running original.
  */
 export const SHADOW_ALPHA = 0x50;
 

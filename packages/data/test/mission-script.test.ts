@@ -48,7 +48,7 @@ const KIND_CASE_OPCODES = [
 ] as const;
 
 describe('the mission opcode tables', () => {
-  it('holds the engine table sizes with unique, case-insensitively distinct names', () => {
+  it('holds the original table sizes with unique, case-insensitively distinct names', () => {
     expect(MISSION_GOALS.length).toBe(63);
     expect(MISSION_RESULTS.length).toBe(103);
     for (const rows of [MISSION_GOALS, MISSION_RESULTS]) {
