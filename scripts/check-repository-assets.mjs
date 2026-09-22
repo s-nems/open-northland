@@ -21,7 +21,6 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/ui/foundation/icons.png',
   'packages/app/src/assets/ui/foundation/notices.png',
   'packages/app/src/assets/ui/foundation/surface.png',
-  'packages/app/public/favicon.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
   // The menu's typefaces: Cinzel and Alegreya Sans, subset from Google Fonts releases; SIL OFL
@@ -34,9 +33,21 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/fonts/alegreyasans-latinext-700.woff2',
   'packages/app/public/fonts/cinzel-latin.woff2',
   'packages/app/public/fonts/cinzel-latinext.woff2',
-  // Original OpenNorthland branding (commissioned art, no original-game material): the emblem
-  // as favicon/app icon; docs/images/logo.webp gives the README a stable logo path.
+  // Original OpenNorthland branding (commissioned art, no original-game material). The masters live
+  // in tools/brand/source; `npm run brand` derives the rest, including docs/images/logo.webp above.
+  'tools/brand/source/emblem.png',
+  'tools/brand/source/lockup-horizontal.png',
+  'tools/brand/source/lockup-stacked.png',
+  'tools/brand/source/wordmark.png',
+  'packages/app/public/apple-touch-icon.png',
+  'packages/app/public/favicon.ico',
+  'packages/app/public/icon-192.png',
+  'packages/app/public/icon-512.png',
+  'packages/app/public/icon-512-maskable.png',
+  'packages/app/public/og-image.png',
+  'packages/app/src/assets/brand/logo-stacked-muted.webp',
   'packages/desktop/build/icon.icns',
+  'packages/desktop/build/icon.ico',
   'packages/desktop/build/icon.png',
 ]);
 

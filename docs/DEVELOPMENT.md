@@ -391,6 +391,20 @@ npm run test:desktop    # app:// boot and save/load across a relaunch; requires 
 installers under `packages/desktop/release/`, so the packaged game plays without any content on the
 player's machine.
 
+## Brand assets
+
+```bash
+npm run brand
+```
+
+Regenerates every committed icon and logo from the masters in `tools/brand/source/`: the favicon,
+web manifest icons, Open Graph image, desktop `icon.png`/`icon.ico`/`icon.icns`, the README logo and
+the main menu lockup. Edit a master, run the command and commit the outputs together. Sizes up to
+32 px come from `emblem-flat.svg`, a glyph drawn on a 16 px grid because the painted emblem turns to
+mud that small; `emblem-mono.svg` is the single-colour variant for badges and print. The lockup is
+gold everywhere except the main menu, which gets a muted cold-brass tone derived in the script so
+the logo sits in the menu's cold palette.
+
 ## Web image
 
 The web image is the web app of a commit: nginx serving `packages/app/dist` and `content/` from one

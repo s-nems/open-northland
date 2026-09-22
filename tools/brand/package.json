@@ -1,0 +1,13 @@
+{
+  "name": "@open-northland/brand",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Derives every committed icon, logo and web-manifest asset from the brand masters in source/",
+  "scripts": {
+    "generate": "node build.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.4"
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor">
+  <title>Open Northland</title>
+  <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="4"/>
+  <rect x="31" y="12" width="2" height="28"/>
+  <rect x="20" y="15" width="4.6" height="20"/>
+  <rect x="26.6" y="15" width="4.6" height="20"/>
+  <rect x="33.2" y="15" width="4.6" height="20"/>
+  <rect x="39.8" y="15" width="4.2" height="20"/>
+  <path d="M10 39 Q32 47 54 39 L50 44 Q32 50 14 44 Z"/>
+  <path d="M54 39 Q57 33 53 25 Q52 30 49.5 33.5 Q52 36 54 39 Z"/>
+  <path d="M10 39 Q7 34 11 27 Q12 31 14.5 34.5 Q12 37 10 39 Z"/>
+  <path d="M14 49.5 Q19 46.5 24 49.5 T34 49.5 T44 49.5 T50 48.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
