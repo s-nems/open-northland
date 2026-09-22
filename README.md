@@ -88,8 +88,8 @@ read [`AGENTS.md`](AGENTS.md).
 
 ## License and trademarks
 
-Open Northland's code is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE). The project's
-HUD chrome, logo and icons are not: their terms are in [`LICENSE-ASSETS`](LICENSE-ASSETS).
+Open Northland, including its HUD chrome, logo and icons, is licensed under AGPL-3.0-or-later. See
+[`LICENSE`](LICENSE).
 
 This is an independent project. It is not affiliated with or endorsed by Funatics Software, Daedalic
 Entertainment, or another rights holder of the *Cultures* series. Game names are used only to
