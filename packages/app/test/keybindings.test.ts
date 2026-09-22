@@ -45,10 +45,20 @@ describe('parseKeyBindings', () => {
     expect(parseKeyBindings({ attackMove: null }).attackMove).toBeNull();
   });
 
-  it('gives a doubly-claimed code to the earlier action and unbinds the later one', () => {
-    const parsed = parseKeyBindings({ panLeft: 'KeyP' });
-    expect(parsed.panLeft).toBe('KeyP');
-    expect(parsed.pauseToggle).toBeNull();
+  it("keeps a player's chord over a default that claims the same key", () => {
+    const earlier = parseKeyBindings({ panLeft: 'KeyP' });
+    expect(earlier.panLeft).toBe('KeyP');
+    expect(earlier.pauseToggle).toBeNull();
+    // Residents comes first in action order, yet its default must not take the player's F2.
+    const later = parseKeyBindings({ attackMove: 'F2' });
+    expect(later.attackMove).toBe('F2');
+    expect(later.residents).toBeNull();
+  });
+
+  it('gives a chord stored twice to the earlier action and unbinds the later one', () => {
+    const parsed = parseKeyBindings({ panLeft: 'KeyO', attackMove: 'KeyO' });
+    expect(parsed.panLeft).toBe('KeyO');
+    expect(parsed.attackMove).toBeNull();
   });
 
   it('fills older stored settings with the default 1-0 control-group bindings', () => {

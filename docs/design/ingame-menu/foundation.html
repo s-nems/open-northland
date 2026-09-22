@@ -423,13 +423,13 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
   </aside>
 
   <nav class="nav panel" aria-label="Menu gry">
-    <button type="button" aria-pressed="true" title="Buduj · klawisz 1"><kbd class="key" aria-hidden="true">1</kbd><span class="painted" aria-hidden="true" style="--ix:0%;--iy:11.5%"></span><span data-copy="buildNav">Buduj</span></button>
-    <button type="button" title="Mieszkańcy · klawisz 2"><kbd class="key" aria-hidden="true">2</kbd><svg aria-hidden="true" class="people-token" fill="url(#pawn-wood)"><use href="#i-pawns"/></svg><span data-copy="peopleNav">Mieszkańcy</span></button>
-    <button type="button" title="Asystent · klawisz 3"><kbd class="key" aria-hidden="true">3</kbd><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:11.5%"></span><span>Asystent</span></button>
-    <button type="button" title="Statystyki · klawisz 4"><kbd class="key" aria-hidden="true">4</kbd><span class="painted" aria-hidden="true" style="--ix:100%;--iy:11.5%"></span><span>Statystyki</span></button>
-    <button type="button" title="Misja · klawisz 5"><kbd class="key" aria-hidden="true">5</kbd><span class="painted" aria-hidden="true" style="--ix:0%;--iy:88%"></span><span>Misja</span></button>
-    <button type="button" title="Dyplomacja · klawisz 6"><kbd class="key" aria-hidden="true">6</kbd><span class="painted" aria-hidden="true" style="--ix:33.3333%;--iy:88%"></span><span>Dyplomacja</span></button>
-    <button type="button" title="Wiedza · klawisz 7"><kbd class="key" aria-hidden="true">7</kbd><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:88%"></span><span>Wiedza</span></button>
+    <button type="button" aria-pressed="true"><span class="painted" aria-hidden="true" style="--ix:0%;--iy:11.5%"></span><span data-copy="buildNav">Buduj</span></button>
+    <button type="button"><svg aria-hidden="true" class="people-token" fill="url(#pawn-wood)"><use href="#i-pawns"/></svg><span data-copy="peopleNav">Mieszkańcy</span></button>
+    <button type="button"><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:11.5%"></span><span>Asystent</span></button>
+    <button type="button"><span class="painted" aria-hidden="true" style="--ix:100%;--iy:11.5%"></span><span>Statystyki</span></button>
+    <button type="button"><span class="painted" aria-hidden="true" style="--ix:0%;--iy:88%"></span><span>Misja</span></button>
+    <button type="button"><span class="painted" aria-hidden="true" style="--ix:33.3333%;--iy:88%"></span><span>Dyplomacja</span></button>
+    <button type="button"><span class="painted" aria-hidden="true" style="--ix:66.6667%;--iy:88%"></span><span>Wiedza</span></button>
   </nav>
 </div>
 </section>
@@ -504,7 +504,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
   <div class="card notes">
     <h2>Okno mieszkańców (ticket 07, zaakceptowane)</h2>
     <ul>
-      <li>Mieszkańcy / 2 albo F7 (klawisz oryginału) otwiera listę od razu: to samo okno centralne co Budowanie, 640 px, przewija się pergamin. Lista obejmuje tylko ludzi lokalnego gracza; zwierzęta, pojazdy i cudzy ludzie nie wchodzą.</li>
+      <li>Mieszkańcy otwiera listę od razu: to samo okno centralne co Budowanie, 640 px, przewija się pergamin. Lista obejmuje tylko ludzi lokalnego gracza; zwierzęta, pojazdy i cudzy ludzie nie wchodzą.</li>
       <li>Filtry jak w oryginalnym oknie poddanych, z tymi samymi warunkami: Mężczyźni i Kobiety to dorośli (kobiety bez bohaterek), Dzieci to wszyscy niedorośli, Pracownicy to dorośli mężczyźni poza żołnierzami, bohaterami i cywilami, a Cywile to dorośli mężczyźni bez zawodu, czyli ci, którym można go nadać. „Bez domu” i „bez pary” pomijają żołnierzy i bohaterów, „bez narzędzi” liczy pracowników bez narzędzia (poza zwiadowcą, któremu asystent go nie daje), „bez butów” dorosłych mężczyzn poza bohaterami, „bez dzieci” dorosłe kobiety, „bez broni” żołnierzy. „Bez miejsca pracy” jest nowe: pracownik z zawodem, ale bez miejsca pracy (zastępuje osobne okno z zadania o niezatrudnionych). „Bez miodu” też jest nowe: dorosły mężczyzna bez butelki miodu pitnego w ekwipunku, czyli ci sami ludzie, którym miód rozdaje asystent. Kobieta, dziecko i bohater niczego nie noszą (w oryginale tablica ekwipunku wypełnia się tylko dorosłemu mężczyźnie poza bohaterami), więc nie brakuje im butów, narzędzi, broni ani miodu. „Bez miejsca pracy” pomija zawody pracujące w terenie (budowniczy, zwiadowca) i zbieraczy z flagą pracy.</li>
       <li>Oba paski filtrów to jedna siatka ośmiu równych prostokątnych pól na całą szerokość okna: liczba u góry, podpis pod nią, a w pasku braków ikona przy liczbie. Etykiety „Kto” i „Bez” stoją w tej samej wąskiej kolumnie.</li>
       <li>Zmiana względem oryginału: tam działał jeden filtr naraz. Tu „Kto” jest jednym wyborem, a braki, zawód, „może zostać” i szukanie łączą się z nim (wszystkie warunki naraz). Szukanie dopasowuje imię, zawód i miejsce pracy, więc „piek” znajduje piekarzy i obsadę piekarni. Liczby zawężają się do pozostałych filtrów: po wybraniu „Pracownicy” pola „Bez” liczą tylko pracowników, a po wybraniu braku pola „Kto” liczą tylko ludzi z tym brakiem. Pole liczy to, co pokazałby jego własny wybór, więc rząd „Kto” nie zawęża sam siebie. Tak samo zawęża się lista „Zawód”. Pole z zerem jest przygaszone.</li>

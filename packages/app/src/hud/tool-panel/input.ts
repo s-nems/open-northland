@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
-import { isActionHotkey, isTypingTarget } from '../hotkeys.js';
+import { isActionHotkey, isFieldKey } from '../hotkeys.js';
 import { isFunctionKeyCode, type KeyBindings, type KeybindingAction } from '../keybindings.js';
-import type { NavEntryId } from './nav-effects.js';
+import { NAV_ENTRY_IDS, type NavEntryId } from './nav-effects.js';
 import type { ToolWindows } from './windows.js';
 
 /** Every branch here that consumes a press stops it reaching world picking behind the panel. */
@@ -14,16 +14,16 @@ export interface HeldMode {
   handleClick(clientX: number, clientY: number): boolean;
 }
 
-/** The beam entry each window key toggles. */
-const NAV_KEYS: readonly (readonly [KeybindingAction, NavEntryId])[] = [
-  ['construction', 'build'],
-  ['residents', 'residents'],
-  ['assistant', 'assistant'],
-  ['statistics', 'statistics'],
-  ['mission', 'mission'],
-  ['diplomacy', 'diplomacy'],
-  ['knowledge', 'knowledge'],
-];
+/** The action whose key toggles each beam entry. */
+const NAV_KEYS: Readonly<Record<NavEntryId, KeybindingAction>> = {
+  build: 'construction',
+  residents: 'residents',
+  assistant: 'assistant',
+  statistics: 'statistics',
+  mission: 'mission',
+  diplomacy: 'diplomacy',
+  knowledge: 'knowledge',
+};
 
 export interface ToolPanelInputDeps {
   readonly canvas: HTMLCanvasElement;
@@ -111,7 +111,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const modalOwned = (e: KeyboardEvent): boolean =>
     (e.target instanceof Element && e.target.closest('[aria-modal="true"]') !== null) ||
     deps.keyboardOwned?.() === true;
-  const keyboardOwned = (e: KeyboardEvent): boolean => isTypingTarget(e.target) || modalOwned(e);
+  const keyboardOwned = (e: KeyboardEvent): boolean => isFieldKey(e) || modalOwned(e);
   const consume = (e: KeyboardEvent): void => {
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -122,8 +122,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const onKeyDown = (e: KeyboardEvent): void => {
     const sheet = windows.byId.mission;
     // The F-row is the game's while it runs, bound or not, under a dialog or in a field: the browser's
-    // own F1 help, F3 find, F5 reload or F7 caret prompt must never fire over a match.
-    if (isFunctionKeyCode(e.code)) e.preventDefault();
+    // own F1 help, F3 find, F5 reload or F7 caret prompt must never fire over a match. A Ctrl, Alt or
+    // Meta chord stays the system's (Alt+F4 closes the window) unless an action binds it.
+    if (isFunctionKeyCode(e.code) && !e.ctrlKey && !e.altKey && !e.metaKey) e.preventDefault();
     if (e.code === 'Escape') {
       escapeClaimed = false;
       if (keyboardOwned(e)) return;
@@ -143,15 +144,14 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       deps.openMenu();
       return;
     }
-    // A field keeps its letters, which `isActionHotkey` already leaves to it; an F-key works from one.
     if (isActionHotkey(e, deps.bindings, 'hudToggle')) {
       if (modalOwned(e)) return;
       consume(e);
       deps.toggleHud();
       return;
     }
-    for (const [action, entry] of NAV_KEYS) {
-      if (!isActionHotkey(e, deps.bindings, action)) continue;
+    for (const entry of NAV_ENTRY_IDS) {
+      if (!isActionHotkey(e, deps.bindings, NAV_KEYS[entry])) continue;
       if (modalOwned(e)) return;
       consume(e);
       deps.toggleNav(entry);

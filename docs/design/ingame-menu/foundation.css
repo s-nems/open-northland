@@ -2041,29 +2041,6 @@ button.medallion:hover {
 .nav button[aria-pressed="true"] > span:last-child {
   color: var(--bronze-hi);
 }
-.key {
-  display: grid;
-  place-items: center;
-  position: absolute;
-  right: 4px;
-  top: 3px;
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--bronze-lo);
-  border-radius: 3px;
-  background: var(--deep);
-  color: #cdbf9d;
-  font:
-    700 8px / 1 Alegreya,
-    serif;
-  z-index: 2;
-  opacity: 0.75;
-}
-.nav button:hover .key,
-.nav button:focus-visible .key {
-  opacity: 1;
-  color: var(--bronze-hi);
-}
 
 /* ---------- specification cards below the preview ---------- */
 .spec {

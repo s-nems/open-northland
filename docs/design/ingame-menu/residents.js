@@ -517,10 +517,5 @@ document.addEventListener('click', (event) => {
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !win.hidden) show('closed');
-  // The original's subjects-window key.
-  if (event.key === 'F7') {
-    event.preventDefault();
-    show(win.hidden ? 'list' : 'closed');
-  }
 });
 if (location.hash === '#residents') show('list');

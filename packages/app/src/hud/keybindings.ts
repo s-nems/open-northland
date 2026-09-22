@@ -195,21 +195,31 @@ export function changedKeyBindings(bindings: KeyBindings): Partial<Record<Keybin
   );
 }
 
-/** Parse stored bindings, filling missing or malformed actions from the current defaults. */
+/**
+ * Parse stored bindings, filling missing or malformed actions from the current defaults. A stored chord
+ * claims its key before any default does, so a new default never takes a key the player picked; within
+ * each pass the earlier action wins a doubly-claimed chord and the later one is left unbound.
+ */
 export function parseKeyBindings(value: unknown): KeyBindings {
   const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
   const taken = new Set<string>();
-  const result = {} as Record<KeybindingAction, string | null>;
+  const claim = (binding: string | null): string | null => {
+    if (binding === null || taken.has(binding)) return null;
+    taken.add(binding);
+    return binding;
+  };
+  const own = new Map<KeybindingAction, string | null>();
   for (const action of KEYBINDING_ACTIONS) {
     const stored = record[action];
-    let binding: string | null;
-    if (stored === null) binding = null;
+    if (stored === null) own.set(action, null);
     else if (typeof stored === 'string' && isBindableBinding(stored) && bindingAllowedFor(action, stored)) {
-      binding = stored;
-    } else binding = DEFAULT_KEY_BINDINGS[action];
-    if (binding !== null && taken.has(binding)) binding = null;
-    if (binding !== null) taken.add(binding);
-    result[action] = binding;
+      own.set(action, claim(stored));
+    }
+  }
+  const result = {} as Record<KeybindingAction, string | null>;
+  for (const action of KEYBINDING_ACTIONS) {
+    const binding = own.get(action);
+    result[action] = binding !== undefined ? binding : claim(DEFAULT_KEY_BINDINGS[action]);
   }
   return result;
 }

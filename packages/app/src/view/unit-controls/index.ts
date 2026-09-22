@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { isActionHotkey, isTypingTarget } from '../../hud/hotkeys.js';
+import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
@@ -256,7 +256,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
-    const groupCommand = isTypingTarget(e.target) ? null : controlGroupCommand(e, opts.bindings);
+    const groupCommand = isFieldKey(e) ? null : controlGroupCommand(e, opts.bindings);
     if (groupCommand !== null) {
       e.preventDefault();
       if (groupCommand.mode === 'replace') {

@@ -1,5 +1,5 @@
 import type { Camera } from '@open-northland/render';
-import { isTypingTarget } from '../../hud/hotkeys.js';
+import { isFieldKey } from '../../hud/hotkeys.js';
 import { bindingFromKeyboardEvent, type KeyBindings } from '../../hud/keybindings.js';
 import {
   type CameraTuning,
@@ -137,7 +137,7 @@ export function createCameraController(
   const onKeyDown = (e: KeyboardEvent): void => {
     if (suspended) return;
     const action = panActionFor(e);
-    if (action === undefined || isTypingTarget(e.target)) return;
+    if (action === undefined || isFieldKey(e)) return;
     held.add(action);
     e.preventDefault(); // arrow keys (the default bindings) would otherwise scroll the page
   };

@@ -176,12 +176,17 @@ export function readStoredSettings(): MenuSettings {
   }
 }
 
+type StoredSettings = Omit<MenuSettings, 'language' | 'keyBindings'> & {
+  readonly language?: MenuSettings['language'];
+  readonly changedKeyBindings: ReturnType<typeof changedKeyBindings>;
+};
+
 /**
  * A language matching the browser's is left out of the blob, the same elision the URL makes, and so
  * is every binding still at its default: changing an unrelated setting never freezes a language or a
  * key the player never picked, and a new default reaches them.
  */
-function storedShape(settings: MenuSettings): Record<string, unknown> {
+function storedShape(settings: MenuSettings): StoredSettings {
   const { language, keyBindings, ...rest } = settings;
   return {
     ...rest,

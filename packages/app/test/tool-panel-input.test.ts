@@ -297,11 +297,26 @@ describe('tool panel Escape ladder', () => {
     const reload = key('F5');
     const unbound = key('F10');
     const fullscreen = key('F11');
-    for (const press of [reload, unbound, fullscreen]) windowTarget.dispatchEvent(press);
+    const closeWindow = Object.assign(key('F4'), { altKey: true });
+    for (const press of [reload, unbound, fullscreen, closeWindow]) windowTarget.dispatchEvent(press);
     expect(reload.defaultPrevented).toBe(true);
     expect(unbound.defaultPrevented).toBe(true);
     expect(fullscreen.defaultPrevented).toBe(false);
+    expect(closeWindow.defaultPrevented).toBe(false);
     expect(navToggled).toEqual([]);
+    input.dispose();
+  });
+
+  it('blocks a held F-key without toggling again, and matches its chord exactly', () => {
+    const { input, windowTarget, navToggled } = mount();
+    windowTarget.dispatchEvent(key('F5'));
+    const held = Object.assign(key('F5'), { repeat: true });
+    windowTarget.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
+    const shifted = Object.assign(key('F2'), { shiftKey: true });
+    windowTarget.dispatchEvent(shifted);
+    expect(shifted.defaultPrevented).toBe(true);
+    expect(navToggled).toEqual(['mission']);
     input.dispose();
   });
 
