@@ -78,7 +78,7 @@ export interface ToolPanelOptions {
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The content set's goods, so the summary can name a stock entry by its stable string id. */
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
-  /** The asset set the map draws with; the DOM surfaces' good icons come from the same. */
+  /** The pack the map draws with, or null for the original's art; DOM good icons follow it. */
   readonly pack: PresentationPack | null;
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;

@@ -44,8 +44,8 @@ async function restorePublication(root: string) {
     }
     await writeFile(join(root, 'docs/art/delivery.json'), journal.registry);
   }
-  await rm(base, { recursive: true, force: true });
   await mirrorSharedUi(root);
+  await rm(base, { recursive: true, force: true });
 }
 export async function mirrorSharedUi(root: string) {
   const source = join(runtimePack(root), SHARED_UI),
@@ -75,6 +75,7 @@ export async function installDelivery(root: string, prepared: string, registry: 
     await restorePublication(root);
     throw error;
   }
-  await rm(base, { recursive: true, force: true });
+  // Mirrored while the journal still exists, so an interrupted mirror is redone by `art recover`.
   await mirrorSharedUi(root);
+  await rm(base, { recursive: true, force: true });
 }

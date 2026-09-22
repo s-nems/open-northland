@@ -366,8 +366,8 @@ lifetime, dedupe and priority table.
 
 ## Original art and remaining work
 
-The painted action icons, the notification emblems and the surface texture are the `ui/foundation` art package
-([recipe](../../art/ui/foundation/asset.json), [package notes](../../art/ui/foundation/README.md)):
+The painted action icons, the notification emblems and the surface texture are the `ui/foundation` art package,
+whose recipe and package notes live with the art sources in the custom art fork:
 the 4 × 2 atlas `nordic-icons-v4.png` of simple single-object icons, the game-menu sheet
 `nordic-menu-v1.png` (its oak door is the menu medallion), the 4 × 2 notification emblem sheet
 `nordic-notices-v1.png` (flat emblems whose magenta areas are the seat-colour key) and the carved

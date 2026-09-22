@@ -58,7 +58,7 @@ export interface GameToolPanelDeps {
   readonly goodLabel: (typeId: number) => string | undefined;
   /** The content set's goods, for the summary bar's per-good rows. */
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
-  /** The asset set the map draws with, so the HUD's good icons match it. */
+  /** The pack the map draws with, or null for the original's art, so the HUD's good icons match it. */
   readonly pack: PresentationPack | null;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;

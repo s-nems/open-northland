@@ -13,7 +13,7 @@ import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
 import { FIGURE } from './icons.js';
 
 export interface HudSummaryDeps {
-  /** The asset set the map draws with; the category icons come from the same. */
+  /** The pack the map draws with, or null for the original's art; the category icons follow it. */
   readonly pack: PresentationPack | null;
   /** A stock entry's good by its content type id; `undefined` when the catalog has no such good. */
   readonly goodIdOf: (goodType: number) => string | undefined;

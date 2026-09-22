@@ -62,6 +62,7 @@ describe('iconCellStyle', () => {
 describe('delivered ui foundation', () => {
   it('reads the public copy of the HUD chrome', () => {
     const art = uiFoundationArt();
-    for (const url of [art?.surfaceUrl, art?.iconsUrl, art?.noticesUrl]) expect(url).toContain('assets/ui/foundation/');
+    for (const url of [art?.surfaceUrl, art?.iconsUrl, art?.noticesUrl])
+      expect(url).toContain('assets/ui/foundation/');
   });
 });

@@ -142,7 +142,7 @@ export async function assembleMapWorld(
     const irLoad = loadIr();
     const { goodNames, realContent } = await loadLocalizedRealContent(params);
     const ir = await irLoad;
-    // Every civilization the map fields brings its custom building and settler pages, so the sheet loads
+    // Every civilization the map fields brings its own building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
     const tribes = worldTribes(script, loaded?.entities, ir ?? {});
     await boot.begin('sprites');

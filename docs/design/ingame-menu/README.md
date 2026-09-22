@@ -93,8 +93,8 @@ Use original UI assets. Simple crisp controls and diagrams can be vector/code-na
 appropriate for illustrated icons/material details when it improves the design. Do not generate
 complete windows with baked text or use wireframe symbols as finished art.
 
-For raster generation, read the available imagegen skill and relevant
-[art instructions](../../art/AGENTS.md) / [production workflow](../../art/PIPELINE.md).
+Raster UI art is produced with the art sources in the custom art fork and lands here as delivered
+files under `packages/app/src/assets/ui/`. For raster generation, read the available imagegen skill.
 Prefer the built-in generator with existing plan usage when it meets the need. The user's standing
 authorization permits a bounded OpenAI API batch when a needed capability or material quality
 advantage justifies it (for example, genuine transparent output); explain the reason for switching.
@@ -108,7 +108,7 @@ embed secrets in prompts/browser code or commit credentials. A present key is no
 Keep exact prompts, model/tool/settings, ordered references and hashes, selected masters and export
 parameters. Review icons at their runtime sizes, including true alpha where needed, and obtain
 concrete visual acceptance. Reuse one icon family throughout the UI. For goods reuse the
-[goods icon contract](../../art/goods/README.md); menu action icons belong to the `ui/foundation`
+goods icon family; menu action icons belong to the `ui/foundation`
 art package rather than being mislabelled as tradeable goods. UI-only work does
 not authorize replacement world buildings or characters.
 

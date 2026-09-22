@@ -29,7 +29,8 @@ They remain the property of their rights holders whichever archive carries them.
 ## Project assets
 
 The project's HUD chrome under `packages/app/src/assets/ui/`, together with the project logo and
-icons, is copyrighted and not covered by the AGPL. Their terms are in [`../LICENSE-ASSETS`](../LICENSE-ASSETS): they may be used to
+icons, is copyrighted and not covered by the AGPL. The HUD chrome was generated for this project with
+image models from text prompts, without original-game input. Their terms are in [`../LICENSE-ASSETS`](../LICENSE-ASSETS): they may be used to
 build, run, test and contribute to Open Northland and redistributed unmodified inside a free build of
 it. Commercial distribution, use in another product, separate redistribution, and model training need
 written permission.

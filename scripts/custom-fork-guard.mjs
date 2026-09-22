@@ -37,11 +37,16 @@ export function forkViolation(path) {
   return 'upstream file: change it in the public repository and merge upstream/main';
 }
 
+/** Every path the working tree changes against its merge base with `upstream`, both sides of a move. */
+export function forkChanges(upstream, cwd = process.cwd()) {
+  const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  const base = git('merge-base', 'HEAD', upstream);
+  return git('diff', '--name-only', '--no-renames', base).split('\n').filter(Boolean);
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const upstream = process.argv[2] ?? 'upstream/main';
-  const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
-  const base = git('merge-base', 'HEAD', upstream);
-  const changed = git('diff', '--name-only', base).split('\n').filter(Boolean);
+  const changed = forkChanges(upstream);
   const violations = changed.flatMap((path) => {
     const reason = forkViolation(path);
     return reason === null ? [] : [`- ${path}: ${reason}`];

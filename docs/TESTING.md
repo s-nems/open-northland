@@ -245,8 +245,6 @@ See [`DEVELOPMENT.md`](DEVELOPMENT.md) for benchmark controls.
 - Sim behavior: standard gates plus a focused determinism or scenario test.
 - Pipeline or schema: standard gates plus `npm run test:pipeline`.
 - Real-content consumers: standard gates plus `npm run test:content` when local content exists.
-- Own-art build or delivery: [art pipeline verification](art/PIPELINE.md#verification), plus
-  real-content checks when compatibility joins change.
 - Sort comparators, the local float allowance, or the state hash: standard gates plus
   `npm run test:engines` when local content and the Playwright browsers exist.
 - Visual or audio work: matching automated checks plus a stated human review step.

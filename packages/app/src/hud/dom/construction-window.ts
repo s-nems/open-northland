@@ -40,7 +40,7 @@ export interface ConstructionWindowDeps {
   readonly plane: HTMLElement;
   readonly entries: readonly MenuBuildingEntry[];
   readonly thumbs: BuildingThumbs;
-  /** The asset set the map draws with; the cost icons come from the same. */
+  /** The pack the map draws with, or null for the original's art; the cost icons come from the same. */
   readonly pack: PresentationPack | null;
   /** A cost line's good by content type id; `undefined` skips its icon. */
   readonly goodIdOf: (goodType: number) => string | undefined;

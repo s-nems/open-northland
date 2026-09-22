@@ -9,16 +9,13 @@ Read the root contract first, then only the references needed for the task:
 | Change generated content or joins | Package contract, then [DATA-FORMAT.md](DATA-FORMAT.md) |
 | Choose checks or reproduce a defect | [TESTING.md](TESTING.md) |
 | Run the app, content conversion or diagnostics | Relevant section of [DEVELOPMENT.md](DEVELOPMENT.md) |
-| Create or revise artwork | [art/AGENTS.md](art/AGENTS.md), then the relevant asset recipe |
 | Select backlog work | `npm run tickets:list`, then the selected ticket |
 
 Package trees, manifests and test files are the source of truth for file locations and executable
-behavior. Open deeper format and art references when the task needs their evidence.
+behavior. Open deeper format references when the task needs their evidence.
 
 Other references:
 
-- [`art/AGENTS.md`](art/AGENTS.md): own-art contract and starting point for asset work
-- [`art/PIPELINE.md`](art/PIPELINE.md): source packages, candidate review and runtime publication
 - [`SCENES.md`](SCENES.md): acceptance scenes for tests and human review
 - [`SOURCES.md`](SOURCES.md): acceptable evidence for formats and game behavior
 - [`LEGAL.md`](LEGAL.md): game-data, licensing, and trademark rules
