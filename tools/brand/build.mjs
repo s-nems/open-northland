@@ -68,18 +68,14 @@ const OG_IMAGE = {
   veil: 'rgba(12, 20, 32, 0.4)',
   jpeg: { quality: 86, mozjpeg: true },
 };
-const README_LOGO_WIDTH = 1600;
-/** The light-theme README logo sets the wordmark on its own plaque, so ivory letters never meet white. */
-const README_LIGHT_EMBLEM_SCALE = 1.2;
-const README_LIGHT_GAP = 0.06;
+/** Twice the width README.md shows it at. The plaque behind the wordmark reads on light and dark themes. */
+const README_LOGO_WIDTH = 640;
 /** The Chrome install dialog shows wide screenshots up to a 2.3:1 ratio. */
 const SCREENSHOT_WIDTH = 1280;
 const WEBP = { quality: 90, alphaQuality: 100 };
 
 const emblemRaster = await trimmedMaster('emblem.png');
-const lockupHorizontal = await trimmedMaster('lockup-horizontal.png');
 const lockupStacked = await trimmedMaster('lockup-stacked.png');
-const wordmark = await trimmedMaster('wordmark.png');
 const smallEmblemSvg = await readFile(join(SOURCE, 'emblem-small.svg'));
 /** Open Northland's own renderer, never the original game (docs/LEGAL.md); the menu shows it too. */
 const SETTLEMENT = join(ROOT, 'docs/images/settlement.webp');
@@ -249,27 +245,6 @@ async function ogImage() {
     .toBuffer();
 }
 
-/** The emblem beside the plaque wordmark, for the README on GitHub's light theme. */
-async function readmeLightLogo() {
-  const text = await sharp(wordmark).resize({ width: README_LOGO_WIDTH }).png().toBuffer();
-  const { height: textHeight } = await sharp(text).metadata();
-  const emblemHeight = Math.round(textHeight * README_LIGHT_EMBLEM_SCALE);
-  const emblem = await sharp(emblemRaster).resize({ height: emblemHeight }).png().toBuffer();
-  const { width: emblemWidth } = await sharp(emblem).metadata();
-  const gap = Math.round(README_LOGO_WIDTH * README_LIGHT_GAP);
-  const width = emblemWidth + gap + README_LOGO_WIDTH;
-  const combined = await sharp({
-    create: { width, height: emblemHeight, channels: 4, background: TRANSPARENT },
-  })
-    .composite([
-      { input: emblem, left: 0, top: 0 },
-      { input: text, left: emblemWidth + gap, top: Math.round((emblemHeight - textHeight) / 2) },
-    ])
-    .png()
-    .toBuffer();
-  return sharp(combined).resize({ width: README_LOGO_WIDTH }).webp(WEBP).toBuffer();
-}
-
 function webManifest(screenshot) {
   return `${JSON.stringify(
     {
@@ -344,9 +319,8 @@ await emit(DESKTOP_BUILD, 'icon.icns', icns(icnsSlots));
 await emit(
   DOCS_IMAGES,
   'logo.webp',
-  await sharp(lockupHorizontal).resize({ width: README_LOGO_WIDTH }).webp(WEBP).toBuffer(),
+  await sharp(lockupStacked).resize({ width: README_LOGO_WIDTH }).webp(WEBP).toBuffer(),
 );
-await emit(DOCS_IMAGES, 'logo-light.webp', await readmeLightLogo());
 await emit(
   APP_BRAND,
   'logo-stacked.webp',

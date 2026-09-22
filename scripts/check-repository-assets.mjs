@@ -5,7 +5,6 @@ import { isForbiddenGameFile } from './game-asset-policy.mjs';
 
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',
-  'docs/images/logo-light.webp',
   'docs/images/settlement.webp',
   // The menu's backdrop stills: Open Northland rendering decoded maps, on the same footing as
   // settlement.webp.
@@ -35,7 +34,7 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/fonts/cinzel-latin.woff2',
   'packages/app/public/fonts/cinzel-latinext.woff2',
   // Original OpenNorthland branding (commissioned art, no original-game material). The masters live
-  // in tools/brand/source; `npm run brand` derives the rest, including the README logos above. The
+  // in tools/brand/source; `npm run brand` derives the rest, including the README logo above. The
   // Open Graph image and the manifest screenshot also use docs/images/settlement.webp, a capture of
   // Open Northland's own renderer.
   'tools/brand/source/emblem.png',
