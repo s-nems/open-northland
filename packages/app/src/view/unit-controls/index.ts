@@ -14,6 +14,7 @@ import {
   isControlGroupMember,
 } from './control-groups.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
+import { jobMatesAround } from './job-mates.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
@@ -25,6 +26,9 @@ import { createUnitTargets } from './unit-targets.js';
 import { createWorkAreaOverlay } from './work-area.js';
 
 export type { UnitControls, UnitControlsOptions } from './types.js';
+
+/** The browser's click count (`MouseEvent.detail`) on the second press of a double-click. */
+const DOUBLE_CLICK = 2;
 
 /**
  * App-layer select-and-command input: it reads the mouse and keyboard and issues sim commands through
@@ -196,6 +200,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     marquee.update(e.clientX, e.clientY);
   };
 
+  /**
+   * A double-click's second release on a settler the first release selected: that settler's trade mates
+   * around the cursor, or null for any other release.
+   */
+  const jobMatesOf = (e: MouseEvent, hit: number, at: { x: number; y: number }): number[] | null =>
+    e.detail >= DOUBLE_CLICK && selection.ids().has(hit)
+      ? jobMatesAround(unitTargets.owned('settler'), hit, at, opts.snapshot(), opts.content)
+      : null;
+
   const onMouseUp = (e: MouseEvent): void => {
     if (e.button !== 0 || !marquee.active()) return;
     const release = marquee.release(e.clientX, e.clientY);
@@ -208,7 +221,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else {
       const w = toWorld(e.clientX, e.clientY);
       const hit = clickHits.selectionAt(w.x, w.y);
-      if (hit !== null) {
+      const mates = hit === null ? null : jobMatesOf(e, hit, w);
+      if (mates !== null) {
+        applySelection(mates, e.shiftKey); // the original's double-click plays no further click
+      } else if (hit !== null) {
         applySelection([hit], e.shiftKey);
         cue('confirm');
       } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
