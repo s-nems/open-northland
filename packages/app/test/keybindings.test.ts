@@ -113,13 +113,13 @@ describe('assignBinding', () => {
 
 describe('isBindableCode', () => {
   it('accepts plain game keys', () => {
-    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Comma', 'Home']) {
+    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Comma', 'Home', 'F9']) {
       expect(isBindableCode(code), code).toBe(true);
     }
   });
 
   it('rejects modifiers and browser-owned keys', () => {
-    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F5']) {
+    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F5', 'F7']) {
       expect(isBindableCode(code), code).toBe(false);
     }
   });

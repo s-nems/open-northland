@@ -69,7 +69,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   professionPicker: 'KeyC',
   attackMove: 'KeyA',
   workFlagOrder: 'Primary+Mouse2',
-  hudToggle: 'KeyH',
+  hudToggle: 'F9',
   ...controlGroupDefaults,
 };
 
@@ -86,9 +86,11 @@ export function controlGroupBinding(action: ControlGroupBindingAction): {
 }
 
 /** Codes a binding may take. Escape stays the fixed cancel key and may hold only the game menu, which
- *  opens once there is nothing left to cancel (`bindingAllowedFor`); Tab, Enter and the F-row stay out. */
+ *  opens once there is nothing left to cancel (`bindingAllowedFor`); Tab and Enter stay out. Of the
+ *  F-row only F9, the HUD toggle's default, is taken: F7 is the fixed residents key and F5, F11 and F12
+ *  belong to the browser. */
 const BINDABLE_KEY_CODE =
-  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
+  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete|F9)$/;
 const ESCAPE_ACTION: KeybindingAction = 'gameMenu';
 const BINDABLE_POINTER_CODE = /^Mouse[012]$/;
 const MODIFIER_ORDER = ['Primary', 'Ctrl', 'Shift', 'Alt', 'Meta'] as const;

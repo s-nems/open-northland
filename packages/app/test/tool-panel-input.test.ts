@@ -265,15 +265,15 @@ describe('tool panel Escape ladder', () => {
   it('toggles the HUD on its key, unless a text field or another surface owns the keyboard', () => {
     let owned = false;
     const { input, windowTarget, hudToggled } = mount(() => owned);
-    const hide = key('KeyH');
+    const hide = key('F9');
     windowTarget.dispatchEvent(hide);
     expect(hudToggled()).toBe(1);
     expect(hide.defaultPrevented).toBe(true);
-    const typed = key('KeyH');
+    const typed = key('F9');
     Object.defineProperty(typed, 'target', { value: new TextField() });
     windowTarget.dispatchEvent(typed);
     owned = true;
-    windowTarget.dispatchEvent(key('KeyH'));
+    windowTarget.dispatchEvent(key('F9'));
     expect(hudToggled()).toBe(1);
     input.dispose();
   });
