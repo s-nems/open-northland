@@ -124,18 +124,15 @@ export function assignWorkerGroup(
   command: Extract<Command, { kind: 'assignWorkerGroup' }>,
 ): void {
   const building = command.building;
-  const jobPriorityOf = new Map<Entity, readonly number[]>();
-  for (const worker of command.workers) {
-    if (!jobPriorityOf.has(worker.entity)) jobPriorityOf.set(worker.entity, worker.jobPriority);
-  }
   const workplaceOf = (e: Entity): Entity | undefined => world.tryGet(e, JobAssignment)?.workplace;
-  for (const e of groupPlacementOrder(world, ctx, [...jobPriorityOf.keys()], building, workplaceOf)) {
-    assignWorker(world, ctx, {
-      kind: 'assignWorker',
-      entity: e,
-      building,
-      jobPriority: jobPriorityOf.get(e) ?? [],
-    });
+  for (const { entity, jobPriority } of groupPlacementOrder(
+    world,
+    ctx,
+    command.members,
+    building,
+    workplaceOf,
+  )) {
+    assignWorker(world, ctx, { kind: 'assignWorker', entity, building, jobPriority });
   }
 }
 

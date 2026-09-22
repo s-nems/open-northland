@@ -26,6 +26,7 @@ export {
   COMMAND_ENVELOPE_VERSION,
   type Command,
   type CommandEnvelope,
+  type GroupMember,
   type GroupWorker,
   orderedSettler,
   ownedEnvelope,

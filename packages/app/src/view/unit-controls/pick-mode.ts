@@ -23,7 +23,7 @@ import type { UnitTargets } from './unit-targets.js';
  * allowed the order when it was armed, so a mixed selection's order skips the rest.
  */
 export type PickMode =
-  | { readonly kind: BuildingPickKind; readonly settlers: readonly number[] }
+  | { readonly kind: BuildingPickKind; readonly units: readonly number[] }
   | { readonly kind: ScoutPickKind; readonly scout: number }
   | { readonly kind: SpotPickKind; readonly units: readonly number[] }
   | { readonly kind: StrikePickKind; readonly units: readonly number[] };
@@ -70,7 +70,9 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
     // This mode places each settler's current trade only; it never re-trades.
     orders: (snapshot, settlers, building, byType) => {
       const workers = workerGroupAt(snapshot, building, settlers, byType);
-      return workers === null ? [] : [{ kind: 'assignWorkerGroup', building: building as Entity, workers }];
+      return workers === null
+        ? []
+        : [{ kind: 'assignWorkerGroup', building: building as Entity, members: workers }];
     },
   },
   home: {
@@ -80,7 +82,7 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
         ? [
             {
               kind: 'assignHouseGroup',
-              entities: settlers.map((e) => e as Entity),
+              members: settlers.map((e) => ({ entity: e as Entity })),
               house: building as Entity,
             },
           ]
@@ -116,7 +118,7 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
 };
 
 const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly kind: BuildingPickKind }> =>
-  'settlers' in mode;
+  Object.hasOwn(BUILDING_PICKS, mode.kind);
 
 const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | ScoutPickKind>([
   'destination',
@@ -264,7 +266,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'building-site':
       case 'learning-place':
       case 'trade-house':
-        return resolveBuilding(event, mode.kind, mode.settlers);
+        return resolveBuilding(event, mode.kind, mode.units);
       case 'attack-settler':
         return deps.orders().issueAttackTarget(event, 'settler', mode.units);
       case 'attack-building':
@@ -310,7 +312,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       const mode = pickMode;
       // Only the building picks light targets up; the rest show on the ground or the cursor.
       if (mode === null || !isBuildingPick(mode)) return null;
-      return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.settlers, buildingsByType);
+      return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.units, buildingsByType);
     },
     () => pickVersion,
   );

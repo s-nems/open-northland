@@ -5,6 +5,7 @@ import { playerPlacementTribes } from '../../components/player-placement.js';
 import type {
   Command,
   CommandEnvelope,
+  GroupMember,
   PlaceBuildingCommand,
   PlayerCommand,
   SeatEnvelope,
@@ -13,35 +14,27 @@ import { COMMAND_ISSUER } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 
 /**
- * Whether the envelope's origin is entitled to the command it carries. A rejected command still lands
- * in the replay log, so the same log replays to the same state. A group order's members are not gated
- * here: {@link authorizedCommand} narrows them to the ones the seat commands.
+ * The command the envelope applies, or undefined when its origin is not entitled to it. A rejected
+ * command still lands in the replay log, so the same log replays to the same state. A seat's group order
+ * keeps only the `members` the seat commands, so one held by a script, fallen, or not the seat's own
+ * does not void the rest; the log keeps the order as issued, and a replay narrows it the same way.
  */
-export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
-  if (!ownerFieldsValid(envelope.command)) return false;
-  if (envelope.origin === 'setup' || envelope.origin === 'admin') return true;
-  const command = envelope.command;
-  if ('entity' in command && !seatCommandsUnit(world, envelope, command.entity)) return false;
-  return seatMayIssue(world, envelope.player, command);
-}
-
-/**
- * The command an authorized envelope applies. A seat's group order keeps only the members the seat
- * commands, so one member held by a script, fallen, or not the seat's own does not void the rest; the
- * log keeps the order as issued, and a replay narrows it the same way.
- */
-export function authorizedCommand(world: World, envelope: CommandEnvelope): Command {
+export function authorizedCommand(world: World, envelope: CommandEnvelope): Command | undefined {
+  if (!ownerFieldsValid(envelope.command)) return undefined;
   if (envelope.origin === 'setup' || envelope.origin === 'admin') return envelope.command;
   const command = envelope.command;
+  if (!seatMayIssue(world, envelope.player, command)) return undefined;
   const commanded = (e: Entity): boolean => seatCommandsUnit(world, envelope, e);
-  switch (command.kind) {
-    case 'assignHouseGroup':
-      return { ...command, entities: command.entities.filter(commanded) };
-    case 'assignWorkerGroup':
-      return { ...command, workers: command.workers.filter((worker) => commanded(worker.entity)) };
-    default:
-      return command;
-  }
+  if ('entity' in command) return commanded(command.entity) ? command : undefined;
+  if ('members' in command) return keepMembers(command, commanded);
+  return command;
+}
+
+function keepMembers<C extends { readonly members: readonly GroupMember[] }>(
+  command: C,
+  keep: (e: Entity) => boolean,
+): C {
+  return { ...command, members: command.members.filter((member) => keep(member.entity)) };
 }
 
 /**

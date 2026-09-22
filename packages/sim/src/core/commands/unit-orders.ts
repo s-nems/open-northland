@@ -6,9 +6,16 @@ import type { Command } from './index.js';
 /** The sexes a `makeChild` order may ask for. */
 export const CHILD_SEXES = ['female', 'male'] as const;
 
-/** One member of an `assignWorkerGroup` order, with the job list a lone `assignWorker` would carry. */
-export interface GroupWorker {
+/**
+ * One settler of a group order. Every group order names its settlers in `members`, which the authority
+ * gate narrows to the ones the issuing seat commands.
+ */
+export interface GroupMember {
   readonly entity: Entity;
+}
+
+/** One member of an `assignWorkerGroup` order, with the job list a lone `assignWorker` would carry. */
+export interface GroupWorker extends GroupMember {
   readonly jobPriority: readonly number[];
 }
 
@@ -95,7 +102,7 @@ export type UnitOrderCommand =
        */
       readonly kind: 'assignWorkerGroup';
       readonly building: Entity;
-      readonly workers: readonly GroupWorker[];
+      readonly members: readonly GroupWorker[];
     }
   | {
       /**
@@ -244,7 +251,7 @@ export type UnitOrderCommand =
        * free family slot. Every member is tried as its own `assignHouse`. Authored group order.
        */
       readonly kind: 'assignHouseGroup';
-      readonly entities: readonly Entity[];
+      readonly members: readonly GroupMember[];
       readonly house: Entity;
     }
   | {
@@ -317,7 +324,6 @@ export type UnitOrderCommand =
  */
 export function orderedSettler(command: Command): Entity | undefined {
   if ('entity' in command) return command.entity;
-  if (command.kind === 'assignHouseGroup') return command.entities[0];
-  if (command.kind === 'assignWorkerGroup') return command.workers[0]?.entity;
+  if ('members' in command) return command.members[0]?.entity;
   return undefined;
 }

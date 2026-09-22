@@ -63,7 +63,7 @@ function postGroup(sim: Simulation, building: Entity, members: readonly Entity[]
   assignWorkerGroup(sim.world, ctxOf(sim), {
     kind: 'assignWorkerGroup',
     building,
-    workers: members.map((entity) => ({ entity, jobPriority: [CARPENTER] })),
+    members: members.map((entity) => ({ entity, jobPriority: [CARPENTER] })),
   });
 }
 

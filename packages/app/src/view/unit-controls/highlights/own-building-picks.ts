@@ -9,6 +9,7 @@ import {
   isSettler,
   ownerPlayerOf,
   type SnapshotEntity,
+  settlersIn,
   settlerTribeOf,
   trainingHouseOf,
 } from '../../../game/snapshot.js';
@@ -47,11 +48,7 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
     buildingTribeOf(building) === settlerTribeOf(settler) && rule.accepts(building, settler);
   return {
     highlight(snapshot, settlerIds, byType) {
-      const settlers: SnapshotEntity[] = [];
-      for (const id of settlerIds) {
-        const settler = entityById(snapshot, id);
-        if (settler !== undefined && isSettler(settler)) settlers.push(settler);
-      }
+      const settlers = settlersIn(snapshot, settlerIds);
       const items: BuildingHighlightItem[] = [];
       if (settlers.length === 0) return items;
       for (const e of snapshot.entities) {

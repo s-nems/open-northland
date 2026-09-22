@@ -126,7 +126,7 @@ function postedWorkers(issued: readonly Command[], building: Entity): readonly G
   if (order?.kind !== 'assignWorkerGroup' || order.building !== building) {
     throw new Error(`expected one worker group order at ${building}, got ${JSON.stringify(issued)}`);
   }
-  return order.workers;
+  return order.members;
 }
 
 describe('right-clicking a construction site', () => {
@@ -199,7 +199,7 @@ describe('right-clicking a construction site', () => {
     const idle = settlerAt(sim, null);
 
     expect(rightClick(sim, [idle], site)).toEqual([
-      { kind: 'assignHouseGroup', entities: [idle], house: site },
+      { kind: 'assignHouseGroup', members: [{ entity: idle }], house: site },
     ]);
   });
 });
@@ -211,7 +211,7 @@ describe('right-clicking a standing building', () => {
     const idle = settlerAt(sim, null);
 
     expect(rightClick(sim, [idle], home)).toEqual([
-      { kind: 'assignHouseGroup', entities: [idle], house: home },
+      { kind: 'assignHouseGroup', members: [{ entity: idle }], house: home },
     ]);
   });
 
@@ -221,7 +221,7 @@ describe('right-clicking a standing building', () => {
     const group = [settlerAt(sim, null), settlerAt(sim, null), settlerAt(sim, null)];
 
     expect(rightClick(sim, group, home)).toEqual([
-      { kind: 'assignHouseGroup', entities: group, house: home },
+      { kind: 'assignHouseGroup', members: group.map((entity) => ({ entity })), house: home },
     ]);
   });
 

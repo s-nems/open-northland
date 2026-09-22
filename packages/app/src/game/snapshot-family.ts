@@ -59,18 +59,18 @@ export function hasEligiblePartner(
   snapshot: WorldSnapshot,
   seeker: SnapshotEntity,
 ): boolean {
-  let bySeeker = ELIGIBLE_PARTNER.get(snapshot);
-  if (bySeeker === undefined) {
-    bySeeker = new Map();
-    ELIGIBLE_PARTNER.set(snapshot, bySeeker);
+  let byKind = ELIGIBLE_PARTNER.get(snapshot);
+  if (byKind === undefined) {
+    byKind = new Map();
+    ELIGIBLE_PARTNER.set(snapshot, byKind);
   }
   const tribe = settlerTribeOf(seeker);
   const female = isFemale(seeker);
   const key = `${tribe}:${female}`;
-  const cached = bySeeker.get(key);
+  const cached = byKind.get(key);
   if (cached !== undefined) return cached;
   const found = scanForPartner(content, snapshot, tribe, female);
-  bySeeker.set(key, found);
+  byKind.set(key, found);
   return found;
 }
 

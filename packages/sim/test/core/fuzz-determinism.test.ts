@@ -250,6 +250,10 @@ const TARGET_ID_RANGE = 80;
  *  virtually never hit an eligible target in a 300-tick stream, leaving the wedding/household/birth
  *  machinery - RNG-consuming, mid-tick-spawning, the likeliest desync source - fuzz-untouched. */
 const NUCLEUS_ID_RANGE = PREAMBLE_CHESTS.length + 8;
+/** The harness resends the scripted chest walk on this cadence until the chest opens. */
+const CHEST_REORDER_EVERY = 100;
+/** Group orders carry up to one fewer than this many members, an empty group included. */
+const GROUP_SIZE_RANGE = 6;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
 const COMMAND_EVERY = 4;
 /** Hash checkpoint cadence - a run-twice divergence is localized to a 50-tick window. The save
@@ -294,7 +298,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(51);
+  const roll = rng.int(53);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -742,6 +746,29 @@ function nextCommand(rng: Rng): Command {
         other: pick(rng, OWNERS),
         state: pick(rng, ['friend', 'neutral', 'enemy'] as const),
       };
+    case 51:
+      // A group housing order over nucleus and wild ids, repeats included, half of them at the
+      // preamble's home: at apply time the seat branch drops the members it does not command, and the
+      // handler ranks the rest homeless first against the stream's assignHouse and unassignHouse rolls.
+      return {
+        kind: 'assignHouseGroup',
+        members: Array.from({ length: rng.int(GROUP_SIZE_RANGE) }, () => ({
+          entity: (rng.int(rng.int(2) === 0 ? NUCLEUS_ID_RANGE : TARGET_ID_RANGE) + 1) as Entity,
+        })),
+        house: rng.int(2) === 0 ? NUCLEUS_HOME : ((rng.int(TARGET_ID_RANGE) + 1) as Entity),
+      };
+    case 52:
+      // A group worker order the same way, each member with its own fuzzed job list, half of them at
+      // the preamble's home and its one worker slot, against the stream's case-9 posts and case-44
+      // releases.
+      return {
+        kind: 'assignWorkerGroup',
+        members: Array.from({ length: rng.int(GROUP_SIZE_RANGE) }, () => ({
+          entity: (rng.int(rng.int(2) === 0 ? NUCLEUS_ID_RANGE : TARGET_ID_RANGE) + 1) as Entity,
+          jobPriority: Array.from({ length: rng.int(3) }, () => pick(rng, JOB_TYPES)),
+        })),
+        building: rng.int(2) === 0 ? NUCLEUS_HOME : ((rng.int(TARGET_ID_RANGE) + 1) as Entity),
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
@@ -870,8 +897,11 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_WIFE, house: NUCLEUS_HOME });
       sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_HUSBAND, house: NUCLEUS_HOME });
       sim.enqueueSetup({ kind: 'marry', entity: NUCLEUS_WIFE });
-      // The last man's walk to the food chest (no wedding to walk to): the accept path on every seed,
-      // ahead of the stream's own chest rolls, which then find it gone.
+    }
+    // The last man's walk to the food chest: the accept path on every seed, ahead of the stream's own
+    // chest rolls, which then find it gone. Sent again until the chest opens, since a stream order such
+    // as a marry roll that weds him can take him off the walk.
+    if (!chestOpened && t % CHEST_REORDER_EVERY === 1) {
       sim.enqueueSetup({ kind: 'openChest', entity: CHEST_OPENER, chest: FOOD_CHEST_ID });
     }
     // A child order for the housed wife once her scripted wedding has had time to finish - arms the

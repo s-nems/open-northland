@@ -84,8 +84,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     let mode: MenuMode = 'closed';
     let layout: ActionRingLayout = EMPTY_LAYOUT;
-    /** The settler ids a click's command applies to, refreshed in `update`. */
-    let actionTargets: readonly number[] = [];
+    /** The selected settler ids the open menu serves, refreshed in `update`. */
+    let selectedIds: readonly number[] = [];
     /** Where the menu is pinned, in screen (canvas) px, captured once when it opens so neither the settler
      *  walking on nor a camera pan moves it. Observation: the original keeps its ring on the cursor
      *  position it opened at. */
@@ -105,7 +105,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       professions: opts.professions,
       uiFont,
       onPick: (jobType: number): void => {
-        if (actionTargets.length > 0) opts.onSetJob(actionTargets, jobType);
+        if (selectedIds.length > 0) opts.onSetJob(selectedIds, jobType);
         // Picking commits the order, so the whole menu closes rather than stepping back to the arms.
         closeMenu();
       },
@@ -120,8 +120,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       mode = 'jobs';
       hideTransient();
       picker.show(
-        (jobType) => opts.jobUnlocked(actionTargets, jobType),
-        (jobType) => opts.jobBlockedReason?.(actionTargets, jobType) ?? '',
+        (jobType) => opts.jobUnlocked(selectedIds, jobType),
+        (jobType) => opts.jobBlockedReason?.(selectedIds, jobType) ?? '',
       );
     };
     /** Hide the list and step back to the default menu. */
@@ -158,19 +158,19 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       if (centre === null) {
         root.visible = false;
         layout = EMPTY_LAYOUT;
-        actionTargets = [];
+        selectedIds = [];
         anchor = null;
         menu = null;
         visuals.hideAll();
         if (mode === 'jobs') closeJobWindow();
         return;
       }
-      actionTargets = centre.ids;
+      selectedIds = centre.ids;
       if (mode === 'jobs') {
         if (restoredJobs) {
           picker.show(
-            (jobType) => opts.jobUnlocked(actionTargets, jobType),
-            (jobType) => opts.jobBlockedReason?.(actionTargets, jobType) ?? '',
+            (jobType) => opts.jobUnlocked(selectedIds, jobType),
+            (jobType) => opts.jobBlockedReason?.(selectedIds, jobType) ?? '',
           );
           picker.setScrollTop(restoredPickerScrollTop);
           restoredJobs = false;
@@ -206,7 +206,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       getMode: () => mode,
       isRingVisible: () => root.visible,
       getLayout: () => layout,
-      getTargets: () => actionTargets,
+      getTargets: () => selectedIds,
       hideTransient,
       onCommand: opts.onCommand,
       cue: opts.cue,
@@ -223,7 +223,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         else openMenu(atClient);
       },
       openProfessions: (targets): void => {
-        actionTargets = [...targets];
+        selectedIds = [...targets];
         openJobWindow();
       },
       open: openMenu,

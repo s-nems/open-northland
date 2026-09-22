@@ -17,19 +17,23 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
  */
 
 const SCOUT = { id: 1, col: 2, row: 4 };
+/** A second settler, selected beside the scout only where a test says so. */
+const MATE = { id: 2, col: 4, row: 4 };
 const MAP_SIZE = { width: 16, height: 16 };
 /** A far node the camera is nowhere near - the case the overview exists for. */
 const FAR_NODE = { hx: 25, hy: 27 };
 
-const WORLD: WorldSnapshot = snapshotOf([
-  {
-    id: SCOUT.id,
-    components: {
-      Settler: { jobType: null },
-      Position: { x: fx.fromInt(SCOUT.col), y: fx.fromInt(SCOUT.row) },
-    },
-  } satisfies Ent,
-]);
+const WORLD: WorldSnapshot = snapshotOf(
+  [SCOUT, MATE].map(
+    (unit): Ent => ({
+      id: unit.id,
+      components: {
+        Settler: { jobType: null },
+        Position: { x: fx.fromInt(unit.col), y: fx.fromInt(unit.row) },
+      },
+    }),
+  ),
+);
 
 /** Nothing is pickable, so every press resolves to open ground. */
 const targets: UnitTargets = {
@@ -43,7 +47,9 @@ const targets: UnitTargets = {
   resources: () => [],
   wildlife: () => [],
   ownedSettlersIn: (refs) =>
-    refs.has(SCOUT.id) ? [{ ref: SCOUT.id, ...halfCellToScreen(SCOUT.col * 2, SCOUT.row * 2) }] : [],
+    [SCOUT, MATE]
+      .filter((unit) => refs.has(unit.id))
+      .map((unit) => ({ ref: unit.id, ...halfCellToScreen(unit.col * 2, unit.row * 2) })),
 };
 
 /** A press on the overview pixel that depicts `node`; the overview plots the map flat. */
@@ -142,18 +148,19 @@ describe('orders named on the map overview', () => {
     expect(pickMode.isArmed()).toBe(false);
   });
 
-  it('orders only the settlers the armed order was allowed for', () => {
-    const { press, pickMode, issued } = harness();
-    pickMode.arm({ kind: 'attack-move', units: [] });
+  it('orders only the selected settlers the armed order was allowed for', () => {
+    const { press, pickMode, issued, selection } = harness();
+    selection.apply([SCOUT.id, MATE.id], false);
+    pickMode.arm({ kind: 'attack-move', units: [MATE.id] });
 
     expect(pressOn(press, FAR_NODE, { button: 0 })).toBe(true);
 
-    expect(issued).toEqual([]);
+    expect(issued).toEqual([{ kind: 'attackMoveUnit', entity: MATE.id, x: FAR_NODE.hx, y: FAR_NODE.hy }]);
   });
 
   it('leaves a mode that needs a picked building armed, so the press only scrolls the view', () => {
     const { press, pickMode, issued } = harness();
-    pickMode.arm({ kind: 'workplace', settlers: [SCOUT.id] });
+    pickMode.arm({ kind: 'workplace', units: [SCOUT.id] });
 
     expect(pressOn(press, FAR_NODE, { button: 0 })).toBe(false);
 
@@ -185,7 +192,7 @@ describe('orders named on the map overview', () => {
     pressOn(press, FAR_NODE, { button: 2 }); // called off
     expect(cues).toEqual(['confirm', 'confirm', 'fail']);
 
-    pickMode.arm({ kind: 'workplace', settlers: [SCOUT.id] });
+    pickMode.arm({ kind: 'workplace', units: [SCOUT.id] });
     pressOn(press, FAR_NODE, { button: 0 }); // stays armed: the press only scrolls the view
     expect(cues).toHaveLength(3);
     pickMode.cancel();
@@ -207,7 +214,7 @@ describe('a world press on an armed pick mode', () => {
     expect(pickMode.handleMouseDown(click(0))).toBe('ordered');
     expect(issued).toHaveLength(1);
 
-    pickMode.arm({ kind: 'workplace', settlers: [SCOUT.id] });
+    pickMode.arm({ kind: 'workplace', units: [SCOUT.id] });
     expect(pickMode.handleMouseDown(click(0))).toBe('missed'); // no building under the press
     expect(pickMode.isArmed()).toBe(false);
 

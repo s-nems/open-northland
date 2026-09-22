@@ -1,4 +1,4 @@
-import { type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -88,6 +88,15 @@ export function settlerExperienceOf(components: Readonly<Record<string, unknown>
 
 export function isSettler(e: SnapshotEntity): boolean {
   return e.components.Settler !== undefined;
+}
+/** The settlers among `ids`, in the given order. */
+export function settlersIn(snapshot: WorldSnapshot, ids: readonly number[]): SnapshotEntity[] {
+  const settlers: SnapshotEntity[] = [];
+  for (const id of ids) {
+    const e = entityById(snapshot, id);
+    if (e !== undefined && isSettler(e)) settlers.push(e);
+  }
+  return settlers;
 }
 export function isBuilding(e: SnapshotEntity): boolean {
   return e.components.Building !== undefined;
@@ -232,6 +241,12 @@ export function workAreaOf(e: SnapshotEntity): { flag: number; radius: number } 
 export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   const settler = e.components.Settler as { tribe?: unknown } | undefined;
   return num(settler?.tribe);
+}
+
+/** A settler's or building's owner and tribe as one key: a building houses and employs only settlers
+ *  with its key. */
+export function ownerTribeKeyOf(e: SnapshotEntity): string {
+  return `${ownerPlayerOf(e)}:${settlerTribeOf(e) ?? buildingTribeOf(e)}`;
 }
 
 /** The settler's need deficits, fixed-point 0..ONE where higher is worse. */

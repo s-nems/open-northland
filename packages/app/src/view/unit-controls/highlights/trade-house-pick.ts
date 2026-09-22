@@ -23,7 +23,7 @@ function isStandingHouse(e: { readonly components: Readonly<Record<string, unkno
 
 /**
  * The "add a house to the trade route" pick: every finished building on the map is a candidate, lit
- * green unless every selected trader's route already names it. Ownership is no gate, since the exchange
+ * green while an armed trader's route does not name it yet. Ownership is no gate, since the exchange
  * happens at another tribe's house; the sim's authority check admits the foreign house for these orders
  * alone.
  */

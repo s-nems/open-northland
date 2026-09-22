@@ -2,14 +2,13 @@ import type { BuildingHighlightItem } from '@open-northland/render';
 import { type Entity, entityById, type GroupWorker, type WorldSnapshot } from '@open-northland/sim';
 import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import {
-  buildingTribeOf,
   buildingTypeOf,
   isBuilding,
   isSettler,
-  ownerPlayerOf,
+  ownerTribeKeyOf,
   type SnapshotEntity,
   settlerJobType,
-  settlerTribeOf,
+  settlersIn,
   workplaceOf,
 } from '../../../game/snapshot.js';
 
@@ -20,9 +19,12 @@ import {
  * XP gate on each member's `assignWorker`.
  */
 
+/** A building type's worker slots. */
+type WorkerSlots = readonly { readonly jobType: number; readonly count: number }[];
+
 /** The slice of a building type this projection needs: its worker slots. */
 export interface AssignBuildingInfo {
-  readonly workers?: readonly { readonly jobType: number; readonly count: number }[] | undefined;
+  readonly workers?: WorkerSlots | undefined;
 }
 
 /** The bound-settler headcount per (building id, jobType) - the capacity check reads it. */
@@ -43,46 +45,14 @@ function buildStaffing(snapshot: WorldSnapshot): Staffing {
 }
 
 /**
- * The worker slots of a building this settler could be assigned to at all, or null when it is not a
- * candidate: another owner's or tribe's building, or one that employs nobody. A building under
- * construction is a candidate, since its slots take staff from the moment the foundation is placed.
+ * The slot jobs that seat `job`, matched by canonical trade, so a picker-assigned raw id lines up with
+ * the building's rebased slot id. There is no fallback to another trade.
  */
-function candidateSlots(
-  building: SnapshotEntity,
-  settler: SnapshotEntity,
-  buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
-): readonly { readonly jobType: number; readonly count: number }[] | null {
-  if (!isBuilding(building)) return null;
-  if (ownerPlayerOf(building) !== ownerPlayerOf(settler)) return null; // only the settler's own buildings
-  if (buildingTribeOf(building) !== settlerTribeOf(settler)) return null;
-  const typeId = buildingTypeOf(building);
-  const slots = typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined;
-  return slots !== undefined && slots.length > 0 ? slots : null; // employs nobody (a home) → not a candidate
+export function tradeSlotsOf(job: number | undefined, slots: WorkerSlots): number[] {
+  if (job === undefined) return [];
+  const want = canonicalJobType(job);
+  return slots.filter((slot) => canonicalJobType(slot.jobType) === want).map((slot) => slot.jobType);
 }
-
-/**
- * The building's slot job matching the settler's current trade with a free seat, or null. Matched by
- * canonical trade, so a picker-assigned raw id lines up with the building's rebased slot id. There is no
- * fallback to another trade.
- */
-export function currentTradeSlotAt(
-  currentJob: number | undefined,
-  slots: readonly { readonly jobType: number; readonly count: number }[] | undefined,
-  boundByJob: ReadonlyMap<number, number> | undefined,
-): number | null {
-  if (currentJob === undefined) return null;
-  const want = canonicalJobType(currentJob);
-  for (const slot of slots ?? []) {
-    if (canonicalJobType(slot.jobType) !== want) continue;
-    if ((boundByJob?.get(slot.jobType) ?? 0) < slot.count) return slot.jobType;
-  }
-  return null;
-}
-
-type WorkerSlots = readonly { readonly jobType: number; readonly count: number }[];
-
-/** The owner and tribe a building must share with a member it employs. */
-const teamKey = (owner: number | undefined, tribe: number | undefined): string => `${owner}:${tribe}`;
 
 /** A slot seats a member of its owner, tribe and canonical trade. */
 const seatKey = (team: string, jobType: number): string => `${team}:${canonicalJobType(jobType)}`;
@@ -111,7 +81,7 @@ function crewOf(settlers: readonly SnapshotEntity[]): Crew {
   for (const e of settlers) {
     const job = settlerJobType(e);
     if (job === undefined) continue;
-    const team = teamKey(ownerPlayerOf(e), settlerTribeOf(e));
+    const team = ownerTribeKeyOf(e);
     const key = seatKey(team, job);
     teams.add(team);
     bump(all, key);
@@ -136,8 +106,11 @@ function slotsOf(
   return (typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined) ?? [];
 }
 
-/** Whether `building` employs anyone of a member's owner and tribe, and whether it has a free seat for a
- *  member the order would post there. */
+/**
+ * Whether `building` employs anyone of a member's owner and tribe, and whether it has a free seat for a
+ * member the order would post there. A building under construction is a candidate, since its slots take
+ * staff from the moment the foundation is placed.
+ */
 function workplaceVerdict(
   building: SnapshotEntity,
   crew: Crew,
@@ -145,7 +118,7 @@ function workplaceVerdict(
   buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
 ): { readonly candidate: boolean; readonly ok: boolean } {
   const slots = slotsOf(building, buildingsByType);
-  const team = teamKey(ownerPlayerOf(building), buildingTribeOf(building));
+  const team = ownerTribeKeyOf(building);
   if (slots.length === 0 || !crew.teams.has(team)) return { candidate: false, ok: false };
   const seats = slots.map((slot) => ({ slot, key: seatKey(team, slot.jobType) }));
   const unemployedHere = seats.some(({ key }) => (crew.unemployed.get(key) ?? 0) > 0);
@@ -182,7 +155,7 @@ export function computeAssignHighlight(
 }
 
 /**
- * The members a click on one building posts, each with the building's slot for its trade, or null when
+ * The members a click on one building posts, each with the building's slots for its trade, or null when
  * the highlight reds it, so a red building cancels the click. Every member the building offers its trade
  * goes along; the sim picks who is seated against its current staffing.
  */
@@ -194,24 +167,16 @@ export function workerGroupAt(
 ): GroupWorker[] | null {
   const building = entityById(snapshot, buildingId);
   if (building === undefined) return null;
+  const settlers = settlersIn(snapshot, settlerIds);
+  if (!workplaceVerdict(building, crewOf(settlers), buildStaffing(snapshot), buildingsByType).ok) return null;
+  const slots = slotsOf(building, buildingsByType);
+  const team = ownerTribeKeyOf(building);
   const workers: GroupWorker[] = [];
-  const offered: SnapshotEntity[] = [];
-  for (const settler of settlersIn(snapshot, settlerIds)) {
-    const slots = candidateSlots(building, settler, buildingsByType);
-    const job = currentTradeSlotAt(settlerJobType(settler), slots ?? undefined, undefined);
-    if (job === null) continue;
-    workers.push({ entity: settler.id as Entity, jobPriority: [job] });
-    offered.push(settler);
+  for (const settler of settlers) {
+    const jobPriority = tradeSlotsOf(settlerJobType(settler), slots);
+    if (ownerTribeKeyOf(settler) === team && jobPriority.length > 0) {
+      workers.push({ entity: settler.id as Entity, jobPriority });
+    }
   }
-  const { ok } = workplaceVerdict(building, crewOf(offered), buildStaffing(snapshot), buildingsByType);
-  return ok ? workers : null;
-}
-
-function settlersIn(snapshot: WorldSnapshot, ids: readonly number[]): SnapshotEntity[] {
-  const settlers: SnapshotEntity[] = [];
-  for (const id of ids) {
-    const e = entityById(snapshot, id);
-    if (e !== undefined && isSettler(e)) settlers.push(e);
-  }
-  return settlers;
+  return workers;
 }

@@ -56,7 +56,7 @@ import {
 } from '../orders/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
-import { authorizedCommand, isAuthorized } from './authority.js';
+import { authorizedCommand } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
@@ -68,7 +68,8 @@ import { demolish, demolishSignpost, dropGood, placeResource } from './world-edi
  */
 export const commandSystem: System = (world, ctx) => {
   for (const queued of ctx.commands.drain(ctx.tick)) {
-    if (isAuthorized(world, queued)) applyCommand(world, ctx, authorizedCommand(world, queued));
+    const command = authorizedCommand(world, queued);
+    if (command !== undefined) applyCommand(world, ctx, command);
     ctx.commands.record(ctx.tick, queued);
   }
 };

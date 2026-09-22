@@ -68,9 +68,9 @@ export function assignHouseGroup(
 ): void {
   const house = command.house;
   const homeOf = (e: Entity): Entity | undefined => world.tryGet(e, Residence)?.home;
-  for (const e of groupPlacementOrder(world, ctx, command.entities, house, homeOf)) {
-    if (homeOf(e) === house) continue; // moved in with an earlier member's family
-    assignHouse(world, ctx, { kind: 'assignHouse', entity: e, house });
+  for (const { entity } of groupPlacementOrder(world, ctx, command.members, house, homeOf)) {
+    if (homeOf(entity) === house) continue; // moved in with an earlier member's family
+    assignHouse(world, ctx, { kind: 'assignHouse', entity, house });
   }
 }
 

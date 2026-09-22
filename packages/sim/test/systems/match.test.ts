@@ -19,7 +19,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
-import { isAuthorized } from '../../src/systems/command/authority.js';
+import { authorizedCommand } from '../../src/systems/command/authority.js';
 import { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from '../../src/systems/match/index.js';
 import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
 import { testContent } from '../fixtures/content.js';
@@ -264,8 +264,8 @@ describe('matchSystem - death and victory over the declared participants', () =>
 
     const deadOrder = playerCommand(P1, { kind: 'setStance', entity: survivorOfP1, mode: 0 });
     const liveOrder = playerCommand(P0, { kind: 'setStance', entity: winner, mode: 0 });
-    expect(isAuthorized(sim.world, deadOrder)).toBe(false);
-    expect(isAuthorized(sim.world, liveOrder)).toBe(true);
+    expect(authorizedCommand(sim.world, deadOrder)).toBeUndefined();
+    expect(authorizedCommand(sim.world, liveOrder)).toBe(liveOrder.command);
   });
 
   it('carries a decided match through the save round trip', () => {

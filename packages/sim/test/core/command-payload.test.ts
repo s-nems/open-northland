@@ -60,6 +60,37 @@ describe('command payload contracts', () => {
     );
   });
 
+  it.each([
+    { kind: 'assignHouseGroup', members: [{ entity: UNIT }, { entity: UNIT + 1 }], house: UNIT + 2 },
+    {
+      kind: 'assignWorkerGroup',
+      members: [
+        { entity: UNIT, jobPriority: [3] },
+        { entity: UNIT + 1, jobPriority: [] },
+      ],
+      building: UNIT + 2,
+    },
+  ])('round-trips a player $kind order and rejects a malformed member', (command) => {
+    const envelope = { v: 1, origin: 'player', player: SEAT, command };
+    expect(parseCommandEnvelope(JSON.parse(JSON.stringify(envelope)))).toEqual(envelope);
+    const [first, ...rest] = command.members;
+    const malformed = (member: Record<string, unknown>): unknown => ({
+      ...envelope,
+      command: { ...command, members: [member, ...rest] },
+    });
+    expect(() => parseCommandEnvelope(malformed({ ...first, entity: 1.5 }))).toThrow(/members.*entity/);
+    expect(() => parseCommandEnvelope(malformed({ ...first, extra: true }))).toThrow(/unknown field/);
+    expect(() => parseCommandEnvelope({ ...envelope, command: { ...command, members: UNIT } })).toThrow(
+      /command.members/,
+    );
+  });
+
+  it('refuses a worker group member without its job list', () => {
+    expect(() =>
+      parse({ kind: 'assignWorkerGroup', members: [{ entity: UNIT }], building: UNIT + 1 }),
+    ).toThrow(/missing field 'jobPriority'/);
+  });
+
   it('rejects invalid need orders and regeneration toggles', () => {
     expect(() => parse({ kind: 'orderNeed', entity: UNIT, need: 'unknown' })).toThrow(/command.need/);
     expect(() => parse({ kind: 'setRegeneration', entity: UNIT, enabled: 1 })).toThrow(/command.enabled/);

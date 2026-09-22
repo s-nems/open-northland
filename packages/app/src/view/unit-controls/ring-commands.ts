@@ -5,9 +5,9 @@ import type { PickModeController } from './pick-mode.js';
 export interface RingCommandDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   readonly pickMode: PickModeController;
-  /** Open the equipment-good picker for the current settler selection. */
+  /** Open the equipment-good picker for the settlers the order reaches. */
   readonly openEquipment: (settlers: readonly number[]) => void;
-  /** Show or hide the work-area circle of every settler in the selection that carries a work flag. */
+  /** Show or hide the work-area circle of every settler the order reaches that carries a work flag. */
   readonly toggleWorkArea: (targets: readonly number[]) => void;
 }
 
@@ -65,7 +65,7 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       if (single !== undefined) deps.pickMode.arm({ kind: 'signpost', scout: single });
       return;
     case 'assignBuildingSite':
-      deps.pickMode.arm({ kind: 'building-site', settlers: targets });
+      deps.pickMode.arm({ kind: 'building-site', units: targets });
       return;
     case 'removeBuildingSite':
       each((entity) => ({ kind: 'unassignBuilder', entity }));
@@ -74,19 +74,19 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       each((entity) => ({ kind: 'cancelTraining', entity }));
       return;
     case 'assignLearningPlace':
-      deps.pickMode.arm({ kind: 'learning-place', settlers: targets });
+      deps.pickMode.arm({ kind: 'learning-place', units: targets });
       return;
     case 'removeWorkPlace':
       each((entity) => ({ kind: 'unassignWorker', entity }));
       return;
     case 'assignWorkPlace':
-      deps.pickMode.arm({ kind: 'workplace', settlers: targets });
+      deps.pickMode.arm({ kind: 'workplace', units: targets });
       return;
     case 'removeHome':
       each((entity) => ({ kind: 'unassignHouse', entity }));
       return;
     case 'assignHome':
-      deps.pickMode.arm({ kind: 'home', settlers: targets });
+      deps.pickMode.arm({ kind: 'home', units: targets });
       return;
     case 'attackInhabitants':
       deps.pickMode.arm({ kind: 'attack-settler', units: targets });

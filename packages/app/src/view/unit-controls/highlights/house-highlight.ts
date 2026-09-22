@@ -1,16 +1,15 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
-  buildingTribeOf,
   buildingTypeOf,
   familiesByHome,
   type HomeFamily,
   isBuilding,
-  isSettler,
   ownerPlayerOf,
+  ownerTribeKeyOf,
   residenceHomeOf,
   type SnapshotEntity,
-  settlerTribeOf,
+  settlersIn,
 } from '../../../game/snapshot.js';
 
 /** `homeSize` (the original `logichomesize`, 1..5 by level) counts FAMILIES, not settlers. */
@@ -18,9 +17,6 @@ export interface HouseInfo {
   readonly kind?: string | undefined;
   readonly homeSize?: number | undefined;
 }
-
-/** The owner and tribe a home must share with a mover. */
-const householdKey = (owner: number | undefined, tribe: number | undefined): string => `${owner}:${tribe}`;
 
 /**
  * The selected members a group home order moves, counted by owner and tribe, as the sim's
@@ -35,11 +31,7 @@ interface Movers {
 }
 
 function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Movers | null {
-  const settlers: SnapshotEntity[] = [];
-  for (const id of settlerIds) {
-    const e = entityById(snapshot, id);
-    if (e !== undefined && isSettler(e)) settlers.push(e);
-  }
+  const settlers = settlersIn(snapshot, settlerIds);
   if (settlers.length === 0) return null;
   const homeless = settlers.filter((e) => residenceHomeOf(e) === undefined);
   const movers = homeless.length > 0 ? homeless : settlers;
@@ -47,9 +39,8 @@ function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Mover
   const byKey = new Map<string, number>();
   const livingAt = new Map<number, Map<string, number>>();
   for (const e of movers) {
-    const owner = ownerPlayerOf(e);
-    const key = householdKey(owner, settlerTribeOf(e));
-    owners.add(owner);
+    const key = ownerTribeKeyOf(e);
+    owners.add(ownerPlayerOf(e));
     byKey.set(key, (byKey.get(key) ?? 0) + 1);
     const home = residenceHomeOf(e);
     if (home === undefined) continue;
@@ -70,9 +61,10 @@ function houseVerdict(
   if (!isBuilding(house)) return { candidate: false, ok: false };
   const typeId = buildingTypeOf(house);
   const info = typeId !== undefined ? housesByType.get(typeId) : undefined;
-  if (info?.kind !== 'home' || !movers.owners.has(ownerPlayerOf(house)))
+  if (info?.kind !== 'home' || !movers.owners.has(ownerPlayerOf(house))) {
     return { candidate: false, ok: false };
-  const key = householdKey(ownerPlayerOf(house), buildingTribeOf(house));
+  }
+  const key = ownerTribeKeyOf(house);
   const moving = (movers.byKey.get(key) ?? 0) - (movers.livingAt.get(house.id)?.get(key) ?? 0);
   const free = (families.get(house.id)?.length ?? 0) < (info.homeSize ?? 0);
   return { candidate: true, ok: moving > 0 && free };

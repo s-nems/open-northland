@@ -14,6 +14,7 @@ import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { parseCommandEnvelope, playerCommand, replay, Simulation } from '../../src/index.js';
 import { familiesOf } from '../../src/systems/index.js';
+import { groupPlacementOrder } from '../../src/systems/orders/group-placement.js';
 import { assignHouse, assignHouseGroup } from '../../src/systems/orders/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -78,7 +79,8 @@ function adultAt(sim: Simulation, x: number, female = true): Entity {
 }
 
 function sendGroup(sim: Simulation, house: Entity, entities: readonly Entity[]): void {
-  assignHouseGroup(sim.world, ctxOf(sim), { kind: 'assignHouseGroup', entities, house });
+  const members = entities.map((entity) => ({ entity }));
+  assignHouseGroup(sim.world, ctxOf(sim), { kind: 'assignHouseGroup', members, house });
 }
 
 const homeOf = (sim: Simulation, e: Entity): Entity | undefined => sim.world.tryGet(e, Residence)?.home;
@@ -170,9 +172,9 @@ describe('assignHouseGroup - send a group to one home', () => {
     sim.step();
     sim.step(); // the homes finish on the setup tick's system run
     const homes = [...sim.world.query(Building)].sort((a, b) => a - b);
-    const group = [...sim.world.query(Settler)].sort((a, b) => a - b);
+    const members = [...sim.world.query(Settler)].sort((a, b) => a - b).map((entity) => ({ entity }));
     for (const house of homes) {
-      const order = playerCommand(PLAYER, { kind: 'assignHouseGroup', entities: group, house });
+      const order = playerCommand(PLAYER, { kind: 'assignHouseGroup', members, house });
       sim.enqueue(parseCommandEnvelope(JSON.parse(JSON.stringify(order))));
     }
     sim.step();
@@ -180,5 +182,23 @@ describe('assignHouseGroup - send a group to one home', () => {
     for (const house of homes) expect(familiesOf(sim.world, house)).toHaveLength(HOME_SIZE);
     const replayed = replay({ content: content(), seed: 7, map, log: sim.commands.log, untilTick: sim.tick });
     expect(replayed.hashState()).toBe(sim.hashState());
+  });
+});
+
+describe('groupPlacementOrder - whom a group order tries first', () => {
+  it('breaks a distance tie by ascending id, ranks a member it cannot measure last, and drops repeats', () => {
+    const sim = new Simulation({ seed: 1, content: content() });
+    const house = homeAt(sim, 10);
+    const unmeasured = adultAt(sim, 11);
+    sim.world.remove(unmeasured, Position);
+    const lower = adultAt(sim, 20);
+    const higher = adultAt(sim, 20);
+    const nearest = adultAt(sim, 12);
+    const members = [higher, unmeasured, lower, nearest, higher].map((entity) => ({ entity }));
+
+    const order = groupPlacementOrder(sim.world, ctxOf(sim), members, house, (e) => homeOf(sim, e));
+
+    expect(order.map((member) => member.entity)).toEqual([nearest, lower, higher, unmeasured]);
+    expect(order[2]).toBe(members[0]); // the first entry of the repeated member
   });
 });

@@ -22,7 +22,7 @@ import {
   Simulation,
   setupCommand,
 } from '../../../src/index.js';
-import { authorizedCommand, isAuthorized } from '../../../src/systems/command/authority.js';
+import { authorizedCommand } from '../../../src/systems/command/authority.js';
 import { testContent } from '../../fixtures/content.js';
 import { fresh, HEADQUARTERS, nthEntity, SAWMILL, VIKING, WOODCUTTER } from './support.js';
 
@@ -119,16 +119,15 @@ describe('CommandSystem - command authority', () => {
     const order: PlayerCommand = {
       kind: 'assignWorkerGroup',
       building: myShop,
-      workers: [mine, theirs, locked, fallen].map((entity) => ({ entity, jobPriority: HQ_JOBS })),
+      members: [mine, theirs, locked, fallen].map((entity) => ({ entity, jobPriority: HQ_JOBS })),
     };
 
-    expect(isAuthorized(sim.world, playerCommand(MINE, order))).toBe(true);
     expect(authorizedCommand(sim.world, playerCommand(MINE, order))).toMatchObject({
-      workers: [{ entity: mine }],
+      members: [{ entity: mine }],
     });
     // The seat's AI still commands a unit a script put beyond the player's reach.
     expect(authorizedCommand(sim.world, aiCommand(MINE, order))).toMatchObject({
-      workers: [{ entity: mine }, { entity: locked }],
+      members: [{ entity: mine }, { entity: locked }],
     });
 
     sim.enqueue(playerCommand(MINE, order));
@@ -294,12 +293,12 @@ describe('CommandSystem - command authority', () => {
       { kind: 'demolishSignpost', signpost: theirs },
     ];
     for (const command of refused) {
-      expect(isAuthorized(sim.world, playerCommand(MINE, command)), command.kind).toBe(false);
-      expect(isAuthorized(sim.world, adminCommand(command)), command.kind).toBe(true);
+      expect(authorizedCommand(sim.world, playerCommand(MINE, command)), command.kind).toBeUndefined();
+      expect(authorizedCommand(sim.world, adminCommand(command)), command.kind).toBeDefined();
     }
 
     const attack: PlayerCommand = { kind: 'attackUnit', entity: mine, target: theirs };
-    expect(isAuthorized(sim.world, playerCommand(MINE, attack))).toBe(true);
+    expect(authorizedCommand(sim.world, playerCommand(MINE, attack))).toBe(attack);
   });
 
   it('keeps the queued and logged envelope owned, not aliased to the caller`s object', () => {

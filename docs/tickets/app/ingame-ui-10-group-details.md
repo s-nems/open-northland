@@ -13,7 +13,7 @@ against this checkout before starting; the reference document describes an earli
 ## Scope
 
 - Design small, large and mixed selections with bounded panel size, distinguishable portraits/counts and accessible per-person inspection.
-- Show only commands valid for the selection; explain partial applicability and forbidden orders rather than silently issuing misleading commands.
+- Show only commands valid for the selection; explain partial applicability and forbidden orders rather than silently issuing misleading commands. The action ring already shows a group order when any member allows it and sends it only to those members (`orderRecipients` in `view/unit-controls/action-ring/menu-state.ts`); the panel should show which members an order will reach.
 - Preserve selection identity while members die, disappear or become ineligible; keep camera controls and interaction with the residents list consistent.
 - Use the same bottom-right component family as single-entity details, with scrolling or pagination rather than an indefinitely growing panel.
 

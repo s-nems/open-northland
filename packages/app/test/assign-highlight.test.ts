@@ -1,4 +1,4 @@
-import { type ContentSet, lastByTypeId } from '@open-northland/data';
+import { lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -10,14 +10,14 @@ import { createSceneSim, getScene } from '../src/scenes/index.js';
 import {
   type AssignBuildingInfo,
   computeAssignHighlight,
-  currentTradeSlotAt,
+  tradeSlotsOf,
   workerGroupAt,
 } from '../src/view/unit-controls/highlights/index.js';
-import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
+import { buildingPickController } from './support/pick-mode.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * The "przydziel miejsce pracy" verdict - the button places the settler's CURRENT trade only, so a
+ * The "przydziel miejsce pracy" verdict - the button places each settler's CURRENT trade only, so a
  * building is green iff it offers that exact trade (canonically) with a free slot. Matched by
  * `canonicalJobType`, so a picker-assigned raw id lines up with the building's rebased slot id.
  */
@@ -37,33 +37,25 @@ const WAREHOUSE_SLOTS = [
   { jobType: rebaseSlotJob(JOB_COLLECTOR), count: 3 }, // a collector (gatherer) slot
 ];
 
-describe('currentTradeSlotAt - the current-trade green/red verdict', () => {
-  it('greens a mint for a coin-maker, matching the rebased slot to the raw current id', () => {
-    // The settler is a coin-maker (raw id 14); the mint slot is rebased (1014). They match canonically.
-    expect(currentTradeSlotAt(COIN_MAKER, MINT_SLOTS, undefined)).toBe(rebaseSlotJob(COIN_MAKER));
+describe('tradeSlotsOf - the slots that seat a current trade', () => {
+  it('matches the rebased coin-maker slot of a mint to the raw current id', () => {
+    expect(tradeSlotsOf(COIN_MAKER, MINT_SLOTS)).toEqual([rebaseSlotJob(COIN_MAKER)]);
   });
 
-  it('reds a mill for a coin-maker - the building does not offer that trade', () => {
-    expect(currentTradeSlotAt(COIN_MAKER, MILL_SLOTS, undefined)).toBeNull();
+  it('offers a coin-maker nothing at a mill, which does not employ that trade', () => {
+    expect(tradeSlotsOf(COIN_MAKER, MILL_SLOTS)).toEqual([]);
   });
 
-  it('reds a building whose matching slot is already full (no re-trade, no fallback)', () => {
-    const full = new Map<number, number>([[rebaseSlotJob(COIN_MAKER), 2]]);
-    expect(currentTradeSlotAt(COIN_MAKER, MINT_SLOTS, full)).toBeNull();
+  it('matches a collector to the gatherer slot of a warehouse', () => {
+    expect(tradeSlotsOf(JOB_COLLECTOR, WAREHOUSE_SLOTS)).toEqual([rebaseSlotJob(JOB_COLLECTOR)]);
   });
 
-  it('greens a warehouse for a collector via its gatherer slot', () => {
-    expect(currentTradeSlotAt(JOB_COLLECTOR, WAREHOUSE_SLOTS, undefined)).toBe(rebaseSlotJob(JOB_COLLECTOR));
+  it('never falls back to the carrier - a miller at a mint gets no slot, not a hauler post', () => {
+    expect(tradeSlotsOf(19, MINT_SLOTS)).toEqual([]);
   });
 
-  it('never falls back to the carrier - a miller on a mint stays red, not a hauler', () => {
-    // The button does not re-trade: a miller aimed at a mint (no miller slot) is red, never bound as carrier.
-    expect(currentTradeSlotAt(19, MINT_SLOTS, undefined)).toBeNull();
-  });
-
-  it('reds an employed-nobody / jobless case', () => {
-    expect(currentTradeSlotAt(COIN_MAKER, undefined, undefined)).toBeNull();
-    expect(currentTradeSlotAt(undefined, MINT_SLOTS, undefined)).toBeNull();
+  it('offers a jobless settler nothing', () => {
+    expect(tradeSlotsOf(undefined, MINT_SLOTS)).toEqual([]);
   });
 });
 
@@ -71,8 +63,8 @@ describe('currentTradeSlotAt - the current-trade green/red verdict', () => {
  * The snapshot-level projection over real sandbox content - the functions the view actually calls. The
  * key invariant: the highlight verdict (`computeAssignHighlight`, what the player sees green) and the click
  * resolver (`workerGroupAt`, what a click posts) must agree building-for-building, so a green
- * building never silently cancels the click and a red one never binds. Both share one `candidateSlots`
- * gate; this proves they stay in lockstep over a live world.
+ * building never silently cancels the click and a red one never binds. Both read one verdict; this
+ * proves they stay in lockstep over a live world.
  */
 describe('computeAssignHighlight / workerGroupAt over sandbox content', () => {
   it('highlights own candidate buildings and the green/red verdict matches what a click would bind', () => {
@@ -173,6 +165,12 @@ describe('a workplace pick armed for a group', () => {
     },
   });
 
+  it('reds a workplace whose matching slot is full, with no fallback to another trade', () => {
+    const snapshot = snapshotOf([coinMaker(1, 10), coinMaker(2, 10), coinMaker(3), mint(10)]);
+    expect(computeAssignHighlight(snapshot, [3], byType)).toEqual([{ id: 10, ok: false }]);
+    expect(workerGroupAt(snapshot, 10, [3], byType)).toBeNull();
+  });
+
   it('reds a full workplace a selected member already works at', () => {
     const snapshot = snapshotOf([coinMaker(1, 10), coinMaker(2, 10), coinMaker(3), mint(10)]);
     expect(computeAssignHighlight(snapshot, [1, 3], byType)).toEqual([{ id: 10, ok: false }]);
@@ -195,33 +193,6 @@ describe('a workplace pick armed for a group', () => {
  * once per frame - while still re-colouring as soon as the world changes or another settler is armed.
  */
 describe('pick-mode highlight cost', () => {
-  function pickController(snapshot: () => WorldSnapshot, content: ContentSet): PickModeController {
-    return createPickModeController({
-      snapshot,
-      targets: {
-        owned: () => [],
-        buildings: () => [],
-        enemies: () => [],
-        flags: () => [],
-        signposts: () => [],
-        chests: () => [],
-        goods: () => [],
-        resources: () => [],
-        wildlife: () => [],
-        ownedSettlersIn: () => [],
-      },
-      content,
-      mapSize: { width: 8, height: 8 },
-      toWorld: () => ({ x: 0, y: 0 }),
-      nodeAt: () => ({ col: 0, row: 0 }),
-      enqueue: () => undefined,
-      orders: () => {
-        throw new Error('no order controller in this test');
-      },
-      setArmedCursor: () => undefined,
-    });
-  }
-
   it('scans the world once per snapshot, not once per frame, and re-scans for a new arm', () => {
     const scene = getScene('sandbox');
     if (scene === undefined) throw new Error('sandbox scene missing');
@@ -238,9 +209,9 @@ describe('pick-mode highlight cost', () => {
     const source = sim.snapshot();
     const first = countingSnapshot(source);
     let current: WorldSnapshot = first.snapshot;
-    const pick = pickController(() => current, sim.content);
+    const pick = buildingPickController({ snapshot: () => current, content: sim.content });
 
-    pick.arm({ kind: 'workplace', settlers: [settler.id] });
+    pick.arm({ kind: 'workplace', units: [settler.id] });
     const frame = (): readonly BuildingHighlightItem[] | null => pick.highlight();
     const wash = frame();
     const afterFirst = first.scans();
@@ -252,7 +223,7 @@ describe('pick-mode highlight cost', () => {
     expect(first.scans()).toBe(afterFirst);
 
     // A new arm re-colours for the newly armed settler, on the same snapshot.
-    pick.arm({ kind: 'workplace', settlers: [other.id] });
+    pick.arm({ kind: 'workplace', units: [other.id] });
     expect(frame()).toEqual(computeAssignHighlight(source, [other.id], buildingsByType));
     expect(first.scans()).toBeGreaterThan(afterFirst);
 

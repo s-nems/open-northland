@@ -8,8 +8,12 @@ import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
-import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
-import { actionTargets } from './action-ring/menu-state.js';
+import {
+  mountSettlerActions,
+  orderRecipients,
+  type SettlerActions,
+  selectionCentre,
+} from './action-ring/index.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { UnitSelection } from './selection.js';
 import type { UnitControlsOptions } from './types.js';
@@ -124,9 +128,9 @@ export async function createUnitChrome(
       ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 
-  /** The selection's settlers a profession change may reach: grown men, as the ring's gate allows. */
+  /** The selection's settlers the ring's profession order reaches. */
   const professionTargets = (ids: readonly number[]): number[] =>
-    actionTargets(opts.content, opts.snapshot(), ids, 'changeProfession');
+    orderRecipients(opts.content, opts.snapshot(), ids, 'changeProfession');
   /** Of those, the ones that have earned `jobType`; the picker offers a job when any of them has. */
   const professionTakers = (ids: readonly number[], jobType: number): number[] =>
     professionTargets(ids).filter((id) => opts.canChooseJob(id, jobType));
@@ -142,7 +146,7 @@ export async function createUnitChrome(
       ),
       professions: opts.professions,
       content: opts.content,
-      jobUnlocked: (ids, jobType) => professionTakers(ids, jobType).length > 0,
+      jobUnlocked: (ids, jobType) => professionTargets(ids).some((id) => opts.canChooseJob(id, jobType)),
       jobBlockedReason: (ids, jobType) => {
         for (const id of professionTargets(ids)) {
           const ent = entityById(opts.snapshot(), id);

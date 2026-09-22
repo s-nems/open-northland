@@ -15,7 +15,7 @@ import {
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { hasEligiblePartner } from '../src/game/snapshot.js';
 import type { ActionCommandId } from '../src/hud/action-ring/index.js';
-import { actionTargets, allowedActions } from '../src/view/unit-controls/action-ring/menu-state.js';
+import { allowedActions, orderRecipients } from '../src/view/unit-controls/action-ring/menu-state.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
@@ -329,9 +329,9 @@ describe('allowedActions - several settlers', () => {
     const set = allowedActions(content, snapshot, [1, 2]);
     expect(set.has('attackPosition')).toBe(true);
     expect(set.has('defenceMode')).toBe(true);
-    expect(actionTargets(content, snapshot, [1, 2], 'attackPosition')).toEqual([1]);
-    expect(actionTargets(content, snapshot, [1, 2], 'defenceMode')).toEqual([1]);
-    expect(actionTargets(content, snapshot, [1, 2], 'changeProfession')).toEqual([1, 2]);
+    expect(orderRecipients(content, snapshot, [1, 2], 'attackPosition')).toEqual([1]);
+    expect(orderRecipients(content, snapshot, [1, 2], 'defenceMode')).toEqual([1]);
+    expect(orderRecipients(content, snapshot, [1, 2], 'changeProfession')).toEqual([1, 2]);
   });
 
   it('sends a marriage order to the unmarried members only', () => {
@@ -347,7 +347,7 @@ describe('allowedActions - several settlers', () => {
     ]);
     const group = [1, 2, 3, 4, 5, 6];
     expect(allowedActions(content, snapshot, group).has('marry')).toBe(true);
-    expect(actionTargets(content, snapshot, group, 'marry')).toEqual([1, 2, 3, 6]);
+    expect(orderRecipients(content, snapshot, group, 'marry')).toEqual([1, 2, 3, 6]);
   });
 
   it('sends a home order to every adult and a release only to the housed', () => {
@@ -356,15 +356,15 @@ describe('allowedActions - several settlers', () => {
       settler(2, JOB_WOMAN, { female: true }),
       settler(3, JOB_CHILD_MALE, { child: true }),
     ]);
-    expect(actionTargets(content, snapshot, [1, 2, 3], 'assignHome')).toEqual([1, 2]);
-    expect(actionTargets(content, snapshot, [1, 2, 3], 'removeHome')).toEqual([1]);
+    expect(orderRecipients(content, snapshot, [1, 2, 3], 'assignHome')).toEqual([1, 2]);
+    expect(orderRecipients(content, snapshot, [1, 2, 3], 'removeHome')).toEqual([1]);
   });
 
   it('sends a single-settler order to nobody in a group', () => {
     const snapshot = snapshotOf([settler(1, JOB_SCOUT), settler(2, JOB_SCOUT)]);
     expect(allowedActions(content, snapshot, [1, 2]).has('explore')).toBe(false);
-    expect(actionTargets(content, snapshot, [1, 2], 'explore')).toEqual([]);
-    expect(actionTargets(content, snapshot, [1], 'explore')).toEqual([1]);
+    expect(orderRecipients(content, snapshot, [1, 2], 'explore')).toEqual([]);
+    expect(orderRecipients(content, snapshot, [1], 'explore')).toEqual([1]);
   });
 });
 

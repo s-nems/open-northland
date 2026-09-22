@@ -62,10 +62,10 @@ describe('issueRingCommand', () => {
     issueRingCommand('assignWorkPlace', [4, 9], h);
     issueRingCommand('erectSignpost', [7, 8], h);
     expect(h.armed).toEqual([
-      { kind: 'home', settlers: [4] },
-      { kind: 'learning-place', settlers: [4] },
+      { kind: 'home', units: [4] },
+      { kind: 'learning-place', units: [4] },
       { kind: 'signpost', scout: 7 },
-      { kind: 'workplace', settlers: [4, 9] },
+      { kind: 'workplace', units: [4, 9] },
     ]);
     expect(h.issued).toEqual([]);
   });
@@ -84,7 +84,7 @@ describe('issueRingCommand', () => {
     ]);
   });
 
-  it('orders nobody once the order`s gate shut on every settler', () => {
+  it('orders nobody once the gate shut on every settler', () => {
     const h = harness();
     issueRingCommand('marry', [], h);
     issueRingCommand('assignHome', [], h);

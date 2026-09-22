@@ -13,7 +13,7 @@ import {
   wasAttackedBy,
 } from '../../src/components/index.js';
 import { playerCommand, type Simulation } from '../../src/index.js';
-import { isAuthorized } from '../../src/systems/command/authority.js';
+import { authorizedCommand } from '../../src/systems/command/authority.js';
 import { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from '../../src/systems/match/index.js';
 import type { MissionDefinition, MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -181,7 +181,7 @@ describe('MissionWon and MissionFailed', () => {
       entity: stamped(sim, ATTACKER_ID),
       mode: MILITARY_MODE.NONE,
     });
-    expect(isAuthorized(sim.world, order)).toBe(true);
+    expect(authorizedCommand(sim.world, order)).toBe(order.command);
   });
 
   it('leaves the skirmish rule running, so a seat still dies after a scripted win', () => {

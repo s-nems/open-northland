@@ -8,8 +8,7 @@ import {
   type HouseInfo,
   houseAssignableAt,
 } from '../src/view/unit-controls/highlights/index.js';
-import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
-import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
+import { buildingPickController, NO_TARGETS } from './support/pick-mode.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
@@ -38,26 +37,13 @@ function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRI
   };
 }
 
-/** A settler of `player`; `minor` marks a still-growing child, `marriage` links a spouse/child, and
- *  `home` moves it in as a resident. */
-function person(
-  id: number,
-  opts: {
-    player?: number;
-    tribe?: number;
-    minor?: boolean;
-    spouse?: number;
-    child?: number | null;
-    home?: number;
-  } = {},
-): Ent {
+/** A settler of `player`; `home` moves it in as a resident. */
+function person(id: number, opts: { player?: number; tribe?: number; home?: number } = {}): Ent {
   return {
     id,
     components: {
       Settler: { jobType: 0, tribe: opts.tribe ?? TRIBE },
       Owner: { player: opts.player ?? HUMAN_PLAYER },
-      ...(opts.minor === true ? { Age: { ticks: 0 } } : {}),
-      ...(opts.spouse !== undefined ? { Marriage: { spouse: opts.spouse, child: opts.child ?? null } } : {}),
       ...(opts.home !== undefined ? { Residence: { home: opts.home } } : {}),
     },
   };
@@ -129,19 +115,6 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
   });
 });
 
-const NO_TARGETS: UnitTargets = {
-  owned: () => [],
-  buildings: () => [],
-  enemies: () => [],
-  flags: () => [],
-  signposts: () => [],
-  chests: () => [],
-  goods: () => [],
-  resources: () => [],
-  wildlife: () => [],
-  ownedSettlersIn: () => [],
-};
-
 describe('a home pick armed for a group', () => {
   it('reds a full home a selected member already lives in', () => {
     const snap = snapshotOf([person(1, { home: 10 }), person(3, { home: 10 }), person(2), home(10)]);
@@ -168,22 +141,17 @@ describe('a home pick armed for a group', () => {
     const snap = snapshotOf([person(1), person(2), person(3, { home: 20 }), ...homes]);
     const issued: Command[] = [];
     const house: Pickable = { ref: 10, x: 0, y: 0 };
-    const pick = createPickModeController({
+    const pick = buildingPickController({
       snapshot: () => snap,
-      targets: { ...NO_TARGETS, owned: (kind) => (kind === 'building' ? [house] : []) },
       content: sandboxContent(),
-      mapSize: { width: 8, height: 8 },
-      toWorld: () => ({ x: 0, y: 0 }),
-      nodeAt: () => ({ col: 0, row: 0 }),
+      targets: { ...NO_TARGETS, owned: (kind) => (kind === 'building' ? [house] : []) },
       enqueue: (command) => issued.push(command),
-      orders: () => {
-        throw new Error('no order controller in this test');
-      },
-      setArmedCursor: () => undefined,
     });
 
-    pick.arm({ kind: 'home', settlers: [1, 2, 3] });
+    pick.arm({ kind: 'home', units: [1, 2, 3] });
     expect(pick.handleMouseDown({ clientX: 0, clientY: 0, button: 0 } as MouseEvent)).toBe('ordered');
-    expect(issued).toEqual([{ kind: 'assignHouseGroup', entities: [1, 2, 3], house: 10 }]);
+    expect(issued).toEqual([
+      { kind: 'assignHouseGroup', members: [{ entity: 1 }, { entity: 2 }, { entity: 3 }], house: 10 },
+    ]);
   });
 });

@@ -3,7 +3,7 @@ import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
-import { actionTargets } from './action-ring/menu-state.js';
+import { orderRecipients } from './action-ring/index.js';
 import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
 import {
@@ -59,12 +59,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const workArea = createWorkAreaOverlay();
   // `pickMode` is built below; the arrows defer the reads to click time.
   const chrome = await createUnitChrome(opts, selection, equipPicker, {
-    assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', settlers: [id] }),
-    assignHome: (id) => pickMode.arm({ kind: 'home', settlers: [id] }),
-    attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', settlers: [id] }),
+    assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', units: [id] }),
+    assignHome: (id) => pickMode.arm({ kind: 'home', units: [id] }),
+    attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', units: [id] }),
     selectEntity: (id) => applySelection([id], false),
     ringCommand: (id, targets) =>
-      issueRingCommand(id, actionTargets(opts.content, opts.snapshot(), targets, id), {
+      issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
         enqueue: opts.enqueue,
         pickMode,
         openEquipment: (settlers) => equipPicker?.openAll(settlers),
@@ -125,7 +125,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** The hotkey obeys the ring's own gate, so both ways of arming the order agree on who may take it. */
   const armAttackMove = (): void => {
-    const units = actionTargets(opts.content, opts.snapshot(), [...selection.ids()], 'attackPosition');
+    const units = orderRecipients(opts.content, opts.snapshot(), [...selection.ids()], 'attackPosition');
     if (units.length === 0) return;
     chrome.actions().close();
     pickMode.arm({ kind: 'attack-move', units });
@@ -283,7 +283,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (isActionHotkey(e, opts.bindings, 'professionPicker')) {
       e.preventDefault();
       const ids = [...selection.ids()];
-      if (actionTargets(opts.content, opts.snapshot(), ids, 'changeProfession').length > 0) {
+      if (orderRecipients(opts.content, opts.snapshot(), ids, 'changeProfession').length > 0) {
         chrome.actions().openProfessions(ids);
       }
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {

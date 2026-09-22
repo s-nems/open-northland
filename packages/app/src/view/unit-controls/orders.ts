@@ -6,6 +6,7 @@ import {
   type Entity,
   type EquipPickEntry,
   entityById,
+  type GroupMember,
   type GroupWorker,
   nodeOfPosition,
   type PlayerCommand,
@@ -178,7 +179,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
       // Homes and workplaces have limited room, so each goes out as one group order and the sim seats
       // the homeless and the unemployed first.
-      const movers: Entity[] = [];
+      const movers: GroupMember[] = [];
       const workers: GroupWorker[] = [];
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
@@ -195,7 +196,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         }
         // A home may be reserved before it stands; its household drives wait for completed construction.
         if (def?.kind === 'home') {
-          movers.push(target.ref as Entity);
+          movers.push({ entity: target.ref as Entity });
           continue;
         }
         // Drilling needs the building standing, so a foundation falls through to employment, whose slots
@@ -211,10 +212,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         if (jobPriority.length > 0) workers.push({ entity: target.ref as Entity, jobPriority });
       }
       if (movers.length > 0) {
-        deps.enqueue({ kind: 'assignHouseGroup', entities: movers, house: building as Entity });
+        deps.enqueue({ kind: 'assignHouseGroup', members: movers, house: building as Entity });
       }
       if (workers.length > 0) {
-        deps.enqueue({ kind: 'assignWorkerGroup', building: building as Entity, workers });
+        deps.enqueue({ kind: 'assignWorkerGroup', building: building as Entity, members: workers });
       }
       return true;
     }
@@ -305,8 +306,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   const issueAttackMove = (target: Tile, units?: readonly number[]): boolean =>
     issueWalkOrder(target, commandedAmong(units), deps.selected(), 'attackMoveUnit');
 
-  const issueSetWorkFlag = (target: Tile, units?: readonly number[], goodType?: number): boolean => {
-    const movers = commandedAmong(units);
+  const setWorkFlags = (movers: readonly FormationUnit[], target: Tile, goodType?: number): boolean => {
     if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const flag = clampTile(target, width, height);
@@ -326,13 +326,16 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return true;
   };
 
+  const issueSetWorkFlag = (target: Tile, units?: readonly number[]): boolean =>
+    setWorkFlags(commandedAmong(units), target);
+
   const issueSetWorkFlagAt = (event: MouseEvent): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const resources = deps.targets.resources();
     const resource = pickNearestAt(resources, world.x, world.y);
     const goodType =
       resource === null ? undefined : resources.find((target) => target.ref === resource)?.goodType;
-    return issueSetWorkFlag(worldToTile(world.x, world.y, deps.elevation), undefined, goodType);
+    return setWorkFlags(commandedAmong(), worldToTile(world.x, world.y, deps.elevation), goodType);
   };
 
   return {
