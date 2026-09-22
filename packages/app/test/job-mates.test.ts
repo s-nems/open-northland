@@ -6,6 +6,7 @@ import {
   JOB_COLLECTOR,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
+  JOB_SOLDIER_SWORD,
   JOB_WOMAN,
 } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
@@ -41,7 +42,7 @@ describe('double-click job mates', () => {
     expect(jobMatesAround(settlers, 1, CURSOR, snapshot, content)).toEqual([1, 2]);
   });
 
-  it('counts every hero as one trade, and keeps soldiers apart from them', () => {
+  it('counts every soldier as one trade whatever the weapon, and every hero as another', () => {
     // The sandbox catalog holds no hero trade; the served content names every one of them `hero*`.
     const withHeroes: ContentSet = {
       ...content,
@@ -59,11 +60,13 @@ describe('double-click job mates', () => {
       settler(1, JOB_HERO_UNARMED, null),
       settler(2, JOB_HEROINE_BOW, null),
       settler(3, JOB_ARCHER, null),
+      settler(4, JOB_SOLDIER_SWORD, null),
+      settler(5, JOB_BUILDER, null),
     ]);
-    const settlers = [drawn(1, 1000, 1000), drawn(2, 1100, 1000), drawn(3, 1200, 1000)];
+    const settlers = [1, 2, 3, 4, 5].map((ref) => drawn(ref, 900 + ref * 50, 1000));
 
     expect(jobMatesAround(settlers, 1, CURSOR, snapshot, withHeroes)).toEqual([1, 2]);
-    expect(jobMatesAround(settlers, 3, CURSOR, snapshot, withHeroes)).toEqual([3]);
+    expect(jobMatesAround(settlers, 3, CURSOR, snapshot, withHeroes)).toEqual([3, 4]);
   });
 
   it('answers null for a click that did not land on a drawn settler', () => {

@@ -225,7 +225,7 @@ export const plSurfaces = {
         controlGroup0Replace: 'Zastąp grupę 0 zaznaczeniem',
         controlGroup0Add: 'Dodaj/przenieś zaznaczenie do grupy 0',
         cancel: 'Anuluj / zamknij / odznacz',
-        addToSelection: 'Dodawanie do zaznaczenia',
+        toggleSelection: 'Dodawanie do zaznaczenia i usuwanie z niego',
         selectJobMates: 'Zaznacz pobliskich osadników tego samego zawodu',
         coarseStep: 'Zmień licznik szkolenia o 10',
         craftToggle: 'Dodaj/usuń produkt z listy produkcji',
@@ -247,7 +247,7 @@ export const plSurfaces = {
         'Kliknij, potem naciśnij nowy klawisz lub kombinację; Esc też można tu przypisać. Kliknięcie obok anuluje. Esc najpierw zamyka to, co otwarte, a menu otwiera, gdy nie ma już nic do zamknięcia.',
       recallSelectedTip: 'Naciśnięty, gdy grupa jest już zaznaczona, wyśrodkowuje widok na grupie.',
       pointerBindingRebindTip:
-        'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia. Esc anuluje.',
+        'Kliknij, potem naciśnij Ctrl, Shift, Alt lub Cmd razem z przyciskiem myszy. Shift + lewy klik pozostaje dodawaniem do zaznaczenia i usuwaniem z niego. Esc anuluje.',
       autosaveNote: 'Zmiany zapisują się od razu.',
       restoreDefaults: 'Przywróć domyślne',
       restoreFailed: 'Nie udało się przywrócić ustawień domyślnych. Nic nie zostało zmienione.',

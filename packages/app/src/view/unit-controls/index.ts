@@ -201,16 +201,29 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   /**
-   * A double-click's second release on a settler the first release selected: that settler's trade mates
-   * around the cursor, or null for any other release.
+   * Shift + click toggles a unit, the usual RTS convention; the original instead adds and removes with two
+   * separate modifiers.
    */
-  const jobMatesOf = (e: MouseEvent, hit: number, at: { x: number; y: number }): number[] | null =>
-    e.detail >= DOUBLE_CLICK && selection.ids().has(hit)
-      ? jobMatesAround(unitTargets.owned('settler'), hit, at, opts.snapshot(), opts.content)
-      : null;
+  const toggleSelected = (id: number): void => {
+    const held = selection.ids();
+    if (held.has(id)) {
+      applySelection(
+        [...held].filter((other) => other !== id),
+        false,
+      );
+    } else {
+      applySelection([id], true);
+    }
+  };
+
+  /** What the last left click on the world landed on, so a double-click can tell both presses hit it. */
+  let lastClickHit: number | null = null;
 
   const onMouseUp = (e: MouseEvent): void => {
-    if (e.button !== 0 || !marquee.active()) return;
+    if (e.button !== 0) return;
+    const previousHit = lastClickHit;
+    lastClickHit = null; // a HUD, pick or drag release breaks a double-click
+    if (!marquee.active()) return;
     const release = marquee.release(e.clientX, e.clientY);
     if (release === null) return;
     if (release.moved) {
@@ -218,17 +231,22 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       const a = toWorld(release.startX, release.startY);
       const b = toWorld(e.clientX, e.clientY);
       applySelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
-    } else {
-      const w = toWorld(e.clientX, e.clientY);
-      const hit = clickHits.selectionAt(w.x, w.y);
-      const mates = hit === null ? null : jobMatesOf(e, hit, w);
-      if (mates !== null) {
-        applySelection(mates, e.shiftKey); // the original's double-click plays no further click
-      } else if (hit !== null) {
-        applySelection([hit], e.shiftKey);
-        cue('confirm');
-      } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
+      return;
     }
+    const w = toWorld(e.clientX, e.clientY);
+    const hit = clickHits.selectionAt(w.x, w.y);
+    lastClickHit = hit;
+    const mates =
+      hit !== null && hit === previousHit && e.detail >= DOUBLE_CLICK
+        ? jobMatesAround(unitTargets.owned('settler'), hit, w, opts.snapshot(), opts.content)
+        : null;
+    if (mates !== null) {
+      applySelection(mates, e.shiftKey); // the original's double-click plays no further click
+    } else if (hit !== null) {
+      if (e.shiftKey) toggleSelected(hit);
+      else applySelection([hit], false);
+      cue('confirm');
+    } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {

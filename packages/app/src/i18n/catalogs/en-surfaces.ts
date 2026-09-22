@@ -228,7 +228,7 @@ export const enSurfaces = {
         controlGroup0Replace: 'Replace group 0 with selection',
         controlGroup0Add: 'Add/move selection to group 0',
         cancel: 'Cancel / close / deselect',
-        addToSelection: 'Add to selection',
+        toggleSelection: 'Add to or remove from selection',
         selectJobMates: 'Select nearby settlers of the same trade',
         coarseStep: 'Change a training counter by 10',
         craftToggle: 'Add/remove a product from production',
@@ -250,7 +250,7 @@ export const enSurfaces = {
         'Click, then press the new key or combination; Esc can be assigned here. Clicking elsewhere cancels. Esc first closes whatever is open and opens the menu once nothing is left to close.',
       recallSelectedTip: 'Pressed while the group is already selected, it centres the view on the group.',
       pointerBindingRebindTip:
-        'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to selection. Esc cancels.',
+        'Click, then press Ctrl, Shift, Alt, or Cmd with a mouse button. Shift + left click remains add to or remove from selection. Esc cancels.',
       autosaveNote: 'Changes are saved immediately.',
       restoreDefaults: 'Restore defaults',
       restoreFailed: 'Restoring defaults failed. Nothing was changed.',

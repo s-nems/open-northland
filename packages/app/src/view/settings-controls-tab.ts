@@ -131,7 +131,7 @@ export function createControlsTab(opts: {
     return [
       ...rebindable,
       fixedRow(text.bindings.cancel, 'Esc'),
-      fixedRow(text.bindings.addToSelection, text.shiftClick),
+      fixedRow(text.bindings.toggleSelection, text.shiftClick),
       fixedRow(text.bindings.selectJobMates, text.doubleClick),
       fixedRow(text.bindings.coarseStep, text.ctrlClick),
       fixedRow(text.bindings.craftToggle, text.ctrlClick),
