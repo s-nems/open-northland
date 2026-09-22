@@ -44,10 +44,7 @@ seals carry accessible labels, so colour is never the only carrier of state.
   cards, ink text, cost slots with a corner badge, a lit rim on the card last picked, a lock badge on
   locked entries.
 - Bottom navigation: seven bronze medallions on the carved beam, persistent labels, lit medallion
-  and marker for the active entry. The beam carries no digit hotkeys: digits 1-9 and 0 are the
-  control-group keys. Its windows take F1-F7 in beam order and F8 hides the HUD, all rebindable; the
-  original opens construction on B and diplomacy, statistics, subjects and the technology tree on
-  F5-F8.
+  and marker for the active entry.
 - Top bar: one beam carrying population symbols, goods counters, the simulation clock, the segmented
   pause / ×1 / ×2 / ×3 control and the menu medallion. Categories reveal a parchment breakdown on
   hover/focus with dotted leaders.
@@ -156,8 +153,7 @@ keeps the assistant alone.
 ### Residents window
 
 The seat's people as one list (ticket 07), in the construction window's frame and width. Mieszkańcy
-on the beam or its key (F2 by default; the original's is F7) opens it at once, from inside the search
-field too, since no field types an F-key.
+on the beam opens it at once.
 
 - Listed: the local seat's humans. Animals, vehicles and other seats' people stay out. The list
   follows the tick while it is open and costs nothing closed: one walk over the snapshot's actors.
@@ -238,8 +234,7 @@ Rules the shell enforces:
   the unit controls' own ladder (job list, armed order, selection). The shell handles Esc before the
   other listeners and stops it once it consumed the press. With every rung clear, Esc opens the game
   menu: that last step is the rebindable "Menu gry" action (default Esc, the one action Esc may hold)
-  and on any other key it opens the menu at once. "Okno budowania" (default B) toggles the
-  construction window like its beam entry.
+  and on any other key it opens the menu at once.
 - Closing with Esc or the close medallion returns keyboard focus to the beam entry that owns the
   window. Only the mission sheet and the system menu hold the simulation paused; other windows never
   touch the pause.

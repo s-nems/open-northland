@@ -45,8 +45,8 @@ See [resume instructions](FOUNDATION.md#resume-the-local-review).
 - The clock is elapsed **simulation time**: x3 advances three times faster, pause stops it. It is not
   OS time or unscaled real session duration.
 - Wiedza combines **Produkcja i rozwój**, **Encyklopedia**, **Jak grać** in one window. Remember the
-  last tab during the session. F1 opens guidance; F8 opens dependencies. Contextual help/requirements
-  links go directly to the appropriate entry.
+  last tab during the session. Contextual help/requirements links go directly to the appropriate
+  entry.
 - Settings/save/load/restart/quit remain available through the system entry by time controls.
   The minimap keeps its own large-map entry.
 - Resource/population summaries reuse icons or sprites from the active game asset set. The residents

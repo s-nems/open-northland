@@ -3,7 +3,7 @@
 **Area:** app, desktop · **Focus:** save/load · **Priority:** P2
 
 Returning to the menu now asks before it throws a session away, but the browser and shell paths do not:
-a tab close, F5, or the desktop window's close button drops a live game with no prompt. There is also no
+a tab close, a page reload, or the desktop window's close button drops a live game with no prompt. There is also no
 autosave, so a session that ends any other way loses everything since the player's last manual save.
 
 ## Scope

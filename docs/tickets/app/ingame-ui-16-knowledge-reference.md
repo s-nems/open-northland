@@ -11,7 +11,7 @@ against this checkout before starting; the reference document describes an earli
 ## Scope
 
 - Design one window with Produkcja i rozwój, Encyklopedia and Jak grać tabs. Implement encyclopedia/help here; ticket 17 owns the interactive dependency view.
-- Remember the last tab during the session; F1 opens Jak grać, F8 opens Produkcja i rozwój. Contextual question marks open the relevant entry without losing its identity.
+- Remember the last tab during the session. Contextual question marks open the relevant entry without losing its identity.
 - Cover building/good/profession entries, general rules, controls, search/index and previous/next navigation using verified content and authored text; localize user-facing strings.
 - Create concrete cross-link targets for construction, selection details and the dependency view. Do not expose admin spawning through any player help route.
 - Use one shared window/navigation owner so ticket 17 extends this surface instead of creating a separate UI.

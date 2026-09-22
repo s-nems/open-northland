@@ -70,9 +70,9 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panDown: 'ArrowDown',
   pauseToggle: 'KeyP',
   gameMenu: 'Escape',
-  // The beam's windows take F1-F7 in beam order, then the HUD toggle. A departure from the original,
-  // which opens construction on B and diplomacy, statistics, subjects and the technology tree on F5-F8.
-  construction: 'F1',
+  // Construction keeps the original's B. The other beam windows take F2-F7 in beam order, then the HUD
+  // toggle; the original puts diplomacy, statistics, subjects and the technology tree on F5-F8.
+  construction: 'KeyB',
   residents: 'F2',
   assistant: 'F3',
   statistics: 'F4',

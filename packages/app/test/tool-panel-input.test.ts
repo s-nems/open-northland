@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_KEY_BINDINGS, type KeyBindings } from '../src/hud/keybindings.js';
+import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
 import { createToolPanelInput, type HeldMode } from '../src/hud/tool-panel/input.js';
 import type { NavEntryId } from '../src/hud/tool-panel/nav-effects.js';
 import type { ToolWindows } from '../src/hud/tool-panel/windows.js';
@@ -74,11 +74,7 @@ class DialogButton {
   }
 }
 
-function mount(
-  keyboardOwned?: () => boolean,
-  escapeClaimed?: () => boolean,
-  bindings: KeyBindings = DEFAULT_KEY_BINDINGS,
-) {
+function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
   const canvas = new EventTarget() as unknown as HTMLCanvasElement;
   const cues: UiCue[] = [];
   let menuOpened = 0;
@@ -95,7 +91,7 @@ function mount(
     toCanvas: (x, y) => ({ x, y }),
     windows: CLOSED_WINDOWS,
     held: [held],
-    bindings,
+    bindings: DEFAULT_KEY_BINDINGS,
     closeWindow: () => {
       if (!windowOpen) return false;
       windowOpen = false;
@@ -240,10 +236,10 @@ describe('tool panel Escape ladder', () => {
     other.dispose();
   });
 
-  it('toggles each beam window on its F-key, unless another surface owns the keyboard', () => {
+  it('toggles each beam window on its key, unless another surface owns the keyboard', () => {
     let owned = false;
     const { input, windowTarget, navToggled, cues } = mount(() => owned);
-    for (const code of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']) {
+    for (const code of ['KeyB', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']) {
       const press = key(code);
       windowTarget.dispatchEvent(press);
       expect(press.defaultPrevented, code).toBe(true);
@@ -258,17 +254,14 @@ describe('tool panel Escape ladder', () => {
       'knowledge',
     ]);
     owned = true;
-    windowTarget.dispatchEvent(key('F1'));
+    windowTarget.dispatchEvent(key('KeyB'));
     expect(navToggled).toHaveLength(7);
     expect(cues).toEqual([]);
     input.dispose();
   });
 
   it('leaves a field its letters, but takes an F-key from inside one', () => {
-    const { input, windowTarget, navToggled } = mount(undefined, undefined, {
-      ...DEFAULT_KEY_BINDINGS,
-      construction: 'KeyB',
-    });
+    const { input, windowTarget, navToggled } = mount();
     // A focused `<select>` keeps its letters: they run its own type-ahead, not a game action.
     const inList = key('KeyB');
     Object.defineProperty(inList, 'target', { value: new Dropdown() });

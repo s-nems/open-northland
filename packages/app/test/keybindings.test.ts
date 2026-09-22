@@ -137,9 +137,9 @@ describe('Escape', () => {
     }
   });
 
-  it('opens the game menu by default, with F1 on the construction window', () => {
+  it('opens the game menu by default, with B on the construction window', () => {
     expect(DEFAULT_KEY_BINDINGS.gameMenu).toBe('Escape');
-    expect(DEFAULT_KEY_BINDINGS.construction).toBe('F1');
+    expect(DEFAULT_KEY_BINDINGS.construction).toBe('KeyB');
     expect(keyDisplayLabel('Escape', { space: 'Space' })).toBe('Esc');
   });
 
