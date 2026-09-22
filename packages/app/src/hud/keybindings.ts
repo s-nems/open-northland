@@ -34,11 +34,17 @@ export const KEYBINDING_ACTIONS = [
   'pauseToggle',
   'gameMenu',
   'construction',
+  'residents',
+  'assistant',
+  'statistics',
+  'mission',
+  'diplomacy',
+  'knowledge',
+  'hudToggle',
   'actionRing',
   'professionPicker',
   'attackMove',
   'workFlagOrder',
-  'hudToggle',
   ...CONTROL_GROUP_BINDING_ACTIONS,
 ] as const;
 
@@ -64,12 +70,20 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panDown: 'ArrowDown',
   pauseToggle: 'KeyP',
   gameMenu: 'Escape',
-  construction: 'KeyB',
+  // The beam's windows take F1-F7 in beam order, then the HUD toggle. A departure from the original,
+  // which opens construction on B and diplomacy, statistics, subjects and the technology tree on F5-F8.
+  construction: 'F1',
+  residents: 'F2',
+  assistant: 'F3',
+  statistics: 'F4',
+  mission: 'F5',
+  diplomacy: 'F6',
+  knowledge: 'F7',
+  hudToggle: 'F8',
   actionRing: 'Space',
   professionPicker: 'KeyC',
   attackMove: 'KeyA',
   workFlagOrder: 'Primary+Mouse2',
-  hudToggle: 'F9',
   ...controlGroupDefaults,
 };
 
@@ -85,25 +99,30 @@ export function controlGroupBinding(action: ControlGroupBindingAction): {
   };
 }
 
+/** The game's F-row. F11 and F12 stay the browser's (fullscreen, developer tools); the running game
+ *  takes the rest from it, F5's reload included (`tool-panel/input.ts`). */
+const FUNCTION_KEY_CODE = /^F([1-9]|10)$/;
+
+export function isFunctionKeyCode(code: string): boolean {
+  return FUNCTION_KEY_CODE.test(code);
+}
+
 /** Codes a binding may take. Escape stays the fixed cancel key and may hold only the game menu, which
- *  opens once there is nothing left to cancel (`bindingAllowedFor`); Tab and Enter stay out. Of the
- *  F-row only F9, the HUD toggle's default, is taken: F7 is the fixed residents key and F5, F11 and F12
- *  belong to the browser. */
+ *  opens once there is nothing left to cancel (`bindingAllowedFor`); Tab and Enter stay out. */
 const BINDABLE_KEY_CODE =
-  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete|F9)$/;
+  /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|Arrow(Left|Right|Up|Down)|Space|Escape|Comma|Period|Slash|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Home|End|PageUp|PageDown|Insert|Delete)$/;
 const ESCAPE_ACTION: KeybindingAction = 'gameMenu';
 const BINDABLE_POINTER_CODE = /^Mouse[012]$/;
 const MODIFIER_ORDER = ['Primary', 'Ctrl', 'Shift', 'Alt', 'Meta'] as const;
 
 export function isBindableCode(code: string): boolean {
-  return BINDABLE_KEY_CODE.test(code);
+  return BINDABLE_KEY_CODE.test(code) || isFunctionKeyCode(code);
 }
 
 export function isBindableBinding(binding: string): boolean {
   const parts = binding.split('+');
   const code = parts.pop();
-  if (code === undefined || (!BINDABLE_KEY_CODE.test(code) && !BINDABLE_POINTER_CODE.test(code)))
-    return false;
+  if (code === undefined || (!isBindableCode(code) && !BINDABLE_POINTER_CODE.test(code))) return false;
   if (code === 'Escape' && parts.length > 0) return false;
   const modifiers = new Set(parts);
   if (
@@ -164,6 +183,16 @@ export function bindingAllowedFor(action: KeybindingAction, binding: string): bo
     return mouse && code !== 'Mouse1' && parts.length > 1 && binding !== 'Shift+Mouse0';
   }
   return !mouse && !parts.includes('Primary');
+}
+
+/** The bindings a player moved off their defaults, which is all that settings keep. */
+export function changedKeyBindings(bindings: KeyBindings): Partial<Record<KeybindingAction, string | null>> {
+  return Object.fromEntries(
+    KEYBINDING_ACTIONS.filter((action) => bindings[action] !== DEFAULT_KEY_BINDINGS[action]).map((action) => [
+      action,
+      bindings[action],
+    ]),
+  );
 }
 
 /** Parse stored bindings, filling missing or malformed actions from the current defaults. */

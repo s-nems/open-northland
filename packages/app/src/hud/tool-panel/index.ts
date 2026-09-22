@@ -491,15 +491,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         ctx.cue('confirm');
         opts.onSystemMenu?.();
       },
-      toggleConstruction: () => {
+      toggleNav: (id) => {
         ctx.cue('confirm');
-        applyNavEntry(surfaces, 'build');
-        nav.focus('build');
-      },
-      toggleResidents: () => {
-        ctx.cue('confirm');
-        applyNavEntry(surfaces, 'residents');
-        nav.focus('residents');
+        applyNavEntry(surfaces, id);
+        nav.focus(id);
       },
       togglePause: () => speed.togglePause(),
       toggleHud: () => opts.onToggleHud?.(),

@@ -1,13 +1,14 @@
 import type { UiCue } from '@open-northland/audio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
+import { DEFAULT_KEY_BINDINGS, type KeyBindings } from '../src/hud/keybindings.js';
 import { createToolPanelInput, type HeldMode } from '../src/hud/tool-panel/input.js';
+import type { NavEntryId } from '../src/hud/tool-panel/nav-effects.js';
 import type { ToolWindows } from '../src/hud/tool-panel/windows.js';
 
 /**
  * The tool panel's canvas and key input over a fake canvas and window: which press plays which GUI
  * click, the Escape ladder (a held mode, then the open central window, then the unit controls' turn,
- * then the game menu) and the menu and construction hotkeys.
+ * then the game menu), the menu and window hotkeys and the F-row.
  */
 
 /** A press the handler reads like a MouseEvent: client point, button, modifiers. */
@@ -73,12 +74,15 @@ class DialogButton {
   }
 }
 
-function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
+function mount(
+  keyboardOwned?: () => boolean,
+  escapeClaimed?: () => boolean,
+  bindings: KeyBindings = DEFAULT_KEY_BINDINGS,
+) {
   const canvas = new EventTarget() as unknown as HTMLCanvasElement;
   const cues: UiCue[] = [];
   let menuOpened = 0;
-  let constructionToggled = 0;
-  let residentsToggled = 0;
+  const navToggled: NavEntryId[] = [];
   let hudToggled = 0;
   const held = heldMode();
   const arm = (): void => {
@@ -91,7 +95,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     toCanvas: (x, y) => ({ x, y }),
     windows: CLOSED_WINDOWS,
     held: [held],
-    bindings: DEFAULT_KEY_BINDINGS,
+    bindings,
     closeWindow: () => {
       if (!windowOpen) return false;
       windowOpen = false;
@@ -103,11 +107,8 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     openMenu: () => {
       menuOpened++;
     },
-    toggleConstruction: () => {
-      constructionToggled++;
-    },
-    toggleResidents: () => {
-      residentsToggled++;
+    toggleNav: (id) => {
+      navToggled.push(id);
     },
     togglePause: () => undefined,
     toggleHud: () => {
@@ -129,8 +130,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     closed,
     windowTarget,
     menuOpened: (): number => menuOpened,
-    constructionToggled: (): number => constructionToggled,
-    residentsToggled: (): number => residentsToggled,
+    navToggled,
     hudToggled: (): number => hudToggled,
   };
 }
@@ -219,8 +219,7 @@ describe('tool panel Escape ladder', () => {
       openMenu: () => {
         opened++;
       },
-      toggleConstruction: () => undefined,
-      toggleResidents: () => undefined,
+      toggleNav: () => undefined,
       togglePause: () => undefined,
       toggleHud: () => undefined,
       cue: () => undefined,
@@ -241,57 +240,75 @@ describe('tool panel Escape ladder', () => {
     other.dispose();
   });
 
-  it('toggles the construction window on its key, unless another surface owns the keyboard', () => {
+  it('toggles each beam window on its F-key, unless another surface owns the keyboard', () => {
     let owned = false;
-    const { input, windowTarget, constructionToggled, cues } = mount(() => owned);
-    const build = key('KeyB');
-    windowTarget.dispatchEvent(build);
-    expect(constructionToggled()).toBe(1);
-    expect(build.defaultPrevented).toBe(true);
+    const { input, windowTarget, navToggled, cues } = mount(() => owned);
+    for (const code of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']) {
+      const press = key(code);
+      windowTarget.dispatchEvent(press);
+      expect(press.defaultPrevented, code).toBe(true);
+    }
+    expect(navToggled).toEqual([
+      'build',
+      'residents',
+      'assistant',
+      'statistics',
+      'mission',
+      'diplomacy',
+      'knowledge',
+    ]);
     owned = true;
-    windowTarget.dispatchEvent(key('KeyB'));
-    expect(constructionToggled()).toBe(1);
+    windowTarget.dispatchEvent(key('F1'));
+    expect(navToggled).toHaveLength(7);
     expect(cues).toEqual([]);
+    input.dispose();
+  });
+
+  it('leaves a field its letters, but takes an F-key from inside one', () => {
+    const { input, windowTarget, navToggled } = mount(undefined, undefined, {
+      ...DEFAULT_KEY_BINDINGS,
+      construction: 'KeyB',
+    });
     // A focused `<select>` keeps its letters: they run its own type-ahead, not a game action.
-    owned = false;
     const inList = key('KeyB');
     Object.defineProperty(inList, 'target', { value: new Dropdown() });
     windowTarget.dispatchEvent(inList);
-    expect(constructionToggled()).toBe(1);
     expect(inList.defaultPrevented).toBe(false);
+    const typed = key('F2');
+    Object.defineProperty(typed, 'target', { value: new TextField() });
+    windowTarget.dispatchEvent(typed);
+    windowTarget.dispatchEvent(key('KeyB'));
+    expect(navToggled).toEqual(['residents', 'build']);
     input.dispose();
   });
 
-  it('toggles the HUD on its key, unless a text field or another surface owns the keyboard', () => {
+  it('toggles the HUD on its key, from a text field too, but not under the system menu', () => {
     let owned = false;
     const { input, windowTarget, hudToggled } = mount(() => owned);
-    const hide = key('F9');
+    const hide = key('F8');
     windowTarget.dispatchEvent(hide);
     expect(hudToggled()).toBe(1);
     expect(hide.defaultPrevented).toBe(true);
-    const typed = key('F9');
+    const typed = key('F8');
     Object.defineProperty(typed, 'target', { value: new TextField() });
     windowTarget.dispatchEvent(typed);
+    expect(hudToggled()).toBe(2);
     owned = true;
-    windowTarget.dispatchEvent(key('F9'));
-    expect(hudToggled()).toBe(1);
+    windowTarget.dispatchEvent(key('F8'));
+    expect(hudToggled()).toBe(2);
     input.dispose();
   });
 
-  it('toggles the residents window on F7, from inside a text field too, but not under the system menu', () => {
-    let owned = false;
-    const { input, windowTarget, residentsToggled } = mount(() => owned);
-    const open = key('F7');
-    windowTarget.dispatchEvent(open);
-    expect(residentsToggled()).toBe(1);
-    expect(open.defaultPrevented).toBe(true);
-    const typed = key('F7');
-    Object.defineProperty(typed, 'target', { value: new TextField() });
-    windowTarget.dispatchEvent(typed);
-    expect(residentsToggled()).toBe(2);
-    owned = true;
-    windowTarget.dispatchEvent(key('F7'));
-    expect(residentsToggled()).toBe(2);
+  it("keeps the browser's own F-row actions off a running match, bound or not", () => {
+    const { input, windowTarget, navToggled } = mount(() => true);
+    const reload = key('F5');
+    const unbound = key('F10');
+    const fullscreen = key('F11');
+    for (const press of [reload, unbound, fullscreen]) windowTarget.dispatchEvent(press);
+    expect(reload.defaultPrevented).toBe(true);
+    expect(unbound.defaultPrevented).toBe(true);
+    expect(fullscreen.defaultPrevented).toBe(false);
+    expect(navToggled).toEqual([]);
     input.dispose();
   });
 

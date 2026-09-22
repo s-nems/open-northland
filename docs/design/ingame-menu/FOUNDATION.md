@@ -45,7 +45,9 @@ seals carry accessible labels, so colour is never the only carrier of state.
   locked entries.
 - Bottom navigation: seven bronze medallions on the carved beam, persistent labels, lit medallion
   and marker for the active entry. The beam carries no digit hotkeys: digits 1-9 and 0 are the
-  control-group keys.
+  control-group keys. Its windows take F1-F7 in beam order and F8 hides the HUD, all rebindable; the
+  original opens construction on B and diplomacy, statistics, subjects and the technology tree on
+  F5-F8.
 - Top bar: one beam carrying population symbols, goods counters, the simulation clock, the segmented
   pause / ×1 / ×2 / ×3 control and the menu medallion. Categories reveal a parchment breakdown on
   hover/focus with dotted leaders.
@@ -154,8 +156,8 @@ keeps the assistant alone.
 ### Residents window
 
 The seat's people as one list (ticket 07), in the construction window's frame and width. Mieszkańcy
-on the beam or F7, the original's subjects-window key, opens it at once; F7 is fixed, since the
-F-row is outside the rebindable set, and works from inside the search field too.
+on the beam or its key (F2 by default; the original's is F7) opens it at once, from inside the search
+field too, since no field types an F-key.
 
 - Listed: the local seat's humans. Animals, vehicles and other seats' people stay out. The list
   follows the tick while it is open and costs nothing closed: one walk over the snapshot's actors.

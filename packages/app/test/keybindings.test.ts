@@ -38,7 +38,7 @@ describe('parseKeyBindings', () => {
   it('drops an invalid or unbindable code to the default', () => {
     expect(parseKeyBindings({ pauseToggle: 7 }).pauseToggle).toBe('KeyP');
     expect(parseKeyBindings({ pauseToggle: 'Escape' }).pauseToggle).toBe('KeyP');
-    expect(parseKeyBindings({ pauseToggle: 'F5' }).pauseToggle).toBe('KeyP');
+    expect(parseKeyBindings({ pauseToggle: 'F11' }).pauseToggle).toBe('KeyP');
   });
 
   it('preserves an explicit null as unbound', () => {
@@ -113,13 +113,13 @@ describe('assignBinding', () => {
 
 describe('isBindableCode', () => {
   it('accepts plain game keys', () => {
-    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Comma', 'Home', 'F9']) {
+    for (const code of ['KeyA', 'Digit5', 'Numpad0', 'ArrowLeft', 'Space', 'Comma', 'Home', 'F1', 'F10']) {
       expect(isBindableCode(code), code).toBe(true);
     }
   });
 
   it('rejects modifiers and browser-owned keys', () => {
-    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F5', 'F7']) {
+    for (const code of ['ShiftLeft', 'ControlLeft', 'AltRight', 'MetaLeft', 'Tab', 'Enter', 'F11', 'F12']) {
       expect(isBindableCode(code), code).toBe(false);
     }
   });
@@ -137,9 +137,9 @@ describe('Escape', () => {
     }
   });
 
-  it('opens the game menu by default, with B on the construction window', () => {
+  it('opens the game menu by default, with F1 on the construction window', () => {
     expect(DEFAULT_KEY_BINDINGS.gameMenu).toBe('Escape');
-    expect(DEFAULT_KEY_BINDINGS.construction).toBe('KeyB');
+    expect(DEFAULT_KEY_BINDINGS.construction).toBe('F1');
     expect(keyDisplayLabel('Escape', { space: 'Space' })).toBe('Esc');
   });
 

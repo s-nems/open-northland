@@ -48,11 +48,12 @@ describe('parseStoredSettings', () => {
       dragScrollSpeed: 1.75,
       edgeScrollEnabled: false,
       invertDragScroll: true,
-      keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
       netNick: 'Ania',
       debugToolsEnabled: true,
     } as const;
-    expect(parseStoredSettings(JSON.stringify(settings))).toEqual(settings);
+    expect(
+      parseStoredSettings(JSON.stringify({ ...settings, changedKeyBindings: { pauseToggle: 'KeyO' } })),
+    ).toEqual({ ...settings, keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' } });
   });
 
   it('falls back per field, not per blob', () => {
@@ -161,6 +162,19 @@ describe('persistSettings', () => {
     const blob = storedBlob({ ...defaultSettings(), soundEnabled: false });
     expect('language' in blob).toBe(false);
     expect(blob.soundEnabled).toBe(false);
+  });
+
+  it('keeps only the bindings a player changed, so an untouched key follows a new default', () => {
+    const blob = storedBlob({
+      ...defaultSettings(),
+      keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO', attackMove: null },
+    });
+    expect(blob.changedKeyBindings).toEqual({ pauseToggle: 'KeyO', attackMove: null });
+    expect('keyBindings' in blob).toBe(false);
+    // A full map an earlier build stored is not this format, and holds nobody's choices back.
+    expect(parseStoredSettings('{"keyBindings":{"hudToggle":"KeyH"}}').keyBindings).toEqual(
+      DEFAULT_KEY_BINDINGS,
+    );
   });
 
   it('clamps stored volumes into 0..1 and defaults deformed ones', () => {

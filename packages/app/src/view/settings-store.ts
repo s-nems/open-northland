@@ -1,6 +1,11 @@
 import { DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME } from '@open-northland/audio';
 import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler, parsePixelArtScaler } from '@open-northland/render';
-import { DEFAULT_KEY_BINDINGS, type KeyBindings, parseKeyBindings } from '../hud/keybindings.js';
+import {
+  changedKeyBindings,
+  DEFAULT_KEY_BINDINGS,
+  type KeyBindings,
+  parseKeyBindings,
+} from '../hud/keybindings.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
 
@@ -151,7 +156,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.edgeScrollEnabled === 'boolean' ? record.edgeScrollEnabled : defaults.edgeScrollEnabled,
     invertDragScroll:
       typeof record.invertDragScroll === 'boolean' ? record.invertDragScroll : defaults.invertDragScroll,
-    keyBindings: parseKeyBindings(record.keyBindings),
+    keyBindings: parseKeyBindings(record.changedKeyBindings),
     netNick: optionalText(record.netNick),
     debugToolsEnabled:
       typeof record.debugToolsEnabled === 'boolean' ? record.debugToolsEnabled : defaults.debugToolsEnabled,
@@ -172,12 +177,17 @@ export function readStoredSettings(): MenuSettings {
 }
 
 /**
- * A language matching the browser's is left out of the blob, the same elision the URL makes, so
- * changing an unrelated setting never freezes a language the player never picked.
+ * A language matching the browser's is left out of the blob, the same elision the URL makes, and so
+ * is every binding still at its default: changing an unrelated setting never freezes a language or a
+ * key the player never picked, and a new default reaches them.
  */
-function storedShape(settings: MenuSettings): Partial<MenuSettings> {
-  const { language, ...rest } = settings;
-  return language === defaultLocale() ? rest : settings;
+function storedShape(settings: MenuSettings): Record<string, unknown> {
+  const { language, keyBindings, ...rest } = settings;
+  return {
+    ...rest,
+    ...(language === defaultLocale() ? {} : { language }),
+    changedKeyBindings: changedKeyBindings(keyBindings),
+  };
 }
 
 /** Persist the settings to localStorage. */

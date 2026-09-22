@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { isActionHotkey, isTypingTarget } from '../hotkeys.js';
-import type { KeyBindings } from '../keybindings.js';
+import { isFunctionKeyCode, type KeyBindings, type KeybindingAction } from '../keybindings.js';
+import type { NavEntryId } from './nav-effects.js';
 import type { ToolWindows } from './windows.js';
 
 /** Every branch here that consumes a press stops it reaching world picking behind the panel. */
@@ -13,8 +14,16 @@ export interface HeldMode {
   handleClick(clientX: number, clientY: number): boolean;
 }
 
-/** The original's subjects-window key. Fixed: the F-row is outside the rebindable set. */
-const RESIDENTS_KEY_CODE = 'F7';
+/** The beam entry each window key toggles. */
+const NAV_KEYS: readonly (readonly [KeybindingAction, NavEntryId])[] = [
+  ['construction', 'build'],
+  ['residents', 'residents'],
+  ['assistant', 'assistant'],
+  ['statistics', 'statistics'],
+  ['mission', 'mission'],
+  ['diplomacy', 'diplomacy'],
+  ['knowledge', 'knowledge'],
+];
 
 export interface ToolPanelInputDeps {
   readonly canvas: HTMLCanvasElement;
@@ -30,8 +39,8 @@ export interface ToolPanelInputDeps {
    *  selection), the rungs of the cancel ladder below the shell's own. */
   readonly escapeClaimed?: () => boolean;
   readonly openMenu: () => void;
-  readonly toggleConstruction: () => void;
-  readonly toggleResidents: () => void;
+  /** Toggle a beam entry's window, as a press on the beam does. */
+  readonly toggleNav: (id: NavEntryId) => void;
   readonly togglePause: () => void;
   readonly toggleHud: () => void;
   /** The GUI click: a held mode called off by right-click or Esc fails (Esc is an approximation: only
@@ -112,6 +121,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   let escapeClaimed = false;
   const onKeyDown = (e: KeyboardEvent): void => {
     const sheet = windows.byId.mission;
+    // The F-row is the game's while it runs, bound or not, under a dialog or in a field: the browser's
+    // own F1 help, F3 find, F5 reload or F7 caret prompt must never fire over a match.
+    if (isFunctionKeyCode(e.code)) e.preventDefault();
     if (e.code === 'Escape') {
       escapeClaimed = false;
       if (keyboardOwned(e)) return;
@@ -131,22 +143,18 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       deps.openMenu();
       return;
     }
+    // A field keeps its letters, which `isActionHotkey` already leaves to it; an F-key works from one.
     if (isActionHotkey(e, deps.bindings, 'hudToggle')) {
-      if (keyboardOwned(e)) return;
+      if (modalOwned(e)) return;
       consume(e);
       deps.toggleHud();
       return;
     }
-    if (isActionHotkey(e, deps.bindings, 'construction')) {
-      if (keyboardOwned(e)) return;
+    for (const [action, entry] of NAV_KEYS) {
+      if (!isActionHotkey(e, deps.bindings, action)) continue;
+      if (modalOwned(e)) return;
       consume(e);
-      deps.toggleConstruction();
-      return;
-    }
-    // A search field keeps its letters, but no field types an F-key, so this one works from inside too.
-    if (e.code === RESIDENTS_KEY_CODE && !e.repeat && !modalOwned(e)) {
-      consume(e);
-      deps.toggleResidents();
+      deps.toggleNav(entry);
       return;
     }
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {

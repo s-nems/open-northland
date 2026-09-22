@@ -1,4 +1,9 @@
-import { type KeyBindings, type KeybindingAction, matchesKeyboardBinding } from './keybindings.js';
+import {
+  isFunctionKeyCode,
+  type KeyBindings,
+  type KeybindingAction,
+  matchesKeyboardBinding,
+} from './keybindings.js';
 
 /**
  * True when a keydown belongs to the focused control rather than the game: a text field being typed
@@ -10,7 +15,12 @@ export const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLSelectElement ||
   (target instanceof HTMLElement && target.isContentEditable);
 
-/** True for an exact, non-repeating action chord outside a text field. */
+/** True for an exact, non-repeating action chord outside a text field. No field types an F-key, so an
+ *  F-row chord works from inside one too. */
 export function isActionHotkey(e: KeyboardEvent, bindings: KeyBindings, action: KeybindingAction): boolean {
-  return !e.repeat && !isTypingTarget(e.target) && matchesKeyboardBinding(e, bindings[action]);
+  return (
+    !e.repeat &&
+    (!isTypingTarget(e.target) || isFunctionKeyCode(e.code)) &&
+    matchesKeyboardBinding(e, bindings[action])
+  );
 }
