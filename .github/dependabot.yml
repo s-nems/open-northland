@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # The root lockfile covers every workspace. An Electron or esbuild bump also needs its exact pin in
+  # the root package.json allowScripts (`npm approve-scripts <pkg>`), and Electron its
+  # electronVersion in packages/desktop/electron-builder.yml.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # Workflow actions are pinned by commit SHA with a version comment; Dependabot updates both.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ['*']
