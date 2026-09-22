@@ -9,3 +9,6 @@ export const BRAND_BACKDROP = new URL('../../../../docs/images/settlement.webp',
 
 /** The stacked logo lockup (emblem, ribbon and wordmark) that heads the main menu. */
 export const BRAND_LOGO_STACKED = new URL('../assets/brand/logo-stacked.webp', import.meta.url).href;
+
+/** The canvas `npm run brand` renders the stacked lockup into, so the menu can reserve its box. */
+export const BRAND_LOGO_STACKED_SIZE = { width: 900, height: 840 } as const;

@@ -44,14 +44,14 @@
 
 .main-menu__settings-tab:hover:not(.is-active):not(.is-coming-soon),
 .main-menu__settings-tab:focus-visible:not(.is-active):not(.is-coming-soon) {
-  border-left-color: rgba(99, 196, 160, 0.4);
+  border-left-color: rgb(var(--accent-rgb) / 0.4);
 }
 
 .main-menu__settings-tab.is-active {
   font-weight: 700;
   color: var(--accent-bright);
   border-left-color: var(--accent);
-  background: rgba(99, 196, 160, 0.1);
+  background: rgb(var(--accent-rgb) / 0.1);
 }
 
 .main-menu__settings-tab.is-coming-soon {
@@ -133,7 +133,7 @@
     system-ui,
     sans-serif;
   color: var(--text-body);
-  border: 2px solid rgba(99, 196, 160, 0.35);
+  border: 2px solid rgb(var(--accent-rgb) / 0.35);
   border-radius: 6px;
   padding: calc(var(--u) * 12) calc(var(--u) * 26);
   transition:
@@ -184,7 +184,7 @@ button.main-menu__settings-key:focus-visible {
   background: linear-gradient(
     90deg,
     var(--accent) calc(var(--fill, 0) * 1%),
-    rgba(99, 196, 160, 0.2) calc(var(--fill, 0) * 1%)
+    rgb(var(--accent-rgb) / 0.2) calc(var(--fill, 0) * 1%)
   );
 }
 
@@ -194,7 +194,7 @@ button.main-menu__settings-key:focus-visible {
   height: calc(var(--u) * 22);
   border-radius: 50%;
   background: var(--accent-bright);
-  box-shadow: 0 0 14px rgba(99, 196, 160, 0.6);
+  box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.6);
   cursor: pointer;
 }
 
@@ -204,7 +204,7 @@ button.main-menu__settings-key:focus-visible {
   height: calc(var(--u) * 22);
   border-radius: 50%;
   background: var(--accent-bright);
-  box-shadow: 0 0 14px rgba(99, 196, 160, 0.6);
+  box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.6);
   cursor: pointer;
 }
 

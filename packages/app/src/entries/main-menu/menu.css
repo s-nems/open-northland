@@ -100,16 +100,18 @@
 }
 
 .main-menu {
-  /* Design tokens (README "Design tokens"); --u converts design px to viewport-scaled px.
-     --u-base never changes; sub-screens override --u with a denser scale below. */
+  /* Design tokens; --u converts design px to viewport-scaled px. --u-base never changes;
+     sub-screens override --u with a denser scale below. The accent is the logo's sail oxblood,
+     warmed for a cold ground; --accent-rgb feeds its translucent uses as `rgb(var(--accent-rgb) / a)`. */
   --u-base: calc(100vh / 1080);
   --u: var(--u-base);
   --bg-base: #0c1420;
-  --accent: #63c4a0;
-  --accent-bright: #8ff0c8;
+  --accent-rgb: 201 114 90;
+  --accent: rgb(var(--accent-rgb));
+  --accent-bright: #f0dcb8;
   --text-primary: #e9f1ee;
   --text-body: #dbe8e3;
-  --text-label: #8fb8ad;
+  --text-label: #b9b4ae;
   --text-muted: rgba(180, 205, 200, 0.7);
   --danger-border: #c96a4a;
   --danger-text: #e8a58a;
@@ -162,7 +164,7 @@
 }
 
 .main-menu__tint {
-  background: #16283a;
+  background: #1f2632;
   mix-blend-mode: color;
 }
 
@@ -176,7 +178,7 @@
   );
 }
 
-/* Sub-screens darken harder for content legibility and keep only the green aurora. */
+/* Sub-screens darken harder for content legibility and keep only the dusk glow. */
 .main-menu.is-sub .main-menu__shade {
   background: linear-gradient(
     200deg,
@@ -186,7 +188,7 @@
   );
 }
 
-.main-menu__aurora-green {
+.main-menu__aurora-dusk {
   position: absolute;
   left: -10%;
   top: -16%;
@@ -194,17 +196,17 @@
   height: 64%;
   background: radial-gradient(
     ellipse 60% 45% at 55% 45%,
-    rgba(84, 196, 160, 0.26) 0%,
-    rgba(84, 196, 160, 0) 70%
+    rgba(200, 110, 90, 0.16) 0%,
+    rgba(200, 110, 90, 0) 70%
   );
   filter: blur(6px);
 }
 
-.main-menu.is-sub .main-menu__aurora-green {
+.main-menu.is-sub .main-menu__aurora-dusk {
   background: radial-gradient(
     ellipse 60% 45% at 55% 45%,
-    rgba(84, 196, 160, 0.18) 0%,
-    rgba(84, 196, 160, 0) 70%
+    rgba(200, 110, 90, 0.11) 0%,
+    rgba(200, 110, 90, 0) 70%
   );
 }
 
@@ -216,7 +218,7 @@
   height: 46%;
   background: radial-gradient(
     ellipse 55% 40% at 45% 50%,
-    rgba(110, 170, 220, 0.16) 0%,
+    rgba(110, 170, 220, 0.11) 0%,
     rgba(110, 170, 220, 0) 70%
   );
   filter: blur(8px);
@@ -449,18 +451,18 @@
 
 .main-menu__ghost.is-accent {
   color: var(--accent-bright);
-  border-color: rgba(99, 196, 160, 0.5);
+  border-color: rgb(var(--accent-rgb) / 0.5);
 }
 
 .main-menu__ghost.is-accent:hover,
 .main-menu__ghost.is-accent:focus-visible {
-  background: rgba(99, 196, 160, 0.1);
+  background: rgb(var(--accent-rgb) / 0.1);
   border-color: var(--accent);
 }
 
 .main-menu__seg {
   display: flex;
-  border: 2px solid rgba(99, 196, 160, 0.3);
+  border: 2px solid rgb(var(--accent-rgb) / 0.3);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -527,7 +529,7 @@
   width: max-content;
   max-width: calc(var(--u) * 700);
   padding: calc(var(--u) * 12) calc(var(--u) * 18);
-  border: 1px solid rgba(99, 196, 160, 0.35);
+  border: 1px solid rgb(var(--accent-rgb) / 0.35);
   border-radius: 6px;
   background: var(--bg-base);
   font:
@@ -556,7 +558,7 @@
   width: calc(var(--u) * 66);
   height: calc(var(--u) * 34);
   border-radius: calc(var(--u) * 17);
-  background: rgba(99, 196, 160, 0.2);
+  background: rgb(var(--accent-rgb) / 0.2);
   transition: background-color 150ms ease-out;
 }
 
@@ -602,7 +604,7 @@
   color: var(--bg-base);
   background: linear-gradient(180deg, var(--accent-bright), var(--accent));
   border-radius: 6px;
-  box-shadow: 0 0 34px rgba(99, 196, 160, 0.35);
+  box-shadow: 0 0 34px rgb(var(--accent-rgb) / 0.35);
   transition:
     box-shadow 150ms ease-out,
     transform 150ms ease-out;
@@ -610,7 +612,7 @@
 
 .main-menu__primary:hover:not(:disabled),
 .main-menu__primary:focus-visible:not(:disabled) {
-  box-shadow: 0 0 50px rgba(99, 196, 160, 0.55);
+  box-shadow: 0 0 50px rgb(var(--accent-rgb) / 0.55);
   transform: translateY(calc(var(--u) * -2));
 }
 

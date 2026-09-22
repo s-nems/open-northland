@@ -16,7 +16,7 @@
   letter-spacing: 0.04em;
   color: var(--text-body);
   background: rgba(12, 20, 32, 0.72);
-  border: 1px solid rgba(99, 196, 160, 0.28);
+  border: 1px solid rgb(var(--accent-rgb) / 0.28);
   border-right: 0;
   border-radius: 6px 0 0 6px;
   transform: translateX(100%);
@@ -51,7 +51,7 @@
   width: calc(var(--u) * 18);
   height: calc(var(--u) * 18);
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2363c4a0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M6 1.8H1.8V6M10 1.8h4.2V6M6 14.2H1.8V10M10 14.2h4.2V10'/%3E%3C/svg%3E")
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23c9725a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M6 1.8H1.8V6M10 1.8h4.2V6M6 14.2H1.8V10M10 14.2h4.2V10'/%3E%3C/svg%3E")
     center / contain no-repeat;
 }
 

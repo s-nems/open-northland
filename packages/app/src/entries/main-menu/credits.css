@@ -40,7 +40,7 @@
   flex-direction: column;
   gap: calc(var(--u) * 18);
   padding: calc(var(--u) * 28) calc(var(--u) * 32);
-  border: 2px solid rgba(99, 196, 160, 0.2);
+  border: 2px solid rgb(var(--accent-rgb) / 0.2);
   border-radius: 8px;
   background: rgba(16, 29, 44, 0.55);
   text-align: left;
