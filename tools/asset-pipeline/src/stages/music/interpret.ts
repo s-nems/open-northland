@@ -1,11 +1,6 @@
 /**
  * DirectMusic performance interpreter: schedules a segment's tracks as timed messages and runs
- * the render clock to produce the instrument event stream the synthesizer replays. Scheduling
- * order, priority-queue tie behavior, and the uint32/double clock arithmetic follow the MIT
- * libdmusic player, proven by event parity against it over the owned corpus. Two named deviations:
- * tempo changes apply at their authored times instead of that player's collapse to time zero, and
- * a note sounding across a pass boundary keeps its release (below), whose extra clock stop can move
- * the later stamps of that pass by the stop's rounding (under two ticks over the corpus).
+ * the render clock to produce the instrument event stream the synthesizer replays.
  */
 
 import { DMUS_PPQ } from '../../decoders/sgt.js';
