@@ -371,24 +371,11 @@ or another profile. Enter opens the chat line. The perf overlay's third line and
 the round trip, the assigned input delay, the click-to-apply time and the jitter buffer's depth. A
 forced divergence for a resync check is a console mutation of `__opennorthland.sim` in one window.
 
-## Release builds
+## Build version
 
-The `Release` workflow is dispatched by hand from the Actions tab against `main`, or against an
-older commit of it through the `commit` input. One Ubuntu job builds the web app and converts the
-content with `npm run build:content` - the rendered music is cached between runs, keyed on the
-archive pin and the music stage's sources - then runs `npm run test:content` over the fresh tree
-without the relayed-session runs and hands the app build and the content to the other jobs as
-one-day workflow artifacts. The packaging and image jobs take that build instead of repeating it.
-A default run packs the Windows installers and the Apple Silicon dmg natively; the `linux` and
-`macX64` checkboxes add the AppImage and the Intel dmg. The web image and the relay image build
-alongside, and a `build-<short-sha>` prerelease publishes whichever installers the run produced,
-with notes that name the images. Every part comes from the one resolved commit. `latest` on the web
-and relay images moves only after a complete release dispatched without the `commit` input, so
-rebuilding an older commit cannot roll a deployment backwards.
-
-The installers and the web image contain decoded original content; [`LEGAL.md`](LEGAL.md) says
-where they may go. Downloading either needs a GitHub login with access to the repository. The relay
-image carries neither content nor the simulation.
+`ON_VERSION=1.2.3 npm run build` stamps a semantic version into the main menu's version line and
+writes `{"version":"1.2.3"}` to `version.json` beside `index.html`; without it both read `dev`. The
+relay image takes its identifier as `--build-arg RELAY_BUILD=...` and reports it on `/healthz`.
 
 ## Desktop packaging
 
@@ -406,10 +393,9 @@ player's machine.
 
 ## Web image
 
-The web image, `ghcr.io/s-nems/open-northland-web`, is the web app of a commit: nginx serving
-`packages/app/dist` and `content/` from one document root, the app at `/`, the hashed `/assets/`
-cached for good, everything else revalidated, a missing path a plain 404, and `/healthz` for the
-host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
+The web image is the web app of a commit: nginx serving `packages/app/dist` and `content/` from one
+document root, the app at `/`, the hashed `/assets/` cached for good, everything else revalidated, a
+missing path a plain 404, and `/healthz` for the host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
 
 To build and run the image locally, after `npm run build` with a `content/` in place:
 
@@ -420,8 +406,7 @@ docker run --rm --publish 8080:80 open-northland-web
 
 ## Relay image
 
-The relay image, `ghcr.io/s-nems/open-northland-relay`, is published for `linux/amd64` and
-`linux/arm64` with a `sha-<short>` tag per build. It is built from `packages/net-server/Dockerfile`:
+The relay image builds for `linux/amd64` and `linux/arm64` from `packages/net-server/Dockerfile`:
 the relay and protocol packages compiled once, then only those two and `ws` in a Node image, so it
 carries neither the simulation nor a content directory. It starts on environment variables alone:
 
@@ -432,7 +417,7 @@ carries neither the simulation nor a content directory. It starts on environment
 | `RELAY_PUBLIC_URL` | unset | Public `ws://` or `wss://` address reported by `/healthz` |
 | `RELAY_MAX_ROOMS` | `64` | Maximum rooms |
 | `RELAY_MAX_CONNECTIONS` | `256` | Maximum open WebSocket connections |
-| `RELAY_BUILD` | unset | Build identifier reported by `/healthz`; stamped by the release image build |
+| `RELAY_BUILD` | unset | Build identifier reported by `/healthz`; set by the `RELAY_BUILD` build argument |
 
 Rooms live in memory; restarting the process ends every match. The relay writes one JSON record
 per log line. TLS termination and deployment configuration belong to the operator.

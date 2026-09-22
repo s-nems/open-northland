@@ -1,6 +1,10 @@
 export type MenuScreen = 'main' | 'multiplayer' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
 
-export const VERSION_LINE = 'pre-alpha 0.1 · AGPL-3.0';
+declare const __GAME_VERSION__: string;
+
+const GAME_VERSION = typeof __GAME_VERSION__ === 'string' ? __GAME_VERSION__ : 'dev';
+
+export const VERSION_LINE = `pre-alpha ${GAME_VERSION} · AGPL-3.0`;
 
 export type MainNavItem =
   | {

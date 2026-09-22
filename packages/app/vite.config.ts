@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultClientConditions, defineConfig, type Plugin, runnerImport } from 'vite';
 import { clientBuildIdentity, refreshClientBuild } from './build/client-version.js';
+import { emitVersionFile, gameVersion } from './build/game-version.js';
 import { devCheckout } from './vite/dev-checkout.js';
 import { serveContent } from './vite/serve-content.js';
 
@@ -19,14 +20,20 @@ async function checkoutPlugins(command: 'serve' | 'build'): Promise<Plugin[]> {
   return plugins.checkoutPlugins(resolve(here, '../..'), command);
 }
 
+const version = gameVersion();
+
 export default defineConfig(async ({ command }) => ({
   root: here,
   resolve: { conditions: [...(command === 'serve' ? ['source'] : []), ...defaultClientConditions] },
-  define: { __CLIENT_BUILD__: JSON.stringify(clientBuildIdentity(resolve(here, '../..'))) },
+  define: {
+    __CLIENT_BUILD__: JSON.stringify(clientBuildIdentity(resolve(here, '../..'))),
+    __GAME_VERSION__: JSON.stringify(version),
+  },
   plugins: [
     devCheckout(resolve(here, '../..'), contentRoot),
     serveContent(contentRoot),
     refreshClientBuild(resolve(here, '../..')),
+    emitVersionFile(version),
     ...(await checkoutPlugins(command)),
   ],
   server: { open: false },
