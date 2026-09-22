@@ -9,10 +9,6 @@ import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
  * session-shaping values directly from here rather than through URL params.
  */
 
-export type AssetSet = 'own' | 'original';
-
-export const DEFAULT_ASSET_SET: AssetSet = 'original';
-
 /** Drawn-frame cap in frames per second; `null` follows the display's own refresh rate. */
 export type FpsLimit = 30 | 60 | null;
 
@@ -25,7 +21,6 @@ export const SCROLL_SPEED_MAX = 3;
 export const DEFAULT_SCROLL_SPEED = 1;
 
 export interface MenuSettings {
-  readonly assets: AssetSet;
   /** Fullscreen preference, written by whatever changes the window; `view/fullscreen.ts` owns how a
    *  document gets back into it. */
   readonly displayMode: 'fullscreen' | 'window';
@@ -66,7 +61,6 @@ export interface MenuSettings {
 /** A player who never chose a language follows the browser's. */
 export function defaultSettings(): MenuSettings {
   return {
-    assets: DEFAULT_ASSET_SET,
     displayMode: 'window',
     renderScale: DEFAULT_RENDER_SCALE,
     uiScaleFactor: DEFAULT_UI_SCALE_FACTOR,
@@ -132,7 +126,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
   if (typeof data !== 'object' || data === null) return defaults;
   const record = data as Record<string, unknown>;
   return {
-    assets: record.assets === 'own' || record.assets === 'original' ? record.assets : defaults.assets,
     displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
     renderScale: clampRenderScale(record.renderScale),
     uiScaleFactor: clampFactor(record.uiScaleFactor),

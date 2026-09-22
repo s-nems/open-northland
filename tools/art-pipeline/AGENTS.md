@@ -1,4 +1,4 @@
-# Own-art tool contract
+# Custom art tool contract
 
 This package prepares our artwork from retained sources. It does not decode original game data.
 Follow the root contract and `docs/art/AGENTS.md`; command and recipe rules live in `docs/art/PIPELINE.md`.

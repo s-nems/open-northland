@@ -22,9 +22,6 @@ import {
   loadTerrainMap,
 } from '../../content/map-loader.js';
 import { loadMapObjects } from '../../content/objects.js';
-import { loadOwnMapObjects } from '../../content/own-assets/objects.js';
-import { loadOwnSpriteSheet } from '../../content/own-assets/sprite-sheet.js';
-import { loadOwnTerrain } from '../../content/own-assets/terrain.js';
 import { resolveSpriteSheet } from '../../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../../content/terrain.js';
 import { readVerifiedMapDocuments, type VerifiedMapDocuments } from '../../content/transfer/index.js';
@@ -36,7 +33,7 @@ import type { SessionRosterSlot } from '../../game/session-url.js';
 import { sessionWorldOptions } from '../../game/session-world.js';
 import { mapScriptWorld, terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
-import { assetSetFor } from '../../view/asset-settings.js';
+import { type PresentationPack, presentationPack } from '../../presentation/pack.js';
 import { type BootPhase, type BootProgress, mountBootProgress } from '../../view/boot-progress.js';
 import {
   createWorldRenderer,
@@ -85,7 +82,7 @@ export interface AssembledMapWorld {
   readonly sim: Simulation;
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet;
-  readonly ownAssets: boolean;
+  readonly pack: PresentationPack | null;
   readonly terrainGrid: SceneTerrain;
   readonly terrain: TerrainTextureSet;
   readonly elevation: ElevationField;
@@ -110,7 +107,7 @@ export async function assembleMapWorld(
   plan: MapBootPlan,
 ): Promise<AssembledMapWorld | null> {
   const { mapId, stagedSave } = plan;
-  const ownAssets = assetSetFor(params) === 'own';
+  const pack = presentationPack(params);
   if (plan.verifiedMap !== undefined && mapId === null) throw new Error('Verified map requires a map id');
   const verified =
     plan.verifiedMap !== undefined && mapId !== null
@@ -145,17 +142,17 @@ export async function assembleMapWorld(
     const irLoad = loadIr();
     const { goodNames, realContent } = await loadLocalizedRealContent(params);
     const ir = await irLoad;
-    // Every civilization the map fields brings its own building and settler pages, so the sheet loads
+    // Every civilization the map fields brings its custom building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
     const tribes = worldTribes(script, loaded?.entities, ir ?? {});
     await boot.begin('sprites');
-    const sheet = ownAssets
-      ? await loadOwnSpriteSheet(ir, params.get('ownHead'), realContent?.content.goods ?? sandboxGoods())
-      : await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
+    const goods = realContent?.content.goods ?? sandboxGoods();
+    const sheet =
+      pack !== null ? await pack.spriteSheet(ir, goods, params) : await resolveSpriteSheet(goods, tribes);
     await boot.begin('terrain');
     let terrain: TerrainTextureSet;
     try {
-      terrain = ownAssets ? await loadOwnTerrain(app.renderer, ir) : await loadRealTerrain(ir);
+      terrain = pack !== null ? await pack.terrain(app.renderer, ir) : await loadRealTerrain(ir);
     } catch (err) {
       if (!(err instanceof MissingTerrainError)) throw err;
       haltOnMissingContent(err);
@@ -171,8 +168,8 @@ export async function assembleMapWorld(
     let staticObjects: LoadedObjects | undefined;
     if (loaded?.objects !== undefined && ir !== null) {
       try {
-        const loadedObjects = ownAssets
-          ? await loadOwnMapObjects(app.renderer, loaded.objects, ir, elevation)
+        const loadedObjects = pack
+          ? await pack.mapObjects(app.renderer, loaded.objects, ir, elevation)
           : await loadMapObjects(loaded.objects, ir, elevation, brightness);
         renderer.setMapObjects(loadedObjects.sprites);
         // Assigned only after the layer accepted the sprites: static refs against an empty layer would
@@ -243,7 +240,7 @@ export async function assembleMapWorld(
       sim,
       renderer,
       sheet,
-      ownAssets,
+      pack,
       terrainGrid,
       terrain,
       elevation,

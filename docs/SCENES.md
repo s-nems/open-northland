@@ -51,8 +51,7 @@ simulation owns its component stores, so tests do not need a global reset betwee
 See [`TESTING.md`](TESTING.md) for test layers and [`DEVELOPMENT.md`](DEVELOPMENT.md) for browser
 entries.
 
-Scenes accept `assets=own` for the same own sprite and terrain loaders as map play. The
-`farm-construction` scene starts at ×2 and places a working construction crew beside a finished farm.
+The `farm-construction` scene starts at ×2 and places a working construction crew beside a finished farm.
 The `terrain-edits` scene exercises saved terrain palette edits and a scripted build ban. Its western
 patch uses a brown vertex palette entry and its eastern patch a green entry from the owned content.
 

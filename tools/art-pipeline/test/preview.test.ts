@@ -64,7 +64,7 @@ describe('candidate preview', () => {
     await buildAsset(f.root, f.id);
     await buildAsset(f.root, 'buildings/barn');
     const preview = await preparePreview(f.root, [f.id, 'buildings/barn']);
-    expect(preview.path).toBe(join(f.root, '.art-build/buildings/home/preview/own'));
+    expect(preview.path).toBe(join(f.root, '.art-build/buildings/home/preview/custom'));
     expect(JSON.parse(await readFile(join(preview.path, 'buildings/barn/runtime.json'), 'utf8')).typeId).toBe(
       2,
     );

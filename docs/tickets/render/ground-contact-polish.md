@@ -21,7 +21,7 @@ may already contain painted contact shading that an extra layer would double.
 
 ## Verify
 
-- Compare the same camera on a playable map at normal zoom, the WORLD-STYLE ×2 trial and zoom-out.
+- Compare the same camera on a playable map at normal zoom, ×2 and zoom-out.
   Check light and dark terrain, slopes, neighbouring buildings and actors crossing the base.
 - Verify no rectangular halos, doubled dark bands, terrain seams or marks left after an object is
   removed. Final visual acceptance is human; a rejected trial is a valid result.

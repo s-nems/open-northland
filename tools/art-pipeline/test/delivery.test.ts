@@ -10,11 +10,24 @@ import { hashes, writeJson } from '../src/files.js';
 import { publish } from '../src/publish.js';
 import { recipeSchema } from '../src/recipe.js';
 import { review } from '../src/review.js';
-import { recover } from '../src/transaction.js';
+import { mirrorSharedUi, recover } from '../src/transaction.js';
 
 import { fixture, reviewed, roots } from './delivery-fixture.js';
 
 describe('art delivery', () => {
+  it('mirrors the runtime ui subtree to the shared copy the public game reads', async () => {
+    const f = await fixture();
+    const mirror = join(f.root, 'packages/app/src/assets/ui');
+    await mkdir(join(f.runtime, 'ui/foundation'), { recursive: true });
+    await writeFile(join(f.runtime, 'ui/foundation/surface.png'), 'next');
+    await mkdir(join(mirror, 'retired'), { recursive: true });
+    await writeFile(join(mirror, 'retired/old.png'), 'stale');
+    await mirrorSharedUi(f.root);
+    expect(await hashes(mirror)).toEqual(await hashes(join(f.runtime, 'ui')));
+    await rm(join(f.runtime, 'ui'), { recursive: true });
+    await mirrorSharedUi(f.root);
+    await expect(readdir(mirror)).rejects.toThrow('ENOENT');
+  });
   it('builds without touching runtime, publishes an approved complete candidate and repeats safely', async () => {
     const f = await fixture();
     const before = await hashes(f.runtime);

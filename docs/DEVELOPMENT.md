@@ -149,8 +149,6 @@ loading a save preserves its stored mission rules.
 | URL query | Purpose |
 | --- | --- |
 | `?scene=<id>` | registered deterministic acceptance scene |
-| `?art=gallery` | own animations, buildings, terrain, tilesets, goods and the HUD foundation board (`tab=hud`); comparisons and links to known real maps ([workflow](art/PIPELINE.md)) |
-| `?art` | own-art review using the production terrain layer; synthetic ground, current civilian, filtering and scale controls; `&artMap=tutorial_005` checks an owned-map meadow patch with own textures |
 | `?map=<id>` | decoded map |
 | `?relay=<ws url>&room=<id\|new>` | decoded map played through a relay server; see below |
 | `?anim` | character animation gallery |
@@ -187,7 +185,7 @@ keep the map, camera and zoom fixed, and include x2 and a zoomed-out pan.
   animals get it in the paletted shader on palette-resolved colours. Buildings, trees, goods and the
   other frames the world's texture cache mints from nearest-loaded atlas pages get it through the
   `world` batcher the world sprites opt into, which also averages a frame-clamped 2x2 footprint
-  below texel size. The filter claims the original's pages only: own art keeps the sampling its
+  below texel size. The filter claims the original's pages only: a presentation pack's art keeps the sampling its
   sprite-smoothing setting chose, and HUD icons, ground and flat decor batches sample as before. Any
   filter also removes device-pixel snapping from camera and character placement, magnifies original
   terrain with a tile-bounded Catmull-Rom bicubic filter and minifies it with four tile-bounded
@@ -405,40 +403,6 @@ npm run test:desktop    # app:// boot and save/load across a relaunch; requires 
 `packages/app/dist` and the checkout's `content/` (the override does not apply) as resources of the
 installers under `packages/desktop/release/`, so the packaged game plays without any content on the
 player's machine.
-
-## Own-art production
-
-Original assets are the default. Choose Own or Original in Settings → Graphics; changes during a game
-apply to the next game. `assets=own` / `assets=original` URL parameters override the stored choice.
-
-Own environment development on a playable map: `?map=magiczny_las&assets=own&intro=off`.
-See [own asset runtime](art/OWN-ASSET-RUNTIME.md) for exports, markers and current coverage.
-
-Use `npm run art -- list` and follow [the art pipeline](art/PIPELINE.md) for candidate builds, review,
-approval and publication. This workshop is independent of `npm run pipeline`, which decodes the mod.
-
-## Git LFS
-
-The human-only art sources under `docs/art` are tracked with Git LFS; everything the art build, the
-tests and the scripts read is a plain blob. Skipping the smudge filter writes pointers instead of
-gigabytes, which is what a new checkout or a task worktree wants:
-
-```bash
-GIT_LFS_SKIP_SMUDGE=1 git clone git@github.com:s-nems/open-northland.git
-GIT_LFS_SKIP_SMUDGE=1 git worktree add -b feat/<slug> ../on-<slug> main
-```
-
-Every gate, the app and desktop builds and `npm run art -- build all` pass without a single LFS
-object, so fetch a package only when a task opens its sources:
-
-```bash
-git lfs pull -I "docs/art/buildings/house-2/**"
-```
-
-An unfiltered `git lfs pull` materialises every source at once. Committing a new LFS-matched file
-needs nothing extra; the push uploads the object. `npm run check:assets` fails on a tracked blob
-over 24 MiB that is not a pointer, so a source larger than the biggest build input must match a
-pattern in `.gitattributes`. [Source retention](art/PIPELINE.md#source-retention) states the boundary.
 
 ## Web image
 

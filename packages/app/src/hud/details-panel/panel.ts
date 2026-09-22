@@ -1,9 +1,8 @@
 import type { UiCue } from '@open-northland/audio';
 import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { Application } from 'pixi.js';
+import type { Application, Texture } from 'pixi.js';
 import { animalGoodIcons } from '../../content/animal-gfx/icons.js';
-import { ownGoodIcons } from '../../content/own-assets/goods.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
@@ -34,6 +33,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   /** Sprite sheet for the animated worker field; absent → the field stays empty. */
   readonly sheet?: SpriteSheet;
+  /** The presentation pack's goods icons, by good id; absent → the original's frames. */
+  readonly packGoods?: ReadonlyMap<string, Texture>;
   /** Owner slot → team-colour slot for the worker sprites; absent = identity. */
   readonly playerColourOf?: (player: number) => number;
   /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field. */
@@ -75,7 +76,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const assets = {
     ...(await loadDetailsPanelArt(opts.lang)),
     previews: buildingPreviews(opts.sheet),
-    ownGoods: ownGoodIcons(opts.sheet),
+    ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),
     animalGoods: animalGoodIcons(opts.sheet, opts.goods, opts.livestockTribeOfGood),
   };
   const stage = createPanelStage({ app, assets, scale });

@@ -17,7 +17,7 @@ import type {
   TraderView,
   WorldSnapshot,
 } from '@open-northland/sim';
-import type { Application } from 'pixi.js';
+import type { Application, Texture } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
@@ -46,6 +46,8 @@ export interface UnitControlsOptions {
   readonly professions: readonly PickerEntry[];
   readonly content: ContentSet;
   readonly sheet?: SpriteSheet;
+  /** The presentation pack's goods icons for the details panel, by good id. */
+  readonly packGoods?: ReadonlyMap<string, Texture>;
   /** Owner slot to team-colour slot; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: PlayerCommand) => void;

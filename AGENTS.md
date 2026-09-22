@@ -13,8 +13,7 @@ reference captures from the original. `npm run check:assets` rejects tracked `co
 file types, and unreviewed binaries; review covers the rest. The CulturesNation mod archive is the
 pipeline's only input and a build input: a release converts the pinned archive once and ships the
 decoded content inside the desktop installers and the web image, which go no further than the
-repository's releases and GHCR packages. The original assets are a stand-in while the project's own
-are made. An owned game installation beside the checkout serves reverse-engineering evidence, never
+repository's releases and GHCR packages. An owned game installation beside the checkout serves reverse-engineering evidence, never
 the pipeline.
 
 This is an independent AGPL-3.0-or-later implementation. Do not copy or translate another engine's
@@ -157,8 +156,7 @@ the changed areas and affected contracts rather than restarting the whole review
 Prove behavior at the lowest useful layer: unit, integration, headless scenario, browser.
 Golden hashes change only for intentional behavior changes. Player-visible mechanics should have a
 registered acceptance scene when it adds useful coverage. Agents inspect screenshots, console errors,
-state and integration themselves; final visual/audio acceptance remains human. For environment art,
-follow the ×2 world-view trial and door-to-character calibration in `docs/art/WORLD-STYLE.md`.
+state and integration themselves; final visual/audio acceptance remains human.
 
 Commands and local tools: [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
@@ -166,7 +164,6 @@ Commands and local tools: [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 Load the relevant file when working in that area:
 
-- `docs/art/AGENTS.md`
 - `packages/sim/AGENTS.md` (and `packages/sim/src/systems/missions/AGENTS.md`)
 - `packages/lockstep/AGENTS.md`
 - `packages/net-protocol/AGENTS.md`
@@ -178,4 +175,3 @@ Load the relevant file when working in that area:
 - `packages/data/AGENTS.md`
 - `packages/desktop/AGENTS.md`
 - `tools/asset-pipeline/AGENTS.md`
-- `tools/art-pipeline/AGENTS.md`

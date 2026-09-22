@@ -22,7 +22,7 @@ export async function fixture() {
   for (const folder of [
     'tools/art-pipeline/src',
     'packages/art-contracts/src',
-    'packages/app/src/assets/own',
+    'packages/app/src/assets/custom',
   ])
     await mkdir(join(root, folder), { recursive: true });
   await writeFile(join(root, 'package-lock.json'), '{}');
@@ -67,7 +67,7 @@ export async function fixture() {
     manifest,
     recipe,
     id: recipe.id,
-    runtime: join(root, 'packages/app/src/assets/own'),
+    runtime: join(root, 'packages/app/src/assets/custom'),
   };
 }
 export async function reviewed(root: string, id: string) {

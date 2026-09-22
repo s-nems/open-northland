@@ -6,7 +6,7 @@ import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { loadCombatBones } from '../../content/objects.js';
-import { assetSetFor } from '../asset-settings.js';
+import { presentationPack } from '../../presentation/pack.js';
 import { readStoredSettings } from '../settings-store.js';
 import { startSound } from '../sound-start.js';
 import { gameSoundEnabled } from './game-settings.js';
@@ -39,7 +39,7 @@ export async function mountGamePresentation(
       startSound(sound, { ...(signal !== undefined ? { signal } : {}) });
       if (musicType !== null) void startMapMusic(sound, musicType);
     }
-    if (assetSetFor(params) === 'own') return sound;
+    if (presentationPack(params) !== null) return sound;
     renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
     renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
     renderer.setBuildingSignGfx(await loadBuildingSignGfx());

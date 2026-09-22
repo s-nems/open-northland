@@ -1,5 +1,5 @@
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
+import { uiFoundationArt } from '../../content/ui-foundation.js';
 import type { NoticeGlyph } from '../tool-panel/messages/cards.js';
 
 /** The key colour's tint on a card about no seat: bone ivory, so an own settler's skull reads as bone. */
@@ -14,8 +14,7 @@ export function noticeTint(seat: number | null, colourSlotOf?: (player: number) 
 }
 
 /** A pixel belongs to the key while its green stays under this share of the red/blue peak. The atlas
- *  paints recolourable areas in the magenta family and uses it nowhere else
- *  (docs/art/ui/foundation/README.md). */
+ *  paints recolourable areas in the magenta family and uses it nowhere else. */
 const KEY_GREEN_SHARE = 0.75;
 /** The key's red and blue stay within this share of their peak of each other; russet and purple
  *  shades do not. */

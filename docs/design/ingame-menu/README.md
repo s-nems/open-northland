@@ -83,8 +83,7 @@ consumer still needs them. Ticket 20 audits residual paths and consistency; it i
 the old HUD is removed in bulk.
 
 The shared component/style reference is [FOUNDATION.md](FOUNDATION.md) with the reference page,
-and at runtime `packages/app/src/hud/dom/foundation.css` shown on the gallery board
-(`?art=gallery&tab=hud`). Keep palette, typography, spacing, icon semantics, sizes and states in
+and at runtime `packages/app/src/hud/dom/foundation.css`. Keep palette, typography, spacing, icon semantics, sizes and states in
 that one source; later panels reuse it. A new common pattern must update that source and be checked against existing consumers.
 Do not grow one unrelated UI implementation per session. No universal UI framework is required.
 

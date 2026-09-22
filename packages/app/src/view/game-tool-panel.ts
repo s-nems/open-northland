@@ -24,9 +24,9 @@ import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/in
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
 import { currentLocale } from '../i18n/index.js';
+import type { PresentationPack } from '../presentation/pack.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
-import type { AssetSet } from './settings-store.js';
 
 /**
  * Wraps the tool panel with the wiring the map viewer and the acceptance scenes share, chiefly the
@@ -59,7 +59,7 @@ export interface GameToolPanelDeps {
   /** The content set's goods, for the summary bar's per-good rows. */
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   /** The asset set the map draws with, so the HUD's good icons match it. */
-  readonly assetSet: AssetSet;
+  readonly pack: PresentationPack | null;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -194,7 +194,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       technologyLabel: deps.technologyLabel,
       goodLabel: deps.goodLabel,
       goods: deps.goods,
-      assetSet: deps.assetSet,
+      pack: deps.pack,
       lang: deps.lang ?? currentLocale(),
       bindings: deps.bindings,
       tribe: deps.tribe,

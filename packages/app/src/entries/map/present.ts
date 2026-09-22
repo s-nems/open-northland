@@ -9,7 +9,6 @@ import {
 import type { Camera } from '@open-northland/render';
 import type { SaveGame } from '@open-northland/sim';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
-import { loadOwnMapObjects } from '../../content/own-assets/objects.js';
 import { loadScriptLandscapeSprites } from '../../content/script-landscape-sprites.js';
 import { playerNameMap, playerTribe } from '../../game/map-roster.js';
 import { mapStartFocus } from '../../game/map-start.js';
@@ -60,7 +59,8 @@ export async function presentMapWorld(
   world: AssembledMapWorld,
   runtime: MapRuntime,
 ): Promise<GameViewHandle> {
-  const { app, canvas, params, boot, session, sim, renderer, terrainGrid, loaded, ir, script, meta } = world;
+  const { app, canvas, params, boot, session, sim, renderer, terrainGrid, loaded, ir, script, meta, pack } =
+    world;
   const { mapId, stagedSave } = world.plan;
   const localPlayer = localPlayerOf(session);
   const playerColourOf = seatColourOf(session);
@@ -94,8 +94,8 @@ export async function presentMapWorld(
             ir,
             world.elevation,
             renderer.brightnessField(),
-            world.ownAssets
-              ? (objects) => loadOwnMapObjects(app.renderer, objects, ir, world.elevation)
+            pack !== null
+              ? (objects) => pack.mapObjects(app.renderer, objects, ir, world.elevation)
               : undefined,
           ),
         )
@@ -119,7 +119,7 @@ export async function presentMapWorld(
   // Averaged from the real texture pages the map's ground lanes point at: the shipped `minimap.pcx` is
   // map-selection card art, not an overview raster. Null without lanes or textures.
   await boot.begin('minimap');
-  const minimapCells = world.ownAssets ? null : await loadMinimapCellColours(terrainGrid, world.terrain);
+  const minimapCells = pack !== null ? null : await loadMinimapCellColours(terrainGrid, world.terrain);
 
   await boot.begin('hud');
   const view = await startGameView({

@@ -4,13 +4,7 @@ import { messages } from '../i18n/index.js';
 import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './settings-controls.js';
 import type { DisplayMode } from './settings-display-mode.js';
 import type { SettingsPageStore } from './settings-page.js';
-import {
-  type AssetSet,
-  type FpsLimit,
-  type MenuSettings,
-  RENDER_SCALE_MAX,
-  RENDER_SCALE_MIN,
-} from './settings-store.js';
+import { type FpsLimit, type MenuSettings, RENDER_SCALE_MAX, RENDER_SCALE_MIN } from './settings-store.js';
 
 type FpsChoice = 'fps30' | 'fps60' | 'screen';
 const RENDER_SCALE_STEP = 0.25;
@@ -108,19 +102,6 @@ export function graphicsSettingsRows(
   });
   smoothing.setAttribute('aria-label', text.spriteSmoothing);
   smoothing.dataset.settingsFocus = 'sprite-smoothing';
-  const assets = segControl<AssetSet>(
-    [
-      { id: 'own', label: text.assetsOwn },
-      { id: 'original', label: text.assetsOriginal },
-    ],
-    settings.assets,
-    (value) => {
-      void store.update({ assets: value }).then((applied) => {
-        if (applied) assets.setActive(value);
-      });
-    },
-  );
-  markSegment(assets.root, 'assets');
   const filterLabels: Readonly<Record<FilterChoice, string>> = {
     off: text.pixelArtFilterOff,
     bilinear: text.pixelArtFilterSoft,
@@ -153,7 +134,6 @@ export function graphicsSettingsRows(
     settingRow(text.renderScale, renderScale, { tip: deferredTip(text.renderScaleTip) }),
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
     settingsHeading(text.worldHeading),
-    settingRow(text.assets, assets.root, { tip: deferredTip(text.assetsTip) }),
     settingRow(text.pixelArtFilter, filter.root, { tip: liveTip(text.pixelArtFilterTip) }),
     ...enhancementToggles,
     settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),

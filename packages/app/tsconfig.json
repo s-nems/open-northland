@@ -6,7 +6,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": false
   },
-  "include": ["src/**/*.ts", "src/assets/own/**/*.json"],
+  "include": ["src/**/*.ts", "src/assets/**/*.json"],
   "references": [
     { "path": "../data" },
     { "path": "../sim" },

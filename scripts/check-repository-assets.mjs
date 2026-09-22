@@ -1,8 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { isForbiddenGameFile } from './game-asset-policy.mjs';
-import { ownArtPolicy } from './own-art-policy.mjs';
 
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',
@@ -17,6 +16,11 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/menu-backdrops/saracen_4.jpg',
   'packages/app/src/assets/menu-backdrops/straznicypolnocy.jpg',
   'packages/app/src/assets/menu-backdrops/wielka_inwazja.jpg',
+  // The in-game HUD chrome: generated for this project, no original-game input (provenance in the custom
+  // art checkout's ui/foundation package, which publishes this copy).
+  'packages/app/src/assets/ui/foundation/icons.png',
+  'packages/app/src/assets/ui/foundation/notices.png',
+  'packages/app/src/assets/ui/foundation/surface.png',
   'packages/app/public/favicon.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
@@ -82,13 +86,11 @@ const blobSize = new Map(indexEntries.map((entry, index) => [entry.file, blobSiz
 const errors = [];
 const trackedSet = new Set(tracked);
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
-const isOwnArt = ownArtPolicy(
-  readJson('docs/art/assets.json'),
-  readJson('docs/art/delivery.json'),
-  readJson('scripts/own-art-sources.json'),
-  readJson,
-  (path) => trackedSet.has(path),
-);
+// A checkout with custom art registers its packages and deliveries through this optional module.
+const checkoutPolicy = new URL('./custom-art-policy.mjs', import.meta.url);
+const isCheckoutArt = existsSync(checkoutPolicy)
+  ? (await import(checkoutPolicy.href)).checkoutArtPolicy(readJson, (path) => trackedSet.has(path))
+  : () => false;
 
 for (const file of tracked) {
   const lower = file.toLowerCase();
@@ -100,7 +102,7 @@ for (const file of tracked) {
   if (isForbiddenGameFile(file)) {
     errors.push(`${file}: original or decoded game-file type is not allowed`);
   }
-  if (reviewRequiredExtensions.has(extension) && !reviewedBinaryAssets.has(file) && !isOwnArt(file)) {
+  if (reviewRequiredExtensions.has(extension) && !reviewedBinaryAssets.has(file) && !isCheckoutArt(file)) {
     errors.push(`${file}: binary asset is not in the reviewed allowlist`);
   }
   if (blobSize.get(file) > MAX_PLAIN_BLOB_BYTES) {
@@ -113,7 +115,6 @@ if (errors.length > 0) {
   for (const error of errors) console.error(`- ${error}`);
   console.error('\nIf this is an original or decoded game asset, remove it.');
   console.error('For a new project-owned binary, document its source and update the allowlist.');
-  console.error('Own art uses registered source packages and delivery ownership; see docs/art/PIPELINE.md.');
   console.error(
     'Human-only art sources match an LFS pattern in .gitattributes; build inputs stay plain blobs.',
   );

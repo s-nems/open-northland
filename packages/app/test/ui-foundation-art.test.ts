@@ -1,6 +1,6 @@
-import { ownUiManifest } from '@open-northland/art-contracts';
+import { uiManifest } from '@open-northland/art-contracts';
 import { describe, expect, it } from 'vitest';
-import { iconCellStyle } from '../src/content/own-assets/ui-foundation.js';
+import { iconCellStyle, uiFoundationArt } from '../src/content/ui-foundation.js';
 
 const icons = {
   file: 'icons.png',
@@ -27,13 +27,13 @@ const manifest = {
 
 describe('ui foundation manifest', () => {
   it('accepts the delivered shape and rejects cells outside the atlas or duplicate names', () => {
-    expect(ownUiManifest.safeParse(manifest).success).toBe(true);
-    expect(ownUiManifest.safeParse({ ...manifest, icons: { ...icons, columns: 4 } }).success).toBe(false);
+    expect(uiManifest.safeParse(manifest).success).toBe(true);
+    expect(uiManifest.safeParse({ ...manifest, icons: { ...icons, columns: 4 } }).success).toBe(false);
     expect(
-      ownUiManifest.safeParse({ ...manifest, icons: { ...icons, names: [...icons.names, 'build'] } }).success,
+      uiManifest.safeParse({ ...manifest, icons: { ...icons, names: [...icons.names, 'build'] } }).success,
     ).toBe(false);
     expect(
-      ownUiManifest.safeParse({ ...manifest, icons: { ...icons, names: [...icons.names, 'extra'] } }).success,
+      uiManifest.safeParse({ ...manifest, icons: { ...icons, names: [...icons.names, 'extra'] } }).success,
     ).toBe(false);
   });
 });
@@ -56,5 +56,12 @@ describe('iconCellStyle', () => {
 
   it('reports an unknown icon instead of showing the first cell', () => {
     expect(iconCellStyle(icons, 'people', 50)).toBeNull();
+  });
+});
+
+describe('delivered ui foundation', () => {
+  it('reads the public copy of the HUD chrome', () => {
+    const art = uiFoundationArt();
+    for (const url of [art?.surfaceUrl, art?.iconsUrl, art?.noticesUrl]) expect(url).toContain('assets/ui/foundation/');
   });
 });

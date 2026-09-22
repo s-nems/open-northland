@@ -24,7 +24,7 @@ If the branch or worktree exists, inspect it before resuming. Run `npm ci` in a 
 never symlink `node_modules` from another checkout (its workspace links point at that checkout).
 Copy ignored `AGENTS.override.md` and `CLAUDE.local.md` from the primary checkout when present,
 without overwriting existing files. Use its `.env` by absolute path only in the process that needs it.
-Fetch LFS objects only for sources the task opens; see [DEVELOPMENT.md](../../docs/DEVELOPMENT.md#git-lfs).
+Where sources live in Git LFS, fetch objects only for the sources the task opens.
 
 Verify ticket claims against code and allowed evidence before implementing. Read callers and tests;
 state the bounded change, verification path and any human acceptance needed.
@@ -55,8 +55,6 @@ behavior in the browser. Internal changes need no preview server.
 Keep the task preview available while awaiting review/integration. Do not substitute `:5173`, a
 production preview, or another session's listener for unmerged changes; fix the preview or report
 the blocker. After integration, hand off verified primary `main` and clean up task servers below.
-Asset handoffs follow
-[PIPELINE.md](../../docs/art/PIPELINE.md), including candidate gallery and real-map review.
 
 Report commits, changed behavior, checks and remaining risks, then stop and wait. Only the user's
 own message in this conversation, naming this task or branch, authorizes integration. A wakeup or

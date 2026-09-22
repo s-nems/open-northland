@@ -17,7 +17,7 @@ import {
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import { messages, professionLabel } from '../../i18n/index.js';
-import type { AssetSet } from '../../view/settings-store.js';
+import type { PresentationPack } from '../../presentation/pack.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
@@ -79,7 +79,7 @@ export interface ToolPanelOptions {
   /** The content set's goods, so the summary can name a stock entry by its stable string id. */
   readonly goods: readonly { readonly typeId: number; readonly id: string }[];
   /** The asset set the map draws with; the DOM surfaces' good icons come from the same. */
-  readonly assetSet: AssetSet;
+  readonly pack: PresentationPack | null;
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** Resolved player key bindings; the input layer reads the pause key from it. */
@@ -358,7 +358,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           plane,
           entries: seam.entries,
           thumbs,
-          assetSet: opts.assetSet,
+          pack: opts.pack,
           goodIdOf: (goodType) => goodIdByType.get(goodType),
           goodLabel: (goodType) => opts.goodLabel(goodType) ?? `#${goodType}`,
           papers: () => opts.papers.read(),
@@ -408,7 +408,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     });
     const systemBar = createHudSystemBar(plane, {
       summary: {
-        assetSet: opts.assetSet,
+        pack: opts.pack,
         goodIdOf: (goodType) => goodIdByType.get(goodType),
         goodLabel: (goodId) => {
           const typeId = goodTypeById.get(goodId);

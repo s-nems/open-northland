@@ -2,7 +2,7 @@ import type { UiCue } from '@open-northland/audio';
 import type { HudModel } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
 import { formatMessage, messages } from '../../i18n/index.js';
-import type { AssetSet } from '../../view/settings-store.js';
+import type { PresentationPack } from '../../presentation/pack.js';
 import {
   BUILDING_CATEGORIES,
   type BuildingCategory,
@@ -41,7 +41,7 @@ export interface ConstructionWindowDeps {
   readonly entries: readonly MenuBuildingEntry[];
   readonly thumbs: BuildingThumbs;
   /** The asset set the map draws with; the cost icons come from the same. */
-  readonly assetSet: AssetSet;
+  readonly pack: PresentationPack | null;
   /** A cost line's good by content type id; `undefined` skips its icon. */
   readonly goodIdOf: (goodType: number) => string | undefined;
   readonly goodLabel: (goodType: number) => string;
@@ -322,7 +322,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       const frame = slot.querySelector('.on-good__frame');
       const goodId = deps.goodIdOf(line.goodType);
       if (frame instanceof HTMLElement && goodId !== undefined) {
-        void goodIconSource(goodId, deps.assetSet).then((source) => {
+        void goodIconSource(goodId, deps.pack).then((source) => {
           if (!disposed && source !== null) frame.style.cssText = goodIconStyle(source, COST_ICON_BOX_PX);
         });
       }

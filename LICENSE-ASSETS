@@ -6,8 +6,7 @@ Copyright (c) Sebastian Nemś. All rights reserved.
 
 This license covers the project's own artwork, sounds, models and their sources ("the Assets"):
 
-- everything under docs/art/;
-- everything under packages/app/src/assets/own/;
+- everything under packages/app/src/assets/ui/;
 - the project logo and icons: docs/images/logo.webp, packages/app/public/favicon.png and
   packages/desktop/build/icon.png;
 - any file in a build of Open Northland that is derived from the files above.

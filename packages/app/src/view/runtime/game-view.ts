@@ -43,7 +43,7 @@ import { NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.j
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
-import { assetSetFor } from '../asset-settings.js';
+import { presentationPack } from '../../presentation/pack.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
@@ -267,6 +267,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
 
     const lang = currentLocale();
+    const pack = presentationPack(params);
     // Input owners share this stable object, updated in place by the in-game settings page.
     const keyBindings = { ...storedSettings.keyBindings };
     const frameStats = new FrameStats();
@@ -411,7 +412,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       goods: sim.content.goods,
-      assetSet: assetSetFor(params),
+      pack,
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
@@ -545,6 +546,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       content: sim.content,
       mapText,
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
+      ...(pack !== null ? { packGoods: pack.goodTextures(deps.sheet) } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       enqueue: issueCommand,
       centerOn: jumpToWorld,

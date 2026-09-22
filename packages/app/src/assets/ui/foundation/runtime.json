@@ -1,0 +1,25 @@
+{
+  "id": "foundation",
+  "surface": {
+    "file": "surface.png",
+    "width": 1024,
+    "height": 682
+  },
+  "icons": {
+    "file": "icons.png",
+    "width": 300,
+    "height": 300,
+    "cell": 100,
+    "columns": 3,
+    "names": ["build", "assistant", "statistics", "mission", "diplomacy", "knowledge", "menu"]
+  },
+  "notices": {
+    "file": "notices.png",
+    "width": 400,
+    "height": 200,
+    "cell": 100,
+    "columns": 4,
+    "names": ["shield", "banner", "skull", "swords", "chest", "scroll", "house"]
+  },
+  "sourceBasis": "Independent generated HUD chrome studies (gpt-image-2 and the built-in image tool, no original-game input). The icon atlas takes six of the eight cells of source/nordic-icons-v4.png (record: source/generation-icons-v4.json) and the door cell of source/nordic-menu-v1.png (record: source/generation-menu-v1.json); the notification atlas takes seven of the eight objects of source/nordic-notices-v1.png (record: source/generation-notices-v1.json), whose magenta areas are a recolour key, not final colour; the surface is the retained material study. Sizes are approximations chosen for 50 px navigation art at up to 2x device pixels."
+}

@@ -12,7 +12,7 @@ const APP_SETUP_FILES = [
 ];
 
 /** Real-content tests: `npm run test:content` selects them, `npm test` filters the project out. */
-const CONTENT_TESTS = 'packages/app/test/content/**/*.test.ts';
+const CONTENT_TESTS = 'packages/app/test/**/content/**/*.test.ts';
 
 /**
  * Three projects: `app` needs setup files, `core` is the plain default run, and `content` is opt-in.

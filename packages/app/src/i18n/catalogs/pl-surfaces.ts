@@ -136,10 +136,6 @@ export const plSurfaces = {
       displayFullscreen: 'Pełny ekran',
       displayWindow: 'Okno',
       renderScale: 'Skala renderowania',
-      assets: 'Zestaw assetów',
-      assetsOwn: 'Własne',
-      assetsOriginal: 'Oryginalne',
-      assetsTip: 'Własne rysują grafiki projektu, Oryginalne zdekodowaną grafikę gry.',
       renderScaleTip:
         'Rozdzielczość, w której rysowany jest cały obraz gry: niższa daje płynność na słabszym sprzęcie, wyższa daje ostrzejszy obraz. Działa w grze.',
       fpsLimit: 'Limit klatek na sekundę',

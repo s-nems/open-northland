@@ -137,11 +137,6 @@ export const enSurfaces = {
       displayFullscreen: 'Fullscreen',
       displayWindow: 'Window',
       renderScale: 'Render scale',
-      assets: 'Asset set',
-      assetsOwn: 'Own',
-      assetsOriginal: 'Original',
-      assetsTip:
-        'Own draws the sprites and terrain made for this project, Original the decoded game graphics.',
       renderScaleTip:
         'Resolution the whole game image is drawn at: lower runs smoother on weak hardware, higher sharpens it. Applies in game.',
       fpsLimit: 'Frame rate limit',

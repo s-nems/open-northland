@@ -61,7 +61,7 @@ outside the channel `docs/LEGAL.md` allows.
 ```text
 packages/
   app/               Browser shell, input, menus, HUD, and scenes
-  art-contracts/     Shape contracts the project's own assets are validated against
+  art-contracts/     Shape contract of the delivered HUD chrome
   audio/             Sound selection and Web Audio playback
   data/              Validated schemas and content loaders
   desktop/           Electron shell serving the app and the converted content
@@ -73,7 +73,6 @@ packages/
   sim/               Deterministic simulation
 tools/
   asset-pipeline/    Converts the CulturesNation mod into the served content tree
-  art-pipeline/      Builds and publishes the project's own assets
 deploy/web/          nginx image of the built app and the converted content
 scripts/             Repository checks, content build, benchmarks
 content/             Converted locally or by the release, ignored by Git
@@ -90,7 +89,7 @@ read [`AGENTS.md`](AGENTS.md).
 ## License and trademarks
 
 Open Northland's code is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE). The project's
-own artwork, sounds, and models are not: their terms are in [`LICENSE-ASSETS`](LICENSE-ASSETS).
+HUD chrome, logo and icons are not: their terms are in [`LICENSE-ASSETS`](LICENSE-ASSETS).
 
 This is an independent project. It is not affiliated with or endorsed by Funatics Software, Daedalic
 Entertainment, or another rights holder of the *Cultures* series. Game names are used only to

@@ -1,7 +1,7 @@
 import type { HudModel } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
-import type { AssetSet } from '../../view/settings-store.js';
+import type { PresentationPack } from '../../presentation/pack.js';
 import {
   SUMMARY_CATEGORIES,
   type SummaryCategoryId,
@@ -14,7 +14,7 @@ import { FIGURE } from './icons.js';
 
 export interface HudSummaryDeps {
   /** The asset set the map draws with; the category icons come from the same. */
-  readonly assetSet: AssetSet;
+  readonly pack: PresentationPack | null;
   /** A stock entry's good by its content type id; `undefined` when the catalog has no such good. */
   readonly goodIdOf: (goodType: number) => string | undefined;
   /** A good's localized name by string id. */
@@ -204,7 +204,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       columnHost.append(host);
       return { host, rows: [] as TipRow[] };
     });
-    goodIconSource(spec.icon, deps.assetSet)
+    goodIconSource(spec.icon, deps.pack)
       .then((source) => {
         const frame = count.button.querySelector('.on-good__frame');
         if (disposed || source === null || !(frame instanceof HTMLElement)) return;

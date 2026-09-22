@@ -117,9 +117,8 @@ they were.
   product or capacity text on the card: that is Knowledge's.
 - Cost is the from-scratch bill the sim charges (`constructionBillForType`): a leveled tier sums
   its whole chain down to the base, since the site is placed at that tier from nothing.
-- Every good icon on the DOM plane (the cost slots, the summary counters) comes from the asset set the
-  map draws with: the original pile atlas under the original set, the project's own art under the own
-  set with the original's frame where the project has none yet. The two sets never mix on one screen.
+- Every good icon on the DOM plane (the cost slots, the summary counters) comes from the art the map
+  draws with: a presentation pack's icon when it has one, else the original's pile atlas.
 - A pick hides the window and starts the placement with the strip up; Esc, the right button or Buduj
   bring the window back as it was, the picked card lit and focused. A site that lands leaves the
   window away, and so does an informational window opened over the placement (one window at a
@@ -285,7 +284,7 @@ medallion, with no divider frame between them.
   a well's working stock, never reported. Row names are the content's localized good names, never a
   second copy in the catalogs.
 - A category's icon is its representative good (food, wood, short sword, shoes, strength amulet): the
-  project's own art when it exists, else the original's recoloured pile frame, sized by area
+  presentation pack's icon when it has one, else the original's recoloured pile frame, sized by area
   (`good-art.ts`) so a thin sword and a round loaf carry the same visual mass in the 25 px box. The
   frame element is exactly the crop, never a box-sized background, so the sheet's neighbouring frames
   cannot show beside a thin sprite.

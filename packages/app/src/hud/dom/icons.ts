@@ -1,4 +1,4 @@
-import { iconCellStyle, uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
+import { iconCellStyle, uiFoundationArt } from '../../content/ui-foundation.js';
 
 /** Line glyphs the DOM HUD draws inline, as `.on-glyph` SVG markup. */
 export const GLYPH = {

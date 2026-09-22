@@ -26,7 +26,7 @@ const iconAtlas = image
 
 /** HUD chrome pack: the leather/wood surface texture, the painted action-icon atlas and the
  *  notification-icon atlas, whose magenta areas the HUD recolours per player. */
-export const ownUiManifest = z
+export const uiManifest = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
     surface: image,
@@ -36,4 +36,4 @@ export const ownUiManifest = z
   })
   .strict();
 
-export type OwnUiManifest = z.infer<typeof ownUiManifest>;
+export type UiManifest = z.infer<typeof uiManifest>;

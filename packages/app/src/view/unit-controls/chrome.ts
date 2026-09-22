@@ -78,6 +78,7 @@ export async function createUnitChrome(
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
+      ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),
       ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
       onUiCue: callbacks.cue,
       onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),

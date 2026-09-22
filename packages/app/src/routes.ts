@@ -1,9 +1,11 @@
+/// <reference types="vite/client" />
 /**
  * The URL mode table. Every entry module sits behind a dynamic import, so a boot downloads and parses
  * only the mode it was asked for; choosing the mode must stay free of the loading it decides on.
  */
 
-export type RouteId = 'shot' | 'scene' | 'art' | 'anim' | 'icons' | 'sounds' | 'relay' | 'map' | 'menu';
+/** `checkout` names a mode a checkout adds through `src/custom/routes.ts`. */
+export type RouteId = 'checkout' | 'shot' | 'scene' | 'anim' | 'icons' | 'sounds' | 'relay' | 'map' | 'menu';
 
 /** Every entry module conforms to this, so the dispatcher never adapts a per-mode call shape. */
 export type EntryRunner = (canvas: HTMLCanvasElement, params: URLSearchParams) => void | Promise<void>;
@@ -20,18 +22,15 @@ const MENU_ROUTE: Route = {
   load: () => import('./entries/main-menu/index.js').then((m) => m.renderMainMenu),
 };
 
+// A checkout with custom art adds its review modes; they take precedence over the built-in ones.
+const checkoutRoutes =
+  Object.values(
+    import.meta.glob<{ readonly checkoutRoutes: readonly Route[] }>('./custom/routes.ts', { eager: true }),
+  )[0]?.checkoutRoutes ?? [];
+
 /** First match wins, so a URL carrying two mode flags takes the earlier one. */
 const ROUTES: readonly Route[] = [
-  {
-    id: 'art',
-    matches: (params) => params.get('art') === 'gallery',
-    load: () => import('./entries/art-gallery/index.js').then((m) => m.renderArtGallery),
-  },
-  {
-    id: 'art',
-    matches: (params) => params.has('art'),
-    load: () => import('./entries/art-review/index.js').then((m) => m.renderArtReview),
-  },
+  ...checkoutRoutes,
   {
     id: 'shot',
     matches: (params) => params.has('shot'),

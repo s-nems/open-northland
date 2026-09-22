@@ -1,16 +1,10 @@
 import { defaultLocale, localeParam, setActiveLocale } from '../../i18n/index.js';
-import { assetSetFor } from '../../view/asset-settings.js';
-import {
-  DEFAULT_ASSET_SET,
-  type MenuSettings,
-  persistSettings,
-  readStoredSettings,
-} from '../../view/settings-store.js';
+import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
 
 /**
- * The menu's settings session: the persisted store plus URL overrides. `assets`, `lang`, and `sound` are
- * projected onto the carried URL params so a launched game receives them; the HUD scale factor and
- * other graphics settings are read from the store directly and never enter the URL.
+ * The menu's settings session: the persisted store plus URL overrides. `lang` and `sound` are projected
+ * onto the carried URL params so a launched game receives them; the HUD scale factor and other graphics
+ * settings are read from the store directly and never enter the URL.
  */
 
 export interface CarriedSettingParam {
@@ -28,11 +22,6 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
       param: 'lang',
       // The elided default is the browser's language, so a `lang`-less link follows whoever opens it.
       value: settings.language === defaultLocale() ? null : settings.language,
-    },
-    {
-      key: 'assets',
-      param: 'assets',
-      value: settings.assets === DEFAULT_ASSET_SET ? null : settings.assets,
     },
     { key: 'soundEnabled', param: 'sound', value: settings.soundEnabled ? null : 'off' },
   ];
@@ -94,7 +83,6 @@ export function adoptSettings(
   return {
     session: {
       ...stored,
-      assets: assetSetFor(params, stored.assets),
       language: localeParam(params),
       soundEnabled: params.get('sound') !== 'off',
     },

@@ -10,32 +10,3 @@
 *.glb binary
 *.fbx binary
 *.exr binary
-# Human-only art sources live in Git LFS; anything art build, tests, or scripts read stays a plain blob.
-docs/art/**/*.blend filter=lfs diff=lfs merge=lfs -text
-docs/art/**/*.fbx filter=lfs diff=lfs merge=lfs -text
-docs/art/**/*.gz filter=lfs diff=lfs merge=lfs -text
-docs/art/buildings/**/*.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/**/geometry/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/concept/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/concepts/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/repaint/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/restyle/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/facings/15deg/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/model/preview/*.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/projected/texture.png filter=lfs diff=lfs merge=lfs -text
-docs/art/**/raw_base_color.png filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/base-color.png filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/painted-base.png filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/garment-base.png filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/model-remeshed.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/rigged.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/rigged-source.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/walk-source.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/animation.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/**/*-armature.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/shared/body/model/run.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/shared/motions/idle/idle.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/appearances/woman-blonde/model/idle.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/appearances/woman-blonde/model/walk.glb filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/appearances/boy-straw/model/rigged-base-0.png filter=lfs diff=lfs merge=lfs -text
-docs/art/characters/appearances/woman-blonde/model/rigged-base-0.png filter=lfs diff=lfs merge=lfs -text

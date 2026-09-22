@@ -21,7 +21,7 @@ export async function publish(root: string, id: string) {
     if (approvals[id]?.digest !== (await presentationDigest(current.delivery)))
       throw new Error('Candidate needs visual approval; run art review');
     temporary = await mkdtemp(join(base, 'publish-'));
-    const prepared = join(temporary, 'own');
+    const prepared = join(temporary, 'custom');
     const { registry } = await prepareDelivery(root, current, prepared);
     const latestApproval = approvalSchema.parse(await json(join(root, 'docs/art/approvals.json')))[id];
     if (latestApproval?.digest !== approvals[id]?.digest)

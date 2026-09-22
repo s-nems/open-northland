@@ -1,9 +1,9 @@
-import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { json, writeJson } from './files.js';
 import { assertStopped } from './lock.js';
-import { runtimePack } from './paths.js';
+import { runtimePack, SHARED_UI, sharedUiMirror } from './paths.js';
 
 const journalSchema = z
   .object({ phase: z.enum(['prepared', 'swapped', 'committed']), registry: z.string() })
@@ -45,6 +45,13 @@ async function restorePublication(root: string) {
     await writeFile(join(root, 'docs/art/delivery.json'), journal.registry);
   }
   await rm(base, { recursive: true, force: true });
+  await mirrorSharedUi(root);
+}
+export async function mirrorSharedUi(root: string) {
+  const source = join(runtimePack(root), SHARED_UI),
+    mirror = sharedUiMirror(root);
+  await rm(mirror, { recursive: true, force: true });
+  if (await exists(source)) await cp(source, mirror, { recursive: true });
 }
 export async function installDelivery(root: string, prepared: string, registry: unknown) {
   const base = join(root, '.art-build/publication');
@@ -69,4 +76,5 @@ export async function installDelivery(root: string, prepared: string, registry: 
     throw error;
   }
   await rm(base, { recursive: true, force: true });
+  await mirrorSharedUi(root);
 }

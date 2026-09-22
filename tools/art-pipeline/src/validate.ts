@@ -1,16 +1,16 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { uiManifest } from '@open-northland/art-contracts';
 import {
   collectTerrainMaterials,
+  customBuildingManifest,
+  customCharacterJobSelection,
+  customCharacterManifest,
+  customCharacterSelection,
+  customGoodManifest,
+  customPropManifest,
   grassBindingsSchema,
-  ownBuildingManifest,
-  ownCharacterJobSelection,
-  ownCharacterManifest,
-  ownCharacterSelection,
-  ownGoodManifest,
-  ownPropManifest,
-  ownUiManifest,
-} from '@open-northland/art-contracts';
+} from '@open-northland/art-contracts/custom';
 import sharp from 'sharp';
 import { json, listFiles } from './files.js';
 
@@ -52,7 +52,7 @@ export async function validateDelivery(directory: string, complete = false) {
       folder = dirname(file);
     used.add(file);
     if (file.startsWith('buildings/')) {
-      const m = ownBuildingManifest.parse(raw);
+      const m = customBuildingManifest.parse(raw);
       claim(identities, `building:${m.tribeId}:${m.typeId}`);
       claim(layers, m.layer);
       if (
@@ -87,14 +87,14 @@ export async function validateDelivery(directory: string, complete = false) {
         await inspect(`${folder}/${s.timeMask}`, m.width, m.height, false);
       }
     } else if (file.startsWith('props/')) {
-      const m = ownPropManifest.parse(raw);
+      const m = customPropManifest.parse(raw);
       claim(identities, `prop:${m.id}`);
       if (folder !== `props/${m.id}`) throw new Error('Prop folder and id disagree');
       for (const name of m.editNames) claim(names, name);
       if (m.kind === 'stump' || m.kind === 'flag') claim(identities, m.kind);
       await inspect(`${folder}/${m.image}`, m.width, m.height, true);
     } else if (file.startsWith('goods/')) {
-      const m = ownGoodManifest.parse(raw);
+      const m = customGoodManifest.parse(raw);
       claim(identities, `good:${m.id}`);
       if (folder !== `goods/${m.id}`) throw new Error('Good folder and id disagree');
       await inspect(`${folder}/${m.image}`, m.width, m.height, true);
@@ -108,7 +108,7 @@ export async function validateDelivery(directory: string, complete = false) {
         if (empty) throw new Error(`Empty good frame: ${m.id}:${index}`);
       }
     } else if (file.startsWith('ui/')) {
-      const m = ownUiManifest.parse(raw);
+      const m = uiManifest.parse(raw);
       claim(identities, `ui:${m.id}`);
       if (folder !== `ui/${m.id}`) throw new Error('UI pack folder and id disagree');
       await inspect(`${folder}/${m.surface.file}`, m.surface.width, m.surface.height, false);
@@ -125,7 +125,7 @@ export async function validateDelivery(directory: string, complete = false) {
         }
       }
     } else if (file.startsWith('characters/')) {
-      const m = ownCharacterManifest.parse(raw);
+      const m = customCharacterManifest.parse(raw);
       claim(identities, `character:${m.id}`);
       if (folder !== `characters/${m.id}`) throw new Error('Character folder and id disagree');
       await inspect(`${folder}/atlas.png`, m.width, m.height, true);
@@ -138,8 +138,8 @@ export async function validateDelivery(directory: string, complete = false) {
     const raw = await json(join(directory, path));
     const selected =
       name === 'selection.json'
-        ? ownCharacterSelection.parse(raw)
-        : Object.values(ownCharacterJobSelection.parse(raw));
+        ? customCharacterSelection.parse(raw)
+        : Object.values(customCharacterJobSelection.parse(raw));
     if (complete)
       for (const id of selected)
         if (!identities.has(`character:${id}`)) throw new Error(`Selected character is missing: ${id}`);

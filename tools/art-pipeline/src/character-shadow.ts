@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { ownCharacterShadow } from '@open-northland/art-contracts';
+import { customCharacterShadow } from '@open-northland/art-contracts/custom';
 import { z } from 'zod';
 
-const receipt = ownCharacterShadow.extend({
+const receipt = customCharacterShadow.extend({
   basis: z.string().min(1),
   /** Clip names in the shadow atlas's cell order, for the body packer to check against its own. */
   clips: z.array(z.string()).min(1).optional(),

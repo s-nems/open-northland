@@ -4,9 +4,6 @@ import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
-import { ownSceneTerrain } from '../content/own-assets/scene-terrain.js';
-import { loadOwnSpriteSheet } from '../content/own-assets/sprite-sheet.js';
-import { loadOwnTerrain } from '../content/own-assets/terrain.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
@@ -16,6 +13,7 @@ import { applySessionRuleOverrides } from '../game/session-rules.js';
 import { sceneSession } from '../game/session-url.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
 import { messages, sceneCopy, scenePages, sceneStrings } from '../i18n/index.js';
+import { presentationPack } from '../presentation/pack.js';
 import { routeFor } from '../routes.js';
 import {
   createSceneWorld,
@@ -27,7 +25,6 @@ import {
   SCENES,
 } from '../scenes/index.js';
 import type { SceneDefinition } from '../scenes/types.js';
-import { assetSetFor } from '../view/asset-settings.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
@@ -135,14 +132,16 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   if (stagedSave === null) applySessionRuleOverrides(sim, session.rules);
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
-  const ownAssets = assetSetFor(params) === 'own';
-  const sheet = ownAssets
-    ? await loadOwnSpriteSheet(ir, params.get('ownHead'), sim.content.goods)
-    : await resolveSpriteSheet(sim.content.goods);
+  const pack = presentationPack(params);
+  const sheet =
+    pack !== null
+      ? await pack.spriteSheet(ir, sim.content.goods, params)
+      : await resolveSpriteSheet(sim.content.goods);
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;
   try {
-    terrain = ownAssets ? ownSceneTerrain(await loadOwnTerrain(app.renderer, ir)) : await loadRealTerrain(ir);
+    terrain =
+      pack !== null ? pack.sceneTerrain(await pack.terrain(app.renderer, ir)) : await loadRealTerrain(ir);
   } catch (err) {
     if (!(err instanceof MissingTerrainError)) throw err;
     haltOnMissingContent(err);

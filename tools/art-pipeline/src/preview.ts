@@ -11,7 +11,7 @@ async function stage(root: string, stages: string[], id: string, pack: string) {
   const current = await candidate(root, id);
   const directory = await mkdtemp(join(root, '.art-build/preview-'));
   stages.push(directory);
-  const own = join(directory, 'own');
+  const own = join(directory, 'custom');
   const { files } = await prepareDelivery(root, current, own, pack);
   return { directory, own, files };
 }
@@ -40,7 +40,7 @@ export async function preparePreview(root: string, ids: readonly string[]) {
     const destination = join(inside(base, first), 'preview');
     await rm(destination, { recursive: true, force: true });
     await rename(last.directory, destination);
-    return { ids, path: join(destination, 'own') };
+    return { ids, path: join(destination, 'custom') };
   } finally {
     for (const directory of stages) await rm(directory, { recursive: true, force: true });
     await release();

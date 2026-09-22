@@ -1,4 +1,4 @@
-import { uiFoundationArt } from '../../content/own-assets/ui-foundation.js';
+import { uiFoundationArt } from '../../content/ui-foundation.js';
 import './foundation.css';
 import { HUD_SYMBOLS } from './symbols.js';
 

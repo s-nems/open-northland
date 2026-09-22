@@ -2,7 +2,12 @@ import { realpath } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { relativePath } from './recipe.js';
 export function runtimePack(root: string): string {
-  return join(root, 'packages/app/src/assets/own');
+  return join(root, 'packages/app/src/assets/custom');
+}
+/** The runtime pack's `ui/` subtree is shared with the public game, which reads this mirror of it. */
+export const SHARED_UI = 'ui';
+export function sharedUiMirror(root: string): string {
+  return join(root, 'packages/app/src/assets/ui');
 }
 export function inside(root: string, path: string): string {
   const destination = resolve(root, relativePath.parse(path));

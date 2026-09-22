@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { goodSlug, ownCharacterManifest } from '@open-northland/art-contracts';
+import { customCharacterManifest, goodSlug } from '@open-northland/art-contracts/custom';
 import sharp, { type OverlayOptions } from 'sharp';
 import { z } from 'zod';
 import { characterShadow } from './character-shadow.js';
@@ -231,7 +231,7 @@ export async function packCharacter(
   const shadow = shadowSource ? await characterShadow(directory, shadowSource) : undefined;
   if (shadow?.clips && shadow.clips.join(',') !== clips.map((c) => c.name).join(','))
     throw new Error('Shadow clip order differs from the body atlas; re-pack shadows');
-  const manifest = ownCharacterManifest.parse({
+  const manifest = customCharacterManifest.parse({
     ...(shadow ? { shadow: shadow.manifest } : {}),
     id,
     name,

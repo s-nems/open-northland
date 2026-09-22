@@ -27,7 +27,7 @@
   --wax-danger: #a8412f;
   --paper-error: #783321;
   --focus: #f3e3bb;
-  /* Delivered chrome art (assets/own/ui/foundation); the root sets both, `none` is the fallback. */
+  /* Delivered chrome art (assets/ui/foundation); the root sets both, `none` is the fallback. */
   --on-surface: none;
   --on-icons: none;
   --paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");

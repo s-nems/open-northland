@@ -1,14 +1,23 @@
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defaultClientConditions, defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig, type Plugin, runnerImport } from 'vite';
 import { clientBuildIdentity, refreshClientBuild } from './build/client-version.js';
-import { artPreviewPlugin } from './vite/art-preview.js';
 import { devCheckout } from './vite/dev-checkout.js';
 import { serveContent } from './vite/serve-content.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The pipeline's output tree lives at the repo root (gitignored), outside the app's Vite root.
 const contentRoot = resolve(here, '../..', process.env.ON_CONTENT_DIR ?? 'content');
+
+/** A checkout that adds `vite/custom/plugins.ts` (the custom art fork) contributes its own plugins. */
+async function checkoutPlugins(command: 'serve' | 'build'): Promise<Plugin[]> {
+  const module = resolve(here, 'vite/custom/plugins.ts');
+  if (!existsSync(module)) return [];
+  type CheckoutPlugins = (repoRoot: string, command: 'serve' | 'build') => Promise<Plugin[]>;
+  const { module: plugins } = await runnerImport<{ checkoutPlugins: CheckoutPlugins }>(module);
+  return plugins.checkoutPlugins(resolve(here, '../..'), command);
+}
 
 export default defineConfig(async ({ command }) => ({
   root: here,
@@ -18,9 +27,7 @@ export default defineConfig(async ({ command }) => ({
     devCheckout(resolve(here, '../..'), contentRoot),
     serveContent(contentRoot),
     refreshClientBuild(resolve(here, '../..')),
-    ...(command === 'serve' && process.env.ART_CANDIDATE
-      ? [await artPreviewPlugin(resolve(here, '../..'), process.env.ART_CANDIDATE)]
-      : []),
+    ...(await checkoutPlugins(command)),
   ],
   server: { open: false },
   // `manifest` feeds scripts/bundle-report.mjs, which prints what each URL mode costs after the build.
