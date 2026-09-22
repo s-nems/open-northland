@@ -6,7 +6,6 @@ export {
 } from './assign-highlight.js';
 export {
   computeHouseHighlight,
-  familyIdsOf,
   type HouseInfo,
   houseAssignableAt,
 } from './house-highlight.js';

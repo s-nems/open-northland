@@ -88,9 +88,10 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Employ a group of owned settlers at `building`: unemployed members first, then members employed
-       * elsewhere, each nearest the building first. Every member is tried as its own `assignWorker`, so
-       * the building's staffing gate decides who still fits. Authored group order.
+       * Employ a group of owned settlers at `building`, nearest the building first: the unemployed
+       * members while there are any, otherwise the members employed elsewhere. Every member is tried as
+       * its own `assignWorker`, so the building's staffing gate decides who still fits. Authored group
+       * order.
        */
       readonly kind: 'assignWorkerGroup';
       readonly building: Entity;
@@ -238,9 +239,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * House a group of owned adult settlers' families in `house`: homeless families first, then
-       * families housed elsewhere, each nearest the house first, while it has a free family slot. Every
-       * member is tried as its own `assignHouse`. Authored group order.
+       * House a group of owned adult settlers' families in `house`, nearest the house first: the
+       * homeless families while there are any, otherwise the families housed elsewhere, while it has a
+       * free family slot. Every member is tried as its own `assignHouse`. Authored group order.
        */
       readonly kind: 'assignHouseGroup';
       readonly entities: readonly Entity[];
@@ -309,22 +310,14 @@ export type UnitOrderCommand =
     };
 
 /**
- * The settlers a player's order addresses: none for a command aimed at a building, the map or the seat
- * itself. `entity` is the unit-order vocabulary's addressee field (an order's other party rides as
- * `chest`, `target`, `house`...), and a group order names its members instead.
- */
-export function orderedSettlers(command: Command): readonly Entity[] {
-  if ('entity' in command) return [command.entity];
-  if (command.kind === 'assignHouseGroup') return command.entities;
-  if (command.kind === 'assignWorkerGroup') return command.workers.map((worker) => worker.entity);
-  return [];
-}
-
-/**
- * The settler that answers a player's order with its voice: the addressee, or a group order's first
- * member - the original's `AddHumanCommand` family. That covers the panel pickers too: the job,
- * equipment, produced-good, learn and trader windows are among `PlayRespondingSound`'s callers.
+ * The settler that answers a player's order with its voice, or undefined for a command aimed at a
+ * building, the map or the seat itself. `entity` is the unit-order vocabulary's addressee field (an
+ * order's other party rides as `chest`, `target`, `house`...); a group order answers with its first
+ * member. The panel pickers answer too: the job, equipment, produced-good, learn and trader windows.
  */
 export function orderedSettler(command: Command): Entity | undefined {
-  return orderedSettlers(command)[0];
+  if ('entity' in command) return command.entity;
+  if (command.kind === 'assignHouseGroup') return command.entities[0];
+  if (command.kind === 'assignWorkerGroup') return command.workers[0]?.entity;
+  return undefined;
 }

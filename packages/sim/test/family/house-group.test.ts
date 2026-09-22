@@ -20,9 +20,9 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * The `assignHouseGroup` command: a group sent to one home fills its family slots with homeless
- * families first, then with families housed elsewhere, each nearest the home first. The home here
- * holds {@link HOME_SIZE} families.
+ * The `assignHouseGroup` command: a group sent to one home fills its family slots nearest first with
+ * its homeless families while there are any, otherwise with its families housed elsewhere. The home
+ * here holds {@link HOME_SIZE} families, the big one {@link BIG_HOME_SIZE}.
  */
 
 const VIKING = 1;
@@ -31,6 +31,8 @@ const WOMAN = 5;
 const CIVILIST = 6;
 const HOME = 2;
 const HOME_SIZE = 2;
+const BIG_HOME = 3;
+const BIG_HOME_SIZE = 5;
 const GRASS = 0;
 
 function content(): ContentSet {
@@ -43,14 +45,17 @@ function content(): ContentSet {
       { typeId: CIVILIST, id: 'civilist' },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
-    buildings: [{ typeId: HOME, id: 'home_level_00', kind: 'home', homeSize: HOME_SIZE }],
+    buildings: [
+      { typeId: HOME, id: 'home_level_00', kind: 'home', homeSize: HOME_SIZE },
+      { typeId: BIG_HOME, id: 'home_level_04', kind: 'home', homeSize: BIG_HOME_SIZE },
+    ],
   });
 }
 
-function homeAt(sim: Simulation, x: number): Entity {
+function homeAt(sim: Simulation, x: number, buildingType = HOME): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(0) });
-  sim.world.add(e, Building, { buildingType: HOME, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
   return e;
 }
 
@@ -95,18 +100,30 @@ describe('assignHouseGroup - send a group to one home', () => {
     expect(homeOf(sim, housed)).toBe(oldHome);
   });
 
-  it('moves members housed elsewhere into the slots the homeless leave free', () => {
+  it('moves a group housed elsewhere in when none of it is homeless', () => {
     const sim = new Simulation({ seed: 1, content: content() });
     const oldHome = homeAt(sim, 30);
     const clicked = homeAt(sim, 10);
-    const housed = adultAt(sim, 30);
-    const homeless = adultAt(sim, 12);
-    assignHouse(sim.world, ctxOf(sim), { kind: 'assignHouse', entity: housed, house: oldHome });
+    const group = [adultAt(sim, 30), adultAt(sim, 31)];
+    for (const entity of group) {
+      assignHouse(sim.world, ctxOf(sim), { kind: 'assignHouse', entity, house: oldHome });
+    }
 
-    sendGroup(sim, clicked, [housed, homeless]);
+    sendGroup(sim, clicked, group);
 
-    expect(homeOf(sim, homeless)).toBe(clicked);
-    expect(homeOf(sim, housed)).toBe(clicked);
+    expect(group.map((e) => homeOf(sim, e))).toEqual([clicked, clicked]);
+  });
+
+  it('keeps members housed elsewhere put while any member is homeless, though room is left', () => {
+    const sim = new Simulation({ seed: 1, content: content() });
+    const first = homeAt(sim, 10);
+    const bigger = homeAt(sim, 40, BIG_HOME);
+    const group = [adultAt(sim, 11), adultAt(sim, 12), adultAt(sim, 13), adultAt(sim, 14)];
+
+    sendGroup(sim, first, group);
+    sendGroup(sim, bigger, group);
+
+    expect(group.map((e) => homeOf(sim, e))).toEqual([first, first, bigger, bigger]);
   });
 
   it('lets a second home take the rest of the group instead of the ones the first home took', () => {

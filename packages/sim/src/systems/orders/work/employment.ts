@@ -117,10 +117,7 @@ export function assignWorker(
   bindEmployment(world, e, b);
 }
 
-/**
- * Employ the group at one building - see the command doc. Unemployed members are tried first, so a
- * second click on another building staffs the rest instead of moving the first ones again.
- */
+/** Employ the group at one building - see the command doc and {@link groupPlacementOrder}. */
 export function assignWorkerGroup(
   world: World,
   ctx: SystemContext,

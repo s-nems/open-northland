@@ -5,7 +5,6 @@ import { BUILDING_HOME_00, sandboxContent } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
 import {
   computeHouseHighlight,
-  familyIdsOf,
   type HouseInfo,
   houseAssignableAt,
 } from '../src/view/unit-controls/highlights/index.js';
@@ -43,12 +42,19 @@ function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRI
  *  `home` moves it in as a resident. */
 function person(
   id: number,
-  opts: { player?: number; minor?: boolean; spouse?: number; child?: number | null; home?: number } = {},
+  opts: {
+    player?: number;
+    tribe?: number;
+    minor?: boolean;
+    spouse?: number;
+    child?: number | null;
+    home?: number;
+  } = {},
 ): Ent {
   return {
     id,
     components: {
-      Settler: { jobType: 0, tribe: TRIBE },
+      Settler: { jobType: 0, tribe: opts.tribe ?? TRIBE },
       Owner: { player: opts.player ?? HUMAN_PLAYER },
       ...(opts.minor === true ? { Age: { ticks: 0 } } : {}),
       ...(opts.spouse !== undefined ? { Marriage: { spouse: opts.spouse, child: opts.child ?? null } } : {}),
@@ -56,31 +62,6 @@ function person(
     },
   };
 }
-
-describe('familyIdsOf - the household a home assignment moves as one', () => {
-  it('is just the settler when unmarried', () => {
-    expect(familyIdsOf(snapshotOf([person(1)]), 1)).toEqual([1]);
-  });
-
-  it('carries the living spouse and the still-growing child', () => {
-    const snap = snapshotOf([
-      person(1, { spouse: 2, child: 3 }),
-      person(2, { spouse: 1, child: 3 }),
-      person(3, { minor: true }),
-    ]);
-    expect(familyIdsOf(snap, 1)).toEqual([1, 2, 3]);
-  });
-
-  it('drops a dead spouse (absent from the snapshot) and a grown-up child', () => {
-    const snap = snapshotOf([person(1, { spouse: 2, child: 3 }), person(3)]); // spouse 2 destroyed, child 3 adult
-    expect(familyIdsOf(snap, 1)).toEqual([1]);
-  });
-
-  it('is empty for a missing / non-settler entity', () => {
-    expect(familyIdsOf(snapshotOf([home(10)]), 10)).toEqual([]);
-    expect(familyIdsOf(snapshotOf([]), 1)).toEqual([]);
-  });
-});
 
 describe('computeHouseHighlight / houseAssignableAt', () => {
   it('greens an empty own home and the click resolver agrees', () => {
@@ -114,10 +95,10 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
     expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
   });
 
-  it('keeps a resident family green in its own home (the mover keeps its slot on a re-assign)', () => {
-    // Home holds the mover's own family + one other: only the OTHER household consumes a slot.
-    const snap = snapshotOf([person(1, { home: 10 }), home(10), person(2, { home: 10 })]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
+  it('offers no click on the home a lone mover already lives in', () => {
+    const snap = snapshotOf([person(1, { home: 10 }), home(10)]);
+    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, ok: false }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
   });
 
   it('skips a non-home building and another player’s home', () => {
@@ -162,6 +143,20 @@ const NO_TARGETS: UnitTargets = {
 };
 
 describe('a home pick armed for a group', () => {
+  it('reds a full home a selected member already lives in', () => {
+    const snap = snapshotOf([person(1, { home: 10 }), person(3, { home: 10 }), person(2), home(10)]);
+    expect(computeHouseHighlight(snap, [1, 2], HOUSES)).toEqual([{ id: 10, ok: false }]);
+    expect(houseAssignableAt(snap, 10, [1, 2], HOUSES)).toBe(false);
+  });
+
+  it('moves only the homeless members while there are any', () => {
+    // Home 20 has a free slot, but the only member who could take it is housed while another is homeless
+    // and of a tribe home 20 refuses: the sim tries the homeless alone, so the click would move nobody.
+    const snap = snapshotOf([person(1, { home: 10 }), person(2, { tribe: OTHER_TRIBE }), home(10), home(20)]);
+    expect(houseAssignableAt(snap, 20, [1, 2], HOUSES)).toBe(false);
+    expect(houseAssignableAt(snap, 20, [1], HOUSES)).toBe(true);
+  });
+
   it('greens a home one member may move into, though another member may not', () => {
     const snap = snapshotOf([person(1), person(2, { player: ENEMY_PLAYER }), home(10)]);
     expect(computeHouseHighlight(snap, [1, 2], HOUSES)).toEqual([{ id: 10, ok: true }]);

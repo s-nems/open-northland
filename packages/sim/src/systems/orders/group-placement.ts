@@ -5,10 +5,11 @@ import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 
 /**
- * The order a group order tries its members in at `target`: members with no current place first, then
- * members placed elsewhere, each nearest the target's door first (half-cell Manhattan distance, then
- * ascending id). Members already placed at `target` and repeated ids are left out. `placeOf` reads the
- * binding the order replaces, such as a home or a workplace.
+ * The members a group order tries at `target`, nearest its door first (half-cell Manhattan distance,
+ * then ascending id). While any member has no place, only those are tried, so a second click on another
+ * target places the rest of a group instead of pulling back the ones the first click placed; a group
+ * that is all placed elsewhere relocates. Members already placed at `target` and repeated ids are left
+ * out. `placeOf` reads the binding the order replaces, such as a home or a workplace.
  */
 export function groupPlacementOrder(
   world: World,
@@ -31,6 +32,8 @@ export function groupPlacementOrder(
     }
     ranked.push({ e, placed: place !== undefined, dist });
   }
-  ranked.sort((a, b) => Number(a.placed) - Number(b.placed) || a.dist - b.dist || a.e - b.e);
-  return ranked.map((member) => member.e);
+  const unplaced = ranked.filter((member) => !member.placed);
+  const tried = unplaced.length > 0 ? unplaced : ranked;
+  tried.sort((a, b) => a.dist - b.dist || a.e - b.e);
+  return tried.map((member) => member.e);
 }

@@ -5,11 +5,10 @@ import {
   buildingTypeOf,
   familiesByHome,
   type HomeFamily,
-  isAdult,
   isBuilding,
   isSettler,
-  marriageOf,
   ownerPlayerOf,
+  residenceHomeOf,
   type SnapshotEntity,
   settlerTribeOf,
 } from '../../../game/snapshot.js';
@@ -20,76 +19,69 @@ export interface HouseInfo {
   readonly homeSize?: number | undefined;
 }
 
-/** Mirrors the sim's `familyOf` over the snapshot: self, living spouse, still-growing child. */
-export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[] {
-  const e = entityById(snapshot, settlerId);
-  if (e === undefined || !isSettler(e)) return [];
-  const family = [settlerId];
-  const marriage = marriageOf(e);
-  if (marriage !== undefined) {
-    if (entityById(snapshot, marriage.spouse) !== undefined) family.push(marriage.spouse);
-    const childId = marriage.child;
-    const child = childId !== null ? entityById(snapshot, childId) : undefined;
-    if (childId !== null && child !== undefined && !isAdult(child)) family.push(childId);
-  }
-  return family;
+/** The owner and tribe a home must share with a mover. */
+const householdKey = (owner: number | undefined, tribe: number | undefined): string => `${owner}:${tribe}`;
+
+/**
+ * The selected members a group home order moves, counted by owner and tribe, as the sim's
+ * `groupPlacementOrder` picks them: the homeless while any member is homeless, otherwise everyone, less
+ * the ones already living in the clicked home.
+ */
+interface Movers {
+  readonly owners: ReadonlySet<number | undefined>;
+  readonly byKey: ReadonlyMap<string, number>;
+  /** Per home id, the movers living there by key: a family already in the clicked home stays put. */
+  readonly livingAt: ReadonlyMap<number, ReadonlyMap<string, number>>;
 }
 
-function isHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseInfo>): boolean {
-  if (!isBuilding(e)) return false;
-  const typeId = buildingTypeOf(e);
-  return typeId !== undefined && housesByType.get(typeId)?.kind === 'home';
-}
-
-/** The mover's own family keeps its slot on a same-home re-assign, so only OTHER households count. */
-function houseFitsFamily(
-  house: SnapshotEntity,
-  family: readonly number[],
-  families: readonly HomeFamily[] | undefined,
-  housesByType: ReadonlyMap<number, HouseInfo>,
-): boolean {
-  const typeId = buildingTypeOf(house);
-  const size = (typeId !== undefined ? housesByType.get(typeId)?.homeSize : undefined) ?? 0;
-  const members = new Set(family);
-  const others = (families ?? []).filter((fam) => !fam.members.some((m) => members.has(m))).length;
-  return others + 1 <= size;
-}
-
-interface Mover {
-  readonly settler: SnapshotEntity;
-  readonly family: readonly number[];
-}
-
-function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Mover[] {
-  const movers: Mover[] = [];
+function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Movers | null {
+  const settlers: SnapshotEntity[] = [];
   for (const id of settlerIds) {
-    const settler = entityById(snapshot, id);
-    if (settler !== undefined && isSettler(settler))
-      movers.push({ settler, family: familyIdsOf(snapshot, id) });
+    const e = entityById(snapshot, id);
+    if (e !== undefined && isSettler(e)) settlers.push(e);
   }
-  return movers;
+  if (settlers.length === 0) return null;
+  const homeless = settlers.filter((e) => residenceHomeOf(e) === undefined);
+  const movers = homeless.length > 0 ? homeless : settlers;
+  const owners = new Set<number | undefined>();
+  const byKey = new Map<string, number>();
+  const livingAt = new Map<number, Map<string, number>>();
+  for (const e of movers) {
+    const owner = ownerPlayerOf(e);
+    const key = householdKey(owner, settlerTribeOf(e));
+    owners.add(owner);
+    byKey.set(key, (byKey.get(key) ?? 0) + 1);
+    const home = residenceHomeOf(e);
+    if (home === undefined) continue;
+    const here = livingAt.get(home) ?? new Map<string, number>();
+    here.set(key, (here.get(key) ?? 0) + 1);
+    livingAt.set(home, here);
+  }
+  return { owners, byKey, livingAt };
 }
 
-/** Whether `house` is a candidate for any mover (an own home), and whether one mover's family fits it. */
+/** Whether `house` is an own home of some mover, and whether one mover not yet living there fits. */
 function houseVerdict(
   house: SnapshotEntity,
-  movers: readonly Mover[],
+  movers: Movers,
   families: ReadonlyMap<number, readonly HomeFamily[]>,
   housesByType: ReadonlyMap<number, HouseInfo>,
 ): { readonly candidate: boolean; readonly ok: boolean } {
-  if (!isHome(house, housesByType)) return { candidate: false, ok: false };
-  const owned = movers.filter(({ settler }) => ownerPlayerOf(house) === ownerPlayerOf(settler));
-  const ok = owned.some(
-    ({ settler, family }) =>
-      buildingTribeOf(house) === settlerTribeOf(settler) &&
-      houseFitsFamily(house, family, families.get(house.id), housesByType),
-  );
-  return { candidate: owned.length > 0, ok };
+  if (!isBuilding(house)) return { candidate: false, ok: false };
+  const typeId = buildingTypeOf(house);
+  const info = typeId !== undefined ? housesByType.get(typeId) : undefined;
+  if (info?.kind !== 'home' || !movers.owners.has(ownerPlayerOf(house)))
+    return { candidate: false, ok: false };
+  const key = householdKey(ownerPlayerOf(house), buildingTribeOf(house));
+  const moving = (movers.byKey.get(key) ?? 0) - (movers.livingAt.get(house.id)?.get(key) ?? 0);
+  const free = (families.get(house.id)?.length ?? 0) < (info.homeSize ?? 0);
+  return { candidate: true, ok: moving > 0 && free };
 }
 
 /**
- * The highlight verdicts for a selected group over every own home: green when one member's family fits.
- * Known gap: signpost confinement is not mirrored, so an out-of-area home can still wash green.
+ * The highlight verdicts for a selected group over every own home: green when it has a free family slot
+ * for a member the order would move. Known gap: signpost confinement is not mirrored, so an out-of-area
+ * home can still wash green.
  */
 export function computeHouseHighlight(
   snapshot: WorldSnapshot,
@@ -97,7 +89,7 @@ export function computeHouseHighlight(
   housesByType: ReadonlyMap<number, HouseInfo>,
 ): BuildingHighlightItem[] {
   const movers = moversOf(snapshot, settlerIds);
-  if (movers.length === 0) return [];
+  if (movers === null) return [];
   const families = familiesByHome(snapshot);
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
@@ -107,7 +99,8 @@ export function computeHouseHighlight(
   return items;
 }
 
-/** The click-resolution twin of {@link computeHouseHighlight}: whether one member's family fits `buildingId`. */
+/** The click-resolution twin of {@link computeHouseHighlight}: whether the group order would move anyone
+ *  into `buildingId`. */
 export function houseAssignableAt(
   snapshot: WorldSnapshot,
   buildingId: number,
@@ -115,6 +108,7 @@ export function houseAssignableAt(
   housesByType: ReadonlyMap<number, HouseInfo>,
 ): boolean {
   const house = entityById(snapshot, buildingId);
-  if (house === undefined) return false;
-  return houseVerdict(house, moversOf(snapshot, settlerIds), familiesByHome(snapshot), housesByType).ok;
+  const movers = moversOf(snapshot, settlerIds);
+  if (house === undefined || movers === null) return false;
+  return houseVerdict(house, movers, familiesByHome(snapshot), housesByType).ok;
 }

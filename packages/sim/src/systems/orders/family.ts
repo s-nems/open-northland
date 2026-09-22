@@ -60,10 +60,7 @@ export function assignHouse(
   moveFamilyInto(world, ctx, e, house);
 }
 
-/**
- * House the group's families in one home - see the command doc. Homeless families move in first, so
- * a second click on another home places the rest instead of moving the first ones again.
- */
+/** House the group's families in one home - see the command doc and {@link groupPlacementOrder}. */
 export function assignHouseGroup(
   world: World,
   ctx: SystemContext,

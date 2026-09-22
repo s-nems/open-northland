@@ -14,8 +14,8 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * The `assignWorkerGroup` command: a group posted to one building fills its seats with unemployed
- * members first, then with members employed elsewhere, each nearest the building first. The shared
+ * The `assignWorkerGroup` command: a group posted to one building fills its seats nearest first with
+ * its unemployed members while there are any, otherwise with its members employed elsewhere. The shared
  * fixture's sawmill (type 2) has one carpenter seat; the twin mill (type 8) has two.
  */
 
@@ -85,18 +85,28 @@ describe('assignWorkerGroup - post a group to one building', () => {
     expect(workplaceOf(sim, employed)).toBe(oldMill);
   });
 
-  it('moves a member employed elsewhere into a seat the unemployed leave free', () => {
+  it('moves members employed elsewhere when none of the group is unemployed', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const oldMill = placeBuilding(sim, SAWMILL, 30);
     const clicked = placeBuilding(sim, TWIN_MILL, 10);
     const employed = settlerAt(sim, 30);
-    const idle = settlerAt(sim, 12);
     employ(sim, employed, oldMill);
 
-    postGroup(sim, clicked, [employed, idle]);
+    postGroup(sim, clicked, [employed]);
 
-    expect(workplaceOf(sim, idle)).toBe(clicked);
     expect(workplaceOf(sim, employed)).toBe(clicked);
+  });
+
+  it('keeps members employed elsewhere put while any member is unemployed, though seats are left', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const first = placeBuilding(sim, SAWMILL, 10);
+    const bigger = placeBuilding(sim, TWIN_MILL, 40);
+    const group = [settlerAt(sim, 11), settlerAt(sim, 12)];
+
+    postGroup(sim, first, group);
+    postGroup(sim, bigger, group);
+
+    expect(group.map((e) => workplaceOf(sim, e))).toEqual([first, bigger]);
   });
 
   it('gives a short supply of seats to the unemployed members nearest the building', () => {

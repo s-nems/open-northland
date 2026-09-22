@@ -64,24 +64,31 @@ export function hasEligiblePartner(
     bySeeker = new Map();
     ELIGIBLE_PARTNER.set(snapshot, bySeeker);
   }
-  const cached = bySeeker.get(seeker.id);
+  const tribe = settlerTribeOf(seeker);
+  const female = isFemale(seeker);
+  const key = `${tribe}:${female}`;
+  const cached = bySeeker.get(key);
   if (cached !== undefined) return cached;
-  const found = scanForPartner(content, snapshot, seeker);
-  bySeeker.set(seeker.id, found);
+  const found = scanForPartner(content, snapshot, tribe, female);
+  bySeeker.set(key, found);
   return found;
 }
 
-/** Keyed by snapshot, then by seeker id. `seeker` must be an entity of `snapshot`, whose id keys the
- *  memo; `content` stays outside the key because a session holds one {@link ContentSet}. */
-const ELIGIBLE_PARTNER = new WeakMap<WorldSnapshot, Map<number, boolean>>();
+/** Keyed by snapshot, then by the seeker's tribe and sex, the only seeker fields a partner depends on, so
+ *  a large group scans once per kind of seeker; `content` stays outside the key because a session holds
+ *  one {@link ContentSet}. */
+const ELIGIBLE_PARTNER = new WeakMap<WorldSnapshot, Map<string, boolean>>();
 
-/** `isBoundByMarriage` runs last because it is the only clause that searches the snapshot. */
-function scanForPartner(content: ContentSet, snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
-  const tribe = settlerTribeOf(seeker);
-  const seekerFemale = isFemale(seeker);
+/** `isBoundByMarriage` runs last because it is the only clause that searches the snapshot. A partner is
+ *  of the other sex, so the seeker never matches itself. */
+function scanForPartner(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  tribe: number | undefined,
+  seekerFemale: boolean,
+): boolean {
   return snapshot.entities.some(
     (e) =>
-      e.id !== seeker.id &&
       isSettler(e) &&
       isAdult(e) &&
       isFemale(e) !== seekerFemale &&

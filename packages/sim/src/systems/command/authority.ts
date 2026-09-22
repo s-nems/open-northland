@@ -7,21 +7,52 @@ import type {
   CommandEnvelope,
   PlaceBuildingCommand,
   PlayerCommand,
+  SeatEnvelope,
 } from '../../core/commands/index.js';
-import { COMMAND_ISSUER, orderedSettlers } from '../../core/commands/index.js';
+import { COMMAND_ISSUER } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 
 /**
  * Whether the envelope's origin is entitled to the command it carries. A rejected command still lands
- * in the replay log, so the same log replays to the same state.
+ * in the replay log, so the same log replays to the same state. A group order's members are not gated
+ * here: {@link authorizedCommand} narrows them to the ones the seat commands.
  */
 export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
   if (!ownerFieldsValid(envelope.command)) return false;
   if (envelope.origin === 'setup' || envelope.origin === 'admin') return true;
-  // A script may put one of a seat's own units beyond the player's reach while the seat's AI keeps
-  // commanding it (`MISSIONS.md`, behaviour bit 5).
-  if (envelope.origin === 'player' && beyondPlayerControl(world, envelope.command)) return false;
-  return seatMayIssue(world, envelope.player, envelope.command);
+  const command = envelope.command;
+  if ('entity' in command && !seatCommandsUnit(world, envelope, command.entity)) return false;
+  return seatMayIssue(world, envelope.player, command);
+}
+
+/**
+ * The command an authorized envelope applies. A seat's group order keeps only the members the seat
+ * commands, so one member held by a script, fallen, or not the seat's own does not void the rest; the
+ * log keeps the order as issued, and a replay narrows it the same way.
+ */
+export function authorizedCommand(world: World, envelope: CommandEnvelope): Command {
+  if (envelope.origin === 'setup' || envelope.origin === 'admin') return envelope.command;
+  const command = envelope.command;
+  const commanded = (e: Entity): boolean => seatCommandsUnit(world, envelope, e);
+  switch (command.kind) {
+    case 'assignHouseGroup':
+      return { ...command, entities: command.entities.filter(commanded) };
+    case 'assignWorkerGroup':
+      return { ...command, workers: command.workers.filter((worker) => commanded(worker.entity)) };
+    default:
+      return command;
+  }
+}
+
+/**
+ * Whether a seat may order unit `e`: it must be the seat's own, since a neutral animal and an ally's
+ * settler are both off limits and diplomacy stays a relationship between players rather than shared
+ * control of their entities. A script may also put one of a seat's own units beyond the player's reach
+ * while the seat's AI keeps commanding it (`MISSIONS.md`, behaviour bit 5).
+ */
+function seatCommandsUnit(world: World, envelope: SeatEnvelope, e: Entity): boolean {
+  if (ownerOf(world, e) !== envelope.player) return false;
+  return envelope.origin !== 'player' || !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE);
 }
 
 /** An entity is created with the owner the payload names, so an out-of-range slot must not reach the
@@ -29,12 +60,6 @@ export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
 function ownerFieldsValid(command: Command): boolean {
   if ('owner' in command && command.owner !== undefined && !isValidPlayer(command.owner)) return false;
   return !('player' in command) || isValidPlayer(command.player);
-}
-
-function beyondPlayerControl(world: World, command: PlayerCommand): boolean {
-  return orderedSettlers(command).some((e) =>
-    hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE),
-  );
 }
 
 function seatMayIssue(world: World, seat: number, command: PlayerCommand): boolean {
@@ -47,10 +72,6 @@ function seatMayIssue(world: World, seat: number, command: PlayerCommand): boole
   }
   if ('player' in command && command.player !== seat) return false;
   if ('owner' in command && command.owner !== seat) return false;
-
-  // Every ordered unit must be the seat's own: a neutral animal and an ally's settler are both off limits,
-  // so diplomacy stays a relationship between players rather than shared control of their entities.
-  if (orderedSettlers(command).some((e) => ownerOf(world, e) !== seat)) return false;
 
   const asset = assetTargetOf(command);
   return asset === undefined || ownersCompatible(seat, ownerOf(world, asset));

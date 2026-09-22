@@ -25,8 +25,8 @@ import type { OverviewPress } from './overview-orders.js';
 
 export interface UnitControlsOptions {
   readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'];
-  /** The sim's own answer to whether a settler may take a trade; the picker offers a row only when
-   *  every selected settler may. */
+  /** The sim's own answer to whether a settler may take a trade; the picker offers a row when a selected
+   *  settler the profession order reaches may, and changes only those who may. */
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;

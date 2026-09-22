@@ -382,6 +382,15 @@ describe('hasEligiblePartner memo', () => {
     expect(scans()).toBe(scanned);
   });
 
+  it('scans once for every seeker of one tribe and sex', () => {
+    const others = [settler(2, JOB_COLLECTOR), settler(3, JOB_COLLECTOR)];
+    const { snapshot, scans } = countingSnapshot(snapshotOf([seeker, ...others]));
+    expect(hasEligiblePartner(content, snapshot, seeker)).toBe(false);
+    const scanned = scans();
+    for (const other of others) expect(hasEligiblePartner(content, snapshot, other)).toBe(false);
+    expect(scans()).toBe(scanned);
+  });
+
   it('answers the next tick fresh instead of serving the last verdict', () => {
     expect(hasEligiblePartner(content, snapshotOf(entities), seeker)).toBe(false);
     // A woman comes of age: the new snapshot object must not inherit the previous one's "nobody".

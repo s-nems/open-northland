@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   JobAssignment,
+  MISSION_BEHAVIOUR,
   Owner,
   Position,
   Stockpile,
   setPlayerPlacementTribes,
+  stampMissionBehaviour,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -20,7 +22,7 @@ import {
   Simulation,
   setupCommand,
 } from '../../../src/index.js';
-import { isAuthorized } from '../../../src/systems/command/authority.js';
+import { authorizedCommand, isAuthorized } from '../../../src/systems/command/authority.js';
 import { testContent } from '../../fixtures/content.js';
 import { fresh, HEADQUARTERS, nthEntity, SAWMILL, VIKING, WOODCUTTER } from './support.js';
 
@@ -104,29 +106,36 @@ describe('CommandSystem - command authority', () => {
     expect(sim.world.get(mine, JobAssignment).workplace).toBe(myShop);
   });
 
-  it('refuses a whole group order when one member is another player`s settler', () => {
+  it('applies a group order to the members the seat commands and skips the rest', () => {
     const sim = fresh();
     const mine = settlerFor(sim, MINE, 2);
     const theirs = settlerFor(sim, THEIRS, 3);
+    const locked = settlerFor(sim, MINE, 4);
+    const fallen = settlerFor(sim, MINE, 5);
+    stampMissionBehaviour(sim.world, locked, MISSION_BEHAVIOUR.NOT_CONTROLLABLE);
     const myShop = buildingFor(sim, MINE, 8);
-    const workers = (members: readonly Entity[]) =>
-      members.map((entity) => ({ entity, jobPriority: HQ_JOBS }));
-
-    sim.enqueue(
-      playerCommand(MINE, { kind: 'assignWorkerGroup', building: myShop, workers: workers([mine, theirs]) }),
-    );
+    sim.enqueue(adminCommand({ kind: 'debugKill', target: fallen }));
     sim.step();
-    expect(sim.world.has(mine, JobAssignment)).toBe(false);
-    expect(sim.world.has(theirs, JobAssignment)).toBe(false);
+    const order: PlayerCommand = {
+      kind: 'assignWorkerGroup',
+      building: myShop,
+      workers: [mine, theirs, locked, fallen].map((entity) => ({ entity, jobPriority: HQ_JOBS })),
+    };
 
-    const houseGroup: PlayerCommand = { kind: 'assignHouseGroup', entities: [mine, theirs], house: myShop };
-    expect(isAuthorized(sim.world, playerCommand(MINE, houseGroup))).toBe(false);
+    expect(isAuthorized(sim.world, playerCommand(MINE, order))).toBe(true);
+    expect(authorizedCommand(sim.world, playerCommand(MINE, order))).toMatchObject({
+      workers: [{ entity: mine }],
+    });
+    // The seat's AI still commands a unit a script put beyond the player's reach.
+    expect(authorizedCommand(sim.world, aiCommand(MINE, order))).toMatchObject({
+      workers: [{ entity: mine }, { entity: locked }],
+    });
 
-    sim.enqueue(
-      playerCommand(MINE, { kind: 'assignWorkerGroup', building: myShop, workers: workers([mine]) }),
-    );
+    sim.enqueue(playerCommand(MINE, order));
     sim.step();
     expect(sim.world.get(mine, JobAssignment).workplace).toBe(myShop);
+    expect(sim.world.has(theirs, JobAssignment)).toBe(false);
+    expect(sim.world.has(locked, JobAssignment)).toBe(false);
   });
 
   it('lets a seat post its own unit to a neutral workplace', () => {

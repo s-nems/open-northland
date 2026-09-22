@@ -14,7 +14,7 @@ import {
   workerGroupAt,
 } from '../src/view/unit-controls/highlights/index.js';
 import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
-import { countingSnapshot, snapshotOf } from './support/snapshot.js';
+import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * The "przydziel miejsce pracy" verdict - the button places the settler's CURRENT trade only, so a
@@ -147,6 +147,45 @@ describe('a building still under construction', () => {
     expect(workerGroupAt(snapshot, 2, [1], byType)).toEqual([
       { entity: 1, jobPriority: [rebaseSlotJob(COIN_MAKER)] },
     ]);
+  });
+});
+
+describe('a workplace pick armed for a group', () => {
+  const MINT = 40;
+  const OTHER_MINT = 41;
+  const byType = new Map<number, AssignBuildingInfo>([
+    [MINT, { workers: MINT_SLOTS }],
+    [OTHER_MINT, { workers: MINT_SLOTS }],
+  ]);
+  const coinMaker = (id: number, workplace?: number): Ent => ({
+    id,
+    components: {
+      Settler: { tribe: PRIMARY_TRIBE, jobType: rebaseSlotJob(COIN_MAKER) },
+      Owner: { player: HUMAN_PLAYER },
+      ...(workplace !== undefined ? { JobAssignment: { workplace } } : {}),
+    },
+  });
+  const mint = (id: number, typeId = MINT): Ent => ({
+    id,
+    components: {
+      Building: { buildingType: typeId, tribe: PRIMARY_TRIBE },
+      Owner: { player: HUMAN_PLAYER },
+    },
+  });
+
+  it('reds a full workplace a selected member already works at', () => {
+    const snapshot = snapshotOf([coinMaker(1, 10), coinMaker(2, 10), coinMaker(3), mint(10)]);
+    expect(computeAssignHighlight(snapshot, [1, 3], byType)).toEqual([{ id: 10, ok: false }]);
+    expect(workerGroupAt(snapshot, 10, [1, 3], byType)).toBeNull();
+  });
+
+  it('greens a workplace for the unemployed members and posts every member it offers a trade', () => {
+    const snapshot = snapshotOf([coinMaker(1, 10), coinMaker(2), mint(10), mint(11, OTHER_MINT)]);
+    expect(computeAssignHighlight(snapshot, [1, 2], byType)).toEqual([
+      { id: 10, ok: true },
+      { id: 11, ok: true },
+    ]);
+    expect(workerGroupAt(snapshot, 11, [1, 2], byType)?.map((w) => w.entity)).toEqual([1, 2]);
   });
 });
 
