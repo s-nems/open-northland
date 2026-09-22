@@ -48,6 +48,10 @@ export const plGame = {
         'no-builder': 'Oczekuje na budowniczego',
       },
     },
+    hoverCard: {
+      construction: 'Budynek jest budowany',
+      upgrade: 'Budynek jest ulepszany',
+    },
     stockAllTab: 'Wszystkie',
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',

@@ -345,6 +345,42 @@ lifetime, dedupe and priority table.
   slide and the pulse, never the figure's activity, which is game content like the map.
 - Every row at once, for a check of the column: `?scene=sandbox&debug=notices` (DEVELOPMENT.md).
 
+### Hover card
+
+The cursor over a settler or a building opens a parchment card beside it, the summary bar's breakdown
+sheet (`.on-tip`) as a free-floating surface. Original behavior: the engine draws a tooltip overlay for
+the house under the cursor with its name, its construction or upgrade state, and one line per good it
+holds.
+
+A settler wins the cursor over whatever it stands on or in front of: it is the thing that moves, and a
+house it is walking past is still there once it has gone.
+
+- Head: the name in the breakdown sheet's small-caps title, and one muted line under it. For a
+  building that line is the original's own `misc` state with the built percentage, "Budynek jest
+  budowany (37%)", and only while it is a site or an upgrade.
+- A settler's card is one line: its given name and, beside it, its trade, with no rule between them
+  and no width floor under them. The surname stays with the details panel, which has the room for it.
+  Nothing it carries or needs either, so the card is small enough to read while the settler walks.
+  Wildlife and livestock have neither name nor trade, so the cursor passes through them to what they
+  stand on.
+- Lines: the goods the building holds, each the good icon, its localized name over a dotted leader
+  and the amount to one decimal, as the store rows read it. A good at zero is no line, so the card
+  says what is inside rather than what the type could hold. Lines are ordered by the localized good
+  name, the original's own order. A site lists its bill instead, "delivered / needed", since its hold
+  carries materials rather than wares; the original leaves the bill to its window.
+- A building holding nothing is its name alone. Every building kind answers the cursor: store,
+  workshop, home, military and site alike.
+- The card flows into a second and third column past sixteen lines, so a warehouse's whole store
+  stands in one card; a column is at least 104 px and grows to its longest good name, and the card
+  itself stops at 480 px, which the content's longest names in three columns fit inside.
+- Its type is half the summary bar's: 9 px lines under a 10 px title, with a 13 px good icon. The
+  card is a reading aid over the map, not a panel, so it stays below the chrome in weight as well.
+- It sits below-right of the cursor, flipping to the other side rather than leaving the screen, and
+  never takes pointer events, so the press under it still reaches the map. It yields whenever the
+  world hover does: over any HUD region, and while a placement is held.
+- It opens only after the cursor rests a quarter second on one thing, so crossing a settlement does
+  not flash a card over every house and passer-by on the way. Moving to another restarts that rest.
+
 ## Confirmed imagery
 
 - Notifications and selected-settler details use the full game character, appearance/equipment and

@@ -1561,6 +1561,81 @@
   color: var(--ink-muted);
 }
 
+/* ---------- hover card: the sheet the cursor opens over a settler or a building ---------- */
+/* The breakdown sheet's own parchment at half the summary bar's type: small enough that even a
+   warehouse's whole store leaves the map around it in view. The column lays the lines out with a gap
+   rather than margins, so a settler's two lines leave no space where a store's rows would stand. */
+.on-hud .on-hovercard {
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: auto;
+  min-width: 110px;
+  max-width: 480px;
+  padding: 6px 8px;
+  overflow: hidden;
+  /* A lighter drop than the bar's sheet, which hangs off a fixed frame; this one lands anywhere. */
+  box-shadow:
+    0 4px 12px #0007,
+    inset 0 0 0 1px #fff5;
+  pointer-events: none;
+}
+.on-hud .on-hovercard .on-tip__title {
+  margin-bottom: 0;
+  padding-bottom: 3px;
+  font-size: 10px;
+}
+/* A settler is one line: its name and its trade beside each other, with no rule to divide them and no
+   width floor to leave air after two short words. */
+.on-hud .on-hovercard--brief {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+.on-hud .on-hovercard--brief .on-tip__title {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+/* A settler's trade, or how far a site has come. */
+.on-hud .on-hovercard__caption {
+  margin: 0;
+  font-size: 9px;
+  color: var(--ink-muted);
+}
+.on-hud .on-hovercard__caption[hidden],
+.on-hud .on-hovercard__rows[hidden] {
+  display: none;
+}
+/* Column by column, so a warehouse's whole store stands in one card instead of one endless list. */
+.on-hud .on-hovercard__rows {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 1), auto);
+  grid-auto-columns: minmax(104px, max-content);
+  column-gap: 12px;
+}
+.on-hud .on-hovercard .on-tip__row {
+  margin: 1px 0;
+  gap: 6px;
+  font-size: 9px;
+}
+.on-hud .on-hovercard .on-tip__row > span:first-child {
+  align-items: center;
+  gap: 5px;
+}
+/* The leader rides lower on a small line than it does under the summary bar's 15 px rows. */
+.on-hud .on-hovercard .on-tip__row > span:first-child::after {
+  transform: translateY(-1px);
+}
+/* The icon box is taller than the line; centred and unshrinkable, it neither stretches the row nor
+   loses width to a long good name. */
+.on-hud .on-hovercard .on-good {
+  flex-shrink: 0;
+  margin: -2px 0;
+}
+
 /* ---------- navigation beam and medallion actions ---------- */
 .on-hud .on-beam {
   display: flex;

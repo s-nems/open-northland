@@ -1,7 +1,13 @@
 import { constructionBillForType, type Fixed, fx, type WorldSnapshot } from '@open-northland/sim';
 import { actorsOf, isSettler, num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
-import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
+import {
+  type BuildingDef,
+  type BuildingStockContext,
+  goodDef,
+  goodLabel,
+  type UnitPanelModelContext,
+} from './context.js';
 
 export interface StockRow {
   readonly goodType: number;
@@ -15,17 +21,21 @@ export interface StockRow {
   readonly category: number;
 }
 
-/** One material line of a construction site's cost - the Construction row "delivered / needed". */
-export interface ConstructionRow {
+/** One material line of a construction site's cost - the "delivered / needed" a site's bill reads. */
+export interface ConstructionBillRow {
   readonly goodType: number;
   /** The good's string id - the HUD's icon key. */
   readonly goodId?: string;
   readonly label: string;
   /** Units already in the site's hold, capped at the line's need (surplus never reads over-full). */
   readonly delivered: number;
+  readonly needed: number;
+}
+
+/** A bill line in the Construction section, which also counts what is on its way. */
+export interface ConstructionRow extends ConstructionBillRow {
   /** Units reserved by live construction-supply errands for this site and good. */
   readonly inbound: number;
-  readonly needed: number;
 }
 
 export type ConstructionStatus = 'missing-materials' | 'delivery-en-route' | 'no-builder';
@@ -80,7 +90,7 @@ function bonusFractions(productionBonus: unknown): Map<number, number> {
  * happens to hold. Rows keep the declared slot order so a store's rows never swap places mid-work.
  */
 export function stockRows(
-  ctx: UnitPanelModelContext,
+  ctx: BuildingStockContext,
   def: BuildingDef | undefined,
   stockpile: unknown,
   productionBonus?: unknown,
@@ -111,7 +121,7 @@ export function stockRows(
 /** The upgrade target tier's own construction bill: the level-difference cost the sim charges to raise
  *  `def` one tier. Empty when the type has no upgrade target or the target declares no cost. */
 function upgradeTargetBill(
-  ctx: UnitPanelModelContext,
+  ctx: BuildingStockContext,
   def: BuildingDef | undefined,
 ): readonly { readonly goodType: number; readonly amount: number }[] {
   if (def?.upgradeTarget === undefined) return [];
@@ -119,17 +129,16 @@ function upgradeTargetBill(
 }
 
 /**
- * One row per line of the site's bill - the type's from-scratch cumulative bill, or for an upgrading
- * building the target tier's level-difference cost - each with how much the site's hold already has.
- * Null for a finished building.
+ * One row per line of the bill a site is being raised against - the type's from-scratch cumulative
+ * bill, or for an upgrading building the target tier's level-difference cost - each with how much the
+ * building's hold already has. A finished building has no site, so the caller decides whether its bill
+ * means anything; this is the reading, not that test.
  */
-export function constructionModel(
-  ctx: UnitPanelModelContext,
-  snapshot: WorldSnapshot,
+export function constructionBillRows(
+  ctx: BuildingStockContext,
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
-): ConstructionModel | null {
-  if (ent.components.UnderConstruction === undefined) return null;
+): ConstructionBillRow[] {
   const live = liveAmounts(ent.components.Stockpile);
   const upgrading = ent.components.Upgrading !== undefined;
   const bill =
@@ -138,19 +147,32 @@ export function constructionModel(
       : upgrading
         ? upgradeTargetBill(ctx, def)
         : constructionBillForType(ctx.buildings, def.typeId);
-  const activity = constructionActivity(snapshot, ent.id);
-  const rows = bill.map((line) => {
+  return bill.map((line) => {
     const goodId = goodDef(ctx, line.goodType)?.id;
-    const delivered = Math.min(live.get(line.goodType) ?? 0, line.amount);
     return {
       goodType: line.goodType,
       label: goodLabel(ctx, line.goodType),
-      delivered,
-      inbound: Math.min(activity.inbound.get(line.goodType) ?? 0, Math.max(0, line.amount - delivered)),
+      delivered: Math.min(live.get(line.goodType) ?? 0, line.amount),
       needed: line.amount,
       ...(goodId !== undefined ? { goodId } : {}),
     };
   });
+}
+
+/** The Construction section's model: the site's bill plus what is on its way. Null for a finished
+ *  building. */
+export function constructionModel(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  def: BuildingDef | undefined,
+  ent: SnapshotEntity,
+): ConstructionModel | null {
+  if (ent.components.UnderConstruction === undefined) return null;
+  const activity = constructionActivity(snapshot, ent.id);
+  const rows = constructionBillRows(ctx, def, ent).map((row) => ({
+    ...row,
+    inbound: Math.min(activity.inbound.get(row.goodType) ?? 0, Math.max(0, row.needed - row.delivered)),
+  }));
   return { rows, status: constructionStatus(ent, rows, activity.hasBuilder) };
 }
 

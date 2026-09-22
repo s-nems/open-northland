@@ -63,6 +63,30 @@ export function settlerSex(jobType: number | null | undefined, young: boolean): 
 }
 
 /**
+ * A settler's given name alone, for a surface with one line to spend. Faction- and sex-appropriate,
+ * picked from a {@link nameGridCell} permutation of the stable entity id, so it is the same first name
+ * {@link characterName} puts in front of the surname.
+ */
+export function characterGivenName(
+  tribe: number,
+  jobType: number | null | undefined,
+  young: boolean,
+  entityId: number,
+  female?: boolean,
+): string {
+  const pool = NAME_POOLS[tribe] ?? FALLBACK_POOL;
+  const firstNames = pool[sexOf(jobType, young, female)];
+  return firstNames[nameGridCell(entityId, firstNames.length, pool.male.length).first] as string;
+}
+
+/** The sim's persistent `Female` marker wins when the caller has it, so a woman re-professioned into a
+ *  trade keeps her name; the jobType inference is the fallback for callers without a snapshot. */
+function sexOf(jobType: number | null | undefined, young: boolean, female: boolean | undefined): Sex {
+  if (female === undefined) return settlerSex(jobType, young);
+  return female ? 'female' : 'male';
+}
+
+/**
  * The personal name shown for a settler: a faction- and sex-appropriate first name plus a surname, both
  * picked from a {@link nameGridCell} permutation of the stable entity id. Passing a husband's or
  * father's id as `surnameFromEntityId` makes the settler inherit that person's surname, so a household
@@ -78,12 +102,10 @@ export function characterName(
   female?: boolean,
 ): string {
   const pool = NAME_POOLS[tribe] ?? FALLBACK_POOL;
-  // The sim's persistent `Female` marker wins when the caller has it, so a woman re-professioned into a
-  // trade keeps her name; the jobType inference is the fallback for callers without a snapshot.
-  const sex = female === undefined ? settlerSex(jobType, young) : female ? 'female' : 'male';
+  const sex = sexOf(jobType, young, female);
   const firstNames = pool[sex];
   const fatherNames = pool.male; // a surname is a patronymic of a male father's given name
-  const first = firstNames[nameGridCell(entityId, firstNames.length, fatherNames.length).first] as string;
+  const first = characterGivenName(tribe, jobType, young, entityId, female);
 
   // The father-name resolves on the male grid, so a man and every relative pointing at him share a root.
   const inherited = surnameFromEntityId !== undefined;

@@ -20,7 +20,7 @@ import {
 } from '../projections/index.js';
 import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
-import type { WorldTooltip } from '../world-tooltip.js';
+import type { WorldHover } from '../world-hover.js';
 import type { GameViewDeps } from './game-view.js';
 import type { NetReadout } from './net-readout.js';
 import { placementCursor } from './placement-cursor.js';
@@ -41,7 +41,7 @@ export interface FrameLoopDeps {
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
   readonly controls: UnitControls;
-  readonly worldTooltip: WorldTooltip;
+  readonly worldHover: WorldHover;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   /** The erect-signpost band probe, live while signpost placement mode is active. */
@@ -96,7 +96,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     toolPanel,
     minimap: mountedMinimap,
     controls,
-    worldTooltip,
+    worldHover,
     geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
@@ -262,7 +262,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       flagged: controls.flaggedFlagIds(),
       workAreas: controls.workAreaRings(),
     });
-    worldTooltip.update(snap); // after controls, so the pointer-claim state is current
+    worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current
     presentation?.frame(snap, drawnCamera, nowMs);
     deps.onFrame?.(snap);
     if (soundDriver !== null) {

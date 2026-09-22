@@ -48,6 +48,11 @@ export const enGame = {
         'no-builder': 'Waiting for a builder',
       },
     },
+    // Building-card fallbacks for the decoded `misc` state rows, from `content/gui/strings/eng.json`.
+    hoverCard: {
+      construction: 'Building under construction',
+      upgrade: 'Building is being upgraded',
+    },
     stockAllTab: 'All',
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',

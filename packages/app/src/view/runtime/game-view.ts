@@ -35,7 +35,11 @@ import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyLabel } from '../../game/technology.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import type { BuildingStockContext } from '../../hud/details-panel/model/context.js';
+import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
+import { buildingHoverModel } from '../../hud/hover-card/building.js';
+import { settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
@@ -71,7 +75,7 @@ import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
-import { chestTooltipLines, createWorldTooltip } from '../world-tooltip.js';
+import { chestTooltipLines, createWorldHover } from '../world-hover.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
@@ -667,13 +671,36 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       debugMounts.setHudHidden(hudHidden);
     };
 
+    // A building's card reads content alone: names, store slots and construction bills. No species
+    // filter, so a farm's herd is one of its store lines, as the original's card lists it; the details
+    // panel filters it out only because its own Produkcja window already counts the herd.
+    const hoverContext: BuildingStockContext = {
+      buildings: sim.content.buildings,
+      goods: sim.content.goods,
+    };
+
+    // The parchment card a hovered settler or building opens, on the DOM plane the redesigned regions
+    // share.
+    const hoverCard = createHoverCard({
+      plane: hudDom.element,
+      scale: hudDom.currentScale,
+      pack,
+      uiString: toolPanel.controller.uiString,
+    });
+    cleanup.push(() => hoverCard.dispose());
+
     // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.
-    const worldTooltip = createWorldTooltip({
+    const worldHover = createWorldHover({
       renderer,
       camera: () => cameraCtl.camera(),
       clientToScreen,
       goodLabel,
       ...chestTooltipLines(sim.content, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
+      card: hoverCard,
+      buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),
+      settlerModel: (snapshot, entityId) =>
+        settlerHoverModel(snapshot, entityId, { jobs: sim.content.jobs, mapText }),
+      pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
         hudHidden ||
@@ -682,7 +709,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         controls.claimsPointer(clientX, clientY),
     });
 
-    cleanup.push(() => worldTooltip.destroy());
+    cleanup.push(() => worldHover.destroy());
 
     const liveSettings = createLiveGameSettings({
       screen: app.screen,
@@ -744,7 +771,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       toolPanel,
       minimap: mountedMinimap,
       controls,
-      worldTooltip,
+      worldHover,
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,

@@ -47,6 +47,13 @@ export interface UnitPanelModelContext {
   readonly tradeOffersAt?: ((house: number) => readonly TradeOffer[]) | undefined;
 }
 
+/** The content slice a building's store and construction rows are read through: the surfaces that show
+ *  only those rows, such as the hover card, need nothing else. */
+export type BuildingStockContext = Pick<
+  UnitPanelModelContext,
+  'buildings' | 'goods' | 'livestockTribeOfGood'
+>;
+
 export interface Comp {
   readonly [k: string]: unknown;
 }
@@ -91,13 +98,13 @@ export function buildingTitle(
   return buildingDef(ctx, typeId)?.id ?? `#${typeId}`;
 }
 
-export function goodDef(ctx: UnitPanelModelContext, goodType: number): GoodDef | undefined {
+export function goodDef(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: number): GoodDef | undefined {
   return ctx.goods.find((g) => g.typeId === goodType);
 }
 
 /** A good's display name: its localized content `name`, falling back to the machine id on a checkout
  *  without the per-locale good-name table. */
-export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string {
+export function goodLabel(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: number): string {
   const def = goodDef(ctx, goodType);
   return def?.name ?? def?.id ?? `#${goodType}`;
 }
