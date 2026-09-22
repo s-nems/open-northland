@@ -13,7 +13,6 @@
     { "path": "packages/app/tsconfig.bench.json" },
     { "path": "packages/desktop" },
     { "path": "tools/asset-pipeline" },
-    { "path": "packages/art-contracts" },
-    { "path": "tools/art-pipeline" }
+    { "path": "packages/art-contracts" }
   ]
 }

@@ -44,8 +44,6 @@
     "shot": "npm run shot --workspace @open-northland/app --",
     "pipeline": "npm run start --workspace @open-northland/asset-pipeline --",
     "build:content": "node scripts/build-content.mjs",
-    "art": "npm run start --workspace @open-northland/art-pipeline --",
-    "test:art": "npm run typecheck && vitest run --config tools/art-pipeline/vitest.browser.ts",
     "test:desktop": "npm run build && npm run test:e2e --workspace @open-northland/desktop"
   },
   "devDependencies": {
