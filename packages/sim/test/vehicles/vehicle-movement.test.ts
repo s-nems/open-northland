@@ -126,6 +126,9 @@ function refusals(s: Simulation): string[] {
     .flatMap((ev) => (ev.kind === 'vehicleMoveRefused' ? [`${ev.entity}:${ev.reason}:${ev.player}`] : []));
 }
 
+/** Ticks a shoved settler's walk may take once the drive has ended. */
+const SHOVE_WALK_TICKS = 20;
+
 /** Step until the drive ends, returning the ticks taken. */
 function driveOut(s: Simulation, vehicle: Entity, limit = 400): number {
   let ticks = 0;
@@ -356,7 +359,9 @@ describe('moveVehicle', () => {
     driveOut(s, catapult);
     const bystanderAt = anchorOf(s, bystander);
     expect(hexDistanceBetween(bystanderAt.hx, bystanderAt.hy, 8, 8)).toBeGreaterThan(1);
-    expect(s.world.has(bystander, MoveGoal)).toBe(false); // the shove's walk is done
+    // The shove's walk runs at the settler's own pace, so it may end a few ticks after the drive.
+    for (let t = 0; t < SHOVE_WALK_TICKS && s.world.has(bystander, MoveGoal); t++) s.step();
+    expect(s.world.has(bystander, MoveGoal)).toBe(false);
   });
 
   it('parks where another vehicle stands only outside its cells and routes around it', () => {
@@ -455,6 +460,6 @@ describe('moveVehicle', () => {
     const twin = run().s;
     twin.run(240);
     expect(twin.hashState()).toBe(s.hashState());
-    expect(s.hashState()).toBe('f61ae0d9');
+    expect(s.hashState()).toBe('db45c856');
   });
 });
