@@ -2,7 +2,7 @@
 /**
  * Asset pipeline CLI - offline conversion of the unpacked culturesnation mod into the IR (content/).
  * Run by a human or agent, never shipped: it writes no copyrighted bytes into the repo source, only
- * into the gitignored content/ folder. See docs/DATA-FORMAT.md and docs/SOURCES.md.
+ * into the gitignored content/ folder. See docs/DATA-FORMAT.md.
  */
 
 import { realpathSync } from 'node:fs';

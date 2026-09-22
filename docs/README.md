@@ -17,8 +17,7 @@ behavior. Open deeper format references when the task needs their evidence.
 Other references:
 
 - [`SCENES.md`](SCENES.md): acceptance scenes for tests and human review
-- [`SOURCES.md`](SOURCES.md): acceptable evidence for formats and game behavior
-- [`LEGAL.md`](LEGAL.md): game-data, licensing, and trademark rules
+- [`LEGAL.md`](LEGAL.md): game-data, licensing, trademark rules, and acceptable evidence
 - [`GLOSSARY.md`](GLOSSARY.md): project and format terms
 - [`formats/`](formats/): notes about decoded file formats
 
@@ -34,8 +33,7 @@ The root [`./AGENTS.md`](../AGENTS.md) is the project-wide contract for coding a
 files add rules for `sim`, `render`, `audio`, `app`, `data`, `desktop`,
 original-game extraction, and own-art production.
 
-Claude workflow definitions live in `.claude/commands/` and reviewer checklists in
-`.claude/agents/`. `CLAUDE.md` only loads the nearest `./AGENTS.md`; Codex reads `./AGENTS.md` directly.
+`CLAUDE.md` only loads the nearest `./AGENTS.md`; Codex reads `./AGENTS.md` directly.
 
 Do not create running history documents or catch-all planning files. Put stable rules in an
 `./AGENTS.md`, current work in a ticket, and completed details in Git history.

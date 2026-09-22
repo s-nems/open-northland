@@ -5,7 +5,7 @@
 # :5174 while a stale server keeps answering on :5173).
 #
 # Primary-checkout only: :5173 is reserved for it; worktree agents serve on
-# other ports (see .claude/commands/worktree.md).
+# other ports (see docs/DEVELOPMENT.md#worktree-previews).
 #
 # Usage: scripts/dev-reset.sh
 set -euo pipefail
@@ -19,7 +19,7 @@ KILL_WAIT_TICKS=25 # x 0.2s = 5s of graceful-shutdown grace before SIGKILL
 if [ "$(git -C "$ROOT" rev-parse --path-format=absolute --git-dir)" != \
   "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)" ]; then
   echo "error: this checkout is a linked worktree; :$PRIMARY_PORT is reserved for the primary checkout." >&2
-  echo "Serve this worktree on another port instead (see .claude/commands/worktree.md)." >&2
+  echo "Serve this worktree on another port instead (see docs/DEVELOPMENT.md#worktree-previews)." >&2
   exit 1
 fi
 

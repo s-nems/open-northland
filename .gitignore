@@ -45,14 +45,8 @@ map.dat
 .vscode/*
 !.vscode/extensions.json
 
-# Agent tooling: shared project config is tracked so it reaches every checkout/worktree; local state
-# stays untracked. Use `/<tool>/*` + negations, NOT a bare `/<tool>/` (a fully-ignored dir can't have
-# tracked children).
-/.claude/*
-!/.claude/commands/
-!/.claude/agents/
-!/.claude/workflows/
-!/.claude/settings.json
+# Local agent tooling
+/.claude/
 
 /.codex/config.toml
 

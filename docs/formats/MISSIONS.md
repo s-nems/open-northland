@@ -6,15 +6,16 @@ the results of every mission whose goals hold. Campaign intros, timed enemy wave
 victory and defeat, weather, and sub-missions all run through this one mechanism.
 
 This page records the format and the execution semantics needed to reimplement it. Evidence classes,
-in the order of [`SOURCES.md`](../SOURCES.md):
+strongest first:
 
 - **corpus**: read from the owned installation with CnMod 1.3.1 (the readable `.inc` files of
   118 map folders and the 124 generated `content/maps/*.script.json` sidecars). Counts below come
   from that baseline.
 - **docs**: the CulturesNation goal and result references shipped in the installation's `Tools/`
   folder (`goals list EN.pdf`, `result list EN.pdf`) and the editor manual.
-- **reading**: a reading of the original engine's code (the symbolised the original). A reading is a
-  hypothesis until the running original confirms it; it names the mechanism to test, not a fact.
+- **reading**: the original's behavior as currently understood, not yet confirmed on the running
+  original. A reading is a hypothesis until the running original confirms it; it names the
+  mechanism to test, not a fact.
 - **observation**: confirmed on the running original.
 
 Nothing here is copied from the engine. Constants and semantics are described, never its code.
@@ -312,7 +313,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
 | 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it, `Tool_TechTree_EnableGoodProduction`) | sim | 101 |
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
-| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (owned `the original` 0x4201b0), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
+| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (byte-level, owned copy), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 \* |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
@@ -330,7 +331,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 60 | `SetHumanName` | 10, 27 | name the first human with the id after the string in the map's own table (reading). Here: the `ScriptedName` component, resolved by the app in the player's language | both | 138 |
 | 61 | `SetWeather` | 16, 17, 9, 32, 7 | set the rain (flag 0) or snow (flag 1) density of every 10-point weather sector under the square of half-side `range` to `amount` times 100, clamped to 10000, where 0 clears it; the map's `[misc_weather]` `setrainrectangle`, `setsnowrectangle` and `setsandrectangle` write the same fields (reading). Here: the `missionWeather` event and a screen wash by the density at the view's centre (approximation) | both | 207 |
 | 62 | `StartEarthQuake` | 35 | shake the display until `seconds` have passed, with `earthquak.wav` (reading). Here: the `missionEarthquake` event and a camera jitter; the sound is not in the decoded bank | app | 122 |
-| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading; the 2022 the original never reads the flag and follows without selecting for any nonzero id, which may be build drift). Here: the `missionSelectHuman` event honouring the flag; the view centres once instead of following (approximation) | app | 7 |
+| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading; a later edition of the original never reads the flag and follows without selecting for any nonzero id, which may be build drift). Here: the `missionSelectHuman` event honouring the flag; the view centres once instead of following (approximation) | app | 7 |
 | 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed; with the flag, the player's finished house standing on a point takes its fill first | sim | 206 |
 | 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up the same way; with the flag, out of the player's houses' own stock first | sim | 31 |
 | 66 | `ChangeMissionIdOfHumanInRange` | 1, 10, 16, 17, 9 | give the player's humans within `range` the id | sim | 39 |
@@ -414,9 +415,8 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 Bit 0 is read twice: the urgent-needs check skips such a human, and the animation-event applier
 refuses every change to its four need bars, so they neither fall nor refill.
 
-Bit 12's shoe-only gate is byte-verified in the owned macOS `the original`,
-`an original routine` at `an original address`; the barefoot branch separately tests bit 0
-at `an original address`.
+Bit 12's shoe-only gate is byte-verified in the original's step handling; the barefoot branch
+separately tests bit 0.
 
 Bits 8, 10, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) without a located
 reader. The engine sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs
@@ -456,21 +456,21 @@ Readings unless marked otherwise.
 - **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when
   they want symmetry (corpus). After `[playerdata]` loads, the loader sets every pair of declared
   players still unset to neutral, and each player's own entry to self (byte-level, owned
-  `the original` 0x409003), so seats a map never relates neither fight nor ally; map world assembly
+  copy), so seats a map never relates neither fight nor ally; map world assembly
   writes those rows (`withNeutralRosterPairs`), and a world without a roster keeps the sim's
   everyone-hostile default. `[playermisc]` rows flag a pair in both directions (byte-level, owned
-  `the original` loader 0x408c8c-0x408de5, a missing second slot read as 0 by 0x424a9a):
+  copy's loader, a missing second slot read as 0):
   `relationnotchangeable` sets the not-changeable flag, `relationhide` sets it and the hidden flag,
   `relationhidedetails` the no-details flag. The diplomacy window lists no hidden player, gives a
   no-details one no page, and shows a player's three stance buttons (command 0x7f) only for a pair
-  without the not-changeable flag (0x4adb7f); the command and every other writer ignore that flag,
-  and the setter silences its stance message for a hidden pair (0x409c14). This build locks a pair
+  without the not-changeable flag; the command and every other writer ignore that flag,
+  and the setter silences its stance message for a hidden pair. This build locks a pair
   (`components/relations.ts`) for the first two rows and for `SetDiplomacyNotChangeableFlag`, and
   refuses a locked pair at the seat's `declareDiplomacy` command rather than in the window alone.
   Its window drops a hidden player, and with it the messages about that player, and keeps a
   no-details player's readout but gives it no stance buttons, having no overview page to list it on.
 - **Computer diplomacy**: a computer seat's strategic handler ends its turn with a look at one slot
-  of 20, in turn (the the original's `an original routine`), so `AI_Disable`, `HAI_Disable`
+  of 20, in turn (reading), so `AI_Disable`, `HAI_Disable`
   and a monster tribe silence it: a neutral seat turns enemy toward a player that holds it as enemy,
   and a friendly seat drops to the other's stance; an enemy seat never makes peace. It also turns a
   neutral seat enemy toward a player whose people stood in its villages on six looks in a row, which
@@ -525,8 +525,8 @@ loader and tick unless marked otherwise:
   a soldier joining the list gets the hold stance and its regenerate-in-world flag cleared, so it
   never starts a need task and never walks off to eat or sleep; on every twelfth turn the handler
   writes a full bar over every food and stamina bar of the seat's soldiers, heroes and vehicle
-  commanders that has fallen below the critical mark (`an original routine`
-  walks the soldier-and-hero sector list), which is all that feeds a listed man; a civilian of the
+  commanders that has fallen below the critical mark (the refill walks the seat's soldiers and heroes),
+  which is all that feeds a listed man; a civilian of the
   seat seeks food and sleep like anyone's. Needs themselves run for every human as
   [behaviour bit 0](#human-behaviour-flags) allows, and two rules of the human itself apply to every
   computer-type player, handlers or not: a need task that fails (nothing to eat within 40 nodes, no
@@ -550,11 +550,7 @@ module is off (approximation: the original runs both handlers side by side; this
 and the program would order the same men against each other). Corpus counts are over the 121 mod
 maps that carry the section (91 author a program; `//` comment lines occur). Positions are map
 points; a range test holds strictly inside the range. Where a field is a player, 20 means any
-player. Readings of the loader (`an original routine`), the condition pass
-(`an original routine`, `Condition_RecheckAll`, `an original routine`), the
-task pass (`MainTask_RecheckAll`, `an original routine`) and the soldier passes
-(`an original routine`, `an original routine`,
-`an original routine`, `an original routine`), the original:
+player. Readings of the original's loader, condition pass, task pass and soldier passes:
 
 | Line | Uses | Parameters after `<player>` |
 | --- | --- | --- |
@@ -703,7 +699,7 @@ as the original's window rebuilds its lines.
 
 `PlayCutscene id replay` opens `text/<lang>/briefings/<id as 4 digits>.hlt`, whose
 `<include:$local$\briefings.txt,<label>,1>` splices in the prose, in the mission window on its
-briefing tab (`an original routine`; every id the corpus plays has its page) and adds
+briefing tab (every id the corpus plays has its page) and adds
 the id to the
 shown-page history, which holds up to 50 distinct ids and drops the oldest past that; when `replay`
 is set the id is also stored as the map's current briefing, the page the window opens on from the
@@ -712,7 +708,7 @@ briefing tab gains a previous and a next button at the ends of the row under the
 it (reading). The history is saved with the game in the original; here it lives with the HUD for
 the session.
 
-A page lays its words out in lines (`an original routine`, reading). A line ends at
+A page lays its words out in lines (reading). A line ends at
 a `\n` marker and, inside an include whose third argument is non-zero, at every line end of the block;
 anywhere else a line end is a space, so the history book's `,0` blocks flow as paragraphs. A line is
 its font's nominal size × 3/2 tall (font12: 18 px, fonthead16bld: 21 px) and a line ending with
@@ -720,7 +716,7 @@ nothing on it is an empty 20 px line, which gives the corpus its blank rows arou
 pictures. `<block:N>` aligns the lines that end after it: 0 left, 1 justified (while each gap stays
 within 12 px), 2 centred (the page wrappers set it), 3 right. A `<picture:…>` sits centred on a row of
 its own, 2 px taller than the picture. `<usericon:kind,a,b,c>` is inline like a word and asks the
-window's bitmap callback (`ls_GetUserBitmapCallback`) for its bitmap: kind 1 is a live 280×220 view of
+window's bitmap callback for its bitmap: kind 1 is a live 280×220 view of
 the map centred on half-cell node (a, b), kind 2 the same view centred 25 px above the first human
 stamped with mission id `a`, kind 0 a 50×80 card of that human alone on a parchment fill with its
 feet 20 px above the bottom, an empty card when no human carries the id; any other kind, or kind 2
@@ -781,7 +777,7 @@ footprints and indices. `Data/logic/landscapetypes.ini` provides logic classific
 The shipped `Tools/result list EN.pdf` supplies these memberships, interpreted against actual
 `EditName` spellings. Its `fx fire2`, `fx fire house0` and `fx fx waterfall` spellings are normalized
 to the corresponding source names below. This interpretation remains unconfirmed in the running game.
-The macOS result-handler reading disagrees: FX1 excludes small fire/smoke, while Smoke additionally
+A reading of the original's result handler disagrees: FX1 excludes small fire/smoke, while Smoke additionally
 includes small fire and land waves. The implementation follows the readable reference pending an
 owned-game observation that resolves this conflict.
 
@@ -857,9 +853,8 @@ Navigation and spacing radii use the existing signpost approximations.
 
 The owned `CnModMaps/Polski_Mlyn_1.1/mission.inc` uses the goal for players 0, 1 and 2 at
 point (130, 130), range 200, alongside worker goals to identify human-controlled seats. This confirms
-the argument use, but does not establish exact range boundaries. The macOS
-`an original routine` and `CGuideIterator` readings suggest owner filtering and inclusive
-hex distance. This build shares the existing mission area metric; the boundary remains unconfirmed
+the argument use, but does not establish exact range boundaries. Readings of the original's goal
+check and signpost iteration suggest owner filtering and inclusive hex distance. This build shares the existing mission area metric; the boundary remains unconfirmed
 by observation of the running original. Negative ranges match nothing, rather than reproducing
 unsigned conversion suggested by the iterator reading.
 
@@ -874,8 +869,8 @@ the script verdicts described under "Multiplayer integration".
 ## Open questions
 
 - Behaviour bits 8, 10, 18, 19 and the animal behaviour value.
-- Every reading above comes from the 2022 the original; the owned 2001 Windows build has not been
-  analysed for the check period, the tick reset, `SelectHuman`'s flag or the load-time job
+- Every reading above comes from a later edition of the original; the owned 2001 build has not
+  been checked for the check period, the tick reset, `SelectHuman`'s flag or the load-time job
   seeding.
 
 ## Multiplayer integration

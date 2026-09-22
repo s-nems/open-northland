@@ -14,7 +14,7 @@ pull request, or issue attachment:
 
 Format and behavior work must be based on an owned game copy, readable configuration, byte-level
 evidence, published format specifications, or observation of the running game. See
-[`docs/LEGAL.md`](docs/LEGAL.md) and [`docs/SOURCES.md`](docs/SOURCES.md).
+[`docs/LEGAL.md`](docs/LEGAL.md).
 
 ## Set up the repository
 

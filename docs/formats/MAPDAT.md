@@ -7,7 +7,7 @@ The facts below come from byte-level comparisons across owned maps, rendered pro
 decoder tests. Facts credited to the CulturesNation
 [`Cultures2-dat-format`](https://github.com/Mikulus6/Cultures2-dat-format) documentation are marked
 as such; everything marked "verified" was re-checked against the owned corpus (130 map files, 5184
-chunks). [`./SOURCES.md`](../SOURCES.md#evidence-baseline) defines that corpus.
+chunks). [`DATA-FORMAT.md`](../DATA-FORMAT.md#input-formats) defines that corpus.
 
 ## Chunk stream
 
@@ -70,7 +70,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
 | `lmms` | half-cell | max moveable-unit size per the CulturesNation docs: distance from blocked nodes capped at 7 (range verified); collapsed to the cell `shore` lane |
 | `lmco` | half-cell | original continent id per node; retained for water-edge jobs to match authored fish swarms |
-| `lmpr` | half-cell | walking roughness 0..5 per node: a human's step off a node costs `2·lmpr + 2` ticks shod and `2·lmpr + 4` barefoot (rested; two more once due for sleep, one more hauling), and the same value wears its shoes or, barefoot, its food bar. The engine reads it back as `(word >> 3) & 0xf` of the node's packed word (`the original` `an original routine`, `WalkSpeed_GetMoveSpeed`); every owned map carries it and every `lmro` road node holds 1 |
+| `lmpr` | half-cell | walking roughness 0..5 per node: a human's step off a node costs `2·lmpr + 2` ticks shod and `2·lmpr + 4` barefoot (rested; two more once due for sleep, one more hauling), and the same value wears its shoes or, barefoot, its food bar. The engine reads it back as `(word >> 3) & 0xf` of the node's packed word in the original's step and walk-speed handling; every owned map carries it and every `lmro` road node holds 1 |
 | `lafm` | fixed records | authored fish swarms: populated position/count/continent records become persistent sim stocks |
 
 ### Verified `lafm` fish table

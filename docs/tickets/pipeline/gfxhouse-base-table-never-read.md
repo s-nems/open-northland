@@ -5,7 +5,7 @@
 `tools/asset-pipeline/src/stages/ir/sources.ts` reads the `[GfxHouse]` table only from the mod's
 `DataCnmd/budynki12/houses/houses.ini`. The base table, `Data/engine2d/inis/houses/houses.cif`, is
 never read, so any house the mod does not redeclare has no bob record, no `typeId` and no join key.
-`docs/SOURCES.md` precedence calls for the decoded `.cif` exactly here: a base table with no readable
+The root `AGENTS.md` source precedence calls for the decoded `.cif` exactly here: a base table with no readable
 twin.
 
 Verified against the owned copy by decoding `houses.cif` with the repository's own

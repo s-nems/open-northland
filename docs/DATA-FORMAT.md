@@ -29,6 +29,27 @@ content/
 `packages/data` validates the listings and sidecars the app reads; file names referenced from
 `ir.json` are lower-cased like the references.
 
+## Input formats
+
+The mod archive carries every file the stages read. Corpus counts in the documentation use an
+English-locale conversion of CnMod 1.3.2; state a different input beside any claim that uses one.
+
+| Format | Purpose | Reference |
+| --- | --- | --- |
+| `.ini` | readable rules and graphics bindings | this document |
+| `.cif` | compiled string tables, type tables, map logic, UI strings | [`formats/CIF.md`](formats/CIF.md) |
+| `map.dat` | terrain, map dictionaries, placed landscape objects | [`formats/MAPDAT.md`](formats/MAPDAT.md) |
+| `.bmd` | palette-indexed sprite frames and animations | [`formats/GRAPHICS.md`](formats/GRAPHICS.md) |
+| `.pcx` | palette-indexed pictures and palette carriers | [`formats/GRAPHICS.md`](formats/GRAPHICS.md) |
+| `.fnt` | bitmap-font wrapper around a bob container | [`formats/GRAPHICS.md`](formats/GRAPHICS.md) |
+| `.cur` | Windows cursor resource | `decoders/cur.ts` and its tests |
+| `.wav` | sound effects and voices | browser-native playback |
+| `.sgt` / `.dls` | DirectMusic soundtrack | `decoders/sgt.ts`, `decoders/dls.ts`, performed by `stages/music/interpret.ts` |
+
+The music interpreter follows the MIT [libdmusic](https://github.com/frabert/libdmusic) player, with
+music-value resolution as documented by the MIT [GothicKit dmusic](https://github.com/GothicKit/dmusic)
+project. Tracks publish at the 44.1 kHz synth rate, since most bank samples are 44.1 kHz.
+
 ## `ir.json`
 
 `packages/data/src/schema/content/content-set.ts` defines the top-level `ContentSet`. Its main groups
@@ -98,8 +119,7 @@ Extracted rows may include a `source` object with:
 - `layer`: base game or mod.
 
 Not every schema carries provenance yet. The decoder is the authoritative mapping from source keys to
-IR fields. Keep that mapping small, testable, and supported by the source evidence described in
-[`SOURCES.md`](SOURCES.md).
+IR fields. Keep that mapping small, testable, and supported by source evidence from the owned files.
 
 A map's `.meta.json` sidecar, which the pipeline writes for every converted map, carries the map's
 own `provenance { kind, folder, layer }`: `kind` is `user` for a `UserMaps` folder, `mod` for a mod

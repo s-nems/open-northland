@@ -33,7 +33,7 @@ export interface PcxConversion {
 /**
  * Composes each transition overlay's RGB texture and alpha-mask `.pcx` pair into one RGBA
  * `<stem>.masked.png` under {@link TEXTURES_DIR}. The mask picture's raw palette-index byte is the
- * coverage value and becomes the alpha channel directly (format oracle in docs/SOURCES.md).
+ * coverage value and becomes the alpha channel directly.
  *
  * Sources resolve by basename under the mod's textures directory because the IR's normalized paths
  * are lowercased; every real `[transition]` record lives in that one directory. Pairs are deduped by

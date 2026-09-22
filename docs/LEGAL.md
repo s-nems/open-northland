@@ -36,8 +36,7 @@ image models from text prompts, without original-game input.
 Open Northland is implemented independently from the original engine. Format support is based on
 inspection of legally obtained data files, documented byte-level experiments, readable configuration
 semantics, standard format specifications, and observation of the running game. Project code must not
-be copied or translated from proprietary or third-party engine implementations. The evidence policy
-is [`SOURCES.md`](SOURCES.md).
+be copied or translated from proprietary or third-party engine implementations.
 
 Contributors should record the source basis for new format, mechanic, timing, and visual decisions.
 When exact behavior is unknown, the implementation and its tests must identify the approximation.

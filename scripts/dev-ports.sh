@@ -8,7 +8,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # :5173 is reserved for the primary checkout; worktree agents must serve on
-# another port (see .claude/commands/worktree.md).
+# another port (see docs/DEVELOPMENT.md#worktree-previews).
 PRIMARY_PORT=5173
 PRIMARY_ROOT="$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")"
 

@@ -31,8 +31,8 @@ export async function runPipeline(args: Args): Promise<void> {
 
   await mkdir(args.out, { recursive: true });
 
-  // Stages run in dependency order. Sources resolve mod .ini over base .cif; docs/SOURCES.md carries
-  // the full source-to-decoder map.
+  // Stages run in dependency order. Sources resolve mod .ini over base .cif; docs/DATA-FORMAT.md carries
+  // the format-to-decoder map.
   const pictures = await convertPcxTree(roots, args.out);
   console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
   const vertexPalette = await convertVertexPalette(roots, args.out);

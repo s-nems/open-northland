@@ -35,4 +35,4 @@
 - **team colour**: a player-specific recolour applied while drawing an indexed atlas.
 - **skin variant**: a separate palette variant baked during content conversion.
 - **independent implementation**: project code written from the permitted evidence in
-  [`SOURCES.md`](SOURCES.md), without copied or translated engine code.
+  [`LEGAL.md`](LEGAL.md#independent-implementation), without copied or translated engine code.

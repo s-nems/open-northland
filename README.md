@@ -9,8 +9,8 @@ Open Northland is an independent, cross-platform engine for *Cultures - 8th Wond
 Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
 an offline asset pipeline.
 
-The repository never contains original game files or decoded content. 
-The maps, graphics, and audio come from the original game.
+The repository contains no original game files or decoded content. The maps, graphics, and audio
+the engine plays come from the original game, converted locally from the CulturesNation mod.
 
 You can play-test it from: [game.opennorthland.org](https://game.opennorthland.org)
 
@@ -30,13 +30,13 @@ It can load decoded maps and render terrain, buildings, settlers, effects, and t
 
 ## Starting the project
 
-#### Installing dependencies 
+#### Installing dependencies
 ```bash
 npm ci
 npm run build
 ```
 
-#### Generating local content and starting dev server 
+#### Generating local content and starting dev server
 ```bash
 npm run build:content
 npm run dev

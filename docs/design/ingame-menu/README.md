@@ -93,17 +93,7 @@ Use original UI assets. Simple crisp controls and diagrams can be vector/code-na
 appropriate for illustrated icons/material details when it improves the design. Do not generate
 complete windows with baked text or use wireframe symbols as finished art.
 
-Raster UI art is produced with the art sources in the custom art fork and lands here as delivered
-files under `packages/app/src/assets/ui/`. For raster generation, read the available imagegen skill.
-Prefer the built-in generator with existing plan usage when it meets the need. The user's standing
-authorization permits a bounded OpenAI API batch when a needed capability or material quality
-advantage justifies it (for example, genuine transparent output); explain the reason for switching.
-Convenience alone is not grounds for separately billed generation. Do not ask again solely because
-an image skill describes approval for users without that authorization.
-
-Read the primary checkout's .env by absolute path only into the process needing it, using a dotenv
-parser or Node --env-file. Never source it as shell code, print values, copy it into a task worktree,
-embed secrets in prompts/browser code or commit credentials. A present key is not proof of access.
+Raster UI art lands here as delivered files under `packages/app/src/assets/ui/`.
 
 Keep exact prompts, model/tool/settings, ordered references and hashes, selected masters and export
 parameters. Review icons at their runtime sizes, including true alpha where needed, and obtain

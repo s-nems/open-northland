@@ -19,7 +19,7 @@ footprints, placements) is unaffected - the parity shift fix already aligns bloc
 ## Scope
 
 - Verify visually first: same map region in the running original vs our renderer (odd-row trees
-  against ground texture). cultures2-gl can orient the investigation, but per `docs/SOURCES.md`
+  against ground texture). cultures2-gl can orient the investigation, but
   another implementation is not evidence - the original decides.
 - If confirmed, decide the seam: either `positionOfNode` keeps column coordinates un-corrected (so
   the position-domain `staggerShift` produces the quarter shift at half-integer rows naturally,

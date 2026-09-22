@@ -10,15 +10,13 @@ nearest package contract.
 
 The repository never contains original game files, mod files, decoded content, binary probes, or
 reference captures from the original. `npm run check:assets` rejects tracked `content/`, original
-file types, and unreviewed binaries; review covers the rest. The CulturesNation mod archive is the
-pipeline's only input and a build input: a release converts the pinned archive once and ships the
-decoded content inside the desktop installers and the web image, which go no further than the
-repository's releases and GHCR packages. An owned game installation beside the checkout serves reverse-engineering evidence, never
-the pipeline.
+file types, and unreviewed binaries; review covers the rest. The pinned CulturesNation mod archive
+is the pipeline's only input. An owned game installation beside the checkout serves as format and
+behavior evidence, never as pipeline input.
 
 This is an independent AGPL-3.0-or-later implementation. Do not copy or translate another engine's
-code. Base format and behavior work must use the sources allowed by `docs/SOURCES.md`. The canonical
-legal wording is in `docs/LEGAL.md`.
+code. Base format and behavior work must use the sources listed in `docs/LEGAL.md`, which also holds
+the canonical legal wording.
 
 ## Non-negotiable rules
 
@@ -144,7 +142,6 @@ serialize full suites and benchmarks on a shared machine. Keep full logs outside
 and report failures, counts and missing checks.
 
 Review the complete task diff for correctness, ownership, readability and useful test coverage.
-Use [code-reviewer](.claude/agents/code-reviewer.md) in either client, applying only relevant sections.
 Review documentation and small changes directly. For substantial behavior changes or refactors, use
 one independent reviewer when supported. Add a second only for a named, independent uncertainty,
 such as fidelity to the original; do not assign overlapping full-diff reviews or recursive delegation.
