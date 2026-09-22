@@ -18,7 +18,7 @@ import { layDownWeaponGood, takeUpWeaponGood } from './weapon-class.js';
 import { isUsed } from './wear.js';
 
 // Take-off rule: a part-used unit is destroyed when it is taken off or swapped out, a fresh one survives.
-// Source basis, the original manual p. 27: "Partly used items (potions, shoes, ...) you drop are lost. Unused
+// Source basis, the game manual p. 27: "Partly used items (potions, shoes, ...) you drop are lost. Unused
 // items such as weapons, armour and amulets can be used again."
 
 /** The settler's Equipment component, created empty on first wear; a bare settler carries none. */

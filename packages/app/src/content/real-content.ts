@@ -23,7 +23,7 @@ import { fetchJsonOrNull } from './net.js';
 
 let contentSetPromise: Promise<ContentSet | null> | null = null;
 
-/** The permanent armor `an original routine` assigns to hero jobs in the original. These are
+/** The permanent armor the original assigns to hero jobs at creation. These are
  * armor-type ids, not player-worn goods: 42→wool, 43→plate, 44..46→chain, 47→leather. */
 const HERO_ARMOR_BY_JOB_ID: Readonly<Record<string, number | undefined>> = {
   hero_unarmed: 1,
@@ -97,7 +97,7 @@ function withEquipClass(good: GoodType): GoodType {
 }
 
 /** Add the engine-authored armor a hero is born with. Extracted `jobtypes.ini` has no field for it: the
- * assignment is a hard-coded job switch in `an original routine`, so it belongs in this runtime overlay. */
+ * original hard-codes it per job, so it belongs in this runtime overlay. */
 function withHeroArmor(job: JobType): JobType {
   const fixedArmorType = HERO_ARMOR_BY_JOB_ID[job.id];
   return fixedArmorType === undefined ? job : { ...job, fixedArmorType };

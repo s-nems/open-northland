@@ -28,9 +28,8 @@ export const JINGLE_TECHNOLOGY = 29;
 export const JINGLE_OPEN_CHEST = 30;
 
 /**
- * Milliseconds the map music stays ducked while each jingle `MusicType` rings, from the engine's
- * per-type hold table (byte evidence: `the original`, the dword table its jingle path indexes by
- * `MusicType`). The duck depth and fade live with the engine's playback constants.
+ * Milliseconds the map music stays ducked while each jingle `MusicType` rings, from the original's
+ * per-type hold table. The duck depth and fade live with the engine's playback constants.
  */
 export const JINGLE_DUCK_HOLD_MS: ReadonlyMap<number, number> = new Map([
   [JINGLE_MARRIAGE, 2800],

@@ -21,12 +21,11 @@ function strategicHandlerRuns(world: World, seat: number): boolean {
 }
 
 /**
- * A computer seat's answer to how another player stands toward it (reading of the the original's
- * `an original routine`, which ends the strategic handler's turn; that turn follows the
- * scripted handler's and is skipped while either handler is off). Each turn looks at one other slot:
- * a neutral seat turns enemy toward a player that holds it as enemy, and a friendly one lowers its
- * stance to the other's. An enemy seat never makes peace. The write goes past any lock, as the
- * original's setter does.
+ * A computer seat's answer to how another player stands toward it (the original's diplomacy
+ * step, which ends the strategic handler's turn; that turn follows the scripted handler's and is skipped
+ * while either handler is off). Each turn looks at one other slot: a neutral seat turns enemy toward a player
+ * that holds it as enemy, and a friendly one lowers its stance to the other's. An enemy seat never makes
+ * peace. The write goes past any lock, as the original's setter does.
  *
  * Approximation: the original's cursor starts at slot 0 and moves once per turn the handler runs; it is
  * read here off the round index, which agrees while the seat's AI has run since the start. Not

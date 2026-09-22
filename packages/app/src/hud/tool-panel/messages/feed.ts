@@ -13,17 +13,17 @@ import {
   type UserMessageType,
 } from './types.js';
 
-/** Ticks a note stays on the strip, and a dismissed note keeps its repeat away (approximation: macOS
- *  build symbols). */
+/** Ticks a note stays on the strip, and a dismissed note keeps its repeat away (approximation
+ *  of the original). */
 export const MESSAGE_LIFETIME_TICKS = 3600;
-/** Slots in each of the displayed and the history buffer; a full strip rejects arrivals (approximation:
- *  the original symbols). */
+/** Slots in each of the displayed and the history buffer; a full strip rejects arrivals (approximation
+ *  of the original). */
 export const MESSAGE_SLOTS = 200;
 /** Events raised while the world is still being assembled never become notes: authored spawns land on
  *  the first step, and every adult they place would otherwise be announced as born. */
 const SETUP_TICKS_MUTED = 1;
-/** Two settlers missing the same good within this many cells raise one note (approximation: the original
- *  symbols, with a Chebyshev cell metric standing in for the original's hex distance). */
+/** Two settlers missing the same good within this many cells raise one note (approximation: the
+ *  original's range, with a Chebyshev cell metric standing in for its hex distance). */
 export const SIMILAR_MESSAGE_RANGE_CELLS = 21;
 const SIMILAR_TYPES: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
   USER_MESSAGE_TYPE.goodNotFound,
@@ -33,8 +33,8 @@ const SIMILAR_TYPES: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
 ]);
 const NODES_PER_CELL = 2;
 /** A note that reports a state the sim keeps a marker for: it ends with the marker, not with the
- *  lifetime or the selection. Departs from the original, whose lost worker is back at work within seconds
- *  (the original symbols); here a lost settler stands, so the note stands with it. */
+ *  lifetime or the selection. Departs from the original, whose lost worker is back at work within seconds;
+ *  here a lost settler stands, so the note stands with it. */
 export function isStandingNote(type: UserMessageType): boolean {
   return type === USER_MESSAGE_TYPE.lostWithoutSignposts;
 }

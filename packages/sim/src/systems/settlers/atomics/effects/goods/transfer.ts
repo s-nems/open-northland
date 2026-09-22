@@ -85,7 +85,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
 
   let deposited = moved;
   // A stocked home with crockery turns each delivered food unit into two before it reaches the larder.
-  // Crockery spends one durability use per delivery batch, matching an original routine.
+  // Crockery spends one durability use per delivery batch, as in the original.
   const cooking = homeQualityUseFor(ctx, 'cooking');
   if (
     moved > 0 &&

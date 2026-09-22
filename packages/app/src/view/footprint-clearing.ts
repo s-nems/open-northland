@@ -16,8 +16,8 @@ function nodeKey(hx: number, hy: number): string {
 
 /**
  * A building's walk-block footprint is bare ground: the static sprites on it leave the layer when the
- * building is placed or upgraded, and at bind for every building already standing (the original
- * symbols: a house's placement removes the landscape objects in its walk-block area). Approximation: a
+ * building is placed or upgraded, and at bind for every building already standing (original behavior:
+ * a house's placement removes the landscape objects in its walk-block area). Approximation: a
  * building placed under the viewer's fog clears its ground the same tick, where a remembered static
  * would otherwise linger.
  */

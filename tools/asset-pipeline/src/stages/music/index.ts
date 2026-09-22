@@ -15,12 +15,10 @@ import { type DlsBank, dlsFileNames, loadDlsBanks, synthesizeEvents } from './sy
  * Music stage: render the `DataX/DM2` DirectMusic segments to one ogg track each. The performance
  * interpreter turns each segment into timed note/controller events; spessasynth synthesizes them
  * from the game's DLS banks. The authored Waves Reverb from each segment's embedded audiopath
- * applies to the whole mix (the engine creates the music audiopath from the segment's own config -
- * byte evidence: `the original` passes the loaded segment to the driver's create-audiopath slot;
+ * applies to the whole mix (the original creates the music audiopath from the segment's own config;
  * deviation: it builds that path once, from the first segment played, where this render honours
  * each segment's own values).
- * The original plays a segment with infinite repeats and no break (byte evidence: the play call
- * passes repeat -1 into the driver's `an original routine`), so each track carries two
+ * The original plays a segment with infinite repeats and no break (repeat count -1), so each track carries two
  * passes: the first opens from silence, the second starts under the first's decay tails, and the
  * published loop points ring-loop that second pass. Both points come from the interpreter's own
  * segment-end frames, so they cannot drift from the events.

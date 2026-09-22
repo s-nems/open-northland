@@ -71,7 +71,7 @@ export type EquipGoodSpec = EquipClass & {
 // The balance magnitudes below are authored, not extracted, except where marked manual-pinned: the
 // engine hardcodes its own values and no readable source carries them.
 
-/** A pair of shoes' condition points, byte-verified (`the original` `cHumanInventoryMaximumCondition_Shoe`):
+/** A pair of shoes' condition points, byte-verified in the original:
  *  every node walked off spends its roughness, doubled while hauling. */
 const SHOE_USES = 10000;
 /** Rated production cycles for a tool (~1% per completed cycle). */

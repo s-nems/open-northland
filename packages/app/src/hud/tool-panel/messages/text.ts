@@ -6,7 +6,7 @@ import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } fro
 export const MESSAGE_STRINGS_TABLE = 'messages';
 
 /**
- * The `messages` row each type reads. The pairing follows the the original's message-string builder; the
+ * The `messages` row each type reads. The pairing follows the original's message-string builder; the
  * rows themselves are the owned copy's decoded `ingameguimessages.cif`.
  */
 export const MESSAGE_STRING_ID: Readonly<Record<UserMessageTypeName, number>> = {

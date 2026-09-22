@@ -39,12 +39,10 @@ Construction swings that actually advance labor credit the builder's general tra
 combat retain their existing grant triggers. A requirement sums only its explicitly named tracks.
 The no-job-experience mission behavior suppresses accrual through the common grant seam.
 Work speed and production efficiency both read the matching product specialization when one exists
-and fall back to the profession-general track otherwise. Byte evidence:
-`Tool_Human_GetExperienceType_GainedViaWorking` returns the job's general and matching specialized
-record, and every caller (`JobEfficiency_GetBaseRetryCounter`,
-`JobEfficiency_CalculateExperienceFactor`, `an original routine`) substitutes
-the general record when the specialized one is absent. `an original routine` credits both, skipping
-the second when they are the same record.
+and fall back to the profession-general track otherwise. Byte evidence: the original looks up the
+job's general and matching specialized record, and its retry counter, experience factor and output
+amount each substitute the general record when the specialized one is absent. Experience gain
+credits both, skipping the second when they are the same record.
 
 An experience record belongs to one profession and up to two goods: byte evidence, the record holds
 two good slots, its loader fills them across every `good` line in the record, and any id past the
@@ -100,11 +98,9 @@ and school planner used on custom maps.
 
 ## Evidence and fidelity limits
 
-The macOS symbol readings through analysis provide hypotheses about behavior. Relevant functions are
-`an original routine`, `DoesExperienceAllowJobChange`, `DoesEducationAllowJobChange`,
-`an original routine`, `DoExecuteUserCommand_LearnJob`, `DoExecuteUserCommand_LearnGood`, and
-`an original routine`, under their `an original routine` or `an original routine` namespaces.
-The owned readable tables confirm the distinct requirements and general/specialized tracks. They do
+The behavior of the original's job setup, experience and education checks, experience gain,
+learn-job and learn-good commands, and technology-tree availability is a hypothesis, unconfirmed
+against the running original. The owned readable tables confirm the distinct requirements and general/specialized tracks. They do
 not independently prove the lifetime of every flag or all scheduling details.
 
 Remaining approximations:

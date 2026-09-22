@@ -54,7 +54,7 @@ it('seats the strategic AI as the map’s [AIData] toggles say', () => {
 });
 
 it('gives a monster tribe’s computer seat the scripted handler alone', () => {
-  // `an original routine`: a `PLAYER_TYPE_AI` seat always gets the scripted handler, and the strategic
+  // Original behavior: a `PLAYER_TYPE_AI` seat always gets the scripted handler, and the strategic
   // one only when its tribe is neither weresnake nor werewolf, whatever `[AIData]` says.
   const { sim } = buildMapWorld({
     seed: 3,

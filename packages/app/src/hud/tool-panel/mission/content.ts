@@ -34,7 +34,7 @@ const LINK_COLOR: FontColorName = 'red';
 const IDLE_GOAL_COLOR: FontColorName = 'dimmed';
 
 /**
- * The page faces and the engine's line pitch (`an original routine`): a text line is
+ * The page faces and the original's line pitch: a text line is
  * its font's nominal size × 3/2 tall (font12 → 18, fonthead16bld's 14 → 21) and an empty line 20.
  * Approximations: the body is Tinos at 15 px, set by eye under the 17 px that matches font12's cap and
  * x-height (11 and 8 px) but reads larger than the thin bitmap face; the bold title keeps fonthead16bld's
@@ -105,7 +105,7 @@ function placementOf(align: ParagraphAlign): RunPlacement {
   return align === 'center' || align === 'right' ? align : 'left';
 }
 
-/** Each entity's shift across a line with `slack` px left over (`an original routine`).
+/** Each entity's shift across a line with `slack` px left over.
  *  A line overfull by its trailing gap stays put, where the engine's unsigned shift would throw it off
  *  the column. */
 function lineShifts(align: HypertextAlign | undefined, slack: number, count: number): number[] {

@@ -6,7 +6,7 @@ import {
   walkStepTicks,
 } from '../../src/systems/movement/walk-cost.js';
 
-// The original's per-step cost, `an original routine` for an ordinary adult
+// The original's per-step cost for an ordinary adult
 // civilian: a full E/W cell is two steps, so the cell figures are twice the step ones.
 
 const SHOD = { ...UNMODIFIED_STEP, shoes: true };

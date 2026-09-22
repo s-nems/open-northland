@@ -14,8 +14,7 @@ import { ownedSettlers } from '../../seat-roster.js';
  * Enlist the seat's fighters as the scripted handler's soldiers. Byte evidence: the original's handler
  * lists every soldier of the seat that mans no workhouse, rides no vehicle and stands within the
  * player's control (`MISSIONS.md`, behaviour bit 5), and a man joining the list gets two commands,
- * the hold stance and a cleared regenerate-in-world flag (the the original's
- * `an original routine`). Only the flag is issued here: a listed man
+ * the hold stance and a cleared regenerate-in-world flag. Only the flag is issued here: a listed man
  * never walks off to eat or sleep, so a garrison stays where its map or its orders put it, and his bars
  * fall to the seat's minute refill instead. The flag is written over a tower's garrison too, since
  * this build's posting order re-idles the man as his own trade and lifts it, where the original's

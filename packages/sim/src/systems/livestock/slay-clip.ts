@@ -11,7 +11,7 @@ import { slayAtomicOfSpecies } from '../readviews/index.js';
 // What a slaughter yields is the clip's own data: `atomicanimations.ini` gives the breeder's slay
 // animation an `event <frame> 27 <good>` per unit (`logicdefines.inc`
 // ATOMIC_ANIMATION_EVENT_TYPE_PUT_GOOD_IN_STOCK), which is how the sheep clip lands 1 wool + 2 meat and
-// the cattle one 2 leather + 2 meat. Approximation: the the original scales each deposit by the worker's
+// the cattle one 2 leather + 2 meat. Approximation: the original scales each deposit by the worker's
 // job efficiency, which is not applied here.
 
 /** The goods `settler`'s slaughter clip for `speciesGood` puts in the house, distinct, in clip order. */

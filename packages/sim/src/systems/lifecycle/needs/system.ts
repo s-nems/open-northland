@@ -51,11 +51,11 @@ export function chargeMilitaryPiety(world: World, settler: Entity, units: number
 /**
  * A barefoot node callback's hunger, at departure or terminal arrival: without live boots, the walker's
  * food bar loses that many reserve units, twice as many while hauling a good. The shoes' other promise
- * in the manual ("uses up less energy"). Source basis: macOS `the original`
- * `an original routine`, where a spent or absent shoe condition sends
- * `roughness << carrying` off the food field instead of the pair, on the same 10000-unit bar the level
- * table names, for an adult whose needs are not frozen. The sim also retains {@link carriesNeeds}'s
- * hero and non-settler-tribe exemptions, beyond that original callback's age and script gates.
+ * in the manual ("uses up less energy"). Original behavior: on reaching a new map position, a spent or
+ * absent shoe condition sends `roughness << carrying` off the food field instead of the pair, on the same
+ * 10000-unit bar the level table names, for an adult whose needs are not frozen. The sim also retains
+ * {@link carriesNeeds}'s hero and non-settler-tribe exemptions, beyond that original callback's age and
+ * script gates.
  */
 export function chargeBarefootStep(
   world: World,
@@ -74,7 +74,7 @@ const CARRYING_HUNGER_FACTOR = 2;
 
 /**
  * Ticks a pinned hunger takes to empty a full `Health` pool, and ticks a fed settler takes to refill an
- * empty one. Byte evidence: the owned copy's `the original` gives a human a flat 5000-point pool, spends 2 a
+ * empty one. Byte evidence: the original gives a human a flat 5000-point pool, spends 2 a
  * tick while its food sits at zero and returns 1 a tick below the pool. Approximation: reading those two
  * spans against `Health.max` carries them to the pools authored here, where the original has only the one.
  */
@@ -94,7 +94,7 @@ function poolStepAt(max: number, span: number, tick: number): number {
  * The rise half of settler needs, plus the hitpoint step. `piety` is not touched here: it climbs only
  * through {@link chargeMilitaryPiety} and falls at a temple.
  *
- * Only a grown settler of a trading tribe carries needs. Byte evidence for the age gate: in the owned copy
+ * Only a grown settler of a trading tribe carries needs. Byte evidence for the age gate: in the original
  * both the per-tick drain and the urgent-need check return early unless the human is an adult, so the child
  * eat and sleep clips `tribetypes.ini` binds (`setatomic 3/4 8/10`) are ones a child is played, never ones
  * it seeks. A person of a recorded tribe with no `jobEnables` is skipped on an approximation: the maps place
@@ -116,11 +116,9 @@ export const needsSystem: System = (world, ctx) => {
 /**
  * Handler turns between one computer seat's refills. Byte evidence: the original's scripted AI handler
  * on every twelfth of its turns writes a full bar over every food and stamina bar of the seat's
- * soldiers and heroes that has dropped below the critical mark (the the original's
- * `an original routine` and its `an original routine`, which
- * walks the sector list `an original routine` fills with the soldier and hero jobs, and
- * the seat's vehicle commanders). A civilian of the seat is left to its own seeking. A bar sits below
- * the critical mark for at most the minute before its seat's turn.
+ * soldiers and heroes that has dropped below the critical mark (it walks the sector list of the seat's
+ * soldier and hero jobs and its vehicle commanders). A civilian of the seat is left to its own seeking.
+ * A bar sits below the critical mark for at most the minute before its seat's turn.
  */
 export const AI_NEED_REFILL_TURNS = 12;
 

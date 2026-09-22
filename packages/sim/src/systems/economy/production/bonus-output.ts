@@ -57,9 +57,9 @@ export function accrueBonusOutput(
 /**
  * Bank the worker's share of a ware banked outside a production cycle: the frames of the slaughter clip,
  * which put their goods straight on the shelf. The original pays these the same job efficiency a produced
- * good earns - experience plus tool, summed, and the tenths past a whole unit kept as a decimal remainder
- * (the original `an original routine`), which is what the workplace's
- * remainders are. Only the deposit is paid: the calf a breeding yields is one animal at any skill.
+ * good earns - experience plus tool, summed, and the tenths past a whole unit kept as a decimal remainder,
+ * which is what the workplace's remainders are. Only the deposit is paid: the calf a breeding yields is one
+ * animal at any skill.
  */
 export function accrueDepositBonus(
   world: World,

@@ -16,9 +16,8 @@ export interface EquipPickEntry {
 
 /**
  * Whether the settler's equipment may change at all: only a grown man who is no hero. A woman and a
- * child wear nothing, and a hero keeps the fixed arms its job carries. Source basis: reading the macOS
- * build, which fills a human's can-equip table only for an adult male non-hero and leaves it zeroed
- * otherwise; not re-checked against the owned Windows build.
+ * child wear nothing, and a hero keeps the fixed arms its job carries. Original behavior, unconfirmed
+ * against the running original: only an adult male non-hero can equip anything.
  */
 export function mayChangeEquipment(world: World, content: ContentSet, entity: Entity): boolean {
   const settler = world.tryGet(entity, Settler);

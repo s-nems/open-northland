@@ -3,8 +3,8 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { ROW_STEP, worldX } from '../../nav/world-metric.js';
 
-// the original: an original routine an original address enables eight-direction turning;
-// VE_HexagonDirection_NextDirection 0x10013bd30 confirms the ring and opposite-heading ties.
+// The original enables eight-direction turning for humans; byte evidence confirms the ring and the
+// opposite-heading ties.
 const TURN_RING: readonly WalkDirection[] = [0, 1, 7, 2, 3, 4, 6, 5];
 
 export function nextWalkDirection(from: WalkDirection, to: WalkDirection): WalkDirection {
@@ -42,7 +42,7 @@ export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): 
           ? 5
           : 4;
   const facing = world.tryGet(e, WalkFacing);
-  // an original routine (0x10013e4e0) initializes the orientation to SW.
+  // The original initializes the orientation to SW.
   if (facing === undefined) world.add(e, WalkFacing, { direction: 2, target });
   else if (facing.target !== target) world.mut(e, WalkFacing).target = target;
 }

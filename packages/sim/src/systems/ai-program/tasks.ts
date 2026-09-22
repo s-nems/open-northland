@@ -13,8 +13,7 @@ import { removeSettlerSilently } from '../lifecycle/cleanup.js';
 import { spawnSettler } from '../spawn/index.js';
 import { conditionActive } from './conditions.js';
 
-// The main tasks of one seat's program: the readings of the the original's
-// `an original routine` and `an original routine`
+// The main tasks of one seat's program, as the original's scripted AI handler reads them
 // (`docs/formats/MISSIONS.md`, AI data).
 
 /** The `ChangeDiplomacy` state codes, as `SetDiplomacy` writes them. */

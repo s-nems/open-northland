@@ -10,7 +10,7 @@ import type {
 /**
  * The hypertext the original's mission window and history book render: `briefings.txt`-style files
  * hold named blocks and a `.hlt` page splices them in, with `<name:args>` tags switching the state the
- * words after them draw in. The engine lays words out on lines (`an original routine`):
+ * words after them draw in. The original lays words out on lines:
  * a line ends at a `\n` marker, and inside an include whose third argument is non-zero also at every
  * line end of the block; elsewhere a line end is plain whitespace. A line end on a line that holds
  * nothing yet leaves an empty line. A `<globaljump:…>` links the one word after it. Anchor and callback

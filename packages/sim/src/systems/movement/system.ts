@@ -94,8 +94,8 @@ export const movementSystem: System = (world, ctx) => {
 type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 
 /** Original node callback: after pace is read at departure, and once at the terminal destination.
- *  the original AI_DoNewMapPositionReached (an original address) updates pace before spending shoe/food points;
- *  DoOneGameTick_Human calls it before a new step and for its destination-reached branch. */
+ *  The original updates pace before spending shoe/food points, and runs the callback before a new step
+ *  and when the destination is reached. */
 function chargeNode(world: World, ctx: SystemContext, e: Entity, roughness: number): void {
   const carrying = isCarryingGood(world, e);
   if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, roughness, carrying);

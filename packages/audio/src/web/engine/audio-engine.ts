@@ -61,7 +61,7 @@ export const VOLUME_RAMP_S = 0.05;
 
 /** The original music master's fixed offset: `dm_volume` percent becomes
  *  `-500 + 2000*log10(percent/100)` hundredths of dB, i.e. a linear-amplitude curve offset by
- *  -5 dB (byte evidence: the master-volume conversion in `the original`). */
+ *  -5 dB. */
 const MUSIC_MASTER_OFFSET_DB = -5;
 /** Clip headroom the music stage bakes into the rendered files (its `MASTER_GAIN`, -3 dB). The
  *  original chain has no counterpart for it, so the bus adds it back; the two must move together. */
@@ -75,8 +75,8 @@ export function musicBusGain(volume: number): number {
 
 /**
  * SFX-slider position (0..1) to game-sounds bus gain. The original maps `fx_volume` percent
- * linearly in dB over a 20 dB range: `(percent - 100) * 20` hundredths of dB (byte evidence: the
- * fx-volume conversion in `the original`). Deviation: 0 mutes fully, where the original floors at
+ * linearly in dB over a 20 dB range: `(percent - 100) * 20` hundredths of dB. Deviation: 0 mutes
+ * fully, where the original floors at
  * -20 dB.
  */
 export function sfxBusGain(volume: number): number {
@@ -84,10 +84,10 @@ export function sfxBusGain(volume: number): number {
   return v <= 0 ? 0 : 10 ** (v - 1);
 }
 
-/** Jingle duck depth on the music bus: -2000 hundredths of dB (byte evidence: the jingle path in
- *  `the original` fades the music audiopath by that much while a jingle rings). */
+/** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
+ *  audiopath while a jingle rings. */
 export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
-/** The duck's fade time each way: 0x12C ms in the same jingle path. */
+/** The duck's fade time each way in the original: 300 ms. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
 /** An identical one-shot key retriggers no sooner than this many seconds apart (anti machine-gun). */
 export const ONE_SHOT_COOLDOWN_S = 0.12;

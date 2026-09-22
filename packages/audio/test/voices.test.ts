@@ -157,8 +157,7 @@ describe('order responses', () => {
   });
 
   it('gives every hero the first response recording rather than an entity-id-selected voice', () => {
-    // Byte evidence in owned `the original` `PlayRespondingSound` at an original address..an original address:
-    // load HumanArrayIndex, call `IsJobHero` (an original address), then conditionally move that index over zero.
+    // Original behavior: a hero's response index is forced to zero instead of following the entity.
     // Job 47 is the heroine in readable `jobtypes.ini`.
     const heroSnapshot: WorldSnapshot = {
       tick: 10,

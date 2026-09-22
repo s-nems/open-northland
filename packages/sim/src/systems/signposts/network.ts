@@ -143,10 +143,9 @@ function verifyNetwork(world: World): string[] {
  * stands, plus the range around every post of each signpost group it catches. Every rule keys on
  * `allowsNode`; `bounds` lets searches shrink their scans.
  *
- * Source basis: the original's guided pathfinder (macOS symbols `an original routine`,
- * `an original routine`): a leg is planned within the walk range of the current position, or
- * through a guide within that range of the start and one within it of the goal, both in one link
- * system. Approximations: the original floods walkable ground to catch a guide and to cover a goal,
+ * Source basis: the original's guided pathfinder: a leg is planned within the walk range of the current
+ * position, or through a guide within that range of the start and one within it of the goal, both in one
+ * link system. Approximations: the original floods walkable ground to catch a guide and to cover a goal,
  * and weighs only the two nearest guides on each side, where this gate tests hex distance (plus the
  * static terrain component for the catch) and opens every group with a post in range.
  */
@@ -263,7 +262,7 @@ function computeNavigationLimit(
   hy: number,
 ): NavigationLimit | null {
   // The original routes soldiers, heroes, scouts, hunters and druids over its global walk sectors
-  // instead (macOS symbols `an original routine`).
+  // instead.
   if (
     isScoutJob(content, jobType) ||
     isFighterJob(content, jobType) ||
@@ -274,7 +273,7 @@ function computeNavigationLimit(
   return networkLimitAt(world, terrain, player, hx, hy, walkRangeOf(content, jobType));
 }
 
-/** A carrier plans longer legs than any other trade (`an original routine`). */
+/** A carrier plans longer legs than any other trade, as in the original. */
 function walkRangeOf(content: ContentSet, jobType: number | null): number {
   const job = jobType === null ? undefined : contentIndex(content).jobs.get(jobType);
   return job !== undefined && isCarrierJobRow(job) ? CARRIER_WALK_RANGE_NODES : WALK_RANGE_NODES;

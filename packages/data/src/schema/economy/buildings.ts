@@ -103,8 +103,7 @@ export const BuildingType = z.strictObject({
   /**
    * The action a settler plays lifting goods off this house's shelf; absent, the generic pick-up. Engine
    * behavior, not an `.ini` key: the original's carrier collect selects action 44 at the well (`logictype`
-   * 10) and 45 at the hive (11), else 22, byte-verified in the owned `the original`
-   * `an original routine`.
+   * 10) and 45 at the hive (11), else 22.
    */
   collectAtomic: AtomicId.optional(),
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */

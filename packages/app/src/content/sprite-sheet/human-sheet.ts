@@ -46,8 +46,8 @@ import { loadCharacters } from './characters.js';
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
-// `DrawAtom_FishManager_DoDraw` in the owned `the original` uses the special `fishes` palette and
-// selects one of the first 18 directional bobs from this BMD for every fish in the swarm.
+// The original's fish drawing uses the special `fishes` palette and selects one of the first 18
+// directional bobs from this BMD for every fish in the swarm.
 const FISH_ATLAS = 'ls_fishes.fishes';
 const FISH_BOBS = Array.from({ length: 18 }, (_, bob) => bob);
 

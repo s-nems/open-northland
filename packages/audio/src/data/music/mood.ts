@@ -10,8 +10,8 @@ import { MUSIC_VARIANTS, type MusicVariants, type ThemeMood } from './catalog.js
 import type { MusicManifest, MusicTrack } from './manifest.js';
 
 /**
- * Which mood variant of a map's music should be playing. The original decides this inside `the original`,
- * whose code section ships encrypted, so every threshold below is an approximation; the segment names
+ * Which mood variant of a map's music should be playing. The original's rule is unconfirmed, so every
+ * threshold below is an approximation; the segment names
  * and the variant sets they switch between are not.
  */
 

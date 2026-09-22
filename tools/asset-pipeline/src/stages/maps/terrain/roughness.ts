@@ -4,8 +4,7 @@ import type { DecodedMap } from './lane.js';
 /**
  * The `lmpr` walking-roughness lane, one byte per node on the `2W x 2H` half-cell grid: the value the
  * engine packs into each node's word and reads back as `(word >> 3) & 0xf` when a human steps off the
- * node (macOS `the original` symbols `an original routine` and
- * `WalkSpeed_GetMoveSpeed`). Every owned map carries it with values 0..5, and every `lmro` road node
+ * node. Every owned map carries it with values 0..5, and every `lmro` road node
  * holds 1, so an authored road is already the fast lane in the data. Undefined when the map lacks the
  * lane (a synthetic fixture; the sim then walks every node at its land default); throws on a length
  * mismatch.

@@ -7,9 +7,8 @@ Every field carries `Crop.farm`, the drive counts and picks only `targets.cropsB
 keep two disjoint plots on the same ground, and a demolished farm's fields stand untended within another
 farm's reach.
 
-The original has no owner on a field. Byte evidence (`an original routine`,
-the original an original routine, reached from the farmer's and the herb guy's shared
-`an original routine`, an original routine): a worker searches 10 map points out
+The original has no owner on a field. Byte evidence from the owned copy, in the task the farmer and
+the herb guy share: a worker searches 10 map points out
 from its work centre for every point of its good's growing landscape, whoever sowed it, stops counting
 at 25, plants only while it counted fewer, else reaps a ripe one or waters the lowest. The cap
 (`FARM_MAX_FIELDS 25` in `packages/app/src/catalog/farming.ts`) matches; the radius
@@ -22,8 +21,8 @@ at 25, plants only while it counted fewer, else reaps a ripe one or waters the l
   share one pool and a demolished one leaves its fields to any worker in reach. Rework `FarmClaims.byFarm`
   into an in-flight sow count per anchor, and keep `fieldReclaimSystem`'s stranded-field rule working
   from the anchor instead of `Crop.farm`.
-- Non-goal: a player-movable plot anchor (`DoExecuteUserCommand_SetWorkCenter` accepts the farmer but
-  not the herb guy). That is a feature for the owner's roadmap; this ticket keeps the anchor at the
+- Non-goal: a player-movable plot anchor (the original's set-work-centre command accepts the farmer
+  but not the herb guy). That is a feature for the owner's roadmap; this ticket keeps the anchor at the
   workplace's own position.
 
 ## Verify

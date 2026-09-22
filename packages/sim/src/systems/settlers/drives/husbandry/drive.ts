@@ -49,15 +49,15 @@ import { deliverableGoodProbe } from '../economy/delivery-targets.js';
 import { planProducer, type WorkSeatClaims } from '../economy/index.js';
 
 /** How close the breeder gets before it takes an animal in hand: the original puts one into
- *  house-interaction mode from within 2 map points (the original 0x46054f). */
+ *  house-interaction mode from within 2 map points. */
 const SUMMON_RANGE = 2;
 
-/** How many other farms the breeder will raid for a species it is short of (the original 0x46bf29). */
+/** How many other farms the breeder will raid for a species it is short of, the original's limit. */
 const TAKE_SOURCE_FARMS = 5;
 
 /**
  * The breeder's cycle at the farm it is employed at, one branch per planner pass, in the original's own
- * order (the original 0x46b97b): adopt a stray, take one from a neighbouring farm while this herd is
+ * order: adopt a stray, take one from a neighbouring farm while this herd is
  * below a pair, carry a full ware out, slaughter a grown animal past the pair, else breed the pair.
  * Returns false only for a settler that is not a breeder here, so a carrier falls through to its own rung.
  *
@@ -184,7 +184,7 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
 
 /**
  * Take the nearest animal of `good` from a neighbouring farm of the same player that holds more than a
- * pair of them, but only while this herd is short of a pair itself (the original 0x46bf29, which
+ * pair of them, but only while this herd is short of a pair itself (the original
  * scans up to {@link TAKE_SOURCE_FARMS} such farms).
  */
 function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): boolean {

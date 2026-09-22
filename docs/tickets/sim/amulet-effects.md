@@ -13,9 +13,8 @@ production tools, restoration and death-save consumables, not wearable amulet be
 Verify each effect and its combination rules against the owned engine. Encode classification
 and magnitudes in content, and consume equipped amulets in needs, combat and movement.
 Check removal, duplicate amulets and interaction with other modifiers. Do not infer magnitudes
-from display names. the original `an original routine` (0x100116476) confirms
-speed subtracts two from step cost before age, equipment weight and script flags; the other
-five effects still require investigation of `an original routine*` callers.
+from display names. In the original, the speed amulet subtracts two from step cost before age,
+equipment weight and script flags; the other five effects are still uninvestigated.
 
 This is separate from potion drinking and equipment-consumable extraction tickets.
 

@@ -17,13 +17,13 @@ import { isScoutJob } from '../readviews/index.js';
 import { entityNode } from '../spatial/nodes.js';
 
 /** How close a scout claims from, in hex map points: the original runs the claim over the centre and the
- *  two rings around the scout's new position (the original 0x461e32, ring parameter 3 at 0x44ce79). */
+ *  two rings around the scout's new position. */
 export const LIVESTOCK_CAPTURE_RANGE = 2;
 
 /**
  * Whether `player` may claim `animal`: a `catchable` creature that is wild, or held by a player this one
- * counts an enemy (`DIPLOMACY_STATE_ENEMY`, the state the original's per-point claim tests, the original
- * 0x44ced2). Its own stock is never a candidate.
+ * counts an enemy (`DIPLOMACY_STATE_ENEMY`, the state the original's per-point claim tests).
+ * Its own stock is never a candidate.
  */
 export function claimableBy(world: World, animal: Entity, player: number): boolean {
   if (!world.has(animal, Livestock)) return false;

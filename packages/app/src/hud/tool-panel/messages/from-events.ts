@@ -162,7 +162,7 @@ export function messagesFromEvents(
       }
       case 'playerDefeated':
         // Every seat hears an elimination: the original's own record carries the broadcast player id
-        // rather than one seat's (the original symbols).
+        // rather than one seat's.
         raiser.raise(
           `${USER_MESSAGE_TYPE.playerDied}|player:${ev.player}`,
           {

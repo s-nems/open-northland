@@ -43,10 +43,9 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
 
   /**
    * A drop-off flag stands for its gatherer and outranks every building. It ties with a settler, and the
-   * one drawn in front takes the click. the original `an original routine`
-   * resolves a hit on a human's work-centre marker (`an original routine`) to that human at
-   * the rank humans hold, above houses and signposts, and the later hit of its front-to-back scan wins
-   * among equal ranks.
+   * one drawn in front takes the click. The original's world pick resolves a hit on a human's
+   * work-centre marker to that human at the rank humans hold, above houses and signposts, and the later
+   * hit of its front-to-back scan wins among equal ranks.
    */
   const unitAt = (wx: number, wy: number): number | null => {
     const flag = topTargetAt(deps.targets.flags(), wx, wy);

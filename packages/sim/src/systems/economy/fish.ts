@@ -15,10 +15,9 @@ export const FISH_SHORE_SEARCH_RADIUS = 20;
 export const FISH_REPRODUCTION_TICKS = 2160;
 
 /**
- * Add authored swarms before tick zero, retaining source order as entity order. Source basis: owned
- * `the original`, analysed through analysis. `an original routine` stores at most 30 fish,
- * `FindShorePointForFishing` / `slHumanSearchShorePointFunction` use a 20-node search, and
- * `an original routine` increments each positive non-full swarm on its 2160-tick callback.
+ * Add authored swarms before tick zero, retaining source order as entity order. Original
+ * behavior: a swarm stores at most 30 fish, the fisher's shore search covers 20 nodes, and reproduction
+ * increments each positive non-full swarm on its 2160-tick callback.
  */
 export function addFishSwarms(
   world: World,

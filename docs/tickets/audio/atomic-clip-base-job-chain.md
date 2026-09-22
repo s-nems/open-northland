@@ -10,7 +10,7 @@ carries it as `JobType.baseJob`, `@open-northland/data` already walks it (`resol
 covered by `packages/app/test/content/job-atomics.test.ts`), and the render-side clip join walks it too
 (`tribeJobSeqs` in `packages/app/src/content/ir/joins.ts`).
 
-Byte evidence (owned macOS `the original`, `an original routine`): the tribe table is
+Original behavior (byte evidence): the tribe table is
 read for `(tribe, job, atomic)`; on a miss the job record's base job is loaded, its allow flag for the
 atomic is required, and the lookup retries up the chain. A chain that never resolves starts no
 animation at all, where the sim runs `DEFAULT_ATOMIC_DURATION` instead.

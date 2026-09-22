@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 
 /**
  * A seat's own stance change. A locked pair is refused here, where the original only withholds the
- * window's stance buttons (owned `the original` 0x4adb7f) and runs whatever command 0x7f arrives: a
+ * window's stance buttons and runs whatever command 0x7f arrives: a
  * network seat cannot get past the sim the way it could past a window.
  */
 export function declareDiplomacy(

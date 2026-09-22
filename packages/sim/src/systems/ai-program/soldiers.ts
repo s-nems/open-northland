@@ -28,10 +28,8 @@ import { isTravelling } from '../movement/nav-state.js';
 import { isFighterJob, isHeroJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
 import type { TaskGroup } from './tasks.js';
 
-// The soldiers of one seat's program: the readings of the the original's
-// `an original routine`, `an original routine`,
-// `an original routine`, `an original routine` and
-// `an original routine` (`docs/formats/MISSIONS.md`, AI data).
+// The soldiers of one seat's program, as the original's scripted AI handler lists, tasks, forms and
+// clears them (`docs/formats/MISSIONS.md`, AI data).
 
 /** How many soldiers one handler lists. */
 const SOLDIER_LIST_LIMIT = 200;

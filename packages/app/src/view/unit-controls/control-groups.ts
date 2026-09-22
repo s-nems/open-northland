@@ -48,8 +48,8 @@ export interface ControlGroups {
 }
 
 /**
- * What a recall of `ids` does: the original's `Group_Select` centres the view on a group whose every
- * member is already selected, and selects the group otherwise (`an original routine`, the original).
+ * What a recall of `ids` does: the original centres the view on a group whose every member is already
+ * selected, and selects the group otherwise.
  */
 export function groupRecallEffect(
   ids: readonly number[],
@@ -58,7 +58,7 @@ export function groupRecallEffect(
   return ids.every((id) => selected.has(id)) ? 'centre' : 'select';
 }
 
-/** The world-px centroid of the members' ground anchors (the original's `an original routine` mean),
+/** The world-px centroid of the members' ground anchors (the mean the original's group position takes),
  *  or null when none is positioned. */
 export function groupCentre(
   snapshot: WorldSnapshot,

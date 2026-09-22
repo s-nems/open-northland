@@ -48,7 +48,7 @@ export type MapDiplomacy = z.infer<typeof MapDiplomacy>;
 
 /**
  * One `[playermisc]` `relationnotchangeable`/`relationhide`/`relationhidedetails <a> <b>` row. Each
- * flags the pair in both directions (byte evidence: owned `the original` loader 0x408c8c-0x408de5):
+ * flags the pair in both directions in the original's loader:
  * `notChangeable` locks both stances, `hide` locks them and drops each player from the other's
  * diplomacy window, and `hideDetails` leaves the other player without a page there to change a stance on.
  */
@@ -133,8 +133,7 @@ export type MapHumanName = z.infer<typeof MapHumanName>;
 
 /**
  * A strategic-AI concern a map's `[AIData]` may switch off, named after the engine's own
- * `HAI_Disable<Module>` keywords (byte evidence: the the original's `an original routine`
- * token table). The sim's AI player runs one module per name.
+ * `HAI_Disable<Module>` keywords. The sim's AI player runs one module per name.
  */
 export const MapAiModule = z.enum([
   'collectResources',

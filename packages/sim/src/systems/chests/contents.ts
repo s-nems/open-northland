@@ -42,9 +42,9 @@ function settlers(job: string): ChestReward {
 
 /**
  * The chest-type table, keyed by the type a map authors on a chest placement. Source basis: the
- * `Tool_MapChest_UseChest` dispatch of the macOS `the original` executable (byte evidence), whose row keys and
- * reward kinds the readable `chesttypes` string table corroborates; the exact ids and counts are the
- * dispatch's own and unconfirmed by observation. Ids are written as their catalog slugs.
+ * original's chest-use dispatch (byte evidence), whose row keys and reward kinds the readable
+ * `chesttypes` string table corroborates; the exact ids and counts are the dispatch's own and unconfirmed by
+ * observation. Ids are written as their catalog slugs.
  */
 export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, ChestReward>([
   [1, goods('potion_food_small', SINGLE)],

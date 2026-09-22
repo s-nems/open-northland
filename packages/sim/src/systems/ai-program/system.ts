@@ -32,8 +32,7 @@ import { activeGroups, freshTaskRecord, recheckTasks } from './tasks.js';
  * this build's campaign and the program would otherwise order the same men against each other; the
  * original runs both handlers side by side. Approximation: a seat the match marked dead skips its
  * turn, as the strategic AI does, because the authority gate refuses its orders anyway; the original's
- * handler keeps working for a dead seat (`an original routine` and `WorkOnAI` test only
- * the handler's enabled byte), which matters for the seats a script hands a town after the first
+ * handler keeps working for a dead seat (it tests only the handler's enabled flag), which matters for the seats a script hands a town after the first
  * death check (`docs/tickets/features/match-participants-from-in-use-seats.md`).
  */
 export const aiProgramSystem: System = (world, ctx) => {
@@ -83,8 +82,7 @@ export const aiProgramSystem: System = (world, ctx) => {
 };
 
 /** The map's border band in map points, where the handler refuses a default position: the outermost
- *  two macro cells (reading of `an original routine`, whose one-point parity nudge is left
- *  out). The original refuses a Defend, Attack or CreateCreatures point there too, which this build
+ *  two macro cells (the original's one-point parity nudge is left out). The original refuses a Defend, Attack or CreateCreatures point there too, which this build
  *  leaves out: no authored task of the corpus sits in the band. */
 const BORDER_POINTS = 4;
 

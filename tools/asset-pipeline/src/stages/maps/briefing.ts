@@ -11,7 +11,7 @@ import { STRING_TABLE_DIR } from './info.js';
 const BRIEFING_LANGS = ['pol', 'eng'] as const;
 const BRIEFINGS_DIR = 'briefings';
 const BRIEFINGS_FILE = 'briefings.txt';
-/** The window opens cutscene `id` as the page `%4.4d.hlt` (`an original routine`),
+/** The window opens cutscene `id` as the page `%4.4d.hlt`,
  *  which includes its text from `briefings.txt`. */
 const HLT_PAGE_DIGITS = 4;
 const PLAY_CUTSCENE = 'PlayCutscene';

@@ -63,8 +63,8 @@ export function computeSpatialAtNode(
 /**
  * The stereo pan alone of world tile `(col, row)`: its screen-side position, clamped to the sides for a
  * point off screen, with no cull and no attenuation. A voice answering the player's order pans this way
- * (byte evidence, `the original` `Tool_Sound_PlaySoundOrientedOnDisplay` without its positioned flag: the
- * pan is clamped to the edges, the volume is left whole and no screen or fog test is made).
+ * in the original: the pan is clamped to the edges, the volume is left whole and no screen or fog
+ * test is made.
  */
 export function computePan(col: number, row: number, camera: Camera, canvasW: number): number {
   const s = tileToScreen(col, row);

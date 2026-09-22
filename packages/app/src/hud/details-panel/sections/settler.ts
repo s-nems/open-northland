@@ -216,7 +216,7 @@ function drawExperienceSection(
 /**
  * Ekwipunek: one labeled row per slot group, its label left of the round sockets, an occupied socket
  * showing the good's icon. A wearing good's condition draws as a thin gauge under its socket, a
- * deviation from the manual's "A percentage indicating the degree of use is displayed" (the original manual
+ * deviation from the manual's "A percentage indicating the degree of use is displayed" (8th Wonder manual
  * p. 27), traded for four misc cells that fit one line at every ui scale. The per-slot plus/arrows/cross
  * glyphs are an approximation of the original's hand buttons described on the same page.
  */

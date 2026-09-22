@@ -9,18 +9,17 @@ import { SFX_GAIN } from './events.js';
 
 /**
  * The creatures' own voices, none of them a sim event: a settler answering the player's order, the idle
- * natter of the humans on screen, and the animals' calls. Byte evidence throughout is the owned macOS
- * `the original` (`CE2HumanSoundManager`, `CE2AnimalSoundManager`), the tables the mod's `humans/sounds.cif`
- * and `animals/sounds.ini`.
+ * natter of the humans on screen, and the animals' calls. Rules follow the original's behavior; the
+ * tables are the mod's `humans/sounds.cif` and `animals/sounds.ini`.
  */
 
 /**
  * The die a generic human voice rolls each game tick: a tribe-and-class pool speaks when
  * `random * GENERIC_ROLL_RANGE < drawn count`, so ten men on screen natter about once every 17 seconds at
- * 12 ticks a second and a crowd of two hundred every second (`PlayGenericSounds`: `rand() % 2000`).
+ * 12 ticks a second and a crowd of two hundred every second (the original rolls `rand() % 2000`).
  */
 export const GENERIC_ROLL_RANGE = 2000;
-/** The die an animal call rolls each game tick against its `probability` (`PlayAnimalSounds`: `rand() % 1000`). */
+/** The die an animal call rolls each game tick against its `probability` (the original rolls `rand() % 1000`). */
 export const ANIMAL_ROLL_RANGE = 1000;
 /**
  * Most game ticks one frame rolls for: a long hitch or a fast-forward advances more, but the original

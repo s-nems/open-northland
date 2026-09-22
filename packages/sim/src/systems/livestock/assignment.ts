@@ -53,7 +53,7 @@ export const LIVESTOCK_GRAZE_RANGE_NODES = 7;
 
 /** How far (node Manhattan) a farm's animal may drift from the farm door before it is walked home. The
  *  original replaces a house-attached animal's own territory with a leader distance of 15 map points
- *  (the original 0x42e968), read here on the node lattice like every other animal radius. */
+ *  in the original, read here on the node lattice like every other animal radius. */
 export const FARM_HERD_LEASH_NODES = 15;
 
 /** How far a claimed animal no farm holds may drift from its spot by the headquarters. Overrides the
@@ -74,7 +74,7 @@ export function livestockLeashOf(world: World, ctx: SystemContext, e: Entity): n
  * held by no farm, onto a spot ringing its player's base door. An idle animal beyond its leash walks back
  * to a spot beside that door; inside the leash the grazing drive takes over.
  *
- * Source basis: a house-attached animal keeps to its work house's door (the original 0x45ff71); the
+ * Source basis: a house-attached animal keeps to its work house's door in the original; the
  * headquarters fallback and the ring of home spots are observed original behaviour. Determinism:
  * canonical member order, with disjoint per-door groups. No-ops in a mapless sim.
  */

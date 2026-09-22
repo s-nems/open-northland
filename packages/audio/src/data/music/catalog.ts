@@ -1,6 +1,6 @@
 /**
  * Which rendered segments each `DM_MUSIC_TYPE_*` map code may play. Codes from the owned copy's
- * `logicdefines.inc`. The variant sets come from the segment-name pointer table in `the original`: it
+ * `logicdefines.inc`. The variant sets follow the original's segment-name table: it
  * gives every `Theme_*` and `Mission_*` code three mood slots and one `Attack_*` code a single slot,
  * and repeats the `Standard` name in all three slots of a mission that authored no other segment.
  */

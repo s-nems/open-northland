@@ -199,7 +199,7 @@ const DEFAULT_POLICY: Readonly<Record<HomeQualityEffect, boolean>> = {
 };
 
 /** Burn the sacred fire once per game second in every eligible finished home. A remainder smaller than
- * one use stays in the pool, matching an original routine. */
+ * one use stays in the pool, as in the original. */
 export function drainHolyOil(world: World, ctx: SystemContext): void {
   if (ctx.tick % TICKS_PER_SECOND !== 0) return;
   const oil = homeQualityUseFor(ctx, 'piety');

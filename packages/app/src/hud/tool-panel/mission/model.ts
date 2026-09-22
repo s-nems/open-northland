@@ -4,9 +4,8 @@ import { uiScaleFor } from '../../ui-scale.js';
 /**
  * The mission window's geometry: a 500×420 window centred on the screen over the papyrus sheet, its
  * title bar and closer, three tabs, the text viewport, and the Up/Down buttons under it. The strings
- * (`miscwindow` 60-63, 66), the sheet and the history book come from the owned copy; the rects follow
- * a analysis reading of the engine build's element construction, unconfirmed against the running
- * original.
+ * (`miscwindow` 60-63, 66), the sheet and the history book come from the owned copy; the rects are
+ * unconfirmed against the running original.
  */
 
 export const MISSION_WINDOW_W = 500;
@@ -98,7 +97,7 @@ export interface MissionWindowLayout {
   readonly viewport: Rect;
   /** The wrap width the text runs take (design px, pre-scale). */
   readonly wrapWidth: number;
-  /** The briefing page's viewport: the whole content element (`an original routine`). */
+  /** The briefing page's viewport: the whole content element. */
   readonly pageViewport: Rect;
   readonly pageWrapWidth: number;
   readonly scrollUp: Rect;

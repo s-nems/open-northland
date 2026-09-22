@@ -117,16 +117,15 @@ export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
 }
 
 /**
- * Whether a menu lists the map at all. Source basis: the original's multiplayer map-list build
- * (the original) takes a map whose type flags are empty or carry `MULTI_PLAYER_FREE`, then, from
- * the user-map root, empty or `USER_MULTI_PLAYER_FREE`; the two sections are one list here, since
- * an item does not carry its root. Its single-player free-game list takes the free types plus a
- * multiplayer map without `mapmultiplayeronly` (observed in the another original build; the untyped case is
- * carried over from the multiplayer rule). Neither list takes `SINGLE_PLAYER_CAMPAIGN`: the
- * original reaches such a map only through its `mapcampaignid` pair, and in the symbolised macOS
- * build that lookup's one caller is `SubMap_StartSubMap`, reached from mission-goal evaluation, so
- * a sub-mission starts from its parent map's script and never from a menu. Approximation:
- * `SINGLE_PLAYER_DEMO` is listed nowhere, its menu being unobserved.
+ * Whether a menu lists the map at all. Source basis: the original's multiplayer map-list build takes a
+ * map whose type flags are empty or carry `MULTI_PLAYER_FREE`, then, from the user-map root, empty or
+ * `USER_MULTI_PLAYER_FREE`; the two sections are one list here, since an item does not carry its root.
+ * Its single-player free-game list takes the free types plus a multiplayer map without
+ * `mapmultiplayeronly` (the untyped case is carried over from the
+ * multiplayer rule). Neither list takes `SINGLE_PLAYER_CAMPAIGN`: the original reaches such a map only
+ * through its `mapcampaignid` pair, and that lookup's one caller is the sub-map start reached from
+ * mission-goal evaluation, so a sub-mission starts from its parent map's script and never from a menu.
+ * Approximation: `SINGLE_PLAYER_DEMO` is listed nowhere, its menu being unobserved.
  */
 export function listedIn(item: MapSelectItem, listing: MapListing): boolean {
   if (item.kind === 'scene') return listing === 'single';

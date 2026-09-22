@@ -56,7 +56,7 @@ export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer
 
 /**
  * One `[GfxHouse]` sign-post anchor: `GfxFlagPoint <sizeIdx> <x> <y>`, where a building's
- * occupancy/construction sign chain stands. The key sits in `the original`'s `[GfxHouse]` key list and the
+ * occupancy/construction sign chain stands. The original reads it as a `[GfxHouse]` key and the
  * values come from the mod's plaintext `houses.ini`. Reading `x y` as screen pixels from the building
  * bob's draw anchor, +y down, is an approximation inferred from the sibling pixel keys' grammar.
  */

@@ -2,11 +2,10 @@ import type { OneShot } from './types.js';
 
 /**
  * The engine's hardwired cues, played centred at full volume outside the `soundfx.cif` groups. The two
- * GUI clicks answer an input event straight away (byte evidence, `the original`: `an original routine`
- * / `FXTool_Fail`, a pressed button or an accepted world action confirms, a cancelled tool fails); the
- * lobby rings `chat` when another player's line arrives (`FXTool_Chat`); a map script's `PlayCutscene`
- * opens the briefing with `briefing` and its `StartEarthQuake` rumbles `earthquake`
- * (`an original routine`). All play at volume 100 where the static groups author 80.
+ * GUI clicks answer an input event straight away (a pressed button or an accepted world action confirms,
+ * a cancelled tool fails); the lobby rings `chat` when another player's line arrives; a map script's
+ * `PlayCutscene` opens the briefing with `briefing` and its `StartEarthQuake` rumbles `earthquake`.
+ * All play at volume 100 where the static groups author 80.
  */
 export type UiCue = 'confirm' | 'fail' | 'chat' | 'briefing' | 'earthquake';
 

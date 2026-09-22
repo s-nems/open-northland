@@ -13,11 +13,10 @@ component. Two readers then disagree about what that settler holds:
 - `walkStepModifiersOf` (`systems/movement/walk-cost.ts`) falls back to
   `weaponByTribeAndGoodType`, so the same wearer is encumbered by the weapon it cannot swing.
 
-Owned `the original` `an original routine` (an original address) writes `this->WeaponType`
-unconditionally and only *additionally* flips `JobType` when the human is inside the soldier bands
-(`JobType - 31 < 11` or `JobType - 42 < 6`). `Equipment_GetWeaponType` (an original address) returns that one
-field, which both `WalkSpeed_GetMoveSpeed` and the combat path read. So the engine has a single weapon
-identity for every wearer, and the job flip is the soldier-only part.
+In the original, equipping a weapon sets the human's weapon type unconditionally and only
+*additionally* flips its job when the human is inside the soldier bands (`job - 31 < 11` or
+`job - 42 < 6`). Walk speed and combat both read that one weapon type. So the engine has a single
+weapon identity for every wearer, and the job flip is the soldier-only part.
 
 ## Scope
 

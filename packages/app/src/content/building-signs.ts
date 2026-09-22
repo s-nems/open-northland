@@ -14,11 +14,11 @@ import { type GatheringNodeRef, nodeRefFrom } from './resource-gfx/refs.js';
  * garrison flag's star ladder into the per-player {@link BuildingSignGfx} the render badge and
  * construction-sign layers draw.
  *
- * Source basis: the record names are the ones `the original` references and `landscapes.cif` binds per player
- * (`playerNN ...`); the banner→family-state and carrier→pennant assignments are observed original
- * behavior pending an in-game recheck (signs 01-04 all bind the same disc bob, so the disc for workers is
- * the only readable choice). Named approximations: each residence banner authors an 8-frame wave loop and
- * is drawn as a still, and the records' `ls_temp_s` shadow twin is not loaded.
+ * Source basis: the record names are the ones the original references and `landscapes.cif` binds per
+ * player (`playerNN ...`); the banner→family-state and carrier→pennant assignments are observed
+ * original behavior pending an in-game recheck (signs 01-04 all bind the same disc bob, so the disc
+ * for workers is the only readable choice). Named approximations: each residence banner authors an
+ * 8-frame wave loop and is drawn as a still, and the records' `ls_temp_s` shadow twin is not loaded.
  */
 
 /** The `[GfxLandscape]` record name suffix each sign kind resolves (prefixed `playerNN `). */

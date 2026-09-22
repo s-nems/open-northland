@@ -9,8 +9,8 @@ export const AI_DECISION_INTERVAL_TICKS = 24;
 
 /**
  * The scripted handlers' round-robin. Byte evidence: the original's AI manager gives each seat's
- * handler one turn per 60 ticks, seat `p` on tick `3p` of the round (the the original's
- * `an original routine`), and hands it the round's index as its turn number.
+ * handler one turn per 60 ticks, seat `p` on tick `3p` of the round, and hands it the round's index as its
+ * turn number.
  */
 export const AI_HANDLER_ROUND_TICKS = 60;
 const AI_SEAT_TURN_TICKS = 3;

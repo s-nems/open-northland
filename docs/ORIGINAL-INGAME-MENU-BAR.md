@@ -13,9 +13,8 @@ worth keeping into the owning reference or a test before then.
 ## Executive summary
 
 The original creates nine window buttons, a game-speed button, and a separate message-priority
-button. The mapping is unambiguous: `an original routine` assigns messages `0xf3c` through
-`0xf47`, and `an original routine` dispatches them
-to specific window classes.
+button. The mapping is unambiguous: the original assigns the buttons messages `0xf3c` through
+`0xf47` and dispatches each one to a specific window.
 
 The largest functional differences in Open Northland are:
 
@@ -25,34 +24,25 @@ The largest functional differences in Open Northland are:
 - **Statistics** shows a small diagnostic summary instead of the original charts and lists.
 - **Diplomacy** displays relations and permits tribute payments, but cannot change the player's
   attitude toward another nation.
-- **Mission** forcibly pauses the local game. No corresponding pause operation appears in the
-  checked original-game paths.
+- **Mission** forcibly pauses the local game. The original is not known to pause here
+  (unconfirmed against the running original).
 
 ## Sources and confidence
 
-The sources used, from strongest to weakest, are:
+The readable sources used are:
 
-1. The symbol-bearing the original in analysis, `/8th Wonder/the original`. The main functions are
-   `an original routine` (`an original address`),
-   `an original routine` (`an original address`), and
-   `an original routine` (`an original address`).
-2. Symbols in the native arm64 `MacOS 8th Wonder/the original` binary, confirming the classes and
-   function boundaries. The corresponding addresses are `an original address`, `an original address`, and
-   `an original address`.
-3. The Polish and English `ingamegui` tables from the owned game copy, decoded locally as
+1. The Polish and English `ingamegui` tables from the owned game copy, decoded locally as
    `content/gui/strings/{pol,eng}.json`. They supply the original tooltips, titles, tabs, and
    labels.
-4. Chapters 9.5–9.6 and the shortcut appendix in the complete manual, pages 31–35
+2. Chapters 9.5–9.6 and the shortcut appendix in the complete manual, pages 31–35
    ([online manual copy](https://www.scribd.com/document/978738232/Cultures-4-Manual)). The shorter
-   macOS manual also confirms the Assistant's role
+   manual of a later edition also confirms the Assistant's role
    ([PDF](https://cdn1.macgamestore.com/d2/manuals/cultures-wonders-manual.pdf)).
-5. `research notes/Source/an original routine/CGuiManager.cs`, used as an independent
-   cross-check. Under the project's [source policy](SOURCES.md), it is not standalone evidence of
-   behavior.
 
-**Confirmed** means the handler, text tables, and manual agree. **Code reading** means the behavior
-is visible in a handler or constructor but is not described in the manual. **Requires observation**
-marks a detail that should be checked in a running copy of the original.
+**Confirmed** means the original's behavior, text tables, and manual agree. **Unconfirmed** means
+the behavior is attributed to the original but is not described in the manual and has not been
+checked against the running original. **Requires observation** marks a detail that should be
+checked in a running copy of the original.
 
 ## Geometry and order
 
@@ -94,17 +84,17 @@ main windows, and they belong to the “large windows” group. Opening one:
 3. resets the active input mode;
 4. creates one instance of the selected window.
 
-The ten-element array used by `MiscWindows_CloseAllLargeOnes` confirms this: `0x7d8`, `0x7d9`,
+The original's large-window group has ten window identifiers: `0x7d8`, `0x7d9`,
 `0x7e3`–`0x7e9`, and `0x7da`, the network window. The construction selector has the separate
 identifier `0x7db` and is not part of this array.
 
-No pause call was found in the mission window's open path, constructor, or event handler. Opening
-a regular menu window should not itself pause the simulation. This finding has **code reading**
-confidence and should ultimately be checked against a running copy of the original.
+The original's mission window is not known to pause the game when it opens. Opening a regular
+menu window should not itself pause the simulation. This finding is **unconfirmed** and should
+ultimately be checked against a running copy of the original.
 
 ## Buttons and windows
 
-### 1. Construction: `CConstructionSelectionWindow`
+### 1. Construction
 
 **Shortcut:** `B`. **Status:** confirmed.
 
@@ -118,8 +108,8 @@ The window lists buildings the player can currently construct. It has five filte
 
 Selecting a building row enters placement mode for that building type. The original shows the
 required materials and has an information button that opens the building's Help page. The bottom
-row starts separate construction modes for roads, stockades, and gates. The handler binds these to
-input modes `0x0e`, `0x10`, and `0x12`, respectively.
+row starts separate construction modes for roads, stockades, and gates. The original binds these
+to input modes `0x0e`, `0x10`, and `0x12`, respectively.
 
 The same window has a **Use Permit** variant. The owned paper limits the list in this mode, and a
 selection starts the prepaid construction. The regular variant also links to the Papers tab in
@@ -130,7 +120,7 @@ confirmed with the right mouse button. A current implementation comment describe
 placement. This detail **requires observation** because the manual and the current assumption
 disagree.
 
-### 2. Extras: `CGlobalGameSettingsWindow`
+### 2. Extras
 
 **Shortcuts:** `E` opens the window, `Shift+A` opens Assistant, and `Shift+B` opens Papers.
 **Status:** the division and primary actions are confirmed; exact counter layout requires
@@ -149,7 +139,7 @@ The window has two functions:
 Assistant interactions send the network command `Update assistant` (`133`). They change
 simulation state rather than a local interface preference.
 
-### 3. Mission: `CMissionInfoWindow`
+### 3. Mission
 
 **Menu shortcut:** the manual lists no dedicated shortcut. **Status:** confirmed.
 
@@ -163,7 +153,7 @@ It has up/down scrolling and previous/next task controls for the history. Briefi
 in the saved game. Opening the window from the bar uses `missionId = -1`, meaning the current
 mission context; scripts can instead open a specific page.
 
-### 4. Diplomacy: `CDiplomacyWindow`
+### 4. Diplomacy
 
 **Shortcut:** `F5`. **Status:** confirmed.
 
@@ -179,10 +169,9 @@ tribute offer: required goods, available warehouse quantities, and the payment a
 workplaces or homes do not count toward an available tribute.
 
 The manual also describes an overview map with nation positions in this window. Its precise layout
-still needs visual confirmation in the running original; the classes and strings confirm the other
-actions.
+still needs visual confirmation in the running original; the strings confirm the other actions.
 
-### 5. Statistics: `CStatisticsWindow`
+### 5. Statistics
 
 **Shortcut:** `F6`. **Status:** confirmed.
 
@@ -198,10 +187,9 @@ The top tabs choose the data set:
 
 Individual chart series can be enabled or disabled. An entry's color matches its plotted line, and
 its current value appears beside it. The window shows elapsed game time and supports chart ranges
-of 1, 2, 5, or 10 hours, as confirmed by `timeScaleArray` in `an original routine`. Statistics data
-and the window setting are persisted by `IO_Savegame_Save/Load`.
+of 1, 2, 5, or 10 hours. Statistics data and the window setting are persisted in saved games.
 
-### 6. Subjects: `an original routine`
+### 6. Subjects
 
 **Shortcut:** `F7`. **Status:** confirmed.
 
@@ -219,7 +207,7 @@ window can also select everyone on the filtered list. A separate profession-sele
 supports the “Profession” and “Possible profession” filters. The selected filter and list state
 participate in saved games.
 
-### 7. Technology Tree: `CTechTreeWindow`
+### 7. Technology Tree
 
 **Shortcut:** `F8`. **Status:** confirmed.
 
@@ -232,7 +220,7 @@ a required profession, item, preceding profession, or experience level in a part
 Clicking a building, item, or profession displays its description. The information button opens
 the corresponding Help page.
 
-### 8. Options: `COptionsWindow`
+### 8. Options
 
 **Shortcut:** `F2`; `F3` opens Load directly, and `F4` opens Save directly. **Status:**
 confirmed.
@@ -250,7 +238,7 @@ This is more than a pause menu. The original window has six tabs:
 Some hardware options are historical. A redesign can map them to settings supported by the modern
 engine, but the button's functional scope includes settings, save/load, restart, and quit.
 
-### 9. Help: `CHyperLinkTextWindow`
+### 9. Help
 
 **Shortcut:** `F1`. **Status:** confirmed.
 
@@ -272,7 +260,7 @@ and Technology Tree use this behavior.
 Clicking the button cycles `×1 → ×2 → ×3 → ×1`. The network command stores internal values
 `12`, `24`, and `36`. Pause is a separate state and changes the graphic to `0x36`; graphics
 `0x31`, `0x34`, and `0x35` represent the three active speeds. Clicking the button while paused
-makes the original handler select `×1`, rather than restoring the previous speed.
+makes the original select `×1`, rather than restoring the previous speed.
 
 The tooltip is dynamic: it contains the original “Game Speed” label and current multiplier.
 
@@ -293,9 +281,9 @@ automatically removed after two minutes.
 
 ## Minimap and large overview map
 
-The large overview map is not an eleventh vertical-bar button. `Desktop_Open` permanently creates
-a small `CWorldOverviewStaticGuiWindow` in the lower-left corner. Its globe button sends `0xf45`
-and opens `CWorldOverviewWindowLarge`.
+The large overview map is not an eleventh vertical-bar button. The original permanently creates
+a small overview window in the lower-left corner. Its globe button sends `0xf45` and opens the
+large overview map.
 
 The minimap:
 
@@ -317,7 +305,7 @@ The table describes `main` at revision `13662beab` (2026-09-16).
 | --- | --- | --- | --- |
 | Construction | Opens a building list and placement mode | Roads, stockades, gates, costs, and Help link are missing; placement confirmation still needs checking | High |
 | Extras | Assistant and Papers work | The row set and geometry are explicitly approximate; some paper types remain display-only | Medium |
-| Mission | Task, Objectives, and History work | It forces a pause absent from the checked original path | High |
+| Mission | Task, Objectives, and History work | It forces a pause the original is not known to have | High |
 | Diplomacy | Shows relations and permits tribute payment | Changing the player's attitude and the original nation map are missing | High |
 | Statistics | Shows diagnostic HUD rows; clicking anywhere closes it | The entire window serves a different purpose | Critical |
 | Subjects | No action | The entire list, filters, selection, and camera centering are missing | Critical |
@@ -334,7 +322,7 @@ and the menu-bar geometry is in
 
 ## Details requiring a short original-game session
 
-The code and manual are sufficient for redesigning the information architecture. Before reproducing
+The documented behavior and manual are sufficient for redesigning the information architecture. Before reproducing
 the interactions exactly, one controlled session in the original should establish:
 
 - whether the left or right mouse button confirms building placement in the project's reference

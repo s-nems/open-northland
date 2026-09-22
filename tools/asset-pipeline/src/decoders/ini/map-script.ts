@@ -146,7 +146,7 @@ const RELATION_FLAG_KINDS: Readonly<Record<string, MapScript['relationFlags'][nu
 
 /** A `[playermisc]` `relation* <a> <b>` line to a row, or undefined for any other line or a malformed
  *  one. A missing second slot reads 0, as the loader's integer read returns 0 at the end of the line
- *  (owned `the original` 0x424a9a): the corpus's five single-slot `relationhide` lines pair with player 0. */
+ *  in the original: the corpus's five single-slot `relationhide` lines pair with player 0. */
 function relationFlagRow(p: RuleProp): MapScript['relationFlags'][number] | undefined {
   const kind = RELATION_FLAG_KINDS[p.key];
   const [aRaw, bRaw] = p.values;
@@ -201,7 +201,7 @@ const HAI_MODULE_KEYWORDS: Readonly<Record<string, MapAiModule>> = {
 };
 
 /** Ticks per authored minute and per authored second: the loader's own conversions of `OnTime` and
- *  `OnConditionChangeDelayed` arguments (byte evidence: `an original routine`). */
+ *  `OnConditionChangeDelayed` arguments in the original. */
 const TICKS_PER_MINUTE = 720;
 const TICKS_PER_SECOND = 12;
 

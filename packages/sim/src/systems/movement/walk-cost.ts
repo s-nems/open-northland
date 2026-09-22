@@ -17,8 +17,7 @@ import { isHeroJob } from '../readviews/jobs.js';
 
 /**
  * How many ticks a human's step from one lattice node to the next takes, the original's per-step move
- * cost. Source basis (macOS `the original` symbols, `an original routine` and the
- * `an original routine` accumulator it feeds): a step starts when the walker leaves a node,
+ * cost. Original behavior: a step starts when the walker leaves a node,
  * reads that node's `lmpr` roughness, and completes after exactly `cost` ticks, where
  *
  *   cost = 2 * roughness + 2 + (shoes ? 0 : 2) + (carrying a good ? 1 : 0) + (stamina <= 2000 ? 2 : 0)
@@ -26,8 +25,8 @@ import { isHeroJob } from '../readviews/jobs.js';
  *   cost = max(3, cost)
  *
  * Before script flags: subtract the tribe/job reduction, double for a baby or add two for a child,
- * then add floor(combined equipment weight / 2), except for heroes. the original bytes at
- * 0x1001164ab–0x10011653a confirm that order. Speed amulets remain unimplemented (see amulet ticket).
+ * then add floor(combined equipment weight / 2), except for heroes. Byte evidence
+ * confirms that order. Speed amulets remain unimplemented (see amulet ticket).
  * Turning is paced separately; navigation still chooses this sim's routes, not the original's paths.
  */
 export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {

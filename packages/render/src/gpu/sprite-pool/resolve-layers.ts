@@ -140,7 +140,7 @@ export function resolveLayers(
 }
 
 /**
- * Resolve one layer per fish in the authored stock. analysis establishes the observable contract: the
+ * Resolve one layer per fish in the authored stock. In the original the
  * renderer loops over the swarm count, moves each fish independently on sinusoidal paths and selects
  * its directional bob from velocity. `fishPoint` deliberately approximates those paths with our own
  * deterministic curves, keeping presentation motion out of the simulation.

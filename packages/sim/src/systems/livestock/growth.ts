@@ -3,7 +3,7 @@ import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 
 /** How long a bred animal stays young: the original promotes a `baby_animal` to `adult_animal` at age
- *  3600 game ticks (the original 0x42d68a), counted from its birth. */
+ *  3600 game ticks, counted from its birth. */
 export const ANIMAL_ADULT_AGE_TICKS = 3600;
 
 /**

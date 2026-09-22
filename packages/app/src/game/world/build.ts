@@ -32,7 +32,7 @@ export interface MapScriptWorld {
 /**
  * A map's start stance table: `rows`, then `neutral` for every ordered pair of roster players they
  * leave unset. The original's loader fills an unset pair of existing players with neutral after it
- * reads `[playerdata]` (owned `the original` 0x409003), so two seats a map never names neither fight
+ * reads `[playerdata]`, so two seats a map never names neither fight
  * nor ally. A world without a roster keeps the sim's everyone-hostile default.
  */
 export function withNeutralRosterPairs(

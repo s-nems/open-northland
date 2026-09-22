@@ -3,7 +3,7 @@
 **Area:** sim, app · **Priority:** P2
 
 Mission execution and tributes are implemented, but several runtime semantics in MISSIONS.md
-remain readings or approximations rather than observations of the owned executable.
+remain readings or approximations rather than observations of the running original.
 
 ## Scope
 

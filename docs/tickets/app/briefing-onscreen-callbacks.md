@@ -6,17 +6,16 @@ Briefing pages carry `<onscreencallback:kind,a,b>` tags (13,793 in the CnMod cor
 1001, 172 of kind 1000, 44 of kind 2000). The decoder drops them, so opening a briefing never moves
 the main view to what the text describes.
 
-In the original the tag is a line entity (`an original routine`, token
-`oscb`); `an original routine` hands its three integers to the window when the entity is
-drawn, and `an original routine` acts on them once while
-a one-shot flag (`CMissionInfoWindow+0x1c1`) is clear: 1000 centres the main display on half-cell node
+In the original the tag is a line entity (token `oscb`) that hands its three integers to the
+mission window when the entity is drawn, and the window acts on them once while a one-shot flag is
+clear: 1000 centres the main display on half-cell node
 (a, b); 1001, 1002 and 1003 centre it on the average position of the humans, vehicles or houses stamped
 with mission id `a`; 2000 plays `<map>\SFX\<lang>\NNNN.wav` (no map in the corpus ships one).
 
 ## Scope
 
-- Investigate first: where the one-shot flag is cleared (page open, page change or window open), from
-  the the original analyse.
+- Investigate first: where the original clears the one-shot flag (page open, page change or window
+  open).
 - Keep the tag in the page data at its line position, and fire it from the mission window when its
   line scrolls into the viewport, honouring the one-shot flag.
 - Kinds 1000-1003 move the camera through the existing camera seam; kind 2000 stays unimplemented

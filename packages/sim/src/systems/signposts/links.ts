@@ -6,10 +6,9 @@ import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/in
 /**
  * Link a post that just rose to every same-player post inside {@link SIGNPOST_LINK_RANGE_NODES} that
  * walkable ground joins it to, on both sides. Source basis: the original floods the ground around a new
- * guide and connects every own guide the flood reaches inside the range (macOS symbols
- * `an original routine`). Approximations: the flood crosses static terrain only,
- * where the original's also stops at standing buildings and is re-run on map edits; a post keeps every
- * link, where the original holds at most eight.
+ * guide and connects every own guide the flood reaches inside the range. Approximations: the flood
+ * crosses static terrain only, where the original's also stops at standing buildings and is re-run on map
+ * edits; a post keeps every link, where the original holds at most eight.
  */
 export function settleSignpostLinks(world: World, terrain: TerrainGraph, post: Entity): void {
   if (world.get(post, Signpost).links.length !== 0) throw new Error(`signpost ${post} is already linked`);

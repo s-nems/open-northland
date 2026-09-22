@@ -7,13 +7,11 @@ counted action no matter what the data says. `accrueTrack` (`packages/sim/src/sy
 experience.ts`) stores `experienceFactor * units`, and `experienceRepeats`
 (`packages/sim/src/systems/progression/bonus.ts`) divides the same factor back out before the curve.
 
-The original treats the field as a speed multiplier. Byte evidence from the the original
-(`/8th Wonder/the original`): `an original routine` adds a flat `+1` to the raw counter, and every
-reader - `JobEfficiency_CalculateExperienceFactor`, `an original routine`,
-`an original routine` - computes the curve input as
-`(record.experiencefactor * rawCounter) / 100`, truncated to a multiple of 100. The record's default
-`experiencefactor` is `100` (the loader pre-fills offset 0x38 with `0x64`), which is the rate the
-repository's behaviour silently assumes for every track.
+The original treats the field as a speed multiplier. Byte evidence: experience gain adds a flat
+`+1` to the raw counter, and every reader (experience factor, output amount, needed work repeats)
+computes the curve input as `(record.experiencefactor * rawCounter) / 100`, truncated to a multiple
+of 100. The record's default `experiencefactor` is `100`, which is the rate the repository's
+behaviour silently assumes for every track.
 
 Consequence with the shipped data: the builder's general track (factor 5) should need 20 completed
 works per repeat and needs 1; `soldier general` (factor 1) should need 100 hits per repeat and needs
@@ -30,8 +28,8 @@ costs `100 / experienceFactor` counted actions. Rewrite the encoding paragraph i
 [PROGRESSION.md](../../formats/PROGRESSION.md), which currently describes the cancelling encoding as
 the contract.
 
-Settle both record defaults in the same change, since the same constructor writes them as one 8-byte
-init at `rec+0x38`: `experienceFactor` defaults to `0` here and to `100` there (decide whether a
+Settle both record defaults in the same change, since the original initializes them together:
+`experienceFactor` defaults to `0` here and to `100` there (decide whether a
 factor-0 track should accrue nothing), and `workRepeatsFor`
 (`packages/sim/src/systems/progression/experience.ts`) falls back to `1` stroke where the record
 default is `10`. Only `hunter general`, `farmer wheat` and `fisher general` state

@@ -17,9 +17,8 @@ import { isBuilt, ownedSettlers } from '../ai-player/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob } from '../readviews/index.js';
 
-// The condition slots of one seat's program: the readings of the the original's
-// `an original routine`, `Condition_RecheckAll`,
-// `Condition_IsActive` and `an original routine` (`docs/formats/MISSIONS.md`, AI data).
+// The condition slots of one seat's program, as the original's scripted AI handler reads them
+// (`docs/formats/MISSIONS.md`, AI data).
 
 /** The two fixed condition references a task or an `OnConditions` slot may name instead of a slot. */
 export const CONDITION_ALWAYS = 100000;

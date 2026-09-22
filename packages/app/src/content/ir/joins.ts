@@ -308,8 +308,8 @@ export interface TribeJobSeqs {
 /**
  * The jobs a `(tribe, job)` clip lookup falls through, in order: each of `jobs`, then its `jobtypes.ini`
  * `baseJob` chain (hero → soldier class → unarmed soldier → civilist). That is the parent walk the
- * original's bob update takes when a job authors no record of its own (byte evidence:
- * `an original routine`, the original an original address). A repeated job stops the walk.
+ * original's bob update takes when a job authors no record of its own (byte evidence from the
+ * original). A repeated job stops the walk.
  */
 function clipLookupChain(ir: ContentIr | null, jobs: readonly number[]): number[] {
   const baseOf = new Map<number, number>();
@@ -339,7 +339,7 @@ function clipLookupChain(ir: ContentIr | null, jobs: readonly number[]): number[
  * shortbow's - so a look that cannot draw the transcribed viking clip takes the answer its own tribe gives.
  *
  * Approximation: where a job authors several records for one action, the original rolls among them at
- * each play (`an original routine`, the original an original address); here they
+ * each play; here they
  * stay in file order and the consumer plays the first its body draws.
  */
 export function tribeJobSeqs(ir: ContentIr | null, tribe: number, jobs: readonly number[]): TribeJobSeqs {

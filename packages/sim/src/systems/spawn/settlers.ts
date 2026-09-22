@@ -208,8 +208,8 @@ function toEquipmentSlot(input: SettlerEquipmentSlot | null | undefined): Equipm
 
 /**
  * The spawn's equipment, with a soldier's class weapon good in the weapon slot when the spawn leaves that
- * slot unnamed; an explicit `null` slot stays empty. Source basis: `an original routine` sets the class weapon of
- * each spear, sword and bow soldier it creates, so a chest, mission or AI recruit stands up holding it. The
+ * slot unnamed; an explicit `null` slot stays empty. Original behavior: a created spear, sword or bow soldier
+ * gets its class weapon, so a chest, mission or AI recruit stands up holding it. The
  * good is the `weapons.ini` `goodtype` of the (tribe, job) record combat already fights with.
  */
 function withSoldierClassWeapon(content: ContentSet, spec: SettlerSpec): SettlerEquipment | undefined {

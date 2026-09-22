@@ -70,9 +70,9 @@ export function planFisher(plan: PlannerContext): boolean {
 }
 
 /**
- * analysis's `FindShorePointForFishing` searches outward from the fisher and retains at most eight reachable
- * land points beside water. We do that scan once per fisher, then pick its canonical nearest result rather
- * than the original's random candidate.
+ * The original's shore search for fishing searches outward from the fisher and retains at most eight
+ * reachable land points beside water. We do that scan once per fisher, then pick its canonical nearest result
+ * rather than the original's random candidate.
  */
 function nearbyFishingTargets(
   plan: PlannerContext,
@@ -175,7 +175,7 @@ function workplaceCanBankCatch(plan: PlannerContext, goodType: number): boolean 
 }
 
 /**
- * Cast attempts needed for one catch. analysis's `an original routine` subtracts up to
+ * Cast attempts needed for one catch. The original's needed-retries calculation subtracts up to
  * five retries along the shared experience curve; for the authored fisher base of five this yields
  * 5 attempts as a novice and 1 once experienced. Tools are intentionally omitted until fishing rods are
  * simulated.

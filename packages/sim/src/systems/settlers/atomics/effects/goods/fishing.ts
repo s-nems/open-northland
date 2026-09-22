@@ -16,9 +16,8 @@ type RunningAtomic = NonNullable<(typeof CurrentAtomic)['__value']>;
 type FishingEffect = Extract<RunningAtomic['effect'], { kind: 'fish' }>;
 
 /**
- * Advance cast -> failed retry -> cast, then finish on the caught/failed result clip. Source basis:
- * owned `the original` analysis functions `an original routine`, `Fisher_TryToCollect`,
- * `Fisher_Collect`, and `an original routine` (atomics 36/38 retries, then 37 on success).
+ * Advance cast -> failed retry -> cast, then finish on the caught/failed result clip. Original
+ * behavior: atomics 36/38 on each retry, then 37 on success.
  */
 export function advanceFishingAtomic(
   world: World,

@@ -19,7 +19,7 @@ function typesAt(level: MessagePriorityLevel, jobType: number | null): UserMessa
   return ALL_TYPES.filter((t) => messagePriority(t, jobType) === level);
 }
 
-describe('user message priority (byte evidence the original 0x4b29fc / the original 0x4b3419)', () => {
+describe('user message priority (original behavior)', () => {
   it('covers every one of the 63 types with one of the three levels', () => {
     expect(ALL_TYPES).toHaveLength(63);
     expect(typesAt(2, null).length + typesAt(1, null).length + typesAt(0, null).length).toBe(63);

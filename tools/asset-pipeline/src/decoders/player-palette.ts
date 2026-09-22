@@ -8,8 +8,8 @@
  * are hue-rotated approximations with no original equivalent.
  *
  * A human carries two palettes, body and head, each from the base its record names for that half: a
- * recipe's `Patch` id 0..15 addresses body band `id`, 16..31 head band `id - 16` (`RandomPalette_Execute`
- * in the owned `the original`). The player recipes patch body bands only, so the head never wears the
+ * recipe's `Patch` id 0..15 addresses body band `id`, 16..31 head band `id - 16` (original behavior).
+ * The player recipes patch body bands only, so the head never wears the
  * team ramp.
  */
 

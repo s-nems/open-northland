@@ -63,12 +63,11 @@ function boundFarmTarget(
  * the plot is under its cap, reap a ripe field, water the least-grown field, else wait inside. Returns
  * false only for a settler that is not a field trade here.
  *
- * The rung order is the original's (`an original routine`, owned
- * the original an original routine, one routine for the farmer and the herb guy): a cut pile the house has demand
- * for, else a free plantable spot while fewer than the cap stand, else a ripe field, else the lowest
- * field. Approximations: the original picks the ripe field by worker id and the thirsty one at random
- * among the lowest, where this takes the nearest; and it keeps reaping into a full store until a flush
- * trip, where reap and carry pause while no store can take the crop.
+ * The rung order is the original's (one routine for the farmer and the herb guy): a cut pile the house has
+ * demand for, else a free plantable spot while fewer than the cap stand, else a ripe field, else the lowest
+ * field. Approximations: the original picks the ripe field by worker id and the thirsty one at random among
+ * the lowest, where this takes the nearest; and it keeps reaping into a full store until a flush trip, where
+ * reap and carry pause while no store can take the crop.
  */
 export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;

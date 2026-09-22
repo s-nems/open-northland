@@ -99,7 +99,7 @@ export interface MapWorld {
 const PLACEMENT_DRAIN_TICKS = 1;
 
 /** The tribes whose computer seats get the scripted handler alone: the original's AI manager
- *  (`an original routine`) withholds the strategic handler from a `PLAYER_TYPE_AI` seat of either. */
+ *  withholds the strategic handler from a `PLAYER_TYPE_AI` seat of either. */
 const TRIBES_WITHOUT_STRATEGIC_AI: ReadonlySet<number> = new Set([WERESNAKE_TRIBE, WEREWOLF_TRIBE]);
 
 /** Session rules and visibility are applied before the briefing can pause the world. */

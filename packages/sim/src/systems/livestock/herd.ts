@@ -32,14 +32,14 @@ import { ANIMAL_ADULT_AGE_TICKS } from './growth.js';
 
 // A farm's herd is the set of animals carrying {@link FarmAnimal} for it - the original's house
 // attachment - and its species stock rows are that set counted per species, recomputed rather than
-// banked (the original 0x46b97b zeroes the rows and re-adds one per attached animal every breeder cycle).
+// banked (the original zeroes the rows and re-adds one per attached animal every breeder cycle).
 //
 // Approximation: the original's animals also carry hunger and graze it back into hitpoints, which is
 // where a neglected herd starves. Here an animal's pool stays as it was created until a hunter or a
 // fight takes it down, so a herd needs no pasture of its own.
 
 /** How far from the farm the newborn's parent may stand (hex map points), the original's search radius
- *  for the adult a produced animal is placed beside (the original 0x46819c). */
+ *  for the adult a produced animal is placed beside. */
 const BIRTH_PARENT_RANGE = 40;
 
 /** One species' share of a farm's herd. */
@@ -148,7 +148,7 @@ export function* herdRowGoodsOf(world: World, ctx: SystemContext, farm: Entity):
 /**
  * The young animal a finished breeding cycle yields: it appears beside an adult of its species already
  * attached to `farm` and joins the herd there, as the original places a produced animal at the second
- * attached adult of the species within {@link BIRTH_PARENT_RANGE} map points (the original 0x46819c).
+ * attached adult of the species within {@link BIRTH_PARENT_RANGE} map points.
  * A pair that wandered out of range yields nothing, the inputs already spent (approximation: the
  * original's failure path is not read).
  */

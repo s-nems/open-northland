@@ -9,8 +9,7 @@ session's human and AI seats. A map's own computer seats (authored `ai`, offered
 seats in every session now, so they count; a claimable seat left idle by the lobby still does not,
 although the map puts its people in use.
 
-Byte evidence from the owned copy's `the original`, cross-read against the the original's
-`an original routine`: the engine's per-tick check loops every one of the 20 slots,
+Byte evidence from the owned copy: the engine's per-tick check loops every one of the 20 slots,
 skipping only "not in use", "already dead" and the `playerneverdies` exemption flag. Claimability is a
 lobby concept the check never sees.
 
@@ -26,7 +25,7 @@ lobby concept the check never sees.
 - A counted seat that starts with no adult man is dead at the first check, and in this build stays
   dead: the mark never lifts, the authority gate refuses the seat's orders and both AI handlers skip
   it (`systems/ai-player`, `systems/ai-program`). The original's handlers keep working for a dead seat
-  (`an original routine` and `WorkOnAI` test only the handler's enabled byte), and the
+  (they test only the handler's enabled flag), and the
   corpus relies on it: on script-victory maps the counted seats without an adult man are
   `cn_2_dni_sub` 2, 3, 4, `zdradziecka_mielizna_sub2` 2 and `specjalna_forteca` 5 (one woman). Let
   a dead seat's program and orders run, or lift the mark when the seat gains an adult man.

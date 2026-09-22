@@ -31,7 +31,7 @@ export const JINGLE_GAIN = 0.9;
 export const SFX_GAIN = 0.8;
 /**
  * Least construction progress (fixed-point fraction of ONE) at which a destroyed building crashes
- * audibly. Byte evidence (`the original`, `an original routine`): a finished house, a house
+ * audibly. Original behavior: a finished house, a house
  * in an upgrade, or a site at least half built collapses with the crash sound; a less-built site is
  * torn down silently.
  */

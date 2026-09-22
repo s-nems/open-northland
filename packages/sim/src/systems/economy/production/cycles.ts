@@ -17,7 +17,7 @@ import { livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
 /** The herd the original breeds from: exactly two grown animals of the species, no more and no fewer
- *  (the original 0x474bb2). A third adult is slaughtered instead. */
+ *  in the original. A third adult is slaughtered instead. */
 export const BREEDING_PAIR = 2;
 
 /**

@@ -8,9 +8,8 @@ import {
 } from './types.js';
 
 /**
- * Byte evidence: the per-type priority switch of the owned `the original` (VA 0x4b29fc) and the owned
- * CulturesNation `the original` (VA 0x4b3419) select the same three groups; `goodNotFound` alone branches on
- * the settler's trade.
+ * Byte evidence: the per-type priority switch of the owned game and of the owned CulturesNation mod
+ * select the same three groups; `goodNotFound` alone branches on the settler's trade.
  */
 const IMPORTANT: readonly UserMessageTypeName[] = [
   'lostWithoutSignposts',

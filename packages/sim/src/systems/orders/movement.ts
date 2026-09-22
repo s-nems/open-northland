@@ -113,7 +113,7 @@ function startPlayerWalk(
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
   // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
   // refused and the unit stays put. Approximation: the original starts the walk and lets its guided
-  // pathfinder fail it, raising the same "lost" note (the original symbols, `an original routine`).
+  // pathfinder fail it, raising the same "lost" note.
   if (confined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null && !limit.allowsNode(goal)) {
@@ -202,8 +202,8 @@ export const playerOrderSystem: System = (world, ctx) => {
     }
     if (world.tryGet(e, PathRequest)?.failed) {
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
-      // A signpost errand is the original's build-guide task, whose failure is a plain task failure
-      // (`an original routine`), never a lost note.
+      // A signpost errand is the original's build-guide task, whose failure is a plain task failure,
+      // never a lost note.
       if (!world.has(e, ErectSignpostOrder)) markLostWay(world, ctx, e);
       clearPlayerOrder(world, e);
       continue;
