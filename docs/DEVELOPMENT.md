@@ -401,9 +401,10 @@ Regenerates every committed icon and logo from the masters in `tools/brand/sourc
 web manifest icons and screenshot, Open Graph image, desktop `icon.png`/`icon.ico`/`icon.icns`, the
 README logo and the main menu lockup, all from the stacked lockup and the emblem. Edit a master, run
 the command and commit the outputs together. Sizes up to 32 px, including the favicon, come from
-`emblem-small.svg`, a flat drawing of the same shield, because the painted longship turns to mud that
-small; `emblem-mono.svg` is the single-colour ship for badges and print. The macOS `icon.icns` sets
-the emblem on a rounded square, the shape macOS expects; Windows and Linux get the bare shield. The
+`emblem-small.svg`, a flat drawing of the same shield, because the painted longship turns to mud
+that small, and 16 px from `emblem-16.svg`, the same drawing placed pixel by pixel;
+`emblem-mono.svg` is the single-colour ship for badges and print. The macOS `icon.icns` sets the
+emblem on a rounded square, the shape macOS expects; Windows and Linux get the bare shield. The
 horizontal lockup and the wordmark are kept for the website and press material; the build does not
 use them. The script fails on a master drawn up to its canvas edge, which means the generator
 cropped it.

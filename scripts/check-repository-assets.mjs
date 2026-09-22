@@ -49,9 +49,9 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/og-image.jpg',
   'packages/app/public/screenshot-wide.webp',
   'packages/app/src/assets/brand/logo-stacked.webp',
-  'packages/desktop/build/icon.icns',
-  'packages/desktop/build/icon.ico',
-  'packages/desktop/build/icon.png',
+  'packages/desktop/resources/icon.icns',
+  'packages/desktop/resources/icon.ico',
+  'packages/desktop/resources/icon.png',
 ]);
 
 const reviewRequiredExtensions = new Set([

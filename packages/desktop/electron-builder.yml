@@ -6,6 +6,8 @@ productName: OpenNorthland
 electronVersion: 44.4.3
 directories:
   output: release
+  # Installer inputs (the app icons); `build/`, electron-builder's default, reads like an output.
+  buildResources: resources
 files:
   - dist/**
   - package.json

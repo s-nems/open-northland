@@ -12,7 +12,7 @@ const ROOT = join(HERE, '..', '..');
 const SOURCE = join(HERE, 'source');
 const APP_PUBLIC = join(ROOT, 'packages/app/public');
 const APP_BRAND = join(ROOT, 'packages/app/src/assets/brand');
-const DESKTOP_BUILD = join(ROOT, 'packages/desktop/build');
+const DESKTOP_RESOURCES = join(ROOT, 'packages/desktop/resources');
 const DOCS_IMAGES = join(ROOT, 'docs/images');
 
 /** The menu's night ground; also the manifest theme colour. Mirrors the body background in index.html. */
@@ -27,6 +27,8 @@ const EDGE_ALPHA_THRESHOLD = 16;
  */
 const SMALL_EMBLEM_MAX_SIZE = 32;
 const SMALL_EMBLEM_SVG_VIEWBOX = 32;
+/** At 16 px a downscaled drawing blurs, so that size has its own drawing placed pixel by pixel. */
+const PIXEL_EMBLEM_SIZE = 16;
 
 const ICO_SIZES = [16, 32, 48, 64, 128, 256];
 /**
@@ -77,6 +79,7 @@ const WEBP = { quality: 90, alphaQuality: 100 };
 const emblemRaster = await trimmedMaster('emblem.png');
 const lockupStacked = await trimmedMaster('lockup-stacked.png');
 const smallEmblemSvg = await readFile(join(SOURCE, 'emblem-small.svg'));
+const pixelEmblemSvg = await readFile(join(SOURCE, 'emblem-16.svg'));
 /** Open Northland's own renderer, never the original game (docs/LEGAL.md); the menu shows it too. */
 const SETTLEMENT = join(ROOT, 'docs/images/settlement.webp');
 
@@ -105,6 +108,7 @@ async function trimmedMaster(name) {
 }
 
 async function smallEmblem(size) {
+  if (size === PIXEL_EMBLEM_SIZE) return sharp(pixelEmblemSvg).png().toBuffer();
   const density = (72 * size) / SMALL_EMBLEM_SVG_VIEWBOX;
   return sharp(smallEmblemSvg, { density }).resize(size, size).png().toBuffer();
 }
@@ -312,9 +316,9 @@ const screenshot = await sharp(SETTLEMENT).resize({ width: SCREENSHOT_WIDTH }).w
 await emit(APP_PUBLIC, 'screenshot-wide.webp', screenshot.data);
 await emit(APP_PUBLIC, 'site.webmanifest', webManifest(screenshot.info));
 
-await emit(DESKTOP_BUILD, 'icon.png', await paintedEmblem(DESKTOP_ICON_SIZE, ICON_PADDING));
-await emit(DESKTOP_BUILD, 'icon.ico', ico(icoEntries));
-await emit(DESKTOP_BUILD, 'icon.icns', icns(icnsSlots));
+await emit(DESKTOP_RESOURCES, 'icon.png', await paintedEmblem(DESKTOP_ICON_SIZE, ICON_PADDING));
+await emit(DESKTOP_RESOURCES, 'icon.ico', ico(icoEntries));
+await emit(DESKTOP_RESOURCES, 'icon.icns', icns(icnsSlots));
 
 await emit(
   DOCS_IMAGES,
