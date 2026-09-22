@@ -299,13 +299,13 @@
 
 .main-menu__logo {
   margin: 0;
-  font-family: Cinzel, serif;
-  font-weight: 700;
-  font-size: calc(var(--u) * 110);
-  line-height: 0.98;
-  letter-spacing: 0.01em;
-  color: var(--text-primary);
-  text-shadow: 0 0 calc(var(--u) * 60) rgba(99, 196, 160, 0.25);
+  line-height: 0;
+}
+
+.main-menu__logo img {
+  width: calc(var(--u) * 360);
+  height: auto;
+  filter: drop-shadow(0 calc(var(--u) * 8) calc(var(--u) * 24) rgba(0, 0, 0, 0.55));
 }
 
 .main-menu__version {
