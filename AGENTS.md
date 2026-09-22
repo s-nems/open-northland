@@ -117,7 +117,7 @@ File deferred work only when it is verified, actionable, valuable enough to sche
 covered. Group closely related findings. Minor observations can stay in the current report instead of
 becoming permanent tracker noise.
 
-Use the current checkout when the user authorizes it; otherwise `/worktree` provides isolation.
+Use the current checkout when the user authorizes it; otherwise work in a separate Git worktree.
 Preserve existing changes. Prior authorization to commit or integrate remains valid; do not add
 another approval round. Rebase task branches onto current target, then fast-forward; never merge
 the target into a task branch or rewrite unrelated history.

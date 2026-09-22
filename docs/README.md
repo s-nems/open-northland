@@ -17,9 +17,12 @@ behavior. Open deeper format references when the task needs their evidence.
 Other references:
 
 - [`SCENES.md`](SCENES.md): acceptance scenes for tests and human review
+- [`NETWORK.md`](NETWORK.md): multiplayer protocol, lockstep and server
 - [`LEGAL.md`](LEGAL.md): game-data, licensing, trademark rules, and acceptable evidence
 - [`GLOSSARY.md`](GLOSSARY.md): project and format terms
 - [`formats/`](formats/): notes about decoded file formats
+- [`ORIGINAL-INGAME-MENU-BAR.md`](ORIGINAL-INGAME-MENU-BAR.md): the original in-game menu bar
+- [`design/`](design/): UI design references, such as the [in-game menu](design/ingame-menu/)
 
 ## Work tracker
 
@@ -31,7 +34,7 @@ See [`tickets/README.md`](tickets/README.md) for the format.
 
 The root [`./AGENTS.md`](../AGENTS.md) is the project-wide contract for coding agents. Package-local
 files add rules for `sim`, `render`, `audio`, `app`, `data`, `desktop`,
-original-game extraction, and own-art production.
+and original-game extraction.
 
 `CLAUDE.md` only loads the nearest `./AGENTS.md`; Codex reads `./AGENTS.md` directly.
 

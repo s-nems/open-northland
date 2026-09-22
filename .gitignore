@@ -47,8 +47,8 @@ map.dat
 
 # Local agent tooling
 /.claude/
-
-/.codex/config.toml
+/.codex/
+/.mcp.json
 
 # Browser-automation artifacts (acceptance-scene verification, screenshots, console dumps).
 # Root-anchored on purpose: committed documentation images live under docs/images/ and stay tracked.
@@ -69,7 +69,7 @@ map.dat
 *.log
 npm-debug.log*
 
-# Own-art build candidates and publication transactions
+# Art build candidates and publication transactions
 /.art-build/
 **/__pycache__/
 *.blend1

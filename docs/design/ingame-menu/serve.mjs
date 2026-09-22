@@ -1,6 +1,5 @@
-// Local mockup server: repository files and the ui/foundation art sources first, then the local-only
-// review inputs (never committed).
-// Usage: node docs/design/ingame-menu/serve.mjs [port] [local-review-dir]
+// Local mockup server: repository files first, then the local-only review directories (never committed).
+// Usage: node docs/design/ingame-menu/serve.mjs [port] [review-dir...]
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, normalize, sep } from 'node:path';
@@ -8,9 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_DIR = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.argv[2] ?? 5187);
-const localDir = process.argv[3] ?? '/private/tmp/ingame-foundation';
-const ART_SOURCE_DIR = join(REPO_DIR, '../../art/ui/foundation/source');
-const roots = [REPO_DIR, ART_SOURCE_DIR, localDir];
+const localDirs = process.argv.slice(3);
+const roots = [REPO_DIR, ...localDirs];
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -51,5 +49,7 @@ createServer((request, response) => {
   });
   createReadStream(found.file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
-  console.log(`http://127.0.0.1:${port}/  repo: ${REPO_DIR}  local review inputs: ${localDir}`);
+  console.log(
+    `http://127.0.0.1:${port}/  repo: ${REPO_DIR}  local review inputs: ${localDirs.join(', ') || 'none'}`,
+  );
 });

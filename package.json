@@ -5,6 +5,12 @@
   "type": "module",
   "description": "Open-source cross-platform rebuild of Cultures - 8th Wonder of the World",
   "license": "AGPL-3.0-or-later",
+  "homepage": "https://opennorthland.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s-nems/open-northland.git"
+  },
+  "bugs": "https://github.com/s-nems/open-northland/issues",
   "workspaces": [
     "packages/*",
     "tools/*"

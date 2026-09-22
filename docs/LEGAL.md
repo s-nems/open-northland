@@ -5,7 +5,7 @@ General Public License, version 3 or later. The complete license is in [`../LICE
 
 ## Repository
 
-The repository contains no file from a *Cultures* installation and no decoded content. 
+The repository contains no file from a *Cultures* installation and no decoded content.
 `npm run check:assets` enforces that in CI: nothing under
 `content/` may be tracked, file types only the original game carries are rejected, and every tracked
 image, font, or 3D-model file must be a reviewed project asset. Review covers
@@ -22,7 +22,7 @@ artwork remains the property of its rights holders.
 
 ## Game data and builds
 
-The artwork, sounds, maps, and rules the engine currently plays come from the original game files. 
+The artwork, sounds, maps, and rules the engine currently plays come from the original game files.
 They remain the property of their rights holders whichever archive carries them.
 
 ## Project assets
@@ -37,6 +37,12 @@ Open Northland is implemented independently from the original engine. Format sup
 inspection of legally obtained data files, documented byte-level experiments, readable configuration
 semantics, standard format specifications, and observation of the running game. Project code must not
 be copied or translated from proprietary or third-party engine implementations.
+
+Where data files and observation leave a behavior open, the project may analyze a lawfully owned copy
+of the original program to the extent needed for interoperability with its data files, maps and saved
+content, as permitted by Article 6 of Directive 2009/24/EC. Such analysis only establishes facts about
+the original's behavior. Its code is never copied, translated, or reproduced in structure, and the
+results are documented as original behavior.
 
 Contributors should record the source basis for new format, mechanic, timing, and visual decisions.
 When exact behavior is unknown, the implementation and its tests must identify the approximation.
