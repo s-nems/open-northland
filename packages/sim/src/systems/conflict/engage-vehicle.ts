@@ -34,22 +34,22 @@ import { attackerWeapon } from './weapons.js';
 // flies to its scattered landing node. Ranges are Manhattan half-cell nodes, the metric every other
 // weapon band here uses (approximation: the original measures its hexagon distance).
 
-/** How far an attacking or defending siege vehicle looks for an enemy (byte-verified). */
+/** How far an attacking or defending siege vehicle looks for an enemy (original behavior). */
 export const VEHICLE_SCAN_RADIUS_NODES = 40;
 /** How far from its guard position a defending vehicle keeps a chase before dropping the target
- *  (byte-verified). */
+ *  (original behavior). */
 export const VEHICLE_DEFENCE_LEASH_NODES = 60;
 /** Ticks one attack clip takes; the shot leaves at {@link VEHICLE_ATTACK_EVENT_TICK} of it. */
 export const VEHICLE_ATTACK_CLIP_TICKS = 48;
 export const VEHICLE_ATTACK_EVENT_TICK = 1;
 /** A vehicle too far from its target drives to a node this many nodes inside its far reach
- *  (byte-verified: `maxRange - 5`). */
+ *  (original behavior: `maxRange - 5`). */
 const APPROACH_BAND_DEPTH = 5;
 /** The scatter roll is a percent; the base accuracy every commander has before any catapult
- *  experience (byte-verified: `skill + 10`). */
+ *  experience (original behavior: `skill + 10`). */
 const SCATTER_ROLL = 100;
 const SCATTER_BASE_ACCURACY = 10;
-/** The scatter's reach grows with a quarter of the flight distance (byte-verified: `dist >> 2`). */
+/** The scatter's reach grows with a quarter of the flight distance (original behavior: `dist >> 2`). */
 const SCATTER_DISTANCE_DIVISOR = 4;
 
 /** The vehicle's weapon: the row its type's job binds for its tribe (weapon 21 for the catapult's job
@@ -145,7 +145,7 @@ function targetStands(
 /**
  * The stance's scan: `hold` looks only inside the weapon band around the guard position, `defence`
  * out to the scan radius around it, `attack` around wherever the vehicle stands. The nearest valid,
- * seen enemy wins, and a held auto target no farther than the find is kept (byte-verified rule;
+ * seen enemy wins, and a held auto target no farther than the find is kept (original behavior;
  * approximation: the original's four-step preference for enemies indoors and houses is folded into
  * one nearest search).
  */
@@ -345,7 +345,7 @@ function fire(
 /**
  * The scattered landing node: a percent roll `r` above the commander's accuracy (`skill + 10`)
  * offsets the aim by up to `(r - accuracy) * (dist / 4) / r` on each axis, centred on the aim
- * (byte-verified). The result is clamped onto the map.
+ * (original behavior). The result is clamped onto the map.
  */
 function scatter(
   ctx: SystemContext,

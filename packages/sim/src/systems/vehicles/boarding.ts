@@ -48,7 +48,7 @@ function continentAt(terrain: TerrainGraph, point: HalfCellNode): number {
 }
 
 /**
- * One pass of `l_Passengers_MoveIn`: every rider still outside is asked in when it stands on the door's
+ * One pass of the crew's boarding: every rider still outside is asked in when it stands on the door's
  * continent, and detached where it stands when on another continent. Returns whether the whole crew is
  * inside; a carried vehicle counts once it rides inside too. Deviation (user rule): the original skips a
  * rider with a pending need; here the vehicle's order is a forced boarding, and the rider rung answers
@@ -168,7 +168,7 @@ export const riderSystem: System = (world, ctx) => {
 };
 
 /**
- * Whether a carried vehicle may ride inside `carrier` (`Passengers_CanVehicleMoveIn`): the carrier is a
+ * Whether a carried vehicle may ride inside `carrier`: the carrier is a
  * moored ship holding a slot for it, the vehicle's crew fits the carrier's free passenger room, and the
  * vehicle stands on the continent of the carrier's door.
  */

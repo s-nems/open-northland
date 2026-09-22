@@ -113,7 +113,7 @@ export function refuseCrew(
 
 /**
  * The attach order - see the command doc. The rider gives up its workplace, its post, its fight
- * (`DoExecuteUserCommand_AttachVehicle` detaches the work house and resets the attack targets) and its
+ * (the original's attach detaches the work house and resets the attack targets) and its
  * chat, and walks to the door through the unconfined walk order, which also sets a carried load down first.
  */
 export function attachToVehicle(
@@ -248,8 +248,8 @@ export function setDownRider(world: World, rider: Entity, point: HalfCellNode): 
 }
 
 /**
- * Step an attached rider standing on the door inside: it leaves the map (`VehicleMisc_Enter` detaches
- * the human from the map and resets its targets). Authored scenes seat a crew this way before tick zero.
+ * Step an attached rider standing on the door inside: it leaves the map (the original detaches the
+ * human from the map and resets its targets). Authored scenes seat a crew this way before tick zero.
  */
 export function boardRider(world: World, rider: Entity, vehicle: Entity): void {
   if (!setSeatInside(world, vehicle, rider, true)) return;
@@ -320,8 +320,7 @@ export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): 
 }
 
 /** The player commands that take a settler away from its vehicle first. Approximation: the original's
- *  list is read from its human command handlers' `DoExecuteUserCommand_DetachVehicle` calls, not
- *  exhaustively. The walk orders reach here only for a rider that is not the commander: the commander's
+ *  list is not confirmed exhaustively. The walk orders reach here only for a rider that is not the commander: the commander's
  *  go to its vehicle (`commander.ts`). */
 export function forcesDetach(command: Command): command is Command & { entity: Entity } {
   switch (command.kind) {

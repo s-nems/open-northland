@@ -45,7 +45,7 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 // travels with the anchor and shoves the settlers it lands on. A ship that starts a drive leaves its
 // mooring; one on a dock drive moors again where it arrives (`dock.ts`).
 
-/** The walk range of a vehicle goto in map-point steps from where it stands (`Pathfinder_Start(goal, 60)`,
+/** The walk range of a vehicle goto in map-point steps from where it stands (original behavior,
  *  the vehicle twin of the humans' 50/63). */
 export const VEHICLE_WALK_RANGE_NODES = 60;
 
@@ -53,7 +53,7 @@ export const VEHICLE_WALK_RANGE_NODES = 60;
 export const VEHICLE_TARGET_SNAP_RADIUS = 9;
 
 /** The move period terms: a node takes `max(MIN_PERIOD, (g * PERIOD_PER_CLASS + PERIOD_BASE) << siege)`
- *  ticks, `g` the node's ground speed class (byte-verified, `CVehicle::WalkSpeed_Update`). */
+ *  ticks, `g` the node's ground speed class (original behavior). */
 const MOVE_PERIOD_BASE = 4;
 const MOVE_PERIOD_PER_CLASS = 2;
 const MOVE_PERIOD_MIN = 3;
@@ -216,7 +216,7 @@ export function startVehicleDrive(
   if (route === null) return false;
   const state = world.get(vehicle, Vehicle);
   if (state.moored || state.heldGoal !== null) {
-    // Casting off: a walk that starts clears the moored flag (`l_StartAtomicWalk`), and a goal held for
+    // Casting off: a walk that starts clears the moored flag (original behavior), and a goal held for
     // boarding is consumed by the drive that replaces it.
     const live = world.mut(vehicle, Vehicle);
     live.moored = false;
@@ -265,7 +265,7 @@ export function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
 
 /**
  * A ship arriving on its dock drive lies moored where it stopped, its door on the stored mooring point
- * (`CurrentTask_DoPerform` sets the flag when the dock clip ends; approximation: the clip has no
+ * (the original sets the flag when the dock clip ends; approximation: the clip has no
  * graphics record here, so the ship moors on the arrival tick).
  */
 export function moorVehicle(world: World, ctx: SystemContext, vehicle: Entity): void {
@@ -297,8 +297,8 @@ export function abandonDock(world: World, vehicle: Entity): void {
  * with `vehicleNoCommander` while nobody commands the vehicle and with
  * `vehicleNoPath` when the target snaps to nothing on the vehicle's continent, lies beyond the walk
  * range, or has no route. A crew still outside is boarded first: the goal is held under the
- * `waitsForHuman` task and the drive starts once everyone is inside (`CVehicle::DoUpdateAI` runs
- * `l_Passengers_MoveIn` ahead of any target). Approximation: the original ignores an off-continent
+ * `waitsForHuman` task and the drive starts once everyone is inside (the original boards its crew
+ * ahead of any target). Approximation: the original ignores an off-continent
  * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a
  * held goal now stands.
  */
@@ -335,7 +335,7 @@ export function moveVehicle(
  * Drive `vehicle` to `goal`, a snapped node, or hold the goal under `waitsForHuman` while the crew is
  * outside. The route is judged now in either case, so an order nobody could drive is refused with
  * `vehicleNoPath` at once instead of after the boarding (approximation: the original's pathfinder runs
- * after `l_Passengers_MoveIn`). The trader's move near a house takes this seam past the goto's walk-range
+ * after the boarding). The trader's move near a house takes this seam past the goto's walk-range
  * gate. Returns whether a drive or a held goal now stands.
  */
 export function sendVehicleTo(
@@ -476,7 +476,7 @@ function reanchorGuard(world: World, e: Entity): void {
  * Send every settler standing inside the footprint arriving at `entered` to the nearest open node
  * outside the footprints of the whole remaining route, so one shove clears the way. A settler mid-walk
  * leaves on its own and one held by an atomic finishes it first; a standing settler's own goal and
- * chat give way. Approximation: the original's `l_SendAwayRadial` is not read beyond its call.
+ * chat give way. Approximation: how the original picks the spot it sends a settler to is unconfirmed.
  */
 function shoveSettlers(
   world: World,

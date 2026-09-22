@@ -44,8 +44,8 @@ function paintOrderBias(kind: DrawKind, isFlag: boolean): number {
  * (`GfxStatic` records), then the fish, then one row-sorted pass of everything else. So a fish never
  * shows over a hull, and nothing standing on a bridge deck is buried by it. Basis: the `GfxStatic` key
  * of the readable landscape table, whose records all keep their sprite inside their own blocked area,
- * so nothing can stand behind one. The pass order itself is a lead from the macOS build's draw routine,
- * not checked against the running original. The waves' pass between the two is not modelled: they draw
+ * so nothing can stand behind one. The pass order itself is original behavior not checked against the
+ * running original. The waves' pass between the two is not modelled: they draw
  * with the flat decor, under all three.
  */
 export type DrawPass = 'ground' | 'fish' | 'sorted';

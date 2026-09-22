@@ -48,8 +48,8 @@ export const VehicleType = z.strictObject({
   draggingAnimalTribe: TypeId.optional(),
   /** `logictransformvehicleType` - the type the vehicle becomes once the animal arrives (6 -> 2). */
   transformVehicleType: TypeId.optional(),
-  /** The vehicle's full hit-point pool. Not an `.ini` key: the pipeline stamps the engine's per-type
-   *  table (byte-verified, docs/formats/VEHICLES.md). */
+  /** The vehicle's full hit-point pool. Not an `.ini` key: the pipeline stamps the original's per-type
+   *  table (docs/formats/VEHICLES.md). */
   hitpoints: z.number().int().positive(),
   source: Provenance.optional(),
 });

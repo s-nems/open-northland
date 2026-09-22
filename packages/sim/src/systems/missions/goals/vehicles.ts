@@ -141,7 +141,7 @@ function countVehiclesInArea(
 }
 
 /** Goods of the type aboard the player's vehicles of the type within `range` of the point reach the
- *  amount, compared after the walk (`Tool_CountGoodsInVehicles`). */
+ *  amount, compared after the walk. */
 export function goodsInVehiclesInAreaHolds(
   pass: MissionPass,
   op: Extract<MissionGoalOp, { opcode: 'NumberOfGoodsInVehiclesInArea' }>,

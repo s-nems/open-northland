@@ -32,7 +32,7 @@ export function clearVehicleWantedOrder(
   noteMissingCarrier(world, ctx, vehicle);
 }
 
-/** Both orders tell the player when nobody is attached to carry them out (`l_UserCommands_TryToExecuteRightAway`). */
+/** Both orders tell the player when nobody is attached to carry them out. */
 function noteMissingCarrier(world: World, ctx: SystemContext, vehicle: Entity): void {
   if (!hasCarrierAttached(world, ctx.content, vehicle)) refuseCrew(world, ctx, vehicle, 'noCarrier');
 }
@@ -40,7 +40,7 @@ function noteMissingCarrier(world: World, ctx: SystemContext, vehicle: Entity): 
 /**
  * Drop a carrier's booking: a `load` run gives its unit back to the hold's free budget, an `unload` run
  * books its unit again, so a carrier that leaves, dies or is re-tasked mid-walk leaves `reserved` as if it
- * had never set out (`l_StartTask_Tool_DropCarriedGoodNearby_Forget`). The unit on its back stays there.
+ * had never set out, as in the original. The unit on its back stays there.
  */
 export function abandonCargoRun(world: World, carrier: Entity): void {
   const run = world.tryGet(carrier, CargoRun);

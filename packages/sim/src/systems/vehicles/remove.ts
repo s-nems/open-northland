@@ -19,11 +19,11 @@ import { releaseCarried } from './boarding.js';
 import { landingOf, placeOnNode, releaseRider, setDownRider } from './crew.js';
 import { vehicleIndex } from './registry.js';
 
-/** How far a wrecked cart's or catapult's cargo scatters, in spill rings (byte-verified radius 10;
+/** How far a wrecked cart's or catapult's cargo scatters, in spill rings (original behavior: radius 10;
  *  approximation: the ring metric is the spill's Manhattan ring, not the hexagon). */
 export const VEHICLE_CARGO_SPILL_RADIUS = 10;
 
-/** The share of footprint nodes a wreck marks with ruins, in percent (byte-verified). */
+/** The share of footprint nodes a wreck marks with ruins, in percent (original behavior). */
 export const VEHICLE_RUIN_PERCENT = 51;
 const PERCENT = 100;
 

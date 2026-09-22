@@ -91,7 +91,7 @@ export function startDock(
 /**
  * The dock order (`g`) - see the command doc. Refused with `vehicleNoCommander` while nobody commands
  * the ship. A crew still outside is boarded first: the point is held under the `docks` task and the
- * sail starts once everyone is inside (the original retries the order behind `l_Passengers_MoveIn`).
+ * sail starts once everyone is inside (the original retries the order behind the crew's boarding).
  * Returns whether a dock drive or a held point now stands.
  */
 export function dockVehicle(

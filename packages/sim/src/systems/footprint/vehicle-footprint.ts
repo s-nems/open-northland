@@ -14,7 +14,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext } from '../context.js';
 
 // A vehicle's ground geometry: the hex disc of radius `logicSize` it occupies and the door point its
-// crew boards and leaves at (byte-verified rules in docs/formats/VEHICLES.md). Pure over the component
+// crew boards and leaves at (original behavior in docs/formats/VEHICLES.md). Pure over the component
 // and the type row; the walk-block and placement caches consume it.
 
 /** The map points within `radius` hexagon steps of `centre`, unclamped, in ring order from the centre
@@ -53,7 +53,7 @@ export function vehicleFootprintNodes(
 }
 
 /**
- * The authored entry point (`Door_GetEntryPoint`): a moored ship's mooring node on the shore; otherwise
+ * The authored entry point: a moored ship's mooring node on the shore; otherwise
  * `passengerVector` walked from the anchor in the direction `facing + direction` (modulo the six
  * map-point directions), which is the anchor itself for a cart or catapult that authors no vector.
  * Unclamped.
@@ -75,7 +75,7 @@ export function vehicleEntryPoint(
 
 /**
  * The door point the crew and the cargo hands stand on. The original's humans walk through a vehicle,
- * so its entry point may lie on the vehicle itself, and `Door_GetEntryPoint` only moves on to the ring
+ * so its entry point may lie on the vehicle itself, and the original only moves on to the ring
  * around it when that point is blocked. Open Northland blocks a standing vehicle's disc for humans
  * (approximation), so an entry point inside the disc always takes that fallback: the first open ground
  * node on the anchor's continent around the ring just outside the disc, tested in the original's order

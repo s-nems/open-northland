@@ -83,9 +83,9 @@ function buildingAtAnchor(world: World, x: number, y: number): Entity | null {
 
 /**
  * Seat a spawning settler on the vehicle standing on its authored anchor - a decoded map's
- * `attachtovehicle`, which the loader resolves to the first vehicle on that node and runs through
- * `Passengers_AttachHuman`, so the job and room gates apply and the first crewman commands. A following
- * `moveintovehicle` (`inside`) boards it at once through `VehicleMisc_Enter`, wherever it was spawned.
+ * `attachtovehicle`, which the loader resolves to the first vehicle on that node and runs through the
+ * attach gate, so the job and room gates apply and the first crewman commands. A following
+ * `moveintovehicle` (`inside`) boards it at once, wherever it was spawned.
  * A node with no vehicle, or a refused attach, leaves the settler where it spawned (the loader's own
  * silence; the refusal note still goes out).
  */

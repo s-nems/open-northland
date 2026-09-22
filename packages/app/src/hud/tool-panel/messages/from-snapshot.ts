@@ -199,8 +199,8 @@ function lostItsWorkplace(e: SnapshotEntity, everEmployed: boolean): boolean {
 }
 
 /**
- * A trader with a full route and no vehicle to command it from: the original's trader task idles with
- * reason 0xe there, the `noVehicleForWork` note (`l_StartTask_ExecuteJob_Trader`); this sim leaves the
+ * A trader with a full route and no vehicle to command it from: the original's trader task idles
+ * there with the `noVehicleForWork` note; this sim leaves the
  * trader on foot and the sweep reads the state off the route and the missing `Rider` marker.
  */
 function lacksTradeCart(e: SnapshotEntity): boolean {

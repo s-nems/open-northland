@@ -37,7 +37,7 @@ import { nodeOf } from './movement.js';
 export const DRAUGHT_RECRUIT_CADENCE_TICKS = 20;
 
 /** The eligible animals a recruit scan passes over, in ascending entity id, so a herd keeps a breeding
- *  pair (byte-verified count; approximation: the original's list order is not read). */
+ *  pair (original behavior for the count; approximation: the original's list order is not read). */
 export const DRAUGHT_BREEDING_PAIR = 2;
 
 /**

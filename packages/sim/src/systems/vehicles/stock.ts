@@ -38,17 +38,17 @@ export function vehicleLineCap(type: VehicleType): number {
   return Math.min(type.stockSlots, VEHICLE_STOCK_BYTE_MAX);
 }
 
-/** `Stock_IsFull`: the units aboard fill the budget. */
+/** The units aboard fill the budget. */
 export function vehicleIsFull(type: VehicleType, stock: HoldView): boolean {
   return vehicleLoad(stock) >= vehicleLineCap(type);
 }
 
-/** `Stock_IsFullSoon`: the units booked fill the budget. */
+/** The units booked fill the budget. */
 export function vehicleIsFullSoon(type: VehicleType, stock: HoldView): boolean {
   return vehicleReservedLoad(stock) >= vehicleLineCap(type);
 }
 
-/** `Passengers_IsCarrierAttached`: a rider of the carrier trade holds any seat, aboard or on its way. */
+/** A rider of the carrier trade holds any seat, aboard or on its way. */
 export function hasCarrierAttached(world: World, content: ContentSet, vehicle: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return false;
@@ -88,7 +88,7 @@ function holdOf(world: World, vehicle: Entity, content: ContentSet, goodType: nu
 }
 
 /**
- * Add `delta` units of `goodType` to the hold (`Stock_ModifyAmount`): the good is aliased, a negative
+ * Add `delta` units of `goodType` to the hold: the good is aliased, a negative
  * result is refused, the addition is clamped to the free budget, and a vehicle with no carrier attached
  * sets the good's wanted amount to the new actual one. Returns the units actually moved, 0 for a
  * refused or uncarriable good. `reserved` is left alone: a carrier's delivery was booked when it set out.
@@ -114,7 +114,7 @@ export function modifyVehicleStock(
 }
 
 /**
- * Book or release `delta` units of `goodType` (`Stock_ModifyFutureAmount`): a release below zero is
+ * Book or release `delta` units of `goodType`: a release below zero is
  * refused and a booking is clamped to the budget left over every good's reserved units. Returns the
  * units actually booked or released.
  */
@@ -140,7 +140,7 @@ export function modifyVehicleReserved(
  * A commander's own load or unload of `delta` units of `goodType`, the trader's write at a stop: the
  * units are booked and stowed in one step and the good's wanted amount follows the actual one whatever
  * crew is attached. Returns the units moved. Named approximation: the original's trader books a unit
- * (`Stock_ModifyFutureAmount`) on its walk to the door and stows it there with `Stock_ModifyAmount`,
+ * on its walk to the door and stows it there,
  * whose wanted-follows-actual rule holds only while no carrier is attached, so a carrier seated beside
  * the trader would flush the trade cargo as surplus; keeping wanted on the actual amount forestalls that.
  */
@@ -170,7 +170,7 @@ export function tradeVehicleStock(
 }
 
 /**
- * Ask for `amount` units of `goodType` (`Stock_SetWantedAmount`): clamped below at 0 and above so the
+ * Ask for `amount` units of `goodType`: clamped below at 0 and above so the
  * wanted amounts over every good stay within the budget. Returns false for an uncarriable good.
  */
 export function setVehicleWanted(
@@ -202,7 +202,7 @@ export function clearVehicleWanted(world: World, vehicle: Entity): void {
 /**
  * Put `amount` units of `goodType` aboard that nobody is bringing, booked and stowed at once (a map's
  * `addgoods` and the loaded spawn of a scene): `current` rises by the units the budget takes and
- * `reserved` by as many as the booking budget still has. The loader's `Stock_ModifyAmount` then sets the
+ * `reserved` by as many as the booking budget still has. The original's stow then sets the
  * good's wanted amount to the new actual one while no carrier is attached, which at a spawn is always,
  * so the cargo is also asked for and a carrier seated later neither fetches nor flushes it. Returns the
  * units stowed.

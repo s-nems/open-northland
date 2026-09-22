@@ -115,7 +115,7 @@ export function removeScriptedVehiclesWithCrews(pass: MissionPass, id: number, c
 }
 
 /** `ChangeVehiclesPlayerId`: the vehicles with the id change flag; their crews keep their own owner and
- *  their seats (`CVehicle::ChangePlayerId` touches nobody aboard). */
+ *  their seats (the original touches nobody aboard). */
 export function handVehiclesToPlayer(pass: MissionPass, id: number, player: number): void {
   if (!isValidPlayer(player)) return;
   for (const e of missionVehicles(pass.world, id)) stampOwner(pass.world, e, player);
@@ -123,7 +123,7 @@ export function handVehiclesToPlayer(pass: MissionPass, id: number, player: numb
 
 /**
  * `AttachHumanToVehicle`: the first vehicle with the vehicle id takes every human with the human id
- * that the attach gate admits (`Passengers_CanHumanBeAttached`: same owner, an allowed trade, a free
+ * that the attach gate admits (same owner, an allowed trade, a free
  * slot), each through the seat's attach order; the rest are passed over without a note.
  */
 export function attachScriptedHumans(pass: MissionPass, humanId: number, vehicleId: number): void {

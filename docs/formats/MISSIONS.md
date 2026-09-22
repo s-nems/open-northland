@@ -665,18 +665,16 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   toward the house's owner. Between two own houses a good moves where a mark admits it, or anywhere
   while no mark is set on either house, toward the house that is shorter of it. Every unit loaded out
   of the foreign house adds one to the player's tally with the house's owner, which the goal compares.
-- The trader works from the cart it commands (`l_StartTask_ExecuteJob_Trader` needs the human
-  attached as the vehicle's commander, else it idles with the `noVehicleForWork` reason):
-  `l_Trader_MoveVehicleNearHouse` queues a goto on the cart to a move point found within radius 20 of
+- The trader works from the cart it commands (it needs the human attached as the vehicle's
+  commander, else it idles with the `noVehicleForWork` reason): it queues a goto on the cart to a move point found within radius 20 of
   the house whenever the cart stands more than 5 hexagon steps from the house's work point, and
   detaches the trader when no point exists; the goods ride in the cart's hold, booked and stowed one
   unit at a time as the trader carries them between the house and the cart's door.
 - The partner pays out of real stock: the trader's fetch fails at a shelf holding nothing, and he
   comes back for the goods he is owed without paying again (reading). A computer seat's houses of the
   storage main type hold it because its scripted handler writes 5 over every one of their stock
-  slots on every sixth turn, a fuller shelf cut down too (byte-level, owned `GameMp.exe` 0x45a8fb,
-  called from its `WorkOnAI` at `turn % 6 == 0`; `AI_Disable` stops the handler and the refill with
-  it). The corpus relies on it: most computer seats' trade houses are authored empty, the trade
+  slots on every sixth turn (`turn % 6 == 0`), a fuller shelf cut down too (original behavior;
+  `AI_Disable` stops the handler and the refill with it). The corpus relies on it: most computer seats' trade houses are authored empty, the trade
   tutorial's among them, and no row pays out more than 5 a batch.
 - This build registers the rows through the `addTradeAgreement` setup command
   (`components/trade.ts`), resolves the house by its mission object id at use, refuses a house of a

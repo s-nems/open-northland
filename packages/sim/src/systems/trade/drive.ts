@@ -31,11 +31,11 @@ import { type CartHold, cartHoldOf, type TradeCart, tradeCartOf } from './cart.j
 import { sameFoodClass } from './goods.js';
 
 /** How close to the stop's door the cart must stand before the trader works the stop, in map-point
- *  steps (`l_Trader_MoveVehicleNearHouse`: `VE_HexagonDirection_GetDistance` over 5 moves the cart). */
+ *  steps (original behavior: a hexagon distance over 5 moves the cart). */
 export const TRADE_CART_HOUSE_DISTANCE = 5;
 
 /** How far around the door the cart's move point is looked for, in hexagon rings
- *  (`Tool_Vehicle_GetNextMovePointNearPosition` with radius 0x14). */
+ *  (original behavior: radius 20). */
 export const TRADE_CART_SEARCH_RADIUS = 20;
 
 /** What the trader does next at its current stop. */
@@ -56,7 +56,7 @@ const WAIT: TradeAction = { kind: 'wait' };
  * fewer than two standing houses, or a foreign stop with no valid agreement, is left to the rider rung;
  * one with no cart to command idles on foot (the HUD's `noVehicleForWork` note reads that state). While
  * the cart is under way or holds a goal for its crew the rider rung boards the trader, and the cart's
- * arrival sets it down again (`traderDisembarkSystem`). Reading of `l_StartTask_ExecuteJob_Trader`.
+ * arrival sets it down again (`traderDisembarkSystem`). Original behavior of the trader's job.
  * Approximation: the original's trader carries every unit between the house and the cart's door on its
  * back; here the load and unload clips at the house move the unit straight into and out of the hold.
  */
@@ -134,7 +134,7 @@ function cartNearHouse(world: World, ctx: SystemContext, cart: TradeCart, house:
 }
 
 /**
- * `l_Trader_MoveVehicleNearHouse`: order the cart to the first node in ring order around the house's
+ * Original behavior: order the cart to the first node in ring order around the house's
  * door, out to {@link TRADE_CART_SEARCH_RADIUS}, that the cart may stand on and that is no house's door
  * nor the stop's own work point, as a goto the cart holds until the trader boards. When no such node lies within the working distance
  * of the door the trader lets go of the cart and stays on foot (approximation: the original detaches
@@ -142,7 +142,7 @@ function cartNearHouse(world: World, ctx: SystemContext, cart: TradeCart, house:
  * player sees). A node the cart has no route to keeps the trader seated: the door goes into its
  * failed-goal memo and the search waits the memo out (the original re-aims the vehicle behind its
  * `vehicleNoPath` note and the trader keeps trying). The order runs past the goto's walk-range gate
- * (approximation: whether the original's `Pathfinder_Start(goal, 60)` caps the distance is not read).
+ * (approximation: whether the original's 60-step walk range caps the distance is unconfirmed).
  * True when the order stands.
  */
 function driveCartTo(plan: PlannerContext, cart: TradeCart, house: Entity): boolean {

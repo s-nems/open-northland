@@ -36,7 +36,7 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
 /**
  * How far from the vehicle's door the original's carrier looks for loose goods and houses before it asks
- * the guide network (`FindGoodsDemandedForVehicle`, `SearchOverMap` radius 0x28), in nodes.
+ * the guide network (original behavior: radius 40), in nodes.
  */
 export const VEHICLE_CARGO_SEARCH_RADIUS = 40;
 
@@ -204,7 +204,7 @@ function nearestCargoSource(
 }
 
 /** Walk the first good booked beyond its wanted amount down by a unit: the booking drops as the carrier
- *  sets out (`l_StartTask_ExecuteJob_Carrier_FlushVehicle`) and the door lifts a unit out when one is
+ *  sets out, as in the original, and the door lifts a unit out when one is
  *  aboard, so a stale booking heals a trip at a time even with nothing to carry. */
 function flushSurplus(plan: PlannerContext, vehicle: Entity, door: NodeId): boolean {
   const { world, ctx, entity: e, here } = plan;

@@ -152,8 +152,8 @@ export function resolveAuthoredPlacements(
     const kind = joins.buildingKind(hit.typeId);
     if (kind !== undefined) kindByAnchor.set(key, kind);
   }
-  // A `setvehicle` runs for an occupied seat only: the loader gates it on `IsPlayerInGame` with no wild
-  // bypass, so a row naming an out-of-range player is dropped with its cargo (byte-verified loader).
+  // A `setvehicle` runs for an occupied seat only: the original's loader gates it on the seat with no
+  // wild bypass, so a row naming an out-of-range player is dropped with its cargo.
   // Placed anchors are what an `attachtovehicle` resolves through.
   const vehicleAnchors = new Set<string>();
   for (const v of entities.vehicles ?? []) {

@@ -14,7 +14,7 @@ export const VEHICLE_TYPE_CODES = {
 } as const satisfies Readonly<Record<string, number>>;
 
 /**
- * The engine's hit-point table indexed by vehicle type (byte-verified, docs/formats/VEHICLES.md): both
+ * The original's hit-point table indexed by vehicle type (docs/formats/VEHICLES.md): both
  * ships 5000, the catapult 3000, every cart {@link VEHICLE_HITPOINTS_DEFAULT}.
  */
 export const VEHICLE_HITPOINTS_DEFAULT = 1000;
@@ -40,7 +40,7 @@ const HOUSE_PREFIX = 'HOUSE_TYPE_VEHICLE_';
 /**
  * The vehicle house each vehicle good opens, keyed by good `typeId`: the `GOOD_TYPE_VEHICLE_<X>` and
  * `HOUSE_TYPE_VEHICLE_<X>` defines pair by their shared suffix (`CART_HAND` .. `CATAPULT`). The
- * engine's own join of good 59..63 to house 42..46 is not byte-verified; this is the readable basis.
+ * original's own join of good 59..63 to house 42..46 is unconfirmed; this is the readable basis.
  */
 export function vehicleHouseByGood(): ReadonlyMap<number, number> {
   const pairs = new Map<number, number>();
