@@ -18,9 +18,14 @@ extraResources:
     to: app
   - from: ../../content
     to: content
+    filter:
+      - '**/*'
+      - '!cnmod.zip'
+      - '!.cnmod-unpacked'
+      - '!.cnmod-unpacked/**'
+      - '!.cnmod-unpacked.sha256'
 win:
-  # x64 pinned: the default is the build host's arch, and an arm64 mac would silently ship
-  # win-arm64 binaries almost no player can run.
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
   target:
     - target: nsis
       arch: [x64]
