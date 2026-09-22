@@ -11,7 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // The pipeline's output tree lives at the repo root (gitignored), outside the app's Vite root.
 const contentRoot = resolve(here, '../..', process.env.ON_CONTENT_DIR ?? 'content');
 
-/** A checkout that adds `vite/custom/plugins.ts` (the custom art fork) contributes its own plugins. */
+/** A checkout that adds `vite/custom/plugins.ts` contributes its own plugins. */
 async function checkoutPlugins(command: 'serve' | 'build'): Promise<Plugin[]> {
   const module = resolve(here, 'vite/custom/plugins.ts');
   if (!existsSync(module)) return [];

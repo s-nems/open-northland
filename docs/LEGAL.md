@@ -38,9 +38,8 @@ inspection of legally obtained data files, documented byte-level experiments, re
 semantics, standard format specifications, and observation of the running game. Project code must not
 be copied or translated from proprietary or third-party engine implementations.
 
-Where data files and observation leave a behavior open, the project may analyze a lawfully owned copy
-of the original program to the extent needed for interoperability with its data files, maps and saved
-content, as permitted by Article 6 of Directive 2009/24/EC. Such analysis only establishes facts about
+Where data files and observation leave a behavior open, the project may study the original game to the
+extent needed for interoperability, as applicable law permits. Such study only establishes facts about
 the original's behavior. Its code is never copied, translated, or reproduced in structure, and the
 results are documented as original behavior.
 

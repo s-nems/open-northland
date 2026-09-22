@@ -48,8 +48,8 @@ Each scene needs headless checks, localized menu text, and a human browser pass.
 
 ## Presentation packs
 
-World art that replaces the original's enters through `src/presentation/pack.ts`. A private checkout
-with custom art supplies `src/custom/`, `vite/custom/plugins.ts` and `scripts/custom-art-policy.mjs`,
+World art that replaces the original's enters through `src/presentation/pack.ts`. A checkout that adds
+its own art supplies `src/custom/`, `vite/custom/plugins.ts` and `scripts/custom-art-policy.mjs`,
 which the pack seam, `src/routes.ts`, `vite.config.ts` and `check:assets` load when present. This
 repository never contains them. Keep those hooks and the pack interface working, and keep the
 original-art path complete without a pack.
