@@ -14,7 +14,7 @@ import {
   isControlGroupMember,
 } from './control-groups.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
-import { jobMatesAround } from './job-mates.js';
+import { jobMateArea, jobMatesIn } from './job-mates.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
@@ -238,7 +238,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     lastClickHit = hit;
     const mates =
       hit !== null && hit === previousHit && e.detail >= DOUBLE_CLICK
-        ? jobMatesAround(unitTargets.owned('settler'), hit, w, opts.snapshot(), opts.content)
+        ? jobMatesIn(
+            unitTargets.owned('settler'),
+            hit,
+            jobMateArea(opts.camera(), opts.app.screen.width, opts.app.screen.height),
+            opts.snapshot(),
+            opts.content,
+          )
         : null;
     if (mates !== null) {
       applySelection(mates, e.shiftKey); // the original's double-click plays no further click

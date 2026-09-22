@@ -1,12 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
+import { type Camera, cameraViewport, type Viewport } from '@open-northland/render';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { settlerJobType } from '../../game/snapshot.js';
-import { type Pickable, pickInRect } from '../picking.js';
+import type { Pickable } from '../picking.js';
 
-// Original behavior, unconfirmed against the running original: a double-click on a settler gathers its
-// trade from an 800 x 600 world-px window centred on the cursor.
-const WINDOW_HALF_WIDTH = 400;
-const WINDOW_HALF_HEIGHT = 300;
+/**
+ * Screen px of slack past every screen edge, so a settler that just stepped off-screen still counts. The
+ * original gathers from a fixed 800 x 600 world-px window around the cursor instead of the whole screen.
+ */
+const SCREEN_MARGIN = 96;
 
 /**
  * What a double-click matches on. The original counts every hero as one trade; soldiers here count as
@@ -22,26 +24,31 @@ function tradeKeyOf(content: ContentSet, snapshot: WorldSnapshot, ref: number): 
   return systems.isSoldierJob(content, job) ? 'soldier' : job;
 }
 
+/** The world rectangle a double-click gathers from: the screen, grown by {@link SCREEN_MARGIN}. */
+export function jobMateArea(camera: Camera, screenW: number, screenH: number): Viewport {
+  return cameraViewport(camera, screenW, screenH, SCREEN_MARGIN / (camera.scale ?? 1));
+}
+
+/** As in the original, a drawn sprite counts when it touches the area; without bounds, its feet must. */
+function touches(settler: Pickable, area: Viewport): boolean {
+  const b = settler.box ?? { minX: settler.x, minY: settler.y, maxX: settler.x, maxY: settler.y };
+  return b.minX <= area.maxX && b.maxX >= area.minX && b.minY <= area.maxY && b.maxY >= area.minY;
+}
+
 /**
- * The drawn own `settlers` of `clicked`'s trade in the window around `at`, or null when `clicked` is not
- * one of them, such as a building. Approximation: a settler counts when its feet stand in the window, as
- * a drag select tests, where the original takes any sprite that touches it.
+ * The drawn own `settlers` of `clicked`'s trade in `area`, or null when `clicked` is not one of them,
+ * such as a building.
  */
-export function jobMatesAround(
+export function jobMatesIn(
   settlers: readonly Pickable[],
   clicked: number,
-  at: { readonly x: number; readonly y: number },
+  area: Viewport,
   snapshot: WorldSnapshot,
   content: ContentSet,
 ): number[] | null {
   if (!settlers.some((s) => s.ref === clicked)) return null;
   const trade = tradeKeyOf(content, snapshot, clicked);
-  const inWindow = pickInRect(
-    settlers,
-    at.x - WINDOW_HALF_WIDTH,
-    at.y - WINDOW_HALF_HEIGHT,
-    at.x + WINDOW_HALF_WIDTH,
-    at.y + WINDOW_HALF_HEIGHT,
-  );
-  return inWindow.filter((ref) => tradeKeyOf(content, snapshot, ref) === trade);
+  return settlers
+    .filter((s) => touches(s, area) && tradeKeyOf(content, snapshot, s.ref) === trade)
+    .map((s) => s.ref);
 }
