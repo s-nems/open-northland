@@ -4,7 +4,7 @@ import { diag } from '../../diag/index.js';
 import { DEFAULT_GAME_SPEED_CONTROL, type GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { type ChatPanel, mountChatPanel } from '../../view/net/chat-panel.js';
-import { memberRows, mountNetStatusPanel, type NetStatusPanel } from '../../view/net/net-status.js';
+import { memberRows } from '../../view/net/net-status.js';
 import { clockAnnouncement, speedControlFor } from '../../view/net/session-clock.js';
 import { createWaitingOverlay, type WaitingOverlay } from '../../view/net/waiting-overlay.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
@@ -41,7 +41,6 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     leftPx: () => view.hudInsetBottomLeftPx,
     onSend: (text) => client.say(text),
   });
-  const status: NetStatusPanel = mountNetStatusPanel();
   let waited: ServerMessage & { kind: 'waiting' } = { kind: 'waiting', for: client.waitingFor };
   let previousRoom: RoomView | null = null;
   let previousClock: ClockState | null = client.clockState;
@@ -52,7 +51,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const announce = (text: string): void => chat.append({ from: null, text });
   const refreshStatus = (): void => {
     chat.updateLayout();
-    status.update(memberRows(client.room, waited.for, client.nick), deps.readout());
+    view.updateNetStatus(memberRows(client.room, waited.for, client.nick), deps.readout());
   };
   const refreshNotice = (): void => waiting.notice(linkNotice ?? worldNotice);
   const syncClock = (clock: ClockState): void => {
@@ -148,7 +147,6 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     dispose(): void {
       waiting.dispose();
       chat.dispose();
-      status.dispose();
     },
   };
 }

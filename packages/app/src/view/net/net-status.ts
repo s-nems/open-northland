@@ -1,6 +1,6 @@
 import type { RoomView, WaitedMember, WaitReason } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../i18n/index.js';
-import { el, PANEL_STYLE } from '../overlay.js';
+import { el } from '../overlay.js';
 import type { NetReadout } from '../runtime/net-readout.js';
 
 export type MemberStatus = WaitReason | 'ok';
@@ -34,26 +34,23 @@ export interface NetStatusPanel {
   dispose(): void;
 }
 
-const STATUS_PANEL_STYLE = `${PANEL_STYLE};width:auto;min-width:200px;max-width:calc(100vw - 80px);box-sizing:border-box;padding:8px 12px;font-size:12px;pointer-events:none`;
+const STATUS_PANEL_STYLE =
+  'max-width:360px;padding-top:10px;border-top:1px solid rgba(138,116,74,0.7);font-size:12px;overflow-wrap:anywhere';
 const ROW_STYLE = 'display:flex;justify-content:space-between;gap:16px';
 
-/** The top-right player list with each member's status and this client's own connection figures. */
-export function mountNetStatusPanel(): NetStatusPanel {
+/** The menu's player list and this client's connection figures. */
+export function mountNetStatusPanel(parent: HTMLElement): NetStatusPanel {
   const panel = el('div', STATUS_PANEL_STYLE);
   panel.setAttribute('role', 'status');
-  const position = (): void => {
-    panel.style.top = window.innerWidth < 1200 ? '96px' : '12px';
-  };
-  position();
-  window.addEventListener('resize', position);
   const title = el('div', 'font-weight:700;margin-bottom:4px', messages().net.players);
   const list = el('div', '');
   const link = el('div', 'margin-top:6px;opacity:0.8');
   panel.append(title, list, link);
-  document.body.append(panel);
+  parent.append(panel);
   return {
     update(rows, readout): void {
       const copy = messages().net;
+      title.textContent = copy.players;
       list.replaceChildren(
         ...rows.map((row) => {
           const line = el('div', ROW_STYLE);
@@ -77,7 +74,6 @@ export function mountNetStatusPanel(): NetStatusPanel {
         : copy.reconnecting;
     },
     dispose: () => {
-      window.removeEventListener('resize', position);
       panel.remove();
     },
   };

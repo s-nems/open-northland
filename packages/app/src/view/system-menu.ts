@@ -1,12 +1,14 @@
 import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
 import { confirmDialog } from './confirm-dialog.js';
+import { mountNetStatusPanel, type NetStatusPanel } from './net/net-status.js';
 import type { GameSettingsRuntime } from './runtime/game-settings.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
 import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels/index.js';
 import { buildSystemSettingsPanel } from './system-settings-panel.js';
 
 export interface SystemMenu {
+  updateNetStatus: NetStatusPanel['update'];
   toggle(): void;
   /** True while the dimmed menu is up; it owns the keyboard until it hides. */
   isOpen(): boolean;
@@ -26,6 +28,10 @@ export interface SystemMenuDeps {
 
 const MODAL_PANEL_STYLE = [
   'min-width:220px',
+  'max-width:calc(100vw - 32px)',
+  'max-height:calc(100dvh - 32px)',
+  'box-sizing:border-box',
+  'overflow-y:auto',
   'display:flex',
   'flex-direction:column',
   'gap:10px',
@@ -67,6 +73,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     zIndex: '2000',
   });
 
+  let netStatus: NetStatusPanel | null = null;
   const panel = document.createElement('div');
   panel.style.cssText = MODAL_PANEL_STYLE;
   panel.setAttribute('role', 'dialog');
@@ -198,6 +205,10 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   document.body.append(backdrop);
 
   return {
+    updateNetStatus(rows, readout): void {
+      netStatus ??= mountNetStatusPanel(panel);
+      netStatus.update(rows, readout);
+    },
     isOpen: () => backdrop.style.display !== 'none',
     toggle(): void {
       if (backdrop.style.display === 'none') {
@@ -216,6 +227,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     dispose(): void {
       deps.setCameraSuspended(false);
       scope.abort();
+      netStatus?.dispose();
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
     },

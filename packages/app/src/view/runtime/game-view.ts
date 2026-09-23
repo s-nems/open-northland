@@ -177,6 +177,7 @@ export interface GameViewDeps {
 }
 
 export interface GameViewHandle {
+  readonly updateNetStatus: ReturnType<typeof createSystemMenu>['updateNetStatus'];
   /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
   /** Aborted by {@link destroy}, including the teardown a sub-mission swap runs, so a document-level
@@ -800,6 +801,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     return {
       destroy,
       lifetime: lifetime.signal,
+      updateNetStatus: (rows, readout) => systemMenu?.updateNetStatus(rows, readout),
       syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
       hudInsetLeftPx: perfCornerForUiScale(uiscale).left,
       get hudInsetBottomLeftPx() {
