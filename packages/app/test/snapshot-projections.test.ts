@@ -2,6 +2,7 @@ import { terrainWorldBounds } from '@open-northland/render';
 import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/index.js';
+import { actorsOf, trainingOccupancyOf } from '../src/game/snapshot.js';
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
 import { createFogGates, createSnapshotProjections } from '../src/view/projections/index.js';
 import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
@@ -141,4 +142,21 @@ describe('per-tick projections - one walk of the map between them', () => {
     second.lifeHeartsFor(snapshot);
     expect(visits()).toBe(entities.length * 2); // unchanged - both indexes key on the snapshot, not on us
   });
+});
+
+it('counts reserved training places in the shared snapshot walk and releases them next tick', () => {
+  const entities = [
+    { id: 1, components: { Settler: {}, TrainingOrder: { house: 10 } } },
+    { id: 2, components: { Settler: {}, TrainingOrder: { house: 10 }, Indoors: { building: 10 } } },
+    { id: 3, components: { Settler: {}, TrainingOrder: { house: 20 } } },
+    ...Array.from({ length: 400 }, (_, i) => ({ id: i + 30, components: { Settler: {} } })),
+  ];
+  const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
+  actorsOf(snapshot);
+  const before = visits();
+  expect(trainingOccupancyOf(snapshot, 10)).toBe(2);
+  expect(trainingOccupancyOf(snapshot, 20)).toBe(1);
+  expect(trainingOccupancyOf(snapshot, 30)).toBe(0);
+  expect(visits()).toBe(before);
+  expect(trainingOccupancyOf(snapshotOf(entities.slice(1)), 10)).toBe(1);
 });

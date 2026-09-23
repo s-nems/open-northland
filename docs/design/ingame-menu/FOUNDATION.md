@@ -161,7 +161,8 @@ on the beam opens it at once.
   the bakery's crew), a Zawód list of the professions present with their head counts, and a Może
   zostać list of the picker's trades, which keeps the holders of the trade and the grown men the sim
   would let take it (`Simulation.canChooseJob`, asked only while that filter is set; a script's
-  trade lock on a unit is not mirrored).
+  trade lock on a unit is not mirrored). Both profession filters use the picker's groups and
+  alphabetical order within each group; the current-profession filter retains its counts.
 - Two chip rows share one grid of eight equal rectangular cells across the window, the count on top
   and the caption under it, "Kto" and "Bez" in one narrow label column. A count narrows to the
   other filters: a cell counts what its own pick would list, so a Kto cell swaps the

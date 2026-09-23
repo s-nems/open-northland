@@ -107,6 +107,7 @@ export function isSignpost(e: SnapshotEntity): boolean {
 
 interface SnapshotIndex {
   readonly actors: readonly SnapshotEntity[];
+  readonly trainingOccupancy: ReadonlyMap<number, number>;
   readonly facts: WorldRuleFacts;
 }
 
@@ -122,11 +123,14 @@ function indexOf(snapshot: WorldSnapshot): SnapshotIndex {
   const cached = INDEX.get(snapshot);
   if (cached !== undefined) return cached;
   const actors: SnapshotEntity[] = [];
+  const trainingOccupancy = new Map<number, number>();
   const aiSeats = new Set<number>();
   let progressionEnabled: boolean | null = null;
   let needsEnabled: boolean | null = null;
   for (const e of snapshot.entities) {
     if (isSettler(e) || isBuilding(e)) actors.push(e);
+    const house = trainingHouseOf(e);
+    if (house !== undefined) trainingOccupancy.set(house, (trainingOccupancy.get(house) ?? 0) + 1);
     const progression = e.components.ProgressionRules as
       | { professionProgressionEnabled?: unknown }
       | undefined;
@@ -140,6 +144,7 @@ function indexOf(snapshot: WorldSnapshot): SnapshotIndex {
   }
   const index: SnapshotIndex = {
     actors,
+    trainingOccupancy,
     facts: { progressionEnabled: progressionEnabled ?? true, needsEnabled: needsEnabled ?? true, aiSeats },
   };
   INDEX.set(snapshot, index);
@@ -153,6 +158,11 @@ function indexOf(snapshot: WorldSnapshot): SnapshotIndex {
  */
 export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
   return indexOf(snapshot).actors;
+}
+
+/** Includes reserved places for learners still walking to their school or barracks. */
+export function trainingOccupancyOf(snapshot: WorldSnapshot, house: number): number {
+  return indexOf(snapshot).trainingOccupancy.get(house) ?? 0;
 }
 
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {

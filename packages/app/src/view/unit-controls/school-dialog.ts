@@ -11,13 +11,14 @@ import {
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../catalog/professions.js';
 import {
-  actorsOf,
+  buildingTribeOf,
   buildingTypeOf,
   ownerPlayerOf,
   settlerJobType,
   settlerLearnedOf,
   settlerTribeOf,
   trainingHouseOf,
+  trainingOccupancyOf,
 } from '../../game/snapshot.js';
 import { technologyLabel } from '../../game/technology.js';
 import { createChoiceWindow } from '../../hud/dom/choice-window.js';
@@ -74,7 +75,8 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
   }
   for (const edge of tribe.jobEnables) {
     if (edge.kind !== 'good' || !training.has(`good:${edge.targetId}`)) continue;
-    if (professionDefForJob(edge.jobType) === undefined) continue;
+    if (systems.isFighterJob(content, edge.jobType) || professionDefForJob(edge.jobType) === undefined)
+      continue;
     const courses = groups.get(edge.jobType) ?? [];
     if (!courses.some((course) => course.target === 'good' && course.typeId === edge.targetId))
       courses.push({
@@ -136,6 +138,7 @@ export function openSchoolDialog(
   const student = first === undefined ? undefined : entityById(snapshot(), first);
   const tribeId = student === undefined ? undefined : settlerTribeOf(student);
   if (tribeId === undefined || student === undefined) return;
+  const player = ownerPlayerOf(student);
   const copy = messages().hud;
   const groups = schoolGroups(content, tribeId);
   let selectedJob: number | undefined;
@@ -157,7 +160,7 @@ export function openSchoolDialog(
       else {
         selectedJob = undefined;
         refresh(true);
-        window.show();
+        if (!closed) window.show();
       }
     },
     onPick: (key) => {
@@ -217,10 +220,8 @@ export function openSchoolDialog(
     const invalid =
       building.components.UnderConstruction !== undefined ||
       students.some((id) => !valid.has(id)) ||
-      learners.some((learner) => {
-        const flags = (learner?.components.MissionBehaviour as { flags?: number } | undefined)?.flags ?? 0;
-        return (flags & components.MISSION_BEHAVIOUR.JOB_LOCKED) !== 0;
-      }) ||
+      buildingTribeOf(building) !== tribeId ||
+      ownerPlayerOf(building) !== player ||
       learners.some(
         (learner) =>
           learner !== undefined &&
@@ -228,12 +229,10 @@ export function openSchoolDialog(
       );
     const type = content.buildings.find((row) => row.typeId === buildingTypeOf(building));
     const capacity = type?.schoolSize;
-    const occupants = actorsOf(state).filter((actor) => trainingHouseOf(actor) === house);
+    const occupied = trainingOccupancyOf(state, house);
     choices = schoolChoices(
-      groups.filter(
-        (group) => status?.('job', group.jobType, tribeId, ownerPlayerOf(student)).allowed ?? true,
-      ),
-      (course) => status?.(course.target, course.typeId, tribeId, ownerPlayerOf(student)).enabled ?? true,
+      groups.filter((group) => status?.('job', group.jobType, tribeId, player).allowed ?? true),
+      (course) => status?.(course.target, course.typeId, tribeId, player).enabled ?? true,
     );
     reasons = new Map();
     for (const group of choices)
@@ -250,7 +249,7 @@ export function openSchoolDialog(
           ? copy.schoolUnavailable
           : remaining.length === 0
             ? copy.schoolLearned
-            : capacity !== undefined && occupants.length + entering > capacity
+            : capacity !== undefined && occupied + entering > capacity
               ? copy.schoolFull
               : undefined;
         reasons.set(courseKey(course), reason);
@@ -290,7 +289,7 @@ export function openSchoolDialog(
       capacity === undefined
         ? ''
         : formatMessage(copy.schoolPlaces, {
-            occupied: occupants.length,
+            occupied,
             capacity,
           }),
     );
