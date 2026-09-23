@@ -18,8 +18,71 @@ import {
   trainingHouseOf,
 } from '../../game/snapshot.js';
 import { technologyLabel } from '../../game/technology.js';
-import { messages } from '../../i18n/index.js';
+import { bcp47Tag, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, DIALOG_STYLE, el } from '../overlay.js';
+
+export interface SchoolCourse {
+  readonly target: 'job' | 'good';
+  readonly typeId: number;
+  readonly label: string;
+}
+
+export interface SchoolGroup {
+  readonly jobType: number;
+  readonly label: string;
+  readonly courses: readonly SchoolCourse[];
+}
+
+/** Courses are grouped by the trade that uses them, with each group and its methods in display order. */
+export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[] {
+  const tribe = content.tribes.find((row) => row.typeId === tribeId);
+  if (tribe === undefined) return [];
+  const collator = new Intl.Collator(bcp47Tag(), { sensitivity: 'base' });
+  const groups = new Map<number, SchoolCourse[]>();
+  const training = new Set(
+    tribe.jobRequirements
+      .filter((row) => row.requirement === 'train')
+      .map((row) => `${row.target}:${row.targetId}`),
+  );
+  for (const requirement of tribe.jobRequirements) {
+    if (requirement.requirement !== 'train' || requirement.target !== 'job') continue;
+    const jobType = requirement.targetId;
+    if (systems.isFighterJob(content, jobType) || professionDefForJob(jobType) === undefined) continue;
+    const courses = groups.get(jobType) ?? [];
+    if (!courses.some((course) => course.target === 'job'))
+      courses.push({
+        target: 'job',
+        typeId: jobType,
+        label: technologyLabel(content, 'job', jobType),
+      });
+    groups.set(jobType, courses);
+  }
+  for (const edge of tribe.jobEnables) {
+    if (edge.kind !== 'good' || !training.has(`good:${edge.targetId}`)) continue;
+    if (professionDefForJob(edge.jobType) === undefined) continue;
+    const courses = groups.get(edge.jobType) ?? [];
+    if (!courses.some((course) => course.target === 'good' && course.typeId === edge.targetId))
+      courses.push({
+        target: 'good',
+        typeId: edge.targetId,
+        label: technologyLabel(content, 'good', edge.targetId),
+      });
+    groups.set(edge.jobType, courses);
+  }
+  return [...groups]
+    .map(([jobType, courses]) => ({
+      jobType,
+      label: technologyLabel(content, 'job', jobType),
+      courses: courses.sort((a, b) =>
+        a.target === b.target
+          ? collator.compare(a.label, b.label) || a.typeId - b.typeId
+          : a.target === 'job'
+            ? -1
+            : 1,
+      ),
+    }))
+    .sort((a, b) => collator.compare(a.label, b.label) || a.jobType - b.jobType);
+}
 
 export function openSchoolDialog(
   content: ContentSet,
@@ -28,67 +91,66 @@ export function openSchoolDialog(
   house: number,
   enqueue: (command: PlayerCommand) => void,
   status?: Simulation['unlockStatus'],
-  /** The GUI click each course button and the close button confirm with; absent, silent. */
   cue?: (cue: UiCue) => void,
 ): (() => void) | undefined {
   const first = students[0];
   const student = first === undefined ? undefined : entityById(snapshot, first);
   if (student === undefined) return;
   const tribeId = settlerTribeOf(student);
-  const tribe = content.tribes.find((t) => t.typeId === tribeId);
+  const tribe = content.tribes.find((row) => row.typeId === tribeId);
   if (tribe === undefined) return;
   const copy = messages().hud;
-  const dialog = el('dialog', `${DIALOG_STYLE};max-width:32rem;max-height:75vh;overflow:auto`);
+  const dialog = el('dialog', `${DIALOG_STYLE};max-width:36rem;max-height:75vh;overflow:auto`);
   dialog.append(el('h2', '', copy.schoolTitle), el('p', '', copy.schoolHint));
   const full = schoolFull(content, snapshot, house, students);
-  const seen = new Set<string>();
-  for (const requirement of tribe.jobRequirements) {
-    if (requirement.requirement !== 'train') continue;
-    const { target, targetId } = requirement;
-    if (target === 'job' && systems.isFighterJob(content, targetId)) continue;
-    const key = `${target}:${targetId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (
-      target === 'good' &&
-      !tribe.jobEnables.some(
-        (e) => e.kind === 'good' && e.targetId === targetId && e.jobType === settlerJobType(student),
-      )
-    )
-      continue;
-    const definition = target === 'job' ? professionDefForJob(targetId) : undefined;
-    if (target === 'job' && definition === undefined) continue;
-    const label = technologyLabel(content, target, targetId);
-    const button = el(
-      'button',
-      `${BUTTON_STYLE};display:block;width:100%;margin:6px 0;text-align:left`,
-      label,
-    );
-    const unlock = status?.(target, targetId, tribe.typeId, ownerPlayerOf(student));
-    // A school teaches knowledge the settlement has already discovered; locked courses are not choices.
-    if (unlock !== undefined && !unlock.enabled) continue;
-    const learned = students.every((id) =>
-      settlerLearnedOf(entityById(snapshot, id)?.components ?? {}, target).includes(targetId),
-    );
-    const refusal = learned ? copy.schoolLearned : full ? copy.schoolFull : null;
-    if (refusal !== null) {
-      button.disabled = true;
-      button.style.opacity = '0.5';
-      button.title = refusal;
+  const learners = students.map((id) => entityById(snapshot, id));
+  const wrongTribe = learners.some((learner) => learner === undefined || settlerTribeOf(learner) !== tribeId);
+  for (const group of schoolGroups(content, tribe.typeId)) {
+    const section = el('section', 'margin:12px 0');
+    section.append(el('h3', 'margin:0 0 5px', group.label));
+    for (const course of group.courses) {
+      const button = el(
+        'button',
+        `${BUTTON_STYLE};display:block;width:100%;margin:4px 0;text-align:left`,
+        course.target === 'job' ? copy.schoolProfession : course.label,
+      );
+      const unlock = status?.(course.target, course.typeId, tribe.typeId, ownerPlayerOf(student));
+      const wrongTrade =
+        course.target === 'good' &&
+        learners.some((learner) => learner === undefined || settlerJobType(learner) !== group.jobType);
+      const learned = learners.every(
+        (learner) =>
+          learner !== undefined &&
+          settlerLearnedOf(learner.components, course.target).includes(course.typeId),
+      );
+      let refusal: string | null = null;
+      if (wrongTribe) refusal = copy.schoolWrongTribe;
+      else if (wrongTrade) refusal = copy.schoolRequiresProfession.replace('{profession}', group.label);
+      else if (unlock !== undefined && !unlock.allowed) refusal = copy.technologyForbidden;
+      else if (unlock !== undefined && !unlock.enabled) refusal = copy.schoolUndiscovered;
+      else if (learned) refusal = copy.schoolLearned;
+      else if (full) refusal = copy.schoolFull;
+      if (refusal !== null) {
+        button.disabled = true;
+        button.style.opacity = '0.5';
+        button.title = refusal;
+        button.append(el('small', 'display:block;opacity:0.8', refusal));
+      }
+      button.addEventListener('click', () => {
+        cue?.('confirm');
+        for (const entity of students)
+          enqueue({
+            kind: 'learn',
+            entity: entity as Entity,
+            house: house as Entity,
+            target: course.target,
+            typeId: course.typeId,
+          });
+        dialog.close();
+      });
+      section.append(button);
     }
-    button.addEventListener('click', () => {
-      cue?.('confirm');
-      for (const entity of students)
-        enqueue({
-          kind: 'learn',
-          entity: entity as Entity,
-          house: house as Entity,
-          target,
-          typeId: targetId,
-        });
-      dialog.close();
-    });
-    dialog.append(button);
+    dialog.append(section);
   }
   const close = el('button', BUTTON_STYLE, copy.schoolClose);
   close.addEventListener('click', () => {
@@ -102,8 +164,6 @@ export function openSchoolDialog(
   return () => dialog.remove();
 }
 
-/** Whether the school's places are taken by students other than the ones being sent, mirroring the
- *  sim's refusal (`orders/education.ts`). */
 function schoolFull(
   content: ContentSet,
   snapshot: WorldSnapshot,

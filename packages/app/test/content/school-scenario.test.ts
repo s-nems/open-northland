@@ -84,3 +84,73 @@ it.skipIf(!hasRealIr())(
   },
   30_000,
 );
+
+it.skipIf(!hasRealIr())(
+  'a school teaches discovered iron, gold and advanced smithing methods',
+  async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const tribe = content.tribes.find((row) => row.id === 'viking');
+    const schoolType = content.buildings.find((row) => row.kind === 'training' && row.workers.length === 0);
+    const collector = content.jobs.find((row) => row.id === 'collector');
+    const smith = content.jobs.find((row) => row.id === 'smith');
+    const goods = ['iron', 'gold', 'armor_plate'].map((id) => content.goods.find((row) => row.id === id));
+    if (
+      tribe === undefined ||
+      schoolType === undefined ||
+      collector === undefined ||
+      smith === undefined ||
+      goods.some((good) => good === undefined)
+    )
+      throw new Error('missing school course content');
+    const map = halfCellMapFromCells({
+      width: 24,
+      height: 24,
+      typeIds: new Array(24 * 24).fill(TERRAIN_OPEN),
+    });
+    const sim = new Simulation({ seed: 8, content, map });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: schoolType.typeId,
+      x: 20,
+      y: 20,
+      tribe: tribe.typeId,
+      owner: HUMAN_PLAYER,
+      force: true,
+    });
+    for (const [index, jobType] of [collector.typeId, collector.typeId, smith.typeId].entries())
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType,
+        x: 20 + index * 2,
+        y: 28,
+        tribe: tribe.typeId,
+        owner: HUMAN_PLAYER,
+      });
+    sim.step();
+    const house = [...sim.world.query(components.Building)][0];
+    const pupils = [...sim.world.query(components.Settler)];
+    if (house === undefined || pupils.length !== 3) throw new Error('school setup failed');
+    for (const [index, good] of goods.entries()) {
+      const pupil = pupils[index];
+      if (good === undefined || pupil === undefined) throw new Error('missing course pupil');
+      components.discoverTechnology(sim.world, HUMAN_PLAYER, tribe.typeId, 'good', good.typeId);
+      sim.enqueueSetup({
+        kind: 'learn',
+        entity: pupil,
+        house,
+        target: 'good',
+        typeId: good.typeId,
+      });
+    }
+    sim.run(1000);
+    for (const [index, good] of goods.entries()) {
+      const pupil = pupils[index];
+      if (good === undefined || pupil === undefined) throw new Error('missing course pupil');
+      expect(sim.world.get(pupil, components.Settler).learned?.good).toContain(good.typeId);
+    }
+    expect(sim.checkInvariants()).toEqual([]);
+  },
+  30_000,
+);
