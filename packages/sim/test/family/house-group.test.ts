@@ -5,6 +5,7 @@ import {
   Building,
   Female,
   Marriage,
+  MoveGoal,
   Owner,
   Position,
   Residence,
@@ -13,10 +14,12 @@ import {
 import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { parseCommandEnvelope, playerCommand, replay, Simulation } from '../../src/index.js';
-import { nodeOfPosition } from '../../src/nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
 import { familiesOf } from '../../src/systems/index.js';
 import { groupPlacementOrder } from '../../src/systems/orders/group-placement.js';
 import { assignHouse, assignHouseGroup } from '../../src/systems/orders/index.js';
+import { stepOffHomeDoor } from '../../src/systems/settlers/drives/spacing.js';
+import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -179,6 +182,46 @@ describe('assignHouseGroup - send a group to one home', () => {
       const at = nodeOfPosition(p.x, p.y);
       expect(sim.terrain.nodeAtClamped(at.hx, at.hy)).not.toBe(door);
     }
+  });
+
+  it('finds a clear stand beyond a crowded doorway yard', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(48, 8) });
+    const house = homeAt(sim, 10);
+    const woman = adultAt(sim, 10);
+    sendGroup(sim, house, [woman]);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: terrain missing');
+    const ctx = ctxOf(sim);
+    const door = interactionCell(sim.world, ctx, terrain, house);
+    sim.world.add(woman, Position, positionOfNode(terrain.xOf(door), terrain.yOf(door)));
+    const yard = PlannerSpacing.forTick(sim.world, ctx, terrain).yard(door);
+    for (const cell of yard) {
+      if (cell === door) continue;
+      const blocker = adultAt(sim, 10);
+      sim.world.add(blocker, Position, positionOfNode(terrain.xOf(cell), terrain.yOf(cell)));
+    }
+    const spacing = PlannerSpacing.forTick(sim.world, ctx, terrain);
+
+    expect(stepOffHomeDoor(sim.world, ctx, terrain, woman, door, spacing)).toBe(true);
+    const stand = sim.world.get(woman, MoveGoal).cell;
+    expect(yard.has(stand)).toBe(false);
+    expect(spacing.isClaimed(stand)).toBe(true);
+  });
+
+  it('leaves an unowned resident at the doorway', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(48, 4) });
+    const house = homeAt(sim, 10);
+    const woman = adultAt(sim, 10);
+    sendGroup(sim, house, [woman]);
+    sim.world.remove(woman, Owner);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: terrain missing');
+    const ctx = ctxOf(sim);
+    const door = interactionCell(sim.world, ctx, terrain, house);
+    const spacing = PlannerSpacing.forTick(sim.world, ctx, terrain);
+
+    expect(stepOffHomeDoor(sim.world, ctx, terrain, woman, door, spacing)).toBe(false);
+    expect(sim.world.has(woman, MoveGoal)).toBe(false);
   });
 
   it('reaches the sim from a seat over the wire and replays to the same state', () => {

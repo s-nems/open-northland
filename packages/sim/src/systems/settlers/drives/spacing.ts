@@ -52,12 +52,15 @@ export function stepOffHomeDoor(
   here: NodeId,
   spacing: PlannerSpacing,
 ): boolean {
+  if (!world.has(e, Owner)) return false;
   const home = world.tryGet(e, Residence)?.home;
   if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
   const door = interactionCell(world, ctx, terrain, home, here);
   if (here !== door) return false;
-  const stand = loiterCell(world, terrain, e, here, door, spacing);
-  if (stand === here) return false;
+  const nearby = loiterCell(world, terrain, e, here, door, spacing);
+  const stand = nearby === here ? nearestFreeCell(terrain, here, spacing) : nearby;
+  if (stand === null || stand === here) return false;
+  if (nearby === here) spacing.claim(stand);
   world.add(e, MoveGoal, { cell: stand });
   return true;
 }
