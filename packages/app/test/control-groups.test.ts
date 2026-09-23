@@ -131,9 +131,9 @@ describe('control groups', () => {
 });
 
 describe('recall of an already selected group', () => {
-  it('centres only when every member is selected; a partial or wider selection selects', () => {
+  it('centres only for the exact group; a partial or wider selection selects', () => {
     expect(groupRecallEffect([1, 2], new Set([1, 2]))).toBe('centre');
-    expect(groupRecallEffect([1, 2], new Set([1, 2, 3]))).toBe('centre'); // members plus others
+    expect(groupRecallEffect([1, 2], new Set([1, 2, 3]))).toBe('select');
     expect(groupRecallEffect([1, 2], new Set([1]))).toBe('select');
     expect(groupRecallEffect([1, 2], new Set())).toBe('select');
   });

@@ -47,15 +47,12 @@ export interface ControlGroups {
   recall(action: ControlGroupAction, isSelectable: (id: number) => boolean): readonly number[] | null;
 }
 
-/**
- * What a recall of `ids` does: the original centres the view on a group whose every member is already
- * selected, and selects the group otherwise.
- */
+/** Centre only when the current selection contains exactly the recalled group. */
 export function groupRecallEffect(
   ids: readonly number[],
   selected: ReadonlySet<number>,
 ): 'centre' | 'select' {
-  return ids.every((id) => selected.has(id)) ? 'centre' : 'select';
+  return ids.length === selected.size && ids.every((id) => selected.has(id)) ? 'centre' : 'select';
 }
 
 /** The world-px centroid of the members' ground anchors (the mean the original's group position takes),
