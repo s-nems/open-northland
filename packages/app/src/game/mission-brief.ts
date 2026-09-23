@@ -9,8 +9,9 @@ export interface MissionGoal {
   readonly text: string;
   /** An authored trigger's description is listed as information; the skirmish rule is what decides. */
   readonly rule: 'authored' | 'skirmish';
-  /** The original marks a goal whose last check held with `X`, an active one with `o`, and prints
-   *  an inactive, unmet one dimmed with no mark (reading). */
+  /** A goal that fired or whose last check held shows `X`; an active unmet one shows `o`; an inactive,
+   *  unmet one is dimmed with no mark. Keeping `X` after a fire is a UI approximation for repeatable
+   *  scripts that consume their own goal input. */
   readonly state: 'done' | 'open' | 'idle';
 }
 

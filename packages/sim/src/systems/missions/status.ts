@@ -9,7 +9,7 @@ export interface MissionStatus {
   readonly description: number | undefined;
   readonly visible: boolean;
   readonly active: boolean;
-  /** Whether the last check satisfied the mission's rule, which is the window's "done" mark. */
+  /** Whether the mission has fired or its last check satisfied its rule. */
   readonly done: boolean;
   readonly firstFiredTick: number | undefined;
   readonly lastFiredTick: number | undefined;
@@ -28,7 +28,7 @@ export function missionStatus(world: World, script: MissionScript | undefined): 
       description: definition.description,
       visible: record?.visible ?? definition.visible,
       active: record?.active ?? definition.active,
-      done: record?.evaluated ?? false,
+      done: record !== undefined && (record.evaluated || (record.fireCount ?? 0) > 0),
       firstFiredTick: record?.firstFiredTick,
       lastFiredTick: record?.lastFiredTick,
       fireCount: record?.fireCount ?? 0,

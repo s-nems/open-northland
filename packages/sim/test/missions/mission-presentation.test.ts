@@ -298,4 +298,25 @@ describe('the mission status probe', () => {
       [false, true],
     ]);
   });
+
+  it('keeps a fired goal marked done after a repeatable trigger becomes false', () => {
+    const sim = missionSim([
+      mission({
+        description: STRING,
+        visible: true,
+        goals: [{ opcode: 'IfMissionIsActive', missionIndex: 1 }],
+        results: [
+          { opcode: 'DeactivateMission', missionIndex: 1 },
+          { opcode: 'ActivateMission', missionIndex: 0 },
+        ],
+      }),
+      mission({ goals: [{ opcode: 'TimeGone', seconds: 3600 }] }),
+    ]);
+    sim.run(LOAD_PASS);
+    expect(sim.missionStatus()[0]).toMatchObject({ active: true, done: true, fireCount: 1 });
+    sim.run(PASS_TICKS - LOAD_PASS);
+    expect(missionRecords(sim.world)[0]?.evaluated).toBe(false);
+    expect(sim.missionStatus()[0]).toMatchObject({ active: true, done: true, fireCount: 1 });
+    expect(roundTrip(sim).missionStatus()[0]?.done).toBe(true);
+  });
 });

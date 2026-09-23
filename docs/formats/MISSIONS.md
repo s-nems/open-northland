@@ -726,8 +726,9 @@ in script order, printing the string from the map's own table under the heading:
 the mission's last check satisfied its `successfullif` rule, with an `o` when it is active, and with
 no mark and dimmed when it is neither. A description starting with `@` prints without it, in black
 rather than the list's colour (reading); this build strips the mark and keeps the list's colour. The
-`visible` flag is the `SetVisible` result's; the satisfied flag is rewritten by every check, so a
-mission that fired keeps its `X` until something checks it again. The app-side page format is
+`visible` flag is the `SetVisible` result's; the satisfied flag is rewritten by every check. This
+build also keeps `X` once the mission has fired, so a repeatable trigger that consumes its input
+does not erase an earned completion mark (UI approximation). The app-side page format is
 documented with the `.briefing.json` sidecar schema in `packages/data`.
 
 The markers (`SetGuiMarker`, the area and import markers) and weather squares are retained in a lazy
