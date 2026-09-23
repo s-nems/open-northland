@@ -160,7 +160,7 @@ export function openSchoolDialog(
         window.show();
       }
     },
-    onPick: (key, point) => {
+    onPick: (key) => {
       refresh(true);
       if (closed) return;
       if (selectedJob === undefined) {
@@ -169,10 +169,7 @@ export function openSchoolDialog(
         if (group.courses.length > 1) {
           selectedJob = group.jobType;
           refresh(true);
-          window.show(group.label, {
-            search: false,
-            ...(point === undefined ? {} : { anchor: point }),
-          });
+          window.show(group.label, { search: false });
           return;
         }
         const course = group.courses[0];

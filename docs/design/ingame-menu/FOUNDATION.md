@@ -447,8 +447,9 @@ Missing original assets are reported below the preview; do not mistake empty can
 Use the shared compact, narrow window and a single column of grouped choices. The profession list opens first, with search
 focused and its existing text selected. Search matches the beginning of a choice label. Clicking a
 profession completes a zero/one advanced-method choice immediately; multiple discovered advanced
-methods require one choice in a second window, without search and centered near the clicked profession
-(clamped to the viewport). Dismissing that window returns without submitting.
+methods require one choice in a second window, without search. Keep the frame at the same position
+when filtering or changing pages; clamp it to the viewport when needed. Dismissing that window returns
+without submitting.
 Do not show an action-description strip below the choices. The runtime surface is `packages/app/src/hud/dom/choice-window.ts`, styled in the shared
 `foundation.css`. The school scene provides the in-game review path.
 

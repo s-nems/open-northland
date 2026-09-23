@@ -29,7 +29,7 @@ export const choiceMatches = (label: string, query: string): boolean => {
 export function createChoiceWindow(opts: {
   readonly title: string;
   readonly scale?: number;
-  readonly onPick: (key: string, point?: { x: number; y: number }) => void;
+  readonly onPick: (key: string) => void;
   readonly onDismiss: () => void;
   readonly cue?: (cue: UiCue) => void;
 }) {
@@ -72,16 +72,19 @@ export function createChoiceWindow(opts: {
     if (anchor === undefined) {
       window.element.style.left = '50%';
       window.element.style.top = '50%';
-      return;
+      window.element.style.transform = 'translate(-50%, -50%)';
+      if (!dialog.open) return;
+      const rect = window.element.getBoundingClientRect();
+      const scale = plane.currentScale();
+      anchor = { x: rect.left / scale, y: rect.top / scale };
     }
-    const scale = plane.currentScale();
-    const halfWidth = window.element.offsetWidth / 2;
-    const halfHeight = window.element.offsetHeight / 2;
-    const clamp = (value: number, half: number, extent: number): number =>
-      Math.max(half + 16, Math.min(value, extent - half - 16));
+    // Keep the frame still when search or a second choice page changes its height.
+    const clamp = (value: number, size: number, extent: number): number =>
+      Math.max(16, Math.min(value, extent - size - 16));
+    window.element.style.transform = 'none';
     window.place(
-      clamp(anchor.x / scale, halfWidth, plane.element.clientWidth),
-      clamp(anchor.y / scale, halfHeight, plane.element.clientHeight),
+      clamp(anchor.x, window.element.offsetWidth, plane.element.clientWidth),
+      clamp(anchor.y, window.element.offsetHeight, plane.element.clientHeight),
     );
   };
   let trigger: HTMLElement | null = null;
@@ -121,10 +124,10 @@ export function createChoiceWindow(opts: {
           button.title = row.reason;
           button.setAttribute('aria-label', `${row.label}: ${row.reason}`);
         }
-        button.addEventListener('click', (event) => {
+        button.addEventListener('click', () => {
           if (row.reason !== undefined) return;
           opts.cue?.('confirm');
-          opts.onPick(row.key, event.detail === 0 ? undefined : { x: event.clientX, y: event.clientY });
+          opts.onPick(row.key);
         });
         grid.append(button);
       }
@@ -193,10 +196,10 @@ export function createChoiceWindow(opts: {
       context.hidden = caption === '';
       render();
     },
-    show(label = opts.title, options: { search?: boolean; anchor?: { x: number; y: number } } = {}): void {
+    show(label = opts.title, options: { search?: boolean } = {}): void {
       searchable = options.search ?? true;
       field.hidden = !searchable;
-      anchor = options.anchor;
+      if (!dialog.open) anchor = undefined;
       dialog.setAttribute('aria-label', label);
       if (title !== null) title.textContent = label;
       window.element.setAttribute('aria-label', label);
