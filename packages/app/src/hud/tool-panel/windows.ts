@@ -215,17 +215,19 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       mission: mission.state(),
     }),
     restore: (state): void => {
-      menu.restore(state.buildings);
-      residents.restore(state.residents);
+      const open = new Set(state.openIds);
+      if (!open.has('menu')) menu.restore(state.buildings);
+      if (!open.has('residents')) residents.restore(state.residents);
       diplomacy.restore(state.diplomacy);
       if (state.heldPaper === null) heldPaper.cancel();
       else heldPaper.hold(state.heldPaper);
       mission.restore(state.mission);
-      const open = new Set(state.openIds);
       for (const id of MOUNT_ORDER) {
         const window = entries[id].window;
         if (open.has(id) !== window.isOpen()) window.toggle();
       }
+      if (open.has('menu')) menu.restore(state.buildings);
+      if (open.has('residents')) residents.restore(state.residents);
     },
     dispose: (): void => {
       menu.dispose();

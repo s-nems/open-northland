@@ -522,7 +522,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   };
 
   const placeWindow = centralWindowPlacer(window, deps.plane, CONSTRUCTION_WINDOW_W);
-  const open = (): void => {
+  const open = (resumePlacement = false): void => {
+    if (!resumePlacement) showPage('catalog');
     layoutCards();
     showCategory(state.category);
     layoutPapers();
@@ -546,7 +547,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   const resume = (): void => {
     if (!state.suspended) return;
     state = { ...state, suspended: false };
-    open();
+    open(true);
     const picked = state.page === 'catalog' && state.picked !== null ? cards.get(state.picked) : undefined;
     if (picked !== undefined && !picked.pick.disabled) picked.pick.focus();
   };

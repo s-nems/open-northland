@@ -248,7 +248,8 @@ export function sortResidents(
   );
 }
 
-/** What the window keeps between openings, for the game: never browser storage. */
+/** Window state across a HUD-scale remount. Fresh openings clear filters and scroll, while the sort
+ *  remains the player's per-game choice. Never browser storage. */
 export interface ResidentsWindowState {
   readonly filters: ResidentFilters;
   readonly sort: ResidentSort;

@@ -21,6 +21,7 @@ export function stubConstructionWindow(seam: ConstructionWindowSeam): Constructi
     toggle: () => {
       open = !open;
       if (!open) state = { ...state, suspended: false };
+      else state = { ...state, page: 'catalog' };
     },
     close: () => {
       open = false;

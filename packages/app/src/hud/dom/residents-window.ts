@@ -226,14 +226,17 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   const clearButton = (): HTMLButtonElement => {
     const control = button('on-res-clear');
     control.textContent = copy.clear;
-    control.addEventListener('click', () => {
+    control.addEventListener('click', (event) => {
       deps.cue('confirm');
       setFilters(NO_RESIDENT_FILTERS);
+      if (event.detail === 0) query.focus({ preventScroll: true });
     });
     return control;
   };
   const clear = clearButton();
-  summary.append(clear);
+  const closeButton = window.element.querySelector('.on-window__close');
+  if (closeButton === null) throw new Error('residents: close button');
+  closeButton.before(clear);
   const head = element('div', 'on-res-head', `<span></span>`);
   const heads = new Map<ResidentSortKey, HTMLButtonElement>();
   for (const key of SORT_KEYS) {
@@ -556,9 +559,11 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   };
 
   const open = (): void => {
+    state = { ...state, filters: NO_RESIDENT_FILTERS, scrollTop: 0 };
+    anchor = null;
     rows = deps.rows();
     window.open();
-    place(); // the list needs its height bound before a kept scroll can land
+    place(); // the list needs its height bound before a restored scroll can land
     relist();
     list.scrollTop = state.scrollTop;
   };

@@ -26,6 +26,7 @@ import {
 import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
+import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../src/hud/tool-panel/residents/rows.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { messages } from '../src/i18n/index.js';
@@ -350,6 +351,24 @@ describe('tool windows registry', () => {
     again.windows.restore(saved);
     expect(again.menu.isOpen()).toBe(true);
     expect(again.menu.state()).toEqual(saved.buildings);
+  });
+
+  it('keeps an open residents filter through a HUD remount', () => {
+    const { windows } = mountWindows();
+    windows.byId.residents.toggle();
+    windows.restore({
+      ...windows.state(),
+      residents: {
+        ...INITIAL_RESIDENTS_STATE,
+        filters: { ...NO_RESIDENT_FILTERS, query: 'Astrid' },
+        scrollTop: 24,
+      },
+    });
+    const saved = windows.state();
+    const again = mountWindows();
+    again.windows.restore(saved);
+    expect(again.windows.byId.residents.isOpen()).toBe(true);
+    expect(again.windows.state().residents).toEqual(saved.residents);
   });
 
   it('claims a point only while a pop-up is open under it', () => {

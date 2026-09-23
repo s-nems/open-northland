@@ -1,5 +1,5 @@
 import type { ResidentsWindow } from '../../src/hud/dom/residents-window.js';
-import { INITIAL_RESIDENTS_STATE } from '../../src/hud/tool-panel/residents/rows.js';
+import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../../src/hud/tool-panel/residents/rows.js';
 
 /** A residents window without a DOM: the registry only asks it to open, close, refresh and keep its
  *  state. */
@@ -10,6 +10,7 @@ export function stubResidentsWindow(): ResidentsWindow {
     isOpen: () => open,
     toggle: () => {
       open = !open;
+      if (open) state = { ...state, filters: NO_RESIDENT_FILTERS, scrollTop: 0 };
     },
     close: () => {
       open = false;

@@ -1928,17 +1928,24 @@
   margin: 0 4px 6px;
 }
 .on-hud .on-res-clear {
-  order: 2;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border: 1px solid #8d7549;
-  border-radius: 10px;
-  background: #fff5;
-  color: var(--ink);
+  border-radius: 12px;
+  background: linear-gradient(var(--wood-hi), var(--wood));
+  color: #fff0cd;
   font: 600 12px var(--font-body);
   letter-spacing: 0;
 }
 .on-hud .on-res-clear:hover {
-  background: #fff9;
+  background: linear-gradient(#8a6d4a, var(--wood-hi));
+}
+.on-hud .on-window--residents .on-window__head > .on-res-clear {
+  margin-left: auto;
+  margin-right: 12px;
+}
+.on-hud .on-res-clear:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .on-hud .on-res-clear[hidden] {
   display: none;
@@ -1946,6 +1953,11 @@
 .on-hud .on-catalog__empty .on-res-clear {
   justify-self: center;
   margin-top: 4px;
+  background: #fff5;
+  color: var(--ink);
+}
+.on-hud .on-catalog__empty .on-res-clear:hover {
+  background: #fff9;
 }
 .on-hud .on-res-head,
 .on-hud .on-res-row {

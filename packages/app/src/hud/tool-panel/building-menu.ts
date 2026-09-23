@@ -71,9 +71,8 @@ export type CatalogueView = 'grid' | 'list';
  *  row's Papiery button toggles and a back tab leaves. */
 export type ConstructionPage = 'catalog' | 'papers';
 
-/** What the window keeps between openings, and across a HUD-scale remount: the page, the chosen tab,
- *  the grid or list view (a per-game choice for both pages, never browser storage), the scroll, the
- *  card last picked, and whether a pick hid the window for a placement it should come back from. */
+/** Window state across a HUD-scale remount. Fresh openings show the catalogue, while placement
+ *  resumes keep the page. The grid or list view remains a per-game choice, never browser storage. */
 export interface ConstructionWindowState {
   readonly page: ConstructionPage;
   readonly category: BuildingCategory;
