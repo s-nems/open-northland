@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PathFollow, PathRequest, Position, WalkFacing } from '../../src/components/index.js';
+import { MoveStepPeriod, PathFollow, PathRequest, Position, WalkFacing } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   exportSaveGame,
@@ -236,6 +236,21 @@ describe('pathfindingSystem - per-tick search budget', () => {
 });
 
 describe('pathfindingSystem - mid-walk reroute', () => {
+  it('stops a held turn at the current node without inventing a new heading', () => {
+    const { sim } = mappedSim(grassMap(4, 2));
+    const e = cruisingWalker(sim, 2, 1);
+    const position = { ...sim.world.get(e, Position) };
+    const facing = { ...sim.world.get(e, WalkFacing) };
+    expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
+
+    reorder(sim, e, 0);
+    sim.step();
+
+    expect(sim.world.get(e, Position)).toEqual(position);
+    expect(sim.world.has(e, PathFollow)).toBe(false);
+    expect(sim.world.get(e, WalkFacing)).toEqual(facing);
+  });
+
   it('retains the ordinary pace when the goal changes every tick partway through one step', () => {
     const { sim } = mappedSim(grassMap(20, 1));
     const e = cruisingWalker(sim, 8, 5);
@@ -247,6 +262,36 @@ describe('pathfindingSystem - mid-walk reroute', () => {
       const after = sim.world.get(e, Position);
       expect(Math.abs(worldDistance(before.x, before.y, after.x, after.y) - pace)).toBeLessThanOrEqual(2);
     }
+  });
+
+  it('retains a periodic animal step through two redirects toward an ahead node', () => {
+    const { sim } = mappedSim(grassMap(10, 1));
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(e, MoveStepPeriod, { ticks: 8 });
+    sim.world.add(e, PathRequest, {
+      start: terrain.nodeAt(0, 0),
+      goal: terrain.nodeAt(8, 0),
+      failed: false,
+    });
+    sim.run(5);
+    for (let i = 0; i < 2; i++) {
+      sim.world.add(e, PathRequest, {
+        start: terrain.nodeAt(1, 0),
+        goal: terrain.nodeAt(7 + i, 0),
+        failed: false,
+      });
+      sim.step();
+      const route = sim.world.get(e, PathFollow);
+      expect(route.waypoints[route.index]?.node).toBe(terrain.nodeAt(1, 0));
+      expect(sim.world.get(e, Position).x).toBe(fx.fromFloat((6 + i) / 16));
+    }
+    sim.step();
+    expect(sim.world.get(e, Position).x).toBe(fx.fromFloat(0.5));
+    sim.run(8);
+    expect(sim.world.get(e, Position).x).toBe(fx.fromInt(1));
   });
 
   it('restores the captured pace and charged departure after a mid-step reroute', () => {

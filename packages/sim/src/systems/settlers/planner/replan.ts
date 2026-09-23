@@ -9,6 +9,7 @@ import {
   Garrison,
   HuntFocus,
   inPastimeChat,
+  ownerOf,
   PathRequest,
   PlayerOrder,
   Position,
@@ -26,6 +27,7 @@ import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
 import type { ShelterSites } from '../../defence/index.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
+import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
@@ -134,13 +136,16 @@ export function releaseStaleIntent(
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (atomicHoldsSettler(world, e)) return false;
   const settler = world.tryGet(e, Settler);
+  const owner = ownerOf(world, e);
   let seekShelter = false;
   if (
     !world.has(e, Sheltering) &&
     !world.has(e, PlayerOrder) &&
     settler !== undefined &&
     settler.jobType !== null &&
-    shelters.size > 0 &&
+    sheltersOnAlarm(ctx.content, settler.jobType) &&
+    owner !== undefined &&
+    shelters.has(owner) &&
     ctx.terrain !== undefined &&
     (isTravelling(world, e) || world.has(e, Fleeing))
   ) {

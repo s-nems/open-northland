@@ -9,6 +9,7 @@ import {
   MoveGoal,
   Owner,
   PathFollow,
+  PathRequest,
   PlayerOrder,
   Position,
   SupplyRun,
@@ -97,6 +98,29 @@ describe('moveUnit order', () => {
     expect(after.legCost).toBe(before.legCost);
     expect(after.legTicks).toBe(before.legTicks + 1);
     expect(s.world.get(e, Position).x).toBeGreaterThan(position);
+  });
+
+  it('retries a failed mid-walk route when the player clicks the same destination again', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    orderMove(s, e, 6, 0);
+    s.run(5);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const goal = terrain.nodeAt(16, 0);
+    // A failed redirect retains the previous live path while waiting for the next player-order pass.
+    s.world.add(e, MoveGoal, { cell: goal });
+    s.world.add(e, PathRequest, { start: terrain.nodeAt(0, 0), goal, failed: true });
+    const before = s.world.get(e, Position).x;
+
+    orderMove(s, e, 8, 0);
+    s.step();
+
+    expect(s.world.has(e, PlayerOrder)).toBe(true);
+    expect(s.world.has(e, PathRequest)).toBe(false);
+    const route = s.world.get(e, PathFollow);
+    expect(route.waypoints.at(-1)?.node).toBe(goal);
+    expect(s.world.get(e, Position).x).toBeGreaterThan(before);
   });
 
   it('a repeated click still cancels a competing flee and parked order', () => {

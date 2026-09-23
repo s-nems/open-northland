@@ -146,9 +146,9 @@ function walkHumanLeg(
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
 ): boolean {
+  // A redirect onto the current centre ends even a held turn without inventing another heading.
+  if (p.x === target.x && p.y === target.y) return true;
   if (pf.legCost === 0) {
-    // A same-node request has only its destination callback, not an extra departure.
-    if (p.x === target.x && p.y === target.y) return true;
     const roughness = departureRoughness(ctx.terrain, pf);
     beginTimedLeg(pf, p, target, walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content)));
     // The planned heading is fixed for this leg. Separation can nudge the position across an octant

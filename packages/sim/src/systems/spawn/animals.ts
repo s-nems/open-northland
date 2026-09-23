@@ -92,8 +92,8 @@ export function spawnAnimalHerd(
  * its hitpoint pool, its walking pace, and the {@link Livestock} marker mirroring the content's
  * `catchable` flag, so the husbandry systems query that small store rather than the whole population.
  *
- * Original behavior: `movespeed` is the period of one map-point step. The corresponding period has
- * not been confirmed against the running original.
+ * Approximation: interpret `movespeed` as ticks per map-point step. This timing has not been
+ * confirmed against the running original.
  */
 export function stampAnimalBody(
   world: World,

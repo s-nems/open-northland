@@ -8,6 +8,7 @@ import {
   placeBuiltSandboxBuilding,
   placeSandboxSite,
   spawnSandboxSettler,
+  spawnSettlerDirect,
   WEAPON_BROADSWORD,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
@@ -82,6 +83,11 @@ function build(sim: Simulation): void {
       weaponTypeId: job === JOB_SOLDIER_SPEAR ? WEAPON_SPEAR : WEAPON_SWORD,
     });
   }
+  // Keep the heart example independent of which front-line warrior survives the fight wounded.
+  const reserve = spawnSettlerDirect(sim, JOB_ARCHER, 1, 17, HUMAN_PLAYER);
+  const health = sim.world.mut(reserve, Health);
+  health.hitpoints = Math.trunc(health.max * 0.9);
+  sim.world.mut(reserve, components.Stance).mode = systems.MILITARY_MODE.IGNORE;
 }
 
 /** Keyed on the same id and kind as the sim's siege-priority policy, so the check moves with the rule. */
@@ -114,14 +120,14 @@ function enemyDefendersDead(sim: Simulation): boolean {
 }
 
 // `runTicks` must land after the high-value tier is razed but before the warband turns on the plain
-// homes, so the end state itself shows the auto-focus priority. The first such window is ticks 664..917
-// (measured); this sits mid-span, since combat pacing moves its edges.
+// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 817..950
+// in the headless fixture; leave margin after the full march and siege.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 790,
+  runTicks: 850,
   initialZoom: 0.8,
   checks: [
     {

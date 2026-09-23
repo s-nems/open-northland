@@ -7,14 +7,14 @@ import {
   WalkFacing,
   type Waypoint,
 } from '../../components/index.js';
-import { fx } from '../../core/fixed.js';
+import { type Fixed, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { worldDistance } from '../../nav/world-metric.js';
+import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockLayers, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial/nodes.js';
@@ -113,8 +113,9 @@ export function drainPathRequests(
     }
 
     const waypoints = pathToWaypoints(terrain, path);
-    // The route opens with the stop the walker stands at or beside, which its first leg leaves: walking
-    // to it first would back a mid-tile walker up before it turns. A one-stop route walks onto its centre.
+    // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
+    // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
+    // a blocked start only permits escape, never a return to its centre.
     const previous = world.tryGet(e, PathFollow);
     const oldTarget = previous?.waypoints[previous.index];
     const oldStart = previous?.waypoints[previous.index - 1];
@@ -125,11 +126,24 @@ export function drainPathRequests(
       position !== undefined &&
       (position.x !== oldStart.x || position.y !== oldStart.y);
     const oldPace =
-      moved && activeCost > 0 && oldTarget !== undefined && oldStart !== undefined
+      activeCost > 0
         ? (previous?.legPace ??
-          fx.divCeil(worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y), fx.fromInt(activeCost)))
+          (moved && oldTarget !== undefined && oldStart !== undefined
+            ? fx.divCeil(
+                worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y),
+                fx.fromInt(activeCost),
+              )
+            : undefined))
         : undefined;
-    const index = waypoints.length >= 2 ? 1 : 0;
+    const index =
+      waypoints.length < 2 ||
+      (activeCost > 0 &&
+        position !== undefined &&
+        waypoints[0] !== undefined &&
+        !blocked.has(waypoints[0].node) &&
+        startIsAhead(position, waypoints))
+        ? 0
+        : 1;
     world.add(e, PathFollow, {
       waypoints,
       index,
@@ -144,6 +158,18 @@ export function drainPathRequests(
     }
     world.remove(e, PathRequest);
   }
+}
+
+function startIsAhead(position: { x: Fixed; y: Fixed }, waypoints: readonly Waypoint[]): boolean {
+  const start = waypoints[0];
+  const next = waypoints[1];
+  if (start === undefined || next === undefined) return false;
+  const approachX = worldX(start.x, start.y) - worldX(position.x, position.y);
+  const approachY = fx.mul(fx.sub(start.y, position.y), ROW_STEP);
+  const outgoingX = worldX(next.x, next.y) - worldX(start.x, start.y);
+  const outgoingY = fx.mul(fx.sub(next.y, start.y), ROW_STEP);
+  // The outgoing vector spans one lattice step; the integer dot product needs no normalization.
+  return approachX * outgoingX + approachY * outgoingY > 0;
 }
 
 /**

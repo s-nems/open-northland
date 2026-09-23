@@ -134,6 +134,7 @@ function startPlayerWalk(
     existingOrder.pendingGoal === undefined &&
     world.tryGet(e, MoveGoal)?.cell === goal &&
     world.has(e, PathFollow) &&
+    world.tryGet(e, PathRequest)?.failed !== true &&
     !world.has(e, CurrentAtomic) &&
     !world.has(e, DeferredOrder) &&
     !world.has(e, Engagement) &&

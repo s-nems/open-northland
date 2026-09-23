@@ -9,6 +9,7 @@ import {
   MissionBehaviour,
   PathFollow,
   PathRequest,
+  Position,
   Settler,
   WalkFacing,
 } from '../../../src/components/index.js';
@@ -58,6 +59,39 @@ const spentPoints = (sim: Simulation, e: Entity): number =>
   Math.round((fx.toFloat(sim.world.get(e, Equipment).boots?.degreeOfUse ?? ONE) * SHOE_POINTS) / 1);
 
 describe('movementSystem - worn boots', () => {
+  it('keeps an ahead node and charges its terrain once after repeated redirects', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: testContent(),
+      map: roughNodeMap(10, 1, (hx) => (hx === 1 ? 5 : LAND_ROUGHNESS)),
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const e = followerAt(sim, 0, 0, WALK);
+    wearBoots(sim, e, SHOES);
+    sim.run(4); // past the midpoint of the six-tick shod step, but short of node 1
+    expect(spentPoints(sim, e)).toBe(LAND_ROUGHNESS);
+    const pace = fx.div(fx.fromFloat(0.5), fx.fromInt(LAND_STEP_TICKS_SHOD));
+    for (let i = 0; i < 2; i++) {
+      const before = sim.world.get(e, Position).x;
+      sim.world.add(e, PathRequest, {
+        start: terrain.nodeAt(1, 0),
+        goal: terrain.nodeAt(6 + i, 0),
+        failed: false,
+      });
+      sim.step();
+      expect(Math.abs(sim.world.get(e, Position).x - before - pace)).toBeLessThanOrEqual(2);
+    }
+    expect(sim.world.get(e, Position).x).toBe(fx.fromFloat(0.5));
+    expect(spentPoints(sim, e)).toBe(LAND_ROUGHNESS);
+
+    sim.step();
+
+    expect(sim.world.get(e, PathFollow).legCost).toBe(12); // roughness 5, with boots
+    expect(spentPoints(sim, e)).toBe(LAND_ROUGHNESS + 5);
+    expect(sim.world.get(e, Position).x - fx.fromFloat(0.5)).toBe(fx.div(fx.fromFloat(0.5), fx.fromInt(12)));
+  });
+
   it('does not spend another departure point when a live step is rerouted repeatedly', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const e = followerAt(sim, 0, 0, WALK);

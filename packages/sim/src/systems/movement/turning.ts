@@ -20,6 +20,7 @@ export function nextWalkDirection(from: WalkDirection, to: WalkDirection): WalkD
 type Point = { readonly x: Fixed; readonly y: Fixed };
 
 export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): void {
+  if (from.x === to.x && from.y === to.y) return;
   const dx = worldX(to.x, to.y) - worldX(from.x, from.y);
   const dy = fx.mul(fx.sub(to.y, from.y), ROW_STEP);
   // Nearest screen octant for an off-node recovery leg. 4142/10000 approximates tan(22.5°);
