@@ -12,7 +12,7 @@ import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 
 /**
  * The right-click ladder over an own building. A construction site is hired into by the rules of the
- * building it will become, with one rung on top: a trade that can raise a foundation joins its crew
+ * building it will become, with one rung on top: a builder joins its crew
  * instead. A family may reserve a home before it stands; drilling still requires a completed building.
  */
 
@@ -20,7 +20,7 @@ const { addPerson, Building, Owner, Position, Stockpile, UnderConstruction } = c
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
-/** A joinery - a workplace whose own craft trade may also raise foundations on real content. */
+/** A joinery - a workplace whose own craft trade exposes the hammer atomic in content. */
 const JOINERY = 'work_joinery_00';
 
 function buildingAt(sim: Simulation, buildingType: number, built: Fixed): Entity {
@@ -96,8 +96,7 @@ function rightClick(
  *  controller reads nothing else off the event. Node has no DOM to mint a real one. */
 const CLICK = { clientX: 0, clientY: 0 } as MouseEvent;
 
-/** The sandbox catalog with `jobType` also allowed to build. Real content gives the build-house atomic to
- *  the joiner and armorer as well as the builder; the sandbox gives it to the builder alone. */
+/** The sandbox catalog with `jobType` also exposing the hammer atomic. */
 function alsoBuilds(sim: Simulation, jobType: number): ContentSet {
   const content = sim.content;
   return {
@@ -138,19 +137,17 @@ describe('right-clicking a construction site', () => {
     expect(rightClick(sim, [builder], site)).toEqual([{ kind: 'assignBuilder', entity: builder, site }]);
   });
 
-  it('puts ANY trade that may raise a foundation on it, not just the builder id', () => {
+  it('does not turn a non-builder with the hammer atomic into a site builder', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, bakery(sim).typeId); // a bakery employs no joiner - nothing to post him into
     const joiner = settlerAt(sim, JOB_JOINER);
 
-    expect(rightClick(sim, [joiner], site, alsoBuilds(sim, JOB_JOINER))).toEqual([
-      { kind: 'assignBuilder', entity: joiner, site },
-    ]);
+    const [posted] = postedWorkers(rightClick(sim, [joiner], site, alsoBuilds(sim, JOB_JOINER)), site);
+    expect(posted?.entity).toBe(joiner);
+    expect(posted?.jobPriority).not.toContain(JOB_BUILDER);
   });
 
-  it('posts a build-capable trade into a foundation that employs it, rather than crewing it', () => {
-    // His own future workshop: a posted builder raises the site he is bound to, so posting gets the joinery
-    // up AND leaves him its joiner, where a crew pin would drop the moment it stands.
+  it('posts a craft worker into his future workshop to carry its materials', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const { typeId, craftJob } = workplace(sim, JOINERY);
     const site = siteAt(sim, typeId);

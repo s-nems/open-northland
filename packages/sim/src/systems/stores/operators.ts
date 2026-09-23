@@ -1,4 +1,4 @@
-import { Building, Person, Position, Settler } from '../../components/index.js';
+import { Building, JobAssignment, Person, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -48,7 +48,8 @@ const UNSTAFFED_OPERATOR_COUNT = 1;
 
 /**
  * The operators on station at a workplace: settlers whose job is one of its {@link operatorJobsOf} standing
- * on the {@link interactionNode}, since the walls themselves are walk-blocked. Listed in ascending id and
+ * on the {@link interactionNode} with an assignment to this building, since the walls themselves are
+ * walk-blocked. Listed in ascending id and
  * capped at the type's declared operator-slot headcount, so crowding extra settlers onto the door cannot
  * overclock past the staffing plan. Passing `operatorsByNode` shares one per-tick index; omitting it builds a
  * one-shot index for the identical list.
@@ -69,7 +70,9 @@ export function presentOperators(
   const present: Entity[] = [];
   for (const e of index.at(at.x, at.y)) {
     const jobType = world.get(e, Settler).jobType;
-    if (jobType !== null && jobs.has(jobType)) present.push(e);
+    if (jobType !== null && jobs.has(jobType) && world.tryGet(e, JobAssignment)?.workplace === building) {
+      present.push(e);
+    }
   }
   present.sort((a, b) => a - b); // canonical: the clamp below keeps the lowest ids, order-independent
   return { kind: 'staffed', operators: present.length > cap ? present.slice(0, cap) : present };

@@ -1,6 +1,5 @@
-import { Building, JobAssignment, UnderConstruction, Upgrading } from '../../../../components/index.js';
+import { Building, JobAssignment, UnderConstruction } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { isCarrierJob } from '../../../stores/index.js';
 import { atOrWalk } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
@@ -9,8 +8,8 @@ import { fetchNeededMaterial } from './site-supply.js';
 
 /**
  * SITE STAFF - a worker posted to a building that is still going up hauls its construction bill, then
- * waits at it, without changing trade or employment. At an upgrade only a carrier hauls; every other
- * trade waits. Waiting reads off `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, applied as a blanket
+ * waits at it, without changing trade or employment. The same help applies during an upgrade.
+ * Waiting reads off `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, applied as a blanket
  * because the flag is not extracted into the IR; that over-applies to its 0 rows, so a hunter posted to a
  * store's gatherer slot stops hunting while the store is upgraded.
  *
@@ -22,15 +21,10 @@ export function planSiteStaff(
   hx: number,
   hy: number,
 ): boolean {
-  const { world, ctx, terrain, entity: e, here } = plan;
+  const { world, terrain, entity: e, here } = plan;
   const site = boundConstructionSite(plan);
   if (site === null) return false;
-  if (
-    (!world.has(site, Upgrading) || isCarrierJob(ctx, plan.jobType)) &&
-    fetchNeededMaterial(plan, spacing, site)
-  ) {
-    return true;
-  }
+  if (fetchNeededMaterial(plan, spacing, site)) return true;
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);
   if (stand === null) deStackIdle(world, terrain, e, hx, hy, spacing);
   else atOrWalk(world, e, here, stand, () => {});

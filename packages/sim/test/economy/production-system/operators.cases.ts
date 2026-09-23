@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { addPerson, Building, Position, Production, Stockpile } from '../../../src/components/index.js';
+import {
+  addPerson,
+  Building,
+  JobAssignment,
+  Position,
+  Production,
+  Stockpile,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
@@ -47,6 +54,15 @@ describe('productionSystem - worker-presence gate', () => {
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5);
   });
 
+  it('does not run a workshop for an unposted craftsman standing at its door', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { mill } = sawmill(sim, [[WOOD, 2]], false);
+    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(mill, Production)).toBe(false);
+    expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(2);
+  });
+
   it('pauses an in-flight cycle when the worker leaves, holding elapsed, and resumes on return', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
@@ -84,11 +100,17 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     return mill;
   }
 
+  function operatorAt(sim: Simulation, mill: Entity): Entity {
+    const worker = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    sim.world.add(worker, JobAssignment, { workplace: mill });
+    return worker;
+  }
+
   it('two operators run two INDEPENDENT batches in parallel (two inputs in, two outputs out)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = twinMill(sim, [[WOOD, 2]]);
-    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
-    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    operatorAt(sim, mill);
+    operatorAt(sim, mill);
     // Tick 1 starts BOTH batches (one per present operator), each consuming its own input.
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(2);
@@ -102,8 +124,8 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
   it('with fewer operators than batches, the youngest batch WAITS (FIFO - one worker, one batch)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = twinMill(sim, [[WOOD, 2]]);
-    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
-    const second = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    operatorAt(sim, mill);
+    const second = operatorAt(sim, mill);
     productionSystem(sim.world, ctxOf(sim)); // two batches start
     productionSystem(sim.world, ctxOf(sim)); // both advance once
     // One operator walks away - batches are anonymous (no owning worker), so with one operator left
@@ -118,7 +140,7 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
   it('caps the batch count at the declared operator headcount (a third stacked operator adds nothing)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = twinMill(sim, [[WOOD, 3]]);
-    for (let i = 0; i < 3; i++) spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED); // 3 on a 2-slot craft
+    for (let i = 0; i < 3; i++) operatorAt(sim, mill); // 3 on a 2-slot craft
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(2); // 2 slots → 2 batches, never 3
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(1); // only 2 inputs consumed
@@ -132,8 +154,8 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
       [WOOD, 2],
       [PLANK, 19],
     ]);
-    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
-    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    operatorAt(sim, mill);
+    operatorAt(sim, mill);
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(1);
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(1); // the second input untouched
@@ -147,7 +169,7 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     expect(sim.world.has(mill, Production)).toBe(false); // never started - no operator present
 
     // An operator joins: exactly ONE batch runs (the carrier mans none).
-    spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    operatorAt(sim, mill);
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Production).cycles).toHaveLength(1);
   });

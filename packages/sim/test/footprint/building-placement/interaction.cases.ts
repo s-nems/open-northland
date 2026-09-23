@@ -1,6 +1,12 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { addPerson, PathFollow, PathRequest, Position } from '../../../src/components/index.js';
+import {
+  addPerson,
+  JobAssignment,
+  PathFollow,
+  PathRequest,
+  Position,
+} from '../../../src/components/index.js';
 import { findPath, fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { buildingBlockedCells, interactionNode, presentOperatorCount } from '../../../src/systems/index.js';
 
@@ -44,6 +50,7 @@ describe('door cell - settlers interact with a house at its entry point', () => 
       enjoyment: fx.fromInt(0),
       experience: new Map<number, number>(),
     });
+    sim.world.add(worker, JobAssignment, { workplace: hut });
     sim.world.add(worker, Position, positionOfNode(5, 5)); // ON the walls (the anchor node) - not at work
     expect(presentOperatorCount(sim.world, ctxOf(sim), hut)).toBe(0);
     Object.assign(sim.world.get(worker, Position), positionOfNode(4, 5)); // at the door node (4,5)

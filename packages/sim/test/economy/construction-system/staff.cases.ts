@@ -39,6 +39,7 @@ const HUMAN = 0;
 const STONE = 1;
 const WOOD = 2;
 const IDLE = 0;
+const BUILDER = 7;
 const CARRIER = 36;
 const MASON = 9;
 const STORE = 1; // a passive store - where the site's material comes from
@@ -60,8 +61,9 @@ function staffContent(): ContentSet {
     ],
     jobs: [
       { typeId: IDLE, id: 'idle' },
+      { typeId: BUILDER, id: 'builder', allowedAtomics: [39] },
       { typeId: CARRIER, id: 'carrier' },
-      { typeId: MASON, id: 'mason' },
+      { typeId: MASON, id: 'mason', allowedAtomics: [39] },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     buildings: [
@@ -288,7 +290,7 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
     expect(boundTo(sim, mason)).toBe(site);
   });
 
-  it('an incumbent craftsman does not acquire carrier duties during an upgrade', () => {
+  it('an incumbent craftsman carries upgrade materials without hammering', () => {
     const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
     const store = buildingAt(sim, STORE, 0, 0, { stock: [[STONE, 5]] });
     const site = buildingAt(sim, SMITHY_L0, 6, 0);
@@ -297,8 +299,45 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: site });
     for (let i = 0; i < 800; i++) sim.step();
     expect(sim.world.has(site, UnderConstruction)).toBe(true);
-    expect(sim.world.get(store, Stockpile).amounts.get(STONE)).toBe(5);
-    expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
+    expect(sim.world.get(store, Stockpile).amounts.get(STONE)).toBe(2);
+    expect(sim.world.get(site, Stockpile).amounts.get(STONE)).toBe(3);
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
+    expect(sim.world.get(mason, Settler).experience.size).toBe(0);
+    expect(boundTo(sim, mason)).toBe(site);
+  });
+
+  it('an unposted craftsman cannot hammer a site despite having the hammer atomic', () => {
+    const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
+    const site = buildingAt(sim, SMITHY_L0, 5, 0, { site: true, stock: [[STONE, 2]] });
+    const mason = settlerAt(sim, 3, 0, MASON);
+    for (let i = 0; i < 400; i++) sim.step();
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
+    expect(sim.world.get(mason, Settler).experience.size).toBe(0);
+    expect(sim.world.has(mason, JobAssignment)).toBe(false);
+  });
+
+  it('a posted craftsman starts production after a builder finishes the site', () => {
+    const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
+    const site = buildingAt(sim, SMITHY_L0, 5, 0, {
+      site: true,
+      stock: [
+        [STONE, 2],
+        [WOOD, 1],
+      ],
+    });
+    const mason = settlerAt(sim, 3, 0, MASON);
+    settlerAt(sim, 4, 0, BUILDER);
+    post(sim, mason, site, [MASON]);
+
+    let finished = false;
+    let produced = false;
+    for (let i = 0; i < 1600 && !produced; i++) {
+      sim.step();
+      finished ||= !sim.world.has(site, UnderConstruction);
+      produced = finished && (sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0) > 0;
+    }
+    expect(finished).toBe(true);
+    expect(produced).toBe(true);
     expect(boundTo(sim, mason)).toBe(site);
   });
 });

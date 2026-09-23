@@ -18,7 +18,7 @@ export { craftablePool } from './production/rotation.js';
  * advanced oldest first. Observed: a multi-worker workshop out-produces a single-worker one. With every
  * operator away all cycles pause and `elapsed` is held rather than lost.
  *
- * A workplace produces only while an operator is present, the original's staffed-workshop rule; a carrier at
+ * A workplace produces only while an assigned operator is present, the original's staffed-workshop rule; a carrier at
  * the door neither runs nor speeds the craft. A building type declaring no worker slots is
  * unstaffed-by-design and produces one anonymous batch freely.
  *

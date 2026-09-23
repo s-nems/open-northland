@@ -184,8 +184,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-        // A site that employs this very trade posts instead of pinning a builder: the sim sends a posted
-        // builder to raise its own site, and it keeps the seat once the workshop stands.
+        // A site's own worker takes a workplace post and carries materials while it is built, then keeps
+        // the seat when it stands. Only a builder without a matching workplace slot joins the crew.
         const joinsCrew =
           currentJob !== undefined &&
           systems.jobCanBuild(deps.content, currentJob) &&

@@ -1,6 +1,6 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { addPerson, Building, Position, Stockpile } from '../../../src/components/index.js';
+import { addPerson, Building, JobAssignment, Position, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, type Simulation } from '../../../src/index.js';
 
@@ -54,5 +54,6 @@ export function sawmill(
   sim.world.add(mill, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
   sim.world.add(mill, Stockpile, { amounts: new Map(amounts) });
   const worker = staffed ? spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED) : null;
+  if (worker !== null) sim.world.add(worker, JobAssignment, { workplace: mill });
   return { mill, worker };
 }

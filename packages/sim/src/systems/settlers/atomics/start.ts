@@ -69,10 +69,14 @@ export const PICKUP_ATOMIC_ID = 22;
  *  `DataCnmd/tribetypes12/tribetypes.ini` and the builder's `allowatomic 39` in `jobtypes.ini`). */
 export const BUILD_HOUSE_ATOMIC_ID = 39;
 
-/** Whether `jobType` is a builder trade, tested through content so no caller keys construction off a
- *  hardcoded jobType id. */
+/** Construction labor belongs to the builder trade. Other jobs may expose the same atomic for their
+ *  animation set, so atomic permission alone does not establish the construction role. */
 export function jobCanBuild(content: ContentSet, jobType: number): boolean {
-  return contentIndex(content).atomicsByJob.get(jobType)?.has(BUILD_HOUSE_ATOMIC_ID) === true;
+  const index = contentIndex(content);
+  return (
+    index.jobs.get(jobType)?.id === 'builder' &&
+    index.atomicsByJob.get(jobType)?.has(BUILD_HOUSE_ATOMIC_ID) === true
+  );
 }
 
 /** Depositing a carried load into a store. The readable data binds no per-good pileup atomic: harvest and
