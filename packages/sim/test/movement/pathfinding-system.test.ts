@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { PathFollow, PathRequest, Position } from '../../src/components/index.js';
+import { PathFollow, PathRequest, Position, WalkFacing } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, nodeOfPosition, ONE, Simulation, type TerrainMap } from '../../src/index.js';
+import {
+  exportSaveGame,
+  fx,
+  nodeOfPosition,
+  ONE,
+  restoreSimulation,
+  Simulation,
+  type TerrainMap,
+} from '../../src/index.js';
+import { worldDistance } from '../../src/nav/world-metric.js';
 import { drainPathRequests, pathfindingSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
@@ -149,11 +158,12 @@ describe('pathfindingSystem - failure handling', () => {
     const map: TerrainMap = { resolution: 'half-cell', width: 3, height: 1, typeIds: [GRASS, WATER, GRASS] };
     const { sim } = mappedSim(map);
     const e = sim.world.create();
+    if (sim.terrain === undefined) throw new Error('mapped sim expected');
     // A walker mid-route whose redirected goal turns out unreachable: the request is flagged, but
     // the OLD route must keep playing out - dropping it froze the walker wherever it stood
     // (possibly on a seam waypoint, off any centre) with a goal nothing would ever service again.
     sim.world.add(e, PathFollow, {
-      waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9), node: sim.terrain?.nodeAt(0, 0) as number }],
+      waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9), node: sim.terrain.nodeAt(0, 0) }],
       index: 0,
       legTicks: 0,
       legCost: 0,
@@ -226,6 +236,66 @@ describe('pathfindingSystem - per-tick search budget', () => {
 });
 
 describe('pathfindingSystem - mid-walk reroute', () => {
+  it('retains the ordinary pace when the goal changes every tick partway through one step', () => {
+    const { sim } = mappedSim(grassMap(20, 1));
+    const e = cruisingWalker(sim, 8, 5);
+    const pace = fx.div(fx.fromFloat(0.5), fx.fromInt(8));
+    for (let i = 0; i < 3; i++) {
+      const before = { ...sim.world.get(e, Position) };
+      reorder(sim, e, i % 2 === 0 ? 12 : 11);
+      sim.step();
+      const after = sim.world.get(e, Position);
+      expect(Math.abs(worldDistance(before.x, before.y, after.x, after.y) - pace)).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('restores the captured pace and charged departure after a mid-step reroute', () => {
+    const map = grassMap(20, 1);
+    const content = testContent();
+    const sim = new Simulation({ seed: 1, content, map });
+    const e = cruisingWalker(sim, 8, 5);
+    reorder(sim, e, 12);
+    sim.step();
+    expect(sim.world.get(e, PathFollow).legPace).toBeDefined();
+    const restored = restoreSimulation(exportSaveGame(sim, { mapId: 'movement-reroute' }), { content, map });
+    sim.run(12);
+    restored.run(12);
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
+  it('a redirect during a turn uses the new edge length over the already paid step period', () => {
+    const { sim } = mappedSim(grassMap(4, 4));
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(e, WalkFacing, { direction: 3, target: 3 }); // west, about to turn east
+    sim.world.add(e, PathRequest, {
+      start: sim.terrain?.nodeAt(0, 0) as number,
+      goal: sim.terrain?.nodeAt(2, 0) as number,
+      failed: false,
+    });
+    sim.step();
+    expect(sim.world.get(e, Position).y).toBe(0);
+    expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
+    const beforeRedirect = { ...sim.world.get(e, Position) };
+    sim.world.add(e, PathRequest, {
+      start: sim.terrain?.nodeAt(0, 0) as number,
+      goal: sim.terrain?.nodeAt(0, 1) as number,
+      failed: false,
+    });
+    sim.step();
+    expect(sim.world.get(e, PathFollow).legCost).toBe(8);
+    expect(sim.world.get(e, PathFollow).legPace).toBeUndefined();
+    const afterRedirect = sim.world.get(e, Position);
+    let advancingTicks = beforeRedirect.x !== afterRedirect.x || beforeRedirect.y !== afterRedirect.y ? 1 : 0;
+    for (let i = 0; i < 20 && sim.world.has(e, PathFollow); i++) {
+      const before = { ...sim.world.get(e, Position) };
+      sim.step();
+      const after = sim.world.get(e, Position);
+      if (before.x !== after.x || before.y !== after.y) advancingTicks++;
+    }
+    expect(advancingTicks).toBe(8);
+  });
+
   /** Route a fresh walker at (0,0) toward node (goalHx,0) and run `ticks` - mid-leg after. */
   function cruisingWalker(sim: Simulation, goalHx: number, ticks: number): Entity {
     const e = sim.world.create();
@@ -263,7 +333,7 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     expect(sim.world.get(e, Position).x).toBeGreaterThan(before);
   });
 
-  it('a reversal re-order turns the walker back at once, at its ordinary pace', () => {
+  it('a reversal re-order turns before moving back at its ordinary pace', () => {
     const { sim } = mappedSim(grassMap(20, 1));
     const e = cruisingWalker(sim, 16, 22); // genuinely mid-leg: 22 is not a multiple of the 8-tick step
     const before = sim.world.get(e, Position).x;
@@ -272,7 +342,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     sim.step();
     const pf = sim.world.get(e, PathFollow);
     expect(pf.waypoints[pf.waypoints.length - 1]?.node).toBe(sim.terrain?.nodeAt(0, 0));
-    expect(sim.world.get(e, Position).x).toBeLessThan(before); // and it did move back
+    sim.run(4); // the heading change occupies its intermediate turn ticks
+    expect(sim.world.get(e, Position).x).toBeLessThan(before);
   });
 });
 

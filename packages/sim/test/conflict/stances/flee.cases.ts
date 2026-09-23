@@ -123,6 +123,11 @@ describe('FLEE pace - a Fleeing unit moves at its normal pace (no sprint exists)
     movementSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(runner, PathFollow).legCost).toBe(sim.world.get(walker, PathFollow).legCost);
     expect(sim.world.get(runner, Position).x).toBe(sim.world.get(walker, Position).x);
+    // Both turn from the default SW facing before translating. The last turn tick starts the step.
+    movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(runner, Position).x).toBe(sim.world.get(walker, Position).x);
+    movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(runner, Position).x).toBe(sim.world.get(walker, Position).x);
     expect(sim.world.get(runner, Position).x).toBeGreaterThan(fx.fromInt(0));
   });
 

@@ -23,13 +23,13 @@ export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint', 'movemen
 
 /**
  * How far this entity advances toward its current {@link PathFollow} waypoint each tick, in fixed-point
- * tile units. Only a creature carries one: `spawnAnimalHerd` stamps it from the `animaltypes.ini`
- * `movespeed` param, where a creature with `movespeed` N walks `ONE / N` tile/tick, so a larger
- * `movespeed` is a slower step. It is the entity's one pace: no run/sprint gait is modelled, and the
- * `animaltypes.ini` `runspeed` param stays extracted but unconsumed. A walker without one is a human and
- * is paced per step by `walkStepTicks`.
+ * tile units. An explicitly paced mover may carry one. A walker without one uses its own step timing.
  */
 export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed', 'movement');
+
+/** Ticks to cross one route waypoint step. Animals read `animaltypes.ini` `movespeed` here; each
+ * lattice step gets its own duration regardless of its screen-space length. */
+export const MoveStepPeriod = defineComponent<{ ticks: number }>('MoveStepPeriod', 'movement');
 
 /** Original direction vocabulary: E, SE, SW, W, NW, NE, N, S. */
 export type WalkDirection = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -52,14 +52,18 @@ export interface Waypoint {
 /**
  * A path the entity is following: its stops and the index of the one it walks toward. `legTicks` counts
  * movement ticks spent on the current leg (excluding held turn ticks) and `legCost` its movement cost,
- * fixed when the leg starts and 0 until then. A creature paced by {@link MoveSpeed} leaves both at 0
- * and walks its constant pace.
+ * fixed when the leg starts and 0 until then. A {@link MoveStepPeriod} follower uses the same counters;
+ * a {@link MoveSpeed} follower leaves them at 0 and walks its constant distance per tick. `legPace`
+ * captures the full-step pace when a route starts between nodes. `departureCharged` follows an active
+ * human step across route changes so equipment and food are charged once per node departure.
  */
 export const PathFollow = defineComponent<{
   waypoints: Waypoint[];
   index: number;
   legTicks: number;
   legCost: number;
+  legPace?: Fixed;
+  departureCharged?: boolean;
 }>('PathFollow', 'movement');
 
 /**

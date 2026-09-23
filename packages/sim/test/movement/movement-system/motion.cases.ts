@@ -5,11 +5,12 @@ import {
   MISSION_BEHAVIOUR,
   MissionBehaviour,
   MoveSpeed,
+  MoveStepPeriod,
   PathFollow,
   Position,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../../src/index.js';
+import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../../src/index.js';
 import { HALF_COLUMN, worldDistance } from '../../../src/nav/world-metric.js';
 import { MAX_STEP_PER_TICK, MIN_STEP_TICKS } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -131,7 +132,48 @@ describe('movementSystem - constant pace: no ramp, corner loss or brake', () => 
   });
 });
 
-describe('movementSystem - per-entity pace (MoveSpeed)', () => {
+describe('movementSystem - per-entity movement timing', () => {
+  it('an animal step period counts every half-cell step, including a short vertical one', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0 },
+      { x: 0.25, y: 0.5 },
+    ]);
+    sim.world.add(e, MoveStepPeriod, { ticks: 8 });
+    for (let i = 0; i < 7; i++) sim.step();
+    expect(sim.world.get(e, PathFollow).index).toBe(1);
+    sim.step();
+    expect(sim.world.get(e, PathFollow).index).toBe(2);
+    expect(ticksToArrive(sim, e)).toBe(8);
+  });
+
+  it('a one-tick step period is not capped by the human collision pace', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0 },
+    ]);
+    sim.world.add(e, MoveStepPeriod, { ticks: 1 });
+    expect(ticksToArrive(sim, e)).toBe(1);
+  });
+
+  it('restores a periodic mover at the same point in its step', () => {
+    const content = testContent();
+    const map = grassMap(4, 1);
+    const sim = new Simulation({ seed: 1, content, map });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0 },
+    ]);
+    sim.world.add(e, MoveStepPeriod, { ticks: 8 });
+    sim.run(3);
+    const restored = restoreSimulation(exportSaveGame(sim, { mapId: 'periodic-mover' }), { content, map });
+    sim.run(5);
+    restored.run(5);
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
   it('keeps source-default wildlife on its animal fallback, not the human terrain gait', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = followerAt(sim, 0, 0, [
@@ -159,8 +201,8 @@ describe('movementSystem - per-entity pace (MoveSpeed)', () => {
   });
 
   it('a degenerate few-ulp gait still completes (the ULP floor prevents a permanent stall)', () => {
-    // `ONE/movespeed` truncation can mint a perTick of 2 (movespeed 30000) or even 0 (movespeed
-    // > 65536); an unguarded 0-ulp gait would make no progress, ever - the walker never moves and the
+    // An explicit `ONE/duration` pace can truncate to 2 ulps (duration 30000) or even 0
+    // (duration > 65536); an unguarded 0-ulp gait would make no progress, ever - the walker never moves and the
     // path never completes. The one-ULP gait floor keeps such a walker absurdly slow but the sim total.
     // Short legs so the crawl fits a bounded test.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });

@@ -131,7 +131,7 @@ describe('human turning', () => {
     expect(nextWalkDirection(4, 1)).toBe(3);
   });
 
-  it('advances once before turning, holds only intermediate turn ticks and retains facing after arrival', () => {
+  it('faces the new heading before advancing, holds intermediate turn ticks and retains facing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 2) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
@@ -139,13 +139,13 @@ describe('human turning', () => {
     ]);
     sim.world.remove(e, WalkFacing); // original initial orientation is SW, not the pace fixture's E
     sim.step();
-    expect(pos(sim, e).x).toBe(0.0625);
-    expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 2, target: 0 });
-    sim.step();
-    expect(sim.world.get(e, WalkFacing).direction).toBe(7);
-    expect(sim.world.get(e, PathFollow).legTicks).toBe(1);
+    expect(pos(sim, e).x).toBe(0);
+    expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 7, target: 0 });
     sim.step();
     expect(sim.world.get(e, WalkFacing).direction).toBe(1);
+    expect(sim.world.get(e, PathFollow).legTicks).toBe(0);
+    sim.step();
+    expect(sim.world.get(e, WalkFacing).direction).toBe(0);
     expect(pos(sim, e).x).toBe(0.0625);
     sim.step();
     expect(sim.world.get(e, WalkFacing).direction).toBe(0);
@@ -170,7 +170,7 @@ describe('human turning', () => {
       { x: 0.5, y: 0 },
     ]);
     sim.run(2);
-    expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 1, target: 3 });
+    expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 7, target: 3 });
     const restored = restoreSimulation(exportSaveGame(sim, { mapId: 'turn-test' }), { content, map });
     sim.run(9);
     restored.run(9);

@@ -1,7 +1,7 @@
-import { ownerOf, type SettlerIdentity, Sheltering } from '../../../components/index.js';
+import { MoveGoal, ownerOf, Position, type SettlerIdentity, Sheltering } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { type HalfCellNode, positionOfNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { releaseShelter, type ShelterSite, type ShelterSites } from '../../defence/index.js';
@@ -111,6 +111,17 @@ function walkInto(
   if (!doorIsWalkable(door, limit, unreachableGoals(world, ctx, e))) {
     releaseShelter(world, e);
     return false;
+  }
+  // A mid-leg reroute can already round into the door's node bucket. Wait for its exact centre
+  // before entering; otherwise the shelter would swallow the last fraction of a visible walk.
+  if (here === door) {
+    const d = terrain.coordsOf(door);
+    const centre = positionOfNode(d.x, d.y);
+    const p = world.get(e, Position);
+    if (p.x !== centre.x || p.y !== centre.y) {
+      world.add(e, MoveGoal, { cell: door });
+      return true;
+    }
   }
   enterBuilding(world, e, shelter, here, door);
   return true;

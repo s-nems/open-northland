@@ -27,6 +27,11 @@ import {
   plannerSystem,
 } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
+import {
+  applyPendingHitReactions,
+  type PendingHitReaction,
+  resolveCombatHit,
+} from '../../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { BEAR, ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
@@ -335,12 +340,12 @@ describe('a fighting unit on alert takes no rest', () => {
     const chaser = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     sim.world.add(chaser, Engagement, { repathAt: sim.tick });
     sim.world.add(chaser, MoveGoal, { cell: cellNode(sim, 8) });
-    raiderAt(sim, 1);
-
-    for (let t = 0; t < FIRST_BLOW_BUDGET_TICKS; t++) {
-      sim.step();
-      if (sim.world.get(chaser, Health).hitpoints < sim.world.get(chaser, Health).max) break;
-    }
+    const raider = raiderAt(sim, 1);
+    const reactions: PendingHitReaction[] = [];
+    // Feed the landing blow to its shared melee/projectile resolution seam. A full combat tick can
+    // legitimately make this nearby chaser begin its own swing first, which retires its chase route.
+    resolveCombatHit(sim.world, ctxOf(sim), raider, chaser, { damage: 50 }, reactions, 'melee');
+    applyPendingHitReactions(sim.world, reactions);
 
     expect(sim.world.get(chaser, Health).hitpoints).toBeLessThan(sim.world.get(chaser, Health).max);
     // Shedding it here would stutter every advance under fire; the chase re-aims its own route.

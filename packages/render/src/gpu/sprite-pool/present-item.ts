@@ -17,8 +17,7 @@ export interface PresentationTrack {
   readonly kind: SpriteKind;
   readonly motion: MotionTrack;
   readonly atomicPose: AtomicPoseTrack;
-  /** Last real facing (0..7) this settler drew with, reused across the one-tick heading gap a re-pathing
-   *  unit shows. */
+  /** Last real facing (0..7), retained through a route gap or arrival. */
   lastFacing?: number;
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
    *  sim's reported progress; `undefined` when nothing is in progress. Declared present rather than
@@ -35,6 +34,7 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
       tick: -1,
       x: 0,
       y: 0,
+      lift: 0,
       prevX: 0,
       prevY: 0,
       drawX: 0,
@@ -82,6 +82,7 @@ export function presentItem(
     alpha,
     characterGaitRate(sheet, item, track.lastFacing),
     track.kind === 'projectile' ? (item.rotation ?? 0) : undefined,
+    item.lift ?? 0,
   );
   if (item.facing !== undefined) track.lastFacing = item.facing;
   // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the

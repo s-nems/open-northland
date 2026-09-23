@@ -38,7 +38,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // The snapshot was taken before the sweep, and a breeder's slaughter removes an animal mid-pass.
     if (!world.isAlive(e)) continue;
     // A busy settler plays its intent out; the rest shed what the previous plan left before re-planning.
-    if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound)) continue;
+    if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound, pass.shelters)) continue;
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
     // Key on Age, not the age-class job ids: only a born-young settler carries one, so a fixture's

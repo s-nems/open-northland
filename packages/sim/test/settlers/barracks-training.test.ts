@@ -5,6 +5,7 @@ import {
   Building,
   EquipOrder,
   Female,
+  Fleeing,
   MoveGoal,
   Owner,
   Position,
@@ -17,7 +18,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
-import { needSubjectOf, settlerMeetsNeed } from '../../src/systems/index.js';
+import { needSubjectOf, plannerSystem, settlerMeetsNeed } from '../../src/systems/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
@@ -350,6 +351,57 @@ describe('trainSoldier - the barracks drill', () => {
     run(sim, RUN_TICKS);
     expect(sim.world.has(recruit, Sheltering)).toBe(false);
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
+  });
+
+  it('interrupts an autonomous route for an available shelter without dropping the active walk', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const worker = settlerAt(sim, CARRIER_JOB, 2, 3);
+    const errand = terrainOf(sim).nodeAt(16, 6);
+    sim.world.add(worker, MoveGoal, { cell: errand });
+    sim.step();
+    expect(sim.world.get(worker, MoveGoal).cell).toBe(errand);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: house, enabled: true });
+    sim.step();
+
+    expect(sim.world.get(worker, Sheltering).shelter).toBe(house);
+    expect(sim.world.get(worker, MoveGoal).cell).not.toBe(errand);
+  });
+
+  it('centres a mid-leg walker at the shelter door before marking it inside', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const worker = settlerAt(sim, CARRIER_JOB, 2, 3);
+    sim.world.mut(worker, Position).x = fx.fromFloat(2.9);
+    sim.world.add(worker, MoveGoal, { cell: terrainOf(sim).nodeAt(16, 6) });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: house, enabled: true });
+
+    sim.step();
+
+    expect(sim.world.get(worker, Sheltering).shelter).toBe(house);
+    expect(sim.world.has(worker, Resting)).toBe(false);
+    expect(sim.world.get(worker, Position).x).not.toBe(fx.fromInt(3));
+  });
+
+  it('keeps a fleeing route when the alarm shelter has no free seat', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const occupant = settlerAt(sim, CIVILIST_JOB, 3, 3);
+    const runner = settlerAt(sim, CARRIER_JOB, 2, 3);
+    const away = terrainOf(sim).nodeAt(16, 6);
+    sim.world.add(occupant, Sheltering, { shelter: house });
+    sim.world.add(runner, MoveGoal, { cell: away });
+    sim.world.add(runner, Fleeing, { repathAt: 42, calmUntil: null });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: house, enabled: true });
+    sim.step();
+    const cadence = sim.world.get(runner, Fleeing).repathAt;
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(runner, Sheltering)).toBe(false);
+    expect(sim.world.get(runner, MoveGoal).cell).toBe(away);
+    expect(sim.world.get(runner, Fleeing).repathAt).toBe(cadence);
   });
 
   it('abandons the errand at its next planning when the house is gone', () => {

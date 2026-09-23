@@ -56,8 +56,8 @@ export function worldX(x: Fixed, y: Fixed): Fixed {
 
 /**
  * The straight-line world distance between two grid positions in column units, Euclidean over the world
- * X delta and the row delta scaled by ROW_STEP. Exact within one stagger half-period, which covers every
- * lattice-edge leg; a longer leg crossing a parity kink under-reads by a few percent.
+ * X delta and the row delta scaled by ROW_STEP. This is the straight endpoint distance even when the
+ * segment crosses a stagger-parity cusp; movement interpolates in this same world space.
  *
  * Span bound: the squared deltas leave the 2^53-exact range once a span exceeds about 1400 columns, so
  * this is a leg-length metric, not a map-scale distance query.

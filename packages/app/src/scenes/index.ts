@@ -23,6 +23,7 @@ import { gossipScene } from './gossip.js';
 import { householdGoodsScene } from './household-goods.js';
 import { huntingScene } from './hunting.js';
 import { livestockScene } from './livestock.js';
+import { movementContinuityScene } from './movement-continuity.js';
 import { presentationScene } from './presentation.js';
 import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
@@ -72,6 +73,7 @@ export const SCENES: readonly SceneDefinition[] = [
   childrenScene,
   gossipScene,
   wildlifeScene,
+  movementContinuityScene,
   huntingScene,
   householdGoodsScene,
   livestockScene,

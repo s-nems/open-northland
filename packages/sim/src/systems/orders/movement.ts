@@ -15,6 +15,7 @@ import {
   NeedOrder,
   OpenChestOrder,
   Owner,
+  PathFollow,
   PathRequest,
   PlayerOrder,
   Position,
@@ -124,6 +125,22 @@ function startPlayerWalk(
       else markLostWay(world, ctx, e);
       return false;
     }
+  }
+  const existingOrder = world.tryGet(e, PlayerOrder);
+  if (
+    command.kind === 'moveUnit' &&
+    existingOrder !== undefined &&
+    existingOrder.attackMove === undefined &&
+    existingOrder.pendingGoal === undefined &&
+    world.tryGet(e, MoveGoal)?.cell === goal &&
+    world.has(e, PathFollow) &&
+    !world.has(e, CurrentAtomic) &&
+    !world.has(e, DeferredOrder) &&
+    !world.has(e, Engagement) &&
+    !world.has(e, AttackOrder) &&
+    !world.has(e, Fleeing)
+  ) {
+    return true;
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return true;

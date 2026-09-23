@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PathFollow, Position, Velocity } from '../../../src/components/index.js';
+import { PathFollow, Position, Velocity, WalkFacing } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
+import { worldX } from '../../../src/nav/world-metric.js';
 import { movementSystem } from '../../../src/systems/index.js';
+import { stepTowardPoint } from '../../../src/systems/movement/stepping.js';
 import { testContent } from '../../fixtures/content.js';
 import { roughNodeMap } from '../../fixtures/terrain.js';
 
@@ -12,6 +14,17 @@ const halfSteps = (cells: number): Array<{ x: number; y: number }> =>
   Array.from({ length: cells * 2 + 1 }, (_, i) => ({ x: i / 2, y: 0 }));
 
 describe('movementSystem - path following', () => {
+  it('keeps a world-space line straight when a redirected leg crosses a stagger cusp', () => {
+    const point = { x: fx.fromInt(2), y: fx.fromInt(0) };
+    const target = { x: fx.fromInt(2), y: fx.fromInt(2) };
+    for (let i = 0; i < 32; i++) {
+      const arrived = stepTowardPoint(point, target, fx.fromFloat(0.05));
+      expect(Math.abs(worldX(point.x, point.y) - fx.fromInt(2))).toBeLessThanOrEqual(2);
+      if (arrived) return;
+    }
+    throw new Error('redirected leg did not arrive');
+  });
+
   it('walks a half-column step in exactly its step cost, closing equal shares each tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const e = followerAt(sim, 0, 0, halfSteps(1));
@@ -115,6 +128,7 @@ describe('movementSystem - precedence: PathFollow over Velocity', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
     sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) }); // would push +1/tick east
     sim.world.add(e, PathFollow, {
       waypoints: [waypointAt(sim, 0, 0), waypointAt(sim, 0.5, 0)],

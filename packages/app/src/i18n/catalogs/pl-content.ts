@@ -323,6 +323,11 @@ export const plContent = {
       summary:
         'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
     },
+    'movement-continuity': {
+      title: 'Płynność ruchu',
+      summary:
+        'Dwie postacie, bosa i w butach, przechodzą przez szybszy pas terenu. Trzecia idzie po przekątnej przez trudny teren: zaznacz ją i kilka razy zmień jej cel podczas marszu. Obok chodzą jelenie.',
+    },
     hunting: {
       title: 'Myśliwy przy pracy',
       summary:

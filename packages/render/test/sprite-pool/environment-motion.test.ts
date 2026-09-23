@@ -87,6 +87,50 @@ describe('environment animation setting', () => {
     }
   });
 
+  it('paces uphill and downhill gaits by ground travel while drawing on the slope', () => {
+    const flat = createPooled('settler', undefined);
+    const hill = createPooled('settler', undefined);
+    for (let tick = 0; tick <= 12; tick++) {
+      const item = { ...walker, y: 20 + tick * 2 };
+      // On the uphill half the projected feet stay level despite real north/south travel.
+      const lift = tick <= 6 ? tick * 2 : (12 - tick) * 2;
+      presentEntity(flat, item, { ...frame, tick }, sheet);
+      presentEntity(hill, { ...item, lift }, { ...frame, tick }, sheet);
+      expect(hill.motion.gaitPhase).toBeCloseTo(flat.motion.gaitPhase);
+      expect(hill.motion.stillTicks).toBe(0);
+      expect(hill.container.y).toBe(item.y - lift);
+    }
+    flat.container.destroy();
+    hill.container.destroy();
+  });
+
+  it('keeps turns and changing speeds on the authoritative anchor without restarting the gait', () => {
+    for (const tribe of [0, 8]) {
+      const pe = createPooled('settler', undefined);
+      const steps = [
+        { x: 0, y: 0, facing: 4 },
+        { x: 4, y: 0, facing: 4 },
+        { x: 6, y: 2, facing: 5 },
+        { x: 5, y: 3, facing: 0 },
+        { x: 4.75, y: 3.25, facing: 0 },
+      ];
+      let phase = 0;
+      for (const [tick, step] of steps.entries()) {
+        const item = { ...walker, tribe, ...step };
+        presentEntity(pe, item, { ...frame, tick, alpha: 0 }, sheet);
+        expect(pe.motion.gaitPhase).toBeGreaterThanOrEqual(phase);
+        phase = pe.motion.gaitPhase;
+        for (const alpha of [0.25, 0.75, 1]) {
+          presentEntity(pe, item, { ...frame, tick, alpha }, sheet);
+          expect(pe.container.x).toBe(step.x);
+          expect(pe.container.y).toBe(step.y);
+          expect(pe.motion.gaitPhase).toBe(phase);
+        }
+      }
+      pe.container.destroy();
+    }
+  });
+
   it('moves fish inside a tick and freezes their local swimming under fog', () => {
     const pe = createPooled('fish', undefined);
     const item: DrawItem = { kind: 'fish', ref: 1, x: 20, y: 20, depth: 0, swarmCount: 1 };

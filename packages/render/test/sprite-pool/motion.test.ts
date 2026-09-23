@@ -22,6 +22,7 @@ function fresh(snapDistance = SNAP_DISTANCE): MotionTrack {
     tick: -1,
     x: 0,
     y: 0,
+    lift: 0,
     prevX: 0,
     prevY: 0,
     drawX: 0,
@@ -211,6 +212,16 @@ describe('motion gait phase', () => {
 });
 
 describe('stall detection - a moving state with no displacement must read idle, not frozen mid-stride', () => {
+  it('keeps a slow laden walker moving instead of switching it to idle', () => {
+    const m = fresh();
+    trackMotion(m, 0, 0, 0, 1);
+    for (let tick = 1; tick <= 12; tick++) {
+      trackMotion(m, tick, 0, tick * 0.25, 1);
+      expect(isStalled(m)).toBe(false);
+    }
+    expect(m.gaitPhase).toBeGreaterThan(0);
+  });
+
   it('flags a track stalled after STALL_TICKS_TO_IDLE still ticks, and real travel clears it', () => {
     const m = fresh();
     trackMotion(m, 0, 0, 0, 1); // first sight

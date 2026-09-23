@@ -482,7 +482,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
   });
 
   it('lets the crew at the site take the last strikes while another builder is still walking in', () => {
-    const sim = new Simulation({ seed: 27, content: constructionContent(), map: grassMap(30, 5) });
+    // Map dimensions are half-cell nodes; the site at world column 24 must be inside the map.
+    const sim = new Simulation({ seed: 27, content: constructionContent(), map: grassMap(60, 10) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
     const site = siteAt(sim, HOUSE, 24, 1);

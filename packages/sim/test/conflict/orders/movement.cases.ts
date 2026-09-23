@@ -3,6 +3,8 @@ import {
   addPerson,
   Building,
   Carrying,
+  DeferredOrder,
+  Fleeing,
   Health,
   MoveGoal,
   Owner,
@@ -78,6 +80,37 @@ describe('moveUnit order', () => {
     orderMove(s, e, 6, 0);
     s.run(2);
     expect(s.world.get(e, Position).x).toBeGreaterThan(before); // advanced, never snapped back
+  });
+
+  it('repeated clicks on the current destination preserve the active step', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    orderMove(s, e, 6, 0);
+    s.run(5);
+    const before = { ...s.world.get(e, PathFollow) };
+    const position = s.world.get(e, Position).x;
+
+    orderMove(s, e, 6, 0);
+    s.step();
+    const after = s.world.get(e, PathFollow);
+    expect(after.index).toBe(before.index);
+    expect(after.legCost).toBe(before.legCost);
+    expect(after.legTicks).toBe(before.legTicks + 1);
+    expect(s.world.get(e, Position).x).toBeGreaterThan(position);
+  });
+
+  it('a repeated click still cancels a competing flee and parked order', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    orderMove(s, e, 6, 0);
+    s.run(5);
+    s.world.add(e, Fleeing, { repathAt: 100, calmUntil: null });
+    s.world.add(e, DeferredOrder, { command: { kind: 'moveUnit', entity: e, x: 0, y: 0 } });
+    orderMove(s, e, 6, 0);
+    s.step();
+    expect(s.world.has(e, Fleeing)).toBe(false);
+    expect(s.world.has(e, DeferredOrder)).toBe(false);
+    expect(s.world.get(e, PlayerOrder).pendingGoal).toBeUndefined();
   });
 
   it('is skipped for a NEUTRAL (unowned) settler - only owned units are orderable', () => {
@@ -161,6 +194,25 @@ describe('moveUnit order', () => {
       expect(worldDistance(prev.x, prev.y, cur.x, cur.y)).toBeLessThanOrEqual(MAX_STEP_PER_TICK);
       prev = { ...cur };
     }
+  });
+
+  it('rapid diagonal redirects use the local step pace rather than the splice distance', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 5, 5);
+    let previous = { ...s.world.get(e, Position) };
+    let movingTicks = 0;
+    for (let tick = 0; tick < 80; tick++) {
+      if (tick % 3 === 0) orderMove(s, e, tick % 2 === 0 ? 1 : 9, tick % 2 === 0 ? 1 : 9);
+      s.step();
+      const current = s.world.get(e, Position);
+      const distance = worldDistance(previous.x, previous.y, current.x, current.y);
+      // The flat map's longest ordinary step is half a column over eight ticks. Turns can hold a
+      // tick, but a route splice must never turn an arbitrary first-leg length into a sprint.
+      expect(distance).toBeLessThanOrEqual(fx.div(fx.fromFloat(0.5), fx.fromInt(8)) + 2);
+      if (distance > 0) movingTicks++;
+      previous = { ...current };
+    }
+    expect(movingTicks).toBeGreaterThan(10);
   });
 
   it('the economy AI leaves an ordered worker alone en route, then reclaims it ON arrival', () => {

@@ -324,6 +324,11 @@ export const enContent = {
       summary:
         'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
     },
+    'movement-continuity': {
+      title: 'Movement continuity',
+      summary:
+        'Two walkers, barefoot and shod, cross a faster middle lane. A third walks diagonally across rough ground: select and redirect that walker repeatedly while it is moving. Stags wander nearby.',
+    },
     hunting: {
       title: 'Hunter at work',
       summary:

@@ -3,8 +3,8 @@ import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './settler-
 
 /**
  * The facing for an item carrying no heading. Approximation: `5` is SE on screen in the `CR_Hum_Body`
- * direction layout, chosen as a toward-camera pose rather than a back view. The pool's held last heading
- * only covers a `moving`-state gap, so any other item without `facing` lands here.
+ * direction layout, chosen as a toward-camera pose rather than a back view. A motion track retains the
+ * last walk heading through an arrival; an untracked figure without `facing` lands here.
  */
 export const DEFAULT_FACING = 5;
 

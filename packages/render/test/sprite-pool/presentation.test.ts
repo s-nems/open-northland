@@ -31,6 +31,7 @@ function motion(stillTicks: number): MotionTrack {
     tick: 0,
     x: 0,
     y: 0,
+    lift: 0,
     prevX: 0,
     prevY: 0,
     drawX: 0,
@@ -67,10 +68,10 @@ describe('walkPose', () => {
     expect(walkPose(WALKER, 'settler', STALLED, undefined).state).toBe('idle');
   });
 
-  it('keeps the stall guard ahead of the sticky facing, so a stalled unit never substitutes a heading', () => {
+  it('keeps the last facing when a stalled route switches to idle', () => {
     const posed = walkPose(HEADINGLESS_WALKER, 'settler', STALLED, LAST_FACING);
     expect(posed.state).toBe('idle');
-    expect(posed.facing).toBeUndefined();
+    expect(posed.facing).toBe(LAST_FACING);
   });
 
   it('reuses the last real facing across the one-tick heading gap of a re-pathing walker', () => {
@@ -81,8 +82,16 @@ describe('walkPose', () => {
     expect(walkPose(WALKER, 'settler', WALKING, LAST_FACING)).toBe(WALKER);
   });
 
-  it('passes an idle settler through untouched, so it draws the default idle facing', () => {
-    expect(walkPose(IDLE_SETTLER, 'settler', WALKING, LAST_FACING)).toBe(IDLE_SETTLER);
+  it('keeps an arriving animal facing along its last step instead of turning to the default', () => {
+    expect(walkPose(IDLE_SETTLER, 'settler', WALKING, LAST_FACING).facing).toBe(LAST_FACING);
+    expect(walkPose(IDLE_SETTLER, 'settler', WALKING, undefined)).toBe(IDLE_SETTLER);
+  });
+
+  it('keeps action and authored indoor headings independent of the last walk', () => {
+    const acting = { ...HEADINGLESS_WALKER, state: 'acting' } as const;
+    const indoor = { ...IDLE_SETTLER, inHouse: true };
+    expect(walkPose(acting, 'settler', WALKING, LAST_FACING)).toBe(acting);
+    expect(walkPose(indoor, 'settler', WALKING, LAST_FACING)).toBe(indoor);
   });
 
   it('never re-poses a non-settler, even in a state the settler rules would rewrite', () => {

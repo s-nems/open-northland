@@ -9,6 +9,7 @@ import {
   restoreSimulation,
   Simulation,
   serializeSaveGame,
+  worldDistance,
 } from '../../src/index.js';
 import { fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from '../conflict/melee-engagement/support.js';
 import { testContent } from '../fixtures/content.js';
@@ -49,8 +50,9 @@ describe('save an army with already executing orders', () => {
     army.forEach((entity, y) => {
       // Arrival releases the order; idle separation may shift soldiers slightly within the tile.
       const position = copy.world.get(entity, Position);
-      expect(position.x).toBe(fx.fromInt(5));
-      expect(Math.abs(position.y - fx.fromInt(y))).toBeLessThan(fx.fromInt(1) / 2);
+      expect(worldDistance(position.x, position.y, fx.fromInt(5), fx.fromInt(y))).toBeLessThan(
+        fx.div(fx.fromInt(1), fx.fromInt(4)),
+      );
       expect(copy.world.has(entity, PlayerOrder)).toBe(false);
     });
   });

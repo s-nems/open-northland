@@ -52,7 +52,7 @@ export type SpawnCommand =
        *  except that a soldier whose weapon slot is left unnamed holds its class weapon good. */
       readonly equipment?: SettlerEquipment;
       /**
-       * The settler's walk pace as ticks to cross one tile (the animal `movespeed` semantics: a
+       * The settler's walk pace as ticks to cross one tile (an explicit distance override: a
        * `MoveSpeed{perTick = ONE/moveSpeed}` is stamped, so a larger value walks a slower step). Omit
        * (or a non-positive value) and the settler carries no `MoveSpeed` and walks the original's
        * per-step cost (`walkStepTicks`).

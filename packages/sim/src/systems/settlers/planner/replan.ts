@@ -12,7 +12,9 @@ import {
   PathRequest,
   PlayerOrder,
   Position,
+  Resting,
   Settler,
+  Sheltering,
   Stranded,
   Wedding,
 } from '../../../components/index.js';
@@ -22,13 +24,16 @@ import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
+import type { ShelterSites } from '../../defence/index.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
+import { navigationLimitFor } from '../../signposts/index.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
 import { topsUpAtHome } from '../drives/at-home.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
 import { answerNeedInPlace } from '../drives/needs.js';
+import { planShelter } from '../drives/shelter.js';
 import { heldIndoors, stepOut } from '../indoors.js';
 import { markLostWay } from '../lost-way.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
@@ -118,6 +123,7 @@ export function releaseStaleIntent(
   e: Entity,
   farmClaims: FarmClaims,
   inbound: InboundSupplyTally,
+  shelters: ShelterSites,
 ): boolean {
   reconcileYardRoute(world, e);
   pruneUnreachableGoals(world, ctx, e);
@@ -127,6 +133,40 @@ export function releaseStaleIntent(
   // settler across the map.
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (atomicHoldsSettler(world, e)) return false;
+  const settler = world.tryGet(e, Settler);
+  let seekShelter = false;
+  if (
+    !world.has(e, Sheltering) &&
+    !world.has(e, PlayerOrder) &&
+    settler !== undefined &&
+    settler.jobType !== null &&
+    shelters.size > 0 &&
+    ctx.terrain !== undefined &&
+    (isTravelling(world, e) || world.has(e, Fleeing))
+  ) {
+    const p = world.get(e, Position);
+    const from = nodeOfPosition(p.x, p.y);
+    const here = ctx.terrain.nodeAtClamped(from.hx, from.hy);
+    seekShelter = planShelter(
+      world,
+      ctx,
+      ctx.terrain,
+      e,
+      settler,
+      here,
+      from,
+      navigationLimitFor(world, ctx.content, ctx.terrain, e),
+      shelters,
+    );
+  }
+  // An alarm outranks an autonomous economy route. Let the shelter rung select a real door this pass;
+  // only a successful claim may displace flight. The old PathFollow remains for a continuous mid-leg
+  // splice, but an old request cannot block the new goal.
+  if (seekShelter) {
+    world.remove(e, Fleeing);
+    world.remove(e, PathRequest);
+    if (world.tryGet(e, Resting)?.at === world.get(e, Sheltering).shelter) clearNavState(world, e);
+  }
   // A non-atomic owner has diverted this settler from its construction errand. Release both promises
   // before a combat, flight, family or player-order route hits the travel early-out below.
   if (anotherSystemOwns(world, e)) releaseSupplyRun(world, e, inbound);
@@ -145,7 +185,7 @@ export function releaseStaleIntent(
     // the first refusal of a goal marks the settler lost.
     if (noteUnreachableGoal(world, ctx, e, request.goal)) markLostWay(world, ctx, e);
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
-  } else if (isTravelling(world, e)) {
+  } else if (isTravelling(world, e) && !seekShelter) {
     feedOnTheMarch(world, ctx, e, request?.failed === true);
     return false;
   }

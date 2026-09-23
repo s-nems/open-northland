@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { Age, Health, HerdMember, MoveSpeed, Position, Settler } from '../../src/components/index.js';
+import { Age, Health, HerdMember, MoveStepPeriod, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
+import { cellAnchorNode, fx, nodeOfPosition, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -93,7 +93,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(leader as Entity, HerdMember).leader).toBe(leader);
   });
 
-  it('stamps each creature a MoveSpeed from movespeed (the bear walks ONE/8; its runspeed is unconsumed)', () => {
+  it('stamps each creature an eight-tick waypoint period from movespeed', () => {
     const sim = fresh();
     spawnHerdAt(sim, BEAR, 5, 5);
     sim.step();
@@ -101,10 +101,7 @@ describe('spawnAnimalHerd command', () => {
     const herd = creatures(sim);
     expect(herd).toHaveLength(3);
     for (const e of herd) {
-      const speed = sim.world.get(e, MoveSpeed);
-      // movespeed 8 -> walks ONE/8 tile/tick (a larger movespeed is a slower step). The record's
-      // runspeed 4 is deliberately NOT stamped - no run/sprint gait exists.
-      expect(speed).toEqual({ perTick: fx.div(ONE, fx.fromInt(8)) });
+      expect(sim.world.get(e, MoveStepPeriod)).toEqual({ ticks: 8 });
     }
   });
 
@@ -136,7 +133,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(bee, Settler).tribe).toBe(BEE);
     expect(sim.world.get(bee, Health)).toEqual({ hitpoints: 200, max: 200 });
     expect(sim.world.has(bee, HerdMember)).toBe(false); // solitary - no leader to follow
-    expect(sim.world.has(bee, MoveSpeed)).toBe(false); // no movespeed in its record -> walks the default
+    expect(sim.world.has(bee, MoveStepPeriod)).toBe(false); // no movespeed in its record -> walks the default
     const p = sim.world.get(bee, Position);
     expect([fx.toInt(p.x), fx.toInt(p.y)]).toEqual([2, 3]); // sits on the birth node (tile (2,3)'s anchor)
   });

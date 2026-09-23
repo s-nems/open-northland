@@ -1,4 +1,12 @@
-import { MoveGoal, Owner, PathFollow, PathRequest, type Waypoint } from '../../components/index.js';
+import {
+  MoveGoal,
+  Owner,
+  PathFollow,
+  PathRequest,
+  Position,
+  WalkFacing,
+  type Waypoint,
+} from '../../components/index.js';
 import { fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
@@ -6,10 +14,12 @@ import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { worldDistance } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockLayers, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial/nodes.js';
 import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
+import { beginWalkTurn } from './turning.js';
 
 /**
  * The pathfinder's per-tick work budget, in A*-settled nodes: what search time is proportional to.
@@ -105,7 +115,33 @@ export function drainPathRequests(
     const waypoints = pathToWaypoints(terrain, path);
     // The route opens with the stop the walker stands at or beside, which its first leg leaves: walking
     // to it first would back a mid-tile walker up before it turns. A one-stop route walks onto its centre.
-    world.add(e, PathFollow, { waypoints, index: waypoints.length >= 2 ? 1 : 0, legTicks: 0, legCost: 0 });
+    const previous = world.tryGet(e, PathFollow);
+    const oldTarget = previous?.waypoints[previous.index];
+    const oldStart = previous?.waypoints[previous.index - 1];
+    const activeCost = previous?.legCost ?? 0;
+    const position = world.tryGet(e, Position);
+    const moved =
+      oldStart !== undefined &&
+      position !== undefined &&
+      (position.x !== oldStart.x || position.y !== oldStart.y);
+    const oldPace =
+      moved && activeCost > 0 && oldTarget !== undefined && oldStart !== undefined
+        ? (previous?.legPace ??
+          fx.divCeil(worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y), fx.fromInt(activeCost)))
+        : undefined;
+    const index = waypoints.length >= 2 ? 1 : 0;
+    world.add(e, PathFollow, {
+      waypoints,
+      index,
+      legTicks: activeCost > 0 ? (previous?.legTicks ?? 0) : 0,
+      legCost: activeCost,
+      ...(oldPace === undefined ? {} : { legPace: oldPace }),
+      ...(previous?.departureCharged === true ? { departureCharged: true } : {}),
+    });
+    const firstTarget = waypoints[index];
+    if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
+      beginWalkTurn(world, e, position, firstTarget);
+    }
     world.remove(e, PathRequest);
   }
 }

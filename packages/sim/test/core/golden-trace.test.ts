@@ -191,7 +191,8 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // wood into the mill and hauls finished planks back out). Cadence notes: a rested barefoot settler
   // walks a land cell in 16 ticks (a laden one in 18), the inter-swing breather lands after every 2nd
   // swing of a worker's burst, and a trained swing advances a tree by more than one chop (the
-  // woodcutter's second tree).
+  // woodcutter's second tree). Separation can push a walker off a waypoint; the continuation uses
+  // its captured full-step pace, which also shifts later work cycles within this fixed window.
   const GOLDEN_TRACE: readonly string[] = [
     '24:8:22',
     '38:5:24',
@@ -216,38 +217,38 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '260:8:23',
     '268:5:24',
     '272:5:22',
-    '301:8:22',
-    '327:8:23',
+    '304:8:22',
+    '330:8:23',
     '334:5:23',
     '347:7:22',
-    '371:8:22',
+    '374:8:22',
     '390:5:22',
-    '397:8:23',
-    '438:8:22',
-    '445:7:23',
+    '400:8:23',
+    '441:8:22',
+    '447:7:23',
     '452:5:23',
-    '464:8:23',
-    '508:8:22',
-    '533:7:22',
-    '534:8:23',
-    '578:8:22',
-    '604:8:23',
-    '631:7:23',
-    '648:8:22',
-    '674:8:23',
-    '718:8:22',
-    '719:7:22',
-    '744:8:23',
-    '788:8:22',
-    '814:8:23',
-    '817:7:23',
-    '858:8:22',
-    '884:8:23',
-    '905:7:22',
-    '928:8:22',
-    '954:8:23',
-    '958:8:22',
-    '984:8:23',
+    '467:8:23',
+    '511:8:22',
+    '535:7:22',
+    '537:8:23',
+    '581:8:22',
+    '607:8:23',
+    '633:7:23',
+    '651:8:22',
+    '677:8:23',
+    '721:7:22',
+    '721:8:22',
+    '747:8:23',
+    '791:8:22',
+    '818:8:23',
+    '819:7:23',
+    '862:8:22',
+    '888:8:23',
+    '907:7:22',
+    '932:8:22',
+    '958:8:23',
+    '962:8:22',
+    '988:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -259,7 +260,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('7a893bfa');
+    expect(run.hash).toBe('5c05ee68');
   });
 
   it('matches the golden atomic-action trace', () => {

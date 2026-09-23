@@ -59,9 +59,8 @@ export function motionClocks(
 }
 
 /**
- * The pose a settler presents this frame, covering two gaps a raw `moving` state leaves: an anchor that
- * has sat still (an unserviced route, a stalled chase) and the one-tick heading gap a re-pathing walker
- * shows.
+ * Retain a walker's heading through a route gap or arrival, and present idle after a blocked route
+ * stops making progress. Wildlife has no persisted human turn heading to supply its idle facing.
  */
 export function walkPose(
   item: DrawItem,
@@ -71,10 +70,12 @@ export function walkPose(
 ): DrawItem {
   // An in-house walk is authored, not tracked: its slow shuffle would read as stalled and freeze the
   // worker mid-stride, and its facing comes from the program rather than from a heading.
-  if (kind !== 'settler' || item.state !== 'moving' || item.inHouse === true) return item;
-  if (isStalled(motion)) return { ...item, state: 'idle' };
-  if (item.facing === undefined && lastFacing !== undefined) return { ...item, facing: lastFacing };
-  return item;
+  if (kind !== 'settler' || item.inHouse === true || (item.state !== 'moving' && item.state !== 'idle'))
+    return item;
+  const state = item.state === 'moving' && isStalled(motion) ? 'idle' : item.state;
+  const facing = item.facing ?? lastFacing;
+  if (state === item.state && facing === item.facing) return item;
+  return { ...item, state, ...(facing !== undefined ? { facing } : {}) };
 }
 
 /**

@@ -55,6 +55,13 @@ The `farm-construction` scene starts at ×2 and places a working construction cr
 The `terrain-edits` scene exercises saved terrain palette edits and a scripted build ban. Its western
 patch uses a brown vertex palette entry and its eastern patch a green entry from the owned content.
 
+`?scene=movement-continuity` compares barefoot and shod walkers crossing a tan band with road-like
+roughness, a diagonal walker, and roaming stags. Repeatedly redirect the diagonal walker with normal
+move orders, then watch the straight walkers enter and leave the band. Check that turns preserve the
+feet anchor, the walk cycle follows ground travel, and animals retain their heading when stopping.
+Original sprite movement remains tick-anchored to preserve foot contact; authored smooth clips keep
+their own interpolation.
+
 ## Real map acceptance
 
 `?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with

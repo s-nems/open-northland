@@ -161,8 +161,8 @@ export const societyContent = {
     // pack of 3 that follows a leader (searchForLeader). All three distances are half-cell nodes: 2 from
     // its birth point, 3 from its leader (maximumLeaderDistance, the herdingSystem cohesion radius), and
     // 6 from its own stay point (maximumDistanceToStayPoint, the animalWanderSystem territory leash).
-    // `moveSpeed 8` (the real cow/boar value) gives it a data-pinned walking pace: it walks ONE/8
-    // tile/tick (the MoveSpeed stamp), exercising the per-entity movement pace. `runSpeed 4` mirrors
+    // `moveSpeed 8` (the real cow/boar value) gives it eight ticks per route step through
+    // MoveStepPeriod, exercising the per-entity movement pace. `runSpeed 4` mirrors
     // the real record shape (`runspeed < movespeed`) but is deliberately unconsumed by the sim -
     // no run/sprint gait exists; it proves the spawn ignores the param.
     {

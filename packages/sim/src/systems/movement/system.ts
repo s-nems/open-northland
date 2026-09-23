@@ -1,4 +1,11 @@
-import { isWildlife, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
+import {
+  isWildlife,
+  MoveSpeed,
+  MoveStepPeriod,
+  PathFollow,
+  Position,
+  Velocity,
+} from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { DEFAULT_NODE_ROUGHNESS, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
@@ -48,8 +55,9 @@ export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP
  * A human walks each leg in its step cost (`walkStepTicks`) plus held turn ticks: the cost is fixed when the leg starts
  * from the roughness of the node it leaves and the walker's state then, the position closes the remaining
  * distance in equal shares of the movement ticks left, and the last tick lands on the stop. Turning
- * holds progress for all but its final tick; no acceleration or braking is modelled. A creature keeps its
- * content-paced constant {@link MoveSpeed}.
+ * holds progress for all but its final tick; no acceleration or braking is modelled. A creature with
+ * {@link MoveStepPeriod} takes its content-defined ticks per waypoint; an explicit {@link MoveSpeed}
+ * advances a fixed world distance each tick.
  */
 export const movementSystem: System = (world, ctx) => {
   // A path can complete within this pass, so the velocity pass below cannot re-derive membership from
@@ -59,26 +67,40 @@ export const movementSystem: System = (world, ctx) => {
   for (const e of world.query(Position, PathFollow)) {
     pathHandled.add(e);
     const pf = world.mut(e, PathFollow);
-    const target = pf.waypoints[pf.index];
-    if (target === undefined) {
-      world.remove(e, PathFollow);
-      continue;
-    }
     const p = world.mut(e, Position);
-    // Wildlife with source `movespeed = 0` has no MoveSpeed component, but it must stay on the animal
-    // fallback rather than inheriting human terrain, fatigue, equipment and hunger rules.
-    const paced = world.has(e, MoveSpeed) || isWildlife(world, e);
-    const arrived = paced
-      ? stepTowardPoint(p, target, creaturePace(world, e))
-      : walkHumanLeg(world, ctx, e, pf, p, target);
-    if (!arrived) continue;
-    if (pf.index + 1 >= pf.waypoints.length) {
-      if (!paced) chargeNode(world, ctx, e, roughnessAt(ctx.terrain, target));
-      world.remove(e, PathFollow);
-    } else {
+    // Wildlife with source `movespeed = 0` has no period component, but stays on the animal fallback
+    // rather than inheriting human terrain, fatigue, equipment and hunger rules.
+    const period = world.tryGet(e, MoveStepPeriod)?.ticks;
+    const paced = period === undefined && (world.has(e, MoveSpeed) || isWildlife(world, e));
+    let budget = paced ? creaturePace(world, e) : ULP;
+    while (true) {
+      const target = pf.waypoints[pf.index];
+      if (target === undefined) {
+        world.remove(e, PathFollow);
+        break;
+      }
+      const distance = paced ? worldDistance(p.x, p.y, target.x, target.y) : ULP;
+      const arrived = paced
+        ? stepTowardPoint(p, target, budget)
+        : period === undefined
+          ? walkHumanLeg(world, ctx, e, pf, p, target)
+          : walkPeriodicLeg(pf, p, target, period);
+      if (!arrived) break;
+      if (pf.index + 1 >= pf.waypoints.length) {
+        if (!paced && period === undefined) chargeNode(world, ctx, e, roughnessAt(ctx.terrain, target));
+        world.remove(e, PathFollow);
+        break;
+      }
       pf.index += 1;
       pf.legTicks = 0;
       pf.legCost = 0;
+      delete pf.legPace;
+      delete pf.departureCharged;
+      if (!paced) break;
+      // A creature spends the unused portion of this tick's pace on its next leg. Dropping that
+      // remainder at every waypoint made short edges and frequent reroutes slow it down.
+      budget = fx.sub(budget, distance);
+      if (budget <= 0) break;
     }
   }
 
@@ -128,18 +150,70 @@ function walkHumanLeg(
     // A same-node request has only its destination callback, not an extra departure.
     if (p.x === target.x && p.y === target.y) return true;
     const roughness = departureRoughness(ctx.terrain, pf);
-    pf.legCost = walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content));
-    // Use the planned edge: collision separation can push the actual position off its axis.
-    beginWalkTurn(world, e, pf.waypoints[pf.index - 1] ?? p, target);
-    chargeNode(world, ctx, e, roughness);
-  } else if (!finishWalkTurn(world, e)) return false;
+    beginTimedLeg(pf, p, target, walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content)));
+    // The planned heading is fixed for this leg. Separation can nudge the position across an octant
+    // boundary; re-aiming every tick would insert fresh turn holds in the middle of a steady step.
+    beginWalkTurn(world, e, pf.legPace === undefined ? (pf.waypoints[pf.index - 1] ?? p) : p, target);
+    if (pf.departureCharged !== true) {
+      chargeNode(world, ctx, e, roughness);
+      pf.departureCharged = true;
+    }
+  }
+  // Rotate before the first advancing tick as well as later ones. Moving once and only then holding
+  // for the rest of a turn made rapid redirects visibly jerk and left the first step facing sideways.
+  if (!finishWalkTurn(world, e)) return false;
+  return advanceTimedLeg(pf, p, target, MAX_STEP_PER_TICK);
+}
+
+function walkPeriodicLeg(
+  pf: FollowState,
+  p: { x: Fixed; y: Fixed },
+  target: { x: Fixed; y: Fixed },
+  period: number,
+): boolean {
+  if (pf.legCost === 0) {
+    if (p.x === target.x && p.y === target.y) return true;
+    beginTimedLeg(pf, p, target, period);
+  }
+  return advanceTimedLeg(pf, p, target);
+}
+
+function beginTimedLeg(
+  pf: FollowState,
+  p: { x: Fixed; y: Fixed },
+  target: { x: Fixed; y: Fixed },
+  fullCost: number,
+): void {
+  pf.legCost = fullCost;
+  const plannedFrom = pf.waypoints[pf.index - 1];
+  if (plannedFrom === undefined || (plannedFrom.x === p.x && plannedFrom.y === p.y)) return;
+  const plannedDistance = worldDistance(plannedFrom.x, plannedFrom.y, target.x, target.y);
+  if (plannedDistance <= 0) return;
+  // Route splices retain the ordinary whole-step pace even when their first leg is a fraction of an
+  // edge or extends past one. The partial leg can therefore end before or after its nominal period.
+  pf.legPace = fx.divCeil(plannedDistance, fx.fromInt(fullCost));
+}
+
+function advanceTimedLeg(
+  pf: FollowState,
+  p: { x: Fixed; y: Fixed },
+  target: { x: Fixed; y: Fixed },
+  maxPerTick?: Fixed,
+): boolean {
   pf.legTicks += 1;
+  if (pf.legPace !== undefined) {
+    return stepTowardPoint(
+      p,
+      target,
+      maxPerTick !== undefined && pf.legPace > maxPerTick ? maxPerTick : pf.legPace,
+    );
+  }
   const remaining = pf.legCost - pf.legTicks;
   const dist = worldDistance(p.x, p.y, target.x, target.y);
   // The equal share of what is left; on the last tick the whole of it, so the walker lands exactly. A
   // push can leave more than the cap to cover, which then delays the arrival but never prevents it.
   const share = remaining > 0 ? fx.div(dist, fx.fromInt(remaining + 1)) : dist;
-  return stepTowardPoint(p, target, share < MAX_STEP_PER_TICK ? share : MAX_STEP_PER_TICK);
+  return stepTowardPoint(p, target, maxPerTick !== undefined && share > maxPerTick ? maxPerTick : share);
 }
 
 /** A creature's constant pace; a content pace that truncates to 0 ulps never makes progress, so one ULP

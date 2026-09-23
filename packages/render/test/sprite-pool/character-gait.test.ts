@@ -29,6 +29,7 @@ function fresh(): MotionTrack {
     tick: -1,
     x: 0,
     y: 0,
+    lift: 0,
     prevX: 0,
     prevY: 0,
     drawX: 0,

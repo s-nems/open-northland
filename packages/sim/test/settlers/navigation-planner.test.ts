@@ -20,9 +20,10 @@ const GRASS = 0;
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
 
 /** The cell id of visual tile (x, y)'s ANCHOR NODE - sim grid coords are half-cell nodes. */
-function anchorCell(sim: Simulation, x: number, y: number): number {
+function anchorCell(sim: Simulation, x: number, y: number) {
   const n = cellAnchorNode(x, y);
-  return sim.terrain?.nodeAt(n.hx, n.hy) as number;
+  if (sim.terrain === undefined) throw new Error('mapped sim expected');
+  return sim.terrain.nodeAt(n.hx, n.hy);
 }
 
 /** Place an entity at integer tile (x,y) with a navigation goal to the given cell id. */

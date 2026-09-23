@@ -3,14 +3,13 @@ import {
   Health,
   HerdMember,
   Livestock,
-  MoveSpeed,
+  MoveStepPeriod,
   Position,
   StayPoint,
   stampMissionId,
   stampOwner,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
@@ -93,8 +92,8 @@ export function spawnAnimalHerd(
  * its hitpoint pool, its walking pace, and the {@link Livestock} marker mirroring the content's
  * `catchable` flag, so the husbandry systems query that small store rather than the whole population.
  *
- * Approximation: `movespeed` is read as a step period, so a larger value walks slower - the only
- * direction consistent with the source's `runspeed < movespeed`.
+ * Original behavior: `movespeed` is the period of one map-point step. The corresponding period has
+ * not been confirmed against the running original.
  */
 export function stampAnimalBody(
   world: World,
@@ -107,7 +106,7 @@ export function stampAnimalBody(
   world.add(e, Health, { hitpoints, max: hitpoints });
   if (isCatchableAnimal(ctx.content, tribe)) world.add(e, Livestock, {});
   const walkSpeed = locomotionOf(ctx.content, tribe)?.walkSpeed ?? 0;
-  if (walkSpeed > 0) world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(walkSpeed)) });
+  if (walkSpeed > 0) world.add(e, MoveStepPeriod, { ticks: walkSpeed });
 }
 
 /**

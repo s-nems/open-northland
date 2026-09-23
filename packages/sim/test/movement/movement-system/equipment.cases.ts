@@ -8,6 +8,7 @@ import {
   MISSION_BEHAVIOUR,
   MissionBehaviour,
   PathFollow,
+  PathRequest,
   Settler,
   WalkFacing,
 } from '../../../src/components/index.js';
@@ -57,6 +58,23 @@ const spentPoints = (sim: Simulation, e: Entity): number =>
   Math.round((fx.toFloat(sim.world.get(e, Equipment).boots?.degreeOfUse ?? ONE) * SHOE_POINTS) / 1);
 
 describe('movementSystem - worn boots', () => {
+  it('does not spend another departure point when a live step is rerouted repeatedly', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    const e = followerAt(sim, 0, 0, WALK);
+    wearBoots(sim, e, SHOES);
+    sim.step();
+    expect(spentPoints(sim, e)).toBe(LAND_ROUGHNESS);
+    for (let i = 0; i < 4; i++) {
+      sim.world.add(e, PathRequest, {
+        start: sim.terrain?.nodeAt(0, 0) as number,
+        goal: sim.terrain?.nodeAt(6 + (i & 1), 0) as number,
+        failed: false,
+      });
+      sim.step();
+      expect(spentPoints(sim, e)).toBe(LAND_ROUGHNESS);
+    }
+  });
+
   it('a booted walker takes two ticks fewer per step: 12 a cell on land against 16 bare', () => {
     const bare = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     expect(ticksToArrive(bare, followerAt(bare, 0, 0, WALK))).toBe(WALK_STEPS * LAND_STEP_TICKS);

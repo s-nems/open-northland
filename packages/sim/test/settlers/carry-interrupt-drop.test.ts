@@ -67,7 +67,7 @@ function carryingWoodcutter(sim: Simulation, x: number, y: number, amount = 1): 
 
 /** The tile Position a settler at (x,y) drops onto - its half-cell node snapped to the lattice. */
 /** The lattice node id of the visual tile `(x, y)`'s centre. */
-function anchorNodeId(sim: Simulation, x: number, y: number): number {
+function anchorNodeId(sim: Simulation, x: number, y: number) {
   const n = cellAnchorNode(x, y);
   if (sim.terrain === undefined) throw new Error('mapped sim expected');
   return sim.terrain.nodeAt(n.hx, n.hy);

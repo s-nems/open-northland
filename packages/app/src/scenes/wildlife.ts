@@ -31,7 +31,7 @@ const EXPECTED_COUNTS: readonly { tribe: number; count: number }[] = buildSandbo
   .filter((a) => HERDS.some((h) => h.tribe === a.tribeType))
   .map((a) => ({ tribe: a.tribeType, count: a.maximumGroupSize }));
 
-const { MoveSpeed, Owner, Position, Settler, StayPoint } = components;
+const { MoveStepPeriod, Owner, Position, Settler, StayPoint } = components;
 
 function build(sim: Simulation): void {
   for (const herd of HERDS) {
@@ -100,7 +100,7 @@ export const wildlifeScene: SceneDefinition = {
       label: 'the wolves walk at their data-pinned movespeed pace',
       predicate: (sim) => {
         const wolves = membersOf(sim, ANIMAL_TRIBE_WOLVES);
-        const paced = new Set(sim.world.query(Settler, MoveSpeed));
+        const paced = new Set(sim.world.query(Settler, MoveStepPeriod));
         return wolves.length > 0 && wolves.every((e) => paced.has(e));
       },
     },
