@@ -18,7 +18,7 @@ describe('the real map acceptance entry', () => {
     expect(mapSceneParams(scene, new URLSearchParams('missions=off')).get('missions')).toBe('off');
   });
 
-  it('shows execution ticks even when a later check cleared the done flag', () => {
+  it('lists fired missions by execution history rather than the completion mark', () => {
     const base = {
       description: undefined,
       visible: false,
@@ -31,8 +31,8 @@ describe('the real map acceptance entry', () => {
     expect(
       firedMissionRows([
         { ...base, index: 0, done: true },
-        { ...base, index: 1, firstFiredTick: 36, lastFiredTick: 72, fireCount: 2 },
-        { ...base, index: 2, firstFiredTick: 36, lastFiredTick: 36, fireCount: 1 },
+        { ...base, index: 1, done: true, firstFiredTick: 36, lastFiredTick: 72, fireCount: 2 },
+        { ...base, index: 2, done: true, firstFiredTick: 36, lastFiredTick: 36, fireCount: 1 },
       ]).map((row) => row.index),
     ).toEqual([1, 2]);
   });
