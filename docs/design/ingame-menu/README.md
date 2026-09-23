@@ -114,6 +114,7 @@ only diagnostics.
 
 | Ticket | Outcome |
 | --- | --- |
+| [profession-school-picker](../../tickets/app/ingame-ui-profession-school-picker.md) | Redesign profession and school choices; [candidate](professions.html) |
 | [08-settler-details](../../tickets/app/ingame-ui-08-settler-details.md) | Redesign the selected resident panel |
 | [09-building-details](../../tickets/app/ingame-ui-09-building-details.md) | Redesign the selected building panel |
 | [10-group-details](../../tickets/app/ingame-ui-10-group-details.md) | Redesign multiple-selection details and shared orders |

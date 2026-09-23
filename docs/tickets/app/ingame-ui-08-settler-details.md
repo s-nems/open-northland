@@ -8,6 +8,9 @@ Follow the [approved design and panel workflow](../../design/ingame-menu/README.
 [session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
+The profession and school choice windows are tracked in
+[their focused task](ingame-ui-profession-school-picker.md); keep their actions integrated here.
+
 ## Scope
 
 - Design actual information density using representative worker, soldier, hero, child and foreign-person states before implementing.
