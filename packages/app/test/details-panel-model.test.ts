@@ -978,6 +978,33 @@ describe('selection details panel model', () => {
     ).toEqual([{ goodType: GOOD_WHEAT, amount: 3, capacity: 25 }]);
   });
 
+  it('counts ripe map fields within a farm plot in its production panel', () => {
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_FARM, {
+        components: { Position: { x: fx.fromInt(4), y: fx.fromInt(4) } },
+      }),
+      {
+        id: 2,
+        components: {
+          Position: { x: fx.fromInt(5), y: fx.fromInt(4) },
+          Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
+        },
+      },
+      {
+        id: 3,
+        components: {
+          Position: { x: fx.fromInt(30), y: fx.fromInt(4) },
+          Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
+        },
+      },
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.production).toMatchObject({ kind: 'fields', sown: 1, growing: 0, ripe: 1 });
+  });
+
   it('shows a settler equipment section with labeled rows, worn goods, condition percentages and empty slots', () => {
     const { snapshot, ctx } = equipmentWorld();
     const bootsGood = (e: (typeof snapshot.entities)[number]): number | undefined =>

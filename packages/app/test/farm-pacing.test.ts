@@ -141,9 +141,10 @@ const RATE_CEILING = 45;
 /** The per-farmer rate a crew of four keeps relative to a lone farmer's; measured ~0.95, since the plot
  *  cap and the shared paths cost a full crew a little. */
 const CREW_RATE_HOLD = 0.75;
-/** Ticks a lone farmer may take to bank its first grain; measured ~1750-1850 across seeds (about 2.5
- *  minutes). */
-const LONE_FIRST_GRAIN_TICKS = 2400;
+/** Ticks a lone farmer may take to bank its first grain. Keeping fields outside the finished farm's
+ *  reserved ground puts the seeded run near tick 3200; this leaves room for path choice without hiding
+ *  a stalled plot. */
+const LONE_FIRST_GRAIN_TICKS = 3600;
 /** The share of a full plot one stage may hold at any tick: 0.50-0.63 at the peak of a wave across crews
  *  and seeds. */
 const MAX_STAGE_SHARE = 0.7;

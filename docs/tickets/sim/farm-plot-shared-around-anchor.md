@@ -2,10 +2,10 @@
 
 **Area:** sim, app · **Focus:** drives/farming, catalog/farming · **Priority:** P3
 
-Every field carries `Crop.farm`, the drive counts and picks only `targets.cropsByFarm.get(farm)`, and
-`FarmClaims.byFarm` reserves sow slots per farm. A field is thereby owned: two farms whose radii overlap
-keep two disjoint plots on the same ground, and a demolished farm's fields stand untended within another
-farm's reach.
+Sown fields carry `Crop.farm`, the drive counts and picks those fields only for that farm, and
+`FarmClaims.byFarm` reserves sow slots per farm. Map-placed fields have `farm: null` and are worked by
+farms in reach. Two farms whose radii overlap still keep disjoint plots for their own sown fields, and
+a demolished farm's fields stand untended within another farm's reach.
 
 The original has no owner on a field. Original behavior, in the task the farmer and
 the herb guy share: a worker searches 10 map points out

@@ -73,6 +73,43 @@ export interface MapResourceSpawn {
   readonly maxValency?: number;
 }
 
+/** A placed growing field's valency is its current stage, not a stored good amount. */
+export interface MapFieldSpawn {
+  readonly goodId: string;
+  readonly gfxIndex: number;
+  readonly hx: number;
+  readonly hy: number;
+  readonly stage: number;
+  readonly placement: number;
+}
+
+export function mapFieldSpawns(
+  objects: TerrainObjects,
+  ir: ContentIr,
+  farmedGoodIds: ReadonlySet<string>,
+): MapFieldSpawn[] {
+  const byIndex = new Map((ir.landscapeGfx ?? []).map((row) => [row.index, row]));
+  const byName = new Map<string, { goodId: string; gfxIndex: number; stages: number }>();
+  for (const good of ir.gatheringPipeline ?? []) {
+    if (!farmedGoodIds.has(good.goodId)) continue;
+    for (const index of good.harvest?.gfxIndices ?? []) {
+      const row = byIndex.get(index);
+      if (row?.editName !== undefined && row.frames !== undefined) {
+        byName.set(row.editName, { goodId: good.goodId, gfxIndex: index, stages: row.frames.length });
+      }
+    }
+  }
+  const out: MapFieldSpawn[] = [];
+  forEachPlacement(objects.placements, (hx, hy, typeIndex, placement) => {
+    const name = objects.types[typeIndex];
+    const field = name === undefined ? undefined : byName.get(name);
+    const stage = objects.levels?.[placement];
+    if (field === undefined || stage === undefined || stage < 1 || stage > field.stages) return;
+    out.push({ goodId: field.goodId, gfxIndex: field.gfxIndex, hx, hy, stage, placement });
+  });
+  return out;
+}
+
 /**
  * The harvestable resource nodes a decoded map's placed objects define, for every placement whose EditName
  * maps to a good with a real gatherer trade; a good without one stays decor rather than spawning an

@@ -8,15 +8,16 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * `maximumValency 5`). Sown at `stage` 1 with `Resource.remaining` 0 - that gate is what keeps every
  * generic harvest scan off an unripe field - and ripe at the top stage, where `Resource.remaining` becomes
  * `yieldUnits` so the reap swing drops the whole yield as a {@link GroundDrop} sheaf pile and removes the
- * field. A field below its top stage is thirsty. Only the farm that sowed a field waters and reaps it.
+ * field. A field below its top stage is thirsty. A map-placed field has no sowing farm and is available
+ * to a farmer working within reach of it.
  *
  * A field blocks neither walking nor building - it carries a {@link ResourceFootprint} declaring empty
  * walk/build areas, which is how the original's wheat landscape reads (`allowedonland 1`, no block areas).
  */
 export const Crop = defineComponent<{
   goodType: number;
-  /** The farm workplace this field belongs to (a cross-reference id; ids are never reused). */
-  farm: Entity;
+  /** The farm that sowed this field; null for a field placed on the map. */
+  farm: Entity | null;
   /** Current growth stage, 1..`stages`; a watering steps it once, and only a watering does. */
   stage: number;
   /** Total growth stages (the content `farming.stages`, snapshotted at sow). */
@@ -29,13 +30,15 @@ export const Crop = defineComponent<{
  * A farmer's in-flight field intent - which node its current farm action (reap / sheaf pickup / sow / water)
  * targets. Stamped when the drive issues the action and removed on replan, so it exists exactly while the
  * farmer is walking to or swinging at the target. Its one purpose is work division: every live task joins
- * the tick's claim set, so a second farmer never picks a node a colleague is already en route to.
+ * the tick's claim set, so a second farmer never picks the same crop or sheaf from another work cell.
  */
 export const FarmTask = defineComponent<{
   /** The farm workplace the action serves (the `byFarm` sow-count key). */
   farm: Entity;
-  /** The claimed half-cell node (a `NodeId` - the crop/sheaf node, or the free node being sown). */
+  /** The claimed half-cell work stance, or the free node being sown. */
   node: NodeId;
+  /** Crop or sheaf being worked; absent for a free sow node. */
+  target?: Entity;
   /** True for a sow intent - it reserves one of the farm's crew-scaled field slots while in flight. */
   sow: boolean;
 }>('FarmTask', 'economy');

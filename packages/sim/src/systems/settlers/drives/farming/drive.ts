@@ -21,6 +21,7 @@ import { dynamicBlockOverlay } from '../../../footprint/index.js';
 import { workplaceStaffable } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { closer, manhattan } from '../../../spatial/metric.js';
+import { resourcesNearNode } from '../../../spatial/resources.js';
 import { buildingWorkerJobs } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
@@ -84,10 +85,11 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const clipTicks = (atomic: number): number => atomicDuration(ctx.content, settler, atomic);
 
   /** Claim `node` for this settler's next action, so colleagues planned later this tick skip it. */
-  const take = (node: NodeId, sow: boolean): void => {
+  const take = (node: NodeId, sow: boolean, target?: Entity): void => {
     claims.nodes.add(node);
+    if (target !== undefined) claims.targets.add(target);
     if (sow) claims.byFarm.set(farm, (claims.byFarm.get(farm) ?? 0) + 1);
-    world.add(e, FarmTask, { farm, node, sow });
+    world.add(e, FarmTask, { farm, node, sow, ...(target !== undefined ? { target } : {}) });
   };
 
   // The reachability layers every field and sheaf pick is filtered through. A field is worked from its own
@@ -111,11 +113,23 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   let thirstyStage = Number.POSITIVE_INFINITY;
   let thirstyCell = 0 as NodeId;
   let thirstyDist = Number.POSITIVE_INFINITY;
-  for (const c of targets.cropsByFarm.get(farm) ?? []) {
+  const anchorCoords = terrain.coordsOf(anchor);
+  const mapFields = resourcesNearNode(world, anchorCoords.x, anchorCoords.y, spec.farming.fieldRadius).filter(
+    (c) => world.tryGet(c, Crop)?.farm === null,
+  );
+  for (const c of [...(targets.cropsByFarm.get(farm) ?? []), ...mapFields]) {
     const crop = world.get(c, Crop);
+    if (crop.goodType !== spec.goodType) continue;
+    if (crop.farm === null) {
+      const cp = world.get(c, Position);
+      const cn = nodeOfPosition(cp.x, cp.y);
+      const cropNode = terrain.nodeAtClamped(cn.hx, cn.hy);
+      if (manhattan(terrain, anchor, cropNode) > spec.farming.fieldRadius) continue;
+    }
     // Counted before the reachability gate: the plot cap is a fact about the farm, not about which farmer
     // is asking.
     fields++;
+    if (claims.targets.has(c)) continue;
     const cell = interactionCell(world, ctx, terrain, c, here);
     if (claims.nodes.has(cell)) continue;
     if (unreachableWorkCell(gates, here, cell)) continue;
@@ -145,7 +159,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const sheaf = nearestFarmSheaf(plan, { anchor, spec, claims, gates });
   if (sheaf !== null && cropSinkExists()) {
     const cell = interactionCell(world, ctx, terrain, sheaf, here);
-    take(cell, false);
+    take(cell, false, sheaf);
     atOrWalk(world, e, here, cell, () =>
       startPickup(world, ctx, e, settler, sheaf, spec.goodType, CARRY_CAPACITY),
     );
@@ -176,7 +190,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   // Reap the nearest ripe field; the yield drops as a sheaf where it stood.
   if (ripe !== null && cropSinkExists()) {
     const node = ripe;
-    take(ripeCell, false);
+    take(ripeCell, false, node);
     atOrWalk(world, e, here, ripeCell, () =>
       startAtomic(
         world,
@@ -193,7 +207,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   // Water the least-grown field; every growth stage costs a watering, which reaches the ring around it.
   if (thirsty !== null) {
     const crop = thirsty;
-    take(thirstyCell, false);
+    take(thirstyCell, false, crop);
     atOrWalk(world, e, here, thirstyCell, () =>
       startAtomic(
         world,

@@ -24,8 +24,13 @@ export function addCarry(world: World, settler: Entity, goodType: number, amount
 }
 
 /** Shrink a carried load by `by` units, removing the {@link Carrying} entirely when that empties it. */
-export function shrinkCarry(world: World, settler: Entity, load: { amount: number }, by: number): void {
-  if (load.amount > by) load.amount -= by;
+export function shrinkCarry(
+  world: World,
+  settler: Entity,
+  load: { readonly amount: number },
+  by: number,
+): void {
+  if (load.amount > by) world.mut(settler, Carrying).amount -= by;
   else world.remove(settler, Carrying);
 }
 

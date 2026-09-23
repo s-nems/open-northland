@@ -1,4 +1,11 @@
-import type { BuildingType, ContentSet, GoodType, JobType, TribeType } from '@open-northland/data';
+import {
+  type BuildingType,
+  type ContentSet,
+  footprintCellDx,
+  type GoodType,
+  type JobType,
+  type TribeType,
+} from '@open-northland/data';
 import {
   cellAnchorNode,
   checkInvariants,
@@ -9,11 +16,14 @@ import {
   ONE,
   positionOfNode,
   Simulation,
+  systems,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_BARREN, TERRAIN_OPEN } from '../../src/catalog/terrain.js';
+import type { ContentIr } from '../../src/content/ir/rows.js';
 import { doorNode } from '../../src/view/projections/building-points.js';
-import { hasRealIr, loadContentUnderTest } from './helpers.js';
+import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
+import { realMapWorld } from './real-map-world.js';
 
 /**
  * The field-farming loop (sow → water → reap → bank) over the MERGED REAL content - the twin
@@ -139,6 +149,70 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
     const herb = resolveActors(merge.content, 'herb');
     expect(herb.worker.typeId).not.toBe(wheat.worker.typeId);
     expect(herb.workplace.typeId).not.toBe(wheat.workplace.typeId);
+  });
+
+  it('the starting herb worker harvests ripe map herbs outside the hut footprint', async () => {
+    const { merge } = await loadContentUnderTest();
+    const { crop, workplace } = resolveActors(merge.content, 'herb');
+    const ir = rawIrUnderTest() as ContentIr;
+    const gfxIndex = ir.gatheringPipeline?.find((row) => row.goodId === 'herb')?.harvest?.gfxIndices[0];
+    expect(gfxIndex).toBeDefined();
+    if (gfxIndex === undefined || crop.farming === undefined) return;
+    const { sim, workplaceEntity } = buildScenario(merge.content, 'herb');
+    const terrain = sim.terrain;
+    expect(terrain).toBeDefined();
+    expect(workplace.footprint).toBeDefined();
+    if (terrain === undefined || workplace.footprint === undefined) return;
+    const anchor = cellAnchorNode(FARM_AT.x, FARM_AT.y);
+    const zone = new Set(
+      workplace.footprint.reserved.map(
+        (cell) => `${anchor.hx + footprintCellDx(anchor.hy, cell)},${anchor.hy + cell.dy}`,
+      ),
+    );
+    let placed = 0;
+    for (let y = 0; y < terrain.height && placed < crop.farming.maxFields; y++) {
+      for (let x = 0; x < terrain.width && placed < crop.farming.maxFields; x++) {
+        if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > crop.farming.fieldRadius) continue;
+        if (zone.has(`${x},${y}`)) continue;
+        if (!terrain.isWalkable(terrain.nodeAt(x, y))) continue;
+        const field = systems.createMapCrop(sim.world, sim.content, {
+          goodType: crop.typeId,
+          x,
+          y,
+          stage: crop.farming.stages,
+          gfxIndex,
+          landscapeId: placed,
+        });
+        if (field !== null) placed++;
+      }
+    }
+    expect(placed).toBe(crop.farming.maxFields);
+    let banked = 0;
+    for (let tick = 0; tick < 600 && banked === 0; tick++) {
+      sim.step();
+      banked = sim.world.get(workplaceEntity, Stockpile).amounts.get(crop.typeId) ?? 0;
+    }
+    expect(banked).toBeGreaterThan(0);
+  });
+
+  it('loads the herb fields and assigned herbalist from a starting map', async () => {
+    const { sim, content } = await realMapWorld({ mapId: 'tutorial_006', aiSeats: [], humanSeats: [0] });
+    const { crop, workplace } = resolveActors(content, 'herb');
+    const fields = [...sim.world.query(Crop)].filter(
+      (entity) =>
+        sim.world.get(entity, Crop).goodType === crop.typeId && sim.world.get(entity, Crop).farm === null,
+    );
+    expect(fields.length).toBeGreaterThan(0);
+    const hut = [...sim.world.query(Building)].find(
+      (entity) => sim.world.get(entity, Building).buildingType === workplace.typeId,
+    );
+    expect(hut).toBeDefined();
+    if (hut === undefined) return;
+    expect(
+      [...sim.world.query(JobAssignment)].some(
+        (entity) => sim.world.get(entity, JobAssignment).workplace === hut,
+      ),
+    ).toBe(true);
   });
 
   for (const goodId of FARMED_GOOD_IDS) {

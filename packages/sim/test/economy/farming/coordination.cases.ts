@@ -1,8 +1,9 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, nodeOfPosition, Simulation } from '../../../src/index.js';
-import { applySow, plannerSystem } from '../../../src/systems/index.js';
+import { cellAnchorNode, fx, nodeOfPosition, Simulation } from '../../../src/index.js';
+import { applySow, plannerSystem, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -27,6 +28,26 @@ import {
 } from './support.js';
 
 describe('work division - two farmers never share a target', () => {
+  it('works a ripe map field with no sowing farm inside its plot', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    const farm = farmAt(sim, 4, 4);
+    const field = fieldAt(sim, farm, 4, 4, { stage: STAGES });
+    sim.world.mut(field, Crop).farm = null;
+    for (const [x, y] of RING_AROUND_FARM) {
+      const next = fieldAt(sim, farm, x, y, { stage: STAGES });
+      sim.world.mut(next, Crop).farm = null;
+    }
+    const farmer = farmerAt(sim, 4, 4, farm);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({
+      kind: 'harvest',
+      resource: field,
+      goodType: WHEAT,
+    });
+  });
+
   it('the second farmer skips the field the first is already reaping', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
@@ -47,6 +68,33 @@ describe('work division - two farmers never share a target', () => {
     const farNode = cellAnchorNode(2, 2);
     expect(sim.world.get(f2, components.FarmTask).node).toBe(sim.terrain?.nodeAt(farNode.hx, farNode.hy));
     expect(sim.world.tryGet(f2, components.MoveGoal)).toBeDefined(); // walking to the far field
+  });
+
+  it('claims one map crop across its different work cells', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 10) });
+    const farm = farmAt(sim, 4, 4);
+    const crop = fieldAt(sim, farm, 4, 4, { stage: STAGES });
+    sim.world.mut(crop, Crop).farm = null;
+    stampResourceFootprintData(sim.world, crop, {
+      walk: [],
+      build: [],
+      work: [
+        { dx: -2, dy: 0 },
+        { dx: 2, dy: 0 },
+      ],
+    });
+    const other = fieldAt(sim, farm, 4, 6, { stage: STAGES });
+    for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x, y);
+    const west = farmerAt(sim, 3, 4, farm);
+    const east = farmerAt(sim, 5, 4, farm);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(west, components.FarmTask).target).toBe(crop);
+    expect(sim.world.get(east, components.FarmTask).target).toBe(other);
+    expect(sim.world.get(west, components.FarmTask).node).not.toBe(
+      sim.world.get(east, components.FarmTask).node,
+    );
   });
 
   it('an in-flight claim persists across ticks: a later planner avoids the walking farmer’s target', () => {
@@ -100,6 +148,72 @@ describe('work division - two farmers never share a target', () => {
     // The farm's 25-cap must not be what limits the pair - otherwise the ratio measures the store.
     expect(pair).toBeLessThan(FARM_WHEAT_CAP);
   });
+});
+
+it('opens the finished farm doorway and banks a carried sheaf inside', () => {
+  const base = testContent();
+  const wall = [-1, 0, 1].flatMap((dy) =>
+    [-1, 0, 1].filter((dx) => dx !== 0 || dy !== 0).map((dx) => ({ dx, dy })),
+  );
+  const content = parseContentSet({
+    ...base,
+    buildings: base.buildings.map((building) =>
+      building.typeId === 5
+        ? { ...building, footprint: { blocked: wall, door: { dx: 0, dy: 0 } } }
+        : building,
+    ),
+  });
+  const sim = new Simulation({ seed: 1, content, map: grassMap(9, 9) });
+  const farm = farmAt(sim, 4, 4);
+  const farmer = farmerAt(sim, 2, 4, farm);
+  sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
+
+  const door = cellAnchorNode(4, 4);
+  let doorDeposit = false;
+  for (let tick = 0; tick < 200; tick++) {
+    sim.step();
+    const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);
+    if (atomic?.effect.kind === 'pileup' && atomic.effect.store === farm) {
+      const position = sim.world.get(farmer, Position);
+      const node = nodeOfPosition(position.x, position.y);
+      doorDeposit ||= node.hx === door.hx && node.hy === door.hy;
+    }
+  }
+
+  expect(doorDeposit).toBe(true);
+  expect(sim.world.get(farm, Stockpile).amounts.get(WHEAT)).toBeGreaterThanOrEqual(1);
+  expect(sim.world.has(farmer, Carrying)).toBe(false);
+});
+
+it('keeps a carried sheaf through berry foraging and deposits it before harvesting again', () => {
+  const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(9, 9) });
+  const farm = farmAt(sim, 4, 4);
+  const farmer = farmerAt(sim, 2, 4, farm);
+  fieldAt(sim, farm, 6, 4, { stage: STAGES });
+  const bush = sim.world.create();
+  sim.world.add(bush, Position, { x: fx.fromInt(2), y: fx.fromInt(4) });
+  sim.world.add(bush, components.BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+  sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
+  sim.world.mut(farmer, components.Settler).hunger = fx.fromInt(1);
+
+  plannerSystem(sim.world, ctxOf(sim));
+  expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'forage', bush });
+  expect(sim.world.get(farmer, Carrying).amount).toBe(1);
+
+  let harvestedWithLoad = false;
+  for (let tick = 0; tick < 120; tick++) {
+    sim.step();
+    if (
+      sim.world.has(farmer, Carrying) &&
+      sim.world.tryGet(farmer, components.CurrentAtomic)?.effect.kind === 'harvest'
+    )
+      harvestedWithLoad = true;
+  }
+
+  expect(harvestedWithLoad).toBe(false);
+  expect(sim.world.get(bush, components.BerryBush).stage).toBe('bare');
+  expect(sim.world.get(farm, Stockpile).amounts.get(WHEAT)).toBe(1);
+  expect(sim.world.has(farmer, Carrying)).toBe(false);
 });
 
 describe('grass-only sowing (the plantable-ground gate)', () => {

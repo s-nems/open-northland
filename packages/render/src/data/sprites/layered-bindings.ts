@@ -72,7 +72,7 @@ export interface ResourceTypeBinding {
    * Wins over the per-good entry so a decoded map keeps its species variety; an unbound variant falls
    * back per-good rather than borrowing a wrong frame.
    */
-  readonly byGfxIndex?: Readonly<Record<number, readonly LayeredBobRef[]>>;
+  readonly byGfxIndex?: Readonly<Record<number, readonly (LayeredBobRef | null)[]>>;
   /** This binding's own representative frame, drawn for a good absent from {@link byGood}. */
   readonly default: LayeredBobRef;
 }

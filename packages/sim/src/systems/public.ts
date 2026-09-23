@@ -32,6 +32,7 @@ export {
 // the drive ladder holds it at.
 export { REST_CLEARANCE_NODES } from './conflict/battle-alert.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
+export { createMapCrop } from './economy/fields.js';
 export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';
 export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.js';
 export { isOnMission } from './family/eligibility.js';

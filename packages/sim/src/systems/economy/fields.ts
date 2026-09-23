@@ -1,13 +1,13 @@
-import type { GoodFarming } from '@open-northland/data';
-import { Building, Crop, Position, Resource } from '../../components/index.js';
+import { type ContentSet, footprintCellDx, type GoodFarming } from '@open-northland/data';
+import { Building, Crop, LandscapeResource, Position, Resource } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexNeighboursOf, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
+import { buildingFieldZone, translatedCells } from '../footprint/geometry.js';
 import {
-  buildingBlockedCells,
   dynamicBlockOverlay,
+  stampResourceFootprint,
   stampResourceFootprintOrFallback,
   unstampResourceFootprint,
 } from '../footprint/index.js';
@@ -39,8 +39,8 @@ export interface FarmingSpec {
  * Resolve a good's {@link FarmingSpec}, or null when it is not field-farmed: no `farming` block, or any of
  * the three loop atomics missing.
  */
-function farmingSpecFor(ctx: SystemContext, goodType: number): FarmingSpec | null {
-  const good = contentIndex(ctx.content).goods.get(goodType);
+function farmingSpecFor(content: ContentSet, goodType: number): FarmingSpec | null {
+  const good = contentIndex(content).goods.get(goodType);
   if (good?.farming === undefined) return null;
   const { plant, cultivate, harvest } = good.atomics;
   if (plant === undefined || cultivate === undefined || harvest === undefined) return null;
@@ -64,7 +64,7 @@ export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   if (type === undefined) return null;
   for (const goodType of type.produces) {
-    const spec = farmingSpecFor(ctx, goodType);
+    const spec = farmingSpecFor(ctx.content, goodType);
     if (spec !== null) return spec;
   }
   return null;
@@ -78,6 +78,20 @@ export function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
   return stockpilesAtNode(world, hx, hy).length > 0 || resourcesAtNode(world, hx, hy).length > 0;
 }
 
+/** Walkable ground under a building's art is still unavailable for crops. */
+function insideBuildingFieldZone(world: World, content: ContentSet, hx: number, hy: number): boolean {
+  for (const entity of world.query(Building, Position)) {
+    const zone = buildingFieldZone(content, world.get(entity, Building).buildingType);
+    const position = world.get(entity, Position);
+    const anchor = nodeOfPosition(position.x, position.y);
+    if (
+      zone.some((cell) => anchor.hx + footprintCellDx(anchor.hy, cell) === hx && anchor.hy + cell.dy === hy)
+    )
+      return true;
+  }
+  return false;
+}
+
 /**
  * Apply a completed `sow` swing: plant a {@link Crop} field of `goodType` for `farm` at half-cell node
  * `(x, y)`. A node taken since the planner chose it plants nothing, the same raced-target no-op stance
@@ -88,7 +102,7 @@ export function applySow(
   ctx: SystemContext,
   effect: { farm: Entity; goodType: number; x: number; y: number },
 ): void {
-  const spec = farmingSpecFor(ctx, effect.goodType);
+  const spec = farmingSpecFor(ctx.content, effect.goodType);
   if (spec === null) return; // content changed under the swing
   // A field grows only on plantable ground (the original's `biocanplanton` class - grass, never sand; the
   // plant swing itself re-tests `CanPlantBioAtTargetMapPosition` and drops the target when it fails); the
@@ -96,6 +110,7 @@ export function applySow(
   if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
     return;
   if (sowNodeOccupied(world, effect.x, effect.y)) return;
+  if (insideBuildingFieldZone(world, ctx.content, effect.x, effect.y)) return;
   // Blocked since the planner chose it: a field there would be unreachable from birth. Tests the same
   // memoized overlay `nextSowNode` filtered on, since a narrower one would admit a node it had rejected.
   if (ctx.terrain !== undefined) {
@@ -114,6 +129,40 @@ export function applySow(
     stages: spec.farming.stages,
     yieldUnits: spec.farming.yieldPerField,
   });
+}
+
+/** Turn a placed growing-field landscape into a workable crop outside standing building zones. Its
+ * authored valency is its growth stage; the live draw follows later growth from that stage. */
+export function createMapCrop(
+  world: World,
+  content: ContentSet,
+  placement: { goodType: number; x: number; y: number; stage: number; gfxIndex: number; landscapeId: number },
+): Entity | null {
+  const spec = farmingSpecFor(content, placement.goodType);
+  if (spec === null || placement.stage < 1 || placement.stage > spec.farming.stages) return null;
+  if (sowNodeOccupied(world, placement.x, placement.y)) return null;
+  if (insideBuildingFieldZone(world, content, placement.x, placement.y)) return null;
+  const e = world.create();
+  world.add(e, Position, positionOfNode(placement.x, placement.y));
+  world.add(e, Resource, {
+    goodType: placement.goodType,
+    remaining: placement.stage === spec.farming.stages ? spec.farming.yieldPerField : 0,
+    harvestAtomic: spec.harvestAtomic,
+    gfxIndex: placement.gfxIndex,
+  });
+  if (!stampResourceFootprint(world, content, e, placement.goodType, placement.gfxIndex)) {
+    world.destroy(e);
+    return null;
+  }
+  world.add(e, LandscapeResource, { id: placement.landscapeId });
+  world.add(e, Crop, {
+    goodType: placement.goodType,
+    farm: null,
+    stage: placement.stage,
+    stages: spec.farming.stages,
+    yieldUnits: spec.farming.yieldPerField,
+  });
+  return e;
 }
 
 /**
@@ -144,8 +193,8 @@ function growFieldsAt(world: World, hx: number, hy: number): void {
 /**
  * Destroy every field standing under `building`'s walls. A field is worked from the node it stands on, so a
  * wall over that node puts it permanently out of reach and it would hold one of the farm's `maxFields`
- * slots forever. Only cells the building actually makes unwalkable clear a field, unlike the decor razing
- * passes which clear the whole reserved zone. Bounded by the footprint: one node probe per blocked cell.
+ * slots forever. Clear the reserved zone too: its walkable margin can lie under the building's art.
+ * Bounded by the footprint: one node probe per reserved cell.
  */
 export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
@@ -153,14 +202,9 @@ export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, bui
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return;
-  const footprint = buildingFootprintOf(ctx.content, b.buildingType);
-  if (footprint === undefined || footprint.blocked.length === 0) return;
+  const zone = buildingFieldZone(ctx.content, b.buildingType);
   const { hx, hy } = nodeOfPosition(p.x, p.y);
-  // The world's derived block set, not the raw footprint cells: it carves the door back out, so a field on
-  // the passable gate cell survives.
-  const blocked = buildingBlockedCells(world, ctx, terrain);
-  for (const cell of translatedCells(terrain, footprint.blocked, hx, hy)) {
-    if (!blocked.has(cell)) continue;
+  for (const cell of translatedCells(terrain, zone, hx, hy)) {
     const at = terrain.coordsOf(cell);
     // Copied first: the probe hands back the index's live node bucket, which the destroys below splice.
     for (const e of [...resourcesAtNode(world, at.x, at.y)]) {

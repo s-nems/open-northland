@@ -15,6 +15,7 @@ import {
   needBar,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
+import { shrinkCarry } from '../../../src/systems/settlers/atomics/effects/goods/carry.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
@@ -24,6 +25,18 @@ const EAT_CLIP_TICKS = 5;
 const MEAL = needBar(4000);
 
 describe('atomicSystem - effects', () => {
+  it('tracks a partial carried-load change for snapshots', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const settler = sim.world.create();
+    sim.world.add(settler, Carrying, { goodType: WOOD, amount: 3 });
+    const before = sim.world.mutationVersion;
+
+    shrinkCarry(sim.world, settler, sim.world.get(settler, Carrying), 1);
+
+    expect(sim.world.get(settler, Carrying).amount).toBe(2);
+    expect(sim.world.mutationVersion).toBeGreaterThan(before);
+  });
+
   it('harvest grants one unit onto the settler AND depletes the node by one', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();

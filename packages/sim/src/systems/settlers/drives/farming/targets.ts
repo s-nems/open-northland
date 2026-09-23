@@ -40,6 +40,7 @@ export function nearestFarmSheaf(
       const n = nodeOfPosition(p.x, p.y);
       const own = terrain.nodeAtClamped(n.hx, n.hy);
       if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) return null;
+      if (claims.targets.has(e)) return null;
       const cell = interactionCell(world, ctx, terrain, e, here);
       if (claims.nodes.has(cell)) return null;
       if (unreachableWorkCell(gates, here, cell)) return null;
@@ -66,8 +67,8 @@ const SOW_CANDIDATES = 5;
  * farm; null when the whole radius is taken. A sowable node is on the map, walkable (the farmer stands on
  * the field to work it), plantable ground (the original demands the `biocanplanton`
  * flag on all six triangles around the point, which `trianglepatterntypes.cif` gives to `land` alone; the
- * cell-resolution class carries it here), clear of the walk-block overlays, unoccupied, and unclaimed by
- * another farmer's in-flight action.
+ * cell-resolution class carries it here), outside standing buildings' reserved zones even at passable doorways, clear of
+ * the walk-block overlays, unoccupied, and unclaimed by another farmer's in-flight action.
  */
 export function nextSowNode(
   plan: PlannerContext,
@@ -78,13 +79,14 @@ export function nextSowNode(
     readonly gates: WorkCellGates;
   },
 ): NodeId | null {
-  const { world, ctx, terrain, here, entity } = plan;
+  const { world, ctx, terrain, here, entity, targets } = plan;
   const { anchor, spec, claims, gates } = opts;
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const radius = spec.farming.fieldRadius;
 
   const sowable = (node: NodeId, hx: number, hy: number): boolean =>
     terrain.isWalkable(node) &&
+    !targets.fieldZones.has(node) &&
     !blocked.has(node) && // water, walls, standing bodies
     terrain.isPlantable(node) &&
     !claims.nodes.has(node) &&

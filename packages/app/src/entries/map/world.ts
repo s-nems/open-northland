@@ -28,6 +28,7 @@ import {
   resolveWorldContent,
   spawnMapBerryBushes,
   spawnMapChests,
+  spawnMapFields,
   spawnMapGroundGoods,
   spawnMapResources,
   type WorldContentOptions,
@@ -90,7 +91,7 @@ export interface MapWorld {
   /** Each spawned harvestable's placement ordinal in the map's object list: the join back to the static
    *  layer's sprite for that placement. */
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
-  /** The chest and ground-goods placements, whose entities the sim draws from tick zero. */
+  /** Fields, chests and ground-goods placements, whose entities the sim draws from tick zero. */
   readonly pooledPlacements: readonly number[];
 }
 
@@ -254,12 +255,17 @@ function spawnHarvestables(
   const { map, ir } = options;
   if (map?.objects === undefined || ir === null) return { harvestablePlacements: [], pooledPlacements: [] };
   const resources = spawnMapResources(sim, map.objects, ir);
+  const fields = spawnMapFields(sim, map.objects, ir);
   const chests = spawnMapChests(sim, map.objects, ir);
   const goods = spawnMapGroundGoods(sim, map.objects, ir);
   const bushes =
     options.berryBushes === false ? [] : [...spawnMapBerryBushes(sim, map.objects, ir).placementByEntity];
   return {
     harvestablePlacements: [...resources.placementByEntity, ...bushes],
-    pooledPlacements: [...chests.placementByEntity.values(), ...goods.placementByEntity.values()],
+    pooledPlacements: [
+      ...fields.retiredPlacements,
+      ...chests.placementByEntity.values(),
+      ...goods.placementByEntity.values(),
+    ],
   };
 }

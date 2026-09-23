@@ -24,20 +24,23 @@ export function buildResourceBinding(
   loaded: ReadonlySet<string>,
   familyFrames?: ReadonlyMap<string, ReadonlySet<number>>,
 ): ResourceTypeBinding {
+  const ladder = (node: { stem: string; bobs: readonly number[] }): readonly (LayeredBobRef | null)[] => {
+    const atlasFrames = familyFrames?.get(node.stem);
+    const anyPresent = atlasFrames !== undefined && node.bobs.some((bob) => atlasFrames.has(bob));
+    return node.bobs.map((bob) =>
+      anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
+    );
+  };
   const byGood: Record<number, readonly (LayeredBobRef | null)[]> = {};
   for (const [good, node] of Object.entries(refs.nodesByGood)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue;
-    const atlasFrames = familyFrames?.get(node.stem);
-    const anyPresent = atlasFrames !== undefined && node.bobs.some((bob) => atlasFrames.has(bob));
-    byGood[Number(good)] = node.bobs.map((bob) =>
-      anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
-    );
+    byGood[Number(good)] = ladder(node);
   }
   // An unloaded variant family leaves the node on its per-good representative.
-  const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
+  const byGfxIndex: Record<number, readonly (LayeredBobRef | null)[]> = {};
   for (const [idx, node] of Object.entries(refs.nodesByGfxIndex)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue;
-    byGfxIndex[Number(idx)] = node.bobs.map((bob) => bobRef(node.stem, bob));
+    byGfxIndex[Number(idx)] = ladder(node);
   }
   return { byGood, byGfxIndex, default: TREE_BOB };
 }

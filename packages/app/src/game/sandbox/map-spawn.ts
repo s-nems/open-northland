@@ -5,6 +5,7 @@ import {
   type MapResourceSpawn,
   mapBerryBushSpawns,
   mapChestSpawns,
+  mapFieldSpawns,
   mapGroundGoodsSpawns,
   mapResourceSpawns,
   simResourceObjectNames,
@@ -69,6 +70,35 @@ export interface MapResourceSpawnResult {
   readonly placementByEntity: ReadonlyMap<Entity, number>;
 }
 
+export interface MapFieldSpawnResult extends MapResourceSpawnResult {
+  /** Remove every promoted field from the static layer, including fields buried under a building. */
+  readonly retiredPlacements: readonly number[];
+}
+
+/** Map-authored growing fields use the same Crop loop as fields a farmer sows later. */
+export function spawnMapFields(sim: Simulation, objects: TerrainObjects, ir: ContentIr): MapFieldSpawnResult {
+  const farmed = new Map(
+    sim.content.goods.filter((good) => good.farming !== undefined).map((good) => [good.id, good.typeId]),
+  );
+  const placementByEntity = new Map<Entity, number>();
+  const retiredPlacements: number[] = [];
+  for (const field of mapFieldSpawns(objects, ir, new Set(farmed.keys()))) {
+    retiredPlacements.push(field.placement);
+    const goodType = farmed.get(field.goodId);
+    if (goodType === undefined) continue;
+    const entity = systems.createMapCrop(sim.world, sim.content, {
+      goodType,
+      x: field.hx,
+      y: field.hy,
+      stage: field.stage,
+      gfxIndex: field.gfxIndex,
+      landscapeId: field.placement,
+    });
+    if (entity !== null) placementByEntity.set(entity, field.placement);
+  }
+  return { spawned: placementByEntity.size, placementByEntity, retiredPlacements };
+}
+
 /**
  * Direct scene assembly, valid pre-tick-0 only. Nodes are created in the map's native placement order,
  * so ids mint deterministically. A tree authored as a sapling still spawns at the full wood yield,
@@ -127,6 +157,8 @@ export function harvestablePlacementOrdinals(
     if (g === undefined || systems.resourceFootprintForGood(content, g.good) === null) continue;
     out.push(spawn.placement);
   }
+  const farmed = new Set(content.goods.filter((good) => good.farming !== undefined).map((good) => good.id));
+  for (const field of mapFieldSpawns(objects, ir, farmed)) out.push(field.placement);
   for (const bush of mapBerryBushSpawns(objects, ir)) out.push(bush.placement);
   for (const chest of mapChestSpawns(objects, ir)) out.push(chest.placement);
   const goodBySlug = new Map(content.goods.map((good) => [good.id, good.typeId]));

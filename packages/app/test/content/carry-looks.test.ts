@@ -1,8 +1,9 @@
+import { type DrawItem, resolveSettlerBobId } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { OPEN_CHEST_ATOMIC } from '../../src/catalog/atomics.js';
 import { carryWalkSeqs, gfxAtomicProgramsByAction, sequencesFor } from '../../src/content/ir/joins.js';
 import { BODY_IMAGELIB, type ContentIr } from '../../src/content/ir/rows.js';
-import { CHARACTER_SPECS, carryAnimsByGood } from '../../src/content/settler-gfx/index.js';
+import { CHARACTER_SPECS, carryAnimsByGood, characterBinding } from '../../src/content/settler-gfx/index.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
@@ -16,6 +17,38 @@ import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 const VIKING_ANIM_TRIBE = 1;
 
 describe.runIf(hasRealIr())('the [gfxwalkatomic] carry table binds against decoded content', () => {
+  it('animates a wheat-carrying farmer while eating', async () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const { real } = await loadContentUnderTest();
+    const wheat = real.goods.find((good) => good.id === 'wheat');
+    expect(wheat).toBeDefined();
+    if (wheat === undefined) return;
+    const binding = characterBinding(CHARACTER_SPECS.civilian, sequencesFor(ir, BODY_IMAGELIB), real.goods, {
+      programsByAction: gfxAtomicProgramsByAction(ir, VIKING_ANIM_TRIBE),
+      carrySeqBySlug: carryWalkSeqs(ir, VIKING_ANIM_TRIBE, CHARACTER_SPECS.civilian.logicJob),
+    });
+    expect(binding).not.toBeNull();
+    if (binding === null) return;
+    const item: DrawItem = {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      state: 'acting',
+      carrying: true,
+      carryGood: wheat.typeId,
+      atomicId: 10,
+      facing: 0,
+    };
+    const frames = new Set(
+      Array.from({ length: 50 }, (_, elapsed) =>
+        resolveSettlerBobId(binding, { ...item, elapsed: elapsed + 1 }, 0),
+      ),
+    );
+    expect(frames.size).toBeGreaterThan(1);
+  });
+
   it('resolves every good the civilist table names to a cycle on its body', async () => {
     const ir = rawIrUnderTest() as ContentIr;
     const { real } = await loadContentUnderTest();

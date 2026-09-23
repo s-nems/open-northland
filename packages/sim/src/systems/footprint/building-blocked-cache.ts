@@ -24,11 +24,46 @@ interface BuildingBlockedCache {
 
 const buildingBlockedCache = new WeakMap<World, BuildingBlockedCache>();
 
+/** Open the shortest passage through a building's own walk block to exterior ground.
+ * Some door points are ringed by wall cells; clearing the point alone leaves the door unreachable. */
+function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, door: NodeId): NodeId[] {
+  const queue: NodeId[] = [door];
+  const parent = new Map<NodeId, NodeId>();
+  const depth = new Map<NodeId, number>([[door, 0]]);
+  let exit: { via: NodeId; outside: NodeId; depth: number } | null = null;
+  for (let at = 0; at < queue.length; at++) {
+    const cell = queue[at];
+    if (cell === undefined) continue;
+    const steps = depth.get(cell) ?? 0;
+    if (exit !== null && steps > exit.depth) break;
+    for (const next of terrain.neighbours(cell)) {
+      if (!terrain.isWalkable(next)) continue;
+      if (!body.has(next)) {
+        if (exit === null || steps < exit.depth || (steps === exit.depth && next < exit.outside))
+          exit = { via: cell, outside: next, depth: steps };
+      } else if (!depth.has(next)) {
+        depth.set(next, steps + 1);
+        parent.set(next, cell);
+        queue.push(next);
+      }
+    }
+  }
+  const passage = [door];
+  if (exit === null) return passage;
+  let cell = exit.via;
+  while (cell !== door) {
+    passage.push(cell);
+    const previous = parent.get(cell);
+    if (previous === undefined) break;
+    cell = previous;
+  }
+  return passage;
+}
+
 /** One full derivation - the rebuild and the verifier's reference run through this single path. */
 function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: TerrainGraph): Set<NodeId> {
   const blocked = new Set<NodeId>();
-  // Doors are subtracted after the union, so a door stays passable even when another building's wall cell
-  // covers it - the only overlap possible, via the door-in-reserved margin.
+  // The exact door point stays open even if another building's reserved margin overlaps it.
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
@@ -36,14 +71,17 @@ function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: 
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
     const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-    for (const cell of translatedCells(terrain, footprint.blocked, ax, ay)) {
-      blocked.add(cell);
-    }
+    const body = new Set(translatedCells(terrain, footprint.blocked, ax, ay));
     const door = footprint.door;
     if (door !== undefined) {
       const doorX = ax + footprintCellDx(ay, door);
-      if (terrain.inBounds(doorX, ay + door.dy)) doors.add(terrain.nodeAt(doorX, ay + door.dy));
+      if (terrain.inBounds(doorX, ay + door.dy)) {
+        const doorNode = terrain.nodeAt(doorX, ay + door.dy);
+        doors.add(doorNode);
+        for (const cell of doorPassage(terrain, body, doorNode)) body.delete(cell);
+      }
     }
+    for (const cell of body) blocked.add(cell);
   }
   for (const cell of doors) blocked.delete(cell);
   return blocked;
@@ -71,10 +109,8 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  * `footprint.blocked` cells at its current level. The walk-block applies from the placement tick, so a grey
  * foundation already occupies its cells, exactly like the original.
  *
- * A building's own DOOR cell is always left walkable, even where the source lists it inside the walk-block:
- * `work_pottery_02`'s `LogicDoorPoint` sits inside its `LogicWalkBlockArea`, because a wall's door IS its
- * passable gate. Without the carve-out the walk-to-door goal is a blocked cell, `findPath` fails, and the
- * settler wedges. The extractor keeps the source cells verbatim; the consumer applies the gate semantics.
+ * A building's own DOOR and the shortest passage to exterior ground are left walkable when the door
+ * lies inside the walk-block. Without that passage a clear door point can still be sealed by wall cells.
  *
  * Derived state, never hashed. Memoized per world on the Building store's membership and value
  * generations, so a burst of callers between two building mutations shares one build. The returned set is

@@ -101,7 +101,9 @@ export const fieldReclaimSystem: System = (world, ctx) => {
   const doomed: Entity[] = [];
   for (const e of world.query(Crop)) {
     if ((e + ctx.tick) % STRANDED_FIELD_CHECK_PERIOD_TICKS !== 0) continue; // not this field's tick
-    const at = interactionNode(world, ctx, world.get(e, Crop).farm);
+    const farm = world.get(e, Crop).farm;
+    if (farm === null) continue;
+    const at = interactionNode(world, ctx, farm);
     if (at === null) {
       world.remove(e, StrandedField); // farm demolished - the field is wild, not stranded
       continue;

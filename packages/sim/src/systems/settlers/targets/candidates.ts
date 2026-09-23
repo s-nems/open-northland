@@ -9,9 +9,10 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { buildingFieldZone, translatedCells } from '../../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { canonicalResources } from '../../spatial/resources.js';
@@ -48,6 +49,8 @@ export interface TargetCandidates {
   /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id, so a farmer
    *  reads only its own farm's fields instead of the settlement's whole crop list. */
   readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
+  /** Ground reserved by standing buildings, shared by all farmers choosing a sow node this tick. */
+  readonly fieldZones: ReadonlySet<NodeId>;
   /** Good type to its content-authored harvesting atomic. */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
   /** Position-independent store-capacity probes, memoized by good for this planner tick. */
@@ -89,6 +92,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   const cropsByFarm = new Map<Entity, Entity[]>();
   for (const crop of canonicalById(world.query(Crop, Position))) {
     const farm = world.get(crop, Crop).farm;
+    if (farm === null) continue;
     const fields = cropsByFarm.get(farm);
     if (fields === undefined) cropsByFarm.set(farm, [crop]);
     else fields.push(crop);
@@ -96,6 +100,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
+  let fieldZones: Set<NodeId> | undefined;
   return {
     resources: canonicalResources(world),
     stockpiles,
@@ -115,6 +120,24 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     },
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     cropsByFarm,
+    get fieldZones() {
+      if (fieldZones === undefined) {
+        fieldZones = new Set<NodeId>();
+        for (const entity of buildings) {
+          const building = world.get(entity, Building);
+          const position = world.get(entity, Position);
+          const anchor = nodeOfPosition(position.x, position.y);
+          for (const cell of translatedCells(
+            terrain,
+            buildingFieldZone(ctx.content, building.buildingType),
+            anchor.hx,
+            anchor.hy,
+          ))
+            fieldZones.add(cell);
+        }
+      }
+      return fieldZones;
+    },
     harvestAtomicByGood,
     sinks: new SinkAvailability(stockpiles, world, ctx),
     bands: new TargetBands(world, ctx, terrain, stockpiles, buildings),

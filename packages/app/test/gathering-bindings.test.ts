@@ -168,10 +168,21 @@ describe('gathering scene - per-good + stump binding resolution (each draws its 
       new Set(['ls_meadows.wheat01']),
       atlasFrames,
     );
-    const draw = (level: number) =>
-      resolveResourceDraw(binding, { kind: 'resource', ref: 1, x: 0, y: 0, depth: 0, goodType: 9, level });
+    const draw = (level: number, gfxIndex?: number) =>
+      resolveResourceDraw(binding, {
+        kind: 'resource',
+        ref: 1,
+        x: 0,
+        y: 0,
+        depth: 0,
+        goodType: 9,
+        level,
+        ...(gfxIndex !== undefined ? { gfxIndex } : {}),
+      });
     expect(draw(1)).toBeNull(); // the sown-but-bare stage draws NOTHING (never the green placeholder)
+    expect(draw(1, 20)).toBeNull(); // a map-authored field binds the exact record's same invisible stage
     expect(draw(2)).toEqual({ bob: 87, layer: 'ls_meadows.wheat01' }); // sprouts from stage 2
+    expect(draw(2, 20)).toEqual({ bob: 87, layer: 'ls_meadows.wheat01' });
     expect(draw(5)).toEqual({ bob: 7, layer: 'ls_meadows.wheat01' }); // the ripe stand
 
     // A record whose levels are ALL missing keeps its refs - a genuinely broken binding must surface

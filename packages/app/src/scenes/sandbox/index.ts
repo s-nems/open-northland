@@ -40,9 +40,9 @@ const MAP_H = 96;
  *  extent of the authored content. */
 export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
-/** Every headless check passes by tick 825, the slowest being a mined unit dug, carried and banked;
- *  this keeps ~1.45x headroom. */
-const RUN_TICKS = 1200;
+/** Every persistent headless check passes by tick 825. Sample later while the idle crew has a live chat
+ *  under the wider no-field zone around completed buildings. */
+const RUN_TICKS = 1400;
 
 function buildVillage(sim: Simulation, ox: number, oy: number): void {
   for (const b of VILLAGE) {
