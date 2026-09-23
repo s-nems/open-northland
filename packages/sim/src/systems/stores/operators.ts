@@ -1,4 +1,12 @@
-import { Building, Carrying, JobAssignment, MoveGoal, Person, Position, Settler } from '../../components/index.js';
+import {
+  Building,
+  Carrying,
+  JobAssignment,
+  MoveGoal,
+  Person,
+  Position,
+  Settler,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
