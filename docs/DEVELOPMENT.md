@@ -413,7 +413,10 @@ cropped it.
 
 The web image is the web app of a commit: nginx serving `packages/app/dist` and `content/` from one
 document root, the app at `/`, the hashed `/assets/` cached for good, everything else revalidated, a
-missing path a plain 404, and `/healthz` for the host. `deploy/web/Dockerfile` copies the two prebuilt trees and runs nothing.
+missing path a plain 404, and `/healthz` for the host. `deploy/web/Dockerfile` copies the two prebuilt
+trees without rebuilding them. The nginx master and workers run as the unprivileged `nginx` user;
+PID and temporary files live under `/tmp`, while configuration and served files remain root-owned.
+The image supports a read-only root filesystem with a writable `/tmp` tmpfs.
 
 To build and run the image locally, after `npm run build` with a `content/` in place:
 
@@ -421,6 +424,9 @@ To build and run the image locally, after `npm run build` with a `content/` in p
 npm run web:image
 docker run --rm --publish 8080:80 open-northland-web
 ```
+
+The internal port remains 80. Docker permits unprivileged binds by default; runtimes that restrict
+low ports need `net.ipv4.ip_unprivileged_port_start=0` in the container network namespace.
 
 ## Relay image
 
