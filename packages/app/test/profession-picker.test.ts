@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PickerEntry } from '../src/catalog/professions.js';
-import { professionChoices } from '../src/view/unit-controls/action-ring/profession-picker.js';
+import { professionChoices } from '../src/hud/dom/profession-choices.js';
 
 const ENTRIES: readonly PickerEntry[] = [
   { kind: 'profession', jobType: 0, label: 'Idle' },

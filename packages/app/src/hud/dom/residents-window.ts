@@ -1,4 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
+import { pickerEntries } from '../../catalog/professions.js';
 import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
 import type { ResidentFigureBox, ResidentFigureSlot } from '../tool-panel/residents/figures.js';
 import {
@@ -21,7 +22,9 @@ import {
   sortResidents,
 } from '../tool-panel/residents/rows.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
+import type { ChoiceGroup } from './choice-window.js';
 import { GLYPH, RESIDENTS_TOKEN } from './icons.js';
+import { professionChoices } from './profession-choices.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
 /** Design px (FOUNDATION.md): the central window width shared with the construction window. */
@@ -164,9 +167,29 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   find.append(search);
   const professionSelect = selectField(copy.job);
   const canBecomeSelect = selectField(copy.canBecome);
+  const trades = new Set(deps.trades.map((trade) => trade.jobType));
+  const professionGroups = professionChoices(
+    pickerEntries(),
+    () => true,
+    () => true,
+  );
+  const optionGroups = (groups: readonly ChoiceGroup[]): HTMLOptGroupElement[] =>
+    groups
+      .filter((group) => group.rows.length > 0)
+      .map((group) => {
+        const options = document.createElement('optgroup');
+        options.label = group.label;
+        options.append(...group.rows.map((row) => new Option(row.label, row.key)));
+        return options;
+      });
   canBecomeSelect.replaceChildren(
     new Option(copy.anyone, ''),
-    ...deps.trades.map((trade) => new Option(trade.label, String(trade.jobType))),
+    ...optionGroups(
+      professionGroups.map((group) => ({
+        ...group,
+        rows: group.rows.filter((row) => trades.has(Number(row.key))),
+      })),
+    ),
   );
 
   // Both chip rows share one grid, so their cells line up edge to edge.
@@ -422,14 +445,22 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     const key = entries.map((entry) => `${entry.profession}:${entry.count}`).join('|');
     if (shownProfessions !== key) {
       shownProfessions = key;
+      const known = new Set(professionGroups.flatMap((group) => group.rows.map((row) => row.label)));
+      const optionLabel = (entry: (typeof entries)[number]): string =>
+        formatMessage(copy.jobOption, { name: entry.profession, count: entry.count });
       professionSelect.replaceChildren(
         new Option(copy.anyJob, ''),
-        ...entries.map(
-          (entry) =>
-            new Option(
-              formatMessage(copy.jobOption, { name: entry.profession, count: entry.count }),
-              entry.profession,
-            ),
+        ...entries
+          .filter((entry) => !known.has(entry.profession))
+          .map((entry) => new Option(optionLabel(entry), entry.profession)),
+        ...optionGroups(
+          professionGroups.map((group) => ({
+            label: group.label,
+            rows: group.rows.flatMap((row) => {
+              const entry = entries.find((entry) => entry.profession === row.label);
+              return entry === undefined ? [] : [{ key: entry.profession, label: optionLabel(entry) }];
+            }),
+          })),
         ),
       );
     }

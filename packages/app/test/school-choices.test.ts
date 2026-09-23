@@ -32,7 +32,7 @@ it('searches the start of the label with case and accent folding', () => {
 });
 
 it('keeps only visible professions and orders each group by its label', async () => {
-  const { professionChoices } = await import('../src/view/unit-controls/action-ring/profession-picker.js');
+  const { professionChoices } = await import('../src/hud/dom/profession-choices.js');
   const choices = professionChoices(
     [
       { kind: 'profession', jobType: 6, label: 'Cywil' },
