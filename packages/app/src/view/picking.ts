@@ -245,9 +245,8 @@ export function pickGarrisonFlag(
 }
 
 /**
- * Every target whose feet anchor falls inside the world-px rectangle `(x0,y0)-(x1,y1)`, corners in any
- * order. Anchor-in-box is the RTS rule: a unit is grabbed when its centre is boxed, not when the box
- * merely clips its sprite. Ids come back in input order.
+ * Every target whose drawn bounds touch the world-px rectangle `(x0,y0)-(x1,y1)`, corners in any
+ * order. Without drawn bounds, use the same kind box as point picking. Ids come back in input order.
  */
 export function pickInRect(
   targets: readonly Pickable[],
@@ -262,7 +261,16 @@ export function pickInRect(
   const maxY = Math.max(y0, y1);
   const out: number[] = [];
   for (const t of targets) {
-    if (t.x >= minX && t.x <= maxX && t.y >= minY && t.y <= maxY) out.push(t.ref);
+    const fallback = PICK_BOX[t.kind ?? 'settler'];
+    const box = t.box ?? {
+      minX: t.x - fallback.halfW,
+      maxX: t.x + fallback.halfW,
+      minY: t.y - fallback.up,
+      maxY: t.y + fallback.down,
+    };
+    if (box.maxX >= minX && box.minX <= maxX && box.maxY >= minY && box.minY <= maxY) {
+      out.push(t.ref);
+    }
   }
   return out;
 }

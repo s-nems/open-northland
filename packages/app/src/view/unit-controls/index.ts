@@ -231,7 +231,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // A drag select is silent in the original; only the single click below confirms.
       const a = toWorld(release.startX, release.startY);
       const b = toWorld(e.clientX, e.clientY);
-      applySelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
+      applySelection(pickInRect(unitTargets.owned('settler'), a.x, a.y, b.x, b.y), e.shiftKey);
       return;
     }
     const w = toWorld(e.clientX, e.clientY);

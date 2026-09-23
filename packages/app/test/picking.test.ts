@@ -221,17 +221,36 @@ describe('pickNearestAt', () => {
 });
 
 describe('pickInRect', () => {
-  const targets = [
-    { ref: 1, x: 10, y: 10 },
-    { ref: 2, x: 50, y: 50 },
-    { ref: 3, x: 90, y: 90 },
-  ];
+  const target = {
+    ref: 1,
+    x: 100,
+    y: 200,
+    kind: 'settler' as const,
+    // Drawn bounds can be far above the pre-lift feet anchor on elevated terrain.
+    box: { minX: 90, maxX: 110, minY: 80, maxY: 120 },
+  };
 
-  it('returns the units whose anchor falls inside the box (corners in any order)', () => {
-    expect(pickInRect(targets, 60, 60, 5, 5)).toEqual([1, 2]); // box (5,5)-(60,60) covers 1 and 2
+  it.each([
+    [95, 75, 105, 85], // clips the head, without the feet
+    [105, 85, 95, 75], // reversed corners
+    [110, 90, 120, 100], // touches the side
+    [95, 90, 100, 95], // wholly inside the sprite
+    [80, 70, 120, 130], // encloses the sprite
+  ])('selects a sprite touched by rectangle (%s, %s)-(%s, %s)', (x0, y0, x1, y1) => {
+    expect(pickInRect([target], x0, y0, x1, y1)).toEqual([1]);
   });
 
-  it('returns an empty list when the box catches nothing', () => {
+  it('misses outside drawn bounds, even when the raw anchor is inside the rectangle', () => {
+    expect(pickInRect([target], 111, 80, 130, 120)).toEqual([]);
+    expect(pickInRect([target], 90, 180, 110, 210)).toEqual([]);
+  });
+
+  it('uses the fallback body box without rendered geometry and preserves input order', () => {
+    const targets = [
+      { ref: 2, x: 100, y: 100 },
+      { ref: 1, x: 105, y: 100 },
+    ];
+    expect(pickInRect(targets, 95, 55, 110, 65)).toEqual([2, 1]);
     expect(pickInRect(targets, 200, 200, 300, 300)).toEqual([]);
   });
 });

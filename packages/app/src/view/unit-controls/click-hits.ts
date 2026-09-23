@@ -21,9 +21,9 @@ export interface ClickHits {
 }
 
 /**
- * The order a click resolves what it landed on: a door marker, then an owned unit or drop-off flag, then
- * a signpost. Sign rows and garrison flags are small intentional targets a building's larger sprite would
- * otherwise swallow.
+ * The order a click resolves what it landed on: a door marker, then a settler or drop-off flag, then
+ * a building, then a signpost. Sign rows and garrison flags are small intentional targets that a
+ * building's larger sprite would otherwise swallow.
  */
 export function createClickHits(deps: ClickHitDeps): ClickHits {
   /** An enemy building's markers are not selection proxies for the men behind them. */
@@ -49,14 +49,17 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
    */
   const unitAt = (wx: number, wy: number): number | null => {
     const flag = topTargetAt(deps.targets.flags(), wx, wy);
-    if (flag === null) return pickTopAt(deps.targets.owned(), wx, wy);
     const settler = topTargetAt(deps.targets.owned('settler'), wx, wy);
+    if (flag === null) return settler?.ref ?? null;
     return settler !== null && drawnInFront(settler, flag) ? settler.ref : flag.ref;
   };
 
   return {
     doorMarkerAt,
     selectionAt: (wx, wy) =>
-      doorMarkerAt(wx, wy)?.ref ?? unitAt(wx, wy) ?? pickTopAt(deps.targets.signposts(), wx, wy),
+      doorMarkerAt(wx, wy)?.ref ??
+      unitAt(wx, wy) ??
+      pickTopAt(deps.targets.owned('building'), wx, wy) ??
+      pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }

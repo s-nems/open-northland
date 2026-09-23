@@ -116,6 +116,37 @@ describe('click hit priority', () => {
     expect(selected({ flags: FLAG_ARM, owned: [frontOf(OWNED_BUILDING, 'building')] })).toBe(FLAG_GATHERER);
   });
 
+  it.each([true, undefined])('ranks settlers above buildings with pixel verdict %s', (pixelVerdict) => {
+    const building: Pickable = {
+      ...frontOf(OWNED_BUILDING, 'building'),
+      box: { minX: CLICK.x - 80, maxX: CLICK.x + 80, minY: CLICK.y - 100, maxY: CLICK.y + 30 },
+      pixelHit: () => pixelVerdict,
+    };
+    const settler = under(OWNED_UNIT, 'settler');
+    // Construction sites return no pixel verdict and keep the full future building bounds.
+    for (const owned of [
+      [building, settler],
+      [settler, building],
+    ]) {
+      const hits = hitsFor({ owned, signposts: SIGNPOST_ARM });
+      expect(hits.selectionAt(CLICK.x, CLICK.y)).toBe(OWNED_UNIT);
+      expect(hits.selectionAt(CLICK.x + 50, CLICK.y)).toBe(OWNED_BUILDING);
+    }
+  });
+
+  it('keeps depth and id tie breaks among settlers above an overlapping building', () => {
+    const front = frontOf(OWNED_UNIT + 2, 'settler');
+    const tied = { ...front, ref: OWNED_UNIT + 3 };
+    const building = { ...frontOf(OWNED_BUILDING, 'building'), y: CLICK.y + 20 };
+    expect(selected({ owned: [tied, building, under(OWNED_UNIT, 'settler'), front] })).toBe(tied.ref);
+  });
+
+  it('keeps transparent building pixels clickable through to a signpost', () => {
+    const building = { ...frontOf(OWNED_BUILDING, 'building'), pixelHit: () => false };
+    expect(selected({ owned: [building], signposts: SIGNPOST_ARM })).toBe(SIGNPOST);
+    expect(selected({ owned: [building] })).toBeNull();
+  });
+
   it('ranks a drop-off flag with a settler, so the one drawn in front takes the click', () => {
     const settlerInFront = frontOf(OWNED_UNIT, 'settler');
     const settlerBehind = { ...settlerInFront, y: CLICK.y - DEPTH_STEP };

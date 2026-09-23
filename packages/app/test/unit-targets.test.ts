@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
-import { pickTopAt } from '../src/view/picking.js';
+import { pickInRect, pickTopAt } from '../src/view/picking.js';
 import {
   createUnitTargets,
   type UnitTargets,
@@ -67,6 +67,45 @@ describe('unit-controls targets over the renderer frame', () => {
     for (const ref of owned) expect(ownerOf(ref)).toBe(HUMAN_PLAYER);
     for (const ref of enemies) expect(ownerOf(ref)).toBe(ENEMY_PLAYER);
     expect(owned.filter((ref) => enemies.includes(ref))).toEqual([]);
+  });
+
+  it('marquees only visible owned settlers by their drawn sprite, excluding buildings and flags', () => {
+    const settler = firstDrawn('settler', HUMAN_PLAYER);
+    const building = firstDrawn('building', ENEMY_PLAYER);
+    const enemy = firstDrawn('settler', ENEMY_PLAYER);
+    const drawn = [settler, building, enemy].map((item) => ({ ...item, x: 100, y: 200 }));
+    drawn.push(
+      { ...settler, ref: 90001, inHouse: true },
+      { ...settler, ref: 90002, ghost: true },
+      { ...settler, ref: 90003, portraitOnly: true },
+      { ...settler, ref: 90004, kind: 'grounddrop', isFlag: true },
+    );
+    snapshot = {
+      ...snapshot,
+      entities: [
+        ...snapshot.entities.map((entity) =>
+          entity.id === building.ref
+            ? { ...entity, components: { ...entity.components, Owner: { player: HUMAN_PLAYER } } }
+            : entity,
+        ),
+        ...drawn.slice(3).map((item) => ({
+          id: item.ref,
+          components: { Owner: { player: HUMAN_PLAYER } },
+        })),
+      ],
+    };
+    const targets = targetsOver(
+      drawn,
+      () => true,
+      undefined,
+      () => ({
+        minX: 90,
+        maxX: 110,
+        minY: 80,
+        maxY: 120,
+      }),
+    );
+    expect(pickInRect(targets.owned('settler'), 95, 75, 105, 85)).toEqual([settler.ref]);
   });
 
   it('drops a non-enemy stance holder from the attack set, so an ally click falls through', () => {
