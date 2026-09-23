@@ -551,6 +551,10 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     const picked = state.page === 'catalog' && state.picked !== null ? cards.get(state.picked) : undefined;
     if (picked !== undefined && !picked.pick.disabled) picked.pick.focus();
   };
+  // Build cards and rasterize their thumbnails during HUD boot, before the game loop starts.
+  // Opening still checks availability so discoveries and bans made since boot are reflected.
+  layoutCards();
+  showCategory(state.category);
   showView(state.view);
   showPage(state.page);
 
