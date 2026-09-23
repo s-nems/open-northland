@@ -1,7 +1,8 @@
-import { CARRY_CAPACITY, Owner } from '../../../../../components/index.js';
+import { Building, CARRY_CAPACITY, Owner } from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity } from '../../../../../ecs/world.js';
-import { shelfBlockedOutput } from '../../../../economy/production.js';
+import { outputRoomForCycles, shelfBlockedOutput } from '../../../../economy/production.js';
+import { recipeOutputsEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
 import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
@@ -34,8 +35,8 @@ export interface WorkSeats {
 export type WorkSeatClaims = Map<Entity, WorkSeats>;
 
 /**
- * Run the self-service producer loop: claim an available batch seat, ship the good whose full slot stopped
- * the workshop, fetch a missing input, haul an output out, then loiter by the door with nothing left to do.
+ * Run the self-service producer loop: claim an available batch seat, supply an open product before clearing
+ * a full one, fetch other missing inputs, haul an output out, then loiter by the door with nothing to do.
  *
  * Source basis: a workshop stopping on a full product slot and resuming once a unit leaves is observed
  * original behavior, and every craft trade carries `jobtypes.ini` `baseatomics 6`, which grants the
@@ -64,9 +65,34 @@ export function planProducer(
     return;
   }
 
-  // A full output slot is the one stall no fetch can clear, so shipping that good outranks the next input
-  // trip and happens whether or not a carrier is bound to the workshop.
   const blocked = shelfBlockedOutput(world, ctx, workplace);
+  if (blocked !== null) {
+    // When another product has room but lacks an input, supply it before reopening the full slot.
+    // Otherwise the reopened recipe can consume each incoming unit before the other gets enough.
+    const tribe = world.get(workplace, Building).tribe;
+    for (const candidate of own) {
+      if (!recipeOutputsEnabled(world, ctx, plan.owner, tribe, candidate)) continue;
+      if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
+      const source = nearestMissingInputSource(
+        targets.bands,
+        world,
+        ctx,
+        here,
+        workplace,
+        candidate,
+        plan.owner,
+        false,
+        plan.limit ?? undefined,
+        unreachableGoalVeto(world, ctx, plan.entity),
+      );
+      if (source !== null) {
+        routeToInputSource(plan, source);
+        return;
+      }
+    }
+  }
+
+  // A full output slot still outranks topping up inputs for products that cannot currently be shelved.
   if (blocked !== null && deliverableGoodProbe(plan)(blocked)) {
     startOutputHaul(plan, workplace, blocked);
     return;

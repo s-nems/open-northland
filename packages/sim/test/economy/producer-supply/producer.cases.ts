@@ -551,11 +551,10 @@ describe('producer unblocks its own full output slot', () => {
     expect(atomic.effect).toEqual({ kind: 'pickup', goodType: PLANK, amount: 1, from: mill });
   });
 
-  it('ships the BLOCKED product before fetching the other product’s missing input', () => {
+  it('fetches for a product with shelf room before shipping a blocked product', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    // The upgraded-bakery shape: two products off different inputs. Planks are at the brim with wood on
-    // hand (shelf-blocked), while food is merely starved of wheat the HQ holds. Fetching the wheat is the
-    // wrong move - it leaves the full slot full - so the blocked product's unit goes out first.
+    // Planks are at the brim with wood on hand, while food can start after fetching wheat. Shipping
+    // a plank first lets the plank recipe take the seat again and can starve food indefinitely.
     const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [
       [WOOD, 10],
       [PLANK, 20],
@@ -566,13 +565,33 @@ describe('producer unblocks its own full output slot', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(smith, MoveGoal)).toBe(false); // never walks off to the HQ for wheat
-    expect(sim.world.get(smith, CurrentAtomic).effect).toEqual({
-      kind: 'pickup',
-      goodType: PLANK, // the blocked product, not whichever output is stocked first
-      amount: 1,
-      from: shop,
-    });
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+  });
+
+  it('fetches the second shared input before reopening the full first product', () => {
+    const content = testContent();
+    const forgeType = content.buildings.find((building) => building.typeId === FORGE);
+    const secondRecipe = forgeType?.recipes[1];
+    if (secondRecipe === undefined) throw new Error('fixture forge needs its second recipe');
+    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [
+      [WOOD, 1],
+      [PLANK, 20],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+    expect(sim.world.get(forge, Stockpile).amounts.get(PLANK)).toBe(20);
+    for (let i = 0; i < 500; i++) sim.step();
+    expect(sim.world.get(forge, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
   });
 
   it('keeps crafting the product that still has shelf room (a full slot is not a full workshop)', () => {
