@@ -11,9 +11,10 @@ import { canonicalById } from '../../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
 import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
-import { ConstructionTaskClaims, type WorkSeatClaims } from '../drives/economy/index.js';
+import { ConstructionTaskClaims, WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
+import { anotherSystemOwns } from './replan.js';
 import { PlannerSpacing } from './spacing.js';
 
 /**
@@ -66,7 +67,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     externalQuality: new ExternalQualityIndex(world, ctx, terrain),
     spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
-    seatClaims: new Map(),
+    seatClaims: new WorkSeatClaims((carrier) => !anotherSystemOwns(world, carrier)),
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),

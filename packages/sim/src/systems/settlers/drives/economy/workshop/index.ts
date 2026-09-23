@@ -1,15 +1,36 @@
-import { Building, CARRY_CAPACITY, Owner } from '../../../../../components/index.js';
+import type { Recipe } from '@open-northland/data';
+import {
+  Building,
+  CARRY_CAPACITY,
+  Carrying,
+  JobAssignment,
+  Owner,
+  Production,
+  Settler,
+  Stockpile,
+} from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
-import type { Entity } from '../../../../../ecs/world.js';
-import { outputRoomForCycles, shelfBlockedOutput } from '../../../../economy/production.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import {
+  outputRoomForCycles,
+  shelfBlockedOutput,
+  skipUnfundedRecipe,
+} from '../../../../economy/production.js';
 import { recipeOutputsEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
-import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
+import {
+  bankedSlot,
+  isWorkplaceOperator,
+  mergedRecipeOf,
+  recipeConsumes,
+  recipesByProductOf,
+  stockCapacity,
+} from '../../../../stores/index.js';
 import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
-import { interactionCell } from '../../../targets/index.js';
+import { boundWorkplaceTarget, interactionCell } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
@@ -32,11 +53,67 @@ export interface WorkSeats {
   performing: number;
 }
 
-export type WorkSeatClaims = Map<Entity, WorkSeats>;
+/** Per-planner-pass seat claims and incoming bound loads, indexed only when a workshop needs them. */
+export class WorkSeatClaims extends Map<Entity, WorkSeats> {
+  private inboundLoads: Map<Entity, Map<number, number>> | undefined;
+  private recipesByWorkplace = new Map<Entity, Recipe[]>();
+
+  constructor(private readonly mayDeliver: (carrier: Entity) => boolean) {
+    super();
+  }
+
+  recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
+    let recipes = this.recipesByWorkplace.get(workplace);
+    if (recipes !== undefined) return recipes;
+    recipes = [];
+    const seen = new Set<Recipe>();
+    for (const worker of world.query(JobAssignment, Settler)) {
+      if (!this.mayDeliver(worker)) continue;
+      const settler = world.get(worker, Settler);
+      if (settler.jobType === null) continue;
+      if (boundWorkplaceTarget(world, ctx, worker, settler.jobType, settler.tribe) !== workplace) continue;
+      for (const recipe of operatorRecipes(world, ctx, workplace, worker)) {
+        if (seen.has(recipe)) continue;
+        seen.add(recipe);
+        recipes.push(recipe);
+      }
+    }
+    this.recipesByWorkplace.set(workplace, recipes);
+    return recipes;
+  }
+
+  inboundOf(world: World, ctx: PlannerContext['ctx'], workplace: Entity, goodType: number): number {
+    if (this.inboundLoads === undefined) {
+      this.inboundLoads = new Map();
+      for (const e of world.query(Carrying, JobAssignment, Settler)) {
+        if (!this.mayDeliver(e)) continue;
+        const load = world.get(e, Carrying);
+        const settler = world.get(e, Settler);
+        if (settler.jobType === null) continue;
+        const destination = boundWorkplaceTarget(world, ctx, e, settler.jobType, settler.tribe);
+        if (destination === null) continue;
+        if (!recipeConsumes(mergedRecipeOf(world, ctx, destination)?.inputs, load.goodType)) continue;
+        if (bankedSlot(world, ctx, destination, load.goodType).goodType !== load.goodType) continue;
+        if (
+          stockCapacity(world, ctx, destination, load.goodType) <=
+          (world.get(destination, Stockpile).amounts.get(load.goodType) ?? 0)
+        )
+          continue;
+        let goods = this.inboundLoads.get(destination);
+        if (goods === undefined) {
+          goods = new Map();
+          this.inboundLoads.set(destination, goods);
+        }
+        goods.set(load.goodType, (goods.get(load.goodType) ?? 0) + load.amount);
+      }
+    }
+    return this.inboundLoads.get(workplace)?.get(goodType) ?? 0;
+  }
+}
 
 /**
- * Run the self-service producer loop: claim an available batch seat, supply an open product before clearing
- * a full one, fetch other missing inputs, haul an output out, then loiter by the door with nothing to do.
+ * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
+ * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do.
  *
  * Source basis: a workshop stopping on a full product slot and resuming once a unit leaves is observed
  * original behavior, and every craft trade carries `jobtypes.ini` `baseatomics 6`, which grants the
@@ -59,40 +136,63 @@ export function planProducer(
     seats = { claimed: 0, performing: 0 };
     seatClaims.set(workplace, seats);
   }
+  const running = world.tryGet(workplace, Production)?.cycles.length ?? 0;
+  if (seats.claimed < running) {
+    seats.claimed += 1;
+    holdInsideWorkplace(plan, workplace, seats);
+    return;
+  }
+
+  // A startable cheap recipe must not consume every incoming unit while another open recipe waits
+  // for more of that input. A worker with no batch to advance brings the missing unit first.
+  const tribe = world.get(workplace, Building).tribe;
+  for (const candidate of seatClaims.recipesFor(world, ctx, workplace)) {
+    if (!recipeOutputsEnabled(world, ctx, plan.owner, tribe, candidate)) continue;
+    if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
+    const source = nearestMissingInputSource(
+      targets.bands,
+      world,
+      ctx,
+      here,
+      workplace,
+      candidate,
+      plan.owner,
+      false,
+      plan.limit ?? undefined,
+      unreachableGoalVeto(world, ctx, plan.entity),
+    );
+    if (source !== null) {
+      routeToInputSource(plan, source);
+      return;
+    }
+  }
+
+  const stock = world.get(workplace, Stockpile).amounts;
+  for (const candidate of seatClaims.recipesFor(world, ctx, workplace)) {
+    if (!candidate.inputs.some((input) => (stock.get(input.goodType) ?? 0) > 0)) continue;
+    if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
+    if (
+      candidate.inputs.some(
+        (input) =>
+          (stock.get(input.goodType) ?? 0) < input.amount &&
+          seatClaims.inboundOf(world, ctx, workplace, input.goodType) > 0,
+      )
+    ) {
+      loiterByDoor(plan, workplace, spacing, false);
+      return;
+    }
+  }
+
+  skipUnfundedRecipe(world, ctx, workplace, plan.entity, own);
+
   if (seats.claimed < workSeatCount(world, ctx, workplace, own)) {
     seats.claimed += 1;
     holdInsideWorkplace(plan, workplace, seats);
     return;
   }
 
-  const blocked = shelfBlockedOutput(world, ctx, workplace);
-  if (blocked !== null) {
-    // When another product has room but lacks an input, supply it before reopening the full slot.
-    // Otherwise the reopened recipe can consume each incoming unit before the other gets enough.
-    const tribe = world.get(workplace, Building).tribe;
-    for (const candidate of own) {
-      if (!recipeOutputsEnabled(world, ctx, plan.owner, tribe, candidate)) continue;
-      if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
-      const source = nearestMissingInputSource(
-        targets.bands,
-        world,
-        ctx,
-        here,
-        workplace,
-        candidate,
-        plan.owner,
-        false,
-        plan.limit ?? undefined,
-        unreachableGoalVeto(world, ctx, plan.entity),
-      );
-      if (source !== null) {
-        routeToInputSource(plan, source);
-        return;
-      }
-    }
-  }
-
   // A full output slot still outranks topping up inputs for products that cannot currently be shelved.
+  const blocked = shelfBlockedOutput(world, ctx, workplace);
   if (blocked !== null && deliverableGoodProbe(plan)(blocked)) {
     startOutputHaul(plan, workplace, blocked);
     return;

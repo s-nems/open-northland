@@ -132,9 +132,12 @@ export const sandboxScene: SceneDefinition = {
       predicate: (sim) => CAMPS.some((camp) => yardGood(sim, camp.good) > 0),
     },
     {
-      label: 'bored crews chatter - some pair is mid-chat at the sampled tick (gossip runs needs-off)',
+      label: 'bored crews chatter during an idle sampling window (gossip runs needs-off)',
       predicate: (sim) => {
-        for (const _ of sim.world.query(Chat)) return true;
+        for (let tick = 0; tick < 200; tick++) {
+          for (const _ of sim.world.query(Chat)) return true;
+          sim.step();
+        }
         return false;
       },
     },

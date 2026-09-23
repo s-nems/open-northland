@@ -26,8 +26,8 @@ export const Production = defineComponent<{
 /**
  * A craft worker's product order - which of its workplace's products it crafts, set by the `setCraftGoods`
  * command. An empty `goods` - or an absent component - means every product the workplace offers. With
- * several selected, each started cycle takes the one at `cursor`, skipping any whose inputs or room don't
- * allow a start, and advances past it. Authored: the 1:1 alternation over a multi-pick is a design choice,
+ * several selected, each started cycle takes the one at `cursor`, skipping a full output slot but waiting
+ * for missing inputs before advancing past it. Authored: the 1:1 alternation over a multi-pick is a design choice,
  * since the original's per-worker product scheduling is unknown.
  */
 export const CraftSelection = defineComponent<{

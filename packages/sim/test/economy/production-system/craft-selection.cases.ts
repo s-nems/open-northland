@@ -163,4 +163,18 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     runCycles(sim, 2);
     expect(sim.world.get(f, Stockpile).amounts.get(PLANK)).toBe(2); // plank kept flowing
   });
+
+  it('skips a product whose input stock is entirely absent', () => {
+    const content = testContent();
+    const secondRecipe = content.buildings.find((building) => building.typeId === FORGE)?.recipes[1];
+    if (secondRecipe === undefined) throw new Error('fixture forge needs its second recipe');
+    secondRecipe.inputs = [{ goodType: 6, amount: 1 }];
+    const sim = new Simulation({ seed: 1, content });
+    const { forge: f, smith } = forge(sim, 1);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD], cursor: 1 });
+
+    productionSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(f, Production).cycles[0]?.goodType).toBe(PLANK);
+  });
 });

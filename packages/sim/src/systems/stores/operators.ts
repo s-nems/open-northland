@@ -1,4 +1,4 @@
-import { Building, JobAssignment, Person, Position, Settler } from '../../components/index.js';
+import { Building, Carrying, JobAssignment, MoveGoal, Person, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -69,6 +69,7 @@ export function presentOperators(
   const index = operatorsByNode ?? new NodeBuckets(world, canonicalById(world.query(Person, Position)));
   const present: Entity[] = [];
   for (const e of index.at(at.x, at.y)) {
+    if (world.has(e, MoveGoal) || world.has(e, Carrying)) continue;
     const jobType = world.get(e, Settler).jobType;
     if (jobType !== null && jobs.has(jobType) && world.tryGet(e, JobAssignment)?.workplace === building) {
       present.push(e);

@@ -133,6 +133,25 @@ export function canStartCycle(world: World, ctx: SystemContext, building: Entity
   return startableCycleCount(world, ctx, building, recipe) > 0;
 }
 
+/** Keep a partially stocked input for the next open recipe until its remaining units arrive. */
+export function waitingForRecipeInput(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipe: Recipe,
+): boolean {
+  const b = world.get(building, Building);
+  const stock = world.get(building, Stockpile).amounts;
+  return (
+    recipeOutputsEnabled(world, ctx, ownerOf(world, building), b.tribe, recipe) &&
+    outputRoomForCycles(world, ctx, building, recipe) > 0 &&
+    recipe.inputs.some((input) => {
+      const have = stock.get(input.goodType) ?? 0;
+      return have > 0 && have < input.amount;
+    })
+  );
+}
+
 /** Whether any product of `recipes` could start a cycle now (the ProductionSystem's dormancy gate). */
 export function anyCycleStartable(
   world: World,

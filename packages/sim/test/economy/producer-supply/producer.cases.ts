@@ -7,13 +7,19 @@ import {
   LISTEN_ATOMIC_ID,
   MoveGoal,
   Owner,
+  PlayerOrder,
   Production,
   Resting,
   Settler,
   Stockpile,
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { MAX_GROUND_STACK, plannerSystem, stockCapacity } from '../../../src/systems/index.js';
+import {
+  MAX_GROUND_STACK,
+  plannerSystem,
+  productionSystem,
+  stockCapacity,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -236,6 +242,7 @@ describe('producer self-service - fetching a missing recipe input', () => {
     pileAt(sim, 5, 0, [[WHEAT, 5]]);
     const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
     sim.world.mut(baker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    settlerAt(sim, 7, 0, WOODCUTTER); // unlocks PLANK for this control case
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -444,7 +451,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0)); // out for the wheat its pick needs
   });
 
-  it('keeps that same seat for an operator with no pick at all', () => {
+  it('fetches for the other open product before claiming a new seat', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [[WOOD, 10]]);
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
@@ -454,7 +461,49 @@ describe('producer work seats - one stay-inside seat per batch', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: shop }); // the planks it may still make
+    expect(sim.world.has(smith, Resting)).toBe(false);
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+  });
+
+  it('makes a newly available product with a different input while the old shelf still has room', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 15],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+
+    for (let i = 0; i < 500; i++) sim.step();
+
+    expect(sim.world.get(shop, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
+  });
+
+  it('keeps the last shared input for a second operator fetching its new ingredient', () => {
+    const content = testContent();
+    const bakery = content.buildings.find((building) => building.typeId === BAKEHOUSE);
+    const food = bakery?.recipes[1];
+    if (bakery === undefined || food === undefined) throw new Error('fixture shop needs two recipes');
+    bakery.workers = [{ jobType: CARPENTER, count: 2 }];
+    food.inputs = [
+      { goodType: WOOD, amount: 1 },
+      { goodType: WHEAT, amount: 1 },
+    ];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [[WOOD, 1]]);
+    const store = buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 1]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const oldWorker = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.mut(oldWorker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(oldWorker, CraftSelection, { goods: [PLANK], cursor: 0 });
+    const newWorker = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.add(newWorker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+
+    for (let i = 0; i < 500; i++) sim.step();
+
+    expect(sim.world.get(store, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBe(1);
   });
 
   it('keeps the seat when the picked product is the one the stock can start', () => {
@@ -592,6 +641,144 @@ describe('producer unblocks its own full output slot', () => {
     expect(sim.world.get(forge, Stockpile).amounts.get(PLANK)).toBe(20);
     for (let i = 0; i < 500; i++) sim.step();
     expect(sim.world.get(forge, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
+  });
+
+  it('accumulates two shared inputs for the next selected product while the first slot has room', () => {
+    const content = testContent();
+    const secondRecipe = content.buildings.find((building) => building.typeId === FORGE)?.recipes[1];
+    if (secondRecipe === undefined) throw new Error('fixture forge needs its second recipe');
+    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [
+      [WOOD, 1],
+      [PLANK, 15],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+    for (let i = 0; i < 500; i++) sim.step();
+    expect(sim.world.get(forge, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
+  });
+
+  it('accumulates the second product input with two default-selected operators', () => {
+    const content = testContent();
+    const forgeType = content.buildings.find((building) => building.typeId === FORGE);
+    const secondRecipe = forgeType?.recipes[1];
+    if (forgeType === undefined || secondRecipe === undefined)
+      throw new Error('fixture forge needs two recipes');
+    forgeType.workers = [{ jobType: CARPENTER, count: 2 }];
+    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [
+      [WOOD, 1],
+      [PLANK, 15],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 8]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    for (let i = 0; i < 2; i++) {
+      const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+      sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    }
+
+    for (let i = 0; i < 700; i++) sim.step();
+
+    expect(sim.world.get(forge, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
+  });
+
+  it('keeps crafting the cheaper product when no source can complete the costly input', () => {
+    const content = testContent();
+    const secondRecipe = content.buildings.find((building) => building.typeId === FORGE)?.recipes[1];
+    if (secondRecipe === undefined) throw new Error('fixture forge needs its second recipe');
+    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+
+    sim.step();
+
+    expect(sim.world.get(forge, Production).cycles[0]?.goodType).toBe(PLANK);
+  });
+
+  it('skips a full product before an unfundable partial recipe', () => {
+    const content = testContent();
+    const forgeType = content.buildings.find((building) => building.typeId === FORGE);
+    const costly = forgeType?.recipes[1];
+    if (forgeType === undefined || costly === undefined) throw new Error('fixture forge needs two recipes');
+    costly.inputs = [{ goodType: WOOD, amount: 2 }];
+    forgeType.stock.push({ goodType: 7, capacity: 20, initial: 0 });
+    forgeType.recipes.push({
+      inputs: [{ goodType: WOOD, amount: 1 }],
+      outputs: [{ goodType: 7, amount: 1 }],
+      ticks: 20,
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [
+      [WOOD, 1],
+      [PLANK, 20],
+    ]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE, 7], cursor: 0 });
+
+    sim.step();
+
+    expect(sim.world.get(forge, Production).cycles[0]?.goodType).toBe(7);
+  });
+
+  it('holds a partially stocked input while a bound carrier brings the last unit', () => {
+    const content = testContent();
+    const forgeType = content.buildings.find((building) => building.typeId === FORGE);
+    const secondRecipe = forgeType?.recipes[1];
+    if (forgeType === undefined || secondRecipe === undefined)
+      throw new Error('fixture forge needs its second recipe');
+    forgeType.workers.push({ jobType: CARRIER, count: 1 });
+    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+    const carrier = settlerAt(sim, 3, 0, CARRIER, forge);
+    sim.world.add(carrier, Carrying, { goodType: WOOD, amount: 1 });
+
+    for (let i = 0; i < 500; i++) sim.step();
+
+    expect(sim.world.get(forge, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
+  });
+
+  it('does not wait for a carrier whose player order prevents delivery', () => {
+    const content = testContent();
+    const forgeType = content.buildings.find((building) => building.typeId === FORGE);
+    const secondRecipe = forgeType?.recipes[1];
+    if (forgeType === undefined || secondRecipe === undefined)
+      throw new Error('fixture forge needs its second recipe');
+    forgeType.workers.push({ jobType: CARRIER, count: 1 });
+    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+    const forge = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+    const diverted = settlerAt(sim, 3, 0, CARRIER, forge);
+    sim.world.add(diverted, Carrying, { goodType: WOOD, amount: 1 });
+    sim.world.add(diverted, PlayerOrder, {});
+
+    plannerSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(forge, Production).cycles[0]?.goodType).toBe(PLANK);
   });
 
   it('keeps crafting the product that still has shelf room (a full slot is not a full workshop)', () => {

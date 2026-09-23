@@ -1,13 +1,19 @@
 import { Building, Person, Position, Production, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
+import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
-import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
+import {
+  anyCycleStartable,
+  canStartCycle,
+  depositCycleOutput,
+  startFirstStartable,
+} from './production/cycles.js';
 import { chargeMilitaryPietyCost } from './production/piety.js';
-import { startCycleFor } from './production/rotation.js';
+import { craftablePool, startCycleFor } from './production/rotation.js';
 
 export { accrueDepositBonus } from './production/bonus-output.js';
 export {
@@ -15,8 +21,9 @@ export {
   outputRoomForCycles,
   shelfBlockedOutput,
   startableCycleCount,
+  waitingForRecipeInput,
 } from './production/cycles.js';
-export { craftablePool } from './production/rotation.js';
+export { craftablePool, skipUnfundedRecipe } from './production/rotation.js';
 
 /**
  * One workplace turns input goods into output goods over time, one independent batch per present operator,
@@ -89,7 +96,17 @@ export const productionSystem: System = (world, ctx) => {
     }
     // The seats past the running batches, each taking its own product choice; a failed choice skips just
     // that operator.
-    for (const operator of staffing.operators.slice(running)) {
+    const next = staffing.operators.slice(running);
+    const inputCount = (operator: Entity): number =>
+      Math.max(
+        0,
+        ...craftablePool(world, ctx, operator, recipes).map((good) => {
+          const recipe = recipes.get(good);
+          return recipe !== undefined && canStartCycle(world, ctx, e, recipe) ? recipe.inputs.length : 0;
+        }),
+      );
+    next.sort((a, b) => inputCount(b) - inputCount(a));
+    for (const operator of next) {
       startCycleFor(world, ctx, e, operator, recipes);
     }
   }
