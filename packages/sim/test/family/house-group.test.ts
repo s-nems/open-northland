@@ -13,9 +13,11 @@ import {
 import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { parseCommandEnvelope, playerCommand, replay, Simulation } from '../../src/index.js';
+import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import { familiesOf } from '../../src/systems/index.js';
 import { groupPlacementOrder } from '../../src/systems/orders/group-placement.js';
 import { assignHouse, assignHouseGroup } from '../../src/systems/orders/index.js';
+import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
@@ -159,6 +161,24 @@ describe('assignHouseGroup - send a group to one home', () => {
       clicked,
     ]);
     expect(familiesOf(sim.world, clicked)).toHaveLength(HOME_SIZE);
+  });
+
+  it('moves idle residents away from the door when every family slot is occupied', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(48, 4) });
+    const house = homeAt(sim, 10);
+    const women = [adultAt(sim, 10), adultAt(sim, 10)];
+    sendGroup(sim, house, women);
+    expect(familiesOf(sim.world, house)).toHaveLength(HOME_SIZE);
+    if (sim.terrain === undefined) throw new Error('setup: terrain missing');
+    const door = interactionCell(sim.world, ctxOf(sim), sim.terrain, house);
+
+    sim.run(20);
+
+    for (const woman of women) {
+      const p = sim.world.get(woman, Position);
+      const at = nodeOfPosition(p.x, p.y);
+      expect(sim.terrain.nodeAtClamped(at.hx, at.hy)).not.toBe(door);
+    }
   });
 
   it('reaches the sim from a seat over the wire and replays to the same state', () => {
