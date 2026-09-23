@@ -2,6 +2,7 @@
   --u-base: 1px;
   --u: clamp(0.55px, calc(100vh / 1200), 0.82px);
   --bg-base: #14100c;
+  --accent-rgb: 185 154 96;
   --accent: #b99a60;
   --accent-bright: #f0dfb9;
   --text-primary: #f0e5cc;

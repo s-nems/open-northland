@@ -49,6 +49,13 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
 
   try {
     let page = await launch();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Graphics', exact: true }).click();
+    await page.emulateMedia({ forcedColors: 'active' });
+    const menuRange = page.locator('.main-menu__settings-range').first();
+    assert.equal(await menuRange.evaluate((input) => getComputedStyle(input).borderTopStyle), 'solid');
+    await page.emulateMedia({ forcedColors: 'none' });
+    await page.locator('.main-menu__back').click();
     await page.locator('[data-nav-id="newGame"]').click();
     await page.locator('.main-menu__map-row').first().waitFor();
     await page.waitForFunction(() =>
@@ -82,6 +89,25 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
       game.setPaused(true);
       return { tick: game.sim.tick, hash: game.sim.hashState() };
     });
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Graphics', exact: true }).click();
+    const range = page.locator('.system-menu__settings .main-menu__settings-range').first();
+    await range.waitFor();
+    assert.match(
+      await range.evaluate((input) => getComputedStyle(input).backgroundImage),
+      /^linear-gradient\(/,
+    );
+    await page.emulateMedia({ forcedColors: 'active' });
+    assert.equal(await range.evaluate((input) => getComputedStyle(input).borderTopStyle), 'solid');
+    await page.emulateMedia({ forcedColors: 'none' });
+    await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+    await page.waitForFunction(() => document.fullscreenElement !== null);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Save game', exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => document.fullscreenElement !== null), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.fullscreenElement !== null), true);
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Save game', exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill(SAVE_NAME);

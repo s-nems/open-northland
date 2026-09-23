@@ -8,6 +8,22 @@ import { type MenuSettings, persistSettings, readStoredSettings } from './settin
 
 type DisplayMode = MenuSettings['displayMode'];
 
+interface KeyboardLock {
+  lock(keys: string[]): Promise<void>;
+  unlock(): void;
+}
+
+function syncFullscreenEscape(): void {
+  const keyboard = (navigator as Navigator & { keyboard?: KeyboardLock }).keyboard;
+  if (keyboard === undefined) return;
+  if (isFullscreen()) {
+    // A short Escape press belongs to the game's menus while the page is fullscreen.
+    void keyboard.lock(['Escape']).catch(() => undefined);
+  } else {
+    keyboard.unlock();
+  }
+}
+
 /**
  * A document whose window mode this module manages. The desktop shell is out of scope: it records a
  * change like any other document, but nothing puts its window back.
@@ -70,6 +86,8 @@ export function bindDisplayMode(
     alreadyFullscreen: isFullscreen(),
     displayMode: readStoredSettings().displayMode,
   });
+  document.addEventListener('fullscreenchange', syncFullscreenEscape, { signal });
+  syncFullscreenEscape();
   if (plan === 'ignore') return;
   // Fullscreen also drops during the unloading document cleanup steps, and that exit is the browser
   // tearing the document down rather than the player asking for a window. Restoring the same document
