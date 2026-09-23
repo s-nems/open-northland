@@ -134,6 +134,8 @@ export async function createUnitChrome(
   /** Of those, the ones that have earned `jobType`; the picker offers a job when any of them has. */
   const professionTakers = (ids: readonly number[], jobType: number): number[] =>
     professionTargets(ids).filter((id) => opts.canChooseJob(id, jobType));
+  const currentProfession = (id: number): number | undefined =>
+    num((entityById(opts.snapshot(), id)?.components.Settler as { jobType?: unknown } | undefined)?.jobType);
 
   const mountActions = (uiscale: number): Promise<SettlerActions> =>
     mountSettlerActions({
@@ -146,6 +148,9 @@ export async function createUnitChrome(
       ),
       professions: opts.professions,
       content: opts.content,
+      jobVisible: (ids, jobType) =>
+        professionTakers(ids, jobType).length > 0 ||
+        professionTargets(ids).some((id) => currentProfession(id) === jobType),
       jobUnlocked: (ids, jobType) => professionTargets(ids).some((id) => opts.canChooseJob(id, jobType)),
       jobBlockedReason: (ids, jobType) => {
         for (const id of professionTargets(ids)) {

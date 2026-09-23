@@ -120,6 +120,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       mode = 'jobs';
       hideTransient();
       picker.show(
+        (jobType) => opts.jobVisible(selectedIds, jobType),
         (jobType) => opts.jobUnlocked(selectedIds, jobType),
         (jobType) => opts.jobBlockedReason?.(selectedIds, jobType) ?? '',
       );
@@ -169,6 +170,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       if (mode === 'jobs') {
         if (restoredJobs) {
           picker.show(
+            (jobType) => opts.jobVisible(selectedIds, jobType),
             (jobType) => opts.jobUnlocked(selectedIds, jobType),
             (jobType) => opts.jobBlockedReason?.(selectedIds, jobType) ?? '',
           );

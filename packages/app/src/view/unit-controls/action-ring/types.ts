@@ -20,6 +20,8 @@ export interface SettlerActionsOptions {
   readonly professions: readonly PickerEntry[];
   /** Job roles are read off the running content, so buttons offer what the command accepts. */
   readonly content: ContentSet;
+  /** Whether the picker should list `jobType` at all for the current selection. */
+  readonly jobVisible: (ids: readonly number[], jobType: number) => boolean;
   /** Whether a selected settler may take `jobType` now (the `needforjob` tech tree, which `setJob`
    *  enforces sim-side as well). */
   readonly jobBlockedReason?: (ids: readonly number[], jobType: number) => string;

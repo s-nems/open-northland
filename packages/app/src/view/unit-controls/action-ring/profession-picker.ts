@@ -15,13 +15,50 @@ export interface ProfessionPickerOptions {
 }
 
 export interface ProfessionPicker {
-  /** Reveal the window, showing unavailable professions with their reason. */
-  show(unlocked: (jobType: number) => boolean, reason?: (jobType: number) => string): void;
+  /** Reveal the window, listing visible professions and marking unavailable ones with their reason. */
+  show(
+    visible: (jobType: number) => boolean,
+    unlocked: (jobType: number) => boolean,
+    reason?: (jobType: number) => string,
+  ): void;
   refresh(): void;
   hide(): void;
   scrollTop(): number;
   setScrollTop(top: number): void;
   dispose(): void;
+}
+
+interface ProfessionPickerRow {
+  readonly entry: PickerEntry;
+  readonly blocked?: string;
+}
+
+/** The picker hides jobs the caller does not want listed, and only keeps headers above visible rows. */
+export function professionPickerRows(
+  professions: readonly PickerEntry[],
+  visible: (jobType: number) => boolean,
+  unlocked: (jobType: number) => boolean,
+  reason?: (jobType: number) => string,
+): ProfessionPickerRow[] {
+  const rows: ProfessionPickerRow[] = [];
+  let pendingHeader: { readonly kind: 'header'; readonly label: string } | undefined;
+  for (const entry of professions) {
+    if (entry.kind === 'header') {
+      pendingHeader = entry;
+      continue;
+    }
+    if (!visible(entry.jobType)) continue;
+    if (pendingHeader !== undefined) {
+      rows.push({ entry: pendingHeader });
+      pendingHeader = undefined;
+    }
+    const blocked = unlocked(entry.jobType) ? undefined : (reason?.(entry.jobType) ?? '');
+    rows.push({
+      entry,
+      ...(blocked !== undefined ? { blocked } : {}),
+    });
+  }
+  return rows;
 }
 
 /** The window is appended to `document.body` hidden and filled per open. */
@@ -32,18 +69,22 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
     onDismiss: opts.onDismiss,
     cue: opts.cue,
   });
+  let visible: ((jobType: number) => boolean) | undefined;
   let unlocked: ((jobType: number) => boolean) | undefined;
   let reason: ((jobType: number) => string) | undefined;
   let heldKey: string | null = null;
   const refresh = (): void => {
+    const shown = visible;
     const permits = unlocked;
-    if (permits === undefined) return;
-    const rows = opts.professions.map((entry) => ({
-      entry,
-      blocked:
-        entry.kind === 'header' || permits(entry.jobType) ? undefined : (reason?.(entry.jobType) ?? ''),
-    }));
-    const key = JSON.stringify(rows.map((row) => row.blocked));
+    if (shown === undefined || permits === undefined) return;
+    const rows = professionPickerRows(opts.professions, shown, permits, reason);
+    const key = JSON.stringify(
+      rows.map((row) =>
+        row.entry.kind === 'header'
+          ? ['header', row.entry.label]
+          : ['profession', row.entry.jobType, row.blocked ?? null],
+      ),
+    );
     if (key === heldKey) return;
     heldKey = key;
     const scroll = window_.scrollTop();
@@ -64,7 +105,8 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
     window_.setScrollTop(scroll);
   };
   return {
-    show: (permits, blockedReason): void => {
+    show: (shown, permits, blockedReason): void => {
+      visible = shown;
       unlocked = permits;
       reason = blockedReason;
       heldKey = null;
@@ -73,6 +115,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
     },
     refresh,
     hide: () => {
+      visible = undefined;
       unlocked = undefined;
       window_.hide();
     },
