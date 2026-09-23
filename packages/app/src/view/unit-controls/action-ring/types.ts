@@ -24,9 +24,8 @@ export interface SettlerActionsOptions {
   readonly jobVisible: (ids: readonly number[], jobType: number) => boolean;
   /** Whether a selected settler may take `jobType` now (the `needforjob` tech tree, which `setJob`
    *  enforces sim-side as well). */
-  readonly jobBlockedReason?: (ids: readonly number[], jobType: number) => string;
-  readonly jobVisible: (ids: readonly number[], jobType: number) => boolean;
   readonly jobUnlocked: (ids: readonly number[], jobType: number) => boolean;
+  readonly jobBlockedReason?: (ids: readonly number[], jobType: number) => string;
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
   /** One ring button was clicked for the selected settlers; the menu has already closed. */
   readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;

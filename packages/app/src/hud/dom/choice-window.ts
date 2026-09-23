@@ -29,7 +29,7 @@ export const choiceMatches = (label: string, query: string): boolean => {
 export function createChoiceWindow(opts: {
   readonly title: string;
   readonly scale?: number;
-  readonly onPick: (key: string) => void;
+  readonly onPick: (key: string, point?: { x: number; y: number }) => void;
   readonly onDismiss: () => void;
   readonly cue?: (cue: UiCue) => void;
 }) {
@@ -43,7 +43,7 @@ export function createChoiceWindow(opts: {
   const window = createHudWindow(plane.element, {
     title: opts.title,
     closeLabel: copy.schoolClose,
-    width: 448,
+    width: 296,
     compact: true,
   });
   window.element.classList.add('on-window--choices');
@@ -66,6 +66,24 @@ export function createChoiceWindow(opts: {
   document.body.append(dialog);
   let groups: readonly ChoiceGroup[] = [];
   let held = '';
+  let searchable = true;
+  let anchor: { x: number; y: number } | undefined;
+  const place = (): void => {
+    if (anchor === undefined) {
+      window.element.style.left = '50%';
+      window.element.style.top = '50%';
+      return;
+    }
+    const scale = plane.currentScale();
+    const halfWidth = window.element.offsetWidth / 2;
+    const halfHeight = window.element.offsetHeight / 2;
+    const clamp = (value: number, half: number, extent: number): number =>
+      Math.max(half + 16, Math.min(value, extent - half - 16));
+    window.place(
+      clamp(anchor.x / scale, halfWidth, plane.element.clientWidth),
+      clamp(anchor.y / scale, halfHeight, plane.element.clientHeight),
+    );
+  };
   let trigger: HTMLElement | null = null;
   const focusSearch = (): void => {
     search.focus({ preventScroll: true });
@@ -103,10 +121,10 @@ export function createChoiceWindow(opts: {
           button.title = row.reason;
           button.setAttribute('aria-label', `${row.label}: ${row.reason}`);
         }
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (event) => {
           if (row.reason !== undefined) return;
           opts.cue?.('confirm');
-          opts.onPick(row.key);
+          opts.onPick(row.key, event.detail === 0 ? undefined : { x: event.clientX, y: event.clientY });
         });
         grid.append(button);
       }
@@ -122,8 +140,12 @@ export function createChoiceWindow(opts: {
     const focused = [...list.querySelectorAll<HTMLButtonElement>('button')].find(
       (button) => button.dataset.choice === focusKey,
     );
-    if (focusKey !== undefined) (focused ?? search).focus({ preventScroll: true });
+    if (focusKey !== undefined)
+      (focused ?? (searchable ? search : list.querySelector<HTMLButtonElement>('button')))?.focus({
+        preventScroll: true,
+      });
     list.scrollTop = scroll;
+    if (dialog.open) place();
   };
   search.addEventListener('input', () => {
     list.scrollTop = 0;
@@ -160,6 +182,7 @@ export function createChoiceWindow(opts: {
     dialog.close();
     if (trigger?.isConnected) trigger.focus({ preventScroll: true });
   };
+  globalThis.addEventListener('resize', place);
   return {
     update(next: readonly ChoiceGroup[], caption = ''): void {
       const key = JSON.stringify([next, caption]);
@@ -170,7 +193,10 @@ export function createChoiceWindow(opts: {
       context.hidden = caption === '';
       render();
     },
-    show(label = opts.title): void {
+    show(label = opts.title, options: { search?: boolean; anchor?: { x: number; y: number } } = {}): void {
+      searchable = options.search ?? true;
+      field.hidden = !searchable;
+      anchor = options.anchor;
       dialog.setAttribute('aria-label', label);
       if (title !== null) title.textContent = label;
       window.element.setAttribute('aria-label', label);
@@ -182,16 +208,22 @@ export function createChoiceWindow(opts: {
         trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         dialog.showModal();
       }
-      focusSearch();
+      place();
+      if (searchable) focusSearch();
+      else list.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
     },
     hide,
     scrollTop: () => list.scrollTop,
     setScrollTop: (top: number) => {
       list.scrollTop = top;
     },
-    setUiScale: plane.setUiScale,
+    async setUiScale(scale: number): Promise<void> {
+      await plane.setUiScale(scale);
+      if (dialog.open) place();
+    },
     dispose(): void {
       hide();
+      globalThis.removeEventListener('resize', place);
       dialog.remove();
     },
   };

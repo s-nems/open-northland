@@ -14,6 +14,7 @@ import {
   actorsOf,
   buildingTypeOf,
   ownerPlayerOf,
+  settlerJobType,
   settlerLearnedOf,
   settlerTribeOf,
   trainingHouseOf,
@@ -104,6 +105,22 @@ export interface SchoolDialog {
   dispose(): void;
 }
 
+export function schoolStudents(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  ids: readonly number[],
+): number[] {
+  return orderRecipients(content, snapshot, ids, 'assignLearningPlace').filter((id) => {
+    const learner = entityById(snapshot, id);
+    if (learner === undefined) return false;
+    const flags = (learner.components.MissionBehaviour as { flags?: number } | undefined)?.flags ?? 0;
+    return (
+      !systems.isHeroJob(content, settlerJobType(learner) ?? null) &&
+      (flags & components.MISSION_BEHAVIOUR.JOB_LOCKED) === 0
+    );
+  });
+}
+
 export function openSchoolDialog(
   content: ContentSet,
   snapshot: () => WorldSnapshot,
@@ -114,6 +131,7 @@ export function openSchoolDialog(
   cue?: (cue: UiCue) => void,
   scale = 1,
 ): SchoolDialog | undefined {
+  students = schoolStudents(content, snapshot(), students);
   const first = students[0];
   const student = first === undefined ? undefined : entityById(snapshot(), first);
   const tribeId = student === undefined ? undefined : settlerTribeOf(student);
@@ -142,7 +160,7 @@ export function openSchoolDialog(
         window.show();
       }
     },
-    onPick: (key) => {
+    onPick: (key, point) => {
       refresh(true);
       if (closed) return;
       if (selectedJob === undefined) {
@@ -151,7 +169,10 @@ export function openSchoolDialog(
         if (group.courses.length > 1) {
           selectedJob = group.jobType;
           refresh(true);
-          window.show(group.label);
+          window.show(group.label, {
+            search: false,
+            ...(point === undefined ? {} : { anchor: point }),
+          });
           return;
         }
         const course = group.courses[0];
@@ -195,7 +216,7 @@ export function openSchoolDialog(
       dispose();
       return;
     }
-    const valid = new Set(orderRecipients(content, state, students, 'changeProfession'));
+    const valid = new Set(schoolStudents(content, state, students));
     const invalid =
       building.components.UnderConstruction !== undefined ||
       students.some((id) => !valid.has(id)) ||
@@ -263,10 +284,18 @@ export function openSchoolDialog(
             ...reasonProps(reasons.get(courseKey(course))),
           }));
     window.update(
-      [{ label: selected === undefined ? copy.schoolProfessions : copy.choiceMethods, rows }],
+      [
+        {
+          label: selected === undefined ? copy.schoolProfessions : copy.choiceMethods,
+          rows,
+        },
+      ],
       capacity === undefined
         ? ''
-        : formatMessage(copy.schoolPlaces, { occupied: occupants.length, capacity }),
+        : formatMessage(copy.schoolPlaces, {
+            occupied: occupants.length,
+            capacity,
+          }),
     );
   };
   refresh(true);

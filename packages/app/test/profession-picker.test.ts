@@ -14,13 +14,35 @@ const ENTRIES: readonly PickerEntry[] = [
 
 describe('professionChoices', () => {
   it('drops hidden professions and groups with no visible jobs', () => {
-    const groups = professionChoices(ENTRIES, (job) => job === 2, () => false, () => 'Needs experience');
-    expect(groups).toEqual([{ label: 'Production', rows: [{ key: '2', label: 'Joiner', reason: 'Needs experience' }] }]);
+    const groups = professionChoices(
+      ENTRIES,
+      (job) => job === 2,
+      () => false,
+      () => 'Needs experience',
+    );
+    expect(groups).toEqual([
+      {
+        label: 'Production',
+        rows: [{ key: '2', label: 'Joiner', reason: 'Needs experience' }],
+      },
+    ]);
   });
 
   it('keeps one header above several visible jobs in the same group', () => {
-    expect(professionChoices(ENTRIES, (job) => job === 2 || job === 3, () => true)).toEqual([
-      { label: 'Production', rows: [{ key: '2', label: 'Joiner' }, { key: '3', label: 'Mason' }] },
+    expect(
+      professionChoices(
+        ENTRIES,
+        (job) => job === 2 || job === 3,
+        () => true,
+      ),
+    ).toEqual([
+      {
+        label: 'Production',
+        rows: [
+          { key: '2', label: 'Joiner' },
+          { key: '3', label: 'Mason' },
+        ],
+      },
     ]);
   });
 });

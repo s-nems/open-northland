@@ -16,6 +16,7 @@ import { sandboxContent } from '../src/game/sandbox/index.js';
 import { hasEligiblePartner } from '../src/game/snapshot.js';
 import type { ActionCommandId } from '../src/hud/action-ring/index.js';
 import { allowedActions, orderRecipients } from '../src/view/unit-controls/action-ring/menu-state.js';
+import { schoolStudents } from '../src/view/unit-controls/school-dialog.js';
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
@@ -396,5 +397,22 @@ describe('hasEligiblePartner memo', () => {
     // A woman comes of age: the new snapshot object must not inherit the previous one's "nobody".
     const grown = snapshotOf([...entities, settler(3, JOB_WOMAN, { female: true })]);
     expect(hasEligiblePartner(content, grown, seeker)).toBe(true);
+  });
+});
+
+describe('school students', () => {
+  it('excludes women, children and heroes, keeping eligible men in a mixed selection', () => {
+    const heroContent = {
+      ...content,
+      jobs: content.jobs.map((job) => (job.typeId === JOB_SOLDIER ? { ...job, id: 'hero_test' } : job)),
+    };
+    const state = snapshotOf([
+      settler(1, JOB_COLLECTOR),
+      settler(2, JOB_WOMAN, { female: true }),
+      settler(3, JOB_CHILD_MALE, { child: true }),
+      settler(4, JOB_SOLDIER),
+    ]);
+    expect(schoolStudents(heroContent, state, [1, 2, 3, 4])).toEqual([1]);
+    for (const id of [2, 3, 4]) expect(schoolStudents(heroContent, state, [id])).toEqual([]);
   });
 });

@@ -2191,7 +2191,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-choice-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
 }
 .on-hud .on-window--choices .on-choice-row {
@@ -2199,7 +2199,7 @@ body.on-drag-scroll-cursor-hidden * {
   min-height: 29px;
   padding: 4px 7px;
   text-align: left;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.15;
   gap: 6px;
 }
@@ -2216,4 +2216,8 @@ body.on-drag-scroll-cursor-hidden * {
   margin: 14px 0;
   color: var(--muted);
   text-align: center;
+}
+
+.on-hud .on-choice-search[hidden] {
+  display: none;
 }
