@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
+  CraftSelection,
   CurrentAtomic,
   JobAssignment,
   MoveGoal,
@@ -12,10 +13,12 @@ import {
   Stockpile,
   UnderConstruction,
 } from '../../../src/components/index.js';
+import { contentIndex } from '../../../src/core/content-index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, Simulation } from '../../../src/index.js';
 import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { forceFinishConstruction } from '../../../src/systems/economy/construction.js';
+import { craftablePool } from '../../../src/systems/economy/production.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../../src/systems/footprint/index.js';
 import { assignWorker } from '../../../src/systems/orders/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
@@ -51,7 +54,7 @@ const GRASS = 0;
 const NODES_W = 40;
 const NODES_H = 4;
 
-function staffContent(): ContentSet {
+function staffContent(extraProduct = false): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
     goods: [
@@ -97,8 +100,13 @@ function staffContent(): ContentSet {
         typeId: SMITHY_L1,
         id: 'work_smithy_01',
         kind: 'workplace',
-        produces: [STONE],
-        recipes: [{ inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: STONE, amount: 1 }] }],
+        produces: extraProduct ? [STONE, WOOD] : [STONE],
+        recipes: [
+          { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: STONE, amount: 1 }] },
+          ...(extraProduct
+            ? [{ inputs: [{ goodType: STONE, amount: 1 }], outputs: [{ goodType: WOOD, amount: 1 }] }]
+            : []),
+        ],
         stock: [
           { goodType: WOOD, capacity: 10 },
           { goodType: STONE, capacity: 10 },
@@ -177,6 +185,36 @@ function perimeterOf(sim: Simulation, site: Entity): readonly NodeId[] {
 }
 
 describe('construction site staffing - the slots a building offers while it is raised', () => {
+  it.each(['implicit', 'rotating', 'explicit'] as const)(
+    'keeps an incumbent %s production choice when the new tier offers another product',
+    (selection) => {
+      const sim = new Simulation({ seed: 1, content: staffContent(true), map: grassMap(NODES_W, NODES_H) });
+      const smithy = buildingAt(sim, SMITHY_L0, 3, 0, { stock: [[STONE, 3]] });
+      const mason = settlerAt(sim, 0, 0, null);
+      const hauler = settlerAt(sim, 1, 0, null);
+      post(sim, mason, smithy, [MASON]);
+      post(sim, hauler, smithy, [CARRIER]);
+      if (selection !== 'implicit') {
+        sim.world.add(mason, CraftSelection, {
+          goods: selection === 'explicit' ? [STONE] : [],
+          cursor: 0,
+        });
+      }
+
+      sim.enqueueSetup({ kind: 'upgradeBuilding', building: smithy });
+      sim.step();
+      forceFinishConstruction(sim.world, ctxOf(sim), smithy);
+
+      expect(sim.world.get(smithy, Building).buildingType).toBe(SMITHY_L1);
+      expect(sim.world.get(mason, CraftSelection).goods).toEqual([STONE]);
+      expect(sim.world.has(hauler, CraftSelection)).toBe(false);
+      const recipes = contentIndex(sim.content).recipeByProductByBuilding.get(SMITHY_L1);
+      expect(recipes).toBeDefined();
+      if (recipes === undefined) return;
+      expect(craftablePool(sim.world, ctxOf(sim), mason, recipes)).toEqual([STONE]);
+    },
+  );
+
   it('posts a worker to an unfinished building, up to the same per-slot limit a finished one holds', () => {
     const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
     const site = buildingAt(sim, SMITHY_L0, 3, 0, { site: true });

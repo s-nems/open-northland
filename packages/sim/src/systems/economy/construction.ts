@@ -1,8 +1,11 @@
 import {
   Building,
+  CraftSelection,
   consumeGoods,
   type GoodsLine,
   Health,
+  JobAssignment,
+  Settler,
   Stockpile,
   setStockAmount,
   stockpileEntries,
@@ -19,6 +22,7 @@ import {
   constructionMaterialsPresent,
   constructionTotalUnits,
   deliveredConstructionFraction,
+  isWorkplaceOperator,
   upgradeTierOf,
 } from '../stores/index.js';
 import { destroyBerryBushesInReserved } from './berries.js';
@@ -101,6 +105,7 @@ function finishSite(
     // Malformed content only: the site then finishes as its old tier, reported as a plain finish.
     if (target !== undefined) {
       adoptedTier = true;
+      preserveProductionChoices(world, ctx, e, building.buildingType, target.typeId);
       // The type swap changes every buildingType-derived answer, so it goes through the mut seam and
       // version-keyed caches re-scan.
       const b = world.mut(e, Building);
@@ -125,6 +130,33 @@ function finishSite(
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }
       : { kind: 'buildingFinished', entity: e },
   );
+}
+
+/** Pin an implicit "all products" choice to the old tier's products when an upgrade adds recipes,
+ * so workers start making the new products only after the player selects them. */
+function preserveProductionChoices(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  oldType: number,
+  newType: number,
+): void {
+  const recipes = contentIndex(ctx.content).recipeByProductByBuilding;
+  const oldProducts = recipes.get(oldType);
+  const newProducts = recipes.get(newType);
+  if (oldProducts === undefined || newProducts === undefined) return;
+  if (![...newProducts.keys()].some((good) => !oldProducts.has(good))) return;
+  const retained = [...oldProducts.keys()].filter((good) => newProducts.has(good)).sort((a, b) => a - b);
+  if (retained.length === 0) return;
+  for (const worker of world.query(Settler, JobAssignment)) {
+    if (world.get(worker, JobAssignment).workplace !== building) continue;
+    const jobType = world.get(worker, Settler).jobType;
+    if (jobType === null || !isWorkplaceOperator(world, ctx, building, jobType)) continue;
+    const selection = world.tryGet(worker, CraftSelection);
+    if (selection !== undefined && selection.goods.length > 0) continue;
+    if (selection === undefined) world.add(worker, CraftSelection, { goods: retained.slice(), cursor: 0 });
+    else world.mut(worker, CraftSelection).goods = retained.slice();
+  }
 }
 
 /**

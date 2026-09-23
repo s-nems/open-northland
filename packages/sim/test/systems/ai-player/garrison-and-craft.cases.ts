@@ -1,9 +1,12 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   ASSISTANT_RECRUIT_INTENTS,
   type AssistantCounterKind,
   AssistantRecruit,
   type AssistantRecruitIntent,
+  Building,
+  CraftSelection,
   JobAssignment,
   Settler,
   setStockAmount,
@@ -12,7 +15,9 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
+import { tuneCraftSelections } from '../../../src/systems/ai-player/workforce/craft.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
+import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import { stampPost } from '../../signposts/support.js';
 import {
@@ -25,6 +30,7 @@ import {
   BUILDER,
   CATTLE,
   collectModule,
+  completeSites,
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
@@ -484,6 +490,74 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setCraftGoods'),
     ).toEqual([]);
+  });
+
+  it('selects stone blocks and ornaments for a mason after upgrading the workshop', () => {
+    const base = aiContent();
+    const MASON = 9;
+    const PILLAR = 8;
+    const ORNAMENT = 9;
+    const HUT = 18;
+    const UPGRADED_HUT = 19;
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: PILLAR, id: 'pillar' }, { typeId: ORNAMENT, id: 'ornament' }],
+      jobs: [...base.jobs, { typeId: MASON, id: 'mason' }],
+      buildings: [
+        ...base.buildings,
+        {
+          typeId: HUT,
+          id: 'work_mason_hut_00',
+          kind: 'workplace',
+          workers: [{ jobType: MASON, count: 1 }],
+          produces: [PILLAR],
+          recipes: [{ inputs: [], outputs: [{ goodType: PILLAR, amount: 1 }] }],
+          stock: [{ goodType: PILLAR, capacity: 10 }],
+          construction: [{ goodType: 1, amount: 1 }],
+          upgradeTarget: UPGRADED_HUT,
+        },
+        {
+          typeId: UPGRADED_HUT,
+          id: 'work_mason_hut_01',
+          kind: 'workplace',
+          workers: [{ jobType: MASON, count: 1 }],
+          produces: [PILLAR, ORNAMENT],
+          recipes: [
+            { inputs: [], outputs: [{ goodType: PILLAR, amount: 1 }] },
+            { inputs: [], outputs: [{ goodType: ORNAMENT, amount: 1 }] },
+          ],
+          stock: [
+            { goodType: PILLAR, capacity: 10 },
+            { goodType: ORNAMENT, capacity: 10 },
+          ],
+          construction: [{ goodType: 1, amount: 1 }],
+        },
+      ],
+    });
+    const sim = aiSim(1, content);
+    const ctx = { ...ctxOf(sim), content };
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 40, y: 16, tribe: VIKING, owner: SEAT });
+    spawnMen(sim, 1, MASON);
+    sim.step();
+    completeSites(sim);
+    const hut = entityOfBuilding(sim, HUT);
+    const mason = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === MASON);
+    if (mason === undefined) throw new Error('expected a mason');
+    sim.world.add(mason, JobAssignment, { workplace: hut });
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
+
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: hut });
+    sim.step();
+    completeSites(sim);
+    expect(sim.world.get(hut, Building).buildingType).toBe(UPGRADED_HUT);
+    expect(sim.world.get(mason, CraftSelection).goods).toEqual([PILLAR]);
+
+    const choice = { kind: 'setCraftGoods', entity: mason, goods: [PILLAR, ORNAMENT] } as const;
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([choice]);
+    sim.enqueueSetup(choice);
+    sim.step();
+    expect(sim.world.get(mason, CraftSelection).goods).toEqual([PILLAR, ORNAMENT]);
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
   });
 
   it('splits the animal farm between its breeders - the ox line, then the sheep line', () => {

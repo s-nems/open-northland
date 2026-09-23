@@ -17,6 +17,7 @@ import { ownedSettlers } from '../seat-roster.js';
 export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly (readonly string[])[]>> = {
   work_joinery_01: [['tool_iron']],
   work_pottery_01: [['brick', 'tile']],
+  work_mason_hut_01: [['pillar', 'ornament']],
   work_animal_farm: [['cattle'], ['sheep']],
 };
 
