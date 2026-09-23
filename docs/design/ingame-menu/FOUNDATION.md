@@ -441,3 +441,17 @@ Local-only review inputs in `<review-dir>` (never add these to Git):
 If the temporary directory is lost, restore these from the primary checkout's generated content,
 and use the mockup's terrain fallback until a fresh permitted local world capture is available.
 Missing original assets are reported below the preview; do not mistake empty canvases for success.
+
+## Profession and school choice flow
+
+Use the shared compact window and grouped choices. The profession list opens first, with search
+focused and its existing text selected. Search matches the beginning of a choice label. Clicking a
+profession completes a zero/one advanced-method choice immediately; multiple discovered advanced
+methods require one choice in a second window. Dismissing that window returns without submitting.
+Do not show an action-description strip below the choices. The interactive candidate is
+[professions.html](professions.html); runtime integration remains in its linked ticket.
+
+School method courses do not require the pupil to already hold the profession. A civilian may choose
+Smith and learn one discovered advanced method directly. Basic production is excluded from the
+advanced-method count: basic plus long sword chooses long sword immediately; long sword, chainmail
+and plate armor present those three choices. Learning one does not grant the other advanced methods.

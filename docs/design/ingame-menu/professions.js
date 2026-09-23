@@ -15,7 +15,7 @@ const result = document.querySelector('#result');
 let window;
 let search;
 let list;
-let hint;
+let selectedProfession;
 const collator = new Intl.Collator('pl', { sensitivity: 'base' });
 const normalize = (text) =>
   text
@@ -36,16 +36,6 @@ function groups() {
   if (state === 'empty') return [];
   const visible = state === 'early' ? earlyJobs : knownJobs;
   const sections = [];
-  if (school && state !== 'early' && current !== undefined) {
-    const methods =
-      current === 13
-        ? [{ label: 'Kolczuga', learned: true }, { label: 'Zbroja płytowa' }]
-        : [{ label: 'Żelazo' }, { label: 'Złoto' }];
-    sections.push({
-      title: current === 13 ? 'Kowal · metody produkcji' : 'Zbieracz · surowce',
-      rows: methods.map((row) => ({ ...row, method: true })),
-    });
-  }
   let section = { title: school ? 'Zawody' : 'Bez zawodu', rows: [] };
   sections.push(section);
   for (const entry of pickerEntries('pol')) {
@@ -56,14 +46,12 @@ function groups() {
       }
       continue;
     }
-    if (
-      !visible.has(entry.jobType) ||
-      (school && (!schoolJobs.has(entry.jobType) || current === entry.jobType))
-    )
+    if (!visible.has(entry.jobType) || (school && !schoolJobs.has(entry.jobType) && entry.jobType !== 8))
       continue;
     const active = !school && current === entry.jobType;
     section.rows.push({
       label: entry.label,
+      jobType: entry.jobType,
       active,
       blocked: !school && !active && !qualified.has(entry.jobType),
     });
@@ -81,24 +69,32 @@ function groups() {
   return sections.filter((group) => group.rows.length > 0);
 }
 
-function detail(row) {
-  if (row.active) return 'Obecny zawód osadnika.';
-  if (row.learned) return 'Osadnik już zna tę metodę.';
-  if (controls.state.value === 'full' && controls.mode.value === 'school')
-    return 'Brak wolnych miejsc w szkole.';
-  if (row.blocked) return 'Osadnik potrzebuje doświadczenia lub nauki w szkole.';
-  if (controls.mode.value !== 'school') return `Zmień zawód: ${row.label}.`;
-  return row.method
-    ? `Naucz metody: ${row.label}. Pozostałe umiejętności zostają.`
-    : `Naucz zawodu: ${row.label}.`;
+function methodsFor(row) {
+  if (controls.state.value === 'early') return [];
+  const methods =
+    row.jobType === 13
+      ? [{ label: 'Długi miecz' }, { label: 'Kolczuga' }, { label: 'Zbroja płytowa' }]
+      : row.jobType === 8
+        ? [{ label: 'Żelazo' }, { label: 'Złoto' }]
+        : [];
+  return controls.state.value === 'single' ? methods.slice(0, 1) : methods;
+}
+
+function finish(label) {
+  result.textContent = `Podgląd wyboru: ${label}.`;
+  window.close();
+  document.querySelector('#reopen').focus();
 }
 
 function renderList() {
   const query = normalize(search.value.trim());
   list.replaceChildren();
   let count = 0;
-  for (const group of groups()) {
-    const rows = group.rows.filter((row) => normalize(`${group.title} ${row.label}`).includes(query));
+  const shown = selectedProfession
+    ? [{ title: 'Metoda produkcji', rows: methodsFor(selectedProfession) }]
+    : groups();
+  for (const group of shown) {
+    const rows = group.rows.filter((row) => normalize(row.label).startsWith(query));
     if (rows.length === 0) continue;
     count += rows.length;
     const section = document.createElement('section');
@@ -120,7 +116,7 @@ function renderList() {
       const blocked =
         row.learned ||
         row.blocked ||
-        row.active ||
+        (row.active && methodsFor(row).length === 0) ||
         (controls.state.value === 'full' && controls.mode.value === 'school');
       button.setAttribute('aria-disabled', String(Boolean(blocked)));
       if (row.active) button.dataset.current = 'true';
@@ -131,21 +127,16 @@ function renderList() {
         tag.textContent = badge;
         button.append(tag);
       }
-      button.title = detail(row);
-      button.addEventListener('focus', () => {
-        hint.textContent = detail(row);
-      });
-      button.addEventListener('mouseenter', () => {
-        hint.textContent = detail(row);
-      });
+      if (blocked) button.title = row.active ? 'Obecny zawód' : 'Niedostępne dla wybranego osadnika';
       button.addEventListener('click', () => {
-        if (blocked) {
-          hint.textContent = detail(row);
+        if (blocked) return;
+        if (selectedProfession) {
+          finish(`${selectedProfession.label} · ${row.label}`);
           return;
         }
-        result.textContent = `Podgląd wyboru: ${row.label}. Okno zamknięte — w grze w tym momencie trafi polecenie.`;
-        window.close();
-        document.querySelector('#reopen').focus();
+        const methods = methodsFor(row);
+        if (methods.length > 1) open(row);
+        else finish(methods.length === 1 ? `${row.label} · ${methods[0].label}` : row.label);
       });
       grid.append(button);
     }
@@ -160,11 +151,12 @@ function renderList() {
   }
 }
 
-function open() {
+function open(profession) {
+  selectedProfession = profession;
   window?.dispose();
   const school = controls.mode.value === 'school';
   window = createHudWindow(plane.element, {
-    title: school ? 'Szkoła' : 'Zmień zawód',
+    title: selectedProfession?.label ?? (school ? 'Szkoła' : 'Zmień zawód'),
     closeLabel: 'Zamknij',
     width: 448,
     compact: true,
@@ -181,7 +173,9 @@ function open() {
       ? '3 osadników · różne zawody'
       : controls.person.value === 'smith'
         ? 'Eryk · Kowal'
-        : 'Eryk · Zbieracz';
+        : controls.person.value === 'collector'
+          ? 'Eryk · Zbieracz'
+          : 'Eryk · Cywil';
   context.append(identity);
   if (school) {
     const capacity = document.createElement('span');
@@ -196,9 +190,6 @@ function open() {
   tools.append(context, field);
   list = document.createElement('div');
   list.className = 'choice-list';
-  hint = document.createElement('p');
-  hint.className = 'choice-hint';
-  hint.textContent = 'Najedź na opcję, aby zobaczyć szczegóły.';
   window.body.append(tools);
   if (school && controls.state.value === 'full') {
     const alert = document.createElement('p');
@@ -206,18 +197,22 @@ function open() {
     alert.textContent = 'Szkoła jest pełna.';
     window.body.append(alert);
   }
-  window.body.append(list, hint);
-  window.onDismiss(() => document.querySelector('#reopen').focus());
+  window.body.append(list);
+  window.onDismiss(() => {
+    if (selectedProfession) open();
+    else document.querySelector('#reopen').focus();
+  });
   renderList();
   window.open();
   search.focus({ preventScroll: true });
+  search.select();
 }
 for (const control of Object.values(controls))
   control.addEventListener('change', () => {
     plane.setUiScale(Number(controls.scale.value));
     open();
   });
-document.querySelector('#reopen').addEventListener('click', open);
+document.querySelector('#reopen').addEventListener('click', () => open());
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && window.isOpen()) {
     if (search.value) {

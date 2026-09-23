@@ -23,12 +23,20 @@ full/empty lists, long labels, keyboard focus and UI scaling. Visual approval is
 ## Scope
 
 - Keep the compact two-column list, small header, alphabetical order within groups, hidden unknown
-  choices and immediate selection. Search filters both group and choice labels.
+  choices and immediate selection. Search receives focus immediately on every open and filters choice labels by prefix.
 - Reuse the shared HUD window and foundation styles; promote the accepted choice layout into the
   common foundation rather than keeping a separate production stylesheet.
 - Preserve main's discovered-profession filter and live eligibility checks when integrating this branch.
-- In school, show discovered methods for the common current profession, then available profession
-  courses; mixed professions must not imply that every learner can take a method course.
+- Show professions first. A click completes the choice immediately with zero or one advanced method;
+  more than one discovered advanced method opens a separate method window. Selecting a method
+  completes the choice with one click. Dismissal returns to professions without submitting.
+- Remove the bottom action-description strip. Keep unavailable reasons on the controls.
+- School method selection must work for a civilian without first learning/changing to the profession.
+  Basic production does not count toward the advanced-method choice. Cover basic plus long sword
+  (immediate long-sword course) and all three smith methods (choose long sword, chainmail or plate).
+  A course grants only the selected advanced method; verify the resulting basic profession qualification
+  through the simulation command path, and fix any prerequisite mismatch rather than hiding the course.
+- Verify per-person eligibility for the selected method, including mixed selections.
 - Use authoritative capacity, qualification and refusal probes. Current/learned choices cannot submit;
   reasons must be available to mouse and keyboard without expanding every row.
 - Keep scrolling inside the list, retain focus and scroll during live updates, dismiss with Escape,
