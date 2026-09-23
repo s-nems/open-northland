@@ -1,9 +1,12 @@
-import { MoveGoal, Owner } from '../../../components/index.js';
+import { MoveGoal, Owner, Residence } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { builtHomeType } from '../../family/households.js';
 import { nearestCell } from '../../spatial/metric.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
+import { interactionCell } from '../targets/index.js';
 
 // The spacing drives, the two consumers of the planner-tick occupancy state: idle units step off a shared
 // tile so a crowd spreads out, and construction workers claim distinct perimeter cells. Body collision can
@@ -36,6 +39,26 @@ export function deStackIdle(
   if (free === null) return false;
   spacing.claim(free);
   world.add(e, MoveGoal, { cell: free });
+  return true;
+}
+
+/** A resident with no current errand leaves the door clear for incoming deliveries and sleepers.
+ * Approximation: the adjacent idle stand is chosen by the existing workplace yard rule. */
+export function stepOffHomeDoor(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  spacing: PlannerSpacing,
+): boolean {
+  const home = world.tryGet(e, Residence)?.home;
+  if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
+  const door = interactionCell(world, ctx, terrain, home, here);
+  if (here !== door) return false;
+  const stand = loiterCell(world, terrain, e, here, door, spacing);
+  if (stand === here) return false;
+  world.add(e, MoveGoal, { cell: stand });
   return true;
 }
 

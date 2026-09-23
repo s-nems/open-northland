@@ -45,7 +45,7 @@ import { planBreeder } from './husbandry/index.js';
 import { answerNeedInPlace, orderedNeed, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
-import { deStackIdle } from './spacing.js';
+import { deStackIdle, stepOffHomeDoor } from './spacing.js';
 import { holdsPostThroughNeed, planTowerPost } from './tower-post.js';
 import { planTraining } from './training.js';
 
@@ -247,6 +247,7 @@ function planEconomy(
   pass.standing.add(e);
   reconcileCutOff(plan, pass.seatDoors);
   if (world.has(e, Chat) || staysPut(world, e)) return;
+  if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, alert);
   }

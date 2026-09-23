@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Age,
   Building,
+  Carrying,
   ChildOrder,
   CurrentAtomic,
   Female,
@@ -19,7 +20,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
-import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
+import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../src/nav/halfcell.js';
 import {
   ADULT_AGE_TICKS,
   BABY_FEMALE,
@@ -32,6 +33,7 @@ import {
   NEED_DRAIN_UNITS_PER_TICK,
   needBar,
 } from '../../src/systems/index.js';
+import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -691,6 +693,23 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // The ground pile holds 3 food and the larder caps at 5 - she hauls everything reachable home.
     runUntil(sim, () => (sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0) >= 3, 2000, 'hoarding');
     expect(sim.world.has(woman(), ChildOrder)).toBe(false); // no order drove this - the hoard rung did
+  });
+
+  it('a woman carrying food leaves a full larder door instead of retrying its delivery', () => {
+    const { sim, woman, home } = familySim(24);
+    if (sim.terrain === undefined) throw new Error('setup: terrain missing');
+    const door = interactionCell(sim.world, ctxOf(sim), sim.terrain, home());
+    sim.world.add(woman(), Residence, { home: home() });
+    sim.world.add(woman(), Position, positionOfNode(sim.terrain.xOf(door), sim.terrain.yOf(door)));
+    sim.world.add(woman(), Carrying, { goodType: FOOD, amount: 1 });
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, 5);
+
+    sim.run(30);
+
+    expect(sim.world.has(woman(), Carrying)).toBe(false);
+    const at = sim.world.get(woman(), Position);
+    expect(nodeOfPosition(at.x, at.y)).not.toEqual({ hx: sim.terrain.xOf(door), hy: sim.terrain.yOf(door) });
+    expect(sim.world.get(home(), Stockpile).amounts.get(FOOD)).toBe(5);
   });
 
   it('a hoarding wife whose route to the nearest pile failed hauls from the second pile instead', () => {

@@ -1,4 +1,12 @@
-import { Carrying, ownerOf, Position, Residence, Settler } from '../../components/index.js';
+import {
+  Building,
+  Carrying,
+  ownerOf,
+  Position,
+  Residence,
+  Settler,
+  Stockpile,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -6,11 +14,17 @@ import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { isFood } from '../readviews/index.js';
 import { startDrop } from '../settlers/atomics/start.js';
+import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { deliverHome, fetchFrom } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
-import { demandedHomeQualityGoods, homeQualityAllowed, homeQualityUse } from './home-quality.js';
+import {
+  demandedHomeQualityGoods,
+  homeQualityAllowed,
+  homeQualityUse,
+  homeQualityValue,
+} from './home-quality.js';
 import { builtHomeType, storedFoodUnits } from './households.js';
 import type { ExternalQualityIndex } from './quality-search.js';
 
@@ -58,6 +72,12 @@ export function planWomanHoard(
       startDrop(world, ctx, e); // free her hands without consuming a forbidden in-flight household good
       return true;
     }
+    const qualityRoom =
+      quality !== undefined &&
+      world.get(home, Building).level >= quality.minimumHomeLevel &&
+      homeQualityValue(world, home, quality.effect) < quality.capacity;
+    if (!qualityRoom && (!world.has(home, Stockpile) || !hasRoom(world, ctx, home, load.goodType)))
+      return false;
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);
     return true;
   }
