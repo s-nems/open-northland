@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { bcp47Tag } from '../../src/i18n/index.js';
-import { schoolGroups } from '../../src/view/unit-controls/school-dialog.js';
+import { schoolGroups, visibleSchoolChoices } from '../../src/view/unit-controls/school-dialog.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 it.skipIf(!hasRealIr())('lists discovered-capable methods under the profession that uses them', async () => {
@@ -27,4 +27,18 @@ it.skipIf(!hasRealIr())('lists discovered-capable methods under the profession t
     const methods = group.courses.filter((course) => course.target === 'good').map((course) => course.label);
     expect(methods).toEqual([...methods].sort(compare));
   }
+  const smith = content.jobs.find((row) => row.id === 'smith');
+  const joiner = content.jobs.find((row) => row.id === 'joiner');
+  const plate = content.goods.find((row) => row.id === 'armor_plate');
+  if (smith === undefined || joiner === undefined || plate === undefined)
+    throw new Error('missing school choice content');
+  const visible = visibleSchoolChoices(
+    groups,
+    smith.typeId,
+    (course) =>
+      (course.target === 'good' && course.typeId === plate.typeId) ||
+      (course.target === 'job' && course.typeId === joiner.typeId),
+  );
+  expect(visible.methods.map((course) => course.typeId)).toEqual([plate.typeId]);
+  expect(visible.professions.map((group) => group.jobType)).toEqual([joiner.typeId]);
 });

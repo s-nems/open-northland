@@ -33,6 +33,24 @@ export interface SchoolGroup {
   readonly courses: readonly SchoolCourse[];
 }
 
+export function visibleSchoolChoices(
+  groups: readonly SchoolGroup[],
+  currentJob: number | undefined,
+  discovered: (course: SchoolCourse) => boolean,
+): { readonly methods: readonly SchoolCourse[]; readonly professions: readonly SchoolGroup[] } {
+  return {
+    methods:
+      groups
+        .find((group) => group.jobType === currentJob)
+        ?.courses.filter((course) => course.target === 'good' && discovered(course)) ?? [],
+    professions: groups.filter(
+      (group) =>
+        group.jobType !== currentJob &&
+        group.courses.some((course) => course.target === 'job' && discovered(course)),
+    ),
+  };
+}
+
 /** Courses are grouped by the trade that uses them, with each group and its methods in display order. */
 export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[] {
   const tribe = content.tribes.find((row) => row.typeId === tribeId);
@@ -100,64 +118,89 @@ export function openSchoolDialog(
   const tribe = content.tribes.find((row) => row.typeId === tribeId);
   if (tribe === undefined) return;
   const copy = messages().hud;
-  const dialog = el('dialog', `${DIALOG_STYLE};max-width:36rem;max-height:75vh;overflow:auto`);
-  dialog.append(el('h2', '', copy.schoolTitle), el('p', '', copy.schoolHint));
-  const full = schoolFull(content, snapshot, house, students);
-  const learners = students.map((id) => entityById(snapshot, id));
-  const wrongTribe = learners.some((learner) => learner === undefined || settlerTribeOf(learner) !== tribeId);
-  for (const group of schoolGroups(content, tribe.typeId)) {
-    const section = el('section', 'margin:12px 0');
-    section.append(el('h3', 'margin:0 0 5px', group.label));
-    for (const course of group.courses) {
-      const button = el(
-        'button',
-        `${BUTTON_STYLE};display:block;width:100%;margin:4px 0;text-align:left`,
-        course.target === 'job' ? copy.schoolProfession : course.label,
-      );
-      const unlock = status?.(course.target, course.typeId, tribe.typeId, ownerPlayerOf(student));
-      const wrongTrade =
-        course.target === 'good' &&
-        learners.some((learner) => learner === undefined || settlerJobType(learner) !== group.jobType);
-      const learned = learners.every(
-        (learner) =>
-          learner !== undefined &&
-          settlerLearnedOf(learner.components, course.target).includes(course.typeId),
-      );
-      let refusal: string | null = null;
-      if (wrongTribe) refusal = copy.schoolWrongTribe;
-      else if (wrongTrade) refusal = copy.schoolRequiresProfession.replace('{profession}', group.label);
-      else if (unlock !== undefined && !unlock.allowed) refusal = copy.technologyForbidden;
-      else if (unlock !== undefined && !unlock.enabled) refusal = copy.schoolUndiscovered;
-      else if (learned) refusal = copy.schoolLearned;
-      else if (full) refusal = copy.schoolFull;
-      if (refusal !== null) {
-        button.disabled = true;
-        button.style.opacity = '0.5';
-        button.title = refusal;
-        button.append(el('small', 'display:block;opacity:0.8', refusal));
-      }
-      button.addEventListener('click', () => {
-        cue?.('confirm');
-        for (const entity of students)
-          enqueue({
-            kind: 'learn',
-            entity: entity as Entity,
-            house: house as Entity,
-            target: course.target,
-            typeId: course.typeId,
-          });
-        dialog.close();
-      });
-      section.append(button);
-    }
-    dialog.append(section);
-  }
-  const close = el('button', BUTTON_STYLE, copy.schoolClose);
+  const dialog = el(
+    'dialog',
+    `${DIALOG_STYLE};padding:10px;width:min(28rem,calc(100vw - 24px));box-sizing:border-box;max-height:70vh;overflow:auto`,
+  );
+  const header = el('div', 'display:flex;align-items:center;justify-content:space-between;gap:8px');
+  header.append(el('h2', 'font-size:17px;margin:0', copy.schoolTitle));
+  const close = el('button', `${BUTTON_STYLE};padding:2px 7px;font-size:16px`, '×');
+  close.title = copy.schoolClose;
+  close.setAttribute('aria-label', copy.schoolClose);
   close.addEventListener('click', () => {
     cue?.('confirm');
     dialog.close();
   });
-  dialog.append(close);
+  header.append(close);
+  dialog.append(header);
+  const full = schoolFull(content, snapshot, house, students);
+  const learners = students.map((id) => entityById(snapshot, id));
+  const wrongTribe = learners.some((learner) => learner === undefined || settlerTribeOf(learner) !== tribeId);
+  const currentJob = learners.every(
+    (learner) => learner !== undefined && settlerJobType(learner) === settlerJobType(student),
+  )
+    ? settlerJobType(student)
+    : undefined;
+  const groups = schoolGroups(content, tribe.typeId);
+  const choices = visibleSchoolChoices(
+    groups,
+    currentJob,
+    (course) => status?.(course.target, course.typeId, tribe.typeId, ownerPlayerOf(student)).enabled ?? true,
+  );
+  const addButton = (grid: HTMLElement, course: SchoolCourse, label: string): void => {
+    const button = el(
+      'button',
+      `${BUTTON_STYLE};min-height:26px;padding:3px 6px;text-align:left;line-height:1.15`,
+      label,
+    );
+    button.title = label;
+    const learned = learners.every(
+      (learner) =>
+        learner !== undefined && settlerLearnedOf(learner.components, course.target).includes(course.typeId),
+    );
+    let refusal: string | null = null;
+    if (wrongTribe) refusal = copy.schoolWrongTribe;
+    else if (learned) refusal = copy.schoolLearned;
+    else if (full) refusal = copy.schoolFull;
+    if (refusal !== null) {
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      button.title = `${label}: ${refusal}`;
+      button.setAttribute('aria-label', button.title);
+    }
+    button.addEventListener('click', () => {
+      cue?.('confirm');
+      for (const entity of students)
+        enqueue({
+          kind: 'learn',
+          entity: entity as Entity,
+          house: house as Entity,
+          target: course.target,
+          typeId: course.typeId,
+        });
+      dialog.close();
+    });
+    grid.append(button);
+  };
+  const addSection = (title: string): HTMLElement => {
+    const section = el('section', 'margin:7px 0 0');
+    section.append(el('h3', 'font-size:12px;margin:0 0 4px', title));
+    const grid = el('div', 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px');
+    section.append(grid);
+    dialog.append(section);
+    return grid;
+  };
+  if (choices.methods.length > 0) {
+    const grid = addSection(groups.find((group) => group.jobType === currentJob)?.label ?? copy.schoolTitle);
+    for (const method of choices.methods) addButton(grid, method, method.label);
+  }
+  if (choices.professions.length > 0) {
+    const grid = addSection(copy.schoolProfessions);
+    for (const group of choices.professions) {
+      const course = group.courses.find((row) => row.target === 'job');
+      if (course !== undefined) addButton(grid, course, group.label);
+    }
+  }
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
   document.body.append(dialog);
   dialog.showModal();

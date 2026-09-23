@@ -101,11 +101,7 @@ export const enGame = {
     upgrade: 'Upgrade',
     schoolProgress: 'Learning {target}: {seconds}s left',
     schoolTitle: 'School',
-    schoolHint:
-      'Choose a profession or production method. Your settlement must discover advanced methods first.',
-    schoolProfession: 'Learn profession',
-    schoolUndiscovered: 'Your settlement has not discovered this yet',
-    schoolRequiresProfession: 'Choose this profession first: {profession}',
+    schoolProfessions: 'Professions',
     schoolWrongTribe: 'Selected settlers belong to different tribes',
     schoolClose: 'Close',
     schoolFull: 'The school is full',

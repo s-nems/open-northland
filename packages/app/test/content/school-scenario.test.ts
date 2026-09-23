@@ -148,7 +148,7 @@ it.skipIf(!hasRealIr())(
     for (const [index, good] of goods.entries()) {
       const pupil = pupils[index];
       if (good === undefined || pupil === undefined) throw new Error('missing course pupil');
-      expect(sim.world.get(pupil, components.Settler).learned?.good).toContain(good.typeId);
+      expect(sim.world.get(pupil, components.Settler).learned?.good).toEqual([good.typeId]);
     }
     expect(sim.checkInvariants()).toEqual([]);
   },
