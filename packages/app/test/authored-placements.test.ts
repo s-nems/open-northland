@@ -6,6 +6,38 @@ import { authoredMap } from './support/world-maps.js';
 /** The pure authored-entity join: a decoded map's `map.cif` StaticObjects → sim placements. */
 
 describe('resolveAuthoredPlacements', () => {
+  it('keeps the first resolved house at an anchor without importing a duplicate owner or stock', () => {
+    const first = { name: 'viking barracks', level: 0, player: 1, hx: 8, hy: 4, missionId: 70 };
+    const { placements, skipped } = resolveAuthoredPlacements(
+      {
+        buildings: [
+          { ...first, name: 'missing house' },
+          { ...first, goods: [{ name: 'wheat', count: 3 }] },
+          { ...first, player: 2, missionId: 71, goods: [{ name: 'wheat', count: 99 }] },
+          { ...first, player: 2, hx: 2, hy: 2 },
+        ],
+        humans: [],
+        animals: [],
+      },
+      AUTHORED_ROWS,
+      authoredMap(),
+    );
+    expect(skipped).toBe(2);
+    expect(placements).toEqual([
+      {
+        kind: 'building',
+        typeId: 30,
+        tribe: 1,
+        x: 8,
+        y: 4,
+        owner: 1,
+        missionId: 70,
+        goods: [{ good: 4, amount: 3 }],
+      },
+      { kind: 'building', typeId: 30, tribe: 1, x: 2, y: 2, owner: 2, missionId: 70 },
+    ]);
+  });
+
   it('joins by name, passes half-cells verbatim, and stamps the 0-based players as owners', () => {
     const { placements, skipped, droppedGoods, skippedAnimals } = resolveAuthoredPlacements(
       AUTHORED_ENTITIES,

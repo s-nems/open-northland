@@ -67,7 +67,8 @@ export type AuthoredPlacement =
  * into sim placements, joining by name against the IR rows. `sethouse` and `sethuman` player columns are
  * already 0-based, so they land on sim owners verbatim, and half-cells pass through verbatim because the
  * sim grid is the same `2W×2H` lattice the records address. Unresolvable, decorative, or out-of-bounds
- * records are dropped and counted, animals on their own counter.
+ * records are dropped and counted, animals on their own counter. Only the first resolved building
+ * at an anchor is imported; overlapping source rows must not create a second owner at that point.
  *
  * An `attachtohouse` is routed by the kind of the building standing on its anchor, not by its `slot`
  * column. An approximation: reading `slot` itself as the role (1 home, 2 workplace) fits 172 of the 180
@@ -101,12 +102,16 @@ export function resolveAuthoredPlacements(
   // The kind of the building placed on each anchor, the key an `attachtohouse` resolves through. Only
   // placed buildings enter it, so an attachment naming a skipped house is dropped with it.
   const kindByAnchor = new Map<string, string>();
+  const buildingAnchors = new Set<string>();
   for (const b of entities.buildings) {
     const hit = joins.buildingBob(b.name, b.level);
-    if (hit === undefined || !inBounds(b.hx, b.hy)) {
+    const key = anchorKey(b.hx, b.hy);
+    if (hit === undefined || !inBounds(b.hx, b.hy) || buildingAnchors.has(key)) {
       skipped++;
       continue;
     }
+    // Approximation: first valid row wins. Exact overlap handling in the original is unconfirmed.
+    buildingAnchors.add(key);
     // A missing good must not cost the map its house, so an unresolvable name is only counted.
     const goods = (b.goods ?? []).flatMap((g) => {
       const good = joins.good(g.name);
@@ -126,11 +131,8 @@ export function resolveAuthoredPlacements(
       ...(goods.length > 0 ? { goods } : {}),
       ...(b.missionId !== undefined ? { missionId: b.missionId } : {}),
     });
-    // First placement wins, to agree with the sim's lowest-id anchor lookup as long as the sim accepts
-    // that placement; no decoded map shares an anchor between two kinds.
     const kind = joins.buildingKind(hit.typeId);
-    const key = anchorKey(b.hx, b.hy);
-    if (kind !== undefined && !kindByAnchor.has(key)) kindByAnchor.set(key, kind);
+    if (kind !== undefined) kindByAnchor.set(key, kind);
   }
   // A `setname` names the first human carrying its id, and a name is spent once given. No corpus map
   // repeats an id; the first row wins here (approximation).

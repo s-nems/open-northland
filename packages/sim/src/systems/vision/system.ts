@@ -111,7 +111,7 @@ export const visionSystem: System = (world, ctx) => {
 
   // Contact pass over the settled masks: a viewer meets every owner whose entity stands on a cell the
   // viewer's group has explored, in sight now or not (reading: the original tests the viewer's once-set
-  // explored bit under the entity every tick). Any owned entity counts, eye or not, and every member of
+  // explored bit under the entity every tick). Signposts do not introduce their owner; every member of
   // a group with a mask views through it. The met bits are hoisted out of the loop so a saturated world
   // pays per-pair integer tests only; the list is re-read because a stamp may have allocated a group's
   // first mask.
@@ -121,6 +121,7 @@ export const visionSystem: System = (world, ctx) => {
       fog.visionGroupMembers(group).map((viewer) => ({ viewer, bits: metContactBits(world, viewer) })),
     );
   for (const e of world.query(Owner, Position)) {
+    if (world.has(e, Signpost)) continue;
     const owner = world.get(e, Owner).player;
     if (!isValidPlayer(owner)) continue; // never meetable - skip before any per-entity work
     const ownerBit = 1 << owner;
