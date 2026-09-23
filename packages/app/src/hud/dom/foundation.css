@@ -2137,10 +2137,10 @@ body.on-drag-scroll-cursor-hidden * {
   max-height: calc(100% - 56px);
 }
 .on-hud .on-window--choices .on-window__head {
-  padding: 9px 12px;
+  padding: 6px 10px;
 }
 .on-hud .on-window--choices .on-window__title {
-  font-size: 18px;
+  font-size: 17px;
 }
 .on-hud .on-window--choices .on-window__body {
   padding: 0;
@@ -2149,7 +2149,7 @@ body.on-drag-scroll-cursor-hidden * {
   flex-direction: column;
 }
 .on-hud .on-choice-tools {
-  padding: 9px 10px 7px;
+  padding: 6px 10px 5px;
   flex-shrink: 0;
 }
 .on-hud .on-choice-context {
@@ -2158,10 +2158,10 @@ body.on-drag-scroll-cursor-hidden * {
   gap: 12px;
   color: var(--muted);
   font-size: 12px;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
 }
 .on-hud .on-window--choices .on-choice-search {
-  min-height: 28px;
+  min-height: 25px;
 }
 .on-hud .on-choice-list {
   overflow-y: auto;
@@ -2172,7 +2172,7 @@ body.on-drag-scroll-cursor-hidden * {
   scrollbar-width: thin;
 }
 .on-hud .on-choice-group {
-  margin: 0 0 9px;
+  margin: 0 0 6px;
 }
 .on-hud .on-choice-group:last-child {
   margin-bottom: 0;
@@ -2180,8 +2180,8 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-choice-group h3 {
   display: flex;
   justify-content: space-between;
-  margin: 0 0 5px;
-  padding: 3px 0;
+  margin: 0 0 3px;
+  padding: 2px 0;
   color: var(--bronze);
   font-size: 11px;
   font-weight: 700;
@@ -2192,14 +2192,14 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-choice-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+  gap: 3px;
 }
 .on-hud .on-window--choices .on-choice-row {
   justify-content: space-between;
-  min-height: 29px;
-  padding: 4px 7px;
+  min-height: 25px;
+  padding: 3px 7px;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.15;
   gap: 6px;
 }
