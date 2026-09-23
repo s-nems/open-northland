@@ -10,7 +10,7 @@ import {
   spawnBoundGatherer,
   staffBuildingFully,
 } from '../../game/sandbox/index.js';
-import { createSceneSim } from '../runtime.js';
+import { createSceneSim, holdsSometimeDuring } from '../runtime.js';
 import { yardGood } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 import {
@@ -132,13 +132,10 @@ export const sandboxScene: SceneDefinition = {
       predicate: (sim) => CAMPS.some((camp) => yardGood(sim, camp.good) > 0),
     },
     {
-      label: 'bored crews chatter during an idle sampling window (gossip runs needs-off)',
+      label: 'bored crews chatter during the scene (gossip runs needs-off)',
       predicate: (sim) => {
-        for (let tick = 0; tick < 200; tick++) {
-          for (const _ of sim.world.query(Chat)) return true;
-          sim.step();
-        }
-        return false;
+        const chatting = (sample: Simulation): boolean => sample.world.query(Chat).next().done === false;
+        return chatting(sim) || holdsSometimeDuring(sandboxScene, RUN_TICKS, chatting);
       },
     },
     {

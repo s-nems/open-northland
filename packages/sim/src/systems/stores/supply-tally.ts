@@ -2,7 +2,7 @@ import { Carrying, SupplyRun } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 
 /**
- * Tick-local tallies of construction material committed by live {@link SupplyRun} errands. `inbound` is
+ * Tick-local tallies of supply units committed by live {@link SupplyRun} errands. `inbound` is
  * keyed by destination site and `reservedAtSource` by the store the pickup leg is walking to. Every stamp
  * and release folds into both in lockstep, so a mid-pass read matches a full store scan.
  *

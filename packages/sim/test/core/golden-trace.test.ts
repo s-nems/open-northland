@@ -260,7 +260,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('160d1ef4');
+    expect(run.hash).toBe('5fe3f708');
   });
 
   it('matches the golden atomic-action trace', () => {

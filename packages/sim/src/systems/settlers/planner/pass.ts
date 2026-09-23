@@ -14,7 +14,6 @@ import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harv
 import { ConstructionTaskClaims, WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
-import { anotherSystemOwns } from './replan.js';
 import { PlannerSpacing } from './spacing.js';
 
 /**
@@ -67,7 +66,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     externalQuality: new ExternalQualityIndex(world, ctx, terrain),
     spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
-    seatClaims: new WorkSeatClaims((carrier) => !anotherSystemOwns(world, carrier)),
+    seatClaims: new WorkSeatClaims(),
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),

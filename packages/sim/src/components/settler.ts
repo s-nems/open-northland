@@ -120,7 +120,7 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 );
 
 /**
- * A settler's live construction-supply errand, cleared and re-stamped at the top of its own next planning
+ * A settler's live construction or workshop supply errand, cleared and re-stamped at the top of its own next planning
  * pass. Settlers planned later subtract these from a site's outstanding need and, while the pickup leg is
  * live, from the chosen source's available stock. `source` is null after pickup, on the delivery leg.
  */

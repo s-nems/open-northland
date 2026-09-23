@@ -119,8 +119,8 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
     cell = interactionCell(world, ctx, terrain, store, here);
   }
   if (cell === null) return;
-  // Stamp the site errand so later-planned settlers count it as inbound and do not re-fetch the same unit.
-  if (world.has(store, UnderConstruction)) {
+  // A supply errand remains committed on its delivery leg, with no source stock held anymore.
+  if (world.has(store, UnderConstruction) || world.tryGet(entity, JobAssignment)?.workplace === store) {
     stampSupplyRun(world, entity, inbound, {
       site: store,
       goodType: load.goodType,

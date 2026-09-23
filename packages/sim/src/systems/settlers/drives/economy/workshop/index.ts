@@ -1,14 +1,5 @@
 import type { Recipe } from '@open-northland/data';
-import {
-  Building,
-  CARRY_CAPACITY,
-  Carrying,
-  JobAssignment,
-  Owner,
-  Production,
-  Settler,
-  Stockpile,
-} from '../../../../../components/index.js';
+import { Building, CARRY_CAPACITY, Owner, Production, Stockpile } from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import {
@@ -18,19 +9,14 @@ import {
 } from '../../../../economy/production.js';
 import { recipeOutputsEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
-import {
-  bankedSlot,
-  isWorkplaceOperator,
-  mergedRecipeOf,
-  recipeConsumes,
-  recipesByProductOf,
-  stockCapacity,
-} from '../../../../stores/index.js';
+import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
+import { stampSupplyRun } from '../../../../stores/supply-tally.js';
+import { WorkshopWorkforce } from '../../../../stores/workshop-workforce.js';
 import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
-import { boundWorkplaceTarget, interactionCell } from '../../../targets/index.js';
+import { interactionCell } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
@@ -55,59 +41,26 @@ export interface WorkSeats {
 
 /** Per-planner-pass seat claims and incoming bound loads, indexed only when a workshop needs them. */
 export class WorkSeatClaims extends Map<Entity, WorkSeats> {
-  private inboundLoads: Map<Entity, Map<number, number>> | undefined;
-  private recipesByWorkplace = new Map<Entity, Recipe[]>();
-
-  constructor(private readonly mayDeliver: (carrier: Entity) => boolean) {
-    super();
-  }
+  private workforce: WorkshopWorkforce | undefined;
+  private readonly recipesByWorkplace = new Map<Entity, Recipe[]>();
 
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
     let recipes = this.recipesByWorkplace.get(workplace);
-    if (recipes !== undefined) return recipes;
-    recipes = [];
-    const seen = new Set<Recipe>();
-    for (const worker of world.query(JobAssignment, Settler)) {
-      if (!this.mayDeliver(worker)) continue;
-      const settler = world.get(worker, Settler);
-      if (settler.jobType === null) continue;
-      if (boundWorkplaceTarget(world, ctx, worker, settler.jobType, settler.tribe) !== workplace) continue;
-      for (const recipe of operatorRecipes(world, ctx, workplace, worker)) {
-        if (seen.has(recipe)) continue;
-        seen.add(recipe);
-        recipes.push(recipe);
+    if (recipes === undefined) {
+      this.workforce ??= new WorkshopWorkforce(world, ctx);
+      const selected = new Set<Recipe>();
+      for (const worker of this.workforce.operatorsAt(workplace)) {
+        for (const recipe of operatorRecipes(world, ctx, workplace, worker)) selected.add(recipe);
       }
+      recipes = [...selected];
+      this.recipesByWorkplace.set(workplace, recipes);
     }
-    this.recipesByWorkplace.set(workplace, recipes);
     return recipes;
   }
 
   inboundOf(world: World, ctx: PlannerContext['ctx'], workplace: Entity, goodType: number): number {
-    if (this.inboundLoads === undefined) {
-      this.inboundLoads = new Map();
-      for (const e of world.query(Carrying, JobAssignment, Settler)) {
-        if (!this.mayDeliver(e)) continue;
-        const load = world.get(e, Carrying);
-        const settler = world.get(e, Settler);
-        if (settler.jobType === null) continue;
-        const destination = boundWorkplaceTarget(world, ctx, e, settler.jobType, settler.tribe);
-        if (destination === null) continue;
-        if (!recipeConsumes(mergedRecipeOf(world, ctx, destination)?.inputs, load.goodType)) continue;
-        if (bankedSlot(world, ctx, destination, load.goodType).goodType !== load.goodType) continue;
-        if (
-          stockCapacity(world, ctx, destination, load.goodType) <=
-          (world.get(destination, Stockpile).amounts.get(load.goodType) ?? 0)
-        )
-          continue;
-        let goods = this.inboundLoads.get(destination);
-        if (goods === undefined) {
-          goods = new Map();
-          this.inboundLoads.set(destination, goods);
-        }
-        goods.set(load.goodType, (goods.get(load.goodType) ?? 0) + load.amount);
-      }
-    }
-    return this.inboundLoads.get(workplace)?.get(goodType) ?? 0;
+    this.workforce ??= new WorkshopWorkforce(world, ctx);
+    return this.workforce.incomingOf(workplace, goodType);
   }
 }
 
@@ -162,7 +115,7 @@ export function planProducer(
       unreachableGoalVeto(world, ctx, plan.entity),
     );
     if (source !== null) {
-      routeToInputSource(plan, source);
+      routeToInputSource(plan, workplace, source);
       return;
     }
   }
@@ -178,7 +131,7 @@ export function planProducer(
           seatClaims.inboundOf(world, ctx, workplace, input.goodType) > 0,
       )
     ) {
-      loiterByDoor(plan, workplace, spacing, false);
+      holdInsideWorkplace(plan, workplace);
       return;
     }
   }
@@ -215,7 +168,7 @@ export function planProducer(
     unreachableGoalVeto(world, ctx, plan.entity),
   );
   if (source !== null) {
-    routeToInputSource(plan, source);
+    routeToInputSource(plan, workplace, source);
     return;
   }
 
@@ -250,7 +203,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     unreachableGoalVeto(world, ctx, plan.entity),
   );
   if (source !== null) {
-    routeToInputSource(plan, source);
+    routeToInputSource(plan, workplace, source);
     return;
   }
 
@@ -266,9 +219,15 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
  * carrier: the original reserves exactly one against both ends of the walk before it sets off
  * (+1 at the work house, -1 at the source), so a recipe wanting two of a good is two walks.
  */
-function routeToInputSource(plan: PlannerContext, source: MissingInputSource): void {
+function routeToInputSource(plan: PlannerContext, workplace: Entity, source: MissingInputSource): void {
   const { world, ctx, terrain, entity, here } = plan;
   const worker = plan;
+  stampSupplyRun(world, entity, plan.inbound, {
+    site: workplace,
+    goodType: source.goodType,
+    amount: CARRY_CAPACITY,
+    source: source.kind === 'fetch' ? source.store : source.utility,
+  });
   if (source.kind === 'fetch') {
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
       startPickup(world, ctx, entity, worker, source.store, source.goodType, CARRY_CAPACITY),

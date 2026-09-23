@@ -38,22 +38,30 @@ export function startCycleFor(
   operator: Entity,
   recipes: ReadonlyMap<number, Recipe>,
 ): void {
+  const choice = nextCycleFor(world, ctx, building, operator, recipes);
+  if (choice === undefined) return;
+  beginCycle(world, building, choice.recipe, choice.good);
+  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
+  world.mut(operator, CraftSelection).cursor = choice.nextCursor;
+}
+
+export function nextCycleFor(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operator: Entity,
+  recipes: ReadonlyMap<number, Recipe>,
+): { good: number; recipe: Recipe; nextCursor: number } | undefined {
   const pool = craftablePool(world, ctx, operator, recipes);
-  if (pool.length === 0) return; // no recipes at all, or none this operator has earned yet
-  const selection = world.tryGet(operator, CraftSelection);
-  const cursor = selection?.cursor ?? 0;
+  const cursor = world.tryGet(operator, CraftSelection)?.cursor ?? 0;
   for (let i = 0; i < pool.length; i++) {
     const good = pool[(cursor + i) % pool.length];
-    const recipe = good !== undefined ? recipes.get(good) : undefined;
+    const recipe = good === undefined ? undefined : recipes.get(good);
     if (good === undefined || recipe === undefined) continue;
-    if (!canStartCycle(world, ctx, building, recipe)) {
-      if (waitingForRecipeInput(world, ctx, building, recipe)) return;
-      continue;
+    if (canStartCycle(world, ctx, building, recipe)) {
+      return { good, recipe, nextCursor: (cursor + i + 1) % pool.length };
     }
-    beginCycle(world, building, recipe, good);
-    if (selection === undefined) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
-    world.mut(operator, CraftSelection).cursor = (cursor + i + 1) % pool.length;
-    return;
+    if (waitingForRecipeInput(world, ctx, building, recipe)) return;
   }
 }
 

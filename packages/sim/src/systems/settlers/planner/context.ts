@@ -27,7 +27,7 @@ export interface PlannerContext extends PlannerWorker {
   readonly entity: Entity;
   readonly here: NodeId;
   readonly targets: TargetCandidates;
-  /** Tick-shared tally of units committed to each construction site by live supply errands. */
+  /** Tick-shared tally of units committed to each destination by live supply errands. */
   readonly inbound: InboundSupplyTally;
   /** This settler's signpost-navigation confinement, or null when unlimited. Every drive gates its
    *  searched targets' interaction cells on it; only a settler's bound targets, its own workplace, flag

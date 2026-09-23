@@ -1,19 +1,15 @@
 import { Building, Person, Position, Production, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
-import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
+import { WorkshopWorkforce } from '../stores/workshop-workforce.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
-import {
-  anyCycleStartable,
-  canStartCycle,
-  depositCycleOutput,
-  startFirstStartable,
-} from './production/cycles.js';
+import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
 import { chargeMilitaryPietyCost } from './production/piety.js';
-import { craftablePool, startCycleFor } from './production/rotation.js';
+import { incomingRecipeReservations } from './production/reservations.js';
+import { nextCycleFor, startCycleFor } from './production/rotation.js';
 
 export { accrueDepositBonus } from './production/bonus-output.js';
 export {
@@ -21,7 +17,6 @@ export {
   outputRoomForCycles,
   shelfBlockedOutput,
   startableCycleCount,
-  waitingForRecipeInput,
 } from './production/cycles.js';
 export { craftablePool, skipUnfundedRecipe } from './production/rotation.js';
 
@@ -43,6 +38,7 @@ export const productionSystem: System = (world, ctx) => {
   // pays no scan or sort; deferring moves nothing, since the constructor reads only the Settler+Position
   // query, which the loops below never mutate.
   let operatorsByNode: NodeBuckets | undefined;
+  let workforce: WorkshopWorkforce | undefined;
   const operatorIndex = (): NodeBuckets => {
     operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Person, Position)));
     return operatorsByNode;
@@ -97,17 +93,35 @@ export const productionSystem: System = (world, ctx) => {
     // The seats past the running batches, each taking its own product choice; a failed choice skips just
     // that operator.
     const next = staffing.operators.slice(running);
-    const inputCount = (operator: Entity): number =>
-      Math.max(
-        0,
-        ...craftablePool(world, ctx, operator, recipes).map((good) => {
-          const recipe = recipes.get(good);
-          return recipe !== undefined && canStartCycle(world, ctx, e, recipe) ? recipe.inputs.length : 0;
-        }),
-      );
-    next.sort((a, b) => inputCount(b) - inputCount(a));
-    for (const operator of next) {
-      startCycleFor(world, ctx, e, operator, recipes);
+    // Authored arbitration: give the actual next recipe needing more input units first access to
+    // shared stock. Re-evaluate after each start; another operator may have consumed its ingredients.
+    if (recipes.size > 1) workforce ??= new WorkshopWorkforce(world, ctx);
+    while (next.length > 0) {
+      const reserved =
+        workforce !== undefined && recipes.size > 1
+          ? incomingRecipeReservations(world, ctx, e, recipes, workforce, next)
+          : new Map<number, number>();
+      const stock = world.get(e, Stockpile).amounts;
+      let winner = -1;
+      let mostInputs = -1;
+      for (const [index, operator] of next.entries()) {
+        const choice = nextCycleFor(world, ctx, e, operator, recipes);
+        if (choice === undefined) continue;
+        if (
+          choice.recipe.inputs.some(
+            (input) => (stock.get(input.goodType) ?? 0) - input.amount < (reserved.get(input.goodType) ?? 0),
+          )
+        )
+          continue;
+        const units = choice.recipe.inputs.reduce((sum, input) => sum + input.amount, 0);
+        if (units > mostInputs) {
+          winner = index;
+          mostInputs = units;
+        }
+      }
+      if (winner < 0) break;
+      const operator = next.splice(winner, 1)[0];
+      if (operator !== undefined) startCycleFor(world, ctx, e, operator, recipes);
     }
   }
 };

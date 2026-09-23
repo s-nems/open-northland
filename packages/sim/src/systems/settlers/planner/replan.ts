@@ -1,9 +1,7 @@
 import {
   Chat,
   CurrentAtomic,
-  chatHoldsSettler,
   Engagement,
-  FamilyDuty,
   Fleeing,
   Frightened,
   Garrison,
@@ -30,6 +28,7 @@ import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
+import { anotherSystemOwns } from '../action-owner.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
 import { topsUpAtHome } from '../drives/at-home.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
@@ -91,22 +90,7 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
   clearNavState(world, e);
 }
 
-/**
- * Whether a system outside the planner currently owns `e`'s actions, so the economy ladder must not
- * re-task it. Each marker's owner clears it when its episode ends.
- *
- * The DEFEND-stance hold is deliberately not here: it lives in the drive ladder instead.
- */
-export function anotherSystemOwns(world: World, e: Entity): boolean {
-  return (
-    world.has(e, Engagement) ||
-    world.has(e, Fleeing) ||
-    world.has(e, PlayerOrder) ||
-    world.has(e, Wedding) ||
-    world.has(e, FamilyDuty) ||
-    chatHoldsSettler(world, e)
-  );
-}
+export { anotherSystemOwns } from '../action-owner.js';
 
 /**
  * Reconcile `e`'s leftover intent and report whether the drive ladder should run for it this tick.
