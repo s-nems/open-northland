@@ -206,7 +206,19 @@ export function buildUnitPanelModel(
       home:
         def?.kind === 'home'
           ? {
-              families: (familiesByHome(snapshot).get(entityId) ?? []).map((f) => ({ members: f.members })),
+              families: (familiesByHome(snapshot).get(entityId) ?? []).map((f) => ({
+                members: [
+                  ...f.members.slice(0, f.adults).sort((a, b) => {
+                    const left = entityById(snapshot, a);
+                    const right = entityById(snapshot, b);
+                    return (
+                      Number(left !== undefined && isFemale(left)) -
+                      Number(right !== undefined && isFemale(right))
+                    );
+                  }),
+                  ...f.members.slice(f.adults),
+                ],
+              })),
               capacity: def.homeSize,
             }
           : null,

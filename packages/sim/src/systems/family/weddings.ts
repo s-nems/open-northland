@@ -15,6 +15,7 @@ import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { stepOut } from '../settlers/indoors.js';
 
 /** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
@@ -96,6 +97,9 @@ function drivePair(
     return;
   }
   if (busyA || busyB) return; // let a running action finish first
+  // A craft worker remained inside to finish its batch. The ceremony and the walk both happen outdoors.
+  stepOut(world, a);
+  stepOut(world, b);
   const pa = world.tryGet(a, Position);
   const pb = world.tryGet(b, Position);
   if (pa === undefined || pb === undefined) {

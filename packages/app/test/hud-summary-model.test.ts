@@ -40,6 +40,7 @@ const TYPE_BY_ID = new Map<string, number>([
   ['candy', 20],
   ['meat', 21],
   ['sheep', 57],
+  ['cattle', 58],
   ['chest', 64],
   ['water', 101],
 ]);
@@ -140,12 +141,13 @@ describe('summaryStocks', () => {
     expect(equipment?.columns[0]?.map((row) => row.goodId)).toContain('shoes');
   });
 
-  it('appends a stocked good outside every list to the shorter "other" column and counts it there', () => {
+  it('appends an unlisted stocked good to "other", excluding live herds', () => {
     const out = summaryStocks(
       model(
         [],
         [
           { goodType: typeOf('sheep'), amount: 6 },
+          { goodType: typeOf('cattle'), amount: 4 },
           { goodType: typeOf('chest'), amount: 1 },
           { goodType: typeOf('coin'), amount: 3 },
           { goodType: 999, amount: 5 }, // no catalog id: not a good
@@ -154,13 +156,12 @@ describe('summaryStocks', () => {
       goodIdOf,
     );
     const other = out[4];
-    expect(other?.total).toBe(10);
-    // Both columns list seven goods, so the tie sends the extras to the first one.
-    expect(other?.columns[0]?.slice(-2)).toEqual([
-      { goodId: 'sheep', amount: 6 },
-      { goodId: 'chest', amount: 1 },
-    ]);
-    expect(other?.columns[1]?.some((row) => row.goodId === 'sheep')).toBe(false);
+    expect(other?.total).toBe(4);
+    // Both columns list seven goods, so the tie sends the extra to the first one.
+    expect(other?.columns[0]?.at(-1)).toEqual({ goodId: 'chest', amount: 1 });
+    expect(other?.columns.flat().some((row) => row.goodId === 'sheep' || row.goodId === 'cattle')).toBe(
+      false,
+    );
     expect(
       out.flatMap((c) => c.columns.flat()).some((row) => row.goodId === 'chest' && row.amount === 0),
     ).toBe(false);

@@ -21,7 +21,7 @@ export interface HudSummaryDeps {
   readonly goodLabel: (goodId: string) => string;
 }
 
-/** The counters left of the clock: the women and men, then the five stock categories, each with a
+/** The counters left of the clock: the men and women, then the five stock categories, each with a
  *  breakdown that opens on hover or focus and stays while the pointer moves into it. */
 export interface HudSummary {
   readonly element: HTMLElement;
@@ -166,12 +166,12 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   };
 
   // Residents: the two grown counters over one breakdown; the children live in the breakdown only.
-  const women = countButton(copy.women, FIGURE.woman);
   const men = countButton(copy.men, FIGURE.man);
-  const residents = group([women, men], copy.residents, false);
+  const women = countButton(copy.women, FIGURE.woman);
+  const residents = group([men, women], copy.residents, false);
   const SUB = 'on-tip__row--sub';
-  const womenRow = tipRow(copy.women);
   const menRow = tipRow(copy.men);
+  const womenRow = tipRow(copy.women);
   const workersRow = tipRow(copy.workers, SUB);
   const soldiersRow = tipRow(copy.soldiers, SUB);
   const childrenRow = tipRow(copy.children);
@@ -179,10 +179,10 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   const boysRow = tipRow(copy.boys, SUB);
   const totalRow = tipRow(copy.total, 'on-tip__row--total');
   residents.tip.append(
-    womenRow.row,
     menRow.row,
     workersRow.row,
     soldiersRow.row,
+    womenRow.row,
     childrenRow.row,
     girlsRow.row,
     boysRow.row,

@@ -91,8 +91,8 @@ export const SUMMARY_CATEGORIES: readonly SummaryCategorySpec[] = [
 
 /** The category an unlisted good falls into. */
 const UNLISTED_CATEGORY: SummaryCategoryId = 'other';
-/** Stocked goods the bar never reports: water is a well's working stock, not a resource on hand. */
-export const HIDDEN_GOODS: ReadonlySet<string> = new Set(['water']);
+/** Working stock and live herds are shown by their buildings, not as goods on the bar. */
+export const HIDDEN_GOODS: ReadonlySet<string> = new Set(['water', 'sheep', 'cattle']);
 const LISTED_GOODS: ReadonlySet<string> = new Set(SUMMARY_CATEGORIES.flatMap((c) => c.columns.flat()));
 
 export interface SummaryPopulation {

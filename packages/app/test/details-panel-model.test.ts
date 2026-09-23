@@ -71,6 +71,40 @@ function equipmentWorld(): { snapshot: WorldSnapshot; ctx: UnitPanelModelContext
 }
 
 describe('selection details panel model', () => {
+  it('shows the man before the woman in a home even when she has the lower id', () => {
+    const snapshot = snapshotOf([
+      buildingEntity(20, BUILDING_HOME_00),
+      {
+        id: 1,
+        components: {
+          Settler: { jobType: JOB_WOMAN, tribe: 1 },
+          Female: {},
+          Marriage: { spouse: 2, child: 3 },
+          Residence: { home: 20 },
+        },
+      },
+      {
+        id: 2,
+        components: {
+          Settler: { jobType: JOB_COLLECTOR, tribe: 1 },
+          Marriage: { spouse: 1, child: 3 },
+          Residence: { home: 20 },
+        },
+      },
+      {
+        id: 3,
+        components: {
+          Settler: { jobType: JOB_CHILD_MALE, tribe: 1 },
+          Age: { ticks: 0 },
+          Residence: { home: 20 },
+        },
+      },
+    ]);
+    const model = buildUnitPanelModel(snapshot, new Set([20]), sandboxCtx());
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    expect(model.home?.families.map((family) => family.members)).toEqual([[2, 1, 3]]);
+  });
+
   it('shows the generic hero profession for every hero job instead of a body-specific name', () => {
     const base = sandboxCtx();
     const heroes = [
