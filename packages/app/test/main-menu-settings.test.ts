@@ -85,12 +85,19 @@ describe('parseStoredSettings', () => {
 
   it('defaults, validates, and clamps persisted camera input settings', () => {
     const defaults = defaultSettings();
+    expect(defaults).toMatchObject({
+      keyboardScrollSpeed: 1.5,
+      edgeScrollSpeed: 1.5,
+      dragScrollSpeed: 1.5,
+      edgeScrollEnabled: true,
+      invertDragScroll: true,
+    });
     expect(parseStoredSettings('{}')).toMatchObject({
       keyboardScrollSpeed: defaults.keyboardScrollSpeed,
       edgeScrollSpeed: defaults.edgeScrollSpeed,
       dragScrollSpeed: defaults.dragScrollSpeed,
       edgeScrollEnabled: true,
-      invertDragScroll: false,
+      invertDragScroll: true,
     });
     expect(
       parseStoredSettings(

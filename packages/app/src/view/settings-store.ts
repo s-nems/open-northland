@@ -23,7 +23,7 @@ const DEFAULT_RENDER_SCALE = 1;
 
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
-export const DEFAULT_SCROLL_SPEED = 1;
+export const DEFAULT_SCROLL_SPEED = 1.5;
 
 export interface MenuSettings {
   /** Fullscreen preference, written by whatever changes the window; `view/fullscreen.ts` owns how a
@@ -85,7 +85,7 @@ export function defaultSettings(): MenuSettings {
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
     dragScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollEnabled: true,
-    invertDragScroll: false,
+    invertDragScroll: true,
     keyBindings: DEFAULT_KEY_BINDINGS,
     netNick: null,
     debugToolsEnabled: false,

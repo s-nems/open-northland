@@ -1,5 +1,11 @@
 /* In-game HUD foundation (docs/design/ingame-menu/FOUNDATION.md): tokens and shared primitives.
    Sizes are design px; the root scales them by --hud-scale. Everything is scoped under .on-hud. */
+/* Middle-drag panning hides the OS cursor globally, including any inline canvas cursor overrides. */
+body.on-drag-scroll-cursor-hidden,
+body.on-drag-scroll-cursor-hidden * {
+  cursor: none !important;
+}
+
 .on-hud {
   --hud-scale: 1;
   --deep: #182521;

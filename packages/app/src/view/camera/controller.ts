@@ -21,6 +21,7 @@ import { clientToScreen, screenScale } from './screen-scale.js';
 const WHEEL_ZOOM_STEP = 1.1;
 /** Max wall-clock ms one held-key pan step integrates - a backgrounded tab resumes smoothly, not with a lurch. */
 const MAX_PAN_STEP_MS = 100;
+const DRAG_SCROLL_CURSOR_HIDDEN_CLASS = 'on-drag-scroll-cursor-hidden';
 
 type PanAction = 'panLeft' | 'panRight' | 'panUp' | 'panDown';
 const PAN_ACTIONS: readonly PanAction[] = ['panLeft', 'panRight', 'panUp', 'panDown'];
@@ -90,11 +91,19 @@ export function createCameraController(
   // while the cursor is elsewhere or nothing has moved yet, so a parked cursor waits.
   let pointerSample: { readonly x: number; readonly y: number } | null = null;
   let suspended = false;
+  const setDragScrollCursorHidden = (hidden: boolean): void => {
+    document.body?.classList.toggle(DRAG_SCROLL_CURSOR_HIDDEN_CLASS, hidden);
+  };
+  const endMiddleDrag = (): void => {
+    dragging = false;
+    setDragScrollCursorHidden(false);
+  };
 
   const onMouseDown = (e: MouseEvent): void => {
     if (suspended) return;
     if (e.button !== 1) return; // middle button only
     dragging = true;
+    setDragScrollCursorHidden(true);
     lastX = e.clientX;
     lastY = e.clientY;
     e.preventDefault(); // suppress the middle-click autoscroll widget
@@ -116,7 +125,7 @@ export function createCameraController(
     lastY = e.clientY;
   };
   const onMouseUp = (e: MouseEvent): void => {
-    if (e.button === 1) dragging = false;
+    if (e.button === 1) endMiddleDrag();
   };
   // The crossing still disarms: a cursor that leaves the browser window lands no further `mousemove`.
   const onMouseLeave = (): void => {
@@ -166,7 +175,7 @@ export function createCameraController(
   // `dragging` stuck true.
   const onBlur = (): void => {
     held.clear();
-    dragging = false;
+    endMiddleDrag();
     pointerSample = null;
   };
 
@@ -197,7 +206,7 @@ export function createCameraController(
       suspended = next;
       if (!next) return;
       held.clear();
-      dragging = false;
+      endMiddleDrag();
       pointerSample = null;
       targetScale = cam.scale ?? 1;
     },
@@ -249,6 +258,7 @@ export function createCameraController(
       }
     },
     dispose: () => {
+      endMiddleDrag();
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);

@@ -23,6 +23,7 @@ const DEFAULT_INPUT_SETTINGS: CameraInputSettings = {
   edgeScrollEnabled: true,
   invertDragScroll: false,
 };
+const DRAG_SCROLL_CURSOR_HIDDEN_CLASS = 'on-drag-scroll-cursor-hidden';
 
 type Listener = (event: unknown) => void;
 
@@ -44,12 +45,32 @@ const eventTarget = () => {
   };
 };
 
+const classList = () => {
+  const names = new Set<string>();
+  return {
+    add: (name: string): void => {
+      names.add(name);
+    },
+    remove: (name: string): void => {
+      names.delete(name);
+    },
+    toggle: (name: string, force?: boolean): boolean => {
+      const next = force ?? !names.has(name);
+      if (next) names.add(name);
+      else names.delete(name);
+      return next;
+    },
+    contains: (name: string): boolean => names.has(name),
+  };
+};
+
 const install = (
   bindings: KeyBindings = DEFAULT_KEY_BINDINGS,
   inputSettings: CameraInputSettings = DEFAULT_INPUT_SETTINGS,
 ) => {
   const win = eventTarget();
   const canvasEvents = eventTarget();
+  const bodyClasses = classList();
   const canvas = {
     width: CANVAS_W,
     height: CANVAS_H,
@@ -58,7 +79,7 @@ const install = (
     removeEventListener: canvasEvents.removeEventListener,
   } as unknown as HTMLCanvasElement;
   vi.stubGlobal('window', win);
-  vi.stubGlobal('document', { hasFocus: () => true });
+  vi.stubGlobal('document', { hasFocus: () => true, body: { classList: bodyClasses } });
   // The typing-target guard probes these DOM classes, which the node test environment lacks.
   vi.stubGlobal('HTMLInputElement', class {});
   vi.stubGlobal('HTMLTextAreaElement', class {});
@@ -70,6 +91,7 @@ const install = (
     ctl,
     win,
     canvasEvents,
+    cursorHidden: (): boolean => bodyClasses.contains(DRAG_SCROLL_CURSOR_HIDDEN_CLASS),
     /** Fire a `mousemove` whose hit target is the canvas unless `over` names another element. */
     move: (x: number, y: number, over: unknown = canvas): void => {
       win.emit('mousemove', { clientX: x, clientY: y, target: over });
@@ -214,6 +236,21 @@ describe('createCameraController pan bindings', () => {
 });
 
 describe('createCameraController input settings', () => {
+  it('hides the cursor only while middle-button dragging', () => {
+    const { ctl, cursorHidden, move, startMiddleDrag, win } = install();
+    expect(cursorHidden()).toBe(false);
+
+    startMiddleDrag(100, 100);
+    expect(cursorHidden()).toBe(true);
+
+    move(120, 100);
+    expect(cursorHidden()).toBe(true);
+
+    win.emit('mouseup', { button: 1 });
+    expect(cursorHidden()).toBe(false);
+    ctl.dispose();
+  });
+
   it('scales middle-button dragging and can invert its direction live', () => {
     const { ctl, move, startMiddleDrag } = install();
     startMiddleDrag(100, 100);
@@ -255,11 +292,13 @@ describe('createCameraController input settings', () => {
 
 describe('createCameraController suspension', () => {
   it('cancels a middle drag and held key until fresh input arrives', () => {
-    const { ctl, move, press, startMiddleDrag } = install();
+    const { ctl, cursorHidden, move, press, startMiddleDrag } = install();
     startMiddleDrag(400, 300);
     press('ArrowLeft');
+    expect(cursorHidden()).toBe(true);
     ctl.setSuspended(true);
     const before = ctl.camera();
+    expect(cursorHidden()).toBe(false);
 
     move(500, 300);
     ctl.update(16);
