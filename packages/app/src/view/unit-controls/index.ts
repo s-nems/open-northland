@@ -141,6 +141,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const orders = createUnitOrderController({
+    uiscale: opts.uiscale ?? 1,
     technologyStatus: opts.technologyStatus,
     equipPickList: opts.equipPickList,
     selected: selection.ids,
@@ -324,12 +325,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       chrome.panel().claimsPointer(x, y) ||
       chrome.actions().claimsPointer(x, y),
     tick: (snapshot) => {
+      orders.refresh();
       chrome.panel().tick(snapshot);
       // Re-anchors the ring on the selection's on-screen centroid; a no-op while it is closed.
       chrome.actions().update(opts.camera(), snapshot);
     },
     setHudHidden: chrome.setHudHidden,
-    setUiScale: chrome.setUiScale,
+    setUiScale: async (scale) => {
+      await Promise.all([chrome.setUiScale(scale), orders.setUiScale(scale)]);
+    },
     dispose: () => {
       pickMode.cancel(); // an armed mode owns the canvas cursor, which teardown must not leave set
       canvas.removeEventListener('mousedown', onMouseDown);

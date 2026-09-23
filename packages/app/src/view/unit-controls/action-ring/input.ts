@@ -69,6 +69,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     if (isPendingAction(hit.id)) return; // drawn for fidelity, with no order behind it yet
     ctx.cue('confirm');
     if (hit.id === 'changeProfession') {
+      e.preventDefault();
       ctx.openJobWindow();
       return;
     }

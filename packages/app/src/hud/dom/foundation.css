@@ -2111,3 +2111,109 @@ body.on-drag-scroll-cursor-hidden * {
   color: #b7ab92;
   background: linear-gradient(#5a4631, #3e3022);
 }
+
+/* Compact profession and school choices share the native modal focus boundary. */
+.on-choice-modal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.on-choice-modal::backdrop {
+  background: #0003;
+}
+.on-hud .on-window--choices {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 56px);
+}
+.on-hud .on-window--choices .on-window__head {
+  padding: 9px 12px;
+}
+.on-hud .on-window--choices .on-window__title {
+  font-size: 18px;
+}
+.on-hud .on-window--choices .on-window__body {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.on-hud .on-choice-tools {
+  padding: 9px 10px 7px;
+  flex-shrink: 0;
+}
+.on-hud .on-choice-context {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+.on-hud .on-window--choices .on-choice-search {
+  min-height: 28px;
+}
+.on-hud .on-choice-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 0 10px 10px;
+  scrollbar-color: var(--bronze-lo) var(--deep);
+  scrollbar-width: thin;
+}
+.on-hud .on-choice-group {
+  margin: 0 0 9px;
+}
+.on-hud .on-choice-group:last-child {
+  margin-bottom: 0;
+}
+.on-hud .on-choice-group h3 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 5px;
+  padding: 3px 0;
+  color: var(--bronze);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--bronze-lo);
+}
+.on-hud .on-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.on-hud .on-window--choices .on-choice-row {
+  justify-content: space-between;
+  min-height: 29px;
+  padding: 4px 7px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.15;
+  gap: 6px;
+}
+.on-hud .on-window--choices .on-choice-row span:first-child {
+  overflow-wrap: anywhere;
+}
+.on-hud .on-window--choices .on-choice-row[aria-disabled="true"] {
+  background: var(--deep);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px #c9a26222;
+  cursor: help;
+}
+.on-hud .on-choice-empty {
+  margin: 14px 0;
+  color: var(--muted);
+  text-align: center;
+}

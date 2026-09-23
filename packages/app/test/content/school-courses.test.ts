@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { bcp47Tag } from '../../src/i18n/index.js';
-import { schoolGroups, visibleSchoolChoices } from '../../src/view/unit-controls/school-dialog.js';
+import { schoolChoices, schoolGroups } from '../../src/view/unit-controls/school-dialog.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 it.skipIf(!hasRealIr())('lists discovered-capable methods under the profession that uses them', async () => {
@@ -32,13 +32,16 @@ it.skipIf(!hasRealIr())('lists discovered-capable methods under the profession t
   const plate = content.goods.find((row) => row.id === 'armor_plate');
   if (smith === undefined || joiner === undefined || plate === undefined)
     throw new Error('missing school choice content');
-  const visible = visibleSchoolChoices(
+  const visible = schoolChoices(
     groups,
-    smith.typeId,
     (course) =>
       (course.target === 'good' && course.typeId === plate.typeId) ||
       (course.target === 'job' && course.typeId === joiner.typeId),
   );
-  expect(visible.methods.map((course) => course.typeId)).toEqual([plate.typeId]);
-  expect(visible.professions.map((group) => group.jobType)).toEqual([joiner.typeId]);
+  expect(visible.find((group) => group.jobType === smith.typeId)?.courses).toEqual([
+    expect.objectContaining({ target: 'good', typeId: plate.typeId }),
+  ]);
+  expect(visible.map((group) => group.jobType)).toEqual(
+    expect.arrayContaining([joiner.typeId, smith.typeId]),
+  );
 });

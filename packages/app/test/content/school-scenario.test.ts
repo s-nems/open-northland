@@ -94,6 +94,8 @@ it.skipIf(!hasRealIr())(
     const schoolType = content.buildings.find((row) => row.kind === 'training' && row.workers.length === 0);
     const collector = content.jobs.find((row) => row.id === 'collector');
     const smith = content.jobs.find((row) => row.id === 'smith');
+    const civilian = content.jobs.find((row) => row.id === 'civilist');
+    if (civilian === undefined) throw new Error('missing civilian');
     const goods = ['iron', 'gold', 'armor_plate'].map((id) => content.goods.find((row) => row.id === id));
     if (
       tribe === undefined ||
@@ -119,7 +121,7 @@ it.skipIf(!hasRealIr())(
       owner: HUMAN_PLAYER,
       force: true,
     });
-    for (const [index, jobType] of [collector.typeId, collector.typeId, smith.typeId].entries())
+    for (const [index, jobType] of [civilian.typeId, civilian.typeId, civilian.typeId].entries())
       sim.enqueueSetup({
         kind: 'spawnSettler',
         jobType,
@@ -149,6 +151,10 @@ it.skipIf(!hasRealIr())(
       const pupil = pupils[index];
       if (good === undefined || pupil === undefined) throw new Error('missing course pupil');
       expect(sim.world.get(pupil, components.Settler).learned?.good).toEqual([good.typeId]);
+      const expectedJob = index === 2 ? smith.typeId : collector.typeId;
+      expect(sim.world.get(pupil, components.Settler).jobType).toBe(expectedJob);
+      expect(sim.world.get(pupil, components.Settler).learned?.job).toContain(expectedJob);
+      expect(sim.canChooseJob(pupil, expectedJob)).toBe(true);
     }
     expect(sim.checkInvariants()).toEqual([]);
   },

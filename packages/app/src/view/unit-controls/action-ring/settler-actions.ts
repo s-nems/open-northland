@@ -2,7 +2,6 @@ import { type Camera, cameraScreenX, cameraScreenY } from '@open-northland/rende
 import type { WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { loadGuiArt } from '../../../content/gui-art.js';
-import { loadUiFont } from '../../../content/ui-font.js';
 import {
   ACTION_COMMANDS,
   type ActionGroup,
@@ -56,7 +55,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToScreen(canvas, app.renderer.resolution, clientX, clientY);
 
-  const [art, uiFont] = await Promise.all([loadGuiArt(), loadUiFont()]);
+  const art = await loadGuiArt();
 
   const root = new Container();
   const cleanup: Array<() => void> = [() => root.destroy({ children: true })];
@@ -103,7 +102,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     const picker = createProfessionPicker({
       professions: opts.professions,
-      uiFont,
+      scale: opts.uiscale,
       onPick: (jobType: number): void => {
         if (selectedIds.length > 0) opts.onSetJob(selectedIds, jobType);
         // Picking commits the order, so the whole menu closes rather than stepping back to the arms.

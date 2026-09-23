@@ -30,10 +30,11 @@ import {
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
-import { openSchoolDialog } from './school-dialog.js';
+import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
+  readonly uiscale?: number;
   readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'] | undefined;
   /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent, a click on a goods heap
    *  is a walk. */
@@ -74,6 +75,8 @@ export interface UnitOrderController {
   issueAttackTarget(event: MouseEvent, kind: UnitTargetKind, units?: readonly number[]): boolean;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
   issueAttackAnimal(event: MouseEvent, units?: readonly number[]): boolean;
+  refresh(): void;
+  setUiScale(scale: number): Promise<void>;
   dispose(): void;
 }
 
@@ -92,7 +95,8 @@ function wearsGood(
 }
 
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
-  let closeSchool: (() => void) | undefined;
+  let school: SchoolDialog | undefined;
+  let uiScale = deps.uiscale ?? 1;
   const buildingsByType = lastByTypeId(deps.content.buildings);
   const goodsByType = lastByTypeId(deps.content.goods);
 
@@ -160,15 +164,17 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         def.workers.length === 0 &&
         entity?.components.UnderConstruction === undefined
       ) {
-        closeSchool?.();
-        closeSchool = openSchoolDialog(
+        event.preventDefault();
+        school?.dispose();
+        school = openSchoolDialog(
           deps.content,
-          snapshot,
+          deps.snapshot,
           commanded.map((t) => t.ref),
           building,
           deps.enqueue,
           deps.technologyStatus,
           deps.cue,
+          uiScale,
         );
         return true;
       }
@@ -339,7 +345,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   };
 
   return {
-    dispose: () => closeSchool?.(),
+    refresh: () => school?.refresh(),
+    setUiScale: async (scale) => {
+      uiScale = scale;
+      await school?.setUiScale(scale);
+    },
+    dispose: () => school?.dispose(),
     issueRightClick,
     issueSetWorkFlagAt,
     issueSetWorkFlag,

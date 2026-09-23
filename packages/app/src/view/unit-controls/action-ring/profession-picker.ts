@@ -1,21 +1,16 @@
 import type { UiCue } from '@open-northland/audio';
 import type { PickerEntry } from '../../../catalog/professions.js';
-import type { UiFont } from '../../../content/ui-font.js';
-import { uiLabel } from '../../../i18n/index.js';
-import { createPickerWindow } from '../picker-window.js';
+import { type ChoiceGroup, createChoiceWindow } from '../../../hud/dom/choice-window.js';
+import { bcp47Tag, messages, uiLabel } from '../../../i18n/index.js';
 
 export interface ProfessionPickerOptions {
   readonly professions: readonly PickerEntry[];
-  readonly uiFont: UiFont;
+  readonly scale: number;
   readonly onPick: (jobType: number) => void;
-  /** The window was dismissed without a pick: the ✕ box or a backdrop click. */
   readonly onDismiss: () => void;
-  /** The GUI click a picked row and the ✕ box confirm with. */
   readonly cue: (cue: UiCue) => void;
 }
-
 export interface ProfessionPicker {
-  /** Reveal the window, listing visible professions and marking unavailable ones with their reason. */
   show(
     visible: (jobType: number) => boolean,
     unlocked: (jobType: number) => boolean,
@@ -28,99 +23,72 @@ export interface ProfessionPicker {
   dispose(): void;
 }
 
-interface ProfessionPickerRow {
-  readonly entry: PickerEntry;
-  readonly blocked?: string;
-}
-
-/** The picker hides jobs the caller does not want listed, and only keeps headers above visible rows. */
-export function professionPickerRows(
+export function professionChoices(
   professions: readonly PickerEntry[],
   visible: (jobType: number) => boolean,
   unlocked: (jobType: number) => boolean,
   reason?: (jobType: number) => string,
-): ProfessionPickerRow[] {
-  const rows: ProfessionPickerRow[] = [];
-  let pendingHeader: { readonly kind: 'header'; readonly label: string } | undefined;
+): ChoiceGroup[] {
+  const groups: { label: string; rows: { key: string; label: string; reason?: string }[] }[] = [];
+  let group: (typeof groups)[number] = { label: messages().hud.choiceBasic, rows: [] };
+  groups.push(group);
   for (const entry of professions) {
     if (entry.kind === 'header') {
-      pendingHeader = entry;
+      group = { label: entry.label, rows: [] };
+      groups.push(group);
       continue;
     }
     if (!visible(entry.jobType)) continue;
-    if (pendingHeader !== undefined) {
-      rows.push({ entry: pendingHeader });
-      pendingHeader = undefined;
-    }
-    const blocked = unlocked(entry.jobType) ? undefined : (reason?.(entry.jobType) ?? '');
-    rows.push({
-      entry,
-      ...(blocked !== undefined ? { blocked } : {}),
+    group.rows.push({
+      key: String(entry.jobType),
+      label: entry.label,
+      ...(unlocked(entry.jobType)
+        ? {}
+        : { reason: reason?.(entry.jobType) ?? messages().hud.technologyExperience }),
     });
   }
-  return rows;
+  // The leading ungrouped civilian, gathering and transport rows form the compact basic group.
+  const basics = groups.splice(0, 3);
+  groups.unshift({ label: messages().hud.choiceBasic, rows: basics.flatMap((part) => part.rows) });
+  const compare = new Intl.Collator(bcp47Tag(), { sensitivity: 'base' }).compare;
+  for (const part of groups) part.rows.sort((a, b) => compare(a.label, b.label));
+  return groups.filter((part) => part.rows.length > 0);
 }
 
-/** The window is appended to `document.body` hidden and filled per open. */
 export function createProfessionPicker(opts: ProfessionPickerOptions): ProfessionPicker {
-  const window_ = createPickerWindow({
-    uiFont: opts.uiFont,
-    title: uiLabel('changeProfession'),
-    onDismiss: opts.onDismiss,
-    cue: opts.cue,
-  });
   let visible: ((jobType: number) => boolean) | undefined;
   let unlocked: ((jobType: number) => boolean) | undefined;
   let reason: ((jobType: number) => string) | undefined;
-  let heldKey: string | null = null;
+  const window = createChoiceWindow({
+    title: uiLabel('changeProfession'),
+    scale: opts.scale,
+    cue: opts.cue,
+    onDismiss: opts.onDismiss,
+    onPick: (key) => {
+      const job = Number(key);
+      if (visible?.(job) && unlocked?.(job)) opts.onPick(job);
+    },
+  });
   const refresh = (): void => {
-    const shown = visible;
-    const permits = unlocked;
-    if (shown === undefined || permits === undefined) return;
-    const rows = professionPickerRows(opts.professions, shown, permits, reason);
-    const key = JSON.stringify(
-      rows.map((row) =>
-        row.entry.kind === 'header'
-          ? ['header', row.entry.label]
-          : ['profession', row.entry.jobType, row.blocked ?? null],
-      ),
-    );
-    if (key === heldKey) return;
-    heldKey = key;
-    const scroll = window_.scrollTop();
-    window_.clearList();
-    for (const { entry, blocked } of rows) {
-      if (entry.kind === 'header') {
-        window_.addGroup(entry.label);
-        continue;
-      }
-      window_.addRow(
-        entry.label,
-        () => {
-          if (permits(entry.jobType)) opts.onPick(entry.jobType);
-        },
-        blocked,
-      );
-    }
-    window_.setScrollTop(scroll);
+    if (visible === undefined || unlocked === undefined) return;
+    window.update(professionChoices(opts.professions, visible, unlocked, reason));
   };
   return {
-    show: (shown, permits, blockedReason): void => {
+    show: (shown, permits, blockedReason) => {
       visible = shown;
       unlocked = permits;
       reason = blockedReason;
-      heldKey = null;
       refresh();
-      window_.show();
+      window.show();
     },
     refresh,
     hide: () => {
       visible = undefined;
       unlocked = undefined;
-      window_.hide();
+      window.hide();
     },
-    scrollTop: window_.scrollTop,
-    setScrollTop: window_.setScrollTop,
-    dispose: window_.dispose,
+    scrollTop: window.scrollTop,
+    setScrollTop: window.setScrollTop,
+    dispose: window.dispose,
   };
 }

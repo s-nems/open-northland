@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
 import {
+  components,
   type Entity,
   entityById,
   type PlayerCommand,
@@ -11,15 +12,16 @@ import {
 import { professionDefForJob } from '../../catalog/professions.js';
 import {
   actorsOf,
+  buildingTypeOf,
   ownerPlayerOf,
-  settlerJobType,
   settlerLearnedOf,
   settlerTribeOf,
   trainingHouseOf,
 } from '../../game/snapshot.js';
 import { technologyLabel } from '../../game/technology.js';
-import { bcp47Tag, messages } from '../../i18n/index.js';
-import { BUTTON_STYLE, DIALOG_STYLE, el } from '../overlay.js';
+import { createChoiceWindow } from '../../hud/dom/choice-window.js';
+import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import { orderRecipients } from './action-ring/menu-state.js';
 
 export interface SchoolCourse {
   readonly target: 'job' | 'good';
@@ -33,22 +35,16 @@ export interface SchoolGroup {
   readonly courses: readonly SchoolCourse[];
 }
 
-export function visibleSchoolChoices(
+export function schoolChoices(
   groups: readonly SchoolGroup[],
-  currentJob: number | undefined,
   discovered: (course: SchoolCourse) => boolean,
-): { readonly methods: readonly SchoolCourse[]; readonly professions: readonly SchoolGroup[] } {
-  return {
-    methods:
-      groups
-        .find((group) => group.jobType === currentJob)
-        ?.courses.filter((course) => course.target === 'good' && discovered(course)) ?? [],
-    professions: groups.filter(
-      (group) =>
-        group.jobType !== currentJob &&
-        group.courses.some((course) => course.target === 'job' && discovered(course)),
-    ),
-  };
+): SchoolGroup[] {
+  return groups.flatMap((group) => {
+    const courses = group.courses.filter(discovered);
+    const methods = courses.filter((course) => course.target === 'good');
+    const choices = methods.length > 0 ? methods : courses.filter((course) => course.target === 'job');
+    return choices.length === 0 ? [] : [{ ...group, courses: choices }];
+  });
 }
 
 /** Courses are grouped by the trade that uses them, with each group and its methods in display order. */
@@ -102,125 +98,179 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
     .sort((a, b) => collator.compare(a.label, b.label) || a.jobType - b.jobType);
 }
 
+export interface SchoolDialog {
+  refresh(): void;
+  setUiScale(scale: number): Promise<void>;
+  dispose(): void;
+}
+
 export function openSchoolDialog(
   content: ContentSet,
-  snapshot: WorldSnapshot,
+  snapshot: () => WorldSnapshot,
   students: readonly number[],
   house: number,
   enqueue: (command: PlayerCommand) => void,
   status?: Simulation['unlockStatus'],
   cue?: (cue: UiCue) => void,
-): (() => void) | undefined {
+  scale = 1,
+): SchoolDialog | undefined {
   const first = students[0];
-  const student = first === undefined ? undefined : entityById(snapshot, first);
-  if (student === undefined) return;
-  const tribeId = settlerTribeOf(student);
-  const tribe = content.tribes.find((row) => row.typeId === tribeId);
-  if (tribe === undefined) return;
+  const student = first === undefined ? undefined : entityById(snapshot(), first);
+  const tribeId = student === undefined ? undefined : settlerTribeOf(student);
+  if (tribeId === undefined || student === undefined) return;
   const copy = messages().hud;
-  const dialog = el(
-    'dialog',
-    `${DIALOG_STYLE};padding:10px;width:min(28rem,calc(100vw - 24px));box-sizing:border-box;max-height:70vh;overflow:auto`,
-  );
-  const header = el('div', 'display:flex;align-items:center;justify-content:space-between;gap:8px');
-  header.append(el('h2', 'font-size:17px;margin:0', copy.schoolTitle));
-  const close = el('button', `${BUTTON_STYLE};padding:2px 7px;font-size:16px`, '×');
-  close.title = copy.schoolClose;
-  close.setAttribute('aria-label', copy.schoolClose);
-  close.addEventListener('click', () => {
-    cue?.('confirm');
-    dialog.close();
+  const groups = schoolGroups(content, tribeId);
+  let selectedJob: number | undefined;
+  let choices: SchoolGroup[] = [];
+  let closed = false;
+  let lastSnapshot: WorldSnapshot | undefined;
+  let reasons = new Map<string, string | undefined>();
+  const courseKey = (course: SchoolCourse): string => `${course.target}:${course.typeId}`;
+  const dispose = (): void => {
+    closed = true;
+    window.dispose();
+  };
+  const window = createChoiceWindow({
+    title: copy.schoolTitle,
+    scale,
+    ...(cue === undefined ? {} : { cue }),
+    onDismiss: () => {
+      if (selectedJob === undefined) dispose();
+      else {
+        selectedJob = undefined;
+        refresh(true);
+        window.show();
+      }
+    },
+    onPick: (key) => {
+      refresh(true);
+      if (closed) return;
+      if (selectedJob === undefined) {
+        const group = choices.find((row) => String(row.jobType) === key);
+        if (group === undefined) return;
+        if (group.courses.length > 1) {
+          selectedJob = group.jobType;
+          refresh(true);
+          window.show(group.label);
+          return;
+        }
+        const course = group.courses[0];
+        if (course !== undefined) choose(course);
+      } else {
+        const course = choices
+          .find((group) => group.jobType === selectedJob)
+          ?.courses.find((row) => courseKey(row) === key);
+        if (course !== undefined) choose(course);
+      }
+    },
   });
-  header.append(close);
-  dialog.append(header);
-  const full = schoolFull(content, snapshot, house, students);
-  const learners = students.map((id) => entityById(snapshot, id));
-  const wrongTribe = learners.some((learner) => learner === undefined || settlerTribeOf(learner) !== tribeId);
-  const currentJob = learners.every(
-    (learner) => learner !== undefined && settlerJobType(learner) === settlerJobType(student),
-  )
-    ? settlerJobType(student)
-    : undefined;
-  const groups = schoolGroups(content, tribe.typeId);
-  const choices = visibleSchoolChoices(
-    groups,
-    currentJob,
-    (course) => status?.(course.target, course.typeId, tribe.typeId, ownerPlayerOf(student)).enabled ?? true,
-  );
-  const addButton = (grid: HTMLElement, course: SchoolCourse, label: string): void => {
-    const button = el(
-      'button',
-      `${BUTTON_STYLE};min-height:26px;padding:3px 6px;text-align:left;line-height:1.15`,
-      label,
-    );
-    button.title = label;
-    const learned = learners.every(
-      (learner) =>
-        learner !== undefined && settlerLearnedOf(learner.components, course.target).includes(course.typeId),
-    );
-    let refusal: string | null = null;
-    if (wrongTribe) refusal = copy.schoolWrongTribe;
-    else if (learned) refusal = copy.schoolLearned;
-    else if (full) refusal = copy.schoolFull;
-    if (refusal !== null) {
-      button.disabled = true;
-      button.style.opacity = '0.5';
-      button.title = `${label}: ${refusal}`;
-      button.setAttribute('aria-label', button.title);
+  const choose = (course: SchoolCourse): void => {
+    if (reasons.get(courseKey(course)) !== undefined) return;
+    const state = snapshot();
+    for (const entity of students) {
+      const learner = entityById(state, entity);
+      if (
+        learner === undefined ||
+        settlerLearnedOf(learner.components, course.target).includes(course.typeId)
+      )
+        continue;
+      enqueue({
+        kind: 'learn',
+        entity: entity as Entity,
+        house: house as Entity,
+        target: course.target,
+        typeId: course.typeId,
+      });
     }
-    button.addEventListener('click', () => {
-      cue?.('confirm');
-      for (const entity of students)
-        enqueue({
-          kind: 'learn',
-          entity: entity as Entity,
-          house: house as Entity,
-          target: course.target,
-          typeId: course.typeId,
-        });
-      dialog.close();
-    });
-    grid.append(button);
+    dispose();
   };
-  const addSection = (title: string): HTMLElement => {
-    const section = el('section', 'margin:7px 0 0');
-    section.append(el('h3', 'font-size:12px;margin:0 0 4px', title));
-    const grid = el('div', 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px');
-    section.append(grid);
-    dialog.append(section);
-    return grid;
-  };
-  if (choices.methods.length > 0) {
-    const grid = addSection(groups.find((group) => group.jobType === currentJob)?.label ?? copy.schoolTitle);
-    for (const method of choices.methods) addButton(grid, method, method.label);
-  }
-  if (choices.professions.length > 0) {
-    const grid = addSection(copy.schoolProfessions);
-    for (const group of choices.professions) {
-      const course = group.courses.find((row) => row.target === 'job');
-      if (course !== undefined) addButton(grid, course, group.label);
+  const refresh = (force = false): void => {
+    if (closed) return;
+    const state = snapshot();
+    if (!force && state === lastSnapshot) return;
+    lastSnapshot = state;
+    const building = entityById(state, house);
+    const learners = students.map((id) => entityById(state, id));
+    if (building === undefined || learners.some((learner) => learner === undefined)) {
+      dispose();
+      return;
     }
-  }
-  dialog.addEventListener('close', () => dialog.remove(), { once: true });
-  document.body.append(dialog);
-  dialog.showModal();
-  return () => dialog.remove();
-}
-
-function schoolFull(
-  content: ContentSet,
-  snapshot: WorldSnapshot,
-  house: number,
-  students: readonly number[],
-): boolean {
-  const building = entityById(snapshot, house);
-  const buildingType = (building?.components.Building as { buildingType?: unknown } | undefined)
-    ?.buildingType;
-  const size = content.buildings.find((b) => b.typeId === buildingType)?.schoolSize;
-  if (size === undefined) return false;
-  let occupied = 0;
-  for (const e of actorsOf(snapshot)) {
-    if (trainingHouseOf(e) === house && !students.includes(e.id)) occupied++;
-  }
-  return occupied >= size;
+    const valid = new Set(orderRecipients(content, state, students, 'changeProfession'));
+    const invalid =
+      building.components.UnderConstruction !== undefined ||
+      students.some((id) => !valid.has(id)) ||
+      learners.some((learner) => {
+        const flags = (learner?.components.MissionBehaviour as { flags?: number } | undefined)?.flags ?? 0;
+        return (flags & components.MISSION_BEHAVIOUR.JOB_LOCKED) !== 0;
+      }) ||
+      learners.some(
+        (learner) =>
+          learner !== undefined &&
+          (settlerTribeOf(learner) !== tribeId || ownerPlayerOf(learner) !== ownerPlayerOf(building)),
+      );
+    const type = content.buildings.find((row) => row.typeId === buildingTypeOf(building));
+    const capacity = type?.schoolSize;
+    const occupants = actorsOf(state).filter((actor) => trainingHouseOf(actor) === house);
+    choices = schoolChoices(
+      groups.filter(
+        (group) => status?.('job', group.jobType, tribeId, ownerPlayerOf(student)).allowed ?? true,
+      ),
+      (course) => status?.(course.target, course.typeId, tribeId, ownerPlayerOf(student)).enabled ?? true,
+    );
+    reasons = new Map();
+    for (const group of choices)
+      for (const course of group.courses) {
+        const remaining = learners.filter(
+          (learner) =>
+            learner !== undefined &&
+            !settlerLearnedOf(learner.components, course.target).includes(course.typeId),
+        );
+        const entering = remaining.filter(
+          (learner) => learner !== undefined && trainingHouseOf(learner) !== house,
+        ).length;
+        const reason = invalid
+          ? copy.schoolUnavailable
+          : remaining.length === 0
+            ? copy.schoolLearned
+            : capacity !== undefined && occupants.length + entering > capacity
+              ? copy.schoolFull
+              : undefined;
+        reasons.set(courseKey(course), reason);
+      }
+    const selected = choices.find((group) => group.jobType === selectedJob);
+    if (selectedJob !== undefined && selected === undefined) {
+      selectedJob = undefined;
+      window.show();
+    }
+    const reasonProps = (reason: string | undefined): { reason?: string } =>
+      reason === undefined ? {} : { reason };
+    const rows =
+      selected === undefined
+        ? choices.map((group) => ({
+            key: String(group.jobType),
+            label: group.label,
+            ...reasonProps(
+              group.courses.every((course) => reasons.get(courseKey(course)) !== undefined)
+                ? group.courses
+                    .map((course) => reasons.get(courseKey(course)))
+                    .find((reason) => reason !== undefined)
+                : undefined,
+            ),
+          }))
+        : selected.courses.map((course) => ({
+            key: courseKey(course),
+            label: course.label,
+            ...reasonProps(reasons.get(courseKey(course))),
+          }));
+    window.update(
+      [{ label: selected === undefined ? copy.schoolProfessions : copy.choiceMethods, rows }],
+      capacity === undefined
+        ? ''
+        : formatMessage(copy.schoolPlaces, { occupied: occupants.length, capacity }),
+    );
+  };
+  refresh(true);
+  if (closed) return;
+  window.show();
+  return { refresh, setUiScale: window.setUiScale, dispose };
 }

@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Building,
   ownerOf,
@@ -11,7 +12,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { goodEnabled, jobEnabled } from '../progression/index.js';
+import { goodEnabled, jobEnabled, typeAllowed } from '../progression/index.js';
 import { isFighterJob, isSchoolType } from '../readviews/index.js';
 import { mayChangeTrade } from './guards.js';
 import { mayWalkToDrill, startDrill } from './training.js';
@@ -42,13 +43,10 @@ export function learn(world: World, ctx: SystemContext, command: Extract<Command
       (r) => r.requirement === 'train' && r.target === target && r.targetId === typeId,
     ) ?? [];
   if (requirements.length === 0) return;
-  if (
-    target === 'good' &&
-    !tribe?.jobEnables.some(
-      (r) => r.kind === 'good' && r.targetId === typeId && r.jobType === settler.jobType,
-    )
-  )
-    return;
+  if (target === 'good') {
+    const job = schoolMethodJob(ctx.content, settler.tribe, typeId, settler.jobType);
+    if (job === undefined || !typeAllowed(world, ctx, owner, settler.tribe, 'job', job)) return;
+  }
   const pending = world.tryGet(entity, TrainingOrder);
   const school = contentIndex(ctx.content).buildings.get(world.get(house, Building).buildingType);
   if (school?.schoolSize !== undefined && pending?.house !== house) {
@@ -61,4 +59,22 @@ export function learn(world: World, ctx: SystemContext, command: Extract<Command
   if (pending?.house !== house && !mayWalkToDrill(world, ctx, entity, house)) return;
   startDrill(world, entity, house, Math.max(...requirements.map((r) => r.amount)) * SCHOOL_LESSON_TICKS);
   world.mut(entity, TrainingOrder).lesson = { kind: target, typeId };
+}
+
+/** School course policy: a method teaches its producer trade as well. Preserve a matching trade; otherwise the lowest
+ * declared civilian producer wins if content shares a method across trades. */
+export function schoolMethodJob(
+  content: ContentSet,
+  tribeId: number,
+  good: number,
+  current: number | null,
+): number | undefined {
+  const tribe = contentIndex(content).tribes.get(tribeId);
+  let chosen: number | undefined;
+  for (const edge of tribe?.jobEnables ?? []) {
+    if (edge.kind !== 'good' || edge.targetId !== good || isFighterJob(content, edge.jobType)) continue;
+    if (edge.jobType === current) return current;
+    if (chosen === undefined || edge.jobType < chosen) chosen = edge.jobType;
+  }
+  return chosen;
 }

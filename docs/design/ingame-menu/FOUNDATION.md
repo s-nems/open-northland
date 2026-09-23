@@ -448,8 +448,8 @@ Use the shared compact window and grouped choices. The profession list opens fir
 focused and its existing text selected. Search matches the beginning of a choice label. Clicking a
 profession completes a zero/one advanced-method choice immediately; multiple discovered advanced
 methods require one choice in a second window. Dismissing that window returns without submitting.
-Do not show an action-description strip below the choices. The interactive candidate is
-[professions.html](professions.html); runtime integration remains in its linked ticket.
+Do not show an action-description strip below the choices. The runtime surface is `packages/app/src/hud/dom/choice-window.ts`, styled in the shared
+`foundation.css`. The school scene provides the in-game review path.
 
 School method courses do not require the pupil to already hold the profession. A civilian may choose
 Smith and learn one discovered advanced method directly. Basic production is excluded from the
