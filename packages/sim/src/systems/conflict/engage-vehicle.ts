@@ -291,7 +291,6 @@ function firingNode(
  * Loose the shot at the clip's event tick: the aim is scattered by the commander's roll against its
  * catapult experience, then a ground-burst projectile flies there through the shared projectile
  * system. Three draws when the roll scatters, one otherwise, exactly the original's consumption.
- * Approximation: the flight follows the shared projectile pace, not the original's `dist * 8 / speed`.
  */
 function fire(
   world: World,
@@ -330,7 +329,7 @@ function fire(
     aimY: impact.y,
     cover: null,
     launchTick: ctx.tick,
-    impact: {},
+    impact: { smokeTicks: weapon.impactSmokeTicks ?? null },
   });
   ctx.events.emit({
     kind: 'projectileLaunched',

@@ -264,6 +264,17 @@ export type SimEvent =
     }
   | {
       /**
+       * A siege shot came down at `at`, once per shot whatever it struck. `smokeTicks` is the longest the
+       * smoke its landing raises lingers, absent for a weapon that raises none.
+       */
+      readonly kind: 'groundBurst';
+      readonly projectile: Entity;
+      readonly munitionType: number;
+      readonly smokeTicks?: number;
+      readonly at: HalfCellNode;
+    }
+  | {
+      /**
        * A projectile reached `target` at `at` and dealt its damage; the projectile entity is destroyed
        * the same tick. `structure` marks a shot that struck a building rather than a body, and
        * `soundType` names the impact as on `combatHit`. A projectile whose target died mid-flight expires

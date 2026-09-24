@@ -5,13 +5,15 @@ import {
   Owner,
   Position,
   Projectile,
+  type ProjectileImpact,
+  type ProjectileStateView,
   Resting,
   Settler,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
+import { hexDistance, nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
@@ -31,6 +33,24 @@ import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from '
 export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
 
 type Flight = NonNullable<(typeof Projectile)['__value']>;
+
+/** A siege shot's flight takes this many ticks per map point per unit of the weapon's `speed`, divided
+ *  (original behavior: `distance * 8 / speed`, so a catapult's `speed 3` crosses 16 map points in 42). */
+const SIEGE_FLIGHT_TICKS_PER_POINT_SPEED = 8;
+
+/** The ticks a siege shot of `speed` flies over `mapPoints` map points, at least one. */
+export function siegeFlightTicks(mapPoints: number, speed: number): number {
+  return Math.max(1, Math.floor((mapPoints * SIEGE_FLIGHT_TICKS_PER_POINT_SPEED) / speed));
+}
+
+/** {@link siegeFlightTicks} over a shot's frozen release chord, in raw `Fixed` position units. */
+export function siegeFlightTicksOf(
+  proj: Pick<ProjectileStateView, 'originX' | 'originY' | 'aimX' | 'aimY' | 'speed'>,
+): number {
+  const from = nodeOfPosition(proj.originX, proj.originY);
+  const to = nodeOfPosition(proj.aimX, proj.aimY);
+  return siegeFlightTicks(hexDistance(from, to), proj.speed);
+}
 
 /**
  * ProjectileSystem - advance every in-flight {@link Projectile} one tick along its release-time chord and,
@@ -52,7 +72,11 @@ export const projectileSystem: System = (world, ctx) => {
     // Loosed this tick: it does not move, so a shot is observable at its launch point (approximated - the
     // sub-tick release instant is unreadable).
     if (proj.launchTick === ctx.tick) continue;
-    if (flightStep(world, p, proj.aimX, proj.aimY, proj.speed)) land(world, ctx, p, proj, pendingReactions);
+    const arrived =
+      proj.impact === null
+        ? flightStep(world, p, proj.aimX, proj.aimY, proj.speed)
+        : siegeFlight(world, ctx, p, proj);
+    if (arrived) land(world, ctx, p, proj, pendingReactions);
   }
   applyPendingHitReactions(world, pendingReactions);
 };
@@ -67,15 +91,11 @@ function land(
   pendingReactions: PendingHitReaction[],
 ): void {
   const at = eventAt(proj.aimX, proj.aimY);
-  const burst =
-    proj.impact !== null &&
-    ctx.terrain !== undefined &&
-    resolveGroundImpact(world, ctx, ctx.terrain, p, proj, pendingReactions);
-  const victim = proj.impact === null ? struckVictim(world, ctx, proj) : null;
-  if (burst) {
-    world.destroy(p);
+  if (proj.impact !== null) {
+    burst(world, ctx, p, proj, proj.impact, pendingReactions);
     return;
   }
+  const victim = struckVictim(world, ctx, proj);
   if (victim === null) {
     ctx.events.emit({
       kind: 'projectileMissed',
@@ -106,6 +126,39 @@ function land(
     at,
     ...(hitSoundType !== null ? { soundType: hitSoundType } : {}),
     ...(isStructureTarget(world, victim) ? { structure: true } : {}),
+  });
+  world.destroy(p);
+}
+
+/** A siege shot comes down: everything on its node takes the blow ({@link resolveGroundImpact}), or it
+ *  thuds into the dirt, and the burst is announced either way for its smoke. */
+function burst(
+  world: World,
+  ctx: SystemContext,
+  p: Entity,
+  proj: Flight,
+  impact: ProjectileImpact,
+  pendingReactions: PendingHitReaction[],
+): void {
+  const at = eventAt(proj.aimX, proj.aimY);
+  const struck =
+    ctx.terrain !== undefined && resolveGroundImpact(world, ctx, ctx.terrain, p, proj, pendingReactions);
+  if (!struck) {
+    ctx.events.emit({
+      kind: 'projectileMissed',
+      projectile: p,
+      shooter: proj.source,
+      munitionType: proj.munitionType,
+      at,
+      missSounds: proj.missSounds,
+    });
+  }
+  ctx.events.emit({
+    kind: 'groundBurst',
+    projectile: p,
+    munitionType: proj.munitionType,
+    at,
+    ...(impact.smokeTicks !== null ? { smokeTicks: impact.smokeTicks } : {}),
   });
   world.destroy(p);
 }
@@ -165,6 +218,28 @@ function strikeable(world: World, e: Entity): boolean {
 function stands(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity, node: NodeId): boolean {
   const body = targetBodyNodes(world, ctx, terrain, e);
   return body === null ? entityNode(world, terrain, e) === node : body.includes(node);
+}
+
+/**
+ * Place a siege shot on its release chord at the fraction of {@link siegeFlightTicksOf} flown, so it
+ * covers the chord in whole equal steps and reaches the aim on its last flight tick; true a tick later.
+ * That held tick is the arrow's rule too: the drawn shot finishes its last segment before it lands.
+ * Approximation: the original lands the blow on the last flight tick itself.
+ */
+function siegeFlight(world: World, ctx: SystemContext, p: Entity, proj: Flight): boolean {
+  const ticks = siegeFlightTicksOf(proj);
+  const flown = ctx.tick - proj.launchTick;
+  if (flown > ticks) return true;
+  const pos = world.mut(p, Position);
+  pos.x = fx.add(
+    proj.originX,
+    fx.mulDiv(fx.sub(proj.aimX, proj.originX), fx.fromInt(flown), fx.fromInt(ticks)),
+  );
+  pos.y = fx.add(
+    proj.originY,
+    fx.mulDiv(fx.sub(proj.aimY, proj.originY), fx.fromInt(flown), fx.fromInt(ticks)),
+  );
+  return false;
 }
 
 /** Step projectile `p` one tick straight toward `(ax, ay)`; true when it began this tick at the aim. The

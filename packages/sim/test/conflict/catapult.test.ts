@@ -7,6 +7,7 @@ import {
   Owner,
   Palisade,
   Position,
+  Projectile,
   Settler,
   SettlerProgress,
   Stance,
@@ -62,6 +63,10 @@ const CATAPULT_MAX_RANGE = 24;
 const CATAPULT_VS_BARE = 8000;
 const CATAPULT_VS_VEHICLE = 350;
 const CATAPULT_VS_HOUSE = 3625;
+/** The row's `createsmoke 1` / `smokelifetime 20`. */
+const CATAPULT_SMOKE_TICKS = 20;
+/** 16 map points at `speed 3`: `16 * 8 / 3` ticks of flight. */
+const SIXTEEN_POINT_FLIGHT_TICKS = 42;
 /** `damage[7] / 100`: the valency one stone knocks off a wall. */
 const WALL_STEPS_PER_STONE = 36;
 const BOW_VS_VEHICLE = 40;
@@ -129,6 +134,7 @@ function siegeContent(): ContentSet {
         maxRange: CATAPULT_MAX_RANGE,
         damage: { '0': CATAPULT_VS_BARE, '6': CATAPULT_VS_VEHICLE, '7': CATAPULT_VS_HOUSE },
         hitSounds: { '0': 90, '6': 90, '7': 90 },
+        impactSmokeTicks: CATAPULT_SMOKE_TICKS,
       },
       {
         typeId: 16,
@@ -383,7 +389,14 @@ describe('the clip and its target', () => {
     const wall = { hx: 22, hy: 8 };
     const run = (): Simulation => {
       const s = sim(grass(40, 10, true), 5);
-      s.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL_TYPE, x: wall.hx, y: wall.hy, tribe: VIKING, owner: P2 });
+      s.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex: WALL_TYPE,
+        x: wall.hx,
+        y: wall.hy,
+        tribe: VIKING,
+        owner: P2,
+      });
       s.step();
       const catapult = catapultAt(s, 6, 8, P1, 0);
       s.enqueue(
@@ -437,6 +450,37 @@ describe('the scatter roll', () => {
 });
 
 describe('the ground burst', () => {
+  it('flies distance * 8 / speed ticks along its chord, then bursts once with the weapon smoke', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE); // 16 map points east
+    order(s, catapult, P1, house);
+    let stone: Entity | undefined;
+    for (let i = 0; i < VEHICLE_ATTACK_CLIP_TICKS && stone === undefined; i++) {
+      s.step();
+      for (const ev of s.events.current()) if (ev.kind === 'projectileLaunched') stone = ev.projectile;
+    }
+    if (stone === undefined) throw new Error('no stone loosed');
+    const launchTick = s.world.get(stone, Projectile).launchTick;
+    const origin = positionOfNode(6, 8);
+    const aim = positionOfNode(22, 8);
+    while (s.tick < launchTick + SIXTEEN_POINT_FLIGHT_TICKS / 2) s.step();
+    expect(s.world.get(stone, Position)).toEqual({ x: (origin.x + aim.x) / 2, y: origin.y });
+    while (s.tick < launchTick + SIXTEEN_POINT_FLIGHT_TICKS) s.step();
+    expect(s.world.get(stone, Position)).toEqual(aim); // on the aim, held for the drawn last segment
+    s.step();
+    expect(s.world.has(stone, Projectile)).toBe(false);
+    expect(s.events.current().filter((ev) => ev.kind === 'groundBurst')).toEqual([
+      {
+        kind: 'groundBurst',
+        projectile: stone,
+        munitionType: 2,
+        smokeTicks: CATAPULT_SMOKE_TICKS,
+        at: { hx: 22, hy: 8 },
+      },
+    ]);
+  });
+
   it("strikes the owner's own man standing on the landing node (hitself)", () => {
     const s = sim(grass(40, 10));
     const catapult = catapultAt(s, 6, 8, P1);

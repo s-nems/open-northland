@@ -162,5 +162,9 @@ export const Projectile = defineComponent<{
 
 export type ProjectileStateView = DeepReadonly<NonNullable<(typeof Projectile)['__value']>>;
 
-/** What a ground-burst shot carries beyond the damage tables every shot holds: nothing yet. */
-export type ProjectileImpact = Record<string, never>;
+/** What a ground-burst shot carries beyond the damage tables every shot holds. */
+export interface ProjectileImpact {
+  /** The weapon's `smokelifetime`: how long the smoke its landing raises lingers at most, or `null` for a
+   *  weapon that raises none. Read only by the presentation, through the `groundBurst` event. */
+  smokeTicks: number | null;
+}

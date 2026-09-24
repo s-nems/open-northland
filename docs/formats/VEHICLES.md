@@ -334,8 +334,9 @@ stance, guard position and attack ride on the `Vehicle` component; the guard pos
 the stance order and a goto's end (approximation: which order writes the original's is not read).
 Ranges are Manhattan half-cell nodes like every other weapon band (approximation: the original
 measures hexagon distance). The four-step target preference is one nearest search (approximation).
-The stone is a `Projectile` with a ground-burst payload flying at the shared projectile pace, not
-`dist * 8 / speed` (approximation), and the burst treats a house as covering its walls, its
+The stone is a `Projectile` with a ground-burst payload that covers its release chord in equal steps
+over `dist * 8 / speed` ticks and lands a tick after it reaches the aim, so the drawn stone finishes its
+last segment (approximation: the original lands on the last flight tick); the burst treats a house as covering its walls, its
 reserved ring and its anchor (approximation: the original's in-house test area is not read), and it
 strikes a garrison standing on its tower's node (*open*: whether the original's hidden-human skip
 covers a posted archer is not read). Only the burst wears a wall; a melee blow lands on nothing
