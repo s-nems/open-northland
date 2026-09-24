@@ -75,6 +75,8 @@ export interface UnitOrderController {
   issueAttackTarget(event: MouseEvent, kind: UnitTargetKind, units?: readonly number[]): boolean;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
   issueAttackAnimal(event: MouseEvent, units?: readonly number[]): boolean;
+  /** Offer `units` the courses of the school `house`; false when none of them may learn there. */
+  openSchool(house: number, units: readonly number[]): boolean;
   refresh(): void;
   setUiScale(scale: number): Promise<void>;
   dispose(): void;
@@ -132,6 +134,21 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return true;
   };
 
+  const openSchool = (house: number, units: readonly number[]): boolean => {
+    school?.dispose();
+    school = openSchoolDialog(
+      deps.content,
+      deps.snapshot,
+      units,
+      house,
+      deps.enqueue,
+      deps.technologyStatus,
+      deps.cue,
+      uiScale,
+    );
+    return school !== undefined;
+  };
+
   const issueRightClick = (event: MouseEvent, onBuilding?: number | null): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const own = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
@@ -160,21 +177,14 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
       const def = type !== undefined ? buildingsByType.get(type) : undefined;
       if (
-        def?.kind === 'training' &&
-        def.workers.length === 0 &&
+        def !== undefined &&
+        systems.isSchoolType(def) &&
         entity?.components.UnderConstruction === undefined
       ) {
         event.preventDefault();
-        school?.dispose();
-        school = openSchoolDialog(
-          deps.content,
-          deps.snapshot,
-          commanded.map((t) => t.ref),
+        openSchool(
           building,
-          deps.enqueue,
-          deps.technologyStatus,
-          deps.cue,
-          uiScale,
+          commanded.map((t) => t.ref),
         );
         return true;
       }
@@ -358,5 +368,6 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     issueAttackMove,
     issueAttackTarget,
     issueAttackAnimal,
+    openSchool,
   };
 }

@@ -75,13 +75,23 @@ export const sitePick: OwnBuildingPick = ownBuildingPick({
   accepts: () => true,
 });
 
-/** The standing training houses a settler may drill at; the one it already drills at refuses a repeat. */
-export const drillPick: OwnBuildingPick = ownBuildingPick({
-  candidate: (building, byType) => {
+const finishedOfType =
+  (is: (def: BuildingInfo) => boolean) =>
+  (building: SnapshotEntity, byType: ReadonlyMap<number, BuildingInfo>): boolean => {
     if (!isFinishedBuilding(building)) return false;
     const typeId = buildingTypeOf(building);
     const def = typeId !== undefined ? byType.get(typeId) : undefined;
-    return def !== undefined && systems.isBarracksType(def);
-  },
+    return def !== undefined && is(def);
+  };
+
+/** The standing barracks a settler may drill at; the one it already drills at refuses a repeat. */
+export const drillPick: OwnBuildingPick = ownBuildingPick({
+  candidate: finishedOfType(systems.isBarracksType),
   accepts: (building, settler) => trainingHouseOf(settler) !== building.id,
+});
+
+/** The standing schools; the course dialog a pick opens decides per course who may still learn it. */
+export const schoolPick: OwnBuildingPick = ownBuildingPick({
+  candidate: finishedOfType(systems.isSchoolType),
+  accepts: () => true,
 });

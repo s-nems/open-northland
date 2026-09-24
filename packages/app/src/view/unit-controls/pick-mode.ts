@@ -9,6 +9,7 @@ import {
   computeHouseHighlight,
   drillPick,
   houseAssignableAt,
+  schoolPick,
   sitePick,
   tradeHousePick,
   workerGroupAt,
@@ -108,8 +109,12 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
           house: building as Entity,
         })),
   },
+  // A school is resolved before these orders: its pick opens the course dialog instead.
   'learning-place': {
-    highlight: drillPick.highlight,
+    highlight: (snapshot, settlers, byType) => [
+      ...drillPick.highlight(snapshot, settlers, byType),
+      ...schoolPick.highlight(snapshot, settlers, byType),
+    ],
     orders: (snapshot, settlers, building, byType) =>
       settlers
         .filter((settler) => drillPick.assignableAt(snapshot, building, settler, byType))
@@ -218,7 +223,14 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     const candidates = kind === 'trade-house' ? deps.targets.buildings() : deps.targets.owned('building');
     const building = pickTopAt(candidates, w.x, w.y);
     if (building === null) return false;
-    const orders = BUILDING_PICKS[kind].orders(deps.snapshot(), settlers, building, buildingsByType);
+    const snapshot = deps.snapshot();
+    if (kind === 'learning-place') {
+      const learners = settlers.filter((settler) =>
+        schoolPick.assignableAt(snapshot, building, settler, buildingsByType),
+      );
+      if (learners.length > 0) return deps.orders().openSchool(building, learners);
+    }
+    const orders = BUILDING_PICKS[kind].orders(snapshot, settlers, building, buildingsByType);
     for (const order of orders) deps.enqueue(order);
     return orders.length > 0;
   };
