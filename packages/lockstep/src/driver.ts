@@ -97,7 +97,11 @@ export class LockstepDriver implements SessionDriver {
       throw new Error('This transport requires its authority to capture pending orders');
     const continuation = this.transport
       .pendingFrames()
-      .flatMap((frame) => frame.commands.map(({ envelope }) => ({ applyTick: frame.tick, envelope })));
+      .flatMap((frame) =>
+        [...frame.commands]
+          .sort((a, b) => a.sequence - b.sequence)
+          .map(({ envelope }) => ({ applyTick: frame.tick, envelope })),
+      );
     return exportSaveGame(this.sim, {
       ...options,
       continuation: [...(options.continuation ?? []), ...continuation],

@@ -10,7 +10,7 @@ import {
 } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
-import { applyInitialSaveSeats, LockstepDriver, LoopbackTransport } from '../src/index.js';
+import { applyInitialSaveSeats, LockstepDriver, LoopbackTransport, type TickFrame } from '../src/index.js';
 
 it('restores paused transport orders after endogenous commands without changing the continuing run', () => {
   const content = testContent();
@@ -117,4 +117,32 @@ it('a resumed room keeps the saved handlers and module toggles of a seat that st
   // A seat the save ran as a person is handed to a full computer player.
   expect(components.aiModuleRuns(resumed.world, 8, 'military')).toBe(true);
   expect(components.isAiPlayer(resumed.world, 0)).toBe(false);
+});
+
+it('captures pending commands in assigned sequence order without mutating transport frames', () => {
+  const content = testContent();
+  const sim = new Simulation({ seed: 5, content });
+  const frame: TickFrame = {
+    tick: 1,
+    commands: [
+      { sequence: 1, envelope: adminCommand({ kind: 'setNeedsEnabled', enabled: false }) },
+      { sequence: 0, envelope: adminCommand({ kind: 'setNeedsEnabled', enabled: true }) },
+    ],
+  };
+  const driver = new LockstepDriver({
+    sim,
+    transport: {
+      submit() {},
+      take: () => frame,
+      pendingFrames: () => [frame],
+    },
+  });
+  const restored = restoreSimulation(driver.captureSave(), { content });
+  driver.runTick();
+  restored.step();
+  expect(sim.needsEnabled()).toBe(false);
+  expect(restored.needsEnabled()).toBe(false);
+  expect(restored.commands.log).toEqual(sim.commands.log);
+  expect(restored.hashState()).toBe(sim.hashState());
+  expect(frame.commands.map(({ sequence }) => sequence)).toEqual([1, 0]);
 });
