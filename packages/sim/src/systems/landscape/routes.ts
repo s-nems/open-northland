@@ -12,8 +12,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 
 /** A script changes topology immediately; existing paths and remembered failures must not outlive it. */
 export function invalidateLandscapeRoutes(world: World, terrain: TerrainGraph): void {
-  for (const e of [...world.query(Stranded)]) world.remove(e, Stranded);
-  for (const e of [...world.query(UnreachableGoals)]) world.remove(e, UnreachableGoals);
+  forgetRouteFailures(world);
   // A diagonal can close through its midpoint flanks without either endpoint becoming blocked.
   // Requeue active routes through the normal search budget, including travellers already mid-leg.
   for (const e of [...world.query(PathFollow, Position)]) {
@@ -26,4 +25,11 @@ export function invalidateLandscapeRoutes(world: World, terrain: TerrainGraph): 
       world.add(e, PathRequest, { start: terrain.nodeAtClamped(start.hx, start.hy), goal, failed: false });
     }
   }
+}
+
+/** Drop every remembered unreachable goal and stranded park, so a way a script opened is tried again
+ *  at once rather than when the memo runs out. */
+export function forgetRouteFailures(world: World): void {
+  for (const e of [...world.query(Stranded)]) world.remove(e, Stranded);
+  for (const e of [...world.query(UnreachableGoals)]) world.remove(e, UnreachableGoals);
 }

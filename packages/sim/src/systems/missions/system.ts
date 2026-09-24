@@ -9,6 +9,7 @@ import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { checkMission } from './check.js';
 import type { MissionPass } from './pass.js';
+import { settleLandscapePass } from './results/landscape.js';
 import type { MissionScript } from './script.js';
 
 /**
@@ -85,6 +86,7 @@ function runPass(world: World, ctx: SystemContext, script: MissionScript, record
   for (let index = 0; index < records.length && !pass.halted; index++) {
     if (records[index]?.active === true) checkMission(pass, index, true);
   }
+  settleLandscapePass(pass);
   if (pass.subMission !== undefined)
     ctx.events.emit({ kind: 'missionSubMission', transition: pass.subMission });
 }

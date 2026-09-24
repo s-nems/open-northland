@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
+import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../../src/components/index.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
 import { hexDistance } from '../../src/nav/halfcell.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { invalidateLandscapeRoutes } from '../../src/systems/landscape/routes.js';
 import type { MissionPass } from '../../src/systems/missions/pass.js';
 import { setRandomChest } from '../../src/systems/missions/results/chests.js';
-import { editScriptedLandscape } from '../../src/systems/missions/results/landscape.js';
+import { editScriptedLandscape, settleLandscapePass } from '../../src/systems/missions/results/landscape.js';
 import { ctxOf } from '../fixtures/context.js';
 import { stopAt } from '../fixtures/waypoints.js';
 import { fresh, map, POINT, terrainOf, WALL } from './landscape-support.js';
@@ -264,5 +264,33 @@ describe('script landscape route invalidation', () => {
     expect(sim.landscapeEdits().added).toHaveLength(1);
     expect(sim.world.has(e, PathFollow)).toBe(false);
     expect(sim.world.has(e, PathRequest)).toBe(true);
+  });
+
+  it('lets a stranded settler retry once a pass leaves a cleared cell open, not when it lays it back', () => {
+    const sim = chestSim();
+    const lost = sim.world.create();
+    sim.world.add(lost, Stranded, { retryAt: 1000 });
+    // The pressure plate: removed and laid again, so nothing stays open.
+    const plate = passOf(sim);
+    editScriptedLandscape(plate, 0, { opcode: 'RemoveLandscape', point: POINT });
+    editScriptedLandscape(plate, 0, {
+      opcode: 'SetLandscape',
+      point: POINT,
+      landscape: 1,
+      level: 0,
+      flag: false,
+    });
+    settleLandscapePass(plate);
+    expect(sim.world.has(lost, Stranded)).toBe(true);
+    // The tribute: the two-cell wall goes and a one-cell chest takes its point, so a cell stays open.
+    const tribute = passOf(sim);
+    editScriptedLandscape(tribute, 0, { opcode: 'RemoveLandscape', point: POINT });
+    setRandomChest(tribute, 0, {
+      opcode: 'SetRandomChestOnPosition',
+      amount: TOWER_CHEST_MASK,
+      point: POINT,
+    });
+    settleLandscapePass(tribute);
+    expect(sim.world.has(lost, Stranded)).toBe(false);
   });
 });

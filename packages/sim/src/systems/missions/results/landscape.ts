@@ -10,7 +10,7 @@ import {
   setLandscape,
   setVertexColors,
 } from '../../landscape/edits.js';
-import { invalidateLandscapeRoutes } from '../../landscape/routes.js';
+import { forgetRouteFailures, invalidateLandscapeRoutes } from '../../landscape/routes.js';
 import { landscapeTypes } from '../../landscape/view.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
@@ -127,6 +127,20 @@ export function layScriptedLandscape(
   if (!setLandscape(pass.world, pass.ctx, point, typeId, level)) return false;
   announceLandscapeChange(pass, terrain, revision, openBefore);
   return true;
+}
+
+/** At the end of a pass: when a cell its removals opened is still open, a goal a settler gave up on
+ *  may be reachable now. A pass that lays the same shape back, a pressure plate's loop, opens none. */
+export function settleLandscapePass(pass: MissionPass): void {
+  const terrain = pass.ctx.terrain;
+  if (terrain === undefined || pass.landscapeFreed === undefined || pass.landscapeFreed.size === 0) return;
+  const blocked = dynamicBlockOverlay(pass.world, pass.ctx, terrain);
+  for (const node of pass.landscapeFreed) {
+    if (!blocked.has(node)) {
+      forgetRouteFailures(pass.world);
+      return;
+    }
+  }
 }
 
 function freedThisPass(pass: MissionPass): Set<NodeId> {
