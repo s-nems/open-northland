@@ -15,7 +15,6 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
-import { attackableBuildings } from '../../src/systems/conflict/dormancy.js';
 import { FLEE_CHECK_STRIDE_TICKS } from '../../src/systems/conflict/flee.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -191,7 +190,7 @@ describe('combat presence gate - diplomacy', () => {
   function gateOpens(sim: Simulation, members: readonly Entity[], player: number): boolean {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
-    const index = new CombatIndex(sim.world, ctxOf(sim), terrain, members, attackableBuildings(sim.world));
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrain, members);
     return index.othersWithin(player, 40, 40, SIGHT_RADIUS_NODES);
   }
 

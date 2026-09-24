@@ -230,6 +230,8 @@ describe('warriors attack enemy buildings', () => {
     const died: Entity[] = [];
     for (let i = 0; i < 200 && sim.world.isAlive(home); i++) {
       sim.step();
+      // The held building layer must survive every tick of the siege down to the reap.
+      expect(sim.world.verifyCaches()).toEqual([]);
       for (const ev of sim.events.current()) {
         if (ev.kind === 'buildingDestroyed') razed.push(ev.entity);
         if (ev.kind === 'settlerDied') died.push(ev.entity);

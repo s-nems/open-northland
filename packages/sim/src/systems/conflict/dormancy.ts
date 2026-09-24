@@ -13,17 +13,6 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isHunterJob } from '../readviews/index.js';
 
-/** The live enemy-attackable buildings this tick. They join the combat target index but never the seeker
- *  loop, since a building never fights back. Query order - the caller folds the list into its canonical
- *  merged sort. */
-export function attackableBuildings(world: World): Entity[] {
-  const out: Entity[] = [];
-  for (const e of world.query(Building, Health, Position)) {
-    if (world.get(e, Health).hitpoints > 0) out.push(e);
-  }
-  return out;
-}
-
 /**
  * The dormancy gate: whether any combat work is possible this tick, in one cheap pass over the combatants.
  * Conservative - it may pass on a tick where the two hostile sides are out of range, but it never skips a

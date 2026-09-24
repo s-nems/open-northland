@@ -13,6 +13,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
 import { buildingBodyNodes } from '../../src/systems/conflict/target-node.js';
+import { isFleeThreat, isValidTarget } from '../../src/systems/conflict/targeting.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../src/systems/spatial/metric.js';
 import { canonicalById, entityNode, NodeBuckets } from '../../src/systems/spatial/nodes.js';
@@ -48,6 +49,11 @@ const TAIL_RINGS = 3;
 const KEEP = 30;
 const KEEP_WALLS = [0, 1, 2, 3].map((dx) => ({ dx, dy: 0 }));
 const KEEP_HP = 1000;
+/** A keep retyped in place: a wall row twice as long, so the retype moves its body. */
+const LONG_KEEP = 31;
+const LONG_KEEP_WALLS = [0, 1, 2, 3, 4, 5, 6, 7].map((dx) => ({ dx, dy: 0 }));
+/** The anchor of the keep the across-builds test retypes. */
+const RETYPED_AT = { x: 20, y: 20 };
 /** A third player: at peace with P0 both ways, while P1 holds `enemy` toward it one way only. */
 const P2 = 2;
 const OWNERS = [P0, P1, P2];
@@ -68,7 +74,8 @@ function lcg(seed: number): () => number {
   };
 }
 
-/** The fixture content plus the walled {@link KEEP}, the one building type here with a real body. */
+/** The fixture content plus the walled {@link KEEP} and {@link LONG_KEEP}, the building types here with a
+ *  real body. */
 function indexContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
@@ -76,6 +83,13 @@ function indexContent(): ContentSet {
     buildings: [
       ...base.buildings,
       { typeId: KEEP, id: 'keep', kind: 'tower', hitpoints: KEEP_HP, footprint: { blocked: KEEP_WALLS } },
+      {
+        typeId: LONG_KEEP,
+        id: 'long_keep',
+        kind: 'tower',
+        hitpoints: KEEP_HP,
+        footprint: { blocked: LONG_KEEP_WALLS },
+      },
     ],
   });
 }
@@ -174,6 +188,56 @@ function ringNearestFew(
   return found.slice(0, limit);
 }
 
+/** Build this tick's index over `ids` and the sim's buildings, and hold it to the ring walk over `walled`
+ *  on {@link QUERIES} random bands, with and without a seeker's skip. */
+function expectRingWalkAgreement(
+  sim: Simulation,
+  ids: readonly Entity[],
+  walled: readonly Entity[],
+  draw: () => number,
+): void {
+  const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), ids);
+  const reference = referenceBuckets(sim, ids, walled);
+  const atWar = (e: Entity, seeker: number): boolean => {
+    const owner = sim.world.get(e, Owner).player;
+    if (owner === seeker) return false;
+    return (
+      diplomacyStance(sim.world, seeker, owner) === 'enemy' ||
+      diplomacyStance(sim.world, owner, seeker) === 'enemy'
+    );
+  };
+  // The last filter rejects every building (no `Settler`), so both sides of the multi-node case run.
+  const accepts: ReadonlyArray<Accept> = [
+    () => true,
+    (e) => e % 2 === 0,
+    (e) => sim.world.get(e, Health).hitpoints > 0 && sim.world.has(e, Settler) && e % 3 !== 0,
+  ];
+  for (let q = 0; q < QUERIES; q++) {
+    const x = Math.floor(draw() * MAP_NODES);
+    const y = Math.floor(draw() * MAP_NODES);
+    const minDist = Math.floor(draw() * 3);
+    const maxDist = minDist + Math.floor(draw() * MAX_RADIUS);
+    const accept = accepts[q % accepts.length] ?? accepts[0];
+    if (accept === undefined) throw new Error('unreachable');
+    expect(index.nearest(x, y, minDist, maxDist, accept, null)).toEqual(
+      reference.nearest(x, y, minDist, maxDist, accept),
+    );
+    expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, null)).toEqual(
+      ringNearestFew(reference, x, y, minDist, maxDist, accept, FEW),
+    );
+    // A seeker's skip is exactly a filter admitting only players at war with it either way, so the
+    // winner cannot move for any accept that already rejects the rest.
+    const seeker = OWNERS[q % OWNERS.length] ?? P0;
+    const hostile: Accept = (e) => atWar(e, seeker) && accept(e);
+    expect(index.nearest(x, y, minDist, maxDist, accept, seeker)).toEqual(
+      reference.nearest(x, y, minDist, maxDist, hostile),
+    );
+    expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker)).toEqual(
+      ringNearestFew(reference, x, y, minDist, maxDist, hostile, FEW),
+    );
+  }
+}
+
 describe('CombatIndex nearest search - equivalent to the node ring walk', () => {
   for (const seed of [1, 2, 3]) {
     it(`agrees with the ring walk on nearest and nearestFew over a random crowd (seed ${seed})`, () => {
@@ -186,56 +250,55 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
       ] as const) {
         setDiplomacyStance(sim.world, from, to, 'neutral');
       }
-      const ids = crowd(sim, draw);
-      const walled = keeps(sim, draw);
-      const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), ids, walled);
-      const reference = referenceBuckets(sim, ids, walled);
-      const atWar = (e: Entity, seeker: number): boolean => {
-        const owner = sim.world.get(e, Owner).player;
-        if (owner === seeker) return false;
-        return (
-          diplomacyStance(sim.world, seeker, owner) === 'enemy' ||
-          diplomacyStance(sim.world, owner, seeker) === 'enemy'
-        );
-      };
-      // The last filter rejects every building (no `Settler`), so both sides of the multi-node case run.
-      const accepts: ReadonlyArray<Accept> = [
-        () => true,
-        (e) => e % 2 === 0,
-        (e) => sim.world.get(e, Health).hitpoints > 0 && sim.world.has(e, Settler) && e % 3 !== 0,
-      ];
-      for (let q = 0; q < QUERIES; q++) {
-        const x = Math.floor(draw() * MAP_NODES);
-        const y = Math.floor(draw() * MAP_NODES);
-        const minDist = Math.floor(draw() * 3);
-        const maxDist = minDist + Math.floor(draw() * MAX_RADIUS);
-        const accept = accepts[q % accepts.length] ?? accepts[0];
-        if (accept === undefined) throw new Error('unreachable');
-        expect(index.nearest(x, y, minDist, maxDist, accept, null)).toEqual(
-          reference.nearest(x, y, minDist, maxDist, accept),
-        );
-        expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, null)).toEqual(
-          ringNearestFew(reference, x, y, minDist, maxDist, accept, FEW),
-        );
-        // A seeker's skip is exactly a filter admitting only players at war with it either way, so the
-        // winner cannot move for any accept that already rejects the rest.
-        const seeker = OWNERS[q % OWNERS.length] ?? P0;
-        const hostile: Accept = (e) => atWar(e, seeker) && accept(e);
-        expect(index.nearest(x, y, minDist, maxDist, accept, seeker)).toEqual(
-          reference.nearest(x, y, minDist, maxDist, hostile),
-        );
-        expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker)).toEqual(
-          ringNearestFew(reference, x, y, minDist, maxDist, hostile, FEW),
-        );
-      }
+      expectRingWalkAgreement(sim, crowd(sim, draw), keeps(sim, draw), draw);
     });
   }
+
+  it('keeps agreeing across builds as units leave and buildings are placed, razed, handed over and retyped', () => {
+    // The building layer outlives a build and the units do not, so each change must reach the next build.
+    const draw = lcg(4);
+    const sim = mappedSim(4);
+    const ids = crowd(sim, draw);
+    const retyped = keepAtNode(sim, RETYPED_AT.x, RETYPED_AT.y, P1);
+    const walled = [...keeps(sim, draw), retyped];
+    expectRingWalkAgreement(sim, ids, walled, draw);
+
+    const stayed = ids.filter((_, i) => i % 2 === 0);
+    expectRingWalkAgreement(sim, stayed, walled, draw);
+
+    // One change per build, so no change rides on another's rebuild.
+    const [razed, handed, ...rest] = walled;
+    if (razed === undefined || handed === undefined) throw new Error('keeps expected');
+    sim.world.mut(handed, Owner).player = (sim.world.get(handed, Owner).player + 1) % OWNERS.length;
+    expectRingWalkAgreement(sim, stayed, walled, draw);
+    sim.world.add(handed, Owner, { player: (sim.world.get(handed, Owner).player + 1) % OWNERS.length });
+    expectRingWalkAgreement(sim, stayed, walled, draw);
+    sim.world.mut(retyped, Building).buildingType = LONG_KEEP;
+    expectRingWalkAgreement(sim, stayed, walled, draw);
+    // The far end of the longer row, which only the retyped body holds.
+    const farWall = RETYPED_AT.x + LONG_KEEP_WALLS.length - 1;
+    expect(
+      new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), stayed).nearest(
+        farWall,
+        RETYPED_AT.y,
+        0,
+        0,
+        (e) => e === retyped,
+        null,
+      ),
+    ).toEqual({ entity: retyped, distance: 0 });
+    sim.world.destroy(razed);
+    expectRingWalkAgreement(sim, stayed, [handed, ...rest], draw);
+    const placed = keepAtNode(sim, 40, 40, P1);
+    expectRingWalkAgreement(sim, stayed, [handed, ...rest, placed], draw);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
 
   it('reuses one band scan across the two target tiers without staling another band', () => {
     const sim = mappedSim(1);
     const near = combatantAtNode(sim, 10, 10, P1, MILITARY_MODE.ATTACK);
     const far = combatantAtNode(sim, 20, 10, P1, MILITARY_MODE.ATTACK);
-    const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), [near, far], []);
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), [near, far]);
     const all: Accept = () => true;
     expect(index.nearest(12, 10, 0, MAX_RADIUS, (e) => e === far, null)).toEqual({
       entity: far,
@@ -244,6 +307,59 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
     expect(index.nearest(12, 10, 0, MAX_RADIUS, all, null)).toEqual({ entity: near, distance: 2 });
     expect(index.nearest(12, 10, 3, MAX_RADIUS, all, null)).toEqual({ entity: far, distance: 8 });
     expect(index.nearest(19, 10, 0, MAX_RADIUS, all, null)).toEqual({ entity: far, distance: 1 });
+  });
+  it('still offers a building felled after the layer was built, and the target filters turn it down', () => {
+    // The layer ignores hitpoints: a building felled this tick is reaped only by the cleanup after combat.
+    const sim = mappedSim(1);
+    const ctx = ctxOf(sim);
+    const seeker = combatantAtNode(sim, 10, 10, P0, MILITARY_MODE.ATTACK);
+    const enemy = combatantAtNode(sim, 10, 16, P1, MILITARY_MODE.ATTACK);
+    const keep = keepAtNode(sim, 11, 10, P1);
+    new CombatIndex(sim.world, ctx, terrainOf(sim), [seeker, enemy]);
+    sim.world.mut(keep, Health).hitpoints = 0;
+    const index = new CombatIndex(sim.world, ctx, terrainOf(sim), [seeker, enemy]);
+    const attacker = sim.world.get(seeker, Settler);
+    expect(index.nearest(10, 10, 0, MAX_RADIUS, () => true, P0)).toEqual({ entity: keep, distance: 1 });
+    const pastTheKeep = { entity: enemy, distance: 6 };
+    expect(
+      index.nearest(10, 10, 0, MAX_RADIUS, (t) => isValidTarget(sim.world, ctx, seeker, attacker, t), P0),
+    ).toEqual(pastTheKeep);
+    expect(
+      index.nearest(10, 10, 0, MAX_RADIUS, (t) => isFleeThreat(sim.world, ctx, seeker, attacker, t), P0),
+    ).toEqual(pastTheKeep);
+  });
+
+  it('the building layer verifier flags an Owner write that bypassed the tracked seam', () => {
+    const sim = mappedSim(1);
+    const keep = keepAtNode(sim, 10, 10, P1);
+    new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), []);
+    expect(sim.world.verifyCaches()).toEqual([]);
+    // Defeating the readonly view is the bug the verifier exists to catch: no generation bump.
+    (sim.world.get(keep, Owner) as { player: number }).player = P2;
+    expect(sim.world.verifyCaches().join('\n')).toContain('combatBuildingLayer');
+  });
+
+  it('scans a query nested in an accept into its own buffer, leaving the outer band intact', () => {
+    // The hunter's last-resort gate asks for game from inside its own candidate filter.
+    const sim = mappedSim(1);
+    const outer = [10, 14, 16].map((x) => combatantAtNode(sim, x, 10, P1, MILITARY_MODE.ATTACK));
+    const inner = [60, 61, 62].map((x) => combatantAtNode(sim, x, 10, P1, MILITARY_MODE.ATTACK));
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), [...outer, ...inner]);
+    const last = outer[2];
+    const innerFinds: Array<Found | null> = [];
+    const found = index.nearest(
+      12,
+      10,
+      0,
+      10,
+      (e) => {
+        innerFinds.push(index.nearest(60, 10, 0, 4, () => true, null));
+        return e === last;
+      },
+      null,
+    );
+    expect(found).toEqual({ entity: last, distance: 4 });
+    expect(innerFinds).toEqual(Array(3).fill({ entity: inner[0], distance: 0 }));
   });
 });
 
@@ -254,12 +370,8 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
 describe('CombatIndex.nearestFew - the nearest several', () => {
   const all: Accept = () => true;
 
-  function indexOver(
-    sim: Simulation,
-    ids: readonly Entity[],
-    buildings: readonly Entity[] = [],
-  ): CombatIndex {
-    return new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), ids, buildings);
+  function indexOver(sim: Simulation, ids: readonly Entity[]): CombatIndex {
+    return new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), ids);
   }
 
   it('orders by distance, then by ascending id, and leads with what nearest would pick', () => {
@@ -309,7 +421,7 @@ describe('CombatIndex.nearestFew - the nearest several', () => {
     const sim = mappedSim(1);
     const keep = keepAtNode(sim, 10, 10, P1); // walls at distance 0, 1, 2 and 3
     const unit = combatantAtNode(sim, 10, 14, P1, MILITARY_MODE.ATTACK); // distance 4
-    const index = indexOver(sim, [unit], [keep]);
+    const index = indexOver(sim, [unit]);
     expect(index.nearestFew(10, 10, 2, 10, all, FEW, null)).toEqual([
       { entity: keep, distance: 2 },
       { entity: unit, distance: 4 },

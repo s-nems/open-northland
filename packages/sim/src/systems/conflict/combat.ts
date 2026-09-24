@@ -4,7 +4,7 @@ import { garrisonSeats } from '../defence/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex } from './combat-index.js';
-import { attackableBuildings, combatPossible } from './dormancy.js';
+import { combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
 import { MeleeSlots } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
@@ -41,7 +41,7 @@ export const combatSystem: System = (world, ctx) => {
   const pass: CombatPass = {
     // Attackable buildings join the target index but never the seeker loop: a warrior can strike an enemy
     // building, but a building never engages.
-    index: new CombatIndex(world, ctx, terrain, combatants, attackableBuildings(world)),
+    index: new CombatIndex(world, ctx, terrain, combatants),
     slots: new MeleeSlots(world, ctx, terrain),
     seats: garrisonSeats(world),
     bands: new Map(),
