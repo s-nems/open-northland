@@ -131,7 +131,7 @@ export function recountHerdRows(world: World, ctx: SystemContext, farm: Entity):
 }
 
 /** The species goods `farm` keeps a herd row for: the species its stock has a slot for. */
-export function* herdRowGoodsOf(world: World, ctx: SystemContext, farm: Entity): IterableIterator<number> {
+function* herdRowGoodsOf(world: World, ctx: SystemContext, farm: Entity): IterableIterator<number> {
   for (const good of livestockSpeciesGoods(ctx.content)) {
     if (stockCapacity(world, ctx, farm, good) > 0) yield good;
   }
