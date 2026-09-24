@@ -57,6 +57,9 @@ Per-tick work must scale with active work, never all entity pairs. Reuse:
 - dormancy or generation checks for provably unchanged work;
 - `World.canonicalEntities()` when a shared canonical list is actually required.
 
+The tick is one synchronous function: no workers, shared memory, async or parallel sections inside
+the sim, ever. Parallelism can make state depend on core count, which desyncs multiplayer.
+
 Never mutate a shared cached list. Measure system scaling with `npm run bench:sim` (synthetic world,
 isolated axes) or `npm run bench:map` (a real decoded map, reported as a growth curve); timing stays in
 the caller through `Simulation.setInstrument`, never in sim source.

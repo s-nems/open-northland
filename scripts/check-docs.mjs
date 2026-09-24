@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { lstat, readFile, stat } from 'node:fs/promises';
-import { dirname, relative, resolve } from 'node:path';
+import { basename, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -216,7 +216,8 @@ const filesAndContent = await Promise.all(files.map(async (path) => [path, await
 const ticketDependencies = new Map();
 for (const [path, markdown] of filesAndContent) {
   await checkLinks(path, markdown);
-  if (displayPath(path).startsWith('docs/tickets/') && displayPath(path) !== 'docs/tickets/README.md') {
+  // A `README.md` under docs/tickets is the tracker's own or an epic map, never a ticket.
+  if (displayPath(path).startsWith('docs/tickets/') && basename(path) !== 'README.md') {
     await checkTicket(path, markdown);
     const dependencies = ticketDependencyTargets(path, markdown).map((target) => {
       const pathOnly = target.split('#', 1)[0];

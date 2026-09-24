@@ -12,7 +12,7 @@ const tickets = [];
 for (const area of await readdir(ticketsRoot, { withFileTypes: true })) {
   if (!area.isDirectory()) continue;
   for (const name of await readdir(join(ticketsRoot, area.name))) {
-    if (!name.endsWith('.md')) continue;
+    if (!name.endsWith('.md') || name === 'README.md') continue; // a folder README is an epic map
     const path = join(ticketsRoot, area.name, name);
     const markdown = await readFile(path, 'utf8');
     const title = /^# (.+)$/m.exec(markdown)?.[1] ?? name;

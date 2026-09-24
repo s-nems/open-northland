@@ -32,9 +32,14 @@ the canonical legal wording.
    mechanic, constant, timing, or visual choice comes from extracted data, readable semantics,
    byte-level evidence, a published standard, observation, or an approximation.
 6. **Treat scale as a budget.** Per-tick simulation work scales with active work, not entity pairs.
-   Per-frame rendering and audio work scales with the visible screen, not the map. Measure that claim
-   instead of asserting it: `docs/DEVELOPMENT.md` says which tool answers which question, and what
-   voids a measurement.
+   Per-frame rendering and audio work scales with the visible screen, not the map. Memoization by
+   snapshot identity removes repeats within a tick, never the pass itself. A projection, HUD model or
+   index that runs per tick scales with the entities that changed or are visible; a per-tick pass over
+   every entity is a scale violation whatever caches it, and the render contract's visibility-pass
+   allowance is the one standing exception. Hot paths allocate per change, not per entity per frame.
+   A performance claim names the scenario and the numbers; "bounded by memoization" or
+   "screen-bounded by construction" without a measurement is not one. `docs/DEVELOPMENT.md` says
+   which tool answers which question, and what voids a measurement.
 7. **Keep durable context small.** Current tasks live in `docs/tickets/`. Stable rules live in an
    `AGENTS.md`. Completed investigation belongs in Git history.
 

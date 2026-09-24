@@ -1,7 +1,9 @@
 # Work tracker
 
 Each Markdown file below this directory is one open task. Git history is the archive: completing or
-invalidating a task means deleting its ticket, not moving it to a `done` folder.
+invalidating a task means deleting its ticket, not moving it to a `done` folder. A folder's
+`README.md` is an epic map, not a task: it fixes the order, dependencies and shared non-goals of the
+tickets beside it and is deleted with the last of them.
 
 `features/` is the project owner's curated gameplay backlog. Agents do not add feature ideas, visual
 polish, parity surveys, or acceptance scenes there unless the owner explicitly asks. Technical work
