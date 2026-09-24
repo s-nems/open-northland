@@ -5,6 +5,7 @@ import {
   Equipment,
   EquipOrder,
   type EquipOrderIntent,
+  ExploreOrder,
   equipSlotValue,
   MISC_EQUIP_SLOTS,
   MoveGoal,
@@ -67,8 +68,10 @@ function stampEquipOrder(
     ...target,
     returnTo: skipReturn ? null : terrain.nodeAtClamped(n.hx, n.hy),
   };
-  // Queued or active, this errand is the latest order: a parked walk replayed later would cancel it.
+  // Queued or active, this errand is the latest order: a parked walk replayed later, or a scout sweep's
+  // next leg, would cancel it.
   world.remove(e, DeferredOrder);
+  world.remove(e, ExploreOrder);
   const active = world.tryMut(e, EquipOrder);
   if (active?.issuer === 'player' && (active.group !== spec.group || active.slot !== spec.slot)) {
     active.queued ??= [];

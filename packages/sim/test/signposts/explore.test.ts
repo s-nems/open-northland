@@ -1,15 +1,21 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
+  Building,
+  EquipOrder,
   ExploreOrder,
   FOG_MODE,
   Health,
   MoveGoal,
+  NeedOrder,
   Owner,
   Position,
   Stance,
+  Stockpile,
+  TrainingOrder,
 } from '../../src/components/index.js';
-import { fx } from '../../src/core/fixed.js';
+import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -26,9 +32,23 @@ const VIKING = 1;
 const SCOUT_JOB = 27;
 const WOODCUTTER = 1;
 const P0 = 0;
+const SHOES = 8; // fixture boots-class wearable
+const CARRIER_JOB = 24;
+/** Out of the 10..19 band the shared fixture reserves for suites' own buildings. */
+const BARRACKS = 91;
+const WALK_INTO_LEG_TICKS = 30;
 
 function simWithFog(w = 24, h = 8): Simulation {
-  const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(w, h) });
+  const base = testContent();
+  // A LEARN house that employs haulers is what reads as a barracks.
+  const barracks = {
+    typeId: BARRACKS,
+    id: 'barracks',
+    kind: 'training' as const,
+    workers: [{ jobType: CARRIER_JOB, count: 1 }],
+  };
+  const content = parseContentSet({ ...base, buildings: [...base.buildings, barracks] });
+  const sim = new Simulation({ seed: 7, content, map: grassMap(w, h) });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
   return sim;
 }
@@ -108,4 +128,37 @@ describe('exploreArea - the scout sweep', () => {
     sim.step();
     expect(sim.world.has(scout, ExploreOrder)).toBe(false);
   });
+
+  it.each(['orderNeed', 'trainSoldier', 'equipGood'] as const)(
+    'an accepted %s order ends the sweep instead of being walked off by its next leg',
+    (kind) => {
+      const sim = simWithFog();
+      const scout = scoutAt(sim, 1, 1);
+      const pile = sim.world.create();
+      sim.world.add(pile, Position, { x: fx.fromInt(4), y: fx.fromInt(1) });
+      sim.world.add(pile, Stockpile, { amounts: new Map([[SHOES, 1]]) });
+      const barracks = sim.world.create();
+      sim.world.add(barracks, Position, { x: fx.fromInt(5), y: fx.fromInt(4) });
+      sim.world.add(barracks, Building, { buildingType: BARRACKS, tribe: VIKING, built: ONE, level: 0 });
+      sim.world.add(barracks, Owner, { player: P0 });
+      sim.step();
+      sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: 30, y: 6 });
+      sim.run(WALK_INTO_LEG_TICKS); // off its start node, so the next leg is a new one
+      expect(sim.world.has(scout, ExploreOrder)).toBe(true);
+
+      if (kind === 'orderNeed') sim.enqueueSetup({ kind, entity: scout, need: 'hunger' });
+      else if (kind === 'trainSoldier') sim.enqueueSetup({ kind, entity: scout, house: barracks });
+      else sim.enqueueSetup({ kind, entity: scout, group: 'boots', slot: 0, goodType: SHOES });
+      sim.step();
+
+      const errandStands =
+        kind === 'orderNeed'
+          ? sim.world.has(scout, NeedOrder)
+          : kind === 'trainSoldier'
+            ? sim.world.has(scout, TrainingOrder)
+            : sim.world.has(scout, EquipOrder);
+      expect(errandStands).toBe(true);
+      expect(sim.world.has(scout, ExploreOrder)).toBe(false);
+    },
+  );
 });

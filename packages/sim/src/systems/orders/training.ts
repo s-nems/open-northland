@@ -3,6 +3,7 @@ import {
   CurrentAtomic,
   DeferredOrder,
   EquipOrder,
+  ExploreOrder,
   PlayerOrder,
   Settler,
   SiteAssignment,
@@ -67,6 +68,7 @@ export function startDrill(world: World, e: Entity, house: Entity, drillTicks: n
   world.remove(e, PlayerOrder);
   world.remove(e, EquipOrder); // and any equip errand, whose return spot this walk would invalidate
   world.remove(e, SiteAssignment); // a builder pulled to drill leaves its foundation's crew
+  world.remove(e, ExploreOrder); // and a scout its sweep, whose next leg would walk the drill off
   clearNavState(world, e);
 }
 

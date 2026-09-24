@@ -2,6 +2,7 @@ import {
   AttackOrder,
   CurrentAtomic,
   DeferredOrder,
+  ExploreOrder,
   NeedOrder,
   NoRegeneration,
   Person,
@@ -36,6 +37,7 @@ export function orderNeed(
   // And any standing attack order, which would otherwise pull the settler back into the fight the drive
   // ladder breaks off for the errand, leaving the order looking ignored.
   world.remove(e, AttackOrder);
+  world.remove(e, ExploreOrder); // and a scout's sweep, whose next leg would walk the errand off
   clearNavState(world, e);
 }
 
