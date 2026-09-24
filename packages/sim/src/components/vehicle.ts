@@ -110,6 +110,7 @@ export const NODE_PROGRESS_FULL = 10000;
  * still to enter, the next first; `Position` already stands on the node of the current leg, and `from`
  * is the node that leg left (null between legs), so the renderer interpolates from it to `Position` by
  * `progress / NODE_PROGRESS_FULL`. `increment` is the progress a tick adds, fixed when the leg starts.
+ * `progress` starts below zero while the vehicle turns on `from`, so readers clamp it.
  */
 export const VehicleDrive = defineComponent<{
   goal: HalfCellNode;

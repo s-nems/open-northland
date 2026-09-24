@@ -23,7 +23,6 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
-import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../../src/nav/world-metric.js';
 import {
   canPlaceWorkFlag,
   placementBlockerVersion,
@@ -35,6 +34,7 @@ import {
   boardRider,
   createVehicle,
   facingOfStep,
+  facingTurnSteps,
   snapVehicleTarget,
   VEHICLE_TARGET_SNAP_RADIUS,
   VEHICLE_WALK_RANGE_NODES,
@@ -61,12 +61,16 @@ const SCOUT = 27;
 const MAP_CELLS = 16;
 const GRASS = 0;
 const WATER = 1;
-/** The flat ground every node reads until the roughness lane is imported. */
+/** The smoothest ground class and the roughest the corpus holds, to pin the period formula. */
 const FLAT_GROUND = 0;
-/** A rough ground class, to pin the period formula's slope. */
 const ROUGH_GROUND = 5;
 const CART_PERIOD_FLAT = 4;
 const CATAPULT_PERIOD_FLAT = 8;
+/** The fixture grass reads the default land roughness 2: a cart's map point takes 8 ticks, a catapult's 16. */
+const CART_PERIOD_GRASS = 8;
+const CATAPULT_PERIOD_GRASS = 16;
+/** One map-point direction of turning holds the vehicle this long. */
+const ONE_DIRECTION_TURN = 2;
 const HEX_EAST = 0;
 const HEX_SOUTH_EAST = 1;
 const HEX_SOUTH_WEST = 2;
@@ -164,26 +168,40 @@ describe('vehicle move period', () => {
     }
   });
 
-  it('scales the period by the edge length so a diagonal and a half-row leg keep the E/W speed', () => {
-    expect(vehicleLegTicks(CART_PERIOD_FLAT, HALF_COLUMN)).toBe(CART_PERIOD_FLAT);
-    expect(vehicleLegTicks(CART_PERIOD_FLAT, DIAGONAL_STEP)).toBe(6); // 51 px over 34 px, times 4
-    expect(vehicleLegTicks(CART_PERIOD_FLAT, HALF_ROW)).toBe(2); // 19 px over 34 px, times 4, rounded
-    expect(vehicleLegTicks(CATAPULT_PERIOD_FLAT, DIAGONAL_STEP)).toBe(12);
-    expect(vehicleLegTicks(1, HALF_ROW)).toBe(1); // never a zero-tick leg
+  it('charges the period at every map point a leg crosses, whatever its drawn length', () => {
+    expect(vehicleLegTicks(CART_PERIOD_GRASS, 1)).toBe(CART_PERIOD_GRASS);
+    expect(vehicleLegTicks(CART_PERIOD_GRASS, 2)).toBe(2 * CART_PERIOD_GRASS);
+    expect(vehicleLegTicks(CATAPULT_PERIOD_GRASS, 2)).toBe(2 * CATAPULT_PERIOD_GRASS);
   });
 
-  it('drives a diagonal leg over its longer edge in more ticks than an E/W leg', () => {
+  it('counts a turn in map-point directions the short way round', () => {
+    expect(facingTurnSteps(HEX_EAST, HEX_EAST)).toBe(0);
+    expect(facingTurnSteps(HEX_EAST, HEX_SOUTH_EAST)).toBe(1);
+    expect(facingTurnSteps(HEX_NORTH_EAST, HEX_EAST)).toBe(1);
+    expect(facingTurnSteps(HEX_EAST, HEX_WEST)).toBe(3);
+    expect(facingTurnSteps(HEX_SOUTH_EAST, HEX_NORTH_WEST)).toBe(3);
+    expect(facingTurnSteps(HEX_SOUTH_WEST, HEX_NORTH_EAST)).toBe(3);
+    expect(facingTurnSteps(HEX_WEST, HEX_NORTH_EAST)).toBe(2);
+  });
+
+  it('holds on its node through the turn, then crosses a two-point diagonal in twice the period', () => {
     const s = sim();
     const cart = commanded(s, HANDCART, 4, 8);
-    order(s, cart, 5, 10); // one SE diagonal step: (+1, +2)
+    order(s, cart, 5, 10); // one SE lattice diagonal, (+1, +2): two map points, a turn from the spawn's east
     s.step();
     expect(anchorOf(s, cart)).toEqual({ hx: 5, hy: 10 });
-    expect(s.vehicleView(cart)?.leg?.progress).toBe(vehicleProgressPerTick(6));
-    for (let t = 0; t < 5; t++) {
+    expect(s.world.get(cart, Vehicle).facing).toBe(HEX_SOUTH_EAST);
+    const legTicks = ONE_DIRECTION_TURN + 2 * CART_PERIOD_GRASS;
+    // Drawn on `from` while it turns: the leg's progress stays at or below zero.
+    for (let t = 0; t < ONE_DIRECTION_TURN; t++) {
+      expect(s.vehicleView(cart)?.leg?.progress).toBeLessThanOrEqual(0);
+      s.step();
+    }
+    for (let t = ONE_DIRECTION_TURN; t < legTicks - 1; t++) {
       expect(s.vehicleView(cart)?.leg).not.toBeNull();
       s.step();
     }
-    expect(s.vehicleView(cart)?.leg).toBeNull(); // six ticks, not the E/W step's four
+    expect(s.vehicleView(cart)?.leg).toBeNull();
     s.step();
     expect(s.world.has(cart, VehicleDrive)).toBe(false);
   });
@@ -212,10 +230,13 @@ describe('moveVehicle', () => {
     expect(s.world.get(cart, Vehicle).facing).toBe(HEX_EAST);
     const view = s.vehicleView(cart);
     expect(view?.goal).toEqual({ hx: 12, hy: 8 });
-    expect(view?.leg).toEqual({ from: { hx: 4, hy: 8 }, progress: 2500 });
-    // One node per period: the anchor has moved on exactly every CART_PERIOD_FLAT ticks.
+    expect(view?.leg).toEqual({
+      from: { hx: 4, hy: 8 },
+      progress: vehicleProgressPerTick(CART_PERIOD_GRASS),
+    });
+    // One node per period: the anchor has moved on exactly every CART_PERIOD_GRASS ticks.
     for (let leg = 2; leg <= 8; leg++) {
-      for (let t = 0; t < CART_PERIOD_FLAT - 1; t++) {
+      for (let t = 0; t < CART_PERIOD_GRASS - 1; t++) {
         s.step();
         expect(anchorOf(s, cart)).toEqual({ hx: leg + 3, hy: 8 });
       }
@@ -223,7 +244,7 @@ describe('moveVehicle', () => {
       expect(anchorOf(s, cart)).toEqual({ hx: leg + 4, hy: 8 });
     }
     // The last leg runs its period out, then the drive ends on the tick after.
-    for (let t = 0; t < CART_PERIOD_FLAT - 1; t++) s.step();
+    for (let t = 0; t < CART_PERIOD_GRASS - 1; t++) s.step();
     expect(s.world.has(cart, VehicleDrive)).toBe(true);
     expect(s.vehicleView(cart)?.leg).toBeNull();
     s.step();
@@ -237,7 +258,7 @@ describe('moveVehicle', () => {
     order(s, catapult, 8, 8);
     s.step();
     expect(anchorOf(s, catapult)).toEqual({ hx: 5, hy: 8 });
-    for (let t = 0; t < CATAPULT_PERIOD_FLAT - 1; t++) {
+    for (let t = 0; t < CATAPULT_PERIOD_GRASS - 1; t++) {
       s.step();
       expect(anchorOf(s, catapult)).toEqual({ hx: 5, hy: 8 });
     }
@@ -446,8 +467,8 @@ describe('moveVehicle', () => {
       map: grassCellMap(MAP_CELLS, MAP_CELLS),
     });
     expect(restored.hashState()).toBe(s.hashState());
-    s.run(200);
-    restored.run(200);
+    s.run(400);
+    restored.run(400);
     expect(restored.hashState()).toBe(s.hashState());
     expect([...s.world.query(VehicleDrive)]).toEqual([]);
     expect(anchorOf(s, catapult)).toEqual({ hx: 24, hy: 6 });
@@ -458,8 +479,8 @@ describe('moveVehicle', () => {
       { hx: 14, hy: 5 },
     ]);
     const twin = run().s;
-    twin.run(240);
+    twin.run(440);
     expect(twin.hashState()).toBe(s.hashState());
-    expect(s.hashState()).toBe('db45c856');
+    expect(s.hashState()).toBe('6ca7a611');
   });
 });

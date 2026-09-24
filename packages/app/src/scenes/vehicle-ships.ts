@@ -45,10 +45,10 @@ const PARTY_AT: readonly { readonly job: number; readonly x: number; readonly y:
 /** The east shore point the party lands on: the first land cell past the strait, mid-height. */
 const LANDING = { x: STRAIT_TO, y: 8 } as const;
 /** The dock order follows the attaches by a few ticks; the unload waits out the boarding and the
- *  crossing (the party's walk to the mooring, then about twenty nodes of strait at four ticks each,
- *  which this seed finishes by tick 150). */
+ *  crossing (the party's walk to the mooring, then about twenty nodes of open water at six ticks each,
+ *  which this seed finishes by tick 202). */
 const DOCK_ORDER_TICK = 4;
-const UNLOAD_TICK = 200;
+const UNLOAD_TICK = 260;
 /** Claims a position no session transport hands out for that tick. */
 const ORDER_SEQUENCE = 1_000_000;
 /** The party spreads by a node or so once it stands on the landing. */

@@ -224,7 +224,8 @@ sea and carts on their landmass (continent type 1 is land). The walk searches wi
 the vehicle twin of the humans' 50/63 walk range; a failed search raises message 0x32 and re-aims
 the vehicle at its current node. Humans inside the footprint are shoved away on every node reached.
 Per node the move period is `max(3, (g*2 + 4) << catapult)` ticks with `g` the 4-bit ground speed
-class stored beside the size class in the node record; each tick adds `(period + 9999) / period`
+class stored beside the size class in the node record, which is the map's `lmpr` roughness, re-read at
+every node reached; each tick adds `(period + 9999) / period`
 to a per-node counter that completes at 10000, and the map position moves at 5000. The catapult is
 the only vehicle with the doubling; a turn costs 2 ticks per hexagon direction. Stop (task 5
 "interrupted") and returns to the current node.
@@ -234,15 +235,15 @@ settler, cart or catapult walks the land nodes, a ship sails the water nodes (un
 land vertex claims), and the static component labels land and water bodies in one key space, land
 first, so the goto's continent test and the dock ring search compare the same key on either side.
 The free-size class is the largest hex-disc radius of open same-continent nodes around the node,
-capped at 7, one field for land and water (`nav/clearance.ts`); `g` reads 0 everywhere: the map's
-roughness lane is imported, but its mapping onto `g` is unconfirmed (`TerrainGraph.groundSpeedClass`); the walk range is a hexagon
+capped at 7, one field for land and water (`nav/clearance.ts`); `g` is the roughness of the node a leg
+leaves (`TerrainGraph.roughnessAt`; a map without the lane reads 2 on land and 1 on water, the corpus's
+common values); the walk range is a hexagon
 distance gate on the goto; an off-continent or out-of-range target raises `vehicleNoPath` instead of
 being ignored; a goto held for a crew still outside is refused at once when no route exists at order
 time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the
-start of a leg, not halfway; a leg's period is the node period scaled by its edge's length over the
-E/W step (the 8-direction lattice's edges span 19 to 51 px, and the original's per-node counter is
-unread past its formula), so the drawn speed holds on every heading; the vehicle faces
-the hexagon direction its lattice step is made of with no turning delay; parked vehicles' cells are
+start of a leg, not halfway; a lattice edge of two map points takes two periods; the vehicle faces
+the hexagon direction its lattice step is made of at once and holds on the node it leaves for the
+turn's 2 ticks per direction, drawn there while its progress stays below zero; parked vehicles' cells are
 routed around by vehicles and humans alike (the original's humans walk through them, see "Crew"), the
 shove happens on entering a node only and sends a settler outside the discs of the whole remaining
 route. A real map's water is the cells whose two ground triangles are both

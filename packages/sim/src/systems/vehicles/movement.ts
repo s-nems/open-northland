@@ -14,15 +14,12 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { type HalfCellNode, hexagonRing, hexDistance, positionOfNode } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { nodeLatticeDistance } from '../../nav/terrain/lattice-distance.js';
-import { HALF_COLUMN } from '../../nav/world-metric.js';
 import type { ContentContext, System, SystemContext } from '../context.js';
 import {
   dynamicBlockOverlay,
@@ -41,7 +38,7 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
 // target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
 // on water by the vehicle's traversal class, through nodes whose free-size class admits the vehicle's
-// `logicSize`, each leg takes the ground's move period scaled by its edge's length, the footprint
+// `logicSize`, each leg takes the ground's move period per map point it crosses plus its turn, the footprint
 // travels with the anchor and shoves the settlers it lands on. A ship that starts a drive leaves its
 // mooring; one on a dock drive moors again where it arrives (`dock.ts`).
 
@@ -52,13 +49,16 @@ export const VEHICLE_WALK_RANGE_NODES = 60;
 /** How far around a clicked target the goto looks for a node the vehicle may stand on, in hexagon rings. */
 export const VEHICLE_TARGET_SNAP_RADIUS = 9;
 
-/** The move period terms: a node takes `max(MIN_PERIOD, (g * PERIOD_PER_CLASS + PERIOD_BASE) << siege)`
- *  ticks, `g` the node's ground speed class (original behavior). */
+/** The move period terms: a map point takes `max(MIN_PERIOD, (g * PERIOD_PER_CLASS + PERIOD_BASE) << siege)`
+ *  ticks, `g` the roughness of the node it leaves (original behavior). */
 const MOVE_PERIOD_BASE = 4;
 const MOVE_PERIOD_PER_CLASS = 2;
 const MOVE_PERIOD_MIN = 3;
 /** The catapult crosses a node in twice the period: a one-bit shift of the sum. */
 const SIEGE_PERIOD_SHIFT = 1;
+/** The ticks a vehicle holds turning through one of the six map-point directions (original behavior;
+ *  a human takes 1). */
+export const VEHICLE_TURN_TICKS_PER_DIRECTION = 2;
 
 /** The node pitch in pixels, the measured 68 x 38 px projection halved, for the facing pick. */
 const HALF_COLUMN_PX = 34;
@@ -73,7 +73,7 @@ const FACING_VECTORS_PX: readonly (readonly [number, number])[] = [
   [HALF_COLUMN_PX / 2, -HALF_ROW_PX],
 ];
 
-/** The ticks a vehicle spends crossing one E/W step from a node whose ground reads class `g`. */
+/** The ticks a vehicle spends crossing one map point from a node whose ground reads class `g`. */
 export function vehicleMovePeriod(g: number, siege: boolean): number {
   const period = (g * MOVE_PERIOD_PER_CLASS + MOVE_PERIOD_BASE) << (siege ? SIEGE_PERIOD_SHIFT : 0);
   return Math.max(MOVE_PERIOD_MIN, period);
@@ -85,17 +85,19 @@ export function vehicleProgressPerTick(period: number): number {
   return Math.floor((period + NODE_PROGRESS_FULL - 1) / period);
 }
 
-const ROUNDING_HALF: Fixed = fx.div(ONE, fx.fromInt(2));
-
 /**
- * The ticks a leg over a lattice edge of world length `edge` takes: the node period scaled by the edge
- * over the E/W step, rounded to whole ticks, at least one. Approximation: the original's counter runs per
- * node whatever the step; the 8-direction lattice's edges span 19 to 51 px, so an unscaled period would
- * swing the vehicle's speed by 2.7x from leg to leg. The scale keeps one ground speed on every heading.
+ * The ticks a leg of `mapPoints` hexagon steps takes under `period`: the original's per-node counter
+ * charges the period at every map point whatever its drawn length, so a vehicle crosses a N/S step
+ * faster on screen than an E/W one, as in the original. A lattice edge is one or two map points.
  */
-export function vehicleLegTicks(period: number, edge: Fixed): number {
-  const scaled = fx.mulDiv(fx.fromInt(period), edge, HALF_COLUMN);
-  return Math.max(1, fx.toInt(fx.add(scaled, ROUNDING_HALF)));
+export function vehicleLegTicks(period: number, mapPoints: number): number {
+  return period * Math.max(1, mapPoints);
+}
+
+/** The direction steps between two facings the short way round, 0..3. */
+export function facingTurnSteps(from: number, to: number): number {
+  const d = (((to - from) % VEHICLE_FACINGS) + VEHICLE_FACINGS) % VEHICLE_FACINGS;
+  return Math.min(d, VEHICLE_FACINGS - d);
 }
 
 /**
@@ -444,19 +446,20 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       continue; // the fresh route's first leg starts next tick
     }
     const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
-    const period = vehicleMovePeriod(terrain.groundSpeedClass(here), isSiegeVehicle(type));
+    const period = vehicleMovePeriod(terrain.roughnessAt(here), isSiegeVehicle(type));
+    const facing = facingOfStep(anchor, next);
+    const turnTicks = facingTurnSteps(state.facing, facing) * VEHICLE_TURN_TICKS_PER_DIRECTION;
     const live = world.mut(e, VehicleDrive);
     live.route.shift();
     live.from = anchor;
-    live.increment = vehicleProgressPerTick(
-      vehicleLegTicks(period, nodeLatticeDistance(terrain, here, nextNode)),
-    );
-    live.progress = live.increment;
+    live.increment = vehicleProgressPerTick(vehicleLegTicks(period, hexDistance(anchor, next)));
+    // The turn holds the vehicle on `from`: progress below zero draws it there, facing the new way.
+    live.progress = live.increment * (1 - turnTicks);
     const at = positionOfNode(next.hx, next.hy);
     const pos = world.mut(e, Position);
     pos.x = at.x;
     pos.y = at.y;
-    world.mut(e, Vehicle).facing = facingOfStep(anchor, next);
+    world.mut(e, Vehicle).facing = facing;
     standing ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
     shoveSettlers(world, ctx, terrain, standing, next, live.route, type.logicSize);
   }

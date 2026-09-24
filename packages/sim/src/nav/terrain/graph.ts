@@ -6,18 +6,19 @@ import type { Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
 import { StepBuffer } from './step-buffer.js';
 
-/** The ground speed class every node reads until the map's roughness lane is imported. */
-const FLAT_GROUND_SPEED_CLASS = 0;
-
 /** The two mover classes in the order their continents are labelled. */
 const TRAVERSALS: readonly Traversal[] = ['land', 'water'];
 
 /**
- * The roughness every node of a map without an `lmpr` lane reads: the owned corpus's `land` value
+ * The roughness every land node of a map without an `lmpr` lane reads: the owned corpus's `land` value
  * (`trianglepatterntypes` land = 2, the ground most of a map is). A decoded map always carries its lane;
  * this only paces synthetic and scene terrain.
  */
 export const DEFAULT_NODE_ROUGHNESS = 2;
+
+/** The roughness a water node of such a map reads: the owned corpus's open-water value (nine in ten
+ *  all-water cells read 1). */
+export const DEFAULT_WATER_ROUGHNESS = 1;
 
 /**
  * The sim's navigation model: the half-cell node lattice with its 8-direction edge set and each node's
@@ -57,14 +58,15 @@ export class TerrainGraph extends TerrainEdges {
     this.components = this.computeComponents();
   }
 
-  /** The walking roughness a step off `node` is paced and shod by (the map's `lmpr` value, 0..5 on the
-   *  owned corpus). Throws on an id outside the grid. */
+  /** The roughness a step off `node` is paced by (the map's `lmpr` value, 0..5 on the owned corpus): a
+   *  settler's walk and shoe wear, and a vehicle's move period, which reads it as its ground speed class
+   *  (original behavior). Throws on an id outside the grid. */
   roughnessAt(node: NodeId): number {
-    const v = this.roughness === undefined ? DEFAULT_NODE_ROUGHNESS : this.roughness[node];
-    if (v === undefined || node < 0 || node >= this.nodeCount) {
+    if (node < 0 || node >= this.nodeCount) {
       throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     }
-    return v;
+    if (this.roughness !== undefined) return this.roughness[node] ?? DEFAULT_NODE_ROUGHNESS;
+    return this.isWater(node) ? DEFAULT_WATER_ROUGHNESS : DEFAULT_NODE_ROUGHNESS;
   }
 
   /** Source elevation unit under one half-cell node; absent maps are flat. */
@@ -88,17 +90,6 @@ export class TerrainGraph extends TerrainEdges {
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);
-  }
-
-  /**
-   * The ground speed class `g` a vehicle's move period reads at a node, the original's 4-bit per-node
-   * field beside the free-size class (docs/formats/VEHICLES.md "Movement"). Approximation: its readable
-   * source is the map's `lmpr` roughness lane ({@link roughnessAt}), but the roughness-to-class mapping
-   * is unverified, so every node reads the flat class; the seam keeps that mapping to one method.
-   */
-  groundSpeedClass(node: NodeId): number {
-    this.checkedSlot(this.components, node);
-    return FLAT_GROUND_SPEED_CLASS;
   }
 
   /** Flood-fill the static components over the pathfinder's own edge set, so the diagonal flank-seam
