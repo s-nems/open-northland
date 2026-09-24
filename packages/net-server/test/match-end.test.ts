@@ -43,6 +43,22 @@ describe('terminal room consensus', () => {
     expect(back.last('blob')).toMatchObject({ type: 'snapshot', tick: 1, bytes });
     expect(back.of('error')).toEqual([]);
   });
+  it('sends no snapshot to a diverged member that left the ended room while it waited', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'ack', tick: 1, world: 0, digest: digest(2) });
+    s.a.send({ kind: 'ack', tick: 1, world: 0, digest: digest(1) });
+    s.relay.disconnect(s.b.handle);
+    s.a.send(finish(1));
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    expect(back.last('ended')).toBeDefined();
+    back.send({ kind: 'loaded', tick: null });
+    back.send({ kind: 'leaveRoom' });
+    expect(back.last('left')).toEqual({ kind: 'left' });
+    s.a.send({ kind: 'blob', type: 'snapshot', tick: 1, to: null, bytes: 'AAAA' });
+    expect(back.of('blob')).toEqual([]);
+  });
+
   it('retries unanswered terminal snapshot donors without advancing the game', () => {
     const s = acknowledged();
     s.a.send(finish(1));

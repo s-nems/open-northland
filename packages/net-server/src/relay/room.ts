@@ -315,6 +315,7 @@ export class Room {
   }
 
   private remove(member: Member): void {
+    this.game?.forget(member);
     this.seats.standUp(member);
     this.members.delete(member.token);
     if (this.game === null) this.lobby.invalidateReady();

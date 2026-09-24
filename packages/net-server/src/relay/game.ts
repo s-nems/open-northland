@@ -172,11 +172,15 @@ export class Game {
   /** The seat's fallout on the clock: the AI takes it on the next tick, an idle seat just goes quiet.
    *  Returns the tick it takes effect on. */
   kicked(target: Member, player: number, mode: VacantSeatMode): number | null {
-    this.end.forget(target.token);
-    this.ledger.forget(target.token);
-    this.resync.forget(target);
-    this.waiting.forget(target.token);
     return this.departures.schedule({ nick: target.nick, player, mode }, this.builtTick !== null);
+  }
+
+  /** A member leaving the room, kicked or not, holds no report, vote, donor role or snapshot wait. */
+  forget(member: Member): void {
+    this.end.forget(member.token);
+    this.ledger.forget(member.token);
+    this.resync.forget(member);
+    this.waiting.forget(member.token);
   }
 
   /** The kicked member is out of the room: the rest may be complete now. */

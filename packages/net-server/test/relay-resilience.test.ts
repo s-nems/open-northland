@@ -520,6 +520,20 @@ describe('digests and resync', () => {
     expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
   });
 
+  it('serves a diverged client whose connection was replaced only when the new one asks', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    expect(back.of('desync')).toHaveLength(1);
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    expect(back.of('blob')).toEqual([]);
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.of('rejected')).toEqual([]);
+    expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
+  });
+
   it('queues a returning diverged client that asks before any snapshot is cached', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
