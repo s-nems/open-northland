@@ -94,6 +94,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     let menu: { readonly ids: readonly number[]; readonly groups: readonly ActionGroup[] } | null = null;
     let restoredJobs = false;
     let restoredPickerScrollTop = 0;
+    /** The snapshot the open list was last gated against: every gate reads tick state, so the frames
+     *  between two ticks would only ask them again. */
+    let listedSnapshot: WorldSnapshot | null = null;
 
     const hideTransient = (): void => {
       hoverG.clear();
@@ -117,6 +120,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     /** Open the profession list over the hidden ring, with availability for the current selection. */
     const openJobWindow = (): void => {
       mode = 'jobs';
+      listedSnapshot = null;
       hideTransient();
       picker.show(
         (jobType) => opts.jobVisible(selectedIds, jobType),
@@ -176,7 +180,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
           picker.setScrollTop(restoredPickerScrollTop);
           restoredJobs = false;
         }
-        picker.refresh();
+        if (snapshot !== listedSnapshot) {
+          listedSnapshot = snapshot;
+          picker.refresh();
+        }
         // Keep the canvas ring hidden under the DOM list window.
         root.visible = false;
         layout = EMPTY_LAYOUT;
