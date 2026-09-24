@@ -136,10 +136,12 @@ export function isBindableBinding(binding: string): boolean {
   return normalized.every((modifier, index) => parts[index] === modifier);
 }
 
-function eventBinding(
-  code: string,
-  event: Pick<KeyboardEvent | MouseEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'>,
-): string {
+type ModifierState = Pick<KeyboardEvent | MouseEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'>;
+
+/** The fields a key binding reads off a press. */
+export type KeyPress = ModifierState & Pick<KeyboardEvent, 'code'>;
+
+function eventBinding(code: string, event: ModifierState): string {
   const modifiers = [
     ...(event.ctrlKey ? ['Ctrl'] : []),
     ...(event.shiftKey ? ['Shift'] : []),
@@ -149,7 +151,7 @@ function eventBinding(
   return [...modifiers, code].join('+');
 }
 
-export function bindingFromKeyboardEvent(event: KeyboardEvent): string | null {
+export function bindingFromKeyboardEvent(event: KeyPress): string | null {
   return isBindableCode(event.code) ? eventBinding(event.code, event) : null;
 }
 
@@ -158,7 +160,7 @@ export function bindingFromMouseEvent(event: MouseEvent): string | null {
   return BINDABLE_POINTER_CODE.test(code) ? eventBinding(code, event) : null;
 }
 
-export function matchesKeyboardBinding(event: KeyboardEvent, binding: string | null): boolean {
+export function matchesKeyboardBinding(event: KeyPress, binding: string | null): boolean {
   const actual = bindingFromKeyboardEvent(event);
   return binding !== null && actual !== null && matchesEventBinding(actual, binding);
 }

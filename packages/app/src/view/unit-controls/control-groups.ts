@@ -7,6 +7,7 @@ import {
   type ControlGroupMode,
   controlGroupBinding,
   type KeyBindings,
+  type KeyPress,
   matchesKeyboardBinding,
 } from '../../hud/keybindings.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
@@ -16,14 +17,7 @@ export type ControlGroupCommand = Readonly<{
   mode: ControlGroupMode;
 }>;
 
-interface ControlGroupKeyPress {
-  readonly code: string;
-  readonly repeat: boolean;
-  readonly ctrlKey: boolean;
-  readonly shiftKey: boolean;
-  readonly altKey: boolean;
-  readonly metaKey: boolean;
-}
+type ControlGroupKeyPress = KeyPress & Pick<KeyboardEvent, 'repeat'>;
 
 /** Resolve an exact, configurable control-group chord. */
 export function controlGroupCommand(
@@ -32,7 +26,7 @@ export function controlGroupCommand(
 ): ControlGroupCommand | null {
   if (event.repeat) return null;
   const action = CONTROL_GROUP_BINDING_ACTIONS.find((candidate) =>
-    matchesKeyboardBinding(event as KeyboardEvent, bindings[candidate]),
+    matchesKeyboardBinding(event, bindings[candidate]),
   );
   if (action === undefined) return null;
   const resolved = controlGroupBinding(action);
