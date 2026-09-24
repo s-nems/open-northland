@@ -4,9 +4,8 @@ import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { landscapeBlocks } from '../landscape/view.js';
+import { dynamicBlockOverlay } from './blocked.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
-import { resourceBlockedCells } from './resource-blocked-cache.js';
 
 // The lazy route-region memo over the building and resource walk-block overlay: the "clear cell sealed
 // inside blocker walls" signal that static terrain components cannot give. Derived state, never hashed.
@@ -37,7 +36,7 @@ interface RouteRegionCache {
   buildingCells: ReadonlySet<NodeId> | null;
   resourceGeneration: number;
   landscapeGeneration: number;
-  /** Composed building + resource overlay for the current epoch's floods. */
+  /** The dynamic walk-block overlay the current epoch's floods read. */
   blocked: BlockOverlay;
   /** labels[n] is valid only while stamps[n] === epoch - the pathfinding-scratch reuse pattern, so an
    *  epoch bump invalidates every label in O(1). */
@@ -114,11 +113,7 @@ export class RouteRegions {
     cache.buildingCells = buildingCells;
     cache.resourceGeneration = resourceGeneration;
     cache.landscapeGeneration = landscapeGeneration;
-    cache.blocked = new LayeredBlocks([
-      buildingCells,
-      resourceBlockedCells(world, cache.terrain),
-      landscapeBlocks(world, cache.terrain).walk,
-    ]);
+    cache.blocked = dynamicBlockOverlay(world, this.ctx, cache.terrain);
     cache.nextPocket = 0;
     if (cache.epoch >= MAX_EPOCH) {
       cache.stamps.fill(0);

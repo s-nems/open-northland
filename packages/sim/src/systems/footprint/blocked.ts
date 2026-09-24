@@ -1,21 +1,20 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
+import { type BlockOverlay, CountedBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
-import { buildingBlockedCells } from './building-blocked-cache.js';
+import { buildingBlockedLayer } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
-import { resourceBlockedCells } from './resource-blocked-cache.js';
+import { resourceBlockedLayer } from './resource-blocked-cache.js';
 
 // Walk-block overlays for routing and render, over the memoized building cells and the incrementally
 // cached resource cells. Derived state, never hashed. The views alias the live caches, so a holder must
 // not span a stamp or unstamp.
 
-/** Every standing building's door node - the passable gates {@link buildingBlockedCells} carves out of the
- *  walk-block. */
+/** Every standing building's door node - the passable gates the building walk-block carves out. */
 export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<NodeId> {
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
@@ -73,22 +72,13 @@ export function walkBlockedBodyOf(
   return body.size === 0 ? null : body;
 }
 
-/** The shared walk-block caches (buildings, resources, landscapes) as a layer list a caller
- *  folds into its own {@link LayeredBlocks}. The sets are the live cached copies: membership reads only. */
-export function dynamicBlockLayers(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-): readonly ReadonlySet<NodeId>[] {
-  return [
-    buildingBlockedCells(world, ctx, terrain),
-    resourceBlockedCells(world, terrain),
-    landscapeBlocks(world, terrain).walk,
-  ];
-}
-
-/** The dynamic walk-block overlay as a membership view over the cached layers, copying
- *  neither, so composing it is O(1) per call. */
+/** The dynamic walk-block overlay (buildings, resources, landscapes) read through the layers' live
+ *  per-node counts, so a membership test is array reads and composing it copies nothing. */
 export function dynamicBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
-  return new LayeredBlocks(dynamicBlockLayers(world, ctx, terrain));
+  const landscape = landscapeBlocks(world, terrain);
+  return new CountedBlocks([
+    buildingBlockedLayer(world, ctx, terrain),
+    resourceBlockedLayer(world, terrain),
+    { cells: landscape.walk, counts: landscape.walkCounts },
+  ]);
 }

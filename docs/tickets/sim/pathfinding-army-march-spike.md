@@ -27,10 +27,10 @@ machine and are suspect:
   (4.3k-5.6k). That one request settles 10-17.5k nodes, of which 55-70% is thrown away. The same
   happens to a civilian: a 98-step route of a woman on a child order settled 12,965 nodes at tick
   60755.
-- A collider's overlay (`blockedFor` in `drainPathRequests`) is a `LayeredBlocks` of 3 dynamic layers,
-  the field posts and one set per other player's town, so with 13 seats every neighbour test walks up
-  to 16 `Set.has` calls (`TerrainEdges.passable`, `nav/terrain/edges.ts`, is 4.6% of all self time at
-  40k across all its callers).
+- A collider's overlay (`blockedFor` in `drainPathRequests`) is a `LayeredBlocks` of the dynamic
+  overlay (three per-node count arrays), the field posts and one set per other player's town, so with
+  13 seats every neighbour test still walks up to 13 `Set.has` calls (`TerrainEdges.passable`,
+  `nav/terrain/edges.ts`).
 
 Expected gain: spike only, the `pathfinding` max of 34 ms at 40k and the p99 ticks it tops.
 
@@ -49,9 +49,9 @@ Pure optimisations first, each keeping every returned path byte-identical:
   start-to-goal heuristic (or skip the guard when the probe already left a small pocket), so a
   corridor route runs one forward search. The guard only ever aborts a search with no verdict, so the
   answer cannot change.
-- Compose a collider's overlay as a thin per-player town layer on top of the node mask that
-  [nav-step-primitives-cost.md](nav-step-primitives-cost.md) builds for the three dynamic layers. Do
-  not rebuild a full per-player structure every tick: that scales with blocked cells times seats.
+- Compose a collider's overlay as a thin per-player town layer on top of the dynamic layers'
+  per-node counts (`dynamicBlockOverlay`, `systems/footprint/blocked.ts`). Do not rebuild a full
+  per-player structure every tick: that scales with blocked cells times seats.
 
 Then share one route per group move, which changes the paths soldiers walk and therefore the state
 hash, knowingly:

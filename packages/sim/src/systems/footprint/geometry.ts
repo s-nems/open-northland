@@ -16,6 +16,16 @@ export function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boole
   return true;
 }
 
+/** Whether a per-node count array is positive exactly on `cells`, the invariant a counted walk-block
+ *  layer's overlay reads rely on. */
+export function countsMatchCells(counts: Uint16Array, cells: ReadonlySet<NodeId>): boolean {
+  let positive = 0;
+  for (const count of counts) if (count > 0) positive++;
+  if (positive !== cells.size) return false;
+  for (const cell of cells) if ((counts[cell] ?? 0) === 0) return false;
+  return true;
+}
+
 /** The footprint of a building type, or undefined when the type is unknown or carries none. Keyed by
  *  content (not a full SystemContext) so the placement-overlay probe can resolve footprints without a tick. */
 export function buildingFootprintOf(

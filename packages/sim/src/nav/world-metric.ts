@@ -44,8 +44,8 @@ const TWO: Fixed = fx.fromInt(2);
  * interpolates, so a walking entity's sim position and its drawn position agree. Negative rows are safe.
  */
 export function staggerShift(row: Fixed): Fixed {
-  const m = fx.mod(fx.add(fx.mod(row, TWO), TWO), TWO); // row's place in the 2-row cycle, in [0, 2)
-  const wave = fx.sub(ONE, fx.abs(fx.sub(ONE, m)));
+  const m = fx.wrap(row, TWO); // row's place in the 2-row cycle, in [0, 2)
+  const wave = m <= ONE ? m : fx.sub(TWO, m);
   return fx.div(wave, TWO);
 }
 

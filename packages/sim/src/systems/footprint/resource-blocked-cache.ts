@@ -1,17 +1,20 @@
 import { Position, ResourceFootprint } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { CountedCells } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { sameCells, translatedCells } from './geometry.js';
+import { countsMatchCells, sameCells, translatedCells } from './geometry.js';
 
 // The incrementally-maintained per-world cache of cells standing resource nodes make unwalkable, plus its
 // coherence verifier - the resource twin of ./building-blocked-cache.ts.
 
-interface ResourceBlockedCache {
+interface ResourceBlockedCache extends CountedCells {
   generation: number;
   readonly terrain: TerrainGraph;
   readonly cells: Set<NodeId>;
-  readonly counts: Map<NodeId, number>;
+  /** The resources covering each node. Overlapping footprints stack a handful deep, far below the
+   *  Uint16 range. */
+  readonly counts: Uint16Array;
   readonly entries: Map<Entity, readonly NodeId[]>;
 }
 
@@ -33,8 +36,7 @@ function addResourceBlockedCacheEntry(
   removeResourceBlockedCacheEntryFrom(cache, resource);
   cache.entries.set(resource, cells);
   for (const cell of cells) {
-    const count = (cache.counts.get(cell) ?? 0) + 1;
-    cache.counts.set(cell, count);
+    cache.counts[cell] = (cache.counts[cell] ?? 0) + 1;
     cache.cells.add(cell);
   }
 }
@@ -44,13 +46,9 @@ function removeResourceBlockedCacheEntryFrom(cache: ResourceBlockedCache, resour
   if (cells === undefined) return;
   cache.entries.delete(resource);
   for (const cell of cells) {
-    const count = (cache.counts.get(cell) ?? 0) - 1;
-    if (count > 0) {
-      cache.counts.set(cell, count);
-    } else {
-      cache.counts.delete(cell);
-      cache.cells.delete(cell);
-    }
+    const count = (cache.counts[cell] ?? 0) - 1;
+    cache.counts[cell] = count;
+    if (count === 0) cache.cells.delete(cell);
   }
 }
 
@@ -82,7 +80,7 @@ function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): Resour
     generation: world.componentGeneration(ResourceFootprint),
     terrain,
     cells: new Set<NodeId>(),
-    counts: new Map<NodeId, number>(),
+    counts: new Uint16Array(terrain.nodeCount),
     entries: new Map<Entity, readonly NodeId[]>(),
   };
   for (const e of world.query(ResourceFootprint, Position)) {
@@ -92,20 +90,21 @@ function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): Resour
   return cache;
 }
 
-function deriveResourceBlockedCells(world: World, terrain: TerrainGraph): Set<NodeId> {
-  return deriveResourceBlockedCache(world, terrain).cells;
-}
-
 function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string[] {
   const cached = resourceBlockedCache.get(world);
   if (cached === undefined) return [];
   if (cached.terrain !== terrain) return [];
   if (cached.generation !== world.componentGeneration(ResourceFootprint)) return [];
-  const fresh = deriveResourceBlockedCells(world, terrain);
-  if (sameCells(cached.cells, fresh)) return [];
-  return [
-    `resourceBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - stale resource footprint overlay`,
-  ];
+  const fresh = deriveResourceBlockedCache(world, terrain).cells;
+  if (!sameCells(cached.cells, fresh)) {
+    return [
+      `resourceBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - stale resource footprint overlay`,
+    ];
+  }
+  if (!countsMatchCells(cached.counts, cached.cells)) {
+    return ['resourceBlockedCells counts disagree with its cells - a node count missed a stamp'];
+  }
+  return [];
 }
 
 /**
@@ -115,14 +114,19 @@ function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string
  * mutation still falls back to a full rebuild.
  */
 export function resourceBlockedCells(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
+  return resourceBlockedLayer(world, terrain).cells;
+}
+
+/** {@link resourceBlockedCells} with its live per-node counts, for the dynamic overlay. */
+export function resourceBlockedLayer(world: World, terrain: TerrainGraph): CountedCells {
   const generation = world.componentGeneration(ResourceFootprint);
   const cached = resourceBlockedCache.get(world);
   if (cached !== undefined && cached.terrain === terrain && cached.generation === generation) {
-    return cached.cells;
+    return cached;
   }
 
   const cache = deriveResourceBlockedCache(world, terrain);
   resourceBlockedCache.set(world, cache);
   world.registerCacheVerifier('resourceBlockedCells', () => verifyResourceBlockedCache(world, terrain));
-  return cache.cells;
+  return cache;
 }

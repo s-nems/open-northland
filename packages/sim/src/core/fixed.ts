@@ -28,6 +28,8 @@ export const ZERO: Fixed = 0 as Fixed;
  */
 export const ULP: Fixed = 1 as Fixed;
 const MAX_SAFE = Number.MAX_SAFE_INTEGER; // 2^53 - 1
+/** The largest `wrap` period, so its mask `period - 1` fits an int32. */
+const MAX_WRAP_PERIOD = 2 ** 31;
 
 /** Dev-mode assertions on (overflow checks). Statically eliminated in production builds. */
 const DEV: boolean = ((): boolean => {
@@ -118,14 +120,16 @@ export const fx = {
     assertProductSafe(p, a, b, 'mulDiv');
     return Math.trunc(p / c) as Fixed;
   },
-  abs(a: Fixed): Fixed {
-    return (a < 0 ? -a : a) as Fixed;
-  },
-  /** Exact remainder (JS `%` semantics - result carries the sign of `a`); for cyclic phase math.
-   *  Integer-exact on the scaled representation, so it never rounds. */
-  mod(a: Fixed, b: Fixed): Fixed {
-    if (b === 0) throw new Error('fixed-point modulo by zero');
-    return (a % b) as Fixed;
+  /**
+   * `a`'s place in a cycle of a power-of-two `period`, floored into `[0, period)` for negative `a` too:
+   * the low bits of its two's-complement value, exact for every safe integer since the period divides
+   * 2^32. Integer operations only, unlike `%`, whose double path V8 falls to once one input is not a Smi.
+   */
+  wrap(a: Fixed, period: Fixed): Fixed {
+    if (DEV && (period <= 0 || period > MAX_WRAP_PERIOD || (period & (period - 1)) !== 0)) {
+      throw new Error(`fixed-point wrap period ${period} is not a power of two up to 2^31`);
+    }
+    return (a & (period - 1)) as Fixed;
   },
   /** Deterministic integer square root of a Fixed (Newton on integers); for distances. */
   isqrt(a: Fixed): Fixed {

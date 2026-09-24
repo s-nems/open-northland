@@ -8,18 +8,29 @@
  * 68x38 px projection, and cell `(c, r)` is node `(2c + (r&1), 2r)`, so the staggered raster becomes a
  * rectangular lattice with one parity-independent neighbour table.
  */
-import type { Fixed } from '../../core/fixed.js';
+import { type Fixed, ONE } from '../../core/fixed.js';
 
 import { type LandscapeProps, UNKNOWN_LANDSCAPE_PROPS } from './landscape-props.js';
 import type { NodeId } from './node-id.js';
+
+/** The per-node flag bits a node's {@link LandscapeProps} resolve to. */
+const WALKABLE = 1;
+const BUILDABLE = 2;
+const PLANTABLE = 4;
+
+function flagsOf(p: LandscapeProps): number {
+  return (p.walkable ? WALKABLE : 0) | (p.buildable ? BUILDABLE : 0) | (p.plantable ? PLANTABLE : 0);
+}
 
 export abstract class TerrainLattice {
   readonly width: number;
   readonly height: number;
   /** Row-major landscape typeId per node (length === width*height). */
   private readonly typeIds: Int32Array;
-  /** typeId -> resolved sim props, frozen at build time. */
-  private readonly props: ReadonlyMap<number, LandscapeProps>;
+  /** Each node's resolved props, row-major like {@link typeIds}, so the step test reads a slot instead
+   *  of looking the node's type up. The terrain is immutable; live walk blocks are an overlay. */
+  private readonly flags: Uint8Array;
+  private readonly walkCosts: readonly Fixed[];
 
   constructor(
     width: number,
@@ -36,7 +47,9 @@ export abstract class TerrainLattice {
     this.width = width;
     this.height = height;
     this.typeIds = typeIds;
-    this.props = props;
+    const propsOf = (typeId: number): LandscapeProps => props.get(typeId) ?? UNKNOWN_LANDSCAPE_PROPS;
+    this.flags = Uint8Array.from(typeIds, (typeId) => flagsOf(propsOf(typeId)));
+    this.walkCosts = Array.from(typeIds, (typeId) => propsOf(typeId).walkCost);
   }
 
   get nodeCount(): number {
@@ -83,7 +96,7 @@ export abstract class TerrainLattice {
   }
 
   /** A per-node value from one of the row-major arrays, throwing on an id outside the grid. */
-  protected checkedSlot(arr: Int32Array, node: NodeId): number {
+  protected checkedSlot(arr: Int32Array | Uint8Array, node: NodeId): number {
     const v = arr[node];
     if (v === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     return v;
@@ -94,27 +107,35 @@ export abstract class TerrainLattice {
     return this.checkedSlot(this.typeIds, node);
   }
 
-  private propsOf(node: NodeId): LandscapeProps {
-    return this.props.get(this.typeAt(node)) ?? UNKNOWN_LANDSCAPE_PROPS;
-  }
-
   /** True if a unit may stand on / walk through this node. */
   isWalkable(node: NodeId): boolean {
-    return this.propsOf(node).walkable;
+    return (this.checkedSlot(this.flags, node) & WALKABLE) !== 0;
   }
 
   /** Whether a building's reserved zone may cover this node. Placement only; navigation reads
    *  {@link isWalkable}. */
   isBuildable(node: NodeId): boolean {
-    return this.propsOf(node).buildable;
+    return (this.checkedSlot(this.flags, node) & BUILDABLE) !== 0;
   }
 
   /** Whether crops may be sown on this node. Farming only. */
   isPlantable(node: NodeId): boolean {
-    return this.propsOf(node).plantable;
+    return (this.checkedSlot(this.flags, node) & PLANTABLE) !== 0;
   }
 
   walkCost(node: NodeId): Fixed {
-    return this.propsOf(node).walkCost;
+    const cost = this.walkCosts[node];
+    if (cost === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
+    return cost;
+  }
+
+  /** {@link isWalkable} for a node the caller has already bounds-checked, as the step test's hot read. */
+  protected walkableAt(node: NodeId): boolean {
+    return ((this.flags[node] ?? 0) & WALKABLE) !== 0;
+  }
+
+  /** {@link walkCost} for a node the caller has already bounds-checked. */
+  protected walkCostAt(node: NodeId): Fixed {
+    return this.walkCosts[node] ?? ONE;
   }
 }

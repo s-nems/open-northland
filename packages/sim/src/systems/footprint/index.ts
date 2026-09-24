@@ -11,7 +11,6 @@ export {
   buildingDoorNodes,
   type ConstructionPlot,
   constructionSitePlots,
-  dynamicBlockLayers,
   dynamicBlockOverlay,
   walkBlockedBodyOf,
 } from './blocked.js';

@@ -107,7 +107,7 @@ export abstract class TerrainEdges extends TerrainLattice {
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked)) continue;
       const c = this.idAt(nx, ny);
-      out.push(c, fx.mul(this.walkCost(c), HALF_COLUMN));
+      out.push(c, fx.mul(this.walkCostAt(c), HALF_COLUMN));
     }
     for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
       const nx = x + dx;
@@ -117,14 +117,14 @@ export abstract class TerrainEdges extends TerrainLattice {
       // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
       if (!this.passable(x, fy, blocked) && !this.passable(nx, fy, blocked)) continue;
       const c = this.idAt(nx, ny);
-      out.push(c, fx.mul(this.walkCost(c), DIAGONAL_STEP));
+      out.push(c, fx.mul(this.walkCostAt(c), DIAGONAL_STEP));
     }
     for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked)) continue;
       const c = this.idAt(nx, ny);
-      out.push(c, fx.mul(this.walkCost(c), HALF_ROW));
+      out.push(c, fx.mul(this.walkCostAt(c), HALF_ROW));
     }
   }
 
@@ -132,6 +132,6 @@ export abstract class TerrainEdges extends TerrainLattice {
   private passable(nx: number, ny: number, blocked?: BlockOverlay): boolean {
     if (!this.inBounds(nx, ny)) return false;
     const c = this.idAt(nx, ny);
-    return this.isWalkable(c) && !(blocked?.has(c) ?? false);
+    return this.walkableAt(c) && !(blocked?.has(c) ?? false);
   }
 }

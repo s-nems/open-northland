@@ -8,7 +8,7 @@ import type {
   ScriptLandscapeType,
   TerrainGraph,
 } from '../../nav/terrain/index.js';
-import { sameCells } from '../footprint/geometry.js';
+import { countsMatchCells, sameCells } from '../footprint/geometry.js';
 
 // The live landscape as a script sees it: the map's authored placements minus the ones a script removed
 // or a resource depleted, plus the script's own additions, every read costing the placements it touches.
@@ -169,6 +169,9 @@ export interface LandscapeBlocks {
   /** Live: every view of one world shares a set per channel, so a held view reads the current cells. */
   readonly walk: ReadonlySet<NodeId>;
   readonly build: ReadonlySet<NodeId>;
+  /** The placements walk-blocking each node, row-major and live like {@link walk}: positive exactly on
+   *  its cells, for the dynamic overlay's array read. */
+  readonly walkCounts: Uint16Array;
   /** The cells that entered or left the sets since the previous view. */
   readonly changes: readonly LandscapeBlockChange[];
   /** The view minted after this one, so a holder replays every change since rather than re-reading
@@ -187,8 +190,9 @@ const RETAINED_VIEWS = 256;
  */
 interface BlockCounts {
   readonly terrain: TerrainGraph;
-  readonly walk: Map<NodeId, number>;
-  readonly build: Map<NodeId, number>;
+  /** Placements per node; they overlap a few deep, far below the Uint16 range. */
+  readonly walk: Uint16Array;
+  readonly build: Uint16Array;
   readonly walkCells: Set<NodeId>;
   readonly buildCells: Set<NodeId>;
   /** The authored ids already withdrawn, and the script placements already stamped. */
@@ -221,9 +225,8 @@ function countPlacement(
       const hy = placement.hy + cell.dy;
       if (!terrain.inBounds(hx, hy)) continue;
       const node = terrain.nodeAt(hx, hy);
-      const next = (held.get(node) ?? 0) + delta;
-      if (next > 0) held.set(node, next);
-      else held.delete(node);
+      const next = (held[node] ?? 0) + delta;
+      held[node] = next;
       const entered = next === 1 && delta === 1;
       const left = next === 0;
       if (!entered && !left) continue;
@@ -243,16 +246,17 @@ function countsBlocks(placement: ScriptLandscapePlacement): boolean {
 function freshCounts(world: World, terrain: TerrainGraph): BlockCounts {
   const walkCells = new Set<NodeId>();
   const buildCells = new Set<NodeId>();
+  const walk = new Uint16Array(terrain.nodeCount);
   const counts: BlockCounts = {
     terrain,
-    walk: new Map(),
-    build: new Map(),
+    walk,
+    build: new Uint16Array(terrain.nodeCount),
     walkCells,
     buildCells,
     withdrawn: new Set(),
     stamped: new Map(),
     revision: -1,
-    view: { terrain, walk: walkCells, build: buildCells, changes: [] },
+    view: { terrain, walk: walkCells, build: buildCells, walkCounts: walk, changes: [] },
     retained: [],
   };
   const authored = authoredLandscapes(terrain);
@@ -296,14 +300,16 @@ function verifyBlockCounts(world: World, terrain: TerrainGraph): string[] {
   if (counts.revision !== landscapeEditState(world).topologyRevision) return []; // a pending catch-up
   const fresh = deriveBlockCells(world, terrain);
   const findings: string[] = [];
-  for (const [channel, held, derived] of [
-    ['walk', counts.walkCells, fresh.walk],
-    ['build', counts.buildCells, fresh.build],
+  for (const [channel, held, derived, perNode] of [
+    ['walk', counts.walkCells, fresh.walk, counts.walk],
+    ['build', counts.buildCells, fresh.build, counts.build],
   ] as const) {
     if (!sameCells(held, derived)) {
       findings.push(
         `landscapeBlocks ${channel} holds ${held.size} cells but re-derived ${derived.size} - stale landscape layer`,
       );
+    } else if (!countsMatchCells(perNode, held)) {
+      findings.push(`landscapeBlocks ${channel} counts disagree with its cells - a count missed a placement`);
     }
   }
   return findings;
@@ -341,6 +347,7 @@ function catchUpCounts(world: World, counts: BlockCounts): void {
     terrain: counts.terrain,
     walk: counts.walkCells,
     build: counts.buildCells,
+    walkCounts: counts.walk,
     changes,
   };
   counts.view.next = view;

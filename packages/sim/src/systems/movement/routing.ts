@@ -16,7 +16,7 @@ import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
-import { dynamicBlockLayers, dynamicBlockOverlay } from '../footprint/index.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial/nodes.js';
 import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
 import { beginWalkTurn } from './turning.js';
@@ -68,7 +68,7 @@ export function drainPathRequests(
     let view = combinedByPlayer.get(player);
     if (view === undefined) {
       units ??= unitWalkBlocks(world, ctx.content, terrain);
-      const layers: Array<ReadonlySet<NodeId>> = [...dynamicBlockLayers(world, ctx, terrain), units.field];
+      const layers: BlockOverlay[] = [dynamicOnly(), units.field];
       for (const [p, town] of units.townByPlayer) {
         if (p === player) continue; // a player's own town garrison never blocks its own routing
         layers.push(town);

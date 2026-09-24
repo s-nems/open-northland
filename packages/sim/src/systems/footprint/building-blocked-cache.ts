@@ -1,15 +1,16 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { CountedCells } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, sameCells, translatedCells } from './geometry.js';
+import { buildingFootprintOf, countsMatchCells, sameCells, translatedCells } from './geometry.js';
 
 // The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence verifier -
 // the building twin of ./resource-blocked-cache.ts.
 
-interface BuildingBlockedCache {
+interface BuildingBlockedCache extends CountedCells {
   /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
   readonly membershipGeneration: number;
   /** Building VALUE generation the cells were last confirmed at. Of the Building fields only
@@ -20,6 +21,8 @@ interface BuildingBlockedCache {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   readonly cells: Set<NodeId>;
+  /** 1 on {@link cells}, else 0. One array per world and terrain, restamped by each rebuild. */
+  readonly counts: Uint16Array;
   /** The `buildingType` each derived building's cells came from. */
   readonly types: ReadonlyMap<Entity, number>;
 }
@@ -120,10 +123,15 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
     return []; // stale key - the next read rebuilds, nothing can consume the old cells
   }
   const fresh = deriveBuildingBlockedCells(world, content, terrain);
-  if (sameCells(cached.cells, fresh)) return [];
-  return [
-    `buildingBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Building changed in place outside World.mut`,
-  ];
+  if (!sameCells(cached.cells, fresh)) {
+    return [
+      `buildingBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Building changed in place outside World.mut`,
+    ];
+  }
+  if (!countsMatchCells(cached.counts, cached.cells)) {
+    return ['buildingBlockedCells counts disagree with its cells - a rebuild missed a restamp'];
+  }
+  return [];
 }
 
 /**
@@ -145,6 +153,11 @@ export function buildingBlockedCells(
   ctx: SystemContext,
   terrain: TerrainGraph,
 ): ReadonlySet<NodeId> {
+  return buildingBlockedLayer(world, ctx, terrain).cells;
+}
+
+/** {@link buildingBlockedCells} with its per-node counts, for the dynamic overlay. */
+export function buildingBlockedLayer(world: World, ctx: SystemContext, terrain: TerrainGraph): CountedCells {
   const membershipGeneration = world.componentGeneration(Building);
   const valueGeneration = world.componentValueGeneration(Building);
   const cached = buildingBlockedCache.get(world);
@@ -156,22 +169,32 @@ export function buildingBlockedCells(
     valueWritesKeepCells(world, cached, valueGeneration)
   ) {
     cached.valueGeneration = valueGeneration;
-    return cached.cells;
+    return cached;
   }
 
   world.journalValueWrites(Building);
   const types = new Map<Entity, number>();
   const cells = deriveBuildingBlockedCells(world, ctx.content, terrain, types);
-  buildingBlockedCache.set(world, {
+  let counts: Uint16Array;
+  if (cached?.terrain === terrain) {
+    counts = cached.counts;
+    for (const cell of cached.cells) counts[cell] = 0;
+  } else {
+    counts = new Uint16Array(terrain.nodeCount);
+  }
+  for (const cell of cells) counts[cell] = 1;
+  const cache: BuildingBlockedCache = {
     membershipGeneration,
     valueGeneration,
     content: ctx.content,
     terrain,
     cells,
+    counts,
     types,
-  });
+  };
+  buildingBlockedCache.set(world, cache);
   world.registerCacheVerifier('buildingBlockedCells', () =>
     verifyBuildingBlockedCache(world, ctx.content, terrain),
   );
-  return cells;
+  return cache;
 }
