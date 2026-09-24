@@ -109,13 +109,7 @@ export function chase(
   stance: CombatantStance,
   defend: DefendPost,
 ): boolean {
-  const prior = world.tryGet(e, Engagement);
-  // A stall is about one target and ends the moment a route is delivered.
-  const stall = prior?.stall?.target === target.entity && !routeDelivered(world, e) ? prior.stall : undefined;
-  const engagement = world.add(e, Engagement, {
-    repathAt: prior?.repathAt ?? ctx.tick, // repath now on first engagement
-    ...(stall === undefined ? {} : { stall }),
-  });
+  const engagement = engagementFor(world, ctx, e, target.entity);
 
   const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
   const commanded = stance.ordered || marching; // a player-driven chase - it releases here, not on the bank
@@ -149,8 +143,9 @@ export function chase(
       breakOff(world, e, here, defend);
       return true;
     }
-    engagement.stall = { target: target.entity, routes };
-    engagement.repathAt = ctx.tick + REPATH_CADENCE;
+    const held = world.mut(e, Engagement);
+    held.stall = { target: target.entity, routes };
+    held.repathAt = ctx.tick + REPATH_CADENCE;
     return false;
   }
 
@@ -180,7 +175,7 @@ export function chase(
     // re-ask each tick, which admits the unit the moment a front-liner falls or steps off. Routing was not
     // asked, so no refusal stands against the target.
     clearNavState(world, e);
-    engagement.stall = undefined;
+    if (engagement.stall !== undefined) world.mut(e, Engagement).stall = undefined;
     return false;
   }
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand
@@ -205,8 +200,19 @@ export function chase(
   }
   redirectRoute(world, e, dest); // keep the live route - dropping it reset the gait (chase stutter)
   slots.claim(dest);
-  engagement.repathAt = ctx.tick + REPATH_CADENCE;
+  world.mut(e, Engagement).repathAt = ctx.tick + REPATH_CADENCE;
   return false;
+}
+
+/** `e`'s {@link Engagement} on `target`, added to repath at once on a first engagement. A stall is about one
+ *  target and ends the moment a route is delivered; a chase in between writes nothing. */
+function engagementFor(world: World, ctx: SystemContext, e: Entity, target: Entity) {
+  const prior = world.tryGet(e, Engagement);
+  if (prior === undefined) return world.add(e, Engagement, { repathAt: ctx.tick });
+  if (prior.stall !== undefined && (prior.stall.target !== target || routeDelivered(world, e))) {
+    world.mut(e, Engagement).stall = undefined;
+  }
+  return prior;
 }
 
 /** The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link

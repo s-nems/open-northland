@@ -70,7 +70,7 @@ export const animalFrightSystem: System = (world, ctx) => {
   if (terrain === undefined) return; // mapless fixture world - nowhere to run
   let blocked: BlockOverlay | undefined;
   for (const e of world.canonicalQuery(Frightened, Settler, Position)) {
-    const f = world.mut(e, Frightened);
+    const f = world.get(e, Frightened);
     if (ctx.tick >= f.until || world.has(e, Anger)) {
       world.remove(e, Frightened);
       clearNavState(world, e);
@@ -90,6 +90,6 @@ export const animalFrightSystem: System = (world, ctx) => {
     } else {
       redirectRoute(world, e, dest);
     }
-    f.repathAt = ctx.tick + FRIGHT_REPATH_CADENCE;
+    world.mut(e, Frightened).repathAt = ctx.tick + FRIGHT_REPATH_CADENCE;
   }
 };

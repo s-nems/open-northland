@@ -125,10 +125,12 @@ export function fleeDrive(
     return;
   }
 
-  const f = world.add(e, Fleeing, { repathAt: fleeing?.repathAt ?? ctx.tick, calmUntil: null });
+  // A threat back in sight ends the cool-down; a flee in progress is otherwise left unwritten.
+  if (fleeing === undefined) world.add(e, Fleeing, { repathAt: ctx.tick, calmUntil: null });
+  else if (fleeing.calmUntil !== null) world.mut(e, Fleeing).calmUntil = null;
   if (world.tryGet(e, PathRequest)?.failed) clearNavState(world, e); // the last flee route was unreachable
   // Run the live route, or stand out a refused or boxed-in one, until the throttle re-aims.
-  if (ctx.tick < f.repathAt) return;
+  if (ctx.tick < (fleeing?.repathAt ?? ctx.tick)) return;
 
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const dest = fleeDestination(terrain, blocked, here, entityNode(world, terrain, threat.entity));
@@ -139,7 +141,7 @@ export function fleeDrive(
     // an equal-pace pursuer.
     redirectRoute(world, e, dest);
   }
-  f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
+  world.mut(e, Fleeing).repathAt = ctx.tick + FLEE_REPATH_CADENCE;
 }
 
 /** The cell a fleeing unit should run to: the cell {@link FLEE_STEP_NODES} away, of the eight compass
