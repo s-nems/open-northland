@@ -184,7 +184,8 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
 /**
  * Take the nearest animal of `good` from a neighbouring farm of the same player that holds more than a
  * pair of them, but only while this herd is short of a pair itself (the original
- * scans up to {@link TAKE_SOURCE_FARMS} such farms).
+ * scans up to {@link TAKE_SOURCE_FARMS} such farms). An animal across water, which could never walk in,
+ * is passed over, as {@link adoptStray} passes one over; the original's scan is not known to check.
  */
 function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): boolean {
   const { world, ctx, terrain } = plan;
@@ -192,6 +193,7 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
   const owner = ownerOf(world, farm);
   if (owner === undefined) return false;
   const door = interactionCell(world, ctx, terrain, farm);
+  const side = terrain.componentOf(door);
   let sources = 0;
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
@@ -204,7 +206,9 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
     sources += 1;
     for (const animal of herdOf(world, other)) {
       if (speciesGoodOf(world, ctx, animal) !== good) continue;
-      const range = hexRange(plan, door, entityNode(world, terrain, animal));
+      const node = entityNode(world, terrain, animal);
+      if (terrain.componentOf(node) !== side) continue;
+      const range = hexRange(plan, door, node);
       if (range < bestRange || (range === bestRange && best !== null && animal < best)) {
         best = animal;
         bestRange = range;

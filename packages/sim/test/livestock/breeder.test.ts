@@ -11,6 +11,7 @@ import {
   YoungAnimal,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { Simulation } from '../../src/index.js';
 import {
   ANIMAL_ADULT_AGE_TICKS,
   livestockGrowthSystem,
@@ -18,6 +19,7 @@ import {
   plannerSystem,
   productionSystem,
 } from '../../src/systems/index.js';
+import { waterColumnMap } from '../fixtures/terrain.js';
 import {
   BREED_TICKS,
   BREEDER_TRACK,
@@ -30,6 +32,7 @@ import {
   farmAt,
   HEADQUARTERS,
   HERD_CAPACITY,
+  livestockContent,
   livestockSim,
   MEAT,
   MEAT_CAPACITY,
@@ -96,6 +99,20 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
 
     expect(herdRow(sim, farm)).toBe(1);
     expect(herdRow(sim, neighbour)).toBe(2);
+  });
+
+  it('never takes or adopts an animal across water, which could never walk in', () => {
+    const sim = new Simulation({ seed: 1, content: livestockContent(), map: waterColumnMap(32, 32, 16) });
+    const { farm } = farmWithBreeder(sim);
+    const island = farmAt(sim, 44, 20, { owner: P0 });
+    const herd = [0, 1, 2].map((i) => cowAt(sim, 44 + i, 24, { owner: P0, farm: island }));
+    const stray = cowAt(sim, 40, 20, { owner: P0 });
+
+    plan(sim);
+
+    expect(herd.every((cow) => sim.world.get(cow, FarmAnimal).farm === island)).toBe(true);
+    expect(sim.world.has(stray, FarmAnimal)).toBe(false);
+    expect(herdRow(sim, farm)).toBe(0);
   });
 
   it('leaves a neighbour with only a pair alone', () => {
