@@ -13,6 +13,8 @@ const STATS_WIDTH = 150;
 const TITLE_INSET_Y = 2;
 /** Index of `layoutHud`'s volatile tick row, excluded from the change key. */
 const TICK_ROW = 0;
+/** The window title's row in the decoded `miscwindow` strings. */
+const STATS_TITLE_STRING_ID = 180;
 
 export interface StatsWindowDeps {
   readonly ctx: PanelContext;
@@ -31,6 +33,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   const shell = createWindowShell(deps.container);
 
   let key = '';
+  let tickText = '';
   let rect: Rect | null = null;
 
   /** Centred in the window region; a sheet taller than the region lifts so its foot clears the beam. */
@@ -64,7 +67,10 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     const { x: ox, y: oy } = origin(h);
     rect = { x: ox, y: oy, w, h };
     drawWindowPanel(shell.graphics, rect, scale);
-    const title = ctx.makeText(ctx.uiString('miscwindow', 180, messages().hud.statistics), 'white');
+    const title = ctx.makeText(
+      ctx.uiString('miscwindow', STATS_TITLE_STRING_ID, messages().hud.statistics),
+      'white',
+    );
     shell.container.addChild(title.container);
     shell.runs.push(title);
     for (const text of rows) {
@@ -72,6 +78,18 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
       shell.container.addChild(run.container);
       shell.runs.push(run);
     }
+    tickText = rows[TICK_ROW] ?? '';
+    place();
+  };
+
+  /** Swap the tick row's run alone: the tally runs and the frame stay as they are. */
+  const retick = (text: string): void => {
+    const at = TICK_ROW + 1; // after the title run
+    const run = ctx.makeText(text, 'white');
+    shell.runs[at]?.destroy();
+    shell.runs[at] = run;
+    shell.container.addChild(run.container);
+    tickText = text;
     place();
   };
 
@@ -99,14 +117,19 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     refresh: (hudFor): void => {
       if (!shell.isOpen()) return;
       const hud = hudFor();
-      // The tick advances every frame, so keying on it would rebuild every glyph mesh each frame.
+      // The tick advances every frame, so keying on it would rebuild every glyph mesh each frame; a
+      // tick alone remakes its own run.
       let next = `${screenKey()}|`;
       for (let i = TICK_ROW + 1; i < hud.rows.length; i++) {
         next += `${hud.rows[i]?.text}|`;
       }
-      if (next === key) return;
-      key = next;
-      rebuild(hud.rows.map((r) => r.text));
+      if (next !== key) {
+        key = next;
+        rebuild(hud.rows.map((r) => r.text));
+        return;
+      }
+      const tick = hud.rows[TICK_ROW]?.text ?? '';
+      if (tick !== tickText) retick(tick);
     },
   };
 }

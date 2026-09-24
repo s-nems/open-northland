@@ -39,7 +39,7 @@ import { stubResidentsWindow } from './support/residents-window-stub.js';
  * Headless tests for the tool-panel WINDOW CONTROLLERS (registry / stats / placement / chest) over a
  * stubbed {@link PanelContext} and a DOM-less construction window. These pin the input-routing
  * contracts the mount relies on (claim regions, close-on-inside, the paper flow) and the stats
- * change-key guard (a tick-only change must NOT rebuild the glyph runs - the per-frame perf contract).
+ * change-key guard (a tick-only change remakes only the tick run - the per-frame perf contract).
  */
 
 const SCREEN = { width: 800, height: 600 };
@@ -134,7 +134,7 @@ const TALL_HUD: HudLayout = {
 };
 
 describe('stats window controller', () => {
-  it('rebuilds only when a tally row changes, never on the tick row alone', () => {
+  it('rebuilds only when a tally row changes, and remakes the tick run alone on a tick', () => {
     const { ctx, made } = stubContext();
     const stats = createStatsWindow({ ctx, container: new Container() });
 
@@ -146,11 +146,16 @@ describe('stats window controller', () => {
     const builtOnce = made.length;
     expect(builtOnce).toBeGreaterThan(0); // first open refresh builds title + rows
 
-    stats.refresh(() => hud(2, 5)); // only the tick advanced
-    expect(made).toHaveLength(builtOnce); // ← the per-frame guard: no glyph rebuild
+    stats.refresh(() => hud(1, 5)); // the same frame again: nothing to make
+    expect(made).toHaveLength(builtOnce);
+
+    stats.refresh(() => hud(2, 5)); // only the tick advanced: its run alone, not the tallies
+    expect(made).toHaveLength(builtOnce + 1);
+    expect(made.at(-1)).toBe('Tribe 1 · tick 2');
+    const reticked = made.length;
 
     stats.refresh(() => hud(3, 6)); // a tally changed
-    expect(made.length).toBeGreaterThan(builtOnce);
+    expect(made.length).toBeGreaterThan(reticked + 1);
   });
 
   it('pulls the HUD read-view only while open', () => {
