@@ -150,12 +150,9 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
   // A part-used unit is still replaced: refetching a worn pair is the swap the menu offers.
   if (held !== null && held.goodType === goodType && !isUsed(held)) return endErrand(errand);
   if (world.has(entity, Carrying)) {
-    // A held assistant order would pin a cap slot and a reserved unit across a delivery of unbounded
-    // length, so it is dropped and re-dispatched on a later stride beat. A player order waits instead.
-    if (order.issuer !== 'player') {
-      finishEquipOrder(errand);
-      return false;
-    }
+    // An assistant order yields to the rungs below, so the load is delivered rather than dropped and the
+    // fetch starts once the hands are free. A player order is urgent enough to set the load down here.
+    if (order.issuer !== 'player') return false;
     startDrop(world, ctx, entity);
     return true;
   }

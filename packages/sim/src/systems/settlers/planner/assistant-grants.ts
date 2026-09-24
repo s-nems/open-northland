@@ -29,16 +29,12 @@ import type { PlannerPass } from './pass.js';
 // goods. The manual states the intent ("you want to have shoes given out to all civilians - if there are
 // shoes available in your village"), which the dispatch matches against the player's store stock, and the
 // extras window ships per-good hoard commands (decoded `miscwindow` 503-509). Approximation: the pacing
-// and the caps are unknown.
+// is unknown; the only brake is the stock, so every unit in store has at most one fetcher after it.
 
 /** One settler's grant consideration beat, staggered by entity id, so the per-tick scan costs
  *  `settlers / period` and a freshly-freed slot is re-dressed within seconds. Approximation, shared
  *  with the recruit-arming pass. */
 export const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
-
-/** Per-player cap on concurrent assistant fetch errands, small enough that switching a grant on reads
- *  as a steady trickle and large enough to drain across a few storehouses at once. Approximation. */
-export const ASSISTANT_MAX_IN_FLIGHT = 4;
 
 /**
  * Whether the assistant hands `jobType` a tool. Authored: a working trade takes one, a fighter sheds it
@@ -56,12 +52,9 @@ interface GrantSpec {
   readonly category: EquipCategory;
 }
 
-/** A player's fetch errands underway, total and per good. Manual orders are included, so the assistant
- *  also respects a unit the player already sent someone after. */
-interface FetchTally {
-  total: number;
-  readonly byGood: Map<number, number>;
-}
+/** A player's fetch errands underway per good. Manual orders are included, so the assistant also
+ *  respects a unit the player already sent someone after. */
+type FetchTally = Map<number, number>;
 
 export function dispatchAssistantGrants(pass: PlannerPass): void {
   const { world, ctx, terrain, targets } = pass;
@@ -76,20 +69,20 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (owner === undefined) continue;
     const wanted = grants.get(owner);
     if (wanted === undefined) continue;
-    const tally = tallyFor(inFlight, owner);
-    if (tally.total >= ASSISTANT_MAX_IN_FLIGHT) continue;
     if (world.has(e, EquipOrder) || anotherSystemOwns(world, e)) continue;
     if (!mayChangeEquipment(world, ctx.content, e)) continue; // a woman, a child and a hero take no gear
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue; // the ladder never plans a jobless settler
-    // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would dump
-    // the carried load where the settler stands, which only a manual order is urgent enough to do.
-    if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
+    // A hauler on the way to a pickup keeps his promise to the site. A loaded one is dispatched: the
+    // equip rung yields to his delivery and sends him for the gear once his hands are free, which is the
+    // only moment a busy porter is ever idle.
+    if (world.has(e, SupplyRun) && !world.has(e, Carrying)) continue;
     // A DEFEND guard stays on its anchor: the player may send one for gear, but this pass does not walk
     // one off unasked.
     if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;
     const toolless = !toolHelpsJob(ctx.content, jobType);
 
+    const tally = tallyFor(inFlight, owner);
     const eq = world.tryGet(e, Equipment);
     // Resolved once, and only when a grant has both a free slot and spare stock.
     let limit: NavigationLimit | null | undefined;
@@ -97,7 +90,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       if (toolless && spec.category === 'tool') continue; // its boots and misc grants still apply
       const slot = freeSlotFor(eq, spec);
       if (slot === null) continue;
-      const underway = tally.byGood.get(spec.goodType) ?? 0;
+      const underway = tally.get(spec.goodType) ?? 0;
       if (!stock.exceeds(owner, spec.goodType, underway)) continue;
       if (limit === undefined) limit = equipFetchLimitFor(world, ctx.content, terrain, e);
       const p = world.get(e, Position);
@@ -123,8 +116,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         queued: [],
       });
       wakeIdle(world, e); // planned onto the errand this pass
-      tally.total += 1;
-      tally.byGood.set(spec.goodType, underway + 1);
+      tally.set(spec.goodType, underway + 1);
       break; // one errand per settler; the next beat considers the rest of its slots
     }
   }
@@ -165,14 +157,13 @@ function collectInFlightFetches(world: World): Map<number, FetchTally> {
     const order = world.get(e, EquipOrder);
     if (order.stage !== 'acquire' || order.goodType === null) continue;
     // A jobless settler's errand is frozen, since the ladder never plans one, so it must not hold a
-    // reservation or a cap slot while it cannot advance.
+    // reservation while it cannot advance.
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || settler.jobType === null) continue;
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
     const tally = tallyFor(byPlayer, owner);
-    tally.total += 1;
-    tally.byGood.set(order.goodType, (tally.byGood.get(order.goodType) ?? 0) + 1);
+    tally.set(order.goodType, (tally.get(order.goodType) ?? 0) + 1);
   }
   return byPlayer;
 }
@@ -180,7 +171,7 @@ function collectInFlightFetches(world: World): Map<number, FetchTally> {
 function tallyFor(byPlayer: Map<number, FetchTally>, player: number): FetchTally {
   let tally = byPlayer.get(player);
   if (tally === undefined) {
-    tally = { total: 0, byGood: new Map() };
+    tally = new Map();
     byPlayer.set(player, tally);
   }
   return tally;
