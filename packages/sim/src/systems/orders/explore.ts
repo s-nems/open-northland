@@ -85,9 +85,10 @@ export const exploreOrderSystem: System = (world, ctx) => {
 
 /**
  * The walkable node nearest `from` whose cell `player` has never explored, inside
- * {@link EXPLORE_RADIUS_NODES} of `centre`. Ties break on the lower node id, so the leg a scout picks
- * never depends on scan order. Null when the circle holds no unexplored walkable ground, which is also
- * what an off fog mode reads, since then nothing is hidden.
+ * {@link EXPLORE_RADIUS_NODES} of `centre`, on the static ground `from` stands on: a node across water
+ * would be a leg that never starts, which ends the sweep. Ties break on the lower node id, so the leg a
+ * scout picks never depends on scan order. Null when the circle holds no reachable unexplored ground,
+ * which is also what an off fog mode reads, since then nothing is hidden.
  */
 function nearestUnexploredNode(
   terrain: TerrainGraph,
@@ -99,6 +100,8 @@ function nearestUnexploredNode(
   if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return null;
   const c = terrain.coordsOf(centre);
   const f = terrain.coordsOf(from);
+  // A scout on an unwalkable node has no ground to judge by and is not held to one.
+  const ground = terrain.componentOf(from);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   const minX = Math.max(0, c.x - EXPLORE_RADIUS_NODES);
@@ -113,7 +116,7 @@ function nearestUnexploredNode(
       const cell = cellOfNode(x, y);
       if (fog.stateAt(player, cell.cx, cell.cy) !== FOG_STATE.UNEXPLORED) continue;
       const node = terrain.nodeAt(x, y);
-      if (!terrain.isWalkable(node)) continue;
+      if (!terrain.isWalkable(node) || (ground !== -1 && terrain.componentOf(node) !== ground)) continue;
       const dx = x - f.x;
       const dy = y - f.y;
       const dist = dx * dx + dy * dy;

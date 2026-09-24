@@ -4,6 +4,7 @@ import {
   addPerson,
   Building,
   EquipOrder,
+  EXPLORE_RADIUS_NODES,
   ExploreOrder,
   FOG_MODE,
   Health,
@@ -17,11 +18,11 @@ import {
 } from '../../src/components/index.js';
 import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
-import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
 
 /**
  * The scout's "Explore" order: it sweeps the unexplored ground around a chosen centre, one leg at a
@@ -37,8 +38,10 @@ const CARRIER_JOB = 24;
 /** Out of the 10..19 band the shared fixture reserves for suites' own buildings. */
 const BARRACKS = 91;
 const WALK_INTO_LEG_TICKS = 30;
+/** Enough for a scout to sweep the water fixture's own bank several times over. */
+const SWEEP_TICKS = 3000;
 
-function simWithFog(w = 24, h = 8): Simulation {
+function simWithFog(w = 24, h = 8, map = grassMap(w, h)): Simulation {
   const base = testContent();
   // A LEARN house that employs haulers is what reads as a barracks.
   const barracks = {
@@ -48,7 +51,7 @@ function simWithFog(w = 24, h = 8): Simulation {
     workers: [{ jobType: CARRIER_JOB, count: 1 }],
   };
   const content = parseContentSet({ ...base, buildings: [...base.buildings, barracks] });
-  const sim = new Simulation({ seed: 7, content, map: grassMap(w, h) });
+  const sim = new Simulation({ seed: 7, content, map });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
   return sim;
 }
@@ -101,15 +104,44 @@ describe('exploreArea - the scout sweep', () => {
   });
 
   it('retires the order once the circle holds nothing unseen', () => {
-    const sim = simWithFog(6, 4);
-    const scout = scoutAt(sim, 2, 1);
+    const sim = simWithFog(16, 4);
+    const scout = scoutAt(sim, 1, 1);
     sim.step(); // the first tick is what switches the fog on, and an unlit map hides nothing
+    expect(unexploredCells(sim)).toBeGreaterThan(0);
 
-    sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: 4, y: 2 });
-    for (let i = 0; i < 400 && sim.world.has(scout, ExploreOrder); i++) sim.step();
+    // The circle around the map's middle covers the whole strip.
+    sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: 16, y: 4 });
+    sim.step();
+    expect(sim.world.has(scout, ExploreOrder)).toBe(true);
+    for (let i = 0; i < SWEEP_TICKS && sim.world.has(scout, ExploreOrder); i++) sim.step();
 
     expect(sim.world.has(scout, ExploreOrder)).toBe(false);
     expect(unexploredCells(sim)).toBe(0);
+  });
+
+  it('sweeps the ground it can reach before giving up on ground across water', () => {
+    const [W, H, WATER_COLUMN] = [30, 24, 12];
+    const sim = simWithFog(W, H, waterColumnMap(W, H, WATER_COLUMN));
+    const scout = scoutAt(sim, 10, 2);
+    sim.step();
+    const centre = { hx: 20, hy: 24 };
+    sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: centre.hx, y: centre.hy });
+    sim.step();
+    for (let i = 0; i < SWEEP_TICKS && sim.world.has(scout, ExploreOrder); i++) sim.step();
+    expect(sim.world.has(scout, ExploreOrder)).toBe(false);
+
+    const fog = sim.fog;
+    if (fog === undefined) throw new Error('mapless sim');
+    const hiddenOnOwnBank: string[] = [];
+    for (let row = 0; row < H; row++) {
+      for (let col = 0; col < WATER_COLUMN; col++) {
+        const node = cellAnchorNode(col, row);
+        const inCircle = (node.hx - centre.hx) ** 2 + (node.hy - centre.hy) ** 2 <= EXPLORE_RADIUS_NODES ** 2;
+        if (inCircle && fog.stateAt(P0, col, row) === FOG_STATE.UNEXPLORED)
+          hiddenOnOwnBank.push(`${col},${row}`);
+      }
+    }
+    expect(hiddenOnOwnBank).toEqual([]);
   });
 
   it('refuses a trade that is not a scout, and a walk order calls the sweep off', () => {
