@@ -114,7 +114,6 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
   const win = (): PickerWindow => {
     window_ ??= createPickerWindow({
       uiFont,
-      title: '',
       onDismiss: () => window_?.hide(),
       ...(opts.cue !== undefined ? { cue: opts.cue } : {}),
     });

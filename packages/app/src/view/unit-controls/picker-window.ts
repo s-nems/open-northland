@@ -84,16 +84,6 @@ const LIST_STYLE = [
   'max-height:52vh',
   'overflow-y:auto',
 ].join(';');
-const GROUP_STYLE = [
-  'margin:6px 2px 1px',
-  'padding-bottom:3px',
-  'font-size:10px',
-  'font-weight:700',
-  'letter-spacing:0.14em',
-  'text-transform:uppercase',
-  `color:${TEXT_DIM}`,
-  `border-bottom:1px solid ${ROPE_DARK}`,
-].join(';');
 const ROW_STYLE = [
   'cursor:pointer',
   'text-align:left',
@@ -131,14 +121,10 @@ function installPickerScrollbarStyle(): void {
 export interface PickerWindow {
   setTitle(text: string): void;
   clearList(): void;
-  addGroup(label: string): void;
-  addRow(label: string, onPick: () => void, disabledReason?: string): void;
+  addRow(label: string, onPick: () => void): void;
   addNote(label: string): void;
   show(): void;
   hide(): void;
-  isOpen(): boolean;
-  scrollTop(): number;
-  setScrollTop(top: number): void;
   dispose(): void;
 }
 
@@ -146,7 +132,6 @@ export interface PickerWindow {
  *  The ✕ box and every enabled row confirm through `cue`; the backdrop is no button. */
 export function createPickerWindow(opts: {
   readonly uiFont: UiFont;
-  readonly title: string;
   readonly onDismiss: () => void;
   readonly cue?: (cue: UiCue) => void;
 }): PickerWindow {
@@ -158,7 +143,7 @@ export function createPickerWindow(opts: {
   window_.style.fontFamily = fontFamily;
 
   const header = el('div', HEADER_STYLE);
-  const title = el('div', TITLE_STYLE, opts.title);
+  const title = el('div', TITLE_STYLE);
   header.append(title);
   const close = el('div', CLOSE_STYLE, '✕');
   close.addEventListener('click', () => {
@@ -175,7 +160,6 @@ export function createPickerWindow(opts: {
 
   backdrop.addEventListener('mousedown', () => opts.onDismiss());
 
-  let open = false;
   return {
     setTitle: (text): void => {
       title.textContent = text;
@@ -183,18 +167,9 @@ export function createPickerWindow(opts: {
     clearList: (): void => {
       list.replaceChildren();
     },
-    addGroup: (label): void => {
-      list.append(el('div', GROUP_STYLE, label));
-    },
-    addRow: (label, onPick, disabledReason): void => {
+    addRow: (label, onPick): void => {
       const row = el('button', ROW_STYLE, label);
       row.style.fontFamily = fontFamily;
-      if (disabledReason !== undefined) {
-        row.setAttribute('disabled', '');
-        row.title = disabledReason;
-        row.textContent = `${label}: ${disabledReason}`;
-        row.style.opacity = '0.55';
-      }
       row.addEventListener('mouseenter', () => {
         row.style.background = ROW_HOVER;
       });
@@ -211,19 +186,12 @@ export function createPickerWindow(opts: {
       list.append(el('div', NOTE_STYLE, label));
     },
     show: (): void => {
-      open = true;
       backdrop.style.display = 'block';
       window_.style.display = 'block';
     },
     hide: (): void => {
-      open = false;
       backdrop.style.display = 'none';
       window_.style.display = 'none';
-    },
-    isOpen: (): boolean => open,
-    scrollTop: () => list.scrollTop,
-    setScrollTop: (top): void => {
-      list.scrollTop = top;
     },
     dispose: (): void => {
       window_.remove();
