@@ -1,9 +1,6 @@
 import { Person, Position } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { unbindWorkersOf } from '../../command/placement.js';
-import type { SystemContext } from '../../context.js';
-import { removeSettlerSilently } from '../../lifecycle/cleanup.js';
+import { removeBuildingSilently, removeSettlerSilently } from '../../lifecycle/cleanup.js';
 import type { MissionPass } from '../pass.js';
 import { missionAnimals, missionHouses, missionHumans, withinRange } from '../targets.js';
 
@@ -28,11 +25,5 @@ export function removeHumansNearPoint(pass: MissionPass, point: HalfCellNode, ra
 }
 
 export function removeScriptedHouses(pass: MissionPass, id: number): void {
-  for (const e of missionHouses(pass.world, id)) removeHouse(pass.world, pass.ctx, e);
-}
-
-/** The building's occupants keep no binding to a house that is gone. */
-function removeHouse(world: World, ctx: SystemContext, e: Entity): void {
-  unbindWorkersOf(world, ctx, e);
-  world.destroy(e);
+  for (const e of missionHouses(pass.world, id)) removeBuildingSilently(pass.world, pass.ctx, e);
 }

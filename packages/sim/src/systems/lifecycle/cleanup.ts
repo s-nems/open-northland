@@ -17,7 +17,7 @@ import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
 import { droppedEquipmentOf, scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { removeWorkFlag } from '../economy/work-flag.js';
-import { isMinor } from '../family/households.js';
+import { evictResidentsOf, isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
 import { isSoldierJob } from '../readviews/index.js';
 
@@ -61,10 +61,17 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
     ...(world.has(e, Upgrading) ? { upgrading: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
-  unbindWorkersOf(world, ctx, e);
   const spill = spilledStockOf(world, e);
-  world.destroy(e);
+  removeBuildingSilently(world, ctx, e);
   scatterSpilledStock(world, ctx, spill);
+}
+
+/** Destroy a building and release every settler bound to it: its workers and the families living in it.
+ *  The razing path layers the event and the spilled stock on top of this. */
+export function removeBuildingSilently(world: World, ctx: SystemContext, e: Entity): void {
+  unbindWorkersOf(world, ctx, e);
+  evictResidentsOf(world, e);
+  world.destroy(e);
 }
 
 /** Announce a combatant's death, count it against its owner, remove it from the world, and leave its

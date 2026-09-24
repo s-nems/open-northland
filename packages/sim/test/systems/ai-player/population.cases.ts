@@ -1,6 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Marriage, Settler } from '../../../src/components/index.js';
+import { Marriage, Residence, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { populationModule } from '../../../src/systems/ai-player/index.js';
@@ -91,6 +91,42 @@ describe('population module (homeExpansion)', () => {
     sim.step();
     expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([
       { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 2, infinite: false },
+    ]);
+  });
+
+  it('re-houses the families of a razed home in the next free one', () => {
+    const sim = populationSim();
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: 36,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    for (const woman of womenOf(sim)) sim.enqueueSetup({ kind: 'marry', entity: woman });
+    for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) sim.step();
+    for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const razed = entityOfBuilding(sim, HOME_TYPE);
+    expect(womenOf(sim).every((w) => sim.world.get(w, Residence).home === razed)).toBe(true);
+
+    sim.enqueueSetup({ kind: 'demolish', building: razed });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: 24,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+
+    const rebuilt = entityOfBuilding(sim, HOME_TYPE);
+    const houseCommands = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
+    expect(houseCommands.filter((c) => c.kind === 'assignHouse').map((c) => c.house)).toEqual([
+      rebuilt,
+      rebuilt,
     ]);
   });
 

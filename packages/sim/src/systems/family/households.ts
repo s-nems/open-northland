@@ -41,6 +41,11 @@ function residentsOf(world: World, house: Entity): Entity[] {
   return out;
 }
 
+/** Unhouse every family living in `house`, for a home leaving the map. */
+export function evictResidentsOf(world: World, house: Entity): void {
+  for (const e of residentsOf(world, house)) world.remove(e, Residence);
+}
+
 /**
  * A settler's household - itself, its living spouse, and their still-growing child - the unit the
  * `assignHouse` command moves as one. A grown child has left the family.

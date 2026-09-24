@@ -368,6 +368,15 @@ describe('the ownership results', () => {
     expect(sim.world.has(moved, Residence)).toBe(false);
   });
 
+  it('unhouses the residents of a house the script removes', () => {
+    const HOUSE_ID = 5;
+    const { sim, moved } = housed([{ opcode: 'RemoveHouses', objectId: HOUSE_ID }]);
+    sim.world.add(only(buildings(sim)), MissionObjectId, { id: HOUSE_ID });
+    loadPassAfter(sim, 0);
+    expect(buildings(sim)).toHaveLength(0);
+    expect(sim.world.has(moved, Residence)).toBe(false);
+  });
+
   it('leaves a whole nation`s bindings alone when it changes flag', () => {
     const { sim, moved } = housed([{ opcode: 'ChangePlayerPlayerId', player: 2, otherPlayer: 5 }]);
     loadPassAfter(sim, 0);
