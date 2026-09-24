@@ -4,6 +4,7 @@ import {
   Age,
   Building,
   Carrying,
+  CHILD_FOOD_UNITS,
   ChildOrder,
   CurrentAtomic,
   FamilyDuty,
@@ -11,6 +12,7 @@ import {
   FoodReserve,
   MakingLove,
   Marriage,
+  MoveGoal,
   Position,
   Residence,
   Resting,
@@ -23,6 +25,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../src/nav/halfcell.js';
+import { FOOD_SEARCH_RETRY_TICKS } from '../../src/systems/family/children/order.js';
 import {
   ADULT_AGE_TICKS,
   BABY_FEMALE,
@@ -551,6 +554,45 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
       fx.sub(peakHunger, fx.sub(MEAL, needBar(NEED_DRAIN_UNITS_PER_TICK))),
     );
     expect(sim.world.get(sim.world.get(woman, Marriage).child as Entity, Settler).jobType).toBe(BABY_FEMALE);
+  });
+
+  it('a wife with no food to fetch searches once per retry period and resumes when a store fills', () => {
+    const sim = new Simulation({ seed: 5, content: familyContent(), map: grassMap(40, 4) });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 10, y: 1, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 11, y: 1, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: WAREHOUSE, x: 30, y: 2, tribe: VIKING });
+    sim.step();
+    const settlers = [...sim.world.query(Settler)].sort((a, b) => a - b);
+    const woman = settlers.find((e) => sim.world.get(e, Settler).jobType === WOMAN) as Entity;
+    const man = settlers.find((e) => sim.world.get(e, Settler).jobType === CIVILIST) as Entity;
+    const warehouse = [...sim.world.query(Building)].find(
+      (e) => sim.world.get(e, Building).buildingType === WAREHOUSE,
+    ) as Entity;
+    sim.world.add(woman, Marriage, { spouse: man, child: null });
+    sim.world.add(man, Marriage, { spouse: woman, child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman, house: homeOf(sim) });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
+    const missed = (): boolean => sim.world.get(woman, ChildOrder).foodSearchMissed === true;
+    runUntil(sim, missed, FOOD_SEARCH_RETRY_TICKS, 'first empty search');
+
+    // Food lands just after a retry tick: she sees it on the next one, never in between.
+    runUntil(
+      sim,
+      () => (sim.tick + woman) % FOOD_SEARCH_RETRY_TICKS === 0,
+      FOOD_SEARCH_RETRY_TICKS,
+      'retry tick',
+    );
+    expect(missed()).toBe(true);
+    sim.world.mut(warehouse, Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    for (let i = 1; i < FOOD_SEARCH_RETRY_TICKS; i++) {
+      sim.step();
+      expect(missed()).toBe(true);
+    }
+    sim.step();
+    expect(missed()).toBe(false);
+    expect(sim.world.has(woman, MoveGoal)).toBe(true); // off to the warehouse
   });
 
   it('a player meal order outranks the child errand, which resumes after the meal', () => {

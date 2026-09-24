@@ -37,7 +37,11 @@ export const Residence = defineComponent<{ home: Entity }>('Residence', 'settler
  * sex-determination seam, so no RNG is needed at birth. It persists until the birth succeeds; other orders
  * interrupt but never cancel it.
  */
-export const ChildOrder = defineComponent<{ child: 'female' | 'male' }>('ChildOrder', 'settlers');
+export const ChildOrder = defineComponent<{
+  child: 'female' | 'male';
+  /** Her last search for food outside the home found none, so she searches again only on retry ticks. */
+  foodSearchMissed?: true | undefined;
+}>('ChildOrder', 'settlers');
 
 /**
  * Per-tick marker: the FamilySystem is driving this settler, so the planner's economy drives leave it alone

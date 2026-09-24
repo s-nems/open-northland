@@ -14,6 +14,7 @@ import {
   Settler,
   Wedding,
 } from '../../../components/index.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
@@ -32,6 +33,13 @@ import { deliverHome, fetchFrom } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUnits } from '../households.js';
 import { birth, makeLoveDuration } from './make-love.js';
+
+/**
+ * Ticks between the food searches of a wife whose last one found nothing, staggered by entity id. An
+ * authored cost bound, not original behavior: her order resumes up to this long after food reaches a
+ * store.
+ */
+export const FOOD_SEARCH_RETRY_TICKS = TICKS_PER_SECOND;
 
 /**
  * The state one child-order pass shares across its orders. Both sets are claims re-made every tick:
@@ -153,6 +161,8 @@ function haulFood(
     deliverHome(world, ctx, terrain, woman, womanView, home, hereNode);
     return;
   }
+  const missed = world.get(woman, ChildOrder).foodSearchMissed === true;
+  if (missed && (ctx.tick + woman) % FOOD_SEARCH_RETRY_TICKS !== 0) return;
   // Null when navigation is unlimited; otherwise she sees only sources inside her allowed area.
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, woman) : null;
   const source = pass.externalFood.nearest(
@@ -161,7 +171,12 @@ function haulFood(
     limit,
     unreachableGoalVeto(world, ctx, woman),
   );
-  if (source === null) return; // no reachable food outside homes, so she waits and the order stands
+  if (source === null) {
+    // No reachable food outside homes, so she waits and the order stands.
+    if (!missed) world.mut(woman, ChildOrder).foodSearchMissed = true;
+    return;
+  }
+  if (missed) world.mut(woman, ChildOrder).foodSearchMissed = undefined;
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
 }
 
