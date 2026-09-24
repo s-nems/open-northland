@@ -1,5 +1,5 @@
 import type { HumanJobExperienceType } from '@open-northland/data';
-import { Settler, type SettlerView } from '../../components/index.js';
+import { Settler, SettlerProgress } from '../../components/index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -68,11 +68,17 @@ export function rawXpForRepeats(track: HumanJobExperienceType | undefined, repea
 
 /** The curve read on the `(job, good)` track a settler's work accrues into - the product's
  *  specialization when content carries one, the profession-general track otherwise. */
-function trackBonus(ctx: SystemContext, settler: SettlerView, goodType: number): Fixed {
-  if (settler.jobType === null) return ZERO;
-  const track = trackFor(ctx, settler.jobType, goodType);
+function trackBonus(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  jobType: number,
+  goodType: number,
+): Fixed {
+  const track = trackFor(ctx, jobType, goodType);
   if (track === undefined) return ZERO;
-  return experienceBonus(experienceRepeats(settler.experience.get(track.typeId) ?? 0, track));
+  const points = world.get(settler, SettlerProgress).experience.get(track.typeId) ?? 0;
+  return experienceBonus(experienceRepeats(points, track));
 }
 
 /**
@@ -88,14 +94,14 @@ export function operatorProductionBonus(
 ): Fixed {
   const s = world.tryGet(operator, Settler);
   if (s === undefined || s.jobType === null || isCarrierJob(ctx, s.jobType)) return ZERO;
-  return trackBonus(ctx, s, goodType);
+  return trackBonus(world, ctx, operator, s.jobType, goodType);
 }
 
 /** A worker's work-speed bonus on `goodType`, off the same track {@link operatorProductionBonus} reads.
  *  ZERO for a gone or jobless worker, or a pairing that trains nothing. */
 export function workSpeedBonus(world: World, ctx: SystemContext, worker: Entity, goodType: number): Fixed {
-  const s = world.tryGet(worker, Settler);
-  return s === undefined ? ZERO : trackBonus(ctx, s, goodType);
+  const jobType = world.tryGet(worker, Settler)?.jobType;
+  return jobType === undefined || jobType === null ? ZERO : trackBonus(world, ctx, worker, jobType, goodType);
 }
 
 /**

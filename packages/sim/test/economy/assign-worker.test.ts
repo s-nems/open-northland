@@ -56,15 +56,19 @@ function settler(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-  addPerson(sim.world, e, {
-    tribe: VIKING,
-    jobType: null,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(experience),
-  });
+  addPerson(
+    sim.world,
+    e,
+    {
+      tribe: VIKING,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    },
+    { experience: new Map<number, number>(experience) },
+  );
   if (owner !== null) sim.world.add(e, Owner, { player: owner });
   return e;
 }

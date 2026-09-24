@@ -1,4 +1,4 @@
-import { FishSwarm, JobAssignment, Position, Settler } from '../../../../components/index.js';
+import { FishSwarm, JobAssignment, Position } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import { fx } from '../../../../core/fixed.js';
 import type { Entity } from '../../../../ecs/world.js';
@@ -182,12 +182,11 @@ function workplaceCanBankCatch(plan: PlannerContext, goodType: number): boolean 
  */
 function fishingRetriesFor(plan: PlannerContext, fishGood: number): number {
   const base = workRepeatsFor(plan.ctx, plan.jobType, fishGood);
-  const settler = plan.world.tryGet(plan.entity, Settler);
   const track = plan.jobType === null ? undefined : trackFor(plan.ctx, plan.jobType, fishGood);
   // Our save encoding stores `experienceFactor` points per catch. Dividing by the original percentage
   // scale (100), rather than back by the track factor, preserves that factor's authored learning rate:
   // fisher 150 improves half again as quickly as a factor-100 trade.
-  const scaledExperience = track === undefined ? 0 : (settler?.experience.get(track.typeId) ?? 0) / 100;
+  const scaledExperience = track === undefined ? 0 : (plan.experience.get(track.typeId) ?? 0) / 100;
   const learned = Math.floor(fx.toFloat(experienceBonus(scaledExperience)) * 5);
   return Math.max(1, base - learned);
 }

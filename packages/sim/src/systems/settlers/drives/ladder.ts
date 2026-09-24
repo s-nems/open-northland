@@ -7,6 +7,7 @@ import {
   MISSION_BEHAVIOUR,
   ownerOf,
   Position,
+  SettlerProgress,
   type SettlerView,
   Stance,
 } from '../../../components/index.js';
@@ -173,7 +174,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     entity: e,
     tribe: settler.tribe,
     jobType,
-    experience: settler.experience,
+    experience: world.get(e, SettlerProgress).experience,
     owner: ownerOf(world, e),
     here,
     targets: pass.targets,

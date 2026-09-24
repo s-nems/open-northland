@@ -5,7 +5,7 @@ import {
   Position,
   Resource,
   ResourceLayers,
-  Settler,
+  SettlerProgress,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation } from '../../../src/index.js';
@@ -182,7 +182,9 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     expect(sim.world.get(node, Resource).remaining).toBe(3); // one unit off the cow's four
     expect(sim.world.get(node, Resource).strikes).toBeUndefined(); // a fresh count for the next unit
     // XP counts UNITS, never strokes: five strokes, one unit, one experienceFactor grant.
-    expect(sim.world.get(hunter, Settler).experience.get(HUNTER_GENERAL_TRACK)).toBe(HUNTER_GENERAL_FACTOR);
+    expect(sim.world.get(hunter, SettlerProgress).experience.get(HUNTER_GENERAL_TRACK)).toBe(
+      HUNTER_GENERAL_FACTOR,
+    );
   });
 
   it('a swing planned against a good the body no longer holds yields NOTHING (the re-arm race)', () => {

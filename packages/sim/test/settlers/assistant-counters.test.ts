@@ -196,7 +196,6 @@ function settlerAt(sim: Simulation, jobType: number | null, x: number, y: number
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: PLAYER });
   return e;
@@ -599,7 +598,6 @@ function spawnAdult(sim: Simulation, jobType: number, x: number, y: number, fema
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: PLAYER });
   if (female) sim.world.add(e, Female, { female: true });

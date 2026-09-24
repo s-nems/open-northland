@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ChildOrder } from '../../src/components/family.js';
-import { CurrentAtomic } from '../../src/components/settler.js';
+import { addCurrentAtomic } from '../../src/components/index.js';
 import type { AtomicEffect } from '../../src/core/atomic-effect.js';
 import { defineComponent } from '../../src/ecs/world.js';
-import { fx, Simulation } from '../../src/index.js';
+import { Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -22,10 +22,8 @@ const ATOMIC_DURATION = 10;
 function simWithAtomicEffect(effect: AtomicEffect): Simulation {
   const sim = new Simulation({ seed: 1, content: testContent() });
   const e = sim.world.create();
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId: SHARED_ATOMIC_ID,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: ATOMIC_DURATION,
     effect,
     targetEntity: null,

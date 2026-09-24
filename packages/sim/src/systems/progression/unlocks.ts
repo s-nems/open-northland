@@ -1,5 +1,11 @@
 import type { HumanJobExperienceType, JobRequirement, JobRequirementTarget } from '@open-northland/data';
-import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../../components/index.js';
+import {
+  isAiPlayer,
+  ownerOf,
+  professionProgressionEnabled,
+  Settler,
+  SettlerProgress,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
@@ -40,8 +46,8 @@ export interface NeedSubject {
 }
 
 export function needSubjectOf(world: World, settler: Entity): NeedSubject {
-  const s = world.get(settler, Settler);
-  return { tribe: s.tribe, owner: ownerOf(world, settler), experience: s.experience, learned: s.learned };
+  const { experience, learned } = world.get(settler, SettlerProgress);
+  return { tribe: world.get(settler, Settler).tribe, owner: ownerOf(world, settler), experience, learned };
 }
 
 /**

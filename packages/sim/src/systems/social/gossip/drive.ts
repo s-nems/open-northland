@@ -10,6 +10,7 @@ import {
   LISTEN_ATOMIC_ID,
   PlayerOrder,
   Position,
+  removeCurrentAtomic,
   Settler,
   Sheltering,
   TALK_ATOMIC_ID,
@@ -45,7 +46,7 @@ export function endChat(world: World, tick: number, e: Entity): void {
 }
 
 function interruptChatAtomic(world: World, e: Entity): void {
-  if (chatAtomicRunning(world, e)) world.remove(e, CurrentAtomic);
+  if (chatAtomicRunning(world, e)) removeCurrentAtomic(world, e);
 }
 
 /** Whether a higher drive outranks this half's chat. Company outranks none of them, so the chat ends and

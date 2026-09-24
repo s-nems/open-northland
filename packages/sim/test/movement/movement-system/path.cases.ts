@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PathFollow, Position, Velocity, WalkFacing } from '../../../src/components/index.js';
+import { PathFollow, PathRoute, Position, Velocity, WalkFacing } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { worldX } from '../../../src/nav/world-metric.js';
 import { movementSystem } from '../../../src/systems/index.js';
@@ -87,7 +87,8 @@ describe('movementSystem - path following', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromFloat(0.25), y: fx.fromInt(0) });
-    sim.world.add(e, PathFollow, { waypoints: [waypointAt(sim, 0.5, 0)], index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0.5, 0)] });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     expect(ticksToArrive(sim, e)).toBe(LAND_STEP_TICKS + 2); // initial SW → E
     expect(pos(sim, e)).toEqual({ x: 0.5, y: 0 });
   });
@@ -130,12 +131,8 @@ describe('movementSystem - precedence: PathFollow over Velocity', () => {
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
     sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) }); // would push +1/tick east
-    sim.world.add(e, PathFollow, {
-      waypoints: [waypointAt(sim, 0, 0), waypointAt(sim, 0.5, 0)],
-      index: 1,
-      legTicks: 0,
-      legCost: 0,
-    });
+    sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0, 0), waypointAt(sim, 0.5, 0)] });
+    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
     sim.step();
     // If Velocity had also applied, x would jump by +1/tick; the paced path-follow alone gives one
     // eighth of the half column.
@@ -148,7 +145,8 @@ describe('movementSystem - precedence: PathFollow over Velocity', () => {
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) });
     // Single-waypoint path on the entity's own node: it completes (PathFollow removed) THIS tick.
-    sim.world.add(e, PathFollow, { waypoints: [waypointAt(sim, 0, 0)], index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0, 0)] });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     sim.step();
     // The path was handled this tick, so Velocity must NOT also apply - position stays at the cell.
     expect(pos(sim, e).x).toBeCloseTo(0, 6);

@@ -49,7 +49,6 @@ function settlerAt(sim: Simulation, jobType: number | null): Entity {
     fatigue: ONE,
     piety: ONE,
     enjoyment: ONE,
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   return e;

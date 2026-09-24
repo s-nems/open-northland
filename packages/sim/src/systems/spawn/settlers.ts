@@ -76,16 +76,22 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
 
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
-  addPerson(world, e, {
-    tribe: spec.tribe,
-    jobType: spec.jobType === IDLE_JOB_TYPE ? null : spec.jobType,
-    hunger: rollInitialNeed(rng),
-    fatigue: rollInitialNeed(rng),
-    piety: rollInitialNeed(rng),
-    enjoyment: rollInitialNeed(rng),
-    // The map hashes in sorted-key order, so a spawned veteran's starting XP is order-independent.
-    experience: new Map<number, number>(spec.experience ?? []),
-  });
+  addPerson(
+    world,
+    e,
+    {
+      tribe: spec.tribe,
+      jobType: spec.jobType === IDLE_JOB_TYPE ? null : spec.jobType,
+      hunger: rollInitialNeed(rng),
+      fatigue: rollInitialNeed(rng),
+      piety: rollInitialNeed(rng),
+      enjoyment: rollInitialNeed(rng),
+    },
+    {
+      // The map hashes in sorted-key order, so a spawned veteran's starting XP is order-independent.
+      experience: new Map<number, number>(spec.experience ?? []),
+    },
+  );
   // Sex is explicit because `jobType` loses it on adult trades: the sex-tagged job slugs stamp it at
   // creation and every other spawn is male. Matched by the job's `id` slug, not its numeric id, because a
   // fixture's adult trade may reuse a low id.

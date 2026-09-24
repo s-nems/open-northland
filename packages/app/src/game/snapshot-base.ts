@@ -71,11 +71,11 @@ function worldRuleFacts(snapshot: WorldSnapshot): WorldRuleFacts {
   return indexOf(snapshot).facts;
 }
 
-/** The snapshot serializes `Settler.experience` as sorted `[spec, points]` pairs. Empty for a non-settler
- *  or a malformed field. */
+/** The snapshot serializes `SettlerProgress.experience` as sorted `[spec, points]` pairs. Empty for a
+ *  non-settler or a malformed field. */
 export function settlerExperienceOf(components: Readonly<Record<string, unknown>>): Map<number, number> {
   const points = new Map<number, number>();
-  const exp = (components.Settler as { experience?: unknown } | undefined)?.experience;
+  const exp = (components.SettlerProgress as { experience?: unknown } | undefined)?.experience;
   if (!Array.isArray(exp)) return points;
   for (const pair of exp) {
     if (!Array.isArray(pair)) continue;
@@ -326,7 +326,7 @@ export function settlerLearnedOf(
   components: Readonly<Record<string, unknown>>,
   kind: 'job' | 'good',
 ): readonly number[] {
-  const learned = (components.Settler as { learned?: { job?: unknown; good?: unknown } } | undefined)
+  const learned = (components.SettlerProgress as { learned?: { job?: unknown; good?: unknown } } | undefined)
     ?.learned;
   const ids = learned?.[kind];
   return Array.isArray(ids) ? ids.filter((id): id is number => typeof id === 'number') : [];

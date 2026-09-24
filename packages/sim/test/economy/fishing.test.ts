@@ -11,7 +11,7 @@ import {
   MoveGoal,
   Owner,
   Position,
-  Settler,
+  SettlerProgress,
   Stockpile,
   WorkFlag,
 } from '../../src/components/index.js';
@@ -83,7 +83,6 @@ function fisherAt(sim: Simulation, hx: number, hy: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   return e;
 }
@@ -184,7 +183,7 @@ describe('fishing', () => {
 
     expect(sim.world.has(fisher, CurrentAtomic)).toBe(false);
     expect(sim.world.has(fisher, Carrying)).toBe(false);
-    expect(sim.world.get(fisher, Settler).experience.get(900)).toBeUndefined();
+    expect(sim.world.get(fisher, SettlerProgress).experience.get(900)).toBeUndefined();
     expect(sim.world.get(swarm, FishSwarm).count).toBe(2);
   });
 
@@ -220,7 +219,7 @@ describe('fishing', () => {
       FISH_CAUGHT_ATOMIC,
     ]);
     expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
-    expect(sim.world.get(fisher, Settler).experience.get(900)).toBe(150);
+    expect(sim.world.get(fisher, SettlerProgress).experience.get(900)).toBe(150);
     expect(sim.world.get(swarm, FishSwarm)).toMatchObject({ count: 0, continent: 7 });
 
     for (let tick = 0; tick < 100 && sim.world.has(fisher, Carrying); tick++) sim.step();
@@ -242,7 +241,7 @@ describe('fishing', () => {
     if (shore === null) throw new Error('fish swarm has no shore');
     const c = terrain.coordsOf(shore);
     const fisher = fisherAt(sim, c.x, c.y);
-    sim.world.mut(fisher, Settler).experience.set(900, 10_000);
+    sim.world.mut(fisher, SettlerProgress).experience.set(900, 10_000);
 
     const seen: number[] = [];
     for (let tick = 0; tick < 12 && !sim.world.has(fisher, Carrying); tick++) {

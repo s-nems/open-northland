@@ -7,10 +7,10 @@ export function readActingAtomic(components: Readonly<Record<string, unknown>>):
   return readNumFieldOrNull(components, 'CurrentAtomic', 'atomicId');
 }
 
-/** Whole ticks executed in the current atomic (`CurrentAtomic.elapsed`, a plain integer with no
+/** Whole ticks executed in the current atomic (`AtomicClock.elapsed`, a plain integer with no
  *  fixed-point rescale), or `null` when not mid-atomic. */
 export function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
-  return readNumFieldOrNull(components, 'CurrentAtomic', 'elapsed');
+  return readNumFieldOrNull(components, 'AtomicClock', 'elapsed');
 }
 
 export function readAtomicRest(components: Readonly<Record<string, unknown>>): boolean {

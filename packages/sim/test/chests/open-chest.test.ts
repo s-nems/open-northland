@@ -2,6 +2,7 @@ import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
+  addCurrentAtomic,
   Building,
   Chest,
   CurrentAtomic,
@@ -444,10 +445,8 @@ describe('the openChest order', () => {
       y: 10,
     });
     const opener = spawn(sim, WOODCUTTER, 6, 6);
-    sim.world.add(opener, CurrentAtomic, {
+    addCurrentAtomic(sim.world, opener, {
       atomicId: EAT_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: EAT_TICKS,
       effect: { kind: 'idle' },
       targetEntity: null,

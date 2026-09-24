@@ -5,6 +5,7 @@ import {
   Equipment,
   Obstructed,
   PathFollow,
+  PathRoute,
   Position,
   WalkFacing,
   Weapon,
@@ -112,9 +113,9 @@ describe('human turning', () => {
       ]);
       sim.world.mut(e, Position).y = fx.fromFloat(0.001);
       if (singleStop) {
-        const pf = sim.world.mut(e, PathFollow);
-        pf.waypoints.shift();
-        pf.index = 0;
+        const route = sim.world.get(e, PathRoute);
+        sim.world.add(e, PathRoute, { waypoints: route.waypoints.slice(1) });
+        sim.world.mut(e, PathFollow).index = 0;
       }
       sim.step();
       expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 0, target: 0 });
@@ -152,12 +153,8 @@ describe('human turning', () => {
     expect(pos(sim, e).x).toBe(0.125);
     expect(ticksToArrive(sim, e)).toBe(6); // 8 move ticks + 2 held turn ticks total
     expect(sim.world.get(e, WalkFacing)).toEqual({ direction: 0, target: 0 });
-    sim.world.add(e, PathFollow, {
-      waypoints: [waypointAt(sim, 0.5, 0), waypointAt(sim, 0, 0)],
-      index: 1,
-      legTicks: 0,
-      legCost: 0,
-    });
+    sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0.5, 0), waypointAt(sim, 0, 0)] });
+    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
     expect(ticksToArrive(sim, e)).toBe(11); // four-sector reversal adds three ticks
   });
 

@@ -2,7 +2,7 @@ import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { PathFollow, Position, WalkFacing, type Waypoint } from '../../../src/components/index.js';
+import { PathFollow, PathRoute, Position, WalkFacing, type Waypoint } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, type Simulation } from '../../../src/index.js';
 import { nodeOfPosition } from '../../../src/nav/halfcell.js';
@@ -38,12 +38,8 @@ export function followerAt(
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   // Pace fixtures start facing east; turn timing and the engine's initial SW heading have separate tests.
   sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
-  sim.world.add(e, PathFollow, {
-    waypoints: waypoints.map((w) => waypointAt(sim, w.x, w.y)),
-    index: waypoints.length >= 2 ? 1 : 0,
-    legTicks: 0,
-    legCost: 0,
-  });
+  sim.world.add(e, PathRoute, { waypoints: waypoints.map((w) => waypointAt(sim, w.x, w.y)) });
+  sim.world.add(e, PathFollow, { index: waypoints.length >= 2 ? 1 : 0, legTicks: 0, legCost: 0 });
   return e;
 }
 

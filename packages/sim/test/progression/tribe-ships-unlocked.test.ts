@@ -68,7 +68,6 @@ function settlerOf(sim: Simulation, jobType: number, tribe: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   return e;
 }

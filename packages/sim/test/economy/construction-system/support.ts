@@ -234,7 +234,6 @@ export function builderAt(sim: Simulation, x: number, y: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   return e;
 }
@@ -256,7 +255,6 @@ export function loadedCarrierAt(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Carrying, { goodType, amount });
   return e;

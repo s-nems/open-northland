@@ -1,4 +1,4 @@
-import { Building, ownerOf, Position, Settler } from '../../components/index.js';
+import { Building, ownerOf, Position, Settler, SettlerProgress } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -42,6 +42,7 @@ function postToWorkplace(world: World, ctx: SystemContext, e: Entity, building: 
   if (!isTradeAssignable(world, e)) return;
   const settler = world.get(e, Settler);
   if (settler.jobType === null) return; // an idle spawn holds no trade to be posted in
+  const progress = world.get(e, SettlerProgress);
   const jobType = openWorkerJobFromList(
     {
       world,
@@ -49,8 +50,8 @@ function postToWorkplace(world: World, ctx: SystemContext, e: Entity, building: 
       authored: true,
       tribe: settler.tribe,
       owner: ownerOf(world, e),
-      experience: settler.experience,
-      learned: settler.learned,
+      experience: progress.experience,
+      learned: progress.learned,
       jobType: settler.jobType,
     },
     building,

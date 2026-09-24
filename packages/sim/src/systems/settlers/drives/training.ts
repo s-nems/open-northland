@@ -8,6 +8,7 @@ import {
   ownerOf,
   Settler,
   type SettlerIdentity,
+  SettlerProgress,
   sameSide,
   TrainingOrder,
 } from '../../../components/index.js';
@@ -79,9 +80,10 @@ export function planTraining(
           typeId: jobType,
         });
     } else {
-      const s = world.mut(e, Settler);
-      s.learned ??= { job: [], good: [] };
-      const ids = s.learned[order.lesson.kind];
+      const s = world.get(e, Settler);
+      const progress = world.mut(e, SettlerProgress);
+      progress.learned ??= { job: [], good: [] };
+      const ids = progress.learned[order.lesson.kind];
       if (!ids.includes(order.lesson.typeId)) ids.push(order.lesson.typeId);
       ids.sort((a, b) => a - b);
       noteSettlerProgress(world, e);
@@ -90,9 +92,9 @@ export function planTraining(
           ? order.lesson.typeId
           : schoolMethodJob(ctx.content, s.tribe, order.lesson.typeId, s.jobType);
       if (job !== undefined) {
-        if (!s.learned.job.includes(job)) {
-          s.learned.job.push(job);
-          s.learned.job.sort((a, b) => a - b);
+        if (!progress.learned.job.includes(job)) {
+          progress.learned.job.push(job);
+          progress.learned.job.sort((a, b) => a - b);
         }
         if (s.jobType !== job) {
           world.remove(e, JobAssignment);

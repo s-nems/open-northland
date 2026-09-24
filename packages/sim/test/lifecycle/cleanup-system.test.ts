@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   addPerson,
   Building,
-  CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
   Health,
@@ -108,7 +108,6 @@ describe('cleanupSystem - reaping 0-HP combatants', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(dead, JobAssignment, { workplace });
     sim.world.add(dead, Health, { hitpoints: 0, max: 1000 });
@@ -165,10 +164,8 @@ describe('cleanupSystem - end-to-end with attack', () => {
     const target = sim.world.create();
     sim.world.add(target, Health, { hitpoints: 30, max: 1000 });
     // A 1-tick attack atomic; AtomicSystem applies the hit, CleanupSystem (last in order) reaps it.
-    sim.world.add(attacker, CurrentAtomic, {
+    addCurrentAtomic(sim.world, attacker, {
       atomicId: 81,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'attack', target, damage: 100 }, // overkill -> 0 HP
       targetEntity: target,
@@ -191,10 +188,8 @@ describe('cleanupSystem - determinism', () => {
       sim.world.add(survivor, Health, { hitpoints: 500, max: 500 });
       sim.world.add(doomed, Health, { hitpoints: 5, max: 500 });
       sim.world.add(survivor, Building, { buildingType: 1, tribe: 1, built: ONE, level: 0 });
-      sim.world.add(doomed, CurrentAtomic, {
+      addCurrentAtomic(sim.world, doomed, {
         atomicId: 81,
-        elapsed: 0,
-        progress: fx.fromInt(0),
         duration: 1,
         // doomed attacks itself for lethal damage, then cleanup reaps it the same tick.
         effect: { kind: 'attack', target: doomed, damage: 50 },

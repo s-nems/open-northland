@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  addCurrentAtomic,
   Building,
   CARRY_CAPACITY,
   Carrying,
@@ -10,7 +11,6 @@ import {
 } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
 import { contentIndex } from '../../../core/content-index.js';
-import { fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../context.js';
@@ -96,10 +96,8 @@ export function startDrop(world: World, ctx: SystemContext, settler: Entity): vo
   const s = world.tryGet(settler, Settler);
   if (s === undefined || !world.has(settler, Carrying)) return;
   clearNavState(world, settler);
-  world.add(settler, CurrentAtomic, {
+  addCurrentAtomic(world, settler, {
     atomicId: DROP_ATOMIC_ID,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: atomicDuration(ctx.content, s, DROP_ATOMIC_ID),
     effect: { kind: 'drop' },
     targetEntity: null,
@@ -120,10 +118,8 @@ export function startAtomic(
   duration: number,
   target: Entity | null,
 ): void {
-  world.add(settler, CurrentAtomic, {
+  addCurrentAtomic(world, settler, {
     atomicId,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration,
     effect,
     targetEntity: target,

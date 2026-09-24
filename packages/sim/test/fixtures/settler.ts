@@ -47,7 +47,6 @@ export function settlerAt(sim: Simulation, spec: SettlerSpec): Entity {
     fatigue: spec.needs?.fatigue ?? ZERO,
     piety: spec.needs?.piety ?? ZERO,
     enjoyment: spec.needs?.enjoyment ?? ZERO,
-    experience: new Map(),
   });
   return e;
 }

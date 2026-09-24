@@ -6,7 +6,7 @@ import {
   Owner,
   Position,
   Resource,
-  Settler,
+  SettlerProgress,
   Stockpile,
   WorkFlag,
 } from '../../src/components/index.js';
@@ -103,7 +103,7 @@ describe('hunter - shoot, leave a carcass, carry it home to the flag (the full l
     expect(yardAmount(sim, MEAT)).toBe(4);
     expect(sim.world.has(flag, Stockpile)).toBe(false);
     // Each harvested unit trained the hunter's general track through the ordinary work-XP seam.
-    expect(sim.world.get(hunter, Settler).experience.get(HUNTER_GENERAL_TRACK)).toBe(
+    expect(sim.world.get(hunter, SettlerProgress).experience.get(HUNTER_GENERAL_TRACK)).toBe(
       4 * HUNTER_GENERAL_FACTOR,
     );
     expect(violations).toEqual([]);

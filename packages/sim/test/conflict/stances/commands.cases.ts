@@ -78,7 +78,6 @@ describe('setStance command', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     setStance(sim.world, ctxOf(sim), { kind: 'setStance', entity: neutral, mode: MILITARY_MODE.ATTACK });
     expect(sim.world.has(neutral, Stance)).toBe(false);

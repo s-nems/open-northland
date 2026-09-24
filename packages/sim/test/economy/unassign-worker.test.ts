@@ -64,7 +64,6 @@ function settlerAt(sim: Simulation, x: number, jobType: number | null, owner: nu
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   if (owner !== null) sim.world.add(e, Owner, { player: owner });
   return e;

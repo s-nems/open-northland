@@ -157,7 +157,6 @@ describe('setWorkFlag command - place / move a gatherer flag (Ctrl+Right-Click)'
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map<number, number>(),
     });
     sim.world.add(jobless, Owner, { player: PLAYER });
     const rock = sim.world.create(); // a non-settler entity

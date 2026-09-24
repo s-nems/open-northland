@@ -2,7 +2,14 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { addPerson, MoveGoal, Owner, PathFollow, Position } from '../../../src/components/index.js';
+import {
+  addPerson,
+  MoveGoal,
+  Owner,
+  PathFollow,
+  PathRoute,
+  Position,
+} from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
@@ -37,7 +44,6 @@ export function settlerAt(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   if (owner !== null) simulation.world.add(entity, Owner, { player: owner });
   return entity;
@@ -52,12 +58,10 @@ export function orderTo(simulation: Simulation, entity: Entity, x: number, y: nu
 export function walkStraightTo(simulation: Simulation, entity: Entity, x: number, y: number): void {
   const terrain = simulation.terrain;
   if (terrain === undefined) throw new Error('walkStraightTo needs a mapped sim');
-  simulation.world.add(entity, PathFollow, {
+  simulation.world.add(entity, PathRoute, {
     waypoints: [{ ...positionOfNode(x, y), node: terrain.nodeAt(x, y) }],
-    index: 0,
-    legTicks: 0,
-    legCost: 0,
   });
+  simulation.world.add(entity, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
 }
 
 export function nodeOf(simulation: Simulation, entity: Entity): { x: number; y: number } {

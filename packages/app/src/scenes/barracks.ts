@@ -14,7 +14,7 @@ import {
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-const { Equipment, Settler } = components;
+const { Equipment, Settler, SettlerProgress } = components;
 
 /** The drill banks nothing in this bucket, the rule `progression/experience.ts` states on it. */
 const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
@@ -91,7 +91,8 @@ export const barracksScene: SceneDefinition = {
       predicate: (sim) => {
         const { recruit } = cast(sim);
         return (
-          recruit !== undefined && (sim.world.get(recruit, Settler).experience.get(TRAINING_TRACK) ?? 0) === 0
+          recruit !== undefined &&
+          (sim.world.get(recruit, SettlerProgress).experience.get(TRAINING_TRACK) ?? 0) === 0
         );
       },
     },
@@ -100,8 +101,8 @@ export const barracksScene: SceneDefinition = {
       predicate: (sim) => {
         const { veteran } = cast(sim);
         if (veteran === undefined) return false;
-        const settler = sim.world.get(veteran, Settler);
-        return settler.jobType === JOB_SOLDIER && (settler.experience.get(TRAINING_TRACK) ?? 0) === 0;
+        const drilled = sim.world.get(veteran, SettlerProgress).experience.get(TRAINING_TRACK) ?? 0;
+        return sim.world.get(veteran, Settler).jobType === JOB_SOLDIER && drilled === 0;
       },
     },
     {

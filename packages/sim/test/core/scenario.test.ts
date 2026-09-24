@@ -72,8 +72,8 @@ describe('e2e game-level: scenario harness', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
+    sim.world.add(stray, components.SettlerProgress, { experience: new Map() });
     const bear = sim.world.create();
     components.addPerson(sim.world, bear, {
       tribe: BEAR,
@@ -82,7 +82,6 @@ describe('e2e game-level: scenario harness', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
 
     expect(sim.checkInvariants()).toEqual([

@@ -1,12 +1,13 @@
 import {
+  addCurrentAtomic,
   CurrentAtomic,
   Engagement,
   NeedOrder,
   PlayerOrder,
+  removeCurrentAtomic,
   Settler,
   type SettlerIdentity,
 } from '../../../../../../components/index.js';
-import { fx } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../../context.js';
 import { clearNavState, isTravelling } from '../../../../../movement/nav-state.js';
@@ -41,17 +42,15 @@ export type PendingHitReaction =
 export function applyPendingHitReactions(world: World, pending: readonly PendingHitReaction[]): void {
   for (const reaction of pending) {
     if (reaction.kind === 'wake') {
-      world.remove(reaction.victim, CurrentAtomic);
+      removeCurrentAtomic(world, reaction.victim);
       continue;
     }
     if (reaction.kind === 'halt') {
       clearNavState(world, reaction.victim);
       continue;
     }
-    world.add(reaction.victim, CurrentAtomic, {
+    addCurrentAtomic(world, reaction.victim, {
       atomicId: ATTACKED_ATOMIC_ID,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: reaction.duration,
       effect: { kind: 'idle' },
       targetEntity: null,

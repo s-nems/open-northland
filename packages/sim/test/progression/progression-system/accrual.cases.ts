@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   Carrying,
-  CurrentAtomic,
   Position,
   Settler,
+  SettlerProgress,
   Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -36,7 +37,7 @@ describe('grantProductionExperience - one completed batch trains one operator', 
     const sim = new Simulation({ seed: 1, content: testContent() });
     const op = makeSettler(sim, CARPENTER);
     grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'staffed', operators: [op] });
-    const xp = sim.world.get(op, Settler).experience;
+    const xp = sim.world.get(op, SettlerProgress).experience;
     expect(xp.get(CARPENTER_GENERAL_TRACK)).toBe(100); // carpenter_general experienceFactor
     expect(xp.size).toBe(1); // the good-specific carpenter_plank track stays untouched
   });
@@ -46,25 +47,25 @@ describe('grantProductionExperience - one completed batch trains one operator', 
     const a = makeSettler(sim, CARPENTER);
     const b = makeSettler(sim, CARPENTER);
     grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'staffed', operators: [a, b] });
-    expect(sim.world.get(a, Settler).experience.get(CARPENTER_GENERAL_TRACK)).toBe(100);
-    expect(sim.world.get(b, Settler).experience.size).toBe(0); // only one batch finished
+    expect(sim.world.get(a, SettlerProgress).experience.get(CARPENTER_GENERAL_TRACK)).toBe(100);
+    expect(sim.world.get(b, SettlerProgress).experience.size).toBe(0); // only one batch finished
   });
 
   it('caps at the operators on station when more batches than operators complete', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const op = makeSettler(sim, CARPENTER);
     grantProductionExperience(sim.world, ctxOf(sim), 3, { kind: 'staffed', operators: [op] });
-    expect(sim.world.get(op, Settler).experience.get(CARPENTER_GENERAL_TRACK)).toBe(100); // once, not thrice
+    expect(sim.world.get(op, SettlerProgress).experience.get(CARPENTER_GENERAL_TRACK)).toBe(100); // once, not thrice
   });
 
   it('stops at the track cap without writing the settler again', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const op = makeSettler(sim, CARPENTER);
     const cap = 100 * MAX_EXPERIENCE_REPEATS; // carpenter_general experienceFactor times the repeat cap
-    sim.world.mut(op, Settler).experience.set(CARPENTER_GENERAL_TRACK, cap);
+    sim.world.mut(op, SettlerProgress).experience.set(CARPENTER_GENERAL_TRACK, cap);
     const generation = sim.world.componentValueGeneration(Settler);
     grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'staffed', operators: [op] });
-    expect(sim.world.get(op, Settler).experience.get(CARPENTER_GENERAL_TRACK)).toBe(cap);
+    expect(sim.world.get(op, SettlerProgress).experience.get(CARPENTER_GENERAL_TRACK)).toBe(cap);
     expect(sim.world.componentValueGeneration(Settler)).toBe(generation);
   });
 
@@ -73,14 +74,14 @@ describe('grantProductionExperience - one completed batch trains one operator', 
     const trackless = makeSettler(sim, MINER /* no tracks */);
     grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'unstaffed' });
     grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'staffed', operators: [trackless] });
-    expect(sim.world.get(trackless, Settler).experience.size).toBe(0);
+    expect(sim.world.get(trackless, SettlerProgress).experience.size).toBe(0);
   });
 
   it('excludes a carrier operator (a carrier-run utility trains only on deliveries)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = makeSettler(sim, CARRIER);
     grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'staffed', operators: [carrier] });
-    expect(sim.world.get(carrier, Settler).experience.size).toBe(0);
+    expect(sim.world.get(carrier, SettlerProgress).experience.size).toBe(0);
   });
 });
 
@@ -89,14 +90,14 @@ describe('grantCarryExperience - a landed delivery trains the transport trade', 
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, CARRIER);
     grantCarryExperience(sim.world, ctxOf(sim), e);
-    expect(sim.world.get(e, Settler).experience.get(CARRIER_TRACK)).toBe(50); // carrier_general factor
+    expect(sim.world.get(e, SettlerProgress).experience.get(CARRIER_TRACK)).toBe(50); // carrier_general factor
   });
 
   it('is a no-op for a non-carrier hauling its own goods', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
     grantCarryExperience(sim.world, ctxOf(sim), e);
-    expect(sim.world.get(e, Settler).experience.size).toBe(0);
+    expect(sim.world.get(e, SettlerProgress).experience.size).toBe(0);
   });
 });
 
@@ -112,10 +113,8 @@ describe('AtomicSystem grants carry XP on a completed pileup', () => {
 
   function pileupAtomic(sim: Simulation, e: Entity, store: Entity): void {
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 1 });
-    sim.world.add(e, CurrentAtomic, {
+    addCurrentAtomic(sim.world, e, {
       atomicId: ANY_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'pileup', store },
       targetEntity: null,
@@ -130,7 +129,7 @@ describe('AtomicSystem grants carry XP on a completed pileup', () => {
     pileupAtomic(sim, e, hq);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(1); // the delivery landed
-    expect(sim.world.get(e, Settler).experience.get(CARRIER_TRACK)).toBe(50);
+    expect(sim.world.get(e, SettlerProgress).experience.get(CARRIER_TRACK)).toBe(50);
   });
 
   it('a blocked deposit (store full) trains nothing', () => {
@@ -140,6 +139,6 @@ describe('AtomicSystem grants carry XP on a completed pileup', () => {
     pileupAtomic(sim, e, hq);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // still on the back
-    expect(sim.world.get(e, Settler).experience.size).toBe(0);
+    expect(sim.world.get(e, SettlerProgress).experience.size).toBe(0);
   });
 });

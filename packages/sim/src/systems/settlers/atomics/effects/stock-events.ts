@@ -20,14 +20,15 @@ export function applyAtomicStockEvents(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  atomic: { readonly atomicId: number; readonly elapsed: number; readonly effect: AtomicEffect },
+  atomic: { readonly atomicId: number; readonly effect: AtomicEffect },
+  elapsed: number,
 ): void {
   if (atomic.effect.kind !== 'slay') return;
   const farm = atomic.effect.farm;
   if (!world.has(farm, Stockpile)) return;
   const settler = world.tryGet(e, Settler);
   if (settler === undefined) return;
-  for (const good of stockDepositsAt(ctx, settler, atomic.atomicId, atomic.elapsed)) {
+  for (const good of stockDepositsAt(ctx, settler, atomic.atomicId, elapsed)) {
     const stock = world.get(farm, Stockpile).amounts;
     const have = stock.get(good) ?? 0;
     if (have >= stockCapacity(world, ctx, farm, good)) continue;

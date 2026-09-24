@@ -1,4 +1,4 @@
-import { Obstructed, PathFollow, Position, Settler } from '../../../../components/index.js';
+import { Obstructed, PathFollow, PathRoute, Position, Settler } from '../../../../components/index.js';
 import { ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
@@ -56,8 +56,8 @@ export function collectColliders(
   const { before, snapshotPool } = scratch;
   for (const e of movers) {
     const p = world.get(e, Position);
-    const f = world.get(e, PathFollow); // present by the movers query above
-    const target = f.waypoints[f.index];
+    // Both present by the movers query above.
+    const target = world.get(e, PathRoute).waypoints[world.get(e, PathFollow).index];
     const heading = target === undefined ? null : legHeading(p, target);
     const snapshot = snapshotPool.pop() ?? { x: p.x, y: p.y, hx: ZERO, hy: ZERO };
     snapshot.x = p.x;

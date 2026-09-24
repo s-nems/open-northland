@@ -27,7 +27,6 @@ function settlerAt(sim: Simulation, jobType: number | null, child = false): Enti
     fatigue: ONE,
     piety: ONE,
     enjoyment: ONE,
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   if (child) sim.world.add(e, Age, { ticks: 0 });

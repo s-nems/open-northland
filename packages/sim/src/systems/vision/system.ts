@@ -10,6 +10,7 @@ import {
   Position,
   recordContact,
   Settler,
+  SettlerProgress,
   SIGNPOST_VISION_NODES,
   Signpost,
   Vehicle,
@@ -157,7 +158,7 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
   if (settler !== undefined) {
     const base = visionRadiusForJob(content, settler.jobType);
     return isScoutJob(content, settler.jobType)
-      ? base + scoutVisionBonusNodes(settler.experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0)
+      ? base + scoutVisionBonusNodes(world.get(e, SettlerProgress).experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0)
       : base;
   }
   if (world.has(e, Building)) return BUILDING_VISION_NODES;

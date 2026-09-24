@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   Age,
+  addCurrentAtomic,
   Building,
   Carrying,
   CurrentAtomic,
   MoveGoal,
   NoRegeneration,
   Owner,
-  PathFollow,
   PathRequest,
   Position,
   Resource,
@@ -29,6 +29,7 @@ import {
   plannerSystem,
   stampResourceFootprintData,
 } from '../../src/systems/index.js';
+import { dropPath } from '../../src/systems/movement/nav-state.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
 import { settlerAt as fixtureSettlerAt } from '../fixtures/settler.js';
@@ -235,10 +236,8 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const store = storeAt(sim, 0, 0, 3);
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: EAT_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: store },
       targetEntity: store,
@@ -257,10 +256,8 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: EAT_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: null },
       targetEntity: settler,
@@ -280,10 +277,8 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
     const heap = sim.world.create();
     sim.world.add(heap, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(heap, Stockpile, { amounts: new Map([[FOOD, 1]]) });
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: EAT_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: heap },
       targetEntity: heap,
@@ -300,10 +295,8 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const store = storeAt(sim, 0, 0, 1); // a headquarters larder down to its last unit
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: EAT_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: store },
       targetEntity: store,
@@ -411,7 +404,7 @@ describe('eat drive - unreachable larders (the componentOf gate + the failed-goa
     stepUntil(sim, 20, () => sim.world.has(settler, MoveGoal));
     const doomed = sim.world.get(settler, MoveGoal).cell;
     expect(doomed).toBe(cellOf(sim, 2, 0)); // sanity: the nearer larder won the first pick
-    sim.world.remove(settler, PathFollow);
+    dropPath(sim.world, settler);
     sim.world.add(settler, PathRequest, { start: doomed, goal: doomed, failed: true });
 
     // Park, shed, re-plan: the memo retires the failed door, so the re-pick reaches the second store.

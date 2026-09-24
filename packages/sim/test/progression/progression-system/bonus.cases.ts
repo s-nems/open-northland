@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Felling, Position, Resource, Settler } from '../../../src/components/index.js';
+import {
+  AtomicClock,
+  addCurrentAtomic,
+  CurrentAtomic,
+  Felling,
+  Position,
+  Resource,
+  SettlerProgress,
+} from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
@@ -97,16 +105,14 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
   const swingOnce = (xp: number) => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
-    if (xp > 0) sim.world.mut(e, Settler).experience.set(WOOD_TRACK, xp);
+    if (xp > 0) sim.world.mut(e, SettlerProgress).experience.set(WOOD_TRACK, xp);
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: 3 });
-    sim.world.add(e, CurrentAtomic, {
+    addCurrentAtomic(sim.world, e, {
       atomicId: 24,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'harvest', resource: tree, goodType: WOOD },
       targetEntity: tree,
@@ -131,8 +137,8 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
     expect(sim.world.get(tree, Felling).chopsLeft).toBe(2);
     expect(sim.world.get(settler, CurrentAtomic).workCredit).toBeDefined();
     const rearm = () => {
+      sim.world.mut(settler, AtomicClock).elapsed = 0;
       const atomic = sim.world.mut(settler, CurrentAtomic);
-      atomic.elapsed = 0;
       atomic.duration = 1;
       delete atomic.restTail; // strip any breather - this drives raw swings only
       atomicSystem(sim.world, ctxOf(sim));
@@ -148,7 +154,7 @@ describe('operatorProductionBonus - product-specific track with a general fallba
   it('uses general trade experience for a product without its own specialization', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carpenter = settlerAt(sim, { jobType: CARPENTER });
-    sim.world.mut(carpenter, Settler).experience.set(CARPENTER_GENERAL_TRACK, 500);
+    sim.world.mut(carpenter, SettlerProgress).experience.set(CARPENTER_GENERAL_TRACK, 500);
     expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
   });
 
@@ -164,14 +170,16 @@ describe('operatorProductionBonus - product-specific track with a general fallba
     };
     const sim = new Simulation({ seed: 1, content });
     const carpenter = settlerAt(sim, { jobType: CARPENTER });
-    sim.world.mut(carpenter, Settler).experience.set(sharedTrack.typeId, sharedTrack.experienceFactor * 5);
+    sim.world
+      .mut(carpenter, SettlerProgress)
+      .experience.set(sharedTrack.typeId, sharedTrack.experienceFactor * 5);
     expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
   });
 
   it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = settlerAt(sim, { jobType: CARRIER });
-    sim.world.mut(carrier, Settler).experience.set(CARRIER_TRACK, 100_000);
+    sim.world.mut(carrier, SettlerProgress).experience.set(CARRIER_TRACK, 100_000);
     expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier, WOOD)).toBe(ZERO);
   });
 });

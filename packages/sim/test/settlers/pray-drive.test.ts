@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Building, CurrentAtomic, MoveGoal, Position, Settler } from '../../src/components/index.js';
+import {
+  addCurrentAtomic,
+  Building,
+  CurrentAtomic,
+  MoveGoal,
+  Position,
+  Settler,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { atomicSystem, needBar, plannerSystem } from '../../src/systems/index.js';
@@ -149,10 +156,8 @@ describe('pray atomic - taking one prayer off piety (AtomicSystem)', () => {
   it('takes one prayer off piety and consumes no goods', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, DEVOUT);
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: PRAY_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: PRAY_CLIP_TICKS,
       effect: { kind: 'pray' },
       targetEntity: settler,

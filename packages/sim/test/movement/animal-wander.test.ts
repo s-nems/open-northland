@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Anger,
   AttackOrder,
-  CurrentAtomic,
+  addCurrentAtomic,
   Engagement,
   HerdMember,
   Livestock,
@@ -64,7 +64,6 @@ function grazerAt(sim: Simulation, x: number, y: number, anchor = { x, y }, trib
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
@@ -234,10 +233,8 @@ describe('animalWanderSystem: the grazing drive', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
     const busy = grazerAt(sim, 5, 5);
-    sim.world.add(busy, CurrentAtomic, {
+    addCurrentAtomic(sim.world, busy, {
       atomicId: 1,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 4,
       effect: { kind: 'idle' },
       targetEntity: null,

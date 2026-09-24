@@ -10,11 +10,10 @@ import {
   boundAtomicAnimation,
 } from '../../readviews/animations.js';
 
-/** The running atomic a cue lookup reads - its join key, the clock it is being played against, and the
- *  effect that tells a real swing from a craft clip. */
+/** The running atomic a cue lookup reads - its join key, its length, and the effect that tells a real
+ *  swing from a craft clip. */
 export interface SoundingAtomic {
   readonly atomicId: number;
-  readonly elapsed: number;
   readonly duration: number;
   readonly effect?: { readonly kind: AtomicEffect['kind'] };
 }
@@ -75,12 +74,13 @@ export function emitAtomicSoundCues(
   ctx: SystemContext,
   settler: Entity,
   atomic: SoundingAtomic,
+  elapsed: number,
 ): void {
   const anim = soundingClip(world, ctx, settler, atomic);
   if (anim === undefined) return;
   for (const event of anim.events) {
     if (!isPlaceableCue(event, anim) || event.value === undefined) continue;
-    if (Math.max(1, event.at) !== atomic.elapsed) continue; // frame 0 plays on the clip's first tick
+    if (Math.max(1, event.at) !== elapsed) continue; // frame 0 plays on the clip's first tick
     ctx.events.emit({ kind: 'atomicSound', entity: settler, soundType: event.value });
   }
 }

@@ -2,7 +2,7 @@ import { Obstructed, PathFollow, Position, WalkFacing } from '../../../../compon
 import { type Fixed, fx, ULP } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { HALF_ROW, worldDistance } from '../../../../nav/world-metric.js';
-import { clearNavState } from '../../nav-state.js';
+import { clearNavState, dropPath } from '../../nav-state.js';
 import { SLOWEST_PACE_PER_TICK } from '../../system.js';
 
 /** Consecutive low-progress ticks before a walker drops its path and asks the planner to reroute. */
@@ -82,7 +82,7 @@ export function updateObstruction(
     world.remove(entity, Obstructed);
     return;
   }
-  world.remove(entity, PathFollow);
+  dropPath(world, entity);
   obstruction.ticks = 0;
   obstruction.x = position.x;
   obstruction.y = position.y;

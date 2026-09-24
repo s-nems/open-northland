@@ -1,6 +1,7 @@
 import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   BerryBush,
   Building,
   CurrentAtomic,
@@ -81,7 +82,6 @@ function settlerAtNode(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   stampOwner(sim.world, e, owner);
   return e;
@@ -619,10 +619,8 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
       goal: terrainOf(sim).nodeAt(ANCHOR.x, ANCHOR.y), // the yard node beside the OLD position
       failed: false,
     });
-    sim.world.add(gatherer, CurrentAtomic, {
+    addCurrentAtomic(sim.world, gatherer, {
       atomicId: 0,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 10,
       effect: { kind: 'pileup', store: flag },
       targetEntity: flag,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, CurrentAtomic, MoveGoal, Settler } from '../../src/components/index.js';
+import { addCurrentAtomic, Carrying, CurrentAtomic, MoveGoal, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { atomicSystem, NEED_DRAIN_UNITS_PER_TICK, needBar, plannerSystem } from '../../src/systems/index.js';
@@ -79,10 +79,8 @@ describe('sleep atomic - relieving fatigue on completion (AtomicSystem)', () => 
   it('takes one sleep off fatigue and consumes no goods', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, TIRED);
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: SLEEP_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: SLEEP_CLIP_TICKS,
       effect: { kind: 'sleep' },
       targetEntity: settler,

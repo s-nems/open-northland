@@ -115,7 +115,6 @@ function buildScenario(
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(breeder, Owner, { player: PLAYER });
     sim.world.add(breeder, JobAssignment, { workplace: farm });

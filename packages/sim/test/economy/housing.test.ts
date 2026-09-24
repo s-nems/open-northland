@@ -50,7 +50,6 @@ function spawnSettler(sim: Simulation, tribe: number): void {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
 }
 

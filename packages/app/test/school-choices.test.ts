@@ -25,7 +25,10 @@ it('lists every discovered advanced method independently of the pupil profession
   expect(schoolChoices([smith], () => false)).toEqual([]);
 });
 it('treats the pupil trade and its learned courses as known, not other trades or methods', () => {
-  const learner = { id: 1, components: { Settler: { jobType: 13, learned: { job: [9], good: [42] } } } };
+  const learner = {
+    id: 1,
+    components: { Settler: { jobType: 13 }, SettlerProgress: { learned: { job: [9], good: [42] } } },
+  };
   expect(knowsCourse(learner, { target: 'job', typeId: 13, label: 'Kowal' })).toBe(true);
   expect(knowsCourse(learner, { target: 'job', typeId: 9, label: 'Cieśla' })).toBe(true);
   expect(knowsCourse(learner, { target: 'good', typeId: 42, label: 'Długi miecz' })).toBe(true);

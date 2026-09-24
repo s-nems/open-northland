@@ -1,6 +1,5 @@
-import { CurrentAtomic, Production } from '../../../../../components/index.js';
+import { addCurrentAtomic, Production } from '../../../../../components/index.js';
 import { contentIndex } from '../../../../../core/content-index.js';
-import { fx } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 
@@ -26,14 +25,16 @@ export function startCraftAtomic(
   const atomicId = contentIndex(ctx.content).goods.get(cycle.goodType)?.atomics.produce;
   if (atomicId === undefined) return;
   const duration = Math.max(1, cycle.duration);
-  world.add(e, CurrentAtomic, {
-    atomicId,
-    elapsed: Math.min(cycle.elapsed, duration),
-    // The executor derives the real fraction from `elapsed` later this tick, as it does for every atomic.
-    progress: fx.fromInt(0),
-    duration,
-    effect: { kind: 'produce', recipeOutput: cycle.goodType },
-    targetEntity: workplace,
-    targetTile: null,
-  });
+  addCurrentAtomic(
+    world,
+    e,
+    {
+      atomicId,
+      duration,
+      effect: { kind: 'produce', recipeOutput: cycle.goodType },
+      targetEntity: workplace,
+      targetTile: null,
+    },
+    Math.min(cycle.elapsed, duration),
+  );
 }

@@ -930,7 +930,8 @@ describe('selection details panel model', () => {
         {
           id: 1,
           components: {
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR, experience: [[DIG_TRACK, xp]] },
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            SettlerProgress: { experience: [[DIG_TRACK, xp]] },
             WorkFlag: { flag: 2, radius: 24 },
           },
         },
@@ -1186,7 +1187,8 @@ describe('selection details panel model', () => {
       {
         id: 1,
         components: {
-          Settler: { tribe: 1, jobType: JOB_HERO_SABER, experience: [] },
+          Settler: { tribe: 1, jobType: JOB_HERO_SABER },
+          SettlerProgress: { experience: [] },
           ScriptedName: { stringId: 100 },
         },
       },
@@ -1239,9 +1241,8 @@ describe('selection details panel model', () => {
       {
         id: 1,
         components: {
-          Settler: {
-            tribe: 1,
-            jobType: JOB_COLLECTOR,
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          SettlerProgress: {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered
               [9, 100], // 100 raw points at rate 100 → 1 repeat
@@ -1334,7 +1335,8 @@ describe('settler upcoming-unlock rows', () => {
   const collector = (id: number) => ({
     id,
     components: {
-      Settler: { tribe: 1, jobType: JOB_COLLECTOR, experience: [[WOOD_TRACK, 40]] }, // 4 repeats
+      Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+      SettlerProgress: { experience: [[WOOD_TRACK, 40]] }, // 4 repeats
     },
   });
 

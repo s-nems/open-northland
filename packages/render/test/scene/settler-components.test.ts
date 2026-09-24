@@ -8,7 +8,8 @@ describe('buildScene - settler stance & component reads', () => {
     // nudge would double it into a ground slide.
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 81, elapsed: 6, duration: 12, targetEntity: 2, targetTile: null },
+      CurrentAtomic: { atomicId: 81, duration: 12, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 6 },
     });
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const idleTwin = entity(4, 1, 1, { Settler: { tribe: 0 } });
@@ -25,7 +26,8 @@ describe('buildScene - settler stance & component reads', () => {
     // The arrow crosses the five-column gap, not the archer.
     const archer = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
+      CurrentAtomic: { atomicId: 81, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
     });
     const target = entity(2, 6, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([archer, target]), FLAT_3x2);
@@ -51,12 +53,13 @@ describe('buildScene - settler stance & component reads', () => {
     const scene = buildScene(
       snapshotOf([
         entity(1, 0, 0, { Settler: { tribe: 0 } }),
-        entity(2, 1, 0, { Settler: { tribe: 0 }, PathFollow: { waypoints: [], index: 0 } }),
+        entity(2, 1, 0, { Settler: { tribe: 0 }, PathFollow: { index: 0 } }),
         // A CurrentAtomic wins even with a stale PathFollow present.
         entity(3, 2, 0, {
           Settler: { tribe: 0 },
-          CurrentAtomic: { atomicId: 24, elapsed: 6 },
-          PathFollow: { waypoints: [], index: 0 },
+          CurrentAtomic: { atomicId: 24 },
+          AtomicClock: { elapsed: 6 },
+          PathFollow: { index: 0 },
         }),
       ]),
       FLAT_3x2,
@@ -117,10 +120,10 @@ describe('buildScene - settler stance & component reads', () => {
   it('flags a settler hauling a good with carrying:true (the loaded-gait join key)', () => {
     const scene = buildScene(
       snapshotOf([
-        entity(1, 0, 0, { Settler: { tribe: 0 }, PathFollow: { waypoints: [], index: 0 } }),
+        entity(1, 0, 0, { Settler: { tribe: 0 }, PathFollow: { index: 0 } }),
         entity(2, 1, 0, {
           Settler: { tribe: 0 },
-          PathFollow: { waypoints: [], index: 0 },
+          PathFollow: { index: 0 },
           Carrying: { goodType: 1, amount: 1 },
         }),
       ]),
@@ -163,8 +166,16 @@ describe('buildScene - settler stance & component reads', () => {
     const cellCentreX = tileToScreen(2, 0).x;
     const scene = buildScene(
       snapshotOf([
-        entity(1, 2, 0, { Settler: { tribe: 0 }, CurrentAtomic: { atomicId: 24, elapsed: 3 } }),
-        entity(2, 2, 0, { Settler: { tribe: 0 }, CurrentAtomic: { atomicId: 23, elapsed: 3 } }),
+        entity(1, 2, 0, {
+          Settler: { tribe: 0 },
+          CurrentAtomic: { atomicId: 24 },
+          AtomicClock: { elapsed: 3 },
+        }),
+        entity(2, 2, 0, {
+          Settler: { tribe: 0 },
+          CurrentAtomic: { atomicId: 23 },
+          AtomicClock: { elapsed: 3 },
+        }),
       ]),
       FLAT_3x2,
     );
@@ -179,7 +190,7 @@ describe('buildScene - settler stance & component reads', () => {
     const scene = buildScene(
       snapshotOf([
         entity(1, 0, 0, { Building: { buildingType: 5 }, CurrentAtomic: { atomicId: 7 } }),
-        entity(2, 1, 1, { Resource: { goodType: 1 }, PathFollow: { waypoints: [], index: 0 } }),
+        entity(2, 1, 1, { Resource: { goodType: 1 }, PathFollow: { index: 0 } }),
       ]),
       FLAT_3x2,
     );

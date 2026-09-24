@@ -1,6 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Frightened, Health, Position, Projectile, Settler, StayPoint } from '../../src/components/index.js';
+import {
+  Frightened,
+  Health,
+  Position,
+  Projectile,
+  SettlerProgress,
+  StayPoint,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../src/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -48,7 +55,7 @@ function rangedHunterContent(): ContentSet {
 
 /** Count misses over `ROLL_TICKS` consecutive ticks for a hunter carrying `xp` on its general track. */
 function missesOf(sim: Simulation, shooter: Entity, xp: number): number {
-  sim.world.mut(shooter, Settler).experience.set(HUNTER_GENERAL_TRACK, xp);
+  sim.world.mut(shooter, SettlerProgress).experience.set(HUNTER_GENERAL_TRACK, xp);
   const ctx = ctxOf(sim);
   let misses = 0;
   for (let tick = 0; tick < ROLL_TICKS; tick++) {

@@ -11,6 +11,7 @@ import {
   KilledBy,
   Position,
   Resource,
+  removeCurrentAtomic,
   Stance,
   WorkFlag,
 } from '../../../src/components/index.js';
@@ -69,7 +70,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
   /** Stand a hunter that has just loosed a shot back up: the draw atomic has played out, so it is free
    *  to act again on the next combat pass. */
   function drawFinished(sim: Simulation, hunter: Entity): void {
-    sim.world.remove(hunter, CurrentAtomic);
+    removeCurrentAtomic(sim.world, hunter);
   }
 
   it('leaves prey OUTSIDE its flag radius alone, even inside plain sight', () => {
@@ -505,7 +506,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
 
     // The claim dies with its killer, or no kill made by a hunter that falls could ever be banked.
     sim.world.destroy(colleague);
-    sim.world.remove(hunter, CurrentAtomic);
+    removeCurrentAtomic(sim.world, hunter);
     sim.world.remove(hunter, HuntFocus);
 
     combatSystem(sim.world, { ...ctxOf(sim), tick: 1 });

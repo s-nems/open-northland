@@ -50,15 +50,19 @@ function woodGatedContent(): ReturnType<typeof testContent> {
 function woodcutterAt(sim: Simulation, x: number, y: number, woodXp: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  addPerson(sim.world, e, {
-    tribe: VIKING,
-    jobType: WOODCUTTER,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(woodXp > 0 ? [[WOOD_TRACK, woodXp]] : []),
-  });
+  addPerson(
+    sim.world,
+    e,
+    {
+      tribe: VIKING,
+      jobType: WOODCUTTER,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    },
+    { experience: new Map(woodXp > 0 ? [[WOOD_TRACK, woodXp]] : []) },
+  );
   return e;
 }
 

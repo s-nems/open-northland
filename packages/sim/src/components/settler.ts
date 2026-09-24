@@ -29,9 +29,6 @@ export const Settler = defineComponent<{
    * by a building (the original's channel 3, leisure/social).
    */
   enjoyment: Fixed;
-  /** specialization id -> experience points (humanjobexperiencetypes). */
-  experience: Map<number, number>;
-  learned?: { job: number[]; good: number[] };
 }>('Settler', 'settlers');
 
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
@@ -39,13 +36,34 @@ export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 /** The read-only {@link Settler} view `World.get` hands a planner or drive. */
 export type SettlerView = DeepReadonly<SettlerState>;
 
+/**
+ * What a settler has learned, carried by every {@link Settler}. Kept apart from the needs the drain
+ * rewrites every tick, so those writes do not re-fold the experience map into the sync digest.
+ */
+export const SettlerProgress = defineComponent<{
+  /** specialization id -> experience points (humanjobexperiencetypes). */
+  experience: Map<number, number>;
+  /** The trades and goods a school or a retraining added beyond the current trade. */
+  learned?: { job: number[]; good: number[] };
+}>('SettlerProgress', 'settlers');
+
+export type SettlerProgressState = NonNullable<(typeof SettlerProgress)['__value']>;
+
+export type SettlerProgressView = DeepReadonly<SettlerProgressState>;
+
 /** Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. Never
  *  removed, so `query(Person, …)` is a human-only system's filter. */
 export const Person = defineComponent<{ readonly person: true }>('Person', 'settlers');
 
 /** Add a person: a {@link Settler} carrying the {@link Person} marker. The only path that mints one. */
-export function addPerson(world: World, entity: Entity, state: SettlerState): void {
+export function addPerson(
+  world: World,
+  entity: Entity,
+  state: SettlerState,
+  progress: SettlerProgressState = { experience: new Map() },
+): void {
   world.add(entity, Settler, state);
+  world.add(entity, SettlerProgress, progress);
   world.add(entity, Person, { person: true });
 }
 
@@ -58,8 +76,8 @@ export function addWildlife(world: World, entity: Entity, tribe: number): void {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
+  world.add(entity, SettlerProgress, { experience: new Map() });
 }
 
 export function isWildlife(world: World, entity: Entity): boolean {
@@ -81,8 +99,8 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
 
 /**
  * Per world, the settlers whose trade, experience or learned lists were written in place since the
- * technology sweep last drained the log. The needs drain writes every Settler each tick, so the store's
- * change channels cannot single these writes out; their write paths report here instead. Derived
+ * technology sweep last drained the log. The needs drain writes every Settler each tick, so its change
+ * channels cannot single out a trade change; the write paths report here instead. Derived
  * bookkeeping, never hashed or saved; a world whose log was never opened records nothing.
  */
 const progressLogs = new WeakMap<World, Set<Entity>>();
@@ -118,16 +136,12 @@ export function settlerTradeLog(world: World): Set<Entity> {
 
 /**
  * The atomic micro-action a settler is currently executing; its {@link AtomicEffect} applies on completion
- * and the component is removed, so an entity carrying none is ready for its next. Timing runs off the
- * integer `elapsed`: `ONE / duration` truncates, so a summed fixed-point step would never reach ONE.
+ * and the component is removed, so an entity carrying none is ready for its next. Its {@link AtomicClock}
+ * times it. Add and remove the two through {@link addCurrentAtomic} and {@link removeCurrentAtomic}.
  */
 export const CurrentAtomic = defineComponent<{
   /** Join key onto a tribe's `setatomic` animation. */
   atomicId: number;
-  /** Whole ticks executed so far; completion is the exact `elapsed >= duration`. */
-  elapsed: number;
-  /** Derived `elapsed/duration` in 0..ONE - for render interpolation only, not the completion test. */
-  progress: Fixed;
   duration: number; // animation length in ticks (>= 1)
   effect: AtomicEffect;
   targetEntity: number | null;
@@ -141,6 +155,31 @@ export const CurrentAtomic = defineComponent<{
   /** Fractional work credit banked across a multi-swing harvest, in [0, ONE); absent while whole. */
   workCredit?: Fixed | undefined;
 }>('CurrentAtomic', 'settlers');
+
+export type CurrentAtomicState = NonNullable<(typeof CurrentAtomic)['__value']>;
+
+/**
+ * Whole ticks the {@link CurrentAtomic} has executed; completion is the exact `elapsed >= duration`. Kept
+ * apart so the per-tick count does not re-fold the atomic's effect into the sync digest.
+ */
+export const AtomicClock = defineComponent<{ elapsed: number }>('AtomicClock', 'settlers');
+
+/** Start `atomic` on `settler` with its clock at `elapsed` ticks, replacing any it was running. */
+export function addCurrentAtomic(
+  world: World,
+  settler: Entity,
+  atomic: CurrentAtomicState,
+  elapsed = 0,
+): void {
+  world.add(settler, CurrentAtomic, atomic);
+  world.add(settler, AtomicClock, { elapsed });
+}
+
+/** End the atomic `settler` is running, if any, with its clock. */
+export function removeCurrentAtomic(world: World, settler: Entity): void {
+  world.remove(settler, CurrentAtomic);
+  world.remove(settler, AtomicClock);
+}
 
 /** Goods a settler is physically hauling; goods never teleport to a global bank. */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying', 'settlers');

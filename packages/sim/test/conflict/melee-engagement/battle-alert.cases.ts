@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
+  addCurrentAtomic,
   Building,
   Chat,
   CurrentAtomic,
@@ -101,10 +102,8 @@ function sleeps(sim: Simulation, e: Entity): boolean {
 }
 
 function putToSleep(sim: Simulation, e: Entity): void {
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId: SLEEP_ATOMIC,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: LONG_SLEEP_TICKS,
     effect: { kind: 'sleep' },
     targetEntity: e,

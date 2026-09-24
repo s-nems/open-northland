@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { Anger, CurrentAtomic, Engagement, Health, MoveGoal } from '../../../src/components/index.js';
+import {
+  Anger,
+  addCurrentAtomic,
+  CurrentAtomic,
+  Engagement,
+  Health,
+  MoveGoal,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, Simulation } from '../../../src/index.js';
+import { Simulation } from '../../../src/index.js';
 import { atomicSystem, combatSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -250,10 +257,8 @@ describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
    * drains the target's Health AND, for a provokable animal, stamps the `Anger` timer.
    */
   function strike(sim: Simulation, attacker: Entity, target: Entity, damage: number): void {
-    sim.world.add(attacker, CurrentAtomic, {
+    addCurrentAtomic(sim.world, attacker, {
       atomicId: ATTACK_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'attack', target, damage },
       targetEntity: target,

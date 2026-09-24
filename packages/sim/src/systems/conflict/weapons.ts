@@ -1,7 +1,13 @@
 import type { WeaponType } from '@open-northland/data';
-import { Armor, Building, CurrentAtomic, Equipment, type SettlerIdentity } from '../../components/index.js';
+import {
+  Armor,
+  addCurrentAtomic,
+  Building,
+  CurrentAtomic,
+  Equipment,
+  type SettlerIdentity,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { atomicDurationForName, boundAtomicAnimation } from '../readviews/animations.js';
@@ -123,10 +129,8 @@ export function startAttack(
       ? // Copied: saved state may not alias the content row another swing carries too.
         { munitionType: weapon.munitionType, speed: weapon.speed, missSounds: { ...weapon.missSounds } }
       : undefined;
-  world.add(e, CurrentAtomic, {
+  addCurrentAtomic(world, e, {
     atomicId: ATTACK_ATOMIC_ID,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: atomicDurationForName(ctx.content, animation),
     effect: {
       kind: 'attack',

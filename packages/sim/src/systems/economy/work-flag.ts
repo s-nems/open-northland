@@ -6,6 +6,7 @@ import {
   HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   Position,
+  removeCurrentAtomic,
   Settler,
   WorkFlag,
   YardDeliveryRoute,
@@ -82,7 +83,7 @@ export function relocateWorkFlag(
   for (const e of gatherer !== undefined ? [gatherer] : world.query(WorkFlag)) {
     if (world.tryGet(e, WorkFlag)?.flag !== flag) continue;
     const atomic = world.tryGet(e, CurrentAtomic);
-    if (atomic?.effect.kind === 'pileup' && atomic.effect.store === flag) world.remove(e, CurrentAtomic);
+    if (atomic?.effect.kind === 'pileup' && atomic.effect.store === flag) removeCurrentAtomic(world, e);
     world.remove(e, YardDeliveryRoute);
     clearNavState(world, e);
   }

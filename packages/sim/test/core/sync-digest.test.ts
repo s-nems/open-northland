@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../src/components/index.js';
+import { addCurrentAtomic, MoveGoal, PathFollow, Position, Settler } from '../../src/components/index.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../../src/ecs/touched-log.js';
 import {
   adminCommand,
@@ -9,6 +9,7 @@ import {
   type SyncDigest,
   type SyncDomain,
 } from '../../src/index.js';
+import { positionOfNode } from '../../src/nav/halfcell.js';
 import { FOG_STATE, VISION_CADENCE_TICKS } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
@@ -24,6 +25,21 @@ const VIKING = 1;
 const MAP_CELLS = 12;
 const IDLE_JOB = 0;
 const P0 = 0;
+/** Any atomic id: the idle effect runs no clip. */
+const IDLE_ATOMIC_ID = 1;
+/** Long enough to outlast the ticks a test steps. */
+const LONG_ATOMIC_TICKS = 100;
+/** A goal node far enough across the map that the walker is still mid-route when observed. */
+const WALK_GOAL_NODE = 20;
+/** Both halves of every component the per-tick writers were split out of. */
+const SPLIT_HALVES = [
+  'PathFollow',
+  'PathRoute',
+  'Settler',
+  'SettlerProgress',
+  'CurrentAtomic',
+  'AtomicClock',
+];
 
 function mapless(): Simulation {
   return new Simulation({ seed: SEED, content: testContent() });
@@ -202,6 +218,38 @@ describe('sync digest', () => {
     expect(b.fog?.tryMaskFor(P0)).toEqual(a.fog?.tryMaskFor(P0));
 
     expect(differingDomains(digestOf(a), digestOf(b))).toContain('fog');
+  });
+
+  it('re-folds a walk step, an atomic tick and the needs drain without their rarely written halves', () => {
+    const sim = watchedWorld();
+    const settler = [...sim.world.query(Settler)][0];
+    const terrain = sim.terrain;
+    if (settler === undefined || terrain === undefined) throw new Error('the world stood up no settler');
+    addCurrentAtomic(sim.world, settler, {
+      atomicId: IDLE_ATOMIC_ID,
+      duration: LONG_ATOMIC_TICKS,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
+    const walker = sim.world.create();
+    sim.world.add(walker, Position, positionOfNode(0, 0));
+    sim.world.add(walker, MoveGoal, { cell: terrain.nodeAt(WALK_GOAL_NODE, WALK_GOAL_NODE) });
+    while (!sim.world.has(walker, PathFollow)) sim.step();
+    sim.step();
+
+    const written = new Set<string>();
+    sim.world.setMutationSink({
+      componentWritten: (component) => written.add(component.name),
+      allocationChanged() {},
+    });
+    sim.step();
+    sim.world.setMutationSink(null);
+
+    expect(sim.world.has(walker, PathFollow)).toBe(true);
+    expect([...written].filter((name) => SPLIT_HALVES.includes(name)).sort()).toEqual(
+      ['AtomicClock', 'PathFollow', 'Settler'].sort(),
+    );
   });
 
   it.each([

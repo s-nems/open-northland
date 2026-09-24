@@ -3,6 +3,7 @@ import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { plannerSystem } from '../../../src/systems/index.js';
+import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -87,7 +88,7 @@ describe('planFarmer - the drive ladder', () => {
       p.y = stand.y;
       sim.world.remove(farmer, components.MoveGoal);
       if (sim.world.has(farmer, components.PathRequest)) sim.world.remove(farmer, components.PathRequest);
-      if (sim.world.has(farmer, components.PathFollow)) sim.world.remove(farmer, components.PathFollow);
+      dropPath(sim.world, farmer);
       plannerSystem(sim.world, ctxOf(sim));
 
       const atomic = sim.world.get(farmer, components.CurrentAtomic);
@@ -147,7 +148,7 @@ describe('planFarmer - the drive ladder', () => {
 
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(REAP_ATOMIC);
-    expect(atomic.elapsed).toBe(0);
+    expect(sim.world.get(farmer, components.AtomicClock).elapsed).toBe(0);
     expect(atomic.duration).toBe(clip);
   });
 
@@ -170,7 +171,7 @@ describe('planFarmer - the drive ladder', () => {
   it('a master reaps a two-stroke field in one swing - experience buys fewer strokes, never faster ones', () => {
     const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
     const { field, farmer } = plotAtCap(sim, { stage: STAGES });
-    sim.world.mut(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, 100); // 100 XP at rate 1 = mastery
+    sim.world.mut(farmer, components.SettlerProgress).experience.set(FARMER_WHEAT_TRACK, 100); // 100 XP at rate 1 = mastery
 
     plannerSystem(sim.world, ctxOf(sim));
     sim.run(sim.world.get(farmer, components.CurrentAtomic).duration);

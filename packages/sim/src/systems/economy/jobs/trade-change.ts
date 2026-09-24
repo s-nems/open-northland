@@ -21,6 +21,7 @@ import {
   Owner,
   Position,
   Settler,
+  SettlerProgress,
   SiteAssignment,
   SupplyRun,
   setSettlerJob,
@@ -87,16 +88,16 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
 
 /** A profession already practised by this settler remains available after retraining. */
 function rememberCurrentJob(world: World, e: Entity, nextJob: number): void {
-  const current = world.get(e, Settler);
+  const current = world.get(e, Settler).jobType;
   if (
-    current.jobType === null ||
-    current.jobType === nextJob ||
-    current.learned?.job.includes(current.jobType) === true
+    current === null ||
+    current === nextJob ||
+    world.get(e, SettlerProgress).learned?.job.includes(current) === true
   )
     return;
-  const settler = world.mut(e, Settler);
-  settler.learned ??= { job: [], good: [] };
-  settler.learned.job.push(current.jobType);
+  const progress = world.mut(e, SettlerProgress);
+  progress.learned ??= { job: [], good: [] };
+  progress.learned.job.push(current);
   noteSettlerProgress(world, e);
 }
 

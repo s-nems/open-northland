@@ -80,7 +80,6 @@ function adultAt(sim: Simulation, x: number, y: number, jobType: number, female:
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: PLAYER });
   if (female) sim.world.add(e, Female, { female: true });

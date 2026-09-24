@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   CurrentAtomic,
   MISSION_BEHAVIOUR,
@@ -203,10 +204,8 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const settler = tiredAt(sim, 3, 2);
     const someWorkplace = homeAt(sim, 6, 4);
     sim.world.add(settler, Resting, { at: someWorkplace }); // stale - this is not its home
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: 8,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: OUTDOOR_SLEEP_TICKS,
       effect: { kind: 'sleep' },
       targetEntity: settler,

@@ -12,6 +12,7 @@ import {
   Position,
   Resting,
   Settler,
+  SettlerProgress,
   Sheltering,
   Stockpile,
   setMissionBehaviour,
@@ -152,7 +153,6 @@ function settlerAt(sim: Simulation, jobType: number, x: number, y: number): Enti
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   return e;
@@ -233,7 +233,7 @@ describe('trainSoldier - the barracks drill', () => {
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
     // The clip's TRAINING event is dead data: no "Wyszkolenie" counter may ever appear on a drilled
     // settler (authored rule).
-    expect(sim.world.get(recruit, Settler).experience.size).toBe(0);
+    expect(sim.world.get(recruit, SettlerProgress).experience.size).toBe(0);
   });
 
   it('lets a player walk call the drill off, and a re-issue starts a fresh term', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Production, ProductionBonus, Settler, Stockpile } from '../../../src/components/index.js';
+import { Production, ProductionBonus, SettlerProgress, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { ONE, Simulation } from '../../../src/index.js';
 import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus-output.js';
@@ -20,7 +20,7 @@ describe('productionSystem grants the operator profession XP per completed batch
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // the batch really finished
-    const xp = sim.world.get(worker, Settler).experience;
+    const xp = sim.world.get(worker, SettlerProgress).experience;
     expect(xp.get(CARPENTER_GENERAL_TRACK)).toBe(100); // one batch = one experienceFactor grant
     // The seeded plank-gate entry, the general track and the good-specific plank track.
     expect(xp.get(CARPENTER_PLANK_TRACK)).toBe(PLANK_XP_PER_BATCH);
@@ -32,14 +32,16 @@ describe('productionSystem grants the operator profession XP per completed batch
     const { worker } = sawmill(sim, [[WOOD, 2]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     for (let t = 0; t < CYCLE_TICKS * 2 + 2; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(worker, Settler).experience.get(CARPENTER_GENERAL_TRACK)).toBe(200);
+    expect(sim.world.get(worker, SettlerProgress).experience.get(CARPENTER_GENERAL_TRACK)).toBe(200);
   });
 });
 
 describe('productionSystem accrues the experience bonus as fractional output', () => {
   /** Seed the worker with `repeats` completed batches' worth of raw XP on the plank track. */
   function seedRepeats(sim: Simulation, worker: Entity, repeats: number): void {
-    sim.world.mut(worker, Settler).experience.set(CARPENTER_PLANK_TRACK, repeats * PLANK_XP_PER_BATCH);
+    sim.world
+      .mut(worker, SettlerProgress)
+      .experience.set(CARPENTER_PLANK_TRACK, repeats * PLANK_XP_PER_BATCH);
   }
 
   it('a mid-experience carpenter banks its bonus fraction toward the next whole plank', () => {
@@ -57,7 +59,7 @@ describe('productionSystem accrues the experience bonus as fractional output', (
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    const xp = sim.world.mut(worker, Settler).experience;
+    const xp = sim.world.mut(worker, SettlerProgress).experience;
     xp.set(CARPENTER_GENERAL_TRACK, 69 * CARPENTER_XP_PER_BATCH);
     xp.set(CARPENTER_PLANK_TRACK, 18 * PLANK_XP_PER_BATCH);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));

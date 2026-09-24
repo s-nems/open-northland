@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Health, Settler } from '../../../src/components/index.js';
+import { Health, Settler, SettlerProgress } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/index.js';
@@ -44,7 +44,7 @@ describe('two squads exchange blows at the data cadence (extended headless scena
     const anyViking = vikings.find((v) => sim.world.isAlive(v) && sim.world.has(v, Settler));
     if (anyViking !== undefined) {
       expect(
-        sim.world.get(anyViking, Settler).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR) ?? 0,
+        sim.world.get(anyViking, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR) ?? 0,
       ).toBeGreaterThan(0);
       expect(sim.world.get(anyViking, Settler).fatigue).toBeGreaterThan(0);
     }

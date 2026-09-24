@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   addPerson,
   Building,
   Carrying,
@@ -8,7 +9,7 @@ import {
   MineDeposit,
   Position,
   Resource,
-  Settler,
+  SettlerProgress,
   Stockpile,
   setSettlerJob,
 } from '../../src/components/index.js';
@@ -62,7 +63,6 @@ function makeMiner(sim: Simulation, x: number, y: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   return e;
 }
@@ -84,10 +84,8 @@ function placeDeposit(sim: Simulation, x: number, y: number, units = DEPOSIT_SIZ
 
 /** Start (and immediately let complete, duration 1) a single harvest of `node` by `settler`. */
 function harvestOnce(sim: Simulation, settler: Entity, node: Entity, good: number, atomic: number): void {
-  sim.world.add(settler, CurrentAtomic, {
+  addCurrentAtomic(sim.world, settler, {
     atomicId: atomic,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: 1,
     effect: { kind: 'harvest', resource: node, goodType: good },
     targetEntity: node,
@@ -207,7 +205,7 @@ describe('mining - a trained swing advances multiple strikes (the work-credit pa
     const sim = new Simulation({ seed: 1, content: testContent() });
     const master = makeMiner(sim, 0, 0);
     setSettlerJob(sim.world, master, WOODCUTTER);
-    sim.world.mut(master, Settler).experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
+    sim.world.mut(master, SettlerProgress).experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
     const node = sim.world.create();
     sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(node, Resource, { goodType: WOOD, remaining: units, harvestAtomic: HARVEST_STONE });

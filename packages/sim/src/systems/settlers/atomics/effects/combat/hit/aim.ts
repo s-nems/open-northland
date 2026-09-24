@@ -1,4 +1,4 @@
-import { Settler } from '../../../../../../components/index.js';
+import { Settler, SettlerProgress } from '../../../../../../components/index.js';
 import { pairHash } from '../../../../../../core/coord-hash.js';
 import { fx } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
@@ -23,7 +23,9 @@ export function hunterShotMisses(world: World, ctx: SystemContext, shooter: Enti
   const s = world.tryGet(shooter, Settler);
   if (s === undefined || s.jobType === null || !isHunterJob(ctx.content, s.jobType)) return false;
   const track = generalTrackFor(ctx, s.jobType);
-  const repeats = track === undefined ? 0 : experienceRepeats(s.experience.get(track.typeId) ?? 0, track);
+  const points =
+    track === undefined ? 0 : (world.get(shooter, SettlerProgress).experience.get(track.typeId) ?? 0);
+  const repeats = track === undefined ? 0 : experienceRepeats(points, track);
   const spread = fx.mul(fx.fromInt(HUNTER_MASTER_HIT_PCT - HUNTER_BASE_HIT_PCT), experienceBonus(repeats));
   const hitPct = HUNTER_BASE_HIT_PCT + fx.toInt(spread);
   return pairHash(ctx.tick, shooter) % PCT >= hitPct;

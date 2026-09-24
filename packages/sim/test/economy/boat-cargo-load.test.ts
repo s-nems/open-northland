@@ -61,7 +61,6 @@ function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Ent
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   if (boundTo !== undefined) sim.world.add(e, JobAssignment, { workplace: boundTo });
   return e;

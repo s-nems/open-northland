@@ -14,7 +14,7 @@ import {
   Owner,
   PlayerContacts,
   Position,
-  Settler,
+  SettlerProgress,
   Signpost,
   Stance,
 } from '../../src/components/index.js';
@@ -77,7 +77,6 @@ function unit(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints: 2000, max: 2000 });
   sim.world.add(e, Owner, { player: owner });
@@ -123,7 +122,7 @@ describe('scout experience - the signpost craft widens the eye', () => {
     // 15 cells (30 nodes) east: beyond the base 26-node eye, inside mastery's +6.
     expect(rawState(sim, P0, 19, 4)).not.toBe(FOG_STATE.VISIBLE);
 
-    sim.world.mut(scout, Settler).experience.set(SCOUT_EXPERIENCE_TYPE, 100); // mastery: the full cap
+    sim.world.mut(scout, SettlerProgress).experience.set(SCOUT_EXPERIENCE_TYPE, 100); // mastery: the full cap
     for (let t = 0; t <= VISION_CADENCE_TICKS + 1; t++) sim.step();
     expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.VISIBLE);
   });
@@ -184,7 +183,7 @@ describe('stamp memo - an eye whose footprint did not change writes nothing', ()
     const scout = unit(sim, 4, 4, P0, { jobType: SCOUT_JOB });
     sim.run(VISION_CADENCE_TICKS + 1);
     expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.UNEXPLORED);
-    sim.world.mut(scout, Settler).experience.set(SCOUT_EXPERIENCE_TYPE, 100);
+    sim.world.mut(scout, SettlerProgress).experience.set(SCOUT_EXPERIENCE_TYPE, 100);
     sim.run(VISION_CADENCE_TICKS);
     expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.VISIBLE);
   });

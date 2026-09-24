@@ -69,7 +69,6 @@ describe('setJob order', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     s.enqueueSetup({ kind: 'setJob', entity: neutral, jobType: CARPENTER }); // unowned - skipped
     s.step();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   Carrying,
   CurrentAtomic,
@@ -63,10 +64,8 @@ function placeFellableTree(sim: Simulation, x: number, y: number): Entity {
 
 /** Start (and immediately let complete, duration 1) a single chop of `node` by `settler`. */
 function chopOnce(sim: Simulation, settler: Entity, node: Entity): void {
-  sim.world.add(settler, CurrentAtomic, {
+  addCurrentAtomic(sim.world, settler, {
     atomicId: HARVEST_ATOMIC,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: 1,
     effect: { kind: 'harvest', resource: node, goodType: WOOD },
     targetEntity: node,
@@ -174,10 +173,8 @@ describe('felling - ground drop cleanup', () => {
     sim.world.add(pile, Stockpile, { amounts: new Map([[WOOD, 1]]) });
     sim.world.add(pile, GroundDrop, { goodType: WOOD });
     const cutter = makeWoodcutter(sim, 0, 0);
-    sim.world.add(cutter, CurrentAtomic, {
+    addCurrentAtomic(sim.world, cutter, {
       atomicId: 22,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'pickup', goodType: WOOD, amount: 1, from: pile },
       targetEntity: pile,
@@ -198,10 +195,8 @@ describe('felling - ground drop cleanup', () => {
     sim.world.add(heap, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(heap, Stockpile, { amounts: new Map([[WOOD, 1]]) }); // a loose yard heap, no marker
     const cutter = makeWoodcutter(sim, 0, 0);
-    sim.world.add(cutter, CurrentAtomic, {
+    addCurrentAtomic(sim.world, cutter, {
       atomicId: 22,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'pickup', goodType: WOOD, amount: 1, from: heap },
       targetEntity: heap,
@@ -221,10 +216,8 @@ describe('felling - ground drop cleanup', () => {
     sim.world.add(store, Building, { buildingType: 1, tribe: VIKING, built: fx.fromInt(1), level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map([[WOOD, 1]]) });
     const cutter = makeWoodcutter(sim, 0, 0);
-    sim.world.add(cutter, CurrentAtomic, {
+    addCurrentAtomic(sim.world, cutter, {
       atomicId: 22,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'pickup', goodType: WOOD, amount: 1, from: store },
       targetEntity: store,

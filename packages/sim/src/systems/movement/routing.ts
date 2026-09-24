@@ -3,6 +3,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PathRoute,
   PlayerOrder,
   Position,
   WalkFacing,
@@ -138,8 +139,9 @@ export function drainPathRequests(
       // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
       // a blocked start only permits escape, never a return to its centre.
       const previous = world.tryGet(e, PathFollow);
-      const oldTarget = previous?.waypoints[previous.index];
-      const oldStart = previous?.waypoints[previous.index - 1];
+      const previousStops = world.tryGet(e, PathRoute)?.waypoints;
+      const oldTarget = previous && previousStops?.[previous.index];
+      const oldStart = previous && previousStops?.[previous.index - 1];
       const activeCost = previous?.legCost ?? 0;
       const position = world.tryGet(e, Position);
       const moved =
@@ -165,8 +167,8 @@ export function drainPathRequests(
           startIsAhead(position, waypoints))
           ? 0
           : 1;
+      world.add(e, PathRoute, { waypoints });
       world.add(e, PathFollow, {
-        waypoints,
         index,
         legTicks: activeCost > 0 ? (previous?.legTicks ?? 0) : 0,
         legCost: activeCost,

@@ -141,7 +141,6 @@ describe('atomicSystem - effects', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, EAT_CLIP_TICKS, EAT_ATOMIC);
     for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));

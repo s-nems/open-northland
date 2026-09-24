@@ -1,6 +1,6 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { Armor, CurrentAtomic, Health, Position } from '../../../src/components/index.js';
+import { Armor, addCurrentAtomic, Health, Position } from '../../../src/components/index.js';
 import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
@@ -61,7 +61,6 @@ export function fighterAtPosition(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Health, { hitpoints: opts.hitpoints ?? 100_000, max: opts.hitpoints ?? 100_000 });
   if (opts.armorClass !== undefined) sim.world.add(e, Armor, { armorClass: opts.armorClass });
@@ -76,10 +75,8 @@ export function startSwing(
   duration: number,
   atomicId = ATTACK_ATOMIC,
 ): void {
-  sim.world.add(attacker, CurrentAtomic, {
+  addCurrentAtomic(sim.world, attacker, {
     atomicId,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration,
     effect: { kind: 'attack', ...effect },
     targetEntity: effect.target,

@@ -149,8 +149,10 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
         snapshotOf([
           entity(1, 1, 1, {
             Settler: { tribe: 0 },
-            CurrentAtomic: { atomicId: 24, elapsed: 3, targetEntity: 2, targetTile: null },
-            PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 },
+            CurrentAtomic: { atomicId: 24, targetEntity: 2, targetTile: null },
+            AtomicClock: { elapsed: 3 },
+            PathFollow: { index: 0 },
+            PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] },
           }),
           entity(2, 2, 1, { Resource: { goodType: 1, remaining: 3 } }),
         ]),

@@ -5,6 +5,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PathRoute,
   PlayerOrder,
   Position,
   WalkFacing,
@@ -68,7 +69,7 @@ describe('pathfindingSystem - request to PathFollow handoff', () => {
     // Row 0 (even): node hx sits at grid x = hx/2 - half-tile pitch, no stagger. Each stop carries its
     // node, whose roughness paces the step off it.
     const node = (hx: number): number => sim.terrain?.nodeAt(hx, 0) as number;
-    expect(sim.world.get(e, PathFollow).waypoints).toEqual([
+    expect(sim.world.get(e, PathRoute).waypoints).toEqual([
       { x: Q(0), y: Q(0), node: node(0) },
       { x: Q(2), y: Q(0), node: node(1) },
       { x: Q(4), y: Q(0), node: node(2) },
@@ -84,7 +85,7 @@ describe('pathfindingSystem - request to PathFollow handoff', () => {
     const e = request(c, c);
     sim.step();
     // Node (1,1): row ½ (stagger ¼) → grid x = ½ − ¼ = ¼.
-    expect(sim.world.get(e, PathFollow).waypoints).toEqual([{ x: Q(1), y: Q(2), node: c }]);
+    expect(sim.world.get(e, PathRoute).waypoints).toEqual([{ x: Q(1), y: Q(2), node: c }]);
     expect(sim.world.get(e, PathFollow).index).toBe(0);
   });
 
@@ -96,7 +97,7 @@ describe('pathfindingSystem - request to PathFollow handoff', () => {
     const { sim, request } = mappedSim(grassMap(5, 5));
     const e = request(sim.terrain?.nodeAt(2, 1) as number, sim.terrain?.nodeAt(3, 3) as number);
     sim.step();
-    expect(sim.world.get(e, PathFollow).waypoints).toEqual([
+    expect(sim.world.get(e, PathRoute).waypoints).toEqual([
       { x: Q(3), y: Q(2), node: sim.terrain?.nodeAt(2, 1) }, // node (2,1): 1 − ¼
       { x: Q(3), y: Q(4), node: sim.terrain?.nodeAt(3, 2) }, // the midpoint at row 1
       { x: Q(5), y: Q(6), node: sim.terrain?.nodeAt(3, 3) }, // node (3,3): 1½ − ¼
@@ -109,7 +110,7 @@ describe('pathfindingSystem - request to PathFollow handoff', () => {
     const { sim, request } = mappedSim(grassMap(5, 5));
     const e = request(sim.terrain?.nodeAt(2, 0) as number, sim.terrain?.nodeAt(3, 2) as number);
     sim.step();
-    expect(sim.world.get(e, PathFollow).waypoints).toEqual([
+    expect(sim.world.get(e, PathRoute).waypoints).toEqual([
       { x: Q(4), y: Q(0), node: sim.terrain?.nodeAt(2, 0) }, // node (2,0)
       { x: Q(4), y: Q(2), node: sim.terrain?.nodeAt(2, 1) }, // the midpoint at row ½: 1¼ − ¼
       { x: Q(4), y: Q(4), node: sim.terrain?.nodeAt(3, 2) }, // node (3,2): row 1, grid x = 1½ − ½
@@ -121,14 +122,14 @@ describe('pathfindingSystem - request to PathFollow handoff', () => {
     const { sim, request } = mappedSim(grassMap(5, 5));
     const e = request(sim.terrain?.nodeAt(3, 0) as number, sim.terrain?.nodeAt(2, 2) as number);
     sim.step();
-    expect(sim.world.get(e, PathFollow).waypoints.map((w) => w.node)).toEqual([
+    expect(sim.world.get(e, PathRoute).waypoints.map((w) => w.node)).toEqual([
       sim.terrain?.nodeAt(3, 0),
       sim.terrain?.nodeAt(2, 1),
       sim.terrain?.nodeAt(2, 2),
     ]);
     const f = request(sim.terrain?.nodeAt(2, 1) as number, sim.terrain?.nodeAt(1, 3) as number);
     sim.step();
-    expect(sim.world.get(f, PathFollow).waypoints.map((w) => w.node)).toEqual([
+    expect(sim.world.get(f, PathRoute).waypoints.map((w) => w.node)).toEqual([
       sim.terrain?.nodeAt(2, 1),
       sim.terrain?.nodeAt(2, 2),
       sim.terrain?.nodeAt(1, 3),
@@ -173,12 +174,10 @@ describe('pathfindingSystem - failure handling', () => {
     // A walker mid-route whose redirected goal turns out unreachable: the request is flagged, but
     // the OLD route must keep playing out - dropping it froze the walker wherever it stood
     // (possibly on a seam waypoint, off any centre) with a goal nothing would ever service again.
-    sim.world.add(e, PathFollow, {
+    sim.world.add(e, PathRoute, {
       waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9), node: sim.terrain.nodeAt(0, 0) }],
-      index: 0,
-      legTicks: 0,
-      legCost: 0,
     });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     sim.world.add(e, PathRequest, {
       start: sim.terrain?.nodeAt(0, 0) as number,
       goal: sim.terrain?.nodeAt(2, 0) as number,
@@ -290,7 +289,6 @@ describe('pathfindingSystem - a group move shares one route', () => {
         fatigue: fx.fromInt(0),
         piety: fx.fromInt(0),
         enjoyment: fx.fromInt(0),
-        experience: new Map(),
       });
       sim.world.add(e, Owner, { player: P0 });
       if (ordered) sim.world.add(e, PlayerOrder, {});
@@ -323,7 +321,7 @@ describe('pathfindingSystem - a group move shares one route', () => {
 
     members.forEach((e, i) => {
       expect(sim.world.has(e, PathRequest)).toBe(false);
-      const nodes = sim.world.get(e, PathFollow).waypoints.map((w) => w.node);
+      const nodes = sim.world.get(e, PathRoute).waypoints.map((w) => w.node);
       expect(nodes[0]).toBe(requests[i]?.start);
       expect(nodes[nodes.length - 1]).toBe(requests[i]?.goal); // the formation keeps its spots
     });
@@ -335,8 +333,8 @@ describe('pathfindingSystem - a group move shares one route', () => {
       throw new Error('a march has members');
     }
     drainPathRequests(alone.sim.world, alone.ctx, alone.ctx.terrain, soloCost);
-    expect(sim.world.get(lead, PathFollow).waypoints).toEqual(
-      alone.sim.world.get(soloLead, PathFollow).waypoints,
+    expect(sim.world.get(lead, PathRoute).waypoints).toEqual(
+      alone.sim.world.get(soloLead, PathRoute).waypoints,
     );
   });
 
@@ -406,8 +404,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
         failed: false,
       });
       sim.step();
-      const route = sim.world.get(e, PathFollow);
-      expect(route.waypoints[route.index]?.node).toBe(terrain.nodeAt(1, 0));
+      const stops = sim.world.get(e, PathRoute).waypoints;
+      expect(stops[sim.world.get(e, PathFollow).index]?.node).toBe(terrain.nodeAt(1, 0));
       expect(sim.world.get(e, Position).x).toBe(fx.fromFloat((6 + i) / 16));
     }
     sim.step();
@@ -494,9 +492,8 @@ describe('pathfindingSystem - mid-walk reroute', () => {
 
     reorder(sim, e, 16); // further along the SAME heading
     sim.step();
-    const pf = sim.world.get(e, PathFollow);
-    expect(pf.waypoints[pf.waypoints.length - 1]?.node).toBe(sim.terrain?.nodeAt(16, 0));
-    expect(pf.index).toBe(1); // the fresh route's first leg, from where the walker stands
+    expect(sim.world.get(e, PathRoute).waypoints.at(-1)?.node).toBe(sim.terrain?.nodeAt(16, 0));
+    expect(sim.world.get(e, PathFollow).index).toBe(1); // the fresh route's first leg, from where the walker stands
     expect(sim.world.get(e, Position).x).toBeGreaterThan(before);
   });
 
@@ -507,8 +504,7 @@ describe('pathfindingSystem - mid-walk reroute', () => {
 
     reorder(sim, e, 0); // flip: back west
     sim.step();
-    const pf = sim.world.get(e, PathFollow);
-    expect(pf.waypoints[pf.waypoints.length - 1]?.node).toBe(sim.terrain?.nodeAt(0, 0));
+    expect(sim.world.get(e, PathRoute).waypoints.at(-1)?.node).toBe(sim.terrain?.nodeAt(0, 0));
     sim.run(4); // the heading change occupies its intermediate turn ticks
     expect(sim.world.get(e, Position).x).toBeLessThan(before);
   });
@@ -549,6 +545,6 @@ describe('pathfindingSystem - runs inside the real schedule before movement', ()
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.step();
     expect(sim.world.has(e, PathFollow)).toBe(true);
-    expect(sim.world.get(e, PathFollow).waypoints.length).toBe(3);
+    expect(sim.world.get(e, PathRoute).waypoints.length).toBe(3);
   });
 });

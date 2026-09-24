@@ -1,6 +1,5 @@
 import type { EquipCategory } from '@open-northland/data';
 import {
-  CurrentAtomic,
   Equipment,
   EquipOrder,
   type EquipOrderIntent,
@@ -10,6 +9,7 @@ import {
   PathRequest,
   PlayerOrder,
   Position,
+  removeCurrentAtomic,
   Settler,
   Stranded,
   TrainingOrder,
@@ -82,7 +82,7 @@ function stampEquipOrder(
     return;
   }
   const queued = active?.issuer === 'player' ? (active.queued ?? []) : [];
-  world.remove(e, CurrentAtomic);
+  removeCurrentAtomic(world, e);
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, Stranded);

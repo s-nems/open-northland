@@ -1,8 +1,8 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { CurrentAtomic } from '../../../src/components/index.js';
+import { addCurrentAtomic, CurrentAtomic } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { type AtomicEffect, fx, type Simulation } from '../../../src/index.js';
+import type { AtomicEffect, Simulation } from '../../../src/index.js';
 
 /**
  * Unit + integration tests for the AtomicSystem - the executor half of the settler planner. It
@@ -24,10 +24,8 @@ export function startAtomic(
   duration: number,
   atomicId = 1,
 ): void {
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration,
     effect,
     targetEntity: null,

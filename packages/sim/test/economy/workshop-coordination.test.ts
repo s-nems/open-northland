@@ -11,6 +11,7 @@ import {
   Production,
   Resting,
   Settler,
+  SettlerProgress,
   Stockpile,
   SupplyRun,
 } from '../../src/components/index.js';
@@ -45,7 +46,7 @@ it('a carrier must not enable recipes deselected by the craftsman', () => {
   buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
   settlerAt(sim, 5, 0, WOODCUTTER);
   const worker = settlerAt(sim, 0, 0, CARPENTER, shop);
-  sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(worker, CraftSelection, { goods: [PLANK], cursor: 0 });
   settlerAt(sim, 5, 0, CARRIER, shop);
   plannerSystem(sim.world, ctxOf(sim));
@@ -64,7 +65,7 @@ it.each(['this pass', 'an earlier tick'])(
     const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
     sim.world.add(baker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
     const joiner = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.mut(joiner, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(joiner, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     sim.world.add(joiner, CraftSelection, { goods: [PLANK], cursor: 0 });
     if (planned === 'an earlier tick') {
       sim.world.add(baker, SupplyRun, { site: shop, goodType: WHEAT, amount: 1, source: store });
@@ -90,7 +91,7 @@ it('a recipe waiting for a unit a colleague set off for this pass keeps its rota
   const fetcher = settlerAt(sim, 0, 0, CARPENTER, shop);
   sim.world.add(fetcher, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
   const waiting = settlerAt(sim, 0, 0, CARPENTER, shop);
-  sim.world.mut(waiting, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.mut(waiting, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(waiting, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
   plannerSystem(sim.world, ctxOf(sim));
   expect(sim.world.get(fetcher, SupplyRun).goodType).toBe(WOOD);
@@ -112,7 +113,7 @@ it('a colleague walking to an emptied store does not hold back a startable recip
   sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WOOD, amount: 1, source: emptied });
   sim.world.add(fetcher, MoveGoal, { cell: cell(sim, 4, 0) });
   const waiting = settlerAt(sim, 0, 0, CARPENTER, shop);
-  sim.world.mut(waiting, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.mut(waiting, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(waiting, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
   plannerSystem(sim.world, ctxOf(sim));
   productionSystem(sim.world, ctxOf(sim));
@@ -133,7 +134,7 @@ for (const owned of [false, true])
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 1]]);
     settlerAt(sim, 5, 0, WOODCUTTER);
     const oldWorker = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.mut(oldWorker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(oldWorker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     sim.world.add(oldWorker, CraftSelection, { goods: [PLANK], cursor: 0 });
     const newWorker = settlerAt(sim, 0, 0, CARPENTER, shop);
     sim.world.add(newWorker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
@@ -162,7 +163,7 @@ it('selected expensive recipe receives two units with first output full', () => 
   buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
   settlerAt(sim, 5, 0, WOODCUTTER);
   const worker = settlerAt(sim, 0, 0, CARPENTER, shop);
-  sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(worker, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 0 });
   let produced = false;
   for (let i = 0; i < 700; i++) {
@@ -183,7 +184,7 @@ it('recipe choice does not depend on assignment insertion order', () => {
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WHEAT, 1]]);
     settlerAt(sim, 7, 0, WOODCUTTER);
     const a = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.mut(a, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(a, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     sim.world.add(a, CraftSelection, { goods: [PLANK], cursor: 0 });
     const b = settlerAt(sim, 0, 0, CARPENTER, shop);
     sim.world.add(b, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
@@ -225,7 +226,7 @@ it('expensive unused selection does not let a cheap recipe steal priority', () =
   const a = settlerAt(sim, 0, 0, CARPENTER, shop);
   sim.world.add(a, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
   const b = settlerAt(sim, 0, 0, CARPENTER, shop);
-  sim.world.mut(b, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.mut(b, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(b, CraftSelection, { goods: [PLANK, 7], cursor: 0 });
   productionSystem(sim.world, ctxOf(sim));
   expect(sim.world.get(shop, Production).cycles[0]?.goodType).toBe(FOOD_SIMPLE);
@@ -253,7 +254,7 @@ it.each([
     settlerAt(sim, 5, 0, WOODCUTTER);
     for (const good of [PLANK, FOOD_SIMPLE]) {
       const e = settlerAt(sim, good === PLANK ? start : 0, 0, CARPENTER, shop);
-      sim.world.mut(e, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+      sim.world.mut(e, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
       sim.world.add(e, CraftSelection, { goods: [good], cursor: 0 });
     }
     for (const e of new Set([...sim.world.query(Settler), ...sim.world.query(Stockpile)]))
@@ -321,7 +322,7 @@ it('reserves a shared ingredient while the other operator walks to an empty well
   settlerAt(sim, 13, 0, WOODCUTTER);
   for (const good of [PLANK, FOOD_SIMPLE]) {
     const worker = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     sim.world.add(worker, CraftSelection, { goods: [good], cursor: 0 });
     if (good === PLANK) sim.world.add(worker, Carrying, { goodType: WOOD, amount: 1 });
   }
@@ -340,7 +341,7 @@ it('keeps the reservation on the tick the fetcher reaches the well, before its d
   const well = buildingAt(sim, WELL, 10, 0);
   settlerAt(sim, 13, 0, WOODCUTTER);
   const present = settlerAt(sim, 0, 0, CARPENTER, shop);
-  sim.world.mut(present, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.mut(present, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(present, CraftSelection, { goods: [PLANK], cursor: 0 });
   // Arrived: movement has retired the walk, and the planner starts the draw only next tick.
   const fetcher = settlerAt(sim, 10, 0, CARPENTER, shop);
@@ -361,7 +362,7 @@ it.each(['order', 'failed route'])(
     const shop = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
     settlerAt(sim, 5, 0, WOODCUTTER);
     const worker = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     sim.world.add(worker, CraftSelection, { goods: [PLANK], cursor: 0 });
     const incoming = settlerAt(sim, 3, 0, CARPENTER, shop);
     sim.world.add(incoming, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });

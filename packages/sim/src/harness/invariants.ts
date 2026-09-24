@@ -1,16 +1,21 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  AtomicClock,
   Building,
+  CurrentAtomic,
   Engagement,
   HuntFocus,
   MAX_BUILDING_LEVEL,
+  PathFollow,
+  PathRoute,
   Person,
   Settler,
+  SettlerProgress,
   Stockpile,
   stockpileEntries,
 } from '../components/index.js';
 import { ONE } from '../core/fixed.js';
-import type { World } from '../ecs/world.js';
+import type { Component, World } from '../ecs/world.js';
 import { NEED_OVERFILL_FLOOR } from '../systems/lifecycle/needs/index.js';
 import { isAnimalTribe } from '../systems/readviews/index.js';
 import { playerPlacementRulesValid } from './player-placement-invariant.js';
@@ -101,12 +106,33 @@ const personhoodMatchesTribe: Invariant = (world, content) => {
   return out;
 };
 
+/** Components split so a hot write does not re-fold a rarely written payload, which exist together. */
+const SPLIT_PAIRS: readonly (readonly [Component<unknown>, Component<unknown>])[] = [
+  [PathFollow, PathRoute],
+  [Settler, SettlerProgress],
+  [CurrentAtomic, AtomicClock],
+];
+
+/** Each {@link SPLIT_PAIRS} half is present exactly when the other is. */
+const splitHalvesPaired: Invariant = (world) => {
+  const out: string[] = [];
+  for (const pair of SPLIT_PAIRS) {
+    for (const [held, partner] of [pair, [pair[1], pair[0]] as const]) {
+      for (const e of world.query(held)) {
+        if (!world.has(e, partner)) out.push(`entity ${e}: ${held.name} without a ${partner.name}`);
+      }
+    }
+  }
+  return out;
+};
+
 export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
   needsInRange,
   buildingSane,
   preyHoldWithinEngagement,
   personhoodMatchesTribe,
+  splitHalvesPaired,
   cachesCoherent,
   playerPlacementRulesValid,
 ];

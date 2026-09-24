@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Settler } from '../../../src/components/index.js';
-import { fx, positionOfNode, Simulation } from '../../../src/index.js';
+import { addCurrentAtomic, Settler } from '../../../src/components/index.js';
+import { positionOfNode, Simulation } from '../../../src/index.js';
 import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import {
   SIGNPOST_TARGET_TOLERANCE_NODES,
@@ -233,10 +233,8 @@ describe('signpost-coverage module (guideBuild)', () => {
     // Work remains, and with no atomic running the module does want to order it.
     expect([...scoutModule.run(sim.world, ctxOf(sim), SEAT)]).toHaveLength(1);
 
-    sim.world.add(scout, CurrentAtomic, {
+    addCurrentAtomic(sim.world, scout, {
       atomicId: EAT_ATOMIC_ID,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 50,
       effect: { kind: 'eat', goodType: 3, from: null },
       targetEntity: scout,
@@ -257,10 +255,8 @@ describe('signpost-coverage module (guideBuild)', () => {
     const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
     if (scout === undefined) throw new Error('expected a spawned scout');
 
-    sim.world.add(scout, CurrentAtomic, {
+    addCurrentAtomic(sim.world, scout, {
       atomicId: EAT_ATOMIC_ID,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 50,
       effect: { kind: 'eat', goodType: 3, from: null },
       targetEntity: scout,

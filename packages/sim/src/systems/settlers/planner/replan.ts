@@ -1,6 +1,5 @@
 import {
   Chat,
-  CurrentAtomic,
   Engagement,
   Fleeing,
   Frightened,
@@ -12,6 +11,7 @@ import {
   PlayerOrder,
   Position,
   Resting,
+  removeCurrentAtomic,
   Settler,
   Sheltering,
   Stranded,
@@ -194,7 +194,7 @@ export function releaseStaleIntent(
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
   // drive below re-derives a craft clip from its workplace's own batch clock in this same pass, and a
   // pastime chat's clip is shed with the chat once a drive takes the settler.
-  if (!inPastimeChat(world, e)) world.remove(e, CurrentAtomic);
+  if (!inPastimeChat(world, e)) removeCurrentAtomic(world, e);
   // Releasing through the tally keeps the inbound count in lockstep with the store.
   releaseSupplyRun(world, e, inbound);
   return true;

@@ -9,6 +9,7 @@ import {
   Owner,
   PlayerOrder,
   Position,
+  removeCurrentAtomic,
   Settler,
   setMissionBehaviour,
   setNeedsEnabled,
@@ -352,7 +353,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     gossipSystem(sim.world, ctxOf(sim)); // the round starts
 
     // A move order steals `b` mid-round (moveUnit clears its atomic and stamps PlayerOrder).
-    sim.world.remove(b, CurrentAtomic);
+    removeCurrentAtomic(sim.world, b);
     sim.world.add(b, PlayerOrder, {});
     gossipSystem(sim.world, ctxOf(sim));
 
@@ -368,7 +369,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     plannerSystem(sim.world, ctxOf(sim));
     gossipSystem(sim.world, ctxOf(sim));
 
-    sim.world.remove(b, CurrentAtomic); // some other system took the listener's clip
+    removeCurrentAtomic(sim.world, b); // some other system took the listener's clip
     gossipSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, Chat)).toBe(false);

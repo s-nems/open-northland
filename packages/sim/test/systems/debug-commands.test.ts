@@ -46,7 +46,6 @@ function unitWithHealth(sim: Simulation, hitpoints: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints, max: hitpoints });
   return e;
@@ -71,7 +70,6 @@ function settlerWithNeeds(sim: Simulation, level: Fixed): Entity {
     fatigue: level,
     piety: level,
     enjoyment: level,
-    experience: new Map(),
   });
   return e;
 }

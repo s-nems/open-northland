@@ -164,16 +164,11 @@ describe('household quality goods', () => {
       fatigue: ONE,
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(settler, Residence, { home });
     sim.world.add(settler, Resting, { at: home });
 
-    applyAtomicNeedEvents(sim.world, ctxOf(sim), settler, {
-      atomicId: 8,
-      elapsed: 1,
-      effect: { kind: 'sleep' },
-    });
+    applyAtomicNeedEvents(sim.world, ctxOf(sim), settler, { atomicId: 8, effect: { kind: 'sleep' } }, 1);
 
     expect(sim.world.get(settler, Settler).fatigue).toBe(applyNeedUnits(ONE, 2000));
     expect(sim.world.get(home, HomeQuality).rest).toBe(95);
@@ -198,7 +193,6 @@ describe('household quality goods', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     expect(demandedHomeQualityGoods(sim.world, ctxOf(sim), woman, home)).toEqual(
       new Set([CROCKERY, FURNITURE]),
@@ -221,7 +215,6 @@ describe('household quality goods', () => {
       fatigue: fx.fromInt(0),
       piety: ONE,
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(settler, Residence, { home });
     sim.world.add(settler, Resting, { at: home });
@@ -242,7 +235,6 @@ describe('household quality goods', () => {
       fatigue: fx.fromInt(0),
       piety: ONE,
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(settler, Residence, { home });
     sim.world.add(settler, Resting, { at: home });
@@ -284,15 +276,10 @@ describe('household quality goods', () => {
       fatigue: ONE,
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(sleeper, Residence, { home });
     sim.world.add(sleeper, Resting, { at: home });
-    applyAtomicNeedEvents(sim.world, ctxOf(sim), sleeper, {
-      atomicId: 8,
-      elapsed: 1,
-      effect: { kind: 'sleep' },
-    });
+    applyAtomicNeedEvents(sim.world, ctxOf(sim), sleeper, { atomicId: 8, effect: { kind: 'sleep' } }, 1);
     expect(sim.world.get(sleeper, Settler).fatigue).toBe(applyNeedUnits(ONE, 1000));
     expect(sim.world.get(home, HomeQuality).rest).toBe(100);
 
@@ -336,7 +323,6 @@ describe('household quality goods', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(woman, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(woman, Residence, { home });

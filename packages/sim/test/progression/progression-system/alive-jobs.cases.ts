@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addPerson, Settler, setSettlerJob } from '../../../src/components/index.js';
+import { addPerson, Settler, SettlerProgress, setSettlerJob } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { goodEnabled } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -48,13 +48,16 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
 
     // Re-`add` is the only way a settler's tribe can change, so the memo leans on it bumping the
     // membership generation even though the entity was already in the store.
-    const cutterState = sim.world.get(cutter, Settler);
-    addPerson(sim.world, cutter, {
-      ...cutterState,
-      learned: { job: [...(cutterState.learned?.job ?? [])], good: [...(cutterState.learned?.good ?? [])] },
-      experience: new Map(cutterState.experience),
-      tribe: OTHER_TRIBE,
-    });
+    const progress = sim.world.get(cutter, SettlerProgress);
+    addPerson(
+      sim.world,
+      cutter,
+      { ...sim.world.get(cutter, Settler), tribe: OTHER_TRIBE },
+      {
+        learned: { job: [...(progress.learned?.job ?? [])], good: [...(progress.learned?.good ?? [])] },
+        experience: new Map(progress.experience),
+      },
+    );
     expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

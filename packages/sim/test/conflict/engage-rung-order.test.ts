@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Anger,
   AttackOrder,
+  addCurrentAtomic,
   Building,
   Carrying,
   CurrentAtomic,
@@ -80,7 +81,6 @@ function personAt(sim: Simulation, x: number, y: number, jobType: number, opts: 
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints: 2000, max: 2000 });
   if (opts.owner !== undefined) sim.world.add(e, Owner, { player: opts.owner });
@@ -98,7 +98,6 @@ function beastAt(sim: Simulation, x: number, y: number, tribe: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints: 500, max: 500 });
   return e;
@@ -114,10 +113,8 @@ function nodeOfCell(sim: Simulation, x: number, y: number): NodeId {
 /** A busy settler: any running atomic benches the combat drive for its whole length. The clip is the
  *  fixture's wood harvest, chosen only because the ladder never reads which atomic is running. */
 function startAtomic(sim: Simulation, e: Entity): void {
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId: HARVEST_ATOMIC,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: 8,
     effect: { kind: 'idle' },
     targetEntity: null,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   addPerson,
   Carrying,
   CurrentAtomic,
@@ -106,10 +107,8 @@ describe('atomicPlanner - choosing the next atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const cutter = woodcutterAt(sim, 0, 0);
     woodAt(sim, 3, 0);
-    sim.world.add(cutter, CurrentAtomic, {
+    addCurrentAtomic(sim.world, cutter, {
       atomicId: 1,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 5,
       effect: { kind: 'idle' },
       targetEntity: null,
@@ -130,7 +129,6 @@ describe('atomicPlanner - choosing the next atomic', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     woodAt(sim, 3, 0);
     plannerSystem(sim.world, ctxOf(sim));

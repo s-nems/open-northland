@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Marriage, Resource, Settler, WorkFlag } from '../../../src/components/index.js';
+import { Marriage, Resource, Settler, SettlerProgress, WorkFlag } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import {
   BUILDER_CAP,
@@ -360,7 +360,7 @@ describe('workforce module (collectResources)', () => {
     // One man has dug stone before - iron's `needforgood` XP gate demands an experienced digger.
     const veteran = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === CIVILIST);
     if (veteran === undefined) throw new Error('setup: no spawned man');
-    sim.world.mut(veteran, Settler).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
+    sim.world.mut(veteran, SettlerProgress).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
 
     // The gate: iron is listed after the farm entry, so an unmet farm keeps it unwanted.
     const gated = workforceModule([
@@ -426,7 +426,7 @@ describe('workforce module (collectResources)', () => {
     // iron - the fresh spare still may not mine iron.
     const collector = [...sim.world.query(Settler, WorkFlag)][0];
     if (collector === undefined) throw new Error('setup: stone collector missing');
-    sim.world.mut(collector, Settler).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
+    sim.world.mut(collector, SettlerProgress).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
     const swap = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(swap.filter((c) => c.kind === 'setGatherGood')).toEqual([
       { kind: 'setGatherGood', entity: collector, goodType: IRON },

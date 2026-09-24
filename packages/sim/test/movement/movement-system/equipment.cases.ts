@@ -9,6 +9,7 @@ import {
   MissionBehaviour,
   PathFollow,
   PathRequest,
+  PathRoute,
   Position,
   Settler,
   WalkFacing,
@@ -20,6 +21,7 @@ import {
   NEED_DRIVE_THRESHOLD,
   needBar,
 } from '../../../src/systems/lifecycle/needs/index.js';
+import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { roughNodeMap } from '../../fixtures/terrain.js';
@@ -149,7 +151,7 @@ describe('movementSystem - worn boots', () => {
     wearBoots(sim, e, SHOES);
     sim.step();
     expect(spentPoints(sim, e)).toBe(2);
-    sim.world.remove(e, PathFollow);
+    dropPath(sim.world, e);
     sim.step();
     expect(spentPoints(sim, e)).toBe(2);
   });
@@ -181,12 +183,8 @@ describe('movementSystem - worn boots', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const e = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(0), y: fx.fromInt(0) } });
     sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
-    sim.world.add(e, PathFollow, {
-      waypoints: WALK.slice(0, 2).map((w) => waypointAt(sim, w.x, w.y)),
-      index: 1,
-      legTicks: 0,
-      legCost: 0,
-    });
+    sim.world.add(e, PathRoute, { waypoints: WALK.slice(0, 2).map((w) => waypointAt(sim, w.x, w.y)) });
+    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
     wearBoots(sim, e, SHOES, fx.div(fx.fromInt(SHOE_POINTS - 1), fx.fromInt(SHOE_POINTS)));
     sim.step();
     expect(sim.world.get(e, Equipment).boots).toBeNull();
@@ -237,7 +235,6 @@ describe('movementSystem - worn boots', () => {
         fatigue: NEED_DRIVE_THRESHOLD,
         piety: fx.fromInt(0),
         enjoyment: fx.fromInt(0),
-        experience: new Map(),
       });
       if (shod) wearBoots(sim, e, SHOES);
       return ticksToArrive(sim, e);
@@ -250,12 +247,8 @@ describe('movementSystem - worn boots', () => {
     const walked = (carrying: boolean, shod: boolean, flags = 0): number => {
       const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
       const e = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(0), y: fx.fromInt(0) } });
-      sim.world.add(e, PathFollow, {
-        waypoints: WALK.map((w) => waypointAt(sim, w.x, w.y)),
-        index: 1,
-        legTicks: 0,
-        legCost: 0,
-      });
+      sim.world.add(e, PathRoute, { waypoints: WALK.map((w) => waypointAt(sim, w.x, w.y)) });
+      sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
       if (carrying) sim.world.add(e, Carrying, { goodType: 1, amount: 1 });
       if (shod) wearBoots(sim, e, SHOES);
       if (flags !== 0) sim.world.add(e, MissionBehaviour, { flags });

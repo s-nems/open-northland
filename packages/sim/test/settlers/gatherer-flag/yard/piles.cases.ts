@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Carrying,
   CurrentAtomic,
   Owner,
@@ -177,10 +178,8 @@ describe('flag-bound gatherer - goods pile on the GROUND, capped and pinned (not
     sim.world.add(gatherer, Owner, { player: PLAYER });
     const flag = bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
     sim.world.add(gatherer, Carrying, { goodType: WOOD, amount: 1 });
-    sim.world.add(gatherer, CurrentAtomic, {
+    addCurrentAtomic(sim.world, gatherer, {
       atomicId: 23,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 30,
       effect: { kind: 'pileup', store: flag },
       targetEntity: flag,

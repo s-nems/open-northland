@@ -24,7 +24,7 @@ function facingFromScreenHeading(dx: number, dy: number): number {
   return HEADING_OCTANT_TO_BLOCK[((octant % 8) + 8) % 8] ?? DEFAULT_HEADING_BLOCK;
 }
 
-/** One `PathFollow` waypoint as plain snapshot data (Fixed = scaled int), redeclared so `render` does
+/** One `PathRoute` waypoint as plain snapshot data (Fixed = scaled int), redeclared so `render` does
  *  not import the sim component shape for a 2-field read. */
 interface WaypointValue {
   x: number;
@@ -58,11 +58,12 @@ export function readFacing(components: Readonly<Record<string, unknown>>): numbe
     const block = GFX_DIR_TO_FACING[facing.direction];
     if (block !== undefined) return block;
   }
-  const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
+  const pf = components.PathFollow as { index?: unknown } | undefined;
+  const route = components.PathRoute as { waypoints?: unknown } | undefined;
   const pos = readPosition(components);
-  if (pf === undefined || pos === null || !Array.isArray(pf.waypoints)) return undefined;
+  if (pf === undefined || pos === null || !Array.isArray(route?.waypoints)) return undefined;
   const idx = typeof pf.index === 'number' ? pf.index : 0;
-  const wp = pf.waypoints[idx] as WaypointValue | undefined;
+  const wp = route.waypoints[idx] as WaypointValue | undefined;
   if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
   const from = tileToScreen(pos.x / ONE, pos.y / ONE);
   const to = tileToScreen(wp.x / ONE, wp.y / ONE);

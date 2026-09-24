@@ -4,6 +4,7 @@ import {
   BerryBush,
   PathFollow,
   PathRequest,
+  PathRoute,
   Position,
   Resource,
   type ResourceFootprintData,
@@ -371,7 +372,7 @@ describe('building walk-block - houses have collision', () => {
     sim.step();
     // Waypoints back to node coords. A diagonal leg's mid-edge SEAM waypoint sits on an integer row
     // (even hy), so it can never alias the odd-row wall nodes checked below.
-    const path = sim.world.get(walker, PathFollow).waypoints.map((w) => {
+    const path = sim.world.get(walker, PathRoute).waypoints.map((w) => {
       const n = nodeOfPosition(w.x, w.y);
       return `${n.hx},${n.hy}`;
     });

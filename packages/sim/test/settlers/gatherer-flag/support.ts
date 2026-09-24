@@ -7,8 +7,8 @@ import { ctxOf } from '../../fixtures/context.js';
 export { ctxOf };
 
 import {
+  addCurrentAtomic,
   addPerson,
-  CurrentAtomic,
   DeliveryFlag,
   Felling,
   GroundDrop,
@@ -84,7 +84,6 @@ export function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   return e;
 }
@@ -166,10 +165,8 @@ export function runTicks(sim: Simulation, ticks: number): string[] {
 /** Start (and immediately complete, duration 1) a single chop of `node` by `settler` - isolated to the
  *  AtomicSystem so the planner never re-tasks the settler between chops. */
 export function chopFully(sim: Simulation, settler: Entity, node: Entity): void {
-  sim.world.add(settler, CurrentAtomic, {
+  addCurrentAtomic(sim.world, settler, {
     atomicId: HARVEST_ATOMIC,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: 1,
     effect: { kind: 'harvest', resource: node, goodType: WOOD },
     targetEntity: node,

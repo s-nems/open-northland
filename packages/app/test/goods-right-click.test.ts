@@ -37,7 +37,6 @@ function settlerAt(
     fatigue: ONE,
     piety: ONE,
     enjoyment: ONE,
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   sim.world.add(e, Equipment, {

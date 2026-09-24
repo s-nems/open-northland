@@ -1,10 +1,10 @@
 import {
   AttackOrder,
-  CurrentAtomic,
   NeedOrder,
   NoRegeneration,
   Person,
   PlayerOrder,
+  removeCurrentAtomic,
   Settler,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -32,7 +32,7 @@ export function orderNeed(
   // order and clear it.
   if (!carriesNeeds(world, ctx.content, e)) return;
   world.add(e, NeedOrder, { need: command.need });
-  world.remove(e, CurrentAtomic);
+  removeCurrentAtomic(world, e);
   supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder); // and any walk the settler was on
   // And any standing attack order, which would otherwise pull the settler back into the fight the drive

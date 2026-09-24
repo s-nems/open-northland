@@ -62,7 +62,6 @@ function fighterAt(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints: 1_000_000, max: 1_000_000 });
   sim.world.add(e, Owner, { player: owner });

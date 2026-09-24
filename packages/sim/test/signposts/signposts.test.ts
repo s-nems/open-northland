@@ -9,6 +9,7 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  SettlerProgress,
   SIGNPOST_SPACING_NODES,
   Signpost,
 } from '../../src/components/index.js';
@@ -49,7 +50,6 @@ function makeUnit(sim: Simulation, x: number, y: number, jobType: number, player
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player });
   return e;
@@ -90,7 +90,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(sim.world.get(post, Signpost).links).toEqual([]); // the first post of a network
     expect(sim.world.has(scout, ErectSignpostOrder)).toBe(false); // the order retired with the swing
     // The erected post trained the scout's signpost craft (1 XP per standing post).
-    expect(sim.world.get(scout, Settler).experience.get(SCOUT_EXPERIENCE_TYPE)).toBe(1);
+    expect(sim.world.get(scout, SettlerProgress).experience.get(SCOUT_EXPERIENCE_TYPE)).toBe(1);
   });
 
   it('a scout walks to a distant goal first, then erects there', () => {

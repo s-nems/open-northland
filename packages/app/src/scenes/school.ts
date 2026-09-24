@@ -34,16 +34,19 @@ export const schoolScene: SceneDefinition = {
       label: 'the first collector learns carpentry at school',
       predicate: (sim) =>
         [...sim.world.query(components.Settler)].some((entity) => {
-          const worker = sim.world.get(entity, components.Settler);
-          return worker.jobType === JOB_JOINER && worker.learned?.job.includes(JOB_JOINER) === true;
+          const learned = sim.world.get(entity, components.SettlerProgress).learned;
+          return (
+            sim.world.get(entity, components.Settler).jobType === JOB_JOINER &&
+            learned?.job.includes(JOB_JOINER) === true
+          );
         }),
     },
     {
       label: 'the other collector retains its own qualifications',
       predicate: (sim) =>
         [...sim.world.query(components.Settler)].some((entity) => {
-          const worker = sim.world.get(entity, components.Settler);
-          return worker.jobType === JOB_COLLECTOR && worker.learned === undefined;
+          const learned = sim.world.get(entity, components.SettlerProgress).learned;
+          return sim.world.get(entity, components.Settler).jobType === JOB_COLLECTOR && learned === undefined;
         }),
     },
   ],

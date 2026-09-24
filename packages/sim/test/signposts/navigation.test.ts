@@ -12,6 +12,7 @@ import {
   Position,
   Resource,
   Settler,
+  SettlerProgress,
   stampOwner,
   WALK_RANGE_NODES,
 } from '../../src/components/index.js';
@@ -52,7 +53,6 @@ function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Enti
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: P0 });
   return e;
@@ -381,13 +381,16 @@ describe('navigationLimitFor, the per-settler memo', () => {
     expect(moved?.allowsNode(pastOldRim)).toBe(true);
 
     // A trade change to a fighter lifts the confinement: jobType is part of the memo key.
-    const uState = sim.world.get(u, Settler);
-    addPerson(sim.world, u, {
-      ...uState,
-      learned: { job: [...(uState.learned?.job ?? [])], good: [...(uState.learned?.good ?? [])] },
-      experience: new Map(uState.experience),
-      jobType: SOLDIER,
-    });
+    const progress = sim.world.get(u, SettlerProgress);
+    addPerson(
+      sim.world,
+      u,
+      { ...sim.world.get(u, Settler), jobType: SOLDIER },
+      {
+        learned: { job: [...(progress.learned?.job ?? [])], good: [...(progress.learned?.good ?? [])] },
+        experience: new Map(progress.experience),
+      },
+    );
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
   });
 

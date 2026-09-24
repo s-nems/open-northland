@@ -9,6 +9,7 @@ import {
   MoveGoal,
   Owner,
   PathFollow,
+  PathRoute,
   PlayerOrder,
   Position,
   Settler,
@@ -58,7 +59,6 @@ function carryingWoodcutter(sim: Simulation, x: number, y: number, amount = 1): 
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   sim.world.add(e, Carrying, { goodType: WOOD, amount });
@@ -179,12 +179,10 @@ describe('a move order on a carrying settler - drop first, then walk', () => {
     const e = carryingWoodcutter(sim, 3, 1, 1);
     // Simulate a porter mid-haul: a live walk route toward tile 9 (the drop must interrupt this, not run
     // alongside it - a surviving PathFollow would advance the settler this tick).
-    sim.world.add(e, PathFollow, {
+    sim.world.add(e, PathRoute, {
       waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(1), node: anchorNodeId(sim, 9, 1) }],
-      index: 0,
-      legTicks: 0,
-      legCost: 0,
     });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     const startX = sim.world.get(e, Position).x;
 
     const dest = cellAnchorNode(8, 1);

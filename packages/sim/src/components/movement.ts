@@ -50,7 +50,7 @@ export interface Waypoint {
 }
 
 /**
- * A path the entity is following: its stops and the index of the one it walks toward. `legTicks` counts
+ * A walker's progress along its {@link PathRoute}: the index of the stop it walks toward. `legTicks` counts
  * movement ticks spent on the current leg (excluding held turn ticks) and `legCost` its movement cost,
  * fixed when the leg starts and 0 until then. A {@link MoveStepPeriod} follower uses the same counters;
  * a {@link MoveSpeed} follower leaves them at 0 and walks its constant distance per tick. `legPace`
@@ -58,13 +58,18 @@ export interface Waypoint {
  * human step across route changes so equipment and food are charged once per node departure.
  */
 export const PathFollow = defineComponent<{
-  waypoints: Waypoint[];
   index: number;
   legTicks: number;
   legCost: number;
   legPace?: Fixed | undefined;
   departureCharged?: true | undefined;
 }>('PathFollow', 'movement');
+
+/**
+ * The stops of the route a {@link PathFollow} walks, present exactly while it is. Written only when a
+ * route is delivered, so a step along it does not re-fold the stops into the sync digest.
+ */
+export const PathRoute = defineComponent<{ waypoints: readonly Waypoint[] }>('PathRoute', 'movement');
 
 /**
  * A navigation goal: the destination cell an entity wants to reach, kept separate from the transient

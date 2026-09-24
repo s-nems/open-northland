@@ -178,7 +178,6 @@ function warriorAt(sim: Simulation, x: number, y: number, owner: number, jobType
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Health, { hitpoints: 1_000_000, max: 1_000_000 });
   sim.world.add(e, Owner, { player: owner });
@@ -354,7 +353,6 @@ describe('warriors attack enemy buildings', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map<number, number>(),
     });
     sim.world.add(feral, Health, { hitpoints: 1000, max: 1000 });
     const home = buildingAt(sim, 1, 0, HOME, P2);

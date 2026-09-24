@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   CurrentAtomic,
   MoveGoal,
-  PathFollow,
   PathRequest,
   Resource,
   SiteAssignment,
@@ -13,6 +12,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type NodeId, Simulation } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { dropPath } from '../../src/systems/movement/nav-state.js';
 import {
   isUnreachableGoal,
   noteUnreachableGoal,
@@ -119,7 +119,7 @@ describe('the gatherer re-plan after a failed route', () => {
     // request and no route to play out.
     stepUntil(s, 20, () => s.world.has(e, MoveGoal));
     const doomed = s.world.get(e, MoveGoal).cell;
-    s.world.remove(e, PathFollow);
+    dropPath(s.world, e);
     s.world.add(e, PathRequest, { start: s.world.get(e, MoveGoal).cell, goal: doomed, failed: true });
 
     stepUntil(s, 400, () => harvestedResource(s, e) !== null);
@@ -195,7 +195,7 @@ describe('the builder re-plan after a failed stand route', () => {
     stepUntil(s, 20, () => s.world.has(builder, MoveGoal));
     expect(s.world.get(builder, SiteAssignment).site).toBe(near);
     const doomed = s.world.get(builder, MoveGoal).cell;
-    s.world.remove(builder, PathFollow);
+    dropPath(s.world, builder);
     s.world.add(builder, PathRequest, { start: doomed, goal: doomed, failed: true });
 
     // Park, shed, memo: the re-pick probes the stand it would walk and moves the crew to the far site.

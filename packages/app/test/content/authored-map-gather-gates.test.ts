@@ -6,7 +6,7 @@ import { GATHERERS, resourceSpecFor } from '../../src/game/sandbox/index.js';
 import { runAuthoredMap } from '../../src/game/world/index.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
-const { GroundDrop, Resource, Settler, Stockpile } = components;
+const { GroundDrop, Resource, Settler, SettlerProgress, Stockpile } = components;
 
 /** The real viking ids the decoded-map flow resolves (jobtypes.ini / goods.ini). */
 const VIKING = 1;
@@ -51,7 +51,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans - gathering XP gates', 
     expect(settlers.length).toBe(1); // the one authored human
     const collector = settlers[0] as Entity;
     expect(sim.world.get(collector, Settler).jobType).toBe(JOB_COLLECTOR);
-    expect(sim.world.get(collector, Settler).experience.size).toBe(0); // spawns fresh, no veteran stamp
+    expect(sim.world.get(collector, SettlerProgress).experience.size).toBe(0); // spawns fresh, no veteran stamp
 
     // Plant iron beside the unit and flag it there - the gate must keep the deposit untouched.
     const ironSpec = GATHERERS.find((g) => g.good === GOOD_IRON);
@@ -83,7 +83,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans - gathering XP gates', 
     if (trackId === undefined) return;
     const track = merge.content.jobExperience.find((t) => t.typeId === trackId);
     sim.world
-      .mut(collector, Settler)
+      .mut(collector, SettlerProgress)
       .experience.set(trackId, systems.rawXpForRepeats(track, ironNeed.amount));
 
     sim.run(2500);

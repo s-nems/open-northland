@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic } from '../../../src/components/index.js';
-import { ONE, Simulation } from '../../../src/index.js';
+import { AtomicClock, CurrentAtomic } from '../../../src/components/index.js';
+import { Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, startAtomic } from './support.js';
 
-describe('atomicSystem - progress + completion', () => {
-  it('advances progress and completes on the duration-th tick', () => {
+describe('atomicSystem - clock + completion', () => {
+  it('advances its clock and completes on the duration-th tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     startAtomic(sim, e, { kind: 'idle' }, 4);
 
-    // Ticks 1..3: still running, progress climbing.
-    for (let i = 0; i < 3; i++) {
+    // Ticks 1..3: still running, the clock counting up.
+    for (let i = 1; i <= 3; i++) {
       atomicSystem(sim.world, ctxOf(sim));
       expect(sim.world.has(e, CurrentAtomic)).toBe(true);
-      expect(sim.world.get(e, CurrentAtomic).progress).toBeLessThan(ONE);
+      expect(sim.world.get(e, AtomicClock).elapsed).toBe(i);
     }
-    // Tick 4: reaches ONE, applies + removes.
+    // Tick 4: reaches the duration, applies + removes.
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
   });

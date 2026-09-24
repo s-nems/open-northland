@@ -10,6 +10,7 @@ import {
   Owner,
   Position,
   Settler,
+  SettlerProgress,
   Stockpile,
   UnderConstruction,
 } from '../../../src/components/index.js';
@@ -153,7 +154,6 @@ function settlerAt(sim: Simulation, x: number, y: number, jobType: number | null
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Owner, { player: HUMAN });
   return e;
@@ -340,7 +340,7 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
     expect(sim.world.get(store, Stockpile).amounts.get(STONE)).toBe(2);
     expect(sim.world.get(site, Stockpile).amounts.get(STONE)).toBe(3);
     expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
-    expect(sim.world.get(mason, Settler).experience.size).toBe(0);
+    expect(sim.world.get(mason, SettlerProgress).experience.size).toBe(0);
     expect(boundTo(sim, mason)).toBe(site);
   });
 
@@ -350,7 +350,7 @@ describe('planSiteStaff - what a posted worker does while its building goes up',
     const mason = settlerAt(sim, 3, 0, MASON);
     for (let i = 0; i < 400; i++) sim.step();
     expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
-    expect(sim.world.get(mason, Settler).experience.size).toBe(0);
+    expect(sim.world.get(mason, SettlerProgress).experience.size).toBe(0);
     expect(sim.world.has(mason, JobAssignment)).toBe(false);
   });
 

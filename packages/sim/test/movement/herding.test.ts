@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   CurrentAtomic,
   HerdMember,
   MoveGoal,
@@ -40,7 +41,6 @@ function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, HerdMember, { leader: leader === 'self' ? e : leader });
   return e;
@@ -131,10 +131,8 @@ describe('herdingSystem - follow-the-leader cohesion', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const leader = herderAt(sim, 0, 0, 'self');
     const busy = herderAt(sim, 8, 0, leader);
-    sim.world.add(busy, CurrentAtomic, {
+    addCurrentAtomic(sim.world, busy, {
       atomicId: 1,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 4,
       effect: { kind: 'idle' },
       targetEntity: null,

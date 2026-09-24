@@ -28,15 +28,19 @@ export function spawnSettler(
   xp: Iterable<readonly [number, number]> = [],
 ): Entity {
   const entity = sim.world.create();
-  addPerson(sim.world, entity, {
-    tribe: 1,
-    jobType,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(xp),
-  });
+  addPerson(
+    sim.world,
+    entity,
+    {
+      tribe: 1,
+      jobType,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    },
+    { experience: new Map(xp) },
+  );
   sim.world.add(entity, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   return entity;
 }

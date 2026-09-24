@@ -39,7 +39,6 @@ export function spawnNewborn(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   if (sex === 'female') world.add(baby, Female, { female: true });
   world.add(baby, Age, { ticks: 0 });

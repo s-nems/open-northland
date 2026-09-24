@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AtomicClock,
+  addCurrentAtomic,
   addPerson,
   CurrentAtomic,
   DeferredOrder,
@@ -64,7 +66,6 @@ function ownedSettler(sim: Simulation, x: number, y: number, jobType: number): E
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   return e;
@@ -72,10 +73,8 @@ function ownedSettler(sim: Simulation, x: number, y: number, jobType: number): E
 
 /** Put `e` mid-atomic: `atomicId` resolves the clip (and so interruptibility); the effect is inert. */
 function startAtomic(sim: Simulation, e: Entity, atomicId: number, duration: number): void {
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration,
     effect: { kind: 'idle' },
     targetEntity: null,
@@ -101,7 +100,7 @@ describe('moveUnit during a non-interruptible atomic', () => {
     // The half-eaten meal survives the order: same atomic, ticking on, no walk started.
     const atomic = sim.world.get(e, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
-    expect(atomic.elapsed).toBe(1); // advanced, not restarted
+    expect(sim.world.get(e, AtomicClock).elapsed).toBe(1); // advanced, not restarted
     expect(sim.world.has(e, MoveGoal)).toBe(false);
     expect(sim.world.has(e, PlayerOrder)).toBe(false);
     expect(sim.world.get(e, DeferredOrder).command.kind).toBe('moveUnit');
@@ -221,10 +220,8 @@ describe('a parked order and the multi-swing harvest chain', () => {
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: 5 }); // far from felled - an ungated chain would re-arm
     const swingTicks = 3; // fixture `viking_chop` length
-    sim.world.add(e, CurrentAtomic, {
+    addCurrentAtomic(sim.world, e, {
       atomicId: HARVEST_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: swingTicks,
       effect: { kind: 'harvest', resource: tree, goodType: WOOD },
       targetEntity: tree,

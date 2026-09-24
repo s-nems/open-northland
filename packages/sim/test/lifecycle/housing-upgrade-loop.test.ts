@@ -84,7 +84,6 @@ function builderAt(sim: Simulation, x: number, y: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   return e;
 }
@@ -100,7 +99,6 @@ function loadedCarrierAt(sim: Simulation, x: number, y: number, goodType: number
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Carrying, { goodType, amount });
   return e;

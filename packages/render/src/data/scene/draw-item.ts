@@ -77,7 +77,7 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly state?: SpriteState;
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
   readonly atomicId?: number;
-  /** For an `acting` sprite: whole ticks in its current atomic so far (`CurrentAtomic.elapsed`). A
+  /** For an `acting` sprite: whole ticks in its current atomic so far (`AtomicClock.elapsed`). A
    *  binding advances one frame per `ticksPerFrame` of these, so every action animates at the same
    *  cadence. */
   readonly elapsed?: number;

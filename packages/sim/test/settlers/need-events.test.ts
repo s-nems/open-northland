@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Age,
-  CurrentAtomic,
+  addCurrentAtomic,
   Residence,
   Resting,
   Settler,
@@ -38,10 +38,8 @@ const HOME_MEAL: Fixed = needBar(6000);
 
 /** Run `atomicId` to completion on `e` and nothing else, so only the clip's own events move its bars. */
 function playClip(sim: Simulation, e: Entity, atomicId: number, ticks: number): void {
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: ticks,
     effect:
       atomicId === EAT_ATOMIC

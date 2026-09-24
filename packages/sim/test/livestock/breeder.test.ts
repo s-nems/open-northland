@@ -6,7 +6,7 @@ import {
   MoveGoal,
   Position,
   Production,
-  Settler,
+  SettlerProgress,
   Stockpile,
   YoungAnimal,
 } from '../../src/components/index.js';
@@ -330,7 +330,7 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     for (let i = 0; i < 2; i++) cowAt(sim, 4 + i, 4, { owner: P0, farm });
     sim.world.mut(doomed, FarmAnimal).summoner = breeder;
     // Far past mastery, so the curve tops out and every ware the clip banks comes twice.
-    sim.world.mut(breeder, Settler).experience.set(BREEDER_TRACK, 200 * BREEDER_XP_PER_REPEAT);
+    sim.world.mut(breeder, SettlerProgress).experience.set(BREEDER_TRACK, 200 * BREEDER_XP_PER_REPEAT);
 
     plan(sim);
     for (let i = 0; i < 20; i++) sim.step();

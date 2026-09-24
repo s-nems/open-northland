@@ -1,4 +1,5 @@
 import {
+  addCurrentAtomic,
   CurrentAtomic,
   ErectSignpostOrder,
   Owner,
@@ -7,7 +8,6 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import { fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
@@ -86,10 +86,8 @@ export const signpostOrderSystem: System = (world, ctx) => {
       world.remove(e, ErectSignpostOrder);
       if (!canPlaceSignpost(world, ctx, terrain, goal, owner.player)) continue; // spot became illegal
       const c = terrain.coordsOf(goal);
-      world.add(e, CurrentAtomic, {
+      addCurrentAtomic(world, e, {
         atomicId: BUILD_GUIDE_ATOMIC_ID,
-        elapsed: 0,
-        progress: fx.fromInt(0),
         duration: atomicDuration(ctx.content, settler, BUILD_GUIDE_ATOMIC_ID),
         effect: { kind: 'erectSignpost', x: c.x, y: c.y },
         targetEntity: null,

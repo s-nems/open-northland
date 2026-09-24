@@ -1,4 +1,4 @@
-import { MoveGoal, PathFollow, PathRequest, Position } from '../../../components/index.js';
+import { MoveGoal, PathFollow, PathRequest, PathRoute, Position } from '../../../components/index.js';
 import { type Fixed, fx } from '../../../core/fixed.js';
 import type { World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
@@ -72,11 +72,11 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
     }
 
     const p = world.get(e, Position);
-    const pf = world.tryGet(e, PathFollow);
-    if (pf !== undefined) {
+    if (world.has(e, PathFollow)) {
       // A route's last waypoint is always an exact node centre, so comparing its node is equivalent to
       // comparing centre coordinates and keeps this steady-state exit allocation-free.
-      const last = pf.waypoints[pf.waypoints.length - 1];
+      const stops = world.get(e, PathRoute).waypoints;
+      const last = stops[stops.length - 1];
       if (last !== undefined) {
         const n = nodeOfPosition(last.x, last.y);
         if (terrain.nodeAtClamped(n.hx, n.hy) === goalNode) {

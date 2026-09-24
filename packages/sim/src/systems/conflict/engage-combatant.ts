@@ -15,8 +15,10 @@ import {
   PlayerOrder,
   Position,
   Resting,
+  removeCurrentAtomic,
   Settler,
   type SettlerIdentity,
+  SettlerProgress,
   Sheltering,
   Weapon,
 } from '../../components/index.js';
@@ -52,9 +54,6 @@ import { attackerWeapon, hitSoundVsMaterial, startAttack, targetMaterial } from 
 
 /** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
 type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
-
-/** What a swing reads off its attacker: the content-lookup identity plus the fight-experience buckets. */
-type Attacker = SettlerIdentity & { readonly experience: ReadonlyMap<number, number> };
 
 /**
  * Resolve and act on one combatant's engagement this tick: swing, chase, hold a post, flee, or hand back to
@@ -158,7 +157,7 @@ export function engageCombatant(
     // its anchor waits for the next pass.
     if (dozing) {
       if (!orderedToSleep(world, e) && fightNear(world, pass, e)) {
-        world.remove(e, CurrentAtomic);
+        removeCurrentAtomic(world, e);
       }
       return;
     }
@@ -169,7 +168,7 @@ export function engageCombatant(
 
   const { target, dist } = found;
   // Woken: the rest already slept keeps, the clip is cut where it stands.
-  if (dozing) world.remove(e, CurrentAtomic);
+  if (dozing) removeCurrentAtomic(world, e);
   holdPrey(world, e, spec, target);
   if (inReachAndStanding(dist, weapon, travelling && !arrivedAtGoal(world, e, terrain))) {
     swingAt(world, ctx, e, attacker, owned, target, weapon);
@@ -348,7 +347,7 @@ function swingAt(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  attacker: Attacker,
+  attacker: SettlerIdentity,
   owned: boolean,
   target: Entity,
   weapon: ArmedWith,
@@ -364,7 +363,7 @@ function swingAt(
   const blow = {
     damage: withFightDamageBonus(
       weaponDamageVsMaterial(weapon.weapon, material),
-      attacker.experience,
+      world.get(e, SettlerProgress).experience,
       weapon.weapon.mainType,
     ),
     hitSoundType: hitSoundVsMaterial(weapon.weapon, material),

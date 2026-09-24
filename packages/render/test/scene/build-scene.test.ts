@@ -103,7 +103,7 @@ describe('buildScene - projection, depth order & classification', () => {
       snapshotOf([
         entity(1, 0, 0, { Building: { buildingType: 5 } }),
         entity(2, 1, 1, { Resource: { goodType: 1 } }),
-        entity(3, 2, 0, { PathFollow: { waypoints: [], index: 0 } }), // no drawable marker
+        entity(3, 2, 0, { PathFollow: { index: 0 } }), // no drawable marker
       ]),
       FLAT_3x2,
     );

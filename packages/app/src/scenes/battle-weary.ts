@@ -57,7 +57,7 @@ const HUNGRY = fx.div(fx.fromInt(85), fx.fromInt(100));
 /** The picket falls around here; the check for what nobody did reruns only this much of the scene. */
 const FIGHT_WINDOW_TICKS = 220;
 
-const { CurrentAtomic, Health, Owner, Position, Settler, Stance, Stockpile } = components;
+const { addCurrentAtomic, CurrentAtomic, Health, Owner, Position, Settler, Stance, Stockpile } = components;
 
 function build(sim: Simulation): void {
   const larder = placeBuiltSandboxBuilding(sim, BUILDING_HEADQUARTERS, LARDER.x, LARDER.y, HUMAN_PLAYER);
@@ -76,10 +76,8 @@ function build(sim: Simulation): void {
   for (const y of PICKET_ROWS) spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, PICKET_X, y, ENEMY_PLAYER);
 
   const sentry = weary(sim, spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, SENTRY.x, SENTRY.y, HUMAN_PLAYER));
-  sim.world.add(sentry, CurrentAtomic, {
+  addCurrentAtomic(sim.world, sentry, {
     atomicId: SLEEP_ATOMIC,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: SENTRY_NIGHT_TICKS,
     effect: { kind: 'sleep' },
     targetEntity: sentry,

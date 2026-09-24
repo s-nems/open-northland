@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   addPerson,
   Building,
   CurrentAtomic,
@@ -143,7 +144,6 @@ function settlerAt(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Health, { hitpoints, max: hitpoints });
   sim.world.add(e, Owner, { player: owner });
@@ -427,10 +427,8 @@ describe('the tower garrison - shooting from cover', () => {
     const garrison = settlerAt(sim, SOLDIER_JOB, 2, ROW);
     manTheTower(sim, garrison, tower);
     // A night's sleep far longer than the run, so only the raider can have ended it.
-    sim.world.add(garrison, CurrentAtomic, {
+    addCurrentAtomic(sim.world, garrison, {
       atomicId: SLEEP_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 10_000,
       effect: { kind: 'sleep' },
       targetEntity: garrison,

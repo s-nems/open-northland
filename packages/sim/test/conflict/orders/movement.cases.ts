@@ -10,6 +10,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PathRoute,
   PlayerOrder,
   Position,
   SupplyRun,
@@ -118,8 +119,7 @@ describe('moveUnit order', () => {
 
     expect(s.world.has(e, PlayerOrder)).toBe(true);
     expect(s.world.has(e, PathRequest)).toBe(false);
-    const route = s.world.get(e, PathFollow);
-    expect(route.waypoints.at(-1)?.node).toBe(goal);
+    expect(s.world.get(e, PathRoute).waypoints.at(-1)?.node).toBe(goal);
     expect(s.world.get(e, Position).x).toBeGreaterThan(before);
   });
 
@@ -148,7 +148,6 @@ describe('moveUnit order', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     orderMove(s, e, 5, 0);
     s.step();

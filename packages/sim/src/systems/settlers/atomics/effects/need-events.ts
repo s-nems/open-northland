@@ -31,7 +31,8 @@ export function applyAtomicNeedEvents(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  atomic: { readonly atomicId: number; readonly elapsed: number; readonly effect: AtomicEffect },
+  atomic: { readonly atomicId: number; readonly effect: AtomicEffect },
+  elapsed: number,
 ): void {
   if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return;
   // A draught is drunk on the borrowed eat gesture, but what it restores is the bottle's, not the clip's.
@@ -46,7 +47,7 @@ export function applyAtomicNeedEvents(
   let food = 0;
   let company = 0;
   let piety = 0;
-  const frame = clipFrameAt(atomic.elapsed, animation.length);
+  const frame = clipFrameAt(elapsed, animation.length);
   for (const event of animation.events) {
     if (event.at !== frame) continue;
     const delta = event.value ?? 0;

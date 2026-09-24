@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
+import { addCurrentAtomic, Health, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -28,10 +28,8 @@ function attack(
   weaponMainType?: number,
   hitSoundType?: number,
 ): void {
-  sim.world.add(attacker, CurrentAtomic, {
+  addCurrentAtomic(sim.world, attacker, {
     atomicId: 81,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration: 1,
     effect: {
       kind: 'attack',
@@ -125,10 +123,8 @@ describe('combatSwing - the swing swoosh at the strike frame', () => {
     const attacker = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(4), y: fx.fromInt(2) } });
     const target = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(5), y: fx.fromInt(2) } });
     sim.world.add(target, Health, { hitpoints: 500, max: 500 });
-    sim.world.add(attacker, CurrentAtomic, {
+    addCurrentAtomic(sim.world, attacker, {
       atomicId: 81,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 4, // the clip's own length, so its authored frames land where the data put them
       effect: { kind: 'attack', target, damage: 100, weaponMainType: 3 },
       targetEntity: target,
@@ -156,10 +152,8 @@ describe('combatSwing - the swing swoosh at the strike frame', () => {
     const bear = settlerAt(sim, { jobType: null, tribe: BEAR_TRIBE, position: pos(4, 2) });
     const target = settlerAt(sim, { jobType: 1, position: pos(5, 2) });
     sim.world.add(target, Health, { hitpoints: 500, max: 500 });
-    sim.world.add(bear, CurrentAtomic, {
+    addCurrentAtomic(sim.world, bear, {
       atomicId: 81,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 4, // the length `viking_attack` runs, so only the body rule can keep the punch away
       effect: { kind: 'attack', target, damage: 10 },
       targetEntity: target,
@@ -199,10 +193,8 @@ describe('combatSwing - the swing swoosh at the strike frame', () => {
     const target = sim.world.create();
     sim.world.add(target, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(target, Health, { hitpoints: 500, max: 500 });
-    sim.world.add(attacker, CurrentAtomic, {
+    addCurrentAtomic(sim.world, attacker, {
       atomicId: 81,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'attack', target, damage: 100, maxRange: 2 },
       targetEntity: target,
@@ -228,10 +220,8 @@ describe('melee whiff - the target stepped out of reach', () => {
     const target = sim.world.create();
     sim.world.add(target, Position, { x: fx.fromInt(1), y: fx.fromInt(0) }); // adjacent at swing start
     sim.world.add(target, Health, { hitpoints: 500, max: 500 });
-    sim.world.add(attacker, CurrentAtomic, {
+    addCurrentAtomic(sim.world, attacker, {
       atomicId: 81,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'attack', target, damage: 100, maxRange },
       targetEntity: target,

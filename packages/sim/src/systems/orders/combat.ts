@@ -2,7 +2,6 @@ import type { ContentSet } from '@open-northland/data';
 import {
   AttackOrder,
   Building,
-  CurrentAtomic,
   Engagement,
   Fleeing,
   Health,
@@ -12,6 +11,7 @@ import {
   Owner,
   PlayerOrder,
   Position,
+  removeCurrentAtomic,
   Settler,
   Stance,
   SupplyRun,
@@ -90,7 +90,7 @@ export function attackUnit(
 
   // Unlike moveUnit and setJob this still cancels a non-interruptible atomic, a remaining member of that
   // class.
-  world.remove(e, CurrentAtomic);
+  removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // cancel both the construction source promise and its inbound site claim
   supersedeStandingOrders(world, e);
   clearNavState(world, e);

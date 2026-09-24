@@ -2,11 +2,12 @@ import {
   Age,
   Building,
   Carrying,
-  CurrentAtomic,
   JobAssignment,
   ownerOf,
   PlayerOrder,
+  removeCurrentAtomic,
   Settler,
+  SettlerProgress,
   SiteAssignment,
   SupplyRun,
   sameSide,
@@ -102,14 +103,15 @@ export function assignWorker(
   }
 
   const settler = world.get(e, Settler);
+  const progress = world.get(e, SettlerProgress);
   const jobType = openWorkerJobFromList(
     {
       world,
       ctx,
       tribe: settler.tribe,
       owner: ownerOf(world, e),
-      experience: settler.experience,
-      learned: settler.learned,
+      experience: progress.experience,
+      learned: progress.learned,
       jobType: settler.jobType,
     },
     b,
@@ -209,7 +211,7 @@ export function unassignBuilder(world: World, command: Extract<Command, { kind: 
 function cancelActionAndRoute(world: World, e: Entity): void {
   // setJob vets interruptibility before reaching here; the employment orders still cancel unconditionally,
   // a remaining member of the uninterruptible-atomic class.
-  world.remove(e, CurrentAtomic);
+  removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // releasing an interrupted construction pickup frees its source immediately
   supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy

@@ -63,7 +63,6 @@ function bornSettler(sim: Simulation, jobType: number, ticks: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Age, { ticks });
   sim.world.add(e, Health, {
@@ -218,7 +217,6 @@ describe('GrowthSystem - non-working settlers mature into workers', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map<number, number>(),
     });
 
     run(sim, ADULT_AGE_TICKS * 2);

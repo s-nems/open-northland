@@ -18,6 +18,7 @@ import {
   PathRequest,
   PlayerOrder,
   Position,
+  removeCurrentAtomic,
   Settler,
   Stance,
   Stranded,
@@ -148,7 +149,7 @@ function startPlayerWalk(
   supersedeStandingOrders(world, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
-  world.remove(e, CurrentAtomic);
+  removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // cancel both the construction source promise and its inbound site claim
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);

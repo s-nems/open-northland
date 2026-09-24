@@ -46,7 +46,6 @@ describe('productionSystem - worker-presence gate', () => {
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map(),
     });
     sim.world.add(wrong, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));

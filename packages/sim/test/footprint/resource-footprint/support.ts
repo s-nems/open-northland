@@ -47,7 +47,6 @@ export function placeSettler(sim: Simulation, jobType: number, x: number, y: num
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   return e;
 }

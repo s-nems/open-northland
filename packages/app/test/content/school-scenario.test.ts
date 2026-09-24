@@ -79,7 +79,7 @@ it.skipIf(!hasRealIr())(
     sim.enqueueSetup({ kind: 'learn', entity: pupil, house, target: 'job', typeId: carpenter.typeId });
     sim.run(1000);
     expect(sim.world.get(pupil, components.Settler).jobType).toBe(carpenter.typeId);
-    expect(sim.world.get(pupil, components.Settler).learned?.job).toContain(carpenter.typeId);
+    expect(sim.world.get(pupil, components.SettlerProgress).learned?.job).toContain(carpenter.typeId);
     expect(sim.checkInvariants()).toEqual([]);
   },
   30_000,
@@ -150,10 +150,10 @@ it.skipIf(!hasRealIr())(
     for (const [index, good] of goods.entries()) {
       const pupil = pupils[index];
       if (good === undefined || pupil === undefined) throw new Error('missing course pupil');
-      expect(sim.world.get(pupil, components.Settler).learned?.good).toEqual([good.typeId]);
+      expect(sim.world.get(pupil, components.SettlerProgress).learned?.good).toEqual([good.typeId]);
       const expectedJob = index === 2 ? smith.typeId : collector.typeId;
       expect(sim.world.get(pupil, components.Settler).jobType).toBe(expectedJob);
-      expect(sim.world.get(pupil, components.Settler).learned?.job).toContain(expectedJob);
+      expect(sim.world.get(pupil, components.SettlerProgress).learned?.job).toContain(expectedJob);
       expect(sim.canChooseJob(pupil, expectedJob)).toBe(true);
     }
     expect(sim.checkInvariants()).toEqual([]);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   Carrying,
   CurrentAtomic,
@@ -375,10 +376,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     for (const builder of [stale, active, third]) {
       sim.world.add(builder, SiteAssignment, { site, pinned: false });
     }
-    sim.world.add(active, CurrentAtomic, {
+    addCurrentAtomic(sim.world, active, {
       atomicId: BUILD_HOUSE_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 10,
       effect: { kind: 'construct', site },
       targetEntity: site,

@@ -5,6 +5,7 @@ import {
   MISSION_BEHAVIOUR,
   noteSettlerProgress,
   Settler,
+  SettlerProgress,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -73,10 +74,10 @@ function accrueExperience(
 ): void {
   if (hasMissionBehaviour(world, settler, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE)) return;
   if (amount <= 0) return; // a zero-rate track must not plant a hash-visible bucket with no meaning
-  const held = world.get(settler, Settler).experience.get(trackId) ?? 0;
+  const held = world.get(settler, SettlerProgress).experience.get(trackId) ?? 0;
   const next = Math.min(limit, held + amount);
   if (next === held) return; // a capped track
-  world.mut(settler, Settler).experience.set(trackId, next);
+  world.mut(settler, SettlerProgress).experience.set(trackId, next);
   noteSettlerProgress(world, settler);
 }
 

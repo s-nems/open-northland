@@ -1,5 +1,6 @@
 import {
   Age,
+  addCurrentAtomic,
   Chest,
   CurrentAtomic,
   OpenChestOrder,
@@ -10,7 +11,6 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import { jobCanOpenChest, OPEN_CHEST_ATOMIC_ID } from '../chests/index.js';
@@ -88,10 +88,8 @@ export const chestOrderSystem: System = (world, ctx) => {
     const target = nodeOfPosition(p.x, p.y);
     // `tribetypes.ini` binds the open-chest clip to the woman and civilist only; every other adult trade
     // reaches it through its `baseatomics` parent, which the civilist fallback stands in for.
-    world.add(e, CurrentAtomic, {
+    addCurrentAtomic(world, e, {
       atomicId: OPEN_CHEST_ATOMIC_ID,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: atomicDurationForName(
         ctx.content,
         atomicClipName(ctx.content, settler, OPEN_CHEST_ATOMIC_ID),

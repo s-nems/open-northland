@@ -77,7 +77,6 @@ function ownedSettler(sim: Simulation, x: number, y: number, player = HUMAN_PLAY
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Owner, { player });
   return e;

@@ -6,6 +6,7 @@ import {
   Owner,
   Position,
   Settler,
+  SettlerProgress,
   setMapPermission,
   TrainingOrder,
 } from '../../src/components/index.js';
@@ -186,7 +187,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
   const subject = needSubjectOf(restored.world, pupil);
   expect(settlerMeetsNeed(restored.world, ctxOf(restored), subject, 'job', CARPENTER)).toBe(true);
   expect(settlerMeetsNeed(restored.world, ctxOf(restored), subject, 'job', SMITH)).toBe(false);
-  expect(restored.world.get(pupil, Settler).experience.size).toBe(0);
+  expect(restored.world.get(pupil, SettlerProgress).experience.size).toBe(0);
 
   learn(restored.world, ctxOf(restored), {
     kind: 'learn',
@@ -207,7 +208,7 @@ it('a school lesson qualifies only its chosen target and survives a saved in-pro
     terrain.nodeAt(2, 2),
     null,
   );
-  expect(restored.world.get(pupil, Settler).learned?.good).toContain(PLANK);
+  expect(restored.world.get(pupil, SettlerProgress).learned?.good).toContain(PLANK);
   expect(restored.events.current()).toContainEqual({
     kind: 'settlerTrained',
     entity: pupil,
@@ -285,13 +286,13 @@ it.each([false, true])(
     );
     if (banned) {
       expect(sim.world.get(pupil, Settler).jobType).toBe(WOODCUTTER);
-      expect(sim.world.get(pupil, Settler).learned?.good ?? []).toEqual([]);
+      expect(sim.world.get(pupil, SettlerProgress).learned?.good ?? []).toEqual([]);
       expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
       return;
     }
     expect(sim.world.get(pupil, Settler).jobType).toBe(CARPENTER);
-    expect(sim.world.get(pupil, Settler).learned?.job).toContain(CARPENTER);
-    expect(sim.world.get(pupil, Settler).learned?.good).toEqual([PLANK]);
+    expect(sim.world.get(pupil, SettlerProgress).learned?.job).toContain(CARPENTER);
+    expect(sim.world.get(pupil, SettlerProgress).learned?.good).toEqual([PLANK]);
     expect(sim.canChooseJob(pupil, CARPENTER)).toBe(true);
   },
 );
@@ -345,7 +346,7 @@ it('keeps a served lesson when the school is razed before the pupil plans again'
   );
 
   expect(sim.world.get(pupil, Settler).jobType).toBe(CARPENTER);
-  expect(sim.world.get(pupil, Settler).learned?.job).toContain(CARPENTER);
+  expect(sim.world.get(pupil, SettlerProgress).learned?.job).toContain(CARPENTER);
   expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
 });
 

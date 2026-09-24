@@ -22,7 +22,8 @@ function scene(elapsed: number, restTail?: boolean) {
     snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
-        CurrentAtomic: { atomicId: 25, elapsed, restTail },
+        CurrentAtomic: { atomicId: 25, restTail },
+        AtomicClock: { elapsed },
       }),
     ]),
     FLAT_3x2,

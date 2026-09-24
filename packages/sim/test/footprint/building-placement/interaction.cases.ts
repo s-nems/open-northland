@@ -48,7 +48,6 @@ describe('door cell - settlers interact with a house at its entry point', () => 
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
       enjoyment: fx.fromInt(0),
-      experience: new Map<number, number>(),
     });
     sim.world.add(worker, JobAssignment, { workplace: hut });
     sim.world.add(worker, Position, positionOfNode(5, 5)); // ON the walls (the anchor node) - not at work

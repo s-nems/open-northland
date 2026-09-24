@@ -1,8 +1,8 @@
 import {
   Building,
-  CurrentAtomic,
   EquipOrder,
   PlayerOrder,
+  removeCurrentAtomic,
   Settler,
   SiteAssignment,
   sameSide,
@@ -63,7 +63,7 @@ export function mayWalkToDrill(world: World, ctx: SystemContext, e: Entity, hous
 export function startDrill(world: World, e: Entity, house: Entity, drillTicks: number): void {
   world.add(e, TrainingOrder, { house, drillTicksLeft: drillTicks });
   wakeIdle(world, e); // an assistant-booked drill is walked this pass, like an ordered one
-  world.remove(e, CurrentAtomic);
+  removeCurrentAtomic(world, e);
   supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, EquipOrder); // and any equip errand, whose return spot this walk would invalidate
@@ -81,6 +81,6 @@ export function cancelTraining(world: World, command: Extract<Command, { kind: '
   if (!isOrderableSettler(world, e)) return;
   if (!world.has(e, TrainingOrder)) return;
   world.remove(e, TrainingOrder);
-  world.remove(e, CurrentAtomic); // the exercise clip it may be mid-way through
+  removeCurrentAtomic(world, e); // the exercise clip it may be mid-way through
   clearNavState(world, e);
 }

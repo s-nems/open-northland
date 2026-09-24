@@ -13,6 +13,7 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  SettlerProgress,
   setMissionBehaviour,
 } from '../../src/components/index.js';
 import { aiCommand, playerCommand } from '../../src/core/commands/index.js';
@@ -265,8 +266,8 @@ describe('the bits the sim reads', () => {
     const learner = only(sim, OWNER + 1);
     grantWorkExperience(sim.world, ctxOf(sim), barred, WOOD, 1);
     grantWorkExperience(sim.world, ctxOf(sim), learner, WOOD, 1);
-    expect(sim.world.get(barred, Settler).experience.size).toBe(0);
-    expect(sim.world.get(learner, Settler).experience.size).toBe(2);
+    expect(sim.world.get(barred, SettlerProgress).experience.size).toBe(0);
+    expect(sim.world.get(learner, SettlerProgress).experience.size).toBe(2);
   });
 
   it('paces a slow human behind and a fast one ahead of an ordinary walker', () => {

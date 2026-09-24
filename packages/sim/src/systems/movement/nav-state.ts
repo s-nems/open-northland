@@ -1,4 +1,4 @@
-import { MoveGoal, PathFollow, PathRequest, Stranded } from '../../components/index.js';
+import { MoveGoal, PathFollow, PathRequest, PathRoute, Stranded } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 
@@ -11,8 +11,14 @@ export function isTravelling(world: World, e: Entity): boolean {
 export function clearNavState(world: World, e: Entity): void {
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
-  world.remove(e, PathFollow);
+  dropPath(world, e);
   world.remove(e, Stranded);
+}
+
+/** Drop the path `e` walks, its {@link PathFollow} progress and {@link PathRoute} stops together. */
+export function dropPath(world: World, e: Entity): void {
+  world.remove(e, PathFollow);
+  world.remove(e, PathRoute);
 }
 
 /** Re-aim `e`'s live route at `dest`. PathFollow survives so the routing splice carries the gait through

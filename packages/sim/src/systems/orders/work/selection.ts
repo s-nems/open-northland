@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   GatherSelection,
   JobAssignment,
+  removeCurrentAtomic,
   Settler,
   WorkFlag,
 } from '../../../components/index.js';
@@ -117,7 +118,7 @@ export function setGatherGood(
     }
   }
   const atomic = world.tryGet(e, CurrentAtomic);
-  if (atomic?.effect.kind === 'harvest') world.remove(e, CurrentAtomic);
+  if (atomic?.effect.kind === 'harvest') removeCurrentAtomic(world, e);
   clearNavState(world, e);
 }
 

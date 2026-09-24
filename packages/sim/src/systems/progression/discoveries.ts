@@ -10,6 +10,8 @@ import {
   professionProgressionEnabled,
   ScriptUnlocks,
   Settler,
+  SettlerProgress,
+  type SettlerProgressView,
   type SettlerView,
   settlerProgressLog,
   technologyDiscovered,
@@ -44,8 +46,9 @@ interface DiscoveryMemo {
 }
 
 /** The stores whose membership moves an input: Person and Settler decide who is walked (a re-added
- *  Settler carries a new tribe and lists), Owner the player a settler discovers for. */
-const MEMBERSHIP_INPUTS: readonly Component<unknown>[] = [Person, Settler, Owner];
+ *  Settler carries a new tribe, a re-added SettlerProgress new lists), Owner the player a settler
+ *  discovers for. */
+const MEMBERSHIP_INPUTS: readonly Component<unknown>[] = [Person, Settler, SettlerProgress, Owner];
 
 const memos = new WeakMap<World, DiscoveryMemo>();
 
@@ -79,6 +82,7 @@ function permissionKey(world: World): string {
 interface DiscoveryRead {
   readonly input: DiscoveryInput;
   readonly settler: SettlerView;
+  readonly progress: SettlerProgressView;
   readonly jobType: number;
   readonly tribe: TribeType;
 }
@@ -96,16 +100,17 @@ function readSettler(
   if (settler === undefined || settler.jobType === null) return null;
   const tribe = contentIndex(content).tribes.get(settler.tribe);
   if (tribe === undefined || tribe.jobEnables.length === 0) return null;
+  const progress = world.get(entity, SettlerProgress);
   const input: DiscoveryInput = {
     owner: ownerOf(world, entity),
     tribe: settler.tribe,
     jobType: settler.jobType,
-    experience: experienceSum(settler.experience),
-    learnedJobs: settler.learned?.job.length ?? 0,
-    learnedGoods: settler.learned?.good.length ?? 0,
+    experience: experienceSum(progress.experience),
+    learnedJobs: progress.learned?.job.length ?? 0,
+    learnedGoods: progress.learned?.good.length ?? 0,
     permissions,
   };
-  return { input, settler, jobType: settler.jobType, tribe };
+  return { input, settler, progress, jobType: settler.jobType, tribe };
 }
 
 /** The settlers whose input may have moved since the last pass, or null when every settler must be
@@ -228,9 +233,9 @@ export const technologySystem: System = (world, ctx) => {
     }
     if (sameInput(memo.inputs.get(entity), read.input)) continue;
     memo.inputs.set(entity, read.input);
-    const { settler: s, jobType, tribe } = read;
+    const { settler: s, progress, jobType, tribe } = read;
     const owner = read.input.owner;
-    const subject = { owner, tribe: s.tribe, experience: s.experience, learned: s.learned };
+    const subject = { owner, tribe: s.tribe, experience: progress.experience, learned: progress.learned };
     if (settlerMeetsNeed(world, ctx, subject, 'job', jobType)) {
       discover(entity, owner, s.tribe, 'job', jobType);
     }

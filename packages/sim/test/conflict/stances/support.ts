@@ -73,7 +73,6 @@ export function combatantAtPosition(
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints: opts.hitpoints ?? 2000, max: opts.hitpoints ?? 2000 });
   sim.world.add(e, Owner, { player: owner });

@@ -27,7 +27,8 @@ describe('targetPositionsOf', () => {
     const snap = snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
-        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, elapsed: 1, targetEntity: 2 },
+        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
+        AtomicClock: { elapsed: 1 },
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
       entity(3, 3, 1, { Resource: { level: 3 } }),
@@ -50,7 +51,8 @@ describe('targetPositionsOf', () => {
     const snap = snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
-        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, elapsed: 1, targetEntity: 99 },
+        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 99 },
+        AtomicClock: { elapsed: 1 },
       }),
     ]);
     expect(targetPositionsOf(snap).size).toBe(0);
@@ -60,7 +62,8 @@ describe('targetPositionsOf', () => {
     const snap = snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
-        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, elapsed: 1, targetEntity: 2 },
+        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
+        AtomicClock: { elapsed: 1 },
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
     ]);
@@ -76,7 +79,8 @@ describe('the shared scene walk', () => {
     snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
-        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, elapsed: 1, targetEntity: 2 },
+        CurrentAtomic: { atomicId: ATTACK_ATOMIC_ID, targetEntity: 2 },
+        AtomicClock: { elapsed: 1 },
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
       entity(3, 3, 1, { Building: { buildingType: 7, tribe: 0 } }),

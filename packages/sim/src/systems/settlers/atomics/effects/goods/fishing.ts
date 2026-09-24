@@ -1,5 +1,10 @@
-import { Carrying, type CurrentAtomic, FishSwarm, Settler } from '../../../../../components/index.js';
-import { fx } from '../../../../../core/fixed.js';
+import {
+  AtomicClock,
+  Carrying,
+  type CurrentAtomic,
+  FishSwarm,
+  Settler,
+} from '../../../../../components/index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import {
@@ -73,8 +78,7 @@ function transition(
 ): void {
   const settler = world.get(fisher, Settler);
   atomic.atomicId = atomicId;
-  atomic.elapsed = 0;
-  atomic.progress = fx.fromInt(0);
+  world.mut(fisher, AtomicClock).elapsed = 0;
   atomic.duration = atomicDuration(ctx.content, settler, atomicId);
   atomic.effect = effect;
 }

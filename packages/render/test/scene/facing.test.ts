@@ -7,7 +7,8 @@ describe('buildScene - settler facing derivation', () => {
     const turning = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       WalkFacing: { direction: 7, target: 3 },
-      PathFollow: { waypoints: [{ x: 0, y: ONE }], index: 0 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 0, y: ONE }] },
     });
     const idle = entity(2, 1, 1, { Settler: { tribe: 0 }, WalkFacing: { direction: 6, target: 6 } });
     const scene = buildScene(snapshotOf([turning, idle]), FLAT_3x2);
@@ -19,7 +20,8 @@ describe('buildScene - settler facing derivation', () => {
     // step reads differently per row parity. Tile (1,1) is an odd, half-shifted row.
     const pf = (wx: number, wy: number): Record<string, unknown> => ({
       Settler: { tribe: 0 },
-      PathFollow: { waypoints: [{ x: wx * ONE, y: wy * ONE }], index: 0 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: wx * ONE, y: wy * ONE }] },
     });
     const facingOf = (wx: number, wy: number): number | undefined =>
       buildScene(snapshotOf([entity(1, 1, 1, pf(wx, wy))]), FLAT_3x2).find((d) => d.kind === 'settler')
@@ -40,7 +42,8 @@ describe('buildScene - settler facing derivation', () => {
     const walker = (ref: number, seamY: number): ReturnType<typeof entity> =>
       entity(ref, 1, 1, {
         Settler: { tribe: 0 },
-        PathFollow: { waypoints: [{ x: 1.5 * ONE, y: seamY * ONE }], index: 0 },
+        PathFollow: { index: 0 },
+        PathRoute: { waypoints: [{ x: 1.5 * ONE, y: seamY * ONE }] },
       });
     const scene = buildScene(snapshotOf([walker(1, 2), walker(2, 0)]), FLAT_3x2);
     const settlers = scene.filter((d) => d.kind === 'settler');
@@ -54,7 +57,8 @@ describe('buildScene - settler facing derivation', () => {
     const walker = (ref: number, x: number, y: number): ReturnType<typeof entity> =>
       entity(ref, x, y, {
         Settler: { tribe: 0 },
-        PathFollow: { waypoints: [{ x: x * ONE, y: (y + 1) * ONE }], index: 0 },
+        PathFollow: { index: 0 },
+        PathRoute: { waypoints: [{ x: x * ONE, y: (y + 1) * ONE }] },
       });
     const scene = buildScene(snapshotOf([walker(1, 1, 1), walker(2, 1, 2)]), FLAT_3x2);
     const settlers = scene.filter((d) => d.kind === 'settler');
@@ -66,7 +70,8 @@ describe('buildScene - settler facing derivation', () => {
     const idle = entity(1, 1, 1, { Settler: { tribe: 0 } });
     const arrived = entity(2, 1, 1, {
       Settler: { tribe: 0 },
-      PathFollow: { waypoints: [{ x: 1 * ONE, y: 1 * ONE }], index: 0 }, // waypoint == position
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 1 * ONE, y: 1 * ONE }] }, // waypoint == position
     });
     const scene = buildScene(snapshotOf([idle, arrived]), FLAT_3x2);
     expect(scene.find((d) => d.ref === 1)?.facing).toBeUndefined();
@@ -78,8 +83,10 @@ describe('buildScene - settler facing derivation', () => {
     // to win or it swings at empty air.
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
-      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 },
+      CurrentAtomic: { atomicId: 81, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] },
     });
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([attacker, target]), FLAT_3x2);
@@ -91,8 +98,10 @@ describe('buildScene - settler facing derivation', () => {
     // the axe swings beside the trunk.
     const chopper = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 24, elapsed: 3, targetEntity: 2, targetTile: null },
-      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // west → block 1
+      CurrentAtomic: { atomicId: 24, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] }, // west → block 1
     });
     const target = entity(2, 2, 1, { Resource: { goodType: 1, remaining: 3 } });
     const scene = buildScene(snapshotOf([chopper, target]), FLAT_3x2);
@@ -102,8 +111,10 @@ describe('buildScene - settler facing derivation', () => {
   it.each([36, 37, 38])('a fisher action (atomic %i) faces its fish swarm in the water', (atomicId) => {
     const fisher = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId, elapsed: 3, targetEntity: 2, targetTile: null },
-      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // stale westward walk
+      CurrentAtomic: { atomicId, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] }, // stale westward walk
     });
     const swarm = entity(2, 2, 1, { FishSwarm: { count: 5, continent: 1, shore: null } });
     const scene = buildScene(snapshotOf([fisher, swarm]), FLAT_3x2);
@@ -113,8 +124,10 @@ describe('buildScene - settler facing derivation', () => {
   it('a worker drawing from a well (atomic 44) faces the utility', () => {
     const worker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 44, elapsed: 30, targetEntity: 2, targetTile: null },
-      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 },
+      CurrentAtomic: { atomicId: 44, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 30 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] },
     });
     const well = entity(2, 2, 1, { Building: { buildingType: 10, built: ONE } });
     const scene = buildScene(snapshotOf([worker, well]), FLAT_3x2);
@@ -126,8 +139,10 @@ describe('buildScene - settler facing derivation', () => {
     // per-direction hammer lists, so the facing selects real frames.
     const builder = entity(1, 2, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 39, elapsed: 3, targetEntity: 2, targetTile: null },
-      PathFollow: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }], index: 0 },
+      CurrentAtomic: { atomicId: 39, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }] },
     });
     const site = entity(2, 1, 1, { Building: { buildingType: 1, built: 0 } });
     const scene = buildScene(snapshotOf([builder, site]), FLAT_3x2);
@@ -140,11 +155,13 @@ describe('buildScene - settler facing derivation', () => {
     // projected delta is dead vertical, and the talk/listen sheets author all 8 directions.
     const talker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 14, elapsed: 3, targetEntity: 2, targetTile: null },
+      CurrentAtomic: { atomicId: 14, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
     });
     const listener = entity(2, 1.25, 1.5, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 15, elapsed: 3, targetEntity: 1, targetTile: null },
+      CurrentAtomic: { atomicId: 15, targetEntity: 1, targetTile: null },
+      AtomicClock: { elapsed: 3 },
     });
     const scene = buildScene(snapshotOf([talker, listener]), FLAT_3x2);
     const settlers = scene.filter((d) => d.kind === 'settler');
@@ -156,8 +173,10 @@ describe('buildScene - settler facing derivation', () => {
     // atomic 23 (pileup) is neither the attack nor a harvest action, so no target lookup applies.
     const depositor = entity(1, 1, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 23, elapsed: 3, targetEntity: 2, targetTile: null },
-      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // west → block 1
+      CurrentAtomic: { atomicId: 23, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
+      PathFollow: { index: 0 },
+      PathRoute: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }] }, // west → block 1
     });
     const target = entity(2, 2, 1, { Stockpile: { amounts: [[1, 2]] } });
     const scene = buildScene(snapshotOf([depositor, target]), FLAT_3x2);

@@ -4,7 +4,7 @@ import {
   type EquipmentSlot,
   MISC_EQUIP_SLOTS,
   ProductionBonus,
-  Settler,
+  SettlerProgress,
   Stockpile,
 } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
@@ -63,7 +63,7 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    sim.world.mut(worker, Settler).experience.set(CARPENTER_PLANK_TRACK, 4 * PLANK_XP_PER_BATCH);
+    sim.world.mut(worker, SettlerProgress).experience.set(CARPENTER_PLANK_TRACK, 4 * PLANK_XP_PER_BATCH);
     wearTool(sim, worker, TOOL_WOODEN);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(

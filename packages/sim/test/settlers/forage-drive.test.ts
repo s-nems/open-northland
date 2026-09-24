@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   BerryBush,
   Building,
   CurrentAtomic,
@@ -165,10 +166,8 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const bush = bushAt(sim, 0, 0);
-    sim.world.add(settler, CurrentAtomic, {
+    addCurrentAtomic(sim.world, settler, {
       atomicId: EAT_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: EAT_CLIP_TICKS,
       effect: { kind: 'forage', bush },
       targetEntity: bush,

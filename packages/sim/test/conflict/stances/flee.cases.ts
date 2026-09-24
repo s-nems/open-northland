@@ -5,6 +5,7 @@ import {
   Fleeing,
   MoveGoal,
   PathFollow,
+  PathRoute,
   Position,
   Settler,
 } from '../../../src/components/index.js';
@@ -145,10 +146,12 @@ describe('FLEE pace - a Fleeing unit moves at its normal pace (no sprint exists)
     const stop = { x: fx.fromFloat(0.5), y: fx.fromInt(0), node: sim.terrain?.nodeAt(1, 0) ?? (0 as NodeId) };
     const walker = sim.world.create();
     sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(walker, PathFollow, { waypoints: [{ ...stop }], index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(walker, PathRoute, { waypoints: [{ ...stop }] });
+    sim.world.add(walker, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     const runner = sim.world.create();
     sim.world.add(runner, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(runner, PathFollow, { waypoints: [{ ...stop }], index: 0, legTicks: 0, legCost: 0 });
+    sim.world.add(runner, PathRoute, { waypoints: [{ ...stop }] });
+    sim.world.add(runner, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     sim.world.add(runner, Fleeing, { repathAt: 0, calmUntil: null });
 
     // Fleeing grants no speed boost: both read the same step cost and advance step-for-step alike.

@@ -148,7 +148,6 @@ function settlerAt(sim: Simulation, x: number, y: number, owner: number, jobType
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Health, { hitpoints: RAIDER_HP, max: RAIDER_HP });
   sim.world.add(e, Owner, { player: owner });
@@ -171,7 +170,6 @@ function animalAt(sim: Simulation, x: number, y: number, tribe: number): Entity 
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Health, { hitpoints: GAME_HP, max: GAME_HP });
   return e;

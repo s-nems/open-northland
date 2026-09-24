@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AtomicClock,
   CurrentAtomic,
   DeferredOrder,
   JobAssignment,
@@ -8,6 +9,7 @@ import {
   PlayerOrder,
   Production,
   Resting,
+  removeCurrentAtomic,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -102,7 +104,7 @@ describe('a workshop operator performing its craft', () => {
     // lands it exactly on the batch's own progress rather than back at frame zero.
     const elapsed = shop.sim.world.get(shop.shop, Production).cycles[0]?.elapsed;
     expect(elapsed).toBe(3);
-    expect(shop.sim.world.get(shop.cook, CurrentAtomic).elapsed).toBe(elapsed);
+    expect(shop.sim.world.get(shop.cook, AtomicClock).elapsed).toBe(elapsed);
   });
 
   it('performs nothing while the shop is starved, leaving the operator waiting inside', () => {
@@ -147,9 +149,9 @@ describe('a workshop operator performing its craft', () => {
       ],
     });
     const seatOf = (seat: number): number | null => {
-      world.remove(shop.cook, CurrentAtomic);
+      removeCurrentAtomic(world, shop.cook);
       startCraftAtomic(world, ctxOf(shop.sim), shop.cook, shop.shop, seat);
-      return world.tryGet(shop.cook, CurrentAtomic)?.elapsed ?? null;
+      return world.tryGet(shop.cook, AtomicClock)?.elapsed ?? null;
     };
     expect(seatOf(0)).toBe(3);
     expect(seatOf(1)).toBe(11);
@@ -176,7 +178,7 @@ describe('a workshop operator performing its craft', () => {
 
     expect(world.has(walker, Resting)).toBe(false);
     expect(world.has(walker, CurrentAtomic)).toBe(false);
-    expect(world.get(inside, CurrentAtomic).elapsed).toBe(3);
+    expect(world.get(inside, AtomicClock).elapsed).toBe(3);
   });
 
   it('lets a player order take the operator over at once instead of parking behind the clip', () => {

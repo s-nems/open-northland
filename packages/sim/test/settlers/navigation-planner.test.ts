@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
+import { MoveGoal, PathFollow, PathRequest, PathRoute, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
@@ -52,7 +52,7 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     expect(sim.world.has(e, MoveGoal)).toBe(true);
     expect(sim.world.has(e, PathFollow)).toBe(true);
     // Node (0,0) to node (6,0) is seven E-step nodes, one waypoint each (no seams on a straight row).
-    expect(sim.world.get(e, PathFollow).waypoints.length).toBe(7);
+    expect(sim.world.get(e, PathRoute).waypoints.length).toBe(7);
   });
 
   it('does not issue a second request while one is already in flight', () => {
@@ -68,15 +68,13 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
   it('does not issue a request while a route that ENDS AT THE GOAL is being followed', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
-    sim.world.add(e, PathFollow, {
+    sim.world.add(e, PathRoute, {
       waypoints: [
         { x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) },
         { x: fx.fromInt(3), y: fx.fromInt(0), node: anchorCell(sim, 3, 0) }, // destination === the goal centre
       ],
-      index: 0,
-      legTicks: 0,
-      legCost: 0,
     });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, PathRequest)).toBe(false);
   });
@@ -84,12 +82,11 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
   it('re-routes IMMEDIATELY when the followed route no longer ends at the goal (a mid-walk redirect)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
-    sim.world.add(e, PathFollow, {
-      waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) }], // a stale route elsewhere
-      index: 0,
-      legTicks: 0,
-      legCost: 0,
+    // A stale route elsewhere.
+    sim.world.add(e, PathRoute, {
+      waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) }],
     });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     plannerSystem(sim.world, ctxOf(sim));
     // A fresh request is issued right away; the stale path keeps the walker moving until the
     // routing splice replaces it (carrying its momentum through the turn - movement inertia).

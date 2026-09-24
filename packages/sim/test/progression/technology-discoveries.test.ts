@@ -5,6 +5,7 @@ import {
   noteSettlerProgress,
   Owner,
   Settler,
+  SettlerProgress,
   setMapPermission,
   setSettlerJob,
   TechnologyDiscoveries,
@@ -84,7 +85,7 @@ describe('player technology discoveries', () => {
     expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(false);
 
     const track = sim.content.jobExperience.find((candidate) => candidate.typeId === WOOD_TRACK);
-    sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, rawXpForRepeats(track, 3));
+    sim.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, rawXpForRepeats(track, 3));
     noteSettlerProgress(sim.world, worker);
     technologySystem(sim.world, ctx);
     expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
@@ -274,7 +275,7 @@ describe('the sweep reads only settlers whose discovery input may have moved', (
     const { sim, worker, ctx } = crowded();
     technologySystem(sim.world, ctx);
     expect(sim.world.verifyCaches()).toEqual([]);
-    sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, 1);
+    sim.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, 1);
     expect(sim.world.verifyCaches()).toEqual([
       `technology: settler ${worker} changed its discovery input without a progress note`,
     ]);

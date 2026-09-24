@@ -25,7 +25,7 @@ const HARE_MEAT_TOTAL =
   (buildSandboxAnimals().find((a) => a.tribeType === ANIMAL_TRIBE_HARES)?.maximumGroupSize ?? 0) *
   (HUNT_PREY_BALANCE.find((s) => s.tribeType === ANIMAL_TRIBE_HARES)?.yields.meat ?? 0);
 
-const { Settler, Stockpile, WorkFlag } = components;
+const { Settler, SettlerProgress, Stockpile, WorkFlag } = components;
 
 function build(sim: Simulation): void {
   for (const at of HUNTER_CELLS) spawnSandboxSettler(sim, JOB_HUNTER, at.x, at.y);
@@ -94,7 +94,8 @@ export const huntingScene: SceneDefinition = {
       label: 'harvesting the carcasses trained hunter_general (summed - the bag splits across the crew)',
       predicate: (sim) => {
         const xp = hunters(sim).reduce(
-          (sum, e) => sum + (sim.world.get(e, Settler).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0),
+          (sum, e) =>
+            sum + (sim.world.get(e, SettlerProgress).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0),
           0,
         );
         return xp >= HARE_MEAT_TOTAL * HUNTER_GENERAL_XP_TRACK.experienceFactor;
@@ -104,7 +105,7 @@ export const huntingScene: SceneDefinition = {
       label: 'both hunters shared the work - neither was wedged off the bag by its colleague',
       predicate: (sim) =>
         hunters(sim).every(
-          (e) => (sim.world.get(e, Settler).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0) > 0,
+          (e) => (sim.world.get(e, SettlerProgress).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0) > 0,
         ),
     },
   ],

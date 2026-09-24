@@ -1,6 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Felling, Position, Resource } from '../../src/components/index.js';
+import {
+  AtomicClock,
+  addCurrentAtomic,
+  CurrentAtomic,
+  Felling,
+  Position,
+  Resource,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../src/systems/index.js';
@@ -97,10 +104,8 @@ function cuesOverSwing(
 ): { tick: number; soundType: number }[] {
   const sim = new Simulation({ seed: 1, content: cueContent() });
   const e: Entity = settlerAt(sim, { jobType });
-  sim.world.add(e, CurrentAtomic, {
+  addCurrentAtomic(sim.world, e, {
     atomicId,
-    elapsed: 0,
-    progress: fx.fromInt(0),
     duration,
     effect: { kind: 'idle' },
     targetEntity: null,
@@ -169,10 +174,8 @@ describe('atomicSystem - authored sound cues', () => {
     });
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: chops });
-    sim.world.add(cutter, CurrentAtomic, {
+    addCurrentAtomic(sim.world, cutter, {
       atomicId: CHOP_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 3,
       effect: { kind: 'harvest', resource: tree, goodType: WOOD },
       targetEntity: tree,
@@ -186,7 +189,7 @@ describe('atomicSystem - authored sound cues', () => {
       const before = sim.world.tryGet(cutter, CurrentAtomic);
       if (before === undefined) break;
       const resting = before.restTail === true;
-      if (before.elapsed === 0) swings += 1;
+      if (sim.world.get(cutter, AtomicClock).elapsed === 0) swings += 1;
       sim.events.clear();
       atomicSystem(sim.world, ctxOf(sim));
       for (const ev of sim.events.current()) {

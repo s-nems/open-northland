@@ -33,7 +33,6 @@ describe.runIf(hasRealIr())('real-content human walking', () => {
         fatigue: fx.fromInt(0),
         piety: fx.fromInt(0),
         enjoyment: fx.fromInt(0),
-        experience: new Map(),
       });
       sim.world.add(e, components.Equipment, {
         weapon: { goodType: 42, degreeOfUse: fx.fromInt(0) },
@@ -44,15 +43,13 @@ describe.runIf(hasRealIr())('real-content human walking', () => {
       });
       if (explicit) sim.world.add(e, components.Weapon, { weaponTypeId: 11 });
       sim.world.add(e, components.Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-      sim.world.add(e, components.PathFollow, {
+      sim.world.add(e, components.PathRoute, {
         waypoints: [
           { x: fx.fromInt(0), y: fx.fromInt(0), node: terrain.nodeAtClamped(0, 0) },
           { x: fx.fromFloat(0.5), y: fx.fromInt(0), node: terrain.nodeAtClamped(1, 0) },
         ],
-        index: 1,
-        legCost: 0,
-        legTicks: 0,
       });
+      sim.world.add(e, components.PathFollow, { index: 1, legCost: 0, legTicks: 0 });
       sim.step();
       expect(sim.world.get(e, components.PathFollow).legCost).toBe(8);
     },

@@ -6,6 +6,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PathRoute,
   Position,
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
@@ -38,21 +39,18 @@ describe('unit body collision - firm routing and resolution', () => {
     s.world.mut(runner, Position).x = fx.fromFloat(3.875);
     const blocked = terrain.nodeAt(9, 6);
     const goal = terrain.nodeAt(16, 6);
-    s.world.add(runner, PathFollow, {
+    s.world.add(runner, PathRoute, {
       waypoints: [8, 9, 10].map((hx) => ({ ...positionOfNode(hx, 6), node: terrain.nodeAt(hx, 6) })),
-      index: 1,
-      legCost: 8,
-      legTicks: 6,
-      departureCharged: true,
     });
+    s.world.add(runner, PathFollow, { index: 1, legCost: 8, legTicks: 6, departureCharged: true });
     settlerAt(s, 9, 6, SOLDIER, P0);
     s.world.add(runner, PathRequest, { start: blocked, goal, failed: false });
 
     pathfindingSystem(s.world, ctxOf(s));
 
-    const route = s.world.get(runner, PathFollow);
-    expect(route.waypoints[0]?.node).toBe(blocked); // A* allows leaving an occupied start.
-    expect(route.waypoints[route.index]?.node).not.toBe(blocked);
+    const stops = s.world.get(runner, PathRoute).waypoints;
+    expect(stops[0]?.node).toBe(blocked); // A* allows leaving an occupied start.
+    expect(stops[s.world.get(runner, PathFollow).index]?.node).not.toBe(blocked);
   });
 
   it('two walking fighters cross head-on and both arrive - movers never deadlock movers', () => {

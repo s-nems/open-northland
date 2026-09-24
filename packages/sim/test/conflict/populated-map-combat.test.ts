@@ -55,7 +55,6 @@ function vikingFighterAt(sim: Simulation, x: number, y: number, hitpoints: numbe
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Health, { hitpoints, max: hitpoints });
   return e;

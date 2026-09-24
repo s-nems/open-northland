@@ -6,7 +6,7 @@ import {
   Owner,
   Position,
   Production,
-  Settler,
+  SettlerProgress,
   Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -136,7 +136,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     // veteran path is every other case in this file.
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f, smith } = forge(sim, 4);
-    sim.world.mut(smith, Settler).experience.delete(WOOD_TRACK); // back to unearned
+    sim.world.mut(smith, SettlerProgress).experience.delete(WOOD_TRACK); // back to unearned
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
     expect(stock.get(PLANK) ?? 0).toBe(0); // locked - the rotation skips it
@@ -146,7 +146,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
   it('a pick naming only unearned goods degrades to the earned products, not a stall', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f, smith } = forge(sim, 4);
-    sim.world.mut(smith, Settler).experience.delete(WOOD_TRACK); // plank unearned again
+    sim.world.mut(smith, SettlerProgress).experience.delete(WOOD_TRACK); // plank unearned again
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [PLANK] });
     runCycles(sim, 2);
     const stock = sim.world.get(f, Stockpile).amounts;

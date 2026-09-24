@@ -9,6 +9,7 @@ import {
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
+import { dropPath } from '../movement/nav-state.js';
 
 /** A script changes topology immediately; existing paths and remembered failures must not outlive it. */
 export function invalidateLandscapeRoutes(world: World, terrain: TerrainGraph): void {
@@ -17,7 +18,7 @@ export function invalidateLandscapeRoutes(world: World, terrain: TerrainGraph): 
   // Requeue active routes through the normal search budget, including travellers already mid-leg.
   for (const e of [...world.query(PathFollow, Position)]) {
     const goal = world.tryGet(e, MoveGoal)?.cell;
-    world.remove(e, PathFollow);
+    dropPath(world, e);
     world.remove(e, PathRequest);
     if (goal !== undefined) {
       const p = world.get(e, Position);

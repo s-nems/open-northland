@@ -3,8 +3,10 @@ import {
   MoveSpeed,
   MoveStepPeriod,
   PathFollow,
+  PathRoute,
   Position,
   Velocity,
+  type Waypoint,
 } from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -13,6 +15,7 @@ import { HALF_COLUMN, HALF_ROW, worldDistance } from '../../nav/world-metric.js'
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
 import { chargeBarefootStep } from '../lifecycle/needs/index.js';
+import { dropPath } from './nav-state.js';
 import { stepTowardPoint } from './stepping.js';
 import { beginWalkTurn, finishWalkTurn } from './turning.js';
 import {
@@ -67,6 +70,7 @@ export const movementSystem: System = (world, ctx) => {
   for (const e of world.query(Position, PathFollow)) {
     pathHandled.add(e);
     const pf = world.mut(e, PathFollow);
+    const stops = world.get(e, PathRoute).waypoints;
     const p = world.mut(e, Position);
     // Wildlife with source `movespeed = 0` has no period component, but stays on the animal fallback
     // rather than inheriting human terrain, fatigue, equipment and hunger rules.
@@ -74,21 +78,21 @@ export const movementSystem: System = (world, ctx) => {
     const paced = period === undefined && (world.has(e, MoveSpeed) || isWildlife(world, e));
     let budget = paced ? creaturePace(world, e) : ULP;
     while (true) {
-      const target = pf.waypoints[pf.index];
+      const target = stops[pf.index];
       if (target === undefined) {
-        world.remove(e, PathFollow);
+        dropPath(world, e);
         break;
       }
       const distance = paced ? worldDistance(p.x, p.y, target.x, target.y) : ULP;
       const arrived = paced
         ? stepTowardPoint(p, target, budget)
         : period === undefined
-          ? walkHumanLeg(world, ctx, e, pf, p, target)
-          : walkPeriodicLeg(pf, p, target, period);
+          ? walkHumanLeg(world, ctx, e, pf, stops, p, target)
+          : walkPeriodicLeg(pf, stops, p, target, period);
       if (!arrived) break;
-      if (pf.index + 1 >= pf.waypoints.length) {
+      if (pf.index + 1 >= stops.length) {
         if (!paced && period === undefined) chargeNode(world, ctx, e, roughnessAt(ctx.terrain, target));
-        world.remove(e, PathFollow);
+        dropPath(world, e);
         break;
       }
       pf.index += 1;
@@ -132,8 +136,12 @@ function roughnessAt(terrain: TerrainGraph | undefined, waypoint: { node: NodeId
 
 /** The roughness of the node the current leg leaves, which paces and shoes it: the previous stop, or on
  *  a route's first leg the stop itself (the walker stands beside it). A mapless sim walks the default. */
-function departureRoughness(terrain: TerrainGraph | undefined, pf: FollowState): number {
-  const from = pf.waypoints[pf.index > 0 ? pf.index - 1 : 0];
+function departureRoughness(
+  terrain: TerrainGraph | undefined,
+  pf: FollowState,
+  stops: readonly Waypoint[],
+): number {
+  const from = stops[pf.index > 0 ? pf.index - 1 : 0];
   return roughnessAt(terrain, from);
 }
 
@@ -143,17 +151,18 @@ function walkHumanLeg(
   ctx: SystemContext,
   e: Entity,
   pf: FollowState,
+  stops: readonly Waypoint[],
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
 ): boolean {
   // A redirect onto the current centre ends even a held turn without inventing another heading.
   if (p.x === target.x && p.y === target.y) return true;
   if (pf.legCost === 0) {
-    const roughness = departureRoughness(ctx.terrain, pf);
-    beginTimedLeg(pf, p, target, walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content)));
+    const roughness = departureRoughness(ctx.terrain, pf, stops);
+    beginTimedLeg(pf, stops, p, target, walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content)));
     // The planned heading is fixed for this leg. Separation can nudge the position across an octant
     // boundary; re-aiming every tick would insert fresh turn holds in the middle of a steady step.
-    beginWalkTurn(world, e, pf.legPace === undefined ? (pf.waypoints[pf.index - 1] ?? p) : p, target);
+    beginWalkTurn(world, e, pf.legPace === undefined ? (stops[pf.index - 1] ?? p) : p, target);
     if (pf.departureCharged !== true) {
       chargeNode(world, ctx, e, roughness);
       pf.departureCharged = true;
@@ -167,25 +176,27 @@ function walkHumanLeg(
 
 function walkPeriodicLeg(
   pf: FollowState,
+  stops: readonly Waypoint[],
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
   period: number,
 ): boolean {
   if (pf.legCost === 0) {
     if (p.x === target.x && p.y === target.y) return true;
-    beginTimedLeg(pf, p, target, period);
+    beginTimedLeg(pf, stops, p, target, period);
   }
   return advanceTimedLeg(pf, p, target);
 }
 
 function beginTimedLeg(
   pf: FollowState,
+  stops: readonly Waypoint[],
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
   fullCost: number,
 ): void {
   pf.legCost = fullCost;
-  const plannedFrom = pf.waypoints[pf.index - 1];
+  const plannedFrom = stops[pf.index - 1];
   if (plannedFrom === undefined || (plannedFrom.x === p.x && plannedFrom.y === p.y)) return;
   const plannedDistance = worldDistance(plannedFrom.x, plannedFrom.y, target.x, target.y);
   if (plannedDistance <= 0) return;

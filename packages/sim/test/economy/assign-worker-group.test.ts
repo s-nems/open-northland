@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   addPerson,
   Building,
   CurrentAtomic,
@@ -44,7 +45,6 @@ function settlerAt(sim: Simulation, x: number): Entity {
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: PLAYER });
   return e;
@@ -127,10 +127,8 @@ describe('assignWorkerGroup - post a group to one building', () => {
     const working = settlerAt(sim, 10);
     const idle = settlerAt(sim, 12);
     employ(sim, working, clicked);
-    sim.world.add(working, CurrentAtomic, {
+    addCurrentAtomic(sim.world, working, {
       atomicId: SOME_ATOMIC,
-      elapsed: 0,
-      progress: fx.fromInt(0),
       duration: 1,
       effect: { kind: 'sleep' },
       targetEntity: null,

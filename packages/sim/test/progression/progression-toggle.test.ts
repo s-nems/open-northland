@@ -5,6 +5,7 @@ import {
   Position,
   ProgressionRules,
   Settler,
+  SettlerProgress,
   setProfessionProgression,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -67,15 +68,19 @@ describe('setJob - the profession tree gates the manual trade change', () => {
   function ownedSettler(sim: Simulation, jobType: number, xp?: Map<number, number>): Entity {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
-    addPerson(sim.world, e, {
-      tribe: 1,
-      jobType,
-      hunger: fx.fromInt(0),
-      fatigue: fx.fromInt(0),
-      piety: fx.fromInt(0),
-      enjoyment: fx.fromInt(0),
-      experience: xp ?? new Map<number, number>(),
-    });
+    addPerson(
+      sim.world,
+      e,
+      {
+        tribe: 1,
+        jobType,
+        hunger: fx.fromInt(0),
+        fatigue: fx.fromInt(0),
+        piety: fx.fromInt(0),
+        enjoyment: fx.fromInt(0),
+      },
+      { experience: xp ?? new Map<number, number>() },
+    );
     sim.world.add(e, Owner, { player: 0 });
     return e;
   }
@@ -106,7 +111,7 @@ describe('setJob - the profession tree gates the manual trade change', () => {
 
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: baker, jobType: WOODCUTTER });
     expect(sim.world.get(baker, Settler).jobType).toBe(WOODCUTTER);
-    expect(sim.world.get(baker, Settler).learned?.job).toEqual([CARPENTER]);
+    expect(sim.world.get(baker, SettlerProgress).learned?.job).toEqual([CARPENTER]);
 
     setProfessionProgression(sim.world, true);
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: baker, jobType: CARPENTER });

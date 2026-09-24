@@ -157,7 +157,7 @@ function experienceBonusPct(
 }
 
 /**
- * The Doświadczenie rows, most-trained first, off the settler's `Settler.experience` map
+ * The Doświadczenie rows, most-trained first, off the settler's `SettlerProgress.experience` map
  * (`humanjobexperiencetypes` id → raw points). Raw points are shown as completed-work repeats, dividing
  * the track's accrual rate back out; a track-less bucket (fight, scout) shows raw points.
  */
