@@ -87,8 +87,7 @@ export const combatContent = {
   armor: [
     // Leather (class 1): a combatant stamped `Armor{armorClass:1}`, or wearing an `Equipment.armor`
     // slot holding `goodType` 1, resolves hits through this record's material column (test_axe
-    // `damage["1"]` = 60; `blockingValue` is deliberately NOT subtracted, see readviews/combat.ts). It
-    // also makes the `combatDamage` read view exercise a real armor record alongside the unarmored class.
+    // `damage["1"]` = 60; `blockingValue` is deliberately NOT subtracted, see readviews/combat.ts).
     { typeId: 1, id: 'leather', goodType: 1, blockingValue: 10 },
   ],
 };

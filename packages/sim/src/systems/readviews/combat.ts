@@ -17,9 +17,9 @@ export const ARMOR_MATERIAL = {
   PLATE: 4,
   /** Stone (unused by the base armor records). */
   STONE: 5,
-  /** A tree/wall target - the weapon's damage-vs-wood column (see {@link damageVsWood}). */
+  /** A tree/wall target - the weapon's damage-vs-wood column. */
   WOOD: 6,
-  /** A building target - the weapon's damage-vs-building column (see {@link damageVsBuilding}). */
+  /** A building target - the weapon's damage-vs-building column. */
   HOUSE: 7,
 } as const;
 
@@ -50,18 +50,6 @@ export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, mater
   return weapon.damage[String(material)] ?? 0;
 }
 
-/** The damage a weapon does to a tree/wall target - its {@link ARMOR_MATERIAL.WOOD} column, not an
- *  armor tier. */
-export function damageVsWood(weapon: Pick<WeaponType, 'damage'>): number {
-  return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.WOOD);
-}
-
-/** The damage a weapon does to a building target - its {@link ARMOR_MATERIAL.HOUSE} column, not an
- *  armor tier. */
-export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
-  return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.HOUSE);
-}
-
 /** An `[armortype]` record's damage column: its `materialType`, or its `typeId` where the record carries
  *  none (the two coincide for the 4 base armors). */
 function materialOfRecord(armor: ArmorType): number {
@@ -87,58 +75,6 @@ export function armorMaterialForGood(content: ContentSet, goodType: number): num
   const armor = contentIndex(content).armorByGoodType.get(goodType);
   if (armor === undefined) return null;
   return materialOfRecord(armor);
-}
-
-/** One weapon resolved against one armor material. */
-interface CombatDamageRow {
-  /** The target's armor material tier ({@link ARMOR_MATERIAL}). */
-  material: number;
-  /** Damage against that material; `0` when the weapon lists none. */
-  damage: number;
-}
-
-/** One weapon's identity and its damage against every armor material a living target can wear. */
-export interface CombatProfile {
-  tribeType: number | undefined;
-  /** Recurs per tribe, so not unique. */
-  typeId: number;
-  /** The weapon's `id` slug, also not unique. */
-  id: string;
-  /** The composite `"<tribeType>:<typeId>"` key ({@link weaponKey}), not unique either. */
-  key: string;
-  /** Ascending by `material`. */
-  rows: readonly CombatDamageRow[];
-}
-
-/**
- * Each {@link WeaponType} joined against every armor material a living target can wear: the unarmored
- * material `0` plus every `[armortype]` record's `materialType`, ascending, so a weapon listing no value for
- * a tier still gets a `0`-damage row. The structure columns {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are not rows
- * here.
- *
- * An array in `content.weapons` source order rather than a Map, because no weapon key is unique
- * ({@link weaponKey}), so a Map would silently drop records.
- */
-export function combatDamage(content: ContentSet): CombatProfile[] {
-  const materials = new Set<number>([ARMOR_MATERIAL.NONE]);
-  for (const armor of content.armor) materials.add(materialOfRecord(armor));
-  const sorted = [...materials].sort((a, b) => a - b);
-
-  const profiles: CombatProfile[] = [];
-  for (const weapon of content.weapons) {
-    const rows: CombatDamageRow[] = sorted.map((material) => ({
-      material,
-      damage: weaponDamageVsMaterial(weapon, material),
-    }));
-    profiles.push({
-      tribeType: weapon.tribeType,
-      typeId: weapon.typeId,
-      id: weapon.id,
-      key: weaponKey(weapon),
-      rows,
-    });
-  }
-  return profiles;
 }
 
 /**

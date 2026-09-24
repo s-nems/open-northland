@@ -3,8 +3,8 @@ import { groupByKey } from './group.js';
 
 /**
  * The extracted `mainType`: `1` for light cloth and leather, `2` for heavy chain and plate. A different
- * axis from the `armorClass` the `combatDamage` join keys on, which is the armor's own `typeId`, the
- * per-record `damagevalue <armorClass>` index.
+ * axis from the worn `armorClass`, which is the armor's own `typeId` and resolves to the record's material
+ * column (`armorMaterialForClass`).
  */
 export function armorClassOf(armor: ArmorType): number | undefined {
   return armor.mainType;

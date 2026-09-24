@@ -147,12 +147,12 @@ describe('atomicSystem - effects', () => {
     expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(ONE, MEAL));
   });
 
-  it('attack drains the resolved net damage from the target hitpoints', () => {
+  it('attack drains the swing damage from the target hitpoints', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
     const target = sim.world.create();
     sim.world.add(target, Health, { hitpoints: 1000, max: 1000 });
-    // 35 = a resolved net-damage value (e.g. combatDamage sword vs class-3 armor: raw 40 - block 5).
+    // 35 = the weapon's damage column for the target's armor material, pre-resolved on the swing.
     startAtomic(sim, attacker, { kind: 'attack', target, damage: 35 }, 1, 81);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(965); // 1000 - 35
@@ -178,12 +178,12 @@ describe('atomicSystem - effects', () => {
     expect(sim.world.has(target, Health)).toBe(false);
   });
 
-  it('attack with zero net damage (armor fully absorbed) leaves the target untouched', () => {
+  it('attack with zero damage leaves the target untouched', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
     const target = sim.world.create();
     sim.world.add(target, Health, { hitpoints: 500, max: 500 });
-    startAtomic(sim, attacker, { kind: 'attack', target, damage: 0 }, 1, 81); // combatDamage clamped net to 0
+    startAtomic(sim, attacker, { kind: 'attack', target, damage: 0 }, 1, 81); // a material column the weapon does no harm to
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(500); // no harm
   });

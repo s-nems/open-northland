@@ -10,7 +10,7 @@ export { ctxOf, grassMap };
 /**
  * Unit + integration tests for the CombatSystem - the TARGETING half of the combat loop: an idle
  * Health-bearing combatant swings at the nearest enemy-tribe combatant within weapon range, issuing
- * the `attack` atomic with the `combatDamage`-resolved net damage. The fixture's `test_axe` (tribe 1,
+ * the `attack` atomic with the weapon's material-column damage. The fixture's `test_axe` (tribe 1,
  * job 1) has maxRange 2 and damage 50 vs an unarmored (class 0) target, bound to the `viking_attack`
  * animation (length 4). Together with the AtomicSystem `attack` effect (the hit) and the CleanupSystem
  * (the death) it closes the targeting->attack->hit->death loop.
