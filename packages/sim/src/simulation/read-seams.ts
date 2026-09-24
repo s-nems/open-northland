@@ -17,7 +17,7 @@ export interface FogView {
   readonly mode: FogMode;
   readonly cellsWide: number;
   readonly cellsHigh: number;
-  /** Bumps only when the masks rebuilt, so render layers use it as a re-composite key. */
+  /** Bumps only when a mask byte or the mode changed, so render layers use it as a re-composite key. */
   readonly generation: number;
   /** The viewer's effective `FOG_STATE` at a cell, with a RECON map's known-terrain mapping applied. */
   readonly stateAt: (cellX: number, cellY: number) => number;

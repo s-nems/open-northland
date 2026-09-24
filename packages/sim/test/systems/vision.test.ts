@@ -242,6 +242,27 @@ describe('fog generation - bumps only when a mask byte or the mode changed', () 
     expect(generation(sim)).toBe(first + 1);
   });
 
+  it('fog of war: the downgrade alone bumps it once the last eye is gone', () => {
+    const sim = simOn(FOG_MODE.CLASSIC_FOG_OF_WAR);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1);
+    const seen = generation(sim);
+    sim.world.destroy(e);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(generation(sim)).toBe(seen + 1);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED);
+  });
+
+  it('switching OFF bumps it', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    unit(sim, 2, 2, P0);
+    sim.run(1);
+    const classic = generation(sim);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
+    sim.run(1);
+    expect(generation(sim)).toBeGreaterThan(classic);
+  });
+
   it('a mode switch bumps it even when no byte moves', () => {
     const sim = simOn(FOG_MODE.CLASSIC);
     unit(sim, 2, 2, P0);
