@@ -7,7 +7,7 @@ import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { manhattan } from '../../spatial/metric.js';
 import { canonicalById } from '../../spatial/nodes.js';
-import { resourceHarvestAtomics, resourcesNearNode } from '../../spatial/resources.js';
+import { anyHarvestAtomicPresent, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -48,15 +48,7 @@ export function nearestHarvestableFor(
   // Dormancy gate: when the job's atomics intersect no harvest atomic present on any standing resource,
   // every candidate would fail the `allowed.has` check below, so the whole scan is provably null. The
   // probe set comes from the actual resources, so a node carrying an out-of-content atomic still gates.
-  const present = resourceHarvestAtomics(world);
-  let anyHarvestable = false;
-  for (const atomic of present) {
-    if (allowed.has(atomic)) {
-      anyHarvestable = true;
-      break;
-    }
-  }
-  if (!anyHarvestable) return null;
+  if (!anyHarvestAtomicPresent(world, allowed)) return null;
   const origin = area?.center ?? here;
   const bound = area ?? within;
   const maxWorkOffset = contentIndex(ctx.content).maxResourceWorkOffset;

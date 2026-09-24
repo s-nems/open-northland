@@ -8,7 +8,7 @@ import { isHunterJob, MILITARY_MODE, stanceMode } from '../../readviews/index.js
 import { isUnreachableGoal, unreachableGoals } from '../../settlers/unreachable-goals.js';
 import { manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
-import { anyResourceNear } from '../../spatial/resources.js';
+import { anyHarvestAtomicPresent, anyResourceNear } from '../../spatial/resources.js';
 import { HUNT_CARCASS_SLACK_NODES, huntingGround } from './ground.js';
 
 // Which bodies are a hunter's work: the kill claim that keeps two hunters off one carcass, and the
@@ -49,8 +49,9 @@ export function claimedByAnotherHunter(
  * standing work means no new target. The box query is a Manhattan superset, so each hit is re-checked at its
  * exact distance. It must not out-claim the harvest drive: a carcass the hunter provably cannot bank - a
  * colleague's claimed kill, one across a static terrain component seam, or one on a cell its routes just
- * failed on - counts as no work, else a body it may never pluck would stall its hunting for good. Cost is
- * unmeasured.
+ * failed on - counts as no work, else a body it may never pluck would stall its hunting for good. The box
+ * walk still visits every resource in it, but another trade's node is dropped by its indexed harvest atomic
+ * before any store read.
  */
 export function huntingGroundHoldsCarcass(
   world: World,
@@ -63,20 +64,28 @@ export function huntingGroundHoldsCarcass(
   if (jobType === null) return false;
   const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
   if (allowed === undefined) return false;
+  if (!anyHarvestAtomicPresent(world, allowed)) return false;
   const memo = unreachableGoals(world, ctx, hunter);
   const hunterComponent = terrain.componentOf(entityNode(world, terrain, hunter));
   const ax = terrain.xOf(ground.anchorCell);
   const ay = terrain.yOf(ground.anchorCell);
   // The slack band: a kill the chase leash permitted may fall past the radius - still this hunter's work.
   const reach = ground.radius + HUNT_CARCASS_SLACK_NODES;
-  return anyResourceNear(world, ax, ay, reach, (node) => {
-    const res = world.get(node, Resource);
-    if (res.remaining <= 0 || !allowed.has(res.harvestAtomic)) return false;
-    const cell = entityNode(world, terrain, node);
-    // Cheapest first: an array read and a ≤8-entry memo walk before the claim resolves a killer.
-    if (terrain.componentOf(cell) !== hunterComponent) return false;
-    if (isUnreachableGoal(memo, cell)) return false;
-    if (manhattan(terrain, ground.anchorCell, cell) > reach) return false;
-    return !claimedByAnotherHunter(world, ctx, terrain, node, hunter);
-  });
+  return anyResourceNear(
+    world,
+    ax,
+    ay,
+    reach,
+    (node) => {
+      const res = world.get(node, Resource);
+      if (res.remaining <= 0) return false;
+      const cell = entityNode(world, terrain, node);
+      // Cheapest first: an array read and a ≤8-entry memo walk before the claim resolves a killer.
+      if (terrain.componentOf(cell) !== hunterComponent) return false;
+      if (isUnreachableGoal(memo, cell)) return false;
+      if (manhattan(terrain, ground.anchorCell, cell) > reach) return false;
+      return !claimedByAnotherHunter(world, ctx, terrain, node, hunter);
+    },
+    allowed,
+  );
 }

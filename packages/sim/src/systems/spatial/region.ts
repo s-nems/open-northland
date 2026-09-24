@@ -82,8 +82,15 @@ export interface RegionIndex<Extra, Capture> {
    *  sort, so it must reject only members the caller's own filter would reject too. */
   near(world: World, hx: number, hy: number, reach: number, keep?: (capture: Capture) => boolean): Entity[];
   /** Whether any indexed entity inside the same box passes `test`. Unordered and first-hit, which a pure
-   *  existence question does not need. */
-  someNear(world: World, hx: number, hy: number, reach: number, test: (e: Entity) => boolean): boolean;
+   *  existence question does not need. `keep` skips a member by its capture before `test` reads it. */
+  someNear(
+    world: World,
+    hx: number,
+    hy: number,
+    reach: number,
+    test: (e: Entity) => boolean,
+    keep?: (capture: Capture) => boolean,
+  ): boolean;
   /** Every indexed entity whose anchor node is exactly `(hx, hy)`, ascending-id. This is the index's live
    *  bucket, not a copy, so a caller that destroys members must copy it first. */
   atNode(world: World, hx: number, hy: number): readonly Entity[];
@@ -269,14 +276,16 @@ export function createRegionIndex<Extra, Capture>(
       }
       return state.byNode.at(hx, hy);
     },
-    someNear: (world, hx, hy, reach, test) => {
+    someNear: (world, hx, hy, reach, test, keep) => {
       const index = memo.read(world);
       const { minRx, maxRx, minRy, maxRy } = boxRegionRange(hx, hy, reach);
       for (let rx = minRx; rx <= maxRx; rx++) {
         for (let ry = minRy; ry <= maxRy; ry++) {
           const bucket = index.byRegion.get(regionKey(rx, ry));
           if (bucket === undefined) continue;
-          for (const m of bucket) if (inBox(m, hx, hy, reach) && test(m.e)) return true;
+          for (const m of bucket) {
+            if (inBox(m, hx, hy, reach) && (keep === undefined || keep(m.capture)) && test(m.e)) return true;
+          }
         }
       }
       return false;

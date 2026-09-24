@@ -1,5 +1,4 @@
 import { HuntFocus, Settler } from '../../../components/index.js';
-import { ownerOf, ownersCompatible } from '../../../components/ownership.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -11,6 +10,7 @@ import type { EngageSpec } from '../engagement.js';
 import { isHuntTarget } from '../targeting.js';
 import { HUNT_CHASE_SLACK_NODES, HUNT_LAST_RESORT_SCAN_FACTOR, huntingGround } from './ground.js';
 import { huntingGroundHoldsCarcass } from './kill-claim.js';
+import { preyHeldByOthers } from './prey-holds.js';
 
 // The prey-acquisition policy an owned IGNORE hunter engages under.
 
@@ -42,11 +42,11 @@ export function hunterEngageSpec(
   sight: number,
 ): EngageSpec {
   const hunterComponent = terrain.componentOf(hereNode);
-  // Lazily resolved on the first candidate: a hunter that never reaches one pays nothing for the set.
-  let colleagueHolds: ReadonlySet<Entity> | null = null;
+  // Lazily resolved on the first candidate: a hunter that never reaches one pays nothing for the lookup.
+  let colleagueHolds: ((t: Entity) => boolean) | null = null;
   const heldByColleague = (t: Entity): boolean => {
     colleagueHolds ??= preyHeldByOthers(world, e);
-    return colleagueHolds.has(t);
+    return colleagueHolds(t);
   };
   // An animal across a static terrain seam is not this hunter's game, and deliberately with none of the
   // in-reach tolerance the general acquisition gate allows a soldier: a hunter wants the meat, and a kill it
@@ -159,20 +159,4 @@ function livePrey(world: World, e: Entity, holds: (t: Entity) => boolean): Entit
   if (holds(focus.target)) return focus.target;
   world.remove(e, HuntFocus);
   return null;
-}
-
-/**
- * The prey every fellow hunter of the same player is committed to right now - the candidate set the
- * one-hunter-per-animal rule (authored) subtracts, so two hunters sharing a ground split the herd. A rival
- * player's hold is not subtracted: contested game stays contested. Membership only, so query order carries
- * no decision; hunters engage in canonical order, so a hold stamped earlier this same tick is already in it.
- */
-function preyHeldByOthers(world: World, self: Entity): ReadonlySet<Entity> {
-  const mine = ownerOf(world, self);
-  const held = new Set<Entity>();
-  for (const other of world.query(HuntFocus)) {
-    if (other === self || !ownersCompatible(mine, ownerOf(world, other))) continue;
-    held.add(world.get(other, HuntFocus).target);
-  }
-  return held;
 }

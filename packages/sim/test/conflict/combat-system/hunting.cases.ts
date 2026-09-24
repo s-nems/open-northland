@@ -41,6 +41,9 @@ import { COW, ctxOf, DEER, fighterAtNode, HUNTER } from './support.js';
 /** The fixture meat good and its harvest_cadaver atomic - the hunter's own trade (granted to job 15). */
 const MEAT = 21;
 const HARVEST_CADAVER = 33;
+/** The fixture woodcutter's good and harvest atomic - another trade's resource, never the hunter's work. */
+const WOOD = 1;
+const HARVEST_WOOD = 24;
 /** Fixture ground types (`economy.ts` landscapes): grass walks, water does not. */
 const GRASS = 0;
 const WATER = 1;
@@ -185,6 +188,27 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
 
     // One kill at a time: carry the standing kill home before the next shot - no swing, no chase.
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
+  });
+
+  it("still gates on a carcass that stands among another trade's resources", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 12);
+    fighterAtNode(sim, 45, 40, DEER, null);
+    for (const hx of [34, 36, 38, 42]) {
+      const tree = sim.world.create();
+      sim.world.add(tree, Position, positionOfNode(hx, 44));
+      sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: HARVEST_WOOD });
+      stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
+    }
+    const carcass = sim.world.create();
+    sim.world.add(carcass, Position, positionOfNode(38, 40));
+    sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
+
+    combatSystem(sim.world, ctxOf(sim));
+
     expect(sim.world.has(hunter, Engagement)).toBe(false);
   });
 

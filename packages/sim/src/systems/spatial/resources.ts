@@ -53,6 +53,14 @@ export function resourceHarvestAtomics(world: World): ReadonlySet<number> {
   return index.extra(world).atomics;
 }
 
+/** Whether any standing resource carries one of `atomics` - the dormancy probe that proves a scan for
+ *  those atomics null before it walks a single node. */
+export function anyHarvestAtomicPresent(world: World, atomics: ReadonlySet<number>): boolean {
+  const present = resourceHarvestAtomics(world);
+  for (const atomic of atomics) if (present.has(atomic)) return true;
+  return false;
+}
+
 /** Every resource whose anchor node lies within the box `reach` nodes around `(hx, hy)`, ascending-id,
  *  narrowed to the harvest atomics in `atomics` when given. A candidate superset, so pass a `reach`
  *  covering the radius plus the largest work-cell offset. */
@@ -78,13 +86,22 @@ export function resourcesAtNode(world: World, hx: number, hy: number): readonly 
   return index.atNode(world, hx, hy);
 }
 
-/** Whether any resource inside the same box passes `test`. Unordered and first-hit. */
+/** Whether any resource inside the same box passes `test`, narrowed to the harvest atomics in `atomics`
+ *  when given. Unordered and first-hit. */
 export function anyResourceNear(
   world: World,
   hx: number,
   hy: number,
   reach: number,
   test: (e: Entity) => boolean,
+  atomics?: ReadonlySet<number>,
 ): boolean {
-  return index.someNear(world, hx, hy, reach, test);
+  return index.someNear(
+    world,
+    hx,
+    hy,
+    reach,
+    test,
+    atomics === undefined ? undefined : (atomic) => atomics.has(atomic),
+  );
 }
