@@ -2,7 +2,6 @@ import type { UiCue } from '@open-northland/audio';
 import type { PickerEntry } from '../../../catalog/professions.js';
 import { createChoiceWindow } from '../../../hud/dom/choice-window.js';
 import { professionChoices } from '../../../hud/dom/profession-choices.js';
-
 import { uiLabel } from '../../../i18n/index.js';
 
 export interface ProfessionPickerOptions {
@@ -29,7 +28,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
   let visible: ((jobType: number) => boolean) | undefined;
   let unlocked: ((jobType: number) => boolean) | undefined;
   let reason: ((jobType: number) => string) | undefined;
-  const window = createChoiceWindow({
+  const dialog = createChoiceWindow({
     title: uiLabel('changeProfession'),
     scale: opts.scale,
     cue: opts.cue,
@@ -41,7 +40,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
   });
   const refresh = (): void => {
     if (visible === undefined || unlocked === undefined) return;
-    window.update(professionChoices(opts.professions, visible, unlocked, reason));
+    dialog.update(professionChoices(opts.professions, visible, unlocked, reason));
   };
   return {
     show: (shown, permits, blockedReason) => {
@@ -49,16 +48,16 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
       unlocked = permits;
       reason = blockedReason;
       refresh();
-      window.show();
+      dialog.show();
     },
     refresh,
     hide: () => {
       visible = undefined;
       unlocked = undefined;
-      window.hide();
+      dialog.hide();
     },
-    scrollTop: window.scrollTop,
-    setScrollTop: window.setScrollTop,
-    dispose: window.dispose,
+    scrollTop: dialog.scrollTop,
+    setScrollTop: dialog.setScrollTop,
+    dispose: dialog.dispose,
   };
 }

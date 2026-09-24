@@ -133,17 +133,22 @@ export function schoolStudents(
   });
 }
 
-export function openSchoolDialog(
-  content: ContentSet,
-  snapshot: () => WorldSnapshot,
-  students: readonly number[],
-  house: number,
-  enqueue: (command: PlayerCommand) => void,
-  status?: Simulation['unlockStatus'],
-  cue?: (cue: UiCue) => void,
-  scale = 1,
-): SchoolDialog | undefined {
-  students = schoolStudents(content, snapshot(), students);
+export interface SchoolDialogOptions {
+  readonly content: ContentSet;
+  readonly snapshot: () => WorldSnapshot;
+  /** The settlers the order reaches; the ones that may not learn here are dropped. */
+  readonly settlers: readonly number[];
+  readonly house: number;
+  readonly enqueue: (command: PlayerCommand) => void;
+  readonly status?: Simulation['unlockStatus'] | undefined;
+  readonly cue?: ((cue: UiCue) => void) | undefined;
+  readonly scale: number;
+}
+
+/** Undefined when none of the settlers may learn at the school. */
+export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | undefined {
+  const { content, snapshot, house, enqueue, status, cue } = opts;
+  const students = schoolStudents(content, snapshot(), opts.settlers);
   const first = students[0];
   const student = first === undefined ? undefined : entityById(snapshot(), first);
   const tribeId = student === undefined ? undefined : settlerTribeOf(student);
@@ -159,18 +164,18 @@ export function openSchoolDialog(
   const courseKey = (course: SchoolCourse): string => `${course.target}:${course.typeId}`;
   const dispose = (): void => {
     closed = true;
-    window.dispose();
+    dialog.dispose();
   };
-  const window = createChoiceWindow({
+  const dialog = createChoiceWindow({
     title: copy.schoolTitle,
-    scale,
+    scale: opts.scale,
     ...(cue === undefined ? {} : { cue }),
     onDismiss: () => {
       if (selectedJob === undefined) dispose();
       else {
         selectedJob = undefined;
         refresh(true);
-        if (!closed) window.show();
+        if (!closed) dialog.show();
       }
     },
     onPick: (key) => {
@@ -182,7 +187,7 @@ export function openSchoolDialog(
         if (group.courses.length > 1) {
           selectedJob = group.jobType;
           refresh(true);
-          window.show(group.label, { search: false });
+          dialog.show(group.label, { search: false });
           return;
         }
         const course = group.courses[0];
@@ -261,7 +266,7 @@ export function openSchoolDialog(
     const selected = choices.find((group) => group.jobType === selectedJob);
     if (selectedJob !== undefined && selected === undefined) {
       selectedJob = undefined;
-      window.show();
+      dialog.show();
     }
     const reasonProps = (reason: string | undefined): { reason?: string } =>
       reason === undefined ? {} : { reason };
@@ -283,7 +288,7 @@ export function openSchoolDialog(
             label: course.label,
             ...reasonProps(reasons.get(courseKey(course))),
           }));
-    window.update(
+    dialog.update(
       [
         {
           label: selected === undefined ? copy.schoolProfessions : copy.choiceMethods,
@@ -300,6 +305,6 @@ export function openSchoolDialog(
   };
   refresh(true);
   if (closed) return;
-  window.show();
-  return { refresh, setUiScale: window.setUiScale, dispose };
+  dialog.show();
+  return { refresh, setUiScale: dialog.setUiScale, dispose };
 }

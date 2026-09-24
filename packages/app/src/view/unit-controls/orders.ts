@@ -131,16 +131,16 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   const openSchool = (house: number, units: readonly number[]): boolean => {
     school?.dispose();
-    school = openSchoolDialog(
-      deps.content,
-      deps.snapshot,
-      units,
+    school = openSchoolDialog({
+      content: deps.content,
+      snapshot: deps.snapshot,
+      settlers: units,
       house,
-      deps.enqueue,
-      deps.technologyStatus,
-      deps.cue,
-      uiScale,
-    );
+      enqueue: deps.enqueue,
+      status: deps.technologyStatus,
+      cue: deps.cue,
+      scale: uiScale,
+    });
     return school !== undefined;
   };
 
