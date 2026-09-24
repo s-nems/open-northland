@@ -6,7 +6,11 @@ import {
   type TerrainGraph,
   type TerrainMap,
 } from '../../src/index.js';
-import { FLOOD_GUARD_MAX_EXPLORED, POCKET_PROBE_MAX_EXPLORED } from '../../src/nav/pathfinding/index.js';
+import {
+  FLOOD_GUARD_MAX_EXPLORED,
+  POCKET_PROBE_MAX_EXPLORED,
+  RACE_SLICE_EXPLORED,
+} from '../../src/nav/pathfinding/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -272,28 +276,36 @@ describe('findPath - deterministic tie-breaking', () => {
     expect(stats.explored).toBeGreaterThan(POCKET_PROBE_MAX_EXPLORED); // the cap-abort ran, then the real search
   });
 
-  it('refutes a sealed pocket LARGER than the probe cap at guard+pocket cost, not a map flood', () => {
-    // An annulus at Chebyshev 10..12 around (60,60) seals a 19×19 ≈ 361-node pocket - past the
-    // 128-settle probe, so before the flood guard this request flooded the whole ~14k-node grid.
-    // The guard aborts the forward search and the goal-side exhaust refutes at pocket cost; the
-    // explored bound is the teeth (a flood lands over 13k).
-    const g = open(120, 120);
-    const blocked = new Set<NodeId>();
-    for (let dx = -12; dx <= 12; dx++) {
-      for (let dy = -12; dy <= 12; dy++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) >= 10) blocked.add(g.nodeAt(60 + dx, 60 + dy));
+  it.each([
+    { inner: 10, pocket: 19 * 19 },
+    { inner: 25, pocket: 49 * 49 },
+  ])(
+    'refutes a sealed $pocket-node pocket past the probe cap at about twice pocket cost, not a map flood',
+    ({ inner, pocket }) => {
+      // An annulus three nodes thick seals the goal in a pocket past the 128-settle probe, so without the
+      // flood guard this request flooded the whole ~14k-node grid. Past the guard the paused forward search
+      // races the goal side in equal slices, so refuting the pocket costs it once on each side.
+      const g = open(120, 120);
+      const blocked = new Set<NodeId>();
+      const outer = inner + 2;
+      for (let dx = -outer; dx <= outer; dx++) {
+        for (let dy = -outer; dy <= outer; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) >= inner) blocked.add(g.nodeAt(60 + dx, 60 + dy));
+        }
       }
-    }
-    const stats = { explored: 0 };
-    expect(findPath(g, g.nodeAt(2, 2), g.nodeAt(60, 60), blocked, stats)).toBeNull();
-    expect(stats.explored).toBeGreaterThan(POCKET_PROBE_MAX_EXPLORED); // the probe alone could not decide
-    expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED + FLOOD_GUARD_MAX_EXPLORED + 800);
-  });
+      const stats = { explored: 0 };
+      expect(findPath(g, g.nodeAt(2, 2), g.nodeAt(60, 60), blocked, stats)).toBeNull();
+      expect(stats.explored).toBeGreaterThan(POCKET_PROBE_MAX_EXPLORED); // the probe alone could not decide
+      expect(stats.explored).toBeLessThanOrEqual(FLOOD_GUARD_MAX_EXPLORED + 2 * pocket + RACE_SLICE_EXPLORED);
+    },
+  );
 
-  it('delivers the identical route when a reachable search outgrows the flood guard', () => {
+  it('delivers the identical route when a reachable search outgrows the flood guard, resuming it', () => {
     // A serpentine of full-width water walls (gaps alternating ends) forces a route long enough to
     // trip the guard; the tiny off-route overlay keeps the guarded pipeline engaged. The result must
-    // be byte-identical to the unguarded (no-overlay) search - the guard is a pure cost knob.
+    // be byte-identical to the unguarded (no-overlay) search - the guard is a pure cost knob - and the
+    // paused forward search resumes rather than restarting, so past the guard each side of the race
+    // pays at most the forward search's own remainder plus a slice.
     const width = 100;
     const height = 241;
     const typeIds = new Array(width * height).fill(GRASS);
@@ -310,9 +322,14 @@ describe('findPath - deterministic tie-breaking', () => {
     const goal = g.nodeAt(10, height - 4); // the last corridor band (height-2 can land on a wall row)
     const stats = { explored: 0 };
     const guarded = findPath(g, start, goal, new Set<NodeId>([g.nodeAt(0, 0)]), stats);
+    const unguardedStats = { explored: 0 };
     expect(guarded).not.toBeNull();
-    expect(stats.explored).toBeGreaterThan(FLOOD_GUARD_MAX_EXPLORED); // the guard aborted, then the rerun
-    expect(guarded).toEqual(findPath(g, start, goal));
+    expect(guarded).toEqual(findPath(g, start, goal, undefined, unguardedStats));
+    const forward = unguardedStats.explored;
+    expect(forward).toBeGreaterThan(FLOOD_GUARD_MAX_EXPLORED);
+    expect(stats.explored).toBeLessThanOrEqual(
+      POCKET_PROBE_MAX_EXPLORED + forward + (forward - FLOOD_GUARD_MAX_EXPLORED) + RACE_SLICE_EXPLORED,
+    );
   });
 
   it('breaks a cost-tie between equal lattice routes canonically (a pinned pick)', () => {

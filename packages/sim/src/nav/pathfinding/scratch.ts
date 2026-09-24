@@ -33,21 +33,31 @@ export interface SearchScratch {
   query: number;
 }
 
-const scratchByGraph = new WeakMap<TerrainGraph, SearchScratch>();
+/**
+ * Which of a graph's two scratches a search runs on. {@link findPath} races a paused forward search
+ * against a goal-side one, so each needs records that survive the other's settles.
+ */
+export type SearchSide = 'forward' | 'reverse';
 
-export function scratchFor(graph: TerrainGraph): SearchScratch {
-  let scratch = scratchByGraph.get(graph);
-  if (scratch === undefined) {
-    scratch = {
-      records: new Array(graph.nodeCount),
-      stamps: new Int32Array(graph.nodeCount),
-      heap: [],
-      steps: new StepBuffer(),
-      query: 0,
-    };
-    scratchByGraph.set(graph, scratch);
+const scratchByGraph = new WeakMap<TerrainGraph, Record<SearchSide, SearchScratch>>();
+
+function freshScratch(graph: TerrainGraph): SearchScratch {
+  return {
+    records: new Array(graph.nodeCount),
+    stamps: new Int32Array(graph.nodeCount),
+    heap: [],
+    steps: new StepBuffer(),
+    query: 0,
+  };
+}
+
+export function scratchFor(graph: TerrainGraph, side: SearchSide): SearchScratch {
+  let sides = scratchByGraph.get(graph);
+  if (sides === undefined) {
+    sides = { forward: freshScratch(graph), reverse: freshScratch(graph) };
+    scratchByGraph.set(graph, sides);
   }
-  return scratch;
+  return sides[side];
 }
 
 /** Stamps are Int32; on the (practically unreachable) wrap, clear them so no stale slot can
