@@ -216,9 +216,9 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
       dropDisplayed((m) => !messagePassesFilter(m.priority, level), toHistory);
     },
     expire: (tick, over, ageless = false) => {
-      const live = (m: UserMessage): boolean => (ageless || !expired(m, tick)) && !over(m);
-      dropDisplayed(live, false);
-      history.prune(live);
+      const keep = (m: UserMessage): boolean => (ageless || !expired(m, tick)) && !over(m);
+      dropDisplayed(keep, false);
+      history.prune(keep);
     },
     live: () => live.items,
     displayed: () => live.items.filter((m) => messagePassesFilter(m.priority, level)),
