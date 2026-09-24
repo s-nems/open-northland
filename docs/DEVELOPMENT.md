@@ -294,14 +294,14 @@ Run the synthetic simulation benchmark with `npm run bench:sim`. Its main contro
 and `ON_BENCH_JSON`.
 
 Run the real-map benchmark with `npm run bench:map`. It needs generated content and measures the
-session a `?map=<id>&player=overseer&ai=<seats>&fog=classic` search describes, parsed by the map
+session a `?map=<id>&player=observer&ai=<seats>&fog=classic` search describes, parsed by the map
 entry's own URL adapter, so the map's own computer seats play beside the named ones as they do in the
-browser. Its controls:
+browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. Its controls:
 
 | knob | meaning |
 | --- | --- |
 | `ON_BENCH_MAP` | decoded map id, default `magiczny_las` |
-| `ON_BENCH_SEATS` | `?ai=` seats: a count `n` names `0..n-1` (default 6), a comma list names the seats |
+| `ON_BENCH_SEATS` | `?ai=` seats: a count `n` names `0..n-1` (default 6), a comma list names the seats, `n,` the one seat `n` |
 | `ON_BENCH_PROGRESSION`, `ON_BENCH_NEEDS` | `on`/`off`, the `?progression=` and `?needs=` overrides; unset keeps the map's rule |
 | `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS` | measured ticks (default 20k), unmeasured warm-up, report segments |
 | `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |

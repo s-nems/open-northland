@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { mapLobbySlots } from '@open-northland/data';
-import { aiSeatsOf, type GameSession, OVERSEER_SEAT } from '@open-northland/lockstep';
+import { aiSeatsOf, type GameSession, OBSERVER_SEAT } from '@open-northland/lockstep';
 import {
   components,
   exportSaveGame,
@@ -25,8 +25,10 @@ import { formatSeats } from './report/index.js';
  * the checkpoint is a normal save, taken and reloaded through the `?map=` entry's own build and
  * restore, and the restore must reproduce the state hash the checkpoint was written with.
  *
- * The session is the one a browser `?map=<id>&player=overseer&ai=<seats>&fog=classic` search
- * describes, parsed by the entry's own URL adapter. A checkpoint taken under another map, other AI
+ * The session is the one a browser `?map=<id>&player=observer&ai=<seats>&fog=classic` search
+ * describes, parsed by the entry's own URL adapter. The observer plays no seat, so the only assistant
+ * grants are the AI seats' own: `player=overseer` builds the same world whenever seat 0 is an AI seat,
+ * and grants seat 0's assistant as well when it is not. A checkpoint taken under another map, other AI
  * seats, other rules or other content is refused by name rather than measured: the numbers would
  * describe a world nobody asked for.
  */
@@ -137,9 +139,9 @@ function ruleText(value: boolean | null): string {
   return value === null ? 'the map default' : value ? 'on' : 'off';
 }
 
-/** The `?map=` search the benchmark session is, with `?player=overseer` watching every seat. */
+/** The `?map=` search the benchmark session is, with `?player=observer` watching every seat. */
 export function benchSearch(options: MapBenchWorldOptions): URLSearchParams {
-  const params = new URLSearchParams({ map: options.mapId, player: OVERSEER_SEAT });
+  const params = new URLSearchParams({ map: options.mapId, player: OBSERVER_SEAT });
   if (options.seats.length > 0) params.set('ai', options.seats.join(','));
   params.set('fog', BENCH_FOG);
   if (options.progression !== null) params.set('progression', options.progression ? 'on' : 'off');
@@ -148,7 +150,7 @@ export function benchSearch(options: MapBenchWorldOptions): URLSearchParams {
 }
 
 /** The session the browser would boot for {@link benchSearch}, against the map's own roster. */
-function benchSession(options: MapBenchWorldOptions): GameSession {
+export function benchSession(options: MapBenchWorldOptions): GameSession {
   const script = realMapScript(options.mapId);
   return mapSession(benchSearch(options), script === null ? [] : mapLobbySlots(script));
 }
@@ -327,6 +329,12 @@ export function mapBenchKnobs(defaultMeasuredTicks: number): MapBenchKnobs {
   };
 }
 
+/** The seats as `seatsEnv` reads them back: no seat is the count `0`, one seat the list `n,`. */
+function seatsKnob(seats: readonly number[]): string {
+  if (seats.length === 0) return '0';
+  return seats.length === 1 ? `${seats[0]},` : seats.join(',');
+}
+
 function ruleKnob(value: boolean | null): string {
   return value === null ? '' : value ? 'on' : 'off';
 }
@@ -335,7 +343,7 @@ function ruleKnob(value: boolean | null): string {
 export function knobRecord(knobs: MapBenchKnobs): Readonly<Record<string, string>> {
   return {
     ON_BENCH_MAP: knobs.mapId,
-    ON_BENCH_SEATS: knobs.seats.join(','),
+    ON_BENCH_SEATS: seatsKnob(knobs.seats),
     ON_BENCH_PROGRESSION: ruleKnob(knobs.progression),
     ON_BENCH_NEEDS: ruleKnob(knobs.needs),
     ON_BENCH_TICKS: `${knobs.measuredTicks}`,

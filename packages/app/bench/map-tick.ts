@@ -6,7 +6,7 @@ import { publishReport, reportFrom } from './run.js';
 
 /**
  * The sim's per-system benchmark on a REAL decoded map - `npm run bench:map`. It profiles the session
- * `?map=magiczny_las&player=overseer&ai=0,1,2,3,4,5&fog=classic` headless (the knobs change map, seats
+ * `?map=magiczny_las&player=observer&ai=0,1,2,3,4,5&fog=classic` headless (the knobs change map, seats
  * and rules), over enough ticks for the AI to build a settlement, and reports how each system's cost
  * grows as it does. `npm run bench:sim`
  * measures a synthetic world with isolated axes; this one measures the world the game is actually
