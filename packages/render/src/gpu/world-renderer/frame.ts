@@ -11,6 +11,7 @@ import type {
   WorkAreaRing,
 } from '../overlays/index.js';
 import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler } from '../pixel-art-registry.js';
+import type { PlanStakeTextures } from '../plan-stake.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
@@ -60,6 +61,8 @@ export interface WorldRendererOptions {
   readonly spriteSmoothing?: boolean | undefined;
   /** Owner slot → team-colour slot when a map's roster recolours players; absent means identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
+  /** The line tools' stake art; absent draws a flat stand-in. */
+  readonly planStakes?: PlanStakeTextures | undefined;
 }
 
 /** `scale` defaults to the native landscape-object scale of 1. */

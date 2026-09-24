@@ -2,6 +2,7 @@ import type { SpriteSheet, TerrainTextureSet } from '@open-northland/render';
 import { WorldRenderer } from '@open-northland/render';
 import type { Application } from 'pixi.js';
 import { goodLocaleParam, loadGoodNameMap } from '../../content/good-names.js';
+import { loadPlanStakeArt } from '../../content/plan-stake-art.js';
 import {
   loadRuntimeRealContent,
   logRealContentGaps,
@@ -37,12 +38,13 @@ export async function loadLocalizedRealContent(params: URLSearchParams): Promise
  * Post-fx follows the stored graphics setting; an explicit `?postfx` wins for the session, so
  * captures and diagnostics stay reproducible whatever the machine's stored choice.
  */
-export function createWorldRenderer(
+export async function createWorldRenderer(
   app: Application,
   params: URLSearchParams,
   sheet: SpriteSheet | undefined,
   playerColourOf?: (player: number) => number,
-): WorldRenderer {
+): Promise<WorldRenderer> {
+  const planStakes = await loadPlanStakeArt();
   // One read, so a write landing mid-construction cannot hand the renderer a mixed snapshot.
   const stored = readStoredSettings();
   return new WorldRenderer(app, {
@@ -52,6 +54,7 @@ export function createWorldRenderer(
     spriteSmoothing: stored.spriteSmoothing,
     postFx: postFxParam(params) ?? stored.postFxEnabled,
     ...(playerColourOf !== undefined ? { playerColourOf } : {}),
+    planStakes,
   });
 }
 

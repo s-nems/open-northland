@@ -163,7 +163,7 @@ export async function assembleMapWorld(
       haltOnMissingContent(err);
       return null;
     }
-    const renderer = createWorldRenderer(app, params, sheet, playerColourOf);
+    const renderer = await createWorldRenderer(app, params, sheet, playerColourOf);
     renderer.setTerrain(terrainGrid, terrain);
     // `embr` accented by elevation hillshade, shared with the placed landscape objects so an object
     // cannot disagree with the ground under it.

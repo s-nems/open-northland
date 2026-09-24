@@ -130,13 +130,13 @@ describe('placement cursor', () => {
   });
 
   it('draws the marker under the cursor with no wash before a wall line starts', () => {
-    const nodes = [{ col: 4, row: 9, valid: true }];
+    const nodes = [{ col: 4, row: 9, state: 'open' as const }];
     const f = frame({
       palisadeGfxIndex: 691,
       signpostActive: true,
       palisadePreview: () => nodes,
-      activeLine: null,
-      lineOverlay: () => LINE_WASH,
+      anchored: false,
+      palisadeWash: () => null,
     });
 
     expect(f.cursor()).toEqual({ overlay: null, ghost: { kind: 'line', nodes, anchored: false } });
@@ -145,23 +145,18 @@ describe('placement cursor', () => {
 
   it('washes around a started line and draws it from its anchor', () => {
     const nodes = [
-      { col: 4, row: 9, valid: true },
-      { col: 5, row: 9, valid: false },
+      { col: 4, row: 9, state: 'built' as const },
+      { col: 5, row: 9, state: 'open' as const },
+      { col: 6, row: 9, state: 'blocked' as const },
     ];
-    const line = { tool: 'palisade:691', anchor: { col: 4, row: 9 }, maxEdges: 20, canPlace: () => true };
-    const washed: unknown[] = [];
     const f = frame({
       palisadeGfxIndex: 691,
       palisadePreview: () => nodes,
-      activeLine: line,
-      lineOverlay: (active) => {
-        washed.push(active);
-        return LINE_WASH;
-      },
+      anchored: true,
+      palisadeWash: () => LINE_WASH,
     });
 
     expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: { kind: 'line', nodes, anchored: true } });
-    expect(washed).toEqual([line]);
   });
 
   it('keeps the wash of a started line while the pointer is off the map', () => {
@@ -169,8 +164,8 @@ describe('placement cursor', () => {
       palisadeGfxIndex: 691,
       tileAt: () => null,
       palisadePreview: () => [],
-      activeLine: { tool: 'palisade:691', anchor: { col: 4, row: 9 }, maxEdges: 20, canPlace: () => true },
-      lineOverlay: () => LINE_WASH,
+      anchored: true,
+      palisadeWash: () => LINE_WASH,
     });
 
     expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: null });

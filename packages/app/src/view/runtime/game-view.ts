@@ -337,12 +337,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const { canPlaceAt, canPlaceSignpostAt, canPlacePalisadeAt, palisadeGateProbe } = createPlacementGates(
-      sim,
-      fogGates,
-      localPlayer,
-      seatTribeOf(localPlayer),
-    );
+    const {
+      canPlaceAt,
+      canPlaceSignpostAt,
+      canPlacePalisadeAt,
+      palisadeBuiltAt,
+      palisadeGateProbe,
+      palisadeGateSites,
+    } = createPlacementGates(sim, fogGates, localPlayer, seatTribeOf(localPlayer));
 
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
     // draws over the strip's lower buttons on a short screen.
@@ -459,7 +461,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         issueCommand({ kind: 'declareDiplomacy', player: localPlayer, other, state }),
       canPlaceAt,
       canPlacePalisadeAt,
+      palisadeBuiltAt,
       palisadeGateProbe,
+      palisadeGateSites,
       palisadeTools: palisadeToolsOf(sim),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
@@ -645,7 +649,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       buildingDoors,
       overlayFrame,
       signpostOverlayFrame,
-      lineOverlayFrame,
+      lineReach,
+      litOverlayFrame,
       hudFor,
       hudModelFor,
       doorBadgesFor,
@@ -846,7 +851,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,
-      lineOverlayFrame,
+      lineReach,
+      litOverlayFrame,
       hudFor,
       hudModelFor,
       doorBadgesFor,

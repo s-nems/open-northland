@@ -7,7 +7,8 @@ import { workerRoleOf } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import {
-  makeLineReachOverlaySource,
+  makeLineReachSource,
+  makeLitOverlaySource,
   makeOverlayFrameSource,
   makeSignpostOverlaySource,
 } from '../placement-overlay.js';
@@ -76,8 +77,9 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
   /** The memoized build-mode band probe and its erect-signpost twin. */
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
-  /** The started line's reach wash. */
-  readonly lineOverlayFrame: ReturnType<typeof makeLineReachOverlaySource>;
+  /** A started line's reach, and the wash that lights it or another tool's node set. */
+  readonly lineReach: ReturnType<typeof makeLineReachSource>;
+  readonly litOverlayFrame: ReturnType<typeof makeLitOverlaySource>;
 }
 
 export async function createViewReadModels(deps: ViewReadModelDeps): Promise<ViewReadModels> {
@@ -90,7 +92,8 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     buildingDoors: buildings.byType,
     overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer, deps.placementTribe),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
-    lineOverlayFrame: makeLineReachOverlaySource(sim, mapSize, localPlayer),
+    lineReach: makeLineReachSource(sim, localPlayer),
+    litOverlayFrame: makeLitOverlaySource(sim, mapSize, localPlayer),
     ...createSnapshotProjections(
       deps.viewer,
       buildings.infoOf,

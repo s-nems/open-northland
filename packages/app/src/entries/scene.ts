@@ -148,7 +148,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  const renderer = createWorldRenderer(app, params, sheet);
+  const renderer = await createWorldRenderer(app, params, sheet);
   renderer.setTerrain(terrainGrid, terrain);
 
   const driver = new LockstepDriver({

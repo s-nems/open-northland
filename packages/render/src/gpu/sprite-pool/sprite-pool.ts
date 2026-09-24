@@ -20,6 +20,7 @@ import {
 } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
+import type { PlanStakeTextures } from '../plan-stake.js';
 import type { ShadowStyle } from '../shadow-style.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -138,9 +139,10 @@ export class SpritePool {
     private readonly sheet: SpriteSheet | undefined,
     /** Owner slot → team-colour slot; absent = identity. */
     private readonly playerColourOf?: (player: number) => number,
+    stakes?: PlanStakeTextures,
   ) {
     this.portrait = new PortraitSubject(spriteLayer);
-    this.binder = new LayerBinder(textures, sheet);
+    this.binder = new LayerBinder(textures, sheet, stakes);
   }
 
   /**

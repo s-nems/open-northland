@@ -1,4 +1,4 @@
-import { Graphics, Sprite, type TextureSource } from 'pixi.js';
+import { Graphics, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { ElevationField } from '../src/data/terrain/index.js';
 import { PlacementGhostLayer } from '../src/gpu/overlays/placement-ghost.js';
@@ -75,5 +75,28 @@ describe('PlacementGhostLayer', () => {
     layer.set({ kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING }, FLAT);
     expect(layer.container.children).toHaveLength(1);
     expect(layer.container.children[0]).toBeInstanceOf(Graphics);
+  });
+
+  it('stakes the open and blocked nodes of a line and lets the string pass the built ones', () => {
+    const stakes = { open: new Texture(), blocked: new Texture() };
+    const layer = new PlacementGhostLayer(sheet, new TextureCache(), stakes);
+    layer.set(
+      {
+        kind: 'line',
+        anchored: true,
+        nodes: [
+          { col: 4, row: 6, state: 'built' },
+          { col: 5, row: 6, state: 'open' },
+          { col: 6, row: 6, state: 'blocked' },
+        ],
+      },
+      FLAT,
+    );
+    const [string, ...marks] = layer.container.children;
+    expect(string).toBeInstanceOf(Graphics);
+    expect(marks.map((mark) => (mark instanceof Sprite ? mark.texture : null))).toEqual([
+      stakes.open,
+      stakes.blocked,
+    ]);
   });
 });

@@ -29,7 +29,7 @@ import {
 } from '../hud/tool-panel/index.js';
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
-import type { PalisadeGateProbeView } from '../hud/tool-panel/placement.js';
+import type { GateSites, PalisadeGateProbeView } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
 import { currentLocale } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
@@ -54,7 +54,9 @@ export interface GameToolPanelDeps {
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly palisadeBuiltAt: (col: number, row: number) => boolean;
   readonly palisadeGateProbe: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  readonly palisadeGateSites: () => GateSites;
   readonly palisadeTools: PalisadeTools;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
   readonly mapSize: { readonly width: number; readonly height: number };
@@ -241,7 +243,9 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       screenToTile: clientToTile,
       canPlaceAt: deps.canPlaceAt,
       canPlacePalisadeAt: deps.canPlacePalisadeAt,
+      palisadeBuiltAt: deps.palisadeBuiltAt,
       palisadeGateProbe: deps.palisadeGateProbe,
+      palisadeGateSites: deps.palisadeGateSites,
       palisadeTools: deps.palisadeTools,
       onSpeedChange: deps.onSpeed,
       ...(deps.clockPaused !== undefined ? { clockPaused: deps.clockPaused } : {}),

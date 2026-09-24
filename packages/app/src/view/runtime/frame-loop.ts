@@ -7,11 +7,11 @@ import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/i
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
-import type { ActiveLine } from '../../hud/tool-panel/line-tool.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
-  makeLineReachOverlaySource,
+  makeLineReachSource,
+  makeLitOverlaySource,
   makeOverlayFrameSource,
   makeSignpostOverlaySource,
 } from '../placement-overlay.js';
@@ -58,7 +58,8 @@ export interface FrameLoopDeps {
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   /** The erect-signpost band probe, live while signpost placement mode is active. */
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
-  readonly lineOverlayFrame: ReturnType<typeof makeLineReachOverlaySource>;
+  readonly lineReach: ReturnType<typeof makeLineReachSource>;
+  readonly litOverlayFrame: ReturnType<typeof makeLitOverlaySource>;
   /** Memoized by snapshot identity, so it rebuilds per tick rather than per RAF. */
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The same per-tick aggregation behind {@link hudFor}, for its figures rather than its layout. */
@@ -113,7 +114,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
-    lineOverlayFrame,
+    lineReach,
+    litOverlayFrame,
     hudFor,
     hudModelFor,
     doorBadgesFor,
@@ -161,8 +163,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => sim.constructionPlots(), fogGates.seesNode);
-  const lineOverlay = (line: ActiveLine) =>
-    lineOverlayFrame(line, cameraCtl.camera(), app.screen.width, app.screen.height);
+  // The started wall line lights its reach, the gate tool the spans it can cut into.
+  const palisadeWash = () => {
+    const line = toolPanel.controller.activeLine();
+    const lit = line !== null ? lineReach(line) : toolPanel.controller.gateSites();
+    return lit === null
+      ? null
+      : litOverlayFrame(lit, cameraCtl.camera(), app.screen.width, app.screen.height);
+  };
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
   const collect = (): void => {
@@ -235,8 +243,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       canPlaceAt,
       canPlaceSignpostAt,
       palisadePreview: (tile) => toolPanel.controller.palisadePreview(tile),
-      activeLine: toolPanel.controller.activeLine(),
-      lineOverlay,
+      anchored: toolPanel.controller.activeLine() !== null,
+      palisadeWash,
       localPlayer,
       placementTribe,
     });
@@ -250,7 +258,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     renderer.setPortraitInset(loop.portraitVisible() ? controls.portrait() : null);
     renderer.updateConstructionPlots(visiblePlots(fogView));
     geometryDebug.update(snap);
-    renderer.setBuildingHighlight(controls.assignHighlight());
+    // The gate tool tints the walls it can cut into; otherwise an assignment tints its candidates.
+    renderer.setBuildingHighlight(toolPanel.controller.gateSites()?.highlight ?? controls.assignHighlight());
     const doorBadges = doorBadgesFor(snap);
     const constructionSigns = constructionSignsFor(snap);
     const settlerBubbles = settlerBubblesFor(snap);

@@ -1,6 +1,6 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
-import type { ActiveLine, LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
+import type { LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -26,9 +26,10 @@ export interface PlacementCursorInput {
     readonly col: number;
     readonly row: number;
   }) => readonly LinePreviewNode[] | null;
-  /** The started line, whose reach the wash lights; null before a line's first click. */
-  readonly activeLine?: ActiveLine | null;
-  readonly lineOverlay?: (line: ActiveLine) => PlacementOverlayFrame | null;
+  /** A line has its first click, so the preview's first node marks where it starts. */
+  readonly anchored?: boolean;
+  /** The palisade tool's wash: a started line's reach or the gate tool's spans, null when it has none. */
+  readonly palisadeWash?: () => PlacementOverlayFrame | null;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
   /** The civilization this seat raises buildings as, the same one `placeBuilding` stamps. */
@@ -54,12 +55,10 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const tile = input.tileAt();
   if (palisadeGfxIndex !== null) {
     // The wash stays while the pointer leaves the map; only the markers need a tile.
-    const line = input.activeLine ?? null;
-    const lineOverlay = line === null ? null : (input.lineOverlay?.(line) ?? null);
     const nodes = tile === null ? null : (input.palisadePreview?.(tile) ?? null);
     return {
-      overlay: lineOverlay,
-      ghost: nodes === null ? null : { kind: 'line', nodes, anchored: line !== null },
+      overlay: input.palisadeWash?.() ?? null,
+      ghost: nodes === null ? null : { kind: 'line', nodes, anchored: input.anchored === true },
     };
   }
   if (tile === null) return { overlay, ghost: null };

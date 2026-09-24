@@ -28,6 +28,20 @@ export interface PalisadeGateProbeView {
   readonly span: readonly { readonly hx: number; readonly hy: number }[];
 }
 
+/** A set of nodes the placement wash leaves bright; `key` changes whenever the set does. */
+export interface LitNodes {
+  readonly key: string;
+  has(col: number, row: number): boolean;
+}
+
+/** The walls a gate can go into now, lit span by span. */
+export interface GateSites extends LitNodes {
+  /** The centre of the lit span nearest to a node on it, or null off every span. */
+  centerFor(col: number, row: number): LineNode | null;
+  /** The walls on those spans, for the renderer's building tint. */
+  readonly highlight: readonly { readonly id: number; readonly ok: boolean }[];
+}
+
 export interface PlacementDeps {
   readonly ctx: PanelContext;
   /** The strip that names the held building while placing. */
@@ -42,7 +56,10 @@ export interface PlacementDeps {
    *  a rejecting tile is inert, so build mode only ends on a placement that lands. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
+  /** Whether the seat's own wall, gate or wall site already stands on a node. */
+  readonly palisadeBuiltAt?: (col: number, row: number) => boolean;
   readonly palisadeGateProbe?: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  readonly palisadeGateSites?: () => GateSites;
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
@@ -76,6 +93,8 @@ export interface PlacementController {
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
   /** The started wall line, for the reach wash. */
   activeLine(): ActiveLine | null;
+  /** The gate tool's lit spans, for its wash; null outside the gate tool. */
+  gateSites(): GateSites | null;
 }
 
 export function createPlacementController(deps: PlacementDeps): PlacementController {
@@ -113,6 +132,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       tool: `palisade:${gfxIndex}`,
       maxEdges: PALISADE_LINE_MAX_EDGES,
       canPlace: (node) => deps.canPlacePalisadeAt?.(gfxIndex, node.col, node.row) === true,
+      built: (node) => deps.palisadeBuiltAt?.(node.col, node.row) === true,
       commit: (nodes) => {
         for (const node of nodes) {
           deps.enqueue({
@@ -129,15 +149,24 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       },
     });
 
+  /** A node on a lit span stands for that span's centre, so a gate cuts in wherever its run is pointed at;
+   *  the live probe there still decides, as a settler may have stepped into the opening since. */
+  const gateProbeAt = (gfxIndex: number, tile: LineNode): PalisadeGateProbeView | null => {
+    const at = deps.palisadeGateSites?.().centerFor(tile.col, tile.row) ?? tile;
+    return deps.palisadeGateProbe?.(gfxIndex, at.col, at.row) ?? null;
+  };
+
   /** One verdict for the whole span: the conversion takes all five walls or none. */
   const gatePreview = (gfxIndex: number, tile: LineNode): LinePreviewNode[] | null => {
-    const probe = deps.palisadeGateProbe?.(gfxIndex, tile.col, tile.row);
-    if (probe == null || probe.span.length === 0) return null;
-    return probe.span.map(({ hx, hy }) => ({ col: hx, row: hy, valid: probe.canConvert }));
+    const probe = gateProbeAt(gfxIndex, tile);
+    // Bare ground shows nothing; a wall off every lit span shows its refused span.
+    if (probe === null || probe.center === null || probe.span.length === 0) return null;
+    const state = probe.canConvert ? 'open' : 'blocked';
+    return probe.span.map(({ hx, hy }) => ({ col: hx, row: hy, state }));
   };
 
   const convertGate = (gfxIndex: number, tile: LineNode | null): void => {
-    const probe = tile === null ? null : deps.palisadeGateProbe?.(gfxIndex, tile.col, tile.row);
+    const probe = tile === null ? null : gateProbeAt(gfxIndex, tile);
     if (probe?.canConvert !== true || probe.center === null || probe.gfxIndex === null) return;
     deps.enqueue({ kind: 'convertPalisadeGate', palisade: probe.center, gfxIndex: probe.gfxIndex });
     ctx.cue('confirm');
@@ -218,5 +247,6 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       return palisade.mode === 'gate' ? gatePreview(palisade.gfxIndex, tile) : palisade.line.preview(tile);
     },
     activeLine: () => (palisade?.mode === 'wall' ? palisade.line.active() : null),
+    gateSites: () => (palisade?.mode === 'gate' ? (deps.palisadeGateSites?.() ?? null) : null),
   };
 }

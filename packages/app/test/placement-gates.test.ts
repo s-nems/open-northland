@@ -1,4 +1,13 @@
-import { cellAnchorNode, components, halfCellMapFromCells, Simulation } from '@open-northland/sim';
+import {
+  cellAnchorNode,
+  components,
+  type Entity,
+  FOG_MODE,
+  FOG_STATE,
+  type FogView,
+  halfCellMapFromCells,
+  Simulation,
+} from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { JOB_SOLDIER_SWORD } from '../src/catalog/jobs.js';
@@ -77,6 +86,7 @@ describe('placement gates - the ground an enemy army contests', () => {
       center: null,
       axis: null,
       remove: [],
+      walls: [],
       span: [{ hx: 8, hy: 6 }],
     });
 
@@ -90,6 +100,65 @@ describe('placement gates - the ground an enemy army contests', () => {
       .filter((type) => type.wall?.gate?.open === false)
       .map((type) => type.typeId);
     expect(probe).toHaveBeenCalledWith(8, 6, orientations, HUMAN_PLAYER);
+  });
+
+  it('indexes the gate spans once per wall layout and aims each node at its nearest centre', () => {
+    const { sim, gates } = openField();
+    const site = (center: number, walls: readonly number[]) => ({
+      canConvert: true,
+      gfxIndex: 697,
+      center: walls[2] as Entity,
+      axis: 0 as const,
+      remove: [],
+      walls: walls as Entity[],
+      span: [-2, -1, 0, 1, 2].map((offset) => ({ hx: center + offset, hy: 6 })),
+    });
+    // Two centres of one run of six: node 5 lies nearer centre 6, node 8 nearer centre 7.
+    const probe = vi
+      .spyOn(sim, 'palisadeGateSites')
+      .mockReturnValue([site(6, [1, 2, 3, 4, 5]), site(7, [2, 3, 4, 5, 6])]);
+
+    const sites = gates.palisadeGateSites();
+    expect(sites.has(4, 6)).toBe(true);
+    expect(sites.has(10, 6)).toBe(false);
+    expect(sites.centerFor(5, 6)).toEqual({ col: 6, row: 6 });
+    expect(sites.centerFor(8, 6)).toEqual({ col: 7, row: 6 });
+    expect(sites.centerFor(10, 6)).toBeNull();
+    expect(sites.highlight.map((item) => item.id)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(gates.palisadeGateSites()).toBe(sites);
+    expect(probe).toHaveBeenCalledTimes(1);
+
+    vi.spyOn(sim, 'palisadeLayoutVersion').mockReturnValue('next');
+    expect(gates.palisadeGateSites()).not.toBe(sites);
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves a gate span unlit while its centre is fogged', () => {
+    const { sim, gates, fog } = openField();
+    vi.spyOn(sim, 'palisadeGateSites').mockReturnValue([
+      {
+        canConvert: true,
+        gfxIndex: 697,
+        center: 3 as Entity,
+        axis: 0,
+        remove: [],
+        walls: [1, 2, 3, 4, 5] as Entity[],
+        span: [4, 5, 6, 7, 8].map((hx) => ({ hx, hy: 6 })),
+      },
+    ]);
+    const hidden: FogView = {
+      player: HUMAN_PLAYER,
+      mode: FOG_MODE.CLASSIC,
+      cellsWide: MAP_W,
+      cellsHigh: MAP_H,
+      generation: 1,
+      stateAt: () => FOG_STATE.UNEXPLORED,
+    };
+    fog.setFrame(hidden);
+    vi.spyOn(sim, 'fogView').mockReturnValue(hidden);
+    const sites = gates.palisadeGateSites();
+    expect(sites.has(6, 6)).toBe(false);
+    expect(sites.highlight).toEqual([]);
   });
 
   it('uses the same paper technology bypass for the bright buildable-ground overlay', () => {

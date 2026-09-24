@@ -67,6 +67,7 @@ export class WorldRenderer {
   private readonly placementGhost: PlacementGhostLayer;
   private readonly marks: WorldMarks;
   private highlight: ReadonlyMap<number, boolean> = EMPTY_HIGHLIGHT;
+  private highlightItems: readonly BuildingHighlightItem[] | null = null;
   private readonly hud = new HudLayer();
   private readonly chrome: WorldChrome;
   /** The current map's height field; flat until `setTerrain` loads a map carrying an elevation lane. */
@@ -89,13 +90,19 @@ export class WorldRenderer {
     this.spriteLayer.isRenderGroup = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.groundWaves = new GroundWaveLayer(app.renderer, this.terrain.container);
-    this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
+    this.pool = new SpritePool(
+      this.spriteLayer,
+      this.textureCache,
+      opts?.sheet,
+      opts?.playerColourOf,
+      opts?.planStakes,
+    );
     this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
-    this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
+    this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache, opts?.planStakes);
     this.spriteLayer.addChild(this.placementGhost.container);
     mountPainterOrder(this.worldLayer, {
       terrain: this.terrain.container,
@@ -375,6 +382,9 @@ export class WorldRenderer {
 
   /** The tint rides the building sprite from the next update on. */
   setBuildingHighlight(items: readonly BuildingHighlightItem[] | null): void {
+    // Callers hand over a memoized list, so an unchanged one rebuilds nothing.
+    if (items === this.highlightItems) return;
+    this.highlightItems = items;
     this.highlight = items === null ? EMPTY_HIGHLIGHT : new Map(items.map((i) => [i.id, i.ok]));
   }
 

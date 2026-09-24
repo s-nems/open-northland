@@ -279,3 +279,61 @@ describe('palisadeGateProbe', () => {
     expect(foreign.center).toBe(wallAt(sim, CENTRE.hx));
   });
 });
+
+describe('palisadeGateSites', () => {
+  const ROWS = GATES.map((gate) => gate.typeId);
+
+  it('lists the one centre a run of five can take a gate at, for its owner only', () => {
+    const { sim } = runOfFive();
+    const sites = sim.palisadeGateSites(ROWS, OWNER);
+    expect(sites.map((site) => site.center)).toEqual([wallAt(sim, CENTRE.hx)]);
+    expect(sites[0]?.gfxIndex).toBe(HORIZONTAL_GATE);
+    expect(sites[0]?.walls).toEqual(SPAN_HX.map((hx) => wallAt(sim, hx)));
+    expect(sim.palisadeGateSites(ROWS, OTHER_PLAYER)).toEqual([]);
+  });
+
+  it('lists every centre of a longer straight run', () => {
+    const { sim } = runOfFive();
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL_GFX,
+      x: SPAN_HX[4] + 1,
+      y: CENTRE.hy,
+      tribe: TRIBE,
+      owner: OWNER,
+      force: true,
+    });
+    sim.step();
+    const centres = sim.palisadeGateSites(ROWS, OWNER).map((site) => site.span[2]?.hx);
+    expect(centres).toEqual([CENTRE.hx, CENTRE.hx + 1]);
+  });
+
+  it('keeps a site whose opening a mover stands in, which only the live probe refuses', () => {
+    const { sim } = runOfFive();
+    const wolf = sim.world.create();
+    sim.world.add(wolf, Position, positionOfNode(CENTRE.hx, CENTRE.hy));
+    addWildlife(sim.world, wolf, WOLF_TRIBE);
+    expect(sim.palisadeGateSites(ROWS, OWNER)).toHaveLength(1);
+    expect(probe(sim).canConvert).toBe(false);
+  });
+
+  it('moves its version with the walls health but not with a mover', () => {
+    const { sim } = runOfFive();
+    const before = sim.palisadeLayoutVersion();
+    const wolf = sim.world.create();
+    sim.world.add(wolf, Position, positionOfNode(CENTRE.hx, CENTRE.hy));
+    expect(sim.palisadeLayoutVersion()).toBe(before);
+    sim.world.mut(wallAt(sim, CENTRE.hx), Health).hitpoints = THREE_QUARTERS_HP - 1;
+    expect(sim.palisadeLayoutVersion()).not.toBe(before);
+  });
+});
+
+describe('ownPalisadeNodes', () => {
+  it('finds the player walls by node and nothing else', () => {
+    const { sim } = runOfFive();
+    const own = sim.ownPalisadeNodes(OWNER);
+    expect(SPAN_HX.every((hx) => own(hx, CENTRE.hy))).toBe(true);
+    expect(own(SPAN_HX[4] + 1, CENTRE.hy)).toBe(false);
+    expect(sim.ownPalisadeNodes(OTHER_PLAYER)(CENTRE.hx, CENTRE.hy)).toBe(false);
+  });
+});

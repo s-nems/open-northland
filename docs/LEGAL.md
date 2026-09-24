@@ -27,8 +27,9 @@ They remain the property of their rights holders whichever archive carries them.
 
 ## Project assets
 
-The project's HUD chrome under `packages/app/src/assets/ui/`, the project logo and the icons are
-licensed under AGPL-3.0-or-later with the code. The HUD chrome was generated for this project with
+The project's HUD chrome under `packages/app/src/assets/ui/`, the placement markers under
+`packages/app/src/assets/markers/`, the project logo and the icons are licensed under
+AGPL-3.0-or-later with the code. The HUD chrome and the markers were generated for this project with
 image models from text prompts, without original-game input.
 
 ## Independent implementation

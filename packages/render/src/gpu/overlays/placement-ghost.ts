@@ -2,7 +2,13 @@ import { Container, Graphics } from 'pixi.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
-import { drawPlanStake, STAKE_TIE_HEIGHT, TAPE_BLOCKED, TAPE_OPEN } from '../plan-stake.js';
+import {
+  mintPlanStake,
+  type PlanStakeTextures,
+  STAKE_TIE_HEIGHT,
+  STRING_BLOCKED,
+  STRING_OPEN,
+} from '../plan-stake.js';
 import { resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -29,14 +35,24 @@ export type PlacementGhost =
   | {
       /** A planned line of stakes, or a gate span; `anchored` marks the first node as the line's start. */
       readonly kind: 'line';
-      readonly nodes: readonly { readonly col: number; readonly row: number; readonly valid: boolean }[];
+      readonly nodes: readonly PlanNode[];
       readonly anchored: boolean;
     };
+
+/** `open` gets a stake, `built` already holds a piece the string only passes, `blocked` a red stake. */
+export interface PlanNode {
+  readonly col: number;
+  readonly row: number;
+  readonly state: 'open' | 'built' | 'blocked';
+}
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
 const GHOST_ALPHA = 0.55;
 /** Placeholder tint when no atlas frame resolves (bare checkout / synthetic sheet without the type). */
 const PLACEHOLDER_COLOR = 0xc8a04a;
+/** The ring on the ground under a started line's first node. */
+const ANCHOR_RING = 0xf2c14e;
+const ANCHOR_RING_RADIUS = { x: 13, y: 6.5 } as const;
 
 export class PlacementGhostLayer {
   readonly container = new Container();
@@ -45,6 +61,7 @@ export class PlacementGhostLayer {
   constructor(
     private readonly sheet: SpriteSheet | undefined,
     private readonly textures: TextureCache,
+    private readonly stakes?: PlanStakeTextures,
   ) {
     this.container.visible = false;
     this.container.alpha = GHOST_ALPHA;
@@ -56,7 +73,7 @@ export class PlacementGhostLayer {
       return;
     }
     if (ghost.kind === 'line') {
-      const key = `line:${ghost.anchored}:${ghost.nodes.map((node) => `${node.col},${node.row},${node.valid}`).join(';')}`;
+      const key = `line:${ghost.anchored}:${ghost.nodes.map((node) => `${node.col},${node.row},${node.state}`).join(';')}`;
       if (this.builtForKey !== key) {
         this.builtForKey = key;
         this.rebuildLine(ghost, elevation);
@@ -87,23 +104,39 @@ export class PlacementGhostLayer {
     const g = new Graphics();
     const points = ghost.nodes.map((node) => {
       const point = halfCellToScreen(node.col, node.row);
-      return { x: point.x, y: point.y - terrainLiftAtNode(elevation, node.col, node.row), valid: node.valid };
+      return { x: point.x, y: point.y - terrainLiftAtNode(elevation, node.col, node.row), state: node.state };
     });
-    // The string runs knot to knot under the stakes, coloured by the stake it leads to.
+    // The start ring also marks a standing piece under the cursor, which takes no stake of its own.
+    const first = points[0];
+    if (first !== undefined && (ghost.anchored || first.state === 'built')) {
+      g.ellipse(first.x, first.y, ANCHOR_RING_RADIUS.x, ANCHOR_RING_RADIUS.y).stroke({
+        color: ANCHOR_RING,
+        width: 2,
+        alpha: 0.95,
+      });
+    }
+    // The string runs knot to knot under the stakes, coloured by the node it leads to, with a dark
+    // underline that keeps it readable over pale ground.
     for (let i = 1; i < points.length; i++) {
       const from = points[i - 1];
       const to = points[i];
       if (from === undefined || to === undefined) continue;
-      g.moveTo(from.x, from.y - STAKE_TIE_HEIGHT)
+      const color = to.state === 'blocked' ? STRING_BLOCKED : STRING_OPEN;
+      g.moveTo(from.x, from.y - STAKE_TIE_HEIGHT + 1)
+        .lineTo(to.x, to.y - STAKE_TIE_HEIGHT + 1)
+        .stroke({ color: 0x000000, width: 2, alpha: 0.35 })
+        .moveTo(from.x, from.y - STAKE_TIE_HEIGHT)
         .lineTo(to.x, to.y - STAKE_TIE_HEIGHT)
-        .stroke({ color: to.valid ? TAPE_OPEN : TAPE_BLOCKED, width: 1.25, alpha: 0.9 });
-    }
-    // Back to front, so a nearer stake covers the one behind it.
-    const order = points.map((point, index) => ({ point, index })).sort((a, b) => a.point.y - b.point.y);
-    for (const { point, index } of order) {
-      drawPlanStake(g, point.x, point.y, { open: point.valid, anchor: ghost.anchored && index === 0 });
+        .stroke({ color, width: 1.5, alpha: 0.95 });
     }
     this.container.addChild(g);
+    // Back to front, so a nearer stake covers the one behind it.
+    const stakes = points.filter((point) => point.state !== 'built').sort((a, b) => a.y - b.y);
+    for (const point of stakes) {
+      const stake = mintPlanStake(this.stakes, point.state === 'open');
+      stake.position.set(point.x, point.y);
+      this.container.addChild(stake);
+    }
   }
 
   private rebuild(ghost: Exclude<PlacementGhost, { kind: 'line' }>): void {

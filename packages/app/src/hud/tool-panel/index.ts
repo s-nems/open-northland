@@ -55,6 +55,7 @@ import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
 import {
   createPlacementController,
+  type GateSites,
   type PalisadeGateProbeView,
   type PalisadePlacementMode,
 } from './placement.js';
@@ -132,7 +133,9 @@ export interface ToolPanelOptions {
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly palisadeBuiltAt?: (col: number, row: number) => boolean;
   readonly palisadeGateProbe?: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  readonly palisadeGateSites?: () => GateSites;
   /** The wall and closed-gate graphics rows the quick row's palisade and gate tools place; a missing
    *  row leaves its button disabled. */
   readonly palisadeTools?: PalisadeTools;
@@ -203,6 +206,8 @@ export interface ToolPanelController {
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
   /** The started wall line, for the reach wash; null before its first click. */
   activeLine(): ActiveLine | null;
+  /** The gate tool's lit spans; null outside the gate tool. */
+  gateSites(): GateSites | null;
   /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
    *  so a closed window never lays it out. */
   update(hudFor: () => HudLayout, model: HudModel): void;
@@ -344,7 +349,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       screenToTile: opts.screenToTile,
       canPlaceAt: opts.canPlaceAt,
       ...(opts.canPlacePalisadeAt !== undefined ? { canPlacePalisadeAt: opts.canPlacePalisadeAt } : {}),
+      ...(opts.palisadeBuiltAt !== undefined ? { palisadeBuiltAt: opts.palisadeBuiltAt } : {}),
       ...(opts.palisadeGateProbe !== undefined ? { palisadeGateProbe: opts.palisadeGateProbe } : {}),
+      ...(opts.palisadeGateSites !== undefined ? { palisadeGateSites: opts.palisadeGateSites } : {}),
       tribe: opts.tribe,
       owner: opts.owner,
       // A pick hid the window for the placement; a cancel brings it back where it was, and a place-any
@@ -593,6 +600,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       palisadeMode: () => placement.activePalisadeMode(),
       palisadePreview: (tile) => placement.palisadePreview(tile),
       activeLine: () => placement.activeLine(),
+      gateSites: () => placement.gateSites(),
       update(hudFor, model): void {
         systemBar.update(model);
         speed.refresh();

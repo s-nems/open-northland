@@ -167,6 +167,7 @@ export {
   parsePixelArtScaler,
 } from './gpu/pixel-art-registry.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
+export type { PlanStakeTextures } from './gpu/plan-stake.js';
 export {
   createPresentationTrack,
   type EntityBounds,

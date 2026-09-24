@@ -7,6 +7,7 @@ import {
 import { FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type ActiveLine, lineReach } from '../hud/tool-panel/line-tool.js';
+import type { LitNodes } from '../hud/tool-panel/placement.js';
 import { nodeBandOfCells } from './picking.js';
 
 /** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
@@ -65,33 +66,40 @@ export function makeSignpostOverlaySource(
 }
 
 /**
- * The started line's wash: everything dims but the nodes the line can end on (`lineReach`), so the
- * lit area is exactly where a confirming click lays the whole line. The reach is recomputed only when
- * the anchor, the tool, a placement blocker or the fog changes.
+ * A started line's lit nodes (`lineReach`): exactly where a confirming click lays the whole line. The
+ * reach is recomputed only when the anchor, the tool, a placement blocker or the fog changes.
  */
-export function makeLineReachOverlaySource(
+export function makeLineReachSource(
+  sim: Simulation,
+  player: number = HUMAN_PLAYER,
+): (line: ActiveLine) => LitNodes {
+  let lit: LitNodes = { key: '', has: () => false };
+  return (line) => {
+    const fog = sim.fogView(player);
+    const key = `line:${line.tool}:${line.anchor.col},${line.anchor.row}:${sim.placementBlockerVersion()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
+    if (key !== lit.key) {
+      const reach = lineReach(line);
+      lit = { key, has: (col, row) => reach.has(`${col},${row}`) };
+    }
+    return lit;
+  };
+}
+
+/** The wash of a tool that lights a node set of its own: everything dims but `lit`. */
+export function makeLitOverlaySource(
   sim: Simulation,
   mapSize: { readonly width: number; readonly height: number },
   player: number = HUMAN_PLAYER,
-): (line: ActiveLine, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+): (lit: LitNodes, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
   const band = makeBandProber(sim, mapSize, player);
-  let reachKey = '';
-  let reach: ReadonlySet<string> = new Set();
-  return (line, camera, screenW, screenH) => {
-    const fog = sim.fogView(player);
-    const key = `${line.tool}:${line.anchor.col},${line.anchor.row}:${sim.placementBlockerVersion()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
-    if (key !== reachKey) {
-      reach = lineReach(line);
-      reachKey = key;
-    }
-    return band(
-      () => ({ canPlace: (x: number, y: number) => reach.has(`${x},${y}`) }),
-      () => `line:${reachKey}`,
+  return (lit, camera, screenW, screenH) =>
+    band(
+      () => ({ canPlace: (x: number, y: number) => lit.has(x, y) }),
+      () => lit.key,
       camera,
       screenW,
       screenH,
     );
-  };
 }
 
 interface NodeProbe {

@@ -1,70 +1,58 @@
-import type { Graphics } from 'pixi.js';
+import { type Container, Graphics, Sprite, type Texture } from 'pixi.js';
 
 /**
  * A surveyor's stake: the marker for one planned node of a line (a wall now, a road later), in the
- * placement preview and on a laid site no builder has claimed yet. Its tape says whether the node takes
- * the line. Shape and colours are an approximation tuned by eye.
+ * placement preview and on a laid site no builder has claimed yet. Its cloth says whether the node takes
+ * the line: undyed where it can go, red where it cannot.
  */
-
-/** World px from the ground point: the stake's half width, its shaft to the shoulder and the tip above. */
-const STAKE_HALF_W = 2.5;
-const STAKE_SHOULDER = 10;
-const STAKE_TIP = 14;
-/** Where the tape and the string tie on, measured up the shaft. */
-export const STAKE_TIE_HEIGHT = 8;
-const TAPE_H = 3;
-
-const WOOD = 0x9a6a38;
-const WOOD_LIT = 0xc89456;
-const OUTLINE = 0x2a1a0c;
-const SHADOW_ALPHA = 0.35;
-/** Marking tape: a warm cream where the line can go, a signal red where it cannot. */
-export const TAPE_OPEN = 0xf3e2a4;
-export const TAPE_BLOCKED = 0xe0483c;
-const ANCHOR_RING = 0xf2c14e;
-
-/** The ground-to-tip box, for hit bounds: left, top, right and bottom offsets from the ground point. */
-export const STAKE_BOUNDS = { left: -7, top: -STAKE_TIP - 1, right: 9, bottom: 3 } as const;
-
-export interface StakeStyle {
-  readonly open: boolean;
-  /** The line's first click: a ring on the ground marks where it starts. */
-  readonly anchor?: boolean;
+export interface PlanStakeTextures {
+  readonly open: Texture;
+  readonly blocked: Texture;
 }
 
-export function drawPlanStake(g: Graphics, x: number, y: number, style: StakeStyle): void {
-  if (style.anchor === true) {
-    g.ellipse(x, y, 11, 5.5).stroke({ color: ANCHOR_RING, width: 2, alpha: 0.95 });
+/** World px from the art's bottom edge to its top; the art is generated for this project, sized by eye
+ *  against a settler. */
+const STAKE_HEIGHT = 34;
+/** Where the stake meets the ground and where its cloth is knotted, as fractions of the art. */
+const ART_GROUND = { x: 0.461, y: 0.778 } as const;
+const ART_KNOT_Y = 0.353;
+const ART_ASPECT = 544 / 648;
+
+/** How far up the stake the string ties on, in world px from the ground point. */
+export const STAKE_TIE_HEIGHT = Math.round((ART_GROUND.y - ART_KNOT_Y) * STAKE_HEIGHT);
+
+const STAKE_WIDTH = STAKE_HEIGHT * ART_ASPECT;
+/** The drawn box around the ground point, for hit bounds: left, top, right and bottom offsets. */
+export const STAKE_BOUNDS = {
+  left: -ART_GROUND.x * STAKE_WIDTH,
+  top: -ART_GROUND.y * STAKE_HEIGHT,
+  right: (1 - ART_GROUND.x) * STAKE_WIDTH,
+  bottom: (1 - ART_GROUND.y) * STAKE_HEIGHT,
+} as const;
+
+/** The string between stakes: hemp where the line runs, red into a refused node. */
+export const STRING_OPEN = 0xd8c089;
+export const STRING_BLOCKED = 0xd23a2e;
+
+/** Without the art (a bare render test, the `?shot` entry) a flat post of the same size stands in. */
+const FALLBACK_WOOD = 0x8a5a2b;
+const FALLBACK_OPEN = 0xe9dcc0;
+const FALLBACK_BLOCKED = STRING_BLOCKED;
+const FALLBACK_HALF_W = 2.5;
+
+/** One stake with its ground point at the display object's origin. */
+export function mintPlanStake(art: PlanStakeTextures | undefined, open: boolean): Container {
+  if (art !== undefined) {
+    const sprite = new Sprite(open ? art.open : art.blocked);
+    sprite.anchor.set(ART_GROUND.x, ART_GROUND.y);
+    sprite.scale.set(STAKE_HEIGHT / sprite.texture.height);
+    return sprite;
   }
-  g.ellipse(x + 2, y, 6, 2.5).fill({ color: 0x000000, alpha: SHADOW_ALPHA });
-  const shaft = [
-    x - STAKE_HALF_W,
-    y,
-    x + STAKE_HALF_W,
-    y,
-    x + STAKE_HALF_W,
-    y - STAKE_SHOULDER,
-    x,
-    y - STAKE_TIP,
-    x - STAKE_HALF_W,
-    y - STAKE_SHOULDER,
-  ];
-  g.poly(shaft).fill(WOOD);
-  // The lit left face gives the shaft some roundness.
-  g.poly([x - STAKE_HALF_W, y, x, y, x, y - STAKE_TIP, x - STAKE_HALF_W, y - STAKE_SHOULDER]).fill(WOOD_LIT);
-  g.poly(shaft).stroke({ color: OUTLINE, width: 1, alpha: 0.9 });
-  g.rect(x - STAKE_HALF_W - 0.5, y - STAKE_TIE_HEIGHT - TAPE_H / 2, STAKE_HALF_W * 2 + 1, TAPE_H)
-    .fill(style.open ? TAPE_OPEN : TAPE_BLOCKED)
-    .stroke({ color: OUTLINE, width: 0.75, alpha: 0.6 });
-  // The loose tape end flutters to the right of the knot.
-  g.poly([
-    x + STAKE_HALF_W,
-    y - STAKE_TIE_HEIGHT - 1,
-    x + STAKE_HALF_W + 5,
-    y - STAKE_TIE_HEIGHT + 1,
-    x + STAKE_HALF_W + 4,
-    y - STAKE_TIE_HEIGHT + 3,
-    x + STAKE_HALF_W,
-    y - STAKE_TIE_HEIGHT + 1,
-  ]).fill(style.open ? TAPE_OPEN : TAPE_BLOCKED);
+  const g = new Graphics();
+  const top = -STAKE_TIE_HEIGHT - FALLBACK_HALF_W * 2;
+  g.rect(-FALLBACK_HALF_W, top, FALLBACK_HALF_W * 2, -top).fill(FALLBACK_WOOD);
+  g.rect(-FALLBACK_HALF_W, -STAKE_TIE_HEIGHT - 1, FALLBACK_HALF_W * 2, 2).fill(
+    open ? FALLBACK_OPEN : FALLBACK_BLOCKED,
+  );
+  return g;
 }

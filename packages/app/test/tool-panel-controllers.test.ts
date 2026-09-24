@@ -446,6 +446,7 @@ describe('placement controller', () => {
     canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean = () => true,
     canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean = () => true,
     palisadeGateProbe?: Parameters<typeof createPlacementController>[0]['palisadeGateProbe'],
+    extra: Partial<Parameters<typeof createPlacementController>[0]> = {},
   ) {
     const { ctx, cues } = stubContext();
     const commands: Command[] = [];
@@ -463,6 +464,7 @@ describe('placement controller', () => {
       tribe: 1,
       owner: 0,
       onCancel: (paper) => cancels.push(paper),
+      ...extra,
     });
     return { placement, commands, cues, strip, cancels };
   }
@@ -624,6 +626,30 @@ describe('placement controller', () => {
     expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([4, 5, 6]);
   });
 
+  it('starts a wall line on a standing wall and lays only the new segments past it', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands } = mount(
+      () => tile,
+      () => true,
+      // The standing wall's own node refuses a new segment, so only the built test lets the line start.
+      (_gfxIndex, col) => col > 4,
+      undefined,
+      { palisadeBuiltAt: (col, row) => col === 4 && row === 2 },
+    );
+    placement.enterPalisade(691, 'wall');
+    placement.handleClick(0, 0);
+    expect(placement.activeLine()?.anchor).toEqual({ col: 4, row: 2 });
+    tile = { col: 7, row: 2 };
+    expect(placement.palisadePreview(tile)?.map((node) => node.state)).toEqual([
+      'built',
+      'open',
+      'open',
+      'open',
+    ]);
+    placement.handleClick(10, 0);
+    expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([5, 6, 7]);
+  });
+
   it('steps back from a started line to the armed tool, then leaves the tool on cancel', () => {
     const { placement, commands, cancels } = mount(() => ({ col: 4, row: 2 }));
     placement.enterPalisade(691, 'wall');
@@ -653,9 +679,41 @@ describe('placement controller', () => {
     );
     placement.enterPalisade(696, 'gate');
     expect(placement.palisadePreview({ col: 8, row: 6 })).toEqual(
-      [4, 5, 6, 7, 8].map((col) => ({ col, row: 6, valid: true })),
+      [4, 5, 6, 7, 8].map((col) => ({ col, row: 6, state: 'open' })),
     );
     placement.handleClick(0, 0);
+    expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
+  });
+
+  it('aims a gate at the centre of the lit span a hovered wall belongs to', () => {
+    const center = 17 as Entity;
+    const probed: { col: number; row: number }[] = [];
+    const sites = {
+      key: 'gate',
+      has: (col: number, row: number) => row === 6 && col >= 4 && col <= 8,
+      centerFor: (col: number, row: number) => (sites.has(col, row) ? { col: 6, row: 6 } : null),
+      highlight: [],
+    };
+    const { placement, commands } = mount(
+      () => ({ col: 8, row: 6 }),
+      () => true,
+      () => true,
+      (_gfxIndex, col, row) => {
+        probed.push({ col, row });
+        return {
+          canConvert: col === 6,
+          center,
+          gfxIndex: 698,
+          span: [-2, -1, 0, 1, 2].map((offset) => ({ hx: col + offset, hy: row })),
+        };
+      },
+      { palisadeGateSites: () => sites },
+    );
+    placement.enterPalisade(696, 'gate');
+    expect(placement.gateSites()).toBe(sites);
+    expect(placement.activeLine()).toBeNull();
+    placement.handleClick(0, 0);
+    expect(probed).toEqual([{ col: 6, row: 6 }]);
     expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
   });
 });

@@ -67,8 +67,11 @@ import {
   openTributes,
 } from './systems/missions/index.js';
 import {
+  ownPalisadeNodes,
   type PalisadeGateProbeResult,
   palisadeGateProbe,
+  palisadeGateSites,
+  palisadeLayoutVersion,
   palisadePlacementProbe,
 } from './systems/palisades/index.js';
 import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
@@ -337,6 +340,23 @@ export class Simulation {
   ): PalisadeGateProbeResult | null {
     if (this.terrain === undefined) return null;
     return palisadeGateProbe(this.world, this.terrain, hx, hy, closedGateGfxIndexes, player);
+  }
+
+  /** Changes whenever {@link palisadeGateSites} could answer differently, movers aside. */
+  palisadeLayoutVersion(): string {
+    return palisadeLayoutVersion(this.world);
+  }
+
+  /** Every own wall a gate can go into, as its convertible probe, ignoring a mover in the opening;
+   *  empty for a mapless sim. */
+  palisadeGateSites(closedGateGfxIndexes: readonly number[], player: number): PalisadeGateProbeResult[] {
+    if (this.terrain === undefined) return [];
+    return palisadeGateSites(this.world, this.terrain, closedGateGfxIndexes, player);
+  }
+
+  /** A node test for `player`'s standing walls, gates and wall sites, indexed once per call. */
+  ownPalisadeNodes(player: number): (hx: number, hy: number) => boolean {
+    return ownPalisadeNodes(this.world, player);
   }
 
   /**

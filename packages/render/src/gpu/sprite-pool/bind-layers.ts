@@ -5,7 +5,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
-import { drawPlanStake, STAKE_BOUNDS } from '../plan-stake.js';
+import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
 import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -54,6 +54,7 @@ export class LayerBinder {
   constructor(
     private readonly textures: TextureCache,
     private readonly sheet: SpriteSheet | undefined,
+    private readonly stakes?: PlanStakeTextures,
   ) {}
 
   /** A settler is created paletted only when the player-colour LUT and the indexed characters are both
@@ -267,8 +268,7 @@ export class LayerBinder {
     pe.selectionEllipse = undefined;
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
     if (pe.palisadeSiteMarker === undefined) {
-      pe.palisadeSiteMarker = new Graphics();
-      drawPlanStake(pe.palisadeSiteMarker, 0, 0, { open: true });
+      pe.palisadeSiteMarker = mintPlanStake(this.stakes, true);
       pe.container.addChild(pe.palisadeSiteMarker);
     }
     pe.palisadeSiteMarker.visible = true;

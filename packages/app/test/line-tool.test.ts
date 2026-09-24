@@ -36,7 +36,7 @@ describe('line reach', () => {
       tool: 'test',
       anchor: { col: 10, row: 10 },
       maxEdges: 4,
-      canPlace: (col, row) => !(col === 12 && row === 10),
+      accepts: (col, row) => !(col === 12 && row === 10),
     });
     expect(reach.has('11,10')).toBe(true);
     expect(reach.has('12,10')).toBe(false);
@@ -47,18 +47,19 @@ describe('line reach', () => {
 
   it('lights nothing when the anchor itself is refused', () => {
     expect(
-      lineReach({ tool: 'test', anchor: { col: 1, row: 1 }, maxEdges: 3, canPlace: () => false }).size,
+      lineReach({ tool: 'test', anchor: { col: 1, row: 1 }, maxEdges: 3, accepts: () => false }).size,
     ).toBe(0);
   });
 });
 
 describe('line tool', () => {
-  function tool(canPlace: (node: LineNode) => boolean = () => true) {
+  function tool(canPlace: (node: LineNode) => boolean = () => true, built?: (node: LineNode) => boolean) {
     const lines: (readonly LineNode[])[] = [];
     const line = createLineTool({
       tool: 'test',
       maxEdges: MAX_EDGES,
       canPlace,
+      ...(built !== undefined ? { built } : {}),
       commit: (nodes) => lines.push(nodes),
     });
     return { line, lines };
@@ -79,8 +80,8 @@ describe('line tool', () => {
 
   it('shows one marker under the cursor before a line starts', () => {
     const { line } = tool((node) => node.col !== 9);
-    expect(line.preview({ col: 3, row: 2 })).toEqual([{ col: 3, row: 2, valid: true }]);
-    expect(line.preview({ col: 9, row: 2 })).toEqual([{ col: 9, row: 2, valid: false }]);
+    expect(line.preview({ col: 3, row: 2 })).toEqual([{ col: 3, row: 2, state: 'open' }]);
+    expect(line.preview({ col: 9, row: 2 })).toEqual([{ col: 9, row: 2, state: 'blocked' }]);
   });
 
   it('keeps a started line through a click off the map', () => {
@@ -100,16 +101,43 @@ describe('line tool', () => {
   it('marks everything from the first rejection on and lays only the accepted prefix', () => {
     const { line, lines } = tool((node) => node.col < 7);
     line.click({ col: 4, row: 2 });
-    expect(line.preview({ col: 9, row: 2 }).map((node) => node.valid)).toEqual([
-      true,
-      true,
-      true,
-      false,
-      false,
-      false,
+    expect(line.preview({ col: 9, row: 2 }).map((node) => node.state)).toEqual([
+      'open',
+      'open',
+      'open',
+      'blocked',
+      'blocked',
+      'blocked',
     ]);
     line.click({ col: 9, row: 2 });
     expect(lines[0]?.map((node) => node.col)).toEqual([4, 5, 6]);
+  });
+
+  it('starts on, passes through and ends on built nodes, laying only the open ones', () => {
+    const built = (node: LineNode) => node.col === 4 || node.col === 6 || node.col === 8;
+    const { line, lines } = tool((node) => !built(node), built);
+    line.click({ col: 4, row: 2 });
+    expect(line.anchor()).toEqual({ col: 4, row: 2 });
+    expect(line.preview({ col: 8, row: 2 }).map((node) => node.state)).toEqual([
+      'built',
+      'open',
+      'built',
+      'open',
+      'built',
+    ]);
+    line.click({ col: 8, row: 2 });
+    expect(lines[0]?.map((node) => node.col)).toEqual([5, 7]);
+  });
+
+  it('lays nothing for a line over built nodes only', () => {
+    const { line, lines } = tool(
+      () => false,
+      () => true,
+    );
+    line.click({ col: 4, row: 2 });
+    line.click({ col: 6, row: 2 });
+    expect(lines).toEqual([]);
+    expect(line.anchor()).toBeNull();
   });
 
   it('steps back by dropping a started line, and has nothing to drop after', () => {

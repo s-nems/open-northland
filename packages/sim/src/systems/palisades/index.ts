@@ -29,8 +29,11 @@ export interface PalisadeGateProbeResult {
   readonly gfxIndex: number | null;
   readonly center: Entity | null;
   readonly axis: PalisadeGateAxis | null;
-  /** The span's four non-central segments, which the gate entity absorbs. */
+  /** The span's two neighbours of the centre, which the gate entity absorbs. */
   readonly remove: readonly Entity[];
+  /** All five walls of a convertible span, centre included; empty when the conversion is refused. */
+  readonly walls: readonly Entity[];
+  /** The five nodes at offsets -2..2 along the gate axis, so the centre is the middle one. */
   readonly span: readonly { hx: number; hy: number }[];
 }
 
@@ -304,12 +307,55 @@ export function palisadeGateProbe(
   return fallback ?? NO_GATE_PROBE;
 }
 
+/**
+ * Every wall of `player` a gate can go into: the convertible probe of each own finished segment as a
+ * centre, over the same rows {@link palisadeGateProbe} offers. One node index serves the whole scan. The
+ * mover in the opening is left to the live probe, since it changes every tick and costs a settler scan
+ * per centre.
+ */
+export function palisadeGateSites(
+  world: World,
+  terrain: TerrainGraph,
+  gfxIndexes: readonly number[],
+  player: number,
+): PalisadeGateProbeResult[] {
+  const byNode = palisadesByNode(world);
+  const sites: PalisadeGateProbeResult[] = [];
+  for (const e of canonicalById(world.query(Palisade, Position))) {
+    if (ownerOf(world, e) !== player || world.get(e, Palisade).gate !== null) continue;
+    if (world.has(e, UnderConstruction)) continue;
+    const p = world.get(e, Position);
+    const node = nodeOfPosition(p.x, p.y);
+    for (const gfxIndex of gfxIndexes) {
+      const result = probeGateRow(world, terrain, byNode, node.hx, node.hy, gfxIndex, player, false);
+      if (result.canConvert) {
+        sites.push(result);
+        break;
+      }
+    }
+  }
+  return sites;
+}
+
+/** A token over the inputs of {@link palisadeGateSites} other than movers: the walls themselves, their
+ *  construction and their health. */
+export function palisadeLayoutVersion(world: World): string {
+  return `${world.componentGeneration(Palisade)}.${world.componentValueGeneration(Palisade)}.${world.componentGeneration(UnderConstruction)}.${world.componentValueGeneration(Health)}`;
+}
+
+/** The nodes `player`'s walls, gates and wall sites stand on, which a new wall line may join. */
+export function ownPalisadeNodes(world: World, player: number): (hx: number, hy: number) => boolean {
+  const byNode = palisadesByNode(world);
+  return (hx, hy) => byNode.at(hx, hy).some((e) => ownerOf(world, e) === player);
+}
+
 const NO_GATE_PROBE: PalisadeGateProbeResult = {
   canConvert: false,
   gfxIndex: null,
   center: null,
   axis: null,
   remove: [],
+  walls: [],
   span: [],
 };
 
@@ -321,10 +367,11 @@ function probeGateRow(
   hy: number,
   gfxIndex: number,
   player?: number,
+  checkMovers = true,
 ): PalisadeGateProbeResult {
   const type = palisadeType(terrain, gfxIndex);
   const axis = type === undefined ? null : gateAxis(type);
-  const empty = { canConvert: false, gfxIndex, center: null, axis, remove: [], span: [] } as const;
+  const empty = { canConvert: false, gfxIndex, center: null, axis, remove: [], walls: [], span: [] } as const;
   if (type?.wall?.gate?.open !== false || axis === null) return empty;
   const center = wallAt(byNode, world, hx, hy);
   const axial = axialOf(hx, hy);
@@ -358,8 +405,10 @@ function probeGateRow(
   if (remove.some((e) => hasStoredGoods(world, e))) return { ...empty, center, span };
   const at = world.get(center, Position);
   const anchor = nodeOfPosition(at.x, at.y);
-  if (moverOnCells(world, terrain, type.walk, anchor.hx, anchor.hy)) return { ...empty, center, span };
-  return { canConvert: true, gfxIndex, center, axis, remove, span };
+  if (checkMovers && moverOnCells(world, terrain, type.walk, anchor.hx, anchor.hy)) {
+    return { ...empty, center, span };
+  }
+  return { canConvert: true, gfxIndex, center, axis, remove, walls, span };
 }
 
 /** Install a completed closed gate on the centre of a qualifying five-wall run, clearing its two
