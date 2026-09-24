@@ -63,6 +63,21 @@ bool isCloth(float index) {
          (index >= uClothRanges.z && index <= uClothRanges.w);
 }
 
+// Wind in the cloth at atlas uv: a travelling wave slides the weave sideways inside the cloth's own
+// outline (a displaced read that leaves the cloth keeps index) and lights its crests. Returns the shade.
+float blowCloth(vec2 uv, inout float index) {
+  if (uClothWave.y <= 0.0 || !isCloth(index)) return 1.0;
+  vec2 local = (uv - uFrameUV.xy) * uAtlasSize;
+  float wave = dot(local, uClothFreq) - uClothWave.x;
+  float u = uv.x + uClothWave.y * sin(wave) / uAtlasSize.x;
+  if (u > uFrameUV.x && u < uFrameUV.z) {
+    vec4 moved = textureLod(uTexture, vec2(u, uv.y), 0.0);
+    float movedIndex = floor(moved.r * 255.0 + 0.5);
+    if (moved.a > 0.0 && isCloth(movedIndex)) index = movedIndex;
+  }
+  return 1.0 + uClothWave.z * cos(wave);
+}
+
 vec4 resolvedTexel(ivec2 pixel) {
   ivec2 size = textureSize(uTexture, 0);
   vec2 uv = (vec2(pixel) + 0.5) / vec2(size);
@@ -70,8 +85,9 @@ vec4 resolvedTexel(ivec2 pixel) {
   if (any(lessThan(uv, uFrameUV.xy)) || any(greaterThanEqual(uv, uFrameUV.zw))) return vec4(0.0);
   vec4 t = texelFetch(uTexture, pixel, 0);
   float index = floor(t.r * 255.0 + 0.5);
+  float shade = blowCloth(uv, index);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
-  return vec4(textureLod(uLut, lutUV, 0.0).rgb * uTint.rgb * t.a, t.a);
+  return vec4(textureLod(uLut, lutUV, 0.0).rgb * shade * uTint.rgb * t.a, t.a);
 }
 
 #define MAGNIFY_FETCH(px) resolvedTexel(px)
@@ -85,7 +101,7 @@ void main(void) {
   // GUI keying/silhouettes retain their exact existing path. Magnification modes resolve colours
   // before blending; a 2x2 footprint reduces minification sparkle without filtering indices or
   // allocating per-player RGBA atlases. Not a mipmap substitute at extreme zoom-out: sampling cost
-  // is deliberately bounded. The tint rides along; the cloth wave draws only on the nearest path.
+  // is deliberately bounded. The tint and the cloth wave ride along.
   if (uSampling.x > 0.5 && uColorKey.x < 0.5 && uSilhouette.w < 0.5) {
     vec2 size = vec2(textureSize(uTexture, 0));
     vec2 p = vUV * size;
@@ -111,20 +127,7 @@ void main(void) {
   if (texel.a == 0.0) discard; // unwritten bob pixel
   // Recover the exact palette index (0..255) from the red channel, then read the player's LUT row.
   float index = floor(texel.r * 255.0 + 0.5);
-  float shade = 1.0;
-  if (uClothWave.y > 0.0 && isCloth(index)) {
-    // Wind in the cloth: a travelling wave slides the weave sideways inside the cloth's own outline (a
-    // displaced read that leaves the cloth keeps this texel) and lights its crests.
-    vec2 local = (vUV - uFrameUV.xy) * uAtlasSize;
-    float wave = dot(local, uClothFreq) - uClothWave.x;
-    float u = vUV.x + uClothWave.y * sin(wave) / uAtlasSize.x;
-    if (u > uFrameUV.x && u < uFrameUV.z) {
-      vec4 moved = textureLod(uTexture, vec2(u, vUV.y), 0.0);
-      float movedIndex = floor(moved.r * 255.0 + 0.5);
-      if (moved.a > 0.0 && isCloth(movedIndex)) index = movedIndex;
-    }
-    shade = 1.0 + uClothWave.z * cos(wave);
-  }
+  float shade = blowCloth(vUV, index);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
   vec3 rgb = textureLod(uLut, lutUV, 0.0).rgb;
   if (uColorKey.x > 0.5) {
