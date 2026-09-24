@@ -49,6 +49,9 @@ const MEMBERSHIP_INPUTS: readonly Component<unknown>[] = [Person, Settler, Owner
 
 const memos = new WeakMap<World, DiscoveryMemo>();
 
+/** The tick authored setup lands on: a world's starting trades are discovered then, and are not news. */
+const SETUP_TICK = 1;
+
 function experienceSum(experience: ReadonlyMap<number, number>): number {
   let sum = 0;
   for (const amount of experience.values()) sum += amount;
@@ -185,7 +188,7 @@ export const technologySystem: System = (world, ctx) => {
     typeId: number,
   ): boolean => {
     if (!discoverTechnology(world, owner, tribe, kind, typeId)) return false;
-    if (entity !== undefined && owner !== undefined && ctx.tick > 1)
+    if (entity !== undefined && owner !== undefined && ctx.tick > SETUP_TICK)
       ctx.events.emit({
         kind: 'technologyDiscovered',
         entity,
