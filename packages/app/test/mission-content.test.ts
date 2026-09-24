@@ -305,6 +305,25 @@ describe('fillHistory', () => {
     expect(goneSprite instanceof Sprite && goneSprite.texture).not.toBe(Texture.WHITE);
   });
 
+  it('leaves a picture alone that arrives after a panel teardown destroyed its container', async () => {
+    const { ctx } = stubContext();
+    const container = new Container();
+    let arrive: (texture: Texture) => void = () => undefined;
+    const pending = new Promise<Texture | undefined>((resolve) => {
+      arrive = resolve;
+    });
+    const cache = createPictureCache(() => pending);
+    const sink = createContentSink(ctx, container, cache);
+    fillHistory(sink, [{ kind: 'picture', file: 'abc.png', width: 100, height: 50 }], 482, 'No history');
+    const sprite = container.children[0];
+    container.destroy({ children: true });
+    arrive(Texture.WHITE);
+    await cache.load('abc.png');
+    // A write to the destroyed sprite would throw inside the load's callback, unhandled.
+    await Promise.resolve();
+    expect(sprite?.destroyed).toBe(true);
+  });
+
   it('says so for an absent page', () => {
     const { ctx, made } = stubContext();
     const sink = sinkOf(ctx);

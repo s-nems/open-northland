@@ -169,9 +169,9 @@ export function createContentSink(
     const sprite = new Sprite(pictures.ready(p.file));
     sprite.setSize(w, h);
     container.addChild(sprite);
-    let live = true;
+    // A panel remount destroys the sprite with its container, not through `destroy` below.
     void pictures.load(p.file).then((texture) => {
-      if (!live || texture === undefined || sprite.texture === texture) return;
+      if (sprite.destroyed || texture === undefined || sprite.texture === texture) return;
       sprite.texture = texture;
       sprite.setSize(w, h);
     });
@@ -184,10 +184,7 @@ export function createContentSink(
       placement: 'center',
       link: null,
       place: (x, y) => sprite.position.set(Math.round(x), Math.round(y)),
-      destroy: () => {
-        live = false;
-        sprite.destroy();
-      },
+      destroy: () => sprite.destroy(),
     });
     cursor += h + pad;
   };
