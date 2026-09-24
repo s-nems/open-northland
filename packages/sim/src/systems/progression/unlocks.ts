@@ -76,7 +76,7 @@ export function settlerMeetsNeed(
   if (tribeType === undefined) return true;
   if (
     fighterJob &&
-    educationMet(ctx.content.jobExperience, tribeType.jobRequirements, experience, target, targetId)
+    schoolingMet(ctx.content.jobExperience, tribeType.jobRequirements, experience, targetId)
   ) {
     return true;
   }
@@ -88,34 +88,23 @@ export function settlerMeetsNeed(
 }
 
 /**
- * Whether a settler has paid a job's barracks schooling - every `trainforjob` row for `targetId` met in
+ * Whether a settler has paid a job's barracks schooling - every `trainforjob` row for `jobType` met in
  * TRAINING repeats. This is the alternative path onto a fighter trade: its `needforjob` rows read tracks
  * only that band itself accrues (viking `needforjob 31 5 69`), so a civilian could never earn one by
- * working. A target with no `train` row is not schooled, so this can only widen the gate. Read for fighter
- * targets only.
+ * working. A job with no `train` row is not schooled, so this can only widen the gate.
  *
  * Source basis (readable-semantics inference): the data states both row kinds but not how they combine,
  * and reading them as alternatives is what keeps the `trainfor*` rows from being dead.
  */
-export function schoolingMet(
+function schoolingMet(
   tracks: readonly HumanJobExperienceType[],
   requirements: readonly JobRequirement[],
   experience: ReadonlyMap<number, number>,
-  targetId: number,
-): boolean {
-  return educationMet(tracks, requirements, experience, 'job', targetId);
-}
-
-function educationMet(
-  tracks: readonly HumanJobExperienceType[],
-  requirements: readonly JobRequirement[],
-  experience: ReadonlyMap<number, number>,
-  target: JobRequirementTarget,
-  targetId: number,
+  jobType: number,
 ): boolean {
   let schooled = false;
   for (const req of requirements) {
-    if (req.requirement !== 'train' || req.target !== target || req.targetId !== targetId) continue;
+    if (req.requirement !== 'train' || req.target !== 'job' || req.targetId !== jobType) continue;
     if (requirementRepeats(tracks, experience, req.experienceTypes) < req.amount) return false;
     schooled = true;
   }

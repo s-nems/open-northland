@@ -1,7 +1,6 @@
 import { components, type Entity, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_CIVILIST, JOB_SOLDIER, JOB_SOLDIER_BROADSWORD } from '../catalog/jobs.js';
-import { jobUnlockedFor } from '../game/profession-unlocks.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_BARRACKS,
@@ -68,10 +67,9 @@ function cast(sim: Simulation): {
   return { recruit, veteran, draftee, bystander };
 }
 
-/** The job picker's filter, which mirrors the `setJob` gate. */
+/** The gate the job picker and the `setJob` command share. */
 function soldierOffered(sim: Simulation, e: Entity): boolean {
-  const settler = sim.world.get(e, Settler);
-  return jobUnlockedFor(sim.content, true, settler.tribe, settler.experience, JOB_SOLDIER);
+  return sim.canChooseJob(e, JOB_SOLDIER);
 }
 
 export const barracksScene: SceneDefinition = {
