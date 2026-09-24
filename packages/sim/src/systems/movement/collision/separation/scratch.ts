@@ -1,4 +1,4 @@
-import type { Fixed } from '../../../../core/fixed.js';
+import { type Fixed, ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 
 export interface MoverSnapshot {
@@ -8,15 +8,24 @@ export interface MoverSnapshot {
   hy: Fixed;
 }
 
+/** A point the resolve rewrites in place for each mover. */
+export interface ScratchPoint {
+  x: Fixed;
+  y: Fixed;
+}
+
 export interface SeparationScratch {
   readonly movers: Entity[];
   readonly posts: Entity[];
   readonly firmMovers: Set<Entity>;
   readonly before: Map<Entity, MoverSnapshot>;
   readonly snapshotPool: MoverSnapshot[];
+  /** Per-mover neighbour lists, valid up to the counts the resolve keeps beside them. */
   readonly nearMovers: Entity[];
   readonly nearPosts: Entity[];
   readonly ghostMemo: Map<Entity, boolean>;
+  readonly push: ScratchPoint;
+  readonly candidate: ScratchPoint;
 }
 
 const scratchByWorld = new WeakMap<World, SeparationScratch>();
@@ -34,6 +43,8 @@ export function separationScratch(world: World): SeparationScratch {
       nearMovers: [],
       nearPosts: [],
       ghostMemo: new Map(),
+      push: { x: ZERO, y: ZERO },
+      candidate: { x: ZERO, y: ZERO },
     };
     scratchByWorld.set(world, scratch);
   }
@@ -44,8 +55,6 @@ export function separationScratch(world: World): SeparationScratch {
   scratch.movers.length = 0;
   scratch.posts.length = 0;
   scratch.firmMovers.clear();
-  scratch.nearMovers.length = 0;
-  scratch.nearPosts.length = 0;
   scratch.ghostMemo.clear();
   return scratch;
 }

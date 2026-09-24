@@ -30,17 +30,16 @@ export function clearGrind(world: World, entity: Entity): void {
 
 /**
  * Maintain the firm-body grind window after collision resolution. Soft movers never grind; a firm
- * mover in its own calm zone or near only soft traffic clears the window. Otherwise a bounded
- * low-progress window first drops the current path, then eventually the whole navigation goal.
+ * mover in its own calm zone or without a post or firm mover in reach (`firmNear`) clears the window.
+ * Otherwise a bounded low-progress window first drops the current path, then eventually the whole
+ * navigation goal.
  */
 export function updateObstruction(
   world: World,
   entity: Entity,
   isFirm: boolean,
   ghost: boolean,
-  nearPosts: readonly Entity[],
-  nearMovers: readonly Entity[],
-  firmMovers: ReadonlySet<Entity>,
+  firmNear: boolean,
 ): void {
   if (!isFirm) return;
   const cost = world.tryGet(entity, PathFollow)?.legCost ?? 0;
@@ -49,7 +48,6 @@ export function updateObstruction(
     clearGrind(world, entity);
     return;
   }
-  const firmNear = nearPosts.length > 0 || nearMovers.some((neighbor) => firmMovers.has(neighbor));
   if (ghost || !firmNear) {
     clearGrind(world, entity);
     return;

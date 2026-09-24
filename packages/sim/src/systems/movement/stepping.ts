@@ -50,16 +50,22 @@ export function stepTowardPoint(
 }
 
 /**
- * The unit-length world-metric heading from `p` toward `target`, or `null` for a zero-length leg. A component
- * can run a few ulps past ONE where the isqrt-truncated distance under-reads.
+ * Write the unit-length world-metric heading from `p` toward `target` into `out`, zero for a zero-length
+ * leg. A component can run a few ulps past ONE where the isqrt-truncated distance under-reads.
  */
-export function legHeading(
+export function writeLegHeading(
   p: { x: Fixed; y: Fixed },
   target: { x: Fixed; y: Fixed },
-): { x: Fixed; y: Fixed } | null {
+  out: { hx: Fixed; hy: Fixed },
+): void {
   const dist = worldDistance(p.x, p.y, target.x, target.y);
-  if (dist <= ZERO) return null;
+  if (dist <= ZERO) {
+    out.hx = ZERO;
+    out.hy = ZERO;
+    return;
+  }
   const dwx = fx.sub(worldX(target.x, target.y), worldX(p.x, p.y));
   const dwy = fx.mul(fx.sub(target.y, p.y), ROW_STEP);
-  return { x: fx.div(dwx, dist), y: fx.div(dwy, dist) };
+  out.hx = fx.div(dwx, dist);
+  out.hy = fx.div(dwy, dist);
 }

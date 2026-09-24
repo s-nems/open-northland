@@ -1,19 +1,13 @@
 import { type Fixed, fx } from '../../../../core/fixed.js';
-import { positionXOfWorld } from '../../../../nav/halfcell.js';
-import { ROW_STEP, worldX } from '../../../../nav/world-metric.js';
+import { ROW_STEP } from '../../../../nav/world-metric.js';
 
-/** A point in the lattice's world axes, where separation measures on-screen distance. */
-interface SeparationPoint {
-  x: Fixed;
-  y: Fixed;
+/** A Position y on the lattice's world axis, where separation measures on-screen distance; `worldX`
+ *  gives the x. Scalar so the per-mover resolve allocates no point. */
+export function worldYOf(y: Fixed): Fixed {
+  return fx.mul(y, ROW_STEP);
 }
 
-export function separationWorldPoint(x: Fixed, y: Fixed): SeparationPoint {
-  return { x: worldX(x, y), y: fx.mul(y, ROW_STEP) };
-}
-
-/** Convert a world-axis point back to Position grid coordinates. */
-export function separationGridPoint(point: SeparationPoint): { x: Fixed; y: Fixed } {
-  const y = fx.div(point.y, ROW_STEP);
-  return { x: positionXOfWorld(point.x, y), y };
+/** A world-axis y back to Position grid y; `positionXOfWorld` takes the x back at that y. */
+export function gridYOf(worldY: Fixed): Fixed {
+  return fx.div(worldY, ROW_STEP);
 }

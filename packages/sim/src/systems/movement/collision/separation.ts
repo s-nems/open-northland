@@ -1,13 +1,13 @@
 import { Position } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
-import { worldDistance } from '../../../nav/world-metric.js';
+import { nodeHxOfPosition, nodeHyOfPosition, positionXOfWorld } from '../../../nav/halfcell.js';
+import { worldDistance, worldX } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
 import { REFERENCE_PACE_PER_TICK } from '../system.js';
 import { collectColliders } from './separation/colliders.js';
 import { SeparationGates } from './separation/gates.js';
-import { separationGridPoint, separationWorldPoint } from './separation/geometry.js';
+import { gridYOf, worldYOf } from './separation/geometry.js';
 import {
   clearGrind,
   OBSTRUCTED_MAX_REROUTES,
@@ -15,7 +15,7 @@ import {
   OBSTRUCTED_REROUTE_TICKS,
   updateObstruction,
 } from './separation/obstruction.js';
-import { type MoverSnapshot, separationScratch } from './separation/scratch.js';
+import { type MoverSnapshot, type ScratchPoint, separationScratch } from './separation/scratch.js';
 
 export { OBSTRUCTED_MAX_REROUTES, OBSTRUCTED_PROGRESS_FLOOR, OBSTRUCTED_REROUTE_TICKS };
 
@@ -65,7 +65,7 @@ export const separationSystem: System = (world, ctx) => {
   if (colliders === null) return; // nobody walking, so nothing can overlap anything
   const { movers, firmMovers, before, moverIndex, postIndex } = colliders;
   const gates = new SeparationGates(world, ctx, terrain, scratch.ghostMemo);
-  const { nearMovers, nearPosts } = scratch;
+  const { nearMovers, nearPosts, push, candidate } = scratch;
 
   for (const e of movers) {
     const start = before.get(e);
@@ -75,81 +75,100 @@ export const separationSystem: System = (world, ctx) => {
     const isFirm = firmMovers.has(e);
 
     // The radius is below both bucket pitches, so every body within reach lives in the 3x3 bucket block
-    // around the mover's own node. Posts matter only to a firm mover.
-    nearMovers.length = 0;
-    nearPosts.length = 0;
+    // around the mover's own node. Posts matter only to a firm mover. Indexed loops and count-bound lists
+    // keep this pass allocation-free: `for...of` allocated an iterator per bucket, and `length = 0` drops
+    // an array's storage.
+    let moverCount = 0;
+    let postCount = 0;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        for (const n of moverIndex.at(nodeHx + dx, nodeHy + dy)) {
-          if (n !== e) nearMovers.push(n);
+        const bucket = moverIndex.at(nodeHx + dx, nodeHy + dy);
+        for (let i = 0; i < bucket.length; i++) {
+          const n = bucket[i];
+          if (n !== undefined && n !== e) nearMovers[moverCount++] = n;
         }
-        if (isFirm) nearPosts.push(...postIndex.at(nodeHx + dx, nodeHy + dy));
+        if (!isFirm) continue;
+        const posts = postIndex.at(nodeHx + dx, nodeHy + dy);
+        for (let i = 0; i < posts.length; i++) {
+          const post = posts[i];
+          if (post !== undefined) nearPosts[postCount++] = post;
+        }
       }
     }
-    if (nearMovers.length === 0 && nearPosts.length === 0) {
+    if (moverCount === 0 && postCount === 0) {
       if (isFirm) clearGrind(world, e);
       continue;
     }
     // A firm mover in its own town drops to the soft tier: no post resolve and no grind.
     const ghost = isFirm && gates.isGhost(e);
 
-    const push = resolveMoverPush(e, start, nearMovers, before);
+    resolveMoverPush(e, start, nearMovers, moverCount, before, push);
 
     const p = world.get(e, Position);
-    let cand = { x: p.x, y: p.y };
+    candidate.x = p.x;
+    candidate.y = p.y;
     if (push.x !== ZERO || push.y !== ZERO) {
-      const candW = separationWorldPoint(p.x, p.y);
-      cand = separationGridPoint({ x: fx.add(candW.x, push.x), y: fx.add(candW.y, push.y) });
+      const y = gridYOf(fx.add(worldYOf(p.y), push.y));
+      candidate.x = positionXOfWorld(fx.add(worldX(p.x, p.y), push.x), y);
+      candidate.y = y;
     }
 
     // Only a firm mover outside its own calm zone ejects off posts; everyone else keeps the soft candidate.
-    if (!ghost) cand = resolveAgainstPosts(e, cand, nearPosts, world);
+    if (!ghost) resolveAgainstPosts(e, candidate, nearPosts, postCount, world);
 
     // Drop the offending axis, then the whole displacement: the walker's own path point always stands.
     // Mut only on a landed displacement, so a crowd standing in equilibrium does not churn the touched log.
-    if (cand.x !== p.x || cand.y !== p.y) {
-      if (gates.allowsLanding(cand.x, cand.y)) {
+    if (candidate.x !== p.x || candidate.y !== p.y) {
+      if (gates.allowsLanding(candidate.x, candidate.y)) {
         const moved = world.mut(e, Position);
-        moved.x = cand.x;
-        moved.y = cand.y;
-      } else if (gates.allowsLanding(cand.x, p.y)) {
-        world.mut(e, Position).x = cand.x;
-      } else if (gates.allowsLanding(p.x, cand.y)) {
-        world.mut(e, Position).y = cand.y;
+        moved.x = candidate.x;
+        moved.y = candidate.y;
+      } else if (gates.allowsLanding(candidate.x, p.y)) {
+        world.mut(e, Position).x = candidate.x;
+      } else if (gates.allowsLanding(p.x, candidate.y)) {
+        world.mut(e, Position).y = candidate.y;
       }
     }
 
-    updateObstruction(world, e, isFirm, ghost, nearPosts, nearMovers, firmMovers);
+    const firmNear = postCount > 0 || someFirm(nearMovers, moverCount, firmMovers);
+    updateObstruction(world, e, isFirm, ghost, firmNear);
   }
 };
 
 /**
- * The soft tier: this mover's mover-vs-mover push for the tick, read from the pre-separation snapshot
- * (`before`) alone so the pairwise split is order-independent, and capped at {@link SEPARATION_PUSH_CAP}.
+ * The soft tier: this mover's mover-vs-mover push for the tick, written to `push` in world axes. Read from
+ * the pre-separation snapshot (`before`) alone so the pairwise split is order-independent, and capped at
+ * {@link SEPARATION_PUSH_CAP}.
  */
 function resolveMoverPush(
   e: Entity,
   start: Readonly<MoverSnapshot>,
   nearMovers: readonly Entity[],
+  moverCount: number,
   before: ReadonlyMap<Entity, Readonly<MoverSnapshot>>,
-): { x: Fixed; y: Fixed } {
-  const startW = separationWorldPoint(start.x, start.y);
+  push: ScratchPoint,
+): void {
+  const startWX = worldX(start.x, start.y);
+  const startWY = worldYOf(start.y);
   let pushX = ZERO;
   let pushY = ZERO;
-  for (const n of nearMovers) {
+  for (let i = 0; i < moverCount; i++) {
+    const n = nearMovers[i];
+    if (n === undefined) continue;
     const other = before.get(n);
     if (other === undefined) continue;
     const dist = worldDistance(start.x, start.y, other.x, other.y);
     if (dist >= UNIT_SEPARATION_RADIUS) continue;
     const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
-    const otherW = separationWorldPoint(other.x, other.y);
+    const otherWX = worldX(other.x, other.y);
+    const otherWY = worldYOf(other.y);
     // (0, 0) is the "no established heading" sentinel: such a pair falls through to the radial split.
     if ((start.hx !== ZERO || start.hy !== ZERO) && (other.hx !== ZERO || other.hy !== ZERO)) {
       const alignment = fx.add(fx.mul(start.hx, other.hx), fx.mul(start.hy, other.hy));
       if (alignment >= CONVOY_ALIGNMENT_MIN) {
         const ahead = fx.add(
-          fx.mul(fx.sub(otherW.x, startW.x), start.hx),
-          fx.mul(fx.sub(otherW.y, startW.y), start.hy),
+          fx.mul(fx.sub(otherWX, startWX), start.hx),
+          fx.mul(fx.sub(otherWY, startWY), start.hy),
         );
         // Exactly abreast or stacked: the higher id yields, seeding the fore and aft order the geometric
         // test then keeps stable. Known gap: a follower on a faster gait out-closes the capped brake and
@@ -162,8 +181,8 @@ function resolveMoverPush(
         // The leader skips its counter-shove only when the other side will brake. Both iterations read the
         // same snapshot, so this prediction equals the other side's own decision exactly.
         const otherAhead = fx.add(
-          fx.mul(fx.sub(startW.x, otherW.x), other.hx),
-          fx.mul(fx.sub(startW.y, otherW.y), other.hy),
+          fx.mul(fx.sub(startWX, otherWX), other.hx),
+          fx.mul(fx.sub(startWY, otherWY), other.hy),
         );
         if (otherAhead > ZERO || (otherAhead === ZERO && n > e)) continue;
       }
@@ -172,8 +191,8 @@ function resolveMoverPush(
       // Exactly stacked crossing traffic: split along E/W by id order, a named pick.
       pushX = fx.add(pushX, e < n ? fx.sub(ZERO, half) : half);
     } else {
-      pushX = fx.add(pushX, fx.mulDiv(fx.sub(startW.x, otherW.x), half, dist));
-      pushY = fx.add(pushY, fx.mulDiv(fx.sub(startW.y, otherW.y), half, dist));
+      pushX = fx.add(pushX, fx.mulDiv(fx.sub(startWX, otherWX), half, dist));
+      pushY = fx.add(pushY, fx.mulDiv(fx.sub(startWY, otherWY), half, dist));
     }
   }
   if (pushX !== ZERO || pushY !== ZERO) {
@@ -183,26 +202,29 @@ function resolveMoverPush(
       pushY = fx.mulDiv(pushY, SEPARATION_PUSH_CAP, mag);
     }
   }
-  return { x: pushX, y: pushY };
+  push.x = pushX;
+  push.y = pushY;
 }
 
 /**
- * The firm tier: place `cand` back onto the radius of each post it overlaps, in the bucket-scan order the
+ * The firm tier: move `cand` back onto the radius of each post it overlaps, in the bucket-scan order the
  * caller passes `nearPosts` in, so the last overlapped post in that order wins a conflict.
  */
 function resolveAgainstPosts(
   e: Entity,
-  cand: { x: Fixed; y: Fixed },
+  cand: ScratchPoint,
   nearPosts: readonly Entity[],
+  postCount: number,
   world: World,
-): { x: Fixed; y: Fixed } {
-  let out = cand;
-  for (const s of nearPosts) {
+): void {
+  for (let i = 0; i < postCount; i++) {
+    const s = nearPosts[i];
+    if (s === undefined) continue;
     const sp = world.get(s, Position);
-    const dist = worldDistance(out.x, out.y, sp.x, sp.y);
+    const dist = worldDistance(cand.x, cand.y, sp.x, sp.y);
     if (dist >= UNIT_SEPARATION_RADIUS) continue;
-    const postW = separationWorldPoint(sp.x, sp.y);
-    const candW = separationWorldPoint(out.x, out.y);
+    const postWX = worldX(sp.x, sp.y);
+    const postWY = worldYOf(sp.y);
     let outX: Fixed;
     let outY: Fixed;
     if (dist === ZERO) {
@@ -210,10 +232,19 @@ function resolveAgainstPosts(
       outX = e < s ? fx.sub(ZERO, UNIT_SEPARATION_RADIUS) : UNIT_SEPARATION_RADIUS;
       outY = ZERO;
     } else {
-      outX = fx.mulDiv(fx.sub(candW.x, postW.x), UNIT_SEPARATION_RADIUS, dist);
-      outY = fx.mulDiv(fx.sub(candW.y, postW.y), UNIT_SEPARATION_RADIUS, dist);
+      outX = fx.mulDiv(fx.sub(worldX(cand.x, cand.y), postWX), UNIT_SEPARATION_RADIUS, dist);
+      outY = fx.mulDiv(fx.sub(worldYOf(cand.y), postWY), UNIT_SEPARATION_RADIUS, dist);
     }
-    out = separationGridPoint({ x: fx.add(postW.x, outX), y: fx.add(postW.y, outY) });
+    const y = gridYOf(fx.add(postWY, outY));
+    cand.x = positionXOfWorld(fx.add(postWX, outX), y);
+    cand.y = y;
   }
-  return out;
+}
+
+function someFirm(near: readonly Entity[], count: number, firmMovers: ReadonlySet<Entity>): boolean {
+  for (let i = 0; i < count; i++) {
+    const n = near[i];
+    if (n !== undefined && firmMovers.has(n)) return true;
+  }
+  return false;
 }

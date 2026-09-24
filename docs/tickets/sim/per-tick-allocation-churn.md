@@ -1,4 +1,4 @@
-# Stop spatial buckets, separation and field zones from allocating per tick
+# Stop spatial buckets and field zones from allocating per tick
 
 **Area:** sim · **Priority:** P3
 
@@ -12,8 +12,6 @@ warm-up, records 3.8 MB allocated per tick. By share of sampled bytes:
   array per bucket. Per-tick owners: `collectColliders`' mover and post indexes, the gossip
   candidates, `ExternalQualityIndex`, and `PlannerSpacing.forTick`, which
   [planner-pass-setup-scales-with-world.md](planner-pass-setup-scales-with-world.md) owns.
-- 8.9% is `separationSystem` (`systems/movement/collision/separation.ts`) itself: fresh `{ x, y }`
-  candidate and world points per mover, and iterator garbage not yet traced to a line.
 - 3.7% is the planner's `fieldZones` set (`systems/settlers/targets/candidates.ts`), rebuilt on first
   use every tick.
 
@@ -21,8 +19,6 @@ warm-up, records 3.8 MB allocated per tick. By share of sampled bytes:
 
 - `NodeBuckets` for the owners outside the planner-pass ticket: a flat node-keyed layout with
   ascending-id buckets, cleared and refilled in one instance instead of a new one per tick.
-- `separationSystem`: find the iterator garbage, and reuse point scratch per mover instead of
-  allocating it.
 - `fieldZones`: keep the set across ticks or refill one instance.
 - Pure cost work: the state hash must stay identical.
 

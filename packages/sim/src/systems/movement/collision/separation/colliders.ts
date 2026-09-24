@@ -3,7 +3,7 @@ import { ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { canonicalById, NodeBuckets } from '../../../spatial/nodes.js';
-import { legHeading } from '../../stepping.js';
+import { writeLegHeading } from '../../stepping.js';
 import { hasBodyCollision, hasSoftCollision, isStanding } from '../bodies.js';
 import type { MoverSnapshot, SeparationScratch } from './scratch.js';
 
@@ -58,12 +58,15 @@ export function collectColliders(
     const p = world.get(e, Position);
     // Both present by the movers query above.
     const target = world.get(e, PathRoute).waypoints[world.get(e, PathFollow).index];
-    const heading = target === undefined ? null : legHeading(p, target);
     const snapshot = snapshotPool.pop() ?? { x: p.x, y: p.y, hx: ZERO, hy: ZERO };
     snapshot.x = p.x;
     snapshot.y = p.y;
-    snapshot.hx = heading?.x ?? ZERO;
-    snapshot.hy = heading?.y ?? ZERO;
+    if (target === undefined) {
+      snapshot.hx = ZERO;
+      snapshot.hy = ZERO;
+    } else {
+      writeLegHeading(p, target, snapshot);
+    }
     before.set(e, snapshot);
   }
 
