@@ -4,7 +4,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../nav/node-circle.js';
-import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
@@ -165,15 +165,16 @@ export function buildingSpotAccept(
   player: number,
   buildingTypeId: number,
 ): (x: number, y: number) => boolean {
-  const occupied = new Set<string>();
+  const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
   for (const e of world.query(Building)) {
     const node = anchorNodeOf(world, e);
-    if (node !== null) occupied.add(`${node.hx},${node.hy}`);
+    if (node !== null && terrain.inBounds(node.hx, node.hy)) occupied.add(terrain.nodeAt(node.hx, node.hy));
   }
   const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, player);
   return (x, y) => {
-    if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
-    if (occupied.has(`${x},${y}`)) return false;
+    if (!terrain.inBounds(x, y)) return false;
+    const node = terrain.nodeAt(x, y);
+    if (!terrain.isBuildable(node) || occupied.has(node)) return false;
     return probe.canPlace(x, y);
   };
 }
