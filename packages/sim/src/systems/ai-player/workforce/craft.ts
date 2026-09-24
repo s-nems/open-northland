@@ -22,14 +22,16 @@ import { ownedSettlers } from '../seat-roster.js';
  * works, and the lists interleave so a partly staffed type already runs its main lines: the smithies'
  * eight seats are three long-sword and five plate-armour makers, one druid in four boils holy oil (the
  * first, since the big potion waits on herbs the later herb hut grows), one coiner in four strikes coins,
- * and the second joiner and potter take the furniture and the crockery.
- * At the animal farm the products are the two herds themselves, so a seat apiece keeps both species tended.
+ * the second joiner and potter take the furniture and the crockery, and the first tailor sews shoes while
+ * the second sews leather armour. Bakers bake only bread and breeders keep only cattle.
  */
 export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly (readonly string[])[]>> = {
   work_joinery_01: [['tool_iron'], ['tool_iron', 'furniture']],
   work_pottery_01: [['brick', 'tile'], ['crockery']],
   work_mason_hut_01: [['pillar', 'ornament']],
-  work_animal_farm: [['cattle'], ['sheep']],
+  work_animal_farm: [['cattle']],
+  work_sewery_01: [['shoes'], ['armor_leather']],
+  work_bakery_01: [['bread']],
   work_smithy_01: [
     ['sword_long'],
     ['armor_plate'],
@@ -54,10 +56,6 @@ export const CRAFT_OPENING_RUN_BY_BUILDING_ID: Readonly<
   work_pottery_01: { good: 'tile', cycles: 5 },
   work_mason_hut_01: { good: 'ornament', cycles: 5 },
 };
-
-/** Workplace types whose short crew works every listed line instead of the first seat's: there each line
- *  is a herd, and one left untended while the pool is short dies out (authored). */
-const SHORT_CREW_WORKS_EVERY_LINE: ReadonlySet<string> = new Set(['work_animal_farm']);
 
 interface RestrictedCrew {
   readonly type: BuildingType;
@@ -101,17 +99,10 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
   }
   for (const { type, restriction, crew, workplaces } of crews.values()) {
     const produced = new Set(type.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
-    const lines = new Set(restriction.map((listed) => listed.join()));
-    const union = crew.length < lines.size && SHORT_CREW_WORKS_EVERY_LINE.has(type.id);
     for (const [seat, e] of crew.entries()) {
       const workplace = workplaces[seat];
       const opening = workplace === undefined ? null : openingRun(world, ctx, workplace, type);
-      const listed =
-        opening !== null
-          ? [opening]
-          : union
-            ? restriction.flat()
-            : (restriction[seat % restriction.length] ?? []);
+      const listed = opening !== null ? [opening] : (restriction[seat % restriction.length] ?? []);
       const goods = [
         ...new Set(
           listed

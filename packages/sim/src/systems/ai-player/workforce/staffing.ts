@@ -42,8 +42,8 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   // only once the farm's own extra hands have outgrown him.
   work_mill_00: { operatorSurplus: 2 },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
-  // A breeder works a single species line (CRAFT_RESTRICTIONS_BY_BUILDING_ID), so the pair is the
-  // minimum that runs the ox and sheep lines at once.
+  // Both breeders keep the cattle (CRAFT_RESTRICTIONS_BY_BUILDING_ID), so the pair doubles the one herd's
+  // output from the start.
   work_animal_farm: { operatorMin: 2, operatorTarget: 2 },
   // The level-0 bakery offers a single baker slot, so only its carrier is planned.
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },

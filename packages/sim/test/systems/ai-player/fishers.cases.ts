@@ -1,13 +1,14 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { FishSwarm, Position } from '../../../src/components/index.js';
+import { FishSwarm, Position, WALK_RANGE_NODES } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
+import type { TerrainMap } from '../../../src/index.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import { BUILDER_CAP } from '../../../src/systems/ai-player/index.js';
 import { addFishSwarms } from '../../../src/systems/economy/fish.js';
 import { aiContent } from '../../fixtures/ai-content.js';
-import { grassNodeMap } from '../../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
   BUILDER,
   collectModule,
@@ -21,16 +22,21 @@ import {
   spawnMen,
 } from './support.js';
 
-/** The fishers: store-employed while fish swim within a fisher's shore search of the store's door. */
+/** The fishers: store-employed while fish swim within a fishing trip of the store's door. */
 
 const FISHER = 22;
 const FISH = 22;
 /** A swarm a few nodes off the headquarters, well inside the shore search. */
 const NEAR_SWARM = { hx: HQ_X + 4, hy: HQ_Y };
-/** A swarm across the map, far beyond the search from the headquarters door. */
+/** A swarm across the map, beyond a fishing trip from the headquarters door. */
 const FAR_SWARM = { hx: 120, hy: 60 };
-/** A diagonal swarm close by hex distance but outside the search's Manhattan rings. */
-const DIAGONAL_SWARM = { hx: HQ_X + 14, hy: HQ_Y + 14 };
+/** A swarm outside the fisher's own search from the door but inside a fishing trip. */
+const TRIP_SWARM = { hx: HQ_X + 14, hy: HQ_Y + 14 };
+/** A swarm inside a fishing trip along the headquarters row, but past a settler's signpost walk range. */
+const REMOTE_SWARM = { hx: HQ_X + WALK_RANGE_NODES + 10, hy: HQ_Y };
+/** The cell column of a river between the headquarters and {@link REMOTE_SWARM}, in the 64 x 32 cell map
+ *  that matches the fishing seat's node lattice. */
+const RIVER_CELL_COLUMN = 36;
 /** Decisions the catch test runs: long enough for a walk to the shore and several casts. */
 const FISHING_DECISIONS = 120;
 
@@ -55,9 +61,14 @@ function fishingContent(): ContentSet {
   });
 }
 
-function fishingSeat(men: number, swarm: { hx: number; hy: number }, count = 5): Simulation {
+function fishingSeat(
+  men: number,
+  swarm: { hx: number; hy: number },
+  count = 5,
+  map: TerrainMap = grassNodeMap(128, 64),
+): Simulation {
   const content = fishingContent();
-  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 64) });
+  const sim = new Simulation({ seed: 1, content, map });
   placeHq(sim);
   spawnMen(sim, men);
   sim.step();
@@ -99,15 +110,17 @@ describe('workforce module - the fishers', () => {
     expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, NEAR_SWARM))).toHaveLength(2);
   });
 
-  it('hires no fisher while no fish swim within the search from the door', () => {
+  it('hires no fisher while no fish swim within a trip of the door', () => {
     expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, FAR_SWARM))).toEqual([]);
-    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, DIAGONAL_SWARM))).toEqual([]);
     expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, NEAR_SWARM, 0))).toEqual([]);
   });
 
-  it('gets a fisher hired far from the water fishing', () => {
+  it.each([
+    ['near the door', NEAR_SWARM],
+    ['a trip away', TRIP_SWARM],
+  ])('gets a fisher hired far from water %s fishing', (_, swarm) => {
     // The spawned men stand across the map from the headquarters, outside the fisher's own search.
-    const sim = fishingSeat(4, NEAR_SWARM);
+    const sim = fishingSeat(4, swarm);
     const before = fishLeft(sim);
     for (let i = 0; i < FISHING_DECISIONS && fishLeft(sim) === before; i++) {
       for (const c of decide(sim)) sim.enqueueSetup(c);
@@ -116,11 +129,36 @@ describe('workforce module - the fishers', () => {
     expect(fishLeft(sim)).toBeLessThan(before);
   });
 
+  it('sends no fisher to a shore across water or past the signpost walk range', () => {
+    expect(fisherPosts(fishingSeat(4, REMOTE_SWARM))).toHaveLength(1);
+    expect(fisherPosts(fishingSeat(4, REMOTE_SWARM, 5, waterColumnMap(64, 32, RIVER_CELL_COLUMN)))).toEqual(
+      [],
+    );
+    const confined = fishingSeat(4, REMOTE_SWARM);
+    confined.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    confined.step();
+    expect(fisherPosts(confined)).toEqual([]);
+  });
+
   it('walks an idle fisher who strayed out of reach back to his store', () => {
     const sim = fishingSeat(4, NEAR_SWARM);
     const fisher = hireFisher(sim);
     sim.world.add(fisher, Position, positionOfNode(FAR_SWARM.hx, FAR_SWARM.hy));
     expect(decide(sim).filter((c) => c.kind === 'moveUnit' && c.entity === fisher)).toHaveLength(1);
+  });
+
+  it('walks an idle fisher at a store out of reach of the water to the nearest fished shore', () => {
+    const sim = fishingSeat(4, TRIP_SWARM);
+    const fisher = hireFisher(sim);
+    sim.world.add(fisher, Position, positionOfNode(HQ_X, HQ_Y));
+    const [swarm] = sim.world.query(FishSwarm);
+    const shore = swarm === undefined ? null : sim.world.get(swarm, FishSwarm).shore;
+    const terrain = sim.terrain;
+    if (shore === null || terrain === undefined) throw new Error('setup: the swarm has no shore');
+    const { x, y } = terrain.coordsOf(shore);
+    expect(decide(sim).filter((c) => c.kind === 'moveUnit' && c.entity === fisher)).toEqual([
+      { kind: 'moveUnit', entity: fisher, x, y },
+    ]);
   });
 
   it('hands a fisher back as a builder once his water is fished out', () => {

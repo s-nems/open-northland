@@ -3,6 +3,7 @@ import { Building, UnderConstruction, Upgrading } from '../../../components/inde
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
@@ -62,6 +63,11 @@ export function entryStatus(
         if (matches) have++;
       }
       if (have >= entry.count) return 'satisfied';
+      if (
+        entry.unlessWithin !== undefined &&
+        countedStandsNear(world, index, owned, counted, entry.unlessWithin)
+      )
+        return 'skip';
       for (const goodId of entry.needsResources ?? []) {
         const needed = goodTypeByContentId(ctx.content, goodId);
         if (needed === undefined || !liveResourceNearBase(world, ctx, player, needed.typeId, live))
@@ -101,6 +107,28 @@ export function entryStatus(
       return uncovered === null ? 'satisfied' : 'unmet';
     }
   }
+}
+
+/** Whether a building whose type is in `counted` stands within `near.radius` world-metric nodes of the
+ *  seat's lowest-id `near.building`; true while the seat has no such building, so there is nothing to
+ *  stand beside. */
+function countedStandsNear(
+  world: World,
+  index: ContentIndex,
+  owned: readonly Entity[],
+  counted: ReadonlySet<number>,
+  near: { readonly building: string; readonly radius: number },
+): boolean {
+  const anchorOf = owned.find(
+    (e) => index.buildings.get(world.get(e, Building).buildingType)?.id === near.building,
+  );
+  const anchor = anchorOf === undefined ? null : anchorNodeOf(world, anchorOf);
+  if (anchor === null) return true;
+  return owned.some((e) => {
+    if (!counted.has(world.get(e, Building).buildingType)) return false;
+    const node = anchorNodeOf(world, e);
+    return node !== null && withinNodeRadius(anchor.hx, anchor.hy, node.hx, node.hy, near.radius);
+  });
 }
 
 /** Whether the map still holds a live resource of `goodType`, searched outward from the seat's base. */

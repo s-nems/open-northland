@@ -34,6 +34,7 @@ import {
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
+import { upgradeBillCovered } from './upgrade-supply.js';
 
 export * from './entries.js';
 export {
@@ -48,9 +49,10 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
  * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to
  * {@link MAX_ACTIVE_CONSTRUCTION_SITES} entries go up side by side, within
  * {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} of the oldest unfinished one. An unmet entry with no legal action
- * stalls rather than being skipped: most retry next decision, a placement that found no spot every
- * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions. Builders are never pinned to a site; the builder
- * drive picks its own.
+ * stalls rather than being skipped, so no later site draws off the goods it waits for: most retry next
+ * decision, a placement that found no spot every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and
+ * an upgrade holds while a bill good only it or another site could make is not yet in store
+ * ({@link upgradeBillCovered}). Builders are never pinned to a site; the builder drive picks its own.
  */
 export function buildOrderModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {
@@ -110,6 +112,7 @@ function runBuildOrder(
         const nextTier = index.buildings.get(building.buildingType)?.upgradeTarget;
         if (nextTier === undefined || !buildingEnabled(world, ctx, player, building.tribe, nextTier))
           return [];
+        if (!upgradeBillCovered(world, ctx, player, owned, candidate)) return [];
         return [{ kind: 'upgradeBuilding', building: candidate }];
       }
       case 'collector':

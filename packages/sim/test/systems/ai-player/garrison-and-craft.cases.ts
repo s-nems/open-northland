@@ -1,4 +1,4 @@
-import { parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   ASSISTANT_RECRUIT_INTENTS,
@@ -46,7 +46,6 @@ import {
   makeAiSeat,
   placeHq,
   SEAT,
-  SHEEP,
   SPEAR,
   SWORD,
   spawnMen,
@@ -152,6 +151,32 @@ function draftHeadroom(seat: ArmedSeat): number {
     (slots, intent) => slots + Math.max(0, (wants[intent] ?? live[intent].value) - (booked.get(intent) ?? 0)),
     0,
   );
+}
+
+const FURNITURE = 13;
+
+/** The AI content with the joinery's furniture line, so its second seat has a product of its own. */
+function furnitureContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: FURNITURE, id: 'furniture', weight: 1 }],
+    buildings: base.buildings.map((b) =>
+      b.typeId === JOINERY_TYPE
+        ? {
+            ...b,
+            recipes: [
+              ...b.recipes,
+              {
+                inputs: [{ goodType: WOOD, amount: 1 }],
+                outputs: [{ goodType: FURNITURE, amount: 1 }],
+                ticks: 180,
+              },
+            ],
+          }
+        : b,
+    ),
+  });
 }
 
 describe('workforce module - the barracks and craft selections', () => {
@@ -494,27 +519,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('keeps a lone joiner on iron tools and gives the second the furniture as well', () => {
     // The first seat's list is what a lone man works: furniture waits for the joinery's second hand.
-    const base = aiContent();
-    const FURNITURE = 13;
-    const content = parseContentSet({
-      ...base,
-      goods: [...base.goods, { typeId: FURNITURE, id: 'furniture', weight: 1 }],
-      buildings: base.buildings.map((b) =>
-        b.typeId === JOINERY_TYPE
-          ? {
-              ...b,
-              recipes: [
-                ...b.recipes,
-                {
-                  inputs: [{ goodType: WOOD, amount: 1 }],
-                  outputs: [{ goodType: FURNITURE, amount: 1 }],
-                  ticks: 180,
-                },
-              ],
-            }
-          : b,
-      ),
-    });
+    const content = furnitureContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
     placeHq(sim);
     sim.enqueueSetup({
@@ -627,7 +632,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
   });
 
-  it('splits the animal farm between its breeders - the ox line, then the sheep line', () => {
+  it('keeps both breeders of the animal farm on the cattle', () => {
     const content = husbandryContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
@@ -643,15 +648,13 @@ describe('workforce module - the barracks and craft selections', () => {
     sim.step();
     const ctx = { ...ctxOf(sim), content };
 
-    // Both breeders are MINIMUM-tier posts: the pair is what runs the two species lines at once.
+    // Both breeders are MINIMUM-tier posts.
     const hires = [...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'assignWorker');
     const farm = entityOfBuilding(sim, ANIMAL_FARM_TYPE);
     expect(hires.filter((c) => c.building === farm && c.jobPriority.includes(BREEDER))).toHaveLength(2);
     for (const c of hires) sim.enqueueSetup(c);
     sim.step();
 
-    // Seats are handed out in canonical settler order: the first breeder takes the cattle, the second
-    // the sheep, so both herds are tended at once.
     const breeders = [...sim.world.query(Settler, JobAssignment)]
       .filter((e) => sim.world.get(e, JobAssignment).workplace === farm)
       .filter((e) => sim.world.get(e, Settler).jobType === BREEDER)
@@ -659,20 +662,20 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(breeders).toHaveLength(2);
     expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setCraftGoods')).toEqual([
       { kind: 'setCraftGoods', entity: breeders[0], goods: [CATTLE] },
-      { kind: 'setCraftGoods', entity: breeders[1], goods: [SHEEP] },
+      { kind: 'setCraftGoods', entity: breeders[1], goods: [CATTLE] },
     ]);
   });
 
   it('hands the seats out across every building of the type, not per building', () => {
-    // One breeder in each of two farms: counted per building each would be a lone man working both lines,
+    // One joiner in each of two joineries: counted per building each would be a lone man on iron tools,
     // counted across the type they are the pair the table splits.
-    const content = husbandryContent();
+    const content = furnitureContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
     for (const x of [40, 60]) {
       sim.enqueueSetup({
         kind: 'placeBuilding',
-        buildingType: ANIMAL_FARM_TYPE,
+        buildingType: JOINERY_TYPE,
         x,
         y: 16,
         tribe: VIKING,
@@ -682,62 +685,26 @@ describe('workforce module - the barracks and craft selections', () => {
     spawnMen(sim, 2, BUILDER);
     sim.step();
     const ctx = { ...ctxOf(sim), content };
-    const farms = [...sim.world.query(Building)]
-      .filter((e) => sim.world.get(e, Building).buildingType === ANIMAL_FARM_TYPE)
+    const joineries = [...sim.world.query(Building)]
+      .filter((e) => sim.world.get(e, Building).buildingType === JOINERY_TYPE)
       .sort((a, b) => a - b);
     const men = [...sim.world.query(Settler)]
       .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
       .sort((a, b) => a - b);
-    for (const [i, building] of farms.entries()) {
+    for (const [i, building] of joineries.entries()) {
       const man = men[i];
       if (man === undefined) throw new Error('setup: too few men');
-      sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [BREEDER] });
+      sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [JOINER] });
     }
     sim.step();
 
-    const breeders = [...sim.world.query(Settler, JobAssignment)]
-      .filter((e) => sim.world.get(e, Settler).jobType === BREEDER)
+    const joiners = [...sim.world.query(Settler, JobAssignment)]
+      .filter((e) => sim.world.get(e, Settler).jobType === JOINER)
       .sort((a, b) => a - b);
-    expect(breeders).toHaveLength(2);
+    expect(joiners).toHaveLength(2);
     expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
-      { kind: 'setCraftGoods', entity: breeders[0], goods: [CATTLE] },
-      { kind: 'setCraftGoods', entity: breeders[1], goods: [SHEEP] },
-    ]);
-  });
-
-  it('gives a lone breeder both lines rather than letting the sheep line die', () => {
-    // The split must not outlive the crew it was written for: with the pool too short to seat two
-    // breeders, restricting the one man to seat 0 would leave the sheep untended while he is alone.
-    const content = husbandryContent();
-    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
-    placeHq(sim);
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: ANIMAL_FARM_TYPE,
-      x: 40,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    spawnMen(sim, 3, BUILDER);
-    sim.step();
-    const ctx = { ...ctxOf(sim), content };
-    const farm = entityOfBuilding(sim, ANIMAL_FARM_TYPE);
-
-    const hire = [...collectModule.run(sim.world, ctx, SEAT)].find(
-      (c) => c.kind === 'assignWorker' && c.building === farm && c.jobPriority.includes(BREEDER),
-    );
-    if (hire === undefined) throw new Error('expected a breeder hire');
-    sim.enqueueSetup(hire);
-    sim.step();
-
-    const lone = [...sim.world.query(Settler, JobAssignment)].filter(
-      (e) =>
-        sim.world.get(e, JobAssignment).workplace === farm && sim.world.get(e, Settler).jobType === BREEDER,
-    );
-    expect(lone).toHaveLength(1);
-    expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setCraftGoods')).toEqual([
-      { kind: 'setCraftGoods', entity: lone[0], goods: [SHEEP, CATTLE] },
+      { kind: 'setCraftGoods', entity: joiners[0], goods: [TOOL_IRON] },
+      { kind: 'setCraftGoods', entity: joiners[1], goods: [TOOL_IRON, FURNITURE] },
     ]);
   });
 });

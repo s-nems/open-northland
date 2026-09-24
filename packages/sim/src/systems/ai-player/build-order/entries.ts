@@ -13,7 +13,9 @@ export type BuildOrderEntry =
    *  `ground: 'plantable'` hard-restricts the footprint to sowable ground, and `apart` prefers
    *  (never requires) a spot clear of the seat's other buildings of the same kind. `needsResources`
    *  names the map goods the building exists to work up; an unmet entry is skipped while the map holds
-   *  none of any one of them, like a collector entry. */
+   *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while one of the
+   *  seat's buildings it counts already stands within `radius` world-metric nodes of the named building
+   *  (the seat's lowest-id one), or while the seat has none of those. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -22,6 +24,7 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly apart?: boolean;
       readonly needsResources?: readonly string[];
+      readonly unlessWithin?: { readonly building: string; readonly radius: number };
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier. */
@@ -40,6 +43,10 @@ export type BuildOrderEntry =
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
  *  {@link TOWER_DEFENCE_RADIUS_NODES}, so the finished settlement stands under overlapping towers. */
 export const DENSE_TOWER_RADIUS_NODES = 15;
+
+/** How near the brewery a well must stand to serve it, in world-metric nodes (authored); a farther
+ *  one gets a second well beside the brewery. */
+export const BREWERY_WELL_REACH_NODES = 12;
 
 /** How far a store's coverage reaches, in world-metric nodes (authored): wider than a tower's, since a
  *  warehouse serves carriers rather than bows. */
@@ -71,15 +78,16 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     ],
   },
   { kind: 'upgrade', building: 'home_level_02', count: 3 },
-  { kind: 'place', building: 'work_hive_00', count: 1, near: [{ kind: 'building', id: 'work_well_00' }] },
+  // The brewery comes first and fixes where its honey and water come from: the hive beside it, and a
+  // second well beside it too when the first one stands farther off.
+  { kind: 'place', building: 'work_brewery', count: 1, near: [{ kind: 'building', id: 'work_well_00' }] },
+  { kind: 'place', building: 'work_hive_00', count: 1, near: [{ kind: 'building', id: 'work_brewery' }] },
   {
     kind: 'place',
-    building: 'work_brewery',
-    count: 1,
-    near: [
-      { kind: 'building', id: 'work_well_00' },
-      { kind: 'building', id: 'work_hive_00' },
-    ],
+    building: 'work_well_00',
+    count: 2,
+    near: [{ kind: 'building', id: 'work_brewery' }],
+    unlessWithin: { building: 'work_brewery', radius: BREWERY_WELL_REACH_NODES },
   },
   // Tiles and marble come only from these tiers, and homes, the armory and the bakeries all wait on them,
   // so the upgrades land well before the first bill that needs them.
@@ -109,15 +117,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
   { kind: 'towerCoverage', building: 'tower_01' },
-  {
-    kind: 'place',
-    building: 'work_brewery',
-    count: 2,
-    near: [
-      { kind: 'building', id: 'work_well_00' },
-      { kind: 'building', id: 'work_hive_00' },
-    ],
-  },
+  // Beside the first, sharing its hive and well.
+  { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'home_level_04', count: 5 },
   // The healing line: the big potion takes herbs, mushrooms and coins, and the temple waits on the
