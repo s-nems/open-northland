@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
-import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
@@ -18,7 +18,12 @@ import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { isValidNodeId } from '../spatial/nodes.js';
-import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
+import {
+  ColliderWalkBlocks,
+  hasBodyCollision,
+  type UnitWalkBlocks,
+  unitWalkBlocks,
+} from './collision/index.js';
 import { beginWalkTurn } from './turning.js';
 
 /**
@@ -68,95 +73,94 @@ export function drainPathRequests(
     let view = combinedByPlayer.get(player);
     if (view === undefined) {
       units ??= unitWalkBlocks(world, ctx.content, terrain);
-      const layers: BlockOverlay[] = [dynamicOnly(), units.field];
-      for (const [p, town] of units.townByPlayer) {
-        if (p === player) continue; // a player's own town garrison never blocks its own routing
-        layers.push(town);
-      }
-      view = new LayeredBlocks(layers);
+      view = new ColliderWalkBlocks(dynamicOnly(), units, player);
       combinedByPlayer.set(player, view);
     }
     return view;
   };
+  try {
+    for (const e of world.canonicalQuery(PathRequest)) {
+      if (spent.explored >= nodeBudget) break;
+      const req = world.get(e, PathRequest);
+      if (req.failed) continue;
 
-  for (const e of world.canonicalQuery(PathRequest)) {
-    if (spent.explored >= nodeBudget) break;
-    const req = world.get(e, PathRequest);
-    if (req.failed) continue;
-
-    const collides = hasBodyCollision(world, ctx.content, e);
-    const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
-    let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
-    if (path === null && collides && isValidNodeId(terrain, req.goal)) {
-      // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
-      // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
-      const goal = req.goal;
-      if (blocked.has(goal) && !dynamicOnly().has(goal)) {
-        const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
-        if (standIn !== null) {
-          path = resolvePath(terrain, req.start, standIn, blocked, spent);
-          if (path !== null) {
-            claimedStandIns.add(standIn);
-            // Keep the intent in step with the delivered route, or the planner would re-route back
-            // at the occupied original every tick.
-            const goalIntent = world.tryMut(e, MoveGoal);
-            if (goalIntent !== undefined) goalIntent.cell = standIn;
+      const collides = hasBodyCollision(world, ctx.content, e);
+      const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
+      let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
+      if (path === null && collides && isValidNodeId(terrain, req.goal)) {
+        // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
+        // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
+        const goal = req.goal;
+        if (blocked.has(goal) && !dynamicOnly().has(goal)) {
+          const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
+          if (standIn !== null) {
+            path = resolvePath(terrain, req.start, standIn, blocked, spent);
+            if (path !== null) {
+              claimedStandIns.add(standIn);
+              // Keep the intent in step with the delivered route, or the planner would re-route back
+              // at the occupied original every tick.
+              const goalIntent = world.tryMut(e, MoveGoal);
+              if (goalIntent !== undefined) goalIntent.cell = standIn;
+            }
           }
         }
       }
-    }
-    if (path === null) {
-      world.mut(e, PathRequest).failed = true;
-      // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
-      // a cell centre rather than freezing mid-leg.
-      continue;
-    }
+      if (path === null) {
+        world.mut(e, PathRequest).failed = true;
+        // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
+        // a cell centre rather than freezing mid-leg.
+        continue;
+      }
 
-    const waypoints = pathToWaypoints(terrain, path);
-    // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
-    // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
-    // a blocked start only permits escape, never a return to its centre.
-    const previous = world.tryGet(e, PathFollow);
-    const oldTarget = previous?.waypoints[previous.index];
-    const oldStart = previous?.waypoints[previous.index - 1];
-    const activeCost = previous?.legCost ?? 0;
-    const position = world.tryGet(e, Position);
-    const moved =
-      oldStart !== undefined &&
-      position !== undefined &&
-      (position.x !== oldStart.x || position.y !== oldStart.y);
-    const oldPace =
-      activeCost > 0
-        ? (previous?.legPace ??
-          (moved && oldTarget !== undefined && oldStart !== undefined
-            ? fx.divCeil(
-                worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y),
-                fx.fromInt(activeCost),
-              )
-            : undefined))
-        : undefined;
-    const index =
-      waypoints.length < 2 ||
-      (activeCost > 0 &&
+      const waypoints = pathToWaypoints(terrain, path);
+      // Keep a route's start when it is still ahead of an active step: skipping it would also skip its
+      // terrain and node charge. A start behind the new heading is bypassed rather than backing up;
+      // a blocked start only permits escape, never a return to its centre.
+      const previous = world.tryGet(e, PathFollow);
+      const oldTarget = previous?.waypoints[previous.index];
+      const oldStart = previous?.waypoints[previous.index - 1];
+      const activeCost = previous?.legCost ?? 0;
+      const position = world.tryGet(e, Position);
+      const moved =
+        oldStart !== undefined &&
         position !== undefined &&
-        waypoints[0] !== undefined &&
-        !blocked.has(waypoints[0].node) &&
-        startIsAhead(position, waypoints))
-        ? 0
-        : 1;
-    world.add(e, PathFollow, {
-      waypoints,
-      index,
-      legTicks: activeCost > 0 ? (previous?.legTicks ?? 0) : 0,
-      legCost: activeCost,
-      legPace: oldPace,
-      departureCharged: previous?.departureCharged,
-    });
-    const firstTarget = waypoints[index];
-    if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
-      beginWalkTurn(world, e, position, firstTarget);
+        (position.x !== oldStart.x || position.y !== oldStart.y);
+      const oldPace =
+        activeCost > 0
+          ? (previous?.legPace ??
+            (moved && oldTarget !== undefined && oldStart !== undefined
+              ? fx.divCeil(
+                  worldDistance(oldStart.x, oldStart.y, oldTarget.x, oldTarget.y),
+                  fx.fromInt(activeCost),
+                )
+              : undefined))
+          : undefined;
+      const index =
+        waypoints.length < 2 ||
+        (activeCost > 0 &&
+          position !== undefined &&
+          waypoints[0] !== undefined &&
+          !blocked.has(waypoints[0].node) &&
+          startIsAhead(position, waypoints))
+          ? 0
+          : 1;
+      world.add(e, PathFollow, {
+        waypoints,
+        index,
+        legTicks: activeCost > 0 ? (previous?.legTicks ?? 0) : 0,
+        legCost: activeCost,
+        legPace: oldPace,
+        departureCharged: previous?.departureCharged,
+      });
+      const firstTarget = waypoints[index];
+      if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {
+        beginWalkTurn(world, e, position, firstTarget);
+      }
+      world.remove(e, PathRequest);
     }
-    world.remove(e, PathRequest);
+  } finally {
+    // The post counts are a shared scratch.
+    units?.release();
   }
 }
 
