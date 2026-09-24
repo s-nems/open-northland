@@ -1,5 +1,5 @@
 import { FOG_MODE, type FogMode, isValidPlayer } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 
@@ -27,6 +27,15 @@ const MASK_BYTE_COUNT = REVEALED_BYTE + 1;
  */
 export interface FogFold {
   value: number;
+}
+
+/** One eye's memoized stamp footprint, and the stamp pass that last saw the eye. */
+interface EyeStamp {
+  group: number;
+  cx: number;
+  cy: number;
+  radius: number;
+  pass: number;
 }
 
 /** One cell's contribution to its player's fold. UNEXPLORED contributes nothing, so a freshly allocated
@@ -87,6 +96,14 @@ export class FogState {
   /** vision group → mask fold, maintained only while a sync digest is on; the masks are far too large
    *  to fold from scratch each tick. */
   private folds: Map<number, FogFold> | null = null;
+  /**
+   * eye → the footprint of its last stamp that is still fully in its group's mask. Stamps only raise
+   * bytes, so re-stamping that footprint writes nothing until something lowers one: every such writer
+   * (a downgrade, a reset, a restore) clears the memo. Derived bookkeeping, never hashed or saved.
+   */
+  private readonly eyeStamps = new Map<Entity, EyeStamp>();
+  /** The stamp pass counter {@link EyeStamp.pass} is checked against when pruning eyes that are gone. */
+  private stampPass = 0;
 
   constructor(terrain: TerrainGraph, world: World) {
     // The terrain graph is the 2W×2H half-cell lattice; cells quarter it (ceil for odd safety).
@@ -225,6 +242,7 @@ export class FogState {
     const owner = this.visionGroupOf(group);
     if (owner !== group) throw new Error(`fog mask for group ${group}: that player shares group ${owner}`);
     this.masks.set(group, mask);
+    this.eyeStamps.clear();
     const fold = this.foldFor(group);
     if (fold !== null) fold.value = 0;
     for (let r = 0; r < this.cellsHigh; r++) {
@@ -240,11 +258,46 @@ export class FogState {
   /** Drop every mask (fog switched OFF or the grouping changed): exploration history resets, the
    *  shared-vision table stays, generation bumps once. */
   reset(): void {
+    this.eyeStamps.clear();
     if (this.masks.size === 0) return;
     this.masks.clear();
     this.visibleBounds.clear();
     this.folds?.clear();
     this.generation++;
+  }
+
+  /** Open a stamp pass: an eye {@link eyeStampCovered} does not see before {@link pruneEyeStamps} is
+   *  dropped from the memo. */
+  beginStampPass(): void {
+    this.stampPass++;
+  }
+
+  /**
+   * Whether `eye` standing on cell (cx, cy) with `radius` nodes of sight is already stamped into its
+   * group's mask: the same group, cell and radius as its memoized stamp. Otherwise memoizes this
+   * footprint and returns false, and the caller must stamp it now.
+   */
+  eyeStampCovered(eye: Entity, player: number, cx: number, cy: number, radius: number): boolean {
+    const group = this.visionGroupOf(player);
+    const held = this.eyeStamps.get(eye);
+    if (held === undefined) {
+      this.eyeStamps.set(eye, { group, cx, cy, radius, pass: this.stampPass });
+      return false;
+    }
+    held.pass = this.stampPass;
+    if (held.group === group && held.cx === cx && held.cy === cy && held.radius === radius) return true;
+    held.group = group;
+    held.cx = cx;
+    held.cy = cy;
+    held.radius = radius;
+    return false;
+  }
+
+  /** Close a stamp pass: forget the eyes it did not see (destroyed, disowned or no longer eyes). */
+  pruneEyeStamps(): void {
+    for (const [eye, stamp] of this.eyeStamps) {
+      if (stamp.pass !== this.stampPass) this.eyeStamps.delete(eye);
+    }
   }
 
   /** Merge a stamp's touched cell rect into the may-hold-VISIBLE box of `player`'s group (see
@@ -312,6 +365,7 @@ export class FogState {
   /** Downgrade every VISIBLE byte of vision group `group` to EXPLORED, scanning only the
    *  may-hold-VISIBLE box and then clearing it. Byte-identical to a full-mask scan. */
   downgradeVisible(group: number): void {
+    this.eyeStamps.clear();
     const b = this.visibleBounds.get(group);
     if (b === undefined) return;
     const mask = this.masks.get(group);

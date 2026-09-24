@@ -24,7 +24,8 @@ import { FOG_STATE, type FogFold, foldCellChange, REVEALED_BYTE } from './state.
 
 /**
  * Ticks between visibility-mask rebuilds. Positions move every tick but the masks refresh on this cadence,
- * so per-tick cost amortizes to (owned entities × vision area) / 5 writes, a ~417 ms refresh at 12 ticks/s.
+ * so per-tick cost amortizes to (stamped eyes × vision area) / 5 writes, a ~417 ms refresh at 12 ticks/s:
+ * every eye under fog of war, only the eyes that moved without it.
  * Approximation: the original has no observable fog refresh rate.
  */
 export const VISION_CADENCE_TICKS = 5;
@@ -89,7 +90,10 @@ export const visionSystem: System = (world, ctx) => {
   }
 
   // Stamp pass: writes are idempotent and commutative, so query order needs no canonical sort; each
-  // touched rect feeds the group's may-hold-VISIBLE box for the next downgrade.
+  // touched rect feeds the group's may-hold-VISIBLE box for the next downgrade. Without fog of war no
+  // byte ever falls back, so an eye whose footprint is unchanged since its last stamp writes nothing.
+  const memoStamps = !settings.fogOfWar;
+  if (memoStamps) fog.beginStampPass();
   for (const e of world.query(Owner, Position)) {
     const radius = visionRadiusOf(world, ctx.content, e);
     if (radius === null) continue; // an owned entity that is not an eye (a flag, a pile)
@@ -97,6 +101,7 @@ export const visionSystem: System = (world, ctx) => {
     const n = nodeOfPosition(p.x, p.y);
     const { cx, cy } = cellOfNode(n.hx, n.hy);
     const player = world.get(e, Owner).player;
+    if (memoStamps && fog.eyeStampCovered(e, player, cx, cy, radius)) continue;
     const rect = stampVision(
       fog.maskFor(player),
       fog.cellsWide,
@@ -108,6 +113,7 @@ export const visionSystem: System = (world, ctx) => {
     );
     if (rect !== null) fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
   }
+  if (memoStamps) fog.pruneEyeStamps();
 
   // Contact pass over the settled masks: a viewer meets every owner whose entity stands on a cell the
   // viewer's group has explored, in sight now or not (reading: the original tests the viewer's once-set

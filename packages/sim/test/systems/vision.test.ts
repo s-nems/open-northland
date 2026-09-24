@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AttackOrder,
   addPerson,
@@ -15,6 +15,7 @@ import {
   PlayerContacts,
   Position,
   Settler,
+  Signpost,
   Stance,
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
@@ -27,6 +28,7 @@ import {
   BUILDING_VISION_NODES,
   CIVILIAN_VISION_NODES,
   FOG_STATE,
+  FogState,
   HUNTER_VISION_NODES,
   SCOUT_VISION_NODES,
   SOLDIER_VISION_NODES,
@@ -138,6 +140,72 @@ describe('stampVision - the world-metric ellipse', () => {
     expect(at(11, 9)).toBe(FOG_STATE.UNEXPLORED); // 5 cells = 340 px - out
     expect(at(6, 16)).toBe(FOG_STATE.VISIBLE); // 7 rows south = 266 px - in
     expect(at(6, 17)).toBe(FOG_STATE.UNEXPLORED); // 8 rows = 304 px - out
+  });
+});
+
+describe('stamp memo - an eye whose footprint did not change writes nothing', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Counts stamps: the stamp pass acquires the group mask once per eye it stamps. */
+  function countStamps(): { readonly calls: readonly unknown[] } {
+    return vi.spyOn(FogState.prototype, 'maskFor').mock;
+  }
+
+  /** Twelve signposts of one player in a row, one per two cells: eyes that never move by themselves. */
+  function crowd(sim: Simulation): Entity[] {
+    return Array.from({ length: 12 }, (_, i) => {
+      const e = sim.world.create();
+      sim.world.add(e, Position, { x: fx.fromInt(2 * i), y: fx.fromInt(2) });
+      sim.world.add(e, Owner, { player: P0 });
+      sim.world.add(e, Signpost, { links: [] });
+      return e;
+    });
+  }
+
+  it('CLASSIC: still eyes stamp once, and a rebuild stamps only the eye that moved', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    const eyes = crowd(sim);
+    const stamps = countStamps();
+    sim.run(1);
+    expect(stamps.calls.length).toBe(eyes.length);
+    sim.run(3 * VISION_CADENCE_TICKS);
+    expect(stamps.calls.length).toBe(eyes.length); // three more rebuilds over an unchanged world
+    const mover = eyes[0];
+    if (mover === undefined) throw new Error('crowd is empty');
+    teleport(sim, mover, 2, 6);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(stamps.calls.length).toBe(eyes.length + 1);
+    expect(rawState(sim, P0, 2, 6)).toBe(FOG_STATE.VISIBLE);
+  });
+
+  it('CLASSIC: a still scout whose eye widens stamps its new reach', () => {
+    const sim = simOn(FOG_MODE.CLASSIC, 48, 8);
+    const scout = unit(sim, 4, 4, P0, { jobType: SCOUT_JOB });
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.UNEXPLORED);
+    sim.world.mut(scout, Settler).experience.set(SCOUT_EXPERIENCE_TYPE, 100);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.VISIBLE);
+  });
+
+  it('CLASSIC: a still eye re-explores masks a switch OFF dropped', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    unit(sim, 2, 2, P0);
+    sim.run(1);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
+    sim.run(1);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    sim.run(1);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
+  });
+
+  it('fog of war: every eye restamps on every rebuild, since the downgrade lowered its ground', () => {
+    const sim = simOn(FOG_MODE.CLASSIC_FOG_OF_WAR);
+    const eyes = crowd(sim);
+    const stamps = countStamps();
+    sim.run(1 + 2 * VISION_CADENCE_TICKS);
+    expect(stamps.calls.length).toBe(3 * eyes.length);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
   });
 });
 
