@@ -34,27 +34,28 @@ Expected gain: spike only, `aiPlayer` p95 2.9 ms and max 6.8 ms at 40k toward it
 
 - Make the placement search cheaper without changing its answer: a numeric occupied-anchor key
   instead of a string per candidate. State hash unchanged.
-- Remember a stalled entry's failed search and skip the re-search until something its answer depends
-  on changes (building membership, the seat's placement-probe inputs), with the memo a pure function
-  of world state so replays hold. State hash unchanged.
+- Decision: a stalled placement entry (no spot found) keeps retrying forever, but on a slow cadence:
+  one re-search every 30th decision of its seat (`STALLED_PLACEMENT_RETRY_DECISIONS`, about 60 s at the
+  24-tick decision interval), not every decision. The case is a map that ran out of room and may free
+  up later, for example after many trees are cut, so a late placement is fine and giving up is not.
+  Derive the retry from the tick and seat, or keep the failing decision in the seat's AI state; if that
+  state is saved, it is a save-format change. This changes when a stuck seat places, so state hashes
+  change: regenerate the goldens in the same commit and name the behaviour change.
 
-**Behaviour changes (need the user's decision):**
-
-- A retry cadence for stalled entries (for example one re-search every fifth decision, 10 s) cuts the
-  stall cost by 80% but lets a seat place that building up to 10 s after ground frees instead of 2 s.
-  The AI would react visibly slower to freed ground only for an entry that was already stuck.
-- Spreading one seat's modules across consecutive ticks (module slot derived from tick and seat)
-  moves when each module's commands land, so it changes state hashes. Consider it only if warm passes
-  still exceed ~2 ms after the pure changes. Modules communicate only through commands applied next
-  tick; show that the module pairs that share a tick today do not couple before splitting them.
+**Needs the user's decision:** spreading one seat's modules across consecutive ticks (module slot
+derived from tick and seat) moves when each module's commands land, so it changes state hashes.
+Consider it only if warm passes still exceed ~2 ms after the changes above. Modules communicate only
+through commands applied next tick; show that the module pairs that share a tick today do not couple
+before splitting them.
 
 ## Verify
 
-- Headless: a seat with a permanently unplaceable entry runs the spot search once per change of its
-  inputs, not once per decision; existing build-order tests keep their placements.
+- Headless: a seat with a permanently unplaceable entry runs the spot search once per
+  `STALLED_PLACEMENT_RETRY_DECISIONS` decisions, and places the building on the first retry after
+  ground frees; existing build-order tests keep their placements.
 - The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
   env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
   then `npm run bench:compare`, on an idle box, trust clean: `aiPlayer` p95 and max fall toward the
-  median with the state hash unchanged. A chosen cadence or module slicing moves the hash and the
-  commit names the behaviour change.
+  median. The numeric key keeps the state hash; the retry cadence moves it and the commit names the
+  behaviour change.
 - `npm test`, `npm run check`, `npm run build`.

@@ -22,12 +22,11 @@ only for hunter-heavy lobbies. Every box below is sized off `HUNTER_WORK_FLAG_RA
   hunter re-plans every tick.
   [gatherer-rung-scans-foreign-candidates.md](gatherer-rung-scans-foreign-candidates.md) narrows which
   resources that scan resolves and
-  [idle-settler-ladder-dormancy.md](idle-settler-ladder-dormancy.md) stops the repeat; the
+  [idle-settler-ladder-dormancy.md](idle-settler-ladder-dormancy.md) thins the repeat to its cadence; the
   collect-and-sort itself stays here.
 - **The last-resort preempt.** A hunter holding last-resort livestock pays the preempt walk every chase
   tick, un-amortized (`HuntRest` does not rest an `Engagement`), out to `2 x radius + slack` from the
-  anchor at the leash edge. Bounding it to the ground radius changes the winner from nearest to the
-  hunter to nearest to the anchor. **Needs the user's decision**; not in the default scope.
+  anchor at the leash edge.
 
 ## Scope
 
@@ -38,11 +37,17 @@ only for hunter-heavy lobbies. Every box below is sized off `HUNTER_WORK_FLAG_RA
 - Carcass probe: visit only resources the hunter's atomics allow. Carcass-reach sort: merge the
   ascending region lists instead of sorting per call, keeping the ascending-id order the first-wins
   tie-break depends on.
-- Pure cost work: the state hash must stay identical.
+- Those three are pure cost work: the state hash stays identical.
+- Last-resort preempt: bound the walk to the hunting-ground radius around the anchor, so the winner
+  becomes the livestock nearest the anchor instead of nearest the hunter, keeping today's tie-break.
+  This changes which animal a hunter takes, so state hashes change: land it as its own commit,
+  regenerate the goldens in it and name the behaviour change.
 
 ## Verify
 
 - Unit: the prey-claim memo matches a fresh set after holds are stamped and dropped within one tick.
+- Unit: a hunter holding last-resort livestock picks the one nearest its anchor, and none beyond the
+  ground radius.
 - `npm run bench:compare` before and after on the hunter-heavy bench, on an idle box, trust clean: the
-  staged terms fall, with no golden movement.
+  staged terms fall; only the preempt commit moves goldens.
 - `npm test`, `npm run check`.

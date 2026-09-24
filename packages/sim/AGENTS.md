@@ -60,6 +60,9 @@ Per-tick work must scale with active work, never all entity pairs. Reuse:
 The tick is one synchronous function: no workers, shared memory, async or parallel sections inside
 the sim, ever. Parallelism can make state depend on core count, which desyncs multiplayer.
 
+A group order starts every member moving in the tick it applies: cut its path cost with cheaper
+searches, never by rationing its path requests across ticks.
+
 Never mutate a shared cached list. Measure system scaling with `npm run bench:sim` (synthetic world,
 isolated axes) or `npm run bench:map` (a real decoded map, reported as a growth curve); timing stays in
 the caller through `Simulation.setInstrument`, never in sim source.

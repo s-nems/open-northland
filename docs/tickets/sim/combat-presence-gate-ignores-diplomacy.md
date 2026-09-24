@@ -36,6 +36,10 @@ which takes about 0.5 ms more.
 
 ## Scope
 
+Two commits, pure first, so the pure gain is measured alone.
+
+Step 1, a pure optimisation (state hash unchanged):
+
 - Let the presence gate count an owned member only when its owner and the asking player hold `enemy`
   in either direction. The symmetric rule is `isFleeThreat`'s, and it covers the one-way
   `isValidTarget` rule as well, so one gate still over-approximates both callers. Unowned members keep
@@ -51,22 +55,26 @@ which takes about 0.5 ms more.
   `aiDiplomacy`) reach the next tick's build, and nothing inside `combat` writes a stance. If the
   building layer is kept across ticks, the stance filter stays per build. A new writer inside or before
   `combat` must either land before the build or the gate reads stances live.
+- Once [flee-runs-aim-at-blocked-cells](flee-runs-aim-at-blocked-cells.md) limits building threats to
+  buildings that shoot, the flee side of the gate may skip non-shooting enemy buildings as well; the
+  seeker side keeps counting them, since soldiers still attack buildings.
 - Hunters stay ungated, as today.
 
-Gameplay limit option, needs the user's decision: after the fix, a calm civilian could run the flee
-check on a deterministic stride (`(tick + entity) % N`) instead of every tick. At 12 ticks per second
-and N = 4 a civilian would react up to a quarter second late to a raider coming into sight. The
-remaining gain is small once the gate is hostility-aware, so this is not the default.
+Step 2, a behaviour change: a calm civilian runs the flee check only on ticks where
+`(tick + entity) % FLEE_CHECK_STRIDE_TICKS === 0`, with the stride 4, so it reacts up to a quarter
+second late (at 12 ticks/s) to a raider coming into sight. A civilian already fleeing keeps checking every tick.
+State hashes change; regenerate the goldens in this commit and name the behaviour change.
 
 ## Verify
 
 - `test/conflict/combat-index-search.test.ts` and `test/conflict/presence-gate.test.ts` pass. Add
   cases: a neutral or friendly neighbour's settlers and buildings inside the box leave the gate closed,
   an `enemy` stance in either direction opens it, a one-way aggressor still makes a civilian flee, and
-  a stance flipped by a landed blow earlier in the same tick is already seen by that tick's gate.
+  a stance flipped by a landed blow earlier in the same tick is already seen by that tick's gate. For
+  step 2, a calm civilian with a raider in sight flees on its next stride tick and not before.
 - The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
-  env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
-  then `npm run bench:compare`, on an idle box, trust clean: `combat` median falls by about half.
-  `bench:profile` should show `fleeDrive` near the `othersWithin` cost alone. The state hash must not
-  change: this is a pure optimisation.
+  env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after
+  each step, then `npm run bench:compare`, on an idle box, trust clean: after step 1 `combat` median
+  falls by about half and `bench:profile` shows `fleeDrive` near the `othersWithin` cost alone, with the
+  state hash unchanged; step 2 moves the hash knowingly and reports its own gain.
 - `npm test`, `npm run check`.

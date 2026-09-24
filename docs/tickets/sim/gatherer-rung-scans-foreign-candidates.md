@@ -32,7 +32,7 @@ candidates the seeker's trade can never take (shares from the 40k profile, exact
 
 Expected gain: about 1.5 ms of the 18.7 ms tick at 40k from the pile and hunter scans, measured
 alone. The flag scan's cost is shared with
-[idle-settler-ladder-dormancy.md](idle-settler-ladder-dormancy.md), which stops repeating it; neither
+[idle-settler-ladder-dormancy.md](idle-settler-ladder-dormancy.md), which repeats it only on its cadence; neither
 ticket counts that saving as its own, and whichever lands second gains less.
 
 ## Scope

@@ -35,18 +35,22 @@ tick's larger terms are gone.
 - Register a cache verifier that re-derives the candidate set under `verifyCaches()`.
 - The winner must stay the one the current linear scan picks (distance, then entity id), with the
   owner, signpost-gate and unreachable-goal filters applied per seeker as today.
-
-**Gameplay limit option (needs the user's decision):** a wife whose search found nothing could wait a
-fixed number of ticks before asking again. That removes the every-tick rebuild for stuck wives, but a
-child order would resume up to that delay after food reaches a store. It is not the default.
+- Decision: a wife whose food search found nothing waits before asking again, on ticks where
+  `(tick + entity) % FOOD_SEARCH_RETRY_TICKS === 0`, with the period between 6 and 12 ticks (half a
+  second to a second at 12 ticks/s). A child order then resumes up to that delay after food reaches a
+  store. State hashes change: land it as its own commit after the shared index, regenerate the goldens
+  in it and name the behaviour change.
 
 ## Verify
 
-- Headless: the family child-order tests and the planner's food tests pass unchanged; a test with
+- Headless: the family child-order tests and the planner's food tests pass (unchanged by the shared
+  index; the retry wait may need to step a stuck wife to her next due tick); a test with
   many food-free stores and one searching wife shows the per-tick index work no longer scales with the
   store count; `verifyCaches` stays clean.
 - The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
   env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
   then `npm run bench:compare`, on an idle box, trust clean: `family` median falls by about half. The
-  state hash must stay identical unless the retry option is chosen.
+  shared index keeps the state hash identical; the retry wait moves it knowingly.
+- Headless: a wife with no reachable food searches once per `FOOD_SEARCH_RETRY_TICKS`, and resumes her
+  order within that period once food reaches a store.
 - `npm test`, `npm run check`, `npm run build`.

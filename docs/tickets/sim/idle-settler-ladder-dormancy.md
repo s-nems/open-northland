@@ -1,4 +1,4 @@
-# Keep an idle settler off the drive ladder until something it reads changes
+# Re-plan an idle settler on a staggered cadence
 
 **Area:** sim · **Focus:** settlers/planner · **Priority:** P2
 
@@ -33,31 +33,29 @@ ticket shares with
 ## Scope
 
 - A settler whose ladder ended in the idle tail, or in `planFlagGatherer`'s stand-by-the-flag branch,
-  skips the ladder until an input of a rung above that point changes. Behaviour stays byte-identical:
-  the gate compares every input the skipped rungs read, like `porterDormancy`, with a coherence
-  verifier registered for `verifyCaches`.
-- Measure first which of those inputs move per tick at 60k. A world-wide generation that moves every
-  tick buys nothing at this scale, so the keys must be scoped to the settler's reach, for example a
-  per-region version of the resource and ground-drop indexes plus the settler's own position, job,
-  load, flag, and experience.
-- Start with the rungs that dominate the idle cost: the flag stand-by and the gatherer and pile scans.
-  The gatherer ticket makes each failed scan cheaper; this ticket stops repeating it. Either helps
-  alone.
-
-**Gameplay limit option, needs the user's decision:** re-plan an idle settler every N ticks, staggered
-by entity id as the assistant's `ASSISTANT_SCAN_PERIOD_TICKS` is, instead of every tick. It removes up
-to (N-1)/N of the idle ladder cost whichever rung fails, with no per-input keys. Visible effect: an
-idle settler reacts up to N/12 s later to new work (a new site, a dropped good, a freed seat, a grown
-tree); N = 12 is up to one second. It changes behaviour and state hashes, so it is not the default.
+  re-runs `planAdult` only on ticks where `(tick + entity) % IDLE_REPLAN_PERIOD_TICKS === 0`, staggered
+  by entity id as `ASSISTANT_SCAN_PERIOD_TICKS` is in `planner/recruit-arming.ts`. Between those ticks
+  it stays idle. It removes up to (N-1)/N of the idle ladder cost whichever rung fails.
+- Start with N = 12 (1 s at 12 ticks/s) and measure; any N up to 36 (3 s) is acceptable. Name the
+  chosen value as a constant with its unit.
+- A command addressed to the settler still acts on the tick it applies; the cadence gates only the
+  settler's own search.
+- Behaviour change: an idle settler reacts up to N/12 s later to new work (a new site, a dropped good, a
+  freed seat, a grown tree). State hashes change; regenerate the goldens in the same commit and name the
+  behaviour change in it.
+- Immediate-reaction assertions in `test/settlers/porter-dormancy.test.ts` and
+  `test/settlers/gossip.test.ts` may need to step the settler to its next due tick; keep what they
+  assert, do not drop it.
+- Later refinement, only if the cadence leaves the planner above budget: a per-input dormancy gate like
+  `porterDormancy`, keyed to the settler's reach, with a `verifyCaches` verifier.
 
 ## Verify
 
+- Headless: an idle settler re-plans on its due ticks only, and takes up a new site within N ticks.
 - Counter: `planAdult` runs per tick over 200 ticks from the 60k checkpoint fall from 159 toward the
-  settlers that have something new to read, and the idle-tail reaches from 67.
+  busy settlers plus the idle ones divided by N, and the idle-tail reaches from 67 likewise.
 - The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
   env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
   then `npm run bench:compare`, on an idle box, trust clean: planner median falls by about 2 ms. The
-  state hash stays identical for the dormancy gate; the cadence option moves it knowingly and
-  regenerates goldens in the same commit.
-- `verifyCaches` stays clean in the harness invariants; `test/settlers/porter-dormancy.test.ts` and
-  `test/settlers/gossip.test.ts` keep their immediate-reaction assertions; `npm test`.
+  state hash changes knowingly and the goldens move in the same commit.
+- `verifyCaches` stays clean in the harness invariants; `npm test`.

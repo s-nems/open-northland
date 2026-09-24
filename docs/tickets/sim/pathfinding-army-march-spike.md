@@ -1,4 +1,4 @@
-# Bound the path search an AI army march queues in one tick
+# Cut the path search an AI army march costs in one tick
 
 **Area:** sim · **Focus:** movement/routing · **Priority:** P2
 
@@ -18,8 +18,9 @@ machine and are suspect:
 - A typical member settles 2,300-4,200 nodes at about 1.4 µs each (1.2 µs for a non-collider), so one
   tick settles 15-25k nodes: 24-40 ms.
 - `PATHFINDING_NODE_BUDGET_PER_TICK = 16384` (`systems/movement/routing.ts`) is checked before each
-  request, so a busy tick only stops once it has passed about 16k settled nodes, and the last request
-  admitted can overshoot the budget by its whole cost.
+  request, so a busy tick only stops once it has passed about 16k settled nodes, the last request
+  admitted can overshoot the budget by its whole cost, and a march past the budget spills its remaining
+  members into the next tick.
 - One member in most spikes routes past `FLOOD_GUARD_MAX_EXPLORED = 4096`
   (`nav/pathfinding/find-path.ts`), so `findPath` runs probe 128 + aborted forward 4096 + goal-side
   exhaust (1.7k-8.3k, ending in `path`, which proves nothing) + a full forward search from scratch
@@ -35,6 +36,13 @@ Expected gain: spike only, the `pathfinding` max of 34 ms at 40k and the p99 tic
 
 ## Scope
 
+Rule: an army order is an RTS command. Every member starts moving in the tick the order applies; a
+march that peels off gradually is unwanted, even where the original let soldiers leave one by one. So
+the cut comes from cheaper searches, never from fewer searches per tick: do not ration a march's path
+requests across ticks, lower the budget, or stop the drain on an expected cost. Keep
+`PATHFINDING_NODE_BUDGET_PER_TICK` as it is; the work below must bring a march under it so no member
+spills.
+
 Pure optimisations first, each keeping every returned path byte-identical:
 
 - Stop the guard from discarding work on a legitimately long open route: scale the guard with the
@@ -45,35 +53,25 @@ Pure optimisations first, each keeping every returned path byte-identical:
   [nav-step-primitives-cost.md](nav-step-primitives-cost.md) builds for the three dynamic layers. Do
   not rebuild a full per-player structure every tick: that scales with blocked cells times seats.
 
-Then stop the drain from overshooting its budget, which changes which tick serves a request and
-therefore the state hash, knowingly:
+Then share one route per group move, which changes the paths soldiers walk and therefore the state
+hash, knowingly:
 
-- Keep `PATHFINDING_NODE_BUDGET_PER_TICK = 16384`. Stop a tick before a request whose expected cost
-  (its heuristic distance times a fixed settle factor) would push the tick's settled nodes past that
-  budget, with the first request of a tick always served. The settle factor is a node-count constant
-  in code, taken from the counts above, never a runtime timing: the sim reads no clock. Keep the order
-  ascending entity id so the cut stays canonical.
-
-**Needs the user's decision:**
-
-- Route sharing: reuse one route for the members of a group move that share a start area and a goal
-  area, routing the lowest-id member and the others only to join that corridor. It changes which path
-  each soldier walks, so it must keep the formation and the `reachableMoveGoal` stand-in fan-out
-  behaviour visible in the existing movement tests.
-- Lowering the per-tick budget to what a 5 ms tick affords (about 2-3k settles at the measured rate)
-  spreads a 15-soldier march of ~50k settles over roughly 20 ticks, so the last soldiers of a wave
-  start walking up to ~2 s after the first at x1 speed. Players would see a wave peel off in a trickle
-  rather than step off together. This is the largest single cut, but it is a visible change and not
-  the default.
+- For the members of a group move that share a start area and a goal area, route the lowest-id member
+  and derive the others' routes to join that corridor, all within the same tick. Keep the formation and
+  the `reachableMoveGoal` stand-in fan-out behaviour visible in the existing movement tests. Regenerate
+  the goldens in the same commit and name the behaviour change in it.
+- If the shared route is not enough, the direction is a hierarchical or corridor-reusing search that
+  makes each request cheaper, still served in the order's tick.
 
 ## Verify
 
-- Headless: a test that queues N collider requests over one long corridor asserts the drain stops
-  before the request whose expected cost would pass the budget (`SearchStats.explored` per tick), and
-  that the guard fix leaves every path identical to the unguarded search.
+- Headless: a group move of N collider soldiers over one long corridor gives every member its path in
+  the order's tick, with the tick's `SearchStats.explored` well below N separate searches; the guard fix
+  leaves every path identical to the unguarded search.
 - The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
   env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
-  then `npm run bench:compare`, on an idle box, trust clean: `pathfinding` max falls from ~34 ms
-  toward the budget's cost, and so does its part of ticks 43730-43731 in the slowest-ticks list. The
-  pure half keeps the state hash; the budget cut moves it and the commit names the behaviour change.
+  then `npm run bench:compare`, on an idle box, trust clean: `pathfinding` max falls from ~34 ms, and so
+  does its part of ticks 43730-43731 in the slowest-ticks list, while the tick in which the last soldier
+  of a wave starts stays equal to the tick of the first. The pure half keeps the state hash; route
+  sharing moves it and the commit names the behaviour change.
 - `npm test`, `npm run check`, `npm run build`.

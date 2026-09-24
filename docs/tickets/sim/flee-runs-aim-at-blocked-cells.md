@@ -28,11 +28,7 @@ Two faults combine:
 About a third of the accepted flee threats in that replay were enemy buildings (roughly 87 of 260 per
 tick). `isFleeThreat` admits any valid target of the fleer, and `isValidTarget` admits an enemy building
 for an owned unit. So a civilian within `SIGHT_RADIUS_NODES` of an enemy house it can see keeps
-fleeing until it is out of range. Needs the user's decision: keep every enemy building a flee threat,
-or only the ones that shoot (a manned tower or shelter). Restricting it frees civilians who live next
-to an enemy's houses and lets the presence gate in
-[combat-presence-gate-ignores-diplomacy](combat-presence-gate-ignores-diplomacy.md) ignore plain
-buildings.
+fleeing until it is out of range.
 
 ## Scope
 
@@ -41,16 +37,24 @@ buildings.
   fallback.
 - Both drives keep the cadence throttle over a failed route instead of re-aiming on the failure tick.
 - One change per drive; do not fold the two drives together.
+- Decision: civilians flee only from buildings that shoot, never from plain enemy houses.
+  `isFleeThreat` (`conflict/targeting.ts`) admits an enemy building only while it can fire: a manned
+  tower or a shelter whose garrison can shoot. Enemy settlers stay threats as today. This frees
+  civilians who live next to an enemy's houses, and lets the flee side of the presence gate in
+  [combat-presence-gate-ignores-diplomacy](combat-presence-gate-ignores-diplomacy.md) ignore
+  non-shooting buildings.
 
 ## Verify
 
 - Headless: a FLEE civilian whose best away-cell is a house or a tree runs to another cell, and a
-  civilian cornered against water or walls re-aims at most once per `FLEE_REPATH_CADENCE`. A frightened animal
-  beside a building does the same per `FRIGHT_REPATH_CADENCE`. Count path requests with a probe, as in
-  `test/conflict/melee-engagement/autonomous.cases.ts`.
+  civilian cornered against water or walls re-aims at most once per `FLEE_REPATH_CADENCE`. A frightened
+  animal beside a building does the same per `FRIGHT_REPATH_CADENCE`. Count path requests with a probe,
+  as in `test/conflict/melee-engagement/autonomous.cases.ts`.
+- Headless: a civilian next to an enemy house stays put; a civilian next to an enemy tower with a
+  fighter at its post flees.
 - Replay a late checkpoint with the neighbours set to `enemy` (the war knob of
   [mass-battle-bench-and-bounds](mass-battle-bench-and-bounds.md) once it exists, or a script issuing
   `setDiplomacy`): failed flee routes fall from about two-thirds of fleer-ticks to a small fraction,
-  and fleers move. This is a behaviour change, so state
-  hashes and goldens that contain a fleer move knowingly.
+  fleers move, and building threats drop to the shooting ones. These are behaviour changes, so state
+  hashes change: regenerate the goldens that contain a fleer in the same commit and name the change.
 - `npm test`, `npm run check`.
