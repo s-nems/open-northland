@@ -4,6 +4,8 @@ import {
   type LobbySettings,
   type RoomSettings,
   sameCompatibility,
+  sameLobbySettings,
+  sameSessionRules,
 } from '@open-northland/net-protocol';
 import type { Member, Refusal } from './member.js';
 import type { SeatChange, SeatTable } from './seats.js';
@@ -34,23 +36,11 @@ export class Lobby {
     const before = this.settings;
     if (
       before.initialSave !== undefined &&
-      (before.seed !== settings.seed ||
-        before.rules.fog !== settings.rules.fog ||
-        before.rules.progression !== settings.rules.progression ||
-        before.rules.needs !== settings.rules.needs)
+      (before.seed !== settings.seed || !sameSessionRules(before.rules, settings.rules))
     ) {
       return 'saved world seed and rules are fixed';
     }
-    if (
-      before.name === settings.name &&
-      before.seed === settings.seed &&
-      before.speed === settings.speed &&
-      before.kickedSeatMode === settings.kickedSeatMode &&
-      before.rules.fog === settings.rules.fog &&
-      before.rules.progression === settings.rules.progression &&
-      before.rules.needs === settings.rules.needs
-    )
-      return null;
+    if (sameLobbySettings(before, settings)) return null;
     this.settings = {
       ...settings,
       world: before.world,

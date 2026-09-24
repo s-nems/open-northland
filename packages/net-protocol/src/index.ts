@@ -35,4 +35,5 @@ export { parseServerMessage } from './parse/server.js';
 export { parseNick } from './parse/text.js';
 export { parseBlobBytes, SYNC_DOMAINS } from './parse/wire.js';
 export { RelayTransport } from './relay-transport.js';
+export { sameLobbySettings, sameSessionRules } from './settings.js';
 export { PROTOCOL_VERSION } from './version.js';
