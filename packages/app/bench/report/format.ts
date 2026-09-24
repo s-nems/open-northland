@@ -52,7 +52,7 @@ function ms(value: number): string {
 function worldHeadline(world: BenchWorld): string {
   switch (world.kind) {
     case 'synthetic':
-      return `sim benchmark - ${world.settlements} settlement(s) + ${world.fightersPerSide}v${world.fightersPerSide} fighters`;
+      return `sim benchmark - ${world.settlements} settlement(s) + ${world.fightersPerSide}v${world.fightersPerSide} fighters + ${world.hunters} hunters`;
     case 'realMap':
       return `map benchmark - ${world.mapId}, ${realMapSession(world)}`;
   }

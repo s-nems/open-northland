@@ -290,8 +290,10 @@ workspace from scratch before measuring, so a bare run describes the working tre
 was last built; `bench:compare` only reads two stored reports and runs on the build already there.
 
 Run the synthetic simulation benchmark with `npm run bench:sim`. Its main controls are
-`ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
-and `ON_BENCH_JSON`.
+`ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_HUNTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
+`ON_BENCH_WINDOWS`, and `ON_BENCH_JSON`. `ON_BENCH_HUNTERS=120` adds hunting strips below the
+settlements: most hunters on hare herds among dense wood nodes, a quarter on a sheep pasture beyond
+the last-resort probe, so they chase livestock.
 
 Run the real-map benchmark with `npm run bench:map`. It needs generated content and measures the
 session a `?map=<id>&player=observer&ai=<seats>&fog=classic` search describes, parsed by the map

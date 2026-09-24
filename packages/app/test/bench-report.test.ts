@@ -37,6 +37,7 @@ const META: Parameters<typeof summarize>[2] = {
     kind: 'synthetic',
     settlements: 2,
     fightersPerSide: 100,
+    hunters: 0,
     mapCells: { width: 192, height: 140 },
     settlersAtStart: 340,
     settlersAtEnd: 340,

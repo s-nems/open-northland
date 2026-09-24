@@ -11,8 +11,9 @@ import { type BenchWorldOptions, benchWorld } from './world.js';
  * `npm run bench:map` measures a real decoded map instead. See docs/TESTING.md for how both fit the
  * pyramid.
  *
- * Knobs (env, all optional): `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`,
- * `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`, `ON_BENCH_JSON=<path>` (write the machine-readable report).
+ * Knobs (env, all optional): `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_HUNTERS`,
+ * `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`, `ON_BENCH_JSON=<path>` (write the
+ * machine-readable report).
  */
 
 /** Defaults: 4 settlements (~290 working settlers, 164 buildings) on a 196x196 map - RTS scale in a
@@ -25,6 +26,8 @@ const DEFAULT_SETTLEMENTS = 4;
  * combat profiling, and the report's start/end populations show what the window did.
  */
 const DEFAULT_FIGHTERS_PER_SIDE = 0;
+/** No hunters by default, for the same reason: the herds thin inside the window. */
+const DEFAULT_HUNTERS = 0;
 const DEFAULT_MEASURED_TICKS = 300;
 /** Warmup ticks, excluded from the samples: the settlement's first ticks are atypical (every crew walks
  *  to its post from the spawn, routes are cold) and JIT tiering has not settled. */
@@ -39,6 +42,7 @@ function worldOptions(): BenchWorldOptions {
   return {
     settlements: intEnv('ON_BENCH_SETTLEMENTS', DEFAULT_SETTLEMENTS, 1),
     fightersPerSide: intEnv('ON_BENCH_FIGHTERS', DEFAULT_FIGHTERS_PER_SIDE, 0),
+    hunters: intEnv('ON_BENCH_HUNTERS', DEFAULT_HUNTERS, 0),
   };
 }
 
@@ -60,6 +64,7 @@ async function measure(
       kind: 'synthetic',
       settlements: options.settlements,
       fightersPerSide: options.fightersPerSide,
+      hunters: options.hunters,
       mapCells: { width: terrain.width, height: terrain.height },
       settlersAtStart: measurement.settlersAtStart,
       settlersAtEnd: measurement.settlersAtEnd,
@@ -68,6 +73,7 @@ async function measure(
     knobs: {
       ON_BENCH_SETTLEMENTS: `${options.settlements}`,
       ON_BENCH_FIGHTERS: `${options.fightersPerSide}`,
+      ON_BENCH_HUNTERS: `${options.hunters}`,
       ON_BENCH_TICKS: `${measuredTicks}`,
       ON_BENCH_WARMUP: `${warmupTicks}`,
       ON_BENCH_WINDOWS: `${windows}`,

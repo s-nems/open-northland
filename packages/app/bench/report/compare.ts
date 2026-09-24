@@ -86,7 +86,7 @@ export function worldIdentity(world: BenchWorld): string {
   const size = `${world.mapCells.width}x${world.mapCells.height}`;
   switch (world.kind) {
     case 'synthetic':
-      return `synthetic ${world.settlements} settlement(s) + ${world.fightersPerSide}v${world.fightersPerSide}, ${size}`;
+      return `synthetic ${world.settlements} settlement(s) + ${world.fightersPerSide}v${world.fightersPerSide} + ${world.hunters} hunters, ${size}`;
     case 'realMap':
       return `${world.mapId}, ${realMapSession(world)}, ${size}`;
   }

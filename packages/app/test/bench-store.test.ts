@@ -56,6 +56,7 @@ function syntheticWorld(): BenchReport['world'] {
     kind: 'synthetic',
     settlements: 4,
     fightersPerSide: 0,
+    hunters: 0,
     mapCells: { width: 240, height: 190 },
     settlersAtStart: 628,
     settlersAtEnd: 628,
