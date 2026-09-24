@@ -73,6 +73,6 @@ export function setCastShadowTransform(
   const { castShear: shear, castFlatten: flatten } = style;
   // The shear/flatten matrix [[1, -shear], [0, flatten]] expressed in Pixi's skew + scale terms.
   sprite.skew.set(Math.atan2(-shear, flatten), 0);
-  sprite.scale.set(scale, scale * Math.hypot(shear, flatten));
+  sprite.scale.set(scale, scale * Math.sqrt(shear * shear + flatten * flatten));
   sprite.position.set(ox - shear * oy, flatten * oy);
 }
