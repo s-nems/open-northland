@@ -17,23 +17,62 @@ export interface FigureFrameImage {
   readonly height: number;
 }
 
-/** Cached recoloured frames past this count are dropped together; a crowd of trades and colours refills it. */
-const MAX_CACHED_FRAMES = 1024;
+/** The side of the one page every recoloured frame is packed into (px). A full page is emptied whole and
+ *  refilled. Chrome gives every 2d canvas its own GPU surface until garbage collection, so a canvas per
+ *  frame piled up thousands of them, exhausted macOS surfaces and cost the map its WebGL context. */
+const PAGE_SIZE = 1024;
+/** Clear px between packed frames, so a smoothed draw never samples a neighbour. */
+const PAGE_GUTTER = 1;
 /** The LUT's column count: one per palette index. */
 const LUT_WIDTH = 256;
 const CHANNELS = 4;
 
+/** Row-by-row placement of rectangles on a fixed page; `null` once the page cannot take one more. */
+export class ShelfPacker {
+  private shelfY = 0;
+  private shelfHeight = 0;
+  private cursorX = 0;
+
+  constructor(
+    private readonly width: number,
+    private readonly height: number,
+    private readonly gutter: number,
+  ) {}
+
+  place(width: number, height: number): { readonly x: number; readonly y: number } | null {
+    if (width > this.width) return null;
+    if (this.cursorX + width > this.width) {
+      this.shelfY += this.shelfHeight + this.gutter;
+      this.shelfHeight = 0;
+      this.cursorX = 0;
+    }
+    if (this.shelfY + height > this.height) return null;
+    const at = { x: this.cursorX, y: this.shelfY };
+    this.cursorX += width + this.gutter;
+    this.shelfHeight = Math.max(this.shelfHeight, height);
+    return at;
+  }
+
+  reset(): void {
+    this.shelfY = 0;
+    this.shelfHeight = 0;
+    this.cursorX = 0;
+  }
+}
+
 /**
  * Settler frames for 2d canvases. A baked sheet's frame is its atlas image; an indexed sheet's frame is
  * recoloured on the CPU through the player LUT row, as the paletted shader does on the GPU, and cached
- * per (frame, row). Nothing here needs the GPU, so a DOM element can draw the figure the map draws.
+ * per (frame, row) on one shared page. Nothing here needs the GPU, so a DOM element can draw the figure
+ * the map draws.
  */
 export class FigureFrames {
-  private readonly recoloured = new WeakMap<AtlasFrame, Map<number, HTMLCanvasElement | null>>();
+  private readonly recoloured = new WeakMap<AtlasFrame, Map<number, FigureFrameImage | null>>();
   /** Every frame with a cached recolour, so the cache can be emptied wholesale: a WeakMap cannot be
    *  cleared, but dropping the per-frame maps lets the frames be rebuilt. */
   private readonly cachedFrames = new Set<AtlasFrame>();
-  private cached = 0;
+  private readonly packer = new ShelfPacker(PAGE_SIZE, PAGE_SIZE, PAGE_GUTTER);
+  private page: CanvasRenderingContext2D | null | undefined;
   private lut: ImageData | null | undefined;
 
   constructor(private readonly palette: PlayerColourLut | undefined) {}
@@ -47,25 +86,18 @@ export class FigureFrames {
     if (this.palette === undefined) {
       return { image: resource, x: frame.x, y: frame.y, width: frame.width, height: frame.height };
     }
-    let rows = this.recoloured.get(frame);
-    let image = rows?.get(row);
-    if (image === undefined) {
-      if (this.cached >= MAX_CACHED_FRAMES) {
-        for (const other of this.cachedFrames) this.recoloured.delete(other);
-        this.cachedFrames.clear();
-        this.cached = 0;
-        rows = undefined;
-      }
-      if (rows === undefined) {
-        rows = new Map();
-        this.recoloured.set(frame, rows);
-        this.cachedFrames.add(frame);
-      }
-      image = this.recolour(resource, frame, row);
-      rows.set(row, image);
-      this.cached += 1;
+    const cached = this.recoloured.get(frame)?.get(row);
+    if (cached !== undefined) return cached;
+    // Looked up again: a recolour that fills the page empties the cache.
+    const image = this.recolour(resource, frame, row);
+    let perFrame = this.recoloured.get(frame);
+    if (perFrame === undefined) {
+      perFrame = new Map();
+      this.recoloured.set(frame, perFrame);
+      this.cachedFrames.add(frame);
     }
-    return image === null ? null : { image, x: 0, y: 0, width: frame.width, height: frame.height };
+    perFrame.set(row, image);
+    return image;
   }
 
   /** Draw a figure's resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map
@@ -98,9 +130,10 @@ export class FigureFrames {
     }
   }
 
-  private recolour(source: DrawableResource, frame: AtlasFrame, row: number): HTMLCanvasElement | null {
+  private recolour(source: DrawableResource, frame: AtlasFrame, row: number): FigureFrameImage | null {
     const lut = this.readLut();
-    if (lut === null || frame.width === 0 || frame.height === 0) return null;
+    const page = this.readPage();
+    if (lut === null || page === null || frame.width === 0 || frame.height === 0) return null;
     const scratch = readable2dContext(frame.width, frame.height);
     if (scratch === null) return null;
     scratch.drawImage(source, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
@@ -119,13 +152,31 @@ export class FigureFrames {
       out.data[i + 2] = lut.data[at + 2] ?? 0;
       out.data[i + 3] = coverage;
     }
+    let at = this.packer.place(frame.width, frame.height);
+    if (at === null) {
+      this.emptyPage(page);
+      at = this.packer.place(frame.width, frame.height);
+      if (at === null) return null;
+    }
+    page.putImageData(out, at.x, at.y);
+    return { image: page.canvas, x: at.x, y: at.y, width: frame.width, height: frame.height };
+  }
+
+  /** Drop every cached recolour with the pixels they point at; the frames are rebuilt on demand. */
+  private emptyPage(page: CanvasRenderingContext2D): void {
+    for (const frame of this.cachedFrames) this.recoloured.delete(frame);
+    this.cachedFrames.clear();
+    this.packer.reset();
+    page.clearRect(0, 0, PAGE_SIZE, PAGE_SIZE);
+  }
+
+  private readPage(): CanvasRenderingContext2D | null {
+    if (this.page !== undefined) return this.page;
     const canvas = document.createElement('canvas');
-    canvas.width = frame.width;
-    canvas.height = frame.height;
-    const ctx = canvas.getContext('2d');
-    if (ctx === null) return null;
-    ctx.putImageData(out, 0, 0);
-    return canvas;
+    canvas.width = PAGE_SIZE;
+    canvas.height = PAGE_SIZE;
+    this.page = canvas.getContext('2d');
+    return this.page;
   }
 
   private readLut(): ImageData | null {
