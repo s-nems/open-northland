@@ -28,6 +28,7 @@ import {
 } from '../../readviews/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { canonicalById, entityNode } from '../../spatial/nodes.js';
+import { anotherSystemOwns } from '../action-owner.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
 import {
   interactionCell,
@@ -38,7 +39,6 @@ import {
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { ASSISTANT_SCAN_PERIOD_TICKS } from './assistant-grants.js';
 import type { PlannerPass } from './pass.js';
-import { anotherSystemOwns } from './replan.js';
 
 /**
  * The assistant's arming pass: dress each enlisted weapon-class recruit whose drill is served from any

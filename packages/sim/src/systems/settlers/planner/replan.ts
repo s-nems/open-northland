@@ -90,8 +90,6 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
   clearNavState(world, e);
 }
 
-export { anotherSystemOwns } from '../action-owner.js';
-
 /**
  * Reconcile `e`'s leftover intent and report whether the drive ladder should run for it this tick.
  *

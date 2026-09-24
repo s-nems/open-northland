@@ -22,10 +22,10 @@ import { isFighterJob, isScoutJob, MILITARY_MODE, mayChangeEquipment } from '../
 import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
+import { anotherSystemOwns } from '../action-owner.js';
 import { nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import type { PlannerPass } from './pass.js';
-import { anotherSystemOwns } from './replan.js';
 
 // The assistant's auto-equip pass sends settlers with a matching free slot to fetch a player's granted
 // goods. The manual states the intent ("you want to have shoes given out to all civilians - if there are

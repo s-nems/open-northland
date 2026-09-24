@@ -1,8 +1,8 @@
 import { EquipOrder, TrainingOrder } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { isTravelling } from '../../movement/nav-state.js';
+import { anotherSystemOwns } from '../../settlers/action-owner.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
-import { anotherSystemOwns } from '../../settlers/planner/replan.js';
 
 /** Whether another drive owns `e`, or he is on an errand an order would throw away: a walk order or an
  *  employment change strips a drill and an equip run and cancels a running action. One predicate for every

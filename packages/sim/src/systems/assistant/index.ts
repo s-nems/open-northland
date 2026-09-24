@@ -27,9 +27,9 @@ import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { mayBearChild } from '../orders/family.js';
 import { mayDrillAt, startDrill } from '../orders/training.js';
 import { isBarracks, isSoldierJob } from '../readviews/index.js';
+import { anotherSystemOwns } from '../settlers/action-owner.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { BARRACKS_DRILL_TICKS } from '../settlers/drives/training.js';
-import { anotherSystemOwns } from '../settlers/planner/replan.js';
 import { canonicalById } from '../spatial/nodes.js';
 
 /**
