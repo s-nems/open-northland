@@ -328,6 +328,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
 
     const [a, b] = [sim.world.get(woman(), Position), sim.world.get(man(), Position)];
     expect(nodesAdjacent(nodeOfPosition(a.x, a.y), nodeOfPosition(b.x, b.y))).toBe(false);
+    expect(sim.world.has(woman(), Wedding)).toBe(true);
     expect(sim.world.componentValueGeneration(Wedding)).toBe(before);
   });
 

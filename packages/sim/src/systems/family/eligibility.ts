@@ -74,7 +74,8 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
  * The nearest eligible partner for `seeker`, or null when none exists. Nearest by half-cell Manhattan
  * distance with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
  * under signpost navigation a partner outside the seeker's allowed area is not eligible. Original
- * behavior: only the seeker's own player's humans are candidates, whatever their tribe shares.
+ * behavior: only the seeker's own player's humans of its tribe are candidates. Approximation: the
+ * whole-map nearest pick; the original searches a bounded area around the seeker.
  */
 export function findPartnerFor(
   world: World,

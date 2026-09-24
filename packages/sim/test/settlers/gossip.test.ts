@@ -212,14 +212,16 @@ describe('gossip chat rounds (GossipSystem)', () => {
 
   it('leaves the Chat records unwritten while a round plays out', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    gossiper(sim, 2, 0, LONELY);
+    const a = gossiper(sim, 2, 0, LONELY);
     gossiperBeside(sim, 2, 0, fx.fromInt(0));
     plannerSystem(sim.world, ctxOf(sim));
     gossipSystem(sim.world, ctxOf(sim)); // the round starts
+    expect(sim.world.get(a, Chat).talking).toBe(true);
     const before = sim.world.componentValueGeneration(Chat);
 
     gossipSystem(sim.world, ctxOf(sim)); // mid-round: nothing changes
 
+    expect(sim.world.get(a, Chat).talking).toBe(true);
     expect(sim.world.componentValueGeneration(Chat)).toBe(before);
   });
 
