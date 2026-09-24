@@ -21,7 +21,7 @@ import { fetchNeededMaterial } from './site-supply.js';
  * (docs/formats/VEHICLES.md "Construction"): it reuses its own or any unfinished site of that house within
  * the reuse ring of the work centre, else opens one at the first admissible point of the placement ring,
  * then hammers from the house work point while delivered material is left to install and fetches the
- * bill's goods otherwise, the way a builder crews an ordinary site. The construction system launches the
+ * bill's goods otherwise, from the workshop's own shelves first, the way a builder crews an ordinary site. The construction system launches the
  * vehicle when the site finishes; the worker then moves its rotation past the vehicle good.
  *
  * Returns whether the operator's turn was a vehicle's. A search that finds nowhere raises the refusal
@@ -56,7 +56,7 @@ export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing
     );
     return true;
   }
-  if (fetchNeededMaterial(plan, spacing, site)) return true;
+  if (fetchNeededMaterial(plan, spacing, site, workplace)) return true;
   // Nothing to install and nothing to fetch: wait at the work point for a delivery.
   atOrWalk(world, e, here, workPoint, () => {});
   return true;

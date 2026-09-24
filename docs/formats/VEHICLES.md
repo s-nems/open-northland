@@ -57,7 +57,9 @@ type 6, the ox-less cart. The worker producing that good:
    per-node test is read for land sites only);
 2. fetches and carries the house's construction goods like building materials (the IR's
    `construction` list of houses 42..46: handcart 2 wood, ox cart 5 wood, small ship 5 leather +
-   10 wood, big ship 5 leather + 15 wood, catapult 9 wood + 1 iron);
+   10 wood, big ship 5 leather + 15 wood, catapult 9 wood + 1 iron), taking them from its own
+   workshop's stock first, recipe inputs included, and otherwise from the nearest loose pile or
+   house within radius 40 that is not a home, where another workshop's inputs stay hidden;
 3. works on the site with the ordinary build animation;
 4. when the site reaches the finished state the house is freed and a vehicle of `logicvehicletype`
    spawns at the house position for the same player and tribe, with mission id 0.
@@ -69,14 +71,16 @@ opener. Map scripts and `SetVehicle` are the other spawn sources.
 Open Northland (`systems/settlers/drives/economy/vehicle-yard.ts`, `systems/footprint/placement/vehicle-site.ts`):
 the operator's craft rotation treats a vehicle good as a turn taken outside on the yard site, never as a
 cycle, and moves past it once the site launched; the site is a `SiteAssignment` crew membership like a
-builder's, the yard's bill is fetched through the ordinary site-supply rungs, and builders and haulers
+builder's, the yard's bill is fetched from the worker's own workshop first, its recipe inputs included,
+then through the ordinary site-supply rungs, and builders and haulers
 never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
 cursor (the original's scheduling is not decoded); the work point is the house door for both hammering
 and the ship site's shore test, so "a water continent bordering the worker's continent" reduces to the
 door lying on the worker's land component; a ship site needs the water side of the shared free-size field to admit
 `logicsize` at every body node, all on one water body; a parked vehicle counts as reason 9 only when it stands on the house body, since a
 vehicle is also a placement obstacle for the reserved margin; a failed search parks the worker for the
-failed-goal memo's span before it looks again; the finished site leaves without a collapse event and
+failed-goal memo's span before it looks again; past its own workshop the fetch takes the nearest store
+the settler may reach, with no radius-40 cap; the finished site leaves without a collapse event and
 heaps any surplus delivered past the bill. The chest catapult takes the opener's tribe.
 
 ## Crew

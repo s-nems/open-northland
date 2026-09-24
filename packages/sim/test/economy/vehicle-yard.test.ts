@@ -429,6 +429,17 @@ describe('building the vehicle', () => {
     expect(s.checkInvariants()).toEqual([]);
   });
 
+  it('builds from the workshop’s own wood before the store’s, though wood is the workshop’s recipe input', () => {
+    const s = sim();
+    const { shop, store } = yardWorld(s);
+    const shelved = HANDCART_WOOD + 3;
+    s.world.mut(shop, Stockpile).amounts.set(WOOD, shelved);
+    for (let i = 0; i < BUILD_BUDGET_TICKS && vehiclesOf(s, HANDCART).length === 0; i++) s.step();
+    expect(vehiclesOf(s, HANDCART)).toHaveLength(1);
+    expect(s.world.get(shop, Stockpile).amounts.get(WOOD)).toBe(shelved - HANDCART_WOOD);
+    expect(s.world.get(store, Stockpile).amounts.get(WOOD)).toBe(10);
+  });
+
   it('alternates: the cart turn follows a plank start and the rotation moves past it once built', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s, [PLANK, HANDCART_GOOD]);

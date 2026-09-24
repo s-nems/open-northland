@@ -19,8 +19,15 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
  * supply errands and this fetch stamps its own, so a crew spreads over the still-unclaimed materials
  * instead of racing to the same unit.
  */
-export function fetchNeededMaterial(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
-  return constructionMaterialResolver(plan, spacing).fetch(site);
+export function fetchNeededMaterial(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  site: Entity,
+  /** The fetcher's own workshop, drawn on before any store: a yard worker builds from its own shelves,
+   *  recipe inputs included, which no other fetcher may lift. */
+  ownShelf?: Entity,
+): boolean {
+  return constructionMaterialResolver(plan, spacing, ownShelf).fetch(site);
 }
 
 /** A one-builder resolver: site selection shares one source lookup per good, then consumes the chosen
@@ -28,6 +35,7 @@ export function fetchNeededMaterial(plan: PlannerContext, spacing: PlannerSpacin
 export function constructionMaterialResolver(
   plan: PlannerContext,
   spacing: PlannerSpacing,
+  ownShelf?: Entity,
 ): {
   has(site: Entity): boolean;
   fetch(site: Entity): boolean;
@@ -41,7 +49,9 @@ export function constructionMaterialResolver(
   const sourceFor = (goodType: number): MaterialSource | null => {
     const cached = sourceByGood.get(goodType);
     if (cached !== undefined || sourceByGood.has(goodType)) return cached ?? null;
-    const source = materialSource(plan, goodType);
+    const source =
+      (ownShelf === undefined ? null : shelfSource(plan, ownShelf, goodType)) ??
+      materialSource(plan, goodType);
     sourceByGood.set(goodType, source);
     return source;
   };
@@ -112,6 +122,12 @@ function fetchableMaterial(
       : { source: source.source, goodType: need.goodType, amount };
   }
   return null;
+}
+
+function shelfSource(plan: PlannerContext, shelf: Entity, goodType: number): MaterialSource | null {
+  const stock = accessibleStockAmounts(plan.world, shelf)?.get(goodType) ?? 0;
+  const available = stock - reservedSourceSupplyOf(plan.inbound, shelf, goodType);
+  return available > 0 ? { source: shelf, available } : null;
 }
 
 function materialSource(plan: PlannerContext, goodType: number): MaterialSource | null {
