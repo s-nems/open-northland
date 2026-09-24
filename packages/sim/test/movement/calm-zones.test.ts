@@ -8,12 +8,13 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * The calm-zone memo is keyed on the Building + Owner generations, not the tick: a stretch of ticks
- * with no building/ownership change must reuse one derivation (instance identity proves it), and any
- * building add or remove must rebuild. Zones are read-path derived state - never hashed.
+ * The calm-zone memo follows buildings and their owners, not the tick: a stretch with no building or
+ * building-ownership change reuses one derivation (instance identity proves it), and a building add,
+ * removal or change of hands rebuilds. Zones are read-path derived state - never hashed.
  */
 
 const P0 = 0;
+const P1 = 1;
 const ANY_BUILDING_TYPE = 1;
 
 function ownedBuildingAt(sim: Simulation, x: number, y: number): Entity {
@@ -58,5 +59,33 @@ describe('calmZonesByPlayer memo', () => {
     const shrunk = calmZonesByPlayer(sim.world, terrain);
     expect(shrunk).not.toBe(grown);
     expect(shrunk.get(P0)?.has(terrain.nodeAt(FAR.x, FAR.y))).toBe(false);
+  });
+
+  it('keeps the zones while owned settlers are born and die', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 20) });
+    ownedBuildingAt(sim, 5, 5);
+    const terrain = terrainOf(sim);
+    const zones = calmZonesByPlayer(sim.world, terrain);
+    const settler = sim.world.create();
+    sim.world.add(settler, Owner, { player: P0 });
+    expect(calmZonesByPlayer(sim.world, terrain)).toBe(zones);
+    sim.world.destroy(settler);
+    expect(calmZonesByPlayer(sim.world, terrain)).toBe(zones);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('rebuilds when a building changes hands', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 20) });
+    const building = ownedBuildingAt(sim, 5, 5);
+    const terrain = terrainOf(sim);
+    const before = calmZonesByPlayer(sim.world, terrain);
+    const settler = sim.world.create();
+    sim.world.add(settler, Owner, { player: P0 }); // unrelated churn in the same span
+    sim.world.add(building, Owner, { player: P1 });
+    const after = calmZonesByPlayer(sim.world, terrain);
+    expect(after).not.toBe(before);
+    expect(after.has(P0)).toBe(false);
+    expect(after.get(P1)?.has(terrain.nodeAt(10, 10))).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

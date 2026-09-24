@@ -44,17 +44,36 @@ export function isStanding(world: World, e: Entity): boolean {
 }
 
 /**
- * Per-world calm-zone memo keyed on the `Building` and `Owner` membership generations plus terrain identity.
- * Positions are immutable once placed and ownership only changes by add or remove, so the key covers every
- * input, conservatively: `Owner` rides settlers too, so settler churn also bumps it.
+ * Per-world calm-zone memo. The zones read each owned building's anchor and player, and positions are
+ * immutable once placed. A building joining or leaving bumps the Building generation; an Owner stamped
+ * on or dropped from a building shows in the Owner journal, which also carries every owned settler's
+ * birth and death, so only its building entries rebuild. An in-place Owner write rebuilds too.
  */
-const zonesMemo = new WeakMap<
-  World,
-  { version: string; terrain: TerrainGraph; zones: Map<number, Set<NodeId>> }
->();
+interface ZonesMemo {
+  readonly terrain: TerrainGraph;
+  readonly buildingGeneration: number;
+  readonly ownerValueGeneration: number;
+  /** Advanced past Owner changes that touched no building. */
+  ownerGeneration: number;
+  readonly zones: Map<number, Set<NodeId>>;
+}
 
-function zonesVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentGeneration(Owner)}`;
+const zonesMemo = new WeakMap<World, ZonesMemo>();
+
+/** Whether `memo` still describes `world`'s buildings. Pure, so the verifier asks it too. */
+function zonesCurrent(world: World, terrain: TerrainGraph, memo: ZonesMemo): boolean {
+  if (
+    memo.terrain !== terrain ||
+    memo.buildingGeneration !== world.componentGeneration(Building) ||
+    memo.ownerValueGeneration !== world.componentValueGeneration(Owner)
+  ) {
+    return false;
+  }
+  if (memo.ownerGeneration === world.componentGeneration(Owner)) return true;
+  const changed = world.membershipDeltasSince(Owner, memo.ownerGeneration);
+  if (changed === null) return false;
+  for (const e of changed) if (world.has(e, Building)) return false;
+  return true;
 }
 
 /** The single derivation path shared by the memo rebuild and its verifier. */
@@ -93,15 +112,12 @@ function sameZones(
   return true;
 }
 
-/** The `verifyCaches` tripwire for a zone input {@link zonesVersion} fails to see. */
+/** The `verifyCaches` tripwire for a zone input {@link zonesCurrent} fails to see. */
 function verifyZonesMemo(world: World, terrain: TerrainGraph): string[] {
   const hit = zonesMemo.get(world);
-  if (hit === undefined || hit.terrain !== terrain) return [];
-  if (hit.version !== zonesVersion(world)) return []; // stale key - the next read rebuilds
+  if (hit === undefined || !zonesCurrent(world, terrain, hit)) return []; // stale - the next read rebuilds
   if (sameZones(hit.zones, deriveCalmZones(world, terrain))) return [];
-  return [
-    'calmZonesByPlayer memo diverges from a fresh derive - a building or owner changed without a generation bump',
-  ];
+  return ['calmZonesByPlayer memo diverges from a fresh derive - a building or owner change went unseen'];
 }
 
 /**
@@ -109,13 +125,22 @@ function verifyZonesMemo(world: World, terrain: TerrainGraph): string[] {
  * its buildings' anchor nodes. Membership-only, so iteration order cannot change an answer, and never hashed.
  */
 export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
-  const version = zonesVersion(world);
   const hit = zonesMemo.get(world);
-  if (hit !== undefined && hit.version === version && hit.terrain === terrain) return hit.zones;
-  const zones = deriveCalmZones(world, terrain);
-  zonesMemo.set(world, { version, terrain, zones });
+  if (hit !== undefined && zonesCurrent(world, terrain, hit)) {
+    hit.ownerGeneration = world.componentGeneration(Owner);
+    return hit.zones;
+  }
+  world.journalMembership(Owner);
+  const memo: ZonesMemo = {
+    terrain,
+    buildingGeneration: world.componentGeneration(Building),
+    ownerValueGeneration: world.componentValueGeneration(Owner),
+    ownerGeneration: world.componentGeneration(Owner),
+    zones: deriveCalmZones(world, terrain),
+  };
+  zonesMemo.set(world, memo);
   world.registerCacheVerifier('calmZonesByPlayer', () => verifyZonesMemo(world, terrain));
-  return zones;
+  return memo.zones;
 }
 
 /**
