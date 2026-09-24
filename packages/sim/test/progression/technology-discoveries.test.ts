@@ -309,3 +309,25 @@ it('fallback profession edges remain discovered after the enabling worker is los
     expect(new Set(rows.map((row) => JSON.stringify(row))).size).toBe(rows.length);
   }
 });
+
+it('keeps the discovery lookup coherent across a cascade, an outside row write and a new world', () => {
+  const sim = new Simulation({ seed: 1, content: testContent() });
+  for (let typeId = 1; typeId <= 50; typeId++) discoverTechnology(sim.world, PLAYER, TRIBE, 'good', typeId);
+  expect(technologyDiscovered(sim.world, PLAYER, TRIBE, 'good', 50)).toBe(true);
+  expect(technologyDiscovered(sim.world, RIVAL, TRIBE, 'good', 50)).toBe(false);
+  expect(sim.world.verifyCaches()).toEqual([]);
+
+  // A row written behind the lookup's back, as a restore or a raw mut would, is still seen.
+  const [carrier] = sim.world.query(TechnologyDiscoveries);
+  if (carrier === undefined) throw new Error('the discoveries should have created their carrier');
+  sim.world
+    .mut(carrier, TechnologyDiscoveries)
+    .rows.push({ player: RIVAL, tribe: TRIBE, kind: 'job', typeId: 7 });
+  expect(technologyDiscovered(sim.world, RIVAL, TRIBE, 'job', 7)).toBe(true);
+  expect(discoverTechnology(sim.world, RIVAL, TRIBE, 'job', 7)).toBe(false);
+  expect(sim.world.verifyCaches()).toEqual([]);
+
+  const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content });
+  expect(technologyDiscovered(restored.world, PLAYER, TRIBE, 'good', 50)).toBe(true);
+  expect(technologyDiscovered(restored.world, RIVAL, TRIBE, 'job', 7)).toBe(true);
+});
