@@ -15,6 +15,7 @@ import {
   Settler,
   Sheltering,
   Stranded,
+  SupplyRun,
   Wedding,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
@@ -91,6 +92,42 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
 }
 
 /**
+ * Whether travelling or fleeing `e` of a trade that takes cover claims a door of its owner's buildings on
+ * alarm, which only a player order or an existing shelter keeps it from.
+ */
+function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelters: ShelterSites): boolean {
+  const owner = ownerOf(world, e);
+  const settler = world.tryGet(e, Settler);
+  if (
+    owner === undefined ||
+    !shelters.has(owner) ||
+    settler === undefined ||
+    settler.jobType === null ||
+    !sheltersOnAlarm(ctx.content, settler.jobType) ||
+    ctx.terrain === undefined ||
+    world.has(e, Sheltering) ||
+    world.has(e, PlayerOrder) ||
+    !(isTravelling(world, e) || world.has(e, Fleeing))
+  ) {
+    return false;
+  }
+  const p = world.get(e, Position);
+  const from = nodeOfPosition(p.x, p.y);
+  const here = ctx.terrain.nodeAtClamped(from.hx, from.hy);
+  return planShelter(
+    world,
+    ctx,
+    ctx.terrain,
+    e,
+    settler,
+    here,
+    from,
+    navigationLimitFor(world, ctx.content, ctx.terrain, e),
+    shelters,
+  );
+}
+
+/**
  * Reconcile `e`'s leftover intent and report whether the drive ladder should run for it this tick.
  *
  * Returns false while the settler is spoken for: an atomic is running, it walks a live route, or it
@@ -117,35 +154,7 @@ export function releaseStaleIntent(
   // settler across the map.
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (atomicHoldsSettler(world, e)) return false;
-  const settler = world.tryGet(e, Settler);
-  const owner = ownerOf(world, e);
-  let seekShelter = false;
-  if (
-    !world.has(e, Sheltering) &&
-    !world.has(e, PlayerOrder) &&
-    settler !== undefined &&
-    settler.jobType !== null &&
-    sheltersOnAlarm(ctx.content, settler.jobType) &&
-    owner !== undefined &&
-    shelters.has(owner) &&
-    ctx.terrain !== undefined &&
-    (isTravelling(world, e) || world.has(e, Fleeing))
-  ) {
-    const p = world.get(e, Position);
-    const from = nodeOfPosition(p.x, p.y);
-    const here = ctx.terrain.nodeAtClamped(from.hx, from.hy);
-    seekShelter = planShelter(
-      world,
-      ctx,
-      ctx.terrain,
-      e,
-      settler,
-      here,
-      from,
-      navigationLimitFor(world, ctx.content, ctx.terrain, e),
-      shelters,
-    );
-  }
+  const seekShelter = shelters.size > 0 && seeksShelterEnRoute(world, ctx, e, shelters);
   // An alarm outranks an autonomous economy route. Let the shelter rung select a real door this pass;
   // only a successful claim may displace flight. The old PathFollow remains for a continuous mid-leg
   // splice, but an old request cannot block the new goal.
@@ -156,7 +165,7 @@ export function releaseStaleIntent(
   }
   // A non-atomic owner has diverted this settler from its construction errand. Release both promises
   // before a combat, flight, family or player-order route hits the travel early-out below.
-  if (anotherSystemOwns(world, e)) releaseSupplyRun(world, e, inbound);
+  if (world.has(e, SupplyRun) && anotherSystemOwns(world, e)) releaseSupplyRun(world, e, inbound);
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {

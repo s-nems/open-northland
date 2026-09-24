@@ -16,8 +16,8 @@ counts), yet the tick pays for the whole population and every building (shares o
 - `new WorkshopWorkforce(...)` (`systems/stores/workshop-workforce.ts`) runs whenever a multi-recipe
   workshop has a spare operator: a sorted scan of every `JobAssignment` settler (288-334) with
   `boundWorkplaceTarget`, `isWorkplaceOperator`, `bankedSlot` and supply-run checks per settler (31%).
-  The planner's `WorkSeatClaims.recipesFor` builds a second one per tick; see
-  [planner-pass-setup-scales-with-world.md](planner-pass-setup-scales-with-world.md).
+  The planner's `WorkSeatClaims.recipesFor` (`settlers/drives/economy/`) builds a second one per tick
+  whenever one producer plans (0.8% of the tick).
 - The start loop calls `anyCycleStartable` for every built building with recipes every tick, each
   re-reading tech enablement per recipe (`recipeOutputsEnabled` alone is 13%) even when neither its
   stock nor any unlock changed since the last tick (27.5%).
