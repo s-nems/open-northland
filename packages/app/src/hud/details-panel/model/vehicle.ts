@@ -179,8 +179,9 @@ export function vehicleTitle(ctx: UnitPanelModelContext, typeId: number | undefi
 }
 
 /**
- * Which orders the window offers: every vehicle drives and stops; a ship moors and lands its crew; a
- * siege engine takes the attack orders and stances; a hold-less vehicle has no goods to unload. The
+ * Which orders the window offers: every vehicle drives and stops; a ship moors, and lands its crew only
+ * while moored (at sea it has no shore to set them on); a siege engine takes the attack orders and
+ * stances; a hold-less vehicle has no goods to unload. The
  * carrier pair follows the vehicle's own state: only a land vehicle boards a ship, and only a carried
  * one leaves it. Named approximation: the original's window and ring are not read button by button.
  */
@@ -189,6 +190,7 @@ function orderRows(
   stance: VehicleStance,
   carried: boolean,
   crewed: boolean,
+  moored: boolean,
 ): VehicleOrderModel[] {
   const ship = type !== undefined && systems.isShipVehicle(type);
   const siege = type !== undefined && systems.isSiegeVehicle(type);
@@ -199,7 +201,7 @@ function orderRows(
   ];
   if (ship) {
     rows.push({ order: 'dock', enabled: crewed, active: false });
-    rows.push({ order: 'unloadPeople', enabled: true, active: false });
+    rows.push({ order: 'unloadPeople', enabled: moored, active: false });
   } else {
     rows.push({ order: 'unloadPeople', enabled: !carried, active: false });
     rows.push({ order: carried ? 'leaveShip' : 'loadIntoShip', enabled: true, active: false });
@@ -337,7 +339,7 @@ export function vehiclePanelModel(
     crew: crewRows(ctx, snapshot, passengers, vehicles, commander),
     crewCount: passengers.length + vehicles.length,
     crewCapacity: passengerCapacity + vehicleCapacity,
-    orders: orderRows(type, stance, carrier !== undefined, commander !== undefined),
+    orders: orderRows(type, stance, carrier !== undefined, commander !== undefined, v.moored === true),
     cargo: cargoRows(ctx, type, lines),
   };
 }

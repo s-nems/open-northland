@@ -124,6 +124,17 @@ describe('vehicle panel model', () => {
     expect(orders(model)).toEqual(['goTo', 'stop', 'dock', 'unloadPeople', 'unloadGoods']);
     expect(model.crew.length).toBe(3);
   });
+
+  it('lands a ship crew only while it lies moored', () => {
+    const world = vehiclesWorld();
+    const unload = (model: VehiclePanelModel) => model.orders.find((row) => row.order === 'unloadPeople');
+    expect(unload(vehicleModel(world, VEHICLE_SHIP_SMALL))?.enabled).toBe(true);
+    const ship = ownVehicle(world.sim, VEHICLE_SHIP_SMALL).entity;
+    const snapshot = structuredClone(world.snapshot);
+    const vehicle = snapshot.entities.find((e) => e.id === ship)?.components.Vehicle as { moored: boolean };
+    vehicle.moored = false;
+    expect(unload(vehicleModel({ ...world, snapshot }, VEHICLE_SHIP_SMALL))?.enabled).toBe(false);
+  });
 });
 
 describe('vehicle panel pointer intents', () => {
