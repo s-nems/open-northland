@@ -93,6 +93,21 @@ describe('orderNeed - answering a need on command', () => {
     expect(sim.world.has(guard, CurrentAtomic)).toBe(false);
   });
 
+  it('drops an order stamped before a script froze the settler, which no rung can answer now', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const guard = ownedSettlerAt(sim, 0, 0, { hunger: FED });
+    storeAt(sim, 4, 0, 3);
+    sim.enqueueSetup({ kind: 'orderNeed', entity: guard, need: 'hunger' });
+    sim.step();
+    expect(sim.world.has(guard, NeedOrder)).toBe(true); // on its way to the larder
+
+    setMissionBehaviour(sim.world, guard, MISSION_BEHAVIOUR.NEEDS_FROZEN, true);
+    for (let i = 0; i < 150; i++) sim.step(); // the walk out ends on the larder's doorstep
+
+    // A standing order would excuse the guard from every battle alert for good.
+    expect(sim.world.has(guard, NeedOrder)).toBe(false);
+  });
+
   it('sends a fed settler to the larder and clears the order once the meal lands', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = ownedSettlerAt(sim, 2, 0, { hunger: FED });

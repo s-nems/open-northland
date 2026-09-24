@@ -182,7 +182,11 @@ export function planNeeds(
   /** Memoized by the caller: the answer costs a presence sweep. */
   onAlert: () => boolean,
 ): boolean {
-  if (!carriesNeeds(world, ctx.content, e)) return false;
+  if (!carriesNeeds(world, ctx.content, e)) {
+    // An order stamped before a script froze the settler would otherwise stand for good.
+    world.remove(e, NeedOrder);
+    return false;
+  }
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
   if (pressing(settler.hunger, ordered, 'hunger')) {
