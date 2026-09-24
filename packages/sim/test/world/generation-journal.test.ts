@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { MEMBERSHIP_JOURNAL_LIMIT } from '../../src/ecs/membership-journal.js';
+import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
 import { defineComponent, World } from '../../src/ecs/world.js';
 
 /**
- * The World membership journal (`journalMembership`/`membershipDeltasSince`) - the replay feed the
- * incremental spatial memos catch up from instead of rebuilding on every store-generation bump.
- * Pinned: entry `i` maps to generation `base + i + 1`, a span the journal cannot cover answers
- * `null` (the rebuild fallback), and the cap drops the oldest span instead of growing forever.
+ * The World generation journals (`journalMembership`/`membershipDeltasSince` and
+ * `journalValueWrites`/`valueWritesSince`) - the replay feeds incremental caches catch up from instead
+ * of rebuilding on every generation bump. Pinned: entry `i` maps to generation `base + i + 1`, a span
+ * the journal cannot cover answers `null` (the rebuild fallback), and the cap drops the oldest span
+ * instead of growing forever.
  */
 
 interface Tag {
   n: number;
 }
 
-describe('World membership journal', () => {
+describe('World generation journals', () => {
   it('answers null for an unjournaled component, and replays adds/removes/destroys once journaled', () => {
     const w = new World();
     const C = defineComponent<Tag>('JournalTag', 'economy');
@@ -50,11 +51,31 @@ describe('World membership journal', () => {
     const before = w.componentGeneration(C);
     const e = w.create();
     // Push past the retained window: the journal resets its base instead of growing forever.
-    for (let i = 0; i < MEMBERSHIP_JOURNAL_LIMIT + 100; i++) w.add(e, C, { n: i });
+    for (let i = 0; i < GENERATION_JOURNAL_LIMIT + 100; i++) w.add(e, C, { n: i });
     expect(w.membershipDeltasSince(C, before)).toBeNull();
     // A consumer inside the retained window still replays.
     const recent = w.componentGeneration(C);
     w.add(e, C, { n: -1 });
     expect(w.membershipDeltasSince(C, recent)).toEqual([e]);
+  });
+
+  it('journals value writes on their own generation, apart from membership', () => {
+    const w = new World();
+    const C = defineComponent<Tag>('JournalValue', 'economy');
+    const a = w.create();
+    const b = w.create();
+    w.add(a, C, { n: 1 });
+    w.add(b, C, { n: 2 });
+    expect(w.valueWritesSince(C, 0)).toBeNull();
+
+    w.journalValueWrites(C);
+    const before = w.componentValueGeneration(C);
+    const memberships = w.componentGeneration(C);
+    w.mut(b, C).n = 3;
+    w.tryMut(a, C);
+    w.tryMut(w.create(), C); // absent value: logs nothing
+    expect(w.valueWritesSince(C, before)).toEqual([b, a]);
+    expect(w.componentGeneration(C)).toBe(memberships);
+    expect(w.membershipDeltasSince(C, memberships)).toBeNull(); // membership was never journaled
   });
 });

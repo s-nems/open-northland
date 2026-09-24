@@ -13,9 +13,8 @@ The stalled placement search behind most of those spikes now retries every
 `STALLED_PLACEMENT_RETRY_DECISIONS` decisions, and its occupied-anchor test is numeric. What remains
 is the workforce module (`collectResources`, mean 0.8-0.9 ms, peaks 4 ms in the same replay):
 `upkeepHolders` 15-18% of `aiPlayer`, `allocateScout` -> `nextSignpostTarget` 6-11% (it refloods
-route-region pockets that every construction advance invalidates; see
-[building-blocked-cells-rebuilt-per-construction-advance.md](building-blocked-cells-rebuilt-per-construction-advance.md)),
-generic collector allocation 8-10%.
+route-region pockets, which construction progress no longer drops; re-measure), generic collector
+allocation 8-10%.
 
 ## Scope
 

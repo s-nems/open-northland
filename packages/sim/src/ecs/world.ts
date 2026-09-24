@@ -7,7 +7,7 @@
 import { type CacheVerifier, CacheVerifiers } from './cache-verifier.js';
 import type { Component, DeepReadonly, Entity } from './component.js';
 import { ComponentRevisions } from './component-revisions.js';
-import { MembershipJournals } from './membership-journal.js';
+import { GenerationJournals } from './generation-journal.js';
 import { QueryIterator } from './query-iterator.js';
 import { TouchedLog } from './touched-log.js';
 
@@ -48,7 +48,8 @@ export class World {
    *  generations above so spatial indexes keyed on add/remove stay unaffected. */
   private readonly componentValueGenerations = new Map<Component<unknown>, number>();
   private readonly componentRevisions = new ComponentRevisions();
-  private readonly journals = new MembershipJournals();
+  private readonly membershipJournals = new GenerationJournals();
+  private readonly valueJournals = new GenerationJournals();
   private readonly touched = new TouchedLog();
   private readonly cacheVerifiers = new CacheVerifiers();
   private mutations: MutationSink | null = null;
@@ -180,6 +181,7 @@ export class World {
   private recordValueWrite(component: Component<unknown>, entity: Entity): void {
     this.recordComponentWrite(component, entity);
     this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
+    this.valueJournals.record(component, entity);
   }
 
   private recordComponentWrite(component: Component<unknown>, entity: Entity): void {
@@ -357,18 +359,30 @@ export class World {
 
   private bumpComponentGeneration(component: Component<unknown>, entity: Entity): void {
     this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
-    this.journals.record(component, entity);
+    this.membershipJournals.record(component, entity);
   }
 
   /** Start journaling membership changes of `component`'s store so an incremental index can replay them via
    *  {@link membershipDeltasSince} instead of rebuilding on every generation bump. */
   journalMembership(component: Component<unknown>): void {
-    this.journals.start(component, this.componentGeneration(component));
+    this.membershipJournals.start(component, this.componentGeneration(component));
   }
 
   /** The entities whose `component` membership (or stored value, via a re-`add`) changed since generation
    *  `since`, or `null` when the caller must rebuild from the store instead. */
   membershipDeltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
-    return this.journals.deltasSince(component, since);
+    return this.membershipJournals.deltasSince(component, since);
+  }
+
+  /** Start journaling `component`'s in-place value writes so a cache that reads one field can replay the
+   *  written entities via {@link valueWritesSince} instead of re-deriving on every value-generation bump. */
+  journalValueWrites(component: Component<unknown>): void {
+    this.valueJournals.start(component, this.componentValueGeneration(component));
+  }
+
+  /** The entities acquired through {@link mut}/{@link tryMut} for `component` since value generation
+   *  `since`, or `null` when the caller must re-derive instead. */
+  valueWritesSince(component: Component<unknown>, since: number): readonly Entity[] | null {
+    return this.valueJournals.deltasSince(component, since);
   }
 }

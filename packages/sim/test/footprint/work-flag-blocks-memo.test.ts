@@ -10,6 +10,7 @@ import {
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { fx } from '../../src/core/fixed.js';
+import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { positionOfNode, type Simulation } from '../../src/index.js';
 import type { BlockOverlay } from '../../src/nav/block-overlay.js';
@@ -197,6 +198,22 @@ describe('workFlagPlacementBlocks incremental state', () => {
     const after = blocksOf(sim);
     expect(after).toBe(before); // resynced within the live set, not rebuilt
     expect(after.size).toBeGreaterThan(sizeBefore); // the wider body landed - the swap was not skipped
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('still resyncs a type swap once the value journal has dropped the span', () => {
+    const sim = mappedSim();
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(8, 8));
+    sim.world.add(site, Building, { buildingType: HQ, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+
+    const before = blocksOf(sim);
+    const sizeBefore = before.size;
+    for (let i = 0; i <= GENERATION_JOURNAL_LIMIT; i++) sim.world.mut(site, Building).built = fx.fromInt(0);
+    sim.world.mut(site, Building).buildingType = HUT;
+    const after = blocksOf(sim);
+    expect(after).toBe(before);
+    expect(after.size).toBeGreaterThan(sizeBefore);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

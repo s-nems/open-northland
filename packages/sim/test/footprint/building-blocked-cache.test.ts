@@ -1,6 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Position, Stockpile, UnderConstruction, Upgrading } from '../../src/components/index.js';
+import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { buildingBlockedCells, constructionSystem } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -14,9 +15,8 @@ const ANCHOR = { x: 5, y: 5 };
 /**
  * The building walk-block memo (building-blocked-cache.ts): a call burst between two building mutations
  * shares ONE build, and every mutation seam that can change the cell set - membership (add/remove/destroy)
- * and the home tier upgrade's IN-PLACE `buildingType` swap (which `World.write` logs on the VALUE
- * generation) - invalidates it. The in-place seam is the regression the naive
- * `componentGeneration(Building)`-only key would miss.
+ * and the home tier upgrade's IN-PLACE `buildingType` swap (logged by `World.mut` on the VALUE
+ * generation) - invalidates it, while construction progress on the same generation does not.
  */
 describe('buildingBlockedCells memo', () => {
   it('a burst of callers between two building mutations shares one cached set', () => {
@@ -60,11 +60,40 @@ describe('buildingBlockedCells memo', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
+  it('construction progress keeps the memo', () => {
+    const { sim, home } = twoTierHome();
+    sim.world.mut(home, UnderConstruction).labor = HALF; // the site advances without finishing
+    const terrain = terrainOf(sim);
+    const before = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(home, Building).built).toBe(HALF);
+    expect(sim.world.has(home, UnderConstruction)).toBe(true);
+    expect(buildingBlockedCells(sim.world, ctxOf(sim), terrain)).toBe(before);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('rebuilds once the value journal has dropped the span, with the same cells', () => {
+    const { sim, home } = twoTierHome();
+    const terrain = terrainOf(sim);
+    const before = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+    for (let i = 0; i <= GENERATION_JOURNAL_LIMIT; i++) sim.world.mut(home, Building).built = HALF;
+    const after = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+    expect(after).not.toBe(before);
+    expect([...after]).toEqual([...before]);
+  });
+
   it('the verifier flags an in-place Building write that bypassed the tracked seam', () => {
     const { sim, home } = twoTierHome();
+    const other = sim.world.create();
+    sim.world.add(other, Position, positionOfNode(10, 10));
+    sim.world.add(other, Building, { buildingType: HOME_S, tribe: VIKING, built: fx.fromInt(0), level: 0 });
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     // Defeating the readonly view is the bug the verifier exists to catch: no value-generation bump.
     (sim.world.get(home, Building) as { buildingType: number }).buildingType = HOME_L;
+    expect(sim.world.verifyCaches().join('\n')).toContain('buildingBlockedCells');
+    // Logged construction progress on another building leaves the verifier armed.
+    sim.world.mut(other, Building).built = HALF;
     expect(sim.world.verifyCaches().join('\n')).toContain('buildingBlockedCells');
 
     // The same write through the seam - logged, so the next read rebuilds.
@@ -77,6 +106,7 @@ describe('buildingBlockedCells memo', () => {
 const HOME_S = 20; // 1-node body
 const HOME_L = 21; // grows one node east
 const STONE = 1;
+const HALF = fx.div(ONE, fx.fromInt(2));
 
 /** A level-0 home re-opened as an UPGRADE SITE (the command-driven model: `UnderConstruction` +
  *  `Upgrading` beside the Building) with the hammering done and the next tier's material delivered -

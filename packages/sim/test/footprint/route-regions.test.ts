@@ -1,14 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { Position } from '../../src/components/index.js';
+import { parseContentSet } from '@open-northland/data';
+import { describe, expect, it, vi } from 'vitest';
+import { Building, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { positionOfNode, type Simulation } from '../../src/index.js';
+import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import {
   ROUTE_REGION_POCKET_CAP,
   routeRegions,
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
 import { grassMap, mappedSim, terrainOf } from './resource-footprint/support.js';
 
 /**
@@ -97,6 +100,25 @@ describe('routeRegions', () => {
     expect(regions.unroutable(outside, sealed)).toBe(false);
   });
 
+  it('keeps its labels through construction progress and re-opens on a building type swap', () => {
+    const { sim, site } = ringSite();
+    const terrain = terrainOf(sim);
+    const regions = routeRegions(sim.world, ctxOf(sim), terrain);
+    const sealed = terrain.nodeAt(10, 6);
+    const outside = terrain.nodeAt(2, 2);
+    expect(regions.unroutable(outside, sealed)).toBe(true);
+
+    // A labeled verdict floods nothing, so a flood after progress would mean the labels were dropped.
+    const floods = vi.spyOn(terrain, 'stepsInto');
+    sim.world.mut(site, Building).built = ONE;
+    expect(regions.unroutable(outside, sealed)).toBe(true);
+    expect(floods).not.toHaveBeenCalled();
+    floods.mockRestore();
+
+    sim.world.mut(site, Building).buildingType = OPEN_TYPE;
+    expect(regions.unroutable(outside, sealed)).toBe(false);
+  });
+
   it('never vetoes from a blocked start - the walker may step off its own blocked node', () => {
     const sim = mappedSim(grassMap(12, 6));
     const terrain = terrainOf(sim);
@@ -154,3 +176,25 @@ describe('routeRegions', () => {
     expect(regions.unroutable(outside, inside)).toBe(false);
   });
 });
+
+const RING_TYPE = 30; // walls off its anchor node alone
+const OPEN_TYPE = 31; // no walk-block
+
+/** A construction site whose footprint is {@link SEAL_RING} around node (10, 6). */
+function ringSite(): { sim: Simulation; site: Entity } {
+  const content = parseContentSet({
+    manifest: TEST_MANIFEST,
+    goods: [{ typeId: 0, id: 'none' }],
+    jobs: [{ typeId: 0, id: 'idle' }],
+    landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
+    buildings: [
+      { typeId: RING_TYPE, id: 'ring', kind: 'storage', footprint: { blocked: SEAL_RING } },
+      { typeId: OPEN_TYPE, id: 'open', kind: 'storage' },
+    ],
+  });
+  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(24, 12) });
+  const site = sim.world.create();
+  sim.world.add(site, Position, positionOfNode(10, 6));
+  sim.world.add(site, Building, { buildingType: RING_TYPE, tribe: 1, built: fx.fromInt(0), level: 0 });
+  return { sim, site };
+}

@@ -1,5 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
-import { Building, ResourceFootprint } from '../../components/index.js';
+import { ResourceFootprint } from '../../components/index.js';
 import { landscapeTopologyRevision } from '../../components/landscape.js';
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
@@ -33,11 +32,9 @@ const MAX_EPOCH = 2 ** 31 - 1;
 
 interface RouteRegionCache {
   readonly terrain: TerrainGraph;
-  /** The overlay inputs the labels were computed under - any drift invalidates every label. The
-   *  content ref mirrors the building cache's own key (a swap can move cells with no generation bump). */
-  content: ContentSet | null;
-  buildingGeneration: number;
-  buildingValueGeneration: number;
+  /** The overlay inputs the labels were computed under - any drift invalidates every label. The building
+   *  cells are keyed by identity: their cache mints a new set exactly when a building's cells can move. */
+  buildingCells: ReadonlySet<NodeId> | null;
   resourceGeneration: number;
   landscapeGeneration: number;
   /** Composed building + resource overlay for the current epoch's floods. */
@@ -101,30 +98,24 @@ export class RouteRegions {
   }
 
   /** Re-key the labels against the overlay inputs, invalidating every label when any moved. Ran per
-   *  verdict (three generation reads), so a held instance can never serve a stale epoch. */
+   *  verdict, so a held instance can never serve a stale epoch. */
   private refresh(cache: RouteRegionCache): void {
     const world = this.world;
-    const content = this.ctx.content;
-    const buildingGeneration = world.componentGeneration(Building);
-    const buildingValueGeneration = world.componentValueGeneration(Building);
+    const buildingCells = buildingBlockedCells(world, this.ctx, cache.terrain);
     const resourceGeneration = world.componentGeneration(ResourceFootprint);
     const landscapeGeneration = landscapeTopologyRevision(world);
     if (
-      cache.content === content &&
-      cache.buildingGeneration === buildingGeneration &&
-      cache.buildingValueGeneration === buildingValueGeneration &&
+      cache.buildingCells === buildingCells &&
       cache.resourceGeneration === resourceGeneration &&
       cache.landscapeGeneration === landscapeGeneration
     ) {
       return;
     }
-    cache.content = content;
-    cache.buildingGeneration = buildingGeneration;
-    cache.buildingValueGeneration = buildingValueGeneration;
+    cache.buildingCells = buildingCells;
     cache.resourceGeneration = resourceGeneration;
     cache.landscapeGeneration = landscapeGeneration;
     cache.blocked = new LayeredBlocks([
-      buildingBlockedCells(world, this.ctx, cache.terrain),
+      buildingCells,
       resourceBlockedCells(world, cache.terrain),
       landscapeBlocks(world, cache.terrain).walk,
     ]);
@@ -187,9 +178,7 @@ export function routeRegions(world: World, ctx: SystemContext, terrain: TerrainG
   if (cache === undefined || cache.terrain !== terrain) {
     cache = {
       terrain,
-      content: null,
-      buildingGeneration: -1,
-      buildingValueGeneration: -1,
+      buildingCells: null,
       resourceGeneration: -1,
       landscapeGeneration: -1,
       blocked: new LayeredBlocks([]),

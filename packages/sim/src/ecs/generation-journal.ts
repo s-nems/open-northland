@@ -2,21 +2,22 @@ import type { Component, Entity } from './component.js';
 
 /** Retained span length past which the oldest span is dropped (`base` advances) instead of growing
  *  forever; a consumer further behind rebuilds from scratch. */
-export const MEMBERSHIP_JOURNAL_LIMIT = 1024;
+export const GENERATION_JOURNAL_LIMIT = 1024;
 
-/** One store's retained ops: entry `i` is the entity whose add/remove/destroy bumped that store's
- *  generation to `base + i + 1`. */
-interface MembershipJournal {
+/** One store's retained ops: entry `i` is the entity whose op bumped that store's journaled generation
+ *  to `base + i + 1`. */
+interface GenerationJournal {
   base: number;
   entities: Entity[];
 }
 
 /**
- * The membership-op journals an incremental index replays instead of rebuilding on every generation bump.
- * Only components passed to {@link start} are journaled; the rest pay nothing.
+ * The per-component op journals an incremental index replays instead of rebuilding on every bump of one
+ * generation counter (membership or value writes). Only components passed to {@link start} are
+ * journaled; the rest pay nothing.
  */
-export class MembershipJournals {
-  private readonly byComponent = new Map<Component<unknown>, MembershipJournal>();
+export class GenerationJournals {
+  private readonly byComponent = new Map<Component<unknown>, GenerationJournal>();
 
   /** Idempotent; a new journal starts at `generation`, so nothing before it is replayable. */
   start(component: Component<unknown>, generation: number): void {
@@ -28,7 +29,7 @@ export class MembershipJournals {
   record(component: Component<unknown>, entity: Entity): void {
     const journal = this.byComponent.get(component);
     if (journal === undefined) return;
-    if (journal.entities.length >= MEMBERSHIP_JOURNAL_LIMIT) {
+    if (journal.entities.length >= GENERATION_JOURNAL_LIMIT) {
       journal.base += journal.entities.length;
       journal.entities.length = 0;
     }

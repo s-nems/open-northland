@@ -15,10 +15,9 @@ buildings: about 340 MB/s at x3.
 By share of sampled bytes:
 
 - About 16% is the combat index rebuild (`admit`, `candidatesInBand`), owned by
-  [combat-index-rebuilt-every-tick.md](combat-index-rebuilt-every-tick.md), and 9% the building
-  walk-block rebuild (`deriveBuildingBlockedCells`, `doorPassage`), owned by
-  [building-blocked-cells-rebuilt-per-construction-advance.md](building-blocked-cells-rebuilt-per-construction-advance.md).
-  `canonicalById` adds 3%, owned by
+  [combat-index-rebuilt-every-tick.md](combat-index-rebuilt-every-tick.md). The 9% building
+  walk-block rebuild (`deriveBuildingBlockedCells`, `doorPassage`) now runs only on a building
+  placement, removal or tier swap; re-profile its share. `canonicalById` adds 3%, owned by
   [canonical-queries-resorted-per-call.md](canonical-queries-resorted-per-call.md).
 - About 17% is stock-map iteration by destructuring: `for (const [goodType, amount] of amounts)`
   allocates an entry pair per stock line on every call, and these helpers run per candidate store for

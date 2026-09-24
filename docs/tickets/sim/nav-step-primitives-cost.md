@@ -30,10 +30,8 @@ inflated by the sampler), ranges from it and the busy-machine profiles from 30k,
   expands little.
 
 [pathfinding-army-march-spike.md](pathfinding-army-march-spike.md) cuts how many nodes A* expands; this
-ticket is the per-call cost that remains. Land
-[building-blocked-cells-rebuilt-per-construction-advance.md](building-blocked-cells-rebuilt-per-construction-advance.md)
-first: it cuts the building-layer rebuilds, and the node mask below rebuilds whenever that cache
-invalidates, which today is about every tick.
+ticket is the per-call cost that remains. The node mask below rebuilds whenever the building walk-block
+cache does: on a placement, removal or tier swap, not on construction progress.
 
 Expected gain: about 1.2 ms of the 18.7 ms tick at 40k (the stagger modulo 0.75 ms, half of
 `passable`'s 0.85 ms self).

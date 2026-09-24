@@ -1,6 +1,6 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -11,15 +11,17 @@ import { buildingFootprintOf, sameCells, translatedCells } from './geometry.js';
 
 interface BuildingBlockedCache {
   /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
-  membershipGeneration: number;
-  /** Building VALUE generation: the in-place `buildingType` swap of a home tier upgrade changes the cell
-   *  set with no membership bump, so the {@link World.mut} value bump must key this cache too. `built`
-   *  progress also moves it without changing any cell, so an actively hammered site costs a rebuild per
-   *  advance; the derived cells stay correct either way. */
+  readonly membershipGeneration: number;
+  /** Building VALUE generation the cells were last confirmed at. Of the Building fields only
+   *  `buildingType` moves cells (the in-place home tier swap), while `built` progress bumps this on every
+   *  construction advance, so a bump replays the written buildings against {@link types} and rebuilds
+   *  only when one changed type. */
   valueGeneration: number;
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   readonly cells: Set<NodeId>;
+  /** The `buildingType` each derived building's cells came from. */
+  readonly types: ReadonlyMap<Entity, number>;
 }
 
 const buildingBlockedCache = new WeakMap<World, BuildingBlockedCache>();
@@ -60,13 +62,20 @@ function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, door: Nod
   return passage;
 }
 
-/** One full derivation - the rebuild and the verifier's reference run through this single path. */
-function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: TerrainGraph): Set<NodeId> {
+/** One full derivation - the rebuild and the verifier's reference run through this single path. Records
+ *  each building's type into `types` when given. */
+function deriveBuildingBlockedCells(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  types?: Map<Entity, number>,
+): Set<NodeId> {
   const blocked = new Set<NodeId>();
   // The exact door point stays open even if another building's reserved margin overlaps it.
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
+    types?.set(e, b.buildingType);
     const footprint = buildingFootprintOf(content, b.buildingType);
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
@@ -87,13 +96,26 @@ function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: 
   return blocked;
 }
 
+/** Whether the Building value writes since the cache's confirmed generation left every derived building's
+ *  type alone, so its cells still hold. False when the journal cannot cover the span. */
+function valueWritesKeepCells(world: World, cached: BuildingBlockedCache, valueGeneration: number): boolean {
+  if (cached.valueGeneration === valueGeneration) return true;
+  const written = world.valueWritesSince(Building, cached.valueGeneration);
+  if (written === null) return false;
+  for (const e of written) {
+    const b = world.tryGet(e, Building);
+    if (b !== undefined && world.has(e, Position) && cached.types.get(e) !== b.buildingType) return false;
+  }
+  return true;
+}
+
 function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: TerrainGraph): string[] {
   const cached = buildingBlockedCache.get(world);
   if (cached === undefined) return [];
   if (cached.terrain !== terrain || cached.content !== content) return [];
   if (
     cached.membershipGeneration !== world.componentGeneration(Building) ||
-    cached.valueGeneration !== world.componentValueGeneration(Building)
+    !valueWritesKeepCells(world, cached, world.componentValueGeneration(Building))
   ) {
     return []; // stale key - the next read rebuilds, nothing can consume the old cells
   }
@@ -112,9 +134,10 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  * A building's own DOOR and the shortest passage to exterior ground are left walkable when the door
  * lies inside the walk-block. Without that passage a clear door point can still be sealed by wall cells.
  *
- * Derived state, never hashed. Memoized per world on the Building store's membership and value
- * generations, so a burst of callers between two building mutations shares one build. The returned set is
- * the SHARED cached copy: membership reads only. A set union and a door subtraction, neither with a pick,
+ * Derived state, never hashed. Memoized per world on the Building store's membership generation and the
+ * buildings' types, so construction progress keeps the build and a burst of callers between two building
+ * changes shares one. A rebuild returns a new set, so its identity keys dependent caches. The returned set
+ * is the SHARED cached copy: membership reads only. A set union and a door subtraction, neither with a pick,
  * so store-iteration order cannot change it.
  */
 export function buildingBlockedCells(
@@ -130,18 +153,22 @@ export function buildingBlockedCells(
     cached.terrain === terrain &&
     cached.content === ctx.content &&
     cached.membershipGeneration === membershipGeneration &&
-    cached.valueGeneration === valueGeneration
+    valueWritesKeepCells(world, cached, valueGeneration)
   ) {
+    cached.valueGeneration = valueGeneration;
     return cached.cells;
   }
 
-  const cells = deriveBuildingBlockedCells(world, ctx.content, terrain);
+  world.journalValueWrites(Building);
+  const types = new Map<Entity, number>();
+  const cells = deriveBuildingBlockedCells(world, ctx.content, terrain, types);
   buildingBlockedCache.set(world, {
     membershipGeneration,
     valueGeneration,
     content: ctx.content,
     terrain,
     cells,
+    types,
   });
   world.registerCacheVerifier('buildingBlockedCells', () =>
     verifyBuildingBlockedCache(world, ctx.content, terrain),

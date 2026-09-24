@@ -34,10 +34,11 @@ export interface BlockerJournal {
  * Guarded inputs: each {@link BLOCKER_STORES} store's membership generation, replayed entity by entity,
  * plus the `Building` VALUE generation, since the tier swap changes a building's cells in place with no
  * membership bump. That value bump is ambiguous - construction progress moves it every active-site tick -
- * so it is narrowed to the buildings whose `buildingType` actually changed. A blocker's Position is NOT a
- * guarded input: every spawn site adds it before the blocker component, and a placed blocker never moves,
- * so the cells a capture reads are fixed while the entity holds the component. Each cache's registered
- * `verifyCaches` verifier is the tripwire if any of that stops holding.
+ * so it is narrowed through the value-write journal to the buildings whose `buildingType` actually
+ * changed. A blocker's Position is NOT a guarded input: every spawn site adds it before the blocker
+ * component, and a placed blocker never moves, so the cells a capture reads are fixed while the entity
+ * holds the component. Each cache's registered `verifyCaches` verifier is the tripwire if any of that
+ * stops holding.
  */
 export function startBlockerJournal<Captured>(
   world: World,
@@ -49,6 +50,7 @@ export function startBlockerJournal<Captured>(
   /** The `buildingType` each held Building capture used - the only Building value a capture reads, so a
    *  value bump resyncs exactly the mismatches instead of demanding a full rebuild. */
   const buildingTypes = new Map<Entity, number>();
+  world.journalValueWrites(Building);
   let buildingValueGen = world.componentValueGeneration(Building);
 
   const recordsOf = (store: BlockerStore): Map<Entity, Captured> => {
@@ -81,11 +83,14 @@ export function startBlockerJournal<Captured>(
     ops.apply(captured);
   };
 
-  /** The Building value-bump response: resync only the buildings whose live type differs from the held
-   *  record - O(buildings) compares, zero captures when only construction progress (`built`) moved. */
+  /** The Building value-bump response: resync only the written buildings whose live type differs from
+   *  the held record - zero captures when only construction progress (`built`) moved. A span the value
+   *  journal no longer covers falls back to comparing every building. */
   const resyncChangedBuildingTypes = (): void => {
-    for (const e of world.query(Building, Position)) {
-      if (buildingTypes.get(e) === world.get(e, Building).buildingType) continue;
+    const written = world.valueWritesSince(Building, buildingValueGen) ?? world.query(Building);
+    for (const e of written) {
+      const b = world.tryGet(e, Building);
+      if (b === undefined || !world.has(e, Position) || buildingTypes.get(e) === b.buildingType) continue;
       resync(BUILDING_STORE, e);
     }
   };
