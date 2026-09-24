@@ -14,6 +14,7 @@ import {
   buildingTribeOf,
   buildingTypeOf,
   ownerPlayerOf,
+  type SnapshotEntity,
   settlerJobType,
   settlerLearnedOf,
   settlerTribeOf,
@@ -99,6 +100,21 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
       ),
     }))
     .sort((a, b) => collator.compare(a.label, b.label) || a.jobType - b.jobType);
+}
+
+/** The sim's `learn` rule on a snapshot learner: its current trade counts as known. */
+export function knowsCourse(learner: SnapshotEntity, course: SchoolCourse): boolean {
+  return systems.knowsCourse(
+    {
+      jobType: settlerJobType(learner) ?? null,
+      learned: {
+        job: settlerLearnedOf(learner.components, 'job'),
+        good: settlerLearnedOf(learner.components, 'good'),
+      },
+    },
+    course.target,
+    course.typeId,
+  );
 }
 
 export interface SchoolDialog {
@@ -190,11 +206,7 @@ export function openSchoolDialog(
     const state = snapshot();
     for (const entity of students) {
       const learner = entityById(state, entity);
-      if (
-        learner === undefined ||
-        settlerLearnedOf(learner.components, course.target).includes(course.typeId)
-      )
-        continue;
+      if (learner === undefined || knowsCourse(learner, course)) continue;
       enqueue({
         kind: 'learn',
         entity: entity as Entity,
@@ -238,9 +250,7 @@ export function openSchoolDialog(
     for (const group of choices)
       for (const course of group.courses) {
         const remaining = learners.filter(
-          (learner) =>
-            learner !== undefined &&
-            !settlerLearnedOf(learner.components, course.target).includes(course.typeId),
+          (learner) => learner !== undefined && !knowsCourse(learner, course),
         );
         const entering = remaining.filter(
           (learner) => learner !== undefined && trainingHouseOf(learner) !== house,

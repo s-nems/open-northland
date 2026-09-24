@@ -64,6 +64,8 @@ export {
   SUPPORTED_GOALS,
   SUPPORTED_RESULTS,
 } from './missions/index.js';
+// So the school dialog offers exactly the courses the `learn` command accepts.
+export { knowsCourse } from './orders/education.js';
 export {
   experienceBonus,
   experienceRepeats,
@@ -79,8 +81,6 @@ export {
   TRAINING_EXPERIENCE_TYPE,
 } from './progression/experience.js';
 export { schoolingMet } from './progression/unlocks.js';
-// The atomic clip resolution, exported so the real-content suite can pin the joins against the served IR
-// rather than a fixture, and the sandbox catalog can author its cues on the same event type.
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the
 // joins against the served IR rather than a fixture, and the committed catalog can author its cues and its
 // need clips on the same ids the sim reads back.

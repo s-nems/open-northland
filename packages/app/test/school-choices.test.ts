@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { choiceMatches } from '../src/hud/dom/choice-window.js';
-import { type SchoolGroup, schoolChoices } from '../src/view/unit-controls/school-dialog.js';
+import { knowsCourse, type SchoolGroup, schoolChoices } from '../src/view/unit-controls/school-dialog.js';
 
 const smith: SchoolGroup = {
   jobType: 13,
@@ -23,6 +23,14 @@ it('lists every discovered advanced method independently of the pupil profession
     schoolChoices([smith], (course) => course.target === 'job')[0]?.courses.map((row) => row.target),
   ).toEqual(['job']);
   expect(schoolChoices([smith], () => false)).toEqual([]);
+});
+it('treats the pupil trade and its learned courses as known, not other trades or methods', () => {
+  const learner = { id: 1, components: { Settler: { jobType: 13, learned: { job: [9], good: [42] } } } };
+  expect(knowsCourse(learner, { target: 'job', typeId: 13, label: 'Kowal' })).toBe(true);
+  expect(knowsCourse(learner, { target: 'job', typeId: 9, label: 'Cieśla' })).toBe(true);
+  expect(knowsCourse(learner, { target: 'good', typeId: 42, label: 'Długi miecz' })).toBe(true);
+  expect(knowsCourse(learner, { target: 'job', typeId: 11, label: 'Garncarz' })).toBe(false);
+  expect(knowsCourse(learner, { target: 'good', typeId: 13, label: 'Kolczuga' })).toBe(false);
 });
 it('searches the start of the label with case and accent folding', () => {
   expect(choiceMatches('Cieśla', 'c')).toBe(true);

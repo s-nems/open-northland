@@ -348,3 +348,41 @@ it('keeps a served lesson when the school is razed before the pupil plans again'
   expect(sim.world.get(pupil, Settler).learned?.job).toContain(CARPENTER);
   expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
 });
+
+it('refuses a lesson in the trade the pupil already practises', () => {
+  const base = testContent();
+  const content = parseContentSet({
+    ...base,
+    buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
+    tribes: base.tribes.map((tribe) => ({
+      ...tribe,
+      jobRequirements: [
+        {
+          target: 'job',
+          targetId: CARPENTER,
+          requirement: 'train',
+          amount: 1,
+          experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+        },
+      ],
+    })),
+  });
+  const sim = new Simulation({ seed: 6, content, map: grassCellMap(12, 12) });
+  const carpenter = settlerAt(sim, { jobType: CARPENTER, tribe: TRIBE });
+  sim.world.add(carpenter, Owner, { player: 0 });
+  const school = sim.world.create();
+  sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
+  sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
+  sim.world.add(school, Owner, { player: 0 });
+  discoverTechnology(sim.world, 0, TRIBE, 'job', CARPENTER);
+
+  learn(sim.world, ctxOf(sim), {
+    kind: 'learn',
+    entity: carpenter,
+    house: school,
+    target: 'job',
+    typeId: CARPENTER,
+  });
+
+  expect(sim.world.has(carpenter, TrainingOrder)).toBe(false);
+});
