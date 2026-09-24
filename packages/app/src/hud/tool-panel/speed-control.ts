@@ -13,13 +13,17 @@ export interface SpeedControlDeps {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Every state the control shows, including one restored or synced from elsewhere. */
   readonly onShow: (control: GameSpeedControl) => void;
+  /** True while a window holds the game paused under it (the mission sheet): a press then waits,
+   *  since resuming the clock would run the game behind that window. */
+  readonly held?: () => boolean;
 }
 
 /** The game-speed control behind the system bar's segments and the pause hotkey. */
 export interface SpeedControl {
-  togglePause(): void;
-  /** Pick a running speed; a pick while paused resumes at it. */
-  setRunning(running: RunningGameSpeed): void;
+  /** False when a hold refused the press. */
+  togglePause(): boolean;
+  /** Pick a running speed; a pick while paused resumes at it. False when a hold refused the press. */
+  setRunning(running: RunningGameSpeed): boolean;
   state(): GameSpeedControl;
   /** Show a control set elsewhere (a restore, a remount) without pushing it to the clock. */
   restore(control: GameSpeedControl): void;
@@ -34,14 +38,21 @@ export function createSpeedControl(deps: SpeedControlDeps): SpeedControl {
     deps.onShow(control);
     if (cause !== null) deps.onSpeedChange(effectiveGameSpeedSpec(control), cause);
   };
+  const held = (): boolean => deps.held?.() === true;
   return {
-    togglePause: () => apply(toggleGameSpeedPause(control), 'pause-toggle'),
+    togglePause: () => {
+      if (held()) return false;
+      apply(toggleGameSpeedPause(control), 'pause-toggle');
+      return true;
+    },
     setRunning: (running) => {
+      if (held()) return false;
       // Resuming at the remembered speed only flips the pause flag, like the pause key; any other pick
       // hands the clock its multiplier.
       const cause: GameSpeedChangeCause =
         control.paused && control.running === running ? 'pause-toggle' : 'cycle';
       apply({ running, paused: false }, cause);
+      return true;
     },
     state: () => control,
     restore: (next) => apply(next, null),

@@ -41,7 +41,6 @@ function heldMode(): HeldMode & { active: boolean } {
 }
 
 const CLOSED_WINDOWS = {
-  byId: { mission: { isOpen: () => false, close: () => undefined } },
   claims: () => false,
   handleClick: () => false,
   handleWheel: () => false,

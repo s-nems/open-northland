@@ -60,15 +60,30 @@ describe('game-speed', () => {
 });
 
 describe('speed control', () => {
-  function mount(seed: number) {
+  function mount(seed: number, held: () => boolean = () => false) {
     const clock = testClock(seed);
     const shown: string[] = [];
     const control = createSpeedControl({
       onSpeedChange: (spec, cause) => applyGameSpeed(clock, spec, cause),
       onShow: (c) => shown.push(`${c.running}${c.paused ? '/paused' : ''}`),
+      held,
     });
     return { clock, shown, control };
   }
+
+  it('refuses every press while a window holds the game paused, and takes them again after', () => {
+    let held = true;
+    const { clock, shown, control } = mount(1, () => held);
+    // The hold paused the clock itself; a segment press must not run the game behind the window.
+    clock.setPaused(true);
+    expect(control.setRunning('faster')).toBe(false);
+    expect(control.togglePause()).toBe(false);
+    expect(clock.state).toEqual({ paused: true, speed: 1 });
+    expect(shown).toEqual([]);
+    held = false;
+    expect(control.setRunning('faster')).toBe(true);
+    expect(clock.state).toEqual({ paused: false, speed: 3 });
+  });
 
   it('resuming at the remembered segment only flips the pause, so a fractional seed survives', () => {
     const { clock, control } = mount(0.5);

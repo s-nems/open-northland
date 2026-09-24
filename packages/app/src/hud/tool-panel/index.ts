@@ -411,6 +411,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const speed = createSpeedControl({
       onSpeedChange: opts.onSpeedChange,
       onShow: (control) => systemBar.setSpeed(control),
+      held: () => windows.mission.isOpen(),
     });
     const systemBar = createHudSystemBar(plane, {
       summary: {
@@ -421,14 +422,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           return (typeId === undefined ? undefined : opts.goodLabel(typeId)) ?? goodId;
         },
       },
-      onPauseToggle: () => {
-        ctx.cue('confirm');
-        speed.togglePause();
-      },
-      onSpeed: (running) => {
-        ctx.cue('confirm');
-        speed.setRunning(running);
-      },
+      onPauseToggle: () => ctx.cue(speed.togglePause() ? 'confirm' : 'fail'),
+      onSpeed: (running) => ctx.cue(speed.setRunning(running) ? 'confirm' : 'fail'),
       onMenu: () => {
         ctx.cue('confirm');
         opts.onSystemMenu?.();
@@ -496,7 +491,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         applyNavEntry(surfaces, id);
         nav.focus(id);
       },
-      togglePause: () => speed.togglePause(),
+      togglePause: () => {
+        speed.togglePause();
+      },
       toggleHud: () => opts.onToggleHud?.(),
       cue: ctx.cue,
       deferToOverlay: (clientX, clientY) => {

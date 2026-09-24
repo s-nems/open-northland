@@ -120,7 +120,6 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   // (theirs included) could act on it.
   let escapeClaimed = false;
   const onKeyDown = (e: KeyboardEvent): void => {
-    const sheet = windows.byId.mission;
     // The F-row is the game's while it runs, bound or not, under a dialog or in a field: the browser's
     // own F1 help, F3 find, F5 reload or F7 caret prompt must never fire over a match. A Ctrl, Alt or
     // Meta chord stays the system's (Alt+F4 closes the window) unless an action binds it.
@@ -159,8 +158,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     }
     if (isActionHotkey(e, deps.bindings, 'pauseToggle')) {
       e.preventDefault();
-      // The mission sheet holds the game paused under it, so the hotkey waits until it is gone.
-      if (!sheet.isOpen()) deps.togglePause();
+      deps.togglePause();
     }
   };
 
