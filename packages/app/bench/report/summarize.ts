@@ -3,20 +3,21 @@
  * timing and sim construction so it unit-tests without running a sim (`test/bench-report.test.ts`,
  * in the normal suite).
  */
-import type {
-  BenchEnvironment,
-  BenchReport,
-  BenchTrust,
-  BenchWindow,
-  BenchWorld,
-  SlowTick,
-  SystemStat,
-  TickStat,
+import {
+  BENCH_REPORT_VERSION,
+  type BenchEnvironment,
+  type BenchReport,
+  type BenchTrust,
+  type BenchWindow,
+  type BenchWorld,
+  type SlowTick,
+  type SystemStat,
+  type TickStat,
 } from './types.js';
 
 /** How many of the slowest ticks a report names, and how many systems each names. Enough to see whether
- *  a stutter has one source or many. */
-const SLOWEST_TICKS = 5;
+ *  a stutter has one source or many across a long run. */
+const SLOWEST_TICKS = 10;
 const SYSTEMS_PER_SLOW_TICK = 3;
 /** A tick this many times the median counts as a stutter: at x3 speed one such tick costs a frame. */
 export const SLOW_TICK_FACTOR = 2;
@@ -27,10 +28,27 @@ export const SLOW_TICK_FACTOR = 2;
  * Returns 0 for an empty sample.
  */
 export function percentile(samples: readonly number[], p: number): number {
-  const sorted = [...samples].sort((a, b) => a - b);
+  return sortedPercentile(
+    [...samples].sort((a, b) => a - b),
+    p,
+  );
+}
+
+function sortedPercentile(sorted: readonly number[], p: number): number {
   const rank = Math.ceil((p / 100) * sorted.length);
   const index = Math.min(sorted.length - 1, Math.max(0, rank - 1));
   return sorted[index] ?? 0; // empty sample -> 0
+}
+
+/** Whole-tick spread from one sort: a long run holds tens of thousands of samples. */
+function tickStat(samples: readonly number[]): TickStat {
+  const sorted = [...samples].sort((a, b) => a - b);
+  return {
+    medianMs: sortedPercentile(sorted, 50),
+    p95Ms: sortedPercentile(sorted, 95),
+    p99Ms: sortedPercentile(sorted, 99),
+    maxMs: sorted.at(-1) ?? 0,
+  };
 }
 
 /** One segment's folded rows. Shares are share-of-segment, so a window's rows sum within that window. */
@@ -45,11 +63,15 @@ export function summarizeSegment(
   perSystem: ReadonlyMap<string, readonly number[]>,
   tickSamples: readonly number[],
 ): Segment {
-  const rows = [...perSystem].map(([name, samples]) => ({
-    name,
-    medianMs: percentile(samples, 50),
-    p95Ms: percentile(samples, 95),
-  }));
+  const rows = [...perSystem].map(([name, samples]) => {
+    const sorted = [...samples].sort((a, b) => a - b);
+    return {
+      name,
+      medianMs: sortedPercentile(sorted, 50),
+      p95Ms: sortedPercentile(sorted, 95),
+      maxMs: sorted.at(-1) ?? 0,
+    };
+  });
   const medianTotal = rows.reduce((sum, r) => sum + r.medianMs, 0);
 
   const systems: SystemStat[] = rows
@@ -58,21 +80,22 @@ export function summarizeSegment(
     // Codepoint order, not localeCompare: ICU collation varies by environment (AGENTS.md).
     .sort((a, b) => b.medianMs - a.medianMs || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
-  return { tickMs: { medianMs: percentile(tickSamples, 50), p95Ms: percentile(tickSamples, 95) }, systems };
+  return { tickMs: tickStat(tickSamples), systems };
 }
 
 /** The slowest measured ticks with the systems that filled them. Ties keep the earlier tick, so the
- *  list is stable for a given run. */
+ *  list is stable for a given run. `firstTick` is the sim tick of the first sample. */
 export function slowestTicks(
   perSystem: ReadonlyMap<string, readonly number[]>,
   tickSamples: readonly number[],
+  firstTick: number,
 ): readonly SlowTick[] {
   return tickSamples
     .map((totalMs, index) => ({ totalMs, index }))
     .sort((a, b) => b.totalMs - a.totalMs || a.index - b.index)
     .slice(0, SLOWEST_TICKS)
     .map(({ totalMs, index }) => ({
-      index,
+      tick: firstTick + index,
       totalMs,
       systems: [...perSystem]
         .map(([name, samples]) => ({ name, ms: samples[index] ?? 0 }))
@@ -110,6 +133,8 @@ export function summarize(
   meta: {
     readonly world: BenchWorld;
     readonly ticks: BenchReport['ticks'];
+    /** The sim tick of the first measured sample. */
+    readonly firstTick: number;
     readonly windows: readonly BenchWindow[];
     readonly environment: BenchEnvironment;
     readonly trust: BenchTrust;
@@ -118,11 +143,12 @@ export function summarize(
 ): BenchReport {
   const { tickMs, systems } = summarizeSegment(perSystem, tickSamples);
   return {
+    version: BENCH_REPORT_VERSION,
     world: meta.world,
     ticks: meta.ticks,
     tickMs,
     systems,
-    slowestTicks: slowestTicks(perSystem, tickSamples),
+    slowestTicks: slowestTicks(perSystem, tickSamples, meta.firstTick),
     stutterSources: stutterSources(perSystem, tickSamples),
     windows: meta.windows,
     environment: meta.environment,

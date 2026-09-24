@@ -7,15 +7,17 @@ import { formatLocation, resolveLocation } from './profile-location.js';
  * table says which system got slower; this says which FUNCTION it spends the time in, which is the
  * question a hotspot hunt actually asks.
  *
- * Self time is what a hotspot is read from: a caller's total time only says that its callees are
- * expensive. Both are reported, aggregated per (function, file, line), so one function appearing
- * under many call paths is one row.
+ * Self time finds the function that burns cycles; total time finds the caller that fans out into
+ * many cheap callees, which no self-time row shows. Both are reported, aggregated per
+ * (function, file, line), so one function appearing under many call paths is one row.
  */
 
 /** V8's own default is 1000 µs, which resolves nothing inside a 6 ms tick. */
 const SAMPLING_INTERVAL_US = 100;
 const US_PER_MS = 1000;
 const ANONYMOUS = '(anonymous)';
+/** V8's synthetic top frame: its total is the whole profile, so it ranks nothing. */
+const ROOT_FRAME = '(root)';
 
 export interface FunctionCost {
   readonly name: string;
@@ -25,6 +27,7 @@ export interface FunctionCost {
   readonly selfPct: number;
   /** Self time of the function and everything it called, counted once per call path. */
   readonly totalMs: number;
+  readonly totalPct: number;
 }
 
 export interface FileCost {
@@ -38,13 +41,15 @@ export interface ProfileSummary {
   readonly sampledMs: number;
   /** Descending by self time. */
   readonly functions: readonly FunctionCost[];
+  /** Descending by total time, without V8's `(root)` frame. */
+  readonly functionsByTotal: readonly FunctionCost[];
   readonly files: readonly FileCost[];
 }
 
-/** Profile one synchronous run, handing back what it returned. The sampler is process-wide, so the
- *  caller must do nothing else while it runs. */
+/** Profile one run, handing back what it resolved to. The sampler is process-wide, so the caller must
+ *  do nothing else while it runs. */
 export async function captureCpuProfile<T>(
-  run: () => T,
+  run: () => Promise<T>,
 ): Promise<{ readonly profile: Profiler.Profile; readonly result: T }> {
   const session = new Session();
   session.connect();
@@ -52,7 +57,7 @@ export async function captureCpuProfile<T>(
     await session.post('Profiler.enable');
     await session.post('Profiler.setSamplingInterval', { interval: SAMPLING_INTERVAL_US });
     await session.post('Profiler.start');
-    const result = run();
+    const result = await run();
     const { profile } = await session.post('Profiler.stop');
     return { profile, result };
   } finally {
@@ -164,17 +169,20 @@ export function summarizeProfile(profile: Profiler.Profile): ProfileSummary {
   }
 
   const pct = (us: number): number => (sampledUs === 0 ? 0 : (us / sampledUs) * 100);
+  const functions = [...byFunction.values()].map((row) => ({
+    name: row.name,
+    location: row.location,
+    selfMs: row.selfUs / US_PER_MS,
+    selfPct: pct(row.selfUs),
+    totalMs: row.totalUs / US_PER_MS,
+    totalPct: pct(row.totalUs),
+  }));
   return {
     sampledMs: sampledUs / US_PER_MS,
-    functions: [...byFunction.values()]
-      .map((row) => ({
-        name: row.name,
-        location: row.location,
-        selfMs: row.selfUs / US_PER_MS,
-        selfPct: pct(row.selfUs),
-        totalMs: row.totalUs / US_PER_MS,
-      }))
-      .sort((a, b) => b.selfMs - a.selfMs || byCodepoint(a.name, b.name)),
+    functions: [...functions].sort((a, b) => b.selfMs - a.selfMs || byCodepoint(a.name, b.name)),
+    functionsByTotal: functions
+      .filter((f) => f.name !== ROOT_FRAME)
+      .sort((a, b) => b.totalMs - a.totalMs || byCodepoint(a.name, b.name)),
     files: [...byFile.entries()]
       .map(([file, us]) => ({ file, selfMs: us / US_PER_MS, selfPct: pct(us) }))
       .sort((a, b) => b.selfMs - a.selfMs || byCodepoint(a.file, b.file)),

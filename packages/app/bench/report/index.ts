@@ -4,6 +4,8 @@ export {
   type DeltaRow,
   type DeltaVerdict,
   formatComparison,
+  formatSeats,
+  realMapSession,
   worldIdentity,
 } from './compare.js';
 export { formatReport } from './format.js';
@@ -17,6 +19,9 @@ export type {
   BenchTrust,
   BenchWindow,
   BenchWorld,
+  GcStat,
+  SlowTick,
   SystemStat,
   TickStat,
 } from './types.js';
+export { BENCH_REPORT_VERSION } from './types.js';

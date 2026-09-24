@@ -36,7 +36,7 @@ export interface Comparison {
   readonly noiseBandPct: number;
   readonly untrusted: boolean;
   readonly stateHashIdentical: boolean;
-  /** Per-system rows heaviest first, then a `tick total` row. */
+  /** Per-system rows heaviest first, then the `tick total` (median) and `tick p99` rows. */
   readonly rows: readonly DeltaRow[];
   /** Per-window tick deltas; empty when the two runs were cut into different window counts. */
   readonly windowRows: readonly DeltaRow[];
@@ -47,13 +47,48 @@ export interface Comparison {
   readonly after: BenchReport;
 }
 
+/** Ascending seats with consecutive runs folded, e.g. `0-5,7-12`. */
+export function formatSeats(seats: readonly number[], separator = ','): string {
+  const runs: string[] = [];
+  let start: number | null = null;
+  let previous: number | null = null;
+  const close = (): void => {
+    if (start === null || previous === null) return;
+    runs.push(start === previous ? `${start}` : `${start}-${previous}`);
+  };
+  for (const seat of [...seats].sort((a, b) => a - b)) {
+    if (previous !== null && seat === previous + 1) {
+      previous = seat;
+      continue;
+    }
+    close();
+    start = seat;
+    previous = seat;
+  }
+  close();
+  return runs.length === 0 ? 'none' : runs.join(separator);
+}
+
+function ruleLabel(name: string, value: boolean | null): string {
+  return value === null ? '' : `, ${name} ${value ? 'on' : 'off'}`;
+}
+
+/** The session a real-map run played: its AI seats and the rule overrides that change the world. */
+export function realMapSession(world: Extract<BenchWorld, { kind: 'realMap' }>): string {
+  return (
+    `AI seats ${formatSeats(world.aiSeats)}` +
+    ruleLabel('progression', world.progression) +
+    ruleLabel('needs', world.needs)
+  );
+}
+
 export function worldIdentity(world: BenchWorld): string {
   const size = `${world.mapCells.width}x${world.mapCells.height}`;
   switch (world.kind) {
     case 'synthetic':
       return `synthetic ${world.settlements} settlement(s) + ${world.fightersPerSide}v${world.fightersPerSide}, ${size}`;
     case 'realMap':
-      return `${world.mapId}, ${world.aiSeats} AI seat(s), ${size}`;
+      return `${world.mapId}, ${realMapSession(world)}, ${size}`;
   }
 }
 
@@ -111,6 +146,7 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
         (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     );
   rows.push(delta('tick total', before.tickMs.medianMs, after.tickMs.medianMs, noiseBandPct));
+  rows.push(delta('tick p99', before.tickMs.p99Ms, after.tickMs.p99Ms, noiseBandPct));
 
   let windowRows: readonly DeltaRow[] = [];
   if (before.windows.length !== after.windows.length) {

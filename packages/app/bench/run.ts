@@ -24,6 +24,7 @@ export function reportFrom(options: RunOptions): BenchReport {
   return summarize(measurement.perSystem, measurement.tickSamples, {
     world: options.world,
     ticks: { ...options.ticks, windows: measurement.windows.length },
+    firstTick: measurement.firstTick,
     windows: measurement.windows,
     environment: captureEnvironment({
       knobs: options.knobs,

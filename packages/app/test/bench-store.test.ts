@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { BenchReport } from '../bench/report/index.js';
+import { BENCH_REPORT_VERSION, type BenchReport } from '../bench/report/index.js';
 import { latestComparablePair, storeReport } from '../bench/store.js';
 
 /**
@@ -12,18 +12,21 @@ import { latestComparablePair, storeReport } from '../bench/store.js';
 
 function report(startedAt: string, overrides: Partial<BenchReport> = {}): BenchReport {
   return {
+    version: BENCH_REPORT_VERSION,
     world: {
       kind: 'realMap',
       mapId: 'magiczny_las',
-      aiSeats: 6,
+      aiSeats: [0, 1, 2, 3, 4, 5, 6],
+      progression: null,
+      needs: null,
       mapCells: { width: 240, height: 190 },
       settlersAtStart: 628,
       settlersAtEnd: 628,
       buildings: 21,
     },
     ticks: { warmup: 60, measured: 600, windows: 1 },
-    tickMs: { medianMs: 6, p95Ms: 12 },
-    systems: [{ name: 'ai', medianMs: 4, p95Ms: 8, sharePct: 100 }],
+    tickMs: { medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
+    systems: [{ name: 'ai', medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 100 }],
     slowestTicks: [],
     stutterSources: [],
     windows: [],
@@ -80,8 +83,8 @@ describe('storeReport', () => {
     const second = storeReport(dir, report('2026-07-27T09:30:00.000Z'));
     expect(first).not.toBe(second);
     expect(readdirSync(dir).sort()).toEqual([
-      'map-magiczny_las-001-9ab7c02.json',
-      'map-magiczny_las-002-9ab7c02.json',
+      'map-magiczny_las-ai0-6-001-9ab7c02.json',
+      'map-magiczny_las-ai0-6-002-9ab7c02.json',
     ]);
   });
 
@@ -122,7 +125,7 @@ describe('latestComparablePair', () => {
   it('names what it holds instead of comparing a run against itself', () => {
     const dir = emptyDir();
     storeReport(dir, report('2026-07-27T09:00:00.000Z'));
-    expect(() => latestComparablePair(dir)).toThrow(/no earlier run of 'magiczny_las, 6 AI seat\(s\)/);
+    expect(() => latestComparablePair(dir)).toThrow(/no earlier run of 'magiczny_las, AI seats 0-6/);
   });
 
   it('says so when a directory holds nothing to compare', () => {
@@ -133,7 +136,7 @@ describe('latestComparablePair', () => {
     const dir = emptyDir();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     storeReport(dir, report('2026-07-27T09:00:00.000Z'));
-    writeFileSync(join(dir, 'map-magiczny_las-002-9ab7c02.json'), '{"world":{"kind":"realMap"');
+    writeFileSync(join(dir, 'map-magiczny_las-ai0-6-002-9ab7c02.json'), '{"world":{"kind":"realMap"');
     storeReport(dir, report('2026-07-27T09:30:00.000Z'));
     expect(latestComparablePair(dir).before.report.environment.startedAt).toBe('2026-07-27T09:00:00.000Z');
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a readable benchmark report'));

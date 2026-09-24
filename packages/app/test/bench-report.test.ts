@@ -43,6 +43,7 @@ const META: Parameters<typeof summarize>[2] = {
     buildings: 82,
   },
   ticks: { warmup: 10, measured: 4, windows: 1 },
+  firstTick: 11,
   windows: [],
   environment: ENVIRONMENT,
   trust: { trustworthy: true, warnings: [] },
@@ -54,10 +55,12 @@ function windowFixture(index: number, medianMs: number, overrides: Partial<Bench
     index,
     fromTick: index * 100 + 1,
     toTick: index * 100 + 100,
-    tickMs: { medianMs, p95Ms: medianMs * 2 },
-    systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, sharePct: 100 }],
+    tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
+    systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 }],
     population: { settlers: 100 + index, buildings: 10 + index, resourceNodes: 500 },
     rssMb: 200 + index,
+    heapUsedMb: 120 + index,
+    gc: { count: 3, ms: 2.5, maxMs: 1.25 },
     ...overrides,
   };
 }
@@ -98,10 +101,11 @@ describe('summarize', () => {
     expect(report.systems.map((s) => s.name)).toEqual(['movement', 'ai', 'combat']);
   });
 
-  it('reports each system median and p95 (the p95 exposes a spiking system its median hides)', () => {
+  it('reports each system median, p95 and max (the tail exposes a spiking system its median hides)', () => {
     const ai = report.systems.find((s) => s.name === 'ai') as BenchReport['systems'][number];
     expect(ai.medianMs).toBe(1);
     expect(ai.p95Ms).toBe(9);
+    expect(ai.maxMs).toBe(9);
   });
 
   it('reports shares of the summed per-system medians', () => {
@@ -110,7 +114,7 @@ describe('summarize', () => {
   });
 
   it('reports whole-tick cost separately from the per-system rows', () => {
-    expect(report.tickMs).toEqual({ medianMs: 6, p95Ms: 20 });
+    expect(report.tickMs).toEqual({ medianMs: 6, p95Ms: 20, p99Ms: 20, maxMs: 20 });
   });
 
   it('breaks median ties by name, so a report is stable across runs', () => {
@@ -128,13 +132,23 @@ describe('summarize', () => {
   it('reports zero shares instead of NaN when nothing was measured', () => {
     const empty = summarize(new Map([['ai', []]]), [], META);
     expect(empty.systems[0]?.sharePct).toBe(0);
-    expect(empty.tickMs).toEqual({ medianMs: 0, p95Ms: 0 });
+    expect(empty.tickMs).toEqual({ medianMs: 0, p95Ms: 0, p99Ms: 0, maxMs: 0 });
   });
 
   it('carries the world/tick metadata and state hash through to the machine-readable report', () => {
     expect(report.world).toEqual(META.world);
     expect(report.ticks).toEqual(META.ticks);
     expect(report.stateHash).toBe('abc123');
+  });
+});
+
+describe('tick spread', () => {
+  it('shows the tail the p95 hides and the single stall the p99 hides', () => {
+    // 1000 ticks: 985 at 1 ms, 14 at 5 ms and one 40 ms stall. Nearest-rank p95 is the 950th sample,
+    // p99 the 990th.
+    const samples = [...Array(985).fill(1), ...Array(14).fill(5), 40];
+    const { tickMs } = summarizeSegment(new Map(), samples);
+    expect(tickMs).toEqual({ medianMs: 1, p95Ms: 1, p99Ms: 5, maxMs: 40 });
   });
 });
 
@@ -192,7 +206,7 @@ describe('assessTrust', () => {
   });
 
   it('rejects a window spiking far above its own median', () => {
-    const spiking = windowFixture(0, 1, { tickMs: { medianMs: 1, p95Ms: 9 } });
+    const spiking = windowFixture(0, 1, { tickMs: { medianMs: 1, p95Ms: 9, p99Ms: 9, maxMs: 9 } });
     const verdict = assessTrust({ ...clean, windows: [spiking] });
     expect(verdict.trustworthy).toBe(false);
     expect(verdict.warnings[0]).toContain('window 1');
@@ -215,7 +229,7 @@ describe('formatReport', () => {
     expect(text).toContain('10 warmup + 4 measured');
     expect(text).toContain('abc123');
     expect(text).toContain('tick total: median 2.250 ms');
-    expect(text).toMatch(/ai\s+1\.500\s+1\.500\s+100\.0%/);
+    expect(text).toMatch(/ai\s+1\.500\s+1\.500\s+1\.500\s+100\.0%/);
   });
 
   it('reports a population that moved across the window as a range, not a single number', () => {
@@ -230,10 +244,17 @@ describe('formatReport', () => {
     expect(formatReport(summarize(new Map(), [], META))).toContain('sim benchmark - 2 settlement(s)');
     const realMap = {
       ...META,
-      world: { ...META.world, kind: 'realMap', mapId: 'magiczny_las', aiSeats: 6 },
+      world: {
+        ...META.world,
+        kind: 'realMap',
+        mapId: 'magiczny_las_12_players',
+        aiSeats: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        progression: true,
+        needs: null,
+      },
     } as Parameters<typeof summarize>[2];
     expect(formatReport(summarize(new Map(), [], realMap))).toContain(
-      'map benchmark - magiczny_las, 6 AI seat(s)',
+      'map benchmark - magiczny_las_12_players, AI seats 0-12, progression on',
     );
   });
 
@@ -248,6 +269,11 @@ describe('formatReport', () => {
     const text = formatReport(summarize(new Map([['ai', [1]]]), [1], windowed));
     expect(text).toContain('growth (window 1 -> 2)');
     expect(text).toMatch(/ai\s+1\.000\s+4\.000\s+4\.0x/);
+    // Window 2: median 4, p95 8, p99 12, max 16, then GC 2.5 ms over 3 collections, longest 1.3, heap 121.
+    expect(text).toMatch(
+      /2\/2\s+101\.\.200\s+4\.000\s+8\.000\s+12\.000\s+16\.000\s+101\s+11\s+2\.5\s+3\s+1\.3\s+121/,
+    );
+    expect(text).toContain('gc: 6 collection(s), 5.0 ms paused, longest 1.3 ms   heap at end 121 MB');
   });
 
   it('leads with a banner when the measurement cannot be trusted', () => {
@@ -276,11 +302,12 @@ describe('slowest ticks', () => {
       ['planner', [3, 3, 3, 3]],
     ]);
     const report = summarize(perSystem, [6, 6, 14, 16], META);
-    expect(report.slowestTicks.map((t) => [t.index, t.totalMs])).toEqual([
-      [3, 16],
-      [2, 14],
-      [0, 6],
-      [1, 6],
+    // META's first measured tick is 11, so sample 3 is tick 14.
+    expect(report.slowestTicks.map((t) => [t.tick, t.totalMs])).toEqual([
+      [14, 16],
+      [13, 14],
+      [11, 6],
+      [12, 6],
     ]);
     expect(report.slowestTicks[0]?.systems).toEqual([
       { name: 'combat', ms: 12 },
@@ -293,6 +320,6 @@ describe('slowest ticks', () => {
       { name: 'combat', slowTicks: 1 },
     ]);
     expect(summarize(perSystem, [6, 6, 7, 8], META).stutterSources).toEqual([]);
-    expect(formatReport(report)).toContain('slowest ticks');
+    expect(formatReport(report)).toContain('tick 14  16.000 ms  (combat 12.000, planner 3.000, ai 1.000)');
   });
 });

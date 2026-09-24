@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { BenchReport, BenchWorld } from './report/index.js';
-import { readReport, worldIdentity } from './report/index.js';
+import { formatSeats, readReport, worldIdentity } from './report/index.js';
 
 /** Untracked: absolute timings only mean something against another run on the same machine. */
 const BENCH_OUT_DIR = 'bench-out';
@@ -24,7 +24,7 @@ function worldSlug(world: BenchWorld): string {
     case 'synthetic':
       return 'sim';
     case 'realMap':
-      return `map-${world.mapId}`;
+      return `map-${world.mapId}-ai${formatSeats(world.aiSeats, '_')}`;
   }
 }
 
@@ -42,9 +42,13 @@ function nextIndex(dir: string, slug: string, extension: string): number {
 }
 
 /** Files sort chronologically per world, and the name alone says which revision produced them. */
-function outPath(dir: string, report: BenchReport, extension: string): string {
+function outPath(
+  dir: string,
+  report: BenchReport,
+  extension: string,
+  slug = worldSlug(report.world),
+): string {
   mkdirSync(dir, { recursive: true });
-  const slug = worldSlug(report.world);
   const index = `${nextIndex(dir, slug, extension)}`.padStart(INDEX_DIGITS, '0');
   const rev = report.environment.rev ?? 'nogit';
   const dirty = report.environment.dirty === true ? '-dirty' : '';
@@ -60,9 +64,12 @@ export function storeReport(dir: string, report: BenchReport): string {
   return writeReport(outPath(dir, report, REPORT_EXT), report);
 }
 
-/** The raw V8 profile beside the reports, named the same way; DevTools and Speedscope both open it. */
+/** The raw V8 profile beside the reports, named the same way plus the first profiled tick, so a
+ *  directory of late-game profiles says which checkpoint each started from. DevTools and Speedscope
+ *  both open it. */
 export function storeCpuProfile(dir: string, report: BenchReport, profile: unknown): string {
-  const path = outPath(dir, report, PROFILE_EXT);
+  const firstTick = report.windows.at(0)?.fromTick ?? 0;
+  const path = outPath(dir, report, PROFILE_EXT, `${worldSlug(report.world)}-t${firstTick}`);
   writeFileSync(path, JSON.stringify(profile));
   return path;
 }
@@ -85,9 +92,10 @@ function storedReports(dir: string): readonly StoredReport[] {
     const path = join(dir, name);
     try {
       stored.push({ path, report: readReport(JSON.parse(readFileSync(path, 'utf8')), path) });
-    } catch {
-      // A run killed mid-write leaves a partial file. Say so rather than dropping it from the history.
-      console.warn(`skipping ${path}: not a readable benchmark report`);
+    } catch (err) {
+      // A run killed mid-write leaves a partial file, an older tool another layout. Say so rather
+      // than dropping it from the history.
+      console.warn(`skipping ${path}: not a readable benchmark report (${String(err)})`);
     }
   }
   return stored.sort((a, b) => b.report.environment.startedAt.localeCompare(a.report.environment.startedAt));

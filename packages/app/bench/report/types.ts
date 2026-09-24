@@ -1,11 +1,17 @@
 /** The benchmarks' machine-readable result shapes (the `ON_BENCH_JSON` payload). Plain data only. */
 
+/** The report layout the reader accepts; a layout change bumps it, and a report of any other version is
+ *  refused rather than read. */
+export const BENCH_REPORT_VERSION = 2;
+
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  medians - the scale-invariant number a regression check can compare across machines. */
 export interface SystemStat {
   readonly name: string;
   readonly medianMs: number;
   readonly p95Ms: number;
+  /** The system's single worst tick in the segment: what a lockstep session waits for. */
+  readonly maxMs: number;
   readonly sharePct: number;
 }
 
@@ -14,12 +20,14 @@ export interface SystemStat {
 export interface TickStat {
   readonly medianMs: number;
   readonly p95Ms: number;
+  readonly p99Ms: number;
+  readonly maxMs: number;
 }
 
 /** One of the run's slowest ticks: where a stutter came from, not how the average was spent. */
 export interface SlowTick {
-  /** Index into the measured ticks (0 = the first measured tick). */
-  readonly index: number;
+  /** The sim tick, as `sim.tick` read after the step. */
+  readonly tick: number;
   readonly totalMs: number;
   /** The systems that cost most in that tick, heaviest first. */
   readonly systems: readonly { readonly name: string; readonly ms: number }[];
@@ -45,8 +53,22 @@ export type BenchWorld =
   | (WorldCounts & {
       readonly kind: 'realMap';
       readonly mapId: string;
-      readonly aiSeats: number;
+      /** Every seat the session runs under AI, ascending: the requested seats plus the map's own
+       *  computer seats, which the browser session runs whatever `?ai=` lists. */
+      readonly aiSeats: readonly number[];
+      /** The session's `?progression=` / `?needs=` overrides; null keeps the map's own rule. */
+      readonly progression: boolean | null;
+      readonly needs: boolean | null;
     });
+
+/** Garbage collection inside one window, from V8's `gc` performance entries. */
+export interface GcStat {
+  readonly count: number;
+  /** Summed pause time. */
+  readonly ms: number;
+  /** The longest single pause. */
+  readonly maxMs: number;
+}
 
 /** One measured segment of the run (see `measure.ts` for why cost is reported along this axis). */
 export interface BenchWindow {
@@ -65,6 +87,9 @@ export interface BenchWindow {
    *  sample buffers, which grow with the tick count. A monotone climb is a finding about the run, not
    *  proof of a leak in the world. */
   readonly rssMb: number;
+  /** V8 heap in use at the segment boundary, after the segment's own garbage was or was not collected. */
+  readonly heapUsedMb: number;
+  readonly gc: GcStat;
 }
 
 /** Machine and run context; `trust.ts` turns it into a verdict. */
@@ -95,6 +120,7 @@ export interface BenchTrust {
 }
 
 export interface BenchReport {
+  readonly version: typeof BENCH_REPORT_VERSION;
   readonly world: BenchWorld;
   readonly ticks: {
     readonly warmup: number;

@@ -1,23 +1,25 @@
 import { intEnv } from './knobs.js';
-import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLine } from './map-world.js';
+import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 import { measureWindows } from './measure.js';
 import type { BenchWindow } from './report/index.js';
 import { publishReport, reportFrom } from './run.js';
 
 /**
  * The sim's per-system benchmark on a REAL decoded map - `npm run bench:map`. It profiles the session
- * `?map=magiczny_las&player=overseer&ai=0,1,2,3,4,5&fog=classic` headless, over enough ticks for the AI
- * to build a settlement, and reports how each system's cost grows as it does. `npm run bench:sim`
+ * `?map=magiczny_las&player=overseer&ai=0,1,2,3,4,5&fog=classic` headless (the knobs change map, seats
+ * and rules), over enough ticks for the AI to build a settlement, and reports how each system's cost
+ * grows as it does. `npm run bench:sim`
  * measures a synthetic world with isolated axes; this one measures the world the game is actually
  * played on, with its scenery, resource nodes and six competing AI seats.
  *
  * Needs generated content. `scripts/bench-map.mjs` hard-fails without it rather than skipping, so a
  * run that measured nothing cannot be mistaken for a clean one.
  *
- * Knobs (env, all optional): `ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
+ * Knobs (env, all optional): `ON_BENCH_MAP`, `ON_BENCH_SEATS` (a count or a comma list),
+ * `ON_BENCH_PROGRESSION` and `ON_BENCH_NEEDS` (`on`/`off`), `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
  * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
- * cost), `ON_BENCH_CHECKPOINT` and `ON_BENCH_SKIP` (see `map-world.ts`), `ON_BENCH_JSON=<path>`
- * (write the machine-readable report).
+ * cost), `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`),
+ * `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
 
 /** Far enough in for the AI to leave its opening build order and start straining the systems that
@@ -29,8 +31,9 @@ const DEFAULT_WINDOWS = 10;
 function progressLine(window: BenchWindow, total: number): string {
   return (
     `window ${window.index + 1}/${total}  ticks ${window.fromTick}..${window.toTick}  ` +
-    `median ${window.tickMs.medianMs.toFixed(3)} ms  ` +
-    `settlers ${window.population.settlers}  buildings ${window.population.buildings}`
+    `median ${window.tickMs.medianMs.toFixed(3)} ms  p99 ${window.tickMs.p99Ms.toFixed(3)} ms  ` +
+    `max ${window.tickMs.maxMs.toFixed(3)} ms  gc ${window.gc.ms.toFixed(0)} ms  ` +
+    `settlers ${window.population.settlers}  buildings ${window.population.buildings}  rss ${window.rssMb} MB`
   );
 }
 
@@ -40,15 +43,16 @@ async function main(): Promise<void> {
 
   const startedAtMs = Date.now();
   const startMs = performance.now();
-  const world = await mapBenchWorld(knobs);
-  console.log(worldSourceLine(world, knobs.checkpointPath));
+  const world = await mapBenchWorld(knobs, knobs.warmupTicks + knobs.measuredTicks);
+  for (const line of worldSourceLines(world, knobs)) console.log(line);
 
-  const measurement = measureWindows(world.sim, {
+  const measurement = await measureWindows(world.sim, {
     warmupTicks: knobs.warmupTicks,
     measuredTicks: knobs.measuredTicks,
     windows,
     // A multi-hour run must report progress rather than go silent for an hour.
     onWindow: (window) => console.log(progressLine(window, windows)),
+    afterTick: world.afterStep,
   });
 
   const report = reportFrom({
@@ -56,7 +60,9 @@ async function main(): Promise<void> {
     world: {
       kind: 'realMap',
       mapId: knobs.mapId,
-      aiSeats: knobs.aiSeats,
+      aiSeats: world.aiSeats,
+      progression: knobs.progression,
+      needs: knobs.needs,
       mapCells: world.mapCells,
       settlersAtStart: measurement.settlersAtStart,
       settlersAtEnd: measurement.settlersAtEnd,

@@ -6,7 +6,7 @@
  * Every field the comparison and its tables actually read is checked; the rest of the shape is left
  * to the writer, which is this same tool.
  */
-import type { BenchReport } from './types.js';
+import { BENCH_REPORT_VERSION, type BenchReport } from './types.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -15,16 +15,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Throws rather than returning false: a caller reading a named file wants the reason, not a boolean. */
 function isBenchReport(value: unknown, bad: (why: string) => never): value is BenchReport {
   if (!isRecord(value)) return bad('not an object');
-  const { world, ticks, tickMs, systems, windows, environment, trust, stateHash } = value;
+  const { version, world, ticks, tickMs, systems, windows, environment, trust, stateHash } = value;
 
+  if (version !== BENCH_REPORT_VERSION) {
+    return bad(
+      `report version ${JSON.stringify(version ?? null)}, this tool reads version ${BENCH_REPORT_VERSION}; ` +
+        're-run the benchmark to get a readable report',
+    );
+  }
   if (!isRecord(world) || (world.kind !== 'synthetic' && world.kind !== 'realMap')) {
     return bad("world.kind must be 'synthetic' or 'realMap'");
   }
+  if (world.kind === 'realMap' && !Array.isArray(world.aiSeats)) return bad('missing world.aiSeats[]');
   if (!isRecord(world.mapCells) || typeof world.mapCells.width !== 'number') {
     return bad('missing world.mapCells');
   }
   if (!isRecord(ticks) || typeof ticks.measured !== 'number') return bad('missing ticks.measured');
-  if (!isRecord(tickMs) || typeof tickMs.medianMs !== 'number') return bad('missing tickMs.medianMs');
+  if (!isRecord(tickMs) || typeof tickMs.medianMs !== 'number' || typeof tickMs.p99Ms !== 'number') {
+    return bad('missing tickMs.medianMs / tickMs.p99Ms');
+  }
   if (!Array.isArray(systems)) return bad('missing systems[]');
   if (!Array.isArray(windows)) return bad('missing windows[]');
   if (!isRecord(environment) || typeof environment.startedAt !== 'string') {

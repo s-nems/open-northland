@@ -43,16 +43,16 @@ function worldOptions(): BenchWorldOptions {
 }
 
 /** Run the world for `warmup + measured` ticks, sampling only the measured window. */
-function measure(
+async function measure(
   options: BenchWorldOptions,
   warmupTicks: number,
   measuredTicks: number,
   windows: number,
-): BenchReport {
+): Promise<BenchReport> {
   const startedAtMs = Date.now();
   const startMs = performance.now();
   const { sim, terrain } = benchWorld(options);
-  const measurement = measureWindows(sim, { warmupTicks, measuredTicks, windows });
+  const measurement = await measureWindows(sim, { warmupTicks, measuredTicks, windows });
 
   return reportFrom({
     measurement,
@@ -95,9 +95,9 @@ function checkDeterminism(options: BenchWorldOptions): void {
   console.log(`determinism: two ${DETERMINISM_TICKS}-tick runs both hash to ${hash}\n`);
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const options = worldOptions();
-  const report = measure(
+  const report = await measure(
     options,
     intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0),
     intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1),
@@ -113,4 +113,4 @@ function main(): void {
   checkDeterminism(options);
 }
 
-main();
+await main();

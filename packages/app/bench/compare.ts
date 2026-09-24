@@ -8,6 +8,9 @@ import { benchOutDir, latestComparablePair, type StoredReport } from './store.js
  * `scripts/bench-compare.mjs` is the argv wrapper.
  */
 
+/** `tick total` and `tick p99`, appended after the per-system rows. */
+const TICK_ROWS = 2;
+
 function reportAt(path: string): StoredReport {
   return { path, report: readReport(JSON.parse(readFileSync(path, 'utf8')), path) };
 }
@@ -29,10 +32,10 @@ function main(): void {
   const before = beforeStored.report;
   const comparison = compareReports(before, afterStored.report);
   console.log(`\n${formatComparison(comparison)}\n`);
-  // `tick total` is always appended, so it proves nothing; require a row per system the inputs
+  // The two tick rows are always appended, so they prove nothing; require a row per system the inputs
   // actually carried, or the tool would report a clean comparison of two empty reports.
   if (before.systems.length === 0) throw new Error(`${beforeStored.path} names no systems`);
-  if (comparison.rows.length !== before.systems.length + 1) {
+  if (comparison.rows.length !== before.systems.length + TICK_ROWS) {
     throw new Error(`compared ${comparison.rows.length} rows over ${before.systems.length} system(s)`);
   }
 }

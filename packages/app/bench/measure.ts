@@ -6,9 +6,11 @@
  * Windows are the point. One median over a developing settlement answers "how much did it cost on
  * average", which is not the question; per-window medians answer "what got worse as it grew".
  */
+import { type PerformanceEntry, PerformanceObserver } from 'node:perf_hooks';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import { type Component, components, type Simulation } from '@open-northland/sim';
 import { calibrationMs, loadPerCpu } from './environment.js';
-import { type BenchWindow, summarizeSegment } from './report/index.js';
+import { type BenchWindow, type GcStat, summarizeSegment } from './report/index.js';
 
 const { Building, Resource, Settler } = components;
 
@@ -20,9 +22,13 @@ export interface MeasureOptions {
   readonly windows: number;
   /** Called as each window closes. A multi-hour run must report progress, not go silent. */
   readonly onWindow?: (window: BenchWindow) => void;
+  /** Called after every warm-up and measured step, outside the timed interval. */
+  readonly afterTick?: () => void;
 }
 
 export interface Measurement {
+  /** The sim tick of the first measured step. */
+  readonly firstTick: number;
   readonly windows: readonly BenchWindow[];
   readonly perSystem: ReadonlyMap<string, readonly number[]>;
   readonly tickSamples: readonly number[];
@@ -42,7 +48,52 @@ function count(sim: Simulation, component: Component<unknown>): number {
 }
 
 function rssMb(): number {
-  return Math.round(process.memoryUsage().rss / BYTES_PER_MB);
+  return Math.round(process.memoryUsage.rss() / BYTES_PER_MB);
+}
+
+function heapUsedMb(): number {
+  return Math.round(process.memoryUsage().heapUsed / BYTES_PER_MB);
+}
+
+/**
+ * V8's collections, read from `gc` performance entries. Node queues those entries from native code and
+ * delivers them only once the event loop turns, so a synchronous run of ticks sees none: the caller
+ * yields at each window boundary, and entries are assigned to a window by their start time, not by
+ * when they arrived.
+ */
+class GcLog {
+  private readonly pending: PerformanceEntry[] = [];
+  private readonly observer = new PerformanceObserver((list) => this.pending.push(...list.getEntries()));
+
+  constructor() {
+    this.observer.observe({ entryTypes: ['gc'] });
+  }
+
+  /** The collections that started inside `[fromMs, toMs)` of the performance clock. */
+  async window(fromMs: number, toMs: number): Promise<GcStat> {
+    await nextTurn();
+    this.pending.push(...this.observer.takeRecords());
+    let count = 0;
+    let ms = 0;
+    let maxMs = 0;
+    const later: PerformanceEntry[] = [];
+    for (const entry of this.pending) {
+      if (entry.startTime >= toMs) {
+        later.push(entry);
+        continue;
+      }
+      if (entry.startTime < fromMs) continue;
+      count++;
+      ms += entry.duration;
+      maxMs = Math.max(maxMs, entry.duration);
+    }
+    this.pending.splice(0, this.pending.length, ...later);
+    return { count, ms, maxMs };
+  }
+
+  stop(): void {
+    this.observer.disconnect();
+  }
 }
 
 function worstLoad(a: number | null, b: number | null): number | null {
@@ -90,7 +141,7 @@ function sliceSamples(
   return sliced;
 }
 
-export function measureWindows(sim: Simulation, options: MeasureOptions): Measurement {
+export async function measureWindows(sim: Simulation, options: MeasureOptions): Promise<Measurement> {
   const perSystem = new Map<string, number[]>();
   let sampling = false;
   sim.setInstrument((name, run) => {
@@ -107,23 +158,31 @@ export function measureWindows(sim: Simulation, options: MeasureOptions): Measur
     samples.push(elapsed);
   });
 
-  for (let i = 0; i < options.warmupTicks; i++) sim.step();
+  for (let i = 0; i < options.warmupTicks; i++) {
+    sim.step();
+    options.afterTick?.();
+  }
   const settlersAtStart = count(sim, Settler);
 
   const beforeMs = calibrationMs();
   let load = loadPerCpu();
   let peakRssMb = rssMb();
 
+  const gc = new GcLog();
   sampling = true;
   const firstTick = sim.tick + 1;
   const tickSamples: number[] = [];
   const windows: BenchWindow[] = [];
   for (const [index, bound] of windowBounds(options.measuredTicks, options.windows).entries()) {
+    const windowStartMs = performance.now();
     for (let i = bound.from; i < bound.to; i++) {
       const start = performance.now();
       sim.step();
       tickSamples.push(performance.now() - start);
+      options.afterTick?.();
     }
+    const windowEndMs = performance.now();
+    const heap = heapUsedMb();
     const rss = rssMb();
     peakRssMb = Math.max(peakRssMb, rss);
     load = worstLoad(load, loadPerCpu());
@@ -138,16 +197,20 @@ export function measureWindows(sim: Simulation, options: MeasureOptions): Measur
         resourceNodes: count(sim, Resource),
       },
       rssMb: rss,
+      heapUsedMb: heap,
+      gc: await gc.window(windowStartMs, windowEndMs),
     };
     windows.push(window);
     options.onWindow?.(window);
   }
   sampling = false;
+  gc.stop();
   // Release the seam: a caller that keeps stepping this sim should not keep paying two clock reads
   // per system per tick for samples nobody collects.
   sim.setInstrument(null);
 
   return {
+    firstTick,
     windows,
     perSystem,
     tickSamples,
