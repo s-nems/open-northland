@@ -120,12 +120,13 @@ export class Room {
   /** Attach a returning connection to its member and show it where the room stands. */
   reconnect(member: Member, now: number): void {
     member.connected = true;
-    member.loaded = false;
     member.connectedSince = now;
     member.lastHeardAt = now;
     if (this.game === null) {
       member.compatibility = null;
       this.lobby.invalidateReady();
+    } else {
+      this.game.dropWorld(member, now);
     }
     this.broadcastView();
     if (this.game !== null) {
@@ -159,7 +160,7 @@ export class Room {
     }
     member.connected = false;
     this.broadcastView();
-    this.game.disconnect(member, now);
+    this.game.dropWorld(member, now);
   }
 
   claimSeat(member: Member, player: number | null): Refusal {

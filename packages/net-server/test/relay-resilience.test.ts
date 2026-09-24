@@ -483,7 +483,7 @@ describe('digests and resync', () => {
     expect(s.b.last('desync')).toMatchObject({ tick: 4, domains: ['economy'], reference: 'Ania' });
   });
 
-  it('keeps a diverged client that dropped in line for the snapshot, and tells it again on return', () => {
+  it('tells a diverged client that dropped of it again on return, and serves the snapshot it asks for', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
     s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
@@ -502,6 +502,48 @@ describe('digests and resync', () => {
     expect(back.of('frame').map((frame) => frame.tick)).toEqual([2]);
     back.send({ kind: 'ack', tick: 2, digest: digest(1), world: 1 });
     expect(back.of('rejected')).toHaveLength(1);
+  });
+
+  it('serves a returning diverged client the snapshot once, when it asks, not before', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    expect(back.last('start')?.snapshotTick).toBeNull();
+    // The requested snapshot lands while the returning client's own request is still on its way.
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    expect(back.of('blob')).toEqual([]);
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.of('rejected')).toEqual([]);
+    expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
+  });
+
+  it('queues a returning diverged client that asks before any snapshot is cached', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.of('rejected')).toEqual([]);
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
+    expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
+  });
+
+  it('asks the next donor as soon as the asked one is replaced by a newer connection', () => {
+    const s = roomOfThree();
+    s.advance(TICK_MS * 2);
+    ackThrough(s.a, 1, 2);
+    ackThrough(s.c, 1, 2);
+    s.b.send({ kind: 'ack', tick: 1, digest: digest(9), world: 0 });
+    const asked = s.a.of('snapshotRequest').length === 1 ? s.a : s.c;
+    const other = asked === s.a ? s.c : s.a;
+    s.introduce(asked === s.a ? TOKEN_A : TOKEN_C, 'again');
+    s.advance(1);
+    expect(other.of('snapshotRequest')).toHaveLength(1);
   });
 
   it('asks for a snapshot again only while someone connected waits for it', () => {

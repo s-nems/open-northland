@@ -107,10 +107,10 @@ export class Game {
     if (member.loaded) return 'already loaded; a world is reported once per connection';
     this.end.forget(member.token);
     let refusal: Refusal;
-    if (world.tick === null) refusal = this.serveSnapshot(member);
+    if (world.tick === null) refusal = this.serveSnapshot(member, now);
     else if (member.outOfSync !== null)
       refusal = 'that world is out of sync; ask for the snapshot with a null tick';
-    else if (this.clock.running) refusal = this.catchUp(member, world);
+    else if (this.clock.running) refusal = this.catchUp(member, world, now);
     else refusal = this.admitBeforeStart(member, world);
     if (refusal !== null) return refusal;
     this.startClockWhenLoaded(now);
@@ -200,12 +200,13 @@ export class Game {
     return relayBlob(this.members.values(), this.deliver, sender, upload);
   }
 
-  /** The member says where it stands again on its return; until then its reports do not count and
-   *  it is neither expected to acknowledge nor waited for to start the clock. */
-  disconnect(member: Member, now: number): void {
+  /** The member's connection dropped, returned or was replaced: it says where it stands again with
+   *  `loaded`. Until then its reports do not count, it is neither expected to acknowledge nor waited
+   *  for to start the clock, and it waits for no snapshot. */
+  dropWorld(member: Member, now: number): void {
     this.end.forget(member.token);
     this.ledger.forget(member.token);
-    this.resync.donorLost(member);
+    this.resync.forget(member);
     member.loaded = false;
     this.startClockWhenLoaded(now);
     this.settle(now);
@@ -227,13 +228,15 @@ export class Game {
     return null;
   }
 
-  private serveSnapshot(member: Member): Refusal {
+  private serveSnapshot(member: Member, now: number): Refusal {
     const snapshot = this.resync.snapshot;
     if (snapshot !== null) {
       this.ledger.forget(member.token);
       this.resync.serve(member, snapshot);
     } else if (member.outOfSync === null) {
       return 'no snapshot is cached; build the world from the descriptor';
+    } else {
+      this.resync.queue(member, now);
     }
     return null;
   }
@@ -255,13 +258,13 @@ export class Game {
 
   /** Frames after the tick the world stands at, or the snapshot and the frames after that when the
    *  frames before the snapshot are gone. */
-  private catchUp(member: Member, world: LoadedWorld): Refusal {
+  private catchUp(member: Member, world: LoadedWorld, now: number): Refusal {
     if (this.builtTick !== null && world.tick < this.builtTick) {
       return `no world of this room stands before tick ${this.builtTick}`;
     }
     if (world.tick > this.clock.tick) return `tick ${world.tick} has not been emitted`;
     const frames = this.resync.framesAfter(world.tick);
-    if (frames === null) return this.serveSnapshot(member);
+    if (frames === null) return this.serveSnapshot(member, now);
     this.admit(member, world);
     for (const frame of frames) this.deliver(member, { kind: 'frame', ...frame });
     return null;

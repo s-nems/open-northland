@@ -13,6 +13,7 @@ export const SNAPSHOT_RETRY_MS = 10_000;
  */
 export class Resync {
   private readonly catchUp = new CatchUpStore();
+  /** Connected members only: a dropped one leaves, and asks again with `loaded` on its return. */
   private readonly awaiting = new Set<Member>();
   private requestedAt: number | null = null;
   private askedDonor: string | null = null;
@@ -58,13 +59,10 @@ export class Resync {
     if (this.requestedAt === null || now - this.requestedAt >= SNAPSHOT_RETRY_MS) this.request(now);
   }
 
+  /** The member no longer waits, and a donor that dropped cannot answer: the next poll asks another
+   *  instead of waiting out the retry. */
   forget(member: Member): void {
     this.awaiting.delete(member);
-    this.donorLost(member);
-  }
-
-  /** A donor that dropped cannot answer; the next poll asks another instead of waiting out the retry. */
-  donorLost(member: Member): void {
     this.triedDonors.delete(member.token);
     if (this.askedDonor === member.token) {
       this.askedDonor = null;
@@ -91,8 +89,7 @@ export class Resync {
     this.awaiting.delete(member);
   }
 
-  /** Take a snapshot at `tick`; true when it is newer than the cached one. Whoever waits and is
-   *  connected is served; a member away for now takes the cache when it returns. */
+  /** Take a snapshot at `tick`; true when it is newer than the cached one. Whoever waits is served. */
   take(from: string, tick: number, bytes: string, now: number): boolean {
     const newer = this.catchUp.cache({ tick, from, bytes });
     if (newer || (this.catchUp.bytes === 0 && this.catchUp.snapshot?.tick === tick)) {
@@ -102,7 +99,7 @@ export class Resync {
     }
     const newest = this.catchUp.snapshot;
     if (newest !== null) {
-      for (const member of this.awaiting) if (member.connected) this.serve(member, newest);
+      for (const member of this.awaiting) this.serve(member, newest);
     }
     return newer;
   }
@@ -110,15 +107,13 @@ export class Resync {
   /** Unanswered refreshes retry even when no member is currently waiting for resync. */
   advance(now: number): Refusal {
     if (this.catchUp.expired(now)) return 'snapshot refresh failed: relay replay history age limit';
-    let waitingHere = false;
-    for (const member of this.awaiting) if (member.connected) waitingHere = true;
     const refreshDue = this.catchUp.needsRefresh(now) || now - this.lastRefreshAt >= SNAPSHOT_REFRESH_MS;
     if (refreshDue && !this.refreshing) {
       this.refreshing = true;
       this.lastRefreshAt = now;
     }
     if (
-      (waitingHere || this.refreshing) &&
+      (this.awaiting.size > 0 || this.refreshing) &&
       (this.requestedAt === null || now - this.requestedAt >= SNAPSHOT_RETRY_MS)
     )
       this.request(now);

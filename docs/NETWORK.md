@@ -306,8 +306,8 @@ A client told `desync` drops its world and waits. The relay asks the best-connec
 for a fresh snapshot and, when it arrives, sends the diverged client `blob { type: "snapshot" }`
 followed by every frame after the snapshot's tick. The client restores, replays those frames, and
 acknowledges from the snapshot's tick on; the wait ends once it is within the lag budget. A diverged
-client that is away when the snapshot arrives takes the cache on its return, with `loaded { tick:
-null }`.
+client that drops leaves the queue: on its return it asks with `loaded { tick: null }` and takes the
+cache, or the next snapshot when none is cached yet. Nothing is sent to it before it asks.
 
 A returning token gets `room`, its pending `desync` notice if it has one, `start { session,
 snapshotTick }`, `clock` while the game runs, and `ended` once it has ended. `snapshotTick`
