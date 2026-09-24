@@ -47,7 +47,7 @@ function toolHelpsJob(content: ContentSet, jobType: number): boolean {
 }
 
 /** One granted good, its slot group pre-resolved from content. */
-interface GrantSpec {
+export interface GrantSpec {
   readonly goodType: number;
   readonly category: EquipCategory;
 }
@@ -182,7 +182,7 @@ function tallyFor(byPlayer: Map<number, FetchTally>, player: number): FetchTally
  * takes slot 0 when empty, a misc grant the first empty row unless some row already holds the same
  * good, so a mead grant is one bottle each. Empty slots only, since the assistant never swaps gear out.
  */
-function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | null {
+export function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | null {
   if (spec.category !== 'misc') {
     return eq === undefined || equipSlotValue(eq, spec.category, 0) === null ? 0 : null;
   }

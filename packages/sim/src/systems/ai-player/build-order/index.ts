@@ -27,7 +27,7 @@ import {
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from './entries.js';
 import { placementSpot } from './placement.js';
-import { entryStatus, upgradeCandidate } from './progress.js';
+import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { firstUncoveredBuilding, towerPlacementSpot } from './tower-coverage.js';
 
 export * from './entries.js';
@@ -75,8 +75,9 @@ function runBuildOrder(
   if (anchor === null) return [];
   const index = contentIndex(ctx.content);
 
+  const live: LiveResourceMemo = new Map();
   for (const [entryIndex, entry] of order.entries()) {
-    const status = entryStatus(world, ctx, player, owned, entry);
+    const status = entryStatus(world, ctx, player, owned, entry, live);
     if (status !== 'unmet') continue;
     const stall = placementStall(world, player, entryIndex);
     switch (entry.kind) {

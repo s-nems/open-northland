@@ -1,8 +1,9 @@
-# Align AI collector staffing with the chosen XP-gate rule
+# Drop the dead XP gate from AI collector staffing
 
 **Area:** sim · **Priority:** P3
-**Needs user:** choose whether AI collectors bypass civilian good-experience gates with the rest of
-the AI economy.
+
+AI seats skip the experience tree for gathering and crafting alike: a bot's smith forges long swords
+and its collector digs iron from the first day.
 
 `experienceGatesApply` (`packages/sim/src/systems/progression/unlocks.ts`) exempts every AI seat from
 the experience tree on civilian targets, so `settlerMeetsNeed(..., 'good', ...)` is constant `true`
@@ -24,12 +25,8 @@ describing behaviour a real seat cannot reach.
 
 ## Scope
 
-Apply the chosen rule consistently:
-
-- if the exemption stands, delete `meetsNeed`, `needsVeteran` and the veteran repost, and rewrite the
-  two tests against what an AI seat actually does;
-- if collectors should still earn iron, narrow `experienceGatesApply` so `needforgood` keeps applying
-  to AI seats, and give those two tests a seat that is really an AI player.
+Delete `meetsNeed`, `needsVeteran` and the veteran repost, and rewrite the two tests against what an
+AI seat actually does.
 
 ## Verify
 

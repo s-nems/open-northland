@@ -52,6 +52,10 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   work_sewery_01: { operatorTarget: 2 },
   work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
   work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
+  // One herbalist keeps the druids in herbs; a second is worth a man only out of surplus.
+  work_herb_hut: { operatorSurplus: 2 },
+  work_druid_01: { operatorTarget: 2, carrierTarget: 1 },
+  work_coin_mint: { operatorTarget: 2, carrierTarget: 1 },
 };
 
 /** The storage plan: the HQ and every warehouse run up to three transport carriers, all at the target

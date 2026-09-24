@@ -32,12 +32,15 @@ import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
   ASSAULT_RING_RADIUS_NODES,
   campaignTarget,
+  LATE_WAVE,
   militaryModule,
+  OPENING_WAVE,
   RALLY_HOLD_RADIUS_NODES,
   takeCensus,
-  WAVE_FULL_SOLDIERS,
   WAVE_GATHER_TICKS,
   WAVE_MIN_SOLDIERS,
+  WAVE_RAMP_TICKS,
+  waveBandAt,
   weaponMix,
 } from '../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
@@ -73,19 +76,19 @@ const CIVILIST = 6;
 const BARRACKS = { x: 30, y: 30 };
 /** The enemy seat, far enough that no objective ever falls inside the seat's own muster ring. */
 const FOE_HQ = { x: 110, y: 70 };
-/** The wave-size draw's band: `WAVE_MIN_SOLDIERS + int(WAVE_BAND)`. */
-const WAVE_BAND = WAVE_FULL_SOLDIERS - WAVE_MIN_SOLDIERS + 1;
-/** A full band, which satisfies any draw: this many march as soon as they are formed up. */
-const CERTAIN_WAVE = WAVE_FULL_SOLDIERS;
+/** The wave-size draw's band at the start of the game: `OPENING_WAVE.min + int(WAVE_BAND)`. */
+const WAVE_BAND = OPENING_WAVE.max - OPENING_WAVE.min + 1;
+/** A full opening band, which satisfies any early draw: this many march as soon as they are formed up. */
+const CERTAIN_WAVE = OPENING_WAVE.max;
 
 /** A seed whose wave-size draw is the bottom of the band - a bare-minimum group marches. */
 const EAGER_SEED = 7;
 /** A seed whose draw is the top of the band - that same group is held for a full one. */
 const PATIENT_SEED = 43;
 /** A seed drawing a size inside the band, for the cases that grow a muster up to its draw. */
-const MIDDLE_SEED = 110;
+const MIDDLE_SEED = 6;
 /** The size {@link MIDDLE_SEED} draws. */
-const HELD_WAVE = 10;
+const HELD_WAVE = 8;
 
 function aiSim(map: TerrainMap = grassNodeMap(128, 96)): Simulation {
   return new Simulation({ seed: 1, content: aiContent(), map });
@@ -235,9 +238,9 @@ describe('military module - the muster', () => {
   });
 
   it('pins the seeds to the wave sizes the cases assume', () => {
-    expect(WAVE_MIN_SOLDIERS + new Rng(EAGER_SEED).int(WAVE_BAND)).toBe(WAVE_MIN_SOLDIERS);
-    expect(WAVE_MIN_SOLDIERS + new Rng(PATIENT_SEED).int(WAVE_BAND)).toBe(WAVE_FULL_SOLDIERS);
-    expect(WAVE_MIN_SOLDIERS + new Rng(MIDDLE_SEED).int(WAVE_BAND)).toBe(HELD_WAVE);
+    expect(OPENING_WAVE.min + new Rng(EAGER_SEED).int(WAVE_BAND)).toBe(WAVE_MIN_SOLDIERS);
+    expect(OPENING_WAVE.min + new Rng(PATIENT_SEED).int(WAVE_BAND)).toBe(OPENING_WAVE.max);
+    expect(OPENING_WAVE.min + new Rng(MIDDLE_SEED).int(WAVE_BAND)).toBe(HELD_WAVE);
   });
 
   it('calls an idle soldier inside the settlement in to the barracks door', () => {
@@ -593,6 +596,50 @@ describe('military module - the campaign', () => {
     // A full band satisfies the top of the band, so it leaves whatever the draw.
     const full = bandSim(CERTAIN_WAVE);
     expect(assaulting(full, run(full, PATIENT_SEED), foeHqOf(full))).toHaveLength(CERTAIN_WAVE);
+  });
+
+  it('grows the wave band from the opening raid into the late assault over the ramp, then holds it', () => {
+    expect(waveBandAt(0)).toEqual(OPENING_WAVE);
+    const halfway = waveBandAt(WAVE_RAMP_TICKS / 2);
+    expect(halfway.min).toBe(OPENING_WAVE.min + Math.floor((LATE_WAVE.min - OPENING_WAVE.min) / 2));
+    expect(halfway.max).toBe(OPENING_WAVE.max + Math.floor((LATE_WAVE.max - OPENING_WAVE.max) / 2));
+    expect(waveBandAt(WAVE_RAMP_TICKS)).toEqual(LATE_WAVE);
+    expect(waveBandAt(2 * WAVE_RAMP_TICKS)).toEqual(LATE_WAVE);
+  });
+
+  it('holds a late wave past its window until the whole army, short of the floor, stands at the door', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    const rally = rallyOf(sim);
+    const [straggler] = spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 4, y: rally.y });
+    if (straggler === undefined) throw new Error('setup: no straggler');
+
+    // Late in the game the floor is far above this seat's army, so the window alone no longer sends the
+    // band: an opening-sized raid is what the ramp exists to retire.
+    expect(assaulting(sim, run(sim, EAGER_SEED, WAVE_RAMP_TICKS), foeHq)).toEqual([]);
+    expect(assaulting(sim, run(sim, EAGER_SEED, WAVE_RAMP_TICKS + WAVE_GATHER_TICKS), foeHq)).toEqual([]);
+
+    // Everyone the seat has is the most it can gather, so that goes in once the window is up.
+    sim.world.destroy(straggler);
+    pack(sim, 1, { x: rally.x + 2, y: rally.y + 2 });
+    expect(assaulting(sim, run(sim, EAGER_SEED, WAVE_RAMP_TICKS + WAVE_GATHER_TICKS), foeHq)).toHaveLength(
+      WAVE_MIN_SOLDIERS + 1,
+    );
+  });
+
+  it('does not wait for a man who can never reach the door before sending a late wave', () => {
+    const sim = aiSim(splitNodeMap(128, 96, 64));
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    place(sim, HQ_TYPE, { x: 50, y: 70 }, FOE); // the barracks' own bank
+    const rally = rallyOf(sim);
+    pack(sim, WAVE_MIN_SOLDIERS, rally);
+    spawn(sim, 1, { x: 90, y: 30 }); // across the water: he counts in the army but can never form up
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+
+    expect(assaulting(sim, run(sim, EAGER_SEED, WAVE_RAMP_TICKS), foeHq)).toEqual([]);
+    expect(assaulting(sim, run(sim, EAGER_SEED, WAVE_RAMP_TICKS + WAVE_GATHER_TICKS), foeHq)).toHaveLength(
+      WAVE_MIN_SOLDIERS,
+    );
   });
 
   it('never marches a shooting line while the seat still owns somebody to lead it', () => {

@@ -9,6 +9,7 @@ const {
   DEFAULT_BUILD_ORDER,
   HEADQUARTERS_BUILDING_ID,
   OPENING_HUNT_UNTIL_BUILDING_ID,
+  SOLDIER_OUTFIT_GOOD_IDS,
   STAFFING_BY_BUILDING_ID,
   TOWER_CONTENT_IDS,
   hunterJobType,
@@ -190,17 +191,40 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
-      // One list per operator seat - the building must actually offer every seat the table splits.
+      // One list per operator seat across the type - the buildings the plan raises must offer every seat
+      // the table splits.
       const operatorSeats = building?.workers
         .filter((w) => w.jobType !== carrierJob)
         .reduce((most, w) => Math.max(most, w.count), 0);
-      expect(operatorSeats ?? 0, `operator seats of ${id}`).toBeGreaterThanOrEqual(seats.length);
+      const planned = DEFAULT_BUILD_ORDER.reduce(
+        (most, entry) =>
+          (entry.kind === 'place' || entry.kind === 'upgrade') && entry.building === id
+            ? Math.max(most, entry.count)
+            : most,
+        0,
+      );
+      expect((operatorSeats ?? 0) * planned, `operator seats of every planned ${id}`).toBeGreaterThanOrEqual(
+        seats.length,
+      );
       for (const goodId of seats.flat()) {
         const good = content.goods.find((g) => g.id === goodId);
         expect(good, `craft good ${goodId}`).toBeDefined();
         // The restriction must name a product the workplace actually makes - an unmakeable-only
         // list issues no command and the workshop silently keeps crafting everything.
         expect(good !== undefined && produced.has(good.typeId), `${id} produces ${goodId}`).toBe(true);
+      }
+    }
+    // The soldiers' outfit: a good with no misc equip class is silently never handed out.
+    for (const goodId of SOLDIER_OUTFIT_GOOD_IDS) {
+      const good = content.goods.find((g) => g.id === goodId);
+      expect(good?.equip?.category, `outfit good ${goodId}`).toBe('misc');
+    }
+    // A resource-gated entry must name a map good, or no map could ever satisfy the gate.
+    for (const entry of DEFAULT_BUILD_ORDER) {
+      if (entry.kind !== 'place') continue;
+      for (const goodId of entry.needsResources ?? []) {
+        const good = content.goods.find((g) => g.id === goodId);
+        expect(good?.atomics?.harvest, `${entry.building} needs harvestable ${goodId}`).toBeDefined();
       }
     }
   });

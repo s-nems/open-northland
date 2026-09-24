@@ -23,10 +23,6 @@ export const ASSAULT_RING_RADIUS_NODES = 12;
 /** The smallest group the seat will send: a wave is a band of men, never one. */
 export const WAVE_MIN_SOLDIERS = 5;
 
-/** The largest group the seat gathers before it marches - the top of the band a wave's size is drawn
- *  from. */
-export const WAVE_FULL_SOLDIERS = 50;
-
 /** A wave never marches as a pure shooting line: at least this many of it fight in reach, so the archers
  *  have somebody standing in front of them. */
 const WAVE_MELEE_CORE = 1;
@@ -177,6 +173,6 @@ function ringSpots(radius: number): readonly RingOffset[] {
 const HOLD_SPOTS = ringSpots(RALLY_HOLD_RADIUS_NODES);
 const ASSAULT_SPOTS = ringSpots(ASSAULT_RING_RADIUS_NODES);
 
-function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId): boolean {
+export function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId): boolean {
   return manhattan(terrain, entityNode(world, terrain, e), rally) <= RALLY_HOLD_RADIUS_NODES;
 }

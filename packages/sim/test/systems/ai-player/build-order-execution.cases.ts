@@ -180,6 +180,25 @@ describe('build-order module (houseBuild)', () => {
     expect(again.buildingType).toBe(FARM_TYPE);
   });
 
+  it('skips a place entry while the map holds none of the good it works up', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const gated = buildOrderModule([
+      { kind: 'place', building: 'work_bakery_00', count: 1, needsResources: ['iron'] },
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+    ]);
+    const passedOver = [...gated.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (passedOver?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
+    expect(passedOver.buildingType).toBe(FARM_TYPE);
+
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    sim.step();
+    const placed = [...gated.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (placed?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
+    expect(placed.buildingType).toBe(BAKERY_TYPE);
+  });
+
   it('stalls when nothing can upgrade toward the entry tier yet', () => {
     const sim = aiSim();
     placeHq(sim);

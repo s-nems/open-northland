@@ -596,6 +596,48 @@ describe('workforce module - the barracks and craft selections', () => {
     ]);
   });
 
+  it('hands the seats out across every building of the type, not per building', () => {
+    // One breeder in each of two farms: counted per building each would be a lone man working both lines,
+    // counted across the type they are the pair the table splits.
+    const content = husbandryContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
+    placeHq(sim);
+    for (const x of [40, 60]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: ANIMAL_FARM_TYPE,
+        x,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    spawnMen(sim, 2, BUILDER);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content };
+    const farms = [...sim.world.query(Building)]
+      .filter((e) => sim.world.get(e, Building).buildingType === ANIMAL_FARM_TYPE)
+      .sort((a, b) => a - b);
+    const men = [...sim.world.query(Settler)]
+      .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
+      .sort((a, b) => a - b);
+    for (const [i, building] of farms.entries()) {
+      const man = men[i];
+      if (man === undefined) throw new Error('setup: too few men');
+      sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [BREEDER] });
+    }
+    sim.step();
+
+    const breeders = [...sim.world.query(Settler, JobAssignment)]
+      .filter((e) => sim.world.get(e, Settler).jobType === BREEDER)
+      .sort((a, b) => a - b);
+    expect(breeders).toHaveLength(2);
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
+      { kind: 'setCraftGoods', entity: breeders[0], goods: [CATTLE] },
+      { kind: 'setCraftGoods', entity: breeders[1], goods: [SHEEP] },
+    ]);
+  });
+
   it('gives a lone breeder both lines rather than letting the sheep line die', () => {
     // The split must not outlive the crew it was written for: with the pool too short to seat two
     // breeders, restricting the one man to seat 0 would leave the sheep untended while he is alone.

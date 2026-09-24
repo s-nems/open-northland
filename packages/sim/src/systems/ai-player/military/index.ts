@@ -13,6 +13,7 @@ import {
   towerPostOrders,
 } from './defence/index.js';
 import { runOffensive } from './offensive.js';
+import { outfitOrders } from './outfit.js';
 
 export { campaignTarget } from './campaign.js';
 export { type ArmyCensus, takeCensus, type WeaponMix, weaponMix } from './census.js';
@@ -22,18 +23,15 @@ export {
   threatWatchNodes,
   towerPostOrders,
 } from './defence/index.js';
-export {
-  ASSAULT_RING_RADIUS_NODES,
-  RALLY_HOLD_RADIUS_NODES,
-  WAVE_FULL_SOLDIERS,
-  WAVE_MIN_SOLDIERS,
-} from './muster.js';
-export { WAVE_GATHER_TICKS } from './plan.js';
+export { ASSAULT_RING_RADIUS_NODES, RALLY_HOLD_RADIUS_NODES, WAVE_MIN_SOLDIERS } from './muster.js';
+export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
+export { LATE_WAVE, OPENING_WAVE, WAVE_GATHER_TICKS, WAVE_RAMP_TICKS, waveBandAt } from './plan.js';
 
 /**
  * One decision for the seat's fighting men, home before abroad: the free fighters are enlisted, the
  * towers take their garrison ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates
- * takes the rest of it, and the campaign gets what neither claimed.
+ * takes the rest of it, and the campaign gets what neither claimed. A man the campaign leaves waiting at
+ * the barracks is sent for his outfit.
  *
  * The home half runs with the module off too: the original's scripted handler, which the `HAI_Disable`
  * toggles do not reach, lists the soldiers, mans the towers and answers an attack (original behavior). The
@@ -57,14 +55,16 @@ function runMilitary(
   const raid = raidOnTheSettlement(world, ctx, terrain, owned, raiders);
   // A raid benches the campaign: it takes the same band the muster would have gathered.
   const marchable: readonly Entity[] = raid === null ? free : [];
+  const offensive = campaign
+    ? runOffensive(world, ctx, terrain, player, { army: marchable, awaitingWeapon: army.awaitingWeapon })
+    : null;
   return [
     ...enlistOrders(world, ctx, player),
     ...alarmOrders(world, ctx, terrain, owned, raiders),
     ...posts.commands,
     ...(raid === null ? [] : sortieOrders(world, terrain, free, raid)),
-    ...(campaign
-      ? runOffensive(world, ctx, terrain, player, { army: marchable, awaitingWeapon: army.awaitingWeapon })
-      : []),
+    ...(offensive?.commands ?? []),
+    ...outfitOrders(world, ctx, terrain, player, offensive?.waiting ?? []),
   ];
 }
 

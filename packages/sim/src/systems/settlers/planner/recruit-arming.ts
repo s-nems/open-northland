@@ -147,7 +147,7 @@ export function armableIntents<Intent extends keyof typeof INTENT_WEAPON_CLASS>(
 }
 
 /** Where a fetcher stands to draw on a store: a building at its door, a ground pile at its own node. */
-function approachNode(world: World, ctx: SystemContext, terrain: TerrainGraph, store: Entity): NodeId {
+export function approachNode(world: World, ctx: SystemContext, terrain: TerrainGraph, store: Entity): NodeId {
   return world.has(store, Building)
     ? interactionCell(world, ctx, terrain, store)
     : entityNode(world, terrain, store);

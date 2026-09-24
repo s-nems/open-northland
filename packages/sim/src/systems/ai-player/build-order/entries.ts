@@ -9,7 +9,9 @@ export type PlacementAffinity =
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
    *  `ground: 'plantable'` hard-restricts the footprint to sowable ground, and `apart` prefers
-   *  (never requires) a spot clear of the seat's other buildings of the same kind. */
+   *  (never requires) a spot clear of the seat's other buildings of the same kind. `needsResources`
+   *  names the map goods the building exists to work up; an unmet entry is skipped while the map holds
+   *  none of any one of them, like a collector entry. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -17,6 +19,7 @@ export type BuildOrderEntry =
       readonly near?: readonly PlacementAffinity[];
       readonly ground?: 'plantable';
       readonly apart?: boolean;
+      readonly needsResources?: readonly string[];
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier. */
@@ -101,8 +104,39 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'home_level_04', count: 5 },
+  // The healing line: the big potion takes herbs, mushrooms and coins, and the temple waits on the
+  // druids' oil, so all of it stands only where the map holds both gold and mushrooms.
+  { kind: 'collector', good: 'mushroom' },
+  {
+    kind: 'place',
+    building: 'work_herb_hut',
+    count: 1,
+    ground: 'plantable',
+    needsResources: ['mushroom', 'gold'],
+  },
+  { kind: 'collector', good: 'gold' },
+  {
+    kind: 'place',
+    building: 'work_coin_mint',
+    count: 2,
+    near: [{ kind: 'resource', good: 'gold' }],
+    needsResources: ['gold'],
+  },
+  {
+    kind: 'place',
+    building: 'work_druid_01',
+    count: 2,
+    near: [
+      { kind: 'building', id: 'work_herb_hut' },
+      { kind: 'building', id: 'work_well_00' },
+    ],
+    needsResources: ['mushroom', 'gold'],
+  },
+  { kind: 'place', building: 'work_temple', count: 1, needsResources: ['mushroom', 'gold'] },
+  { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
+  { kind: 'place', building: 'home_level_04', count: 7 },
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would

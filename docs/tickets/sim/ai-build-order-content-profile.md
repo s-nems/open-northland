@@ -9,8 +9,8 @@ original strategic AI's internals, so this is authored content, not pipeline out
 
 ## Scope
 
-Add a strict content schema mirroring the ordered `BuildOrderEntry` union: `place` with its affinities
-and ground rule, `upgrade`, `collector`, and `towerCoverage`. Move the current authored table into the
+Add a strict content schema mirroring the ordered `BuildOrderEntry` union: `place` with its affinities,
+ground rule and resource gate, `upgrade`, `collector`, and `towerCoverage`. Move the current authored table into the
 committed fallback catalog, resolve the selected profile once per AI seat, and leave no content-id table
 in sim source. Workforce policy remains separate in
 [ai-workforce-content-profile](ai-workforce-content-profile.md).

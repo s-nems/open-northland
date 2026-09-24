@@ -30,13 +30,19 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
   return false;
 }
 
-/** `owned` is the seat's {@link ownedBuildings} list, passed in so one decision computes it once. */
+/** Whether the map holds a live resource, per good type: one decision's answers, so entries gated on the
+ *  same good search the map once. */
+export type LiveResourceMemo = Map<number, boolean>;
+
+/** `owned` is the seat's {@link ownedBuildings} list and `live` this decision's memo, both passed in so one
+ *  decision computes them once. */
 export function entryStatus(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
   entry: BuildOrderEntry,
+  live: LiveResourceMemo,
 ): EntryStatus {
   const index = contentIndex(ctx.content);
   switch (entry.kind) {
@@ -53,7 +59,13 @@ export function entryStatus(
         const matches = type.kind === 'home' ? ownedType.kind === 'home' : counted.has(ownedType.typeId);
         if (matches) have++;
       }
-      return have >= entry.count ? 'satisfied' : 'unmet';
+      if (have >= entry.count) return 'satisfied';
+      for (const goodId of entry.needsResources ?? []) {
+        const needed = goodTypeByContentId(ctx.content, goodId);
+        if (needed === undefined || !liveResourceNearBase(world, ctx, player, needed.typeId, live))
+          return 'skip';
+      }
+      return 'unmet';
     }
     case 'upgrade': {
       const target = buildingTypeByContentId(ctx.content, entry.building);
@@ -72,9 +84,7 @@ export function entryStatus(
         if (liveWorkFlag(world, e)?.goodType === good.typeId) return 'satisfied';
       }
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
-      const base = seatBaseOf(world, ctx, player);
-      const near = base === null ? null : anchorNodeOf(world, base);
-      return anyLiveResource(world, good.typeId, near) ? 'unmet' : 'skip';
+      return liveResourceNearBase(world, ctx, player, good.typeId, live) ? 'unmet' : 'skip';
     }
     case 'towerCoverage': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
@@ -82,6 +92,23 @@ export function entryStatus(
       return firstUncoveredBuilding(world, ctx, player, owned) === null ? 'satisfied' : 'unmet';
     }
   }
+}
+
+/** Whether the map still holds a live resource of `goodType`, searched outward from the seat's base. */
+function liveResourceNearBase(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  goodType: number,
+  live: LiveResourceMemo,
+): boolean {
+  const known = live.get(goodType);
+  if (known !== undefined) return known;
+  const base = seatBaseOf(world, ctx, player);
+  const near = base === null ? null : anchorNodeOf(world, base);
+  const found = anyLiveResource(world, goodType, near);
+  live.set(goodType, found);
+  return found;
 }
 
 /**
@@ -95,7 +122,8 @@ export function entryStatuses(
   order: readonly BuildOrderEntry[],
 ): EntryStatus[] {
   const owned = ownedBuildings(world, player);
-  return order.map((entry) => entryStatus(world, ctx, player, owned, entry));
+  const live: LiveResourceMemo = new Map();
+  return order.map((entry) => entryStatus(world, ctx, player, owned, entry, live));
 }
 
 /** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight

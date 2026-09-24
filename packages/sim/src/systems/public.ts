@@ -11,8 +11,8 @@ export {
 } from './ai-player/build-order/index.js';
 // The scripted handlers' round, so a real-content probe can step to a seat's turn.
 export { AI_HANDLER_ROUND_TICKS } from './ai-player/cadence.js';
-// Exported so an acceptance scene can pin the garrison the AI seat walls in.
-export { TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
+// The garrison an acceptance scene pins, and the outfit the real-content plan test resolves.
+export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
