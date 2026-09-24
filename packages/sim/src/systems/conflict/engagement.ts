@@ -276,8 +276,9 @@ export function resolveTarget(
     if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
     return focusedOn(world, ctx, terrain, here, locked);
   }
-  // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant or building can
-  // be in the search band, both tier searches would return null.
+  // Idle early-out (perf-only): when the coarse presence grid proves no member of a player at war with the
+  // seeker either way, and no unowned one but passive wildlife, can be in the search band, both tier searches
+  // would return null.
   if (spec.player !== null && !index.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
   // The animal seeker's twin: no civ in the band proves both empty.
   if (spec.animalSeeker === true && !index.civsWithin(x, y, spec.searchRadius)) return null;

@@ -1,6 +1,14 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Health, Owner, Position, Settler } from '../../src/components/index.js';
+import {
+  Building,
+  diplomacyStance,
+  Health,
+  Owner,
+  Position,
+  Settler,
+  setDiplomacyStance,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
@@ -40,6 +48,9 @@ const TAIL_RINGS = 3;
 const KEEP = 30;
 const KEEP_WALLS = [0, 1, 2, 3].map((dx) => ({ dx, dy: 0 }));
 const KEEP_HP = 1000;
+/** A third player: at peace with P0 both ways, while P1 holds `enemy` toward it one way only. */
+const P2 = 2;
+const OWNERS = [P0, P1, P2];
 
 /** A deterministic LCG so a failing draw can be replayed. */
 const LCG_MULTIPLIER = 1664525;
@@ -84,8 +95,8 @@ function crowd(sim: Simulation, draw: () => number): Entity[] {
   for (let i = 0; i < CROWD; i++) {
     const x = Math.floor(draw() * MAP_NODES);
     const y = Math.floor(draw() * MAP_NODES);
-    // Alternate owners so the presence tallies, the owner skip and the accept filters have both sides.
-    ids.push(combatantAtNode(sim, x, y, i % 2 === 0 ? P0 : P1, MILITARY_MODE.ATTACK));
+    // Cycle owners so the presence tallies, the owner skip and the accept filters see every diplomacy.
+    ids.push(combatantAtNode(sim, x, y, OWNERS[i % OWNERS.length] ?? P0, MILITARY_MODE.ATTACK));
   }
   return ids;
 }
@@ -106,7 +117,7 @@ function keeps(sim: Simulation, draw: () => number): Entity[] {
   for (let i = 0; i < KEEPS; i++) {
     const x = Math.floor(draw() * (MAP_NODES - KEEP_WALLS.length));
     const y = Math.floor(draw() * MAP_NODES);
-    ids.push(keepAtNode(sim, x, y, i % 2 === 0 ? P0 : P1));
+    ids.push(keepAtNode(sim, x, y, OWNERS[i % OWNERS.length] ?? P0));
   }
   return ids;
 }
@@ -168,11 +179,25 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
     it(`agrees with the ring walk on nearest and nearestFew over a random crowd (seed ${seed})`, () => {
       const draw = lcg(seed);
       const sim = mappedSim(seed);
+      for (const [from, to] of [
+        [P0, P2],
+        [P2, P0],
+        [P2, P1],
+      ] as const) {
+        setDiplomacyStance(sim.world, from, to, 'neutral');
+      }
       const ids = crowd(sim, draw);
       const walled = keeps(sim, draw);
       const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim), ids, walled);
       const reference = referenceBuckets(sim, ids, walled);
-      const ownedBy = (e: Entity, player: number): boolean => sim.world.get(e, Owner).player === player;
+      const atWar = (e: Entity, seeker: number): boolean => {
+        const owner = sim.world.get(e, Owner).player;
+        if (owner === seeker) return false;
+        return (
+          diplomacyStance(sim.world, seeker, owner) === 'enemy' ||
+          diplomacyStance(sim.world, owner, seeker) === 'enemy'
+        );
+      };
       // The last filter rejects every building (no `Settler`), so both sides of the multi-node case run.
       const accepts: ReadonlyArray<Accept> = [
         () => true,
@@ -192,14 +217,15 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
         expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, null)).toEqual(
           ringNearestFew(reference, x, y, minDist, maxDist, accept, FEW),
         );
-        // Skipping an owner is exactly a filter that rejects that owner, so the winner cannot move.
-        const skip = q % 2 === 0 ? P0 : P1;
-        const notMine: Accept = (e) => !ownedBy(e, skip) && accept(e);
-        expect(index.nearest(x, y, minDist, maxDist, accept, skip)).toEqual(
-          reference.nearest(x, y, minDist, maxDist, notMine),
+        // A seeker's skip is exactly a filter admitting only players at war with it either way, so the
+        // winner cannot move for any accept that already rejects the rest.
+        const seeker = OWNERS[q % OWNERS.length] ?? P0;
+        const hostile: Accept = (e) => atWar(e, seeker) && accept(e);
+        expect(index.nearest(x, y, minDist, maxDist, accept, seeker)).toEqual(
+          reference.nearest(x, y, minDist, maxDist, hostile),
         );
-        expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, skip)).toEqual(
-          ringNearestFew(reference, x, y, minDist, maxDist, notMine, FEW),
+        expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker)).toEqual(
+          ringNearestFew(reference, x, y, minDist, maxDist, hostile, FEW),
         );
       }
     });

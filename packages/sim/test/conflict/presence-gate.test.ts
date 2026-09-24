@@ -1,12 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { Anger, CurrentAtomic, Engagement, Fleeing, MoveGoal, Owner } from '../../src/components/index.js';
-import { Simulation } from '../../src/index.js';
+import {
+  Anger,
+  Building,
+  CurrentAtomic,
+  diplomacyStance,
+  Engagement,
+  Fleeing,
+  Health,
+  MoveGoal,
+  Owner,
+  Position,
+  setDiplomacyStance,
+} from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
+import { attackableBuildings } from '../../src/systems/conflict/dormancy.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { provokeHostility } from '../../src/systems/settlers/atomics/effects/combat/hit/reactions.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 import { BEAR, BOAR, COW, fighterAtNode, HUNTER } from './combat-system/support.js';
-import { combatantAtNode, ctxOf, P0, P1 } from './stances/support.js';
+import { combatantAtNode, ctxOf, P0, P1, VIKING } from './stances/support.js';
 
 /**
  * The combat index's coarse idle early-out (conflict/combat-index.ts) is perf-only: skipping the ring search
@@ -145,5 +161,110 @@ describe('combat presence gate - conservative boundaries', () => {
 
     expect(sim.world.has(nearCiv, Fleeing)).toBe(true);
     expect(sim.world.has(farCiv, Fleeing)).toBe(false);
+  });
+});
+
+/**
+ * The gate counts an owned member only for a player at war with the seeker in either direction, so on a map
+ * of neighbours at peace a calm civilian skips its sight scan. A stance is read when `combat` builds its
+ * index, after every writer that runs earlier in the tick.
+ */
+describe('combat presence gate - diplomacy', () => {
+  const bigMap = () => grassCellMap(64, 64);
+  /** The fixture headquarters type: a plain owned building with no footprint of its own. */
+  const HEADQUARTERS = 1;
+  const HQ_HP = 1000;
+
+  function hqAtNode(sim: Simulation, hx: number, hy: number, owner: number): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, positionOfNode(hx, hy));
+    sim.world.add(e, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(e, Health, { hitpoints: HQ_HP, max: HQ_HP });
+    sim.world.add(e, Owner, { player: owner });
+    return e;
+  }
+
+  /** Whether `player`'s gate at node (40, 40) opens over `members` and every live building. */
+  function gateOpens(sim: Simulation, members: readonly Entity[], player: number): boolean {
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrain, members, attackableBuildings(sim.world));
+    return index.othersWithin(player, 40, 40, SIGHT_RADIUS_NODES);
+  }
+
+  /** P0's civilian at node (40, 40) with a P1 settler and a P1 building six nodes off, inside its sight box. */
+  function neighbours(): { sim: Simulation; members: Entity[] } {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const civ = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
+    const settler = combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
+    hqAtNode(sim, 40, 46, P1);
+    return { sim, members: [civ, settler] };
+  }
+
+  function setPair(sim: Simulation, p0ToP1: string, p1ToP0: string): void {
+    setDiplomacyStance(sim.world, P0, P1, p0ToP1);
+    setDiplomacyStance(sim.world, P1, P0, p1ToP0);
+  }
+
+  for (const stance of ['neutral', 'friend'] as const) {
+    it(`stays closed on a ${stance} neighbour's settlers and buildings in the box`, () => {
+      const { sim, members } = neighbours();
+      setPair(sim, stance, stance);
+      expect(gateOpens(sim, members, P0)).toBe(false);
+      expect(gateOpens(sim, members, P1)).toBe(false);
+    });
+  }
+
+  it('opens on an enemy stance held in either direction', () => {
+    const { sim, members } = neighbours();
+    setPair(sim, 'enemy', 'neutral');
+    expect([gateOpens(sim, members, P0), gateOpens(sim, members, P1)]).toEqual([true, true]);
+    setPair(sim, 'neutral', 'enemy');
+    expect([gateOpens(sim, members, P0), gateOpens(sim, members, P1)]).toEqual([true, true]);
+  });
+
+  it('still opens on a hostile animal beside neighbours at peace', () => {
+    const { sim, members } = neighbours();
+    setPair(sim, 'neutral', 'neutral');
+    const bear = fighterAtNode(sim, 44, 44, BEAR, null);
+    expect(gateOpens(sim, members, P0)).toBe(false);
+    expect(gateOpens(sim, [...members, bear], P0)).toBe(true);
+  });
+
+  it('a civilian still flees a one-way aggressor it holds no grudge against', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const civ = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
+    combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
+    setPair(sim, 'neutral', 'enemy');
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(civ, Fleeing)).toBe(true);
+  });
+
+  it('a civilian ignores a neutral neighbour in sight', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const civ = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
+    combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
+    setPair(sim, 'neutral', 'neutral');
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(civ, Fleeing)).toBe(false);
+  });
+
+  it('sees a stance a landed blow flipped earlier in the same tick', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const civ = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
+    const raider = combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
+    setPair(sim, 'neutral', 'neutral');
+    const ctx = ctxOf(sim);
+
+    // The atomic pass lands the raider's blow before combat runs: the victim's side turns enemy.
+    provokeHostility(sim.world, ctx, raider, civ);
+    expect(diplomacyStance(sim.world, P0, P1)).toBe('enemy');
+    combatSystem(sim.world, ctx);
+
+    expect(sim.world.has(civ, Fleeing)).toBe(true);
   });
 });
