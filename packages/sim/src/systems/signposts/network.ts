@@ -44,8 +44,9 @@ interface NetworkKeys {
 
 interface NetworkMemo {
   keys: NetworkKeys;
-  /** Moves only when a rebuild changes the network, so a limit or probe keyed on it outlives the Owner
-   *  churn of every birth, death and placement. Memo-local: it never feeds a sim decision itself. */
+  /** Moves on every rebuild, never on Owner churn that leaves the network intact, so the per-settler
+   *  limits and the erect overlay keyed on it outlive every birth, death and placement. Memo-local: it
+   *  never feeds a sim decision itself. */
   revision: number;
   byPlayer: ReadonlyMap<number, readonly SignpostSite[]>;
 }

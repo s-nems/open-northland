@@ -413,6 +413,25 @@ describe('the ownership results', () => {
     expect(ownerOf(sim.world, only(missionObjects(sim.world, 78)))).toBe(2);
   });
 
+  it('links the signposts a whole nation hands over to each other and to the receiver`s', () => {
+    const sim = firingSim([{ opcode: 'ChangePlayerPlayerId', player: 2, otherPlayer: 5 }]);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped fixture expected');
+    const post = (hy: number, player: number): Entity =>
+      createSignpost(sim.world, terrain, terrain.nodeAt(POINT.hx, hy), player);
+    // Two handed posts in link range of each other; the receiver's post is in range of the first only.
+    const receiver = post(POINT.hy - 16, 5);
+    const first = post(POINT.hy, 2);
+    const second = post(POINT.hy + 24, 2);
+    expect(sim.world.get(first, Signpost).links).toEqual([second]);
+
+    sim.run(LOAD_PASS);
+
+    expect(sim.world.get(first, Signpost).links).toEqual([receiver, second]);
+    expect(sim.world.get(second, Signpost).links).toEqual([first]);
+    expect(sim.world.get(receiver, Signpost).links).toEqual([first]);
+  });
+
   it('moves a handed signpost from its old owner`s network into the new owner`s', () => {
     const sim = firingSim([
       { opcode: 'ChangePlayerIdInArea', player: 2, otherPlayer: 6, point: POINT, range: 3 },
