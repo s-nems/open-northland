@@ -151,7 +151,7 @@ export function engageCombatant(
   // the band it shoots into is the band its arrow leaves from.
   const here = entityNode(world, terrain, stance.shelter?.building ?? e);
   const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
-  const found = resolveTarget(world, ctx, terrain, pass, e, here, attacker, spec);
+  const found = resolveTarget(world, ctx, terrain, pass, e, here, spec);
   if (found === null) {
     // Nothing to strike yet, but a fight near enough to stand to still gets it up. A guard's walk back to
     // its anchor waits for the next pass.

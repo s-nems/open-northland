@@ -16,12 +16,7 @@ import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
-import {
-  ANIMAL_AGGRO_RADIUS_NODES,
-  isValidOrderedTarget,
-  isValidTarget,
-  SIGHT_RADIUS_NODES,
-} from './targeting.js';
+import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 import { givenUpTargetVeto } from './unreachable-targets.js';
 
 // Re-exported so the combat modules keep one import site for the stance ladder.
@@ -235,10 +230,9 @@ function defendAnchor(world: World, e: Entity, here: NodeId): NodeId {
 
 /**
  * The enemy this combatant fights this tick with its Manhattan distance from `here`, or null. An
- * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search - a focus that died
- * drops the order and falls through to auto-engagement. Otherwise the nearest target `spec.accept` admits
- * within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
- * primary tier finds nothing in sight.
+ * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search. Otherwise the
+ * nearest target `spec.accept` admits within `[spec.minDist, spec.searchRadius]`, with the
+ * `spec.lowPriority` tier searched only when the primary tier finds nothing in sight.
  */
 export function resolveTarget(
   world: World,
@@ -247,19 +241,13 @@ export function resolveTarget(
   pass: CombatPass,
   self: Entity,
   here: NodeId,
-  attacker: SettlerIdentity,
   spec: EngageSpec,
 ): { target: Entity; dist: number } | null {
   const { index } = pass;
-  if (world.has(self, AttackOrder)) {
-    const focus = world.get(self, AttackOrder).target;
-    // An ordered target is chased regardless of sight, so measure its real distance, uncapped by the ring
-    // search band. A building is measured at its nearest wall cell, the same node the chase walks to.
-    if (isValidOrderedTarget(world, ctx, self, attacker, focus)) {
-      return focusedOn(world, ctx, terrain, here, focus);
-    }
-    world.remove(self, AttackOrder); // target gone / no longer hostile - abandon the order, auto-engage
-  }
+  // The engage ladder already dropped an order whose target died or stopped being hostile this tick. An
+  // ordered target is chased regardless of sight, so its real distance is measured, uncapped by the band.
+  const focus = world.tryGet(self, AttackOrder)?.target;
+  if (focus !== undefined) return focusedOn(world, ctx, terrain, here, focus);
   const { x, y } = terrain.coordsOf(here);
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
