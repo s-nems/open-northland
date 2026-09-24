@@ -132,8 +132,15 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     ],
     needsResources: ['mushroom', 'gold'],
   },
-  { kind: 'place', building: 'work_temple', count: 1, needsResources: ['mushroom', 'gold'] },
   { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
+  // Toward the front like the barracks.
+  {
+    kind: 'place',
+    building: 'work_temple',
+    count: 1,
+    near: [{ kind: 'mapCentre' }],
+    needsResources: ['mushroom', 'gold'],
+  },
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
   { kind: 'place', building: 'home_level_04', count: 7 },
