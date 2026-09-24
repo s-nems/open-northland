@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { Marriage, Resource, Settler, SettlerProgress, WorkFlag } from '../../../src/components/index.js';
+import {
+  aiPlayerEntity,
+  Marriage,
+  Resource,
+  Settler,
+  SettlerProgress,
+  StalledPlacement,
+  WorkFlag,
+} from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import {
   BUILDER_CAP,
+  CIVILIANS_PER_CLEARING_COLLECTOR,
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
   workforceModule,
@@ -31,6 +40,7 @@ import {
   JOINER,
   JOINERY_TYPE,
   MUD,
+  makeAiSeat,
   placeHq,
   placeResources,
   plantPostAtHq,
@@ -133,6 +143,51 @@ describe('workforce module (collectResources)', () => {
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const carriers = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === hq);
     expect(carriers.map((c) => c.jobPriority)).toEqual([[CARRIER], [CARRIER], [CARRIER]]);
+  });
+
+  it('sends extra generic gatherers to clear ground while a placement is stalled, ahead of the carriers', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    spawnMen(sim, 15);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const carrier = aiPlayerEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    sim.world.add(carrier, StalledPlacement, { entry: 0, retryTick: Number.MAX_SAFE_INTEGER });
+
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    // 15 civilians call for three clearing posts. The same 15 men as the unstalled ladder above: after
+    // 3 first posts, the scout and the 8-man reserve, the three left clear ground instead of carrying.
+    const clearing = Math.floor(15 / CIVILIANS_PER_CLEARING_COLLECTOR);
+    const selections = commands.filter((c) => c.kind === 'setGatherGood');
+    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, ...Array(clearing).fill(null)]);
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === hq)).toEqual([]);
+
+    // Every clearing post is recognized while the stall lasts - nothing is re-hired.
+    for (const c of commands) sim.enqueueSetup(c);
+    sim.step();
+    expect(
+      [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setGatherGood'),
+    ).toEqual([]);
+  });
+
+  it('ignores a stall record the switched-off build order can no longer clear', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    spawnMen(sim, 15);
+    makeAiSeat(sim, SEAT, { houseBuild: false });
+    sim.step();
+    const carrier = aiPlayerEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    sim.world.add(carrier, StalledPlacement, { entry: 0, retryTick: Number.MAX_SAFE_INTEGER });
+
+    const selections = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+      (c) => c.kind === 'setGatherGood',
+    );
+    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
   });
 
   it('retires a generic collector whose circle holds nothing its trade can harvest', () => {

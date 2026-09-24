@@ -11,14 +11,16 @@ import { ownedSettlers } from '../seat-roster.js';
 /**
  * Product restrictions per workplace type, by stable content ids (authored). One list per operator seat,
  * counted across every building of the type the seat owns and handed out in canonical settler order,
- * wrapping when more operators work the type than it lists. The lists interleave so a partly staffed
- * type already runs every line: the smithies' eight seats are three long-sword and five plate-armour
- * makers, one druid in four boils holy oil, one coiner in four strikes coins. At the animal farm the
- * products are the two herds themselves, so a seat apiece keeps both species tended.
+ * wrapping when more operators work the type than it lists. The first seat's list is what a lone man
+ * works, and the lists interleave so a partly staffed type already runs its main lines: the smithies'
+ * eight seats are three long-sword and five plate-armour makers, one druid in four boils holy oil (the
+ * first, since the big potion waits on herbs the later herb hut grows), one coiner in four strikes coins,
+ * and the second joiner and potter take the furniture and the crockery.
+ * At the animal farm the products are the two herds themselves, so a seat apiece keeps both species tended.
  */
 export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly (readonly string[])[]>> = {
-  work_joinery_01: [['tool_iron']],
-  work_pottery_01: [['brick', 'tile']],
+  work_joinery_01: [['tool_iron'], ['tool_iron', 'furniture']],
+  work_pottery_01: [['brick', 'tile'], ['crockery']],
   work_mason_hut_01: [['pillar', 'ornament']],
   work_animal_farm: [['cattle'], ['sheep']],
   work_smithy_01: [
@@ -32,9 +34,13 @@ export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly
     ['armor_plate'],
   ],
   work_armory_01: [['bow_long']],
-  work_druid_01: [['potion_heal_big'], ['holy_oil'], ['potion_heal_big'], ['potion_heal_big']],
+  work_druid_01: [['holy_oil'], ['potion_heal_big'], ['potion_heal_big'], ['potion_heal_big']],
   work_coin_mint: [['coin'], ['amulet_defense'], ['amulet_defense'], ['amulet_defense']],
 };
+
+/** Workplace types whose short crew works every listed line instead of the first seat's: there each line
+ *  is a herd, and one left untended while the pool is short dies out (authored). */
+const SHORT_CREW_WORKS_EVERY_LINE: ReadonlySet<string> = new Set(['work_animal_farm']);
 
 interface RestrictedCrew {
   readonly type: BuildingType;
@@ -75,12 +81,10 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
   }
   for (const { type, restriction, crew } of crews.values()) {
     const produced = new Set(type.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
-    // An under-manned crew works the union instead of its seat's share: splitting two lines between
-    // fewer men than lines would leave a line unworked for as long as the pool is short.
     const lines = new Set(restriction.map((listed) => listed.join()));
-    const split = crew.length >= lines.size;
+    const union = crew.length < lines.size && SHORT_CREW_WORKS_EVERY_LINE.has(type.id);
     for (const [seat, e] of crew.entries()) {
-      const listed = split ? (restriction[seat % restriction.length] ?? []) : restriction.flat();
+      const listed = union ? restriction.flat() : (restriction[seat % restriction.length] ?? []);
       const goods = [
         ...new Set(
           listed

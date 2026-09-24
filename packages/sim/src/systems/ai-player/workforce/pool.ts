@@ -16,8 +16,8 @@ export interface Workforce {
   /** Flag gatherers per good, capped at the good's target; extras fall to `pool`. The phases push
    *  their own hires in, so within-decision counts stay honest before the commands apply. */
   readonly collectorsByGood: Map<number, Entity[]>;
-  /** Collect-anything gatherers (a live flag with no good filter), capped at
-   *  {@link GENERIC_COLLECTOR_TARGET}. */
+  /** Collect-anything gatherers (a live flag with no good filter), capped at the decision's generic
+   *  target. */
   readonly genericCollectors: Entity[];
   readonly scouts: Entity[];
 }
@@ -49,6 +49,7 @@ export function classifyWorkforce(
   ctx: SystemContext,
   player: number,
   wanted: readonly WantedGood[],
+  genericTarget = GENERIC_COLLECTOR_TARGET,
 ): Workforce {
   const index = contentIndex(ctx.content);
   const pool: Entity[] = [];
@@ -79,7 +80,7 @@ export function classifyWorkforce(
       } else if (
         flag !== undefined &&
         index.harvestJobs.has(job) &&
-        genericCollectors.length < GENERIC_COLLECTOR_TARGET
+        genericCollectors.length < genericTarget
       ) {
         genericCollectors.push(e);
         continue;

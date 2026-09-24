@@ -37,6 +37,7 @@ import {
   HQ_X,
   HQ_Y,
   husbandryContent,
+  JOINER,
   JOINERY_TYPE,
   makeAiSeat,
   placeHq,
@@ -48,6 +49,7 @@ import {
   TOOL_IRON,
   VIKING,
   WOMAN,
+  WOOD,
 } from './support.js';
 
 // The garrison sizing out of the true bachelor surplus, the weapon mix it publishes, and the
@@ -490,6 +492,62 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setCraftGoods'),
     ).toEqual([]);
+  });
+
+  it('keeps a lone joiner on iron tools and gives the second the furniture as well', () => {
+    // The first seat's list is what a lone man works: furniture waits for the joinery's second hand.
+    const base = aiContent();
+    const FURNITURE = 13;
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: FURNITURE, id: 'furniture', weight: 1 }],
+      buildings: base.buildings.map((b) =>
+        b.typeId === JOINERY_TYPE
+          ? {
+              ...b,
+              recipes: [
+                ...b.recipes,
+                {
+                  inputs: [{ goodType: WOOD, amount: 1 }],
+                  outputs: [{ goodType: FURNITURE, amount: 1 }],
+                  ticks: 180,
+                },
+              ],
+            }
+          : b,
+      ),
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: JOINERY_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 2, BUILDER);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content };
+    const joinery = entityOfBuilding(sim, JOINERY_TYPE);
+    const [first, second] = [...sim.world.query(Settler)]
+      .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
+      .sort((a, b) => a - b);
+    if (first === undefined || second === undefined) throw new Error('setup: too few men');
+
+    sim.enqueueSetup({ kind: 'assignWorker', entity: first, building: joinery, jobPriority: [JOINER] });
+    sim.step();
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
+      { kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] },
+    ]);
+
+    sim.enqueueSetup({ kind: 'assignWorker', entity: second, building: joinery, jobPriority: [JOINER] });
+    sim.step();
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
+      { kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] },
+      { kind: 'setCraftGoods', entity: second, goods: [TOOL_IRON, FURNITURE] },
+    ]);
   });
 
   it('selects stone blocks and ornaments for a mason after upgrading the workshop', () => {

@@ -19,10 +19,13 @@ import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,
+  clearingCollectors,
+  GENERIC_COLLECTOR_TARGET,
   topUpCollectors,
   wantedCollectorGoods,
 } from './collectors/index.js';
 import { tuneCraftSelections } from './craft.js';
+import { allocateFishers, fishingPlan } from './fisher.js';
 import type { TakenFlagNodes } from './flag-spots.js';
 import { trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
@@ -30,7 +33,11 @@ import { builderJobOf, classifyWorkforce, isAllocatableMan, SpareForce } from '.
 import { reserveBuilders, staffBuildings } from './staffing.js';
 import { buildStaffingTally } from './tally.js';
 
-export { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } from './collectors/index.js';
+export {
+  CIVILIANS_PER_CLEARING_COLLECTOR,
+  COLLECTOR_TARGET_BY_GOOD_ID,
+  DEFAULT_COLLECTOR_TARGET,
+} from './collectors/index.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { OPENING_HUNT_UNTIL_BUILDING_ID } from './hunter.js';
@@ -54,20 +61,35 @@ function runWorkforce(
   if (base === null) return rebuildCrew(world, ctx, player, builderJob);
   const statuses = entryStatuses(world, ctx, player, order);
   const wanted = wantedCollectorGoods(ctx, order, statuses);
-  const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, wanted);
+  const clearing = clearingCollectors(world, ctx, player);
+  const genericTarget = GENERIC_COLLECTOR_TARGET + clearing;
+  const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(
+    world,
+    ctx,
+    player,
+    wanted,
+    genericTarget,
+  );
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
+  const fishing = fishingPlan(world, ctx, player);
+  const generic = (): PlayerCommand[] =>
+    allocateGenericCollectors(world, ctx, base, genericCollectors, force, taken, builderJob, genericTarget);
   return [
     ...allocateCollectors(world, ctx, base, wanted, collectorsByGood, force, taken, builderJob),
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
+    ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob), // construction never starves
+    // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
+    ...(clearing > 0 ? generic() : []),
     ...staffBuildings(world, ctx, player, force, tally, 'target'),
     ...topUpCollectors(world, ctx, base, wanted, collectorsByGood, force, taken),
+    ...allocateFishers(world, ctx, fishing, force, builderJob, 'topUp'),
     ...staffBuildings(world, ctx, player, force, tally, 'surplus'),
-    ...allocateGenericCollectors(world, ctx, base, genericCollectors, force, taken, builderJob),
+    ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force),
     ...tuneCraftSelections(world, ctx, player),
   ];

@@ -1,11 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
+import { AiPlayer, aiPlayerEntity, Settler, StalledPlacement } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
+import { isFighterJob } from '../../../readviews/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
+import { ownedSettlers } from '../../seat-roster.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
  *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
@@ -24,6 +27,29 @@ export const DEFAULT_COLLECTOR_TARGET = 1;
 /** How many collect-anything gatherers (a flag with no good filter) the seat keeps, at the lowest
  *  hiring priority (authored). */
 export const GENERIC_COLLECTOR_TARGET = 2;
+
+/** While a placement finds no spot, one extra collect-anything gatherer per this many civilians clears
+ *  ground near the base, at least one and at most {@link MAX_CLEARING_COLLECTORS} (authored). */
+export const CIVILIANS_PER_CLEARING_COLLECTOR = 5;
+export const MAX_CLEARING_COLLECTORS = 10;
+
+/** The extra gatherers a stalled placement calls for, or 0 while the build order places freely or is
+ *  switched off. The
+ *  count follows the civilians each decision, so it grows with the settlement while the stall lasts. */
+export function clearingCollectors(world: World, ctx: SystemContext, player: number): number {
+  const carrier = aiPlayerEntity(world, player);
+  if (carrier === null || !world.has(carrier, StalledPlacement)) return 0;
+  // Only the build order clears the record, so a seat whose script switched it off keeps a stale one.
+  if (!(world.tryGet(carrier, AiPlayer)?.modules.houseBuild ?? false)) return 0;
+  let civilians = 0;
+  for (const e of ownedSettlers(world, player)) {
+    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) civilians++;
+  }
+  return Math.min(
+    MAX_CLEARING_COLLECTORS,
+    Math.max(1, Math.floor(civilians / CIVILIANS_PER_CLEARING_COLLECTOR)),
+  );
+}
 
 /** A wanted collector good with its resolved gatherer trade, harvest atomic, and staffing target. */
 export interface WantedGood {

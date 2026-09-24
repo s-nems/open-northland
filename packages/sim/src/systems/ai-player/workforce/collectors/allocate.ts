@@ -18,7 +18,6 @@ import type { SpareForce } from '../pool.js';
 import { flagRelocateDue, upkeepHolders } from './upkeep.js';
 import {
   COLLECTED_GOOD_IDS,
-  GENERIC_COLLECTOR_TARGET,
   genericCollectorJob,
   meetsNeed,
   needsVeteran,
@@ -157,10 +156,10 @@ export function topUpCollectors(
 }
 
 /**
- * Generic gatherers: up to {@link GENERIC_COLLECTOR_TARGET} collect-anything posts, a flag with no good
- * filter, so the holder picks up whatever its trade may harvest inside the circle. Hired at the lowest
- * priority beside the collected-good resource nearest the base, retired to builder when nothing its
- * trade harvests remains in the circle, and never relocated (authored).
+ * Generic gatherers: up to `target` collect-anything posts, a flag with no good filter, so the holder
+ * picks up whatever its trade may harvest inside the circle. Hired beside the collected-good resource
+ * nearest the base, so extra posts clear the ground a stalled placement needs, retired to builder when
+ * nothing its trade harvests remains in the circle, and never relocated (authored).
  */
 export function allocateGenericCollectors(
   world: World,
@@ -170,6 +169,7 @@ export function allocateGenericCollectors(
   force: SpareForce,
   taken: TakenFlagNodes,
   builderJob: number | null,
+  target: number,
 ): PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
@@ -186,7 +186,7 @@ export function allocateGenericCollectors(
   const job = genericCollectorJob(ctx);
   const baseNode = anchorNodeOf(world, base);
   if (job === null || baseNode === null) return commands;
-  for (let hired = genericCollectors.length; hired < GENERIC_COLLECTOR_TARGET; hired++) {
+  for (let hired = genericCollectors.length; hired < target; hired++) {
     const resource = nearestCollectedResource(world, ctx, baseNode);
     if (resource === null) break; // no collected good stands anywhere - no generic post
     const spot = flagSpotNear(world, ctx, terrain, resource, taken);

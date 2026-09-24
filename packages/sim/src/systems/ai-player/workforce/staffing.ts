@@ -49,6 +49,8 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
   work_bakery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   work_joinery_01: { operatorTarget: 2 },
+  // The second potter only turns crockery (CRAFT_RESTRICTIONS_BY_BUILDING_ID), so he waits for surplus.
+  work_pottery_01: { operatorSurplus: 2 },
   work_sewery_01: { operatorTarget: 2 },
   work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
   work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
