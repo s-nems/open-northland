@@ -9,7 +9,7 @@ import {
 } from '../../../components/index.js';
 import { JournaledCaptures } from '../../../ecs/journaled-captures.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext } from '../../context.js';
 import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
 
 /** One store's share of the totals: its owner and the units of each good it lends a fetch. */
@@ -39,7 +39,7 @@ export class GrantedStock {
 
   private constructor(
     private readonly world: World,
-    private readonly ctx: SystemContext,
+    readonly content: ContentContext,
   ) {
     this.captures = new JournaledCaptures(
       world,
@@ -49,7 +49,7 @@ export class GrantedStock {
       },
       () => world.canonicalQuery(Stockpile, Position),
       {
-        capture: (e) => contributionOf(world, ctx, e),
+        capture: (e) => contributionOf(world, content, e),
         apply: (_e, c) => foldInto(this.totals, c, 1),
         withdraw: (_e, c) => foldInto(this.totals, c, -1),
         clear: () => this.totals.clear(),
@@ -58,12 +58,14 @@ export class GrantedStock {
   }
 
   /** `world`'s ledger, caught up to its current stock. */
-  static of(world: World, ctx: SystemContext): GrantedStock {
+  static of(world: World, ctx: ContentContext): GrantedStock {
     let ledger = ledgers.get(world);
-    if (ledger === undefined) {
-      ledger = new GrantedStock(world, ctx);
+    if (ledger === undefined || ledger.content.content !== ctx.content) {
+      if (ledger === undefined) {
+        world.registerCacheVerifier('grantedStock', () => ledgers.get(world)?.verify() ?? []);
+      }
+      ledger = new GrantedStock(world, { content: ctx.content });
       ledgers.set(world, ledger);
-      world.registerCacheVerifier('grantedStock', () => ledgers.get(world)?.verify() ?? []);
     } else {
       ledger.captures.catchUp();
     }
@@ -80,7 +82,7 @@ export class GrantedStock {
     this.captures.catchUp();
     const fresh = new Map<number, GoodTotal>();
     for (const e of this.world.canonicalQuery(Stockpile, Position)) {
-      const c = contributionOf(this.world, this.ctx, e);
+      const c = contributionOf(this.world, this.content, e);
       if (c !== null) foldInto(fresh, c, 1);
     }
     const goods = new Set([...fresh.keys(), ...this.totals.keys()]);
@@ -92,7 +94,7 @@ export class GrantedStock {
 
 const ledgers = new WeakMap<World, GrantedStock>();
 
-function contributionOf(world: World, ctx: SystemContext, e: Entity): Contribution | null {
+function contributionOf(world: World, ctx: ContentContext, e: Entity): Contribution | null {
   if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
   const amounts = accessibleStockAmounts(world, e);
   if (amounts === undefined || amounts.size === 0) return null;

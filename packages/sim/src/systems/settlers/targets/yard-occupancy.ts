@@ -44,7 +44,7 @@ class YardOccupancy {
     this.captures = new JournaledCaptures(
       world,
       {
-        // A heap never moves: every Position write outside a re-add walks a settler or a delivery flag.
+        // No in-place Position write moves a heap; a displaced pile is re-created.
         membership: [Stockpile, Position, Building, Vehicle, GroundDrop, DeliveryFlag],
         values: [Stockpile],
       },
