@@ -1,10 +1,17 @@
-import type { TextureSource } from 'pixi.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { type AtlasFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
 import { DEFAULT_FACING, movingFrameRef } from '../../data/sprites/settler.js';
 import type { SettlerCharacter, SettlerCharacterSet, SpriteSheet } from '../sprite-sheet.js';
 import { layerScale, resolveFromLayer, shadowLayerFor } from './layered-layers.js';
-import type { ResolvedLayer } from './resolved-layer.js';
+import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
+
+/**
+ * The derived variants of a memoized body or head record (see {@link resolveFromLayer}), keyed by that
+ * record: it pins source, frame and scale, so only a head cast's row count can differ.
+ */
+const castRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
+const headCastRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
+const headRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 
 /**
  * One frame again, for the binder to project onto the ground under the character. An indexed sheet
@@ -12,16 +19,30 @@ import type { ResolvedLayer } from './resolved-layer.js';
  * only the coverage reaches a silhouette, so both cast from the frame as it is. `rows` keeps that many
  * of the frame's top rows, which is how the head overlay casts beside the body instead of over it.
  */
-function castLayerFor(source: TextureSource, frame: AtlasFrame, scale: number, rows?: number): ResolvedLayer {
-  return {
-    source,
-    frame,
-    scale,
+function castLayerFor(of: ResolvedLayer, rows?: number): ResolvedLayer {
+  const records = rows === undefined ? castRecords : headCastRecords;
+  const cached = records.get(of);
+  if (cached !== undefined && cached.castRows === rows) return cached;
+  const record: ResolvedLayer = {
+    source: of.source,
+    frame: of.frame,
+    scale: of.scale,
     boundsExempt: true,
     shadow: true,
     cast: true,
     ...(rows !== undefined ? { castRows: rows } : {}),
   };
+  records.set(of, record);
+  return record;
+}
+
+function headLayerFor(of: ResolvedLayer): ResolvedLayer {
+  let record = headRecords.get(of);
+  if (record === undefined) {
+    record = { ...of, head: true };
+    headRecords.set(of, record);
+  }
+  return record;
 }
 
 /**
@@ -41,20 +62,22 @@ function headCastRows(bodyFrame: AtlasFrame, headFrame: AtlasFrame): number {
 }
 
 /**
- * Appearance variants use stable entity ids; optional head layers may use a separate motion binding. A
- * wildlife species is a character with no head overlay, so it takes the same path.
+ * Append a character's layers; false appends nothing and means the placeholder. Appearance variants use
+ * stable entity ids; optional head layers may use a separate motion binding. A wildlife species is a
+ * character with no head overlay, so it takes the same path.
  */
-export function resolveCharacterLayers(
+export function pushCharacterLayers(
+  out: LayerBuffer,
   sheet: SpriteSheet,
   characters: SettlerCharacterSet,
   item: DrawItem,
   tick: number,
   gaitClock: number,
-): ResolvedLayer[] | null {
+): boolean {
   // No look at all is a listed-but-unbound wildlife tribe, which draws nothing. A look whose resolved bob
   // has no frame is a real gap and falls to the placeholder.
   const char = characterForItem(characters, item);
-  if (char === undefined) return [];
+  if (char === undefined) return true;
   const scale = characterScale(sheet, char);
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
   const body = resolveFromLayer(char.body, bob, scale);
@@ -63,19 +86,18 @@ export function resolveCharacterLayers(
   const headBob =
     char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
   const head = headLayer === undefined ? null : resolveFromLayer(headLayer, headBob, scale);
-  const layers: ResolvedLayer[] = [];
   if (body !== null) {
-    layers.push(castLayerFor(body.source, body.frame, scale));
+    out.push(castLayerFor(body));
     if (head !== null) {
       const rows = headCastRows(body.frame, head.frame);
-      if (rows > 0) layers.push(castLayerFor(head.source, head.frame, scale, rows));
+      if (rows > 0) out.push(castLayerFor(head, rows));
     }
     const shadow = shadowLayerFor(char.body, bob, scale);
-    if (shadow !== null) layers.push(shadow);
-    layers.push(body);
+    if (shadow !== null) out.push(shadow);
+    out.push(body);
   }
-  if (head !== null) layers.push({ ...head, head: true });
-  return layers.length > 0 ? layers : null;
+  if (head !== null) out.push(headLayerFor(head));
+  return body !== null || head !== null;
 }
 
 function characterScale(sheet: Pick<SpriteSheet, 'kindScales'>, char: SettlerCharacter): number {

@@ -5,8 +5,8 @@ import { type AtomicPoseTrack, atomicPose, interpolateAtomicPose } from './atomi
 import { characterGaitRate, characterInterpolatesMotion } from './character-layers.js';
 import { drawAlphaForKind, type MotionTrack, snapDistanceForKind, trackMotion } from './motion.js';
 import { easeReveal, motionClocks, revealedItem, walkPose } from './presentation.js';
-import { resolveLayers } from './resolve-layers.js';
-import type { ResolvedLayer } from './resolved-layer.js';
+import { resolveLayersInto } from './resolve-layers.js';
+import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
 
 /**
  * What one drawn entity carries between frames to present as the map does: its inter-tick motion, the
@@ -23,12 +23,15 @@ export interface PresentationTrack {
    *  sim's reported progress; `undefined` when nothing is in progress. Declared present rather than
    *  optional so the entity's shape never changes when a reveal first appears. */
   reveal: number | undefined;
+  /** Holds the list {@link presentItem} returns, refilled by its next call on this track. */
+  readonly layers: LayerBuffer;
 }
 
 export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
   return {
     kind,
     reveal: undefined,
+    layers: new LayerBuffer(),
     atomicPose: { tick: -1, item: undefined },
     motion: {
       tick: -1,
@@ -51,9 +54,9 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
 }
 
 /**
- * Advance `track` to this frame and resolve the layers the item draws: the atomic's cadence, the gait
- * clock and the walk-pose gaps all come from the track, so a figure presented from it anywhere moves as
- * on the map. The drawn anchor lands in `track.motion.drawX/drawY`.
+ * Advance `track` to this frame and resolve the layers the item draws into `track.layers`: the atomic's
+ * cadence, the gait clock and the walk-pose gaps all come from the track, so a figure presented from it
+ * anywhere moves as on the map. The drawn anchor lands in `track.motion.drawX/drawY`.
  */
 export function presentItem(
   track: PresentationTrack,
@@ -62,7 +65,7 @@ export function presentItem(
   frameAlpha: number,
   sheet: SpriteSheet | undefined,
   environmentMotion = false,
-): ResolvedLayer[] | null {
+): readonly ResolvedLayer[] | null {
   if (track.motion.tick === -1) track.atomicPose.item = undefined;
   const atomic = atomicPose(item, tick, track.atomicPose);
   // An original walker keeps its tick anchor under the motion setting too: its clip plays one authored
@@ -89,7 +92,8 @@ export function presentItem(
   // same eased reveal as a from-scratch one.
   track.reveal = easeReveal(track.reveal, item.builtPct ?? item.upgradePct);
   const clocks = motionClocks(item, tick, frameAlpha, track.motion, smooth, environmentMotion);
-  return resolveLayers(
+  return resolveLayersInto(
+    track.layers,
     sheet,
     revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal),
     clocks.animation,

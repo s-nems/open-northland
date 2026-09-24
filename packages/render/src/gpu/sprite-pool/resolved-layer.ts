@@ -46,3 +46,35 @@ export interface ResolvedLayer {
   /** A settler's head overlay, which the paletted path reads through the LUT's head row. */
   readonly head?: true;
 }
+
+const NO_LAYERS: readonly ResolvedLayer[] = [];
+
+/**
+ * A resolve's output list, refilled every frame without reallocating: emptying a JS array by
+ * `length = 0` releases its backing store, so this overwrites the last resolve's entries by index and
+ * trims only the tail.
+ */
+export class LayerBuffer {
+  private readonly layers: ResolvedLayer[] = [];
+  private count = 0;
+
+  get length(): number {
+    return this.count;
+  }
+
+  reset(): void {
+    this.count = 0;
+  }
+
+  push(layer: ResolvedLayer): void {
+    this.layers[this.count++] = layer;
+  }
+
+  /** The layers pushed since {@link reset}, valid until the next one. An empty resolve returns a shared
+   *  list so the buffer keeps its storage. */
+  finish(): readonly ResolvedLayer[] {
+    if (this.count === 0) return NO_LAYERS;
+    this.layers.length = this.count;
+    return this.layers;
+  }
+}

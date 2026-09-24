@@ -10,73 +10,85 @@ import {
   resolveUpgradeDraws,
 } from '../../data/sprites/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
-import { hasLoadedFamily, layeredLayerFor, layeredLayersWithShadow } from './layered-layers.js';
-import type { ResolvedLayer } from './resolved-layer.js';
+import { hasLoadedFamily, layeredLayerFor, pushLayeredWithShadow } from './layered-layers.js';
+import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 
-/** Either a stack the branch resolved on its own, or a fall-through carrying the default-layer `bobId`
- *  plus the extra layers the shared body block appends above the body. */
-type BuildingBranch =
-  | { readonly done: true; readonly layers: ResolvedLayer[] | null }
-  | { readonly done: false; readonly bobId: number; readonly extras: readonly ResolvedLayer[] };
+/** A state overlay's bounds-exempt twin of its memoized record (see {@link layeredLayerFor}). */
+const overlayRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 
 /**
- * Resolve a building's atlas layers. An under-construction building returns its active construction-stage
- * stack in stacking order; a finished building returns its named-family body plus extras, or falls
- * through with the default building-layer `bobId` for the shared body block to draw.
+ * Append a building's atlas layers: an under-construction building's active construction-stage stack in
+ * stacking order, or a finished building's named-family body plus {@link pushBuildingExtras}. True when
+ * drawn, false for the placeholder, or the default building-layer bob id with nothing appended, for the
+ * shared body block to draw before it appends the extras.
  */
-export function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number): BuildingBranch {
+export function pushBuildingLayers(
+  out: LayerBuffer,
+  sheet: SpriteSheet,
+  item: DrawItem,
+  tick: number,
+): boolean | number {
   const stack = resolveConstructionDraws(sheet.bindings.building, item);
-  if (stack !== null && typeof sheet.bindings.building !== 'number') {
-    const layers = revealingStageLayers(sheet, stack, item.builtPct);
-    if (layers.length > 0) return { done: true, layers };
-  }
+  if (stack !== null && pushRevealingStages(out, sheet, stack, item.builtPct)) return true;
   const draw = resolveBuildingDraw(sheet.bindings.building, item);
-  const extras: ResolvedLayer[] = [];
-  const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
-  if (overlayDraw !== null) {
-    const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
-    if (resolved !== null) extras.push({ ...resolved, boundsExempt: true });
-  }
-  // An upgrading building keeps its old-tier body and reveals the next tier's stack above it.
-  const upgradeStack = resolveUpgradeDraws(sheet.bindings.building, item);
-  if (upgradeStack !== null && typeof sheet.bindings.building !== 'number') {
-    extras.push(...revealingStageLayers(sheet, upgradeStack, item.upgradePct));
-  }
   // An unloaded family falls through to the default building layer - deliberately unlike the
   // construction path, which drops the stage instead.
-  if (hasLoadedFamily(sheet, draw)) {
-    const layers = layeredLayersWithShadow(sheet, 'building', draw);
-    if (layers === null) return { done: true, layers: null }; // a broken body never draws floating extras
-    layers.push(...extras);
-    return { done: true, layers };
-  }
-  return { done: false, bobId: draw.bob, extras };
+  if (!hasLoadedFamily(sheet, draw)) return draw.bob;
+  // A broken body never draws floating extras.
+  if (!pushLayeredWithShadow(out, sheet, 'building', draw)) return false;
+  pushBuildingExtras(out, sheet, item, tick);
+  return true;
 }
 
 /**
- * A stage stack's drawable layers at a rise progress (`builtPct` or `upgradePct`): a stage with a time
- * sheet reveals per-pixel in its own window, one without crop-rises, and a finished-building sprite is
- * dropped from the crop rise rather than creeping up as a half-built cottage. An upgrade stack, whose
- * bobs are the next tier's finished body, therefore shows nothing until a time-mask atlas exists.
+ * The layers above a finished building's body: its animated state overlay (the mill's rotor) and, for an
+ * upgrading building that keeps its old-tier body, the next tier's revealing stack.
  */
-function revealingStageLayers(
+export function pushBuildingExtras(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): void {
+  const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
+  if (overlayDraw !== null) {
+    const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
+    if (resolved !== null) out.push(boundsExemptLayerFor(resolved));
+  }
+  const upgradeStack = resolveUpgradeDraws(sheet.bindings.building, item);
+  if (upgradeStack !== null) pushRevealingStages(out, sheet, upgradeStack, item.upgradePct);
+}
+
+function boundsExemptLayerFor(of: ResolvedLayer): ResolvedLayer {
+  let record = overlayRecords.get(of);
+  if (record === undefined) {
+    record = { ...of, boundsExempt: true };
+    overlayRecords.set(of, record);
+  }
+  return record;
+}
+
+/**
+ * Append a stage stack's drawable layers at a rise progress (`builtPct` or `upgradePct`), true when any
+ * drew: a stage with a time sheet reveals per-pixel in its own window, one without crop-rises, and a
+ * finished-building sprite is dropped from the crop rise rather than creeping up as a half-built
+ * cottage. An upgrade stack, whose bobs are the next tier's finished body, therefore shows nothing until
+ * a time-mask atlas exists.
+ */
+function pushRevealingStages(
+  out: LayerBuffer,
   sheet: SpriteSheet,
   stack: readonly ConstructionDraw[],
   progressPct: number | undefined,
-): ResolvedLayer[] {
+): boolean {
   const binding = sheet.bindings.building;
-  if (typeof binding === 'number') return [];
+  if (typeof binding === 'number') return false;
   const finishedKeys = finishedBuildingBobKeys(binding);
   const reveal = clamp01((progressPct ?? 0) / 100);
-  const layers: ResolvedLayer[] = [];
+  const before = out.length;
   for (const draw of stack) {
     const resolved = layeredLayerFor(sheet, 'building', draw);
     if (resolved === null) continue;
     if (resolved.times !== undefined) {
-      layers.push({ ...resolved, reveal, revealWindow: [draw.fromPct, draw.toPct] });
+      out.push({ ...resolved, reveal, revealWindow: [draw.fromPct, draw.toPct] });
     } else if (!finishedKeys.has(bobKey(draw))) {
-      layers.push({ ...resolved, reveal });
+      out.push({ ...resolved, reveal });
     }
   }
-  return layers;
+  return out.length > before;
 }

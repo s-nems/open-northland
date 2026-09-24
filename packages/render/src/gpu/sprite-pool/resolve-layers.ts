@@ -9,20 +9,17 @@ import {
 } from '../../data/sprites/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { vegetationShear } from '../vegetation-sway.js';
-import { resolveBuildingLayers } from './building-layers.js';
-import { resolveCharacterLayers } from './character-layers.js';
+import { pushBuildingExtras, pushBuildingLayers } from './building-layers.js';
+import { pushCharacterLayers } from './character-layers.js';
 import {
   hasLoadedFamily,
   layeredLayerFor,
-  layeredLayersWithShadow,
   layerScale,
+  pushBodyWithShadow,
+  pushLayeredWithShadow,
   resolveFromLayer,
-  shadowLayerFor,
 } from './layered-layers.js';
-import type { ResolvedLayer } from './resolved-layer.js';
-
-/** Shared empty list so a non-building draw allocates nothing. */
-const NO_EXTRAS: readonly ResolvedLayer[] = [];
+import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
 
 /**
  * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder. Returns layer
@@ -35,36 +32,60 @@ export function resolveLayers(
   // The motion-scaled walk-cycle clock; defaults to the free tick for callers with no motion track.
   gaitClock: number = tick,
   vegetationClock: number = tick,
-): ResolvedLayer[] | null {
-  if (sheet === undefined) return null;
+): readonly ResolvedLayer[] | null {
+  return resolveLayersInto(new LayerBuffer(), sheet, item, tick, gaitClock, vegetationClock);
+}
+
+/**
+ * {@link resolveLayers} into a caller-owned buffer, whose previous list it overwrites. The pool resolves
+ * every drawn entity every frame, so it refills one buffer per entity instead of allocating a list.
+ */
+export function resolveLayersInto(
+  out: LayerBuffer,
+  sheet: SpriteSheet | undefined,
+  item: DrawItem,
+  tick: number,
+  gaitClock: number,
+  vegetationClock: number,
+): readonly ResolvedLayer[] | null {
+  out.reset();
+  return pushLayers(out, sheet, item, tick, gaitClock, vegetationClock) ? out.finish() : null;
+}
+
+/** Append an entity's layers to an empty buffer; false means the placeholder. */
+function pushLayers(
+  out: LayerBuffer,
+  sheet: SpriteSheet | undefined,
+  item: DrawItem,
+  tick: number,
+  gaitClock: number,
+  vegetationClock: number,
+): boolean {
+  if (sheet === undefined) return false;
 
   let bobId: number | null;
-  // Layers appended above a building's body draw: a finished building's animated state overlay (the
-  // mill's rotor) and/or an upgrading building's revealing next-tier stack.
-  let buildingExtras: readonly ResolvedLayer[] = NO_EXTRAS;
   switch (item.kind) {
     // A tile binds by landscape typeId; a projectile has no decoded arrow bob and always draws the
     // pool's oriented-arrow marker instead (named gap).
     case 'tile':
     case 'projectile':
-      return null;
+      return false;
     case 'settler':
       // Per-job settler character (the `[jobbasegraphics]` join), resolved in that body's own frame-id
       // space. A sheet with no characters falls through to the sheet-global settler path.
       if (sheet.characters !== undefined)
-        return resolveCharacterLayers(sheet, sheet.characters, item, tick, gaitClock);
+        return pushCharacterLayers(out, sheet, sheet.characters, item, tick, gaitClock);
       bobId = resolveSpriteBobId(item, sheet.bindings, tick, gaitClock);
       break;
     case 'fish': {
       const binding = sheet.bindings.fish;
-      if (binding === undefined || sheet.families?.[binding.layer] === undefined) return null;
-      return resolveFishSchool(sheet, item, tick);
+      if (binding === undefined || sheet.families?.[binding.layer] === undefined) return false;
+      return pushFishSchool(out, sheet, item, tick);
     }
     case 'building': {
-      const branch = resolveBuildingLayers(sheet, item, tick);
-      if (branch.done) return branch.layers;
-      bobId = branch.bobId;
-      buildingExtras = branch.extras;
+      const branch = pushBuildingLayers(out, sheet, item, tick);
+      if (typeof branch === 'boolean') return branch;
+      bobId = branch;
       break;
     }
     case 'resource': {
@@ -72,71 +93,71 @@ export function resolveLayers(
       // default yew) falls through to the `kindLayers.resource` tree layer below. A null draw is a
       // data-pinned invisible level (the original's freshly-sown field): draw nothing, not the placeholder.
       const draw = resolveResourceDraw(sheet.bindings.resource, item);
-      if (draw === null) return [];
+      if (draw === null) return true;
       if (hasLoadedFamily(sheet, draw)) {
-        const layers = layeredLayersWithShadow(sheet, 'resource', draw);
         const sway = draw.layer === undefined ? undefined : sheet.families?.[draw.layer]?.sway;
-        if (sway === undefined || layers === null) return layers;
-        const shear = vegetationShear(
-          item.ghost === true || item.frozen === true ? 0 : vegetationClock,
-          item.x,
-          item.y,
-          sway,
-        );
-        return layers.map((layer) => (layer.shadow ? layer : { ...layer, shear }));
+        const shear =
+          sway === undefined
+            ? undefined
+            : vegetationShear(
+                item.ghost === true || item.frozen === true ? 0 : vegetationClock,
+                item.x,
+                item.y,
+                sway,
+              );
+        return pushLayeredWithShadow(out, sheet, 'resource', draw, shear);
       }
       bobId = draw.bob;
       break;
     }
     case 'stockpile':
-      return resolveStockpileLayers(sheet, item, tick);
+      return pushStockpileLayers(out, sheet, item, tick);
     case 'signpost': {
       // Every signpost ref is layer-qualified, so a missing guidepost family draws the placeholder
       // rather than falling through to the shared body atlas (a human frame drawn as a post).
       const draw = resolveSignpostDraw(sheet.bindings.signpost, item);
-      if (draw === null || !hasLoadedFamily(sheet, draw)) return null;
+      if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
       const resolved = layeredLayerFor(sheet, 'signpost', draw);
-      return resolved === null ? null : [resolved];
+      if (resolved === null) return false;
+      out.push(resolved);
+      return true;
     }
     case 'grounddrop':
     case 'stump':
     case 'berrybush':
     case 'chest':
-      return resolveDecorLayers(sheet, item, item.kind);
+      return pushDecorLayers(out, sheet, item, item.kind);
     case 'craftfx': {
       // Every effect ref is layer-qualified, so an unloaded `ls_smoke` family draws the placeholder rather
       // than a human frame from the shared body atlas.
       const draw = resolveCraftFxDraw(sheet.bindings.craftfx, item, tick);
-      if (draw === null || !hasLoadedFamily(sheet, draw)) return null;
-      return layeredLayersWithShadow(sheet, 'craftfx', draw);
+      if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
+      return pushLayeredWithShadow(out, sheet, 'craftfx', draw);
     }
     default: {
       const _exhaustive: never = item.kind;
       void _exhaustive;
-      return null;
+      return false;
     }
   }
-  if (bobId === null) return null;
+  if (bobId === null) return false;
 
   const scale = layerScale(sheet, item.kind, undefined);
   const kindLayer = sheet.kindLayers?.[item.kind];
   if (kindLayer !== undefined) {
-    const body = resolveFromLayer(kindLayer, bobId, scale);
-    if (body === null) return null;
-    const shadow = shadowLayerFor(kindLayer, bobId, scale);
-    const layers: ResolvedLayer[] = shadow === null ? [] : [shadow];
-    layers.push(body);
-    layers.push(...buildingExtras);
-    return layers;
+    if (!pushBodyWithShadow(out, kindLayer, bobId, scale)) return false;
+    if (item.kind === 'building') pushBuildingExtras(out, sheet, item, tick);
+    return true;
   }
 
   // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.
-  const layers: ResolvedLayer[] = [];
-  for (const layer of [{ source: sheet.source, atlas: sheet.atlas }, ...(sheet.overlays ?? [])]) {
+  const body = resolveFromLayer(sheet, bobId, scale);
+  if (body !== null) out.push(body);
+  for (const layer of sheet.overlays ?? []) {
     const resolved = resolveFromLayer(layer, bobId, scale);
-    if (resolved !== null) layers.push(resolved);
+    if (resolved !== null) out.push(resolved);
   }
-  return layers.length > 0 ? layers : null;
+  return out.length > 0;
 }
 
 /**
@@ -145,11 +166,10 @@ export function resolveLayers(
  * its directional bob from velocity. `fishPoint` deliberately approximates those paths with our own
  * deterministic curves, keeping presentation motion out of the simulation.
  */
-function resolveFishSchool(sheet: SpriteSheet, item: DrawItem, tick: number): ResolvedLayer[] | null {
+function pushFishSchool(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
   const binding = sheet.bindings.fish;
-  if (binding === undefined || binding.bobs.length === 0) return null;
+  if (binding === undefined || binding.bobs.length === 0) return false;
   const count = Math.max(0, Math.min(30, Math.trunc(item.swarmCount ?? 0)));
-  const layers: ResolvedLayer[] = [];
   const t = tick / Math.max(1, binding.ticksPerFrame);
   for (let fish = 0; fish < count; fish++) {
     const now = fishPoint(item.ref, fish, t);
@@ -158,9 +178,9 @@ function resolveFishSchool(sheet: SpriteSheet, item: DrawItem, tick: number): Re
     const bob = binding.bobs[heading];
     if (bob === undefined) continue;
     const layer = layeredLayerFor(sheet, 'fish', { layer: binding.layer, bob });
-    if (layer !== null) layers.push({ ...layer, dx: now.x, dy: now.y });
+    if (layer !== null) out.push({ ...layer, dx: now.x, dy: now.y });
   }
-  return layers;
+  return true;
 }
 
 /** Map screen velocity to the original fish sheet's clockwise-descending directional order. */
@@ -186,29 +206,30 @@ function fishPoint(ref: number, fish: number, t: number): { x: number; y: number
  * loaded named family (the `ls_goods` pile / `ls_temp` flag atlases); anything else draws the
  * placeholder heap. Its cast shadow comes from the family's `_s` twin like every other kind.
  */
-function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem, tick: number): ResolvedLayer[] | null {
+function pushStockpileLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
   const binding = sheet.bindings.stockpile;
-  if (binding === undefined) return null;
+  if (binding === undefined) return false;
   const draw = resolveStockpileDraw(binding, item, tick);
-  if (draw.layer === undefined) return null;
-  return layeredLayersWithShadow(sheet, 'stockpile', draw);
+  if (draw.layer === undefined) return false;
+  return pushLayeredWithShadow(out, sheet, 'stockpile', draw);
 }
 
 /**
  * A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG), a
- * wild berry bush (the `ls_trees` bush frames) or a chest (`ls_chest`). Like {@link resolveStockpileLayers}
+ * wild berry bush (the `ls_trees` bush frames) or a chest (`ls_chest`). Like {@link pushStockpileLayers}
  * these have no shared `kindLayers` layer, but each resolves through the per-good resource resolver, whose
  * null draw is a data-pinned invisible level: draw nothing, not the placeholder.
  */
-function resolveDecorLayers(
+function pushDecorLayers(
+  out: LayerBuffer,
   sheet: SpriteSheet,
   item: DrawItem,
   kind: keyof typeof DECOR_BINDING_KEY,
-): ResolvedLayer[] | null {
+): boolean {
   const binding = sheet.bindings[DECOR_BINDING_KEY[kind]];
-  if (binding === undefined) return null;
+  if (binding === undefined) return false;
   const draw = resolveResourceDraw(binding, item);
-  if (draw === null) return [];
-  if (draw.layer === undefined) return null;
-  return layeredLayersWithShadow(sheet, kind, draw);
+  if (draw === null) return true;
+  if (draw.layer === undefined) return false;
+  return pushLayeredWithShadow(out, sheet, kind, draw);
 }

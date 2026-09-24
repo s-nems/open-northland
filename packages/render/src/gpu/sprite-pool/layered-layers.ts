@@ -1,23 +1,54 @@
-import { type BuildingDraw, lookupFrame, type SpriteKind } from '../../data/sprites/index.js';
+import {
+  type AtlasFrame,
+  type BuildingDraw,
+  lookupFrame,
+  type SpriteKind,
+} from '../../data/sprites/index.js';
 import type { SpriteLayer, SpriteSheet } from '../sprite-sheet.js';
-import type { ResolvedLayer } from './resolved-layer.js';
+import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 
 /**
- * {@link layeredLayerFor} plus the body's cast shadow, ordered `[shadow, body]`. The construction stack
- * calls {@link layeredLayerFor} directly instead: its stage shadows draw from the stack's own
- * `shadowBobId` lane, not the body twin.
+ * Resolved layers are immutable, and the pool resolves every drawn entity every frame, so each record is
+ * built once per atlas frame and reused while the inputs that shaped it still match. Weak keys let a
+ * dropped sheet take its records with it.
  */
-export function layeredLayersWithShadow(
+const bodyRecords = new WeakMap<AtlasFrame, ResolvedLayer>();
+const shadowRecords = new WeakMap<AtlasFrame, ResolvedLayer>();
+
+/**
+ * Append {@link layeredLayerFor}'s layer plus the body's cast shadow, ordered `[shadow, body]`; false
+ * appends nothing and means the placeholder. The construction stack calls {@link layeredLayerFor}
+ * directly instead: its stage shadows draw from the stack's own `shadowBobId` lane, not the body twin.
+ */
+export function pushLayeredWithShadow(
+  out: LayerBuffer,
   sheet: SpriteSheet,
   kind: SpriteKind,
   draw: BuildingDraw,
-): ResolvedLayer[] | null {
+  shear?: number,
+): boolean {
   const layer = sourceLayerFor(sheet, kind, draw);
-  if (layer === undefined) return null;
-  const body = resolveFromLayer(layer, draw.bob, layeredScale(sheet, kind, draw));
-  if (body === null) return null;
-  const shadow = shadowLayerFor(layer, draw.bob, body.scale);
-  return shadow === null ? [body] : [shadow, body];
+  if (layer === undefined) return false;
+  return pushBodyWithShadow(out, layer, draw.bob, layeredScale(sheet, kind, draw), shear);
+}
+
+/**
+ * Append one bob's `[shadow, body]` from a layer; false appends nothing: the body has no frame there. A
+ * `shear` sways the body only, since the shadow lies on the ground.
+ */
+export function pushBodyWithShadow(
+  out: LayerBuffer,
+  layer: SpriteLayer,
+  bob: number,
+  scale: number,
+  shear?: number,
+): boolean {
+  const body = resolveFromLayer(layer, bob, scale);
+  if (body === null) return false;
+  const shadow = shadowLayerFor(layer, bob, scale);
+  if (shadow !== null) out.push(shadow);
+  out.push(shear === undefined ? body : { ...body, shear });
+  return true;
 }
 
 /**
@@ -63,10 +94,24 @@ function layeredScale(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw):
 }
 
 /** One bob of one atlas layer, or null for a missing or empty frame. */
-export function resolveFromLayer(layer: SpriteLayer, bob: number, scale: number): ResolvedLayer | null {
+export function resolveFromLayer(
+  layer: Pick<SpriteLayer, 'source' | 'atlas' | 'times'>,
+  bob: number,
+  scale: number,
+): ResolvedLayer | null {
   const frame = lookupFrame(layer.atlas, bob);
   if (frame === null) return null;
-  return {
+  const cached = bodyRecords.get(frame);
+  if (
+    cached !== undefined &&
+    cached.source === layer.source &&
+    cached.scale === scale &&
+    cached.atlasW === layer.atlas.width &&
+    cached.atlasH === layer.atlas.height &&
+    cached.times === layer.times
+  )
+    return cached;
+  const record: ResolvedLayer = {
     source: layer.source,
     frame,
     scale,
@@ -74,6 +119,8 @@ export function resolveFromLayer(layer: SpriteLayer, bob: number, scale: number)
     atlasH: layer.atlas.height,
     ...(layer.times !== undefined ? { times: layer.times } : {}),
   };
+  bodyRecords.set(frame, record);
+  return record;
 }
 
 /**
@@ -86,5 +133,9 @@ export function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number)
   if (shadow === undefined) return null;
   const frame = lookupFrame(shadow.atlas, bobId);
   if (frame === null) return null;
-  return { source: shadow.source, frame, scale, boundsExempt: true, shadow: true };
+  const cached = shadowRecords.get(frame);
+  if (cached !== undefined && cached.source === shadow.source && cached.scale === scale) return cached;
+  const record: ResolvedLayer = { source: shadow.source, frame, scale, boundsExempt: true, shadow: true };
+  shadowRecords.set(frame, record);
+  return record;
 }

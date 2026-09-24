@@ -73,7 +73,7 @@ export class LayerBinder {
   bind(
     pe: PooledEntity,
     item: DrawItem,
-    layers: ResolvedLayer[] | null,
+    layers: readonly ResolvedLayer[] | null,
     frame: BindFrame,
     frameId: number,
   ): void {

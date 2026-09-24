@@ -40,10 +40,6 @@ plus GPU frame time, following the A/B rules in `docs/DEVELOPMENT.md`.
 - **Flat decor shadow fill** (`gpu/map-objects/decor-shadow-shader.ts`). The blur is 36 texel fetches per
   fragment per frame. Only a handful of chunks are viewport-sized and most flat decor records carry no
   silhouette, so this is likely irrelevant; it needs a named decor-dense map to settle.
-- **Character layer allocation.** This branch adds two to three `ResolvedLayer` records per character per
-  frame (cast body, cast head, authored twin). `docs/tickets/render/resolve-layers-per-frame-allocation.md`
-  measured `resolveLayers` as the client's largest allocation site before those layers existed, so its
-  numbers now understate the problem; fold this into that ticket's measurement rather than repeating it.
 
 ## Verify
 
