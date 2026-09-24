@@ -111,8 +111,10 @@ export function resolveCombatHit(
   pendingReactions: PendingHitReaction[],
   source: 'melee' | 'projectile',
 ): void {
-  const health = world.tryMut(target, Health);
-  if (health === undefined) return; // gone or a non-combatant: the blow struck nothing
+  // A target felled earlier this tick still holds its Health until cleanup reaps it: a blow there lands on a
+  // corpse, which earns nothing and provokes no one, the same as a shot that is never loosed at one.
+  const pool = world.tryGet(target, Health);
+  if (pool === undefined || pool.hitpoints <= 0) return;
   const { damage } = blow;
   const weaponMainType = blow.weaponMainType ?? undefined;
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect
@@ -136,13 +138,9 @@ export function resolveCombatHit(
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
   // spared. Nothing regenerates a human here, so the flag's whole effect is this zero.
   const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
-  // The carcass spawns only on the alive-to-dead transition, so a second blow landing this tick on an
-  // already-felled target never mints a second carcass.
-  const wasAlive = health.hitpoints > 0;
-  // The death-save resets the pool itself, but the blow still counted for XP and anger. A target already
-  // at 0 is never revived.
-  const saved = wasAlive && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
-  if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
+  // The death-save resets the pool itself, but the blow still counted for XP and anger.
+  const saved = pool.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
+  if (!saved && dealt > 0) world.mut(target, Health).hitpoints = Math.max(0, pool.hitpoints - dealt);
   provokeAnger(world, ctx, target);
   provokeHostility(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
@@ -151,12 +149,10 @@ export function resolveCombatHit(
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
-  if (health.hitpoints <= 0) {
-    if (wasAlive) {
-      spawnCarcasses(world, ctx, attacker, target);
-      // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.
-      if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
-    }
+  if (world.get(target, Health).hitpoints <= 0) {
+    spawnCarcasses(world, ctx, attacker, target);
+    // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.
+    if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
   } else {
     collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
   }

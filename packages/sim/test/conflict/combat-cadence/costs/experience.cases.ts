@@ -92,6 +92,23 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     expect(civXp.size).toBe(1); // but no band track for a non-fighter
   });
 
+  it('a blow landing on a man felled earlier the same tick trains nothing and sounds no hit', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 100 });
+    const killer = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const late = fighterAt(sim, 2, 0, VIKING, SOLDIER_SPEAR);
+    const blow = { target, damage: 2090, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SPEAR };
+    startSwing(sim, killer, blow, 4);
+    startSwing(sim, late, blow, 4);
+
+    atomicSystem(sim.world, ctxOf(sim)); // both blows reach their frame this tick; the first one kills
+
+    expect(sim.world.get(killer, Settler).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(late, Settler).experience.size).toBe(0);
+    const hits = sim.events.current().filter((ev) => ev.kind === 'combatHit');
+    expect(hits.map((ev) => ev.kind === 'combatHit' && ev.attacker)).toEqual([killer]);
+  });
+
   it('a wild-animal bite trains nothing - progression is a civilization mechanic', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     // A jobless animal-tribe attacker whose natural weapon carries the real `maintype 1` (bearfist/
