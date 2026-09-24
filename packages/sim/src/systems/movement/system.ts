@@ -5,7 +5,6 @@ import {
   PathFollow,
   PathRoute,
   Position,
-  Velocity,
   type Waypoint,
 } from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
@@ -52,8 +51,8 @@ const DEFAULT_ANIMAL_PACE_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(DEFAULT_A
 export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP_TICKS));
 
 /**
- * Advances entity positions one tick. A {@link PathFollow} takes precedence over any {@link Velocity}, and
- * dropping it at the last waypoint is what the planner reads as arrived.
+ * Advances every {@link PathFollow} walker one tick; dropping the path at the last waypoint is what the
+ * planner reads as arrived.
  *
  * A human walks each leg in its step cost (`walkStepTicks`) plus held turn ticks: the cost is fixed when the leg starts
  * from the roughness of the node it leaves and the walker's state then, the position closes the remaining
@@ -63,12 +62,7 @@ export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP
  * advances a fixed world distance each tick.
  */
 export const movementSystem: System = (world, ctx) => {
-  // A path can complete within this pass, so the velocity pass below cannot re-derive membership from
-  // has(PathFollow) and must read the recorded set instead.
-  const pathHandled = new Set<Entity>();
-
   for (const e of world.query(Position, PathFollow)) {
-    pathHandled.add(e);
     const pf = world.mut(e, PathFollow);
     const stops = world.get(e, PathRoute).waypoints;
     const p = world.mut(e, Position);
@@ -106,14 +100,6 @@ export const movementSystem: System = (world, ctx) => {
       budget = fx.sub(budget, distance);
       if (budget <= 0) break;
     }
-  }
-
-  for (const e of world.query(Position, Velocity)) {
-    if (pathHandled.has(e)) continue;
-    const p = world.mut(e, Position);
-    const v = world.get(e, Velocity);
-    p.x = fx.add(p.x, v.x);
-    p.y = fx.add(p.y, v.y);
   }
 };
 

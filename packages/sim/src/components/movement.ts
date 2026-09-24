@@ -5,9 +5,6 @@ import type { NodeId } from '../nav/terrain/index.js';
 /** World position in fixed-point tile units. */
 export const Position = defineComponent<{ x: Fixed; y: Fixed }>('Position', 'movement');
 
-/** Per-tick movement delta in fixed-point tile units. */
-export const Velocity = defineComponent<{ x: Fixed; y: Fixed }>('Velocity', 'movement');
-
 /**
  * A herd membership: the {@link Entity} leading the pack this animal belongs to, stamped on every member of
  * a herd whose `animaltypes.ini` record sets `searchforleader`. The herd's lowest-id member is the leader

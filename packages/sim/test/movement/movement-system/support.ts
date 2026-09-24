@@ -11,8 +11,7 @@ import { nodeOfPosition } from '../../../src/nav/halfcell.js';
  * Unit + integration tests for the MovementSystem's path-following mode - the seam that consumes a
  * {@link PathFollow}, paces each leg by the original's per-step tick cost (`walkStepTicks`: the roughness
  * of the node the leg leaves plus the walker's state), steps the entity toward each stop, advances the
- * index on arrival, and drops the path when complete. The Velocity-only mode is covered by the
- * determinism golden.
+ * index on arrival, and drops the path when complete.
  *
  * Every fixture map here carries no roughness lane, so a step leaves land (`DEFAULT_NODE_ROUGHNESS` 2):
  * a rested, barefoot, unladen walker takes 8 ticks a step, a shod one 6.

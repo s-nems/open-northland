@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PathFollow, PathRoute, Position, Velocity, WalkFacing } from '../../../src/components/index.js';
+import { PathFollow, PathRoute, Position } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { worldX } from '../../../src/nav/world-metric.js';
 import { movementSystem } from '../../../src/systems/index.js';
@@ -124,45 +124,16 @@ describe('movementSystem - path following', () => {
   });
 });
 
-describe('movementSystem - precedence: PathFollow over Velocity', () => {
-  it('a path-driven entity ignores its Velocity (moves once, toward the path)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const e = sim.world.create();
-    sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(e, WalkFacing, { direction: 0, target: 0 });
-    sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) }); // would push +1/tick east
-    sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0, 0), waypointAt(sim, 0.5, 0)] });
-    sim.world.add(e, PathFollow, { index: 1, legTicks: 0, legCost: 0 });
-    sim.step();
-    // If Velocity had also applied, x would jump by +1/tick; the paced path-follow alone gives one
-    // eighth of the half column.
-    expect(sim.world.get(e, Position).x).toBe(fx.div(fx.fromFloat(0.5), fx.fromInt(LAND_STEP_TICKS)));
-  });
-
-  it('does not velocity-integrate on the same tick the path completes (no double-move)', () => {
+describe('movementSystem - arrival in place', () => {
+  it('completes a path whose only stop is the walker node without moving it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(2, 1) });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    // Single-waypoint path on the entity's own node: it completes (PathFollow removed) THIS tick.
     sim.world.add(e, PathRoute, { waypoints: [waypointAt(sim, 0, 0)] });
     sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
     sim.step();
-    // The path was handled this tick, so Velocity must NOT also apply - position stays at the cell.
-    expect(pos(sim, e).x).toBeCloseTo(0, 6);
+    expect(pos(sim, e)).toEqual({ x: 0, y: 0 });
     expect(sim.world.has(e, PathFollow)).toBe(false);
-    // The very next tick (no path now) it resumes full-velocity movement.
-    sim.step();
-    expect(pos(sim, e).x).toBeCloseTo(1, 6);
-  });
-
-  it('a Velocity-only entity still integrates at full velocity', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const e = sim.world.create();
-    sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    sim.step();
-    expect(pos(sim, e).x).toBeCloseTo(1, 6);
   });
 });
 
@@ -181,7 +152,7 @@ describe('movementSystem - determinism', () => {
 });
 
 describe('movementSystem - invoked directly (unit, no sim)', () => {
-  it('no-ops on an entity with neither PathFollow nor Velocity', () => {
+  it('no-ops on an entity without a PathFollow', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(2), y: fx.fromInt(3) });
