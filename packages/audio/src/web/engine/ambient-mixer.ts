@@ -13,6 +13,9 @@ export const AMBIENT_FADE_S = 0.6;
 interface RunningLoop {
   readonly source: AudioBufferSourceNode;
   readonly gain: GainNode;
+  /** The gain its running ramp heads for. Re-ramping to the same target every frame would restart the
+   *  fade from wherever it is, so it would never finish in {@link AMBIENT_FADE_S}. */
+  target: number;
 }
 
 export class AmbientMixer {
@@ -43,7 +46,10 @@ export class AmbientMixer {
     for (const loop of wanted.values()) {
       const running = this.loops.get(loop.name);
       if (running === undefined) this.startLoop(loop);
-      else this.fadeTo(running.gain, loop.gain);
+      else if (running.target !== loop.gain) {
+        running.target = loop.gain;
+        this.fadeTo(running.gain, loop.gain);
+      }
     }
   }
 
@@ -80,7 +86,7 @@ export class AmbientMixer {
       source.start();
       // Ramp to the current target gain, not the possibly stale one this load was requested with.
       this.fadeTo(gain, current.gain);
-      this.loops.set(loop.name, { source, gain });
+      this.loops.set(loop.name, { source, gain, target: current.gain });
     });
   }
 

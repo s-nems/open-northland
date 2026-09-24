@@ -250,6 +250,19 @@ describe('WebAudioEngine ambient reconciliation', () => {
     expect(gain.gain.ramps.at(-1)?.value).toBeCloseTo(0.2, 5);
   });
 
+  it('lets a fade run out while its bed keeps the same gain frame after frame', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [], ambient: [bed(0.4)] });
+    await flush();
+    for (let frame = 1; frame <= 5; frame++) {
+      ctx.currentTime = frame / 60;
+      engine.apply({ oneShots: [], ambient: [bed(0.4)] });
+    }
+    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    expect(gain.gain.ramps).toEqual([{ value: 0.4, time: AMBIENT_FADE_S }]);
+  });
+
   it('starts a still-loading bed at the CURRENT target gain, not the stale requested one', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
