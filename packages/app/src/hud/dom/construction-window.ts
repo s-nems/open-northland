@@ -574,6 +574,8 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
     state: () => state,
     restore: (next) => {
       state = next;
+      // The cards were laid out at boot with nothing picked; an unchanged availability lays none out again.
+      setPicked(next.picked);
       showView(next.view);
       showPage(next.page);
       if (window.isOpen()) {
