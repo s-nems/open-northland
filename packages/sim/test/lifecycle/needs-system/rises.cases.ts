@@ -52,6 +52,20 @@ describe('needsSystem - hunger rises over time', () => {
     expect(sim.world.get(e, Settler).hunger).toBe(ONE);
   });
 
+  it('leaves a settler whose drained bars have all pinned unwritten', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // Jobless, so a pinned hunger costs no hitpoints and the Settler store is the only one in play.
+    const e = settlerWithHunger(sim, ONE, { jobType: null });
+    const pinned = sim.world.mut(e, Settler);
+    pinned.fatigue = ONE;
+    pinned.enjoyment = ONE;
+    const writes = sim.world.componentValueGeneration(Settler);
+
+    needsSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.componentValueGeneration(Settler)).toBe(writes);
+  });
+
   it('rises every settler independently (each reads/writes only its own hunger)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const a = settlerWithHunger(sim, fx.fromInt(0));

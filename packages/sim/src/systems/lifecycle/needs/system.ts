@@ -154,15 +154,23 @@ export function carriesNeeds(world: World, content: ContentSet, e: Entity): bool
 }
 
 /** Drain one tick off the three needs time alone moves, and hand back the drained bars so the hitpoint
- *  step reads them without a second lookup; a fighter's company need is frozen instead. */
+ *  step reads them without a second lookup; a fighter's company need is frozen instead. A settler whose
+ *  bars have all pinned is left unwritten. */
 function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerView {
-  const settler = world.mut(e, Settler);
-  settler.hunger = applyNeedUnits(settler.hunger, -NEED_DRAIN_UNITS_PER_TICK);
-  settler.fatigue = applyNeedUnits(settler.fatigue, -NEED_DRAIN_UNITS_PER_TICK);
-  if (!isFighterJob(ctx.content, settler.jobType)) {
-    settler.enjoyment = applyNeedUnits(settler.enjoyment, -NEED_DRAIN_UNITS_PER_TICK);
+  const settler = world.get(e, Settler);
+  const hunger = applyNeedUnits(settler.hunger, -NEED_DRAIN_UNITS_PER_TICK);
+  const fatigue = applyNeedUnits(settler.fatigue, -NEED_DRAIN_UNITS_PER_TICK);
+  const enjoyment = isFighterJob(ctx.content, settler.jobType)
+    ? settler.enjoyment
+    : applyNeedUnits(settler.enjoyment, -NEED_DRAIN_UNITS_PER_TICK);
+  if (hunger === settler.hunger && fatigue === settler.fatigue && enjoyment === settler.enjoyment) {
+    return settler;
   }
-  return settler;
+  const drained = world.mut(e, Settler);
+  drained.hunger = hunger;
+  drained.fatigue = fatigue;
+  drained.enjoyment = enjoyment;
+  return drained;
 }
 
 /**
