@@ -1,20 +1,31 @@
-import { type WalkDirection, WalkFacing } from '../../components/index.js';
+import { WALK_DIRECTION, type WalkDirection, WalkFacing } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { ROW_STEP, worldX } from '../../nav/world-metric.js';
 
+const { E, SE, SW, W, NW, NE, N, S } = WALK_DIRECTION;
+
 // The original enables eight-direction turning for humans, with this ring and these
 // opposite-heading ties.
-const TURN_RING: readonly WalkDirection[] = [0, 1, 7, 2, 3, 4, 6, 5];
+const TURN_RING: readonly WalkDirection[] = [E, SE, S, SW, W, NW, N, NE];
+const RING_SIZE = TURN_RING.length;
+const HALF_TURN = RING_SIZE / 2;
+
+/** The original's initial orientation for a walker that has never turned. */
+const INITIAL_DIRECTION: WalkDirection = SW;
+
+/** tan(22.5°) in parts per {@link OCTANT_TAN_SCALE}: a heading within it of an axis snaps to that axis. */
+const OCTANT_EDGE_TAN = 4142;
+const OCTANT_TAN_SCALE = 10000;
 
 export function nextWalkDirection(from: WalkDirection, to: WalkDirection): WalkDirection {
   if (from === to) return to;
   const start = TURN_RING.indexOf(from);
   let delta = TURN_RING.indexOf(to) - start;
-  if (Math.abs(delta) > 4) delta -= Math.sign(delta) * 8;
+  if (Math.abs(delta) > HALF_TURN) delta -= Math.sign(delta) * RING_SIZE;
   // Opposite E/W turns pass south; opposite N/S turns pass east.
-  if (Math.abs(delta) === 4 && (from === 6 || from === 7)) delta = -delta;
-  return TURN_RING[(start + Math.sign(delta) + 8) % 8] ?? to;
+  if (Math.abs(delta) === HALF_TURN && (from === N || from === S)) delta = -delta;
+  return TURN_RING[(start + Math.sign(delta) + RING_SIZE) % RING_SIZE] ?? to;
 }
 
 type Point = { readonly x: Fixed; readonly y: Fixed };
@@ -23,28 +34,27 @@ export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): 
   if (from.x === to.x && from.y === to.y) return;
   const dx = worldX(to.x, to.y) - worldX(from.x, from.y);
   const dy = fx.mul(fx.sub(to.y, from.y), ROW_STEP);
-  // Nearest screen octant for an off-node recovery leg. 4142/10000 approximates tan(22.5°);
-  // lattice edges lie well away from those boundaries, so their eight headings are exact.
-  const horizontal = Math.abs(dy) * 10000 <= Math.abs(dx) * 4142;
-  const vertical = Math.abs(dx) * 10000 <= Math.abs(dy) * 4142;
+  // Nearest screen octant for an off-node recovery leg; lattice edges lie well away from the octant
+  // boundaries, so their eight headings are exact.
+  const horizontal = Math.abs(dy) * OCTANT_TAN_SCALE <= Math.abs(dx) * OCTANT_EDGE_TAN;
+  const vertical = Math.abs(dx) * OCTANT_TAN_SCALE <= Math.abs(dy) * OCTANT_EDGE_TAN;
   const target: WalkDirection = horizontal
     ? dx > 0
-      ? 0
-      : 3
+      ? E
+      : W
     : vertical
       ? dy > 0
-        ? 7
-        : 6
+        ? S
+        : N
       : dy > 0
         ? dx > 0
-          ? 1
-          : 2
+          ? SE
+          : SW
         : dx > 0
-          ? 5
-          : 4;
+          ? NE
+          : NW;
   const facing = world.tryGet(e, WalkFacing);
-  // The original initializes the orientation to SW.
-  if (facing === undefined) world.add(e, WalkFacing, { direction: 2, target });
+  if (facing === undefined) world.add(e, WalkFacing, { direction: INITIAL_DIRECTION, target });
   else if (facing.target !== target) world.mut(e, WalkFacing).target = target;
 }
 

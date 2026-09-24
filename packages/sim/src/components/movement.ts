@@ -28,8 +28,9 @@ export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed', 'movem
  * lattice step gets its own duration regardless of its screen-space length. */
 export const MoveStepPeriod = defineComponent<{ ticks: number }>('MoveStepPeriod', 'movement');
 
-/** Original direction vocabulary: E, SE, SW, W, NW, NE, N, S. */
-export type WalkDirection = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+/** The original's walk direction vocabulary, with its numbering. */
+export const WALK_DIRECTION = { E: 0, SE: 1, SW: 2, W: 3, NW: 4, NE: 5, N: 6, S: 7 } as const;
+export type WalkDirection = (typeof WALK_DIRECTION)[keyof typeof WALK_DIRECTION];
 
 /** Retained between routes; turning is simulation state, not a render interpolation. */
 export const WalkFacing = defineComponent<{ direction: WalkDirection; target: WalkDirection }>(
