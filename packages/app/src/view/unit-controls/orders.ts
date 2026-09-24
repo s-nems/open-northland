@@ -117,17 +117,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   // A carrying settler stays in the formation: the sim makes it set its load down before walking, so
   // there is no client-side filtering.
-  const issueWalkOrder = (
-    target: Tile,
-    movers: readonly FormationUnit[],
-    // The whole selection, not just `movers`: standing units keep their ground reserved.
-    selected: ReadonlySet<number>,
-    kind: WalkOrderKind,
-  ): boolean => {
+  const issueWalkOrder = (target: Tile, movers: readonly FormationUnit[], kind: WalkOrderKind): boolean => {
     if (movers.length === 0) return false;
     const { width, height } = nodeBounds(deps.mapSize);
     const seat = clampTile(target, width, height);
-    const blocked = occupiedTiles(selected);
+    // Only the movers vacate their nodes; a selected settler the order skips keeps its ground.
+    const blocked = occupiedTiles(new Set(movers.map((mover) => mover.ref)));
     for (const order of assignFormation(movers, seat, width, height, blocked)) {
       deps.enqueue({ kind, entity: order.ref as Entity, x: order.tile.col, y: order.tile.row });
     }
@@ -157,9 +152,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       deps.openActions({ x: event.clientX, y: event.clientY });
       return true;
     }
-    const selected = deps.selected();
     // A selected building, flag or signpost takes no orders: nobody to command, nothing to confirm.
-    const commanded = deps.targets.ownedSettlersIn(selected);
+    const commanded = deps.targets.ownedSettlersIn(deps.selected());
     if (commanded.length === 0) return false;
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     if (enemy !== null) return strike(commanded, enemy);
@@ -172,7 +166,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     if (pileGood !== undefined && wearFromGround(commanded, pileGood)) return true;
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) return orderAtBuilding(event, commanded, building);
-    return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
+    return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, 'moveUnit');
   };
 
   /** The right-click ladder over an own building; true when it opened the school dialog or enqueued an
@@ -323,10 +317,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   };
 
   const issueMoveTo = (target: Tile, units?: readonly number[]): boolean =>
-    issueWalkOrder(target, commandedAmong(units), deps.selected(), 'moveUnit');
+    issueWalkOrder(target, commandedAmong(units), 'moveUnit');
 
   const issueAttackMove = (target: Tile, units?: readonly number[]): boolean =>
-    issueWalkOrder(target, commandedAmong(units), deps.selected(), 'attackMoveUnit');
+    issueWalkOrder(target, commandedAmong(units), 'attackMoveUnit');
 
   const setWorkFlags = (movers: readonly FormationUnit[], target: Tile, goodType?: number): boolean => {
     if (movers.length === 0) return false;

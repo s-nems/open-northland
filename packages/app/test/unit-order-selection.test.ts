@@ -148,6 +148,20 @@ describe('unit orders against a selection that moves under them', () => {
     expect(issued).toEqual([{ kind: 'attackMoveUnit', entity: SCOUT.id, x: under.hx, y: under.hy }]);
   });
 
+  it('keeps the ground of a selected unit the armed order skips', () => {
+    const { selection, orders, issued } = harness();
+    const guarded = nodeUnder(GUARD.cell);
+
+    // An attack-move armed for the scout alone, aimed at the node the still-selected guard stands on.
+    selection.apply([SCOUT.id, GUARD.id], false);
+    expect(orders.issueAttackMove(nodeTile(guarded), [SCOUT.id])).toBe(true);
+
+    expect(issued).toHaveLength(1);
+    const [order] = issued;
+    expect(order).toMatchObject({ kind: 'attackMoveUnit', entity: SCOUT.id });
+    expect(order).not.toMatchObject({ x: guarded.hx, y: guarded.hy });
+  });
+
   it('plants a work flag for the units selected now', () => {
     const { selection, orders, issued } = harness();
 
