@@ -12,6 +12,7 @@ import {
   Resting,
   Settler,
   Stockpile,
+  SupplyRun,
 } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { plannerSystem, productionSystem } from '../../src/systems/index.js';
@@ -212,38 +213,43 @@ function secondRecipe(type: ReturnType<typeof workshop>) {
   return recipe;
 }
 
-it('reserves a shared ingredient while the other operator walks to an empty well', () => {
-  const water = 207;
-  const wellType = 30;
+const WATER = 207;
+const WELL = 30;
+
+/** The forge's second recipe also wants water, which only an empty well beside it can draw. */
+function forgeBesideWell() {
   const base = testContent();
   const forge = workshop(base, FORGE);
   forge.workers = [{ jobType: CARPENTER, count: 2 }];
-  forge.stock.push({ goodType: water, capacity: 20, initial: 0 });
+  forge.stock.push({ goodType: WATER, capacity: 20, initial: 0 });
   secondRecipe(forge).inputs = [
     { goodType: WOOD, amount: 1 },
-    { goodType: water, amount: 1 },
+    { goodType: WATER, amount: 1 },
   ];
-  const content = parseContentSet({
+  return parseContentSet({
     ...base,
-    goods: [...base.goods, { typeId: water, id: 'water', weight: 1 }],
+    goods: [...base.goods, { typeId: WATER, id: 'water', weight: 1 }],
     buildings: [
       ...base.buildings,
       {
-        typeId: wellType,
+        typeId: WELL,
         id: 'work_well_00',
         kind: 'workplace',
         collectAtomic: 44,
         workers: [{ jobType: 24, count: 1 }],
-        stock: [{ goodType: water, capacity: 1, initial: 0 }],
-        produces: [water],
-        recipes: [{ inputs: [], outputs: [{ goodType: water, amount: 1 }], ticks: 4 }],
+        stock: [{ goodType: WATER, capacity: 1, initial: 0 }],
+        produces: [WATER],
+        recipes: [{ inputs: [], outputs: [{ goodType: WATER, amount: 1 }], ticks: 4 }],
       },
     ],
   });
-  const sim = new Simulation({ seed: 1, content, map: grassMap(14, 1) });
+}
+
+it('reserves a shared ingredient while the other operator walks to an empty well', () => {
+  const sim = new Simulation({ seed: 1, content: forgeBesideWell(), map: grassMap(14, 1) });
   const shop = buildingAt(sim, FORGE, 0, 0);
   const store = buildingAt(sim, HEADQUARTERS, 3, 0);
-  buildingAt(sim, wellType, 10, 0);
+  buildingAt(sim, WELL, 10, 0);
   settlerAt(sim, 13, 0, WOODCUTTER);
   for (const good of [PLANK, FOOD_SIMPLE]) {
     const worker = settlerAt(sim, 0, 0, CARPENTER, shop);
@@ -258,6 +264,22 @@ it('reserves a shared ingredient while the other operator walks to an empty well
     (sim.world.get(shop, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0) +
       (sim.world.get(store, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0),
   ).toBe(1);
+});
+
+it('keeps the reservation on the tick the fetcher reaches the well, before its draw starts', () => {
+  const sim = new Simulation({ seed: 1, content: forgeBesideWell(), map: grassMap(14, 1) });
+  const shop = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+  const well = buildingAt(sim, WELL, 10, 0);
+  settlerAt(sim, 13, 0, WOODCUTTER);
+  const present = settlerAt(sim, 0, 0, CARPENTER, shop);
+  sim.world.mut(present, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.add(present, CraftSelection, { goods: [PLANK], cursor: 0 });
+  // Arrived: movement has retired the walk, and the planner starts the draw only next tick.
+  const fetcher = settlerAt(sim, 10, 0, CARPENTER, shop);
+  sim.world.add(fetcher, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+  sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WATER, amount: 1, source: well });
+  productionSystem(sim.world, ctxOf(sim));
+  expect(sim.world.has(shop, Production)).toBe(false);
 });
 
 it.each(['order', 'failed route'])(

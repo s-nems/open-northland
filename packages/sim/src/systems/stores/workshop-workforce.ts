@@ -1,9 +1,7 @@
 import {
   Building,
   Carrying,
-  CurrentAtomic,
   JobAssignment,
-  MoveGoal,
   PathRequest,
   Settler,
   Stockpile,
@@ -42,13 +40,12 @@ export class WorkshopWorkforce {
       }
       const carried = world.tryGet(e, Carrying);
       const run = world.tryGet(e, SupplyRun);
-      const pickup = world.tryGet(e, CurrentAtomic)?.effect;
       const source = run?.source;
+      // A pickup leg counts on its arrival tick too, before the planner starts the pickup or draw there.
       const fetching =
         run?.site === destination &&
         source !== null &&
         source !== undefined &&
-        (world.has(e, MoveGoal) || pickup?.kind === 'pickup' || pickup?.kind === 'draw') &&
         ((accessibleStockAmounts(world, source)?.get(run.goodType) ?? 0) > 0 ||
           ((world.tryGet(source, Building)?.built ?? 0) >= ONE &&
             producesGoodWithoutInputs(world, ctx, source, run.goodType)));
