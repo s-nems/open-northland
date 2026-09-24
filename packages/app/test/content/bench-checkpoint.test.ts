@@ -2,7 +2,13 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { type MapBenchWorldOptions, mapBenchWorld, markCheckpointPath } from '../../bench/map-world.js';
+import {
+  benchSession,
+  type MapBenchWorldOptions,
+  mapBenchWorld,
+  markCheckpointPath,
+} from '../../bench/map-world.js';
+import { sessionRoles } from '../../src/game/session-roles.js';
 import { hasRealIr } from './helpers.js';
 
 /**
@@ -116,5 +122,19 @@ describe.runIf(hasRealIr())('benchmark map checkpoint', () => {
     await expect(mapBenchWorld(again, span)).rejects.toThrow(
       `checkpoint mark(s) ${FIRST_MARK} fall outside this run's ticks ${FIRST_MARK + 1}..${LAST_MARK}`,
     );
+    // The run's last tick is the latest mark it can write.
+    const atEnd = await mapBenchWorld({ ...again, checkpointMarks: [LAST_MARK] }, span);
+    expect(atEnd.startTick).toBe(FIRST_MARK);
+    await expect(mapBenchWorld({ ...again, checkpointMarks: [LAST_MARK + 1] }, span)).rejects.toThrow(
+      `checkpoint mark(s) ${LAST_MARK + 1} fall outside this run's ticks ${FIRST_MARK + 1}..${LAST_MARK}`,
+    );
+  });
+
+  it('prints a session whose assistants are the AI seats it builds, also without seat 0', () => {
+    // The bench grants assistants to its AI seats alone; the session it names must do the same, which
+    // an overseer's claim on seat 0 would not.
+    const session = benchSession(options({ seats: [1] }));
+    expect(sessionRoles(session, []).assistantSeats).toEqual([1, MAP_COMPUTER_SEAT]);
+    expect(sessionRoles(session, []).matchParticipants).toEqual([1, MAP_COMPUTER_SEAT]);
   });
 });
