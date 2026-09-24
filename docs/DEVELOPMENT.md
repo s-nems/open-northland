@@ -293,18 +293,34 @@ Run the synthetic simulation benchmark with `npm run bench:sim`. Its main contro
 `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
 and `ON_BENCH_JSON`.
 
-Run the real-map benchmark with `npm run bench:map`. It needs generated content and its controls are
-`ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
-`ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, what a networked session pays), and
-`ON_BENCH_JSON`. `ON_CONTENT_DIR` points it at a content directory outside the checkout. The default
-run is 20k ticks; `ON_BENCH_TICKS=50000` covers a full AI build-out.
+Run the real-map benchmark with `npm run bench:map`. It needs generated content and measures the
+session a `?map=<id>&player=overseer&ai=<seats>&fog=classic` search describes, parsed by the map
+entry's own URL adapter, so the map's own computer seats play beside the named ones as they do in the
+browser. Its controls:
+
+| knob | meaning |
+| --- | --- |
+| `ON_BENCH_MAP` | decoded map id, default `magiczny_las` |
+| `ON_BENCH_SEATS` | `?ai=` seats: a count `n` names `0..n-1` (default 6), a comma list names the seats |
+| `ON_BENCH_PROGRESSION`, `ON_BENCH_NEEDS` | `on`/`off`, the `?progression=` and `?needs=` overrides; unset keeps the map's rule |
+| `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS` | measured ticks (default 20k), unmeasured warm-up, report segments |
+| `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |
+| `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP`, `ON_BENCH_CHECKPOINTS` | checkpoints, below |
+| `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |
+
+`ON_CONTENT_DIR` points it at a content directory outside the checkout. `ON_BENCH_TICKS=50000` covers
+a full AI build-out. Each window reports the tick median, p95, p99 and max, the GC pause time, count
+and longest pause from V8's `gc` entries, and heap and RSS at its end; the run lists its ten slowest
+ticks by sim tick with the three systems that filled each.
 
 `npm run bench:profile` runs that same world and CPU-profiles the measured ticks, printing the top
-functions and files by self time next to the per-system table for the same ticks, and writing the raw
-`.cpuprofile` under `bench-out/` for DevTools or Speedscope. It takes the `bench:map` controls except
-`ON_BENCH_WINDOWS` and `ON_BENCH_JSON`, and defaults to 2k ticks. It prints its per-system report
-rather than storing it: profiled timings are inflated by the sampler and must never become a
-`bench:compare` baseline.
+functions by self time and by total time (self plus callees) and the top files next to the per-system
+table for the same ticks, and writing the raw `.cpuprofile` under `bench-out/`, named with the map, the
+AI seats and the first profiled tick, for DevTools or Speedscope. The profiled code is the `tsc`
+output, unminified and source-mapped, so function names and `file:line` survive. It takes the
+`bench:map` controls except `ON_BENCH_WINDOWS`, `ON_BENCH_JSON` and `ON_BENCH_CHECKPOINTS`, and
+defaults to 2k ticks. It prints its per-system report rather than storing it: profiled timings are
+inflated by the sampler and must never become a `bench:compare` baseline.
 
 Both real-map benchmarks take a checkpoint so a late-game hotspot hunt does not rebuild the
 settlement every time:
@@ -315,8 +331,23 @@ ON_BENCH_CHECKPOINT=/tmp/late.checkpoint ON_BENCH_SKIP=40000 npm run bench:profi
 
 The first run builds the world, runs `ON_BENCH_SKIP` ticks unmeasured, writes the checkpoint and
 measures; every later run with the same path restores it and measures from there (warm-up still
-applies - restored code is cold again). A checkpoint holding another map, seat count or content IR
-version is refused by name rather than measured.
+applies - restored code is cold again). `ON_BENCH_CHECKPOINTS` lists absolute sim ticks at which a
+`bench:map` run also writes `<stem>.t<tick>.checkpoint`, the stem being `ON_BENCH_CHECKPOINT` without
+its `.checkpoint`. A write happens between two measured ticks, outside their timing, but its garbage
+lands in that window's GC columns. A checkpoint holding another map, other AI seats, other rules or
+another content IR version is refused by name rather than measured, and a restore that does not
+reproduce the state hash the checkpoint was written with fails.
+
+One 60k run of the twelve-player map under AI that leaves every late-game starting point behind, then
+a profile from the 50k one (the profile repeats the session knobs the checkpoint is checked against):
+
+```bash
+export ON_BENCH_MAP=magiczny_las_12_players ON_BENCH_SEATS=0,1,2,3,4,5,7,8,9,10,11,12 \
+  ON_BENCH_PROGRESSION=on ON_BENCH_NEEDS=on
+ON_BENCH_TICKS=60000 ON_BENCH_WINDOWS=12 ON_BENCH_CHECKPOINT=bench-out/ml12.checkpoint \
+  ON_BENCH_CHECKPOINTS=30000,40000,50000,60000 npm run bench:map
+ON_BENCH_CHECKPOINT=bench-out/ml12.t50000.checkpoint npm run bench:profile
+```
 
 Every run keeps its report under `bench-out/` (untracked), so a baseline exists without having been
 planned for. `npm run bench:compare` with no arguments compares the two most recent runs of the same

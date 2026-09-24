@@ -222,7 +222,9 @@ that measures nothing must not read as a clean run.
 
 `npm run bench:profile` profiles the same real-map world function by function (V8's sampler), and
 prints the per-system table for the same ticks beside it. `ON_BENCH_CHECKPOINT` plus `ON_BENCH_SKIP`
-let both real-map benchmarks start from a saved late-game state instead of rebuilding the settlement.
+let both real-map benchmarks start from a saved late-game state instead of rebuilding the settlement,
+and `ON_BENCH_CHECKPOINTS` has one `bench:map` run write several; see
+[DEVELOPMENT.md](DEVELOPMENT.md#measuring-performance) for the knobs.
 
 Both reports record the machine they were taken on and judge it. A contended box, a machine whose own
 speed drifted mid-run, or a window spiking far above its median leads the report with an untrustworthy
@@ -231,7 +233,8 @@ banner. Treat those numbers as void rather than as a result.
 `npm run bench:compare` turns two reports into a per-system delta table with a noise band. Every run
 keeps its report under `bench-out/`, so with no arguments it compares the two most recent runs of the
 same world; two paths name them explicitly. It refuses to compare different worlds or run lengths, and
-reports a changed state hash as a behavior change rather than a speed one.
+reports a changed state hash as a behavior change rather than a speed one. A report written under
+another report layout version is refused by name; re-run the benchmark.
 
 Absolute timing is machine-dependent, so compare runs on the same machine.
 
