@@ -62,8 +62,8 @@ export function foldCellChange(fold: FogFold, index: number, from: number, to: n
  * `W×H` array of mask bytes ({@link FOG_STATE} or {@link REVEALED_BYTE}) per vision group that ever
  * owned a positioned entity or received a script's reveal. A
  * vision group is one player, or the players a `setSharedVision` command joined, keyed by its lowest
- * member; every player-keyed accessor resolves the player to its group first. `generation` bumps on
- * every rebuild so render layers re-composite only when the fog changed.
+ * member; every player-keyed accessor resolves the player to its group first. `generation` bumps
+ * whenever a mask byte or the mode changes, so its readers re-read only when the fog changed.
  */
 export class FogState {
   /** Cell-grid dimensions (the half-cell lattice quartered). */
@@ -87,7 +87,8 @@ export class FogState {
     number,
     { minC: number; maxC: number; minR: number; maxR: number }
   >();
-  /** Bumped on every rebuild or reset; a read-path aid for re-compositing, never hashed. */
+  /** Bumped by every write that changes a mask byte or the mode; the sim's contested ground and the
+   *  render layers key their caches on it, so a missed bump serves a stale read. Never hashed. */
   generation = 0;
   /** The mode the last completed rebuild ran under; a change forces an off-cadence rebuild. */
   activeMode: FogMode = FOG_MODE.OFF;
@@ -253,6 +254,7 @@ export class FogState {
         if (state === FOG_STATE.VISIBLE) this.mergeVisibleBounds(group, c, c, r, r);
       }
     }
+    this.generation++;
   }
 
   /** Drop every mask (fog switched OFF or the grouping changed): exploration history resets, the
@@ -363,11 +365,13 @@ export class FogState {
   }
 
   /** Downgrade every VISIBLE byte of vision group `group` to EXPLORED, scanning only the
-   *  may-hold-VISIBLE box and then clearing it. Byte-identical to a full-mask scan. */
-  downgradeVisible(group: number): void {
+   *  may-hold-VISIBLE box and then clearing it. Byte-identical to a full-mask scan. Returns whether
+   *  it lowered any byte. */
+  downgradeVisible(group: number): boolean {
     this.eyeStamps.clear();
     const b = this.visibleBounds.get(group);
-    if (b === undefined) return;
+    if (b === undefined) return false;
+    let lowered = false;
     const mask = this.masks.get(group);
     if (mask !== undefined) {
       const fold = this.foldFor(group);
@@ -376,11 +380,13 @@ export class FogState {
         for (let c = b.minC; c <= b.maxC; c++) {
           if (mask[base + c] !== FOG_STATE.VISIBLE) continue;
           mask[base + c] = FOG_STATE.EXPLORED;
+          lowered = true;
           if (fold !== null) foldCellChange(fold, base + c, FOG_STATE.VISIBLE, FOG_STATE.EXPLORED);
         }
       }
     }
     this.visibleBounds.delete(group);
+    return lowered;
   }
 
   /**

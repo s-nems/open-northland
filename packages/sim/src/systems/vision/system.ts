@@ -73,6 +73,7 @@ export const visionSystem: System = (world, ctx) => {
       fog.reset(); // exploration restarts if fog is switched back on
       fog.activeMode = FOG_MODE.OFF;
       fog.lastRebuildTick = -1;
+      fog.generation++;
     }
     return;
   }
@@ -84,9 +85,10 @@ export const visionSystem: System = (world, ctx) => {
   // Downgrade pass (fog of war): ground no eye covers falls back to explored, a script's revealed byte
   // excepted. Masks walk in ascending-group order, the order hashState mixes them in, and each scan
   // covers only that group's may-hold-VISIBLE box.
+  let changed = modeChanged;
   if (settings.fogOfWar) {
     for (const group of fog.groupsWithMasks()) {
-      fog.downgradeVisible(group);
+      if (fog.downgradeVisible(group)) changed = true;
     }
   }
 
@@ -112,7 +114,9 @@ export const visionSystem: System = (world, ctx) => {
       radius,
       fog.foldFor(player),
     );
-    if (rect !== null) fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
+    if (rect === null) continue;
+    fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
+    if (rect.wrote) changed = true;
   }
   if (memoStamps) fog.pruneEyeStamps();
 
@@ -147,7 +151,9 @@ export const visionSystem: System = (world, ctx) => {
 
   fog.activeMode = mode;
   fog.lastRebuildTick = ctx.tick;
-  fog.generation++;
+  // Only a rebuild that moved a byte or the mode bumps it: every fog consumer, the sim's contested
+  // ground among them, re-reads the masks on a bump, and a quiet Classic rebuild writes nothing.
+  if (changed) fog.generation++;
 };
 
 /** The vision radius in nodes of one owned entity, or null when it is not an eye. A rising site counts as
@@ -171,9 +177,9 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
  * Write {@link FOG_STATE.VISIBLE} over the world-metric ellipse of `radiusNodes` around cell (cx, cy): a
  * cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²`, exact integer math clamped to the grid.
  * Approximation: the per-row stagger's ±half-cell wobble is ignored, a fringe on a soft fog edge.
- * Returns the clamped cell rect the stamp touched, or null when it fell fully off-grid. A `fold` is
- * updated for the cells this stamp actually flips; a cell a script revealed already shows and keeps
- * its byte.
+ * Returns the clamped cell rect the stamp touched and whether it raised any byte, or null when it fell
+ * fully off-grid. A `fold` is updated for the cells this stamp actually flips; a cell a script revealed
+ * already shows and keeps its byte.
  */
 export function stampVision(
   mask: Uint8Array,
@@ -183,7 +189,7 @@ export function stampVision(
   cy: number,
   radiusNodes: number,
   fold: FogFold | null,
-): { minC: number; maxC: number; minR: number; maxR: number } | null {
+): { minC: number; maxC: number; minR: number; maxR: number; wrote: boolean } | null {
   const radiusPx = radiusNodes * NODE_STEP_PX;
   const radiusSq = radiusPx * radiusPx;
   const dcMax = Math.floor(radiusPx / CELL_STEP_PX);
@@ -193,6 +199,7 @@ export function stampVision(
   const cLo = Math.max(0, cx - dcMax);
   const cHi = Math.min(cellsWide - 1, cx + dcMax);
   if (rLo > rHi || cLo > cHi) return null;
+  let wrote = false;
   for (let r = rLo; r <= rHi; r++) {
     const dyPx = (r - cy) * ROW_STEP_PX;
     const dySq = dyPx * dyPx;
@@ -204,8 +211,9 @@ export function stampVision(
       const previous = mask[index] ?? FOG_STATE.UNEXPLORED;
       if (previous === FOG_STATE.VISIBLE || previous === REVEALED_BYTE) continue;
       mask[index] = FOG_STATE.VISIBLE;
+      wrote = true;
       if (fold !== null) foldCellChange(fold, index, previous, FOG_STATE.VISIBLE);
     }
   }
-  return { minC: cLo, maxC: cHi, minR: rLo, maxR: rHi };
+  return { minC: cLo, maxC: cHi, minR: rLo, maxR: rHi, wrote };
 }

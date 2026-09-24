@@ -209,6 +209,39 @@ describe('stamp memo - an eye whose footprint did not change writes nothing', ()
   });
 });
 
+describe('fog generation - bumps only when a mask byte or the mode changed', () => {
+  function generation(sim: Simulation): number {
+    const fog = sim.fog;
+    if (fog === undefined) throw new Error('mapless sim');
+    return fog.generation;
+  }
+
+  it('CLASSIC: rebuilds over still eyes or explored ground keep it; new ground bumps it', () => {
+    const sim = simOn(FOG_MODE.CLASSIC, 48, 8);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1);
+    const first = generation(sim);
+    sim.run(3 * VISION_CADENCE_TICKS);
+    expect(generation(sim)).toBe(first);
+    teleport(sim, e, 40, 2);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(generation(sim)).toBe(first + 1);
+    teleport(sim, e, 2, 2); // back onto the ground its first stamp explored
+    sim.run(VISION_CADENCE_TICKS);
+    expect(generation(sim)).toBe(first + 1);
+  });
+
+  it('a mode switch bumps it even when no byte moves', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    unit(sim, 2, 2, P0);
+    sim.run(1);
+    const classic = generation(sim);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.run(1);
+    expect(generation(sim)).toBe(classic + 1);
+  });
+});
+
 describe('fog modes - update rules over the per-player mask', () => {
   it('is the product of the two settings, OFF apart: every pair composes a mode that reads back', () => {
     expect(fogSettings(FOG_MODE.OFF)).toBeNull();
