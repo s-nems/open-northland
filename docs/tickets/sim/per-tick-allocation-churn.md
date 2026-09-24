@@ -15,8 +15,7 @@ buildings: about 340 MB/s at x3.
 By share of sampled bytes:
 
 - The 9% building walk-block rebuild (`deriveBuildingBlockedCells`, `doorPassage`) now runs only on a
-  building placement, removal or tier swap; re-profile its share. `canonicalById` adds 3%, owned by
-  [canonical-queries-resorted-per-call.md](canonical-queries-resorted-per-call.md).
+  building placement, removal or tier swap; re-profile its share.
 - About 17% is stock-map iteration by destructuring: `for (const [goodType, amount] of amounts)`
   allocates an entry pair per stock line on every call, and these helpers run per candidate store for
   every seeker. `lowestStockedFood` (`systems/family/food-search.ts`) 5.6%; the pile scan's accept in

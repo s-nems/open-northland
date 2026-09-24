@@ -1,7 +1,6 @@
 import { Health, Position, Settler } from '../../components/index.js';
 import type { System } from '../context.js';
 import { garrisonSeats } from '../defence/index.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
@@ -31,13 +30,13 @@ export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
 
-  // The dormancy gate runs over the raw query: it is order-independent, so an idle standing army pays only
-  // an O(combatants) scan, not the canonical sort, on a tick with no fight.
+  // The dormancy gate is order-independent, so it runs over the raw query and a tick with no fight never
+  // rebuilds the canonical join.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
   // The scan order and the target index are built from the canonical (ascending-id) list, so a
   // distance or first-match tie-break lands on the same winner.
-  const combatants = canonicalById(world.query(Settler, Health, Position));
+  const combatants = world.canonicalQuery(Settler, Health, Position);
   const pass: CombatPass = {
     // Attackable buildings join the target index but never the seeker loop: a warrior can strike an enemy
     // building, but a building never engages.

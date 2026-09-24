@@ -5,6 +5,7 @@
  */
 
 import { type CacheVerifier, CacheVerifiers } from './cache-verifier.js';
+import { CanonicalQueries } from './canonical-queries.js';
 import type { Component, DeepReadonly, Entity } from './component.js';
 import { ComponentRevisions } from './component-revisions.js';
 import { GenerationJournals } from './generation-journal.js';
@@ -52,6 +53,7 @@ export class World {
   private readonly valueJournals = new GenerationJournals();
   private readonly touched = new TouchedLog();
   private readonly cacheVerifiers = new CacheVerifiers();
+  private readonly canonicalQueries = new CanonicalQueries();
   private mutations: MutationSink | null = null;
   /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create} and
    *  {@link destroy} since component add/remove cannot change the alive set. */
@@ -75,6 +77,7 @@ export class World {
         const c = this.registered[index];
         if (c !== undefined && this.stores.get(c)?.delete(entity) === true) {
           this.componentRevisions.remove(c, entity);
+          this.canonicalQueries.left(c, entity);
           this.bumpComponentGeneration(c, entity);
           this.mutations?.componentWritten(c, entity);
         }
@@ -93,8 +96,12 @@ export class World {
 
   add<T>(entity: Entity, component: Component<T>, value: T): T {
     const store = this.storeOrCreate(component);
-    if (!store.has(entity)) this.insertMembership(entity, component as Component<unknown>);
+    const entering = !store.has(entity);
     store.set(entity, value);
+    if (entering) {
+      this.insertMembership(entity, component as Component<unknown>);
+      this.canonicalQueries.entered(component as Component<unknown>, entity);
+    }
     this.bumpComponentGeneration(component as Component<unknown>, entity);
     this.recordComponentWrite(component as Component<unknown>, entity);
     return value;
@@ -103,6 +110,7 @@ export class World {
   remove<T>(entity: Entity, component: Component<T>): void {
     if (this.storeOf(component)?.delete(entity)) {
       this.removeMembership(entity, component as Component<unknown>);
+      this.canonicalQueries.left(component as Component<unknown>, entity);
       this.bumpComponentGeneration(component as Component<unknown>, entity);
       // Revision removal and the touch jointly prevent a removed component's cached clone from surviving.
       this.componentRevisions.remove(component as Component<unknown>, entity);
@@ -251,6 +259,12 @@ export class World {
     return best;
   }
 
+  /** The entities carrying every `required` component in ascending id: {@link query} in canonical order,
+   *  shared and frozen like {@link canonicalEntities}. A caller that reorders or edits the list copies it. */
+  canonicalQuery(...required: Array<Component<unknown>>): readonly Entity[] {
+    return this.canonicalQueries.query(this.stores, required);
+  }
+
   /**
    * Ascending-sorted alive entity ids: the canonical order for snapshots, golden hashes, and any system that
    * must *pick* an entity deterministically. Shared and frozen, so a consumer that sorts or reverses it in
@@ -282,6 +296,7 @@ export class World {
       registered: this.registered,
       memberships: this.memberships,
       canonicalCache: this.canonicalCache,
+      canonicalQueries: this.canonicalQueries,
     });
   }
 

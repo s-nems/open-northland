@@ -11,7 +11,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
-import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { NodeBuckets } from '../spatial/nodes.js';
 import { buildingWorkerJobs, isCarrierJob } from './workplace.js';
 
 // Who is working a workplace right now: which of its declared slots (./workplace.ts) operate the craft,
@@ -74,7 +74,7 @@ export function presentOperators(
   if (at === null) return DESERTED; // a placed-but-position-less workplace can't be stood on
   const cap = operatorSlotHeadcount(world, ctx, building, jobs);
   if (cap <= 0) return DESERTED;
-  const index = operatorsByNode ?? new NodeBuckets(world, canonicalById(world.query(Person, Position)));
+  const index = operatorsByNode ?? new NodeBuckets(world, world.canonicalQuery(Person, Position));
   const present: Entity[] = [];
   for (const e of index.at(at.x, at.y)) {
     if (world.has(e, MoveGoal) || world.has(e, Carrying)) continue;

@@ -30,7 +30,6 @@ import { isBarracks, isSoldierJob } from '../readviews/index.js';
 import { anotherSystemOwns } from '../settlers/action-owner.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { BARRACKS_DRILL_TICKS } from '../settlers/drives/training.js';
-import { canonicalById } from '../spatial/nodes.js';
 
 /**
  * The assistant's production dispatcher: turns the chest window's `AssistantCounters` into standing child
@@ -54,7 +53,7 @@ export const assistantSystem: System = (world, ctx) => {
   // The sweep runs even with every counter back at default: bookings outlive the last carrier (a
   // reset with orders in flight), and a stale one would sit in hashed state until the next write.
   sweepStaleBookings(world, ctx);
-  const carriers = canonicalById(world.query(AssistantCounters));
+  const carriers = world.canonicalQuery(AssistantCounters);
   if (carriers.length === 0) return; // idle worlds pay three empty queries per beat
   const scans = beatScans(world);
   const seen = new Set<number>();
@@ -77,13 +76,13 @@ interface BeatScans {
 }
 
 function beatScans(world: World): BeatScans {
-  let mothers: Entity[] | null = null;
-  let people: Entity[] | null = null;
-  let buildings: Entity[] | null = null;
+  let mothers: readonly Entity[] | null = null;
+  let people: readonly Entity[] | null = null;
+  let buildings: readonly Entity[] | null = null;
   return {
-    mothers: () => (mothers ??= canonicalById(world.query(Female, Marriage, Residence))),
-    people: () => (people ??= canonicalById(world.query(Person))),
-    buildings: () => (buildings ??= canonicalById(world.query(Building))),
+    mothers: () => (mothers ??= world.canonicalQuery(Female, Marriage, Residence)),
+    people: () => (people ??= world.canonicalQuery(Person)),
+    buildings: () => (buildings ??= world.canonicalQuery(Building)),
   };
 }
 

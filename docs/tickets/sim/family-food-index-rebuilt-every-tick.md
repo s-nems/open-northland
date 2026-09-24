@@ -8,9 +8,9 @@ sampler). Nearly all of it is the child-order food haul: `driveChildOrders` -> `
 `haulFood` (`systems/family/children/`) asks `ExternalFoodIndex.nearest`
 (`systems/family/food-search.ts`) for a store to fetch from whenever a wife's larder is short, and the
 index is created per tick in `driveChildOrders`. Its first query filters every `Stockpile + Position`
-entity through `isHome` and `lowestStockedFood` after a `canonicalById` sort; the ring search that
+entity through `isHome` and `lowestStockedFood`; the ring search that
 follows is below 1% of the cost. Over those 4,000 ticks `nearest` costs 937 ms under `family`, of
-which the candidate filter is 688 ms and the sort 187 ms. The planner pass builds a second
+which the candidate filter is 688 ms. The planner pass builds a second
 `ExternalFoodIndex` per tick (`beginPlannerPass`) with the same first-query cost. A busy-machine 60k-tick
 `bench:map` run suggests `family` grows about 36x over the game (growth suspect).
 
@@ -27,8 +27,7 @@ tick's larger terms are gone.
 - One `ExternalFoodIndex` kept across ticks and shared by both callers, the family child-order haul
   and the planner pass, instead of two per-tick copies. This ticket owns it;
   [planner-pass-setup-scales-with-world.md](planner-pass-setup-scales-with-world.md) switches its
-  pass member to it. Build it on the ascending-id list of
-  [canonical-queries-resorted-per-call.md](canonical-queries-resorted-per-call.md) when that exists.
+  pass member to it. Build it on `World.canonicalQuery(Stockpile, Position)`.
 - Refresh only stores whose stock or membership changed (the ECS already journals membership for
   incremental indexes; stock writes need an equivalent change feed or a per-store revision check), so
   a tick's cost follows the stores that changed and the wives that ask.

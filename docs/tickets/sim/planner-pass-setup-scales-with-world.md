@@ -10,8 +10,8 @@ of the tick (922 settlers, 210 buildings; profiled timings are inflated by the s
 busy-machine profile from 60k at the same share. Stockpiles grow 345 -> 600 -> 1090 at ticks
 10k/30k/60k (exact counts), so this cost grows with the settlement whatever the settlers do.
 
-- `beginPlannerPass` (`settlers/planner/pass.ts`), 4.7% at 40k and at 60k: `collectTargets` re-sorts
-  every stockpile, building, site, crop and ground drop by id (`canonicalById`) and walks every
+- `beginPlannerPass` (`settlers/planner/pass.ts`), 4.7% at 40k and at 60k: `collectTargets` rebuilds
+  its target lists from every stockpile, building, site, crop and ground drop and walks every
   stockpile for yard occupancy; `ExternalQualityIndex` filters and buckets every stockpile;
   `PlannerSpacing.forTick` buckets every owned settler; `GossipCandidates`, `BattleFront`,
   `SeatDoors`, `ConstructionTaskClaims` and the claim tallies are built eagerly whether or not a
@@ -34,8 +34,7 @@ Expected gain: about 1 ms of the 18.7 ms tick at 40k, of the 1.7 ms the first th
 ## Scope
 
 - Build each pass member on first use, as `collectTargets` already does for its interaction-cell
-  indexes, starting from the ascending-id lists of
-  [canonical-queries-resorted-per-call.md](canonical-queries-resorted-per-call.md) instead of sorting.
+  indexes, starting from the shared ascending-id lists of `World.canonicalQuery`.
   Load-bearing: a lazy build must read the state a tick-start build reads. `PlannerSpacing`'s occupancy
   is a tick-start snapshot of stationary settlers and the pass itself sets settlers walking, so it
   stays a snapshot or becomes an incrementally maintained index.

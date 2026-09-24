@@ -9,7 +9,6 @@ import {
   Position,
 } from '../../../components/index.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { canonicalMatches } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { withinRange } from '../targets.js';
@@ -42,13 +41,14 @@ export function damageHousesInArea(
   if (op.amount <= 0) return; // a non-positive line would heal what it addresses
   const { world } = pass;
   const exemptId = 'objectId' in op ? op.objectId : 0;
-  const addressed = canonicalMatches(
-    world.query(Building, Health, Position),
-    (e) =>
-      ownerOf(world, e) === op.player &&
-      withinRange(world, e, op.point, op.range) &&
-      (exemptId === 0 || world.tryGet(e, MissionObjectId)?.id !== exemptId),
-  );
+  const addressed = world
+    .canonicalQuery(Building, Health, Position)
+    .filter(
+      (e) =>
+        ownerOf(world, e) === op.player &&
+        withinRange(world, e, op.point, op.range) &&
+        (exemptId === 0 || world.tryGet(e, MissionObjectId)?.id !== exemptId),
+    );
   for (const e of addressed.slice(0, HOUSE_DAMAGE_CAP)) {
     if (hasHouseBehaviour(world, e, HOUSE_BEHAVIOUR.INDESTRUCTIBLE)) continue;
     const health = world.mut(e, Health);

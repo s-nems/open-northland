@@ -13,7 +13,7 @@ import type { SystemContext } from '../../context.js';
 import { type BuildingCombatClass, buildingCombatClass } from '../../readviews/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { manhattan } from '../../spatial/metric.js';
-import { canonicalById, entityNode } from '../../spatial/nodes.js';
+import { entityNode } from '../../spatial/nodes.js';
 
 /** The objective tiers, best first. The building order is the CombatSystem's own siege priority
  *  ({@link buildingCombatClass}), so a wave marches on what a warrior in the field would pick. */
@@ -40,7 +40,7 @@ export function campaignTarget(
   // Bucket the enemy's standing buildings by tier first: the door and distance work below is then paid
   // only for the best tier that has a reachable member, not for every building on the map.
   const byTier = new Map<BuildingCombatClass, Entity[]>();
-  for (const e of canonicalById(world.query(Building, Owner))) {
+  for (const e of world.canonicalQuery(Building, Owner)) {
     if (!isEnemy(world, e, player)) continue;
     const tier = buildingCombatClass(ctx, world.get(e, Building).buildingType);
     const bucket = byTier.get(tier);
@@ -54,7 +54,7 @@ export function campaignTarget(
   }
 
   // The Person key is what keeps a claimed herd out: it is loot, not a war aim.
-  const people = canonicalById(world.query(Person, Owner)).filter((e) => isEnemy(world, e, player));
+  const people = world.canonicalQuery(Person, Owner).filter((e) => isEnemy(world, e, player));
   return nearestReachable(terrain, people, rally, home, approachOf);
 }
 

@@ -5,7 +5,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
-import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
+import { NodeBuckets } from '../../spatial/nodes.js';
 
 /**
  * The 4-connected radius of a completed workplace's loiter yard, in half-cell steps, about two visual
@@ -35,9 +35,9 @@ export class PlannerSpacing {
 
   /** Gated on {@link Owner}, so an unowned fixture buckets nothing. */
   static forTick(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerSpacing {
-    const stationaryOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
-      (e) => !isTravelling(world, e),
-    );
+    const stationaryOwned = world
+      .canonicalQuery(Settler, Position, Owner)
+      .filter((e) => !isTravelling(world, e));
     return new PlannerSpacing(world, ctx, terrain, new NodeBuckets(world, stationaryOwned), () =>
       dynamicBlockOverlay(world, ctx, terrain),
     );

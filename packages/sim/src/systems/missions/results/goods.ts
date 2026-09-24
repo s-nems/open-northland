@@ -14,7 +14,6 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { reapEmptyLoosePile, stackOntoTile } from '../../settlers/atomics/effects/goods/index.js';
-import { canonicalMatches } from '../../spatial/nodes.js';
 import { stockpilesAtNode } from '../../spatial/stockpiles.js';
 import { isLoosePile } from '../../stores/index.js';
 import type { MissionPass } from '../pass.js';
@@ -35,7 +34,7 @@ export function addGoodsToHouses(pass: MissionPass, id: number, good: number, am
 export function addGoodsToAnyStock(pass: MissionPass, player: number, good: number, amount: number): void {
   const { world, ctx } = pass;
   const buildings = contentIndex(ctx.content).buildings;
-  const storages = canonicalMatches(world.query(Building, Stockpile), (e) => {
+  const storages = world.canonicalQuery(Building, Stockpile).filter((e) => {
     const building = world.get(e, Building);
     return (
       building.built === ONE &&
@@ -152,7 +151,7 @@ function housesByDistance(
 ): Map<number, Entity[]> {
   const { world, ctx } = pass;
   const buckets = new Map<number, Entity[]>();
-  const owned = canonicalMatches(world.query(Building, Stockpile, Position), (e) => {
+  const owned = world.canonicalQuery(Building, Stockpile, Position).filter((e) => {
     const building = world.get(e, Building);
     return (
       building.built === ONE &&

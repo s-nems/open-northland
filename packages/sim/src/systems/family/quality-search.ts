@@ -6,7 +6,7 @@ import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { NodeBuckets } from '../spatial/nodes.js';
 import { accessibleStockAmounts } from '../stores/index.js';
 
 /** Per-tick searchable view of external stores carrying a configured household-quality good. */
@@ -19,9 +19,9 @@ export class ExternalQualityIndex {
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph | undefined,
   ) {
-    this.candidates = canonicalById(world.query(Stockpile, Position)).filter(
-      (e) => !this.isHome(e) && this.lowestDemanded(e) !== null,
-    );
+    this.candidates = world
+      .canonicalQuery(Stockpile, Position)
+      .filter((e) => !this.isHome(e) && this.lowestDemanded(e) !== null);
     this.buckets = new NodeBuckets(world, this.candidates);
   }
 

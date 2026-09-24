@@ -22,7 +22,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { livestockLeashOf } from '../livestock/assignment.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { isTravelling } from './nav-state.js';
 import { nearHeld, SPACING_PROBES } from './spacing.js';
 
@@ -99,7 +99,7 @@ export const animalWanderSystem: System = (world, ctx) => {
 
   // One canonical list shared by the occupancy pre-pass and the drive loop; only MoveGoal writes happen
   // here, so membership cannot change between them.
-  const animals = canonicalById(world.query(StayPoint, Settler, Position));
+  const animals = world.canonicalQuery(StayPoint, Settler, Position);
   if (animals.length === 0) return; // no wildlife on this map
 
   // The first stander in canonical order to reach a field becomes its keeper. A Resting animal is inside

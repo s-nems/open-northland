@@ -7,19 +7,11 @@ import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from './metric.js';
 
 /**
  * Ascending entity-id order: the same canonical order `World.canonicalEntities` uses, so a distance or
- * first-match tie-break lands on the identical winner. Fed a `world.query(C)` it matches an `alive`-based
- * scan only because a store never holds a destroyed entity.
+ * first-match tie-break lands on the identical winner. For a plain component query use the shared
+ * `World.canonicalQuery` instead of sorting here.
  */
 export function canonicalById(entities: Iterable<Entity>): Entity[] {
   return [...entities].sort((a, b) => a - b);
-}
-
-/** The entities `keep` accepts in {@link canonicalById} order, filtered before the sort so a narrow scan
- *  over a large store sorts its matches, not the store. */
-export function canonicalMatches(entities: Iterable<Entity>, keep: (e: Entity) => boolean): Entity[] {
-  const matches: Entity[] = [];
-  for (const e of entities) if (keep(e)) matches.push(e);
-  return matches.sort((a, b) => a - b);
 }
 
 /** Shared and frozen so an unoccupied-node lookup allocates nothing. */
@@ -27,7 +19,7 @@ const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
 /**
  * Entities grouped by their {@link Position}'s half-cell node, each bucket preserving input order. Feed the
- * constructor a {@link canonicalById} list: {@link NodeBuckets.nearest} is only canonical because buckets
+ * constructor an ascending-id list: {@link NodeBuckets.nearest} is only canonical because buckets
  * hold ascending ids, and the build appends rather than sorts. {@link NodeBuckets.insert} is the seam for a
  * caller placing an entity at a node of its own - a building's wall cells, or a bucket filled out of order.
  * An entity without a Position is dropped. Derived state, never hashed.

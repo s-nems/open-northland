@@ -11,7 +11,7 @@ runs (growth suspect). Only 28-39 workplaces hold a running `Production` at any 
 counts), yet the tick pays for the whole population and every building (shares of the system at 40k):
 
 - `operatorIndex` in `productionSystem` (`systems/economy/production.ts`) builds a `NodeBuckets` over
-  every `Person` with a `canonicalById` sort each tick (21%; 659-780 persons), only so
+  every `Person` each tick (21%; 659-780 persons), only so
   `presentOperators` (`systems/stores/operators.ts`) can probe one door node per workshop.
 - `new WorkshopWorkforce(...)` (`systems/stores/workshop-workforce.ts`) runs whenever a multi-recipe
   workshop has a spare operator: a sorted scan of every `JobAssignment` settler (288-334) with

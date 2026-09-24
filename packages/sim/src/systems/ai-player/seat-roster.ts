@@ -1,7 +1,6 @@
 import { Building, Owner, Person } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
-import { canonicalById } from '../spatial/nodes.js';
 
 interface RosterCache {
   readonly memberGeneration: number;
@@ -36,7 +35,7 @@ function createOwnedRoster(
 
   const derive = (world: World): ReadonlyMap<number, readonly Entity[]> => {
     const byPlayer = new Map<number, Entity[]>();
-    for (const e of canonicalById(world.query(component, Owner))) {
+    for (const e of world.canonicalQuery(component, Owner)) {
       const { player } = world.get(e, Owner);
       const held = byPlayer.get(player);
       if (held === undefined) byPlayer.set(player, [e]);

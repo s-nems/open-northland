@@ -55,7 +55,8 @@ Per-tick work must scale with active work, never all entity pairs. Reuse:
 - memoized content indexes for type lookup;
 - `NodeBuckets` and canonical candidate lists for spatial search;
 - dormancy or generation checks for provably unchanged work;
-- `World.canonicalEntities()` when a shared canonical list is actually required.
+- `World.canonicalQuery(...)` for a component query in ascending id, and `World.canonicalEntities()`
+  for every alive entity, when a shared canonical list is actually required.
 
 The tick is one synchronous function: no workers, shared memory, async or parallel sections inside
 the sim, ever. Parallelism can make state depend on core count, which desyncs multiplayer.

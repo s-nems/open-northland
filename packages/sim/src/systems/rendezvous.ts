@@ -3,7 +3,6 @@ import type { Component, DeepReadonly, Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
 import { clearNavState, isTravelling } from './movement/nav-state.js';
 import { startAtomic } from './settlers/atomics/start.js';
-import { canonicalById } from './spatial/nodes.js';
 
 // The shared skeleton for "two settlers meet and perform a mirrored ritual": each half carries the ritual
 // as a mirrored component, and the domain-specific bodies stay in their own systems.
@@ -20,7 +19,7 @@ export function driveMirroredPairs<R extends { partner: Entity }>(
   onOrphaned: (self: Entity) => void,
   drivePair: (a: Entity, b: Entity) => void,
 ): void {
-  for (const e of canonicalById(world.query(component))) {
+  for (const e of world.canonicalQuery(component)) {
     const record = world.tryGet(e, component);
     if (record === undefined) continue; // cancelled earlier this pass from the partner's side
     const mirrored = world.isAlive(record.partner) ? world.tryGet(record.partner, component) : undefined;

@@ -1,7 +1,6 @@
 import { Age, Position, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { isInside } from '../settlers/indoors.js';
-import { canonicalById } from '../spatial/nodes.js';
 
 /**
  * The shelter `e` is manning: the defence-mode building it claimed and reached, rather than one it is still
@@ -27,7 +26,7 @@ export function isManningShelter(world: World, e: Entity): boolean {
 export function garrisonSeats(world: World): ReadonlyMap<Entity, number> {
   const seats = new Map<Entity, number>();
   const taken = new Map<Entity, number>();
-  for (const e of canonicalById(world.query(Sheltering))) {
+  for (const e of world.canonicalQuery(Sheltering)) {
     const shelter = mannedShelter(world, e);
     if (shelter === null) continue;
     const seat = taken.get(shelter) ?? 0;

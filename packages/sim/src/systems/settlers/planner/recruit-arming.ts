@@ -27,7 +27,7 @@ import {
   weaponDamageVsMaterial,
 } from '../../readviews/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
-import { canonicalById, entityNode } from '../../spatial/nodes.js';
+import { entityNode } from '../../spatial/nodes.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
 import {
@@ -49,7 +49,7 @@ import type { PlannerPass } from './pass.js';
  */
 export function dispatchRecruitArming(pass: PlannerPass): void {
   const { world, ctx } = pass;
-  const recruits = canonicalById(world.query(AssistantRecruit));
+  const recruits = world.canonicalQuery(AssistantRecruit);
   if (recruits.length === 0) return; // no bookings: the pass costs one empty query
 
   for (const e of recruits) {

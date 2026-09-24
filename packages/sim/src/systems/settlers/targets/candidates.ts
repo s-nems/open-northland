@@ -15,7 +15,6 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFieldZone, translatedCells } from '../../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
-import { canonicalById } from '../../spatial/nodes.js';
 import { canonicalResources } from '../../spatial/resources.js';
 import { isYardHeap, lowestStockedGood } from '../../stores/index.js';
 import { TargetBands } from './bands.js';
@@ -78,7 +77,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     if (good.atomics.harvest !== undefined) harvestAtomicByGood.set(good.typeId, good.atomics.harvest);
   }
 
-  const stockpiles = canonicalById(world.query(Stockpile, Position));
+  const stockpiles = world.canonicalQuery(Stockpile, Position);
   const yardOccupied = new Map<NodeId, { good: number; fill: number }>();
   for (const entity of stockpiles) {
     if (!isYardHeap(world, entity)) continue;
@@ -91,12 +90,12 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       fill: stock.amounts.get(good) ?? 0,
     });
   }
-  const buildings = canonicalById(world.query(Building, Position));
-  const constructionSites = canonicalById(world.query(UnderConstruction, Building, Position));
+  const buildings = world.canonicalQuery(Building, Position);
+  const constructionSites = world.canonicalQuery(UnderConstruction, Building, Position);
   // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
   // tie-break picks the same field a whole-world scan would.
   const cropsByFarm = new Map<Entity, Entity[]>();
-  for (const crop of canonicalById(world.query(Crop, Position))) {
+  for (const crop of world.canonicalQuery(Crop, Position)) {
     const farm = world.get(crop, Crop).farm;
     if (farm !== null) pushTo(cropsByFarm, farm, crop);
   }
@@ -104,7 +103,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
   let fieldZones: Set<NodeId> | undefined;
-  const groundDrops = canonicalById(world.query(GroundDrop, Stockpile, Position));
+  const groundDrops = world.canonicalQuery(GroundDrop, Stockpile, Position);
   let groundDropsByGood: Map<number, Entity[]> | undefined;
   let groundDropsByHarvester: Map<Entity, Entity[]> | undefined;
   return {

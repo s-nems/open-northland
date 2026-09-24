@@ -10,7 +10,6 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { shelterCapacityOf } from '../readviews/index.js';
-import { canonicalById } from '../spatial/nodes.js';
 
 /** One building standing on alarm: where it is and how many civilians it still has room for once the
  *  claims already made against it are counted. */
@@ -34,7 +33,7 @@ export type ShelterSites = ReadonlyMap<number, readonly ShelterSite[]>;
 export function collectShelters(world: World, ctx: SystemContext): ShelterSites {
   const byPlayer = new Map<number, ShelterSite[]>();
   const byEntity = new Map<Entity, ShelterSite>();
-  for (const e of canonicalById(world.query(DefenceMode))) {
+  for (const e of world.canonicalQuery(DefenceMode)) {
     if (!shelterStillHolds(world, ctx, e)) continue;
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);

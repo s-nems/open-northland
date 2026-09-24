@@ -1,7 +1,6 @@
 import { Position } from '../../components/index.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
-import { canonicalById } from './nodes.js';
 
 /**
  * The shared scaffold of the per-world generation-keyed spatial index memos. One state per
@@ -86,7 +85,7 @@ export function createSpatialMemo<S, M>(
       members: new Map(),
       payload: payload.empty(world),
     };
-    for (const e of canonicalById(world.query(component, Position))) admit(world, state, e);
+    for (const e of world.canonicalQuery(component, Position)) admit(world, state, e);
     return state;
   };
 

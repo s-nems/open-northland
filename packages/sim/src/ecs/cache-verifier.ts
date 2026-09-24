@@ -1,17 +1,19 @@
+import type { CanonicalQueries } from './canonical-queries.js';
 import type { Component, Entity } from './component.js';
 
 /** Re-derives one incrementally-maintained cache from authoritative state and returns a message per
  *  mismatch (empty = coherent). Must be pure over current state. */
 export type CacheVerifier = () => string[];
 
-/** The World state a re-derive reads: `alive` and `stores` are authoritative, while `memberships` and
- *  `canonicalCache` are the derived views that must reproduce from them. */
+/** The World state a re-derive reads: `alive` and `stores` are authoritative, while `memberships`,
+ *  `canonicalCache` and `canonicalQueries` are the derived views that must reproduce from them. */
 export interface VerifiableStorage {
   readonly alive: ReadonlySet<Entity>;
   readonly stores: ReadonlyMap<Component<unknown>, ReadonlyMap<Entity, unknown>>;
   readonly registered: readonly Component<unknown>[];
   readonly memberships: ReadonlyMap<Entity, readonly number[]>;
   readonly canonicalCache: readonly Entity[] | null;
+  readonly canonicalQueries: CanonicalQueries;
 }
 
 export class CacheVerifiers {
@@ -22,11 +24,12 @@ export class CacheVerifiers {
     this.byName.set(name, verifier);
   }
 
-  /** Reports in a fixed order - canonical memo, memberships, then registered verifiers - which callers
-   *  assert against. The World's own two checks are not registrations, so no name can shadow them. */
+  /** Reports in a fixed order - canonical memo, memberships, canonical queries, then registered verifiers -
+   *  which callers assert against. The World's own checks are not registrations, so no name can shadow them. */
   run(storage: VerifiableStorage): string[] {
     const out = verifyCanonicalCache(storage);
     out.push(...verifyMemberships(storage));
+    out.push(...storage.canonicalQueries.verify(storage.stores));
     for (const verify of this.byName.values()) out.push(...verify());
     return out;
   }

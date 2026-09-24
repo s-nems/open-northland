@@ -20,7 +20,6 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE, mayChangeEquipment } from '../../readviews/index.js';
 import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
-import { canonicalById } from '../../spatial/nodes.js';
 import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { nearestStoreHolding } from '../targets/index.js';
@@ -141,7 +140,7 @@ function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]>
   const { world, ctx } = pass;
   const byPlayer = new Map<number, readonly GrantSpec[]>();
   const goods = contentIndex(ctx.content).goods;
-  for (const e of canonicalById(world.query(AssistantGrants))) {
+  for (const e of world.canonicalQuery(AssistantGrants)) {
     const { player, goods: granted } = world.get(e, AssistantGrants);
     if (byPlayer.has(player)) continue; // lowest-id carrier wins (the rules-singleton convention)
     const specs: (GrantSpec & { strength: number })[] = [];

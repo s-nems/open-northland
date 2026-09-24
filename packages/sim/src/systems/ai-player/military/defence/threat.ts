@@ -14,7 +14,7 @@ import { standsAtPost } from '../../../conflict/tower-post.js';
 import type { SystemContext } from '../../../context.js';
 import { houseBow, isFighterJob } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
-import { canonicalById, entityNode } from '../../../spatial/nodes.js';
+import { entityNode } from '../../../spatial/nodes.js';
 
 /** An enemy fighter, at the node he stands on this decision, with the walkable component that node
  *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him. */
@@ -71,7 +71,7 @@ export function seatRaiders(
   player: number,
 ): Raider[] {
   const raiders: Raider[] = [];
-  for (const e of canonicalById(world.query(Person, Owner))) {
+  for (const e of world.canonicalQuery(Person, Owner)) {
     const owner = world.get(e, Owner).player;
     if (owner === player) continue;
     // A fighter is a raid only if his player would engage this seat: an allied army walking past must

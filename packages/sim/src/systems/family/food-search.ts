@@ -7,7 +7,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { exportedGoodForm, isFood } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { NodeBuckets } from '../spatial/nodes.js';
 import { accessibleStockAmounts } from '../stores/index.js';
 
 /**
@@ -56,9 +56,9 @@ export class ExternalFoodIndex {
     avoid?: (cell: NodeId) => boolean,
   ): { store: Entity; goodType: number } | null {
     if (this.candidates === undefined || this.buckets === undefined) {
-      this.candidates = canonicalById(this.world.query(Stockpile, Position)).filter(
-        (e) => !this.isHome(e) && lowestStockedFood(this.world, this.ctx, e) !== null,
-      );
+      this.candidates = this.world
+        .canonicalQuery(Stockpile, Position)
+        .filter((e) => !this.isHome(e) && lowestStockedFood(this.world, this.ctx, e) !== null);
       this.buckets = new NodeBuckets(this.world, this.candidates);
     }
     if (this.candidates.length === 0) return null;

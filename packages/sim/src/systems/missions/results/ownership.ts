@@ -10,7 +10,6 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
-import { canonicalMatches } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHouses, missionHumans, ownedBy, ownedInRange, withinRange } from '../targets.js';
@@ -38,7 +37,7 @@ export function handHousesToPlayer(pass: MissionPass, id: number, player: number
 export function handPlayerToPlayer(pass: MissionPass, from: number, to: number): void {
   const { world } = pass;
   if (!isValidPlayer(from)) return;
-  for (const e of canonicalMatches(world.query(Owner), (e) => world.get(e, Owner).player === from))
+  for (const e of world.canonicalQuery(Owner).filter((e) => world.get(e, Owner).player === from))
     stampOwner(world, e, to);
 }
 
@@ -67,14 +66,15 @@ export function handAnimalsToPlayer(
 ): void {
   const { world } = pass;
   const wanted = op.amount > 0 ? Math.min(op.amount, ANIMAL_HANDOVER_CAP) : ANIMAL_HANDOVER_CAP;
-  const herd = canonicalMatches(
-    world.query(Settler, Position),
-    (e) =>
-      !world.has(e, Person) &&
-      world.get(e, Settler).tribe === op.tribe &&
-      ownedBy(world, e, op.player) &&
-      withinRange(world, e, op.point, op.range),
-  );
+  const herd = world
+    .canonicalQuery(Settler, Position)
+    .filter(
+      (e) =>
+        !world.has(e, Person) &&
+        world.get(e, Settler).tribe === op.tribe &&
+        ownedBy(world, e, op.player) &&
+        withinRange(world, e, op.point, op.range),
+    );
   for (const e of herd.slice(0, wanted)) stampOwner(world, e, op.otherPlayer);
 }
 

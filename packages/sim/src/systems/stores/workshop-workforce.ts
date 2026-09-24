@@ -12,7 +12,6 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { anotherSystemOwns } from '../settlers/action-owner.js';
 import { boundWorkplaceTarget } from '../settlers/targets/workplaces.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { bankedSlot, stockCapacity } from './capacity.js';
 import { accessibleStockAmounts } from './inventory.js';
 import { isWorkplaceOperator } from './operators.js';
@@ -31,7 +30,7 @@ export class WorkshopWorkforce {
   private readonly inbound = new Map<Entity, SupplyLoad[]>();
 
   constructor(world: World, ctx: SystemContext) {
-    for (const e of canonicalById(world.query(JobAssignment, Settler))) {
+    for (const e of world.canonicalQuery(JobAssignment, Settler)) {
       if (anotherSystemOwns(world, e) || world.tryGet(e, PathRequest)?.failed === true) continue;
       const settler = world.get(e, Settler);
       if (settler.jobType === null) continue;

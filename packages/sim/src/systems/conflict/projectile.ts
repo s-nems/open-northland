@@ -8,7 +8,6 @@ import {
   type PendingHitReaction,
   resolveCombatHit,
 } from '../settlers/atomics/effects/combat/index.js';
-import { canonicalById } from '../spatial/nodes.js';
 
 /**
  * How many tiles a projectile advances per tick per unit of the weapon's extracted `WeaponType.speed` - the
@@ -37,7 +36,7 @@ export const projectileSystem: System = (world, ctx) => {
   // Deferred reactions from any survivor struck this tick, so a flinch added mid-loop cannot perturb a
   // later projectile's hit decision.
   const pendingReactions: PendingHitReaction[] = [];
-  for (const p of canonicalById(world.query(Projectile, Position))) {
+  for (const p of world.canonicalQuery(Projectile, Position)) {
     advanceProjectile(world, ctx, p, pendingReactions);
   }
   applyPendingHitReactions(world, pendingReactions);

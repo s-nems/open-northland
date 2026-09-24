@@ -17,7 +17,6 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { goodEnabled, jobEnabled, settlerMeetsNeed, typeAllowed } from './unlocks.js';
 
 /** What a settler's last discovery walk saw of it: the walk repeats only when one of these moves.
@@ -167,7 +166,7 @@ export const technologySystem: System = (world, ctx) => {
   // A pass walks the settlers in ascending id, which attributes a shared discovery to the lowest; one
   // whose input is unchanged would walk to nothing new, so only the pending ones are read.
   const candidates =
-    pending === null ? canonicalById(world.query(Person, Settler)) : [...pending].sort((a, b) => a - b);
+    pending === null ? world.canonicalQuery(Person, Settler) : [...pending].sort((a, b) => a - b);
   if (pending === null) {
     for (const entity of memo.inputs.keys()) {
       if (!world.has(entity, Person) || !world.has(entity, Settler)) memo.inputs.delete(entity);

@@ -15,7 +15,7 @@ import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { herdParams } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { isTravelling } from './nav-state.js';
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
 
@@ -42,7 +42,7 @@ export const herdingSystem: System = (world, ctx) => {
   let standing: Set<NodeId> | undefined;
   let taken: Set<NodeId> | undefined;
   let blocked: BlockOverlay | undefined;
-  for (const e of canonicalById(world.query(HerdMember, Settler, Position))) {
+  for (const e of world.canonicalQuery(HerdMember, Settler, Position)) {
     const leader = world.get(e, HerdMember).leader;
     if (leader === e) continue; // the leader follows no one
     // Busy or already travelling: interrupting would cut a swing short or fight the navigation planner.

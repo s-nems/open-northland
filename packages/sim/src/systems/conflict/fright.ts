@@ -15,7 +15,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, redirectRoute } from '../movement/nav-state.js';
 import { isAggressiveAnimal } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { fleeDestination } from './flee.js';
 
 // The wildlife fright reaction: a loosed shot scatters the passive animals around its mark, so a herd does
@@ -69,7 +69,7 @@ export const animalFrightSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless fixture world - nowhere to run
   let blocked: BlockOverlay | undefined;
-  for (const e of canonicalById(world.query(Frightened, Settler, Position))) {
+  for (const e of world.canonicalQuery(Frightened, Settler, Position)) {
     const f = world.mut(e, Frightened);
     if (ctx.tick >= f.until || world.has(e, Anger)) {
       world.remove(e, Frightened);

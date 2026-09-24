@@ -17,7 +17,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { canonicalById, isValidNodeId } from '../spatial/nodes.js';
+import { isValidNodeId } from '../spatial/nodes.js';
 import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
 import { beginWalkTurn } from './turning.js';
 
@@ -79,7 +79,7 @@ export function drainPathRequests(
     return view;
   };
 
-  for (const e of canonicalById(world.query(PathRequest))) {
+  for (const e of world.canonicalQuery(PathRequest)) {
     if (spent.explored >= nodeBudget) break;
     const req = world.get(e, PathRequest);
     if (req.failed) continue;

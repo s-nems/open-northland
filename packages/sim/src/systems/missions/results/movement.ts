@@ -7,7 +7,6 @@ import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sendUnit } from '../../orders/movement.js';
 import { stepOut } from '../../settlers/indoors.js';
-import { canonicalMatches } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHumans, ownedBy, withinRange } from '../targets.js';
@@ -54,11 +53,12 @@ export function moveUnitsInArea(
   const claimed = new Set<NodeId>();
   // The original skips a human a vehicle carries; with no vehicles here, standing inside a building
   // is the nearest thing to a human this line cannot pick up.
-  const crowd = canonicalMatches(
-    world.query(Person, Position),
-    (e) =>
-      !world.has(e, Resting) && ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range),
-  );
+  const crowd = world
+    .canonicalQuery(Person, Position)
+    .filter(
+      (e) =>
+        !world.has(e, Resting) && ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range),
+    );
   for (const e of crowd.slice(0, TELEPORT_CAP)) teleportAndSettle(pass, e, destination, claimed);
 }
 

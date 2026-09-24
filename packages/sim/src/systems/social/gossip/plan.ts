@@ -26,7 +26,7 @@ import type { SystemContext } from '../../context.js';
 import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
+import { NodeBuckets } from '../../spatial/nodes.js';
 import { endChat } from './drive.js';
 
 /** How far in half-cell nodes a lonely working settler searches. Authored: a bounded ring search. */
@@ -71,7 +71,7 @@ export class GossipCandidates {
 
   ensure(): NodeBuckets {
     if (this.buckets === null) {
-      const eligible = canonicalById(this.world.query(Person, Position)).filter((e) => {
+      const eligible = this.world.canonicalQuery(Person, Position).filter((e) => {
         const s = this.world.get(e, Settler);
         return s.jobType !== null && !isFighterJob(this.content, s.jobType) && !this.world.has(e, Age);
       });

@@ -13,7 +13,6 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isInside } from '../../settlers/indoors.js';
-import { canonicalById } from '../../spatial/nodes.js';
 import { ExternalFoodIndex } from '../food-search.js';
 import { type ChildOrderPass, driveOrder } from './order.js';
 
@@ -24,19 +23,19 @@ import { type ChildOrderPass, driveOrder } from './order.js';
  */
 export function driveChildOrders(world: World, ctx: SystemContext, terrain: TerrainGraph | undefined): void {
   cancelAbandonedSessions(world);
-  const dutyBefore = canonicalById(world.query(FamilyDuty));
+  const dutyBefore = world.canonicalQuery(FamilyDuty);
   const pass: ChildOrderPass = {
     dutyClaimed: new Set<Entity>(),
     reservesReclaimed: new Set<Entity>(),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
   };
-  for (const e of canonicalById(world.query(ChildOrder, Settler, Position))) {
+  for (const e of world.canonicalQuery(ChildOrder, Settler, Position)) {
     // A sheltering mother keeps her standing order but not her errand; nothing walks her out of cover
     // until the alarm drops.
     if (world.has(e, Sheltering)) continue;
     driveOrder(world, ctx, terrain, e, pass);
   }
-  for (const home of canonicalById(world.query(FoodReserve))) {
+  for (const home of world.canonicalQuery(FoodReserve)) {
     if (!pass.reservesReclaimed.has(home)) world.remove(home, FoodReserve);
   }
   for (const e of dutyBefore) {
@@ -50,7 +49,7 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
  * food it consumed stays spent.
  */
 function cancelAbandonedSessions(world: World): void {
-  for (const home of canonicalById(world.query(MakingLove))) {
+  for (const home of world.canonicalQuery(MakingLove)) {
     const wife = world.get(home, MakingLove).wife;
     const marriage = world.isAlive(wife) ? world.tryGet(wife, Marriage) : undefined;
     const husband = marriage !== undefined && world.isAlive(marriage.spouse) ? marriage.spouse : undefined;

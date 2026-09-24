@@ -15,7 +15,6 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isScoutJob } from '../readviews/index.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { cellOfNode, FOG_STATE, type FogState } from '../vision/index.js';
 import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 import { moveUnit } from './movement.js';
@@ -57,7 +56,7 @@ export const exploreOrderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   const fog = ctx.fog;
   if (terrain === undefined) return; // mapless: no orders were issuable
-  for (const e of canonicalById(world.query(Settler, ExploreOrder))) {
+  for (const e of world.canonicalQuery(Settler, ExploreOrder)) {
     const owner = world.tryGet(e, Owner);
     if (owner === undefined || !isScoutJob(ctx.content, world.get(e, Settler).jobType)) {
       world.remove(e, ExploreOrder); // re-professioned or unowned mid-sweep - the intent dies

@@ -72,9 +72,9 @@ rules are:
 - keep commands serializable;
 - hash and snapshot plain state, not presentation objects.
 
-Queries have deterministic insertion order. Sort ids for canonical serialization and for decisions
-whose result would otherwise depend on which entity is encountered first. Membership checks and
-commutative sums do not need sorting.
+Queries have deterministic insertion order. Serialization walks `World.canonicalEntities`, and a
+decision whose result would otherwise depend on which entity is encountered first iterates
+`World.canonicalQuery` in ascending id. Membership checks and commutative sums do not need sorting.
 
 See [`../packages/sim/AGENTS.md`](../packages/sim/AGENTS.md) and [`TESTING.md`](TESTING.md) for the
 enforced rules and golden tests.

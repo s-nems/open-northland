@@ -7,7 +7,6 @@ import { collectShelters, type ShelterSites } from '../../defence/index.js';
 import { ExternalFoodIndex } from '../../family/food-search.js';
 import { ExternalQualityIndex } from '../../family/quality-search.js';
 import { GossipCandidates } from '../../social/index.js';
-import { canonicalById } from '../../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
 import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
@@ -60,7 +59,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     world,
     ctx,
     terrain,
-    settlers: canonicalById(world.query(Settler, Position)),
+    settlers: world.canonicalQuery(Settler, Position),
     targets,
     anyHaulable: hasHaulableOutput(world, ctx, targets.stockpiles),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),

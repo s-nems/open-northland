@@ -36,7 +36,7 @@ export function collectColliders(
   }
   // Before the dormancy exit: a grind ends on arrival, a re-route, or a profession change out of the
   // fighting trades, and none of those walk, so its holder is never in `movers`.
-  for (const e of canonicalById(world.query(Obstructed))) {
+  for (const e of world.canonicalQuery(Obstructed)) {
     if (!world.has(e, PathFollow) || !hasBodyCollision(world, ctx.content, e)) world.remove(e, Obstructed);
   }
   if (movers.length === 0) return null;

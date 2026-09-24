@@ -18,7 +18,7 @@ import type { System, SystemContext } from '../context.js';
 import { resourceWorkCell } from '../footprint/index.js';
 import { atomicClipName, atomicDurationForName } from '../readviews/animations.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 
@@ -69,7 +69,7 @@ export const chestOrderSystem: System = (world, ctx) => {
   // Canonical order: two openers arriving the same tick take their clips in id order, so the lower id's
   // completes first and takes the reward while the other whiffs; the copy also frees the loop to remove
   // the marker it iterates.
-  for (const e of canonicalById(world.query(Settler, OpenChestOrder))) {
+  for (const e of world.canonicalQuery(Settler, OpenChestOrder)) {
     const chest = world.get(e, OpenChestOrder).chest;
     if (!canOpenChest(world, ctx, e, chest) || !world.has(e, Owner)) {
       world.remove(e, OpenChestOrder); // chest gone, or the settler no longer qualifies

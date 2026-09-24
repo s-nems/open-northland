@@ -2,7 +2,7 @@ import { Building, Person, Position, Production, Stockpile } from '../../compone
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
-import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { WorkshopWorkforce } from '../stores/workshop-workforce.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
@@ -40,7 +40,7 @@ export const productionSystem: System = (world, ctx) => {
   let operatorsByNode: NodeBuckets | undefined;
   let workforce: WorkshopWorkforce | undefined;
   const operatorIndex = (): NodeBuckets => {
-    operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Person, Position)));
+    operatorsByNode ??= new NodeBuckets(world, world.canonicalQuery(Person, Position));
     return operatorsByNode;
   };
   // Advance running cycles before starting new ones, so a cycle started this tick begins counting next

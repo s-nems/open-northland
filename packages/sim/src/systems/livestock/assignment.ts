@@ -18,7 +18,7 @@ import { interactionNodeId } from '../footprint/interaction.js';
 import { isTravelling } from '../movement/nav-state.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { farmStands } from './herd.js';
 
 /** Re-anchoring cadence (ticks): a slow sweep, so claims, adoptions, new farms, and demolitions converge
@@ -85,7 +85,7 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
   // Grouped by the door each animal answers to, so the home spots around one door are handed out once.
   const byDoor = new Map<NodeId, Entity[]>();
   const strays: Entity[] = [];
-  for (const e of canonicalById(world.query(Livestock, Owner, Settler, Position))) {
+  for (const e of world.canonicalQuery(Livestock, Owner, Settler, Position)) {
     const held = world.tryGet(e, FarmAnimal);
     if (held !== undefined && !farmStands(world, ctx, held.farm)) {
       world.remove(e, FarmAnimal); // its farm is gone: back to the base yard

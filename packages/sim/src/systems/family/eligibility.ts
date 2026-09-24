@@ -16,7 +16,6 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { isMinor } from './households.js';
 
 /**
@@ -91,7 +90,7 @@ export function findPartnerFor(
   const owner = ownerOf(world, seeker);
   const seekerFemale = world.has(seeker, Female);
   let best: { entity: Entity; dist: number } | null = null;
-  for (const e of canonicalById(world.query(Person, Position))) {
+  for (const e of world.canonicalQuery(Person, Position)) {
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
     if (world.has(e, Female) === seekerFemale) continue;
