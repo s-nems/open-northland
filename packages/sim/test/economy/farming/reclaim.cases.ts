@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { StrandedField } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
@@ -97,6 +97,22 @@ describe('the stranded-field reclaim sweep', () => {
     driveSweep(sim, 2 * STRANDED_FIELD_CHECK_PERIOD_TICKS, 2 * DEAD_BY);
     expect(sim.world.tryGet(field, Crop)).toBeDefined(); // never reclaimed
     expect(sim.world.has(field, StrandedField)).toBe(false);
+  });
+
+  it('probes a healthy field along the line to its door instead of flooding the disc between them', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(48, 12) });
+    const farm = farmAt(sim, 44, 6);
+    const field = fieldAt(sim, farm, 4, 6); // 40 cells west: 80 half-cell nodes of open grass
+    const terrain = ctxOf(sim).terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    const expansions = vi.spyOn(terrain, 'stepsInto');
+
+    driveSweep(sim, 0, STRANDED_FIELD_CHECK_PERIOD_TICKS); // exactly one probe of the field
+
+    expect(sim.world.has(field, StrandedField)).toBe(false);
+    // A flood of the grass between them expands about 2,000 nodes; the line to the door is 80.
+    expect(expansions.mock.calls.length).toBeLessThanOrEqual(2 * 80);
+    expansions.mockRestore();
   });
 
   it('a farm walled off from one of its fields gets the slot back and refills the plot', () => {
