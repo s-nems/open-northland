@@ -1,29 +1,55 @@
 # Keep an idle settler off the drive ladder until something it reads changes
 
-**Area:** sim · **Focus:** settlers/planner · **Priority:** P3 · **Complexity:** high
+**Area:** sim · **Focus:** settlers/planner · **Priority:** P2
 
-At tick ~48k of the fortress (13 AI seats, 586 settlers) 421 settlers stand idle on a given tick and
-every one of them still runs the whole adult drive ladder (`drives/ladder.ts` `planAdult` through
-`planEconomy`) each tick, ending at the idle tail. The planner is the largest sim system there
-(1.5 ms of a 4.8 ms tick, `npm run bench:map` from the 48k checkpoint) with no single hotspot: the cost
-is the search rungs (gatherer, producer input supply, hoard, food) finding nothing, repeated for the
-same settler every tick. That is per-tick work scaling with the idle population rather than with
-active work, which `packages/sim/AGENTS.md` "Scale" rules out.
+The planner is the largest sim system on `magiczny_las_12_players` with 13 AI seats (the session in
+`docs/DEVELOPMENT.md` "Benchmarks"): 46% of the tick at tick 40k (median 7.95 of 18.7 ms, 922 settlers,
+210 buildings) and 52% at tick 60k (11.2 of 24.0 ms, 1055 settlers, 238 buildings), timings from
+`npm run bench:profile` and inflated by the sampler. Over a 60k-tick `bench:map` run its window median
+grows 2.07 -> 10.6 ms (5.1x) while settlers grow 708 -> 1011 (1.4x).
 
-Constraints: the existing porter dormancy (`drives/economy/porter-dormancy.ts`) shows the required
-shape, a gate keyed on every input the skipped rungs read, so behaviour stays byte-identical and the
-settler wakes the tick a relevant input changes; tests pin that immediate reaction
-(`test/settlers/porter-dormancy.test.ts`, `test/settlers/gossip.test.ts`). A time-based rest is
-excluded: it changes behaviour and was measured at only 8% of the planner.
+Most of that growth is idle settlers repeating failed searches. A precise call count over 200 ticks from
+each checkpoint shows the ladder (`drives/ladder.ts` `planAdult`) running for 70 adults per tick at 10k
+and 159 at 60k, and the idle tail of `planEconomy` (`pass.standing.add`) reached 23 times per tick at
+10k and 67 at 60k. `planGatherer` is called 73 times per tick at 60k and starts 0.3 harvests; the rest
+search and fail, every tick, for the same settlers. Of the settlers standing with no atomic or route
+after a tick at 60k, most are women (49), soldiers not holding a DEFEND post (about 35), builders (11),
+and flag collectors at an exhausted flag (7). An idle flag collector stands beside its flag with no
+atomic (`planFlagGatherer`), so it rescans its whole flag area next tick: 5.5 scans per tick, 3.3 s or
+6.7% of the profiled tick at 60k. `planGatherer` as a whole is 18% of the profiled tick at 60k and 15%
+at 40k.
+
+`releaseStaleIntent` holds a busy settler off the ladder (850 of 1008 per tick at 60k), but nothing
+holds an idle one: with no atomic and no route it runs `planAdult` again. Only the porter rung has
+dormancy (`drives/economy/porter-dormancy.ts`). Per-tick work therefore scales with the idle population
+times the search size, which `packages/sim/AGENTS.md` "Scale" rules out.
 
 ## Scope
 
-- Measure first, from the checkpoint, which rungs the idle population pays for and which world inputs
-  each reads; a per-rung generation key is only worth it where the inputs change rarely at scale.
-- Generalize the dormancy gate to the rungs where a provably-unchanged key holds long enough to pay,
-  with a coherence verifier per gate like `porterDormancy`.
+- A settler whose ladder ended in the idle tail, or in `planFlagGatherer`'s stand-by-the-flag branch,
+  skips the ladder until an input of a rung above that point changes. Behaviour stays byte-identical:
+  the gate compares every input the skipped rungs read, like `porterDormancy`, with a coherence verifier
+  registered for `verifyCaches`.
+- Measure first which of those inputs move per tick at 60k. A world-wide generation that moves every
+  tick buys nothing at this scale, so the keys must be scoped to the settler's reach, for example a
+  per-region version of the resource and ground-drop indexes plus the settler's own position, job, load,
+  flag, and experience.
+- Start with the rungs that dominate the idle cost: the flag stand-by and the gatherer and pile scans.
+  [Narrow the gatherer rung's scans](gatherer-rung-scans-foreign-candidates.md) makes each failed scan
+  cheaper; this ticket stops repeating it. Either helps alone.
+
+**Gameplay limit option, needs the user's decision:** re-plan an idle settler every N ticks, staggered
+by entity id as the assistant's `ASSISTANT_SCAN_PERIOD_TICKS` is, instead of every tick. It removes up
+to (N-1)/N of the idle ladder cost whichever rung fails, with no per-input keys. Visible effect: an idle
+settler reacts up to N/12 s later to new work (a new site, a dropped good, a freed seat, a grown tree);
+N = 12 is up to one second. It changes behaviour and state hashes, so it is not the default.
 
 ## Verify
 
-- `bench:map` from the fortress checkpoint: planner median falls with the state hash unchanged;
-  `verifyCaches` stays clean in the harness invariants; `npm test`.
+- With the session env from `docs/DEVELOPMENT.md`, run
+  `ON_BENCH_CHECKPOINT=<tick-60k mark> ON_BENCH_TICKS=5000 ON_BENCH_WINDOWS=5 npm run bench:map` before
+  and after, then `npm run bench:compare`: planner median falls. The recipe there writes the checkpoint
+  family; one exists in this session's worktree `bench-out/`. The state hash stays identical for the
+  dormancy gate; the cadence option moves it knowingly and regenerates goldens in the same commit.
+- `verifyCaches` stays clean in the harness invariants; `test/settlers/porter-dormancy.test.ts` and
+  `test/settlers/gossip.test.ts` keep their immediate-reaction assertions; `npm test`.
