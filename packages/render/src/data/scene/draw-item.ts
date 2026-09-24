@@ -145,8 +145,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  the optional percentage selects the interpolated durability/construction state of the endpoints. */
   readonly palisadePosts?: readonly PalisadePostDraw[];
   /** An unfinished palisade site: a surveyor's stake until a builder claims it, then the ordinary
-   *  delivery/work flag art, and nothing once its wood is in and only the strike remains. */
-  readonly palisadeSite?: 'unclaimed' | 'claimed' | 'stocked';
+   *  delivery/work flag art, with no heap for its wood, until the wall stands. */
+  readonly palisadeSite?: 'unclaimed' | 'claimed';
   /** This item only survived the cull as the details-panel portrait's subject: it stays reconciled and
    *  paletted for the portrait's own render but is hidden on the main map, so an indoor settler cannot
    *  pop into view at its workplace door. */

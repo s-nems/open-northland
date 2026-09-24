@@ -2,6 +2,8 @@ import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   ATTACK_ATOMIC,
+  BUILD_HOUSE_ATOMIC,
+  BUILD_WALL_ATOMIC,
   HERB_HARVEST_ATOMIC,
   OPEN_CHEST_ATOMIC,
   STORE_PICKUP_ATOMIC,
@@ -302,6 +304,11 @@ describe('characterBinding', () => {
       start: 2255,
       frameLists: [[2], [3], [4], [5], [0], [1], [7], [6]],
     });
+  });
+
+  it('swings the same hammer at a wall segment as at a house', () => {
+    const atomics = CHARACTER_SPECS.civilian.atomics;
+    expect(atomics[BUILD_WALL_ATOMIC]).toEqual(atomics[BUILD_HOUSE_ATOMIC]);
   });
 
   it('plays an atomic through its gfxAtomics program when one exists, looping only mode-1 records', () => {

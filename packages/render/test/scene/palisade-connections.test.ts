@@ -87,7 +87,7 @@ describe('palisadePostOffsets', () => {
     expect(items.flatMap((item) => item.palisadePosts ?? [])).toEqual([]);
   });
 
-  it('draws nothing at a site whose wood is in until its strike raises the wall', () => {
+  it('keeps the flag, and no heap, at a site whose wood is in until its strike raises the wall', () => {
     const stocked = palisade(2, 1, 0, 0 as Fixed);
     (stocked.components as Record<string, unknown>).Palisade = {
       ...stocked.components.Palisade,
@@ -96,7 +96,8 @@ describe('palisadePostOffsets', () => {
     (stocked.components as Record<string, unknown>).Stockpile = { amounts: [[5, 1]] };
     const items = buildSpriteScene(snapshotOf([palisade(1, 0, 0), stocked]));
     const item = items.find((drawn) => drawn.ref === 2);
-    expect(item?.palisadeSite).toBe('stocked');
+    expect(item?.palisadeSite).toBe('claimed');
+    expect(item?.goodType).toBeUndefined();
     expect(items.flatMap((drawn) => drawn.palisadePosts ?? [])).toEqual([]);
   });
 

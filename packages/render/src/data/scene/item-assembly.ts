@@ -12,7 +12,7 @@ import {
 import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import type { SettlerPose } from './settler-pose.js';
-import { assignStaticFields, readPalisadeClaimed, readStockpile } from './snapshot-readers/index.js';
+import { assignStaticFields, readPalisadeClaimed } from './snapshot-readers/index.js';
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
@@ -58,9 +58,9 @@ export function assembleItem(
     case 'palisade': {
       assignStaticFields(item, kind, components);
       if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
-        // The wood set down on the flag goes into the wall: flag and heap vanish until the strike raises it.
-        if (siteHoldsGoods(components)) item.palisadeSite = 'stocked';
-        else item.palisadeSite = readPalisadeClaimed(components) ? 'claimed' : 'unclaimed';
+        // The wood set down on the flag goes into the wall, so the flag alone stands until the strike
+        // raises the segment.
+        item.palisadeSite = readPalisadeClaimed(components) ? 'claimed' : 'unclaimed';
       } else {
         const posts = build.palisadePosts.get(entity.id);
         if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
@@ -111,10 +111,6 @@ export function assembleItem(
     item.player = build.playerColourOf(item.player);
   }
   return item;
-}
-
-function siteHoldsGoods(components: Readonly<Record<string, unknown>>): boolean {
-  return readStockpile(components).goodType !== undefined;
 }
 
 function assignFishFields(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {

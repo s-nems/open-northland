@@ -1,6 +1,7 @@
 import {
   BUILD_GUIDE_ATOMIC,
   BUILD_HOUSE_ATOMIC,
+  BUILD_WALL_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   CULTIVATE_ATOMIC,
   FISH_CAST_ATOMIC,
@@ -145,6 +146,7 @@ const CIVILIAN_ATOMICS = {
   [PLANT_ATOMIC]: { seq: SOW_SEQ },
   [CULTIVATE_ATOMIC]: { seq: WATER_SEQ },
   [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+  [BUILD_WALL_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
   [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
   [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
   [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },

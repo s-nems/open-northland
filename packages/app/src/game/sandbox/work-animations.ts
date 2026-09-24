@@ -5,6 +5,9 @@ import { HAMMER_TICKS_PER_FRAME } from '../../content/settler-gfx/index.js';
 // plays once per construct atomic, and labor advances per completed swing.
 export const BUILD_HOUSE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
+// The extracted `viking_builder_build_wall` `length 15`, at the same cadence.
+export const BUILD_WALL_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
+export const BUILD_WALL_ANIMATION = 'viking_builder_build_wall';
 // The extracted `viking_scout_build_guide` `length 15`, at the builder swing's cadence.
 export const BUILD_GUIDE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_GUIDE_ANIMATION = 'viking_scout_build_guide';

@@ -170,7 +170,7 @@ const PALISADE_BODIES = new LayerBuffer();
 
 /** Append the endpoint post and every repeated edge post, grouping all cast shadows below all bodies. */
 function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
-  if (item.palisadeSite === 'unclaimed' || item.palisadeSite === 'stocked') return true;
+  if (item.palisadeSite === 'unclaimed') return true;
   if (item.palisadeSite === 'claimed') return pushStockpileLayers(out, sheet, item, tick);
   const binding = sheet.bindings.palisade;
   if (binding === undefined) return false;
