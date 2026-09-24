@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { canPlaceWorkFlag, workFlagPlacementBlocks } from '../footprint/index.js';
+import { canPlaceWorkFlag, workFlagPlacementTest } from '../footprint/index.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
 import { type SignpostSite, signpostNetwork } from './network.js';
 
@@ -52,15 +52,11 @@ export function signpostProbe(
   terrain: TerrainGraph,
   player: number,
 ): SignpostProbe {
-  const blocked = workFlagPlacementBlocks(world, content, terrain);
+  const placeable = workFlagPlacementTest(world, content, terrain);
   const posts = signpostNetwork(world).get(player) ?? [];
   return {
-    canPlace: (x, y) => {
-      if (!terrain.inBounds(x, y)) return false;
-      const node = terrain.nodeAt(x, y);
-      if (!terrain.isWalkable(node) || blocked.has(node)) return false;
-      return !insideSpacing(posts, x, y);
-    },
+    canPlace: (x, y) =>
+      terrain.inBounds(x, y) && placeable(terrain.nodeAt(x, y)) && !insideSpacing(posts, x, y),
   };
 }
 

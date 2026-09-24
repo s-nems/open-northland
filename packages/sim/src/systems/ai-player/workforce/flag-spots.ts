@@ -4,7 +4,7 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { workFlagPlacementBlocks } from '../../footprint/index.js';
+import { workFlagPlacementTest } from '../../footprint/index.js';
 import { anyResourceNear } from '../../spatial/resources.js';
 import { nearestLiveResource } from '../live-resources.js';
 import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
@@ -56,12 +56,9 @@ export function flagSpotNear(
   resource: HalfCellNode,
   taken: TakenFlagNodes,
 ): HalfCellNode | null {
-  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain);
+  const placeable = workFlagPlacementTest(world, ctx.content, terrain);
   const legal = (x: number, y: number): boolean =>
-    terrain.inBounds(x, y) &&
-    terrain.isWalkable(terrain.nodeAt(x, y)) &&
-    !blocked.has(terrain.nodeAt(x, y)) &&
-    !taken.has(flagNodeKey(x, y));
+    terrain.inBounds(x, y) && placeable(terrain.nodeAt(x, y)) && !taken.has(flagNodeKey(x, y));
   const inBand = (x: number, y: number): boolean =>
     Math.abs(x - resource.hx) + Math.abs(y - resource.hy) >= FLAG_MIN_DISTANCE_NODES && legal(x, y);
   return (

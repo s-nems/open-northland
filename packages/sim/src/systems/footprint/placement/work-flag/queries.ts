@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import { DeliveryFlag } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -11,6 +12,22 @@ import { workFlagPlacementBlocks } from './incremental-blocks.js';
 // The work-flag placement queries - the command-gate and spawn-time picks over the incremental
 // blocked set (./incremental-blocks.ts).
 
+/**
+ * The work-flag placement rule resolved once for a decision that asks it per node: walkable ground that
+ * no landscape object blocks and no blocker reserves. Both sets are live views, so ask it within one
+ * decision, never across a world mutation. `ignoreFlag` as in {@link workFlagPlacementBlocks}.
+ */
+export function workFlagPlacementTest(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  ignoreFlag?: Entity,
+): (node: NodeId) => boolean {
+  const landscape = landscapeBlocks(world, terrain).walk;
+  const blocked = workFlagPlacementBlocks(world, content, terrain, ignoreFlag);
+  return (node) => terrain.isWalkable(node) && !landscape.has(node) && !blocked.has(node);
+}
+
 export function canPlaceWorkFlag(
   world: World,
   ctx: SystemContext,
@@ -18,11 +35,7 @@ export function canPlaceWorkFlag(
   node: NodeId,
   ignoreFlag?: Entity,
 ): boolean {
-  return (
-    terrain.isWalkable(node) &&
-    !landscapeBlocks(world, terrain).walk.has(node) &&
-    !workFlagPlacementBlocks(world, ctx.content, terrain, ignoreFlag).has(node)
-  );
+  return workFlagPlacementTest(world, ctx.content, terrain, ignoreFlag)(node);
 }
 
 /**
@@ -57,13 +70,8 @@ export function nearestWorkFlagPlacement(
 ): NodeId | null {
   const { accept, withinRadius } = opts;
   const origin = terrain.coordsOf(from);
-  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain, opts.ignoreFlag);
-  const landscape = landscapeBlocks(world, terrain).walk;
-  const legal = (node: NodeId): boolean =>
-    terrain.isWalkable(node) &&
-    !landscape.has(node) &&
-    !blocked.has(node) &&
-    (accept === undefined || accept(node));
+  const placeable = workFlagPlacementTest(world, ctx.content, terrain, opts.ignoreFlag);
+  const legal = (node: NodeId): boolean => placeable(node) && (accept === undefined || accept(node));
   // The first ring holding a legal node ends the search; its lowest node id is the same
   // `(distance, node-id)` winner the reference scan below picks.
   for (let r = 0; r <= (withinRadius ?? PLACEMENT_RING_MAX_RADIUS); r++) {

@@ -5,4 +5,9 @@
 
 export { noteWorkFlagMove } from './flag-moves.js';
 export { workFlagPlacementBlocks } from './incremental-blocks.js';
-export { canPlaceWorkFlag, nearestWorkFlagPlacement, workFlagBlockerVersion } from './queries.js';
+export {
+  canPlaceWorkFlag,
+  nearestWorkFlagPlacement,
+  workFlagBlockerVersion,
+  workFlagPlacementTest,
+} from './queries.js';

@@ -181,6 +181,27 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(probe.canPlace(-1, 0)).toBe(false); // off-map never places
   });
 
+  it('signpostProbe refuses ground a landscape object blocks, as the command gate does', () => {
+    const STONE = { hx: 10, hy: 0 };
+    const sim = new Simulation({
+      seed: 1,
+      content: testContent(),
+      map: {
+        ...grassMap(12, 1),
+        landscapes: {
+          types: [{ typeId: 1, walk: [{ dx: 0, dy: 0 }], build: [], groups: ['blocker'] }],
+          placements: [{ id: 0, typeId: 1, ...STONE, level: 0 }],
+        },
+      },
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const stone = terrain.nodeAt(STONE.hx, STONE.hy);
+    expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, stone, P0)).toBe(false);
+    expect(sim.signpostProbe(P0)?.canPlace(STONE.hx, STONE.hy)).toBe(false);
+    expect(sim.signpostProbe(P0)?.canPlace(STONE.hx - 2, STONE.hy)).toBe(true);
+  });
+
   it("demolishSignpost tears a post down, freeing its spacing and its neighbours' links; a non-signpost target is skipped", () => {
     const sim = freshSim(64, 8);
     const terrain = sim.terrain;

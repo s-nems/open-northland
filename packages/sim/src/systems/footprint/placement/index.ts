@@ -11,4 +11,5 @@ export {
   noteWorkFlagMove,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
+  workFlagPlacementTest,
 } from './work-flag/index.js';

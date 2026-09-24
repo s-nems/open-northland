@@ -7,6 +7,8 @@ import {
   FLAG_MIN_DISTANCE_NODES,
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
+import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { canPlaceWorkFlag } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
@@ -537,5 +539,42 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, 3);
     sim.step();
     expect([...collectModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+});
+
+describe('flagSpotNear', () => {
+  it('never picks a node a landscape object blocks', () => {
+    const MAP_NODES = 24;
+    const resource = { hx: 12, hy: 12 };
+    const withStoneAt = (stone?: { hx: number; hy: number }): Simulation =>
+      new Simulation({
+        seed: 1,
+        content: aiContent(),
+        map: {
+          ...grassNodeMap(MAP_NODES, MAP_NODES),
+          ...(stone === undefined
+            ? {}
+            : {
+                landscapes: {
+                  types: [{ typeId: 1, walk: [{ dx: 0, dy: 0 }], build: [], groups: ['blocker'] }],
+                  placements: [{ id: 0, typeId: 1, ...stone, level: 0 }],
+                },
+              }),
+        },
+      });
+    const spotIn = (sim: Simulation) => {
+      if (sim.terrain === undefined) throw new Error('mapped sim');
+      return flagSpotNear(sim.world, ctxOf(sim), sim.terrain, resource, new Set());
+    };
+    const open = spotIn(withStoneAt());
+    if (open === null) throw new Error('open ground has a spot');
+
+    const stoned = withStoneAt(open);
+    const spot = spotIn(stoned);
+    if (spot === null || stoned.terrain === undefined) throw new Error('a spot beside the stone');
+    expect(spot).not.toEqual(open);
+    expect(
+      canPlaceWorkFlag(stoned.world, ctxOf(stoned), stoned.terrain, stoned.terrain.nodeAt(spot.hx, spot.hy)),
+    ).toBe(true);
   });
 });

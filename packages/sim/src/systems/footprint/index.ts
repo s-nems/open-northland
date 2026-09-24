@@ -34,6 +34,7 @@ export {
   placementProbe,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
+  workFlagPlacementTest,
 } from './placement/index.js';
 export { resourceBlockedCells } from './resource-blocked-cache.js';
 export {
