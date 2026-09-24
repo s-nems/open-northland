@@ -1,7 +1,7 @@
 import { isValidPlayer, ownerOf, Person, restampMissionId } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { canonicalById } from '../../spatial/nodes.js';
+import { canonicalMatches } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import { withinRange } from '../targets.js';
 
@@ -24,7 +24,6 @@ export function stampHumansInRange(
 function stampHumans(pass: MissionPass, player: number, id: number, keep: (e: Entity) => boolean): void {
   const { world } = pass;
   if (!isValidPlayer(player)) return;
-  for (const e of canonicalById(world.query(Person))) {
-    if (ownerOf(world, e) === player && keep(e)) restampMissionId(world, e, id);
-  }
+  const matches = canonicalMatches(world.query(Person), (e) => ownerOf(world, e) === player && keep(e));
+  for (const e of matches) restampMissionId(world, e, id);
 }

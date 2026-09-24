@@ -14,6 +14,14 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
   return [...entities].sort((a, b) => a - b);
 }
 
+/** The entities `keep` accepts in {@link canonicalById} order, filtered before the sort so a narrow scan
+ *  over a large store sorts its matches, not the store. */
+export function canonicalMatches(entities: Iterable<Entity>, keep: (e: Entity) => boolean): Entity[] {
+  const matches: Entity[] = [];
+  for (const e of entities) if (keep(e)) matches.push(e);
+  return matches.sort((a, b) => a - b);
+}
+
 /** Shared and frozen so an unoccupied-node lookup allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 

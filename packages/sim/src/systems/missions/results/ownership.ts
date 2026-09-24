@@ -10,7 +10,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
-import { canonicalById } from '../../spatial/nodes.js';
+import { canonicalMatches } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHouses, missionHumans, ownedBy, ownedInRange, withinRange } from '../targets.js';
@@ -38,8 +38,8 @@ export function handHousesToPlayer(pass: MissionPass, id: number, player: number
 export function handPlayerToPlayer(pass: MissionPass, from: number, to: number): void {
   const { world } = pass;
   if (!isValidPlayer(from)) return;
-  const owned = canonicalById(world.query(Owner)).filter((e) => world.get(e, Owner).player === from);
-  for (const e of owned) stampOwner(world, e, to);
+  for (const e of canonicalMatches(world.query(Owner), (e) => world.get(e, Owner).player === from))
+    stampOwner(world, e, to);
 }
 
 /** Hand everything one player owns within `range` of the point to another; its humans leave the job
@@ -67,14 +67,15 @@ export function handAnimalsToPlayer(
 ): void {
   const { world } = pass;
   const wanted = op.amount > 0 ? Math.min(op.amount, ANIMAL_HANDOVER_CAP) : ANIMAL_HANDOVER_CAP;
-  let taken = 0;
-  for (const e of canonicalById(world.query(Settler, Position))) {
-    if (taken >= wanted) break;
-    if (world.has(e, Person) || world.get(e, Settler).tribe !== op.tribe) continue;
-    if (!ownedBy(world, e, op.player) || !withinRange(world, e, op.point, op.range)) continue;
-    stampOwner(world, e, op.otherPlayer);
-    taken++;
-  }
+  const herd = canonicalMatches(
+    world.query(Settler, Position),
+    (e) =>
+      !world.has(e, Person) &&
+      world.get(e, Settler).tribe === op.tribe &&
+      ownedBy(world, e, op.player) &&
+      withinRange(world, e, op.point, op.range),
+  );
+  for (const e of herd.slice(0, wanted)) stampOwner(world, e, op.otherPlayer);
 }
 
 function detachFromHouses(world: World, ctx: SystemContext, e: Entity): void {

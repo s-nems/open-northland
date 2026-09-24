@@ -7,7 +7,7 @@ import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { sendUnit } from '../../orders/movement.js';
 import { stepOut } from '../../settlers/indoors.js';
-import { canonicalById } from '../../spatial/nodes.js';
+import { canonicalMatches } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHumans, ownedBy, withinRange } from '../targets.js';
@@ -52,16 +52,14 @@ export function moveUnitsInArea(
   if (hexDistance(op.point, destination) <= op.range || !landable(pass, destination)) return;
   const { world } = pass;
   const claimed = new Set<NodeId>();
-  let moved = 0;
-  for (const e of canonicalById(world.query(Person, Position))) {
-    if (moved >= TELEPORT_CAP) break;
-    // The original skips a human a vehicle carries; with no vehicles here, standing inside a building
-    // is the nearest thing to a human this line cannot pick up.
-    if (world.has(e, Resting)) continue;
-    if (!ownedBy(world, e, op.player) || !withinRange(world, e, op.point, op.range)) continue;
-    teleportAndSettle(pass, e, destination, claimed);
-    moved++;
-  }
+  // The original skips a human a vehicle carries; with no vehicles here, standing inside a building
+  // is the nearest thing to a human this line cannot pick up.
+  const crowd = canonicalMatches(
+    world.query(Person, Position),
+    (e) =>
+      !world.has(e, Resting) && ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range),
+  );
+  for (const e of crowd.slice(0, TELEPORT_CAP)) teleportAndSettle(pass, e, destination, claimed);
 }
 
 /**

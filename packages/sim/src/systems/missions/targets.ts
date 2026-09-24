@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
-import { canonicalById } from '../spatial/nodes.js';
+import { canonicalMatches } from '../spatial/nodes.js';
 import { missionObjects } from './object-index.js';
 
 /** The map point an entity stands on; an entity with no position is nowhere. */
@@ -47,7 +47,8 @@ export function missionAnimals(world: World, id: number): Entity[] {
 
 /** Everything `player` owns within `range` map points of `point`, ascending by entity id. */
 export function ownedInRange(world: World, player: number, point: HalfCellNode, range: number): Entity[] {
-  return canonicalById(world.query(Owner, Position)).filter(
+  return canonicalMatches(
+    world.query(Owner, Position),
     (e) => world.get(e, Owner).player === player && withinRange(world, e, point, range),
   );
 }

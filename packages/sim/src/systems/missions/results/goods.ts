@@ -14,7 +14,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { reapEmptyLoosePile, stackOntoTile } from '../../settlers/atomics/effects/goods/index.js';
-import { canonicalById } from '../../spatial/nodes.js';
+import { canonicalMatches } from '../../spatial/nodes.js';
 import { stockpilesAtNode } from '../../spatial/stockpiles.js';
 import { isLoosePile } from '../../stores/index.js';
 import type { MissionPass } from '../pass.js';
@@ -34,13 +34,18 @@ export function addGoodsToHouses(pass: MissionPass, id: number, good: number, am
  *  the amount is placed. What no storage has room for is lost. */
 export function addGoodsToAnyStock(pass: MissionPass, player: number, good: number, amount: number): void {
   const { world, ctx } = pass;
-  let left = amount;
-  for (const e of canonicalById(world.query(Building, Stockpile))) {
-    if (left <= 0) return;
+  const buildings = contentIndex(ctx.content).buildings;
+  const storages = canonicalMatches(world.query(Building, Stockpile), (e) => {
     const building = world.get(e, Building);
-    if (building.built !== ONE || ownerOf(world, e) !== player) continue;
-    if (contentIndex(ctx.content).buildings.get(building.buildingType)?.kind !== BUILDING_KIND.storage)
-      continue;
+    return (
+      building.built === ONE &&
+      ownerOf(world, e) === player &&
+      buildings.get(building.buildingType)?.kind === BUILDING_KIND.storage
+    );
+  });
+  let left = amount;
+  for (const e of storages) {
+    if (left <= 0) return;
     const placed = Math.min(left, roomFor(world, ctx, e, good));
     addStock(world, e, good, placed);
     left -= placed;
@@ -147,10 +152,15 @@ function housesByDistance(
 ): Map<number, Entity[]> {
   const { world, ctx } = pass;
   const buckets = new Map<number, Entity[]>();
-  for (const e of canonicalById(world.query(Building, Stockpile, Position))) {
+  const owned = canonicalMatches(world.query(Building, Stockpile, Position), (e) => {
     const building = world.get(e, Building);
-    if (building.built !== ONE || ownerOf(world, e) !== op.player) continue;
-    if (!houseHolds(ctx, building.buildingType, op.good)) continue;
+    return (
+      building.built === ONE &&
+      ownerOf(world, e) === op.player &&
+      houseHolds(ctx, building.buildingType, op.good)
+    );
+  });
+  for (const e of owned) {
     const at = world.get(e, Position);
     const distance = hexDistance(nodeOfPosition(at.x, at.y), op.point);
     if (distance > op.range) continue;
