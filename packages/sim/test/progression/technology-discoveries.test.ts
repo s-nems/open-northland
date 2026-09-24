@@ -1,7 +1,8 @@
 import { parseContentSet } from '@open-northland/data';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   discoverTechnology,
+  noteSettlerProgress,
   Owner,
   Settler,
   setMapPermission,
@@ -9,6 +10,7 @@ import {
   TechnologyDiscoveries,
   technologyDiscovered,
 } from '../../src/components/index.js';
+import * as contentIndexModule from '../../src/core/content-index.js';
 import { exportSaveGame, restoreSimulation, Simulation } from '../../src/index.js';
 import { technologySystem } from '../../src/systems/progression/discoveries.js';
 import {
@@ -27,6 +29,8 @@ const RIVAL = 1;
 const TRIBE = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
+/** The fixture smith, a trade the setup's tribe enables nothing from. */
+const SMITH = 13;
 const PLANK = 2;
 const SMITHY = 4;
 /** The fixture's wood good, whose extraction feeds the wood track. */
@@ -81,6 +85,7 @@ describe('player technology discoveries', () => {
 
     const track = sim.content.jobExperience.find((candidate) => candidate.typeId === WOOD_TRACK);
     sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, rawXpForRepeats(track, 3));
+    noteSettlerProgress(sim.world, worker);
     technologySystem(sim.world, ctx);
     expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
     expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
@@ -212,6 +217,69 @@ describe('player technology discoveries', () => {
     expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
     const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content });
     expect(buildingEnabled(restored.world, ctxOf(restored), PLAYER, TRIBE, SMITHY)).toBe(true);
+  });
+});
+
+describe('the sweep reads only settlers whose discovery input may have moved', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** The setup's worker among twenty more woodcutters of the same player. */
+  function crowded() {
+    const scene = setup();
+    for (let i = 0; i < 20; i++) {
+      const e = settlerAt(scene.sim, { tribe: TRIBE, jobType: WOODCUTTER });
+      scene.sim.world.add(e, Owner, { player: PLAYER });
+    }
+    return scene;
+  }
+
+  it('reads no settler of an unchanged world, then the one worker who gained experience', () => {
+    const { sim, worker, ctx } = crowded();
+    technologySystem(sim.world, ctx);
+    // Every read resolves the settler's tribe once, so an untouched world must resolve none.
+    const lookups = vi.spyOn(contentIndexModule, 'contentIndex');
+    technologySystem(sim.world, ctx);
+    expect(lookups).not.toHaveBeenCalled();
+
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    technologySystem(sim.world, ctx);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+  });
+
+  it('re-reads a settler whose owner changed', () => {
+    const { sim, worker, ctx } = crowded();
+    sim.world.remove(worker, Owner);
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    technologySystem(sim.world, ctx); // an ownerless worker discovers for nobody
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(false);
+
+    sim.world.add(worker, Owner, { player: PLAYER });
+    technologySystem(sim.world, ctx);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+  });
+
+  it('re-reads a settler whose trade changed', () => {
+    const { sim, worker, ctx } = crowded();
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
+    setSettlerJob(sim.world, worker, SMITH);
+    technologySystem(sim.world, ctx); // no smith edge enables the carpenter
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(false);
+
+    setSettlerJob(sim.world, worker, WOODCUTTER);
+    technologySystem(sim.world, ctx);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+  });
+
+  it('the cache verifier reports an input write that skipped the progress note', () => {
+    const { sim, worker, ctx } = crowded();
+    technologySystem(sim.world, ctx);
+    expect(sim.world.verifyCaches()).toEqual([]);
+    sim.world.mut(worker, Settler).experience.set(WOOD_TRACK, 1);
+    expect(sim.world.verifyCaches()).toEqual([
+      `technology: settler ${worker} changed its discovery input without a progress note`,
+    ]);
+    noteSettlerProgress(sim.world, worker);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 });
 

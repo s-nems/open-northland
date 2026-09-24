@@ -4,6 +4,7 @@ import {
   hasMissionBehaviour,
   JobAssignment,
   MISSION_BEHAVIOUR,
+  noteSettlerProgress,
   ownerOf,
   Settler,
   type SettlerIdentity,
@@ -83,6 +84,7 @@ export function planTraining(
       const ids = s.learned[order.lesson.kind];
       if (!ids.includes(order.lesson.typeId)) ids.push(order.lesson.typeId);
       ids.sort((a, b) => a - b);
+      noteSettlerProgress(world, e);
       const job =
         order.lesson.kind === 'job'
           ? order.lesson.typeId

@@ -25,12 +25,12 @@ inflated by the sampler), ranges from it and the busy-machine profiles from 30k,
   bounds-checks, reads the node's landscape type, looks the type's props up in a `Map` (`propsOf`), and
   asks the dynamic overlay, whose `LayeredBlocks.has` (`nav/block-overlay.ts`) probes up to three large
   `Set`s: buildings, resources, landscapes. `stepsInto` calls it up to 16 times per expanded node, and
-  `walkCost` repeats the props lookup for each emitted step. At 40k the expansions come from field
-  reclaim's `probeRoute` (36%), A* `runSearch` (36%) and `RouteRegions.regionOf` (25%).
+  `walkCost` repeats the props lookup for each emitted step. At 40k the expansions come from A*
+  `runSearch` and `RouteRegions.regionOf`; field reclaim's route probe walks toward the farm door and
+  expands little.
 
-[sweeps-recheck-unchanged-state.md](sweeps-recheck-unchanged-state.md) and
-[pathfinding-army-march-spike.md](pathfinding-army-march-spike.md) cut how many nodes those callers
-expand; this ticket is the per-call cost that remains. Land
+[pathfinding-army-march-spike.md](pathfinding-army-march-spike.md) cuts how many nodes A* expands; this
+ticket is the per-call cost that remains. Land
 [building-blocked-cells-rebuilt-per-construction-advance.md](building-blocked-cells-rebuilt-per-construction-advance.md)
 first: it cuts the building-layer rebuilds, and the node mask below rebuilds whenever that cache
 invalidates, which today is about every tick.

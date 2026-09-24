@@ -16,6 +16,7 @@ import {
   MISSION_BEHAVIOUR,
   NeedOrder,
   NoRegeneration,
+  noteSettlerProgress,
   OpenChestOrder,
   Owner,
   Position,
@@ -96,6 +97,7 @@ function rememberCurrentJob(world: World, e: Entity, nextJob: number): void {
   const settler = world.mut(e, Settler);
   settler.learned ??= { job: [], good: [] };
   settler.learned.job.push(current.jobType);
+  noteSettlerProgress(world, e);
 }
 
 /**

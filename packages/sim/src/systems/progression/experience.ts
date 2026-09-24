@@ -1,5 +1,11 @@
 import type { ContentSet, HumanJobExperienceType } from '@open-northland/data';
-import { hasMissionBehaviour, isWildlife, MISSION_BEHAVIOUR, Settler } from '../../components/index.js';
+import {
+  hasMissionBehaviour,
+  isWildlife,
+  MISSION_BEHAVIOUR,
+  noteSettlerProgress,
+  Settler,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -69,6 +75,7 @@ function accrueExperience(
   if (amount <= 0) return; // a zero-rate track must not plant a hash-visible bucket with no meaning
   const experience = world.mut(settler, Settler).experience;
   experience.set(trackId, Math.min(limit, (experience.get(trackId) ?? 0) + amount));
+  noteSettlerProgress(world, settler);
 }
 
 /** `units` repeats on a content track, in the track's factor-scaled encoding and under its cap. */

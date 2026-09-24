@@ -75,6 +75,30 @@ type SettlerTradeWrite = { jobType: number | null };
 export function setSettlerJob(world: World, entity: Entity, jobType: number | null): void {
   const s = world.mut(entity, Settler);
   (s as SettlerTradeWrite).jobType = jobType;
+  noteSettlerProgress(world, entity);
+}
+
+/**
+ * Per world, the settlers whose trade, experience or learned lists were written in place since the
+ * technology sweep last drained the log. The needs drain writes every Settler each tick, so the store's
+ * change channels cannot single these writes out; their write paths report here instead. Derived
+ * bookkeeping, never hashed or saved; a world whose log was never opened records nothing.
+ */
+const progressLogs = new WeakMap<World, Set<Entity>>();
+
+/** Report an in-place write of `entity`'s trade, experience or learned lists. */
+export function noteSettlerProgress(world: World, entity: Entity): void {
+  progressLogs.get(world)?.add(entity);
+}
+
+/** `world`'s progress log, opened on first use, for the technology sweep to drain. */
+export function settlerProgressLog(world: World): Set<Entity> {
+  let log = progressLogs.get(world);
+  if (log === undefined) {
+    log = new Set();
+    progressLogs.set(world, log);
+  }
+  return log;
 }
 
 /**
