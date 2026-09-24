@@ -79,11 +79,11 @@ export class RelaySocket {
       }
       const inMs = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** this.attempt);
       this.attempt++;
-      this.options.onRetry?.(this.attempt, inMs);
       this.retry = setTimeout(() => {
         this.retry = null;
         if (!this.closed) this.open();
       }, inMs);
+      this.options.onRetry?.(this.attempt, inMs);
     };
     // A failed attempt is followed by a close event, where the retry is scheduled.
     socket.onerror = () => undefined;

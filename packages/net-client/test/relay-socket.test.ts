@@ -42,7 +42,7 @@ class FakeSocket {
 
 const HELLO: ClientMessage = { kind: 'hello', protocol: 1, token: 'token-0123456789abcdef', nick: 'Ania' };
 
-function harness() {
+function harness(onRetry?: () => void) {
   const sockets: FakeSocket[] = [];
   const events: string[] = [];
   const received: unknown[] = [];
@@ -51,7 +51,10 @@ function harness() {
     onOpen: () => events.push('open'),
     onMessage: (raw) => received.push(raw),
     onClosed: (reason) => events.push(`closed:${reason}`),
-    onRetry: (attempt, inMs) => events.push(`retry:${attempt}:${inMs}`),
+    onRetry: (attempt, inMs) => {
+      events.push(`retry:${attempt}:${inMs}`);
+      onRetry?.();
+    },
     createSocket: () => {
       const fake = new FakeSocket();
       sockets.push(fake);
@@ -127,6 +130,16 @@ describe('RelaySocket', () => {
     expect(sockets).toHaveLength(1);
     expect(events.at(-1)).toBe('closed:closed');
     expect(socket.send(HELLO)).toBe(false);
+  });
+
+  it('leaves no retry timer when the retry notification closes the connection', () => {
+    const { socket, sockets, events } = harness(() => socket.close());
+    sockets[0]?.open();
+    sockets[0]?.drop(CLOSE_ABNORMAL);
+    expect(events).toEqual(['open', 'retry:1:1000', 'closed:closed']);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(60_000);
+    expect(sockets).toHaveLength(1);
   });
 });
 
