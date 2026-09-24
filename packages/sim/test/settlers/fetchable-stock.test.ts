@@ -3,7 +3,7 @@ import { Owner, Position, Stockpile, setStockAmount } from '../../src/components
 import { GENERATION_JOURNAL_LIMIT } from '../../src/ecs/generation-journal.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { GrantedStock } from '../../src/systems/settlers/planner/granted-stock.js';
+import { FetchableStock } from '../../src/systems/settlers/targets/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -24,13 +24,13 @@ function pileAt(sim: Simulation, x: number, goodType: number, amount: number, pl
 
 /** The units of `goodType` `player` may draw on, read through the ledger's only question. */
 function unitsFor(sim: Simulation, player: number, goodType: number): number {
-  const stock = GrantedStock.of(sim.world, ctxOf(sim));
+  const stock = FetchableStock.of(sim.world, ctxOf(sim));
   let units = 0;
   while (stock.exceeds(player, goodType, units)) units++;
   return units;
 }
 
-describe('GrantedStock - the assistant grant budget kept across ticks', () => {
+describe('FetchableStock - the fetchable stock ledger kept across ticks', () => {
   it("counts a player's own stores and every unowned pile, never a rival's", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 4) });
     pileAt(sim, 2, SHOES, 2, HUMAN_PLAYER);
@@ -60,6 +60,23 @@ describe('GrantedStock - the assistant grant budget kept across ticks', () => {
     sim.world.add(own, Owner, { player: RIVAL_PLAYER });
     expect(unitsFor(sim, HUMAN_PLAYER, SHOES)).toBe(0);
     expect(unitsFor(sim, RIVAL_PLAYER, SHOES)).toBe(10);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('lists the stores holding a good and drops one whose stock runs out or that is destroyed', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 4) });
+    const own = pileAt(sim, 2, SHOES, 2, HUMAN_PLAYER);
+    const loose = pileAt(sim, 4, SHOES, 3);
+    const holders = (): Entity[] =>
+      [...FetchableStock.of(sim.world, ctxOf(sim)).holders(SHOES)].sort((a, b) => a - b);
+    expect(holders()).toEqual([own, loose]);
+
+    setStockAmount(sim.world, own, SHOES, 0);
+    expect(holders()).toEqual([loose]);
+
+    sim.world.destroy(loose);
+    setStockAmount(sim.world, own, SHOES, 1);
+    expect(holders()).toEqual([own]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

@@ -20,7 +20,8 @@ import {
   typeProducesGoodWithoutInputs,
 } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
-import { buriedUnderBuilding, canStoreGood, storeYieldsGood } from './stores/stock.js';
+import { FetchableStock } from './stores/fetchable-stock.js';
+import { buriedUnderBuilding, canStoreGood } from './stores/stock.js';
 
 /** How a missing-input candidate supplies the good: lift it from a store's stock, or crank a built
  *  input-less utility (a well, a hive) in place. */
@@ -65,17 +66,19 @@ export class TargetBands {
     this.stamp = this.generationSum();
   }
 
-  /** Stores {@link storeYieldsGood} would strip of `goodType`. */
+  /** Stores {@link storeYieldsGood} would strip of `goodType`, drawn from the cross-tick holder ledger so
+   *  a rebuild costs the good's holders rather than every stockpile. */
   holding(goodType: number): InteractionCellIndex {
     this.ensureFresh();
     let index = this.holdingByGood.get(goodType);
     if (index === undefined) {
-      const walls = buildingBlockedCells(this.world, this.ctx, this.terrain);
-      index = this.indexOver(
-        this.stockpiles.filter((e) =>
-          storeYieldsGood(this.world, this.ctx, this.terrain, walls, e, goodType),
-        ),
-      );
+      const { world, terrain } = this;
+      const walls = buildingBlockedCells(world, this.ctx, terrain);
+      const members: Entity[] = [];
+      for (const e of FetchableStock.of(world, this.ctx).holders(goodType)) {
+        if (!buriedUnderBuilding(world, terrain, walls, e)) members.push(e);
+      }
+      index = this.indexOver(members.sort((a, b) => a - b));
       this.holdingByGood.set(goodType, index);
     }
     return index;

@@ -20,9 +20,8 @@ import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE, mayChangeEquipment } from '../../readviews/index.js';
 import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
-import { nearestStoreHolding } from '../targets/index.js';
+import { FetchableStock, nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { GrantedStock } from './granted-stock.js';
 import { wakeIdle } from './idle-replan.js';
 import type { PlannerPass } from './pass.js';
 
@@ -69,7 +68,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   const grants = collectGrantSpecs(pass);
   if (grants.size === 0) return; // no player granted anything: the pass costs one empty query
   const inFlight = collectInFlightFetches(world);
-  const stock = GrantedStock.of(world, ctx);
+  const stock = FetchableStock.of(world, ctx);
 
   for (const e of dueThisBeat(world, ctx.tick)) {
     if (!world.has(e, Position)) continue; // the pass plans positioned settlers only

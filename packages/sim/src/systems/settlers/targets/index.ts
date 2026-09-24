@@ -6,6 +6,7 @@ export { unreachableSiteStand, unreachableWorkCell, type WorkCellGates } from '.
 export { nearestCollectablePileFor, nearestHarvestableFor, nearestOwnDropFor } from './resources.js';
 export {
   buriedUnderBuilding,
+  FetchableStock,
   hasHaulableOutput,
   nearestConstructionSite,
   nearestFreeYardNode,

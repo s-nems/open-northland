@@ -8,7 +8,11 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
-import { collectTargets, nearestStoreHolding } from '../../src/systems/settlers/targets/index.js';
+import {
+  collectTargets,
+  interactionCell,
+  nearestStoreHolding,
+} from '../../src/systems/settlers/targets/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -62,5 +66,18 @@ describe('TargetBands', () => {
     // A store that becomes a construction site mid-tick is a sink, never a source to strip.
     sim.world.add(near, UnderConstruction, { labor: fx.fromInt(0) });
     expect(nearestStoreHolding(targets.bands, sim.world, here, WOOD, undefined)).toBe(far);
+  });
+
+  it('keeps the entity-id tie-break when a lower-id store comes to hold the good later', () => {
+    const { sim, empty } = fixture();
+    const twin = hqAt(sim, 1, 2, 5); // shares `empty`'s door, one id higher
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('fixture map missing');
+    const bandsNow = () => collectTargets(sim.world, ctxOf(sim), terrain).bands;
+    const door = interactionCell(sim.world, ctxOf(sim), terrain, empty);
+    expect(nearestStoreHolding(bandsNow(), sim.world, door, WOOD, undefined)).toBe(twin);
+
+    setStockAmount(sim.world, empty, WOOD, 5); // held now, but entered the holder ledger after `twin`
+    expect(nearestStoreHolding(bandsNow(), sim.world, door, WOOD, undefined)).toBe(empty);
   });
 });
