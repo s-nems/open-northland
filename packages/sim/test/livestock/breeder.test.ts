@@ -115,6 +115,22 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(herdRow(sim, farm)).toBe(0);
   });
 
+  it('passes over farms across water without spending its scan of five on them', () => {
+    const sim = new Simulation({ seed: 1, content: livestockContent(), map: waterColumnMap(32, 32, 16) });
+    for (let f = 0; f < 5; f++) {
+      const island = farmAt(sim, 40 + f * 4, 10, { owner: P0 });
+      for (let i = 0; i < 3; i++) cowAt(sim, 40 + f * 4 + i, 14, { owner: P0, farm: island });
+    }
+    const { farm } = farmWithBreeder(sim);
+    const reachable = farmAt(sim, 10, 40, { owner: P0 });
+    for (let i = 0; i < 3; i++) cowAt(sim, 10 + i, 42, { owner: P0, farm: reachable });
+
+    plan(sim);
+
+    expect(herdRow(sim, farm)).toBe(1);
+    expect(herdRow(sim, reachable)).toBe(2);
+  });
+
   it('leaves a neighbour with only a pair alone', () => {
     const sim = livestockSim();
     const { farm } = farmWithBreeder(sim);

@@ -203,17 +203,20 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
     if (other === farm || !world.has(other, Stockpile) || ownerOf(world, other) !== owner) continue;
     if (!farmStands(world, ctx, other)) continue;
     if (speciesHerdOf(world, ctx, other, good).all <= BREEDING_PAIR) continue;
-    sources += 1;
+    // A farm offering nothing on this side of the water is not one of the farms the scan draws from.
+    let offered = false;
     for (const animal of herdOf(world, other)) {
       if (speciesGoodOf(world, ctx, animal) !== good) continue;
       const node = entityNode(world, terrain, animal);
       if (terrain.componentOf(node) !== side) continue;
+      offered = true;
       const range = hexRange(plan, door, node);
       if (range < bestRange || (range === bestRange && best !== null && animal < best)) {
         best = animal;
         bestRange = range;
       }
     }
+    if (offered) sources += 1;
   }
   if (best === null) return false;
   const from = world.get(best, FarmAnimal).farm;
