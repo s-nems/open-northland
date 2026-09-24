@@ -73,16 +73,9 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
 
     const p = world.get(e, Position);
     if (world.has(e, PathFollow)) {
-      // A route's last waypoint is always an exact node centre, so comparing its node is equivalent to
-      // comparing centre coordinates and keeps this steady-state exit allocation-free.
+      // A route ends on the centre of its last path node, which that waypoint carries.
       const stops = world.get(e, PathRoute).waypoints;
-      const last = stops[stops.length - 1];
-      if (last !== undefined) {
-        const n = nodeOfPosition(last.x, last.y);
-        if (terrain.nodeAtClamped(n.hx, n.hy) === goalNode) {
-          continue; // route serves the goal
-        }
-      }
+      if (stops[stops.length - 1]?.node === goalNode) continue; // route serves the goal
       // The route ends somewhere else, so the goal changed mid-walk: fall through and re-route.
     } else {
       const g = terrain.coordsOf(goalNode); // validated just above
