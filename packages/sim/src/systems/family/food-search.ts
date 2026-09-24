@@ -1,14 +1,11 @@
-import { Building, ownerOf, ownersCompatible, Position, Stockpile } from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
+import { ownerOf, ownersCompatible, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { exportedGoodForm, isFood } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { NodeBuckets } from '../spatial/nodes.js';
-import { accessibleStockAmounts } from '../stores/index.js';
+import { type FoodSources, foodSourcesOf, lowestStockedFood } from './food-sources.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to before
@@ -25,23 +22,19 @@ const RING_MAX_RADIUS = 48;
 const RING_MIN_CANDIDATES = 64;
 
 /**
- * A per-tick index over the stockpiles a family may draw food from: any store or ground pile holding a
- * unit that reaches her back as an edible, except a home, whose larder feeds only its own residents. The
- * whole-world `Stockpile+Position` scan happens once per tick here, and each seeker pays a bounded ring
- * search over it.
- *
- * Candidacy is snapshotted lazily on first query, which is exact within a pass because stock mutates only
- * on atomic completion, never while a planner or family pass issues actions.
+ * One pass's view of the shared {@link FoodSources}, caught up when the pass makes it: each seeker pays a
+ * bounded ring search over it, with her own side, signpost gate and failed goals applied per query.
  */
 export class ExternalFoodIndex {
-  private candidates: readonly Entity[] | undefined;
-  private buckets: NodeBuckets | undefined;
+  private readonly sources: FoodSources;
 
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph | undefined,
-  ) {}
+  ) {
+    this.sources = foodSourcesOf(world, ctx.content);
+  }
 
   /**
    * The nearest external food source to `from`, or null when none exists anywhere. `gate` is the seeker's
@@ -55,24 +48,19 @@ export class ExternalFoodIndex {
     gate: SpatialGate | null,
     avoid?: (cell: NodeId) => boolean,
   ): { store: Entity; goodType: number } | null {
-    if (this.candidates === undefined || this.buckets === undefined) {
-      this.candidates = this.world
-        .canonicalQuery(Stockpile, Position)
-        .filter((e) => !this.isHome(e) && lowestStockedFood(this.world, this.ctx, e) !== null);
-      this.buckets = new NodeBuckets(this.world, this.candidates);
-    }
-    if (this.candidates.length === 0) return null;
+    const { candidates, buckets } = this.sources;
+    if (candidates.length === 0) return null;
     const accept = (e: Entity): boolean =>
       ownersCompatible(owner, ownerOf(this.world, e)) &&
       this.inArea(e, gate) &&
       !this.standRetired(e, from, avoid);
     const hit =
-      this.candidates.length <= RING_MIN_CANDIDATES
+      candidates.length <= RING_MIN_CANDIDATES
         ? null
-        : this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
-    const store = hit?.entity ?? this.linearNearest(from, accept);
+        : buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
+    const store = hit?.entity ?? this.linearNearest(candidates, from, accept);
     if (store === null) return null;
-    const goodType = lowestStockedFood(this.world, this.ctx, store);
+    const goodType = lowestStockedFood(this.world, this.ctx.content, store);
     // A null here would mean a mid-pass mutation drained the winner: fail the query rather than guess.
     return goodType === null ? null : { store, goodType };
   }
@@ -97,18 +85,15 @@ export class ExternalFoodIndex {
     return gate.allowsNode(this.terrain.nodeAtClamped(node.hx, node.hy));
   }
 
-  /** Whether the stockpile is a home-kind building (its larder is its residents' alone). */
-  private isHome(e: Entity): boolean {
-    const building = this.world.tryGet(e, Building);
-    if (building === undefined) return false;
-    return contentIndex(this.ctx.content).buildings.get(building.buildingType)?.kind === 'home';
-  }
-
   /** The strictly-nearer pick over the ascending-id candidates, covering sources beyond
    *  {@link RING_MAX_RADIUS}. */
-  private linearNearest(from: { hx: number; hy: number }, accept: (e: Entity) => boolean): Entity | null {
+  private linearNearest(
+    candidates: readonly Entity[],
+    from: { hx: number; hy: number },
+    accept: (e: Entity) => boolean,
+  ): Entity | null {
     let best: { store: Entity; dist: number } | null = null;
-    for (const e of this.candidates ?? []) {
+    for (const e of candidates) {
       if (!accept(e)) continue;
       const p = this.world.get(e, Position);
       const node = nodeOfPosition(p.x, p.y);
@@ -117,19 +102,4 @@ export class ExternalFoodIndex {
     }
     return best?.store ?? null;
   }
-}
-
-/**
- * The lowest stocked good (ascending good type) a family may take away from `store` as food, or null when
- * it holds none. Tested on the good's edible form, since the family's lift performs that conversion; the
- * returned type is the raw one to lift. A raw min-scan: the pick is order-free, and the canonical sorted
- * view would allocate and sort per store per query on the candidate-filter hot path.
- */
-function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
-  let lowest: number | null = null;
-  for (const [goodType, amount] of accessibleStockAmounts(world, store) ?? []) {
-    if (amount <= 0 || (lowest !== null && goodType >= lowest)) continue;
-    if (isFood(ctx, exportedGoodForm(ctx, goodType))) lowest = goodType;
-  }
-  return lowest;
 }

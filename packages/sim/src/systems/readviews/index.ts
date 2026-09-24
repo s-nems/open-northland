@@ -57,7 +57,7 @@ export {
   equipPickList,
   mayChangeEquipment,
 } from './equip-pick.js';
-export { edibleGoodFormOf, exportedGoodForm, isFood } from './food.js';
+export { edibleGoodFormOf, exportedGoodForm, isFood, isFoodIn } from './food.js';
 export {
   baseSoldierJobType,
   hunterJobType,

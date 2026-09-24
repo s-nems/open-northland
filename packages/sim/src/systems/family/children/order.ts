@@ -43,7 +43,6 @@ export type ChildOrderPass = {
   readonly dutyClaimed: Set<Entity>;
   /** Homes whose {@link FoodReserve} this tick re-claimed, holding the child fund back from eaters. */
   readonly reservesReclaimed: Set<Entity>;
-  /** Shared by every order in the pass; self-builds on the first larder-short one. */
   readonly externalFood: ExternalFoodIndex;
 };
 

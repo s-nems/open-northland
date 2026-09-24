@@ -13,7 +13,12 @@ const FOOD_GOOD_ID_PREFIX = 'food_';
  * source's own `food_` id prefix rather than by a decoded slot-to-good binding.
  */
 export function isFood(ctx: SystemContext, goodType: number): boolean {
-  const good = contentIndex(ctx.content).goods.get(goodType);
+  return isFoodIn(ctx.content, goodType);
+}
+
+/** {@link isFood} for a caller that holds a content set but no {@link SystemContext}. */
+export function isFoodIn(content: ContentSet, goodType: number): boolean {
+  const good = contentIndex(content).goods.get(goodType);
   if (good === undefined) return false;
   return good.id.startsWith(FOOD_GOOD_ID_PREFIX);
 }
