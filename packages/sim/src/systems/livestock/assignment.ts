@@ -107,8 +107,8 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     herd.forEach((e, i) => {
       // A farm's animal is leashed to the door itself, the original's birth point; a stray keeps to the
       // home spot it was handed, the base yard being no territory of its own.
-      const home = grazeAnchor(terrain, blocked, door, i);
-      const anchor = world.has(e, FarmAnimal) ? door : home;
+      const farmBound = world.has(e, FarmAnimal);
+      const anchor = farmBound ? door : grazeAnchor(terrain, blocked, door, i);
       const stay = world.tryGet(e, StayPoint);
       if (stay === undefined) world.add(e, StayPoint, { cell: anchor });
       else if (stay.cell !== anchor) world.mut(e, StayPoint).cell = anchor;
@@ -117,7 +117,7 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
       if (manhattan(terrain, entityNode(world, terrain, e), anchor) <= livestockLeashOf(world, ctx, e)) {
         return;
       }
-      world.add(e, MoveGoal, { cell: home });
+      world.add(e, MoveGoal, { cell: farmBound ? grazeAnchor(terrain, blocked, door, i) : anchor });
     });
   }
 };
