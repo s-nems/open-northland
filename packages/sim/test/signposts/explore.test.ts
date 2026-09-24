@@ -161,4 +161,20 @@ describe('exploreArea - the scout sweep', () => {
       expect(sim.world.has(scout, ExploreOrder)).toBe(false);
     },
   );
+
+  it('a walk order to the very node of the current leg still ends the sweep', () => {
+    const sim = simWithFog();
+    const scout = scoutAt(sim, 1, 1);
+    sim.step();
+    sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: 30, y: 6 });
+    sim.run(WALK_INTO_LEG_TICKS);
+    const leg = sim.world.get(scout, MoveGoal).cell;
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('missing terrain');
+    const c = terrain.coordsOf(leg);
+
+    sim.enqueueSetup({ kind: 'moveUnit', entity: scout, x: c.x, y: c.y });
+    sim.step();
+    expect(sim.world.has(scout, ExploreOrder)).toBe(false);
+  });
 });
