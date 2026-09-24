@@ -6,9 +6,10 @@ import { pickSaveFile } from '../../../view/runtime/save-load/file-access.js';
 import { browserSaveStore } from '../../../view/runtime/save-load/store-browser.js';
 import { SCENE_TOKEN_PREFIX } from '../../../view/runtime/save-load/world-names.js';
 import { segControl } from '../../../view/settings-controls.js';
+import { node } from '../dom.js';
 import { metaLine } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
-import { button, field, node } from './parts.js';
+import { button, field } from './parts.js';
 
 export type CreateChoice =
   | { readonly kind: 'map'; readonly mapId: string; readonly name: string }

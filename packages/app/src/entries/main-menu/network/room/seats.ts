@@ -1,15 +1,16 @@
 import { MAX_SEATS, type RoomSeatView, type RoomView } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../../../i18n/index.js';
+import { node } from '../../dom.js';
 import { colorChip, colorPalette } from '../../lobby-controls/color.js';
 import { seatRow as createSeatRow } from '../../lobby-controls/seat.js';
 import { seatModeControl } from '../../lobby-controls/seat-mode.js';
-import { button, node, selectControl } from './controls.js';
+import { button, selectControl } from './controls.js';
 import { canClaimSeat, roomPermissions, savedSeatHint } from './model.js';
 import type { NetworkRoomDeps } from './types.js';
 
 export function roomSeats(deps: NetworkRoomDeps) {
   const { client, copy } = deps;
-  const root = node('section', '', 'network-room__seats');
+  const root = node('section', 'network-room__seats');
   const rows = new Map<number, ReturnType<typeof seatRow>>();
   let shown: { readonly room: RoomView; readonly connected: boolean } | null = null;
   /** The seat whose colour palette is open; one at a time, like the local lobby. */
@@ -36,9 +37,9 @@ export function roomSeats(deps: NetworkRoomDeps) {
       },
     };
     const chip = colorChip(colorOptions, player, () => showPalette(paletteSeat === player ? null : player));
-    const color = node('div', '', 'network-room__field');
-    color.append(node('span', copy.color), chip.root);
-    const palette = node('div', '', 'network-room__palette');
+    const color = node('div', 'network-room__field');
+    color.append(node('span', '', copy.color), chip.root);
+    const palette = node('div', 'network-room__palette');
     palette.hidden = true;
     function paintPalette(room: RoomView, seat: RoomSeatView, frozen: boolean): void {
       const expanded = paletteSeat === player;

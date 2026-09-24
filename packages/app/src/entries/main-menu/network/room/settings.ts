@@ -1,7 +1,8 @@
 import type { RoomView } from '@open-northland/net-protocol';
 import { messages } from '../../../../i18n/index.js';
+import { node } from '../../dom.js';
 import { gameRuleControls } from '../../lobby-controls/rules.js';
-import { node, selectControl } from './controls.js';
+import { selectControl } from './controls.js';
 import { roomSettingsQueue } from './settings-queue.js';
 import type { NetworkRoomDeps } from './types.js';
 
@@ -13,9 +14,9 @@ export function roomSettings(deps: NetworkRoomDeps) {
   const { copy, client } = deps;
   const lobby = messages().mainMenu.lobby;
   const queue = roomSettingsQueue((settings) => client.setSettings(settings));
-  const root = node('section', '', 'network-room__card network-room__settings');
-  const hint = node('p', copy.creatorSettings, 'network-room__muted');
-  root.append(node('h3', copy.settings), hint);
+  const root = node('section', 'network-room__card network-room__settings');
+  const hint = node('p', 'network-room__muted', copy.creatorSettings);
+  root.append(node('h3', '', copy.settings), hint);
   const rules = gameRuleControls({
     presentation: 'select',
     inheritedLabel: copy.authored,

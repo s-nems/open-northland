@@ -5,7 +5,7 @@ import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
 import { readStoredSettings } from '../../../view/settings-store.js';
 import { relayIdentity } from '../../relay/identity.js';
-import { DEFAULT_RELAY_URL } from '../lobby/relay-default.js';
+import { node } from '../dom.js';
 import { pluralForm } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import type { MenuSound } from '../music.js';
@@ -14,7 +14,8 @@ import { roomAssets } from './assets.js';
 import { createPanel } from './create.js';
 import { prepareRoomCreation } from './creation.js';
 import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick } from './model.js';
-import { button, field, node } from './parts.js';
+import { button, field } from './parts.js';
+import { DEFAULT_RELAY_URL } from './relay-default.js';
 import { mountNetworkRoom } from './room/index.js';
 import { launchNetworkGame } from './start.js';
 

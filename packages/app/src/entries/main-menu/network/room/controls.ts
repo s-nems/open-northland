@@ -1,18 +1,8 @@
+import { node } from '../../dom.js';
 import { selectControl as lobbySelect } from '../../lobby-controls/select.js';
 
-export function node<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  text = '',
-  className = '',
-): HTMLElementTagNameMap[K] {
-  const element = document.createElement(tag);
-  element.textContent = text;
-  element.className = className;
-  return element;
-}
-
 export function button(text: string, click: () => void): HTMLButtonElement {
-  const element = node('button', text, 'network-room__button');
+  const element = node('button', 'network-room__button', text);
   element.type = 'button';
   element.addEventListener('click', click);
   return element;

@@ -1,8 +1,8 @@
 import { messages } from '../../../i18n/index.js';
+import { node } from '../dom.js';
 import { hasClaimableSeat } from '../lobby/roster-state.js';
 import { mapPicker } from '../map-picker.js';
 import { type MapSelectItem, type MapSelectMemory, ROOM_TABS } from '../map-select-model.js';
-import { node } from './parts.js';
 
 interface MapPickOptions {
   readonly memory: MapSelectMemory;

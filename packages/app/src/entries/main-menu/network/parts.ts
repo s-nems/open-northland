@@ -1,16 +1,7 @@
-export function node<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className = '',
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const element = document.createElement(tag);
-  element.className = className;
-  if (text !== undefined) element.textContent = text;
-  return element;
-}
+import { node } from '../dom.js';
 
-export function button(text: string, action: () => void, primary = false): HTMLButtonElement {
-  const result = node('button', primary ? 'main-menu__primary' : 'main-menu__ghost', text);
+export function button(text: string, action: () => void): HTMLButtonElement {
+  const result = node('button', 'main-menu__ghost', text);
   result.type = 'button';
   result.addEventListener('click', action);
   return result;
