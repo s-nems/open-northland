@@ -52,6 +52,20 @@ export interface MusterPlanState {
  */
 export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players');
 
+export interface StalledPlacementState {
+  /** The stalled entry's index in the seat's build order. */
+  entry: number;
+  /** The first tick the seat searches a spot for that entry again. */
+  retryTick: number;
+}
+
+/**
+ * The build-order placement whose spot search last found nothing, held on the seat's {@link AiPlayer}
+ * carrier so it dies with the seat. The build order skips that entry's search until `retryTick` and
+ * drops the record once the entry places or another entry acts.
+ */
+export const StalledPlacement = defineComponent<StalledPlacementState>('StalledPlacement', 'players');
+
 /** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
  *  carrier wins should more than one ever exist. */
 export function aiPlayerEntity(world: World, player: number): Entity | null {

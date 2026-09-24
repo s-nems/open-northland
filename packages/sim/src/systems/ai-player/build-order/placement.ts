@@ -222,7 +222,7 @@ export function placementSpot(
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
     firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
       // Cheapest test first: an affinity-pulled centre puts up to half of every ring outside the
-      // disc, and a stalled entry re-walks the whole fan every decision.
+      // disc, and a stalled entry re-walks the whole fan on every retry.
       if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
       if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
       if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first

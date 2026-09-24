@@ -1,19 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
 import {
+  AI_DECISION_INTERVAL_TICKS,
   BUILD_SEARCH_MAX_RADIUS_NODES,
   type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
+  STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../src/systems/ai-player/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
   aiSim,
   ctxOf,
+  entityOfBuilding,
   HQ_X,
   HQ_Y,
+  makeAiSeat,
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
@@ -61,6 +65,52 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(firstCommandOf(barren, DEFAULT_BUILD_ORDER)).toBeUndefined();
     const home = firstCommandOf(barren, [{ kind: 'place', building: 'home_level_00', count: 1 }]);
     expect(home?.kind).toBe('placeBuilding');
+  });
+
+  it('re-searches a stalled placement only every retry interval and places on the first retry after room frees', () => {
+    // One grass node on a sand map, held by a well: the farm has nowhere to go until the well is razed.
+    const GRASS_AT = { x: 40, y: 16 };
+    const FREED_AT_DECISION = STALLED_PLACEMENT_RETRY_DECISIONS + 5;
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: mapWithSand(64, 32, (x, y) => x !== GRASS_AT.x || y !== GRASS_AT.y),
+    });
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: WELL_TYPE,
+      ...GRASS_AT,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    makeAiSeat(sim, SEAT);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped sim');
+    const groundTests = vi.spyOn(terrain, 'isPlantable');
+    const farm = buildOrderModule([
+      { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
+    ]);
+
+    const searchedAt: number[] = [];
+    let placedAt: number | null = null;
+    for (
+      let decision = 0;
+      placedAt === null && decision <= 2 * STALLED_PLACEMENT_RETRY_DECISIONS;
+      decision++
+    ) {
+      if (decision === FREED_AT_DECISION) {
+        sim.enqueueSetup({ kind: 'demolish', building: entityOfBuilding(sim, WELL_TYPE) });
+        sim.step();
+      }
+      const before = groundTests.mock.calls.length;
+      const commands = farm.run(sim.world, ctxOf(sim, SEAT + decision * AI_DECISION_INTERVAL_TICKS), SEAT);
+      if (groundTests.mock.calls.length > before) searchedAt.push(decision);
+      if (commands.length > 0) placedAt = decision;
+    }
+    expect(searchedAt).toEqual([0, STALLED_PLACEMENT_RETRY_DECISIONS, 2 * STALLED_PLACEMENT_RETRY_DECISIONS]);
+    expect(placedAt).toBe(2 * STALLED_PLACEMENT_RETRY_DECISIONS);
   });
 
   it('pulls a resource-affinity placement toward the deposit while staying in the near-HQ band', () => {

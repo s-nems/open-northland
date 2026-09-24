@@ -120,3 +120,8 @@ export const MAX_ACTIVE_CONSTRUCTION_SITES = 1;
 /** How far from the seat's base a placement may land, in half-cell Manhattan nodes; every affinity
  *  pull stays inside this disc. */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 48;
+
+/** Decisions between a stalled placement's spot searches, about 60 s at the decision interval. It never
+ *  gives up, since felled trees or a razed building can free room later. Approximation: a tuned
+ *  cadence, not an original value. */
+export const STALLED_PLACEMENT_RETRY_DECISIONS = 30;
