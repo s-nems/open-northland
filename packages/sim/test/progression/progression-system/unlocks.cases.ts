@@ -125,6 +125,7 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
     tribe: VIKING,
     owner: HUMAN_PLAYER,
     experience: xp === undefined ? new Map() : new Map([[WOOD_TRACK, xp]]),
+    learned: undefined,
   });
 
   it('gates a good below its accrued-XP threshold and clears it at/above', () => {
@@ -169,7 +170,7 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
     const ctx = ctxOf(sim);
     gateSoldierJob(sim);
     makeAiSeat(sim, AI_PLAYER);
-    const bot: NeedSubject = { tribe: VIKING, owner: AI_PLAYER, experience: new Map() };
+    const bot: NeedSubject = { tribe: VIKING, owner: AI_PLAYER, experience: new Map(), learned: undefined };
 
     // Progression ON (the default): the human is gated at 0 XP, the AI seat is not.
     expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(false);
@@ -201,6 +202,7 @@ describe('settlerMeetsNeed - the barracks schooling path onto a fighter trade', 
     tribe: VIKING,
     owner,
     experience: new Map([[TRAINING_TRACK, repeats]]),
+    learned: undefined,
   });
 
   it('opens the trade at the schooling threshold, whatever the fight-XP gate says', () => {
@@ -229,7 +231,12 @@ describe('settlerMeetsNeed - the barracks schooling path onto a fighter trade', 
     const sim = new Simulation({ seed: 1, content: testContent() });
     // The fixture gates good 2 behind 30 wood repeats AND carries a train row on it with amount 999.
     // A schooled reading of that row would still refuse it; a civilian target must not read it at all.
-    const schooled: NeedSubject = { tribe: VIKING, owner: HUMAN_PLAYER, experience: new Map([[1, 300]]) };
+    const schooled: NeedSubject = {
+      tribe: VIKING,
+      owner: HUMAN_PLAYER,
+      experience: new Map([[1, 300]]),
+      learned: undefined,
+    };
     expect(settlerMeetsNeed(sim.world, ctxOf(sim), schooled, 'good', 2)).toBe(true);
   });
 });

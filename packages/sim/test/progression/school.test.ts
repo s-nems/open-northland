@@ -10,6 +10,7 @@ import {
   setMapPermission,
   TrainingOrder,
 } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
 import { learn } from '../../src/systems/orders/education.js';
 import {
@@ -350,7 +351,8 @@ it('keeps a served lesson when the school is razed before the pupil plans again'
   expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
 });
 
-it('refuses a lesson in the trade the pupil already practises', () => {
+/** A world with a built school teaching carpentry, discovered for seat 0, and a seat-0 pupil of `jobType`. */
+function carpentrySchool(jobType: number): { sim: Simulation; pupil: Entity; school: Entity } {
   const base = testContent();
   const content = parseContentSet({
     ...base,
@@ -369,23 +371,37 @@ it('refuses a lesson in the trade the pupil already practises', () => {
     })),
   });
   const sim = new Simulation({ seed: 6, content, map: grassCellMap(12, 12) });
-  const carpenter = settlerAt(sim, { jobType: CARPENTER, tribe: TRIBE });
-  sim.world.add(carpenter, Owner, { player: 0 });
+  const pupil = settlerAt(sim, { jobType, tribe: TRIBE });
+  sim.world.add(pupil, Owner, { player: 0 });
   const school = sim.world.create();
   sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
   sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
   sim.world.add(school, Owner, { player: 0 });
   discoverTechnology(sim.world, 0, TRIBE, 'job', CARPENTER);
+  return { sim, pupil, school };
+}
 
+function learnCarpentry(sim: Simulation, pupil: Entity, school: Entity): void {
   learn(sim.world, ctxOf(sim), {
     kind: 'learn',
-    entity: carpenter,
+    entity: pupil,
     house: school,
     target: 'job',
     typeId: CARPENTER,
   });
+}
 
-  expect(sim.world.has(carpenter, TrainingOrder)).toBe(false);
+it('refuses a lesson in the trade the pupil already practises', () => {
+  const { sim, pupil, school } = carpentrySchool(CARPENTER);
+  learnCarpentry(sim, pupil, school);
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
+});
+
+it('refuses a lesson in a trade the pupil already learned', () => {
+  const { sim, pupil, school } = carpentrySchool(WOODCUTTER);
+  sim.world.mut(pupil, SettlerProgress).learned = { job: [CARPENTER], good: [] };
+  learnCarpentry(sim, pupil, school);
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
 });
 
 it('still teaches a new method of the trade the pupil already practises', () => {

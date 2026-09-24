@@ -3,6 +3,7 @@ import {
   Building,
   ownerOf,
   Settler,
+  SettlerProgress,
   sameSide,
   TrainingOrder,
   UnderConstruction,
@@ -33,7 +34,8 @@ export function learn(world: World, ctx: SystemContext, command: Extract<Command
   if (!mayChangeTrade(world, entity) || !isSchool(world, ctx, house) || !sameSide(world, entity, house))
     return;
   const settler = world.get(entity, Settler);
-  if (world.get(house, Building).tribe !== settler.tribe || knowsCourse(settler, target, typeId)) return;
+  const known = { jobType: settler.jobType, learned: world.get(entity, SettlerProgress).learned };
+  if (world.get(house, Building).tribe !== settler.tribe || knowsCourse(known, target, typeId)) return;
   const owner = ownerOf(world, entity);
   if (!(target === 'job' ? jobEnabled : goodEnabled)(world, ctx, owner, settler.tribe, typeId)) return;
   const tribe = contentIndex(ctx.content).tribes.get(settler.tribe);

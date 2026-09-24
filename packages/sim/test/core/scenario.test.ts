@@ -90,6 +90,19 @@ describe('e2e game-level: scenario harness', () => {
     ]);
   });
 
+  it('the split-halves invariant names a half left without its partner', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const walker = sim.world.create();
+    sim.world.add(walker, components.PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    const clock = sim.world.create();
+    sim.world.add(clock, components.AtomicClock, { elapsed: 0 });
+
+    expect(sim.checkInvariants()).toEqual([
+      `entity ${walker}: PathFollow without a PathRoute`,
+      `entity ${clock}: AtomicClock without a CurrentAtomic`,
+    ]);
+  });
+
   it('scenario.expect reports a readable failure', () => {
     const result = scenario(testContent())
       .run(10)

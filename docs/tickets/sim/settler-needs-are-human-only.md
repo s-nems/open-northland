@@ -22,8 +22,8 @@ and `jobType` stay shared - `conflict/weapons.ts` reads a creature's null `jobTy
 - Extract `Needs { hunger, fatigue, piety, enjoyment }` off `Settler` and stop `addWildlife` stamping
   `SettlerProgress`; keep the two constructors as the only stamp path, and stamp `Needs` only for a
   tribe that declares trades. A creature's swing reads no experience then (`engage-combatant.ts`).
-- Retarget `needsSystem`, `experience.ts`, `alive-jobs.ts` and the `needsInRange` invariant at the new
-  components, and drop the `Person` requirement where the new component already implies it.
+- Retarget `needsSystem`, `experience.ts`, `alive-jobs.ts`, the `needsInRange` invariant and the
+  `Settler`/`SettlerProgress` pair of `splitHalvesPaired` at the new components, and drop the `Person` requirement where the new component already implies it.
 - The state hash moves (fewer hashed fields per creature); the atomic trace must not.
 - Optional in the same pass, decide separately: `Settler` now names the shared creature, not a person.
   Renaming it `Creature` is mechanical and behavior-free, but touches every query site, so it is worth

@@ -51,7 +51,7 @@ through those gates rather than the table, so a script and a settler unlock one 
 The allowed table overrides initial tribe permissions and saved map bans. Progression and UI probes
 share the same player-and-tribe gates; Allow grants permission, Enable grants availability.
 Natural discoveries persist in the lazy `TechnologyDiscoveries` singleton; individual school
-qualifications live on `Settler`. The common progression contract is in
+qualifications live on `SettlerProgress`. The common progression contract is in
 [`PROGRESSION.md`](../../../../../docs/formats/PROGRESSION.md).
 
 ## The player tables

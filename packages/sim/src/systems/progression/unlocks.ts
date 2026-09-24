@@ -42,7 +42,7 @@ export interface NeedSubject {
   /** The owning player, or `undefined` for a neutral settler (which the gates do apply to). */
   readonly owner: number | undefined;
   readonly experience: ReadonlyMap<number, number>;
-  readonly learned?: { readonly job: readonly number[]; readonly good: readonly number[] } | undefined;
+  readonly learned: { readonly job: readonly number[]; readonly good: readonly number[] } | undefined;
 }
 
 export function needSubjectOf(world: World, settler: Entity): NeedSubject {

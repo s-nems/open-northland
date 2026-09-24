@@ -29,6 +29,8 @@ const P0 = 0;
 const IDLE_ATOMIC_ID = 1;
 /** Long enough to outlast the ticks a test steps. */
 const LONG_ATOMIC_TICKS = 100;
+/** More than enough ticks for the planner and routing to hand a fresh goal its path. */
+const ROUTE_DELIVERY_TICKS = 10;
 /** A goal node far enough across the map that the walker is still mid-route when observed. */
 const WALK_GOAL_NODE = 20;
 /** Both halves of every component the per-tick writers were split out of. */
@@ -235,7 +237,8 @@ describe('sync digest', () => {
     const walker = sim.world.create();
     sim.world.add(walker, Position, positionOfNode(0, 0));
     sim.world.add(walker, MoveGoal, { cell: terrain.nodeAt(WALK_GOAL_NODE, WALK_GOAL_NODE) });
-    while (!sim.world.has(walker, PathFollow)) sim.step();
+    for (let tick = 0; tick < ROUTE_DELIVERY_TICKS && !sim.world.has(walker, PathFollow); tick++) sim.step();
+    expect(sim.world.has(walker, PathFollow)).toBe(true);
     sim.step();
 
     const written = new Set<string>();
