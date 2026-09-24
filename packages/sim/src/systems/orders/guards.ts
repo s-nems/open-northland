@@ -3,6 +3,7 @@ import {
   CurrentAtomic,
   type DeferrableOrderCommand,
   DeferredOrder,
+  ExploreOrder,
   Female,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
@@ -33,6 +34,15 @@ export function isTradeAssignable(world: World, e: Entity): boolean {
  *  unit's trade (`MISSIONS.md`, behaviour bit 6), which refuses the order before it cancels anything. */
 export function mayChangeTrade(world: World, e: Entity): boolean {
   return isTradeAssignable(world, e) && !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED);
+}
+
+/**
+ * Drop the earlier orders that would act on `e` later and cancel an order that takes it now: a parked
+ * order replays the tick its atomic ends, and a scout's sweep walks its next leg the tick the scout is free.
+ */
+export function supersedeStandingOrders(world: World, e: Entity): void {
+  world.remove(e, DeferredOrder);
+  world.remove(e, ExploreOrder);
 }
 
 /**

@@ -1,6 +1,5 @@
 import {
   CurrentAtomic,
-  DeferredOrder,
   EXPLORE_RADIUS_NODES,
   ExploreOrder,
   FOG_MODE,
@@ -18,7 +17,7 @@ import { clearNavState } from '../movement/nav-state.js';
 import { isScoutJob } from '../readviews/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { cellOfNode, FOG_STATE, type FogState } from '../vision/index.js';
-import { isOrderableSettler } from './guards.js';
+import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 import { moveUnit } from './movement.js';
 
 /**
@@ -38,7 +37,7 @@ export function exploreArea(
   // The walk it was on is superseded, so the first leg goes out this tick; a clip in flight plays to its
   // end, since the sweep below waits for the scout to be free anyway.
   world.remove(e, PlayerOrder);
-  world.remove(e, DeferredOrder); // a parked walk replayed later would end this sweep
+  supersedeStandingOrders(world, e);
   clearNavState(world, e);
   world.add(e, ExploreOrder, { centre: terrain.nodeAtClamped(command.x, command.y), leg: null });
 }

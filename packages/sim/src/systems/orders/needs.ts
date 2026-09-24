@@ -1,8 +1,6 @@
 import {
   AttackOrder,
   CurrentAtomic,
-  DeferredOrder,
-  ExploreOrder,
   NeedOrder,
   NoRegeneration,
   Person,
@@ -14,7 +12,7 @@ import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isHeroJob } from '../readviews/index.js';
-import { isOrderableSettler } from './guards.js';
+import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 
 /**
  * Send one owned settler to answer a need now - see the command doc. The stamp is all the order does: the
@@ -32,12 +30,11 @@ export function orderNeed(
   if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
   world.add(e, NeedOrder, { need: command.need });
   world.remove(e, CurrentAtomic);
-  world.remove(e, DeferredOrder); // the need executing now supersedes any earlier parked order
+  supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder); // and any walk the settler was on
   // And any standing attack order, which would otherwise pull the settler back into the fight the drive
   // ladder breaks off for the errand, leaving the order looking ignored.
   world.remove(e, AttackOrder);
-  world.remove(e, ExploreOrder); // and a scout's sweep, whose next leg would walk the errand off
   clearNavState(world, e);
 }
 

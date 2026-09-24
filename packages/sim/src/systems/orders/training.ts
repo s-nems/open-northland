@@ -1,9 +1,7 @@
 import {
   Building,
   CurrentAtomic,
-  DeferredOrder,
   EquipOrder,
-  ExploreOrder,
   PlayerOrder,
   Settler,
   SiteAssignment,
@@ -18,7 +16,7 @@ import { isBarracks } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { isOrderableSettler, mayChangeTrade } from './guards.js';
+import { isOrderableSettler, mayChangeTrade, supersedeStandingOrders } from './guards.js';
 
 /**
  * Send one owned settler to drill at a barracks - see the command doc. Validates and stamps the
@@ -64,11 +62,10 @@ export function mayWalkToDrill(world: World, ctx: SystemContext, e: Entity, hous
 export function startDrill(world: World, e: Entity, house: Entity, drillTicks: number): void {
   world.add(e, TrainingOrder, { house, drillTicksLeft: drillTicks });
   world.remove(e, CurrentAtomic);
-  world.remove(e, DeferredOrder); // the drill executing now supersedes any earlier parked order
+  supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, EquipOrder); // and any equip errand, whose return spot this walk would invalidate
   world.remove(e, SiteAssignment); // a builder pulled to drill leaves its foundation's crew
-  world.remove(e, ExploreOrder); // and a scout its sweep, whose next leg would walk the drill off
   clearNavState(world, e);
 }
 

@@ -1,11 +1,9 @@
 import type { EquipCategory } from '@open-northland/data';
 import {
   CurrentAtomic,
-  DeferredOrder,
   Equipment,
   EquipOrder,
   type EquipOrderIntent,
-  ExploreOrder,
   equipSlotValue,
   MISC_EQUIP_SLOTS,
   MoveGoal,
@@ -23,7 +21,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { canEquipCategory, mayChangeEquipment } from '../readviews/index.js';
-import { isOrderableSettler } from './guards.js';
+import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 
 /**
  * The equip order handlers validate and stamp the {@link EquipOrder} errand; a drive runs it.
@@ -68,10 +66,7 @@ function stampEquipOrder(
     ...target,
     returnTo: skipReturn ? null : terrain.nodeAtClamped(n.hx, n.hy),
   };
-  // Queued or active, this errand is the latest order: a parked walk replayed later, or a scout sweep's
-  // next leg, would cancel it.
-  world.remove(e, DeferredOrder);
-  world.remove(e, ExploreOrder);
+  supersedeStandingOrders(world, e); // queued or active, this errand is the latest order
   const active = world.tryMut(e, EquipOrder);
   if (active?.issuer === 'player' && (active.group !== spec.group || active.slot !== spec.slot)) {
     active.queued ??= [];

@@ -8,7 +8,6 @@ import {
   Engagement,
   EquipOrder,
   ErectSignpostOrder,
-  ExploreOrder,
   Fleeing,
   HuntFocus,
   MoveGoal,
@@ -38,7 +37,7 @@ import { startDrop } from '../settlers/atomics/start.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { announceLostWay, clearLostWay, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { deferOrderDuringAtomic } from './guards.js';
+import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
 
 /**
  * Direct player control over owned units. Faithful to *Cultures*, a move order never seizes a unit
@@ -145,7 +144,7 @@ function startPlayerWalk(
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
-  world.remove(e, DeferredOrder); // this order executes now - it supersedes any earlier parked one
+  supersedeStandingOrders(world, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
   world.remove(e, CurrentAtomic);
@@ -166,7 +165,6 @@ function startPlayerWalk(
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
-  world.remove(e, ExploreOrder); // an ordered walk ends a scout's sweep
   clearLostWay(world, e); // an obeyed order is the way found
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);

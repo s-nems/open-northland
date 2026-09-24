@@ -3,7 +3,6 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
-  DeferredOrder,
   JobAssignment,
   ownerOf,
   PlayerOrder,
@@ -30,7 +29,13 @@ import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { groupPlacementOrder } from '../group-placement.js';
-import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable, mayChangeTrade } from '../guards.js';
+import {
+  deferOrderDuringAtomic,
+  isOrderableSettler,
+  isTradeAssignable,
+  mayChangeTrade,
+  supersedeStandingOrders,
+} from '../guards.js';
 
 /**
  * Change one owned settler's profession - see the command doc. Resets it to a fresh idle worker of the new
@@ -206,7 +211,7 @@ function cancelActionAndRoute(world: World, e: Entity): void {
   // a remaining member of the uninterruptible-atomic class.
   world.remove(e, CurrentAtomic);
   world.remove(e, SupplyRun); // releasing an interrupted construction pickup frees its source immediately
-  world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
+  supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   clearNavState(world, e);
 }

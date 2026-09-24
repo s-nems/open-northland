@@ -3,9 +3,7 @@ import {
   AttackOrder,
   Building,
   CurrentAtomic,
-  DeferredOrder,
   Engagement,
-  ExploreOrder,
   Fleeing,
   Health,
   HuntFocus,
@@ -25,7 +23,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
-import { isOrderableSettler } from './guards.js';
+import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 
 /**
  * Stamp the job-based default military stance on an owned settler. The anchor resets to null, since only
@@ -94,13 +92,12 @@ export function attackUnit(
   // class.
   world.remove(e, CurrentAtomic);
   world.remove(e, SupplyRun); // cancel both the construction source promise and its inbound site claim
-  world.remove(e, DeferredOrder); // an attack order executing now supersedes any earlier parked order
+  supersedeStandingOrders(world, e);
   clearNavState(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode - stop running, fight
   world.remove(e, HuntFocus); // and supersedes a hunter's self-committed prey, like a move order does
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer
-  world.remove(e, ExploreOrder); // and a scout's sweep
   world.remove(e, OpenChestOrder); // and a walk to a chest
   world.add(e, AttackOrder, { target });
   // Stamped up front so plannerSystem skips economy for this unit on the tick the order lands rather than
