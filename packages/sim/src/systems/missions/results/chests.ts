@@ -1,10 +1,9 @@
 import { type HalfCellNode, hexagonRing, hexNeighboursOf } from '../../../nav/halfcell.js';
 import type { NodeId, ScriptLandscapeType, TerrainGraph } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
-import { setLandscape } from '../../landscape/edits.js';
-import { invalidateLandscapeRoutes } from '../../landscape/routes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
+import { layScriptedLandscape } from './landscape.js';
 
 /** The original's random-chest bit order and the half-open chest-type spans it selects. */
 const RANDOM_CHEST_GROUPS = [
@@ -58,12 +57,8 @@ export function setRandomChest(pass: MissionPass, mission: number, op: RandomChe
     op.opcode === 'SetRandomChestOnPosition'
       ? nearestFreeLand(pass, terrain, op.point)
       : randomFreeLand(pass, terrain);
-  if (point === null || !setLandscape(pass.world, pass.ctx, point, type.typeId, draw.contents)) {
+  if (point === null || !layScriptedLandscape(pass, terrain, point, type.typeId, draw.contents))
     pass.reportFailed(mission, op.opcode);
-    return;
-  }
-  invalidateLandscapeRoutes(pass.world, terrain);
-  pass.ctx.events.emit({ kind: 'missionLandscapeChanged' });
 }
 
 function woodenChestType(terrain: TerrainGraph | undefined): ScriptLandscapeType | undefined {

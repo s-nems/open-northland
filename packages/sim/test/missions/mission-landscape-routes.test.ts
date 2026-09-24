@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
-import { positionOfNode, Simulation } from '../../src/index.js';
+import { positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
 import { hexDistance } from '../../src/nav/halfcell.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { invalidateLandscapeRoutes } from '../../src/systems/landscape/routes.js';
 import type { MissionPass } from '../../src/systems/missions/pass.js';
+import { setRandomChest } from '../../src/systems/missions/results/chests.js';
 import { editScriptedLandscape } from '../../src/systems/missions/results/landscape.js';
 import { ctxOf } from '../fixtures/context.js';
 import { stopAt } from '../fixtures/waypoints.js';
@@ -23,6 +24,43 @@ function passOf(sim: Simulation): MissionPass {
     checking: new Set(),
     halted: false,
   };
+}
+
+const WOODEN_CHEST = 85;
+/** The random-chest mask bit that always draws the tower chest. */
+const TOWER_CHEST_MASK = 2;
+
+/** The landscape fixture with a one-cell wooden chest type beside its wall. */
+function chestSim(): Simulation {
+  const base = map();
+  if (base.landscapes === undefined) throw new Error('landscape fixture');
+  const withChest: TerrainMap = {
+    ...base,
+    landscapes: {
+      ...base.landscapes,
+      types: [
+        ...base.landscapes.types,
+        {
+          typeId: WOODEN_CHEST,
+          walk: [{ dx: 0, dy: 0 }],
+          build: [{ dx: 0, dy: 0 }],
+          groups: [],
+          chest: { kind: 'wooden', gfxIndex: 845 },
+        },
+      ],
+    },
+  };
+  return new Simulation({ seed: 1, content: houseContent(), map: withChest });
+}
+
+/** A walker on its route from (4,4) to (5,6). */
+function walking(sim: Simulation) {
+  const terrain = terrainOf(sim);
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(4, 4));
+  sim.world.add(e, MoveGoal, { cell: terrain.nodeAt(5, 6) });
+  sim.world.add(e, PathFollow, { waypoints: [stopAt(terrain, 5, 6)], index: 0, legTicks: 0, legCost: 0 });
+  return e;
 }
 
 describe('script landscape route invalidation', () => {
@@ -198,5 +236,33 @@ describe('script landscape route invalidation', () => {
     });
     expect(failures).toEqual([opcode]);
     expect(sim.world.mutationVersion).toBe(version);
+  });
+
+  it('keeps active paths when a pass lays a script chest where it removed a blocker', () => {
+    // A paid tribute that clears a barricade and leaves chests on its cells: the chest closes nothing
+    // a route could cross before the pass.
+    const sim = chestSim();
+    const terrain = terrainOf(sim);
+    const e = walking(sim);
+    const pass = passOf(sim);
+    editScriptedLandscape(pass, 0, { opcode: 'RemoveLandscape', point: POINT });
+    setRandomChest(pass, 0, { opcode: 'SetRandomChestOnPosition', amount: TOWER_CHEST_MASK, point: POINT });
+    expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(terrain.nodeAt(POINT.hx, POINT.hy))).toBe(
+      true,
+    );
+    expect(sim.world.has(e, PathFollow)).toBe(true);
+  });
+
+  it('sends routes back to the planner when a script chest closes open ground', () => {
+    const sim = chestSim();
+    const e = walking(sim);
+    setRandomChest(passOf(sim), 0, {
+      opcode: 'SetRandomChestOnPosition',
+      amount: TOWER_CHEST_MASK,
+      point: { hx: 5, hy: 5 },
+    });
+    expect(sim.landscapeEdits().added).toHaveLength(1);
+    expect(sim.world.has(e, PathFollow)).toBe(false);
+    expect(sim.world.has(e, PathRequest)).toBe(true);
   });
 });
