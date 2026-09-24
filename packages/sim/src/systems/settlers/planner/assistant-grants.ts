@@ -7,7 +7,6 @@ import {
   EquipOrder,
   equipSlotValue,
   ownerOf,
-  ownersCompatible,
   Position,
   Settler,
   Stance,
@@ -15,15 +14,15 @@ import {
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE, mayChangeEquipment } from '../../readviews/index.js';
 import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
-import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
+import { GrantedStock } from './granted-stock.js';
 import { wakeIdle } from './idle-replan.js';
 import type { PlannerPass } from './pass.js';
 
@@ -70,10 +69,10 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   const grants = collectGrantSpecs(pass);
   if (grants.size === 0) return; // no player granted anything: the pass costs one empty query
   const inFlight = collectInFlightFetches(world);
-  let stock: GrantedStock | undefined; // one store walk for every player and good, built on first need
+  const stock = GrantedStock.of(world, ctx);
 
-  for (const e of pass.settlers) {
-    if ((e + ctx.tick) % ASSISTANT_SCAN_PERIOD_TICKS !== 0) continue;
+  for (const e of dueThisBeat(world, ctx.tick)) {
+    if (!world.has(e, Position)) continue; // the pass plans positioned settlers only
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
     const wanted = grants.get(owner);
@@ -100,8 +99,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       const slot = freeSlotFor(eq, spec);
       if (slot === null) continue;
       const underway = tally.byGood.get(spec.goodType) ?? 0;
-      stock ??= collectGrantedStock(pass, grants);
-      if (underway >= (stock.get(owner)?.get(spec.goodType) ?? 0)) continue;
+      if (!stock.exceeds(owner, spec.goodType, underway)) continue;
       if (limit === undefined) limit = equipFetchLimitFor(world, ctx.content, terrain, e);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
@@ -204,60 +202,23 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
   return free === -1 ? null : free;
 }
 
-/** Every granting player's total stock of each good it grants: `player -> goodType -> units`. */
-type GrantedStock = ReadonlyMap<number, ReadonlyMap<number, number>>;
+const NO_SETTLERS: readonly Entity[] = Object.freeze([]);
 
-interface GoodTotal {
-  readonly goodType: number;
-  units: number;
-}
+/** The settlers bucketed by scan beat, for each settler roster a world has served: rebuilt only when a
+ *  settler is born or dies, so a tick visits its own beat's slice instead of the whole roster. */
+const beatsByRoster = new WeakMap<readonly Entity[], readonly (readonly Entity[])[]>();
 
-/** One granting player's row of the result and the per-good totals the store walk accumulates into.
- *  Array-shaped, so that walk allocates no Map entry pair per step. */
-interface PlayerStock {
-  readonly player: number;
-  readonly totals: Map<number, number>;
-  readonly goods: readonly GoodTotal[];
-}
-
-/**
- * Total store and pile stock of every granted good, per granting player, in one walk of the candidate
- * stores. A from-scratch construction site and a workshop's own input reserve are excluded, matching
- * {@link nearestStoreHolding}; an unowned pile counts for every player.
- *
- * This bounds the reservation, it does not promise reachability: stock in other signpost networks and
- * buried piles is counted too (approximation), and the per-settler scan still gates every dispatch.
- */
-function collectGrantedStock(
-  pass: PlannerPass,
-  grants: ReadonlyMap<number, readonly GrantSpec[]>,
-): GrantedStock {
-  const { world, ctx, targets } = pass;
-  const byPlayer = new Map<number, Map<number, number>>();
-  const rows: PlayerStock[] = [];
-  for (const [player, specs] of grants) {
-    const totals = new Map<number, number>();
-    byPlayer.set(player, totals);
-    rows.push({ player, totals, goods: specs.map(({ goodType }) => ({ goodType, units: 0 })) });
+/** The settlers, ascending-id, whose grant beat falls on `tick`: those with `(e + tick) % period === 0`. */
+function dueThisBeat(world: World, tick: number): readonly Entity[] {
+  const roster = world.canonicalQuery(Settler);
+  let beats = beatsByRoster.get(roster);
+  if (beats === undefined) {
+    const built: Entity[][] = Array.from({ length: ASSISTANT_SCAN_PERIOD_TICKS }, () => []);
+    for (const e of roster) built[e % ASSISTANT_SCAN_PERIOD_TICKS]?.push(e);
+    beats = built;
+    beatsByRoster.set(roster, beats);
   }
-  for (const store of targets.stockpiles) {
-    const amounts = accessibleStockAmounts(world, store);
-    if (amounts === undefined) continue;
-    const owner = ownerOf(world, store);
-    // The reserve rule is keyed by store and cannot vary by player, so it is hoisted out of the
-    // stores × players × goods walk below.
-    const reserved = mergedRecipeOf(world, ctx, store)?.inputs;
-    for (const row of rows) {
-      if (!ownersCompatible(row.player, owner)) continue;
-      for (const good of row.goods) {
-        const units = amounts.get(good.goodType);
-        if (units === undefined || recipeConsumes(reserved, good.goodType)) continue;
-        good.units += units;
-      }
-    }
-  }
-  for (const row of rows) {
-    for (const good of row.goods) row.totals.set(good.goodType, good.units);
-  }
-  return byPlayer;
+  const beat =
+    (ASSISTANT_SCAN_PERIOD_TICKS - (tick % ASSISTANT_SCAN_PERIOD_TICKS)) % ASSISTANT_SCAN_PERIOD_TICKS;
+  return beats[beat] ?? NO_SETTLERS;
 }

@@ -21,8 +21,7 @@ By share of sampled bytes:
   every seeker. `lowestStockedFood` (`systems/family/food-search.ts`) 5.6%; the pile scan's accept in
   `nearestCollectablePileFor` (`systems/settlers/targets/resources.ts`) 6.4%, whose only allocating
   step is the inlined `lowestStockedGood` (`systems/stores/capacity.ts`) walk (inferred from the
-  inlined attribution); `lowestDemanded` (`systems/family/quality-search.ts`) 3.2%;
-  `collectGrantedStock` (`systems/settlers/planner/assistant-grants.ts`) 1.2%.
+  inlined attribution); `lowestQualityGood` (`systems/family/quality-search.ts`) 3.2%.
 - 6.3% is `NodeBuckets` (`systems/spatial/nodes.ts`) rebuilt from scratch each tick, a `Map` per
   column and an array per bucket. Production's `operatorIndex` goes with
   [production-rescans-workforce-every-tick.md](production-rescans-workforce-every-tick.md) and
