@@ -1,4 +1,5 @@
 import {
+  BUILDING_KIND,
   type BuildingType,
   type ContentSet,
   type GoodType,
@@ -63,13 +64,13 @@ async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | nu
 /** The real content with its clean-room balance completed, plus the gaps the overlay cannot fill. */
 export interface RealContentMerge {
   readonly content: ContentSet;
-  /** Gathered goods with no clean-room balance: they stay uncalibrated. */
+  /** Felled or mined goods with no clean-room balance: they stay uncalibrated. */
   readonly unbalancedGoods: readonly string[];
   /** Field-farmed goods with no clean-room `farming` block: until one lands they neither field-farm nor
    *  produce (the pipeline correctly gives a grown good no recipe). */
   readonly unfarmedFieldGoods: readonly string[];
-  /** Real buildings absent from `VIKING_BUILDINGS`: they keep their extracted footprint/stock/recipe but
-   *  no clean-room tuning. */
+  /** Real non-vehicle buildings absent from `VIKING_BUILDINGS`: they keep their extracted
+   *  footprint/stock/recipe but no clean-room tuning. */
   readonly uncatalogedBuildings: readonly string[];
 }
 
@@ -176,16 +177,16 @@ export function mergeRealContent(
       withEquipClass(withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames)))),
     ),
   );
-  const unbalancedGoods = goods
-    .filter((g) => g.gathering !== undefined && GATHERING_BALANCE_BY_ID[g.id] === undefined)
-    .map((g) => g.id);
   const unfarmedFieldGoods = goods
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
     .map((g) => g.id);
   const buildings = real.buildings.map(withShelterCapacity);
   const jobs = real.jobs.map(withHeroArmor);
   const cataloged = new Set(VIKING_BUILDINGS.map((b) => b.id));
-  const uncatalogedBuildings = real.buildings.filter((b) => !cataloged.has(b.id)).map((b) => b.id);
+  // A vehicle is commanded, never built from the menu, so the catalog does not list it.
+  const uncatalogedBuildings = real.buildings
+    .filter((b) => b.kind !== BUILDING_KIND.vehicle && !cataloged.has(b.id))
+    .map((b) => b.id);
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
@@ -209,6 +210,18 @@ export function mergeRealContent(
     ? [...real.gatheringPipeline, { ...leatherRow, goodType: woolType, goodId: 'wool' }]
     : real.gatheringPipeline;
   const huntPrey = huntPreyRows(goods, tribes);
+  // Only a good felled or mined off a landscape node reads the felling/mining balance. A field crop, a
+  // carcass yield and a hive's honey (no harvest stage) are supplied by their own loops.
+  const huntYields = new Set(huntPrey.flatMap((prey) => prey.yields.map((y) => y.goodType)));
+  const unbalancedGoods = goods
+    .filter(
+      (g) =>
+        g.gathering?.harvest !== undefined &&
+        g.farming === undefined &&
+        !huntYields.has(g.typeId) &&
+        GATHERING_BALANCE_BY_ID[g.id] === undefined,
+    )
+    .map((g) => g.id);
   // Re-validate so a bad overlay or injected row fails at the app boundary, not deep in the sim.
   return {
     content: parseContentSet({
@@ -247,7 +260,7 @@ export function logRealContentGaps(merge: RealContentMerge): void {
     return;
   diag.info(
     'content',
-    `real content gaps: ${unbalancedGoods.length} gathered good(s) without clean-room balance ` +
+    `real content gaps: ${unbalancedGoods.length} felled/mined good(s) without clean-room balance ` +
       `[${unbalancedGoods.join(', ')}], ${unfarmedFieldGoods.length} field good(s) without a farming block ` +
       `[${unfarmedFieldGoods.join(', ')}], ${uncatalogedBuildings.length} building(s) beyond the catalog ` +
       `[${uncatalogedBuildings.join(', ')}]`,

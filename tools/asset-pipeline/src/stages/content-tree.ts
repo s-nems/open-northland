@@ -56,6 +56,9 @@ export interface IndexedAtlasStems {
   readonly frames: number;
 }
 
+/** The suffix of an indexed atlas (palette index in red, mask in alpha), which the app loads by name. */
+export const INDEXED_ATLAS_SUFFIX = 'indexed';
+
 /**
  * Packs a decoded bob container into an indexed atlas the app recolours at draw time plus an RGBA
  * preview coloured through `previewPalette`, written under {@link BOBS_DIR} as `<keyStem>.indexed` and
@@ -70,7 +73,7 @@ export async function emitIndexedAndPreviewAtlas(
 ): Promise<IndexedAtlasStems> {
   const indexed = packIndexedBobAtlas(bmd);
   const preview = packBobAtlas(bmd, previewPalette);
-  const indexedStem = `${keyStem}.indexed`;
+  const indexedStem = `${keyStem}.${INDEXED_ATLAS_SUFFIX}`;
   const previewStem = `${keyStem}.${previewSuffix}`;
   await writeBobAtlas(outDir, indexedStem, indexed);
   await writeBobAtlas(outDir, previewStem, preview);

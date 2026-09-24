@@ -53,11 +53,29 @@ function rawRealLike(): ContentSet {
     return rest;
   };
   // A gathered good (wood's shape) whose string id is absent from GATHERING_BALANCE_BY_ID - stays uncalibrated.
+  // It carries the harvest stage real rows ship and the sandbox omits.
+  const woodLike = goodById(base, 'wood');
+  // Any detailed landscape type: a nav class would dangle once a test strips those.
+  const harvestStage = base.landscape.find(
+    (t) => !NAV_LANDSCAPE_TYPES.some((n) => n.typeId === t.typeId),
+  )?.typeId;
+  if (harvestStage === undefined) throw new Error('fixture: no landscape types');
   const unbalanced = zeroGathering({
-    ...goodById(base, 'wood'),
+    ...woodLike,
     typeId: OUT_OF_CATALOG_TYPE_ID,
     id: 'testberry',
+    ...(woodLike.gathering !== undefined
+      ? { gathering: { ...woodLike.gathering, harvest: harvestStage } }
+      : {}),
   });
+  // Honey's shape: a gathered good with no harvest stage (a hive fills it), so no felling balance applies.
+  const { harvest: _harvest, ...woodGatheringWithoutHarvest } = unbalanced.gathering ?? {};
+  const hiveFilled = {
+    ...unbalanced,
+    typeId: OUT_OF_CATALOG_TYPE_ID + 3,
+    id: 'testhoney',
+    gathering: woodGatheringWithoutHarvest,
+  };
   // A field-farmed good (wheat's three field atomics) whose id is absent from FARMING_BALANCE_BY_ID - the
   // overlay cannot complete it, so it surfaces as an unfarmed field good.
   const unfarmed = {
@@ -75,6 +93,13 @@ function rawRealLike(): ContentSet {
   const firstBuilding = base.buildings[0];
   if (firstBuilding === undefined) throw new Error('fixture: no buildings');
   const uncataloged = { ...firstBuilding, typeId: OUT_OF_CATALOG_TYPE_ID, id: 'wonder_test' };
+  // A vehicle: commanded, never in the build menu, so its absence from the catalog is no gap.
+  const vehicle = {
+    ...firstBuilding,
+    typeId: OUT_OF_CATALOG_TYPE_ID + 1,
+    id: 'test_cart',
+    kind: 'vehicle' as const,
+  };
   // Real ir.json ships no `equip` axis at all (the pipeline does not extract it yet) - strip the
   // sandbox's so the merge has to overlay it back.
   const stripEquip = (g: ContentSet['goods'][number]) => {
@@ -87,8 +112,14 @@ function rawRealLike(): ContentSet {
   const stripShelter = (b: ContentSet['buildings'][number]) => ({ ...b, shelterCapacity: 0 });
   return parseContentSet({
     ...base,
-    goods: [...base.goods.map((g) => stripEquip(stripFarming(zeroGathering(g)))), unbalanced, unfarmed, herb],
-    buildings: [...base.buildings, uncataloged].map(stripShelter),
+    goods: [
+      ...base.goods.map((g) => stripEquip(stripFarming(zeroGathering(g)))),
+      unbalanced,
+      hiveFilled,
+      unfarmed,
+      herb,
+    ],
+    buildings: [...base.buildings, uncataloged, vehicle].map(stripShelter),
   });
 }
 
@@ -239,10 +270,11 @@ describe('mergeRealContent', () => {
     }
   });
 
-  it('surfaces gathered/field goods it cannot complete, and buildings beyond the clean-room catalog', () => {
+  it('surfaces felled/mined and field goods it cannot complete, and non-vehicle buildings beyond the catalog', () => {
     const { unbalancedGoods, unfarmedFieldGoods, uncatalogedBuildings } = mergeRealContent(rawRealLike());
     expect(unbalancedGoods).toContain('testberry');
     expect(unbalancedGoods).not.toContain('wood'); // wood has a clean-room balance
+    expect(unbalancedGoods).not.toContain('testhoney'); // no harvest stage to fell or mine
     expect(unfarmedFieldGoods).toContain('testcrop');
     expect(unfarmedFieldGoods).not.toContain('wheat'); // wheat and herb got their clean-room farming block
     expect(unfarmedFieldGoods).not.toContain('herb');

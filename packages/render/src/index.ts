@@ -109,6 +109,7 @@ export {
   type GalleryClip,
   type GalleryDirection,
 } from './gpu/gallery/index.js';
+export type { GroundWave } from './gpu/ground-waves/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export {
   type BadgeAnchor,

@@ -1,15 +1,17 @@
 import { readFile } from 'node:fs/promises';
+import type { LandscapeGfx } from '@open-northland/data';
 import {
   type AtlasAlphaMode,
   type BobAtlas,
   packBobAtlas,
+  packIndexedBobAtlas,
   packShadowBobAtlas,
 } from '../../decoders/atlas/index.js';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
 import { errorMessage } from '../../errors.js';
-import { assertDistinctBobBasenames, writeSourceBobAtlas } from '../content-tree.js';
+import { assertDistinctBobBasenames, INDEXED_ATLAS_SUFFIX, writeSourceBobAtlas } from '../content-tree.js';
 import type { SourceAssetIndex } from '../source-files.js';
 import { bindingKey, type GraphicsBindingSet } from './bindings.js';
 
@@ -158,6 +160,36 @@ export async function convertShadowBmdTree(
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped shadow ${shadowBmd}: ${errorMessage(err)}`);
+    }
+  }
+  return done;
+}
+
+/**
+ * Converts every `.bmd` a `GfxUserFXMatrix` landscape record draws from into an indexed atlas at
+ * `<bmd-basename>.indexed.{png,atlas.json}`: a displacement bob's raw value in red and its written mask
+ * in alpha, since a palette would destroy the value. Deduped per `.bmd`.
+ */
+export async function convertEffectBmdTree(
+  records: readonly Pick<LandscapeGfx, 'bmd' | 'userFxMatrix'>[],
+  outDir: string,
+  tree: SourceAssetIndex,
+): Promise<string[]> {
+  const effectBmds = new Set<string>();
+  for (const r of records) if (r.userFxMatrix && r.bmd !== undefined) effectBmds.add(r.bmd);
+  const done: string[] = [];
+  for (const bmdRef of effectBmds) {
+    const source = tree.get(bmdRef);
+    if (source === undefined || !/\.bmd$/i.test(source.rel)) {
+      console.warn(`[pipeline] skipped effect ${bmdRef}: no .bmd source in any layer`);
+      continue;
+    }
+    try {
+      const atlas = packIndexedBobAtlas(decodeBmd(await readFile(source.path)));
+      const { png } = await writeSourceBobAtlas(outDir, source.rel, INDEXED_ATLAS_SUFFIX, atlas);
+      done.push(png);
+    } catch (err) {
+      console.warn(`[pipeline] skipped effect ${bmdRef}: ${errorMessage(err)}`);
     }
   }
   return done;

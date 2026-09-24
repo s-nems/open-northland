@@ -105,6 +105,7 @@ export function extractLandscapeGfx(sections: readonly RuleSection[], src: Sourc
         isStatic: getInt(sec, 'GfxStatic') !== 0,
         loopAnimation: getInt(sec, 'GfxLoopAnimation') === 1,
         dynamicBackground: getInt(sec, 'GfxDynamicBackground') === 1,
+        userFxMatrix: getInt(sec, 'GfxUserFXMatrix') === 1,
         source: makeSource(src, 'GfxLandscape'),
       }),
     );

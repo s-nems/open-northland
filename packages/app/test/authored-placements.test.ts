@@ -144,7 +144,7 @@ describe('resolveAuthoredPlacements', () => {
         { species: 'deers', player: WILD_ANIMAL_PLAYER, hx: 4, hy: 1 }, // no animals row → the sim would drop it: skip + count
         { species: 'gryphons', player: WILD_ANIMAL_PLAYER, hx: 5, hy: 1 }, // unknown species → skip + count
         { species: 'hares', player: WILD_ANIMAL_PLAYER, hx: 99, hy: 1 }, // out of bounds → skip + count
-        { species: 'butterflys', player: WILD_ANIMAL_PLAYER, hx: 6, hy: 1 }, // hitpoints-0 swarm → spawns nothing: skip + count
+        { species: 'butterflys', player: WILD_ANIMAL_PLAYER, hx: 6, hy: 1 }, // hitpoints-0 swarm → drawn, not simulated: no count
       ],
     };
     const { placements, skippedAnimals } = resolveAuthoredPlacements(entities, rows, authoredMap());
@@ -154,7 +154,7 @@ describe('resolveAuthoredPlacements', () => {
       { kind: 'animal', tribe: 18, x: 2, y: 1 },
       { kind: 'animal', tribe: 10, x: 3, y: 1 },
     ]);
-    expect(skippedAnimals).toBe(4);
+    expect(skippedAnimals).toBe(3);
   });
 
   it("resolves a gatherer's authored setproducedgood, dropping an unknown pick without its settler", () => {

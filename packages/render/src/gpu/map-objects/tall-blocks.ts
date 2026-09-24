@@ -208,7 +208,8 @@ export class TallObjectLayer {
    * Advance the tall objects for one frame. An object on unexplored ground is treated exactly like a
    * viewport-culled one: detached, kept pooled for when the fog lifts. On explored ground it draws
    * dimmed with its animation frozen, since a ghost is a memory, not a live feed - and a virgin map
-   * object never changes until first worked, so the real object is its own last-seen ghost.
+   * object never changes until first worked, so the real object is its own last-seen ghost. A creature
+   * leaves no ghost: it draws only while watched.
    */
   update(
     vp: Viewport,
@@ -236,7 +237,9 @@ export class TallObjectLayer {
         const cell = screenToCell(obj.x, obj.y);
         const fogState =
           fogStateOfCell === undefined ? FOG_STATE.VISIBLE : fogStateOfCell(cell.col, cell.row);
-        if (!isVisible(vp, obj.x, obj.y) || fogState === FOG_STATE.UNEXPLORED) {
+        const hidden =
+          fogState === FOG_STATE.UNEXPLORED || (obj.creature === true && fogState !== FOG_STATE.VISIBLE);
+        if (hidden || !isVisible(vp, obj.x, obj.y)) {
           if (this.detach(po)) block.attachedCount--;
           continue;
         }

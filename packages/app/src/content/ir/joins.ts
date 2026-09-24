@@ -189,7 +189,7 @@ export function gfxAtomicProgramsByAction(
 ): Map<number, Map<string, GfxAtomicProgram>> {
   const byAction = new Map<number, Map<string, GfxAtomicProgram>>();
   for (const row of ir?.gfxAtomics ?? []) {
-    if (row.tribe !== tribe) continue;
+    if (row.tribe !== tribe || row.bodySeq === undefined) continue;
     let bySeq = byAction.get(row.action);
     if (bySeq === undefined) {
       bySeq = new Map();
@@ -219,7 +219,7 @@ export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<s
   const upgradesToBaseWait = (held: GfxAtomicProgram | undefined, mode: number | undefined): boolean =>
     held === undefined || (held.mode !== GFX_ANIM_MODE_LOOP && mode === GFX_ANIM_MODE_LOOP);
   for (const row of ir?.gfxAtomics ?? []) {
-    if (row.tribe !== tribe || !WAIT_ACTIONS.has(row.action)) continue;
+    if (row.tribe !== tribe || row.bodySeq === undefined || !WAIT_ACTIONS.has(row.action)) continue;
     if (row.dirFrames.every((list) => list.length === 0)) continue;
     if (!upgradesToBaseWait(bySeq.get(row.bodySeq), row.mode)) continue;
     bySeq.set(row.bodySeq, {
@@ -360,7 +360,9 @@ export function tribeJobSeqs(ir: ContentIr | null, tribe: number, jobs: readonly
     let waitIsBase = false;
     let jobAttack: string | undefined;
     for (const row of ir?.gfxAtomics ?? []) {
-      if (row.tribe !== tribe || row.job !== job || row.subId !== undefined) continue;
+      if (row.tribe !== tribe || row.job !== job || row.subId !== undefined || row.bodySeq === undefined) {
+        continue;
+      }
       if (row.action === ATTACK_ATOMIC) {
         jobAttack ??= row.bodySeq;
       } else if (WAIT_ACTIONS.has(row.action)) {

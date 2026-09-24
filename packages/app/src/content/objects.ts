@@ -189,6 +189,15 @@ export async function loadMapObjects(
     });
   });
 
+  // Only an unknown name or an atlas that failed to load is missing graphics. A record drawn by another
+  // pass (a ground-lift wave) or whose own frame lists name no drawable bob (the invisible `block`s and
+  // walls, a test object) draws nothing by its data.
+  const missing = objects.types.map((type) => {
+    const record = recordByName.get(type);
+    if (record === undefined) return true;
+    const key = record.userFxMatrix === true ? undefined : servedAtlasStem(record);
+    return key !== undefined && !layers.has(key);
+  });
   const out: MapObjectSprite[] = [];
   const byPlacement = new Map<number, MapObjectSprite>();
   let skipped = 0;
@@ -198,7 +207,7 @@ export async function loadMapObjects(
     const stateIndex = stateIndexForLevel(level, states.length);
     const type = states[stateIndex] ?? states[0];
     if (type === null || type === undefined) {
-      skipped++;
+      if (missing[typeIndex] === true) skipped++;
       return;
     }
     const screen = halfCellToScreen(hx, hy);
@@ -233,7 +242,7 @@ export async function loadMapObjects(
   if (skipped > 0) {
     diag.warn(
       'content',
-      `loadMapObjects: ${skipped} of ${objects.placements.length / 3} placements had no resolvable graphics`,
+      `loadMapObjects: ${skipped} of ${objects.placements.length / 3} placements name no record or an atlas that failed to load`,
     );
   }
   return { sprites: out, byPlacement };

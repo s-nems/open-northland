@@ -223,6 +223,16 @@ describe('extractLandscapeGfx', () => {
     { level: 2, text: 'GfxStatic 0' },
     { level: 2, text: 'GfxLoopAnimation 1' },
     { level: 2, text: 'GfxDynamicBackground 1' },
+    // A palette-less displacement record (the shore waves): its bobs are lift values, not colours.
+    { level: 1, text: 'GfxLandscape' },
+    { level: 2, text: 'EditName "fx wave"' },
+    { level: 2, text: 'LogicType 1' },
+    { level: 2, text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\test_effect.bmd"' },
+    { level: 2, text: 'GfxFrames 1 1 2 3' },
+    { level: 2, text: 'GfxStatic 0' },
+    { level: 2, text: 'GfxLoopAnimation 1' },
+    { level: 2, text: 'GfxUserFXMatrix 1' },
+    { level: 2, text: 'GfxDynamicBackground 1' },
   ];
 
   it('maps [GfxLandscape] to validated IR: positional index, logic footprints, per-state frames, animation flags', () => {
@@ -260,6 +270,7 @@ describe('extractLandscapeGfx', () => {
         isStatic: true,
         loopAnimation: false,
         dynamicBackground: false,
+        userFxMatrix: false,
         source: src,
       },
       {
@@ -279,6 +290,27 @@ describe('extractLandscapeGfx', () => {
         isStatic: false,
         loopAnimation: true,
         dynamicBackground: true,
+        userFxMatrix: false,
+        source: src,
+      },
+      {
+        index: 2,
+        editName: 'fx wave',
+        editGroups: [],
+        logicType: 1,
+        maxValency: undefined,
+        isWorkable: false,
+        walkBlockAreas: [],
+        buildBlockAreas: [],
+        workAreas: [],
+        bmd: 'data/engine2d/bin/bobs/test_effect.bmd',
+        shadowBmd: undefined,
+        paletteName: undefined,
+        frames: [{ state: 1, bobIds: [1, 2, 3] }],
+        isStatic: false,
+        loopAnimation: true,
+        dynamicBackground: true,
+        userFxMatrix: true,
         source: src,
       },
     ]);

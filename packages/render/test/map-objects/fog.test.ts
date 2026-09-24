@@ -53,6 +53,19 @@ describe('MapObjectLayer fog gate (tall objects)', () => {
     expect(tallSprite(spriteLayer)?.tint).toBe(FOG_GHOST_TINT);
   });
 
+  it('shows a creature only on VISIBLE ground, leaving no EXPLORED ghost', () => {
+    const spriteLayer = new Container();
+    const layer = new MapObjectLayer(spriteLayer, new TextureCache());
+    layer.set([{ ...swayingTree(), creature: true }]);
+
+    layer.update(WIDE, 0, () => FOG_STATE.VISIBLE);
+    expect(tallSprite(spriteLayer)?.tint).toBe(0xffffff);
+    layer.update(WIDE, 1, () => FOG_STATE.EXPLORED);
+    expect(tallSprite(spriteLayer)).toBeUndefined();
+    layer.update(WIDE, 2, () => FOG_STATE.VISIBLE);
+    expect(tallSprite(spriteLayer)).toBeDefined();
+  });
+
   it('advances the animation on VISIBLE ground but freezes it on EXPLORED ground', () => {
     const spriteLayer = new Container();
     const layer = new MapObjectLayer(spriteLayer, new TextureCache());

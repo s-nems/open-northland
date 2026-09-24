@@ -293,6 +293,32 @@ describe('extractGfxAnimAtomics', () => {
     ]);
   });
 
+  it('keeps a sequence-less record, whose list holds bob ids of the whole body set', () => {
+    const records = extractGfxAnimAtomics(
+      parseIniSections(
+        [
+          '[gfxanimatomic]', // the butterflies' shape: no gfxbobseqbody
+          'logictribe 35',
+          'logicjob 49',
+          'logicatomicaction 3',
+          'gfxanimmode 1',
+          'gfxanimframelist 0 1 2',
+        ].join('\n'),
+      ),
+      src,
+    );
+    expect(records).toEqual([
+      {
+        tribe: 35,
+        job: 49,
+        action: 3,
+        dirFrames: [[0, 1, 2]],
+        mode: 1,
+        source: { file: 'animations.ini', block: 'gfxanimatomic', layer: 'mod' },
+      },
+    ]);
+  });
+
   it('captures the optional head bobseq when the record overlays a separate head', () => {
     const [rec] = extractGfxAnimAtomics(
       parseIniSections(

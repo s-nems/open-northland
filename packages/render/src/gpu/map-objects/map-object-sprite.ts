@@ -21,6 +21,9 @@ export interface MapObjectSprite {
    *  object (a felled or save-restored harvestable), it stands still. */
   readonly environmentSway?: number;
   readonly decor: boolean;
+  /** A live creature the map places for presentation (a butterfly swarm), not landscape: it shows only
+   *  on a cell the viewer currently watches, never as an explored-ground ghost. Tall objects only. */
+  readonly creature?: boolean;
   /** Starting frame offset into {@link frames}; static objects ignore it. */
   readonly phase: number;
   /**

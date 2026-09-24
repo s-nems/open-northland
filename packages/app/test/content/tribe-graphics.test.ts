@@ -131,9 +131,9 @@ describe.runIf(hasRealIr())('every civilization is drawable', () => {
     expect(all.size).toBeGreaterThan(100);
     for (const tribe of CIVILIZATIONS) {
       const named = new Set(
-        (ir.gfxAtomics ?? [])
-          .filter((a) => a.tribe === tribe && a.bodySeq.startsWith('human_'))
-          .map((a) => a.bodySeq),
+        (ir.gfxAtomics ?? []).flatMap((a) =>
+          a.tribe === tribe && a.bodySeq?.startsWith('human_') === true ? [a.bodySeq] : [],
+        ),
       );
       expect(named.size, `tribe ${tribe} names no human animation`).toBeGreaterThan(0);
       const unresolved = [...named].filter((name) => !all.has(name));

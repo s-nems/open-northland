@@ -121,7 +121,7 @@ function subClipAnims(
 ): Record<string, SpriteFrameRef> {
   const out: Record<string, SpriteFrameRef> = {};
   for (const row of subClips) {
-    if (row.subId === undefined) continue;
+    if (row.subId === undefined || row.bodySeq === undefined) continue;
     const seq = seqByName.get(row.bodySeq);
     if (seq === undefined || seq.length <= 0) continue;
     out[subClipKey(row.action, row.subId)] = {

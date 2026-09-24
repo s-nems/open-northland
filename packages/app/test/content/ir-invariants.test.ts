@@ -80,11 +80,17 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('every merged gathered good is calibrated or reported as a gap - never silently dead', async () => {
+  it('every merged felled or mined good is calibrated or reported as a gap - never silently dead', async () => {
     const { merge } = await loadContentUnderTest();
     const reported = new Set(merge.unbalancedGoods);
+    // A field crop, a carcass yield and a hive's honey (no harvest stage) are supplied by their own
+    // loops, so the felling/mining balance never applies to them.
+    const huntYields = new Set(merge.content.huntPrey.flatMap((p) => p.yields.map((y) => y.goodType)));
     for (const good of merge.content.goods) {
       if (good.gathering === undefined || reported.has(good.id)) continue;
+      if (good.gathering.harvest === undefined || good.farming !== undefined || huntYields.has(good.typeId)) {
+        continue;
+      }
       if (KNOWN_UNCALIBRATED_GOOD_IDS.includes(good.id)) {
         // The allow-list must not outlive its gap: once the good gains a live balance, this fails
         // so the entry is removed in the same change that calibrates it.

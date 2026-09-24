@@ -99,6 +99,7 @@ export async function presentMapWorld(
               ? (objects) => pack.mapObjects(app.renderer, objects, ir, world.elevation)
               : undefined,
           ),
+          world.groundWaves,
         )
       : null;
   const related = { ir, content: { content: sim.content }, params };

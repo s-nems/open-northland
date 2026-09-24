@@ -76,8 +76,9 @@ function dirIndexedFrameLists(sec: RuleSection, key: string): number[][] | undef
  * {@link GfxAnimAtomic} rows, reading the `gfxanimframelistdir <dir> <idx…>` lines that lay an animation
  * out per facing. One `(job, action)` may carry several records (the unarmed soldier's punch variants)
  * and all are emitted, so a consumer resolves by `(tribe, job, action)` or by `bodySeq` name. A record
- * missing its tribe/job/action/body-seq or carrying no frame list is skipped, never thrown; the
- * body-less `gfxanimmode 2` records are `extractGfxInHousePrograms`'s.
+ * missing its tribe/job/action or carrying no frame list is skipped, never thrown; one without
+ * `gfxbobseqbody` keeps its lists as bob ids. The body-less `gfxanimmode 2` records are
+ * `extractGfxInHousePrograms`'s.
  */
 export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: SourceRef): GfxAnimAtomic[] {
   const out: GfxAnimAtomic[] = [];
@@ -88,16 +89,8 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
     const tribe = getInt(sec, 'logictribe');
     const job = getInt(sec, 'logicjob');
     const action = getInt(sec, 'logicatomicaction');
+    if (tribe === undefined || job === undefined || action === undefined) continue;
     const bodySeq = getStr(sec, 'gfxbobseqbody');
-    if (
-      tribe === undefined ||
-      job === undefined ||
-      action === undefined ||
-      bodySeq === undefined ||
-      bodySeq.trim() === ''
-    ) {
-      continue;
-    }
     const headSeq = getStr(sec, 'gfxbobseqhead');
     let dirFrames = dirIndexedFrameLists(sec, 'gfxanimframelistdir');
     if (dirFrames === undefined) {
@@ -114,7 +107,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
         tribe,
         job,
         action,
-        bodySeq,
+        ...(bodySeq !== undefined && bodySeq.trim() !== '' ? { bodySeq } : {}),
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
         dirFrames,
         ...(mode !== undefined && mode >= 0 ? { mode } : {}),

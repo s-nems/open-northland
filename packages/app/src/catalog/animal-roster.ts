@@ -4,8 +4,7 @@
  * keyed by `logictribe`, which is the IR `tribes.typeId`. The baby records are not transcribed.
  */
 
-/** The one body bob set every transcribed animal plays. Butterflies (tribe 35) alone live on
- *  `cr_ani_body_01.bmd`, which ships no readable `[bobseq]`, so they are omitted below. */
+/** The one body bob set every animal in {@link ANIMAL_PALETTE_BY_TRIBE} plays. */
 const ANIMAL_BODY_STEM = 'cr_ani_body_00';
 
 /** The `[bobseq]` imagelib key of {@link ANIMAL_BODY_STEM}. */
@@ -46,3 +45,12 @@ export const ANIMAL_PALETTE_BY_TRIBE: ReadonlyMap<number, string> = new Map([
   [34, 'house01'], // bees
   [36, 'house01'], // mosquitos
 ]);
+
+/**
+ * The ambient species' looks, from the same `jobgraphics.ini` adult records: a species the sim never
+ * admits whose own body set plays one sequence-less swarm loop. Butterflies (tribe 35) alone.
+ */
+export const AMBIENT_LOOK_BY_TRIBE: ReadonlyMap<
+  number,
+  { readonly bodyStem: string; readonly palette: string }
+> = new Map([[35, { bodyStem: 'cr_ani_body_01', palette: 'butterfly01' }]]);

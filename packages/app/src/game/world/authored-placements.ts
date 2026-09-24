@@ -183,6 +183,8 @@ export function resolveAuthoredPlacements(
   // animal spawns adult with `hitpoints_adult`.
   for (const a of entities.animals) {
     const tribe = joins.species(a.species);
+    // The presentation draws an ambient species (`loadAmbientCreatures`); it is no dropped record.
+    if (tribe === undefined && joins.ambientSpecies(a.species) !== undefined) continue;
     if (tribe === undefined || !inBounds(a.hx, a.hy)) {
       skippedAnimals++;
       continue;

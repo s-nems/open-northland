@@ -85,7 +85,7 @@ export function animalBinding(
   let loopBase: IdlePick | undefined;
   for (const action of ANIMAL_IDLE_ACTIONS) {
     const row = animalGfxAtomicRow(ir, tribe, action);
-    if (row === undefined) continue;
+    if (row?.bodySeq === undefined) continue;
     const seq = seqByName.get(row.bodySeq);
     if (seq === undefined || seq.length <= 0) continue;
     if (row.dirFrames.every((list) => list.length === 0)) continue; // no program - nothing to play
@@ -106,7 +106,7 @@ export function animalBinding(
 
   let attack: FrameListAnim | undefined;
   const fight = animalGfxAtomicRow(ir, tribe, ATTACK_ATOMIC);
-  if (fight !== undefined) {
+  if (fight?.bodySeq !== undefined) {
     const seq = seqByName.get(fight.bodySeq);
     if (seq !== undefined && seq.length > 0 && fight.dirFrames.length > 0) {
       attack = { start: seq.start, frameLists: frameListsByFacing(fight.dirFrames) };

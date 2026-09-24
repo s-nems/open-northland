@@ -1,4 +1,4 @@
-import type { MapObjectSprite } from '@open-northland/render';
+import type { GroundWave, MapObjectSprite } from '@open-northland/render';
 import type { Simulation } from '@open-northland/sim';
 import { Texture } from 'pixi.js';
 import { expect, it, vi } from 'vitest';
@@ -17,13 +17,14 @@ it('hydrates saved replacements and reconciles later removals without rebuilding
   };
   const initial = sprite();
   const replacement = sprite();
-  const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn() };
+  const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
   const factory = vi.fn(() => replacement);
   const events = bindScriptLandscapes(
     { landscapeEdits: () => state },
     surface,
     new Map([[0, initial]]),
     factory,
+    new Map(),
   );
   expect(surface.removeMapObject).toHaveBeenCalledWith(initial);
   expect(surface.addMapObjects).toHaveBeenCalledExactlyOnceWith([replacement]);
@@ -36,7 +37,7 @@ it('hydrates saved replacements and reconciles later removals without rebuilding
 });
 
 it('leaves scripted harvestables to the live entity renderer', () => {
-  const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn() };
+  const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
   const factory = vi.fn(sprite);
   bindScriptLandscapes(
     {
@@ -50,7 +51,22 @@ it('leaves scripted harvestables to the live entity renderer', () => {
     surface,
     new Map(),
     factory,
+    new Map(),
   );
   expect(factory).not.toHaveBeenCalled();
   expect(surface.addMapObjects).not.toHaveBeenCalled();
+});
+
+it("takes a removed placement's shore wave off the ground", () => {
+  const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
+  const wave: GroundWave = { x: 0, y: 0, source: Texture.EMPTY.source, frames: [], phase: 0 };
+  bindScriptLandscapes(
+    { landscapeEdits: () => ({ revision: 1, removed: [3], added: [], tints: [] }) },
+    surface,
+    new Map(),
+    vi.fn(sprite),
+    new Map([[3, wave]]),
+  );
+  expect(surface.removeGroundWave).toHaveBeenCalledExactlyOnceWith(wave);
+  expect(surface.removeMapObject).not.toHaveBeenCalled();
 });

@@ -23,9 +23,11 @@ export interface GfxAnimAtomicRow {
   readonly tribe: number;
   readonly job: number;
   readonly action: number;
-  readonly bodySeq: string;
+  /** Absent on a record naming no sequence: its lists then hold bob ids of the tribe's body set. */
+  readonly bodySeq?: string;
   readonly headSeq?: string;
-  /** Per-facing ordered lists of local frame indices into the `bodySeq` pool (outer length = directions). */
+  /** Per-facing ordered lists of local frame indices into the `bodySeq` pool, or bob ids when the row
+   *  names no sequence (outer length = directions). */
   readonly dirFrames: readonly (readonly number[])[];
   /** `gfxanimmode` - `1` marks a body's looping base wait; `0` is a one-shot motion. */
   readonly mode?: number;
@@ -146,6 +148,8 @@ export interface LandscapeGfxRow {
   readonly isStatic?: boolean;
   /** `GfxLoopAnimation` - the state's frame list loops continuously (waves, fire, smoke). */
   readonly loopAnimation?: boolean;
+  /** `GfxUserFXMatrix` - the bobs are a ground-lift field drawn by `loadGroundWaves`, not a sprite. */
+  readonly userFxMatrix?: boolean;
   /** Repeated `LogicWalkBlockArea` lines - a non-empty footprint marks a depth-sorted (non-decor) object. */
   readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
   /** Repeated `LogicBuildBlockArea` lines - the object's build-exclusion ring. */

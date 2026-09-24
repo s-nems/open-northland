@@ -3,6 +3,7 @@ import { type GameSession, localPlayerOf, seatColourOf } from '@open-northland/l
 import {
   createWindowPixiApp,
   type ElevationField,
+  type GroundWave,
   makeElevationField,
   type SceneTerrain,
   type SpriteSheet,
@@ -11,6 +12,8 @@ import {
 } from '@open-northland/render';
 import type { Entity, SaveGame, Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
+import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
+import { loadGroundWaves } from '../../content/ground-waves.js';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
@@ -94,6 +97,8 @@ export interface AssembledMapWorld {
   readonly strings: Awaited<ReturnType<typeof loadMapStrings>>;
   readonly tribes: WorldTribes;
   readonly staticObjects: LoadedObjects | undefined;
+  /** The map's shore waves by placement ordinal, the key a script's landscape removal names them by. */
+  readonly groundWaves: ReadonlyMap<number, GroundWave>;
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
   /** The chest and ground-goods placements the sim draws from tick zero; empty on a restore, whose
    *  entities come out of the save. */
@@ -166,6 +171,7 @@ export async function assembleMapWorld(
     // A partial `content/`, such as a missing atlas PNG, degrades to bare ground instead of crashing.
     await boot.begin('objects');
     let staticObjects: LoadedObjects | undefined;
+    let groundWaves: ReadonlyMap<number, GroundWave> = new Map();
     if (loaded?.objects !== undefined && ir !== null) {
       try {
         const loadedObjects = pack
@@ -177,6 +183,23 @@ export async function assembleMapWorld(
         staticObjects = loadedObjects;
       } catch (err) {
         diag.warn('content', `map objects unavailable, bare ground fallback: ${String(err)}`);
+      }
+      // The swarms and waves are dressing: losing either must not cost the map its objects.
+      try {
+        // The ambient swarms are original art, so a presentation pack's world goes without them.
+        if (pack === null && loaded.entities !== undefined) {
+          renderer.addMapObjects(await loadAmbientCreatures(loaded.entities.animals, ir, elevation));
+        }
+      } catch (err) {
+        diag.warn('content', `ambient creatures unavailable: ${String(err)}`);
+      }
+      try {
+        // The waves only shift the ground already drawn, so they apply under a presentation pack too.
+        const loadedWaves = await loadGroundWaves(loaded.objects, ir, elevation);
+        renderer.setGroundWaves(loadedWaves.waves);
+        groundWaves = loadedWaves.byPlacement;
+      } catch (err) {
+        diag.warn('content', `shore waves unavailable: ${String(err)}`);
       }
     }
     await boot.begin('world');
@@ -252,6 +275,7 @@ export async function assembleMapWorld(
       strings,
       tribes,
       staticObjects,
+      groundWaves,
       harvestablePlacements,
       pooledPlacements,
     };

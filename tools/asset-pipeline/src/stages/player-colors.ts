@@ -28,7 +28,7 @@ import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import { writeFileWithParents } from '../files.js';
 import type { SourceRoots } from '../roots.js';
-import { BOBS_DIR, writeSourceBobAtlas } from './content-tree.js';
+import { BOBS_DIR, INDEXED_ATLAS_SUFFIX, writeSourceBobAtlas } from './content-tree.js';
 import { readSourceFile, type SourceAssetIndex } from './source-files.js';
 
 /** Directory holding the creature `.pcx` palettes the LUT is built from. */
@@ -201,7 +201,7 @@ export async function convertIndexedCharacterAtlases(
     }
     try {
       const atlas = packIndexedBobAtlas(decodeBmd(await readFile(source.path)));
-      const { png } = await writeSourceBobAtlas(outDir, source.rel, 'indexed', atlas);
+      const { png } = await writeSourceBobAtlas(outDir, source.rel, INDEXED_ATLAS_SUFFIX, atlas);
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped indexed ${bmdRef}: ${errorMessage(err)}`);

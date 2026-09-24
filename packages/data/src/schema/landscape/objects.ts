@@ -113,6 +113,12 @@ export const LandscapeGfx = z.strictObject({
    * into the atlas by the pipeline's `AtlasAlphaMode`.
    */
   dynamicBackground: z.boolean().default(false),
+  /**
+   * `GfxUserFXMatrix` - the record's bobs hold no colours but a displacement field: each written value
+   * lifts the ground drawn beneath by that many pixels (the `fx wave` shore waves). Served as the bob
+   * set's `.indexed` atlas, the value in red.
+   */
+  userFxMatrix: z.boolean().default(false),
   source: Provenance.optional(),
 });
 export type LandscapeGfx = z.infer<typeof LandscapeGfx>;

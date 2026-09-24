@@ -60,6 +60,9 @@ export interface ContentJoins {
   tribe(name: string): number | undefined;
   /** An animal tribe, keyed by slug and by display name: `setanimal` authors either. */
   species(name: string): number | undefined;
+  /** An animal tribe whose record has no living adult (`hitpointsAdult` 0), such as the butterflies:
+   *  the sim never admits one, so an authored placement is presentation only. */
+  ambientSpecies(name: string): number | undefined;
   vehicleType(name: string): number | undefined;
   landscape(name: string): number | undefined;
   /** A good by name, or by the bare `goodtype` id maps rarely author (`addgoods 49 1000`). */
@@ -93,12 +96,15 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
     if (!tribeByName.has(key)) tribeByName.set(key, t.typeId);
   }
   const animalTribes = new Set<number>();
+  const ambientTribes = new Set<number>();
   for (const a of rows.animals ?? []) {
-    if (a.tribeType !== undefined && (a.hitpointsAdult ?? 0) > 0) animalTribes.add(a.tribeType);
+    if (a.tribeType === undefined) continue;
+    ((a.hitpointsAdult ?? 0) > 0 ? animalTribes : ambientTribes).add(a.tribeType);
   }
-  const speciesByKey = byNormalizedName(
-    (rows.tribes ?? []).filter((t) => t.typeId !== undefined && animalTribes.has(t.typeId)),
-  );
+  const tribesIn = (ids: ReadonlySet<number>) =>
+    (rows.tribes ?? []).filter((t) => t.typeId !== undefined && ids.has(t.typeId));
+  const speciesByKey = byNormalizedName(tribesIn(animalTribes));
+  const ambientSpeciesByKey = byNormalizedName(tribesIn(ambientTribes));
   const landscapeByName = new Map<string, number>();
   for (const row of rows.landscapeGfx ?? []) {
     if (row.editName === undefined) continue;
@@ -122,6 +128,7 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
     job: (name) => jobByName.get(normalizeRoleKey(name)),
     tribe: (name) => tribeByName.get(catalogKey(name)),
     species: (name) => speciesByKey.get(normalizeRoleKey(name)),
+    ambientSpecies: (name) => ambientSpeciesByKey.get(normalizeRoleKey(name)),
     vehicleType: (name) => vehicleByName.get(normalizeRoleKey(name)),
     landscape: (name) => landscapeByName.get(catalogKey(name)),
     good: (name) => {

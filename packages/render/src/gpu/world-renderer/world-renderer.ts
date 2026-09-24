@@ -3,6 +3,7 @@ import { type Application, Container } from 'pixi.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem, SceneTerrain } from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
+import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
   type BuildingSignGfx,
@@ -58,6 +59,7 @@ export class WorldRenderer {
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly mapObjects: MapObjectLayer;
+  private readonly groundWaves: GroundWaveLayer;
   private readonly pool: SpritePool;
   private readonly fog = new WorldFog();
   private readonly placementOverlay: PlacementOverlayLayer;
@@ -86,6 +88,7 @@ export class WorldRenderer {
     // re-build only this layer's instruction set, not the whole stage's.
     this.spriteLayer.isRenderGroup = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
+    this.groundWaves = new GroundWaveLayer(app.renderer, this.terrain.container);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
@@ -149,6 +152,15 @@ export class WorldRenderer {
   /** Call once per map. */
   setMapObjects(objects: readonly MapObjectSprite[]): void {
     this.mapObjects.set(objects);
+  }
+
+  /** Call once per map. The waves run only while environment motion is on. */
+  setGroundWaves(waves: readonly GroundWave[]): void {
+    this.groundWaves.set(waves);
+  }
+
+  removeGroundWave(wave: GroundWave): void {
+    this.groundWaves.remove(wave);
   }
 
   addMapObjects(objects: readonly MapObjectSprite[]): void {
@@ -266,7 +278,16 @@ export class WorldRenderer {
     });
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
+    this.groundWaves.update(
+      vp,
+      camera,
+      this.app.screen.width,
+      this.app.screen.height,
+      tick,
+      this.enhancements.environmentMotion,
+    );
     this.app.render();
+    this.groundWaves.suspend(true);
     this.portrait.draw(camera, {
       toInset: (cam, iw, ih) => this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift)),
       restore: () => this.terrain.cull(vp),
@@ -297,6 +318,7 @@ export class WorldRenderer {
         backdrop: this.terrain.groundColour(),
       },
     );
+    this.groundWaves.suspend(false);
   }
 
   /** The views a window shows this frame (the briefing's map pictures), drawn after the main render;
@@ -359,6 +381,7 @@ export class WorldRenderer {
   /** Every sub-layer is destroyed explicitly so its retained pool or Map is cleared, not just its
    *  container tree-walked away below. */
   dispose(): void {
+    this.groundWaves.destroy();
     this.terrain.destroy();
     this.mapObjects.destroy();
     this.pool.destroy();

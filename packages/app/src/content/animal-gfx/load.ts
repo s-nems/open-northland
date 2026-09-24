@@ -52,7 +52,9 @@ export async function loadAnimalCharacters(
     const body = palette !== undefined ? layersByStem.get(animalBodyStem(palette)) : undefined;
     const binding = body !== undefined ? animalBinding(ir, tribe, seqByName) : null;
     if (body === undefined || binding === null) {
-      unbound.push(tribe);
+      // A species the source gives no roster look draws as nothing by design; only a look that failed
+      // to resolve is a content fault.
+      if (palette !== undefined) unbound.push(tribe);
       continue;
     }
     byTribe[tribe] = { body, binding };
@@ -61,7 +63,7 @@ export async function loadAnimalCharacters(
     const slugById = new Map((ir?.tribes ?? []).map((t) => [t.typeId, t.id]));
     diag.warn(
       'content',
-      `animal looks unbound (drawn as nothing): ${unbound.map((t) => slugById.get(t) ?? `tribe ${t}`).join(', ')}`,
+      `animal looks failed to resolve (drawn as nothing): ${unbound.map((t) => slugById.get(t) ?? `tribe ${t}`).join(', ')}`,
     );
   }
   return { byTribe, tribes };

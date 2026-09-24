@@ -4,7 +4,12 @@ import type { Args } from './args.js';
 import { decodePng } from './decoders/png.js';
 import { errorMessage } from './errors.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
-import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
+import {
+  convertBmdTree,
+  convertEffectBmdTree,
+  convertShadowBmdTree,
+  resolveGraphicsBindings,
+} from './stages/bmd/index.js';
 import { MAPS_DIR, SOUNDS_DIR, TEXTURES_DIR } from './stages/content-tree.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
@@ -107,6 +112,10 @@ export async function runPipeline(args: Args): Promise<void> {
       `${ir.gatheringPipeline.length} gathering pipelines ` +
       `-> ${join(args.out, 'ir.json')}`,
   );
+
+  // Needs the extracted `GfxUserFXMatrix` flags, hence after writeIr.
+  const effectAtlases = await convertEffectBmdTree(ir.landscapeGfx, args.out, assets);
+  console.log(`[pipeline] effect bmd -> atlas: ${effectAtlases.length} indexed effect atlas(es)`);
 
   // Needs the extracted `[transition]` table, hence after writeIr.
   const maskedPairs = ir.gfxPatternTransitions.flatMap((t) =>
