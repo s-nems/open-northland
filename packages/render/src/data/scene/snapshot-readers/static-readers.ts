@@ -16,11 +16,10 @@ function readPalisadeGfxIndex(components: Readonly<Record<string, unknown>>): nu
   return readNumField(components, 'Palisade', 'gfxIndex');
 }
 
-/** Whether an unfinished wall segment already carries its builder's planted work flag. */
-export function readPalisadeClaimPlanted(components: Readonly<Record<string, unknown>>): boolean {
+/** Whether a builder has claimed an unfinished wall segment, which puts up its work flag. */
+export function readPalisadeClaimed(components: Readonly<Record<string, unknown>>): boolean {
   const palisade = components.Palisade as { reservation?: unknown } | undefined;
-  const reservation = palisade?.reservation as { planted?: unknown } | null | undefined;
-  return reservation?.planted === true;
+  return palisade?.reservation !== undefined && palisade.reservation !== null;
 }
 
 /**

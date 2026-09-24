@@ -25,7 +25,6 @@ import { damageVsTarget } from '../../src/systems/conflict/weapons.js';
 import {
   advanceConstructionLabor,
   constructionSystem,
-  PALISADE_BUILD_STRIKES,
   remainingConstructionSteps,
 } from '../../src/systems/economy/construction.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
@@ -33,7 +32,6 @@ import {
   claimPalisade,
   constructionSiteAvailableTo,
   palisadeReservedBy,
-  plantPalisadeFlag,
   releasePalisadeReservation,
 } from '../../src/systems/palisades/reservation.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
@@ -122,22 +120,18 @@ function fresh(): Simulation {
   });
 }
 
-/** A segment takes strikes only from the one builder holding its planted flag, so a direct-labor test
- *  needs that claim stamped the way {@link planBuilder} stamps it. */
+/** A segment takes its strike only from the one builder holding its claim, so a direct-labor test needs
+ *  that claim stamped the way {@link planBuilder} stamps it. */
 function flagBearer(sim: Simulation, site: Entity): Entity {
   const builder = sim.world.create();
   sim.world.add(builder, SiteAssignment, { site, pinned: false });
   claimPalisade(sim.world, site, builder);
-  plantPalisadeFlag(sim.world, site, builder);
   return builder;
 }
 
-/** Every strike a segment takes to rise, all from its flag bearer. */
+/** The single strike that raises a segment, from its flag bearer. */
 function hammerOut(sim: Simulation, site: Entity): void {
-  const builder = flagBearer(sim, site);
-  for (let strike = 0; strike < PALISADE_BUILD_STRIKES; strike++) {
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), site, builder)).toBe(true);
-  }
+  expect(advanceConstructionLabor(sim.world, ctxOf(sim), site, flagBearer(sim, site))).toBe(true);
 }
 
 /** One melee blow of `damage` on `target` from an unarmed stand-in attacker. */
@@ -199,13 +193,7 @@ describe('palisades', () => {
     expect(sim.world.has(wall, PalisadeBlocking)).toBe(false);
 
     setStockAmount(sim.world, wall, 5, 1);
-    const builder = flagBearer(sim, wall);
-    for (let hit = 1; hit < PALISADE_BUILD_STRIKES; hit++) {
-      expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, builder)).toBe(true);
-      constructionSystem(sim.world, ctxOf(sim));
-      expect(sim.world.has(wall, UnderConstruction)).toBe(true);
-    }
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, builder)).toBe(true);
+    hammerOut(sim, wall);
     constructionSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(wall, UnderConstruction)).toBe(false);
@@ -474,7 +462,7 @@ describe('palisades', () => {
     expect(palisadeReservedBy(sim.world, wall)).toBe(second);
   });
 
-  it('restores a planted claim so a reloaded builder keeps the segment it was raising', () => {
+  it('restores a claim so a reloaded builder keeps the segment it was raising', () => {
     const sim = fresh();
     sim.enqueueSetup({
       kind: 'placePalisade',
@@ -494,7 +482,7 @@ describe('palisades', () => {
       map: palisadeMap(),
     });
 
-    expect(restored.world.get(wall, Palisade).reservation).toEqual({ builder, planted: true });
+    expect(restored.world.get(wall, Palisade).reservation).toEqual({ builder });
     expect(palisadeReservedBy(restored.world, wall)).toBe(builder);
   });
 });

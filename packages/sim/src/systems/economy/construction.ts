@@ -20,7 +20,7 @@ import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { palisadeBlockingCellsOccupied } from '../palisades/index.js';
-import { palisadeFlagPlantedBy } from '../palisades/reservation.js';
+import { holdsPalisadeClaim } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
@@ -250,15 +250,11 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
  */
 const STEPS_PER_UNIT = 30;
 
-/**
- * Hammer strikes that raise one wall segment once its wood is in. Approximation: the readable data gives
- * no count, and a single strike reads on screen as the wall appearing on its own.
- */
-export const PALISADE_BUILD_STRIKES = 4;
-
 /** Labor installed by one construction step at `site`. */
 function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity): Fixed {
-  if (world.has(site, Palisade)) return fx.div(ONE, fx.fromInt(PALISADE_BUILD_STRIKES));
+  // A wall segment rises in a single strike once its wood is in. Project rule, approximation: the readable
+  // data gives no count.
+  if (world.has(site, Palisade)) return ONE;
   const totalSteps = constructionTotalUnits(world, ctx, site) * STEPS_PER_UNIT;
   // At least 1 ULP per step so a huge-cost building still finishes: `trunc(ONE / totalSteps)` floors
   // to 0 once `totalSteps > ONE`.
@@ -286,7 +282,7 @@ export function remainingConstructionSteps(world: World, ctx: SystemContext, sit
  * Advance a site's builder-work `labor` by one hammer swing of `builder` - the `construct` atomic's
  * effect. A swing installs the steps the builder's experience and tool are worth. A free (empty-cost)
  * type has nothing to install, so a single swing completes it. A wall segment takes the swing only from
- * the one builder holding its planted claim.
+ * the one builder holding its claim.
  */
 export function advanceConstructionLabor(
   world: World,
@@ -307,7 +303,7 @@ export function advanceConstructionLabor(
     world.mut(site, Palisade).built = progress;
     return uc.labor > before;
   }
-  if (wall !== undefined && !palisadeFlagPlantedBy(world, site, builder)) return false;
+  if (wall !== undefined && !holdsPalisadeClaim(world, site, builder)) return false;
   const steps = buildStepsPerSwing(
     jobExperiencePercent(world, ctx, builder, null),
     toolWorkFactorPct(world, ctx, builder),

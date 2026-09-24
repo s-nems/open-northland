@@ -18,9 +18,9 @@ export const Palisade = defineComponent<{
   /** Source transition-9 valency gain per completed repair strike. */
   repairPerStrike: number;
   repairing: boolean;
-  /** Exclusive builder claim for an unfinished segment. The claim is taken before the worker travels;
-   * `planted` flips only after that worker physically reaches the segment's marker. */
-  reservation: null | { builder: Entity; planted: boolean };
+  /** Exclusive builder claim for an unfinished segment, taken when a builder picks it; its work flag
+   * shows from then on. */
+  reservation: null | { builder: Entity };
   gate: null | { open: boolean; counterpartGfxIndex: number };
 }>('Palisade', 'economy');
 

@@ -79,7 +79,7 @@ describe('palisadePostOffsets', () => {
     };
     (claimed.components as Record<string, unknown>).Palisade = {
       ...claimed.components.Palisade,
-      reservation: { builder: 40, planted: true },
+      reservation: { builder: 40 },
     };
     const items = buildSpriteScene(snapshotOf([palisade(1, 0, 0), unclaimed, claimed]));
     expect(items.find((item) => item.ref === 2)?.palisadeSite).toBe('unclaimed');
@@ -87,17 +87,16 @@ describe('palisadePostOffsets', () => {
     expect(items.flatMap((item) => item.palisadePosts ?? [])).toEqual([]);
   });
 
-  it('hammers a site whose wood is in up from the ground as a lone post at its build stage', () => {
-    const stocked = palisade(2, 1, 0, (ONE / 4) as Fixed);
+  it('draws nothing at a site whose wood is in until its strike raises the wall', () => {
+    const stocked = palisade(2, 1, 0, 0 as Fixed);
     (stocked.components as Record<string, unknown>).Palisade = {
       ...stocked.components.Palisade,
-      reservation: { builder: 40, planted: true },
+      reservation: { builder: 40 },
     };
     (stocked.components as Record<string, unknown>).Stockpile = { amounts: [[5, 1]] };
     const items = buildSpriteScene(snapshotOf([palisade(1, 0, 0), stocked]));
     const item = items.find((drawn) => drawn.ref === 2);
-    expect(item?.palisadeSite).toBeUndefined();
-    expect(item?.builtPct).toBe(25);
+    expect(item?.palisadeSite).toBe('stocked');
     expect(items.flatMap((drawn) => drawn.palisadePosts ?? [])).toEqual([]);
   });
 

@@ -28,21 +28,13 @@ export function claimPalisade(world: World, site: Entity, builder: Entity): bool
   const current = palisadeReservedBy(world, site);
   if (current !== null && current !== builder) return false;
   if (current === builder) return true;
-  world.mut(site, Palisade).reservation = { builder, planted: false };
+  world.mut(site, Palisade).reservation = { builder };
   return true;
 }
 
-/** Mark the visible flag only after the reserving builder has arrived at the segment dot. */
-export function plantPalisadeFlag(world: World, site: Entity, builder: Entity): boolean {
-  const wall = world.tryMut(site, Palisade);
-  if (wall?.reservation?.builder !== builder) return false;
-  if (!wall.reservation.planted) wall.reservation.planted = true;
-  return true;
-}
-
-export function palisadeFlagPlantedBy(world: World, site: Entity, builder: Entity): boolean {
-  const wall = world.tryGet(site, Palisade);
-  return palisadeReservedBy(world, site) === builder && wall?.reservation?.planted === true;
+/** Only the claim holder brings a segment its wood and strikes it. */
+export function holdsPalisadeClaim(world: World, site: Entity, builder: Entity): boolean {
+  return palisadeReservedBy(world, site) === builder;
 }
 
 /** Release the one segment claimed by `builder`. Call before removing its SiteAssignment. */

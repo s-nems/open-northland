@@ -2,20 +2,16 @@ import {
   ownerOf,
   ownersCompatible,
   Palisade,
-  Position,
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { needsRepair } from '../../../economy/repair.js';
 import {
   claimPalisade,
   constructionSiteAvailableTo,
-  palisadeFlagPlantedBy,
-  plantPalisadeFlag,
   releasePalisadeReservation,
 } from '../../../palisades/reservation.js';
 import { atomicDuration } from '../../../readviews/animations.js';
@@ -81,8 +77,7 @@ export function planBuilder(
   }
   if (locked !== null) {
     stampAssignment(plan, locked, pinned !== null);
-    const segment = takeSegment(plan, locked);
-    if (segment !== 'ready') return segment === 'walking';
+    if (!holdSegment(plan, locked)) return false;
     // A player's pin chose the risk; a workplace binding waits out the attack like an automatic crew.
     const repairing = needsRepair(world, locked);
     if (repairing && (pinned !== null || repairs.isSafe(locked)) && startRepair(plan, spacing, locked)) {
@@ -130,10 +125,9 @@ export function planBuilder(
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
   const site = crewSite !== null && hasTask(crewSite) ? crewSite : nearestSite(hasTask);
   if (site !== null && world.has(site, Palisade)) {
-    // A segment is walked to and flagged before any hammer or delivery, so it has one builder.
+    // A segment is claimed before any hammer or delivery, so it has one builder.
     stampAssignment(plan, site, false);
-    const segment = takeSegment(plan, site);
-    if (segment !== 'ready') return segment === 'walking';
+    if (!holdSegment(plan, site)) return false;
     if (!workAtSite(plan, spacing, claims, materials, site)) waitAtSite(plan, spacing, site);
     return true;
   }
@@ -150,8 +144,7 @@ export function planBuilder(
     (crewSite !== null && canStandAt(crewSite) ? crewSite : nearestSite(canStandAt));
   if (staging !== null) {
     stampAssignment(plan, staging, false);
-    const segment = takeSegment(plan, staging);
-    if (segment !== 'ready') return segment === 'walking';
+    if (!holdSegment(plan, staging)) return false;
     waitAtSite(plan, spacing, staging);
     return true;
   }
@@ -197,31 +190,12 @@ function repairNearest(
   return true;
 }
 
-/**
- * Take a wall segment's single-builder claim and walk to its marker to plant the flag; an ordinary
- * building is always `ready`. `dropped` means the claim was lost or the marker is unreachable.
- */
-function takeSegment(plan: PlannerContext, site: Entity): 'ready' | 'walking' | 'dropped' {
-  const { world, ctx, terrain, entity: e, here } = plan;
-  if (!claimPalisade(world, site, e)) {
-    dropAssignment(plan);
-    return 'dropped';
-  }
-  const wall = world.tryGet(site, Palisade);
-  if (wall === undefined || wall.repairing || palisadeFlagPlantedBy(world, site, e)) return 'ready';
-  const marker = world.get(site, Position);
-  const node = nodeOfPosition(marker.x, marker.y);
-  const dot = terrain.nodeAtClamped(node.hx, node.hy);
-  // The marker is the segment's own node, not one of its work cells, so the site-stand veto never
-  // covers it: a walk that fails there must drop the claim or the segment stays reserved forever.
-  if (unreachableGoalVeto(world, ctx, e)?.(dot) === true) {
-    dropAssignment(plan);
-    return 'dropped';
-  }
-  atOrWalk(world, e, here, dot, () => {
-    plantPalisadeFlag(world, site, e);
-  });
-  return 'walking';
+/** Take a wall segment's single-builder claim; an ordinary building always passes. A lost claim drops
+ *  the assignment. */
+function holdSegment(plan: PlannerContext, site: Entity): boolean {
+  if (claimPalisade(plan.world, site, plan.entity)) return true;
+  dropAssignment(plan);
+  return false;
 }
 
 /** A hammered segment finishes only once its cells are clear, so a builder waiting beside it would hold

@@ -12,7 +12,7 @@ import {
 import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import type { SettlerPose } from './settler-pose.js';
-import { assignStaticFields, readPalisadeClaimPlanted, readStockpile } from './snapshot-readers/index.js';
+import { assignStaticFields, readPalisadeClaimed, readStockpile } from './snapshot-readers/index.js';
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
@@ -58,11 +58,9 @@ export function assembleItem(
     case 'palisade': {
       assignStaticFields(item, kind, components);
       if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
-        // Once its wood is in, the segment is hammered up from the ground: it draws as a lone post at its
-        // build stage in place of the flag.
-        if (!siteHoldsGoods(components)) {
-          item.palisadeSite = readPalisadeClaimPlanted(components) ? 'claimed' : 'unclaimed';
-        }
+        // The wood set down on the flag goes into the wall: flag and heap vanish until the strike raises it.
+        if (siteHoldsGoods(components)) item.palisadeSite = 'stocked';
+        else item.palisadeSite = readPalisadeClaimed(components) ? 'claimed' : 'unclaimed';
       } else {
         const posts = build.palisadePosts.get(entity.id);
         if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;

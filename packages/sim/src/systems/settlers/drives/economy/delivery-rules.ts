@@ -16,7 +16,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { constructionWorkCell } from '../../../footprint/index.js';
-import { palisadeFlagPlantedBy } from '../../../palisades/reservation.js';
+import { holdsPalisadeClaim } from '../../../palisades/reservation.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -242,7 +242,7 @@ function constructionSiteNeeds(
 ): boolean {
   if (!world.has(e, UnderConstruction) || constructionTribeOf(world, e) !== tribe) return false;
   const wall = world.tryGet(e, Palisade);
-  if (wall !== undefined && !wall.repairing && !palisadeFlagPlantedBy(world, e, supplier)) return false;
+  if (wall !== undefined && !wall.repairing && !holdsPalisadeClaim(world, e, supplier)) return false;
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
   const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
   return have < stockCapacity(world, ctx, e, goodType);
