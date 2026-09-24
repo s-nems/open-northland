@@ -5,11 +5,13 @@ import {
   Position,
   Residence,
   Settler,
+  Signpost,
   stampOwner,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
+import { relinkSignpost } from '../../signposts/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHouses, missionHumans, ownedBy, ownedInRange, withinRange } from '../targets.js';
@@ -36,9 +38,10 @@ export function handHousesToPlayer(pass: MissionPass, id: number, player: number
  *  evicted: a town changes flag whole, so every binding inside it still points at the same owner. */
 export function handPlayerToPlayer(pass: MissionPass, from: number, to: number): void {
   const { world } = pass;
-  if (!isValidPlayer(from)) return;
-  for (const e of world.canonicalQuery(Owner).filter((e) => world.get(e, Owner).player === from))
-    stampOwner(world, e, to);
+  if (!isValidPlayer(from) || !isValidPlayer(to) || from === to) return;
+  const handed = world.canonicalQuery(Owner).filter((e) => world.get(e, Owner).player === from);
+  for (const e of handed) stampOwner(world, e, to);
+  relinkHandedSignposts(pass, handed);
 }
 
 /** Hand everything one player owns within `range` of the point to another; its humans leave the job
@@ -48,10 +51,20 @@ export function handAreaToPlayer(
   op: Extract<MissionResultOp, { opcode: 'ChangePlayerIdInArea' }>,
 ): void {
   if (!isValidPlayer(op.player) || !isValidPlayer(op.otherPlayer)) return;
-  for (const e of ownedInRange(pass.world, op.player, op.point, op.range)) {
+  const handed = ownedInRange(pass.world, op.player, op.point, op.range);
+  for (const e of handed) {
     if (pass.world.has(e, Person)) detachFromHouses(pass.world, pass.ctx, e);
     stampOwner(pass.world, e, op.otherPlayer);
   }
+  relinkHandedSignposts(pass, handed);
+}
+
+/** Relink the signposts among `handed` once every one carries its new owner, so posts handed together
+ *  link to each other as well as to the receiver's. */
+function relinkHandedSignposts(pass: MissionPass, handed: readonly Entity[]): void {
+  const terrain = pass.ctx.terrain;
+  if (terrain === undefined) return;
+  for (const e of handed) if (pass.world.has(e, Signpost)) relinkSignpost(pass.world, terrain, e);
 }
 
 /**

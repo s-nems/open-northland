@@ -12,11 +12,13 @@ import {
   Position,
   Residence,
   Settler,
+  Signpost,
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation } from '../../src/index.js';
 import { hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
+import { createSignpost, signpostNetwork } from '../../src/systems/index.js';
 import type { MissionResultOp } from '../../src/systems/missions/index.js';
 import { missionObjects, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -409,6 +411,35 @@ describe('the ownership results', () => {
     sim.run(LOAD_PASS);
     expect(ownerOf(sim.world, only(missionObjects(sim.world, 77)))).toBe(6);
     expect(ownerOf(sim.world, only(missionObjects(sim.world, 78)))).toBe(2);
+  });
+
+  it('moves a handed signpost from its old owner`s network into the new owner`s', () => {
+    const sim = firingSim([
+      { opcode: 'ChangePlayerIdInArea', player: 2, otherPlayer: 6, point: POINT, range: 3 },
+    ]);
+    const post = (hx: number, hy: number, player: number): Entity => {
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('mapped fixture expected');
+      return createSignpost(sim.world, terrain, terrain.nodeAt(hx, hy), player);
+    };
+    // Both neighbours stand inside the link range of the handed post and outside the area.
+    const handed = post(POINT.hx, POINT.hy, 2);
+    const oldNeighbour = post(POINT.hx, POINT.hy - 16, 2);
+    const newNeighbour = post(POINT.hx, POINT.hy + 16, 6);
+    expect(sim.world.get(handed, Signpost).links).toEqual([oldNeighbour]);
+
+    sim.run(LOAD_PASS);
+
+    expect(ownerOf(sim.world, handed)).toBe(6);
+    expect(sim.world.get(handed, Signpost).links).toEqual([newNeighbour]);
+    expect(sim.world.get(newNeighbour, Signpost).links).toEqual([handed]);
+    expect(sim.world.get(oldNeighbour, Signpost).links).toEqual([]);
+    const groups = new Set(
+      signpostNetwork(sim.world)
+        .get(6)
+        ?.map((site) => site.group),
+    );
+    expect(groups.size).toBe(1);
   });
 
   it('cuts the bindings of the humans an area handover takes', () => {

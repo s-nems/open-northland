@@ -1,3 +1,4 @@
+export { relinkSignpost } from './links.js';
 export {
   equipFetchLimitFor,
   type NavigationLimit,

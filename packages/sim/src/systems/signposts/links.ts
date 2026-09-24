@@ -87,3 +87,11 @@ export function unlinkSignpost(world: World, post: Entity): void {
     if (links !== undefined) links.links = links.links.filter((e) => e !== post);
   }
 }
+
+/** Re-settle the links of a post that changed hands: it leaves its old owner's posts and joins the new
+ *  owner's in range. Source basis: the original's guide rescan links same-player guides only. */
+export function relinkSignpost(world: World, terrain: TerrainGraph, post: Entity): void {
+  unlinkSignpost(world, post);
+  world.mut(post, Signpost).links = [];
+  settleSignpostLinks(world, terrain, post);
+}
