@@ -40,9 +40,9 @@ fleeing until it is out of range.
 - Decision: civilians flee only from buildings that shoot, never from plain enemy houses.
   `isFleeThreat` (`conflict/targeting.ts`) admits an enemy building only while it can fire: a manned
   tower or a shelter whose garrison can shoot. Enemy settlers stay threats as today. This frees
-  civilians who live next to an enemy's houses, and lets the flee side of the presence gate in
-  [combat-presence-gate-ignores-diplomacy](combat-presence-gate-ignores-diplomacy.md) ignore
-  non-shooting buildings.
+  civilians who live next to an enemy's houses. The flee side of the presence gate
+  (`CombatIndex.othersWithin`) may then skip non-shooting enemy buildings as well; the seeker side keeps
+  counting them, since soldiers still attack buildings.
 
 ## Verify
 

@@ -42,6 +42,13 @@ const FLEE_STEP_NODES = 12;
 const FLEE_REPATH_CADENCE = 6;
 
 /**
+ * FLEE stance - a calm unit looks for a threat only on ticks where `tick + entity` is a multiple of this
+ * stride, which spreads the checks evenly; a unit already fleeing looks every tick. Approximation for scale:
+ * a raider coming into sight is noticed up to three ticks (a quarter second) late.
+ */
+export const FLEE_CHECK_STRIDE_TICKS = 4;
+
+/**
  * The need level (fixed-point, in [0, ONE]) at or above which a collapsing hunger or fatigue overrides the
  * FLEE drive, while every lesser need yields to it. Set well above the ¾ eat/sleep thresholds. Approximated
  * (source basis "Combat flee"): the original's flee-vs-need arbitration is unreadable.
@@ -50,10 +57,11 @@ const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); /
 
 /**
  * The FLEE drive - run a unit away from the nearest threat. It reuses the combat target index rather
- * than opening a scan of its own: the nearest hostile within {@link SIGHT_RADIUS_NODES} is the threat. A
- * collapsing need outranks the flee, and a clear sight line winds the cool-down down; otherwise the unit
- * re-aims away on the {@link FLEE_REPATH_CADENCE} throttle at its normal pace, since escape comes from
- * steering away rather than speed.
+ * than opening a scan of its own: the nearest hostile within {@link SIGHT_RADIUS_NODES} is the threat,
+ * looked for on the {@link FLEE_CHECK_STRIDE_TICKS} stride while calm. A collapsing need outranks the flee,
+ * and a clear sight line winds the cool-down down; otherwise the unit re-aims away on the
+ * {@link FLEE_REPATH_CADENCE} throttle at its normal pace, since escape comes from steering away rather
+ * than speed.
  */
 export function fleeDrive(
   world: World,
@@ -72,6 +80,7 @@ export function fleeDrive(
     }
     return;
   }
+  if (!world.has(e, Fleeing) && (ctx.tick + e) % FLEE_CHECK_STRIDE_TICKS !== 0) return;
 
   const here = entityNode(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
@@ -82,8 +91,8 @@ export function fleeDrive(
     isFleeThreat(world, ctx, e, attacker, t) &&
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   // Near bound 0, not the weapon-reach floor of 1: fear has no dead zone, so a fleeing unit reacts to a
-  // hostile on its very tile too. The coarse presence early-out (perf-only) spares every calm civilian its
-  // per-tick full-sight scan; a FLEE-stance hunter is exempt from it, like every hunter spec.
+  // hostile on its very tile too. The coarse presence early-out (perf-only) spares a calm civilian its
+  // full-sight scan; a FLEE-stance hunter is exempt from it, like every hunter spec.
   const threat =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&

@@ -1,4 +1,4 @@
-export { ctxOf } from '../../fixtures/context.js';
+export { ctxOf, fleeCheckCtxOf } from '../../fixtures/context.js';
 
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 

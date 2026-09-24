@@ -19,10 +19,9 @@ new nested `Map` cells and member arrays: an allocation sample of a live session
 with its 13 AI seats at tick ~48k (x3, 45 s) put 344 MB on `admit` and 157 MB on `candidatesInBand`,
 whose per-call `number[]` and `Float64Array` the same index owns.
 
-Expected gain: about 0.5 ms of the 18.7 ms tick at 40k. Land it after
-[combat-presence-gate-ignores-diplomacy.md](combat-presence-gate-ignores-diplomacy.md), which takes about
-half of the 3.9 ms `combat` median and whose stance filter must stay per build when this layer
-outlives the tick.
+Expected gain: about 0.5 ms of the 18.7 ms tick at 40k. The presence gate reads diplomacy through the
+hostile masks `CombatIndex` resolves per build, while the cells hold only owner bits; a layer that
+outlives the tick keeps it that way and never bakes a stance into a cell.
 
 ## Scope
 

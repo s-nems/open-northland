@@ -26,7 +26,7 @@ import { attackerWeapon } from '../../src/systems/conflict/weapons.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, fleeCheckCtxOf } from '../fixtures/context.js';
 import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -183,7 +183,8 @@ describe('engage ladder - the post rung sits above the busy rung', () => {
 });
 
 describe('engage ladder - the two silent bench rungs sit above the flee rung', () => {
-  /** A FLEE-stance civilian with a rival player's unit close enough to run from. */
+  /** A FLEE-stance civilian with a rival player's unit close enough to run from. Each pass below runs on its
+   *  flee-check tick, so a missing flee is the rung's doing, not the stride's. */
   function threatenedCiv(): { sim: Simulation; civ: Entity } {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(40, 1) });
     const civ = personAt(sim, 20, 0, WOODCUTTER, { owner: P0, mode: MILITARY_MODE.FLEE });
@@ -194,7 +195,7 @@ describe('engage ladder - the two silent bench rungs sit above the flee rung', (
   it('stamps the flee when nothing benches the civilian first', () => {
     const { sim, civ } = threatenedCiv();
 
-    engage(sim);
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(true);
   });
@@ -203,7 +204,7 @@ describe('engage ladder - the two silent bench rungs sit above the flee rung', (
     const { sim, civ } = threatenedCiv();
     startAtomic(sim, civ);
 
-    engage(sim);
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(false);
   });
@@ -212,7 +213,7 @@ describe('engage ladder - the two silent bench rungs sit above the flee rung', (
     const { sim, civ } = threatenedCiv();
     sim.world.add(civ, PlayerOrder, {});
 
-    engage(sim);
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(false);
   });

@@ -12,7 +12,7 @@ import { combatSystem } from '../../../src/systems/index.js';
 import { attackUnit, setStance } from '../../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { combatant, combatantAtNode, ctxOf, grassMap, P0, P1 } from './support.js';
+import { combatant, combatantAtNode, ctxOf, fleeCheckCtxOf, grassMap, P0, P1 } from './support.js';
 
 describe('IGNORE - never auto-engage, but an explicit order still fights', () => {
   it('an IGNORE unit does NOT swing at an adjacent enemy', () => {
@@ -75,7 +75,7 @@ describe('stance change mid-chase', () => {
     expect(sim.world.has(unit, Engagement)).toBe(true); // chasing
 
     setStance(sim.world, ctxOf(sim), { kind: 'setStance', entity: unit, mode: MILITARY_MODE.FLEE });
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, unit));
     expect(sim.world.has(unit, Engagement)).toBe(false); // the attack Engagement is shed on entering flee
     expect(sim.world.has(unit, Fleeing)).toBe(true); // now fleeing the same enemy
 

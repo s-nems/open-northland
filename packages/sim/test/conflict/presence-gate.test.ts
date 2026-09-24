@@ -16,13 +16,14 @@ import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
 import { attackableBuildings } from '../../src/systems/conflict/dormancy.js';
+import { FLEE_CHECK_STRIDE_TICKS } from '../../src/systems/conflict/flee.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { provokeHostility } from '../../src/systems/settlers/atomics/effects/combat/hit/reactions.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 import { BEAR, BOAR, COW, fighterAtNode, HUNTER } from './combat-system/support.js';
-import { combatantAtNode, ctxOf, P0, P1, VIKING } from './stances/support.js';
+import { combatantAtNode, ctxOf, fleeCheckCtxOf, P0, P1, VIKING } from './stances/support.js';
 
 /**
  * The combat index's coarse idle early-out (conflict/combat-index.ts) is perf-only: skipping the ring search
@@ -143,7 +144,7 @@ describe('combat presence gate - conservative boundaries', () => {
     const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE, { jobType: HUNTER });
     fighterAtNode(sim, 46, 40, COW, null); // discounted by the grid; the fleer's accept admits it
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, hunter));
 
     // The fleer's threat filter is isValidTarget from its own perspective, so prey reads as a threat
     // (a pre-existing quirk the exemption preserves) - the early-out must not swallow it.
@@ -157,7 +158,9 @@ describe('combat presence gate - conservative boundaries', () => {
     const farCiv = combatantAtNode(sim, 40, 100, P0, MILITARY_MODE.FLEE);
     // farCiv's nearest threat is the same P1 unit, ~76 nodes away - far past its sight.
 
-    combatSystem(sim.world, ctxOf(sim));
+    // A whole stride, so each calm civilian reaches its check tick.
+    for (let t = 0; t < FLEE_CHECK_STRIDE_TICKS; t++)
+      combatSystem(sim.world, { ...ctxOf(sim), tick: sim.tick + t });
 
     expect(sim.world.has(nearCiv, Fleeing)).toBe(true);
     expect(sim.world.has(farCiv, Fleeing)).toBe(false);
@@ -237,7 +240,7 @@ describe('combat presence gate - diplomacy', () => {
     combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
     setPair(sim, 'neutral', 'enemy');
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(true);
   });
@@ -248,7 +251,7 @@ describe('combat presence gate - diplomacy', () => {
     combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
     setPair(sim, 'neutral', 'neutral');
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(false);
   });
@@ -258,7 +261,7 @@ describe('combat presence gate - diplomacy', () => {
     const civ = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
     const raider = combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
     setPair(sim, 'neutral', 'neutral');
-    const ctx = ctxOf(sim);
+    const ctx = fleeCheckCtxOf(sim, civ);
 
     // The atomic pass lands the raider's blow before combat runs: the victim's side turns enemy.
     provokeHostility(sim.world, ctx, raider, civ);

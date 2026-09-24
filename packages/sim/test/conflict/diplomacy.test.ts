@@ -15,7 +15,7 @@ import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { provokeHostility } from '../../src/systems/settlers/atomics/effects/combat/hit/reactions.js';
 import { testContent } from '../fixtures/content.js';
 import { fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './melee-engagement/support.js';
-import { combatant, ctxOf } from './stances/support.js';
+import { combatant, ctxOf, fleeCheckCtxOf } from './stances/support.js';
 
 /**
  * The diplomacy table on the owner axis of `mayTarget`: two player-owned combatants engage only when
@@ -184,7 +184,7 @@ describe('diplomacy in combat targeting (owner axis, full step() schedule)', () 
     setDiplomacyStance(sim.world, P0, P1, 'neutral');
     setDiplomacyStance(sim.world, P1, P0, 'enemy');
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(true);
   });
@@ -196,7 +196,7 @@ describe('diplomacy in combat targeting (owner axis, full step() schedule)', () 
     setDiplomacyStance(sim.world, P0, P1, 'friend');
     setDiplomacyStance(sim.world, P1, P0, 'friend');
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
 
     expect(sim.world.has(civ, Fleeing)).toBe(false);
   });

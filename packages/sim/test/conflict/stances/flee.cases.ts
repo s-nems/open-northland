@@ -10,11 +10,12 @@ import {
 } from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
 import { cellAnchorNode, type NodeId, Simulation } from '../../../src/index.js';
+import { FLEE_CHECK_STRIDE_TICKS } from '../../../src/systems/conflict/flee.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { movementSystem } from '../../../src/systems/movement/system.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { combatant, ctxOf, grassMap, P0, P1, tileOf } from './support.js';
+import { combatant, ctxOf, fleeCheckCtxOf, grassMap, P0, P1, tileOf } from './support.js';
 
 describe('FLEE - civilians run from danger', () => {
   it('stamps Fleeing and heads AWAY from the nearest threat', () => {
@@ -22,7 +23,7 @@ describe('FLEE - civilians run from danger', () => {
     const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
     combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a stationary threat to the RIGHT
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.has(civ, Fleeing)).toBe(true);
     const goal = sim.world.get(civ, MoveGoal).cell;
     const goalX = sim.terrain?.coordsOf(goal).x ?? Number.NaN;
@@ -43,7 +44,7 @@ describe('FLEE - civilians run from danger', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
     const threat = combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE);
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.has(civ, Fleeing)).toBe(true);
     sim.world.destroy(threat); // the threat vanishes
     sim.run(60); // > the flee cool-down
@@ -54,18 +55,46 @@ describe('FLEE - civilians run from danger', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
     combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a lasting threat in sight
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // fleeing at first
     sim.world.mut(civ, Settler).hunger = ONE; // pin hunger at ONE (collapse)
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // yielded to the need despite the threat
   });
 
+  it('a calm civilian with a raider in sight flees on its next check tick and not before', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
+    combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE);
+    const firstCalm = fleeCheckCtxOf(sim, civ).tick + 1; // just past a check tick: a whole stride to wait
+    const checkTick = firstCalm + FLEE_CHECK_STRIDE_TICKS - 1;
+
+    for (let tick = firstCalm; tick < checkTick; tick++) {
+      combatSystem(sim.world, { ...ctxOf(sim), tick });
+      expect(sim.world.has(civ, Fleeing)).toBe(false);
+    }
+    combatSystem(sim.world, { ...ctxOf(sim), tick: checkTick });
+    expect(sim.world.has(civ, Fleeing)).toBe(true);
+  });
+
+  it('a fleeing unit keeps looking every tick, between its calm check ticks', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
+    const threat = combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE);
+    const checkTick = fleeCheckCtxOf(sim, civ).tick;
+    combatSystem(sim.world, { ...ctxOf(sim), tick: checkTick });
+    expect(sim.world.get(civ, Fleeing).calmUntil).toBeNull();
+
+    sim.world.destroy(threat);
+    combatSystem(sim.world, { ...ctxOf(sim), tick: checkTick + 1 }); // off the calm stride
+    expect(sim.world.get(civ, Fleeing).calmUntil).not.toBeNull(); // saw the clear sight line at once
+  });
+
   it('a need collapsing DURING the cool-down yields at once (does not idle out the full cool-down)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
     const threat = combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE);
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     sim.world.destroy(threat); // threat gone → the cool-down begins
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // still cooling down (no collapse yet)
@@ -79,15 +108,18 @@ describe('FLEE + a carried load - the drop-on-flee rule fires only on a real thr
   const WOOD = 5;
 
   it('keeps its load when no threat is in sight, even with combat awake (two players on the map)', () => {
-    // Regression: fleeDrive runs every tick for every FLEE-stance unit whenever combat is awake at all
-    // (two players present), and an unconditional hands-full drop stripped every carrying civilian each
-    // tick - the pickup→drop livelock that froze builders/porters/gatherers on multi-player maps.
+    // Regression: fleeDrive runs for every FLEE-stance unit whenever combat is awake at all (two players
+    // present), and an unconditional hands-full drop stripped every carrying civilian on each check - the
+    // pickup→drop livelock that froze builders/porters/gatherers on multi-player maps.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const civ = combatant(sim, 2, 0, P0, MILITARY_MODE.FLEE);
     combatant(sim, 38, 0, P1, MILITARY_MODE.IGNORE); // a rival player far beyond sight - combat is awake
     sim.world.add(civ, Carrying, { goodType: WOOD, amount: 1 });
 
-    for (let i = 0; i < 10; i++) combatSystem(sim.world, ctxOf(sim));
+    // Several whole strides, so the calm civilian's check runs more than once.
+    for (let t = 0; t < 3 * FLEE_CHECK_STRIDE_TICKS; t++) {
+      combatSystem(sim.world, { ...ctxOf(sim), tick: sim.tick + t });
+    }
     expect(sim.world.has(civ, Fleeing)).toBe(false); // nothing in sight - never fled
     expect(sim.world.get(civ, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // load kept
     expect(sim.world.has(civ, CurrentAtomic)).toBe(false); // no drop atomic was started
@@ -99,7 +131,7 @@ describe('FLEE + a carried load - the drop-on-flee rule fires only on a real thr
     combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a stationary threat in sight
     sim.world.add(civ, Carrying, { goodType: WOOD, amount: 1 });
 
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.tryGet(civ, CurrentAtomic)?.effect.kind).toBe('drop'); // set the load down first
     sim.run(30); // play the drop out; the flee takes over empty-handed
     expect(sim.world.has(civ, Carrying)).toBe(false);

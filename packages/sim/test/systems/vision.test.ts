@@ -21,6 +21,7 @@ import {
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
+import { FLEE_CHECK_STRIDE_TICKS } from '../../src/systems/conflict/flee.js';
 import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
 import { SCOUT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
@@ -564,7 +565,7 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
       const sim = simOn(mode);
       const civ = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.FLEE });
       unit(sim, ENEMY.x, ENEMY.y, P1, { mode: MILITARY_MODE.IGNORE });
-      sim.run(1);
+      sim.run(FLEE_CHECK_STRIDE_TICKS); // a calm civilian looks once per stride
       expect(sim.world.has(civ, Fleeing)).toBe(flees);
     }
   });

@@ -23,7 +23,7 @@ import { DROP_ATOMIC_ID } from '../../src/systems/settlers/atomics/start.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { combatant } from '../conflict/stances/support.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { fleeCheckCtxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -228,7 +228,7 @@ describe('an enemy interrupting a carrying settler - drop, then flee', () => {
     combatant(sim, 24, 0, ENEMY_PLAYER, MILITARY_MODE.IGNORE); // a lasting threat in sight
 
     // First combat pass: hands full → it drops rather than flees.
-    combatSystem(sim.world, ctxOf(sim));
+    combatSystem(sim.world, fleeCheckCtxOf(sim, civ));
     expect(sim.world.get(civ, CurrentAtomic).effect.kind).toBe('drop');
     expect(sim.world.has(civ, Fleeing)).toBe(false); // stands to drop; hasn't started running
     expect(sim.world.has(civ, Carrying)).toBe(true);
