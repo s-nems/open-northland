@@ -47,11 +47,10 @@ export function planTraining(
 ): boolean {
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return false;
+  // A course the seat may no longer teach is refused even when served; the house is checked below.
   if (
     order.lesson !== undefined &&
-    (!isSchool(world, ctx, order.house) ||
-      !sameSide(world, e, order.house) ||
-      !typeAllowed(world, ctx, ownerOf(world, e), settler.tribe, order.lesson.kind, order.lesson.typeId))
+    !typeAllowed(world, ctx, ownerOf(world, e), settler.tribe, order.lesson.kind, order.lesson.typeId)
   )
     return abandonDrill(world, e);
   if (order.lesson?.kind === 'good') {
@@ -59,9 +58,9 @@ export function planTraining(
     if (job === undefined || !typeAllowed(world, ctx, ownerOf(world, e), settler.tribe, 'job', job))
       return abandonDrill(world, e);
   }
-  // Time served is served: the enlistment settles before the house is looked at again, so a barracks razed
-  // between the last repetition and this planning cannot swallow it. It takes the settler for the tick
-  // because `enlist` retires its trade, and the rungs below were entered with the old one.
+  // Time served is served: the enlistment or lesson settles before the house is looked at again, so a
+  // barracks or school razed between the last repetition and this planning cannot swallow it. It takes
+  // the settler for the tick because the trade changes, and the rungs below were entered with the old one.
   if (order.drillTicksLeft <= 0) {
     abandonDrill(world, e);
     if (order.lesson === undefined) {
@@ -104,8 +103,11 @@ export function planTraining(
     }
     return true;
   }
-  if (!(order.lesson === undefined ? isBarracks : isSchool)(world, ctx, order.house))
+  if (order.lesson === undefined) {
+    if (!isBarracks(world, ctx, order.house)) return abandonDrill(world, e);
+  } else if (!isSchool(world, ctx, order.house) || !sameSide(world, e, order.house)) {
     return abandonDrill(world, e);
+  }
   const door = interactionCell(world, ctx, terrain, order.house, here);
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
   enterBuilding(world, e, order.house, here, door, () =>
@@ -160,8 +162,9 @@ function abandonDrill(world: World, e: Entity): boolean {
  * served term is the qualification. A settler that already holds a fighter trade keeps it, and a tribe
  * whose data names no soldier class gets its settler back out unchanged.
  *
- * The only trade change made from inside the planner sweep: `reidleAsJob` destroys the recruit's work flag
- * and may drop a ground pile, so a list `beginPlannerPass` holds must not index either.
+ * Like a finished school lesson, a trade change made from inside the planner sweep: `reidleAsJob` destroys
+ * the settler's work flag and may drop a ground pile, so a list `beginPlannerPass` holds must not index
+ * either.
  */
 function enlist(world: World, ctx: SystemContext, e: Entity): number | null {
   if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return null;

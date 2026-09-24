@@ -295,3 +295,56 @@ it.each([false, true])(
     expect(sim.canChooseJob(pupil, CARPENTER)).toBe(true);
   },
 );
+
+it('keeps a served lesson when the school is razed before the pupil plans again', () => {
+  const base = testContent();
+  const content = parseContentSet({
+    ...base,
+    buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
+    tribes: base.tribes.map((tribe) => ({
+      ...tribe,
+      jobRequirements: [
+        {
+          target: 'job',
+          targetId: CARPENTER,
+          requirement: 'train',
+          amount: 1,
+          experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+        },
+      ],
+    })),
+  });
+  const sim = new Simulation({ seed: 5, content, map: grassCellMap(12, 12) });
+  const pupil = settlerAt(sim, { jobType: WOODCUTTER, tribe: TRIBE });
+  sim.world.add(pupil, Owner, { player: 0 });
+  const school = sim.world.create();
+  sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
+  sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
+  sim.world.add(school, Owner, { player: 0 });
+  discoverTechnology(sim.world, 0, TRIBE, 'job', CARPENTER);
+  learn(sim.world, ctxOf(sim), {
+    kind: 'learn',
+    entity: pupil,
+    house: school,
+    target: 'job',
+    typeId: CARPENTER,
+  });
+  sim.world.mut(pupil, TrainingOrder).drillTicksLeft = 0; // the last repetition just completed
+  sim.world.destroy(school);
+
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('missing terrain');
+  planTraining(
+    sim.world,
+    ctxOf(sim),
+    terrain,
+    pupil,
+    sim.world.get(pupil, Settler),
+    terrain.nodeAt(2, 2),
+    null,
+  );
+
+  expect(sim.world.get(pupil, Settler).jobType).toBe(CARPENTER);
+  expect(sim.world.get(pupil, Settler).learned?.job).toContain(CARPENTER);
+  expect(sim.world.has(pupil, TrainingOrder)).toBe(false);
+});
