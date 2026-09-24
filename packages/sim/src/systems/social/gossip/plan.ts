@@ -23,7 +23,7 @@ import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { carriesNeeds, NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
@@ -164,6 +164,8 @@ export function planGossipSeek(
 ): boolean {
   if (!ordered && settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
+  // A bar that does not move, such as one a script froze, is one no chat could ever satisfy.
+  if (!carriesNeeds(world, ctx.content, e)) return false;
   if (holdsGround?.() === true) return false;
   // Already in company: the chat it stands in becomes the one it sought, held against work like any
   // company-need chat, rather than a second pair that would orphan the first.

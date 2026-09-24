@@ -20,7 +20,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
-import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { carriesNeeds, NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
 
@@ -106,9 +106,9 @@ function drivePair(
       return;
     }
     if (world.has(a, CurrentAtomic) || world.has(b, CurrentAtomic)) return; // the round plays out
-    // The pair parts once the seeker's need is met, but never before the partner has had its own speaking
-    // turn, so every chat is at least one full exchange.
-    if (!ca.speaks && sa.enjoyment < NEED_DRIVE_THRESHOLD) {
+    // The pair parts once the seeker's need is met, or can no longer be (a script froze its bars), but
+    // never before the partner has had its own speaking turn, so every chat is at least one full exchange.
+    if (!ca.speaks && (sa.enjoyment < NEED_DRIVE_THRESHOLD || !carriesNeeds(world, ctx.content, a))) {
       endChat(world, ctx.tick, a);
       return;
     }

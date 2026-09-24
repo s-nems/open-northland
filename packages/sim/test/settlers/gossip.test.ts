@@ -3,12 +3,14 @@ import {
   Chat,
   ChatCooldown,
   CurrentAtomic,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   NeedOrder,
   Owner,
   PlayerOrder,
   Position,
   Settler,
+  setMissionBehaviour,
   setNeedsEnabled,
   setSettlerJob,
 } from '../../src/components/index.js';
@@ -139,6 +141,20 @@ describe('gossip initiation (planner rungs)', () => {
     const pb = sim.world.get(b, Position);
     expect(nodesAdjacent(nodeOfPosition(pa.x, pa.y), nodeOfPosition(pb.x, pb.y))).toBe(true);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('a lonely worker whose needs a script froze stays at its work', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const lonely = gossiper(sim, 1, 0, LONELY);
+    gossiper(sim, 3, 0, fx.fromInt(0));
+    treeAt(sim, 6, 0);
+    setMissionBehaviour(sim.world, lonely, MISSION_BEHAVIOUR.NEEDS_FROZEN, true);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // A chat's pulses move no frozen bar, so the seek would never be satisfied.
+    expect(sim.world.has(lonely, Chat)).toBe(false);
+    expect(sim.world.has(lonely, MoveGoal)).toBe(true);
   });
 
   it('idle settlers chat even on a full company bar (no deficit required)', () => {
@@ -412,6 +428,22 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(sim.world.get(b, Chat)).toMatchObject({ partner: a });
     expect(sim.world.get(a, CurrentAtomic).atomicId).toBe(TALK);
     expect(sim.world.get(b, CurrentAtomic).atomicId).toBe(LISTEN);
+  });
+
+  it('a company-need chat parts once a script freezes the seeker, whose bar can no longer be met', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = gossiper(sim, 2, 0, LONELY);
+    const b = gossiperBeside(sim, 2, 0, fx.fromInt(0));
+    plannerSystem(sim.world, ctxOf(sim));
+    gossipSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(a, Chat).kind).toBe('company');
+
+    setMissionBehaviour(sim.world, a, MISSION_BEHAVIOUR.NEEDS_FROZEN, true);
+    treeAt(sim, 6, 0); // work for both once the chat lets them go
+    for (let i = 0; i < 200; i++) sim.step();
+
+    expect(sim.world.tryGet(a, Chat)?.kind).not.toBe('company');
+    expect(sim.world.tryGet(b, Chat)?.kind).not.toBe('company');
   });
 
   it('a talk order on an idle chatter keeps the chat it stands in and holds it against work', () => {
