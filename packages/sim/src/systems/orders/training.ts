@@ -14,6 +14,7 @@ import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isBarracks } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
+import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { isOrderableSettler, mayChangeTrade, supersedeStandingOrders } from './guards.js';
@@ -61,6 +62,7 @@ export function mayWalkToDrill(world: World, ctx: SystemContext, e: Entity, hous
  *  {@link mayDrillAt} passed. `drillTicks` is the caller's serving length. */
 export function startDrill(world: World, e: Entity, house: Entity, drillTicks: number): void {
   world.add(e, TrainingOrder, { house, drillTicksLeft: drillTicks });
+  wakeIdle(world, e); // an assistant-booked drill is walked this pass, like an ordered one
   world.remove(e, CurrentAtomic);
   supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder);

@@ -1,5 +1,12 @@
 import { existsSync } from 'node:fs';
-import { components, type Entity, nodeOfPosition, playerCommand, type Simulation } from '@open-northland/sim';
+import {
+  components,
+  type Entity,
+  nodeOfPosition,
+  playerCommand,
+  type Simulation,
+  systems,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
@@ -21,14 +28,14 @@ const MAP_ID = 'magiczny_las';
 const HUMAN_SEAT = 0;
 /** Long enough for the seat's idle builders to have paired off into chatter before the order arrives. */
 const IDLE_TICKS = 50;
-/** Enough for the command and the planner pass that sees the new site. */
-const CREW_TICKS = 2;
+/** The command's tick, then one idle re-plan period for every idle builder to see the new site. */
+const CREW_TICKS = 1 + systems.IDLE_REPLAN_PERIOD_TICKS;
 /** Half-cell nodes scanned around the headquarters for legal ground. */
 const PLOT_SEARCH_NODES = 16;
 
 /**
- * A placed foundation must draw its crew at once: the reported failure was builders chatting idly for
- * hundreds of ticks after the order while the site stood empty.
+ * A placed foundation must draw its crew within an idle re-plan period: the reported failure was builders
+ * chatting idly for hundreds of ticks after the order while the site stood empty.
  */
 describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
   'construction crew latency on a decoded map',

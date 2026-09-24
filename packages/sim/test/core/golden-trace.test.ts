@@ -191,8 +191,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // wood into the mill and hauls finished planks back out). Cadence notes: a rested barefoot settler
   // walks a land cell in 16 ticks (a laden one in 18), the inter-swing breather lands after every 2nd
   // swing of a worker's burst, and a trained swing advances a tree by more than one chop (the
-  // woodcutter's second tree). Separation can push a walker off a waypoint; the continuation uses
-  // its captured full-step pace, which also shifts later work cycles within this fixed window.
+  // woodcutter's second tree), and an idle carrier takes up a waiting load on its idle re-plan tick.
+  // Separation can push a walker off a waypoint; the continuation uses its captured full-step pace,
+  // which also shifts later work cycles within this fixed window.
   const GOLDEN_TRACE: readonly string[] = [
     '24:8:22',
     '38:5:24',
@@ -200,55 +201,55 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '50:8:23',
     '59:5:24',
     '63:5:22',
-    '82:7:22',
+    '87:7:22',
     '94:8:22',
     '107:5:23',
     '120:8:23',
-    '141:7:23',
+    '146:7:23',
     '147:5:22',
     '164:8:22',
     '190:8:23',
     '191:5:23',
-    '197:7:22',
+    '202:7:22',
     '234:8:22',
     '247:5:24',
     '250:5:24',
-    '259:7:23',
-    '260:8:23',
+    '261:8:23',
+    '264:7:23',
     '268:5:24',
     '272:5:22',
-    '304:8:22',
-    '330:8:23',
+    '302:8:22',
+    '328:8:23',
     '334:5:23',
-    '347:7:22',
-    '374:8:22',
+    '355:7:22',
+    '372:8:22',
     '390:5:22',
-    '400:8:23',
-    '441:8:22',
-    '447:7:23',
+    '398:8:23',
+    '439:8:22',
     '452:5:23',
-    '467:8:23',
-    '511:8:22',
-    '535:7:22',
-    '537:8:23',
-    '581:8:22',
-    '607:8:23',
-    '633:7:23',
-    '651:8:22',
-    '677:8:23',
-    '721:7:22',
-    '721:8:22',
-    '747:8:23',
-    '791:8:22',
-    '818:8:23',
-    '819:7:23',
-    '862:8:22',
-    '888:8:23',
-    '907:7:22',
-    '932:8:22',
-    '958:8:23',
-    '962:8:22',
-    '988:8:23',
+    '453:7:23',
+    '465:8:23',
+    '509:8:22',
+    '535:8:23',
+    '541:7:22',
+    '579:8:22',
+    '605:8:23',
+    '639:7:23',
+    '649:8:22',
+    '675:8:23',
+    '719:8:22',
+    '727:7:22',
+    '745:8:23',
+    '789:8:22',
+    '815:8:23',
+    '825:7:23',
+    '859:8:22',
+    '885:8:23',
+    '913:7:22',
+    '929:8:22',
+    '955:8:23',
+    '959:8:22',
+    '985:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -260,7 +261,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('e19f1a8a');
+    expect(run.hash).toBe('66b8cc4f');
   });
 
   it('matches the golden atomic-action trace', () => {

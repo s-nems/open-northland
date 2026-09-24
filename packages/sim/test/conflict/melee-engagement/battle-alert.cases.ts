@@ -33,6 +33,7 @@ import {
   resolveCombatHit,
 } from '../../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { stepToIdleReplan } from '../../fixtures/idle-replan.js';
 import { BEAR, ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
 /**
@@ -216,7 +217,9 @@ describe('a fighting unit on alert takes no rest', () => {
       // Rested at first, so the setup tick below cannot bed it down before the alert is the question.
       const watch = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
       if (fog) sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
-      sim.step(); // the mode lands and the vision masks are built around what stands on the map
+      // The mode lands and the vision masks are built around what stands on the map; the hand-run pass
+      // below then falls on the watch's idle re-plan tick.
+      stepToIdleReplan(sim, watch);
 
       fightingEnemyAt(sim, NEAR_CELLS);
       sim.world.mut(watch, Settler).fatigue = PRESSING;

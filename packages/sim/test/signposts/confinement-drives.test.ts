@@ -14,6 +14,7 @@ import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { stepToIdleReplan } from '../fixtures/idle-replan.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
 
@@ -116,7 +117,7 @@ describe('confinement gates the needs satisfiers', () => {
     expect(acted(sim, u)).toBe(false); // no known food - the need falls through to (absent) work
 
     storeAt(sim, IN_AREA, 2, [[FOOD, 5]]);
-    sim.step();
+    stepToIdleReplan(sim, u);
     expect(acted(sim, u)).toBe(true); // the in-area larder is a known target
   });
 
@@ -128,7 +129,7 @@ describe('confinement gates the needs satisfiers', () => {
     expect(acted(sim, u)).toBe(false);
 
     buildingAt(sim, TEMPLE_TYPE, IN_AREA, 2);
-    sim.step();
+    stepToIdleReplan(sim, u);
     expect(acted(sim, u)).toBe(true);
   });
 });
@@ -144,7 +145,7 @@ describe('confinement gates the hauler pickups', () => {
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
 
     pileAt(sim, IN_AREA, 2, PLANK, 3);
-    sim.step();
+    stepToIdleReplan(sim, porter);
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 
@@ -188,7 +189,7 @@ describe('confinement gates the hauler pickups', () => {
     expect(sim.world.has(carrier, MoveGoal)).toBe(false);
 
     sawmillAt(sim, IN_AREA, 2, 2);
-    sim.step();
+    stepToIdleReplan(sim, carrier);
     expect(sim.world.has(carrier, MoveGoal)).toBe(true);
   });
 });

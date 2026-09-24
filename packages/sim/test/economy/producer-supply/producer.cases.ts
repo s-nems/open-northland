@@ -937,6 +937,39 @@ describe('producer loiter - an idle owned worker waits BESIDE the door, not insi
     expect(sim.world.get(worker, Chat)).toBe(chat);
   });
 
+  it('a loiterer that walked off to an idle partner holds the chat on arrival', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, SAWMILL, 3, 0);
+    const worker = settlerAt(sim, 3, 0, CARPENTER, mill);
+    sim.world.add(worker, Owner, { player: 0 });
+    const idler = settlerAt(sim, 0, 0, WOODCUTTER); // no tree: idle for good
+    sim.world.add(idler, Owner, { player: 0 });
+    for (let i = 0; i < 20; i++) sim.step(); // the worker settles beside its door
+    expect(sim.world.has(worker, MoveGoal)).toBe(false);
+
+    // The loiter rung's own idle chat, seeking the distant idler: the gossip system walks it over.
+    sim.world.add(worker, Chat, {
+      partner: idler,
+      seeker: true,
+      talking: false,
+      speaks: true,
+      kind: 'pastime',
+    });
+    sim.world.add(idler, Chat, {
+      partner: worker,
+      seeker: false,
+      talking: false,
+      speaks: false,
+      kind: 'pastime',
+    });
+    let talking = false;
+    for (let i = 0; i < 200 && !talking; i++) {
+      sim.step();
+      talking = sim.world.tryGet(worker, Chat)?.talking === true;
+    }
+    expect(talking).toBe(true); // arriving, it talks rather than walking straight back to the door
+  });
+
   it('an UNOWNED operator keeps the wait-inside (Resting) behaviour - golden fixtures stay byte-identical', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const mill = buildingAt(sim, SAWMILL, 3, 0);

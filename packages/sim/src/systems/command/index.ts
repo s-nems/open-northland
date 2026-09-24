@@ -54,6 +54,7 @@ import {
   unassignWorker,
   unequipGood,
 } from '../orders/index.js';
+import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
 import { authorizedCommand } from './authority.js';
@@ -69,10 +70,20 @@ import { demolish, demolishSignpost, dropGood, placeResource } from './world-edi
 export const commandSystem: System = (world, ctx) => {
   for (const queued of ctx.commands.drain(ctx.tick)) {
     const command = authorizedCommand(world, queued);
-    if (command !== undefined) applyCommand(world, ctx, command);
+    if (command !== undefined) {
+      applyCommand(world, ctx, command);
+      wakeAddressed(world, command);
+    }
     ctx.commands.record(ctx.tick, queued);
   }
 };
+
+/** An order acts on the tick it applies, so the settlers it names drop their idle wait. Every player order
+ *  to a settler names it in `entity`, or its group in `members`; a debug edit waits like any change. */
+function wakeAddressed(world: World, command: Command): void {
+  if ('entity' in command) wakeIdle(world, command.entity);
+  if ('members' in command) for (const member of command.members) wakeIdle(world, member.entity);
+}
 
 function applyCommand(world: World, ctx: SystemContext, command: Command): void {
   switch (command.kind) {

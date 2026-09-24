@@ -24,11 +24,12 @@ import { planTrader } from '../../trade/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
 import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
+import { idleReplanPeriodTicks } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
-import { reconcileCutOff } from './cut-off.js';
+import { cutOffCheckDue, reconcileCutOff } from './cut-off.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -238,19 +239,20 @@ function planEconomy(
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 
   if (planFisher(plan)) return;
-  if (planGatherer(plan, pass.harvestClaims)) return;
+  if (planGatherer(plan, pass.harvestClaims, pass.idle)) return;
   if (planPorter(plan)) return;
 
   // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat, and one
   // a script pinned stays where it is; the rest step off a shared tile first so an idle crowd spreads
   // out, then chat with a nearby idle neighbour.
   if (planCarrierHaul(plan, pass.anyHaulable)) return;
-  pass.standing.add(e);
-  reconcileCutOff(plan, pass.seatDoors);
+  pass.idle.stand(e, true);
+  if (cutOffCheckDue(ctx)) reconcileCutOff(world, ctx, e, plan.jobType, plan.limit, pass.seatDoors);
   if (world.has(e, Chat) || staysPut(world, e)) return;
   if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
-    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, alert);
+    const period = idleReplanPeriodTicks(world, pass.shelters, e);
+    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, period, alert);
   }
 }
 

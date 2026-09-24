@@ -10,6 +10,7 @@ import {
   DefenceMode,
   Fleeing,
   Health,
+  IdleStand,
   Owner,
   Position,
   Projectile,
@@ -29,6 +30,7 @@ import {
 } from '../../src/index.js';
 import { garrisonSeats } from '../../src/systems/defence/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 // DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, shoot the
@@ -236,6 +238,20 @@ describe('defence mode', () => {
     expect(insideOf(sim, farmer)).toBe(tower); // hidden inside, so the render stops drawing it
     expect(shelterOf(sim, soldier)).toBeUndefined();
     expect(shelterOf(sim, scout)).toBeUndefined();
+  });
+
+  it('an idle civilian waiting out its idle period runs for cover on the alarm tick', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 1, 1, P1, FARMER);
+    sim.step(); // no field to work: it stands idle
+    expect(sim.world.has(farmer, IdleStand)).toBe(true);
+    while (idleReplanDue(sim.tick + 1, farmer)) sim.step();
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.step(); // not its re-plan tick, but the alarm outranks the wait
+
+    expect(shelterOf(sim, farmer)).toBe(tower);
   });
 
   it('shelters only up to the type capacity and leaves the overflow outside', () => {

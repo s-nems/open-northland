@@ -18,6 +18,7 @@ import { isHunterJob } from '../../../readviews/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import type { IdleStands } from '../../planner/idle-replan.js';
 import {
   interactionCell,
   nearestCollectablePileFor,
@@ -34,12 +35,12 @@ import type { HarvestClaims } from './harvest-claims.js';
  * Harvesting is gated by the job's atomic permissions and the good's `needforgood` XP threshold; collecting
  * an already-dropped good is hauling, not harvesting.
  */
-export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims): boolean {
+export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims, idle: IdleStands): boolean {
   const { world, ctx, terrain, entity: e } = plan;
   const flag = world.tryGet(e, WorkFlag);
   // A stale binding (the flag was removed) falls back to roaming rather than stranding the gatherer.
   if (flag !== undefined && world.has(flag.flag, Position)) {
-    return planFlagGatherer(plan, flag, harvestClaims);
+    return planFlagGatherer(plan, flag, harvestClaims, idle);
   }
 
   // A building-employed roamer forages only goods its workplace stocks, banked form included: an
@@ -100,6 +101,7 @@ function planFlagGatherer(
   plan: PlannerContext,
   flag: { flag: Entity; radius: number; goodType?: number },
   harvestClaims: HarvestClaims,
+  idle: IdleStands,
 ): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
@@ -128,6 +130,7 @@ function planFlagGatherer(
   }
 
   // Nothing in reach: stand idle beside the flag.
+  idle.stand(e, false);
   atOrWalk(world, e, here, flagCell, () => {});
   return true;
 }

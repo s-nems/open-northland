@@ -1,5 +1,12 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, CARRY_CAPACITY, Owner, Production, Stockpile } from '../../../../../components/index.js';
+import {
+  Building,
+  CARRY_CAPACITY,
+  inPastimeChat,
+  Owner,
+  Production,
+  Stockpile,
+} from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import {
@@ -88,6 +95,9 @@ export class WorkSeatClaims extends Map<Entity, WorkSeats> {
  *  gets a unit for its own batch; only a crew recipe's shortfall counts colleagues' errands. */
 const OWN_SHORTFALL: InputShortfall = { restockToCapacity: false };
 const CARRIER_SHORTFALL: InputShortfall = { restockToCapacity: true };
+
+/** A loitering worker is not idle to the planner, so its ladder runs every tick. */
+const LOITER_PLAN_PERIOD_TICKS = 1;
 
 /**
  * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
@@ -286,10 +296,12 @@ function loiterByDoor(
     atOrWalk(world, entity, here, door, () => {});
     return;
   }
+  // A pastime chat is as idle as loitering, so one it walked off to join is not cut short by the walk back.
+  if (inPastimeChat(world, entity)) return;
   const stand = loiterCell(world, terrain, entity, here, door, spacing);
   atOrWalk(world, entity, here, stand, () => {
     const { x, y } = terrain.coordsOf(here);
-    planGossipIdle(world, ctx, entity, plan, x, y, plan.gossipCandidates);
+    planGossipIdle(world, ctx, entity, plan, x, y, plan.gossipCandidates, LOITER_PLAN_PERIOD_TICKS);
   });
 }
 

@@ -179,6 +179,13 @@ export const PlayerOrder = defineComponent<{
 }>('PlayerOrder', 'settlers');
 
 /**
+ * An adult whose drive ladder last found it nothing to do, so it re-plans only on its staggered due ticks
+ * (`settlers/planner/idle-replan.ts`). Removed once anything moves it or a command addresses it.
+ * `standing` is true when the ladder ended in its idle tail, false for a flag gatherer waiting by its flag.
+ */
+export const IdleStand = defineComponent<{ standing: boolean }>('IdleStand', 'settlers');
+
+/**
  * The march an attack-move order walks out - the original's "Attack Position" (`misclogic/48`). Unlike a
  * plain move order it leaves the combat auto-drives running: the unit walks under `MILITARY_MODE.ATTACK`
  * whatever its own stance says. Approximation: the original's en-route behaviour is unobserved, and its

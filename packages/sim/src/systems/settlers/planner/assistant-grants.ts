@@ -25,6 +25,7 @@ import { accessibleStockAmounts, mergedRecipeOf, recipeConsumes } from '../../st
 import { anotherSystemOwns } from '../action-owner.js';
 import { nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
+import { wakeIdle } from './idle-replan.js';
 import type { PlannerPass } from './pass.js';
 
 // The assistant's auto-equip pass sends settlers with a matching free slot to fetch a player's granted
@@ -125,6 +126,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         issuer: 'assistant-grant',
         queued: [],
       });
+      wakeIdle(world, e); // planned onto the errand this pass
       tally.total += 1;
       tally.byGood.set(spec.goodType, underway + 1);
       break; // one errand per settler; the next beat considers the rest of its slots

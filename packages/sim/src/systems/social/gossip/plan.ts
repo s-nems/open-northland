@@ -9,6 +9,7 @@ import {
   Engagement,
   FamilyDuty,
   Fleeing,
+  inPastimeChat,
   ownerOf,
   Person,
   PlayerOrder,
@@ -26,6 +27,7 @@ import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
+import { endChat } from './drive.js';
 
 /** How far in half-cell nodes a lonely working settler searches. Authored: a bounded ring search. */
 const CHAT_SEEK_RADIUS_NODES = 32;
@@ -42,8 +44,9 @@ const CHAT_IDLE_MAX_RING = 2;
  *  {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires. Authored value, about 6 cells. */
 const CHAT_IDLE_WALK_RADIUS_NODES = 12;
 
-/** Mean ticks an idle settler stands before deciding to wander to a distant partner, a per-tick `1/N` seeded
- *  roll so idle chatter never herds standing crowds into one heap. Authored value, ~20 s at the 12 Hz tick. */
+/** Mean ticks an idle settler stands before deciding to wander to a distant partner, a seeded roll per
+ *  call scaled to the caller's cadence so idle chatter never herds standing crowds into one heap.
+ *  Authored value, ~20 s at the 12 Hz tick. */
 const CHAT_IDLE_WALK_MEAN_WAIT_TICKS = 240;
 
 /** Whether `e` is still inside its post-chat breather at `tick`. Expired stamps sit until the next chat
@@ -81,17 +84,26 @@ export class GossipCandidates {
 /** Whether `e` may be pulled into a chat right now: unclaimed, hands free, out of its post-chat breather,
  *  and not needing food or sleep more than company, since a survival need would cancel the chat at once. */
 function mayJoinChat(world: World, tick: number, e: Entity): boolean {
-  if (chatCooldownActive(world, tick, e)) return false;
+  if (chatCooldownActive(world, tick, e) || world.has(e, Chat) || world.has(e, CurrentAtomic)) return false;
+  return freeForChat(world, e);
+}
+
+/** Whether a pastime chatter may be pulled into a company chat: its idle talk yields to another settler's
+ *  need for company, as it yields to work. One still walking over to its partner is left to arrive. */
+function mayLeavePastimeChat(world: World, e: Entity): boolean {
+  return inPastimeChat(world, e) && !isTravelling(world, e) && freeForChat(world, e);
+}
+
+/** The holds a chat partner must be free of, whatever it is doing with its time. */
+function freeForChat(world: World, e: Entity): boolean {
   if (
-    world.has(e, Chat) ||
     world.has(e, Wedding) ||
     world.has(e, FamilyDuty) ||
     world.has(e, Engagement) ||
     world.has(e, Fleeing) ||
     world.has(e, PlayerOrder) ||
     world.has(e, Resting) ||
-    world.has(e, Carrying) ||
-    world.has(e, CurrentAtomic)
+    world.has(e, Carrying)
   ) {
     return false;
   }
@@ -132,7 +144,7 @@ function idlePartnerFilter(
 
 /**
  * The working settler's company rung: at or above {@link NEED_DRIVE_THRESHOLD} it leaves its work and claims
- * the nearest same-owner chat-free settler, preferring an idle one over grabbing one mid-errand. Only
+ * the nearest same-owner settler: an idle one first, then one in idle chatter, then one mid-errand. Only
  * partners are gated on {@link Carrying}: a grabbed half needs its hands free, a desperate seeker chats with
  * its load still in hand.
  */
@@ -166,12 +178,20 @@ export function planGossipSeek(
   if (owner === undefined) return false;
   const buckets = candidates.ensure();
   const idle = idlePartnerFilter(world, ctx.tick, e, owner);
+  const chatting = (cand: Entity): boolean =>
+    cand !== e && ownerOf(world, cand) === owner && mayLeavePastimeChat(world, cand);
   const grabbable = (cand: Entity): boolean =>
     cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, ctx.tick, cand);
   const found =
     buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, idle) ??
+    buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, chatting) ??
     buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, grabbable);
   if (found === null) return false;
+  if (world.has(found.entity, Chat)) {
+    // Its old partner goes into the breather; it goes straight into company.
+    endChat(world, ctx.tick, found.entity);
+    world.remove(found.entity, ChatCooldown);
+  }
   startChat(world, e, found.entity, 'company');
   return true;
 }
@@ -192,6 +212,8 @@ export function planGossipIdle(
   hx: number,
   hy: number,
   candidates: GossipCandidates,
+  /** Ticks between this caller's calls for one settler, so the walk roll keeps its mean wait in ticks. */
+  callPeriodTicks: number,
   /** As {@link planGossipSeek}'s, and asked as late. */
   holdsGround?: () => boolean,
 ): boolean {
@@ -215,7 +237,9 @@ export function planGossipIdle(
     startChat(world, e, beside.entity, 'pastime');
     return true;
   }
-  if (ctx.rng.int(CHAT_IDLE_WALK_MEAN_WAIT_TICKS) !== 0) return false;
+  if (ctx.rng.int(Math.max(1, Math.floor(CHAT_IDLE_WALK_MEAN_WAIT_TICKS / callPeriodTicks))) !== 0) {
+    return false;
+  }
   const distant = buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_WALK_RADIUS_NODES, idle);
   if (distant === null) return false;
   startChat(world, e, distant.entity, 'pastime');

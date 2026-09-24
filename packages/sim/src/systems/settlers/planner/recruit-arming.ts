@@ -38,6 +38,7 @@ import {
 } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { ASSISTANT_SCAN_PERIOD_TICKS } from './assistant-grants.js';
+import { wakeIdle } from './idle-replan.js';
 import type { PlannerPass } from './pass.js';
 
 /**
@@ -184,6 +185,7 @@ function dispatchWeaponFetch(
       issuer: 'assistant-recruit',
       queued: [],
     });
+    wakeIdle(world, e); // planned onto the errand this pass
     return;
   }
 }
@@ -206,6 +208,7 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
     issuer: 'assistant-recruit',
     queued: [],
   });
+  wakeIdle(world, e); // planned onto the errand this pass
   return true;
 }
 

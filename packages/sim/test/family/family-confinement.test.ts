@@ -16,6 +16,7 @@ import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
+import { stepToIdleReplan } from '../fixtures/idle-replan.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -118,7 +119,7 @@ describe('confinement gates the housewife hoard source', () => {
     expect(acted(sim, woman)).toBe(false); // the far pile is beyond her area - nothing to hoard
 
     foodPileAt(sim, IN_AREA, 2, 3);
-    sim.step();
+    stepToIdleReplan(sim, woman);
     expect(acted(sim, woman)).toBe(true); // the near pile is inside her walk range
   });
 });
@@ -136,7 +137,7 @@ describe('the same-side rule gates the housewife hoard source', () => {
 
     const myPile = foodPileAt(sim, IN_AREA + 1, 2, 3); // her own player's food, also in her area
     sim.world.add(myPile, Owner, { player: PLAYER });
-    sim.step();
+    stepToIdleReplan(sim, woman);
     expect(acted(sim, woman)).toBe(true); // she hoards from her own side's pile
     expect(sim.world.get(enemyPile, Stockpile).amounts.get(FOOD)).toBe(3); // enemy pile untouched
   });

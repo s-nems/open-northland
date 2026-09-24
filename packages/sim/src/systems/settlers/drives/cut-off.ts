@@ -9,11 +9,15 @@ import type { NavigationLimit } from '../../signposts/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { jobCanBuild } from '../atomics/start.js';
 import { clearLostWay, markCutOff } from '../lost-way.js';
-import type { PlannerContext } from '../planner/context.js';
 
 /** Cadence of the seat-reach check for an idle worker. Approximation: the original raises the lost note
  *  after every five failed walks to work, about this long apart. */
 export const CUT_OFF_CHECK_TICKS = 5 * TICKS_PER_SECOND;
+
+/** Whether this tick runs the seat-reach check for every idle worker. */
+export function cutOffCheckDue(ctx: SystemContext): boolean {
+  return ctx.tick % CUT_OFF_CHECK_TICKS === 0;
+}
 
 /** Each seat's building doors, built on the first cadence tick that asks, so a tick with no idle
  *  confined settler pays nothing and one with many pays one pass over the buildings. */
@@ -51,8 +55,7 @@ function noDoorInReach(seatDoors: readonly NodeId[], limit: NavigationLimit): bo
 }
 
 /** A trade the economy ladder walks somewhere for. A woman or civilist has no work to be cut off from. */
-function hasWorkToReach(plan: PlannerContext): boolean {
-  const { ctx, jobType } = plan;
+function hasWorkToReach(ctx: SystemContext, jobType: number): boolean {
   return jobCanBuild(ctx.content, jobType) || jobCanHarvest(ctx, jobType) || isCarrierJob(ctx, jobType);
 }
 
@@ -63,10 +66,16 @@ function hasWorkToReach(plan: PlannerContext): boolean {
  * the gate, so the stranding is read off the gate instead, and so fires for a trade that has no work
  * waiting as well. A seat with no building has no settlement to be cut off from.
  */
-export function reconcileCutOff(plan: PlannerContext, doors: SeatDoors): void {
-  const { world, ctx, entity: e, limit, owner } = plan;
-  if (ctx.tick % CUT_OFF_CHECK_TICKS !== 0) return;
-  if (owner === undefined || !world.has(e, Person) || !hasWorkToReach(plan)) return;
+export function reconcileCutOff(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  jobType: number,
+  limit: NavigationLimit | null,
+  doors: SeatDoors,
+): void {
+  const owner = ownerOf(world, e);
+  if (owner === undefined || !world.has(e, Person) || !hasWorkToReach(ctx, jobType)) return;
   if (limit !== null && noDoorInReach(doors.of(owner), limit)) markCutOff(world, ctx, e);
   else if (world.tryGet(e, LostWay)?.cutOff === true) clearLostWay(world, e);
 }

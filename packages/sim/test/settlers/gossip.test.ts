@@ -17,6 +17,7 @@ import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
 import { CHAT_COOLDOWN_TICKS, gossipSystem, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { idleReplanTick } from '../fixtures/idle-replan.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
@@ -62,6 +63,25 @@ describe('gossip initiation (planner rungs)', () => {
 
     expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: idler, seeker: true });
     expect(sim.world.get(idler, Chat)).toMatchObject({ partner: lonely, seeker: false });
+  });
+
+  it('a lonely settler takes a partner out of idle chatter, sending the other half to its breather', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = gossiper(sim, 2, 0, MILD);
+    const b = gossiperBeside(sim, 2, 0, MILD);
+    plannerSystem(sim.world, ctxOf(sim)); // the idle rung pairs them
+    gossipSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(b, Chat).kind).toBe('pastime');
+
+    const lonely = gossiper(sim, 6, 0, LONELY);
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // b stands nearest: its idle talk yields to a need for company, as it yields to work.
+    expect(sim.world.get(lonely, Chat)).toMatchObject({ partner: b, seeker: true, kind: 'company' });
+    expect(sim.world.get(b, Chat)).toMatchObject({ partner: lonely, kind: 'company' });
+    expect(sim.world.has(b, ChatCooldown)).toBe(false);
+    expect(sim.world.has(a, Chat)).toBe(false);
+    expect(sim.world.has(a, ChatCooldown)).toBe(true);
   });
 
   it('below the seek threshold the worker works; two idle neighbours still chat', () => {
@@ -350,7 +370,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(sim.world.get(a, CurrentAtomic).atomicId).toBe(TALK);
 
     treeAt(sim, 6, 0);
-    plannerSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, { ...ctxOf(sim), tick: idleReplanTick(a, sim.tick) });
 
     // The first half planned walks off to the tree in this very pass, dropping its clip mid-round, and
     // the other half is freed with the chat rather than left listening into the air.
@@ -403,7 +423,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
 
     sim.world.add(a, NeedOrder, { need: 'enjoyment' });
     treeAt(sim, 6, 0);
-    plannerSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, { ...ctxOf(sim), tick: idleReplanTick(a, sim.tick) });
 
     expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, kind: 'company' });
     expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, kind: 'company' });

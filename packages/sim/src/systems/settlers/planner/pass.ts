@@ -14,6 +14,7 @@ import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harv
 import { ConstructionTaskClaims, WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
+import { IdleStands } from './idle-replan.js';
 import { PlannerSpacing } from './spacing.js';
 
 /**
@@ -48,8 +49,8 @@ export interface PlannerPass {
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
   readonly shelters: ShelterSites;
-  /** The settlers whose ladder reached its idle tail this pass: nothing to do, so they stand. */
-  readonly standing: Set<Entity>;
+  /** The adults whose ladder found them nothing to do this pass, so they stand. */
+  readonly idle: IdleStands;
 }
 
 /** Snapshot the shared pass state at the top of a planner tick. */
@@ -74,6 +75,6 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     constructionClaims: new ConstructionTaskClaims(world, ctx),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),
-    standing: new Set(),
+    idle: new IdleStands(),
   };
 }

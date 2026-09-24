@@ -10,7 +10,9 @@ import {
   type EquipmentSlot,
   EquipOrder,
   Female,
+  IdleStand,
   MISC_EQUIP_SLOTS,
+  MoveGoal,
   Owner,
   Position,
   Stance,
@@ -201,6 +203,19 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
 
     expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
     expect(sim.world.has(settler, EquipOrder)).toBe(false); // the errand completed and released
+  });
+
+  it('an idle settler walks off on its errand the pass the assistant books it', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    sim.step(); // nothing to chop: it stands idle
+    expect(sim.world.has(settler, IdleStand)).toBe(true);
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES);
+
+    for (let i = 0; i < ERRAND_TICKS && !sim.world.has(settler, EquipOrder); i++) sim.step();
+    expect(sim.world.has(settler, EquipOrder)).toBe(true);
+    expect(sim.world.has(settler, MoveGoal)).toBe(true);
   });
 
   it('never sends two settlers after the last unit', () => {
