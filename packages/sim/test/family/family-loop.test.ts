@@ -280,6 +280,21 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBeNull();
   });
 
+  it("marries only within the seeker's own player, passing over a nearer man of another", () => {
+    const OTHER_PLAYER = 1;
+    const { sim, woman, man } = familySim(43);
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CIVILIST,
+      x: 4,
+      y: 0,
+      tribe: VIKING,
+      owner: OTHER_PLAYER,
+    });
+    sim.step();
+    expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBe(man());
+  });
+
   it('a widow may remarry: the spouse dying removes the survivor Marriage', () => {
     const { sim, woman, man } = familySim(7);
     sim.enqueueSetup({ kind: 'marry', entity: woman() });

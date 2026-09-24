@@ -3,6 +3,7 @@ import {
   Age,
   Female,
   Marriage,
+  ownerOf,
   Person,
   Position,
   Settler,
@@ -72,7 +73,8 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
 /**
  * The nearest eligible partner for `seeker`, or null when none exists. Nearest by half-cell Manhattan
  * distance with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
- * under signpost navigation a partner outside the seeker's allowed area is not eligible.
+ * under signpost navigation a partner outside the seeker's allowed area is not eligible. Original
+ * behavior: only the seeker's own player's humans are candidates, whatever their tribe shares.
  */
 export function findPartnerFor(
   world: World,
@@ -85,11 +87,12 @@ export function findPartnerFor(
   if (seekerPos === undefined) return null;
   const from = nodeOfPosition(seekerPos.x, seekerPos.y);
   const tribe = world.get(seeker, Settler).tribe;
+  const owner = ownerOf(world, seeker);
   const seekerFemale = world.has(seeker, Female);
   let best: { entity: Entity; dist: number } | null = null;
   for (const e of canonicalById(world.query(Person, Position))) {
     if (e === seeker || !mayMarry(world, content, e)) continue;
-    if (world.get(e, Settler).tribe !== tribe) continue;
+    if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
     if (world.has(e, Female) === seekerFemale) continue;
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
