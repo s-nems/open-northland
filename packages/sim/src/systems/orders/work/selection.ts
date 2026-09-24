@@ -98,8 +98,7 @@ export function setGatherGood(
   const flag = liveWorkFlag(world, e);
   if (flag !== undefined) {
     const binding = world.mut(e, WorkFlag);
-    if (goodType === null) delete binding.goodType;
-    else binding.goodType = goodType;
+    binding.goodType = goodType ?? undefined;
   } else {
     // An employed gatherer forages only for its workplace, so the pick must be a good that workplace
     // stockpiles, judged by the same test the gatherer drive filters on.

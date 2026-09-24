@@ -3,6 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { contentIndex } from '../../src/core/content-index.js';
 import { testContent } from '../fixtures/content.js';
 
+describe('contentIndex identity', () => {
+  it('answers each set with its own index when callers alternate between sets', () => {
+    const a = testContent();
+    const b = testContent();
+    const indexA = contentIndex(a);
+    const indexB = contentIndex(b);
+    expect(indexB).not.toBe(indexA);
+    expect(contentIndex(a)).toBe(indexA);
+    expect(contentIndex(b)).toBe(indexB);
+  });
+});
+
 describe('contentIndex command-boundary tables', () => {
   it('keeps the last content row at the command boundary while the read tables keep the first', () => {
     const base = testContent();

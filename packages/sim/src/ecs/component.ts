@@ -22,7 +22,10 @@ export interface Component<T> {
   readonly name: string;
   /** The sync-digest group this component's writes fold into (see {@link SyncDomain}). */
   readonly domain: SyncDomain;
-  /** Phantom type brand: `T` never exists at runtime (a component is just `{ name, domain }`), but carrying it
+  /** Dense definition-order index, process-unique like `name`: a `World` resolves the store through it
+   *  instead of hashing the component object on every read. Never persisted. */
+  readonly id: number;
+  /** Phantom type brand: `T` never exists at runtime (a component is just `{ name, domain, id }`), but carrying it
    *  in the type keeps `Component<A>` unassignable where a `Component<B>` is expected. */
   readonly __value?: T;
 }
@@ -35,7 +38,7 @@ const defined = new Map<string, Component<unknown>>();
  *  in a sync digest. */
 export function defineComponent<T>(name: string, domain: SyncDomain): Component<T> {
   if (defined.has(name)) throw new Error(`component name '${name}' is already defined`);
-  const component: Component<T> = { name, domain };
+  const component: Component<T> = { name, domain, id: defined.size };
   defined.set(name, component);
   return component;
 }

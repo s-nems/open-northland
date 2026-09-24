@@ -47,7 +47,7 @@ export interface MissionRecord {
   /** Per goal, whether it held at the last check. Rewritten by every check, never latched. */
   goalsHeld: boolean[];
   /** Goal indices whose last check was unavailable; omitted when every answer was known. */
-  unknownGoals?: number[];
+  unknownGoals?: number[] | undefined;
   /** Per goal, the seconds a `RandomTimeGone` drew for the current activation; 0 while undrawn. */
   randomSeconds: number[];
   /** Whether the last check established success; false also covers an unavailable verdict. */

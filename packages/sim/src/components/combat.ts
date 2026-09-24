@@ -59,7 +59,7 @@ export const HuntFocus = defineComponent<{ target: Entity }>('HuntFocus', 'comba
  */
 export const Engagement = defineComponent<{
   repathAt: number;
-  stall?: { target: Entity; routes: number };
+  stall?: { target: Entity; routes: number } | undefined;
 }>('Engagement', 'combat');
 
 /** One given-up enemy: the entity, and the tick it stops being skipped. */

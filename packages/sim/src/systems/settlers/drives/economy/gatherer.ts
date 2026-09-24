@@ -99,7 +99,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
  */
 function planFlagGatherer(
   plan: PlannerContext,
-  flag: { flag: Entity; radius: number; goodType?: number },
+  flag: { flag: Entity; radius: number; goodType?: number | undefined },
   harvestClaims: HarvestClaims,
   idle: IdleStands,
 ): boolean {

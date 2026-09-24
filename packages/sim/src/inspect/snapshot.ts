@@ -172,8 +172,9 @@ type PlainOf<T> = T extends null | undefined | string | number | boolean | bigin
 
 /**
  * Deep-clone a value to plain data. Object keys keep insertion order because a component value is a
- * fixed-shape literal whose keys are already deterministic; `Map` entries are sorted because a Map's key
- * set varies at runtime and snapshot-diff's canonical-JSON equality depends on that ordering.
+ * fixed-shape literal whose keys are already deterministic, and a key holding `undefined` (a cleared
+ * optional field) is left out; `Map` entries are sorted because a Map's key set varies at runtime and
+ * snapshot-diff's canonical-JSON equality depends on that ordering.
  *
  * The wide implementation signature lets the body build the plain value without a cast: a conditional type
  * cannot be proven over the unresolved generic `T`.
@@ -190,7 +191,7 @@ function clonePlain(value: unknown): unknown {
   if (!isPlainRecord(value)) throw uncloneable(value);
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(value)) {
-    out[k] = clonePlain(value[k]);
+    if (value[k] !== undefined) out[k] = clonePlain(value[k]);
   }
   return out;
 }

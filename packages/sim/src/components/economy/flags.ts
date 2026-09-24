@@ -15,7 +15,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * An unposted fisher carries one so its catch returns to the player's chosen yard; a posted fisher banks
  * directly into its workplace.
  */
-export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number }>(
+export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number | undefined }>(
   'WorkFlag',
   'economy',
 );

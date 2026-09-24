@@ -246,14 +246,16 @@ describe('exportSaveGame rejection', () => {
     );
   });
 
-  it('throws naming the path for a non-finite number and for undefined', () => {
+  it('throws naming the path for a non-finite number and for an undefined array element', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.world.add(sim.world.create(), defineComponent<unknown>('NanProbe', 'economy'), { hp: Number.NaN });
     expect(() => exportSaveGame(sim)).toThrow(/component:NanProbe\/1\.hp: non-finite number/);
     const sim2 = new Simulation({ seed: 1, content: testContent() });
-    sim2.world.add(sim2.world.create(), defineComponent<unknown>('HoleProbe', 'economy'), { gap: undefined });
+    sim2.world.add(sim2.world.create(), defineComponent<unknown>('HoleProbe', 'economy'), {
+      gaps: [undefined],
+    });
     expect(() => exportSaveGame(sim2)).toThrow(
-      /component:HoleProbe\/1\.gap: unsaveable value shape undefined/,
+      /component:HoleProbe\/1\.gaps\[0\]: unsaveable value shape undefined/,
     );
   });
 });

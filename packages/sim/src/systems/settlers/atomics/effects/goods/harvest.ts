@@ -101,7 +101,7 @@ function strokeCompletesCount(
   ctx: SystemContext,
   settler: Entity,
   node: Entity,
-  res: { readonly goodType: number; readonly strikes?: number },
+  res: { readonly goodType: number; readonly strikes?: number | undefined },
   swings: number,
 ): boolean {
   const repeats = workRepeatsFor(ctx, world.tryGet(settler, Settler)?.jobType ?? null, res.goodType);
@@ -113,7 +113,7 @@ function strokeCompletesCount(
   }
   const rest = advanced % repeats;
   const r = world.mut(node, Resource);
-  if (rest === 0) delete r.strikes;
+  if (rest === 0) r.strikes = undefined;
   else r.strikes = rest;
   return true;
 }
@@ -205,9 +205,8 @@ function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: n
     r.goodType = layer.goodType;
     r.remaining = layer.amount;
     r.harvestAtomic = layer.harvestAtomic;
-    if (layer.gfxIndex !== undefined) r.gfxIndex = layer.gfxIndex;
-    else delete r.gfxIndex;
-    delete r.strikes;
+    r.gfxIndex = layer.gfxIndex;
+    r.strikes = undefined;
     // The resource region index captures a node's harvest atomic on membership changes only; a re-add
     // journals the new one.
     if (atomicChanged) world.add(node, Resource, { ...r });

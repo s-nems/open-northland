@@ -117,14 +117,14 @@ export const CurrentAtomic = defineComponent<{
   effect: AtomicEffect;
   targetEntity: number | null;
   targetTile: { x: number; y: number } | null;
-  /** Present only while the atomic runs its inter-swing rest tail: the harvest effect has already applied,
+  /** Set only while the atomic runs its inter-swing rest tail: the harvest effect has already applied,
    *  and the tail completes without re-emitting `atomicCompleted`. */
-  restTail?: boolean;
+  restTail?: true | undefined;
   /** Swings landed since the last breather, counted per worker rather than off the node's counters (an
    *  expert's swing advances those by more than one). Absent outside a harvest burst. */
-  swingsSinceRest?: number;
+  swingsSinceRest?: number | undefined;
   /** Fractional work credit banked across a multi-swing harvest, in [0, ONE); absent while whole. */
-  workCredit?: Fixed;
+  workCredit?: Fixed | undefined;
 }>('CurrentAtomic', 'settlers');
 
 /** Goods a settler is physically hauling; goods never teleport to a global bank. */

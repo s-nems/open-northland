@@ -57,40 +57,40 @@ type RestTailAtomic = Pick<
 export function beginRestTail(world: World, atomic: RestTailAtomic, node: Entity): boolean {
   atomic.swingsSinceRest = (atomic.swingsSinceRest ?? 0) + 1;
   if (HARVEST_REST_TICKS <= 0 || !restAfterHarvest(world, atomic, node)) {
-    if (!continuesHarvest(world, node)) delete atomic.swingsSinceRest; // the job's break resets the burst
+    if (!continuesHarvest(world, node)) atomic.swingsSinceRest = undefined; // the job's break resets the burst
     return false;
   }
-  delete atomic.swingsSinceRest;
+  atomic.swingsSinceRest = undefined;
   atomic.duration += HARVEST_REST_TICKS;
   atomic.restTail = true;
   return true;
 }
 
 /** End a breather {@link beginRestTail} began, restoring the swing's own animation length and the
- *  component's exact pre-rest shape. */
+ *  component's pre-rest state. */
 export function endRestTail(atomic: RestTailAtomic): void {
-  delete atomic.restTail;
+  atomic.restTail = undefined;
   atomic.duration -= HARVEST_REST_TICKS;
 }
 
 /**
  * The whole work units the swing that just completed performs, `1 + workSpeedBonus`, with the fraction
  * banked on the atomic's `workCredit`. The atomic re-arms in place between swings, so the credit lives
- * exactly as long as the job. A whole credit deletes the field rather than storing zero, keeping an
- * unbonused atomic's component shape stable.
+ * exactly as long as the job. A whole credit clears the field rather than storing zero, so an
+ * unbonused atomic hashes as it did before its first swing.
  */
 export function swingWorkUnits(
   world: World,
   ctx: SystemContext,
   settler: Entity,
-  atomic: { workCredit?: Fixed },
+  atomic: { workCredit?: Fixed | undefined },
   goodType: number,
 ): number {
   const bonus = workSpeedBonus(world, ctx, settler, goodType);
   const credit = fx.add(atomic.workCredit ?? ZERO, fx.add(ONE, bonus));
   const whole = fx.toInt(credit);
   const rest = fx.sub(credit, fx.fromInt(whole));
-  if (rest === ZERO) delete atomic.workCredit;
+  if (rest === ZERO) atomic.workCredit = undefined;
   else atomic.workCredit = rest;
   return whole;
 }

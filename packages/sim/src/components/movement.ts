@@ -62,8 +62,8 @@ export const PathFollow = defineComponent<{
   index: number;
   legTicks: number;
   legCost: number;
-  legPace?: Fixed;
-  departureCharged?: boolean;
+  legPace?: Fixed | undefined;
+  departureCharged?: true | undefined;
 }>('PathFollow', 'movement');
 
 /**

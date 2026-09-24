@@ -20,18 +20,25 @@ export function sortedMapEntries<K, V>(map: ReadonlyMap<K, V>): Array<[K, V]> {
 
 /**
  * A record's own keys in ascending order - the canonical field order the state hash and the sync
- * digest both walk. Insertion sort, not `Array.prototype.sort`: a component record holds a handful of
- * fields, where the built-in's generic setup costs several times the comparisons themselves, and the
- * digest sorts thousands of records a tick.
+ * digest both walk. A key holding `undefined` is left out: a component clears an optional field by
+ * assigning `undefined` rather than `delete`, which would drop its value out of V8's fast mode, and
+ * the cleared field must hash like an absent one. Insertion sort, not `Array.prototype.sort`: a
+ * component record holds a handful of fields, where the built-in's generic setup costs several times
+ * the comparisons themselves, and the digest sorts thousands of records a tick.
  */
 export function sortedKeys(value: Record<string, unknown>): string[] {
   const keys = Object.keys(value);
-  for (let i = 1; i < keys.length; i++) {
+  // Compacts in place while sorting: the write index never passes the read index.
+  let kept = 0;
+  for (let i = 0; i < keys.length; i++) {
     const key = keys[i] as string;
-    let j = i - 1;
+    if (value[key] === undefined) continue;
+    let j = kept - 1;
     for (; j >= 0 && (keys[j] as string) > key; j--) keys[j + 1] = keys[j] as string;
     keys[j + 1] = key;
+    kept++;
   }
+  keys.length = kept;
   return keys;
 }
 

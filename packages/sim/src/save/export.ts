@@ -101,9 +101,10 @@ export function serializeSaveGame(save: SaveGame): string {
 
 /**
  * Deep-copy one component or envelope value to JSON-safe plain data: a `Map` becomes a single-key
- * `{'$map': entries}` wrapper, record keys keep insertion order, and a throw names `path` for any
- * shape JSON would corrupt - `undefined`, a non-finite number, a non-plain object, or an object
- * `seen` already holds from anywhere in the same export.
+ * `{'$map': entries}` wrapper, record keys keep insertion order and a record key holding `undefined`
+ * is saved as absent (a cleared optional field). A throw names `path` for any shape JSON would
+ * corrupt - an `undefined` value or array element, a non-finite number, a non-plain object, or an
+ * object `seen` already holds from anywhere in the same export.
  */
 function savedValue(value: unknown, path: string, seen: WeakMap<object, string>): unknown {
   if (value === null) return null;
@@ -143,7 +144,9 @@ function savedValue(value: unknown, path: string, seen: WeakMap<object, string>)
       throw new Error(`${path}: the key '${PROTO_KEY}' cannot round-trip as plain data`);
     }
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value)) out[key] = savedValue(value[key], `${path}.${key}`, seen);
+    for (const key of Object.keys(value)) {
+      if (value[key] !== undefined) out[key] = savedValue(value[key], `${path}.${key}`, seen);
+    }
     return out;
   }
   throw new Error(`${path}: unsaveable value shape ${valueShapeName(value)}`);

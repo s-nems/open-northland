@@ -30,7 +30,7 @@ import { canonicalById, entityNode } from '../spatial/nodes.js';
 export function liveWorkFlag(
   world: World,
   e: Entity,
-): { flag: Entity; radius: number; goodType?: number } | undefined {
+): { flag: Entity; radius: number; goodType?: number | undefined } | undefined {
   const wf = world.tryGet(e, WorkFlag);
   return wf !== undefined && world.has(wf.flag, Position) ? wf : undefined;
 }
@@ -151,7 +151,7 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
       const binding = world.mut(e, WorkFlag);
       binding.radius = workFlagRadiusFor(ctx, jobType);
       if (binding.goodType !== undefined && !jobCanHarvestGood(ctx, jobType, binding.goodType)) {
-        delete binding.goodType;
+        binding.goodType = undefined;
       }
       return;
     }

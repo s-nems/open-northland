@@ -35,6 +35,9 @@ export class World {
   /** The per-component entity→value stores, created on first {@link add}. Each store's insertion order is the
    *  query iteration order. */
   private readonly stores = new Map<Component<unknown>, Map<Entity, unknown>>();
+  /** The same stores indexed by {@link Component.id}, the per-read lookup; {@link stores} keeps the
+   *  query and verifier seams. */
+  private readonly storesById: Array<Map<Entity, unknown> | undefined> = [];
   /** Components in first-registration order: stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
   /** Each component's index into {@link registered}, assigned on first {@link add}. */
@@ -148,7 +151,7 @@ export class World {
   }
 
   private storeOf<T>(component: Component<T>): Map<Entity, T> | undefined {
-    return this.stores.get(component as Component<unknown>) as Map<Entity, T> | undefined;
+    return this.storesById[component.id] as Map<Entity, T> | undefined;
   }
 
   private storeOrCreate<T>(component: Component<T>): Map<Entity, T> {
@@ -156,6 +159,7 @@ export class World {
     if (store === undefined) {
       store = new Map<Entity, T>();
       this.stores.set(component as Component<unknown>, store as Map<Entity, unknown>);
+      this.storesById[component.id] = store as Map<Entity, unknown>;
       this.registrationIndex.set(component as Component<unknown>, this.registered.length);
       this.registered.push(component as Component<unknown>);
       this.componentRevisions.register(component as Component<unknown>);

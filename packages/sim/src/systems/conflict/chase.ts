@@ -180,7 +180,7 @@ export function chase(
     // re-ask each tick, which admits the unit the moment a front-liner falls or steps off. Routing was not
     // asked, so no refusal stands against the target.
     clearNavState(world, e);
-    delete engagement.stall;
+    engagement.stall = undefined;
     return false;
   }
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand

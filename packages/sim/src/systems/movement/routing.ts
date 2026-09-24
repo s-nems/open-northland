@@ -149,8 +149,8 @@ export function drainPathRequests(
       index,
       legTicks: activeCost > 0 ? (previous?.legTicks ?? 0) : 0,
       legCost: activeCost,
-      ...(oldPace === undefined ? {} : { legPace: oldPace }),
-      ...(previous?.departureCharged === true ? { departureCharged: true } : {}),
+      legPace: oldPace,
+      departureCharged: previous?.departureCharged,
     });
     const firstTarget = waypoints[index];
     if (position !== undefined && firstTarget !== undefined && world.has(e, WalkFacing)) {

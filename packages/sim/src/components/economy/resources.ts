@@ -12,11 +12,11 @@ export const Resource = defineComponent<{
   harvestAtomic: number;
   /** Opaque render-variant tag a decoded-map spawn carries (the app's species record index). Never read by
    *  a sim decision, absent on admin/scene spawns. */
-  gfxIndex?: number;
+  gfxIndex?: number | undefined;
   /** Swings banked toward the next freed unit - a bare node's pluck or a ripe field's fall - where the trade
    *  plays several strokes per unit (`workRepeatsFor`, the extracted `baserepeatcounter`). Absent until
-   *  first advanced and deleted when a unit frees. */
-  strikes?: number;
+   *  first advanced and cleared when a unit frees. */
+  strikes?: number | undefined;
 }>('Resource', 'economy');
 
 /**

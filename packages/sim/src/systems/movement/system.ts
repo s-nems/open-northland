@@ -94,8 +94,8 @@ export const movementSystem: System = (world, ctx) => {
       pf.index += 1;
       pf.legTicks = 0;
       pf.legCost = 0;
-      delete pf.legPace;
-      delete pf.departureCharged;
+      pf.legPace = undefined;
+      pf.departureCharged = undefined;
       if (!paced) break;
       // A creature spends the unused portion of this tick's pace on its next leg. Dropping that
       // remainder at every waypoint made short edges and frequent reroutes slow it down.

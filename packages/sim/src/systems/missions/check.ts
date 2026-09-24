@@ -81,8 +81,7 @@ export function checkMission(pass: MissionPass, index: number, execute: boolean)
     else if (holds) held++;
   }
   pass.checking.delete(index);
-  if (unknown.length > 0) record.unknownGoals = unknown;
-  else delete record.unknownGoals;
+  record.unknownGoals = unknown.length > 0 ? unknown : undefined;
   const verdict = ruleVerdict(definition.successfullIf, held, definition.goals.length, unknown.length);
   if (verdict && execute) {
     // The active flag is cleared before the results run, so a mission that re-activates itself keeps

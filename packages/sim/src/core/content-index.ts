@@ -177,13 +177,20 @@ export interface ContentIndex {
 
 /** One index per ContentSet, built lazily and shared; a WeakMap so a dropped set frees its index. */
 const indexCache = new WeakMap<ContentSet, ContentIndex>();
+/** The last set asked for: a running game asks with one set thousands of times a tick, and an identity
+ *  check is far cheaper than the WeakMap probe. Holds at most that one set alive. */
+let lastContent: ContentSet | null = null;
+let lastIndex: ContentIndex | null = null;
 
 export function contentIndex(content: ContentSet): ContentIndex {
+  if (content === lastContent && lastIndex !== null) return lastIndex;
   let index = indexCache.get(content);
   if (index === undefined) {
     index = buildIndex(content);
     indexCache.set(content, index);
   }
+  lastContent = content;
+  lastIndex = index;
   return index;
 }
 

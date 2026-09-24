@@ -24,7 +24,9 @@ world during `step()`. Authored scenes and fixtures may assemble pre-tick-zero s
 Every in-place component mutation acquires the value through `World.mut`/`tryMut`; `get`/`tryGet`
 return read-only views, and defeating them with a cast breaks snapshot and derived-cache
 invalidation. In a hot loop, read first and acquire `mut` only when a field actually changes, so
-version keys do not churn on idle entities.
+version keys do not churn on idle entities. Clear an optional field by assigning `undefined`, typed
+`field?: T | undefined`, never `delete`: a deleted key drops the value into V8's slow dictionary mode,
+and the hash, digest, save and snapshot walks read an `undefined` key as absent.
 
 Snapshots are detached plain-data read views. Do not expose live component objects through a read
 seam or read presentation state back into sim logic.
