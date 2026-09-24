@@ -1,25 +1,34 @@
 import {
   Anger,
+  AttackOrder,
   Building,
   diplomacyStance,
+  Garrison,
   Health,
+  hasMissionBehaviour,
   isWildlife,
+  MISSION_BEHAVIOUR,
   Owner,
   Position,
   Settler,
   type SettlerIdentity,
+  Sheltering,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { isManningShelter } from '../defence/index.js';
+import { drawsHouseBow, isManningShelter, mannedShelter } from '../defence/index.js';
 import {
   animalCannotBeAttacked,
+  houseBow,
   isAggressiveAnimal,
   isAnimalTribe,
+  isHunterJob,
+  MILITARY_MODE,
   mayAttack,
   mayHunt,
+  stanceMode,
 } from '../readviews/index.js';
-import { standsAtPost } from './tower-post.js';
+import { isManningPost, standsAtPost } from './tower-post.js';
 
 // The combat targeting relations: who may fight whom, and how far a combatant spots an enemy. A leaf of
 // conflict/ - nothing here reaches back into the drives that consult it.
@@ -94,10 +103,42 @@ export function isValidOrderedTarget(
 }
 
 /**
+ * The buildings able to shoot this tick: a tower whose post a live fighter mans, and a shelter a live
+ * civilian mans who {@link shootsFromShelter}. The only buildings the FLEE drive runs from.
+ */
+export function firingBuildings(world: World, ctx: SystemContext): Set<Entity> {
+  const firing = new Set<Entity>();
+  for (const e of world.query(Garrison)) {
+    if (isAlive(world, e) && isManningPost(world, ctx, e)) firing.add(world.get(e, Garrison).post);
+  }
+  for (const e of world.query(Sheltering)) {
+    const shelter = mannedShelter(world, e);
+    if (shelter !== null && isAlive(world, e) && shootsFromShelter(world, ctx, e)) firing.add(shelter);
+  }
+  return firing;
+}
+
+/** Whether a civilian manning a shelter shoots from it: a grown one whose tribe has a house bow, unless the
+ *  script-passive bit or a non-hunter's IGNORE stance stands it down before it aims. An attack order
+ *  overrides both, as it does in the engage ladder. */
+function shootsFromShelter(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (!drawsHouseBow(world, e)) return false;
+  const settler = world.get(e, Settler);
+  if (houseBow(ctx.content, settler.tribe) === undefined) return false;
+  if (world.has(e, AttackOrder)) return true;
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.PASSIVE)) return false;
+  return (
+    stanceMode(world, ctx.content, e, settler.jobType) !== MILITARY_MODE.IGNORE ||
+    isHunterJob(ctx.content, settler.jobType)
+  );
+}
+
+/**
  * Whether `t` is a threat the FLEE drive runs from: any valid target of the fleer, or - where the
- * directed diplomacy pair is hostile the other way only - a live enemy-stance settler in the open.
- * Fear staying symmetric on the owner axis while engagement is directed is an approximation, so a
- * pacified player's civilians still run from a one-way aggressor.
+ * directed diplomacy pair is hostile the other way only - a live enemy-stance settler in the open. A
+ * building counts either way only while it is among the `firing` ones, so a civilian living beside an
+ * enemy's houses keeps working. Fear staying symmetric on the owner axis while engagement is directed is
+ * an approximation, so a pacified player's civilians still run from a one-way aggressor.
  */
 export function isFleeThreat(
   world: World,
@@ -105,16 +146,25 @@ export function isFleeThreat(
   self: Entity,
   fleer: SettlerIdentity,
   t: Entity,
+  firing: ReadonlySet<Entity>,
 ): boolean {
+  const building = world.has(t, Building);
+  if (building && !firing.has(t)) return false;
   if (isValidTarget(world, ctx, self, fleer, t)) return true;
   const selfOwner = world.tryGet(self, Owner);
   const tOwner = world.tryGet(t, Owner);
   if (selfOwner === undefined || tOwner === undefined || selfOwner.player === tOwner.player) return false;
   if (diplomacyStance(world, tOwner.player, selfOwner.player) !== 'enemy') return false;
-  if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
+  if (!world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;
+  if (building) return true;
+  if (!world.has(t, Settler)) return false;
   if (standsAtPost(world, t) !== null) return false;
   return !isManningShelter(world, t);
+}
+
+function isAlive(world: World, e: Entity): boolean {
+  return (world.tryGet(e, Health)?.hitpoints ?? 0) > 0;
 }
 
 /** Whether `t` is huntable prey a hunter of `hunterJob` may strike - the predation-only target filter an

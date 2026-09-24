@@ -8,9 +8,11 @@ import {
 } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
+import { clearNavState, redirectRoute } from '../movement/nav-state.js';
 import { isHunterJob } from '../readviews/index.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
@@ -39,7 +41,7 @@ const FLEE_STEP_NODES = 12;
  * threat. A per-tick re-path of every fleer would breach the scale budget; between re-aims the unit walks
  * its last route. Approximation (source basis "Combat flee").
  */
-const FLEE_REPATH_CADENCE = 6;
+export const FLEE_REPATH_CADENCE = 6;
 
 /**
  * FLEE stance - a calm unit looks for a threat only on ticks where `tick + entity` is a multiple of this
@@ -88,7 +90,7 @@ export function fleeDrive(
   // a watchtower spotting the raider warns a civilian whose own sight does not reach it.
   const viewer = world.tryGet(e, Owner);
   const accept = (t: Entity): boolean =>
-    isFleeThreat(world, ctx, e, attacker, t) &&
+    isFleeThreat(world, ctx, e, attacker, t, index.firing) &&
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   // Near bound 0, not the weapon-reach floor of 1: fear has no dead zone, so a fleeing unit reacts to a
   // hostile on its very tile too. The coarse presence early-out (perf-only) spares a calm civilian its
@@ -96,7 +98,7 @@ export function fleeDrive(
   const threat =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&
-    !index.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
+    !index.threatsWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
       ? null
       : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept, viewer?.player ?? null);
   const fleeing = world.tryGet(e, Fleeing);
@@ -124,14 +126,12 @@ export function fleeDrive(
   }
 
   const f = world.add(e, Fleeing, { repathAt: fleeing?.repathAt ?? ctx.tick, calmUntil: null });
-  const travelling = isTravelling(world, e);
-  if (world.tryGet(e, PathRequest)?.failed) {
-    clearNavState(world, e); // the last flee route was unreachable - re-aim now
-  } else if (travelling && ctx.tick < f.repathAt) {
-    return; // still running a live route - re-aim only on the throttle
-  }
+  if (world.tryGet(e, PathRequest)?.failed) clearNavState(world, e); // the last flee route was unreachable
+  // Run the live route, or stand out a refused or boxed-in one, until the throttle re-aims.
+  if (ctx.tick < f.repathAt) return;
 
-  const dest = fleeDestination(terrain, here, entityNode(world, terrain, threat.entity));
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const dest = fleeDestination(terrain, blocked, here, entityNode(world, terrain, threat.entity));
   if (dest === here) {
     clearNavState(world, e); // boxed in (no walkable away-cell) - stand and hope
   } else {
@@ -142,12 +142,20 @@ export function fleeDrive(
   f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
 }
 
-/** The cell a fleeing unit should run to: the walkable cell {@link FLEE_STEP_NODES} away, of the eight
- *  compass directions, that is farthest from the threat, tie-broken by min cell id. A candidate must
- *  strictly beat staying put, so a boxed-in unit returns `here` rather than running toward the threat. */
-export function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell: NodeId): NodeId {
+/** The cell a fleeing unit should run to: the cell {@link FLEE_STEP_NODES} away, of the eight compass
+ *  directions, that is farthest from the threat, tie-broken by min cell id. A candidate must be one a route
+ *  can reach: walkable, outside the `blocked` walk-block, and in the runner's static walk component (a runner
+ *  on an unwalkable node is unlabelled and admits every component). It must also strictly beat staying put,
+ *  so a boxed-in unit returns `here` rather than running toward the threat. */
+export function fleeDestination(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  here: NodeId,
+  threatCell: NodeId,
+): NodeId {
   const h = terrain.coordsOf(here);
   const t = terrain.coordsOf(threatCell);
+  const bank = terrain.componentOf(here);
   let best: NodeId = here;
   let bestScore = Math.abs(h.x - t.x) + Math.abs(h.y - t.y); // a candidate must beat staying put
   for (const [dx, dy] of COMPASS_DIRECTIONS) {
@@ -155,7 +163,8 @@ export function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell:
     const y = h.y + dy * FLEE_STEP_NODES;
     if (!terrain.inBounds(x, y)) continue;
     const cell = terrain.nodeAt(x, y);
-    if (!terrain.isWalkable(cell)) continue;
+    if (!terrain.isWalkable(cell) || blocked.has(cell)) continue;
+    if (bank >= 0 && terrain.componentOf(cell) !== bank) continue;
     const score = Math.abs(x - t.x) + Math.abs(y - t.y);
     if (score > bestScore || (score === bestScore && best !== here && cell < best)) {
       best = cell;

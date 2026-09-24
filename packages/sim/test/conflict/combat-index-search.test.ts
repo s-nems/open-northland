@@ -324,8 +324,17 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
     expect(
       index.nearest(10, 10, 0, MAX_RADIUS, (t) => isValidTarget(sim.world, ctx, seeker, attacker, t), P0),
     ).toEqual(pastTheKeep);
+    // Counted as firing, so only its hitpoints can turn the fleer's filter down.
+    const firing = new Set([keep]);
     expect(
-      index.nearest(10, 10, 0, MAX_RADIUS, (t) => isFleeThreat(sim.world, ctx, seeker, attacker, t), P0),
+      index.nearest(
+        10,
+        10,
+        0,
+        MAX_RADIUS,
+        (t) => isFleeThreat(sim.world, ctx, seeker, attacker, t, firing),
+        P0,
+      ),
     ).toEqual(pastTheKeep);
   });
 

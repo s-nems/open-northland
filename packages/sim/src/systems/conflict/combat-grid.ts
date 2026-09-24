@@ -42,6 +42,10 @@ export interface CoarseCell {
   undiscounted: number;
   /** The {@link playerBit}s of the players owning a member here. */
   ownerMask: number;
+  /** What a fleer might run from this build: the {@link playerBit}s owning a unit or a building able to fire
+   *  here, and how many such members no diplomacy can discount. A plain building adds to neither. */
+  threatMask: number;
+  threatUndiscounted: number;
   readonly members: Entity[];
   readonly memberX: number[];
   readonly memberY: number[];
@@ -55,7 +59,8 @@ export interface CoarseCell {
   baseTotal: number;
   baseUndiscounted: number;
   baseOwnerMask: number;
-  /** Whether this build's units appended here, so the next reset visits only such cells. */
+  /** Whether this build admitted a unit or a firing building here, so the next reset visits only such
+   *  cells. */
   unitsAdmitted: boolean;
 }
 
@@ -138,6 +143,8 @@ export class CombatGrid {
       cell.hostileAnimal = 0;
       cell.undiscounted = cell.baseUndiscounted;
       cell.ownerMask = cell.baseOwnerMask;
+      cell.threatMask = 0;
+      cell.threatUndiscounted = 0;
       cell.countedLast = null;
       cell.unitsAdmitted = false;
     }
@@ -146,12 +153,18 @@ export class CombatGrid {
 
   /** Append a unit at node (x, y) for this build. */
   admitUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass): void {
-    const cell = this.cellFor(x, y);
-    if (!cell.unitsAdmitted) {
-      cell.unitsAdmitted = true;
-      this.unitCells.push(cell);
-    }
+    const cell = this.touchForBuild(x, y);
     admit(cell, e, x, y, bit, wild);
+    addThreat(cell, bit, wild);
+  }
+
+  /** Mark held building `b` as able to fire this build, in the threat tallies of the cells its body spans. */
+  admitFiring(b: Entity): void {
+    const held = this.buildings.get(b);
+    if (held === undefined) return;
+    for (const node of held.nodes) {
+      addThreat(this.touchForBuild(this.terrain.xOf(node), this.terrain.yOf(node)), held.bit, null);
+    }
   }
 
   /** Whether `e` is a plain building - the siege tier a warrior turns on only when nothing better is in
@@ -228,6 +241,8 @@ export class CombatGrid {
       cell.hostileAnimal = 0;
       cell.undiscounted = 0;
       cell.ownerMask = 0;
+      cell.threatMask = 0;
+      cell.threatUndiscounted = 0;
       cell.countedLast = null;
       cell.unitsAdmitted = false;
     }
@@ -285,6 +300,16 @@ export class CombatGrid {
     return [];
   }
 
+  /** The cell at node (x, y), listed for the next build's reset. */
+  private touchForBuild(x: number, y: number): CoarseCell {
+    const cell = this.cellFor(x, y);
+    if (!cell.unitsAdmitted) {
+      cell.unitsAdmitted = true;
+      this.unitCells.push(cell);
+    }
+    return cell;
+  }
+
   private cellFor(x: number, y: number): CoarseCell {
     const i = coarseOf(y) * this.cols + coarseOf(x);
     let cell = this.cells[i];
@@ -296,6 +321,8 @@ export class CombatGrid {
         hostileAnimal: 0,
         undiscounted: 0,
         ownerMask: 0,
+        threatMask: 0,
+        threatUndiscounted: 0,
         members: [],
         memberX: [],
         memberY: [],
@@ -341,6 +368,11 @@ function admit(cell: CoarseCell, e: Entity, x: number, y: number, bit: number, w
   else if (wild === 'hostile') cell.hostileAnimal++;
   if (bit !== 0) cell.ownerMask |= bit;
   else if (wild !== 'passive') cell.undiscounted++;
+}
+
+function addThreat(cell: CoarseCell, bit: number, wild: WildClass): void {
+  if (bit !== 0) cell.threatMask |= bit;
+  else if (wild !== 'passive') cell.threatUndiscounted++;
 }
 
 export function coarseOf(node: number): number {

@@ -8,9 +8,11 @@ import {
   StayPoint,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
-import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
+import { clearNavState, redirectRoute } from '../movement/nav-state.js';
 import { isAggressiveAnimal } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
@@ -58,14 +60,15 @@ export function frightenWildlifeNear(
 
 /**
  * Run every {@link Frightened} animal away from its scare node, re-aiming on the
- * {@link FRIGHT_REPATH_CADENCE} throttle and immediately after a failed route, and keeping the live route
- * between re-aims so the gait never lurches. A lapsed `until`, or an {@link Anger} stamped by a landed blow,
- * calms the animal and sheds the flee route, so the herd drives walk it home again. Scheduled before
- * `herding` so a fresh scatter outranks the recall pull.
+ * {@link FRIGHT_REPATH_CADENCE} throttle and keeping the live route between re-aims so the gait never
+ * lurches; a refused route is dropped and stood out until the throttle. A lapsed `until`, or an
+ * {@link Anger} stamped by a landed blow, calms the animal and sheds the flee route, so the herd drives
+ * walk it home again. Scheduled before `herding` so a fresh scatter outranks the recall pull.
  */
 export const animalFrightSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless fixture world - nowhere to run
+  let blocked: BlockOverlay | undefined;
   for (const e of canonicalById(world.query(Frightened, Settler, Position))) {
     const f = world.mut(e, Frightened);
     if (ctx.tick >= f.until || world.has(e, Anger)) {
@@ -76,13 +79,12 @@ export const animalFrightSystem: System = (world, ctx) => {
     // Frightened on its way in, then admitted: the scare keeps ticking down, but an animal indoors runs
     // nowhere - routing it would walk the body out of the building it is marked inside.
     if (world.has(e, Resting)) continue;
-    if (world.tryGet(e, PathRequest)?.failed) {
-      clearNavState(world, e); // the last away-route was unreachable - re-aim now
-    } else if (isTravelling(world, e) && ctx.tick < f.repathAt) {
-      continue; // still running a live route - re-aim only on the throttle
-    }
+    if (world.tryGet(e, PathRequest)?.failed) clearNavState(world, e); // the last away-route was unreachable
+    // Run the live route, or stand out a refused or boxed-in one, until the throttle re-aims.
+    if (ctx.tick < f.repathAt) continue;
     const here = entityNode(world, terrain, e);
-    const dest = fleeDestination(terrain, here, f.from);
+    blocked ??= dynamicBlockOverlay(world, ctx, terrain);
+    const dest = fleeDestination(terrain, blocked, here, f.from);
     if (dest === here) {
       clearNavState(world, e); // boxed in (no walkable away-cell) - stand until the scare lapses
     } else {

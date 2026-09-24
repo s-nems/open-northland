@@ -21,6 +21,7 @@ import {
   playerBit,
   type WildClass,
 } from './combat-grid.js';
+import { firingBuildings } from './targeting.js';
 
 /**
  * How many rings past the first hit {@link CombatIndex.nearestFew} keeps taking. Without it a band holding
@@ -62,6 +63,8 @@ export class CombatIndex {
    *  build: every stance writer ahead of `combat` in the tick schedule has run by then and none runs inside
    *  it, so a stance flipped earlier this tick is already seen. */
   private readonly hostileMasks: readonly number[];
+  /** The buildings able to shoot this build, the only ones a fleer runs from. */
+  readonly firing: ReadonlySet<Entity>;
   /** How many queries are iterating their band: an `accept` that re-enters a query scans on the next
    *  depth's buffer, leaving the outer band intact. */
   private depth = 0;
@@ -79,6 +82,9 @@ export class CombatIndex {
     this.hostileMasks = hostileMasksOf(world);
     this.grid = combatGridOf(world, ctx, terrain);
     this.grid.startBuild(world, ctx);
+    const firing = firingBuildings(world, ctx);
+    for (const b of firing) this.grid.admitFiring(b);
+    this.firing = firing;
     for (const e of combatants) {
       const node = entityNode(world, terrain, e);
       const owner = world.tryGet(e, Owner);
@@ -175,6 +181,21 @@ export class CombatIndex {
   othersWithin(player: number, hx: number, hy: number, radius: number): boolean {
     const hostile = this.hostileMaskOf(player);
     return this.someCell(hx, hy, radius, (cell) => cell.undiscounted > 0 || (cell.ownerMask & hostile) !== 0);
+  }
+
+  /**
+   * Whether anything `player` might flee from lies within Manhattan `radius` of node (hx, hy): the
+   * {@link othersWithin} test over units and {@link firing} buildings only, since a plain building is no
+   * flee threat. `false` is a proof of absence; `true` only means "run the real search".
+   */
+  threatsWithin(player: number, hx: number, hy: number, radius: number): boolean {
+    const hostile = this.hostileMaskOf(player);
+    return this.someCell(
+      hx,
+      hy,
+      radius,
+      (cell) => cell.threatUndiscounted > 0 || (cell.threatMask & hostile) !== 0,
+    );
   }
 
   /**
