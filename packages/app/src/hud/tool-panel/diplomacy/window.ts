@@ -7,6 +7,7 @@ import {
   clearFills,
   paintTitledTabWindow,
   paintWindowTabs,
+  standardWindowWidth,
   type TitledTab,
   type WindowLayers,
 } from '../window-family/index.js';
@@ -21,11 +22,20 @@ import {
 import { type FittedDiplomacyWindow, fitDiplomacyWindow } from './viewport.js';
 
 const TITLE_STRING_ID = 350;
+/** The scroll track's inset from the window's right edge, its width and the thumb's least height
+ *  (design px): inside the family's side pad, so the track never covers a card's edge. */
+const TRACK_INSET = 6;
+const TRACK_W = 4;
+const THUMB_MIN_H = 12;
+const TRACK_FILL = 0x493922;
+const THUMB_FILL = 0xc9a75c;
+/** One wheel notch scrolls the body this far (design px). */
+const WHEEL_STEP = 36;
 
-const scrollTrack = (layout: FittedDiplomacyWindow) => ({
-  x: layout.window.x + layout.window.w - 6,
+const scrollTrack = (layout: FittedDiplomacyWindow, scale: number) => ({
+  x: layout.window.x + layout.window.w - TRACK_INSET * scale,
   y: layout.viewport.y,
-  w: 4,
+  w: TRACK_W * scale,
   h: layout.viewport.h,
 });
 
@@ -118,16 +128,8 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     key = rebuildKey(rows, selected);
     const selectedRow = rows.find((r) => r.player === selected);
     const cards = body.measureCards(selectedRow?.tributes ?? []);
-    const measured = layoutDiplomacyWindow({
-      originX: 0,
-      originY: 0,
-      scale,
-      players: rows.map((r) => r.player),
-      selected,
-      tributes: cards.map((c) => c.spec),
-    });
     const screen = ctx.screen();
-    const origin = ctx.layout.windowOrigin(screen, measured.window.w);
+    const origin = ctx.layout.windowOrigin(screen, standardWindowWidth(scale));
     const raw = layoutDiplomacyWindow({
       originX: origin.x,
       originY: origin.y,
@@ -164,12 +166,12 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     if (built.scrollTabs) paintWindowTabs(bodyLayers, tabs);
     body.paint(built, selectedRow, cards);
     if (built.maxScroll > 0) {
-      const track = scrollTrack(built);
-      const thumbH = Math.max(12, (track.h * track.h) / (track.h + built.maxScroll));
-      shell.graphics.rect(track.x, track.y, track.w, track.h).fill(0x493922);
+      const track = scrollTrack(built, scale);
+      const thumbH = Math.max(THUMB_MIN_H * scale, (track.h * track.h) / (track.h + built.maxScroll));
+      shell.graphics.rect(track.x, track.y, track.w, track.h).fill(TRACK_FILL);
       shell.graphics
         .rect(track.x, track.y + ((track.h - thumbH) * built.scroll) / built.maxScroll, track.w, thumbH)
-        .fill(0xc9a75c);
+        .fill(THUMB_FILL);
     }
   };
 
@@ -193,7 +195,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     claims: (x, y) => shell.claims(layout?.window ?? null, x, y),
     handleClick: (x, y): boolean => {
       if (!shell.isOpen() || layout === null) return false;
-      if (layout.maxScroll > 0 && contains(scrollTrack(layout), x, y)) {
+      if (layout.maxScroll > 0 && contains(scrollTrack(layout, scale), x, y)) {
         scroll = Math.max(
           0,
           Math.min(layout.maxScroll, ((y - layout.viewport.y) / layout.viewport.h) * layout.maxScroll),
@@ -235,7 +237,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     },
     handleWheel: (x, y, deltaY) => {
       if (!shell.isOpen() || layout === null || !contains(layout.window, x, y)) return false;
-      const next = Math.max(0, Math.min(layout.maxScroll, scroll + Math.sign(deltaY) * 36 * scale));
+      const next = Math.max(0, Math.min(layout.maxScroll, scroll + Math.sign(deltaY) * WHEEL_STEP * scale));
       if (next !== scroll) {
         scroll = next;
         rebuild(deps.rows());
