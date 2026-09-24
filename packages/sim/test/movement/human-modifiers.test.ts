@@ -87,19 +87,19 @@ describe('human turning', () => {
       { x: 0, y: 0 },
       { x: 0.5, y: 0 },
     ]);
-    const post = sim.world.create();
+    const POST_IN_REACH = true;
     sim.world.mut(e, PathFollow).legCost = 200;
     for (let i = 0; i < 12; i++) {
       sim.world.mut(e, Position).x = fx.fromFloat(i / 400);
-      updateObstruction(sim.world, e, true, false, [post], [], new Set());
+      updateObstruction(sim.world, e, true, false, POST_IN_REACH);
     }
     expect(sim.world.has(e, PathFollow)).toBe(true);
     expect(sim.world.get(e, Obstructed).reroutes).toBe(0);
     sim.world.mut(e, WalkFacing).target = 3;
-    for (let i = 0; i < 5; i++) updateObstruction(sim.world, e, true, false, [post], [], new Set());
+    for (let i = 0; i < 5; i++) updateObstruction(sim.world, e, true, false, POST_IN_REACH);
     expect(sim.world.has(e, PathFollow)).toBe(true); // holding for a turn is not an obstruction
     sim.world.mut(e, WalkFacing).direction = 3;
-    for (let i = 0; i < 4; i++) updateObstruction(sim.world, e, true, false, [post], [], new Set());
+    for (let i = 0; i < 4; i++) updateObstruction(sim.world, e, true, false, POST_IN_REACH);
     expect(sim.world.has(e, PathFollow)).toBe(false);
     expect(sim.world.get(e, Obstructed).reroutes).toBe(1);
   });

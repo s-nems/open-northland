@@ -63,7 +63,7 @@ export const separationSystem: System = (world, ctx) => {
   const scratch = separationScratch(world);
   const colliders = collectColliders(world, ctx, scratch);
   if (colliders === null) return; // nobody walking, so nothing can overlap anything
-  const { movers, firmMovers, before, moverIndex, postIndex } = colliders;
+  const { movers, before, moverIndex, postIndex } = colliders;
   const gates = new SeparationGates(world, ctx, terrain, scratch.ghostMemo);
   const { nearMovers, nearPosts, push, candidate } = scratch;
 
@@ -72,7 +72,7 @@ export const separationSystem: System = (world, ctx) => {
     if (start === undefined) continue; // every mover is in `before`; this only satisfies the checked access
     const nodeHx = nodeHxOfPosition(start.x, start.y);
     const nodeHy = nodeHyOfPosition(start.y);
-    const isFirm = firmMovers.has(e);
+    const isFirm = start.firm;
 
     // The radius is below both bucket pitches, so every body within reach lives in the 3x3 bucket block
     // around the mover's own node. Posts matter only to a firm mover. Indexed loops and count-bound lists
@@ -130,7 +130,7 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
 
-    const firmNear = postCount > 0 || someFirm(nearMovers, moverCount, firmMovers);
+    const firmNear = postCount > 0 || someFirm(nearMovers, moverCount, before);
     updateObstruction(world, e, isFirm, ghost, firmNear);
   }
 };
@@ -241,10 +241,14 @@ function resolveAgainstPosts(
   }
 }
 
-function someFirm(near: readonly Entity[], count: number, firmMovers: ReadonlySet<Entity>): boolean {
+function someFirm(
+  near: readonly Entity[],
+  count: number,
+  before: ReadonlyMap<Entity, Readonly<MoverSnapshot>>,
+): boolean {
   for (let i = 0; i < count; i++) {
     const n = near[i];
-    if (n !== undefined && firmMovers.has(n)) return true;
+    if (n !== undefined && before.get(n)?.firm === true) return true;
   }
   return false;
 }

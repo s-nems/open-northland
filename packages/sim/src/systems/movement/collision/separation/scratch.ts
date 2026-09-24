@@ -1,11 +1,16 @@
 import { type Fixed, ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 
+/** A mover's pre-separation state, kept across ticks while it walks and refreshed by each census. */
 export interface MoverSnapshot {
   x: Fixed;
   y: Fixed;
   hx: Fixed;
   hy: Fixed;
+  /** A firm collider: an owned fighter. */
+  firm: boolean;
+  /** The census that last saw this mover; an older stamp means it stopped walking. */
+  census: number;
 }
 
 /** A point the resolve rewrites in place for each mover. */
@@ -14,12 +19,19 @@ export interface ScratchPoint {
   y: Fixed;
 }
 
+/**
+ * Collections the separation pass refills every tick without reallocating them: an emptied Map, Set or
+ * `length = 0` array drops its storage, and regrowing it cost more than the rest of the pass.
+ */
 export interface SeparationScratch {
+  /** This tick's movers and posts, rewritten in place and trimmed to length. */
   readonly movers: Entity[];
   readonly posts: Entity[];
-  readonly firmMovers: Set<Entity>;
+  /** Keyed by mover; an entry leaves when a census no longer finds its mover walking, so entity ids that
+   *  stopped moving are never retained. */
   readonly before: Map<Entity, MoverSnapshot>;
   readonly snapshotPool: MoverSnapshot[];
+  census: number;
   /** Per-mover neighbour lists, valid up to the counts the resolve keeps beside them. */
   readonly nearMovers: Entity[];
   readonly nearPosts: Entity[];
@@ -30,16 +42,16 @@ export interface SeparationScratch {
 
 const scratchByWorld = new WeakMap<World, SeparationScratch>();
 
-/** Reuse all high-churn separation collections while keeping the cache isolated per world. */
+/** The world's separation scratch, its per-tick ghost memo emptied. */
 export function separationScratch(world: World): SeparationScratch {
   let scratch = scratchByWorld.get(world);
   if (scratch === undefined) {
     scratch = {
       movers: [],
       posts: [],
-      firmMovers: new Set(),
       before: new Map(),
       snapshotPool: [],
+      census: 0,
       nearMovers: [],
       nearPosts: [],
       ghostMemo: new Map(),
@@ -48,13 +60,6 @@ export function separationScratch(world: World): SeparationScratch {
     };
     scratchByWorld.set(world, scratch);
   }
-  // Return only the previous tick's active snapshots to a dense pool. Entity ids are monotonic, so an
-  // id-indexed array here would grow with every historical mover in a long game.
-  for (const snapshot of scratch.before.values()) scratch.snapshotPool.push(snapshot);
-  scratch.before.clear();
-  scratch.movers.length = 0;
-  scratch.posts.length = 0;
-  scratch.firmMovers.clear();
   scratch.ghostMemo.clear();
   return scratch;
 }
