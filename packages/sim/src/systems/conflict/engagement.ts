@@ -208,6 +208,9 @@ export interface EngageSpec {
   readonly player: number | null;
   /** A hostile wild animal seeking - gates on {@link CombatIndex.civsWithin} instead. */
   readonly animalSeeker?: boolean;
+  /** A hunter seeking prey: its primary tier is always game {@link CombatIndex.gameWithin} tallies, so a hold
+   *  on the deprioritized tier skips the search for something to yield to while none is in the band. */
+  readonly preySeeker?: boolean;
   /** This seeker's place in the firing line it shares a node with: `seat` is its offset into the nearest
    *  {@link GARRISON_SPREAD_TARGETS}, and `group` identifies the occupants whose search it is the same as.
    *  Absent means take the nearest. */
@@ -263,16 +266,17 @@ export function resolveTarget(
     // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the
     // chase, not dropped. The tier rule still outranks it, so a hold on the deprioritized tier yields to
     // any primary-tier target in sight.
-    const preempt = spec.lowPriority(locked)
-      ? index.nearest(
-          x,
-          y,
-          spec.minDist,
-          spec.searchRadius,
-          (t) => !spec.lowPriority(t) && spec.accept(t),
-          spec.player,
-        )
-      : null;
+    const preempt =
+      spec.lowPriority(locked) && (spec.preySeeker !== true || index.gameWithin(x, y, spec.searchRadius))
+        ? index.nearest(
+            x,
+            y,
+            spec.minDist,
+            spec.searchRadius,
+            (t) => !spec.lowPriority(t) && spec.accept(t),
+            spec.player,
+          )
+        : null;
     if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
     return focusedOn(world, ctx, terrain, here, locked);
   }

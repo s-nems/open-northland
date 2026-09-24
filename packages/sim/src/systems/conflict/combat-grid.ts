@@ -37,6 +37,8 @@ export interface CoarseCell {
   total: number;
   passive: number;
   hostileAnimal: number;
+  /** Unowned members of a huntable tribe that is not last-resort prey: a hunter's primary tier. */
+  game: number;
   /** Members no diplomacy can discount: unowned ones other than passive wildlife, and any owned outside the
    *  player slots. */
   undiscounted: number;
@@ -141,6 +143,7 @@ export class CombatGrid {
       cell.total = cell.baseTotal;
       cell.passive = 0;
       cell.hostileAnimal = 0;
+      cell.game = 0;
       cell.undiscounted = cell.baseUndiscounted;
       cell.ownerMask = cell.baseOwnerMask;
       cell.threatMask = 0;
@@ -151,10 +154,11 @@ export class CombatGrid {
     this.unitCells.length = 0;
   }
 
-  /** Append a unit at node (x, y) for this build. */
-  admitUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass): void {
+  /** Append a unit at node (x, y) for this build; `game` says it counts toward {@link CoarseCell.game}. */
+  admitUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass, game: boolean): void {
     const cell = this.touchForBuild(x, y);
     admit(cell, e, x, y, bit, wild);
+    if (game) cell.game++;
     addThreat(cell, bit, wild);
   }
 
@@ -239,6 +243,7 @@ export class CombatGrid {
       cell.total = 0;
       cell.passive = 0;
       cell.hostileAnimal = 0;
+      cell.game = 0;
       cell.undiscounted = 0;
       cell.ownerMask = 0;
       cell.threatMask = 0;
@@ -319,6 +324,7 @@ export class CombatGrid {
         total: 0,
         passive: 0,
         hostileAnimal: 0,
+        game: 0,
         undiscounted: 0,
         ownerMask: 0,
         threatMask: 0,

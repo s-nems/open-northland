@@ -10,7 +10,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isAggressiveAnimal, isAnimalTribe } from '../readviews/index.js';
+import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isLastResortPrey } from '../readviews/index.js';
 import { entityNode } from '../spatial/nodes.js';
 import {
   type BandScan,
@@ -89,7 +89,12 @@ export class CombatIndex {
       const node = entityNode(world, terrain, e);
       const owner = world.tryGet(e, Owner);
       const bit = owner === undefined ? 0 : playerBit(owner.player);
-      this.grid.admitUnit(e, terrain.xOf(node), terrain.yOf(node), bit, this.wildClassOf(e));
+      const unowned = owner === undefined ? world.tryGet(e, Settler) : undefined;
+      const game =
+        unowned !== undefined &&
+        isHuntablePrey(ctx.content, unowned.tribe) &&
+        !isLastResortPrey(ctx.content, unowned.tribe);
+      this.grid.admitUnit(e, terrain.xOf(node), terrain.yOf(node), bit, this.wildClassOf(e, unowned), game);
     }
   }
 
@@ -207,6 +212,15 @@ export class CombatIndex {
     return this.someCell(hx, hy, radius, (cell) => cell.total - cell.passive - cell.hostileAnimal > 0);
   }
 
+  /**
+   * Whether any unowned member of a huntable tribe that is not last-resort prey might lie within Manhattan
+   * `radius` of node (hx, hy). Every hunter's primary-tier target is one, so `false` proves that tier's
+   * search empty.
+   */
+  gameWithin(hx: number, hy: number, radius: number): boolean {
+    return this.someCell(hx, hy, radius, (cell) => cell.game > 0);
+  }
+
   /** Every (member, admitted node) pair within the band as sorted candidate keys, in this depth's scan. A
    *  seeker asks the same band once per target tier, so the second tier reuses the first tier's scan. */
   private bandScan(
@@ -264,17 +278,16 @@ export class CombatIndex {
   }
 
   /**
-   * Classify an unowned animal member: `'passive'` is discounted from {@link othersWithin} and `'hostile'`
-   * additionally from {@link civsWithin}, so neither a grazing herd nor a wolf pack can defeat every gated
-   * seeker's early-out. Pure reads - the lapsed-Anger reap stays with the attacker pass, and it can only
-   * grow the passive share within the tick, which leaves the build-time tally conservative.
+   * Classify a member by `unowned`, its Settler when it carries no Owner, or null for anything owned or
+   * non-animal. `'passive'` is discounted from {@link othersWithin} and `'hostile'` additionally from
+   * {@link civsWithin}, so neither a grazing herd nor a wolf pack can defeat every gated seeker's early-out.
+   * Pure reads - the lapsed-Anger reap stays with the attacker pass, and it can only grow the passive share
+   * within the tick, which leaves the build-time tally conservative.
    */
-  private wildClassOf(e: Entity): WildClass {
+  private wildClassOf(e: Entity, unowned: { readonly tribe: number } | undefined): WildClass {
     const { world, content } = this;
-    if (world.has(e, Owner)) return null;
-    const s = world.tryGet(e, Settler);
-    if (s === undefined || !isAnimalTribe(content, s.tribe)) return null;
-    if (isAggressiveAnimal(content, s.tribe)) return 'hostile';
+    if (unowned === undefined || !isAnimalTribe(content, unowned.tribe)) return null;
+    if (isAggressiveAnimal(content, unowned.tribe)) return 'hostile';
     const anger = world.tryGet(e, Anger);
     return anger !== undefined && this.tick < anger.until ? 'hostile' : 'passive';
   }

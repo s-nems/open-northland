@@ -72,6 +72,7 @@ export function hunterEngageSpec(
       minDist,
       searchRadius: sight,
       player: null,
+      preySeeker: true,
       lowPriority: lastResortLivestock,
       lock: { target: livePrey(world, e, (t) => acceptPrey(t) && inSight(t)) },
       defend: null,
@@ -104,6 +105,7 @@ export function hunterEngageSpec(
     // candidate (triangle inequality), and collapses to ~radius when it stands on its ground.
     searchRadius: manhattan(terrain, hereNode, ground.anchorCell) + ground.radius,
     player: null,
+    preySeeker: true,
     lowPriority: lastResortLivestock,
     lock: { target: livePrey(world, e, held) },
     defend: { anchorCell: ground.anchorCell, leash, hold: false },

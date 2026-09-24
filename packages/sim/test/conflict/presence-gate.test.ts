@@ -21,7 +21,7 @@ import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { provokeHostility } from '../../src/systems/settlers/atomics/effects/combat/hit/reactions.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
-import { BEAR, BOAR, COW, fighterAtNode, HUNTER } from './combat-system/support.js';
+import { BEAR, BOAR, COW, DEER, fighterAtNode, HUNTER } from './combat-system/support.js';
 import { combatantAtNode, ctxOf, fleeCheckCtxOf, P0, P1, VIKING } from './stances/support.js';
 
 /**
@@ -268,5 +268,30 @@ describe('combat presence gate - diplomacy', () => {
     combatSystem(sim.world, ctx);
 
     expect(sim.world.has(civ, Fleeing)).toBe(true);
+  });
+});
+
+/** The hunter's preempt gate: a hold on last-resort livestock searches for game to yield to only while the
+ *  index tallies some in the band. */
+describe('combat presence gate - game', () => {
+  const RADIUS = 12;
+
+  function gameAround(sim: Simulation, members: readonly Entity[]): boolean {
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    return new CombatIndex(sim.world, ctxOf(sim), terrain, members).gameWithin(40, 40, RADIUS);
+  }
+
+  it('tallies unowned huntable game, never last-resort livestock, an owned animal or game past the band', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const cow = fighterAtNode(sim, 44, 40, COW, null);
+    const ownedDeer = fighterAtNode(sim, 44, 42, DEER, null);
+    sim.world.add(ownedDeer, Owner, { player: P0 });
+    const farDeer = fighterAtNode(sim, 40 + 4 * RADIUS, 40, DEER, null);
+    expect(gameAround(sim, [hunter, cow, ownedDeer, farDeer])).toBe(false);
+
+    const deer = fighterAtNode(sim, 46, 40, DEER, null);
+    expect(gameAround(sim, [hunter, cow, ownedDeer, farDeer, deer])).toBe(true);
   });
 });
