@@ -127,8 +127,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     canAttachToVehicle: opts.canAttachToVehicle,
   });
 
-  /** The hotkey obeys the ring's own gate, so both ways of arming the order agree on who may take it;
-   *  the selected siege vehicles march along. */
+  /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on
+   *  which of them may take it; the selected siege vehicles, which the settler ring does not list,
+   *  march along. */
   const armAttackMove = (): void => {
     const units = orderRecipients(opts.content, opts.snapshot(), [...selection.ids()], 'attackPosition');
     const vehicles = vehicleOrders.selectedSiegeVehicles();

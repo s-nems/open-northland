@@ -265,6 +265,7 @@ function teleportVehicle(
   world.remove(e, VehicleDrive);
   const live = world.mut(e, Vehicle);
   live.heldGoal = null;
+  live.march = null; // a march would drive the vehicle straight back from where the script set it
   live.moored = false;
   live.mooring = null;
   live.guard = { hx: x, hy: y };

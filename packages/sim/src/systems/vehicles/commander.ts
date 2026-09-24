@@ -39,9 +39,9 @@ export function isCommanderWalkOrder(
 
 /**
  * Give a commander's walk order to its vehicle as a goto (`moveVehicle`, with its refusals), an
- * attack-move as the goto's march: the crew boards first through the goto's `waitsForHuman` hold. A commander outside and free to move drops its
- * own walk and its fight, as the ordinary walk order does, so the rider rung turns it to the door at
- * once; one held by an atomic finishes it first, the way a trader completes the unit it is loading
+ * attack-move as the goto's march: the crew boards first through the goto's `waitsForHuman` hold. A
+ * commander outside and free to move drops its own walk and its fight, as the ordinary walk order
+ * does, so the rider rung turns it to the door at once; one held by an atomic finishes it first, the way a trader completes the unit it is loading
  * before the cart leaves the stop. False when `e` commands no vehicle, leaving the order to the
  * ordinary walk.
  */

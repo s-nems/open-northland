@@ -299,11 +299,13 @@ Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon
 sound 90. No ammunition and no reload counter; cadence is the 48-tick attack clip.
 
 The original's goto never scans while the vehicle drives. Open Northland adds an attack-move
-(`moveVehicle` with `attackMove`, the attack-move hotkey with a catapult selected, or a commander's
-own attack-move):
-the march fights in the attack stance whatever the vehicle's stance, a find ends the drive on the
-node it crosses, and once nothing is left to fight the vehicle drives on to the goal. A goto, stop,
-ordered attack or loading into a ship ends the march.
+(`moveVehicle` with `attackMove`: the attack-move key with a catapult selected, or its commander's own
+attack-move). The march fights in the attack stance whatever the vehicle's stance, a find ends the
+drive on the node it crosses, and once nothing is left to fight the vehicle drives on to the goal.
+After a find no firing node reaches, the march drives on for 5 seconds without scanning
+(approximation). A goto, stop, ordered attack, loading into a ship, unloading the crew, losing the
+commander or a script teleport ends the march; with no route left it ends where it stands with the
+goto's no-path note, and that spot becomes the guard position.
 
 Stances (init 3): 3 hold = scan 8..24 around the guard position, never reposition; 2 defence =
 scan 0..40 around the guard position, abandon the chase beyond 60; 1 attack = scan 0..40 around
@@ -346,8 +348,12 @@ over `dist * 8 / speed` ticks and lands a tick after it reaches the aim, so the 
 last segment (approximation: the original lands on the last flight tick); the burst treats a house as covering its walls, its
 reserved ring and its anchor (approximation: the original's in-house test area is not read), and it
 strikes a garrison standing on its tower's node (*open*: whether the original's hidden-human skip
-covers a posted archer is not read). Only the burst wears a wall; a melee blow lands on nothing
-there (*open*). The note is raised for any striker (approximation). An auto target no firing node reaches is
+covers a posted archer is not read). A wall stands as a palisade entity, so the burst strikes the
+segment whose body covers the node and takes `damage[7] / 100` off its hitpoints through the walls'
+own rule, the one every other weapon's blow goes through. The commander's experience scales the
+stone as it scales a swing: the house formula against a building, the fight bonus against anyone
+else, nothing against a wall (approximation: the original's delayed hit is not read for it). The
+note is raised for any striker (approximation). An auto target no firing node reaches is
 given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
 its next update). `hitself` is not extracted; the burst hits every
 side, which the data's `hitself 1` also says. `removeVehicle` (`systems/vehicles/remove.ts`) draws
@@ -355,8 +361,7 @@ the ruin nodes through the seeded RNG and carries them on the `vehicleDestroyed`
 renderer's decals, since the ruin landscape type is not identified (*open*); the cargo spill walks
 the shared Manhattan spill rings (approximation). The match rule's defeat teardown reuses the
 leave-game path, ruins without cargo (approximation: the original's dead-player teardown is not
-read). A struck wall keeps its authored sprite until it clears (*open*: the damaged stages are not
-drawn).
+read).
 
 ## Lifecycle
 

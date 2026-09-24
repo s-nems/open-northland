@@ -332,7 +332,7 @@ export function moveVehicle(
   }
   if (!sendVehicleTo(world, ctx, terrain, e, goal)) return false;
   if (command.attackMove === true && type !== undefined && isSiegeVehicle(type)) {
-    world.mut(e, Vehicle).march = nodeOf(terrain, goal);
+    world.mut(e, Vehicle).march = { goal: nodeOf(terrain, goal), restUntil: 0 };
   }
   return true;
 }

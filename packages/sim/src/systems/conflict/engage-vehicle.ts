@@ -16,6 +16,7 @@ import {
   vehicleCommander,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -23,7 +24,13 @@ import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { crewInside, facingOfStep, startVehicleDrive, vehicleWalkBlocks } from '../vehicles/movement.js';
+import {
+  crewInside,
+  facingOfStep,
+  refuseMove,
+  startVehicleDrive,
+  vehicleWalkBlocks,
+} from '../vehicles/movement.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode } from './target-node.js';
@@ -33,8 +40,9 @@ import { attackerWeapon } from './weapons.js';
 
 // The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): a stance-driven scan, a target it
 // backs off from, closes on or fires at, and the shot itself, a ground burst the projectile system
-// flies to its scattered landing node. An attack-move's march is driven from here too. Ranges are Manhattan half-cell nodes, the metric every other
-// weapon band here uses (approximation: the original measures its hexagon distance).
+// flies to its scattered landing node. An attack-move's march is driven from here too. Ranges are
+// Manhattan half-cell nodes, the metric every other weapon band here uses (approximation: the original
+// measures its hexagon distance).
 
 /** How far an attacking or defending siege vehicle looks for an enemy (original behavior). */
 export const VEHICLE_SCAN_RADIUS_NODES = 40;
@@ -44,6 +52,10 @@ export const VEHICLE_DEFENCE_LEASH_NODES = 60;
 /** Ticks one attack clip takes; the shot leaves at {@link VEHICLE_ATTACK_EVENT_TICK} of it. */
 export const VEHICLE_ATTACK_CLIP_TICKS = 48;
 export const VEHICLE_ATTACK_EVENT_TICK = 1;
+/** How long a march drives on unscanning after a chase could not reach its find: a few legs, so it
+ *  gets past enemies it cannot close on. Approximation: the settlers' march rests one repath cadence,
+ *  which is shorter than one vehicle leg. */
+const MARCH_REST_TICKS = 5 * TICKS_PER_SECOND;
 /** A vehicle too far from its target drives to a node this many nodes inside its far reach
  *  (original behavior: `maxRange - 5`). */
 const APPROACH_BAND_DEPTH = 5;
@@ -83,8 +95,12 @@ export function engageVehicle(
   // Carried, uncrewed or with its crew still outside: nothing is aimed, so a held target is let go
   // rather than keeping the combat pass awake for a vehicle that cannot fire. An ordered attack that
   // waits on its boarding is the one exception: the boarding pass hands it back once the crew is in.
+  // A march held for the same boarding waits too; one whose crew stepped out or lost its commander is
+  // over, so it neither drives off on its own once a new crew boards nor keeps the pass awake.
   if (state.carrier !== null || !crewInside(state) || vehicleCommander(state) === null) {
-    if (!(state.task === 'waitsForHuman' && state.attack?.ordered === true)) dropTarget(world, e);
+    const boarding = state.task === 'waitsForHuman';
+    if (!(boarding && state.attack?.ordered === true)) dropTarget(world, e);
+    if (!boarding && state.march !== null) world.mut(e, Vehicle).march = null;
     return;
   }
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
@@ -112,6 +128,12 @@ export function engageVehicle(
   const stance: VehicleStance = march !== null ? 'attack' : state.stance;
   let target = standing;
   if (!ordered) {
+    // A resting march drives on without looking.
+    if (march !== null && ctx.tick < march.restUntil) {
+      dropTarget(world, e);
+      marchOn(world, ctx, terrain, e, here, march.goal);
+      return;
+    }
     // A plain goto in progress, or one held for the crew to board, is not hijacked by a scan; a march is.
     if (march === null && target === null && (world.has(e, VehicleDrive) || state.heldGoal !== null)) {
       dropTarget(world, e);
@@ -121,7 +143,7 @@ export function engageVehicle(
   }
   if (target === null) {
     dropTarget(world, e);
-    if (march !== null) marchOn(world, ctx, terrain, e, here, march);
+    if (march !== null) marchOn(world, ctx, terrain, e, here, march.goal);
     return;
   }
   if (held === null || !sameTarget(held.target, target) || held.ordered !== ordered) {
@@ -132,20 +154,25 @@ export function engageVehicle(
   actOnTarget(world, ctx, terrain, e, stance, weapon, here, target);
 }
 
-/** Drive on toward the march's goal once nothing is left to fight; standing on it, or with no route
- *  there, the march is over. A drive under way is the march's own. */
+/** Drive on toward the march's goal once nothing is left to fight; standing on it, the march is over.
+ *  With no route left it ends where it stands, refused with `noPath` like a goto, and that spot is the
+ *  guard position its stance scans around again. A drive under way is the march's own. */
 function marchOn(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
   here: NodeId,
-  march: HalfCellNode,
+  goal: HalfCellNode,
 ): void {
   if (world.has(e, VehicleDrive)) return;
-  const goal = terrain.nodeAtClamped(march.hx, march.hy);
-  if (goal !== here && startVehicleDrive(world, ctx, terrain, e, goal)) return;
-  world.mut(e, Vehicle).march = null;
+  const goalNode = terrain.nodeAtClamped(goal.hx, goal.hy);
+  if (goalNode !== here && startVehicleDrive(world, ctx, terrain, e, goalNode)) return;
+  const live = world.mut(e, Vehicle);
+  live.march = null;
+  if (goalNode === here) return;
+  live.guard = pointOf(terrain, here);
+  refuseMove(world, ctx, e, 'noPath');
 }
 
 /** End a drive's route after the leg under way. False when no drive stands. */
@@ -261,9 +288,13 @@ function actOnTarget(
       : [Math.max(weapon.minRange, weapon.maxRange - APPROACH_BAND_DEPTH), weapon.maxRange];
   const goal = firingNode(world, ctx, terrain, e, here, targetNode, band);
   if (goal !== null && startVehicleDrive(world, ctx, terrain, e, goal)) return;
-  // Without the memo an unreachable enemy in sight is found, judged and dropped again every pass.
-  if (target.kind === 'entity' && state.attack?.ordered !== true)
+  // Without the memo an unreachable enemy in sight is found, judged and dropped again every pass; a
+  // march also rests, since the memo's few entries cannot hold a bank lined with such enemies.
+  if (target.kind === 'entity' && state.attack?.ordered !== true) {
     noteUnreachableTarget(world, ctx, e, target.entity);
+    if (state.march !== null)
+      world.mut(e, Vehicle).march = { ...state.march, restUntil: ctx.tick + MARCH_REST_TICKS };
+  }
   dropTarget(world, e);
 }
 

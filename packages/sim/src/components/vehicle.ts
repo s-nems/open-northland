@@ -35,6 +35,16 @@ export interface VehicleAttack {
   clipStart: number | null;
 }
 
+/**
+ * An attack-move: a siege vehicle drives to `goal` in the attack stance, fights what its scan finds on
+ * the way, then drives on. `restUntil` is the tick before which it drives without scanning, set when a
+ * chase could not reach its find. Null under every other order.
+ */
+export interface VehicleMarch {
+  goal: HalfCellNode;
+  restUntil: number;
+}
+
 /** The six map-point directions a vehicle faces, indexing `nav/halfcell.ts`'s `HEX_DIRECTIONS`.
  *  Approximation: the original's facing count for vehicles is not read; the door offset is a hexagon
  *  direction, so the facing is kept in the same space. */
@@ -78,9 +88,7 @@ export const Vehicle = defineComponent<{
    *  not read. */
   guard: HalfCellNode | null;
   attack: VehicleAttack | null;
-  /** An attack-move's destination: a siege vehicle drives there in the attack stance, fights what its
-   *  scan finds on the way, then drives on. Null under every other order. */
-  march: HalfCellNode | null;
+  march: VehicleMarch | null;
 }>('Vehicle', 'movement');
 
 /**

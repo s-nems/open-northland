@@ -8,7 +8,6 @@ import {
   Palisade,
   Position,
   Projectile,
-  Settler,
   SettlerProgress,
   Stance,
   seatPassenger,
@@ -32,6 +31,7 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import { VEHICLE_ATTACK_CLIP_TICKS, VEHICLE_ATTACK_EVENT_TICK } from '../../src/systems/conflict/combat.js';
+import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../src/systems/conflict/unreachable-targets.js';
 import { vehiclesGone } from '../../src/systems/missions/goals/casualties.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -469,7 +469,7 @@ describe('the attack-move march', () => {
     const house = houseAt(s, ROADSIDE_HOUSE.hx, ROADSIDE_HOUSE.hy, P2, FRAIL_HOUSE);
     march(s, catapult, true);
     s.run(1);
-    expect(s.world.get(catapult, Vehicle).march).toEqual(GOAL);
+    expect(s.world.get(catapult, Vehicle).march?.goal).toEqual(GOAL);
     const events = runToGoal(s, catapult, GOAL);
     expect(events.some((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
     const state = s.world.get(catapult, Vehicle);
@@ -489,6 +489,19 @@ describe('the attack-move march', () => {
     const events = runToGoal(s, catapult, GOAL);
     expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
     expect(events.filter((ev) => ev.kind === 'projectileLaunched')).toEqual([]);
+  });
+
+  it('rests its scan past a bank lined with more unreachable enemies than the memo holds', () => {
+    const s = sim(strait(40, 12, 16, 32));
+    const goal = { hx: 30, hy: 8 };
+    const catapult = catapultAt(s, 4, 8, P1);
+    // More houses than the memo holds, all inside the scan of the march's last stretch.
+    const bank = UNREACHABLE_TARGET_MEMO_SIZE + 4;
+    for (let i = 0; i < bank; i++) houseAt(s, 64 + (i % 3), 5 + 2 * Math.floor(i / 3), P2, TOUGH_HOUSE);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, ...toXY(goal), attackMove: true }));
+    runToGoal(s, catapult, goal);
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(goal.hx, goal.hy));
+    expect(s.world.get(catapult, Vehicle).march).toBeNull();
   });
 
   it('gives up an enemy across water it cannot close on and marches on', () => {
@@ -518,6 +531,59 @@ describe('the attack-move march', () => {
     s.enqueue(playerCommand(P1, { kind: 'stopVehicle', vehicle: catapult }));
     s.run(1);
     expect(s.world.get(catapult, Vehicle).march).toBeNull();
+    march(s, catapult, true);
+    s.run(1);
+    s.enqueue(playerCommand(P1, { kind: 'unloadPeople', vehicle: catapult }));
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).march).toBeNull();
+  });
+
+  it('a march whose crew steps out is over, and a new crew does not drive it off', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    const commander = s.world.get(catapult, Vehicle).passengers.find((seat) => seat !== null)?.entity;
+    if (commander === undefined) throw new Error('commander');
+    march(s, catapult, true);
+    s.run(1);
+    s.enqueue(playerCommand(P1, { kind: 'detachFromVehicle', entity: commander }));
+    s.run(2);
+    expect(s.world.get(catapult, Vehicle).march).toBeNull();
+  });
+
+  it('ends a march with no route left where it stands, with the no-path note and a new guard', () => {
+    const s = sim(strait(40, 12, 16, 32));
+    const catapult = catapultAt(s, 4, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, x: 20, y: 8, attackMove: true }));
+    s.run(1);
+    // The goal moves across the strait under the drive, as if the way there had closed.
+    const farShore = { hx: 70, hy: 8 };
+    s.world.mut(catapult, Vehicle).march = { goal: farShore, restUntil: 0 };
+    const refused = collect(s, MARCH_TICKS, ['vehicleMoveRefused']);
+    const state = s.world.get(catapult, Vehicle);
+    expect(state.march).toBeNull();
+    expect(refused.map((ev) => (ev.kind === 'vehicleMoveRefused' ? ev.reason : ''))).toEqual(['noPath']);
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(20, 8));
+    expect(state.guard).toEqual({ hx: 20, hy: 8 });
+  });
+
+  it('survives a save round trip mid-march', () => {
+    const run = (): Simulation => {
+      const s = sim(grass(40, 12), 3);
+      const catapult = catapultAt(s, 4, 8, P1);
+      houseAt(s, ROADSIDE_HOUSE.hx, ROADSIDE_HOUSE.hy, P2, FRAIL_HOUSE);
+      march(s, catapult, true);
+      s.run(60);
+      return s;
+    };
+    const s = run();
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(s)))), {
+      content: siegeContent(),
+      map: grass(40, 12),
+    });
+    expect(restored.hashState()).toBe(s.hashState());
+    s.run(600);
+    restored.run(600);
+    expect(restored.hashState()).toBe(s.hashState());
   });
 
   it('a commander on foot hands its attack-move to the vehicle as a march', () => {
@@ -527,7 +593,7 @@ describe('the attack-move march', () => {
     if (commander === undefined) throw new Error('commander');
     s.enqueue(playerCommand(P1, { kind: 'attackMoveUnit', entity: commander, ...toXY(GOAL) }));
     s.run(1);
-    expect(s.world.get(catapult, Vehicle).march).toEqual(GOAL);
+    expect(s.world.get(catapult, Vehicle).march?.goal).toEqual(GOAL);
   });
 });
 
