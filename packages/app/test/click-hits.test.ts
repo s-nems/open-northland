@@ -24,6 +24,7 @@ const OWNED_UNIT = 60;
 const OWNED_BUILDING = 61;
 const FLAG_GATHERER = 70;
 const SIGNPOST = 80;
+const OWNED_WALL = 90;
 
 const DOOR_TILE = { col: 3, row: 5 } as const;
 const DOOR = tileToScreen(DOOR_TILE.col, DOOR_TILE.row);
@@ -159,6 +160,13 @@ describe('click hit priority', () => {
 
   it('falls to the unit under the cursor when the door carries no marker or drop-off flag', () => {
     expect(selected({ ...ALL, badges: [], flags: [] })).toBe(OWNED_UNIT);
+  });
+
+  it('selects an own palisade segment below a building and above a signpost', () => {
+    const wall = under(OWNED_WALL, 'palisade');
+    expect(selected({ owned: [wall] })).toBe(OWNED_WALL);
+    expect(selected({ owned: [wall, under(OWNED_BUILDING, 'building')] })).toBe(OWNED_BUILDING);
+    expect(selected({ owned: [wall], signposts: SIGNPOST_ARM })).toBe(OWNED_WALL);
   });
 
   it('resolves a signpost last', () => {

@@ -22,7 +22,7 @@ export interface ClickHits {
 
 /**
  * The order a click resolves what it landed on: a door marker, then a settler or drop-off flag, then
- * a building, then a signpost. Sign rows and garrison flags are small intentional targets that a
+ * a building, then a palisade segment or gate, then a signpost. Sign rows and garrison flags are small intentional targets that a
  * building's larger sprite would otherwise swallow.
  */
 export function createClickHits(deps: ClickHitDeps): ClickHits {
@@ -60,6 +60,7 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
       doorMarkerAt(wx, wy)?.ref ??
       unitAt(wx, wy) ??
       pickTopAt(deps.targets.owned('building'), wx, wy) ??
+      pickTopAt(deps.targets.owned('palisade'), wx, wy) ??
       pickTopAt(deps.targets.signposts(), wx, wy),
   };
 }

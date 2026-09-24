@@ -109,7 +109,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
     item.kind === 'settler' || item.kind === 'building' || item.kind === 'palisade' ? item.kind : null;
 
-  /** A building refines to solid pixels, since its sprite box overhangs the footprint. */
+  /** A building refines to solid pixels, since its sprite box overhangs the footprint. A palisade keeps
+   *  its sprite box: the gaps between its posts are part of the wall a player aims at. */
   const hitTarget = (item: DrawItem, kind: UnitTargetKind): Pickable => {
     const pixelHitOf = deps.pixelHitOf;
     return {
@@ -118,7 +119,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       y: item.y,
       kind,
       box: deps.boundsOf?.(item.ref),
-      ...((kind === 'building' || kind === 'palisade') && pixelHitOf !== undefined
+      ...(kind === 'building' && pixelHitOf !== undefined
         ? { pixelHit: (wx: number, wy: number) => pixelHitOf(item.ref, wx, wy) }
         : {}),
     };

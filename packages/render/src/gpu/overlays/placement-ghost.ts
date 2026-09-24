@@ -52,7 +52,7 @@ const GHOST_ALPHA = 0.55;
 const PLACEHOLDER_COLOR = 0xc8a04a;
 /** The ring on the ground under a started line's first node. */
 const ANCHOR_RING = 0xf2c14e;
-const ANCHOR_RING_RADIUS = { x: 13, y: 6.5 } as const;
+const ANCHOR_RING_RADIUS = { x: 11, y: 5.5 } as const;
 
 export class PlacementGhostLayer {
   readonly container = new Container();

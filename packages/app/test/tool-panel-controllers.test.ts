@@ -683,6 +683,8 @@ describe('placement controller', () => {
     );
     placement.handleClick(0, 0);
     expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
+    // One gate per pick: the tool leaves like a placed building.
+    expect(placement.isActive()).toBe(false);
   });
 
   it('aims a gate at the centre of the lit span a hovered wall belongs to', () => {

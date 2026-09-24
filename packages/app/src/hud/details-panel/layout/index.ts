@@ -59,6 +59,8 @@ export interface PalisadeLayout {
   readonly kind: 'palisade';
   readonly panel: Rect;
   readonly section: SectionRect;
+  /** The hitpoints written out, on its own row above the bar so the fill never covers it. */
+  readonly healthLabel: Rect;
   readonly health: Rect;
   readonly progress: Rect | null;
   readonly buttons: readonly ButtonHit[];
@@ -148,6 +150,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       ...layout,
       panel: fn(layout.panel),
       section: sec(layout.section),
+      healthLabel: fn(layout.healthLabel),
       health: fn(layout.health),
       progress: layout.progress === null ? null : fn(layout.progress),
       buttons: layout.buttons.map((button) => ({ ...button, rect: fn(button.rect) })),
@@ -204,16 +207,24 @@ export function layoutPalisade(
     'repair-palisade' as const,
     'demolish-palisade' as const,
   ];
-  const bodyH = rowH * 2 + actions.length * buttonH + pad * Math.max(0, actions.length - 1);
+  const showsProgress = model.underConstruction || model.repairing;
+  // The hitpoints label, its bar, then the build or repair progress when there is one.
+  const rows = showsProgress ? 3 : 2;
+  const bodyH = rowH * rows + actions.length * buttonH + pad * Math.max(0, actions.length - 1);
   const probe = sectionAt(0, 0, w, bodyH, s);
   const panel = panelRect(probe.frame.h, screen, s);
   const section = sectionAt(panel.x, panel.y, w, bodyH, s);
-  const health = { x: section.body.x, y: section.body.y + 2, w: section.body.w, h: Math.max(4, rowH - 6) };
-  const progress =
-    model.underConstruction || model.repairing
-      ? { x: section.body.x, y: section.body.y + rowH, w: section.body.w, h: rowH }
-      : null;
-  const buttonY = section.body.y + rowH * 2;
+  const healthLabel = { x: section.body.x, y: section.body.y, w: section.body.w, h: rowH };
+  const health = {
+    x: section.body.x,
+    y: section.body.y + rowH + 2,
+    w: section.body.w,
+    h: Math.max(4, rowH - 6),
+  };
+  const progress = showsProgress
+    ? { x: section.body.x, y: section.body.y + rowH * 2, w: section.body.w, h: rowH }
+    : null;
+  const buttonY = section.body.y + rowH * rows;
   const buttons = actions.map((action, index) => ({
     action,
     enabled:
@@ -227,5 +238,5 @@ export function layoutPalisade(
       h: buttonH,
     },
   }));
-  return { kind: 'palisade', panel, section, health, progress, buttons };
+  return { kind: 'palisade', panel, section, healthLabel, health, progress, buttons };
 }

@@ -16,8 +16,13 @@ export function drawPalisade(
   chrome.window(layout.section.frame);
   chrome.headline(layout.section.title, model.gateOpen === null ? hud.palisade : hud.gate);
   if (model.health !== null) {
+    chrome.textAt(
+      `${model.health.label}: ${model.health.hover}`,
+      layout.healthLabel.x,
+      layout.healthLabel.y + ROW_TEXT_PAD * s,
+      'white',
+    );
     chrome.bar(layout.health, model.health.pct, 'gauge');
-    chrome.textAt(`${model.health.label}: ${model.health.hover}`, layout.health.x, layout.health.y, 'white');
   }
   if (layout.progress !== null) {
     const progress = model.repairing

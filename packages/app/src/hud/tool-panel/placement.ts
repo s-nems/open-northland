@@ -71,7 +71,8 @@ export interface PlacementDeps {
 /** Placement mode: pick a building in the window, then one left-click on buildable ground places and
  *  exits the mode, as in the original. Esc or right-click abandons. The landing click confirms through
  *  the GUI cue; the world itself makes no sound for a new site. The wall tool lays lines (see
- *  {@link LineTool}) and the gate tool cuts gates into finished runs; both stay armed until cancelled. */
+ *  {@link LineTool}) and stays armed until cancelled; the gate tool cuts one gate into a finished run and
+ *  exits like a building. */
 export interface PlacementController {
   isActive(): boolean;
   /** The building typeId currently being placed, or null when not in placement. */
@@ -170,6 +171,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     if (probe?.canConvert !== true || probe.center === null || probe.gfxIndex === null) return;
     deps.enqueue({ kind: 'convertPalisadeGate', palisade: probe.center, gfxIndex: probe.gfxIndex });
     ctx.cue('confirm');
+    exitPlacement();
   };
 
   return {

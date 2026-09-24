@@ -144,6 +144,28 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(observer.enemies()).toEqual([]);
   });
 
+  it('hits an own palisade anywhere in its sprite box, gaps between the posts included', () => {
+    const own = {
+      id: 90_041,
+      components: {
+        Palisade: { gfxIndex: 691 },
+        Position: { x: 6 * ONE, y: 8 * ONE },
+        Owner: { player: HUMAN_PLAYER },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, own] };
+    const wall = { ref: own.id, kind: 'palisade', x: 200, y: 300, depth: 300 } satisfies DrawItem;
+    const targets = createUnitTargets({
+      snapshot: () => snapshot,
+      viewer: fixedViewerSeat(HUMAN_PLAYER),
+      hostileToward: () => true,
+      drawnItems: () => [wall],
+      boundsOf: () => ({ minX: 180, maxX: 220, minY: 230, maxY: 305 }),
+      pixelHitOf: () => false,
+    });
+    expect(pickTopAt(targets.owned('palisade'), 205, 280)).toBe(own.id);
+  });
+
   it('reaches only what the frame drew - a culled unit is not clickable', () => {
     const dropped = firstDrawn('settler', HUMAN_PLAYER);
     const owned = targetsOver(fullScene.filter((it) => it !== dropped))

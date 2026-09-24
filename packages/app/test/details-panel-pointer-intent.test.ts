@@ -234,6 +234,18 @@ describe('details panel click intents', () => {
     ]);
   });
 
+  it('writes the palisade hitpoints on their own row, clear of the bar, the progress and the buttons', () => {
+    const view = viewOfKind(
+      panelModelOf({ ...closedGate, components: { ...closedGate.components, UnderConstruction: {} } }),
+      'palisade',
+    );
+    const { healthLabel, health, progress, buttons } = view.layout;
+    if (progress === null) throw new Error('expected a progress row');
+    expect(healthLabel.y + healthLabel.h).toBeLessThanOrEqual(health.y);
+    expect(health.y + health.h).toBeLessThanOrEqual(progress.y);
+    expect(progress.y + progress.h).toBeLessThanOrEqual(buttons[0]?.rect.y ?? Number.NaN);
+  });
+
   it('keeps unfinished or already-repairing palisade actions visibly inert', () => {
     const unfinished = viewOfKind(
       panelModelOf({
