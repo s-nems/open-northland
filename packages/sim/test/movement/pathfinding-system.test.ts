@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { MoveStepPeriod, PathFollow, PathRequest, Position, WalkFacing } from '../../src/components/index.js';
+import {
+  addPerson,
+  MoveStepPeriod,
+  Owner,
+  PathFollow,
+  PathRequest,
+  PlayerOrder,
+  Position,
+  WalkFacing,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   exportSaveGame,
+  findPath,
   fx,
   nodeOfPosition,
   ONE,
+  positionOfNode,
   restoreSimulation,
   Simulation,
   type TerrainMap,
@@ -232,6 +243,117 @@ describe('pathfindingSystem - per-tick search budget', () => {
     // A budget comfortably above the remaining work drains the rest in one pass.
     drainPathRequests(sim.world, ctx, terrain, 1024);
     expect(entities.every((e) => !sim.world.has(e, PathRequest))).toBe(true);
+  });
+});
+
+describe('pathfindingSystem - a group move shares one route', () => {
+  const SOLDIER = 31;
+  const P0 = 0;
+  const MEMBERS = 8;
+  const WIDTH = 160;
+  const HEIGHT = 60;
+  const WALL_HX = 80;
+  const GAP_HY = 54;
+
+  /** Open grass with a water wall at `WALL_HX` down to a gap at `GAP_HY`, so the search floods the
+   *  wall's near side before it finds the way round: a march's expensive corridor. */
+  function walledMap(): TerrainMap {
+    const typeIds = new Array<number>(WIDTH * HEIGHT).fill(GRASS);
+    for (let hy = 0; hy < GAP_HY; hy++) typeIds[hy * WIDTH + WALL_HX] = WATER;
+    return { resolution: 'half-cell', width: WIDTH, height: HEIGHT, typeIds };
+  }
+
+  /** `MEMBERS` owned soldiers packed at the west end, each ordered onto its own spot at the east end. */
+  function march(
+    ordered: boolean,
+    size = MEMBERS,
+  ): {
+    sim: Simulation;
+    ctx: SystemContext;
+    members: Entity[];
+    soloCost: number;
+  } {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: walledMap() });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const members: Entity[] = [];
+    for (let i = 0; i < size; i++) {
+      const start = terrain.nodeAt(8 + (i % 4) * 2, 10 + Math.floor(i / 4) * 2);
+      const goal = terrain.nodeAt(150 + (i % 4) * 2, 10 + Math.floor(i / 4) * 2);
+      const e = sim.world.create();
+      const c = terrain.coordsOf(start);
+      sim.world.add(e, Position, positionOfNode(c.x, c.y));
+      addPerson(sim.world, e, {
+        tribe: 1,
+        jobType: SOLDIER,
+        hunger: fx.fromInt(0),
+        fatigue: fx.fromInt(0),
+        piety: fx.fromInt(0),
+        enjoyment: fx.fromInt(0),
+        experience: new Map(),
+      });
+      sim.world.add(e, Owner, { player: P0 });
+      if (ordered) sim.world.add(e, PlayerOrder, {});
+      sim.world.add(e, PathRequest, { start, goal, failed: false });
+      members.push(e);
+    }
+    const [lead] = members;
+    if (lead === undefined) throw new Error('a march has members');
+    const first = sim.world.get(lead, PathRequest);
+    const solo = { explored: 0 };
+    findPath(terrain, first.start, first.goal, undefined, solo);
+    const ctx: SystemContext = {
+      content: testContent(),
+      rng: sim.rng,
+      tick: 1,
+      events: sim.events,
+      commands: sim.commands,
+      terrain,
+    };
+    return { sim, ctx, members, soloCost: solo.explored };
+  }
+
+  it('starts every member of an ordered march in one drain, each on its own spot', () => {
+    const { sim, ctx, members, soloCost } = march(true);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const requests = members.map((e) => ({ ...sim.world.get(e, PathRequest) }));
+    // Two full searches' worth: separate searches would spill six members into later ticks.
+    drainPathRequests(sim.world, ctx, terrain, 2 * soloCost);
+
+    members.forEach((e, i) => {
+      expect(sim.world.has(e, PathRequest)).toBe(false);
+      const nodes = sim.world.get(e, PathFollow).waypoints.map((w) => w.node);
+      expect(nodes[0]).toBe(requests[i]?.start);
+      expect(nodes[nodes.length - 1]).toBe(requests[i]?.goal); // the formation keeps its spots
+    });
+    // The lowest id routes in full, exactly as alone.
+    const alone = march(true, 1);
+    const [lead] = members;
+    const [soloLead] = alone.members;
+    if (lead === undefined || soloLead === undefined || alone.ctx.terrain === undefined) {
+      throw new Error('a march has members');
+    }
+    drainPathRequests(alone.sim.world, alone.ctx, alone.ctx.terrain, soloCost);
+    expect(sim.world.get(lead, PathFollow).waypoints).toEqual(
+      alone.sim.world.get(soloLead, PathFollow).waypoints,
+    );
+  });
+
+  it('starts the whole march in one drain even when the first route alone spends the budget', () => {
+    const { sim, ctx, members } = march(true);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    drainPathRequests(sim.world, ctx, terrain, 1);
+    expect(members.filter((e) => sim.world.has(e, PathRequest))).toEqual([]);
+  });
+
+  it('routes economy walks one by one, so the same crowd spills past the budget', () => {
+    const { sim, ctx, members, soloCost } = march(false);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    drainPathRequests(sim.world, ctx, terrain, 2 * soloCost);
+    expect(members.filter((e) => !sim.world.has(e, PathRequest)).length).toBeLessThan(MEMBERS);
   });
 });
 

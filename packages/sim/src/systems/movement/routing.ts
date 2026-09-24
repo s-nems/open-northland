@@ -3,6 +3,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PlayerOrder,
   Position,
   WalkFacing,
   type Waypoint,
@@ -24,6 +25,7 @@ import {
   type UnitWalkBlocks,
   unitWalkBlocks,
 } from './collision/index.js';
+import { GroupRoutes } from './group-routes.js';
 import { beginWalkTurn } from './turning.js';
 
 /**
@@ -35,7 +37,8 @@ const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
 
 /**
  * Drains pending path requests into followable paths, lowest entity id first until the tick's node budget
- * is spent. A route that cannot be found flags the request for the planner rather than retrying silently.
+ * is spent, past which only group members borrowing a route served this tick still start. A route that
+ * cannot be found flags the request for the planner rather than retrying silently.
  */
 export const pathfindingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -65,6 +68,7 @@ export function drainPathRequests(
   // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out to
   // different free nodes instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
+  const groupRoutes = new GroupRoutes(terrain);
   const dynamicOnly = (): BlockOverlay => {
     dynamic ??= dynamicBlockOverlay(world, ctx, terrain);
     return dynamic;
@@ -80,30 +84,47 @@ export function drainPathRequests(
   };
   try {
     for (const e of world.canonicalQuery(PathRequest)) {
-      if (spent.explored >= nodeBudget) break;
+      // Past the budget only a group member that borrows a route already served this tick still starts, so
+      // a march whose first route spent the budget sets off together; every full search waits.
+      const overBudget = spent.explored >= nodeBudget;
+      if (overBudget && !world.has(e, PlayerOrder)) continue;
       const req = world.get(e, PathRequest);
       if (req.failed) continue;
 
       const collides = hasBodyCollision(world, ctx.content, e);
       const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
-      let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
-      if (path === null && collides && isValidNodeId(terrain, req.goal)) {
-        // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
-        // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
-        const goal = req.goal;
-        if (blocked.has(goal) && !dynamicOnly().has(goal)) {
-          const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
-          if (standIn !== null) {
-            path = resolvePath(terrain, req.start, standIn, blocked, spent);
-            if (path !== null) {
-              claimedStandIns.add(standIn);
-              // Keep the intent in step with the delivered route, or the planner would re-route back
-              // at the occupied original every tick.
-              const goalIntent = world.tryMut(e, MoveGoal);
-              if (goalIntent !== undefined) goalIntent.cell = standIn;
-            }
-          }
+      // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
+      // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
+      let goal = req.goal;
+      let standIn = false;
+      if (
+        collides &&
+        goal !== req.start && // a walker already standing there has arrived, however crowded
+        isValidNodeId(terrain, goal) &&
+        blocked.has(goal) &&
+        !dynamicOnly().has(goal)
+      ) {
+        const free = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
+        if (free !== null) {
+          goal = free;
+          standIn = true;
         }
+      }
+      // Only a player's order moves a group; economy walks keep their own exact routes.
+      const group =
+        world.has(e, PlayerOrder) && isValidNodeId(terrain, req.start) && isValidNodeId(terrain, goal);
+      let path = group ? groupRoutes.borrow(blocked, req.start, goal, spent) : null;
+      if (path === null) {
+        if (overBudget) continue;
+        path = resolvePath(terrain, req.start, goal, blocked, spent);
+        if (path !== null && group) groupRoutes.offer(blocked, path);
+      }
+      if (path !== null && standIn) {
+        claimedStandIns.add(goal);
+        // Keep the intent in step with the delivered route, or the planner would re-route back at the
+        // occupied original every tick.
+        const goalIntent = world.tryMut(e, MoveGoal);
+        if (goalIntent !== undefined) goalIntent.cell = goal;
       }
       if (path === null) {
         world.mut(e, PathRequest).failed = true;

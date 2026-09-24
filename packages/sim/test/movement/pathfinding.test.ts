@@ -8,6 +8,7 @@ import {
 } from '../../src/index.js';
 import {
   FLOOD_GUARD_MAX_EXPLORED,
+  joinCorridor,
   POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
 } from '../../src/nav/pathfinding/index.js';
@@ -346,5 +347,58 @@ describe('findPath - deterministic tie-breaking', () => {
       { x: 2, y: 3 },
       { x: 3, y: 3 },
     ]);
+  });
+});
+
+describe('joinCorridor - a group member borrowing a routed corridor', () => {
+  const LEAD_ROW = 10;
+  const FOLLOWER_ROW = 30;
+  const WALL_ROW = 20;
+  const WALL_END_HX = 40;
+  /** Far enough for a hop across the twenty half-rows between the lead's row and the follower's. */
+  const NEAR = 24;
+
+  /** Every consecutive pair of `path` is a pathfinder edge under `blocked`. */
+  function isWalkablePath(g: TerrainGraph, path: readonly NodeId[], blocked: ReadonlySet<NodeId>): boolean {
+    return path.every((node, i) => {
+      const previous = path[i - 1];
+      return previous === undefined || g.steps(previous, blocked).some((step) => step.node === node);
+    });
+  }
+
+  function lead(g: TerrainGraph): NodeId[] {
+    const corridor = findPath(g, g.nodeAt(10, LEAD_ROW), g.nodeAt(150, LEAD_ROW));
+    if (corridor === null) throw new Error('the lead routes');
+    return corridor;
+  }
+
+  it('joins an open corridor with a walkable route from its own start to its own goal', () => {
+    const g = open(160, 60);
+    const start = g.nodeAt(12, FOLLOWER_ROW);
+    const goal = g.nodeAt(148, FOLLOWER_ROW);
+    const joined = joinCorridor(g, lead(g), start, goal, new Set<NodeId>(), { explored: 0 }, NEAR);
+    expect(joined?.[0]).toBe(start);
+    expect(joined?.at(-1)).toBe(goal);
+    expect(isWalkablePath(g, joined ?? [], new Set())).toBe(true);
+  });
+
+  it('refuses a corridor it could only reach round a wall, so the member routes alone', () => {
+    // The corridor node nearest the start lies across a wall: reaching it means walking to the wall's
+    // end and back, then along the corridor past the start again.
+    const g = open(160, 60);
+    const wall = new Set<NodeId>();
+    for (let hx = 0; hx <= WALL_END_HX; hx++) wall.add(g.nodeAt(hx, WALL_ROW));
+    const corridor = findPath(g, g.nodeAt(10, LEAD_ROW), g.nodeAt(150, LEAD_ROW), wall);
+    if (corridor === null) throw new Error('the lead routes');
+    const joined = joinCorridor(
+      g,
+      corridor,
+      g.nodeAt(12, FOLLOWER_ROW),
+      g.nodeAt(148, FOLLOWER_ROW),
+      wall,
+      { explored: 0 },
+      NEAR,
+    );
+    expect(joined).toBeNull();
   });
 });

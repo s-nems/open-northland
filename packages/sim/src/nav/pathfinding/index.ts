@@ -1,3 +1,4 @@
+export { joinCorridor } from './corridor.js';
 export {
   FLOOD_GUARD_MAX_EXPLORED,
   findPath,
