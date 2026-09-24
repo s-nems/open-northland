@@ -11,6 +11,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
+import type { NodeId } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isScoutJob } from '../readviews/index.js';
@@ -47,23 +48,27 @@ export function claimableBy(world: World, animal: Entity, player: number): boole
 export const livestockCaptureSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return;
   const terrain = ctx.terrain;
-  // The candidate store first, so a map with no livestock never walks the settler population. No
-  // canonical sort: every in-range animal is claimed, so order cannot change the result.
-  const herds = [...world.query(Livestock, Position)];
-  if (herds.length === 0) return;
+  // The candidate store first, so a map with no livestock never walks the settler population.
+  if (world.query(Livestock, Position).next().done === true) return;
   const scouts: Entity[] = [];
   for (const e of world.query(Person, Owner, Position)) {
     if (isScoutJob(ctx.content, world.get(e, Settler).jobType)) scouts.push(e);
   }
   if (scouts.length === 0) return;
   scouts.sort((a, b) => a - b);
+  // Each animal's node once per tick, not once per scout: a claim never moves it. No canonical sort:
+  // every in-range animal is claimed, so order cannot change the result.
+  const herds: Array<readonly [Entity, NodeId]> = [];
+  for (const animal of world.query(Livestock, Position))
+    herds.push([animal, entityNode(world, terrain, animal)]);
   for (const scout of scouts) {
     const player = world.get(scout, Owner).player;
-    const at = terrain.coordsOf(entityNode(world, terrain, scout));
-    for (const animal of herds) {
+    const at = entityNode(world, terrain, scout);
+    const x = terrain.xOf(at);
+    const y = terrain.yOf(at);
+    for (const [animal, on] of herds) {
       if (!claimableBy(world, animal, player)) continue;
-      const on = terrain.coordsOf(entityNode(world, terrain, animal));
-      if (hexDistanceBetween(at.x, at.y, on.x, on.y) > LIVESTOCK_CAPTURE_RANGE) continue;
+      if (hexDistanceBetween(x, y, terrain.xOf(on), terrain.yOf(on)) > LIVESTOCK_CAPTURE_RANGE) continue;
       claim(world, animal, player);
     }
   }
