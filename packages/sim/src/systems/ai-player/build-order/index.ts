@@ -2,10 +2,12 @@ import type { BuildingType } from '@open-northland/data';
 import {
   aiPlayerEntity,
   Building,
+  BuildOrderFrontier,
   playerPlacementTribes,
   StalledPlacement,
   type StalledPlacementState,
   UnderConstruction,
+  Upgrading,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -22,13 +24,16 @@ import { anchorCentroid, anchorNodeOf } from '../node-geometry.js';
 import { ownedBuildings } from '../seat-roster.js';
 import {
   BASE_REPLACEMENT_ENTRY,
+  BASELESS_CONSTRUCTION_SITES,
+  BUILD_ORDER_LOOKAHEAD_ENTRIES,
   type BuildOrderEntry,
   MAX_ACTIVE_CONSTRUCTION_SITES,
+  REBUILD_DELAY_TICKS,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from './entries.js';
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
-import { firstUncoveredBuilding, towerPlacementSpot } from './tower-coverage.js';
+import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
 
 export * from './entries.js';
 export {
@@ -39,10 +44,13 @@ export {
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
- * Acts on the first unmet entry, so a razed building is re-placed before any entry the seat has not
- * reached yet. An unmet entry with no legal action stalls rather than being skipped: most retry next
- * decision, a placement that found no spot every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions.
- * Builders are never pinned to a site; the builder drive picks its own.
+ * Acts on the first unmet entry, so a razed building is re-placed, after {@link REBUILD_DELAY_TICKS},
+ * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to
+ * {@link MAX_ACTIVE_CONSTRUCTION_SITES} entries go up side by side, within
+ * {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} of the oldest unfinished one. An unmet entry with no legal action
+ * stalls rather than being skipped: most retry next decision, a placement that found no spot every
+ * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions. Builders are never pinned to a site; the builder
+ * drive picks its own.
  */
 export function buildOrderModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {
@@ -64,10 +72,10 @@ function runBuildOrder(
   for (const e of owned) {
     if (world.has(e, UnderConstruction)) sites++;
   }
-  if (sites >= MAX_ACTIVE_CONSTRUCTION_SITES) return [];
+  const base = seatBaseOf(world, ctx, player);
+  if (sites >= (base === null ? BASELESS_CONSTRUCTION_SITES : MAX_ACTIVE_CONSTRUCTION_SITES)) return [];
 
   const tribe = playerPlacementTribes(world, player)?.[0];
-  const base = seatBaseOf(world, ctx, player);
   if (base === null) {
     return tribe === undefined ? [] : replaceMissingBase(world, ctx, terrain, player, owned, tribe);
   }
@@ -79,6 +87,8 @@ function runBuildOrder(
   for (const [entryIndex, entry] of order.entries()) {
     const status = entryStatus(world, ctx, player, owned, entry, live);
     if (status !== 'unmet') continue;
+    if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick)) return [];
+    if (sites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
     const stall = placementStall(world, player, entryIndex);
     switch (entry.kind) {
       case 'place': {
@@ -104,19 +114,103 @@ function runBuildOrder(
       }
       case 'collector':
         return []; // the workforce module hires it
-      case 'towerCoverage': {
+      case 'towerCoverage':
+      case 'storeCoverage': {
         if (tribe === undefined) return [];
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
-        const target = firstUncoveredBuilding(world, ctx, player, owned);
+        const coverage = coverageOf(entry);
+        const target = firstUncoveredBuilding(world, ctx, player, owned, coverage);
         if (target === null) return []; // status said unmet - defensive
-        const spot = towerPlacementSpot(world, ctx, terrain, player, owned, anchor, type, target);
+        const spot = coveragePlacementSpot(
+          world,
+          ctx,
+          terrain,
+          player,
+          owned,
+          anchor,
+          type,
+          target,
+          coverage,
+        );
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
     }
   }
+  advanceFrontier(world, player, order.length);
   return [];
+}
+
+/**
+ * Whether the acting entry is a razed building's, fallen back below the seat's frontier, still inside
+ * {@link REBUILD_DELAY_TICKS} of the decision that first saw it. Only a counted building entry regresses
+ * this way; a coverage entry re-arms by design and a collector is hired, not built, so neither moves the
+ * frontier. A seat with no AI carrier (a module run directly) keeps no frontier and never waits.
+ */
+function awaitingRebuild(
+  world: World,
+  player: number,
+  entryIndex: number,
+  entry: BuildOrderEntry,
+  tick: number,
+): boolean {
+  const carrier = aiPlayerEntity(world, player);
+  if (carrier === null) return false;
+  const frontier = world.tryGet(carrier, BuildOrderFrontier);
+  if (frontier === undefined || entryIndex >= frontier.entry) {
+    advanceFrontier(world, player, entryIndex);
+    return false;
+  }
+  if (entry.kind !== 'place' && entry.kind !== 'upgrade') return false;
+  if (frontier.rebuildTick === null) {
+    world.mut(carrier, BuildOrderFrontier).rebuildTick = tick + REBUILD_DELAY_TICKS;
+    return true;
+  }
+  return tick < frontier.rebuildTick;
+}
+
+/** Raise the seat's frontier to `entryIndex`, the first unmet entry at or past it (the list's length once all
+ *  are met), and end any rebuild wait, since nothing below the frontier is unmet any more. Only this raises
+ *  it, so every later loss below it waits out the delay again. */
+function advanceFrontier(world: World, player: number, entryIndex: number): void {
+  const carrier = aiPlayerEntity(world, player);
+  if (carrier === null) return;
+  const frontier = world.tryGet(carrier, BuildOrderFrontier);
+  if (frontier !== undefined && frontier.entry === entryIndex && frontier.rebuildTick === null) return;
+  world.add(carrier, BuildOrderFrontier, { entry: entryIndex, rebuildTick: null });
+}
+
+/**
+ * Whether acting on `entryIndex` would take the list more than {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entries
+ * past the oldest one met only by a fresh site still going up. That entry is found by re-reading the list
+ * over the buildings that stand, a building mid-upgrade counted at the tier it has; skipped entries do not
+ * count toward the lookahead.
+ */
+function outrunsSites(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  order: readonly BuildOrderEntry[],
+  entryIndex: number,
+  live: LiveResourceMemo,
+): boolean {
+  if (entryIndex <= BUILD_ORDER_LOOKAHEAD_ENTRIES) return false;
+  const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
+  let oldest = -1;
+  for (let i = 0; i < entryIndex && oldest < 0; i++) {
+    const entry = order[i];
+    if (entry !== undefined && entryStatus(world, ctx, player, standing, entry, live, false) === 'unmet')
+      oldest = i;
+  }
+  if (oldest < 0) return false;
+  let ahead = 0;
+  for (let i = oldest + 1; i <= entryIndex; i++) {
+    const entry = order[i];
+    if (entry !== undefined && entryStatus(world, ctx, player, owned, entry, live) !== 'skip') ahead++;
+  }
+  return ahead > BUILD_ORDER_LOOKAHEAD_ENTRIES;
 }
 
 /** The seat's stall record when it names `entryIndex`; a record for any other entry is dropped, since

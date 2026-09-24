@@ -3,9 +3,9 @@
 **Area:** sim, data · **Priority:** P3
 **Blocked by:** [AI build-order profile](ai-build-order-content-profile.md)
 
-AI staffing counts, builder cap, collector targets with the stalled-placement clearing rate, the fisher
-target, craft restrictions with their short-crew set, the soldiers' outfit goods, and tower-coverage
-constants are authored tables in sim code. Once seats select a validated AI profile, these policies should come
+AI staffing counts, builder caps, collector targets with their crew-driven growth and the
+stalled-placement clearing rate, the fisher target, craft restrictions with their short-crew set and
+opening runs, the soldiers' outfit goods, and tower-coverage constants are authored tables in sim code. Once seats select a validated AI profile, these policies should come
 from the same profile instead of remaining one global default.
 
 ## Scope

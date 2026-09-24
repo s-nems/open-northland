@@ -9,7 +9,7 @@ import { campaignTarget, objectiveNode } from './campaign.js';
 import { weaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 import { formedUpAt, gatherAt, marchOrders, meleeCoreFor, musterAround, waveWorthy } from './muster.js';
-import { abandonWave, decideWave } from './plan.js';
+import { abandonWave, decideWave, peaceEndsAt } from './plan.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
  *  already out of `army`, and `awaitingWeapon` is only ever called home. */
@@ -28,7 +28,8 @@ const NO_CAMPAIGN: CampaignDecision = { commands: [], waiting: [] };
 
 /**
  * One strategic decision for the seat's campaign: sort `army` around the barracks door
- * ({@link musterAround}), then judge the launch ({@link decideWave}). The men at the door march when the
+ * ({@link musterAround}), then judge the launch ({@link decideWave}). Until the peace ends ({@link peaceEndsAt}) the army
+ * only gathers at the door, as it does with no target. The men at the door march when the
  * muster is the wave it was gathering; a body already nearer the objective goes in whatever the muster
  * says, having nowhere safe to wait; everybody else is called in.
  */
@@ -48,7 +49,7 @@ export function runOffensive(
   // Sorted over the men this decision may actually order, so a wave is never measured at a strength the
   // march cannot fill. A man in transit sits out one decision and is read again once he arrives.
   const free = army.filter((e) => !spokenFor(world, e));
-  const target = campaignTarget(world, ctx, terrain, player, home);
+  const target = ctx.tick < peaceEndsAt(world) ? null : campaignTarget(world, ctx, terrain, player, home);
   if (target === null) {
     abandonWave(world, barracks);
     return {

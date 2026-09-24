@@ -29,8 +29,8 @@ import { allocateFishers, fishingPlan } from './fisher.js';
 import type { TakenFlagNodes } from './flag-spots.js';
 import { trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
-import { builderJobOf, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
-import { reserveBuilders, staffBuildings } from './staffing.js';
+import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
+import { BUILDER_CAP, builderCap, reserveBuilders, staffBuildings } from './staffing.js';
 import { buildStaffingTally } from './tally.js';
 
 export {
@@ -42,7 +42,12 @@ export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { OPENING_HUNT_UNTIL_BUILDING_ID } from './hunter.js';
 export { builderJobOf } from './pool.js';
-export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
+export {
+  BUILDER_CAP,
+  LATE_GAME_BUILDER_CAP,
+  LATE_GAME_CIVILIANS,
+  STAFFING_BY_BUILDING_ID,
+} from './staffing.js';
 
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
@@ -60,8 +65,9 @@ function runWorkforce(
   const base = seatBaseOf(world, ctx, player);
   if (base === null) return rebuildCrew(world, ctx, player, builderJob);
   const statuses = entryStatuses(world, ctx, player, order);
-  const wanted = wantedCollectorGoods(ctx, order, statuses);
-  const clearing = clearingCollectors(world, ctx, player);
+  const wanted = wantedCollectorGoods(world, ctx, player, order, statuses);
+  const civilians = civilianCount(world, ctx, player);
+  const clearing = clearingCollectors(world, player, civilians);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing;
   const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(
     world,
@@ -82,7 +88,7 @@ function runWorkforce(
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
-    ...reserveBuilders(world, force, builderJob), // construction never starves
+    ...reserveBuilders(world, force, builderJob, builderCap(civilians)), // construction never starves
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
     ...(clearing > 0 ? generic() : []),
     ...staffBuildings(world, ctx, player, force, tally, 'target'),
@@ -110,7 +116,7 @@ function rebuildCrew(
   if (!ownedBuildings(world, player).some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
   return [
-    ...reserveBuilders(world, force, builderJob),
+    ...reserveBuilders(world, force, builderJob, BUILDER_CAP),
     ...staffBuildings(world, ctx, player, force, buildStaffingTally(world), 'min'),
   ];
 }

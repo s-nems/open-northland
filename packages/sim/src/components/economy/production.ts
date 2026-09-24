@@ -46,3 +46,12 @@ export const ProductionBonus = defineComponent<{
   /** goodType → the banked bonus output in tenths of a unit; past nine only while the shelf is full. */
   remainders: Map<number, number>;
 }>('ProductionBonus', 'economy');
+
+/**
+ * Finished production cycles per product on a workplace that carries this component; the production system
+ * counts only where a reader opted the building in, so an uncounted workplace holds no extra state.
+ */
+export const CompletedCycles = defineComponent<{
+  /** Product goodType -> cycles finished since the component was added. */
+  byGood: Map<number, number>;
+}>('CompletedCycles', 'economy');

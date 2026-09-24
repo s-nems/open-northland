@@ -1,5 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, UnderConstruction } from '../../../components/index.js';
+import { Building, UnderConstruction, Upgrading } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -11,7 +11,7 @@ import { anyLiveResource } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import type { BuildOrderEntry } from './entries.js';
-import { firstUncoveredBuilding } from './tower-coverage.js';
+import { coverageOf, firstUncoveredBuilding } from './tower-coverage.js';
 
 /** `skip` (not expressible in this content set, or nothing left to collect) counts as done for
  *  sequencing. */
@@ -35,7 +35,8 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
 export type LiveResourceMemo = Map<number, boolean>;
 
 /** `owned` is the seat's {@link ownedBuildings} list and `live` this decision's memo, both passed in so one
- *  decision computes them once. */
+ *  decision computes them once. An upgrade in flight counts toward its next tier, as a placed site counts
+ *  toward its entry, unless `inFlightUpgrades` is false. */
 export function entryStatus(
   world: World,
   ctx: SystemContext,
@@ -43,6 +44,7 @@ export function entryStatus(
   owned: readonly Entity[],
   entry: BuildOrderEntry,
   live: LiveResourceMemo,
+  inFlightUpgrades = true,
 ): EntryStatus {
   const index = contentIndex(ctx.content);
   switch (entry.kind) {
@@ -73,7 +75,12 @@ export function entryStatus(
       const done = tiersAtOrAbove(index, target);
       let have = 0;
       for (const e of owned) {
-        if (done.has(world.get(e, Building).buildingType)) have++;
+        const type = world.get(e, Building).buildingType;
+        // `upgradeBuilding` keeps the lower type until the site finishes, so the tier it is becoming
+        // is that type's next one.
+        const becoming =
+          inFlightUpgrades && world.has(e, Upgrading) ? index.buildings.get(type)?.upgradeTarget : undefined;
+        if (done.has(type) || (becoming !== undefined && done.has(becoming))) have++;
       }
       return have >= entry.count ? 'satisfied' : 'unmet';
     }
@@ -86,10 +93,12 @@ export function entryStatus(
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
       return liveResourceNearBase(world, ctx, player, good.typeId, live) ? 'unmet' : 'skip';
     }
-    case 'towerCoverage': {
+    case 'towerCoverage':
+    case 'storeCoverage': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      return firstUncoveredBuilding(world, ctx, player, owned) === null ? 'satisfied' : 'unmet';
+      const uncovered = firstUncoveredBuilding(world, ctx, player, owned, coverageOf(entry));
+      return uncovered === null ? 'satisfied' : 'unmet';
     }
   }
 }

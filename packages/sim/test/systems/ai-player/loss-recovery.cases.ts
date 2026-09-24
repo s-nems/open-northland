@@ -244,7 +244,7 @@ describe('build-order module - rebuilding what combat took', () => {
     const sim = aiSim();
     placeHq(sim);
     place(sim, BAKERY_TYPE, 34, 16);
-    spawnMen(sim, 12, CIVILIST); // more than the builder reserve claims
+    spawnMen(sim, BUILDER_CAP + 4, CIVILIST); // more than the builder reserve claims
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,

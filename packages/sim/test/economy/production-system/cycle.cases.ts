@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Production, Stockpile } from '../../../src/components/index.js';
+import { CompletedCycles, Production, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
@@ -44,6 +44,19 @@ describe('productionSystem - cycle lifecycle', () => {
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(0); // all consumed
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(3); // all produced
     expect(sim.world.has(mill, Production)).toBe(false); // idle: nothing left to produce
+  });
+
+  it('counts finished cycles only on a workplace that carries the tally', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { mill } = sawmill(sim, [
+      [WOOD, 3],
+      [PLANK, 0],
+    ]);
+    const other = sawmill(sim, [[WOOD, 3]]).mill;
+    sim.world.add(mill, CompletedCycles, { byGood: new Map() });
+    for (let t = 0; t < CYCLE_TICKS * 2 + 1; t++) productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(mill, CompletedCycles).byGood.get(PLANK)).toBe(2);
+    expect(sim.world.has(other, CompletedCycles)).toBe(false);
   });
 
   it('emits a goodProduced event for the output on completion', () => {

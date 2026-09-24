@@ -70,10 +70,20 @@ const STORAGE_STAFFING: BuildingStaffing = {
   carrierTarget: 3,
 };
 
-/** How many builders the pool keeps (authored). Claimed right after minimum staffing, so construction
- *  never starves, and before every top-up tier, so the surplus ladder distributes only what is beyond
- *  the reserve. */
-export const BUILDER_CAP = 8;
+/** How many builders the pool keeps (authored), enough for the build order's two sites at once. Claimed
+ *  right after minimum staffing, so construction never starves, and before every top-up tier, so the
+ *  surplus ladder distributes only what is beyond the reserve. */
+export const BUILDER_CAP = 12;
+
+/** The reserve of a grown settlement, from {@link LATE_GAME_CIVILIANS} civilians on (authored): its late
+ *  bills are the largest and its sites the farthest apart. */
+export const LATE_GAME_BUILDER_CAP = 14;
+export const LATE_GAME_CIVILIANS = 60;
+
+/** The builder reserve for a seat of `civilians` non-fighting settlers. */
+export function builderCap(civilians: number): number {
+  return civilians >= LATE_GAME_CIVILIANS ? LATE_GAME_BUILDER_CAP : BUILDER_CAP;
+}
 
 /** The staffing plan for a building type, or null for the kinds the allocator never staffs: homes,
  *  towers and the barracks are military or residential, not production. */
@@ -135,20 +145,25 @@ export function staffBuildings(
 }
 
 /**
- * Claim up to {@link BUILDER_CAP} pool men as builders, existing builders first so the crew does not
- * churn. Claiming rather than posting leaves the later tiers only the surplus beyond the reserve; the
- * cap is one-way and never demotes a man.
+ * Claim up to `cap` pool men as builders, existing builders first so the crew does not churn. Claiming
+ * rather than posting leaves the later tiers only the surplus beyond the reserve; the cap is one-way and
+ * never demotes a man.
  */
-export function reserveBuilders(world: World, force: SpareForce, builderJob: number | null): PlayerCommand[] {
+export function reserveBuilders(
+  world: World,
+  force: SpareForce,
+  builderJob: number | null,
+  cap: number,
+): PlayerCommand[] {
   if (builderJob === null) return [];
   const commands: PlayerCommand[] = [];
   let builders = 0;
-  while (builders < BUILDER_CAP) {
+  while (builders < cap) {
     const keep = force.take((e) => world.get(e, Settler).jobType === builderJob);
     if (keep === null) break;
     builders++;
   }
-  while (builders < BUILDER_CAP) {
+  while (builders < cap) {
     const spare = force.take();
     if (spare === null) break;
     commands.push({ kind: 'setJob', entity: spare, jobType: builderJob });

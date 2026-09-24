@@ -22,19 +22,26 @@ import { seatBarracksOf } from '../base.js';
 import { ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
-/** The army's weapon mix (authored): equal shares over the three armed classes, but only over those a
- *  store can arm this decision, so the fielded mix tracks stock. Publication order breaks an
- *  indivisible draft, leaving the odd men in reach. Blind to the tower posts, which take bow classes
- *  for good, so a seat holding towers fields fewer archers than the share implies. */
+/** The army's weapon mix (authored): swordsmen and archers in equal shares, but only over the classes a
+ *  store can arm this decision, so the fielded mix tracks stock. Publication order breaks an indivisible
+ *  draft, leaving the odd men in reach. Blind to the tower posts, which take bow classes for good, so a
+ *  seat holding towers fields fewer archers than the share implies. */
 const GARRISON_WEAPON_INTENTS = [
   'trainSword',
-  'trainSpear',
   'trainBow',
 ] as const satisfies readonly AssistantRecruitIntent[];
 
+/** The classes drafted only while neither main class can be armed: the seat's own smiths make no
+ *  spears, so these arm the men from whatever the map handed it. */
+const GARRISON_FALLBACK_INTENTS = ['trainSpear'] as const satisfies readonly AssistantRecruitIntent[];
+
 /** Every counter this rung owns: the armed classes plus `trainSoldiers`, the weaponless base class
  *  the drill enlists into - the fallback for a seat that can arm nobody. */
-const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ...GARRISON_WEAPON_INTENTS];
+const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = [
+  'trainSoldiers',
+  ...GARRISON_WEAPON_INTENTS,
+  ...GARRISON_FALLBACK_INTENTS,
+];
 
 /**
  * The garrison sizing: this rung only holds the assistant's training counters at the number of men the
@@ -91,8 +98,8 @@ function standingOrder(
 }
 
 /**
- * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit
- * for, else `trainSoldiers`. Judged for `next`'s tribe and from the barracks door, because the arming
+ * The counters this decision's allowance is split over: the main classes the seat can arm a recruit
+ * for, else the fallback classes it can, else `trainSoldiers`. Judged for `next`'s tribe and from the barracks door, because the arming
  * pass shops against the recruit's weapon rows from where he stands when it first looks at him.
  */
 function draftingClasses(
@@ -107,8 +114,11 @@ function draftingClasses(
   const tribe = world.get(next, Settler).tribe;
   const door = interactionCell(world, ctx, terrain, barracks);
   const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
-  const armable = armableIntents(world, ctx, terrain, player, tribe, GARRISON_WEAPON_INTENTS, reach);
-  return armable.length > 0 ? armable : ['trainSoldiers'];
+  for (const classes of [GARRISON_WEAPON_INTENTS, GARRISON_FALLBACK_INTENTS]) {
+    const armable = armableIntents(world, ctx, terrain, player, tribe, classes, reach);
+    if (armable.length > 0) return armable;
+  }
+  return ['trainSoldiers'];
 }
 
 /** The spare men the dispatcher could still draft, in its own draft order. Men already booked are not

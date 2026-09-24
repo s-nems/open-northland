@@ -96,6 +96,44 @@ describe('build-order tower coverage and outskirts', () => {
     expect(order.buildingType).toBe(TOWER_TYPE);
   });
 
+  it('covers an outlying building with a warehouse, never counting a tower toward store coverage', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const FAR = { x: HQ_X + 31, y: HQ_Y };
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, ...FAR, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
+      x: FAR.x - 2,
+      y: FAR.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const radius = TOWER_DEFENCE_RADIUS_NODES;
+    const stores = buildOrderModule([{ kind: 'storeCoverage', building: 'stock_02', radius }]);
+    const order = [...stores.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (order?.kind !== 'placeBuilding') throw new Error('expected a warehouse placement');
+    expect(order.buildingType).toBe(STOCK_TOP_TYPE);
+    expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, radius)).toBe(true);
+
+    sim.enqueueSetup(order);
+    sim.step();
+    expect([...stores.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+
+    // A tower out at the edge needs no warehouse beside it.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
+      x: HQ_X - 31,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    expect([...stores.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
   it('pushes an outskirts placement past the frontier building and spreads successive warehouses', () => {
     const sim = aiSim();
     placeHq(sim);

@@ -1,5 +1,12 @@
-import { Building, Production, Stockpile } from '../../components/index.js';
+import {
+  Building,
+  CompletedCycles,
+  Production,
+  type ProductionCycle,
+  Stockpile,
+} from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
@@ -70,6 +77,7 @@ export const productionSystem: System = (world, ctx) => {
     prod.cycles = prod.cycles.filter((c) => c.elapsed < c.duration);
     const recipes = recipesByProductOf(world, ctx, e);
     for (const cycle of done) depositCycleOutput(world, ctx, e, cycle, recipes);
+    countCompletedCycles(world, e, done);
     chargeMilitaryPietyCost(world, ctx, done, staffing);
     grantProductionExperience(
       world,
@@ -134,3 +142,9 @@ export const productionSystem: System = (world, ctx) => {
     }
   }
 };
+
+function countCompletedCycles(world: World, building: Entity, done: readonly ProductionCycle[]): void {
+  const tally = world.tryMut(building, CompletedCycles);
+  if (tally === undefined) return;
+  for (const cycle of done) tally.byGood.set(cycle.goodType, (tally.byGood.get(cycle.goodType) ?? 0) + 1);
+}

@@ -4,6 +4,7 @@ import { FishSwarm, Position } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
+import { BUILDER_CAP } from '../../../src/systems/ai-player/index.js';
 import { addFishSwarms } from '../../../src/systems/economy/fish.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -94,14 +95,14 @@ describe('workforce module - the fishers', () => {
     expect(fisherPosts(early)).toEqual([
       expect.objectContaining({ building: entityOfBuilding(early, HQ_TYPE), jobPriority: [FISHER] }),
     ]);
-    // Beyond the scout and the eight-man builder reserve the pool has men to spare for the second.
-    expect(fisherPosts(fishingSeat(14, NEAR_SWARM))).toHaveLength(2);
+    // Beyond the scout and the builder reserve the pool has men to spare for the second.
+    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, NEAR_SWARM))).toHaveLength(2);
   });
 
   it('hires no fisher while no fish swim within the search from the door', () => {
-    expect(fisherPosts(fishingSeat(14, FAR_SWARM))).toEqual([]);
-    expect(fisherPosts(fishingSeat(14, DIAGONAL_SWARM))).toEqual([]);
-    expect(fisherPosts(fishingSeat(14, NEAR_SWARM, 0))).toEqual([]);
+    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, FAR_SWARM))).toEqual([]);
+    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, DIAGONAL_SWARM))).toEqual([]);
+    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, NEAR_SWARM, 0))).toEqual([]);
   });
 
   it('gets a fisher hired far from the water fishing', () => {

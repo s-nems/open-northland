@@ -32,6 +32,15 @@ export function builderJobOf(ctx: SystemContext): number | null {
   return best;
 }
 
+/** The seat's settlers who are not fighters, women and children included. */
+export function civilianCount(world: World, ctx: SystemContext, player: number): number {
+  let civilians = 0;
+  for (const e of ownedSettlers(world, player)) {
+    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) civilians++;
+  }
+  return civilians;
+}
+
 /** Whether the settler is labour the allocator may move: an adult man, neither a fighter nor committed
  *  to a drill. */
 export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): boolean {

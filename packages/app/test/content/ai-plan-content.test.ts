@@ -43,9 +43,9 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const building = buildingById.get(entry.building);
       expect(building, `building ${entry.building}`).toBeDefined();
       if (building === undefined) continue;
-      if (entry.kind === 'place' || entry.kind === 'towerCoverage') {
-        // A place (or coverage-placed tower) entry raises a real construction site - an empty bill
-        // would finish instantly.
+      if (entry.kind !== 'upgrade') {
+        // A place (or coverage-placed tower or warehouse) entry raises a real construction site - an
+        // empty bill would finish instantly.
         expect(building.construction.length, `construction bill of ${entry.building}`).toBeGreaterThan(0);
       } else {
         // An upgrade entry names its TARGET tier - some lower tier must chain into it.

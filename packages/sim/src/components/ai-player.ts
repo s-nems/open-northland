@@ -1,5 +1,6 @@
 import { type MapAiModule, MapAiModule as MapAiModuleSchema } from '@open-northland/data';
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
+import { defineWorldSingleton } from '../ecs/world-singleton.js';
 
 /**
  * The strategic AI player's module ids, one per concern the AI runs for a seat: the map data's
@@ -65,6 +66,38 @@ export interface StalledPlacementState {
  * drops the record once the entry places or another entry acts.
  */
 export const StalledPlacement = defineComponent<StalledPlacementState>('StalledPlacement', 'players');
+
+export interface BuildOrderFrontierState {
+  /** The first unmet entry's index at the seat's last build-order decision. */
+  entry: number;
+  /** The first tick a razed building's entry, one below `entry`, may be raised again; null until such
+   *  a regression is seen. */
+  rebuildTick: number | null;
+}
+
+/**
+ * How far the seat's build order had got, held on its {@link AiPlayer} carrier, so a razed building shows
+ * as an entry falling back below it and waits out the rebuild delay instead of being re-placed at once.
+ */
+export const BuildOrderFrontier = defineComponent<BuildOrderFrontierState>('BuildOrderFrontier', 'players');
+
+const aiPeaceRules = defineWorldSingleton<{ untilTick: number | null }>('AiPeaceRules', 'players', () => ({
+  untilTick: null,
+}));
+
+/** When the computer seats' waves may first march: a tick, or null for the military module's authored
+ *  peace time. */
+export const AiPeaceRules = aiPeaceRules.component;
+
+export function aiPeaceUntil(world: World): number | null {
+  return aiPeaceRules.read(world).untilTick;
+}
+
+export function setAiPeaceUntil(world: World, tick: number | null): void {
+  aiPeaceRules.write(world, (rules) => {
+    rules.untilTick = tick;
+  });
+}
 
 /** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
  *  carrier wins should more than one ever exist. */

@@ -1,4 +1,4 @@
-import { MusterPlan, type MusterPlanState } from '../../../components/index.js';
+import { aiPeaceUntil, MusterPlan, type MusterPlanState } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -22,14 +22,25 @@ export const OPENING_WAVE: WaveBand = { min: WAVE_MIN_SOLDIERS, max: 10 };
 export const LATE_WAVE: WaveBand = { min: 50, max: 100 };
 
 const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_MINUTE = 60;
 
-/** Game time over which the band grows linearly from {@link OPENING_WAVE} to {@link LATE_WAVE}, then
- *  holds (authored). Three hours of game time is one hour of play at triple speed. */
+/** Game time before which no wave marches (authored): the usual multiplayer peace time. The seat still
+ *  answers a raid at home. {@link AiPeaceRules} overrides it. */
+export const PEACE_TICKS = 60 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+
+/** The tick the first wave may march from. */
+export function peaceEndsAt(world: World): number {
+  return aiPeaceUntil(world) ?? PEACE_TICKS;
+}
+
+/** Game time over which the band grows linearly from {@link OPENING_WAVE} to {@link LATE_WAVE}, counted
+ *  from the end of the peace, then holds (authored). Three hours of game time is one hour of play at
+ *  triple speed. */
 export const WAVE_RAMP_TICKS = 3 * SECONDS_PER_HOUR * TICKS_PER_SECOND;
 
-/** The wave band at game `tick`. */
-export function waveBandAt(tick: number): WaveBand {
-  const elapsed = Math.min(Math.max(tick, 0), WAVE_RAMP_TICKS);
+/** The wave band `sincePeace` ticks after the peace ended. */
+export function waveBandAt(sincePeace: number): WaveBand {
+  const elapsed = Math.min(Math.max(sincePeace, 0), WAVE_RAMP_TICKS);
   const grow = (from: number, to: number): number =>
     from + Math.floor(((to - from) * elapsed) / WAVE_RAMP_TICKS);
   return { min: grow(OPENING_WAVE.min, LATE_WAVE.min), max: grow(OPENING_WAVE.max, LATE_WAVE.max) };
@@ -60,7 +71,7 @@ export function decideWave(
   const plan = wavePlan(world, ctx, barracks);
   if (band.total < plan.waveSize) {
     if (ctx.tick - plan.drawnAt < WAVE_GATHER_TICKS) return false;
-    if (band.total < Math.min(waveBandAt(ctx.tick).min, gatherable)) return false;
+    if (band.total < Math.min(waveBandAt(ctx.tick - peaceEndsAt(world)).min, gatherable)) return false;
   }
   abandonWave(world, barracks);
   return true;
@@ -75,7 +86,7 @@ export function abandonWave(world: World, barracks: Entity): void {
 function wavePlan(world: World, ctx: SystemContext, barracks: Entity): MusterPlanState {
   const held = world.tryGet(barracks, MusterPlan);
   if (held !== undefined) return { waveSize: held.waveSize, drawnAt: held.drawnAt };
-  const { min, max } = waveBandAt(ctx.tick);
+  const { min, max } = waveBandAt(ctx.tick - peaceEndsAt(world));
   const waveSize = min + ctx.rng.int(max - min + 1);
   world.add(barracks, MusterPlan, { waveSize, drawnAt: ctx.tick });
   return { waveSize, drawnAt: ctx.tick };

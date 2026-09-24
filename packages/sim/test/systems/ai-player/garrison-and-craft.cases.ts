@@ -6,6 +6,7 @@ import {
   AssistantRecruit,
   type AssistantRecruitIntent,
   Building,
+  CompletedCycles,
   CraftSelection,
   JobAssignment,
   Settler,
@@ -15,7 +16,10 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
-import { tuneCraftSelections } from '../../../src/systems/ai-player/workforce/craft.js';
+import {
+  CRAFT_OPENING_RUN_BY_BUILDING_ID,
+  tuneCraftSelections,
+} from '../../../src/systems/ai-player/workforce/craft.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -346,28 +350,22 @@ describe('workforce module - the barracks and craft selections', () => {
     });
   });
 
-  it('splits the standing order three ways once every arm is in store', () => {
-    const arms = [
+  it('splits the standing order between swords and bows, leaving the spears in store', () => {
+    const seat = armedSeat([
       { good: SWORD, amount: 1 },
       { good: SPEAR, amount: 1 },
       { good: BOW, amount: 1 },
-    ];
-    // Equal thirds, the publication order taking the men a third does not divide - so both remainder
-    // sizes must land in reach: one over goes to swords, two to swords and spears, never to bows.
-    const overs = new Set<number>();
-    for (const men of [SPARE_MEN, SPARE_MEN + 1]) {
-      const seat = armedSeat(arms, { men });
-      const total = sparePool(seat);
-      const share = Math.floor(total / 3);
-      const over = total % 3;
-      overs.add(over);
-      expect(counterWants(seat.sim, seat.ctx)).toEqual({
-        trainSword: share + (over > 0 ? 1 : 0),
-        trainSpear: share + (over > 1 ? 1 : 0),
-        trainBow: share,
-      });
-    }
-    expect([...overs].sort()).toEqual([1, 2]); // both arms of the tie-break were exercised
+    ]);
+    const total = sparePool(seat);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({
+      trainSword: Math.ceil(total / 2),
+      trainBow: Math.floor(total / 2),
+    });
+  });
+
+  it('drafts spearmen only while neither a sword nor a bow is in store', () => {
+    const seat = armedSeat([{ good: SPEAR, amount: 1 }]);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSpear: sparePool(seat) });
   });
 
   it('puts the whole order on the one class it can arm, never on fists', () => {
@@ -446,9 +444,9 @@ describe('workforce module - the barracks and craft selections', () => {
     for (const arms of [
       [],
       [{ good: SWORD, amount: 1 }],
+      [{ good: SPEAR, amount: 1 }],
       [
         { good: SWORD, amount: 1 },
-        { good: SPEAR, amount: 1 },
         { good: BOW, amount: 1 },
       ],
     ]) {
@@ -550,7 +548,7 @@ describe('workforce module - the barracks and craft selections', () => {
     ]);
   });
 
-  it('selects stone blocks and ornaments for a mason after upgrading the workshop', () => {
+  it('opens an upgraded mason hut on a marble run, then alternates stone blocks and marble', () => {
     const base = aiContent();
     const MASON = 9;
     const PILLAR = 8;
@@ -610,6 +608,17 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(sim.world.get(hut, Building).buildingType).toBe(UPGRADED_HUT);
     expect(sim.world.get(mason, CraftSelection).goods).toEqual([PILLAR]);
 
+    // The upgraded hut opens on a marble run, counted on the hut itself.
+    const run = { kind: 'setCraftGoods', entity: mason, goods: [ORNAMENT] } as const;
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([run]);
+    sim.enqueueSetup(run);
+    sim.step();
+    const cycles = CRAFT_OPENING_RUN_BY_BUILDING_ID.work_mason_hut_01?.cycles ?? 0;
+    sim.world.mut(hut, CompletedCycles).byGood.set(ORNAMENT, cycles - 1);
+    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
+
+    // With the run done, the mason alternates stone blocks and marble.
+    sim.world.mut(hut, CompletedCycles).byGood.set(ORNAMENT, cycles);
     const choice = { kind: 'setCraftGoods', entity: mason, goods: [PILLAR, ORNAMENT] } as const;
     expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([choice]);
     sim.enqueueSetup(choice);

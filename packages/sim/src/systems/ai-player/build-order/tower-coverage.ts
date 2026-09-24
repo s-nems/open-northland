@@ -8,7 +8,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
 import { buildingSpotAccept } from './placement.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
@@ -28,44 +28,69 @@ export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
  *  last building. */
 const TOWER_OUTSKIRTS_PUSH_NODES = 6;
 
+/** Which buildings a coverage entry spreads, and how far each one reaches, in world-metric nodes. */
+export interface Coverage {
+  readonly by: 'tower' | 'store';
+  readonly radius: number;
+}
+
+export function coverageOf(
+  entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
+): Coverage {
+  return entry.kind === 'towerCoverage'
+    ? { by: 'tower', radius: entry.radius ?? TOWER_DEFENCE_RADIUS_NODES }
+    : { by: 'store', radius: entry.radius };
+}
+
 /**
  * The first owned building (canonical ascending id) outside every coverage circle, or null when the
- * settlement stands covered. Circle centres are the seat's base plus its towers in any construction
- * state, so coverage arrives with the site rather than with the finished tower.
+ * settlement stands covered. Circle centres are the seat's base plus its towers (or its stores) in any
+ * construction state, so coverage arrives with the site rather than with the finished building. Store
+ * coverage passes over the towers: they ring the settlement's edge and would pull warehouses out to it.
  */
 export function firstUncoveredBuilding(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
+  coverage: Coverage,
 ): Entity | null {
   const index = contentIndex(ctx.content);
   const base = seatBaseOf(world, ctx, player);
   const centres: HalfCellNode[] = [];
   for (const e of owned) {
-    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
-    if (e !== base && (id === undefined || !TOWER_CONTENT_IDS.includes(id))) continue;
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    const centre =
+      coverage.by === 'tower'
+        ? type !== undefined && TOWER_CONTENT_IDS.includes(type.id)
+        : type?.kind === 'storage';
+    if (e !== base && !centre) continue;
     const node = anchorNodeOf(world, e);
     if (node !== null) centres.push(node);
   }
   for (const e of owned) {
+    if (
+      coverage.by === 'store' &&
+      index.buildings.get(world.get(e, Building).buildingType)?.kind === 'tower'
+    ) {
+      continue;
+    }
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
-    const covered = centres.some((c) =>
-      withinNodeRadius(c.hx, c.hy, node.hx, node.hy, TOWER_DEFENCE_RADIUS_NODES),
-    );
+    const covered = centres.some((c) => withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius));
     if (!covered) return e;
   }
   return null;
 }
 
 /**
- * The spot the next tower builds on, or null to stall the entry. The accept combines two metrics:
+ * The spot the next covering building goes on, or null to stall the entry: a tower is seeded just past the
+ * target, out from the settlement, a warehouse on the target itself. The accept combines two metrics:
  * world-metric coverage of the target and the Manhattan anchor disc. It needs the full ring budget
  * because the world metric is anisotropic (34 px E/W against 19 px N/S), so a covering node can sit
  * almost twice the coverage radius in rows from the target.
  */
-export function towerPlacementSpot(
+export function coveragePlacementSpot(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -74,15 +99,17 @@ export function towerPlacementSpot(
   anchor: HalfCellNode,
   type: BuildingType,
   target: Entity,
+  coverage: Coverage,
 ): HalfCellNode | null {
   const targetNode = anchorNodeOf(world, target);
   if (targetNode === null) return null;
   const centroid = anchorCentroid(world, owned) ?? targetNode;
-  const seed = outwardNode(centroid, targetNode, TOWER_OUTSKIRTS_PUSH_NODES);
+  const seed =
+    coverage.by === 'tower' ? outwardNode(centroid, targetNode, TOWER_OUTSKIRTS_PUSH_NODES) : targetNode;
   const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId);
   return firstRingNode(seed.hx, seed.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
     if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
-    if (!withinNodeRadius(x, y, targetNode.hx, targetNode.hy, TOWER_DEFENCE_RADIUS_NODES)) return false;
+    if (!withinNodeRadius(x, y, targetNode.hx, targetNode.hy, coverage.radius)) return false;
     return accept(x, y);
   });
 }

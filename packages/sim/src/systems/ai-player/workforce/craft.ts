@@ -1,5 +1,12 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, CraftSelection, JobAssignment, Settler } from '../../../components/index.js';
+import {
+  Building,
+  CompletedCycles,
+  CraftSelection,
+  JobAssignment,
+  Settler,
+  UnderConstruction,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -38,6 +45,16 @@ export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly
   work_coin_mint: [['coin'], ['amulet_defense'], ['amulet_defense'], ['amulet_defense']],
 };
 
+/** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only
+ *  `good` until that building has finished `cycles` of it, then the seat lists apply. Tiles and marble come
+ *  only from these tiers and the next bills wait on both. */
+export const CRAFT_OPENING_RUN_BY_BUILDING_ID: Readonly<
+  Record<string, { readonly good: string; readonly cycles: number }>
+> = {
+  work_pottery_01: { good: 'tile', cycles: 5 },
+  work_mason_hut_01: { good: 'ornament', cycles: 5 },
+};
+
 /** Workplace types whose short crew works every listed line instead of the first seat's: there each line
  *  is a herd, and one left untended while the pool is short dies out (authored). */
 const SHORT_CREW_WORKS_EVERY_LINE: ReadonlySet<string> = new Set(['work_animal_farm']);
@@ -46,6 +63,8 @@ interface RestrictedCrew {
   readonly type: BuildingType;
   readonly restriction: readonly (readonly string[])[];
   readonly crew: Entity[];
+  /** Each crew member's workplace, index for index. */
+  readonly workplaces: Entity[];
 }
 
 /**
@@ -71,20 +90,28 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
     const seated = crews.get(building.buildingType);
     if (seated !== undefined) {
       seated.crew.push(e);
+      seated.workplaces.push(assignment.workplace);
       continue;
     }
     const type = index.buildings.get(building.buildingType);
     if (type === undefined) continue;
     const restriction = CRAFT_RESTRICTIONS_BY_BUILDING_ID[type.id];
     if (restriction === undefined) continue;
-    crews.set(building.buildingType, { type, restriction, crew: [e] });
+    crews.set(building.buildingType, { type, restriction, crew: [e], workplaces: [assignment.workplace] });
   }
-  for (const { type, restriction, crew } of crews.values()) {
+  for (const { type, restriction, crew, workplaces } of crews.values()) {
     const produced = new Set(type.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
     const lines = new Set(restriction.map((listed) => listed.join()));
     const union = crew.length < lines.size && SHORT_CREW_WORKS_EVERY_LINE.has(type.id);
     for (const [seat, e] of crew.entries()) {
-      const listed = union ? restriction.flat() : (restriction[seat % restriction.length] ?? []);
+      const workplace = workplaces[seat];
+      const opening = workplace === undefined ? null : openingRun(world, ctx, workplace, type);
+      const listed =
+        opening !== null
+          ? [opening]
+          : union
+            ? restriction.flat()
+            : (restriction[seat % restriction.length] ?? []);
       const goods = [
         ...new Set(
           listed
@@ -99,4 +126,21 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
     }
   }
   return commands;
+}
+
+/**
+ * The good `workplace`'s opening run still wants, or null once the run is done or its type has none. The
+ * first look opts the building into {@link CompletedCycles}, so its count starts with the crew's first
+ * cycle.
+ */
+function openingRun(world: World, ctx: SystemContext, workplace: Entity, type: BuildingType): string | null {
+  const run = CRAFT_OPENING_RUN_BY_BUILDING_ID[type.id];
+  const good = run === undefined ? undefined : goodTypeByContentId(ctx.content, run.good);
+  if (run === undefined || good === undefined || world.has(workplace, UnderConstruction)) return null;
+  const tally = world.tryGet(workplace, CompletedCycles);
+  if (tally === undefined) {
+    world.add(workplace, CompletedCycles, { byGood: new Map() });
+    return run.good;
+  }
+  return (tally.byGood.get(good.typeId) ?? 0) < run.cycles ? run.good : null;
 }

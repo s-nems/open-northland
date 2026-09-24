@@ -6,7 +6,8 @@ import { realMapPath, realMapWorld } from './real-map-world.js';
 
 const { Building, JobAssignment, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
   components;
-const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET, isHunterJob } = systems;
+const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET, isHunterJob, MAX_ACTIVE_CONSTRUCTION_SITES } =
+  systems;
 
 /** The decoded map under test - a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
@@ -45,7 +46,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
       else if (sim.world.get(e, Building).buildingType === hqType) hq = e;
     }
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
-    expect(sites).toBe(1); // one site at a time (the concurrent-construction cap)
+    expect(sites).toBe(MAX_ACTIVE_CONSTRUCTION_SITES); // the concurrent-construction cap, filled at once
     // The opening hunt: exactly one man employed on the headquarters' hunter slot, the real join
     // behind it (a hunter trade, a hunter seat on the authored HQ) proven by the seat acting on it.
     const hunters = [...sim.world.query(Settler, JobAssignment)].filter(

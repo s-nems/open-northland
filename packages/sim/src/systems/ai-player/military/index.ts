@@ -25,7 +25,14 @@ export {
 } from './defence/index.js';
 export { ASSAULT_RING_RADIUS_NODES, RALLY_HOLD_RADIUS_NODES, WAVE_MIN_SOLDIERS } from './muster.js';
 export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
-export { LATE_WAVE, OPENING_WAVE, WAVE_GATHER_TICKS, WAVE_RAMP_TICKS, waveBandAt } from './plan.js';
+export {
+  LATE_WAVE,
+  OPENING_WAVE,
+  PEACE_TICKS,
+  WAVE_GATHER_TICKS,
+  WAVE_RAMP_TICKS,
+  waveBandAt,
+} from './plan.js';
 
 /**
  * One decision for the seat's fighting men, home before abroad: the free fighters are enlisted, the

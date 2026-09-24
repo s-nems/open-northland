@@ -28,6 +28,7 @@ import {
   STOCK_TOP_TYPE,
   spawnMen,
   TOOL_IRON,
+  TOWER_TYPE,
   VIKING,
   WELL_TYPE,
   WOMAN,
@@ -78,7 +79,7 @@ describe('the full strategic registry - determinism and replay', () => {
     // 5-unit deposit would run dry long before the list closes.
     placeResources(sim, Object.values(RESOURCE_SPOTS), 40);
     // The crew covers the ladder's essentials - the collectors (with top-ups), the scout, the
-    // minimum staffing of every workshop the list raises, and the eight-builder reserve that
+    // minimum staffing of every workshop the list raises, and the builder reserve that
     // actually raises it - with enough left over to reach the first target-tier posts. The rest
     // waits for grown sons, which this run doesn't simulate. The list closes once the cadenced
     // gathering has fed every site; the budget keeps slack without dragging the suite (per-tick cost
@@ -92,8 +93,8 @@ describe('the full strategic registry - determinism and replay', () => {
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, three
     // TOP-tier homes (the tail's further homes name a tier above this content set's chain, so they
     // skip here), the upgraded bakery plus the three direct-placed level-2 bakeries, two breweries,
-    // the joinery, the barracks, and both outskirts warehouses (every building sits inside the HQ's
-    // coverage circle, so no tower is needed).
+    // the joinery, the barracks, and the three outskirts warehouses. Every building sits inside the HQ's
+    // opening coverage circle, so only the late tail's denser ring raises towers.
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
       [
         HOME_TOP_TYPE,
@@ -112,12 +113,15 @@ describe('the full strategic registry - determinism and replay', () => {
         BARRACKS_TYPE,
         STOCK_TOP_TYPE,
         STOCK_TOP_TYPE,
+        STOCK_TOP_TYPE,
+        TOWER_TYPE,
+        TOWER_TYPE,
       ].sort((a, b) => a - b),
     );
     // The crew clears the reserve, so the farm reaches its target-tier hands and the bakery keeps
     // its carrier; the joinery's joiner was locked onto iron tools; the gated iron collector was
     // hired once the list reached its entry (the tiny fixture patch is long harvested dry by now,
-    // so the proof is the logged command); and the builder crew never exceeds its cap of eight.
+    // so the proof is the logged command); and the builder crew never exceeds its reserve.
     const farm = entityOfBuilding(sim, FARM_TYPE);
     const posts = [...sim.world.query(Settler, JobAssignment)].map((e) => ({
       workplace: sim.world.get(e, JobAssignment).workplace,

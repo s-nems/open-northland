@@ -7,6 +7,7 @@ export {
   BASE_REPLACEMENT_ENTRY,
   type BuildOrderEntry,
   DEFAULT_BUILD_ORDER,
+  MAX_ACTIVE_CONSTRUCTION_SITES,
   TOWER_CONTENT_IDS,
 } from './ai-player/build-order/index.js';
 // The scripted handlers' round, so a real-content probe can step to a seat's turn.

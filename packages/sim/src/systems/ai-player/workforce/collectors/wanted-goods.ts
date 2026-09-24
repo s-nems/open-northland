@@ -1,13 +1,20 @@
 import type { ContentSet } from '@open-northland/data';
-import { AiPlayer, aiPlayerEntity, Settler, StalledPlacement } from '../../../../components/index.js';
+import {
+  AiPlayer,
+  aiPlayerEntity,
+  Building,
+  JobAssignment,
+  Settler,
+  StalledPlacement,
+} from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
-import { isFighterJob } from '../../../readviews/index.js';
+import { isCarrierJob } from '../../../stores/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
-import { goodTypeByContentId } from '../../content-lookup.js';
+import { buildingTypeByContentId, goodTypeByContentId } from '../../content-lookup.js';
 import { ownedSettlers } from '../../seat-roster.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
@@ -15,14 +22,30 @@ import { ownedSettlers } from '../../seat-roster.js';
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
 /** How many flag gatherers the plan keeps per good, by stable content id; an unlisted good keeps
- *  {@link DEFAULT_COLLECTOR_TARGET}. Authored: iron runs three because the plan ends on two smithies
- *  and an iron-tool joinery. The first post is guaranteed, the rest best-effort. */
+ *  {@link DEFAULT_COLLECTOR_TARGET}. Authored: iron runs three for the first two smithies and the
+ *  iron-tool joinery. The first post is guaranteed, the rest best-effort. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
   iron: 3,
 };
 export const DEFAULT_COLLECTOR_TARGET = 1;
+
+/** A good whose gatherers grow with the crew working it up: one more per `per` operators of `building`
+ *  beyond its first `from`. */
+interface CollectorGrowth {
+  readonly building: string;
+  readonly from: number;
+  readonly per: number;
+}
+
+/** Collector growth by stable good id (authored). Two smithies' four smiths run on the base iron target,
+ *  and each further pair of smiths brings one more iron gatherer; the second potter's crockery brings a
+ *  second clay gatherer. */
+export const COLLECTOR_GROWTH_BY_GOOD_ID: Readonly<Record<string, CollectorGrowth>> = {
+  iron: { building: 'work_smithy_01', from: 4, per: 2 },
+  mud: { building: 'work_pottery_01', from: 1, per: 1 },
+};
 
 /** How many collect-anything gatherers (a flag with no good filter) the seat keeps, at the lowest
  *  hiring priority (authored). */
@@ -34,17 +57,13 @@ export const CIVILIANS_PER_CLEARING_COLLECTOR = 5;
 export const MAX_CLEARING_COLLECTORS = 10;
 
 /** The extra gatherers a stalled placement calls for, or 0 while the build order places freely or is
- *  switched off. The
- *  count follows the civilians each decision, so it grows with the settlement while the stall lasts. */
-export function clearingCollectors(world: World, ctx: SystemContext, player: number): number {
+ *  switched off. The count follows the seat's `civilians` each decision, so it grows with the settlement
+ *  while the stall lasts. */
+export function clearingCollectors(world: World, player: number, civilians: number): number {
   const carrier = aiPlayerEntity(world, player);
   if (carrier === null || !world.has(carrier, StalledPlacement)) return 0;
   // Only the build order clears the record, so a seat whose script switched it off keeps a stale one.
   if (!(world.tryGet(carrier, AiPlayer)?.modules.houseBuild ?? false)) return 0;
-  let civilians = 0;
-  for (const e of ownedSettlers(world, player)) {
-    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) civilians++;
-  }
   return Math.min(
     MAX_CLEARING_COLLECTORS,
     Math.max(1, Math.floor(civilians / CIVILIANS_PER_CLEARING_COLLECTOR)),
@@ -91,9 +110,12 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order. A good missing from the content set or with no harvest trade is skipped. */
+ *  plan order, each target raised by its {@link COLLECTOR_GROWTH_BY_GOOD_ID} row. A good missing from the
+ *  content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
+  world: World,
   ctx: SystemContext,
+  player: number,
   order: readonly BuildOrderEntry[],
   statuses: readonly EntryStatus[],
 ): WantedGood[] {
@@ -108,10 +130,33 @@ export function wantedCollectorGoods(
     if (good === undefined || harvestAtomic === undefined) continue; // not in this content set
     const job = harvestJobFor(ctx, harvestAtomic);
     if (job === null) continue;
-    const target = COLLECTOR_TARGET_BY_GOOD_ID[goodId] ?? DEFAULT_COLLECTOR_TARGET;
-    wanted.push({ good, harvestAtomic, job, target });
+    const base = COLLECTOR_TARGET_BY_GOOD_ID[goodId] ?? DEFAULT_COLLECTOR_TARGET;
+    const growth = COLLECTOR_GROWTH_BY_GOOD_ID[goodId];
+    const extra =
+      growth === undefined
+        ? 0
+        : Math.floor(
+            Math.max(0, workshopOperators(world, ctx, player, growth.building) - growth.from) / growth.per,
+          );
+    wanted.push({ good, harvestAtomic, job, target: base + extra });
   }
   return wanted;
+}
+
+/** The operators every building of the content id employs across the seat: its crafters, not its carriers
+ *  or gatherers. */
+function workshopOperators(world: World, ctx: SystemContext, player: number, buildingId: string): number {
+  const type = buildingTypeByContentId(ctx.content, buildingId);
+  if (type === undefined) return 0;
+  const index = contentIndex(ctx.content);
+  let operators = 0;
+  for (const e of ownedSettlers(world, player)) {
+    const workplace = world.tryGet(e, JobAssignment)?.workplace;
+    if (workplace === undefined || world.tryGet(workplace, Building)?.buildingType !== type.typeId) continue;
+    const job = world.get(e, Settler).jobType;
+    if (job !== null && !isCarrierJob(ctx, job) && !index.harvestJobs.has(job)) operators++;
+  }
+  return operators;
 }
 
 /** Whether this settler's accrued XP clears the good's `needforgood` thresholds - the same gate
