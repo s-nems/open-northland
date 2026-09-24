@@ -74,11 +74,9 @@ function drivePair(
     cancelWedding(world, a);
     return;
   }
-  const wa = world.mut(a, Wedding);
-  const wb = world.mut(b, Wedding);
   const busyA = atomicHoldsSettler(world, a);
   const busyB = atomicHoldsSettler(world, b);
-  if (wa.kissing) {
+  if (world.get(a, Wedding).kissing) {
     // The planner leaves a Wedding settler alone, so the kiss atomics run to completion.
     if (busyA || busyB) return;
     world.remove(a, Wedding);
@@ -115,8 +113,8 @@ function drivePair(
       atomicDuration(ctx.content, world.get(b, Settler), KISSED_ATOMIC_ID),
     );
     startPairedAtomics(world, a, KISS_ATOMIC_ID, b, KISSED_ATOMIC_ID, duration);
-    wa.kissing = true;
-    wb.kissing = true;
+    world.mut(a, Wedding).kissing = true;
+    world.mut(b, Wedding).kissing = true;
     return;
   }
   // Apart: the lower id walks and the higher waits, whoever issued `marry` (canonical).

@@ -86,8 +86,8 @@ function drivePair(
   a: Entity,
   b: Entity,
 ): void {
-  const ca = world.mut(a, Chat);
-  const cb = world.mut(b, Chat);
+  // Read first: a pair mid-walk or mid-round changes nothing, and a write would mark both as touched.
+  const ca = world.get(a, Chat);
   const sa = world.tryGet(a, Settler);
   const sb = world.tryGet(b, Settler);
   if (sa === undefined || sb === undefined) {
@@ -112,10 +112,10 @@ function drivePair(
       endChat(world, ctx.tick, a);
       return;
     }
-    ca.talking = false;
-    cb.talking = false;
-    ca.speaks = !ca.speaks;
-    cb.speaks = !cb.speaks;
+    for (const half of [world.mut(a, Chat), world.mut(b, Chat)]) {
+      half.talking = false;
+      half.speaks = !half.speaks;
+    }
     // Falls through: the next round starts this same tick.
   }
   if (world.has(a, CurrentAtomic) || world.has(b, CurrentAtomic)) return; // a grabbed half finishes its swing
@@ -138,8 +138,8 @@ function drivePair(
       atomicDuration(ctx.content, sl, LISTEN_ATOMIC_ID),
     );
     startPairedAtomics(world, talker, TALK_ATOMIC_ID, listener, LISTEN_ATOMIC_ID, duration);
-    ca.talking = true;
-    cb.talking = true;
+    world.mut(a, Chat).talking = true;
+    world.mut(b, Chat).talking = true;
     return;
   }
   // Apart: the seeker walks, the sought half waits; an unreachable partner ends the chat.

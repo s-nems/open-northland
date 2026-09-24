@@ -210,6 +210,19 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(listenAtomic.targetEntity).toBe(a);
   });
 
+  it('leaves the Chat records unwritten while a round plays out', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    gossiper(sim, 2, 0, LONELY);
+    gossiperBeside(sim, 2, 0, fx.fromInt(0));
+    plannerSystem(sim.world, ctxOf(sim));
+    gossipSystem(sim.world, ctxOf(sim)); // the round starts
+    const before = sim.world.componentValueGeneration(Chat);
+
+    gossipSystem(sim.world, ctxOf(sim)); // mid-round: nothing changes
+
+    expect(sim.world.componentValueGeneration(Chat)).toBe(before);
+  });
+
   it('a round fires the clips’ authored voice cues as atomicSound events (talker frame 0, listener mid-clip)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 2, 0, LONELY);

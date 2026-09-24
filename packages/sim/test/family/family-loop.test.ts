@@ -295,6 +295,20 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBe(man());
   });
 
+  it('leaves the Wedding records unwritten while the pair walks together', () => {
+    const { sim, woman, man } = familySim(29);
+    sim.enqueueSetup({ kind: 'marry', entity: woman() });
+    sim.run(2);
+    expect(sim.world.has(woman(), Wedding)).toBe(true);
+    const before = sim.world.componentValueGeneration(Wedding);
+
+    sim.step();
+
+    const [a, b] = [sim.world.get(woman(), Position), sim.world.get(man(), Position)];
+    expect(nodesAdjacent(nodeOfPosition(a.x, a.y), nodeOfPosition(b.x, b.y))).toBe(false);
+    expect(sim.world.componentValueGeneration(Wedding)).toBe(before);
+  });
+
   it('a widow may remarry: the spouse dying removes the survivor Marriage', () => {
     const { sim, woman, man } = familySim(7);
     sim.enqueueSetup({ kind: 'marry', entity: woman() });
