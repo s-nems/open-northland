@@ -30,7 +30,13 @@ import type { TakenFlagNodes } from './flag-spots.js';
 import { trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
-import { BUILDER_CAP, builderCap, reserveBuilders, staffBuildings } from './staffing.js';
+import {
+  BUILDER_CAP,
+  builderCap,
+  releaseSurplusCarriers,
+  reserveBuilders,
+  staffBuildings,
+} from './staffing.js';
 import { buildStaffingTally } from './tally.js';
 
 export {
@@ -87,6 +93,7 @@ function runWorkforce(
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
+    ...releaseSurplusCarriers(world, ctx, player, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob, builderCap(civilians)), // construction never starves
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.

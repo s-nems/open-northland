@@ -119,19 +119,26 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
   return commands;
 }
 
+/** Whether `workplace`'s opening run is still unfinished; false for a type without one. */
+export function openingRunPending(
+  world: World,
+  ctx: SystemContext,
+  workplace: Entity,
+  type: BuildingType,
+): boolean {
+  const run = CRAFT_OPENING_RUN_BY_BUILDING_ID[type.id];
+  const good = run === undefined ? undefined : goodTypeByContentId(ctx.content, run.good);
+  if (run === undefined || good === undefined) return false;
+  return (world.tryGet(workplace, CompletedCycles)?.byGood.get(good.typeId) ?? 0) < run.cycles;
+}
+
 /**
  * The good `workplace`'s opening run still wants, or null once the run is done or its type has none. The
  * first look opts the building into {@link CompletedCycles}, so its count starts with the crew's first
  * cycle.
  */
 function openingRun(world: World, ctx: SystemContext, workplace: Entity, type: BuildingType): string | null {
-  const run = CRAFT_OPENING_RUN_BY_BUILDING_ID[type.id];
-  const good = run === undefined ? undefined : goodTypeByContentId(ctx.content, run.good);
-  if (run === undefined || good === undefined || world.has(workplace, UnderConstruction)) return null;
-  const tally = world.tryGet(workplace, CompletedCycles);
-  if (tally === undefined) {
-    world.add(workplace, CompletedCycles, { byGood: new Map() });
-    return run.good;
-  }
-  return (tally.byGood.get(good.typeId) ?? 0) < run.cycles ? run.good : null;
+  if (world.has(workplace, UnderConstruction) || !openingRunPending(world, ctx, workplace, type)) return null;
+  if (!world.has(workplace, CompletedCycles)) world.add(workplace, CompletedCycles, { byGood: new Map() });
+  return CRAFT_OPENING_RUN_BY_BUILDING_ID[type.id]?.good ?? null;
 }

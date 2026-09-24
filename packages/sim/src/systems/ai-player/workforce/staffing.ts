@@ -1,11 +1,12 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, Settler } from '../../../components/index.js';
+import { Building, Carrying, CurrentAtomic, JobAssignment, Settler } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { isBuilt, ownedBuildings } from '../seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../seat-roster.js';
+import { openingRunPending } from './craft.js';
 import type { SpareForce } from './pool.js';
 import { incrementStaffing, type StaffingTally } from './tally.js';
 
@@ -49,8 +50,13 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
   work_bakery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   work_joinery_01: { operatorTarget: 2 },
-  // The second potter only turns crockery (CRAFT_RESTRICTIONS_BY_BUILDING_ID), so he waits for surplus.
-  work_pottery_01: { operatorSurplus: 2 },
+  // The first potter and mason work alone, so a carrier hauls for them; the upgraded tiers plan none and
+  // hand him back (releaseSurplusCarriers). The pottery's second potter is a minimum post, ahead of the
+  // builder reserve that would otherwise keep the freed man, but only once the opening run is done
+  // (staffBuildings).
+  work_pottery_00: { carrierMin: 1, carrierTarget: 1 },
+  work_mason_hut_00: { carrierMin: 1, carrierTarget: 1 },
+  work_pottery_01: { operatorMin: 2, operatorTarget: 2 },
   work_sewery_01: { operatorTarget: 2 },
   work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
   work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
@@ -120,12 +126,16 @@ export function staffBuildings(
     if (type === undefined) continue;
     const staffing = staffingOf(type);
     if (staffing === null) continue;
-    const operatorWant =
+    const tierOperators =
       tier === 'min'
         ? staffing.operatorMin
         : tier === 'target'
           ? staffing.operatorTarget
           : (staffing.operatorSurplus ?? staffing.operatorTarget);
+    // A workshop on its opening run keeps to its first craftsman, so the run is not split.
+    const operatorWant = openingRunPending(world, ctx, building, type)
+      ? Math.min(tierOperators, 1)
+      : tierOperators;
     const carrierWant = tier === 'min' ? staffing.carrierMin : staffing.carrierTarget;
     for (const slot of type.workers) {
       const carrier = isCarrierJob(ctx, slot.jobType);
@@ -139,6 +149,43 @@ export function staffBuildings(
         commands.push({ kind: 'assignWorker', entity: spare, building, jobPriority: [slot.jobType] });
         incrementStaffing(tally, building, slot.jobType);
       }
+    }
+  }
+  return commands;
+}
+
+/**
+ * Hand back as builders the carriers a built workplace employs beyond its plan's carrier target, as after
+ * an upgrade into a tier that plans fewer. The lowest-id carriers keep their posts; a man mid-action or
+ * holding a load is left until he is free, since the trade change would cancel the one or drop the other.
+ */
+export function releaseSurplusCarriers(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  builderJob: number | null,
+): PlayerCommand[] {
+  if (builderJob === null) return [];
+  const index = contentIndex(ctx.content);
+  // Insertion follows the canonical settler walk, so the kept posts and the command order are deterministic.
+  const carriersByWorkplace = new Map<Entity, Entity[]>();
+  for (const e of ownedSettlers(world, player)) {
+    const workplace = world.tryGet(e, JobAssignment)?.workplace;
+    const job = world.get(e, Settler).jobType;
+    if (workplace === undefined || job === null || !isCarrierJob(ctx, job)) continue;
+    const carriers = carriersByWorkplace.get(workplace);
+    if (carriers === undefined) carriersByWorkplace.set(workplace, [e]);
+    else carriers.push(e);
+  }
+  const commands: PlayerCommand[] = [];
+  for (const [workplace, carriers] of carriersByWorkplace) {
+    if (!isBuilt(world, workplace)) continue;
+    const type = index.buildings.get(world.get(workplace, Building).buildingType);
+    const staffing = type === undefined ? null : staffingOf(type);
+    if (staffing === null) continue;
+    for (const e of carriers.slice(staffing.carrierTarget)) {
+      if (world.has(e, CurrentAtomic) || world.has(e, Carrying)) continue;
+      commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
     }
   }
   return commands;
