@@ -105,6 +105,10 @@ source of truth.
 - Snapshot at the normal runtime seam; do not clone or scan the full world again in individual HUD
   controls.
 - Cache decoded assets and joins by stable inputs.
+- Do not cache small images as one canvas each. Chrome backs every 2d canvas, `OffscreenCanvas`
+  included, with its own GPU surface until garbage collection; thousands of them exhaust macOS
+  surfaces and lose the map's WebGL context. Pack them onto a shared page or keep `ImageBitmap`s
+  and `close()` them on eviction.
 - Keep viewport-driven work screen-bounded.
 - Accumulate events from every sim step in a display frame before handing them to audio or effects.
 - Test pure layout, content joins, and input decisions without a browser where possible.

@@ -18,6 +18,7 @@ export {
   FrameStats,
   type FrameStatsReport,
 } from './frame-stats.js';
+export { logGpuContextLoss } from './gpu-context.js';
 export { heapMb } from './heap.js';
 export { framePhaseEmitter, installSessionInstruments, type PhaseEmitter } from './instruments.js';
 export {

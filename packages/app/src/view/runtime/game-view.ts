@@ -29,6 +29,7 @@ import {
   currentDiagGameSession,
   FrameStats,
   installSessionInstruments,
+  logGpuContextLoss,
   setDiagGameSession,
 } from '../../diag/index.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
@@ -213,6 +214,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
   const lifetime = new AbortController();
+  logGpuContextLoss(canvas, () => sim.tick, lifetime.signal);
   const teardownWorld = createWorldTeardown({
     app,
     canvas,
