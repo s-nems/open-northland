@@ -2,7 +2,6 @@ import {
   Building,
   FarmAnimal,
   Health,
-  Livestock,
   Owner,
   ownerOf,
   Position,
@@ -192,9 +191,4 @@ function birthParentOf(world: World, ctx: SystemContext, farm: Entity, speciesGo
     if (adults.length > 1) break;
   }
   return adults[1] ?? adults[0] ?? null;
-}
-
-/** Whether `animal` is claimed livestock no farm holds - the stock a breeder may adopt. */
-export function isFreeClaimedAnimal(world: World, animal: Entity): boolean {
-  return world.has(animal, Livestock) && world.has(animal, Owner) && !world.has(animal, FarmAnimal);
 }

@@ -3,7 +3,6 @@ import {
   CARRY_CAPACITY,
   FarmAnimal,
   JobAssignment,
-  Livestock,
   MoveGoal,
   ownerOf,
   Position,
@@ -22,11 +21,11 @@ import { removeSettlerSilently } from '../../../lifecycle/cleanup.js';
 import {
   attachToFarm,
   farmStands,
+  freeStockOf,
   herdedFarms,
   herdOf,
   herdRoom,
   isAdultAnimal,
-  isFreeClaimedAnimal,
   recountHerdRows,
   slayDepositGoods,
   speciesGoodOf,
@@ -164,8 +163,7 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
   const side = terrain.componentOf(door);
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
-  for (const animal of world.query(Livestock, Position)) {
-    if (!isFreeClaimedAnimal(world, animal) || ownerOf(world, animal) !== owner) continue;
+  for (const animal of freeStockOf(world, owner)) {
     const good = speciesGoodOf(world, ctx, animal);
     if (good === null || room.get(good) !== true) continue;
     const node = entityNode(world, terrain, animal);

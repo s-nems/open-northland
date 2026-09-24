@@ -7,6 +7,7 @@ export {
   livestockLeashOf,
 } from './assignment.js';
 export { claimableBy, LIVESTOCK_CAPTURE_RANGE, livestockCaptureSystem } from './capture.js';
+export { freeStockOf } from './free-stock.js';
 export { ANIMAL_ADULT_AGE_TICKS, livestockGrowthSystem } from './growth.js';
 export {
   attachToFarm,
@@ -14,7 +15,6 @@ export {
   farmStands,
   herdRoom,
   isAdultAnimal,
-  isFreeClaimedAnimal,
   recountHerdRows,
   type SpeciesHerd,
   speciesGoodOf,
