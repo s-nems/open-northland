@@ -3,8 +3,11 @@ import {
   addPerson,
   CurrentAtomic,
   DeferredOrder,
+  EquipOrder,
   ErectSignpostOrder,
+  ExploreOrder,
   Felling,
+  FOG_MODE,
   MoveGoal,
   Owner,
   PlayerOrder,
@@ -12,6 +15,7 @@ import {
   Resource,
   Settler,
   Signpost,
+  Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
@@ -41,6 +45,7 @@ const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
 const HARVEST_ATOMIC = 24;
 const WOOD = 1;
+const SHOES = 8; // fixture boots-class wearable
 const EAT_TICKS = 5; // fixture `viking_eat` length
 const SLEEP_TICKS = 6; // fixture `viking_sleep` length
 
@@ -164,6 +169,45 @@ describe('setJob during a non-interruptible atomic', () => {
     expect(sim.world.has(e, MoveGoal)).toBe(false);
     expect(sim.world.has(e, PlayerOrder)).toBe(false);
     expect(sim.world.has(e, DeferredOrder)).toBe(false);
+  });
+});
+
+describe('a later order that executes at once', () => {
+  it('drops the parked walk, so an explore order outlives the meal it was given during', () => {
+    const sim = freshSim(32, 8);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    const scout = ownedSettler(sim, 3, 1, SCOUT);
+    startAtomic(sim, scout, EAT_ATOMIC, EAT_TICKS);
+
+    orderMove(sim, scout, 8, 1);
+    sim.step();
+    expect(sim.world.get(scout, DeferredOrder).command.kind).toBe('moveUnit');
+    const far = cellAnchorNode(28, 6);
+    sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: far.hx, y: far.hy });
+    sim.step();
+    expect(sim.world.has(scout, DeferredOrder)).toBe(false);
+
+    sim.run(EAT_TICKS);
+    expect(sim.world.has(scout, ExploreOrder)).toBe(true); // not cancelled by the superseded walk
+  });
+
+  it('drops the parked walk, so an equip errand is not cancelled the tick it is stamped', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 3, 1, WOODCUTTER);
+    const pile = sim.world.create();
+    sim.world.add(pile, Position, { x: fx.fromInt(6), y: fx.fromInt(1) });
+    sim.world.add(pile, Stockpile, { amounts: new Map([[SHOES, 1]]) });
+    startAtomic(sim, e, EAT_ATOMIC, EAT_TICKS);
+
+    orderMove(sim, e, 8, 1);
+    sim.step();
+    expect(sim.world.get(e, DeferredOrder).command.kind).toBe('moveUnit');
+    sim.enqueueSetup({ kind: 'equipGood', entity: e, group: 'boots', slot: 0, goodType: SHOES });
+    sim.step();
+
+    expect(sim.world.has(e, DeferredOrder)).toBe(false);
+    expect(sim.world.has(e, EquipOrder)).toBe(true);
+    expect(sim.world.has(e, PlayerOrder)).toBe(false);
   });
 });
 
