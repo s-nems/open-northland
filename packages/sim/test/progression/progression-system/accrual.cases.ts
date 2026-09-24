@@ -9,7 +9,12 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { atomicSystem, grantCarryExperience, grantProductionExperience } from '../../../src/systems/index.js';
+import {
+  atomicSystem,
+  grantCarryExperience,
+  grantProductionExperience,
+  MAX_EXPERIENCE_REPEATS,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import {
   CARPENTER,
@@ -50,6 +55,17 @@ describe('grantProductionExperience - one completed batch trains one operator', 
     const op = makeSettler(sim, CARPENTER);
     grantProductionExperience(sim.world, ctxOf(sim), 3, { kind: 'staffed', operators: [op] });
     expect(sim.world.get(op, Settler).experience.get(CARPENTER_GENERAL_TRACK)).toBe(100); // once, not thrice
+  });
+
+  it('stops at the track cap without writing the settler again', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const op = makeSettler(sim, CARPENTER);
+    const cap = 100 * MAX_EXPERIENCE_REPEATS; // carpenter_general experienceFactor times the repeat cap
+    sim.world.mut(op, Settler).experience.set(CARPENTER_GENERAL_TRACK, cap);
+    const generation = sim.world.componentValueGeneration(Settler);
+    grantProductionExperience(sim.world, ctxOf(sim), 1, { kind: 'staffed', operators: [op] });
+    expect(sim.world.get(op, Settler).experience.get(CARPENTER_GENERAL_TRACK)).toBe(cap);
+    expect(sim.world.componentValueGeneration(Settler)).toBe(generation);
   });
 
   it('is a no-op for an unstaffed-by-design workplace and a general-trackless profession', () => {

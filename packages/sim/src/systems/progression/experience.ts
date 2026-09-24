@@ -73,8 +73,10 @@ function accrueExperience(
 ): void {
   if (hasMissionBehaviour(world, settler, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE)) return;
   if (amount <= 0) return; // a zero-rate track must not plant a hash-visible bucket with no meaning
-  const experience = world.mut(settler, Settler).experience;
-  experience.set(trackId, Math.min(limit, (experience.get(trackId) ?? 0) + amount));
+  const held = world.get(settler, Settler).experience.get(trackId) ?? 0;
+  const next = Math.min(limit, held + amount);
+  if (next === held) return; // a capped track
+  world.mut(settler, Settler).experience.set(trackId, next);
   noteSettlerProgress(world, settler);
 }
 
@@ -95,11 +97,15 @@ export function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobEx
   return ctx.content.jobExperience.find((t) => t.jobType === jobType && t.goodTypes.length === 0);
 }
 
+/** One repeat on the general track of `jobType`, when the job trains one. */
+function accrueGeneralTrack(world: World, ctx: SystemContext, settler: Entity, jobType: number): void {
+  const track = generalTrackFor(ctx, jobType);
+  if (track !== undefined) accrueTrack(world, settler, track);
+}
+
 export function grantProfessionExperience(world: World, ctx: SystemContext, entity: Entity): void {
   const job = world.tryGet(entity, Settler)?.jobType;
-  if (job === null || job === undefined) return;
-  const track = generalTrackFor(ctx, job);
-  if (track !== undefined) accrueTrack(world, entity, track);
+  if (job !== null && job !== undefined) accrueGeneralTrack(world, ctx, entity, job);
 }
 
 /** Each completed batch trains one present operator in its general and product-specific tracks. */
@@ -116,10 +122,7 @@ export function grantProductionExperience(
     if (s === undefined || s.jobType === null || isCarrierJob(ctx, s.jobType)) continue;
     const product = products?.[index];
     if (product !== undefined) grantWorkExperience(world, ctx, op, product, 1);
-    else {
-      const track = generalTrackFor(ctx, s.jobType);
-      if (track !== undefined) accrueTrack(world, op, track);
-    }
+    else accrueGeneralTrack(world, ctx, op, s.jobType);
   }
 }
 
@@ -131,20 +134,16 @@ export function grantProductionExperience(
  */
 export function grantCarryExperience(world: World, ctx: SystemContext, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
-  if (s === undefined || s.jobType === null || !isCarrierJob(ctx, s.jobType)) return;
-  const track = generalTrackFor(ctx, s.jobType);
-  if (track === undefined) return;
-  accrueTrack(world, settler, track);
+  if (s !== undefined && s.jobType !== null && isCarrierJob(ctx, s.jobType))
+    accrueGeneralTrack(world, ctx, settler, s.jobType);
 }
 
 /** The trader's twin of {@link grantCarryExperience}: one landed cart delivery accrues the `trader
  *  general` track (reading: the original's trader gains job experience on each delivery). */
 export function grantTradeExperience(world: World, ctx: SystemContext, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
-  if (s === undefined || s.jobType === null || !isTraderJob(ctx.content, s.jobType)) return;
-  const track = generalTrackFor(ctx, s.jobType);
-  if (track === undefined) return;
-  accrueTrack(world, settler, track);
+  if (s !== undefined && s.jobType !== null && isTraderJob(ctx.content, s.jobType))
+    accrueGeneralTrack(world, ctx, settler, s.jobType);
 }
 
 /**
