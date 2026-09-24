@@ -5,6 +5,7 @@ import {
   extractHumanVoices,
   extractLandscapeGfx,
   extractPaletteIndex,
+  extractParticles,
   extractPatterns,
   extractPatternTransitions,
   extractSounds,
@@ -82,6 +83,8 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   const landscapeFile = 'Data/engine2d/inis/landscapes/landscapes.cif';
   const landscapeGfx = await loadCifTable(roots, landscapeFile, extractLandscapeGfx, []);
   const gatheringPipeline = buildGatheringPipeline(goods, landscapeGfx);
+  const particleFile = 'Data/engine2d/inis/particel/particel.cif';
+  const particles = await loadCifTable(roots, particleFile, extractParticles, []);
   const humanVoices = await loadCifTable(
     roots,
     'Data/engine2d/inis/humans/sounds.cif',
@@ -127,6 +130,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     gfxAtomics,
     gfxWalkAtomics,
     gfxInHousePrograms,
+    particles,
     vehicleGraphics,
     buildingBobs,
     constructionLayers,

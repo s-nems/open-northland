@@ -19,6 +19,7 @@ import {
 } from '../graphics/building-bobs.js';
 import { GfxInHouseProgram } from '../graphics/inhouse-anims.js';
 import { JobGraphics } from '../graphics/job-graphics.js';
+import { ParticleGfx } from '../graphics/particles.js';
 import { VehicleGraphics } from '../graphics/vehicle-graphics.js';
 import { GfxWalkAtomic } from '../graphics/walk-anims.js';
 import { LandscapeGfx, LandscapeType } from '../landscape/objects.js';
@@ -77,6 +78,8 @@ export const ContentSet = z.strictObject({
   gfxWalkAtomics: z.array(GfxWalkAtomic).default([]),
   /** `[gfxanimatomic]` `gfxanimmode 2` records: the indoor choreography per `(tribe, job, action)`. */
   gfxInHousePrograms: z.array(GfxInHouseProgram).default([]),
+  /** `[particel]` render-only sprites: shots in flight, their trails, impact smoke. */
+  particles: z.array(ParticleGfx).default([]),
   /** The resolved per-`(tribe, vehicleType)` vehicle body, palettes and frame tables. */
   vehicleGraphics: z.array(VehicleGraphics).default([]),
   buildingBobs: z.array(BuildingBob).default([]),

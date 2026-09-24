@@ -79,4 +79,5 @@ export {
   extractLandscapeGfx,
   extractTrianglePatternTypes,
 } from './ini/types/landscape.js';
+export { extractParticleGraphics, extractParticles } from './ini/types/particles.js';
 export { vehicleHouseByGood } from './ini/vehicle-type-codes.js';

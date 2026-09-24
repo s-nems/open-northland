@@ -87,6 +87,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         damage: indexedInts(sec, 'damagevalue'),
         hitSounds: indexedInts(sec, 'soundtype_Hit'),
         missSounds: indexedInts(sec, 'soundtype_NoHit'),
+        impactSmokeTicks: getInt(sec, 'createsmoke') === 1 ? getInt(sec, 'smokelifetime') : undefined,
         jobType: getInt(sec, 'jobtype'),
         goodType: goodTypeRaw === 0 ? undefined : goodTypeRaw,
         source: makeSource(src, 'weapontype'),

@@ -127,6 +127,9 @@ export const WeaponType = z.strictObject({
    * Only ranged rows carry it. A ground type with no entry lands silently.
    */
   missSounds: z.record(z.string(), z.number().int()).default({}),
+  /** `createsmoke 1` with `smokelifetime`: the ticks the smoke a landed shot raises where it comes down
+   *  lingers at most. Absent when the weapon raises none (only the catapults do). */
+  impactSmokeTicks: z.number().int().positive().optional(),
   jobType: TypeId.optional(),
   /** `goodtype` - the good that is this weapon; resolves into the good table. Source `goodtype 0` is the
    *  natural-weapon sentinel (a fist or claw, backed by no craftable good) and is captured as

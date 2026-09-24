@@ -8,6 +8,7 @@ import {
   extractJobChangeGraphics,
   extractLandscapeGraphics,
   extractPaletteIndex,
+  extractParticleGraphics,
   iniBytesToSections,
   type JobBaseGraphicsBinding,
   type PaletteAlias,
@@ -124,6 +125,13 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
     path: `${INIS}/landscapes/landscapes.cif`,
     encrypted: true,
     read: extractLandscapeGraphics,
+    dedupe: true,
+  },
+  /** The shots, trails and puffs the engine flies or stages (`Rock` in `ls_smoke` under `rock03`). */
+  {
+    path: `${INIS}/particel/particel.cif`,
+    encrypted: true,
+    read: extractParticleGraphics,
     dedupe: true,
   },
   /** The mod's readable human twin. */
