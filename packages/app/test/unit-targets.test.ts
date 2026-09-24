@@ -1,5 +1,5 @@
 import { buildSpriteScene, type DrawItem, ONE } from '@open-northland/render';
-import type { WorldSnapshot } from '@open-northland/sim';
+import { components, type WorldSnapshot } from '@open-northland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
@@ -301,5 +301,20 @@ describe('unit-controls targets over the renderer frame', () => {
 
     const commanded = targetsOver([]).ownedSettlersIn(new Set([indoor.id]));
     expect(commanded.map((t) => t.ref)).toEqual([indoor.id]);
+  });
+
+  it('never orders a settler a script put out of reach', () => {
+    const escort = {
+      id: 90_003,
+      components: {
+        Settler: {},
+        Owner: { player: HUMAN_PLAYER },
+        Position: { x: 5 * ONE, y: 7 * ONE },
+        MissionBehaviour: { flags: components.MISSION_BEHAVIOUR.NOT_CONTROLLABLE },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, escort] };
+
+    expect(targetsOver([]).ownedSettlersIn(new Set([escort.id]))).toEqual([]);
   });
 });

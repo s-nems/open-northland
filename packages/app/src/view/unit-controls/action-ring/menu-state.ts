@@ -14,7 +14,9 @@ import {
   isAdult,
   isBoundByMarriage,
   isFemale,
+  isJobLocked,
   isMarrying,
+  isPlayerControllable,
   marriageOf,
   pinnedSiteOf,
   regeneratesInWorld,
@@ -70,6 +72,11 @@ function tradeAssignable(e: SnapshotEntity): boolean {
   return isAdult(e) && !isFemale(e);
 }
 
+/** A settler whose trade an order may change: a script can fix a trade the player could otherwise set. */
+function tradeChangeable(e: SnapshotEntity): boolean {
+  return tradeAssignable(e) && !isJobLocked(e);
+}
+
 /** A married woman may order a child while her husband lives and no child of hers is still growing. */
 function canOrderChild(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   if (!isAdult(e) || !isFemale(e) || childOrderOf(e) !== undefined) return false;
@@ -112,6 +119,8 @@ function allows(
   id: ActionCommandId,
   several: boolean,
 ): boolean {
+  // The sim drops every player order for a unit a script put beyond the player's reach.
+  if (!isPlayerControllable(e)) return false;
   const job = settlerJobType(e) ?? null;
   switch (id) {
     case 'goTo':
@@ -139,7 +148,7 @@ function allows(
     case 'haveGirl':
       return canOrderChild(snapshot, e);
     case 'changeProfession':
-      return tradeAssignable(e);
+      return tradeChangeable(e);
     case 'changeEquipment':
       // The sim's `mayChangeEquipment`: a grown man who is no hero.
       return isAdult(e) && !isFemale(e) && !systems.isHeroJob(content, job);
@@ -164,7 +173,7 @@ function allows(
     case 'removeLearningPlace':
       return trainingHouseOf(e) !== undefined;
     case 'assignLearningPlace':
-      return tradeAssignable(e);
+      return tradeChangeable(e);
     case 'removeWorkPlace':
       return tradeAssignable(e) && workplaceOf(e) !== undefined;
     case 'assignWorkPlace':

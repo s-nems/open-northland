@@ -1,4 +1,4 @@
-import { entityById, type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
+import { components, entityById, type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -226,6 +226,22 @@ export function regeneratesInWorld(e: SnapshotEntity): boolean {
 /** A creature rather than a person: the {@link Settler} model covers both, only people carry `Person`. */
 export function isWildlife(e: SnapshotEntity): boolean {
   return isSettler(e) && e.components.Person === undefined;
+}
+
+function hasMissionBehaviour(e: SnapshotEntity, bits: number): boolean {
+  const behaviour = e.components.MissionBehaviour as { flags?: unknown } | undefined;
+  return ((num(behaviour?.flags) ?? 0) & bits) !== 0;
+}
+
+/** False once a script puts the unit beyond its player's orders: the sim drops every order a player
+ *  issues it, while its seat's AI keeps commanding it. */
+export function isPlayerControllable(e: SnapshotEntity): boolean {
+  return !hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.NOT_CONTROLLABLE);
+}
+
+/** A script fixed the settler's trade: the sim refuses a profession change, a lesson and a drill. */
+export function isJobLocked(e: SnapshotEntity): boolean {
+  return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.JOB_LOCKED);
 }
 
 /** The training house a settler walks to or drills at. */

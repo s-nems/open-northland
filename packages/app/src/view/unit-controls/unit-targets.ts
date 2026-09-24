@@ -7,7 +7,14 @@ import {
   tileToScreen,
 } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { gathererByFlag, isSettler, isWildlife, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
+import {
+  gathererByFlag,
+  isPlayerControllable,
+  isSettler,
+  isWildlife,
+  ownerPlayerOf,
+  positionOf,
+} from '../../game/snapshot.js';
 import { isHitTarget, type Pickable } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import type { FormationUnit } from './formation.js';
@@ -67,8 +74,9 @@ export interface UnitTargets {
    */
   wildlife(): Pickable[];
   /**
-   * The owned settlers among `refs`, in draw order. Bound to the selection rather than the screen, so it
-   * survives the camera panning away and reaches a settler standing inside a building.
+   * The owned settlers among `refs` that take the player's orders, in draw order. Bound to the selection
+   * rather than the screen, so it survives the camera panning away and reaches a settler standing inside
+   * a building.
    */
   ownedSettlersIn(refs: ReadonlySet<number>): FormationUnit[];
 }
@@ -261,6 +269,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const e of deps.snapshot().entities) {
         if (!refs.has(e.id) || !isSettler(e) || !pickableOwner(ownerPlayerOf(e))) continue;
         if (e.components.Livestock !== undefined) continue; // see the livestock note on the memo
+        if (!isPlayerControllable(e)) continue;
         const pos = positionOf(e);
         if (pos === undefined) continue;
         // No elevation lift and no cull: this set pairs units to formation slots against each other

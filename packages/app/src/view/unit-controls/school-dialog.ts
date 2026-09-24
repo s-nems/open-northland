@@ -1,7 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
 import {
-  components,
   type Entity,
   entityById,
   type PlayerCommand,
@@ -130,12 +129,7 @@ export function schoolStudents(
 ): number[] {
   return orderRecipients(content, snapshot, ids, 'assignLearningPlace').filter((id) => {
     const learner = entityById(snapshot, id);
-    if (learner === undefined) return false;
-    const flags = (learner.components.MissionBehaviour as { flags?: number } | undefined)?.flags ?? 0;
-    return (
-      !systems.isHeroJob(content, settlerJobType(learner) ?? null) &&
-      (flags & components.MISSION_BEHAVIOUR.JOB_LOCKED) === 0
-    );
+    return learner !== undefined && !systems.isHeroJob(content, settlerJobType(learner) ?? null);
   });
 }
 

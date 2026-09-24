@@ -47,6 +47,7 @@ interface Opts {
   readonly noRegeneration?: boolean;
   readonly tribe?: number;
   readonly unplaced?: boolean;
+  readonly behaviour?: number;
 }
 
 function settler(id: number, jobType: number, opts: Opts = {}): Ent {
@@ -67,6 +68,7 @@ function settler(id: number, jobType: number, opts: Opts = {}): Ent {
       ...(opts.site === true ? { SiteAssignment: { site: SITE, pinned: true } } : {}),
       ...(opts.workFlag === true ? { WorkFlag: { flag: FLAG, radius: 24 } } : {}),
       ...(opts.noRegeneration === true ? { NoRegeneration: { prohibited: true } } : {}),
+      ...(opts.behaviour !== undefined ? { MissionBehaviour: { flags: opts.behaviour } } : {}),
     },
   };
 }
@@ -397,6 +399,28 @@ describe('hasEligiblePartner memo', () => {
     // A woman comes of age: the new snapshot object must not inherit the previous one's "nobody".
     const grown = snapshotOf([...entities, settler(3, JOB_WOMAN, { female: true })]);
     expect(hasEligiblePartner(content, grown, seeker)).toBe(true);
+  });
+});
+
+describe('orders a map script took away', () => {
+  const { JOB_LOCKED, NOT_CONTROLLABLE } = components.MISSION_BEHAVIOUR;
+
+  it('offers a unit a script put out of reach no order, and a group sends it none', () => {
+    const state = snapshotOf([
+      settler(1, JOB_SOLDIER, { behaviour: NOT_CONTROLLABLE }),
+      settler(2, JOB_SOLDIER),
+    ]);
+    expect(allowed(state, [1])).toEqual([]);
+    expect(orderRecipients(content, state, [1, 2], 'defenceMode')).toEqual([2]);
+  });
+
+  it('keeps a locked trade out of the profession and learning-place orders', () => {
+    const state = snapshotOf([settler(1, JOB_COLLECTOR, { behaviour: JOB_LOCKED })]);
+    const offered = allowed(state, [1]);
+    expect(offered).not.toContain('changeProfession');
+    expect(offered).not.toContain('assignLearningPlace');
+    expect(offered).toContain('assignWorkPlace'); // a post keeps the trade it has
+    expect(schoolStudents(content, state, [1])).toEqual([]);
   });
 });
 
