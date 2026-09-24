@@ -9,7 +9,7 @@ import {
   type ServerMessage,
 } from '@open-northland/net-protocol';
 import { LatencyProbe } from './input-delay.js';
-import { createMember, type Member } from './member.js';
+import { createMember, type Member, type Refusal } from './member.js';
 import { Room } from './room.js';
 import { dispatchRoomMessage } from './room-dispatch.js';
 import { retireRoomMembers } from './room-retirement.js';
@@ -135,11 +135,22 @@ export class Relay {
     const elapsed = now - this.lastAdvanceAt;
     this.lastAdvanceAt = now;
     for (const room of this.rooms.values()) {
-      const refusal = room.advance(elapsed, now);
+      const refusal = this.advanceRoom(room, elapsed, now);
       if (refusal !== null) this.dropRoom(room, refusal);
     }
     this.pollClients(now);
     this.expireEmptyRooms(now);
+  }
+
+  /** A fault in one room's clock ends that room; it would otherwise recur on every poll and stall
+   *  the rooms after it. */
+  private advanceRoom(room: Room, elapsed: number, now: number): Refusal {
+    try {
+      return room.advance(elapsed, now);
+    } catch (err) {
+      this.log('room fault', { room: room.id, error: String(err) });
+      return 'relay fault';
+    }
   }
 
   /** An introduced client is pinged on its cadence; one that never introduced itself is closed. */

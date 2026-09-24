@@ -132,6 +132,32 @@ describe('relay rooms', () => {
     expect(sent).not.toContainEqual(expect.objectContaining({ kind: 'rejected' }));
   });
 
+  it('ends the one room whose clock faults and keeps running the others', () => {
+    const s = stage();
+    const soloRoom = (token: string, nick: string) => {
+      const peer = s.introduce(token, nick);
+      peer.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+      peer.send({ kind: 'claimSeat', player: 0 });
+      peer.send({ kind: 'setReady', ready: true });
+      peer.send({ kind: 'start' });
+      peer.send({ kind: 'loaded', tick: 0, world: 0 });
+      return peer;
+    };
+    const faulty = soloRoom(TOKEN_A, 'Ania');
+    const healthy = soloRoom(TOKEN_B, 'Bartek');
+    const room = faulty.handle.room;
+    if (room === null) throw new Error('no room');
+    room.advance = () => {
+      throw new Error('broken room state');
+    };
+    s.advance(TICK_MS);
+    s.advance(TICK_MS);
+    expect(faulty.last('error')?.reason).toBe('relay fault');
+    expect(faulty.last('left')).toBeDefined();
+    expect(s.relay.roomCount).toBe(1);
+    expect(healthy.of('frame').map((frame) => frame.tick)).toEqual([1, 2]);
+  });
+
   it('holds as many rooms as it was configured for', () => {
     const time = { ms: 0 };
     const relay = new Relay({ now: () => time.ms, maxRooms: 1 });
