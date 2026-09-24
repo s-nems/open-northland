@@ -1,7 +1,9 @@
 import {
   AssistantRecruit,
   consumeAssistantCounter,
+  hasMissionBehaviour,
   JobAssignment,
+  MISSION_BEHAVIOUR,
   ownerOf,
   Settler,
   type SettlerIdentity,
@@ -47,6 +49,8 @@ export function planTraining(
 ): boolean {
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return false;
+  // A script that fixes the trade mid-term ends the errand: the term could only end in a refused change.
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return abandonDrill(world, e);
   // A course the seat may no longer teach is refused even when served; the house is checked below.
   if (
     order.lesson !== undefined &&

@@ -6,6 +6,7 @@ import {
   EquipOrder,
   Female,
   Fleeing,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
   Position,
@@ -13,6 +14,7 @@ import {
   Settler,
   Sheltering,
   Stockpile,
+  setMissionBehaviour,
   TrainingOrder,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -402,6 +404,23 @@ describe('trainSoldier - the barracks drill', () => {
     expect(sim.world.has(runner, Sheltering)).toBe(false);
     expect(sim.world.get(runner, MoveGoal).cell).toBe(away);
     expect(sim.world.get(runner, Fleeing).repathAt).toBe(cadence);
+  });
+
+  it('calls the drill off when a script fixes the recruit trade mid-term', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // at the door - it drills from tick one
+
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    sim.step();
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
+
+    setMissionBehaviour(sim.world, recruit, MISSION_BEHAVIOUR.JOB_LOCKED, true);
+    const events = run(sim, RUN_TICKS);
+
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
+    expect(jobOf(sim, recruit)).toBe(CIVILIST_JOB);
+    expect(events.some((event) => event.kind === 'settlerTrained')).toBe(false);
   });
 
   it('abandons the errand at its next planning when the house is gone', () => {
