@@ -123,4 +123,36 @@ describe('layer reuse across frames', () => {
     expect(headCastRows(-34)).toBe(4);
     expect(headCastRows(-30)).toBe(8);
   });
+
+  it('rebuilds a remembered record for the same frame under another atlas size or shadow source', () => {
+    const building: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 13 };
+    const houses = (atlasWidth: number, silhouetteSource: TextureSource): SpriteSheet => ({
+      source,
+      atlas: { width: 0, height: 0, frames: new Map() },
+      bindings: {
+        settler: 1,
+        resource: 1,
+        building: { byType: { 13: { layer: 'houses', bob: WALK_BOB } }, default: WALK_BOB },
+      },
+      families: {
+        houses: {
+          source,
+          atlas: { ...bodyAtlas, width: atlasWidth },
+          shadow: { source: silhouetteSource, atlas: shadowAtlas },
+        },
+      },
+    });
+    const read = (sheetUnder: SpriteSheet) =>
+      (resolveLayers(sheetUnder, building, 0) ?? []).map((l) => [l.source === shadowSource, l.atlasW]);
+    const otherShadowSource = {} as TextureSource;
+    // One body frame object and one silhouette frame object behind both sheets.
+    expect(read(houses(64, shadowSource))).toEqual([
+      [true, undefined],
+      [false, 64],
+    ]);
+    expect(read(houses(128, otherShadowSource))).toEqual([
+      [false, undefined],
+      [false, 128],
+    ]);
+  });
 });

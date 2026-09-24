@@ -19,8 +19,8 @@ const overlayRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 /**
  * Append a building's atlas layers: an under-construction building's active construction-stage stack in
  * stacking order, or a finished building's named-family body plus {@link pushBuildingExtras}. True when
- * drawn, false for the placeholder, or the default building-layer bob id with nothing appended, for the
- * shared body block to draw before it appends the extras.
+ * drawn, false for the placeholder, or the default building-layer bob id with nothing appended: the
+ * `kindLayers` body then draws it and appends the extras, while the sheet-global body draws none.
  */
 export function pushBuildingLayers(
   out: LayerBuffer,

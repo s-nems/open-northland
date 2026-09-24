@@ -40,11 +40,18 @@ plus GPU frame time, following the A/B rules in `docs/DEVELOPMENT.md`.
 - **Flat decor shadow fill** (`gpu/map-objects/decor-shadow-shader.ts`). The blur is 36 texel fetches per
   fragment per frame. Only a handful of chunks are viewport-sized and most flat decor records carry no
   silhouette, so this is likely irrelevant; it needs a named decor-dense map to settle.
+- **Per-frame allocation** (`gpu/sprite-pool`). The pool reuses its resolved layers now, measured only
+  in a Node harness over presentItem and the binder: 761 -> 65 B per drawn entity per frame. Still
+  allocating per entity per frame: a swaying resource's sheared body, each construction or upgrade
+  stage's reveal record, each fish's offset record, and `motionClocks`' return object.
 
 ## Verify
 
 - A numbered before/after on one real map at x3, each enhancement on and off, against the pre-branch
   renderer, with the interleaved A/B the perf docs require and the load average reported.
+- Heap sampling with collected objects (`HeapProfiler.startSampling`) at x3 on the same map: the sprite
+  pool's resolvers are no longer a leading allocation site, and `perf().draw` did not rise with the
+  layer memo's lookups.
 - Draw-call and batch-flush counts for a town view with enhanced shadows on and off.
 - No visual change from any accepted fix: the default render stays byte-identical to the approved
   control capture, and the all-off render stays byte-identical to the same build with the enhancements
