@@ -89,16 +89,19 @@ export class ExternalQualityIndex {
   }
 }
 
-/** The lowest household-quality good `store` holds a unit of, among `demanded` when given. */
+/** The lowest household-quality good `store` holds a unit of, among `demanded` when given. A min over
+ *  `keys()` plus `get`: destructured entries would allocate a pair per stock line of every candidate. */
 function lowestQualityGood(
   world: World,
   content: ContentSet,
   store: Entity,
   demanded?: ReadonlySet<number>,
 ): number | null {
+  const amounts = accessibleStockAmounts(world, store);
+  if (amounts === undefined) return null;
   let lowest: number | null = null;
-  for (const [goodType, amount] of accessibleStockAmounts(world, store) ?? []) {
-    if (amount <= 0 || (demanded !== undefined && !demanded.has(goodType))) continue;
+  for (const goodType of amounts.keys()) {
+    if ((amounts.get(goodType) ?? 0) <= 0 || (demanded !== undefined && !demanded.has(goodType))) continue;
     if (contentIndex(content).goods.get(goodType)?.homeQuality === undefined) continue;
     if (lowest === null || goodType < lowest) lowest = goodType;
   }

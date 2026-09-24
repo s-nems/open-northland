@@ -5,7 +5,6 @@ import {
   Residence,
   Stockpile,
   sameSideAs,
-  stockpileEntries,
   type UnreachableGoal,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -14,11 +13,10 @@ import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
+import { lowestStockedFood } from '../../family/food-sources.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
-import { exportedGoodForm, isFood } from '../../readviews/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/metric.js';
-import { accessibleStockAmounts } from '../../stores/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
@@ -86,17 +84,11 @@ function edibleFoodGoodFor(
  * the fallback scan.
  *
  * Edibility is judged on the good's edible form, since consuming a stocked dish is itself the
- * conversion. The returned type is the raw one, which is what comes off the shelf.
+ * conversion. The returned type is the raw one, which is what comes off the shelf. The family's
+ * {@link lowestStockedFood} is the same pick; a store with no shelf at all answers null.
  */
 export function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
-  const stock = accessibleStockAmounts(world, entity);
-  if (stock === undefined) return null; // no shelf at all - the caller need not pre-check
-  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
-    if (amount <= 0) continue;
-    if (!isFood(ctx, exportedGoodForm(ctx, goodType))) continue;
-    return goodType;
-  }
-  return null;
+  return lowestStockedFood(world, ctx.content, entity);
 }
 
 /**

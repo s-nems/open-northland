@@ -74,11 +74,13 @@ export function bankedSlot(
 }
 
 /** The lowest-id good a stockpile holds at least one unit of, or null if empty. A min over the map keys,
- *  so the pick stays canonical regardless of insertion order. */
+ *  so the pick stays canonical regardless of insertion order. Walks `keys()` plus `get`: destructured
+ *  entries allocate a pair per stock line, and pile and store scans call this per candidate. */
 export function lowestStockedGood(stock: { amounts: ReadonlyMap<number, number> }): number | null {
+  const { amounts } = stock;
   let lowest: number | null = null;
-  for (const [goodType, amount] of stock.amounts) {
-    if (amount > 0 && (lowest === null || goodType < lowest)) lowest = goodType;
+  for (const goodType of amounts.keys()) {
+    if ((amounts.get(goodType) ?? 0) > 0 && (lowest === null || goodType < lowest)) lowest = goodType;
   }
   return lowest;
 }

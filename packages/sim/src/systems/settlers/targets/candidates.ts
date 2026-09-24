@@ -110,8 +110,10 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       if (groundDropsByGood === undefined) {
         groundDropsByGood = new Map();
         for (const pile of groundDrops) {
-          for (const [good, amount] of world.get(pile, Stockpile).amounts) {
-            if (amount > 0) pushTo(groundDropsByGood, good, pile);
+          const { amounts } = world.get(pile, Stockpile);
+          // keys() plus get: destructured entries would allocate a pair per line of every drop.
+          for (const good of amounts.keys()) {
+            if ((amounts.get(good) ?? 0) > 0) pushTo(groundDropsByGood, good, pile);
           }
         }
       }

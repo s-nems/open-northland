@@ -127,7 +127,10 @@ export function storedFoodUnits(world: World, ctx: SystemContext, house: Entity)
   const stock = accessibleStockAmounts(world, house);
   if (stock === undefined) return 0;
   let total = 0;
-  for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
+  // An integer sum is order-free, so it skips the sorted view and destructured entries, both of which
+  // allocate; hunger, hoarding and child-order planning read it per settler.
+  for (const goodType of stock.keys()) {
+    const amount = stock.get(goodType) ?? 0;
     if (amount > 0 && isFood(ctx, goodType)) total += amount;
   }
   return total;

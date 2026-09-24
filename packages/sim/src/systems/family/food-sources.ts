@@ -117,13 +117,16 @@ function isFoodSource(world: World, content: ContentSet, e: Entity): boolean {
 /**
  * The lowest stocked good (ascending good type) a family may take away from `store` as food, or null when
  * it holds none. Tested on the good's edible form, since the family's lift performs that conversion; the
- * returned type is the raw one to lift. A raw min-scan: the pick is order-free, and the canonical sorted
- * view would allocate and sort per store on the capture path.
+ * returned type is the raw one to lift. A raw min-scan over `keys()` plus `get`: the pick is order-free,
+ * and both the canonical sorted view and destructured entries would allocate per store on the capture
+ * path and in every settler's larder search.
  */
 export function lowestStockedFood(world: World, content: ContentSet, store: Entity): number | null {
+  const amounts = accessibleStockAmounts(world, store);
+  if (amounts === undefined) return null;
   let lowest: number | null = null;
-  for (const [goodType, amount] of accessibleStockAmounts(world, store) ?? []) {
-    if (amount <= 0 || (lowest !== null && goodType >= lowest)) continue;
+  for (const goodType of amounts.keys()) {
+    if ((amounts.get(goodType) ?? 0) <= 0 || (lowest !== null && goodType >= lowest)) continue;
     if (isFoodIn(content, edibleGoodFormOf(content, goodType))) lowest = goodType;
   }
   return lowest;

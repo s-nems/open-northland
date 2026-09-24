@@ -392,6 +392,25 @@ describe('household quality goods', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
+  it('offers the lowest-id demanded quality good whatever order the store was stocked in', () => {
+    const stocked: Array<[number, number]> = [
+      [FURNITURE, 1],
+      [FOOD, 3],
+      [CROCKERY, 1],
+    ];
+    for (const lines of [stocked, [...stocked].reverse()]) {
+      const { sim } = setup();
+      const store = sim.world.create();
+      sim.world.add(store, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
+      sim.world.add(store, Stockpile, { amounts: new Map(lines) });
+      const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
+      const from = { hx: 0, hy: 0 };
+      expect(index.nearest(from, undefined, new Set([CROCKERY, FURNITURE]), null)?.goodType).toBe(CROCKERY);
+      expect(index.nearest(from, undefined, new Set([FURNITURE, OIL]), null)?.goodType).toBe(FURNITURE);
+      expect(index.nearest(from, undefined, new Set([OIL]), null)).toBeNull();
+    }
+  });
+
   it('rejects an unknown household effect at the command parse boundary', () => {
     expect(() =>
       parseCommandEnvelope({
