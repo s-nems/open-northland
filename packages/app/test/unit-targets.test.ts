@@ -10,6 +10,7 @@ import {
   type UnitTargets,
   type UnitTargetsDeps,
 } from '../src/view/unit-controls/unit-targets.js';
+import { snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
 /**
  * A click may only reach what the renderer's frame actually drew, while an ORDER must reach the whole
@@ -316,5 +317,32 @@ describe('unit-controls targets over the renderer frame', () => {
     snapshot = { ...snapshot, entities: [...snapshot.entities, escort] };
 
     expect(targetsOver([]).ownedSettlersIn(new Set([escort.id]))).toEqual([]);
+  });
+});
+
+describe('the ordered set', () => {
+  it('looks the selection up instead of walking the world', () => {
+    const WORLD_SIZE = 2000;
+    const SELECTED = [7, 1500];
+    const world = snapshotOf(
+      Array.from({ length: WORLD_SIZE }, (_, id) => ({
+        id,
+        components: { Settler: {}, Owner: { player: HUMAN_PLAYER }, Position: { x: id * ONE, y: ONE } },
+      })),
+    );
+    const { snapshot, visits } = visitCountingSnapshot(world);
+    const targets = createUnitTargets({
+      snapshot: () => snapshot,
+      humanPlayer: HUMAN_PLAYER,
+      observer: false,
+      hostileToward: () => true,
+      drawnItems: () => [],
+      boundsOf: undefined,
+      pixelHitOf: undefined,
+    });
+
+    expect(targets.ownedSettlersIn(new Set(SELECTED)).map((t) => t.ref)).toEqual(SELECTED);
+    // Two binary searches, not one visit per entity.
+    expect(visits()).toBeLessThan(WORLD_SIZE / 10);
   });
 });

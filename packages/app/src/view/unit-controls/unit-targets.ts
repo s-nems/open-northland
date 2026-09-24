@@ -265,9 +265,11 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
     ownedSettlersIn(refs: ReadonlySet<number>): FormationUnit[] {
       if (refs.size === 0) return [];
+      const snapshot = deps.snapshot();
       const out: FormationUnit[] = [];
-      for (const e of deps.snapshot().entities) {
-        if (!refs.has(e.id) || !isSettler(e) || !pickableOwner(ownerPlayerOf(e))) continue;
+      for (const ref of refs) {
+        const e = entityById(snapshot, ref);
+        if (e === undefined || !isSettler(e) || !pickableOwner(ownerPlayerOf(e))) continue;
         if (e.components.Livestock !== undefined) continue; // see the livestock note on the memo
         if (!isPlayerControllable(e)) continue;
         const pos = positionOf(e);
