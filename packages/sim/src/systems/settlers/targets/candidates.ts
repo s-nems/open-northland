@@ -10,16 +10,16 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFieldZone, translatedCells } from '../../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalResources } from '../../spatial/resources.js';
-import { isYardHeap, lowestStockedGood } from '../../stores/index.js';
 import { TargetBands } from './bands.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { SinkAvailability } from './stores/sinks.js';
+import { yardOccupancy } from './yard-occupancy.js';
 
 export interface YardTargets {
   readonly blocked: BlockOverlay;
@@ -68,9 +68,9 @@ export interface TargetCandidates {
 
 /** Snapshot the planner's canonical target categories once for the tick.
  *
- *  The {@link InteractionCellIndex} getters are memoized for the tick, so an index no settler asks for
- *  is never built. Deferring cannot move a pick: an index reads only the eager candidate list and state
- *  the planner pass does not mutate, so a first-access build matches a tick-start one. */
+ *  The getters are memoized for the tick, so a view no settler asks for is never built. A first-access
+ *  build matches a tick-start one: the pass sows, harvests and razes nothing, and its only stock writes
+ *  are a farm's herd rows and drops onto a yard heap, which is why the yard occupancy is caught up here. */
 export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
   const harvestAtomicByGood = new Map<number, number>();
   for (const good of ctx.content.goods) {
@@ -78,27 +78,9 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   }
 
   const stockpiles = world.canonicalQuery(Stockpile, Position);
-  const yardOccupied = new Map<NodeId, { good: number; fill: number }>();
-  for (const entity of stockpiles) {
-    if (!isYardHeap(world, entity)) continue;
-    const stock = world.get(entity, Stockpile);
-    const good = lowestStockedGood(stock);
-    if (good === null) continue;
-    const p = world.get(entity, Position);
-    yardOccupied.set(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)), {
-      good,
-      fill: stock.amounts.get(good) ?? 0,
-    });
-  }
   const buildings = world.canonicalQuery(Building, Position);
   const constructionSites = world.canonicalQuery(UnderConstruction, Building, Position);
-  // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
-  // tie-break picks the same field a whole-world scan would.
-  const cropsByFarm = new Map<Entity, Entity[]>();
-  for (const crop of world.canonicalQuery(Crop, Position)) {
-    const farm = world.get(crop, Crop).farm;
-    if (farm !== null) pushTo(cropsByFarm, farm, crop);
-  }
+  let cropsByFarm: Map<Entity, Entity[]> | undefined;
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
@@ -145,7 +127,18 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       }
       return groundDropsByHarvester;
     },
-    cropsByFarm,
+    get cropsByFarm() {
+      if (cropsByFarm === undefined) {
+        // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
+        // tie-break picks the same field a whole-world scan would.
+        cropsByFarm = new Map();
+        for (const crop of world.canonicalQuery(Crop, Position)) {
+          const farm = world.get(crop, Crop).farm;
+          if (farm !== null) pushTo(cropsByFarm, farm, crop);
+        }
+      }
+      return cropsByFarm;
+    },
     get fieldZones() {
       if (fieldZones === undefined) {
         fieldZones = new Set<NodeId>();
@@ -167,7 +160,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     harvestAtomicByGood,
     sinks: new SinkAvailability(stockpiles, world, ctx),
     bands: new TargetBands(world, ctx, terrain, stockpiles, buildings),
-    yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupied },
+    yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupancy(world, terrain) },
   };
 }
 

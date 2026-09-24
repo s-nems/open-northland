@@ -25,12 +25,13 @@ tick's larger terms are gone.
 ## Scope
 
 - One `ExternalFoodIndex` kept across ticks and shared by both callers, the family child-order haul
-  and the planner pass, instead of two per-tick copies. This ticket owns it;
-  [planner-pass-setup-scales-with-world.md](planner-pass-setup-scales-with-world.md) switches its
-  pass member to it. Build it on `World.canonicalQuery(Stockpile, Position)`.
-- Refresh only stores whose stock or membership changed (the ECS already journals membership for
-  incremental indexes; stock writes need an equivalent change feed or a per-store revision check), so
-  a tick's cost follows the stores that changed and the wives that ask.
+  and the planner pass (`beginPlannerPass`), instead of two per-tick copies.
+- Refresh only stores whose stock or membership changed, through `JournaledCaptures`
+  (`ecs/journaled-captures.ts`) as the quality index's candidate set does
+  (`systems/family/quality-search.ts`), so a tick's cost follows the stores that changed and the wives
+  that ask. Catch it up where each caller's pass begins, not at the first query: the planner pass
+  writes stock (a breeder's herd rows, a carrier's drop onto a yard heap), so today's first-query
+  snapshot is not always the tick-start one its comment claims.
 - Register a cache verifier that re-derives the candidate set under `verifyCaches()`.
 - The winner must stay the one the current linear scan picks (distance, then entity id), with the
   owner, signpost-gate and unreachable-goal filters applied per seeker as today.

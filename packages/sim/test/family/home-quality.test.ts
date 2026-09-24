@@ -12,6 +12,7 @@ import {
   Resting,
   Settler,
   Stockpile,
+  setStockAmount,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -370,6 +371,25 @@ describe('household quality goods', () => {
         null,
       ),
     ).toBe(false);
+  });
+
+  it('offers the stores stocked when an index is made, and the next index what was stocked since', () => {
+    const sim = new Simulation({ seed: 1, content: content() });
+    const home = addHome(sim, 0, 2);
+    sim.world.add(home, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    setStockAmount(sim.world, home, FURNITURE, 1); // a larder serves its own residents only
+    const pile = sim.world.create();
+    sim.world.add(pile, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
+    sim.world.add(pile, Stockpile, { amounts: new Map([[FURNITURE, 0]]) });
+    const demanded = new Set([FURNITURE]);
+    const before = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
+
+    setStockAmount(sim.world, pile, FURNITURE, 1);
+
+    expect(before.nearest({ hx: 0, hy: 0 }, 0, demanded, null)).toBeNull();
+    const after = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
+    expect(after.nearest({ hx: 0, hy: 0 }, 0, demanded, null)).toEqual({ store: pile, goodType: FURNITURE });
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('rejects an unknown household effect at the command parse boundary', () => {
