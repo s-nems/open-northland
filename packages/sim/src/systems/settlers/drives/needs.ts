@@ -179,16 +179,12 @@ export function planNeeds(
   limit: NavigationLimit | null,
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
   spacing: PlannerSpacing,
+  /** Memoized by the caller: the answer costs a presence sweep. */
   onAlert: () => boolean,
 ): boolean {
   if (!carriesNeeds(world, ctx.content, e)) return false;
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
-  let alerted: boolean | undefined;
-  const alert = (): boolean => {
-    alerted ??= onAlert();
-    return alerted;
-  };
   if (pressing(settler.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, load)) return true;
@@ -198,7 +194,7 @@ export function planNeeds(
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
     // A larder and a wild berry bush share the eat animation; only the completion effect differs, so the
     // walk-or-act tail below is identical for both.
-    const walks = seek && (settler.hunger >= NEED_CRITICAL_THRESHOLD || !alert());
+    const walks = seek && (settler.hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
     const food = walks ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
@@ -221,7 +217,7 @@ export function planNeeds(
     // A stamina draught is drunk in place, replacing the walk to a bed: the manual's "remain awake and
     // ready longer".
     if (drinkForBar(world, ctx, e, settler, 'fatigue', settler.fatigue)) return true;
-    if (maySeek(world, e, ordered, 'fatigue') && !alert()) {
+    if (maySeek(world, e, ordered, 'fatigue') && !onAlert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
       atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
@@ -243,7 +239,7 @@ export function planNeeds(
     pressing(settler.piety, ordered, 'piety') &&
     (ordered === 'piety' || jobNeedsReligion(ctx.content, settler.jobType)) &&
     maySeek(world, e, ordered, 'piety') &&
-    !alert();
+    !onAlert();
   if (prays) {
     const temple = nearestTemple(
       targets.bands,
