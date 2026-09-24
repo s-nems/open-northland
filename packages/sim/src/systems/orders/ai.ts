@@ -1,5 +1,6 @@
 import {
   type AiModuleEnables,
+  AiPeace,
   AiPlayer,
   aiModuleEnables,
   aiPlayerEntity,
@@ -35,9 +36,12 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
   const modules = aiModuleEnables(command.modules);
   const scripted = command.scripted ?? true;
   if (carrier === null) {
-    world.add(world.create(), AiPlayer, { player: command.player, modules, scripted });
+    const created = world.create();
+    world.add(created, AiPlayer, { player: command.player, modules, scripted });
+    if (command.peaceUntil !== undefined) world.add(created, AiPeace, { untilTick: command.peaceUntil });
     return;
   }
+  if (command.peaceUntil !== undefined) world.add(carrier, AiPeace, { untilTick: command.peaceUntil });
   const previous = world.get(carrier, AiPlayer).modules;
   for (const entry of AI_PUBLISHED_COUNTERS) {
     if (publishes(previous, entry.modules) && !publishes(modules, entry.modules)) {

@@ -28,7 +28,6 @@ export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
 export {
   LATE_WAVE,
   OPENING_WAVE,
-  PEACE_TICKS,
   WAVE_GATHER_TICKS,
   WAVE_RAMP_TICKS,
   waveBandAt,

@@ -11,7 +11,6 @@ import {
   PlayerOrder,
   Settler,
   Stance,
-  setAiPeaceUntil,
   setDiplomacyStance,
   TrainingOrder,
 } from '../../src/components/index.js';
@@ -23,10 +22,10 @@ import {
   exportSaveGame,
   parseSaveGame,
   Rng,
+  replay,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
-  stepReplaying,
   type TerrainMap,
 } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
@@ -36,7 +35,6 @@ import {
   LATE_WAVE,
   militaryModule,
   OPENING_WAVE,
-  PEACE_TICKS,
   RALLY_HOLD_RADIUS_NODES,
   takeCensus,
   WAVE_GATHER_TICKS,
@@ -92,11 +90,8 @@ const MIDDLE_SEED = 6;
 /** The size {@link MIDDLE_SEED} draws. */
 const HELD_WAVE = 8;
 
-/** A sim whose seats are already past the peace, so every wave case runs from tick 0. */
 function aiSim(map: TerrainMap = grassNodeMap(128, 96)): Simulation {
-  const sim = new Simulation({ seed: 1, content: aiContent(), map });
-  setAiPeaceUntil(sim.world, 0);
-  return sim;
+  return new Simulation({ seed: 1, content: aiContent(), map });
 }
 
 function ctxOf(sim: Simulation, seed = EAGER_SEED, tick = 0): SystemContext {
@@ -381,15 +376,17 @@ describe('military module - the campaign', () => {
     expect(commands.some((c) => c.kind === 'attackUnit')).toBe(false);
   });
 
-  it('keeps every wave at home through the peace, and sends it the decision the peace ends', () => {
+  it('keeps every wave at home through a lobby seat peace, and sends it the decision the peace ends', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
-    setAiPeaceUntil(sim.world, null);
+    const PEACE_END = 60_000;
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, peaceUntil: PEACE_END });
+    sim.step();
     const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
 
-    expect(assaulting(sim, run(sim, EAGER_SEED, PEACE_TICKS - 1), foeHq)).toEqual([]);
+    expect(assaulting(sim, run(sim, EAGER_SEED, PEACE_END - 1), foeHq)).toEqual([]);
     expect(sim.world.has(buildingOfType(sim, BARRACKS_TYPE, SEAT), MusterPlan)).toBe(false);
     // The band is still the opening one, since the growth counts from the end of the peace.
-    expect(assaulting(sim, run(sim, EAGER_SEED, PEACE_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(assaulting(sim, run(sim, EAGER_SEED, PEACE_END), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
   });
 
   it('spreads the wave over the ring instead of walking it onto one node', () => {
@@ -929,9 +926,13 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
     b.run(MARCH_TICKS);
     expect(a.hashState()).toBe(b.hashState());
 
-    // Replayed onto the same ended-peace start, since that rule is set on the world rather than logged.
-    const replayed = aiSim();
-    stepReplaying(replayed, a.commands.log, a.tick); // the setup steps count too, so replay to the live clock
+    const replayed = replay({
+      content: aiContent(),
+      seed: 1,
+      map: grassNodeMap(128, 96),
+      log: a.commands.log,
+      untilTick: a.tick, // the setup steps count too, so replay to the live run's own clock
+    });
     expect(replayed.hashState()).toBe(a.hashState());
   });
 });

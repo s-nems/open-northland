@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Equipment, Settler, setAiPeaceUntil } from '../../src/components/index.js';
+import { Building, Equipment, Settler } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { ZERO } from '../../src/core/fixed.js';
@@ -54,7 +54,6 @@ function outfitContent(): ContentSet {
 function outfittedSeat(stock: readonly { good: number; amount: number }[], count: number): Simulation {
   const content = outfitContent();
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(96, 64) });
-  setAiPeaceUntil(sim.world, 0);
   sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: HQ_TYPE,

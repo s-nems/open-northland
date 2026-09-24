@@ -1,4 +1,4 @@
-import { aiPeaceUntil, MusterPlan, type MusterPlanState } from '../../../components/index.js';
+import { AiPeace, aiPlayerEntity, MusterPlan, type MusterPlanState } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -22,15 +22,10 @@ export const OPENING_WAVE: WaveBand = { min: WAVE_MIN_SOLDIERS, max: 10 };
 export const LATE_WAVE: WaveBand = { min: 50, max: 100 };
 
 const SECONDS_PER_HOUR = 3600;
-const SECONDS_PER_MINUTE = 60;
-
-/** Game time before which no wave marches (authored): the usual multiplayer peace time. The seat still
- *  answers a raid at home. {@link AiPeaceRules} overrides it. */
-export const PEACE_TICKS = 60 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-
-/** The tick the first wave may march from. */
-export function peaceEndsAt(world: World): number {
-  return aiPeaceUntil(world) ?? PEACE_TICKS;
+/** The tick the seat's first wave may march from: the end of its {@link AiPeace}, else the start. */
+export function peaceEndsAt(world: World, player: number): number {
+  const carrier = aiPlayerEntity(world, player);
+  return (carrier === null ? undefined : world.tryGet(carrier, AiPeace)?.untilTick) ?? 0;
 }
 
 /** Game time over which the band grows linearly from {@link OPENING_WAVE} to {@link LATE_WAVE}, counted
@@ -62,16 +57,17 @@ export function decideWave(
   mustered: number,
   gatherable: number,
   meleeCore: number,
+  peaceEnd: number,
 ): boolean {
   if (mustered < WAVE_MIN_SOLDIERS) {
     abandonWave(world, barracks);
     return false;
   }
   if (!waveWorthy(band, meleeCore)) return false;
-  const plan = wavePlan(world, ctx, barracks);
+  const plan = wavePlan(world, ctx, barracks, peaceEnd);
   if (band.total < plan.waveSize) {
     if (ctx.tick - plan.drawnAt < WAVE_GATHER_TICKS) return false;
-    if (band.total < Math.min(waveBandAt(ctx.tick - peaceEndsAt(world)).min, gatherable)) return false;
+    if (band.total < Math.min(waveBandAt(ctx.tick - peaceEnd).min, gatherable)) return false;
   }
   abandonWave(world, barracks);
   return true;
@@ -83,10 +79,10 @@ export function abandonWave(world: World, barracks: Entity): void {
 
 /** The wave this door is gathering, drawn from the current {@link waveBandAt} on first sight of a worthy
  *  band. */
-function wavePlan(world: World, ctx: SystemContext, barracks: Entity): MusterPlanState {
+function wavePlan(world: World, ctx: SystemContext, barracks: Entity, peaceEnd: number): MusterPlanState {
   const held = world.tryGet(barracks, MusterPlan);
   if (held !== undefined) return { waveSize: held.waveSize, drawnAt: held.drawnAt };
-  const { min, max } = waveBandAt(ctx.tick - peaceEndsAt(world));
+  const { min, max } = waveBandAt(ctx.tick - peaceEnd);
   const waveSize = min + ctx.rng.int(max - min + 1);
   world.add(barracks, MusterPlan, { waveSize, drawnAt: ctx.tick });
   return { waveSize, drawnAt: ctx.tick };

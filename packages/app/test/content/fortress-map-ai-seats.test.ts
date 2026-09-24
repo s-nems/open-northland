@@ -4,7 +4,7 @@ import { MapScript, mapLobbySlots, TerrainMapFile } from '@open-northland/data';
 import { components, hexDistanceBetween, type Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../src/content/ir/rows.js';
-import { buildMapWorld, type MapWorldOptions } from '../../src/entries/map/world.js';
+import { buildMapWorld, LOBBY_AI_PEACE_TICKS, type MapWorldOptions } from '../../src/entries/map/world.js';
 import { mapSession } from '../../src/game/session-url.js';
 import { sessionWorldOptions } from '../../src/game/session-world.js';
 import { mapScriptWorld } from '../../src/game/world/mission-script.js';
@@ -17,6 +17,8 @@ const RAIDERS = [7, 8, 9, 10, 11, 12];
 const FORTRESS_SEATS = [FORTRESS, ...RAIDERS];
 /** The vikings' computer allies, which the map leaves to the full strategic player. */
 const ALLY_SEATS = [1, 2, 3, 4, 5];
+/** The allies the lobby offers a person, set to computer by the search below; the rest are the map's own. */
+const LOBBY_SEATS = [1, 2, 3];
 /** Ticks covering every seat's first strategic decision. */
 const FIRST_DECISIONS_TICKS = 48;
 /** Rounds of the scripted handlers: one turn per seat per round, the assignment on even turns. */
@@ -43,6 +45,7 @@ async function fortressWorld(): Promise<{ sim: Simulation; script: MapScript }> 
     ir,
     content: { content: merge.content },
     aiSeats: [...ALLY_SEATS, ...FORTRESS_SEATS],
+    lobbyAiSeats: LOBBY_SEATS,
     assistantSeats: [0],
     script: mapScriptWorld(script, ir),
     fog: null,
@@ -78,10 +81,12 @@ describe.runIf(hasRealIr())('the fortress map’s authored AI seats', () => {
     const ir = rawIrUnderTest() as ContentIr;
     const root = resolve(contentDir(), 'maps');
     const script = MapScript.parse(JSON.parse(readFileSync(resolve(root, `${MAP_ID}.script.json`), 'utf8')));
-    const search = new URLSearchParams(`map=${MAP_ID}&player=0&ai=1,2,3`);
+    const search = new URLSearchParams(`map=${MAP_ID}&player=0&ai=${LOBBY_SEATS.join(',')}`);
     const session = mapSession(search, mapLobbySlots(script));
-    const { aiSeats } = sessionWorldOptions(session, script, mapScriptWorld(script, ir));
+    const { aiSeats, lobbyAiSeats } = sessionWorldOptions(session, script, mapScriptWorld(script, ir));
     expect(aiSeats).toEqual([...ALLY_SEATS, ...FORTRESS_SEATS]);
+    // Only the seats a person set to computer keep the match's peace; the map's own run its scripts as authored.
+    expect(lobbyAiSeats).toEqual(LOBBY_SEATS);
   });
 
   it('leaves the fortress without a strategic brain and its allies with one, and carries the program', async () => {
@@ -99,6 +104,13 @@ describe.runIf(hasRealIr())('the fortress map’s authored AI seats', () => {
       expect(row?.tasks.filter((t) => t.kind === 'createCreatures')).toHaveLength(12);
     }
     sim.step();
+    const peace = (seat: number): number | undefined => {
+      const carrier = components.aiPlayerEntity(sim.world, seat);
+      return carrier === null ? undefined : sim.world.tryGet(carrier, components.AiPeace)?.untilTick;
+    };
+    for (const seat of [...ALLY_SEATS, ...FORTRESS_SEATS]) {
+      expect(peace(seat), `seat ${seat}`).toBe(LOBBY_SEATS.includes(seat) ? LOBBY_AI_PEACE_TICKS : undefined);
+    }
     for (const seat of FORTRESS_SEATS) {
       expect(components.isAiPlayer(sim.world, seat)).toBe(true);
       expect(components.AI_MODULE_IDS.some((id) => components.aiModuleRuns(sim.world, seat, id))).toBe(false);

@@ -220,7 +220,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setPlayerPlacementTribes: { required: { player: 'integer', tribes: { arrayOf: 'integer' } } },
   setPlayerAi: {
     required: { player: 'integer', enabled: 'boolean' },
-    optional: { modules: AI_MODULES, scripted: 'boolean' },
+    optional: { modules: AI_MODULES, scripted: 'boolean', peaceUntil: 'integer' },
   },
   setProfessionProgression: { required: { enabled: 'boolean' } },
   setSharedVision: { required: { players: { arrayOf: 'integer' } } },

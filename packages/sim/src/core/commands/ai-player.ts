@@ -5,7 +5,8 @@ export type AiPlayerCommand = {
   /**
    * Flag `player`'s seat as a computer seat, or hand it back through the per-player `AiPlayer`
    * carrier. `modules` narrows which strategic concerns run for the seat (an omitted module defaults
-   * to enabled) and `scripted` switches its scripted handler, on when omitted.
+   * to enabled) and `scripted` switches its scripted handler, on when omitted. `peaceUntil` holds the
+   * seat's waves at home before that tick; omitted, the seat keeps whatever peace it had, a new seat none.
    */
   readonly kind: 'setPlayerAi';
   /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
@@ -13,4 +14,5 @@ export type AiPlayerCommand = {
   readonly enabled: boolean;
   readonly modules?: Partial<AiModuleEnables>;
   readonly scripted?: boolean;
+  readonly peaceUntil?: number;
 };

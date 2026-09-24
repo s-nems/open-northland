@@ -49,7 +49,8 @@ export function runOffensive(
   // Sorted over the men this decision may actually order, so a wave is never measured at a strength the
   // march cannot fill. A man in transit sits out one decision and is read again once he arrives.
   const free = army.filter((e) => !spokenFor(world, e));
-  const target = ctx.tick < peaceEndsAt(world) ? null : campaignTarget(world, ctx, terrain, player, home);
+  const peaceEnd = peaceEndsAt(world, player);
+  const target = ctx.tick < peaceEnd ? null : campaignTarget(world, ctx, terrain, player, home);
   if (target === null) {
     abandonWave(world, barracks);
     return {
@@ -76,6 +77,7 @@ export function runOffensive(
     army.length,
     gatherable,
     core,
+    peaceEnd,
   );
   // Forward men go in with a launching wave or as a band of their own; too few for either and they come
   // home, since the size floor governs who the seat sends anywhere, not where the last fight left him.

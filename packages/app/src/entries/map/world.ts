@@ -17,6 +17,7 @@ import {
   type SaveGame,
   type Simulation,
   type TerrainMap,
+  TICKS_PER_SECOND,
 } from '@open-northland/sim';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { spawnMapPalisades } from '../../content/map-palisades.js';
@@ -70,6 +71,9 @@ export interface MapWorldOptions extends SessionRules {
   readonly aiSeats: readonly number[];
   /** Seats whose authored placements and walls the world leaves out. */
   readonly absentSeats?: readonly number[];
+  /** The AI seats a person set to computer in the lobby, as against the map's own computer players, which
+   *  its scripts drive; only these keep {@link LOBBY_AI_PEACE_TICKS}. */
+  readonly lobbyAiSeats?: readonly number[];
   readonly playerRoster?: MapScript['players'];
   /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
@@ -100,6 +104,11 @@ export interface MapWorld {
 /** Placements are queued commands: one tick drains them, so the start-camera focus sees entities a
  *  0-tick snapshot would not, while leaving the spawned settlers at their start. */
 const PLACEMENT_DRAIN_TICKS = 1;
+
+const SECONDS_PER_MINUTE = 60;
+
+/** How long a lobby computer seat's waves stay at home: the usual multiplayer peace time (authored). */
+export const LOBBY_AI_PEACE_TICKS = 60 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 
 /** The tribes whose computer seats get the scripted handler alone: the original
  *  withholds the strategic handler from a `PLAYER_TYPE_AI` seat of either. */
@@ -190,6 +199,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
       enabled: true,
       ...(off.length > 0 ? { modules: Object.fromEntries(off.map((id) => [id, false])) } : {}),
       ...(authored?.disabled ? { scripted: false } : {}),
+      ...(options.lobbyAiSeats?.includes(seat) ? { peaceUntil: LOBBY_AI_PEACE_TICKS } : {}),
     });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
