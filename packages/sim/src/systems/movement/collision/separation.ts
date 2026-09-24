@@ -130,7 +130,8 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
 
-    const firmNear = postCount > 0 || someFirm(nearMovers, moverCount, before);
+    // Only a firm mover outside its calm zone keeps a grind window, so only it pays the neighbour scan.
+    const firmNear = isFirm && !ghost && (postCount > 0 || someFirm(nearMovers, moverCount, before));
     updateObstruction(world, e, isFirm, ghost, firmNear);
   }
 };

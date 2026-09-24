@@ -88,4 +88,15 @@ describe('calmZonesByPlayer memo', () => {
     expect(after.get(P1)?.has(terrain.nodeAt(10, 10))).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
+
+  it('rebuilds when a building loses its owner', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 20) });
+    const building = ownedBuildingAt(sim, 5, 5);
+    const terrain = terrainOf(sim);
+    const before = calmZonesByPlayer(sim.world, terrain);
+    sim.world.remove(building, Owner);
+    const after = calmZonesByPlayer(sim.world, terrain);
+    expect(after).not.toBe(before);
+    expect(after.size).toBe(0);
+  });
 });
