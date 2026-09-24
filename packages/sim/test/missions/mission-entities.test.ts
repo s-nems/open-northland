@@ -5,6 +5,7 @@ import {
   isWildlife,
   MissionBehaviour,
   MissionObjectId,
+  missionRecords,
   Owner,
   ownerOf,
   Person,
@@ -29,6 +30,8 @@ import {
   LOAD_PASS,
   loadPassAfter,
   MAP_NODES,
+  missionSim,
+  PASS_TICKS,
   POINT,
   SOLDIER,
   scriptedSim,
@@ -417,6 +420,37 @@ describe('the ownership results', () => {
     expect(sim.world.has(moved, Residence)).toBe(false);
   });
 
+  it('leaves the owner store alone when a repeating line hands a house to its own owner', () => {
+    const HOUSE_ID = 5;
+    const sim = scriptedSim(
+      [
+        {
+          ...firingMission([
+            { opcode: 'ChangeHousesPlayerId', objectId: HOUSE_ID, player: 2 },
+            { opcode: 'ActivateMission', missionIndex: 0 },
+          ]),
+          goals: [{ opcode: 'True' }],
+        },
+      ],
+      houseContent(),
+    );
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HUT,
+      tribe: VIKING,
+      x: POINT.hx,
+      y: POINT.hy,
+      owner: 2,
+      missionId: HOUSE_ID,
+    });
+    loadPassAfter(sim, 1);
+    const generation = sim.world.componentGeneration(Owner);
+    sim.run(PASS_TICKS);
+    expect(missionRecords(sim.world)[0]?.fireCount).toBe(2);
+    expect(ownerOf(sim.world, only(buildings(sim)))).toBe(2);
+    expect(sim.world.componentGeneration(Owner)).toBe(generation);
+  });
+
   it('tames at most the number of animals the line asks for', () => {
     const herd: MissionResultOp[] = [1, 2, 3].map((objectId) => ({
       opcode: 'SetAnimal',
@@ -467,6 +501,29 @@ describe('the object-id results', () => {
     sim.run(LOAD_PASS);
     expect(missionObjects(sim.world, 99)).toHaveLength(1);
     expect(missionObjects(sim.world, 78)).toHaveLength(1);
+  });
+
+  it('leaves the id store alone when a repeating line renumbers a group to the id it holds', () => {
+    const sim = missionSim([
+      firingMission([SET_HUMAN, { opcode: 'ActivateMission', missionIndex: 1 }]),
+      {
+        successfullIf: SUCCESSFUL_IF.all,
+        active: false,
+        visible: false,
+        goals: [{ opcode: 'True' }],
+        results: [
+          { opcode: 'ChangeMissionIdOfHumanInRange', player: 2, point: POINT, range: 3, humanId: 99 },
+          { opcode: 'ActivateMission', missionIndex: 1 },
+        ],
+      },
+    ]);
+    sim.run(LOAD_PASS);
+    expect(missionObjects(sim.world, 99)).toHaveLength(1);
+    const generation = sim.world.componentGeneration(MissionObjectId);
+    sim.run(PASS_TICKS);
+    expect(missionRecords(sim.world)[1]?.fireCount).toBe(2);
+    expect(missionObjects(sim.world, 99)).toHaveLength(1);
+    expect(sim.world.componentGeneration(MissionObjectId)).toBe(generation);
   });
 
   it('clears the id when the line renumbers to nothing', () => {

@@ -1,10 +1,10 @@
 import {
   Building,
   JobAssignment,
-  MissionObjectId,
   ownerOf,
   Person,
   Residence,
+  restampMissionId,
   Settler,
 } from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
@@ -109,16 +109,9 @@ function playerHumans(world: World, player: number, keep: (e: Entity) => boolean
   return out;
 }
 
-/**
- * Number the matches, ascending by entity id whatever order the scan found them in, since stamping
- * changes the store; an id of 0 clears the id they carry. An id already held is left alone: these
- * goals re-run every pass over a set that rarely changes, and a re-add would rebuild the object index
- * and re-clone every match each time.
- */
+/** Number the matches, ascending by entity id whatever order the scan found them in, since stamping
+ *  changes the store. */
 function tagMatches(world: World, matches: Entity[], id: number): void {
   matches.sort((a, b) => a - b);
-  for (const e of matches) {
-    if (id === 0) world.remove(e, MissionObjectId);
-    else if (world.tryGet(e, MissionObjectId)?.id !== id) world.add(e, MissionObjectId, { id });
-  }
+  for (const e of matches) restampMissionId(world, e, id);
 }

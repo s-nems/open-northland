@@ -13,6 +13,13 @@ export function stampMissionId(world: World, e: Entity, id: number | undefined):
   if (id !== undefined && id !== 0) world.add(e, MissionObjectId, { id });
 }
 
+/** Renumber an entity a script addresses; 0 clears the id. An id already held is left alone: scripts
+ *  renumber the same group every pass, and a re-add rebuilds the object index and re-clones it. */
+export function restampMissionId(world: World, e: Entity, id: number): void {
+  if (id === 0) world.remove(e, MissionObjectId);
+  else if (world.tryGet(e, MissionObjectId)?.id !== id) world.add(e, MissionObjectId, { id });
+}
+
 /**
  * The name a map gave one human, as the id of a string in the map's own table: a `[misc_humannames]`
  * row at build or a `SetHumanName` result later. The app resolves it in the player's language; a

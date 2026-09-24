@@ -41,8 +41,10 @@ export function sameSideAs(world: World, owner: number | undefined): (e: Entity)
 /**
  * Stamp an {@link Owner} on `e` when `owner` is a valid player slot; an omitted or out-of-range `owner`
  * leaves the entity neutral. A command naming an out-of-range slot never reaches here, because the command
- * system rejects it before the spawn (`systems/command/authority.ts`).
+ * system rejects it before the spawn (`systems/command/authority.ts`). Handing an entity to the owner it
+ * already has writes nothing, so the caches keyed on the owner store survive a script repeating it.
  */
 export function stampOwner(world: World, e: Entity, owner: number | undefined): void {
-  if (owner !== undefined && isValidPlayer(owner)) world.add(e, Owner, { player: owner });
+  if (owner === undefined || !isValidPlayer(owner) || ownerOf(world, e) === owner) return;
+  world.add(e, Owner, { player: owner });
 }

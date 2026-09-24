@@ -1,5 +1,5 @@
-import { isValidPlayer, MissionObjectId, ownerOf, Person } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import { isValidPlayer, ownerOf, Person, restampMissionId } from '../../../components/index.js';
+import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
@@ -27,11 +27,4 @@ function stampHumans(pass: MissionPass, player: number, id: number, keep: (e: En
   for (const e of canonicalById(world.query(Person))) {
     if (ownerOf(world, e) === player && keep(e)) restampMissionId(world, e, id);
   }
-}
-
-/** Renumber an entity the script already addressed. Unlike the placement stamp this also clears the
- *  id, since 0 is the script's own "no id" and a renumbering may drop an entity out of a group. */
-function restampMissionId(world: World, e: Entity, id: number): void {
-  if (id === 0) world.remove(e, MissionObjectId);
-  else world.add(e, MissionObjectId, { id });
 }
