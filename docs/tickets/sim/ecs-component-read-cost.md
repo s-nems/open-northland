@@ -1,0 +1,60 @@
+# Cut the fixed cost of every component read
+
+**Area:** sim · **Focus:** ecs · **Priority:** P2
+
+Every system pays a flat tax per component read, and it grows with the settlement because reads do.
+On `magiczny_las_12_players` with 13 AI seats (240x190 cells, 850-1055 settlers and 202-238
+buildings between the 30k and 60k checkpoints), `packages/sim/src/ecs/world.ts` is 9.3% of all self
+time in the quiet profile from the 40k checkpoint (7.2 s of 77.5 s over 4,000 ticks; profiled timings
+are inflated by the sampler). `World.storeOf` alone is 4.1-4.7% self at every checkpoint, the second
+heaviest self function at 50k and 60k, next to `tryGet` 1.3-2.5%, `has` 0.8-1.8% and `get` 0.6-1.4%.
+No caller owns it: walking the 40k call tree, the heaviest caller file
+(`systems/settlers/targets/resources.ts`) carries 7.4% of the ECS self time and forty files carry
+0.5% or more, so holding a store reference in a few hot loops would not move it.
+
+- `World.storeOf` resolves the store through `this.stores.get(component)`, a `Map` keyed by the
+  component object, on every `get`, `tryGet`, `has`, `mut` and `tryMut`, before the entity lookup. A
+  microbenchmark of the same two-level shape (130 components, 1,000-entity stores) reads in 21 ns,
+  against 13 ns when the store comes from an array indexed by a per-component integer; the profile's
+  near-even split between `storeOf` and the entity-level accessors matches that ratio.
+- `contentIndex` (`core/content-index.ts`) probes a `WeakMap` keyed by the `ContentSet` on every
+  call: 1.1-1.2% self at every checkpoint, called per settler from read views such as `isHeroJob`,
+  `isSoldierJob`, `isFood`, `isHunterJob` and `isScoutJob`, and a quarter of it from
+  `technologySystem`.
+- Hot component values leave V8's fast-property mode. `movementSystem` (`systems/movement/system.ts`)
+  runs `delete pf.legPace` and `delete pf.departureCharged` at every waypoint, and the harvest effects
+  in `systems/settlers/atomics/effects/goods/` delete optional fields of `CurrentAtomic`
+  (`harvest-burst.ts`) and `Resource` (`harvest.ts`). A world restored at the 50k checkpoint has no
+  dictionary-mode component value; 150 ticks later 376 of 436 `PathFollow` values and 16 of 190
+  `CurrentAtomic` values are in dictionary mode (`%HasFastProperties` under
+  `--allow-natives-syntax`). Each property read of such a value is a hash lookup and every reader
+  sees two shapes. That share is not measured separately.
+
+## Scope
+
+- Resolve a component's store through a dense integer the component carries, assigned by
+  `defineComponent` (already process-unique by name), indexing an array on the `World`. Registration
+  order, per-store insertion order and save layout must not change: they are the query, hash and save
+  contracts.
+- Hand per-tick callers the content index without the `WeakMap` probe, through `SystemContext` or an
+  identity check in front of the `WeakMap`.
+- Keep stored component values in fast mode: clear an optional field by assigning `undefined` instead
+  of `delete`, and make the state-hash and sync-digest walk (`mixValue` and `sortedKeys` in `core/`)
+  and save export treat an `undefined`-valued key as absent, so no existing state hashes differently.
+  Confirm first that no component stores an `undefined`-valued key today; if one does, that golden
+  moves and the commit names it.
+- Pure cost work otherwise: the state hash must stay identical.
+
+## Verify
+
+- Unit: query order, `forEachStore` order and a save export of a populated world are unchanged; a
+  record with an `undefined`-valued key hashes and digests like the same record without the key.
+- A probe under `--allow-natives-syntax` over a restored checkpoint stepped a few hundred ticks finds
+  no dictionary-mode component value.
+- Session and checkpoint recipe: the twelve-player run in `docs/DEVELOPMENT.md` (Measuring
+  performance); a checkpoint family from this session's 60k run exists in the worktree's `bench-out/`.
+  With the session env, `ON_BENCH_CHECKPOINT=<50k checkpoint> ON_BENCH_TICKS=5000 ON_BENCH_WINDOWS=5
+  npm run bench:map` before and after, then `npm run bench:compare`: the tick median falls by roughly
+  the `storeOf` share, with the state hash unchanged. `npm run bench:profile` from the same mark no
+  longer lists `storeOf` or `contentIndex` in the top 40 by self time.
+- `npm test`, `npm run check`, `npm run build`.
