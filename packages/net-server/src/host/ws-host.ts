@@ -211,7 +211,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         socket.close(CLOSE_INTERNAL_ERROR, 'relay fault');
       }
     });
-    // A fault in departure handling costs the one room it hit, never the process.
+    // A fault in departure handling is logged; it never reaches the process.
     socket.on('close', () => {
       lastHeardAt.delete(socket);
       try {
