@@ -1,36 +1,42 @@
-# Extend the non-interruptible-atomic gate to the remaining order handlers
+# Decide and apply which orders wait for a non-interruptible atomic
 
-**Area:** sim · **Priority:** P3
+**Area:** sim · **Focus:** `systems/orders` · **Priority:** P3
+**Needs user:** agree, order by order, which orders wait for the current atomic and which cut it off.
 
-`moveUnit`, `setJob`, and `placeSignpost` now park behind a non-interruptible atomic
-(`deferOrderDuringAtomic` + `DeferredOrder` + `deferredOrderSystem`). The remaining employment and
-work-selection handlers still cancel a `CurrentAtomic` unconditionally, losing a mid-flight swing:
+`moveUnit`, `attackMoveUnit`, `setJob`, `placeSignpost` and `openChest` park behind a non-interruptible
+atomic (`deferOrderDuringAtomic` + `DeferredOrder` + `deferredOrderSystem`): a settler mid-meal or
+mid-swing finishes it, and the order applies the tick it ends. Every other order that takes the settler
+removes `CurrentAtomic` outright, so the same meal or swing is cut off halfway:
 
-- `assignWorker` (`systems/orders/work/employment.ts`, via `reidleAsJob`), `unassignWorker`, and
-  `assignBuilder` - the employment twins of the gated `setJob`, all three now cancelling through the
-  shared `cancelActionAndRoute`; the mechanism extends by adding their kinds to
-  `DeferrableOrderCommand` plus a gate call and a dispatch case.
-- `setGatherGood` (`systems/orders/work/selection.ts`) cancels a harvest-effect atomic mid-swing on a
-  gather-good change; a swing-boundary release (the `DeferredOrder` chain-break in `atomicSystem` is
-  the pattern) would preserve the swing without deferring the selection itself.
-- `trainSoldier` (`systems/orders/training.ts`) - the barracks drill order, same shape as the
-  employment twins above; the AI's garrison hire already skips a mid-action man to avoid the stomp
-  (`ai-player/workforce/garrison.ts`), which a gate here would make unnecessary.
+- employment: `assignWorker`, `unassignWorker`, `assignBuilder` and `unassignBuilder`, all through
+  `cancelActionAndRoute` (`systems/orders/work/employment.ts`);
+- equipment: `equipGood` and `unequipGood`, through `stampEquipOrder` (`systems/orders/equipment.ts`);
+- needs: `orderNeed` (`systems/orders/needs.ts`);
+- drill and school: `trainSoldier` and `learn` through `startDrill`, and `cancelTraining`
+  (`systems/orders/training.ts`, `systems/orders/education.ts`); the assistant's drill booking shares
+  `startDrill`;
+- `setGatherGood` (`systems/orders/work/selection.ts`) cuts a harvest swing on a gather-good change.
 
-Attack orders have a separate player-control decision in
+The rule is not settled. Waiting keeps meals and swings whole; cutting off answers the player at once,
+which may matter more for some orders (an ordered meal, a drill, a queued equip errand). The original's
+behavior for these orders mid-atomic is unobserved. Talk the list through with the owner before
+implementing. Attack orders have their own decision in
 [attack-order-atomic-interruption](attack-order-atomic-interruption.md).
 
 ## Scope
 
-- Add `assignWorker`, `unassignWorker`, `assignBuilder`, and `trainSoldier` to the existing
-  deferred-order path.
-- Release `setGatherGood` at the current swing boundary without postponing the selection itself.
-- Remove the AI garrison workaround made redundant by the command gate.
-- Leave `attackUnit` unchanged.
+- Record the agreed rule for each order above.
+- Add each order that should wait to `DeferrableOrderCommand` and the `applyDeferredOrder` dispatch,
+  with a `deferOrderDuringAtomic` gate after its own refusals. A parked order is dropped by the next
+  order that takes the settler (`supersedeStandingOrders`).
+- If `setGatherGood` should keep the swing, release the gatherer at the swing boundary (the pattern of
+  the `DeferredOrder` chain break in `atomicSystem`) without postponing the selection itself.
+- Leave `attackUnit` to its own ticket.
 
 ## Verify
 
-- One headless case per newly gated handler: a settler keeps the current atomic and the order applies
-  at completion.
-- Existing melee order behavior and goldens remain unchanged; run `npm test`, `npm run check`, and
-  `npm run build`.
+- One case per changed order in `packages/sim/test/settlers/deferred-orders.test.ts`: mid-meal, the
+  order parks, the meal completes, the order applies that tick; an order that stays immediate keeps a
+  case pinning the cut.
+- Goldens unchanged unless a golden scenario issues a changed order mid-atomic; name that in the commit.
+- `npm test`, `npm run check`, `npm run build`.
