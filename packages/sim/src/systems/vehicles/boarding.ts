@@ -238,6 +238,7 @@ export function loadIntoVehicle(
   live.carrier = carrier;
   live.task = 'boardsShip';
   live.heldGoal = null;
+  live.march = null;
   return true;
 }
 

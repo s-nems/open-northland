@@ -47,10 +47,12 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
   if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
   if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
   if (hasHunter && hasPrey) return true; // a hunter and huntable prey
-  // A vehicle with a standing attack fights on its own, and an owned one is a body another owner's unit
-  // may batter: its owner joins the set the building tail below reads.
+  // A vehicle with a standing attack fights on its own, a marching one resumes its march from the
+  // combat pass, and an owned one is a body another owner's unit may batter: its owner joins the set
+  // the building tail below reads.
   for (const v of world.query(Vehicle, Health, Position)) {
-    if (world.get(v, Vehicle).attack !== null) return true;
+    const state = world.get(v, Vehicle);
+    if (state.attack !== null || state.march !== null) return true;
     const owner = world.tryGet(v, Owner);
     if (owner !== undefined && world.get(v, Health).hitpoints > 0) owners.add(owner.player);
   }

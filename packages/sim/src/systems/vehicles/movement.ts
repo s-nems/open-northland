@@ -330,7 +330,11 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noPath');
     return false;
   }
-  return sendVehicleTo(world, ctx, terrain, e, goal);
+  if (!sendVehicleTo(world, ctx, terrain, e, goal)) return false;
+  if (command.attackMove === true && type !== undefined && isSiegeVehicle(type)) {
+    world.mut(e, Vehicle).march = nodeOf(terrain, goal);
+  }
+  return true;
 }
 
 /**
@@ -367,11 +371,14 @@ export function sendVehicleTo(
   return true;
 }
 
-/** A player's goto or stop supersedes whatever the vehicle was firing at; the stance stays. */
+/** A player's goto or stop supersedes whatever the vehicle was firing at and its march; the stance
+ *  stays. */
 function dropAttack(world: World, e: Entity): void {
-  if (world.get(e, Vehicle).attack === null) return;
+  const state = world.get(e, Vehicle);
+  if (state.attack === null && state.march === null) return;
   const live = world.mut(e, Vehicle);
   live.attack = null;
+  live.march = null;
   if (live.task === 'attacks') live.task = 'none';
 }
 

@@ -11,6 +11,7 @@ import {
   type VehicleAttack,
   type VehicleAttackTarget,
   VehicleDrive,
+  type VehicleStance,
   type VehicleStateView,
   vehicleCommander,
 } from '../../components/index.js';
@@ -27,11 +28,12 @@ import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode } from './target-node.js';
 import { isValidTarget } from './targeting.js';
+import { givenUpTargetVeto, noteUnreachableTarget } from './unreachable-targets.js';
 import { attackerWeapon } from './weapons.js';
 
 // The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): a stance-driven scan, a target it
 // backs off from, closes on or fires at, and the shot itself, a ground burst the projectile system
-// flies to its scattered landing node. Ranges are Manhattan half-cell nodes, the metric every other
+// flies to its scattered landing node. An attack-move's march is driven from here too. Ranges are Manhattan half-cell nodes, the metric every other
 // weapon band here uses (approximation: the original measures its hexagon distance).
 
 /** How far an attacking or defending siege vehicle looks for an enemy (original behavior). */
@@ -103,26 +105,55 @@ export function engageVehicle(
     }
   }
 
-  const held = world.get(e, Vehicle).attack;
+  const { attack: held, march } = world.get(e, Vehicle);
   const standing = held !== null && targetStands(world, ctx, e, identity, held.target) ? held.target : null;
   const ordered = standing !== null && held?.ordered === true;
+  // A march fights in the attack stance whatever the vehicle's own stance says.
+  const stance: VehicleStance = march !== null ? 'attack' : state.stance;
   let target = standing;
   if (!ordered) {
-    // A plain goto in progress, or one held for the crew to board, is not hijacked by a scan.
-    if (target === null && (world.has(e, VehicleDrive) || state.heldGoal !== null)) {
+    // A plain goto in progress, or one held for the crew to board, is not hijacked by a scan; a march is.
+    if (march === null && target === null && (world.has(e, VehicleDrive) || state.heldGoal !== null)) {
       dropTarget(world, e);
       return;
     }
-    target = scanForTarget(world, ctx, terrain, pass, e, state, identity, weapon, here, target);
+    target = scanForTarget(world, ctx, terrain, pass, e, stance, state.guard, identity, weapon, here, target);
   }
   if (target === null) {
     dropTarget(world, e);
+    if (march !== null) marchOn(world, ctx, terrain, e, here, march);
     return;
   }
   if (held === null || !sameTarget(held.target, target) || held.ordered !== ordered) {
     world.mut(e, Vehicle).attack = { target, ordered, clipStart: null };
+    // A find cuts the march short on the node it is crossing, so the next judgement closes or fires.
+    if (march !== null) finishLeg(world, e);
   }
-  actOnTarget(world, ctx, terrain, e, weapon, here, target);
+  actOnTarget(world, ctx, terrain, e, stance, weapon, here, target);
+}
+
+/** Drive on toward the march's goal once nothing is left to fight; standing on it, or with no route
+ *  there, the march is over. A drive under way is the march's own. */
+function marchOn(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  march: HalfCellNode,
+): void {
+  if (world.has(e, VehicleDrive)) return;
+  const goal = terrain.nodeAtClamped(march.hx, march.hy);
+  if (goal !== here && startVehicleDrive(world, ctx, terrain, e, goal)) return;
+  world.mut(e, Vehicle).march = null;
+}
+
+/** End a drive's route after the leg under way. False when no drive stands. */
+function finishLeg(world: World, e: Entity): boolean {
+  const drive = world.tryGet(e, VehicleDrive);
+  if (drive === undefined) return false;
+  if (drive.route.length > 0) world.mut(e, VehicleDrive).route.length = 0;
+  return true;
 }
 
 function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {
@@ -147,7 +178,7 @@ function targetStands(
  * out to the scan radius around it, `attack` around wherever the vehicle stands. The nearest valid,
  * seen enemy wins, and a held auto target no farther than the find is kept (original behavior;
  * approximation: the original's four-step preference for enemies indoors and houses is folded into
- * one nearest search).
+ * one nearest search). An enemy a chase could not reach is skipped for a while.
  */
 function scanForTarget(
   world: World,
@@ -155,21 +186,22 @@ function scanForTarget(
   terrain: TerrainGraph,
   pass: CombatPass,
   e: Entity,
-  state: VehicleStateView,
+  stance: VehicleStance,
+  guard: HalfCellNode | null,
   identity: SettlerIdentity,
   weapon: { minRange: number; maxRange: number },
   here: NodeId,
   held: VehicleAttackTarget | null,
 ): VehicleAttackTarget | null {
-  const guard = state.guard;
-  const centre =
-    state.stance === 'attack' || guard === null ? here : terrain.nodeAtClamped(guard.hx, guard.hy);
-  const minDist = state.stance === 'hold' ? weapon.minRange : 1;
-  const maxDist = state.stance === 'hold' ? weapon.maxRange : VEHICLE_SCAN_RADIUS_NODES;
+  const centre = stance === 'attack' || guard === null ? here : terrain.nodeAtClamped(guard.hx, guard.hy);
+  const minDist = stance === 'hold' ? weapon.minRange : 1;
+  const maxDist = stance === 'hold' ? weapon.maxRange : VEHICLE_SCAN_RADIUS_NODES;
   const { x, y } = terrain.coordsOf(centre);
   const owner = world.tryGet(e, Owner);
   if (owner !== undefined && !pass.index.othersWithin(owner.player, x, y, maxDist)) return held;
+  const givenUp = givenUpTargetVeto(world, ctx, e);
   const accept = (t: Entity): boolean =>
+    givenUp?.(t) !== true &&
     isValidTarget(world, ctx, e, identity, t) &&
     (owner === undefined || playerSeesEntity(world, ctx.fog, owner.player, t));
   const found = pass.index.nearest(x, y, minDist, maxDist, accept, owner?.player ?? null);
@@ -186,20 +218,22 @@ function scanForTarget(
 /**
  * Too close backs off to a node inside the band, in range fires (once the vehicle stands), too far
  * closes to a node inside the far reach; a holding vehicle never moves and drops the target instead,
- * and a defending one drops it once its chase has taken it past the leash.
+ * and a defending one drops it once its chase has taken it past the leash. An auto target no firing
+ * node can be reached for is given up.
  */
 function actOnTarget(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
+  stance: VehicleStance,
   weapon: { minRange: number; maxRange: number },
   here: NodeId,
   target: VehicleAttackTarget,
 ): void {
   const state = world.get(e, Vehicle);
   const targetNode = aimNode(world, ctx, terrain, here, target);
-  if (state.stance === 'defence' && state.guard !== null) {
+  if (stance === 'defence' && state.guard !== null) {
     const leash = manhattan(terrain, terrain.nodeAtClamped(state.guard.hx, state.guard.hy), here);
     if (leash > VEHICLE_DEFENCE_LEASH_NODES) {
       dropTarget(world, e);
@@ -208,18 +242,15 @@ function actOnTarget(
   }
   const dist = manhattan(terrain, here, targetNode);
   if (dist >= weapon.minRange && dist <= weapon.maxRange) {
-    const drive = world.tryGet(e, VehicleDrive);
-    if (drive !== undefined) {
-      if (drive.route.length > 0) world.mut(e, VehicleDrive).route.length = 0; // finish the leg, then fire
-      return;
-    }
+    if (finishLeg(world, e)) return; // fire once the leg is done
+
     const live = world.mut(e, Vehicle);
     live.facing = facingOfStep(pointOf(terrain, here), pointOf(terrain, targetNode));
     live.task = 'attacks';
     if (live.attack !== null) live.attack.clipStart = ctx.tick;
     return;
   }
-  if (state.stance === 'hold') {
+  if (stance === 'hold') {
     dropTarget(world, e);
     return;
   }
@@ -229,7 +260,11 @@ function actOnTarget(
       ? [weapon.minRange, weapon.maxRange]
       : [Math.max(weapon.minRange, weapon.maxRange - APPROACH_BAND_DEPTH), weapon.maxRange];
   const goal = firingNode(world, ctx, terrain, e, here, targetNode, band);
-  if (goal === null || !startVehicleDrive(world, ctx, terrain, e, goal)) dropTarget(world, e);
+  if (goal !== null && startVehicleDrive(world, ctx, terrain, e, goal)) return;
+  // Without the memo an unreachable enemy in sight is found, judged and dropped again every pass.
+  if (target.kind === 'entity' && state.attack?.ordered !== true)
+    noteUnreachableTarget(world, ctx, e, target.entity);
+  dropTarget(world, e);
 }
 
 /** The node a shot is aimed at and the distance is measured to: a unit's own node, the nearest body

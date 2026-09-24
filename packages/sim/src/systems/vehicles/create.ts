@@ -75,6 +75,7 @@ export function createVehicle(
     stance: 'hold',
     guard: { hx: anchor.hx, hy: anchor.hy },
     attack: null,
+    march: null,
   });
   world.add(e, Health, { hitpoints: type.hitpoints, max: type.hitpoints });
   world.add(e, VehicleStock, { lines: new Map() });

@@ -127,12 +127,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     canAttachToVehicle: opts.canAttachToVehicle,
   });
 
-  /** The hotkey obeys the ring's own gate, so both ways of arming the order agree on who may take it. */
+  /** The hotkey obeys the ring's own gate, so both ways of arming the order agree on who may take it;
+   *  the selected siege vehicles march along. */
   const armAttackMove = (): void => {
     const units = orderRecipients(opts.content, opts.snapshot(), [...selection.ids()], 'attackPosition');
-    if (units.length === 0) return;
+    const vehicles = vehicleOrders.selectedSiegeVehicles();
+    if (units.length === 0 && vehicles.length === 0) return;
     chrome.actions().close();
-    pickMode.arm({ kind: 'attack-move', units });
+    pickMode.arm({ kind: 'attack-move', units, vehicles });
   };
 
   const applySelection = (ids: Iterable<number>, add: boolean): void => {

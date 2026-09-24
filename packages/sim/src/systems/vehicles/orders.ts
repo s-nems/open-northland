@@ -62,6 +62,7 @@ export function attackWithVehicle(
   }
   const live = world.mut(e, Vehicle);
   live.attack = orderedAttack(target);
+  live.march = null; // the player's own target ends an attack-move
   if (!crewInside(state)) {
     live.heldGoal = null; // the attack supersedes a goto held for the same boarding
     live.task = 'waitsForHuman';

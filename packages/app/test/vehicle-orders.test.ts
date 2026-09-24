@@ -21,6 +21,8 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
  */
 
 const CATAPULT = 10;
+/** A second catapult's id; the formation reads no entity, so it needs none in the world. */
+const SECOND_CATAPULT = 15;
 const HANDCART = 11;
 const SHIP = 12;
 const SHIP_AT_SEA = 13;
@@ -304,6 +306,25 @@ describe('vehicle picks', () => {
       { kind: 'attackWithVehicle', vehicle: CATAPULT, target: { kind: 'ground', hx: 3, hy: 3 } },
       { kind: 'loadIntoVehicle', vehicle: HANDCART, carrier: SHIP },
     ]);
+  });
+
+  it('marches the selected own siege vehicles of an attack-move to the spot, and no cart or foreign vehicle', () => {
+    const { issued, controller, pickMode } = harness([CATAPULT, HANDCART, ENEMY_CART], {});
+    const vehicles = controller.selectedSiegeVehicles();
+    expect(vehicles).toEqual([CATAPULT]);
+    pickMode.arm({ kind: 'attack-move', units: [], vehicles });
+    expect(pickMode.handleMouseDown(leftClick)).toBe('ordered');
+    expect(issued).toEqual([{ kind: 'moveVehicle', vehicle: CATAPULT, x: 3, y: 3, attackMove: true }]);
+  });
+
+  it('spreads a marched group over distinct goals around the spot', () => {
+    const { issued, controller } = harness([], {});
+    expect(controller.issueAttackMove([CATAPULT, SECOND_CATAPULT], { col: 10, row: 10 })).toBe(true);
+    const goals = issued.map((command) =>
+      command.kind === 'moveVehicle' ? `${command.x},${command.y}` : '',
+    );
+    expect(goals[0]).toBe('10,10');
+    expect(new Set(goals).size).toBe(2);
   });
 
   it('names the ship of an armed dock pick, and drops a dock click on a spot the mooring rule rejects', () => {

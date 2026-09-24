@@ -29,6 +29,7 @@ export type PickMode =
   | { readonly kind: BuildingPickKind; readonly units: readonly number[] }
   | { readonly kind: ScoutPickKind; readonly scout: number }
   | { readonly kind: SpotPickKind; readonly units: readonly number[] }
+  | { readonly kind: 'attack-move'; readonly units: readonly number[]; readonly vehicles: readonly number[] }
   | { readonly kind: StrikePickKind; readonly units: readonly number[] }
   | { readonly kind: 'vehicle'; readonly settler: number }
   | { readonly kind: VehicleSpotPickKind; readonly vehicle: number }
@@ -40,8 +41,9 @@ type ScoutPickKind = 'signpost' | 'explore';
 /** The orders that resolve by clicking one of the player's own buildings. */
 export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place' | 'trade-house';
 
-/** The selection-wide orders that resolve against a spot on the ground. */
-type SpotPickKind = 'destination' | 'work-area' | 'attack-move';
+/** The selection-wide orders that resolve against a spot on the ground; the attack-move also marches the
+ *  selected siege vehicles there. */
+type SpotPickKind = 'destination' | 'work-area';
 
 /** The selection-wide orders that resolve against the unit or building drawn under the cursor. */
 type StrikePickKind = 'attack-settler' | 'attack-building' | 'attack-animal' | 'attack-vehicle';
@@ -59,7 +61,10 @@ export type VehicleTargetPickKind =
 
 /** A mode whose target is a spot, so any surface that names one - the world view or the map overview -
  *  can resolve it. */
-type SpotMode = Extract<PickMode, { readonly kind: SpotPickKind | ScoutPickKind | VehicleSpotPickKind }>;
+type SpotMode = Extract<
+  PickMode,
+  { readonly kind: SpotPickKind | 'attack-move' | ScoutPickKind | VehicleSpotPickKind }
+>;
 
 interface BuildingPick {
   readonly highlight: (
@@ -141,18 +146,18 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
 const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly kind: BuildingPickKind }> =>
   Object.hasOwn(BUILDING_PICKS, mode.kind);
 
-const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | ScoutPickKind | VehicleSpotPickKind>(
-  [
-    'destination',
-    'work-area',
-    'attack-move',
-    'signpost',
-    'explore',
-    'vehicle-destination',
-    'vehicle-dock',
-    'vehicle-attack-position',
-  ],
-);
+const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<
+  SpotPickKind | 'attack-move' | ScoutPickKind | VehicleSpotPickKind
+>([
+  'destination',
+  'work-area',
+  'attack-move',
+  'signpost',
+  'explore',
+  'vehicle-destination',
+  'vehicle-dock',
+  'vehicle-attack-position',
+]);
 
 const isSpotMode = (mode: PickMode): mode is SpotMode => SPOT_MODES.has(mode.kind);
 
@@ -299,8 +304,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.orders().issueMoveTo(target, mode.units);
       case 'work-area':
         return deps.orders().issueSetWorkFlag(target, mode.units);
-      case 'attack-move':
-        return deps.orders().issueAttackMove(target, mode.units);
+      case 'attack-move': {
+        const marched = mode.units.length > 0 && deps.orders().issueAttackMove(target, mode.units);
+        const marchedVehicles =
+          mode.vehicles.length > 0 && deps.vehicleOrders().issueAttackMove(mode.vehicles, target);
+        return marched || marchedVehicles;
+      }
       // Named deviation from the observed original, which erects with a right-click on lit ground: this
       // places with a left-click and dims blocked ground, matching build placement.
       case 'signpost':

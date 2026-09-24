@@ -81,7 +81,7 @@ describe('issueRingCommand', () => {
       { kind: 'destination', units: [4, 9] },
       { kind: 'attack-building', units: [4, 9] },
       { kind: 'attack-animal', units: [4, 9] },
-      { kind: 'attack-move', units: [4] },
+      { kind: 'attack-move', units: [4], vehicles: [] },
     ]);
   });
 

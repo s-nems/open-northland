@@ -268,6 +268,11 @@ export const plContent = {
       summary:
         'Miecznik wsiada do katapulty i dostaje rozkaz ostrzelania wrogiej chaty: klip strzału zapętla się wraz z dymem, kamienie rozbijają się o dach, aż chata upada, a katapulta w postawie ataku odwraca się przeciw łucznikowi, który wciąż strzela w jej kadłub.',
     },
+    'vehicle-attack-move': {
+      title: 'Katapulty w ataku z marszu',
+      summary:
+        'Dwie obsadzone katapulty dostają rozkaz ataku z marszu na wschód. Na starcie żadna wroga chata nie jest w zasięgu; każda pojawia się po drodze, więc katapulty stają, burzą ją i jadą dalej do celu. Zaznacz katapultę, naciśnij klawisz ataku z marszu i kliknij punkt, aby poprowadzić ją samemu.',
+    },
     school: {
       title: 'Nauka zawodu',
       summary:

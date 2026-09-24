@@ -17,7 +17,12 @@ import {
 } from '../../game/snapshot.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
+import { formationTiles } from './formation.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
+
+/** How far apart a group's goals lie: past a catapult's footprint disc (`logicsize 1`) and a lane
+ *  beside it, so no two marched vehicles contend for one goal. */
+const VEHICLE_FORMATION_SPACING_NODES = 4;
 
 export interface VehicleOrderDeps {
   readonly selected: () => ReadonlySet<number>;
@@ -46,6 +51,8 @@ export interface VehicleOrderController {
   /** The one owned vehicle the selection holds, itself or through its commander aboard it, when it
    *  holds nothing else that takes orders. */
   selectedVehicle(): number | null;
+  /** The owned siege vehicles selected themselves, the ones an attack-move marches. */
+  selectedSiegeVehicles(): number[];
   /**
    * The original's default right-click for a vehicle: an enemy human, vehicle or house is attacked, an
    * own moored ship is boarded by a land vehicle, anything else is driven to. Named approximations: the
@@ -55,6 +62,9 @@ export interface VehicleOrderController {
    */
   issueRightClick(event: MouseEvent): boolean;
   issueMoveTo(vehicle: number, target: Tile): boolean;
+  /** March `vehicles` to `target`, each to its own slot of a spaced formation around it, fighting
+   *  whatever they meet on the way. */
+  issueAttackMove(vehicles: readonly number[], target: Tile): boolean;
   /** Moor `vehicle` at `target`; a spot the mooring rule rejects orders nothing. */
   issueDock(vehicle: number, target: Tile): boolean;
   issueAttackPosition(vehicle: number, target: Tile): boolean;
@@ -107,6 +117,18 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return found;
   };
 
+  const selectedSiegeVehicles = (): number[] => {
+    const snapshot = deps.snapshot();
+    const vehicles: number[] = [];
+    for (const id of deps.selected()) {
+      const e = entityById(snapshot, id);
+      if (e === undefined || !isVehicle(e) || !ours(e)) continue;
+      const type = vehicleTypeOf(e);
+      if (type !== undefined && systems.isSiegeVehicle(type)) vehicles.push(id);
+    }
+    return vehicles;
+  };
+
   const clampNode = (target: Tile): Tile => {
     const { width, height } = nodeBounds(deps.mapSize);
     return clampTile(target, width, height);
@@ -116,6 +138,27 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     const node = clampNode(target);
     deps.enqueue({ kind: 'moveVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
     return true;
+  };
+
+  const issueAttackMove = (vehicles: readonly number[], target: Tile): boolean => {
+    // Formation slots on a lattice as wide as the group, each scaled out to the spacing.
+    const span = vehicles.length;
+    const slots = formationTiles({ col: span, row: span }, span, 2 * span + 1, 2 * span + 1, () => false);
+    vehicles.forEach((vehicle, i) => {
+      const slot = slots[i] ?? { col: span, row: span };
+      const node = clampNode({
+        col: target.col + (slot.col - span) * VEHICLE_FORMATION_SPACING_NODES,
+        row: target.row + (slot.row - span) * VEHICLE_FORMATION_SPACING_NODES,
+      });
+      deps.enqueue({
+        kind: 'moveVehicle',
+        vehicle: vehicle as Entity,
+        x: node.col,
+        y: node.row,
+        attackMove: true,
+      });
+    });
+    return vehicles.length > 0;
   };
 
   const canMoorAt = (vehicle: number, node: Tile): boolean =>
@@ -237,8 +280,10 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
 
   return {
     selectedVehicle,
+    selectedSiegeVehicles,
     issueRightClick,
     issueMoveTo,
+    issueAttackMove,
     issueDock,
     issueAttackPosition,
     issueAttackTarget,

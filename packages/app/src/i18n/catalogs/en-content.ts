@@ -270,6 +270,11 @@ export const enContent = {
       summary:
         'A swordsman boards a catapult and is ordered to batter an enemy hut: the shot clip loops with its smoke, the stones burst on the roof until the hut falls, and the catapult, left in its attack stance, turns on the archer still shooting at its hull.',
     },
+    'vehicle-attack-move': {
+      title: 'Catapult attack-move',
+      summary:
+        'Two crewed catapults are marched east with an attack-move. Neither enemy hut is in reach at the start; each comes into sight on the way, so the catapults stop, raze it and drive on to their goals. Select a catapult, press the attack-move key and click a spot to march it yourself.',
+    },
     school: {
       title: 'Learning a profession',
       summary:

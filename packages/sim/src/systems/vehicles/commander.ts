@@ -38,8 +38,8 @@ export function isCommanderWalkOrder(
 }
 
 /**
- * Give a commander's walk order to its vehicle as a goto (`moveVehicle`, with its refusals): the crew
- * boards first through the goto's `waitsForHuman` hold. A commander outside and free to move drops its
+ * Give a commander's walk order to its vehicle as a goto (`moveVehicle`, with its refusals), an
+ * attack-move as the goto's march: the crew boards first through the goto's `waitsForHuman` hold. A commander outside and free to move drops its
  * own walk and its fight, as the ordinary walk order does, so the rider rung turns it to the door at
  * once; one held by an atomic finishes it first, the way a trader completes the unit it is loading
  * before the cart leaves the stop. False when `e` commands no vehicle, leaving the order to the
@@ -53,7 +53,10 @@ export function driveCommandedVehicle(
   const e = command.entity;
   const vehicle = commandedVehicleOf(world, e);
   if (vehicle === null) return false;
-  if (!moveVehicle(world, ctx, { kind: 'moveVehicle', vehicle, x: command.x, y: command.y })) return true;
+  const attackMove = command.kind === 'attackMoveUnit';
+  if (!moveVehicle(world, ctx, { kind: 'moveVehicle', vehicle, x: command.x, y: command.y, attackMove })) {
+    return true;
+  }
   if (world.has(e, Position) && !atomicHoldsSettler(world, e)) {
     clearNavState(world, e);
     world.remove(e, PlayerOrder);

@@ -160,7 +160,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
   marry: { required: { entity: 'integer' } },
   moveUnit: { required: { entity: 'integer', ...NODE } },
-  moveVehicle: { required: { vehicle: 'integer', ...NODE } },
+  moveVehicle: { required: { vehicle: 'integer', ...NODE }, optional: { attackMove: 'boolean' } },
   dockVehicle: { required: { vehicle: 'integer', ...NODE } },
   openChest: { required: { entity: 'integer', chest: 'integer' } },
   placeBuilding: {

@@ -101,7 +101,7 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       deps.pickMode.arm({ kind: 'attack-vehicle', units: targets });
       return;
     case 'attackPosition':
-      deps.pickMode.arm({ kind: 'attack-move', units: targets });
+      deps.pickMode.arm({ kind: 'attack-move', units: targets, vehicles: [] });
       return;
     case 'attackMode':
       each((entity) => ({ kind: 'setStance', entity, mode: systems.MILITARY_MODE.ATTACK }));

@@ -298,6 +298,13 @@ Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon
 `createsmoke 1` lifetime 20, damage `0:8000 1:4000 2:6000 3:2000 4:2000 6:350 7:3625`, hit
 sound 90. No ammunition and no reload counter; cadence is the 48-tick attack clip.
 
+The original's goto never scans while the vehicle drives. Open Northland adds an attack-move
+(`moveVehicle` with `attackMove`, the attack-move hotkey with a catapult selected, or a commander's
+own attack-move):
+the march fights in the attack stance whatever the vehicle's stance, a find ends the drive on the
+node it crosses, and once nothing is left to fight the vehicle drives on to the goal. A goto, stop,
+ordered attack or loading into a ship ends the march.
+
 Stances (init 3): 3 hold = scan 8..24 around the guard position, never reposition; 2 defence =
 scan 0..40 around the guard position, abandon the chase beyond 60; 1 attack = scan 0..40 around
 the current position. The command-to-stance mapping is *inferred*. Targeting prefers enemy units in
@@ -340,8 +347,9 @@ last segment (approximation: the original lands on the last flight tick); the bu
 reserved ring and its anchor (approximation: the original's in-house test area is not read), and it
 strikes a garrison standing on its tower's node (*open*: whether the original's hidden-human skip
 covers a posted archer is not read). Only the burst wears a wall; a melee blow lands on nothing
-there (*open*). The note is raised for any striker (approximation). An unreachable target is dropped
-and re-acquired each pass, with no give-up cooldown (approximation). `hitself` is not extracted; the burst hits every
+there (*open*). The note is raised for any striker (approximation). An auto target no firing node reaches is
+given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
+its next update). `hitself` is not extracted; the burst hits every
 side, which the data's `hitself 1` also says. `removeVehicle` (`systems/vehicles/remove.ts`) draws
 the ruin nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the
 renderer's decals, since the ruin landscape type is not identified (*open*); the cargo spill walks

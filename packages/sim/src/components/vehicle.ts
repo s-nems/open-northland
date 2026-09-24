@@ -78,6 +78,9 @@ export const Vehicle = defineComponent<{
    *  not read. */
   guard: HalfCellNode | null;
   attack: VehicleAttack | null;
+  /** An attack-move's destination: a siege vehicle drives there in the attack stance, fights what its
+   *  scan finds on the way, then drives on. Null under every other order. */
+  march: HalfCellNode | null;
 }>('Vehicle', 'movement');
 
 /**
