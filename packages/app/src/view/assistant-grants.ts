@@ -1,5 +1,5 @@
 import type { PlayerCommand, Simulation } from '@open-northland/sim';
-import type { AssistantGrantId } from '../hud/tool-panel/extras-menu.js';
+import { type AssistantGrantId, GRANT_IDS } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 
 /**
@@ -12,8 +12,6 @@ const GRANT_GOOD_SLUGS: Readonly<Record<AssistantGrantId, readonly string[]>> = 
   giveIronTools: ['tool_iron'],
   giveMead: ['mead'],
 };
-
-const GRANT_IDS = Object.keys(GRANT_GOOD_SLUGS) as readonly AssistantGrantId[];
 
 interface GrantContent {
   readonly goods: ReadonlyArray<{ readonly typeId: number; readonly id: string }>;

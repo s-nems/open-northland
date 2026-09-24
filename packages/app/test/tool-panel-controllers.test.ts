@@ -738,6 +738,43 @@ describe('extras window controller', () => {
     expect(made).not.toContain(messages().hud.extras.off); // every switch reads back ON
   });
 
+  it('holds a flipped switch until the sim applies it, and follows a grant that moved under the open window', () => {
+    const { ctx, made } = stubContext();
+    const live: Record<AssistantGrantId, boolean> = {
+      giveBoots: true,
+      giveWoodenTools: true,
+      giveIronTools: true,
+      giveMead: true,
+    };
+    // The command applies on a later tick, as a queued `setAssistantGrant` does.
+    const lagging: ExtrasGrantsSeam = { read: () => ({ ...live }), set: () => true };
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: lagging,
+      counters: stubCountersSeam().seam,
+    });
+    const geo = expectedLayout(ctx);
+    extras.toggle();
+    const mead = geo.grants.find((g) => g.id === 'giveMead')?.switchRect;
+    expect(mead).toBeDefined();
+    if (mead === undefined) return;
+
+    made.length = 0;
+    extras.handleClick(centreOf(mead).x, centreOf(mead).y);
+    expect(made).toContain(messages().hud.extras.off); // the echo
+    made.length = 0;
+    extras.refresh();
+    expect(made).toEqual([]); // the sim still reads pre-write: the echo holds
+
+    live.giveMead = false; // applied
+    extras.refresh();
+    live.giveBoots = false; // a write an earlier mount of the window echoed, applied only now
+    made.length = 0;
+    extras.refresh();
+    expect(made.filter((text) => text === messages().hud.extras.off)).toHaveLength(2);
+  });
+
   it('does not consume clicks outside the open window', () => {
     const { ctx } = stubContext();
     const extras = createExtrasWindow({

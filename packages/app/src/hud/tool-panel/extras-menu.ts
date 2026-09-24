@@ -184,7 +184,12 @@ export const COUNTER_IDS: readonly AssistantCounterId[] = [
   'trainSpearmen',
   'trainArchers',
 ];
-const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 'giveIronTools', 'giveMead'];
+export const GRANT_IDS: readonly AssistantGrantId[] = [
+  'giveBoots',
+  'giveWoodenTools',
+  'giveIronTools',
+  'giveMead',
+];
 
 /** Resolve the window to screen rects, with every row's controls right-aligned on a shared column. */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {

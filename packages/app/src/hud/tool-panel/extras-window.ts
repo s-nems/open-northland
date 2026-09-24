@@ -11,6 +11,7 @@ import {
   COUNTER_IDS,
   defaultAssistantState,
   type ExtrasMenuLayout,
+  GRANT_IDS,
   hitTestExtrasMenu,
   layoutExtrasMenu,
   toggleGrant,
@@ -46,8 +47,11 @@ const countersEqual = (
   b: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
 ): boolean => COUNTER_IDS.every((id) => !faceDiffers(a[id], b[id]));
 
-/** The grant switches' sim seam, read on open: a click writes one `setAssistantGrant` command per
- *  mapped good. */
+const statesEqual = (a: AssistantState, b: AssistantState): boolean =>
+  countersEqual(a.counters, b.counters) && GRANT_IDS.every((id) => a.grants[id] === b.grants[id]);
+
+/** The grant switches' sim seam, re-read every frame like the counters: a click writes one
+ *  `setAssistantGrant` command per mapped good. */
 export interface ExtrasGrantsSeam {
   /** The live per-switch state; a switch is ON when every good it flips is granted. */
   read(): Readonly<Record<AssistantGrantId, boolean>>;
@@ -75,7 +79,7 @@ export interface ExtrasWindowDeps {
 
 /** The pop-up extras ("chest") window: the assistant's controls. */
 export interface ExtrasWindow extends ToolWindow {
-  /** Per-frame hook: rebuild when the sim's live counter block moved off what the window shows. */
+  /** Per-frame hook: rebuild when the sim's live counters or grants moved off what the window shows. */
   refresh(): void;
 }
 
@@ -103,10 +107,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
 
   let state: AssistantState = defaultAssistantState();
   let menuLayout: ExtrasMenuLayout | null = null;
-  /** The live counter block as read at the last local write. While the sim still shows exactly this
-   *  block the write has not applied, so the click's echo must hold; any live change clears it. Several
+  /** The live counters and grants as read at the last local write. While the sim still shows exactly
+   *  these the write has not applied, so the click's echo must hold; any live change clears it. Several
    *  pending writes can briefly show an intermediate value, an accepted transient. */
-  let echoBase: AssistantState['counters'] | null = null;
+  let echoBase: AssistantState | null = null;
+  const readLive = (): AssistantState => ({ counters: deps.counters.read(), grants: deps.grants.read() });
 
   const drawStepper = (r: Rect, glyph: 'minus' | 'plus'): void => {
     paintPlate(layers, r, false);
@@ -191,7 +196,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     if (next === state) return;
     const face = next.counters[id];
     if (!deps.counters.set(id, face.value, face.infinite)) return;
-    echoBase = deps.counters.read(); // the pre-apply block the echo holds against
+    echoBase = readLive(); // the pre-apply state the echo holds against
     state = next; // local echo; the command applies next sim tick
     rebuild();
   };
@@ -202,7 +207,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (shell.isOpen()) close();
       else {
         shell.setOpen(true);
-        state = { counters: deps.counters.read(), grants: deps.grants.read() };
+        state = readLive();
         echoBase = null; // a fresh read has nothing pending to hold
         rebuild();
       }
@@ -229,6 +234,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
           break;
         case 'grant':
           if (deps.grants.set(hit.id, !state.grants[hit.id])) {
+            echoBase = readLive();
             state = toggleGrant(state, hit.id); // local echo
             rebuild();
           }
@@ -246,11 +252,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (!shell.isOpen()) return;
       const screen = ctx.screen();
       if (`${screen.width}x${screen.height}` !== screenKey) rebuild();
-      const live = deps.counters.read();
-      if (echoBase !== null && countersEqual(live, echoBase)) return; // the write has not applied yet
+      const live = readLive();
+      if (echoBase !== null && statesEqual(live, echoBase)) return; // the write has not applied yet
       echoBase = null; // the sim moved: whatever we wrote is applied or overtaken, so show live
-      if (countersEqual(state.counters, live)) return;
-      state = { ...state, counters: live };
+      if (statesEqual(state, live)) return;
+      state = live;
       rebuild();
     },
   };
