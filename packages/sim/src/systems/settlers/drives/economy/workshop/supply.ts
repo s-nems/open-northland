@@ -2,8 +2,6 @@ import type { Recipe } from '@open-northland/data';
 import { Building, Production, Stockpile, sameSideAs } from '../../../../../components/index.js';
 import { ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
-import type { SpatialGate } from '../../../../../nav/node-circle.js';
-import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
 import {
@@ -13,7 +11,9 @@ import {
   recipesByProductOf,
   stockCapacity,
 } from '../../../../stores/index.js';
-import type { InputSourceKind, TargetBands } from '../../../targets/index.js';
+import type { PlannerContext } from '../../../planner/context.js';
+import type { InputSourceKind } from '../../../targets/index.js';
+import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
 // finished output out, so the loop closes without a dedicated carrier. Every choice is recipe-driven and
@@ -64,51 +64,56 @@ export function workSeatCount(
   return running + startable;
 }
 
-/**
- * Where a producer worker should go for a missing recipe input, or null when every input is stocked and
- * nothing reachable can supply one. For the first input the workplace is short of it returns the nearest
- * source of either kind: a `fetch` from a store that holds the good, or a `draw` from a built utility that
- * mints the good from no inputs, cranked in place for one unit. Both kinds compete in one canonical scan,
- * so a bakery beside a well draws there rather than trek to a distant HQ that also holds water. Either way
- * the trip brings one unit, so a shortfall of two is two trips. Source basis: authored.
- *
- * `restockToCapacity` raises each input's fetch target from the recipe amount to the workplace's declared
- * input-slot capacity, the bound carrier's shape (observed original behaviour). It does not affect a draw.
- */
+/** Where a producer worker goes for one unit of a missing recipe input. */
 export type MissingInputSource =
   | { readonly kind: 'fetch'; readonly store: Entity; readonly goodType: number }
   | { readonly kind: 'draw'; readonly utility: Entity; readonly goodType: number };
 
+/**
+ * How far a fetch tops an input up. `restockToCapacity` raises the target from the recipe amount to the
+ * workplace's declared input-slot capacity, the bound carrier's shape (observed original behaviour).
+ * `inbound`, when given, counts the units other settlers are bringing as already stocked.
+ */
+export interface InputShortfall {
+  readonly restockToCapacity: boolean;
+  readonly inbound?: (goodType: number) => number;
+}
+
 const FETCH: { readonly payload: 'fetch' } = { payload: 'fetch' };
 const DRAW: { readonly payload: 'draw' } = { payload: 'draw' };
 
+/**
+ * The source for the first input `workplace` is short of, or null when every input is stocked and
+ * nothing reachable can supply one: the nearest of a `fetch` from a store that holds the good, or a
+ * `draw` from a built utility that mints the good from no inputs, cranked in place for one unit. Both
+ * kinds compete in one canonical scan, so a bakery beside a well draws there rather than trek to a
+ * distant HQ that also holds water. Either way the trip brings one unit, so a shortfall of two is two
+ * trips. Never from another player's store or utility, nor a cell the worker failed to reach. Source
+ * basis: authored.
+ */
 export function nearestMissingInputSource(
-  bands: TargetBands,
-  world: World,
-  ctx: SystemContext,
-  here: NodeId,
+  plan: PlannerContext,
   workplace: Entity,
   recipe: Recipe,
-  /** The worker's owning player; it never fetches or draws from another player's store or utility. */
-  owner: number | undefined,
-  restockToCapacity = false,
-  gate?: SpatialGate,
-  /** The worker's failed-goal veto. */
-  avoid?: (cell: NodeId) => boolean,
+  shortfall: InputShortfall,
 ): MissingInputSource | null {
+  const { world, ctx, here, targets } = plan;
   const stock = world.get(workplace, Stockpile).amounts;
+  const avoid = unreachableGoalVeto(world, ctx, plan.entity);
   for (const input of recipe.inputs) {
-    const have = stock.get(input.goodType) ?? 0;
-    const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
+    const have = (stock.get(input.goodType) ?? 0) + (shortfall.inbound?.(input.goodType) ?? 0);
+    const target = shortfall.restockToCapacity
+      ? stockCapacity(world, ctx, workplace, input.goodType)
+      : input.amount;
     if (have >= target) continue;
-    const band = bands.inputSources(input.goodType);
+    const band = targets.bands.inputSources(input.goodType);
     const winner = band.index.nearest<InputSourceKind>(
       here,
       // The workplace never supplies itself; every other member's kind was derived with the band.
       (e) => (e === workplace ? null : band.kindOf.get(e) === 'draw' ? DRAW : FETCH),
-      gate,
+      plan.limit ?? undefined,
       avoid,
-      sameSideAs(world, owner),
+      sameSideAs(world, plan.owner),
     );
     if (winner === null) continue;
     return winner.payload === 'draw'

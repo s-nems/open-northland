@@ -18,10 +18,17 @@ import { accessibleStockAmounts } from './inventory.js';
 import { isWorkplaceOperator } from './operators.js';
 import { mergedRecipeOf, producesGoodWithoutInputs, recipeConsumes } from './workplace.js';
 
+/** One settler's unit on its way to a workplace: carried, or on a pickup leg whose source still has it. */
+export interface SupplyLoad {
+  readonly settler: Entity;
+  readonly goodType: number;
+  readonly amount: number;
+}
+
 /** A phase-local index: one worker scan, then only the requested workshop's crew and loads. */
 export class WorkshopWorkforce {
   private readonly crews = new Map<Entity, Entity[]>();
-  private readonly inbound = new Map<Entity, Map<number, number>>();
+  private readonly inbound = new Map<Entity, SupplyLoad[]>();
 
   constructor(world: World, ctx: SystemContext) {
     for (const e of canonicalById(world.query(JobAssignment, Settler))) {
@@ -58,12 +65,12 @@ export class WorkshopWorkforce {
         (world.get(destination, Stockpile).amounts.get(load.goodType) ?? 0)
       )
         continue;
-      let goods = this.inbound.get(destination);
-      if (goods === undefined) {
-        goods = new Map();
-        this.inbound.set(destination, goods);
+      let loads = this.inbound.get(destination);
+      if (loads === undefined) {
+        loads = [];
+        this.inbound.set(destination, loads);
       }
-      goods.set(load.goodType, (goods.get(load.goodType) ?? 0) + load.amount);
+      loads.push({ settler: e, goodType: load.goodType, amount: load.amount });
     }
   }
 
@@ -71,7 +78,12 @@ export class WorkshopWorkforce {
     return this.crews.get(workplace) ?? [];
   }
 
-  incomingOf(workplace: Entity, goodType: number): number {
-    return this.inbound.get(workplace)?.get(goodType) ?? 0;
+  /** Units of `goodType` the indexed loads bring to `workplace`, leaving out the settlers `skip` names. */
+  incomingOf(workplace: Entity, goodType: number, skip?: (settler: Entity) => boolean): number {
+    let units = 0;
+    for (const load of this.inbound.get(workplace) ?? []) {
+      if (load.goodType === goodType && skip?.(load.settler) !== true) units += load.amount;
+    }
+    return units;
   }
 }

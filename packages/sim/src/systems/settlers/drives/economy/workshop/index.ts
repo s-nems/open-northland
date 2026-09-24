@@ -17,11 +17,11 @@ import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
-import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
 import { startCraftAtomic } from './craft.js';
 import {
+  type InputShortfall,
   type MissingInputSource,
   nearestMissingInputSource,
   operatorRecipes,
@@ -39,10 +39,18 @@ export interface WorkSeats {
   performing: number;
 }
 
+/** A supply errand stamped during this planner pass, after the pass's crew index was taken. */
+interface PassErrand {
+  readonly workplace: Entity;
+  readonly goodType: number;
+  readonly amount: number;
+}
+
 /** Per-planner-pass seat claims and incoming bound loads, indexed only when a workshop needs them. */
 export class WorkSeatClaims extends Map<Entity, WorkSeats> {
   private workforce: WorkshopWorkforce | undefined;
   private readonly recipesByWorkplace = new Map<Entity, Recipe[]>();
+  private readonly errands = new Map<Entity, PassErrand>();
 
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
     let recipes = this.recipesByWorkplace.get(workplace);
@@ -58,11 +66,28 @@ export class WorkSeatClaims extends Map<Entity, WorkSeats> {
     return recipes;
   }
 
-  inboundOf(world: World, ctx: PlannerContext['ctx'], workplace: Entity, goodType: number): number {
-    this.workforce ??= new WorkshopWorkforce(world, ctx);
-    return this.workforce.incomingOf(workplace, goodType);
+  /** Record `settler`'s errand stamped this pass; it replaces whatever the index held for that settler. */
+  noteErrand(settler: Entity, errand: PassErrand): void {
+    this.errands.set(settler, errand);
+  }
+
+  /** Units other settlers are bringing to `workplace`: the index's live loads plus the errands stamped
+   *  this pass, each settler counted once. The asking settler is re-planning, so its own indexed errand no longer counts. */
+  inboundOf(plan: PlannerContext, workplace: Entity, goodType: number): number {
+    this.workforce ??= new WorkshopWorkforce(plan.world, plan.ctx);
+    const skip = (settler: Entity): boolean => settler === plan.entity || this.errands.has(settler);
+    let units = this.workforce.incomingOf(workplace, goodType, skip);
+    for (const errand of this.errands.values()) {
+      if (errand.workplace === workplace && errand.goodType === goodType) units += errand.amount;
+    }
+    return units;
   }
 }
+
+/** An operator's own recipes and a carrier's restock fetch whatever is inbound, so each spare operator
+ *  gets a unit for its own batch; only a crew recipe's shortfall counts colleagues' errands. */
+const OWN_SHORTFALL: InputShortfall = { restockToCapacity: false };
+const CARRIER_SHORTFALL: InputShortfall = { restockToCapacity: true };
 
 /**
  * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
@@ -79,7 +104,7 @@ export function planProducer(
   seatClaims: WorkSeatClaims,
   spacing: PlannerSpacing,
 ): void {
-  const { world, ctx, here, targets } = plan;
+  const { world, ctx } = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
@@ -97,25 +122,19 @@ export function planProducer(
   }
 
   // A startable cheap recipe must not consume every incoming unit while another open recipe waits
-  // for more of that input. A worker with no batch to advance brings the missing unit first.
+  // for more of that input. A worker with no batch to advance brings the missing unit first, unless a
+  // colleague's errand already brings it.
   const tribe = world.get(workplace, Building).tribe;
+  const crewShortfall: InputShortfall = {
+    restockToCapacity: false,
+    inbound: (good) => seatClaims.inboundOf(plan, workplace, good),
+  };
   for (const candidate of seatClaims.recipesFor(world, ctx, workplace)) {
     if (!recipeOutputsEnabled(world, ctx, plan.owner, tribe, candidate)) continue;
     if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
-    const source = nearestMissingInputSource(
-      targets.bands,
-      world,
-      ctx,
-      here,
-      workplace,
-      candidate,
-      plan.owner,
-      false,
-      plan.limit ?? undefined,
-      unreachableGoalVeto(world, ctx, plan.entity),
-    );
+    const source = nearestMissingInputSource(plan, workplace, candidate, crewShortfall);
     if (source !== null) {
-      routeToInputSource(plan, workplace, source);
+      routeToInputSource(plan, workplace, source, seatClaims);
       return;
     }
   }
@@ -128,7 +147,7 @@ export function planProducer(
       candidate.inputs.some(
         (input) =>
           (stock.get(input.goodType) ?? 0) < input.amount &&
-          seatClaims.inboundOf(world, ctx, workplace, input.goodType) > 0,
+          seatClaims.inboundOf(plan, workplace, input.goodType) > 0,
       )
     ) {
       holdInsideWorkplace(plan, workplace);
@@ -155,20 +174,9 @@ export function planProducer(
   // first; an operator that has earned no product here keeps the whole-shop view.
   const supply = own.length === 0 ? recipe : mergeRecipes(own);
 
-  const source = nearestMissingInputSource(
-    targets.bands,
-    world,
-    ctx,
-    here,
-    workplace,
-    supply,
-    plan.owner,
-    false,
-    plan.limit ?? undefined,
-    unreachableGoalVeto(world, ctx, plan.entity),
-  );
+  const source = nearestMissingInputSource(plan, workplace, supply, OWN_SHORTFALL);
   if (source !== null) {
-    routeToInputSource(plan, workplace, source);
+    routeToInputSource(plan, workplace, source, seatClaims);
     return;
   }
 
@@ -183,27 +191,20 @@ export function planProducer(
  * Ferry inputs and outputs for a carrier bound to a recipe workplace. Input slots are topped up before
  * output is removed so the operators do not starve; that priority is the existing named approximation.
  */
-export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, spacing: PlannerSpacing): void {
-  const { world, ctx, here, targets } = plan;
+export function planWorkshopSupplier(
+  plan: PlannerContext,
+  workplace: Entity,
+  seatClaims: WorkSeatClaims,
+  spacing: PlannerSpacing,
+): void {
+  const { world, ctx } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
-  const restockToCapacity = true;
-  const source = nearestMissingInputSource(
-    targets.bands,
-    world,
-    ctx,
-    here,
-    workplace,
-    recipe,
-    plan.owner,
-    restockToCapacity,
-    plan.limit ?? undefined,
-    unreachableGoalVeto(world, ctx, plan.entity),
-  );
+  const source = nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL);
   if (source !== null) {
-    routeToInputSource(plan, workplace, source);
+    routeToInputSource(plan, workplace, source, seatClaims);
     return;
   }
 
@@ -219,7 +220,12 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
  * carrier: the original reserves exactly one against both ends of the walk before it sets off
  * (+1 at the work house, -1 at the source), so a recipe wanting two of a good is two walks.
  */
-function routeToInputSource(plan: PlannerContext, workplace: Entity, source: MissingInputSource): void {
+function routeToInputSource(
+  plan: PlannerContext,
+  workplace: Entity,
+  source: MissingInputSource,
+  seatClaims: WorkSeatClaims,
+): void {
   const { world, ctx, terrain, entity, here } = plan;
   const worker = plan;
   stampSupplyRun(world, entity, plan.inbound, {
@@ -228,6 +234,7 @@ function routeToInputSource(plan: PlannerContext, workplace: Entity, source: Mis
     amount: CARRY_CAPACITY,
     source: source.kind === 'fetch' ? source.store : source.utility,
   });
+  seatClaims.noteErrand(entity, { workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
   if (source.kind === 'fetch') {
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
       startPickup(world, ctx, entity, worker, source.store, source.goodType, CARRY_CAPACITY),

@@ -22,6 +22,7 @@ import {
   buildingAt,
   CARPENTER,
   CARRIER,
+  cell,
   ctxOf,
   FOOD_SIMPLE,
   FORGE,
@@ -49,6 +50,73 @@ it('a carrier must not enable recipes deselected by the craftsman', () => {
   settlerAt(sim, 5, 0, CARRIER, shop);
   plannerSystem(sim.world, ctxOf(sim));
   expect(sim.world.tryGet(worker, Resting)).toEqual({ at: shop });
+});
+
+it.each(['this pass', 'an earlier tick'])(
+  'an operator with a startable recipe takes its seat while a colleague already fetches, errand from %s',
+  (planned) => {
+    const content = testContent();
+    workshop(content, BAKEHOUSE).workers = [{ jobType: CARPENTER, count: 2 }];
+    const sim = new Simulation({ seed: 1, content, map: grassMap(8, 1) });
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [[WOOD, 5]]);
+    const store = buildingAt(sim, HEADQUARTERS, 4, 0, [[WHEAT, 5]]);
+    settlerAt(sim, 7, 0, WOODCUTTER);
+    const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.add(baker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    const joiner = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.mut(joiner, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(joiner, CraftSelection, { goods: [PLANK], cursor: 0 });
+    if (planned === 'an earlier tick') {
+      sim.world.add(baker, SupplyRun, { site: shop, goodType: WHEAT, amount: 1, source: store });
+      sim.world.add(baker, MoveGoal, { cell: cell(sim, 4, 0) });
+    }
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(baker, SupplyRun).goodType).toBe(WHEAT);
+    expect(sim.world.has(joiner, SupplyRun)).toBe(false);
+    expect(sim.world.tryGet(joiner, Resting)).toEqual({ at: shop });
+  },
+);
+
+it('a recipe waiting for a unit a colleague set off for this pass keeps its rotation turn', () => {
+  const content = testContent();
+  const forge = workshop(content, FORGE);
+  forge.workers = [{ jobType: CARPENTER, count: 2 }];
+  secondRecipe(forge).inputs = [{ goodType: WOOD, amount: 2 }];
+  const sim = new Simulation({ seed: 1, content, map: grassMap(8, 1) });
+  const shop = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+  buildingAt(sim, HEADQUARTERS, 4, 0, [[WOOD, 5]]);
+  settlerAt(sim, 7, 0, WOODCUTTER);
+  // Planned first, so its fetch is stamped before the other operator decides.
+  const fetcher = settlerAt(sim, 0, 0, CARPENTER, shop);
+  sim.world.add(fetcher, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+  const waiting = settlerAt(sim, 0, 0, CARPENTER, shop);
+  sim.world.mut(waiting, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.add(waiting, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+  plannerSystem(sim.world, ctxOf(sim));
+  expect(sim.world.get(fetcher, SupplyRun).goodType).toBe(WOOD);
+  expect(sim.world.get(waiting, CraftSelection).cursor).toBe(1);
+  expect(sim.world.tryGet(waiting, Resting)).toEqual({ at: shop });
+});
+
+it('a colleague walking to an emptied store does not hold back a startable recipe', () => {
+  const content = testContent();
+  const forge = workshop(content, FORGE);
+  forge.workers = [{ jobType: CARPENTER, count: 2 }];
+  secondRecipe(forge).inputs = [{ goodType: WOOD, amount: 2 }];
+  const sim = new Simulation({ seed: 1, content, map: grassMap(8, 1) });
+  const shop = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
+  const emptied = buildingAt(sim, HEADQUARTERS, 4, 0);
+  settlerAt(sim, 7, 0, WOODCUTTER);
+  const fetcher = settlerAt(sim, 2, 0, CARPENTER, shop);
+  sim.world.add(fetcher, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+  sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WOOD, amount: 1, source: emptied });
+  sim.world.add(fetcher, MoveGoal, { cell: cell(sim, 4, 0) });
+  const waiting = settlerAt(sim, 0, 0, CARPENTER, shop);
+  sim.world.mut(waiting, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.add(waiting, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+  plannerSystem(sim.world, ctxOf(sim));
+  productionSystem(sim.world, ctxOf(sim));
+  expect(sim.world.get(shop, Production).cycles.map((c) => c.goodType)).toEqual([PLANK]);
 });
 
 for (const owned of [false, true])
